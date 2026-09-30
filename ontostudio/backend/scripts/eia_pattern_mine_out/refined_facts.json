@@ -1,0 +1,4121 @@
+{
+  "emitted_at": "2026-09-30T15:15:13.000050+00:00",
+  "count": 117,
+  "facts": [
+    {
+      "pattern_id": "dp-b5255be138",
+      "pattern_type": "治理",
+      "pair": "悬浮物（pollutant）→ 矿井水处理站（treatment_measure）",
+      "predicate": "emitted_as+treated_by",
+      "support": 22,
+      "occurrence": 6,
+      "total_samples": 22,
+      "source_reports": [
+        "白音华二号露天矿",
+        "白音华三号露天矿",
+        "巴拉素",
+        "高头窑矿区",
+        "郭家台二号矿井",
+        "鹤岗矿区",
+        "横城矿区",
+        "华亭矿区",
+        "九龙川矿井",
+        "灵台矿区",
+        "纳林希里矿区",
+        "淖毛湖矿区",
+        "三塘湖矿区",
+        "四季屯",
+        "韦州矿区",
+        "五间房矿区",
+        "牙克石（五九煤田）",
+        "伊敏矿区（总规）",
+        "伊敏3500万吨",
+        "伊宁矿区北区",
+        "伊泰煤矿（露天）",
+        "月儿湾矿井"
+      ],
+      "subject_variants": [
+        "ss",
+        "悬浮",
+        "悬浮物",
+        "悬浮物、cod、石油类、氟化物、溶解性总固体"
+      ],
+      "object_variants": [
+        "矿井水处理站"
+      ],
+      "mechanical_desc": "样例库 22 份报告共现：悬浮物（pollutant）配 矿井水处理站（treatment_measure）——治理规律（B 库蒸馏，跨报告支持度 22）"
+    },
+    {
+      "pattern_id": "dp-ceb7d088a1",
+      "pattern_type": "治理",
+      "pair": "化学需氧量（pollutant）→ 生活污水处理站（treatment_measure）",
+      "predicate": "emitted_as+treated_by",
+      "support": 22,
+      "occurrence": 5,
+      "total_samples": 22,
+      "source_reports": [
+        "白音华二号露天矿",
+        "白音华三号露天矿",
+        "巴拉素",
+        "高头窑矿区",
+        "郭家台二号矿井",
+        "鹤岗矿区",
+        "横城矿区",
+        "华亭矿区",
+        "九龙川矿井",
+        "灵台矿区",
+        "纳林希里矿区",
+        "淖毛湖矿区",
+        "三塘湖矿区",
+        "四季屯",
+        "韦州矿区",
+        "五间房矿区",
+        "牙克石（五九煤田）",
+        "伊敏矿区（总规）",
+        "伊敏3500万吨",
+        "伊宁矿区北区",
+        "伊泰煤矿（露天）",
+        "月儿湾矿井"
+      ],
+      "subject_variants": [
+        "cod",
+        "codcr",
+        "悬浮物、cod、石油类、氟化物、溶解性总固体"
+      ],
+      "object_variants": [
+        "生活污水处理站"
+      ],
+      "mechanical_desc": "样例库 22 份报告共现：化学需氧量（pollutant）配 生活污水处理站（treatment_measure）——治理规律（B 库蒸馏，跨报告支持度 22）"
+    },
+    {
+      "pattern_id": "dp-c648ce09f4",
+      "pattern_type": "治理",
+      "pair": "氨氮（pollutant）→ 生活污水处理站（treatment_measure）",
+      "predicate": "emitted_as+treated_by",
+      "support": 22,
+      "occurrence": 3,
+      "total_samples": 22,
+      "source_reports": [
+        "白音华二号露天矿",
+        "白音华三号露天矿",
+        "巴拉素",
+        "高头窑矿区",
+        "郭家台二号矿井",
+        "鹤岗矿区",
+        "横城矿区",
+        "华亭矿区",
+        "九龙川矿井",
+        "灵台矿区",
+        "纳林希里矿区",
+        "淖毛湖矿区",
+        "三塘湖矿区",
+        "四季屯",
+        "韦州矿区",
+        "五间房矿区",
+        "牙克石（五九煤田）",
+        "伊敏矿区（总规）",
+        "伊敏3500万吨",
+        "伊宁矿区北区",
+        "伊泰煤矿（露天）",
+        "月儿湾矿井"
+      ],
+      "subject_variants": [
+        "氨氮"
+      ],
+      "object_variants": [
+        "生活污水处理站"
+      ],
+      "mechanical_desc": "样例库 22 份报告共现：氨氮（pollutant）配 生活污水处理站（treatment_measure）——治理规律（B 库蒸馏，跨报告支持度 22）"
+    },
+    {
+      "pattern_id": "dp-b6222eb870",
+      "pattern_type": "治理",
+      "pair": "悬浮物（pollutant）→ 处理后回用（treatment_measure）",
+      "predicate": "emitted_as+treated_by",
+      "support": 21,
+      "occurrence": 6,
+      "total_samples": 22,
+      "source_reports": [
+        "白音华二号露天矿",
+        "白音华三号露天矿",
+        "巴拉素",
+        "高头窑矿区",
+        "郭家台二号矿井",
+        "鹤岗矿区",
+        "横城矿区",
+        "华亭矿区",
+        "九龙川矿井",
+        "灵台矿区",
+        "纳林希里矿区",
+        "淖毛湖矿区",
+        "四季屯",
+        "韦州矿区",
+        "五间房矿区",
+        "牙克石（五九煤田）",
+        "伊敏矿区（总规）",
+        "伊敏3500万吨",
+        "伊宁矿区北区",
+        "伊泰煤矿（露天）",
+        "月儿湾矿井"
+      ],
+      "subject_variants": [
+        "ss",
+        "悬浮",
+        "悬浮物",
+        "悬浮物、cod、石油类、氟化物、溶解性总固体"
+      ],
+      "object_variants": [
+        "处理后回用"
+      ],
+      "mechanical_desc": "样例库 21 份报告共现：悬浮物（pollutant）配 处理后回用（treatment_measure）——治理规律（B 库蒸馏，跨报告支持度 21）"
+    },
+    {
+      "pattern_id": "dp-07c8b30252",
+      "pattern_type": "治理",
+      "pair": "悬浮物（pollutant）→ 矿井水处理（treatment_measure）",
+      "predicate": "emitted_as+treated_by",
+      "support": 21,
+      "occurrence": 5,
+      "total_samples": 22,
+      "source_reports": [
+        "白音华二号露天矿",
+        "白音华三号露天矿",
+        "巴拉素",
+        "高头窑矿区",
+        "郭家台二号矿井",
+        "鹤岗矿区",
+        "横城矿区",
+        "华亭矿区",
+        "九龙川矿井",
+        "灵台矿区",
+        "纳林希里矿区",
+        "淖毛湖矿区",
+        "三塘湖矿区",
+        "四季屯",
+        "韦州矿区",
+        "五间房矿区",
+        "牙克石（五九煤田）",
+        "伊敏矿区（总规）",
+        "伊宁矿区北区",
+        "伊泰煤矿（露天）",
+        "月儿湾矿井"
+      ],
+      "subject_variants": [
+        "ss",
+        "悬浮",
+        "悬浮物",
+        "悬浮物、cod、石油类、氟化物、溶解性总固体"
+      ],
+      "object_variants": [
+        "矿井水处理"
+      ],
+      "mechanical_desc": "样例库 21 份报告共现：悬浮物（pollutant）配 矿井水处理（treatment_measure）——治理规律（B 库蒸馏，跨报告支持度 21）"
+    },
+    {
+      "pattern_id": "dp-c856119f9c",
+      "pattern_type": "治理",
+      "pair": "化学需氧量（pollutant）→ 处理后回用（treatment_measure）",
+      "predicate": "emitted_as+treated_by",
+      "support": 21,
+      "occurrence": 3,
+      "total_samples": 22,
+      "source_reports": [
+        "白音华二号露天矿",
+        "白音华三号露天矿",
+        "巴拉素",
+        "高头窑矿区",
+        "郭家台二号矿井",
+        "鹤岗矿区",
+        "横城矿区",
+        "华亭矿区",
+        "九龙川矿井",
+        "灵台矿区",
+        "纳林希里矿区",
+        "淖毛湖矿区",
+        "三塘湖矿区",
+        "四季屯",
+        "韦州矿区",
+        "五间房矿区",
+        "牙克石（五九煤田）",
+        "伊敏3500万吨",
+        "伊宁矿区北区",
+        "伊泰煤矿（露天）",
+        "月儿湾矿井"
+      ],
+      "subject_variants": [
+        "cod",
+        "codcr",
+        "悬浮物、cod、石油类、氟化物、溶解性总固体"
+      ],
+      "object_variants": [
+        "处理后回用"
+      ],
+      "mechanical_desc": "样例库 21 份报告共现：化学需氧量（pollutant）配 处理后回用（treatment_measure）——治理规律（B 库蒸馏，跨报告支持度 21）"
+    },
+    {
+      "pattern_id": "dp-81232f6506",
+      "pattern_type": "治理",
+      "pair": "bod（pollutant）→ 生活污水处理站（treatment_measure）",
+      "predicate": "emitted_as+treated_by",
+      "support": 21,
+      "occurrence": 2,
+      "total_samples": 22,
+      "source_reports": [
+        "白音华二号露天矿",
+        "白音华三号露天矿",
+        "巴拉素",
+        "高头窑矿区",
+        "郭家台二号矿井",
+        "鹤岗矿区",
+        "横城矿区",
+        "华亭矿区",
+        "九龙川矿井",
+        "灵台矿区",
+        "纳林希里矿区",
+        "淖毛湖矿区",
+        "三塘湖矿区",
+        "韦州矿区",
+        "五间房矿区",
+        "牙克石（五九煤田）",
+        "伊敏矿区（总规）",
+        "伊敏3500万吨",
+        "伊宁矿区北区",
+        "伊泰煤矿（露天）",
+        "月儿湾矿井"
+      ],
+      "subject_variants": [
+        "bod"
+      ],
+      "object_variants": [
+        "生活污水处理站"
+      ],
+      "mechanical_desc": "样例库 21 份报告共现：bod（pollutant）配 生活污水处理站（treatment_measure）——治理规律（B 库蒸馏，跨报告支持度 21）"
+    },
+    {
+      "pattern_id": "dp-82eccd682c",
+      "pattern_type": "治理",
+      "pair": "氨氮（pollutant）→ 处理后回用（treatment_measure）",
+      "predicate": "emitted_as+treated_by",
+      "support": 21,
+      "occurrence": 2,
+      "total_samples": 22,
+      "source_reports": [
+        "白音华二号露天矿",
+        "白音华三号露天矿",
+        "巴拉素",
+        "高头窑矿区",
+        "郭家台二号矿井",
+        "鹤岗矿区",
+        "横城矿区",
+        "华亭矿区",
+        "九龙川矿井",
+        "灵台矿区",
+        "纳林希里矿区",
+        "淖毛湖矿区",
+        "三塘湖矿区",
+        "四季屯",
+        "韦州矿区",
+        "五间房矿区",
+        "牙克石（五九煤田）",
+        "伊敏3500万吨",
+        "伊宁矿区北区",
+        "伊泰煤矿（露天）",
+        "月儿湾矿井"
+      ],
+      "subject_variants": [
+        "氨氮"
+      ],
+      "object_variants": [
+        "处理后回用"
+      ],
+      "mechanical_desc": "样例库 21 份报告共现：氨氮（pollutant）配 处理后回用（treatment_measure）——治理规律（B 库蒸馏，跨报告支持度 21）"
+    },
+    {
+      "pattern_id": "dp-6cff4bfe0a",
+      "pattern_type": "治理",
+      "pair": "悬浮物（pollutant）→ 生活污水处理站（treatment_measure）",
+      "predicate": "emitted_as+treated_by",
+      "support": 20,
+      "occurrence": 6,
+      "total_samples": 22,
+      "source_reports": [
+        "白音华二号露天矿",
+        "白音华三号露天矿",
+        "巴拉素",
+        "高头窑矿区",
+        "郭家台二号矿井",
+        "鹤岗矿区",
+        "横城矿区",
+        "华亭矿区",
+        "九龙川矿井",
+        "灵台矿区",
+        "纳林希里矿区",
+        "淖毛湖矿区",
+        "四季屯",
+        "韦州矿区",
+        "五间房矿区",
+        "牙克石（五九煤田）",
+        "伊敏3500万吨",
+        "伊宁矿区北区",
+        "伊泰煤矿（露天）",
+        "月儿湾矿井"
+      ],
+      "subject_variants": [
+        "ss",
+        "悬浮",
+        "悬浮物",
+        "悬浮物、cod、石油类、氟化物、溶解性总固体"
+      ],
+      "object_variants": [
+        "生活污水处理站"
+      ],
+      "mechanical_desc": "样例库 20 份报告共现：悬浮物（pollutant）配 生活污水处理站（treatment_measure）——治理规律（B 库蒸馏，跨报告支持度 20）"
+    },
+    {
+      "pattern_id": "dp-de832e82b1",
+      "pattern_type": "治理",
+      "pair": "化学需氧量（pollutant）→ 移动式生活污水处理装置（treatment_measure）",
+      "predicate": "emitted_as+treated_by",
+      "support": 20,
+      "occurrence": 3,
+      "total_samples": 22,
+      "source_reports": [
+        "白音华二号露天矿",
+        "白音华三号露天矿",
+        "巴拉素",
+        "高头窑矿区",
+        "郭家台二号矿井",
+        "鹤岗矿区",
+        "横城矿区",
+        "华亭矿区",
+        "九龙川矿井",
+        "灵台矿区",
+        "淖毛湖矿区",
+        "三塘湖矿区",
+        "韦州矿区",
+        "五间房矿区",
+        "牙克石（五九煤田）",
+        "伊敏矿区（总规）",
+        "伊敏3500万吨",
+        "伊宁矿区北区",
+        "伊泰煤矿（露天）",
+        "月儿湾矿井"
+      ],
+      "subject_variants": [
+        "cod",
+        "codcr"
+      ],
+      "object_variants": [
+        "移动式生活污水处理装置"
+      ],
+      "mechanical_desc": "样例库 20 份报告共现：化学需氧量（pollutant）配 移动式生活污水处理装置（treatment_measure）——治理规律（B 库蒸馏，跨报告支持度 20）"
+    },
+    {
+      "pattern_id": "dp-80367c0011",
+      "pattern_type": "治理",
+      "pair": "bod（pollutant）→ 移动式生活污水处理装置（treatment_measure）",
+      "predicate": "emitted_as+treated_by",
+      "support": 20,
+      "occurrence": 2,
+      "total_samples": 22,
+      "source_reports": [
+        "白音华二号露天矿",
+        "白音华三号露天矿",
+        "巴拉素",
+        "高头窑矿区",
+        "郭家台二号矿井",
+        "鹤岗矿区",
+        "横城矿区",
+        "华亭矿区",
+        "九龙川矿井",
+        "灵台矿区",
+        "淖毛湖矿区",
+        "三塘湖矿区",
+        "韦州矿区",
+        "五间房矿区",
+        "牙克石（五九煤田）",
+        "伊敏矿区（总规）",
+        "伊敏3500万吨",
+        "伊宁矿区北区",
+        "伊泰煤矿（露天）",
+        "月儿湾矿井"
+      ],
+      "subject_variants": [
+        "bod"
+      ],
+      "object_variants": [
+        "移动式生活污水处理装置"
+      ],
+      "mechanical_desc": "样例库 20 份报告共现：bod（pollutant）配 移动式生活污水处理装置（treatment_measure）——治理规律（B 库蒸馏，跨报告支持度 20）"
+    },
+    {
+      "pattern_id": "dp-b735819218",
+      "pattern_type": "治理",
+      "pair": "化学需氧量（pollutant）→ 矿井水处理站（treatment_measure）",
+      "predicate": "emitted_as+treated_by",
+      "support": 20,
+      "occurrence": 2,
+      "total_samples": 22,
+      "source_reports": [
+        "白音华二号露天矿",
+        "巴拉素",
+        "高头窑矿区",
+        "郭家台二号矿井",
+        "鹤岗矿区",
+        "横城矿区",
+        "华亭矿区",
+        "九龙川矿井",
+        "灵台矿区",
+        "纳林希里矿区",
+        "淖毛湖矿区",
+        "三塘湖矿区",
+        "四季屯",
+        "韦州矿区",
+        "五间房矿区",
+        "牙克石（五九煤田）",
+        "伊敏矿区（总规）",
+        "伊宁矿区北区",
+        "伊泰煤矿（露天）",
+        "月儿湾矿井"
+      ],
+      "subject_variants": [
+        "cod",
+        "悬浮物、cod、石油类、氟化物、溶解性总固体"
+      ],
+      "object_variants": [
+        "矿井水处理站"
+      ],
+      "mechanical_desc": "样例库 20 份报告共现：化学需氧量（pollutant）配 矿井水处理站（treatment_measure）——治理规律（B 库蒸馏，跨报告支持度 20）"
+    },
+    {
+      "pattern_id": "dp-8da2e51a9a",
+      "pattern_type": "治理",
+      "pair": "氨氮（pollutant）→ 矿井水处理站（treatment_measure）",
+      "predicate": "emitted_as+treated_by",
+      "support": 20,
+      "occurrence": 2,
+      "total_samples": 22,
+      "source_reports": [
+        "白音华二号露天矿",
+        "巴拉素",
+        "高头窑矿区",
+        "郭家台二号矿井",
+        "鹤岗矿区",
+        "横城矿区",
+        "华亭矿区",
+        "九龙川矿井",
+        "灵台矿区",
+        "纳林希里矿区",
+        "淖毛湖矿区",
+        "三塘湖矿区",
+        "四季屯",
+        "韦州矿区",
+        "五间房矿区",
+        "牙克石（五九煤田）",
+        "伊敏矿区（总规）",
+        "伊宁矿区北区",
+        "伊泰煤矿（露天）",
+        "月儿湾矿井"
+      ],
+      "subject_variants": [
+        "氨氮"
+      ],
+      "object_variants": [
+        "矿井水处理站"
+      ],
+      "mechanical_desc": "样例库 20 份报告共现：氨氮（pollutant）配 矿井水处理站（treatment_measure）——治理规律（B 库蒸馏，跨报告支持度 20）"
+    },
+    {
+      "pattern_id": "dp-7068d2a5af",
+      "pattern_type": "治理",
+      "pair": "氨氮（pollutant）→ 移动式生活污水处理装置（treatment_measure）",
+      "predicate": "emitted_as+treated_by",
+      "support": 20,
+      "occurrence": 2,
+      "total_samples": 22,
+      "source_reports": [
+        "白音华二号露天矿",
+        "白音华三号露天矿",
+        "巴拉素",
+        "高头窑矿区",
+        "郭家台二号矿井",
+        "鹤岗矿区",
+        "横城矿区",
+        "华亭矿区",
+        "九龙川矿井",
+        "灵台矿区",
+        "淖毛湖矿区",
+        "三塘湖矿区",
+        "韦州矿区",
+        "五间房矿区",
+        "牙克石（五九煤田）",
+        "伊敏矿区（总规）",
+        "伊敏3500万吨",
+        "伊宁矿区北区",
+        "伊泰煤矿（露天）",
+        "月儿湾矿井"
+      ],
+      "subject_variants": [
+        "氨氮"
+      ],
+      "object_variants": [
+        "移动式生活污水处理装置"
+      ],
+      "mechanical_desc": "样例库 20 份报告共现：氨氮（pollutant）配 移动式生活污水处理装置（treatment_measure）——治理规律（B 库蒸馏，跨报告支持度 20）"
+    },
+    {
+      "pattern_id": "dp-1c9dd505f6",
+      "pattern_type": "治理",
+      "pair": "氟化物（pollutant）→ 矿井水处理站（treatment_measure）",
+      "predicate": "emitted_as+treated_by",
+      "support": 20,
+      "occurrence": 1,
+      "total_samples": 22,
+      "source_reports": [
+        "白音华二号露天矿",
+        "巴拉素",
+        "高头窑矿区",
+        "郭家台二号矿井",
+        "鹤岗矿区",
+        "横城矿区",
+        "华亭矿区",
+        "九龙川矿井",
+        "灵台矿区",
+        "纳林希里矿区",
+        "淖毛湖矿区",
+        "三塘湖矿区",
+        "四季屯",
+        "韦州矿区",
+        "五间房矿区",
+        "牙克石（五九煤田）",
+        "伊敏矿区（总规）",
+        "伊宁矿区北区",
+        "伊泰煤矿（露天）",
+        "月儿湾矿井"
+      ],
+      "subject_variants": [
+        "悬浮物、cod、石油类、氟化物、溶解性总固体"
+      ],
+      "object_variants": [
+        "矿井水处理站"
+      ],
+      "mechanical_desc": "样例库 20 份报告共现：氟化物（pollutant）配 矿井水处理站（treatment_measure）——治理规律（B 库蒸馏，跨报告支持度 20）"
+    },
+    {
+      "pattern_id": "dp-16e17434d2",
+      "pattern_type": "治理",
+      "pair": "石油类（pollutant）→ 矿井水处理站（treatment_measure）",
+      "predicate": "emitted_as+treated_by",
+      "support": 20,
+      "occurrence": 1,
+      "total_samples": 22,
+      "source_reports": [
+        "白音华二号露天矿",
+        "巴拉素",
+        "高头窑矿区",
+        "郭家台二号矿井",
+        "鹤岗矿区",
+        "横城矿区",
+        "华亭矿区",
+        "九龙川矿井",
+        "灵台矿区",
+        "纳林希里矿区",
+        "淖毛湖矿区",
+        "三塘湖矿区",
+        "四季屯",
+        "韦州矿区",
+        "五间房矿区",
+        "牙克石（五九煤田）",
+        "伊敏矿区（总规）",
+        "伊宁矿区北区",
+        "伊泰煤矿（露天）",
+        "月儿湾矿井"
+      ],
+      "subject_variants": [
+        "悬浮物、cod、石油类、氟化物、溶解性总固体"
+      ],
+      "object_variants": [
+        "矿井水处理站"
+      ],
+      "mechanical_desc": "样例库 20 份报告共现：石油类（pollutant）配 矿井水处理站（treatment_measure）——治理规律（B 库蒸馏，跨报告支持度 20）"
+    },
+    {
+      "pattern_id": "dp-8263326dac",
+      "pattern_type": "治理",
+      "pair": "矿化度（pollutant）→ 矿井水处理站（treatment_measure）",
+      "predicate": "emitted_as+treated_by",
+      "support": 20,
+      "occurrence": 1,
+      "total_samples": 22,
+      "source_reports": [
+        "白音华二号露天矿",
+        "巴拉素",
+        "高头窑矿区",
+        "郭家台二号矿井",
+        "鹤岗矿区",
+        "横城矿区",
+        "华亭矿区",
+        "九龙川矿井",
+        "灵台矿区",
+        "纳林希里矿区",
+        "淖毛湖矿区",
+        "三塘湖矿区",
+        "四季屯",
+        "韦州矿区",
+        "五间房矿区",
+        "牙克石（五九煤田）",
+        "伊敏矿区（总规）",
+        "伊宁矿区北区",
+        "伊泰煤矿（露天）",
+        "月儿湾矿井"
+      ],
+      "subject_variants": [
+        "悬浮物、cod、石油类、氟化物、溶解性总固体"
+      ],
+      "object_variants": [
+        "矿井水处理站"
+      ],
+      "mechanical_desc": "样例库 20 份报告共现：矿化度（pollutant）配 矿井水处理站（treatment_measure）——治理规律（B 库蒸馏，跨报告支持度 20）"
+    },
+    {
+      "pattern_id": "dp-85e6570ebe",
+      "pattern_type": "治理",
+      "pair": "硫化物（pollutant）→ 矿井水处理站（treatment_measure）",
+      "predicate": "emitted_as+treated_by",
+      "support": 20,
+      "occurrence": 1,
+      "total_samples": 22,
+      "source_reports": [
+        "白音华二号露天矿",
+        "巴拉素",
+        "高头窑矿区",
+        "郭家台二号矿井",
+        "鹤岗矿区",
+        "横城矿区",
+        "华亭矿区",
+        "九龙川矿井",
+        "灵台矿区",
+        "纳林希里矿区",
+        "淖毛湖矿区",
+        "三塘湖矿区",
+        "四季屯",
+        "韦州矿区",
+        "五间房矿区",
+        "牙克石（五九煤田）",
+        "伊敏矿区（总规）",
+        "伊宁矿区北区",
+        "伊泰煤矿（露天）",
+        "月儿湾矿井"
+      ],
+      "subject_variants": [
+        "硫化物"
+      ],
+      "object_variants": [
+        "矿井水处理站"
+      ],
+      "mechanical_desc": "样例库 20 份报告共现：硫化物（pollutant）配 矿井水处理站（treatment_measure）——治理规律（B 库蒸馏，跨报告支持度 20）"
+    },
+    {
+      "pattern_id": "dp-bef3c2a139",
+      "pattern_type": "治理",
+      "pair": "悬浮物（pollutant）→ 水处理站（treatment_measure）",
+      "predicate": "emitted_as+treated_by",
+      "support": 19,
+      "occurrence": 5,
+      "total_samples": 22,
+      "source_reports": [
+        "白音华二号露天矿",
+        "白音华三号露天矿",
+        "巴拉素",
+        "高头窑矿区",
+        "郭家台二号矿井",
+        "鹤岗矿区",
+        "横城矿区",
+        "华亭矿区",
+        "九龙川矿井",
+        "灵台矿区",
+        "纳林希里矿区",
+        "淖毛湖矿区",
+        "四季屯",
+        "韦州矿区",
+        "五间房矿区",
+        "牙克石（五九煤田）",
+        "伊宁矿区北区",
+        "伊泰煤矿（露天）",
+        "月儿湾矿井"
+      ],
+      "subject_variants": [
+        "ss",
+        "悬浮",
+        "悬浮物",
+        "悬浮物、cod、石油类、氟化物、溶解性总固体"
+      ],
+      "object_variants": [
+        "水处理站"
+      ],
+      "mechanical_desc": "样例库 19 份报告共现：悬浮物（pollutant）配 水处理站（treatment_measure）——治理规律（B 库蒸馏，跨报告支持度 19）"
+    },
+    {
+      "pattern_id": "dp-a4219ecaea",
+      "pattern_type": "治理",
+      "pair": "悬浮物（pollutant）→ 事故池收集（treatment_measure）",
+      "predicate": "emitted_as+treated_by",
+      "support": 19,
+      "occurrence": 4,
+      "total_samples": 22,
+      "source_reports": [
+        "白音华二号露天矿",
+        "白音华三号露天矿",
+        "巴拉素",
+        "高头窑矿区",
+        "郭家台二号矿井",
+        "鹤岗矿区",
+        "横城矿区",
+        "华亭矿区",
+        "九龙川矿井",
+        "灵台矿区",
+        "纳林希里矿区",
+        "淖毛湖矿区",
+        "四季屯",
+        "韦州矿区",
+        "五间房矿区",
+        "牙克石（五九煤田）",
+        "伊宁矿区北区",
+        "伊泰煤矿（露天）",
+        "月儿湾矿井"
+      ],
+      "subject_variants": [
+        "ss",
+        "悬浮",
+        "悬浮物",
+        "悬浮物、cod、石油类、氟化物、溶解性总固体"
+      ],
+      "object_variants": [
+        "事故池收集"
+      ],
+      "mechanical_desc": "样例库 19 份报告共现：悬浮物（pollutant）配 事故池收集（treatment_measure）——治理规律（B 库蒸馏，跨报告支持度 19）"
+    },
+    {
+      "pattern_id": "dp-7f06ed31bf",
+      "pattern_type": "治理",
+      "pair": "悬浮物（pollutant）→ 常规处理+深度处理（treatment_measure）",
+      "predicate": "emitted_as+treated_by",
+      "support": 19,
+      "occurrence": 4,
+      "total_samples": 22,
+      "source_reports": [
+        "白音华二号露天矿",
+        "白音华三号露天矿",
+        "巴拉素",
+        "高头窑矿区",
+        "郭家台二号矿井",
+        "鹤岗矿区",
+        "横城矿区",
+        "华亭矿区",
+        "九龙川矿井",
+        "灵台矿区",
+        "纳林希里矿区",
+        "淖毛湖矿区",
+        "四季屯",
+        "韦州矿区",
+        "五间房矿区",
+        "牙克石（五九煤田）",
+        "伊宁矿区北区",
+        "伊泰煤矿（露天）",
+        "月儿湾矿井"
+      ],
+      "subject_variants": [
+        "ss",
+        "悬浮",
+        "悬浮物",
+        "悬浮物、cod、石油类、氟化物、溶解性总固体"
+      ],
+      "object_variants": [
+        "常规处理+深度处理"
+      ],
+      "mechanical_desc": "样例库 19 份报告共现：悬浮物（pollutant）配 常规处理+深度处理（treatment_measure）——治理规律（B 库蒸馏，跨报告支持度 19）"
+    },
+    {
+      "pattern_id": "dp-85a1e6d68e",
+      "pattern_type": "治理",
+      "pair": "悬浮物（pollutant）→ 深度处理（treatment_measure）",
+      "predicate": "emitted_as+treated_by",
+      "support": 19,
+      "occurrence": 4,
+      "total_samples": 22,
+      "source_reports": [
+        "白音华二号露天矿",
+        "白音华三号露天矿",
+        "巴拉素",
+        "高头窑矿区",
+        "郭家台二号矿井",
+        "鹤岗矿区",
+        "横城矿区",
+        "华亭矿区",
+        "九龙川矿井",
+        "灵台矿区",
+        "纳林希里矿区",
+        "淖毛湖矿区",
+        "四季屯",
+        "韦州矿区",
+        "五间房矿区",
+        "牙克石（五九煤田）",
+        "伊宁矿区北区",
+        "伊泰煤矿（露天）",
+        "月儿湾矿井"
+      ],
+      "subject_variants": [
+        "ss",
+        "悬浮",
+        "悬浮物",
+        "悬浮物、cod、石油类、氟化物、溶解性总固体"
+      ],
+      "object_variants": [
+        "深度处理"
+      ],
+      "mechanical_desc": "样例库 19 份报告共现：悬浮物（pollutant）配 深度处理（treatment_measure）——治理规律（B 库蒸馏，跨报告支持度 19）"
+    },
+    {
+      "pattern_id": "dp-bf59cf4b74",
+      "pattern_type": "治理",
+      "pair": "悬浮物（pollutant）→ 混凝沉淀、过滤、超滤、消毒工艺（treatment_measure）",
+      "predicate": "emitted_as+treated_by",
+      "support": 19,
+      "occurrence": 4,
+      "total_samples": 22,
+      "source_reports": [
+        "白音华二号露天矿",
+        "白音华三号露天矿",
+        "巴拉素",
+        "高头窑矿区",
+        "郭家台二号矿井",
+        "鹤岗矿区",
+        "横城矿区",
+        "华亭矿区",
+        "九龙川矿井",
+        "灵台矿区",
+        "纳林希里矿区",
+        "淖毛湖矿区",
+        "四季屯",
+        "韦州矿区",
+        "五间房矿区",
+        "牙克石（五九煤田）",
+        "伊宁矿区北区",
+        "伊泰煤矿（露天）",
+        "月儿湾矿井"
+      ],
+      "subject_variants": [
+        "ss",
+        "悬浮",
+        "悬浮物",
+        "悬浮物、cod、石油类、氟化物、溶解性总固体"
+      ],
+      "object_variants": [
+        "混凝沉淀、过滤、超滤、消毒工艺"
+      ],
+      "mechanical_desc": "样例库 19 份报告共现：悬浮物（pollutant）配 混凝沉淀、过滤、超滤、消毒工艺（treatment_measure）——治理规律（B 库蒸馏，跨报告支持度 19）"
+    },
+    {
+      "pattern_id": "dp-8264c873d8",
+      "pattern_type": "治理",
+      "pair": "悬浮物（pollutant）→ 混凝沉淀过滤脱盐消毒处理（treatment_measure）",
+      "predicate": "emitted_as+treated_by",
+      "support": 19,
+      "occurrence": 4,
+      "total_samples": 22,
+      "source_reports": [
+        "白音华二号露天矿",
+        "白音华三号露天矿",
+        "巴拉素",
+        "高头窑矿区",
+        "郭家台二号矿井",
+        "鹤岗矿区",
+        "横城矿区",
+        "华亭矿区",
+        "九龙川矿井",
+        "灵台矿区",
+        "纳林希里矿区",
+        "淖毛湖矿区",
+        "四季屯",
+        "韦州矿区",
+        "五间房矿区",
+        "牙克石（五九煤田）",
+        "伊宁矿区北区",
+        "伊泰煤矿（露天）",
+        "月儿湾矿井"
+      ],
+      "subject_variants": [
+        "ss",
+        "悬浮",
+        "悬浮物",
+        "悬浮物、cod、石油类、氟化物、溶解性总固体"
+      ],
+      "object_variants": [
+        "混凝沉淀过滤脱盐消毒处理"
+      ],
+      "mechanical_desc": "样例库 19 份报告共现：悬浮物（pollutant）配 混凝沉淀过滤脱盐消毒处理（treatment_measure）——治理规律（B 库蒸馏，跨报告支持度 19）"
+    },
+    {
+      "pattern_id": "dp-7bef0f31ba",
+      "pattern_type": "治理",
+      "pair": "悬浮物（pollutant）→ 矿井水处理及回用措施（treatment_measure）",
+      "predicate": "emitted_as+treated_by",
+      "support": 19,
+      "occurrence": 4,
+      "total_samples": 22,
+      "source_reports": [
+        "白音华二号露天矿",
+        "白音华三号露天矿",
+        "巴拉素",
+        "高头窑矿区",
+        "郭家台二号矿井",
+        "鹤岗矿区",
+        "横城矿区",
+        "华亭矿区",
+        "九龙川矿井",
+        "灵台矿区",
+        "纳林希里矿区",
+        "淖毛湖矿区",
+        "四季屯",
+        "韦州矿区",
+        "五间房矿区",
+        "牙克石（五九煤田）",
+        "伊宁矿区北区",
+        "伊泰煤矿（露天）",
+        "月儿湾矿井"
+      ],
+      "subject_variants": [
+        "ss",
+        "悬浮",
+        "悬浮物",
+        "悬浮物、cod、石油类、氟化物、溶解性总固体"
+      ],
+      "object_variants": [
+        "矿井水处理及回用措施"
+      ],
+      "mechanical_desc": "样例库 19 份报告共现：悬浮物（pollutant）配 矿井水处理及回用措施（treatment_measure）——治理规律（B 库蒸馏，跨报告支持度 19）"
+    },
+    {
+      "pattern_id": "dp-c9b6f07579",
+      "pattern_type": "治理",
+      "pair": "悬浮物（pollutant）→ 矿井水处理后回用（treatment_measure）",
+      "predicate": "emitted_as+treated_by",
+      "support": 19,
+      "occurrence": 4,
+      "total_samples": 22,
+      "source_reports": [
+        "白音华二号露天矿",
+        "白音华三号露天矿",
+        "巴拉素",
+        "高头窑矿区",
+        "郭家台二号矿井",
+        "鹤岗矿区",
+        "横城矿区",
+        "华亭矿区",
+        "九龙川矿井",
+        "灵台矿区",
+        "纳林希里矿区",
+        "淖毛湖矿区",
+        "四季屯",
+        "韦州矿区",
+        "五间房矿区",
+        "牙克石（五九煤田）",
+        "伊宁矿区北区",
+        "伊泰煤矿（露天）",
+        "月儿湾矿井"
+      ],
+      "subject_variants": [
+        "ss",
+        "悬浮",
+        "悬浮物",
+        "悬浮物、cod、石油类、氟化物、溶解性总固体"
+      ],
+      "object_variants": [
+        "矿井水处理后回用"
+      ],
+      "mechanical_desc": "样例库 19 份报告共现：悬浮物（pollutant）配 矿井水处理后回用（treatment_measure）——治理规律（B 库蒸馏，跨报告支持度 19）"
+    },
+    {
+      "pattern_id": "dp-2981670a62",
+      "pattern_type": "治理",
+      "pair": "悬浮物（pollutant）→ 经处理后回用（treatment_measure）",
+      "predicate": "emitted_as+treated_by",
+      "support": 19,
+      "occurrence": 4,
+      "total_samples": 22,
+      "source_reports": [
+        "白音华二号露天矿",
+        "白音华三号露天矿",
+        "巴拉素",
+        "高头窑矿区",
+        "郭家台二号矿井",
+        "鹤岗矿区",
+        "横城矿区",
+        "华亭矿区",
+        "九龙川矿井",
+        "灵台矿区",
+        "纳林希里矿区",
+        "淖毛湖矿区",
+        "四季屯",
+        "韦州矿区",
+        "五间房矿区",
+        "牙克石（五九煤田）",
+        "伊宁矿区北区",
+        "伊泰煤矿（露天）",
+        "月儿湾矿井"
+      ],
+      "subject_variants": [
+        "ss",
+        "悬浮",
+        "悬浮物",
+        "悬浮物、cod、石油类、氟化物、溶解性总固体"
+      ],
+      "object_variants": [
+        "经处理后回用"
+      ],
+      "mechanical_desc": "样例库 19 份报告共现：悬浮物（pollutant）配 经处理后回用（treatment_measure）——治理规律（B 库蒸馏，跨报告支持度 19）"
+    },
+    {
+      "pattern_id": "dp-aed8adbb1b",
+      "pattern_type": "治理",
+      "pair": "化学需氧量（pollutant）→ 伊敏河镇污水处理厂（treatment_measure）",
+      "predicate": "emitted_as+treated_by",
+      "support": 19,
+      "occurrence": 2,
+      "total_samples": 22,
+      "source_reports": [
+        "白音华二号露天矿",
+        "白音华三号露天矿",
+        "巴拉素",
+        "高头窑矿区",
+        "郭家台二号矿井",
+        "鹤岗矿区",
+        "华亭矿区",
+        "九龙川矿井",
+        "灵台矿区",
+        "淖毛湖矿区",
+        "三塘湖矿区",
+        "韦州矿区",
+        "五间房矿区",
+        "牙克石（五九煤田）",
+        "伊敏矿区（总规）",
+        "伊敏3500万吨",
+        "伊宁矿区北区",
+        "伊泰煤矿（露天）",
+        "月儿湾矿井"
+      ],
+      "subject_variants": [
+        "cod",
+        "codcr"
+      ],
+      "object_variants": [
+        "伊敏河镇污水处理厂"
+      ],
+      "mechanical_desc": "样例库 19 份报告共现：化学需氧量（pollutant）配 伊敏河镇污水处理厂（treatment_measure）——治理规律（B 库蒸馏，跨报告支持度 19）"
+    },
+    {
+      "pattern_id": "dp-e0178bcfba",
+      "pattern_type": "治理",
+      "pair": "石油类（pollutant）→ 生活污水处理站（treatment_measure）",
+      "predicate": "emitted_as+treated_by",
+      "support": 19,
+      "occurrence": 2,
+      "total_samples": 22,
+      "source_reports": [
+        "白音华二号露天矿",
+        "白音华三号露天矿",
+        "巴拉素",
+        "高头窑矿区",
+        "郭家台二号矿井",
+        "鹤岗矿区",
+        "横城矿区",
+        "华亭矿区",
+        "九龙川矿井",
+        "灵台矿区",
+        "纳林希里矿区",
+        "淖毛湖矿区",
+        "四季屯",
+        "韦州矿区",
+        "五间房矿区",
+        "牙克石（五九煤田）",
+        "伊宁矿区北区",
+        "伊泰煤矿（露天）",
+        "月儿湾矿井"
+      ],
+      "subject_variants": [
+        "悬浮物、cod、石油类、氟化物、溶解性总固体",
+        "石油类"
+      ],
+      "object_variants": [
+        "生活污水处理站"
+      ],
+      "mechanical_desc": "样例库 19 份报告共现：石油类（pollutant）配 生活污水处理站（treatment_measure）——治理规律（B 库蒸馏，跨报告支持度 19）"
+    },
+    {
+      "pattern_id": "dp-524a30151c",
+      "pattern_type": "治理",
+      "pair": "bod（pollutant）→ 伊敏河镇污水处理厂（treatment_measure）",
+      "predicate": "emitted_as+treated_by",
+      "support": 19,
+      "occurrence": 1,
+      "total_samples": 22,
+      "source_reports": [
+        "白音华二号露天矿",
+        "白音华三号露天矿",
+        "巴拉素",
+        "高头窑矿区",
+        "郭家台二号矿井",
+        "鹤岗矿区",
+        "华亭矿区",
+        "九龙川矿井",
+        "灵台矿区",
+        "淖毛湖矿区",
+        "三塘湖矿区",
+        "韦州矿区",
+        "五间房矿区",
+        "牙克石（五九煤田）",
+        "伊敏矿区（总规）",
+        "伊敏3500万吨",
+        "伊宁矿区北区",
+        "伊泰煤矿（露天）",
+        "月儿湾矿井"
+      ],
+      "subject_variants": [
+        "bod"
+      ],
+      "object_variants": [
+        "伊敏河镇污水处理厂"
+      ],
+      "mechanical_desc": "样例库 19 份报告共现：bod（pollutant）配 伊敏河镇污水处理厂（treatment_measure）——治理规律（B 库蒸馏，跨报告支持度 19）"
+    },
+    {
+      "pattern_id": "dp-0b73839af5",
+      "pattern_type": "治理",
+      "pair": "bod（pollutant）→ 矿井水处理站（treatment_measure）",
+      "predicate": "emitted_as+treated_by",
+      "support": 19,
+      "occurrence": 1,
+      "total_samples": 22,
+      "source_reports": [
+        "白音华二号露天矿",
+        "巴拉素",
+        "高头窑矿区",
+        "郭家台二号矿井",
+        "鹤岗矿区",
+        "横城矿区",
+        "华亭矿区",
+        "九龙川矿井",
+        "灵台矿区",
+        "纳林希里矿区",
+        "淖毛湖矿区",
+        "三塘湖矿区",
+        "韦州矿区",
+        "五间房矿区",
+        "牙克石（五九煤田）",
+        "伊敏矿区（总规）",
+        "伊宁矿区北区",
+        "伊泰煤矿（露天）",
+        "月儿湾矿井"
+      ],
+      "subject_variants": [
+        "bod"
+      ],
+      "object_variants": [
+        "矿井水处理站"
+      ],
+      "mechanical_desc": "样例库 19 份报告共现：bod（pollutant）配 矿井水处理站（treatment_measure）——治理规律（B 库蒸馏，跨报告支持度 19）"
+    },
+    {
+      "pattern_id": "dp-33e6821733",
+      "pattern_type": "治理",
+      "pair": "bod5（pollutant）→ 生活污水处理站（treatment_measure）",
+      "predicate": "emitted_as+treated_by",
+      "support": 19,
+      "occurrence": 1,
+      "total_samples": 22,
+      "source_reports": [
+        "白音华二号露天矿",
+        "白音华三号露天矿",
+        "巴拉素",
+        "高头窑矿区",
+        "郭家台二号矿井",
+        "鹤岗矿区",
+        "横城矿区",
+        "华亭矿区",
+        "九龙川矿井",
+        "灵台矿区",
+        "纳林希里矿区",
+        "淖毛湖矿区",
+        "韦州矿区",
+        "五间房矿区",
+        "牙克石（五九煤田）",
+        "伊敏3500万吨",
+        "伊宁矿区北区",
+        "伊泰煤矿（露天）",
+        "月儿湾矿井"
+      ],
+      "subject_variants": [
+        "bod5"
+      ],
+      "object_variants": [
+        "生活污水处理站"
+      ],
+      "mechanical_desc": "样例库 19 份报告共现：bod5（pollutant）配 生活污水处理站（treatment_measure）——治理规律（B 库蒸馏，跨报告支持度 19）"
+    },
+    {
+      "pattern_id": "dp-e1ce65a45f",
+      "pattern_type": "治理",
+      "pair": "cod、bod5、ss、石油类（pollutant）→ 生活污水处理站（treatment_measure）",
+      "predicate": "emitted_as+treated_by",
+      "support": 19,
+      "occurrence": 1,
+      "total_samples": 22,
+      "source_reports": [
+        "白音华二号露天矿",
+        "白音华三号露天矿",
+        "巴拉素",
+        "高头窑矿区",
+        "郭家台二号矿井",
+        "鹤岗矿区",
+        "横城矿区",
+        "华亭矿区",
+        "九龙川矿井",
+        "灵台矿区",
+        "纳林希里矿区",
+        "淖毛湖矿区",
+        "韦州矿区",
+        "五间房矿区",
+        "牙克石（五九煤田）",
+        "伊敏3500万吨",
+        "伊宁矿区北区",
+        "伊泰煤矿（露天）",
+        "月儿湾矿井"
+      ],
+      "subject_variants": [
+        "cod、bod5、ss、石油类"
+      ],
+      "object_variants": [
+        "生活污水处理站"
+      ],
+      "mechanical_desc": "样例库 19 份报告共现：cod、bod5、ss、石油类（pollutant）配 生活污水处理站（treatment_measure）——治理规律（B 库蒸馏，跨报告支持度 19）"
+    },
+    {
+      "pattern_id": "dp-477bbfc20d",
+      "pattern_type": "治理",
+      "pair": "cod、bod、氨氮、动植物油（pollutant）→ 生活污水处理站（treatment_measure）",
+      "predicate": "emitted_as+treated_by",
+      "support": 19,
+      "occurrence": 1,
+      "total_samples": 22,
+      "source_reports": [
+        "白音华二号露天矿",
+        "白音华三号露天矿",
+        "巴拉素",
+        "高头窑矿区",
+        "郭家台二号矿井",
+        "鹤岗矿区",
+        "横城矿区",
+        "华亭矿区",
+        "九龙川矿井",
+        "灵台矿区",
+        "纳林希里矿区",
+        "淖毛湖矿区",
+        "韦州矿区",
+        "五间房矿区",
+        "牙克石（五九煤田）",
+        "伊敏3500万吨",
+        "伊宁矿区北区",
+        "伊泰煤矿（露天）",
+        "月儿湾矿井"
+      ],
+      "subject_variants": [
+        "cod、bod、氨氮、动植物油"
+      ],
+      "object_variants": [
+        "生活污水处理站"
+      ],
+      "mechanical_desc": "样例库 19 份报告共现：cod、bod、氨氮、动植物油（pollutant）配 生活污水处理站（treatment_measure）——治理规律（B 库蒸馏，跨报告支持度 19）"
+    },
+    {
+      "pattern_id": "dp-194ea6ed0a",
+      "pattern_type": "治理",
+      "pair": "动植物油（pollutant）→ 生活污水处理站（treatment_measure）",
+      "predicate": "emitted_as+treated_by",
+      "support": 19,
+      "occurrence": 1,
+      "total_samples": 22,
+      "source_reports": [
+        "白音华二号露天矿",
+        "白音华三号露天矿",
+        "巴拉素",
+        "高头窑矿区",
+        "郭家台二号矿井",
+        "鹤岗矿区",
+        "横城矿区",
+        "华亭矿区",
+        "九龙川矿井",
+        "灵台矿区",
+        "纳林希里矿区",
+        "淖毛湖矿区",
+        "韦州矿区",
+        "五间房矿区",
+        "牙克石（五九煤田）",
+        "伊敏3500万吨",
+        "伊宁矿区北区",
+        "伊泰煤矿（露天）",
+        "月儿湾矿井"
+      ],
+      "subject_variants": [
+        "动植物油"
+      ],
+      "object_variants": [
+        "生活污水处理站"
+      ],
+      "mechanical_desc": "样例库 19 份报告共现：动植物油（pollutant）配 生活污水处理站（treatment_measure）——治理规律（B 库蒸馏，跨报告支持度 19）"
+    },
+    {
+      "pattern_id": "dp-0df8475658",
+      "pattern_type": "治理",
+      "pair": "氟化物（pollutant）→ 生活污水处理站（treatment_measure）",
+      "predicate": "emitted_as+treated_by",
+      "support": 19,
+      "occurrence": 1,
+      "total_samples": 22,
+      "source_reports": [
+        "白音华二号露天矿",
+        "白音华三号露天矿",
+        "巴拉素",
+        "高头窑矿区",
+        "郭家台二号矿井",
+        "鹤岗矿区",
+        "横城矿区",
+        "华亭矿区",
+        "九龙川矿井",
+        "灵台矿区",
+        "纳林希里矿区",
+        "淖毛湖矿区",
+        "四季屯",
+        "韦州矿区",
+        "五间房矿区",
+        "牙克石（五九煤田）",
+        "伊宁矿区北区",
+        "伊泰煤矿（露天）",
+        "月儿湾矿井"
+      ],
+      "subject_variants": [
+        "悬浮物、cod、石油类、氟化物、溶解性总固体"
+      ],
+      "object_variants": [
+        "生活污水处理站"
+      ],
+      "mechanical_desc": "样例库 19 份报告共现：氟化物（pollutant）配 生活污水处理站（treatment_measure）——治理规律（B 库蒸馏，跨报告支持度 19）"
+    },
+    {
+      "pattern_id": "dp-e5617d952c",
+      "pattern_type": "治理",
+      "pair": "氨氮（pollutant）→ 事故池收集（treatment_measure）",
+      "predicate": "emitted_as+treated_by",
+      "support": 19,
+      "occurrence": 1,
+      "total_samples": 22,
+      "source_reports": [
+        "白音华二号露天矿",
+        "巴拉素",
+        "高头窑矿区",
+        "郭家台二号矿井",
+        "鹤岗矿区",
+        "横城矿区",
+        "华亭矿区",
+        "九龙川矿井",
+        "灵台矿区",
+        "纳林希里矿区",
+        "淖毛湖矿区",
+        "三塘湖矿区",
+        "四季屯",
+        "韦州矿区",
+        "五间房矿区",
+        "牙克石（五九煤田）",
+        "伊宁矿区北区",
+        "伊泰煤矿（露天）",
+        "月儿湾矿井"
+      ],
+      "subject_variants": [
+        "氨氮"
+      ],
+      "object_variants": [
+        "事故池收集"
+      ],
+      "mechanical_desc": "样例库 19 份报告共现：氨氮（pollutant）配 事故池收集（treatment_measure）——治理规律（B 库蒸馏，跨报告支持度 19）"
+    },
+    {
+      "pattern_id": "dp-87223c3bc4",
+      "pattern_type": "治理",
+      "pair": "氨氮（pollutant）→ 伊敏河镇污水处理厂（treatment_measure）",
+      "predicate": "emitted_as+treated_by",
+      "support": 19,
+      "occurrence": 1,
+      "total_samples": 22,
+      "source_reports": [
+        "白音华二号露天矿",
+        "白音华三号露天矿",
+        "巴拉素",
+        "高头窑矿区",
+        "郭家台二号矿井",
+        "鹤岗矿区",
+        "华亭矿区",
+        "九龙川矿井",
+        "灵台矿区",
+        "淖毛湖矿区",
+        "三塘湖矿区",
+        "韦州矿区",
+        "五间房矿区",
+        "牙克石（五九煤田）",
+        "伊敏矿区（总规）",
+        "伊敏3500万吨",
+        "伊宁矿区北区",
+        "伊泰煤矿（露天）",
+        "月儿湾矿井"
+      ],
+      "subject_variants": [
+        "氨氮"
+      ],
+      "object_variants": [
+        "伊敏河镇污水处理厂"
+      ],
+      "mechanical_desc": "样例库 19 份报告共现：氨氮（pollutant）配 伊敏河镇污水处理厂（treatment_measure）——治理规律（B 库蒸馏，跨报告支持度 19）"
+    },
+    {
+      "pattern_id": "dp-4ae01f74ba",
+      "pattern_type": "治理",
+      "pair": "氨氮（pollutant）→ 常规处理+深度处理（treatment_measure）",
+      "predicate": "emitted_as+treated_by",
+      "support": 19,
+      "occurrence": 1,
+      "total_samples": 22,
+      "source_reports": [
+        "白音华二号露天矿",
+        "巴拉素",
+        "高头窑矿区",
+        "郭家台二号矿井",
+        "鹤岗矿区",
+        "横城矿区",
+        "华亭矿区",
+        "九龙川矿井",
+        "灵台矿区",
+        "纳林希里矿区",
+        "淖毛湖矿区",
+        "三塘湖矿区",
+        "四季屯",
+        "韦州矿区",
+        "五间房矿区",
+        "牙克石（五九煤田）",
+        "伊宁矿区北区",
+        "伊泰煤矿（露天）",
+        "月儿湾矿井"
+      ],
+      "subject_variants": [
+        "氨氮"
+      ],
+      "object_variants": [
+        "常规处理+深度处理"
+      ],
+      "mechanical_desc": "样例库 19 份报告共现：氨氮（pollutant）配 常规处理+深度处理（treatment_measure）——治理规律（B 库蒸馏，跨报告支持度 19）"
+    },
+    {
+      "pattern_id": "dp-cbbdfe2882",
+      "pattern_type": "治理",
+      "pair": "氨氮（pollutant）→ 水处理站（treatment_measure）",
+      "predicate": "emitted_as+treated_by",
+      "support": 19,
+      "occurrence": 1,
+      "total_samples": 22,
+      "source_reports": [
+        "白音华二号露天矿",
+        "巴拉素",
+        "高头窑矿区",
+        "郭家台二号矿井",
+        "鹤岗矿区",
+        "横城矿区",
+        "华亭矿区",
+        "九龙川矿井",
+        "灵台矿区",
+        "纳林希里矿区",
+        "淖毛湖矿区",
+        "三塘湖矿区",
+        "四季屯",
+        "韦州矿区",
+        "五间房矿区",
+        "牙克石（五九煤田）",
+        "伊宁矿区北区",
+        "伊泰煤矿（露天）",
+        "月儿湾矿井"
+      ],
+      "subject_variants": [
+        "氨氮"
+      ],
+      "object_variants": [
+        "水处理站"
+      ],
+      "mechanical_desc": "样例库 19 份报告共现：氨氮（pollutant）配 水处理站（treatment_measure）——治理规律（B 库蒸馏，跨报告支持度 19）"
+    },
+    {
+      "pattern_id": "dp-d478479a21",
+      "pattern_type": "治理",
+      "pair": "氨氮（pollutant）→ 深度处理（treatment_measure）",
+      "predicate": "emitted_as+treated_by",
+      "support": 19,
+      "occurrence": 1,
+      "total_samples": 22,
+      "source_reports": [
+        "白音华二号露天矿",
+        "巴拉素",
+        "高头窑矿区",
+        "郭家台二号矿井",
+        "鹤岗矿区",
+        "横城矿区",
+        "华亭矿区",
+        "九龙川矿井",
+        "灵台矿区",
+        "纳林希里矿区",
+        "淖毛湖矿区",
+        "三塘湖矿区",
+        "四季屯",
+        "韦州矿区",
+        "五间房矿区",
+        "牙克石（五九煤田）",
+        "伊宁矿区北区",
+        "伊泰煤矿（露天）",
+        "月儿湾矿井"
+      ],
+      "subject_variants": [
+        "氨氮"
+      ],
+      "object_variants": [
+        "深度处理"
+      ],
+      "mechanical_desc": "样例库 19 份报告共现：氨氮（pollutant）配 深度处理（treatment_measure）——治理规律（B 库蒸馏，跨报告支持度 19）"
+    },
+    {
+      "pattern_id": "dp-cde1344616",
+      "pattern_type": "治理",
+      "pair": "氨氮（pollutant）→ 混凝沉淀、过滤、超滤、消毒工艺（treatment_measure）",
+      "predicate": "emitted_as+treated_by",
+      "support": 19,
+      "occurrence": 1,
+      "total_samples": 22,
+      "source_reports": [
+        "白音华二号露天矿",
+        "巴拉素",
+        "高头窑矿区",
+        "郭家台二号矿井",
+        "鹤岗矿区",
+        "横城矿区",
+        "华亭矿区",
+        "九龙川矿井",
+        "灵台矿区",
+        "纳林希里矿区",
+        "淖毛湖矿区",
+        "三塘湖矿区",
+        "四季屯",
+        "韦州矿区",
+        "五间房矿区",
+        "牙克石（五九煤田）",
+        "伊宁矿区北区",
+        "伊泰煤矿（露天）",
+        "月儿湾矿井"
+      ],
+      "subject_variants": [
+        "氨氮"
+      ],
+      "object_variants": [
+        "混凝沉淀、过滤、超滤、消毒工艺"
+      ],
+      "mechanical_desc": "样例库 19 份报告共现：氨氮（pollutant）配 混凝沉淀、过滤、超滤、消毒工艺（treatment_measure）——治理规律（B 库蒸馏，跨报告支持度 19）"
+    },
+    {
+      "pattern_id": "dp-d8e8193a74",
+      "pattern_type": "治理",
+      "pair": "氨氮（pollutant）→ 混凝沉淀过滤脱盐消毒处理（treatment_measure）",
+      "predicate": "emitted_as+treated_by",
+      "support": 19,
+      "occurrence": 1,
+      "total_samples": 22,
+      "source_reports": [
+        "白音华二号露天矿",
+        "巴拉素",
+        "高头窑矿区",
+        "郭家台二号矿井",
+        "鹤岗矿区",
+        "横城矿区",
+        "华亭矿区",
+        "九龙川矿井",
+        "灵台矿区",
+        "纳林希里矿区",
+        "淖毛湖矿区",
+        "三塘湖矿区",
+        "四季屯",
+        "韦州矿区",
+        "五间房矿区",
+        "牙克石（五九煤田）",
+        "伊宁矿区北区",
+        "伊泰煤矿（露天）",
+        "月儿湾矿井"
+      ],
+      "subject_variants": [
+        "氨氮"
+      ],
+      "object_variants": [
+        "混凝沉淀过滤脱盐消毒处理"
+      ],
+      "mechanical_desc": "样例库 19 份报告共现：氨氮（pollutant）配 混凝沉淀过滤脱盐消毒处理（treatment_measure）——治理规律（B 库蒸馏，跨报告支持度 19）"
+    },
+    {
+      "pattern_id": "dp-942a6d75c4",
+      "pattern_type": "治理",
+      "pair": "氨氮（pollutant）→ 矿井水处理（treatment_measure）",
+      "predicate": "emitted_as+treated_by",
+      "support": 19,
+      "occurrence": 1,
+      "total_samples": 22,
+      "source_reports": [
+        "白音华二号露天矿",
+        "巴拉素",
+        "高头窑矿区",
+        "郭家台二号矿井",
+        "鹤岗矿区",
+        "横城矿区",
+        "华亭矿区",
+        "九龙川矿井",
+        "灵台矿区",
+        "纳林希里矿区",
+        "淖毛湖矿区",
+        "三塘湖矿区",
+        "四季屯",
+        "韦州矿区",
+        "五间房矿区",
+        "牙克石（五九煤田）",
+        "伊宁矿区北区",
+        "伊泰煤矿（露天）",
+        "月儿湾矿井"
+      ],
+      "subject_variants": [
+        "氨氮"
+      ],
+      "object_variants": [
+        "矿井水处理"
+      ],
+      "mechanical_desc": "样例库 19 份报告共现：氨氮（pollutant）配 矿井水处理（treatment_measure）——治理规律（B 库蒸馏，跨报告支持度 19）"
+    },
+    {
+      "pattern_id": "dp-5b564ef4fd",
+      "pattern_type": "治理",
+      "pair": "氨氮（pollutant）→ 矿井水处理及回用措施（treatment_measure）",
+      "predicate": "emitted_as+treated_by",
+      "support": 19,
+      "occurrence": 1,
+      "total_samples": 22,
+      "source_reports": [
+        "白音华二号露天矿",
+        "巴拉素",
+        "高头窑矿区",
+        "郭家台二号矿井",
+        "鹤岗矿区",
+        "横城矿区",
+        "华亭矿区",
+        "九龙川矿井",
+        "灵台矿区",
+        "纳林希里矿区",
+        "淖毛湖矿区",
+        "三塘湖矿区",
+        "四季屯",
+        "韦州矿区",
+        "五间房矿区",
+        "牙克石（五九煤田）",
+        "伊宁矿区北区",
+        "伊泰煤矿（露天）",
+        "月儿湾矿井"
+      ],
+      "subject_variants": [
+        "氨氮"
+      ],
+      "object_variants": [
+        "矿井水处理及回用措施"
+      ],
+      "mechanical_desc": "样例库 19 份报告共现：氨氮（pollutant）配 矿井水处理及回用措施（treatment_measure）——治理规律（B 库蒸馏，跨报告支持度 19）"
+    },
+    {
+      "pattern_id": "dp-ea5f6ddda2",
+      "pattern_type": "治理",
+      "pair": "氨氮（pollutant）→ 矿井水处理后回用（treatment_measure）",
+      "predicate": "emitted_as+treated_by",
+      "support": 19,
+      "occurrence": 1,
+      "total_samples": 22,
+      "source_reports": [
+        "白音华二号露天矿",
+        "巴拉素",
+        "高头窑矿区",
+        "郭家台二号矿井",
+        "鹤岗矿区",
+        "横城矿区",
+        "华亭矿区",
+        "九龙川矿井",
+        "灵台矿区",
+        "纳林希里矿区",
+        "淖毛湖矿区",
+        "三塘湖矿区",
+        "四季屯",
+        "韦州矿区",
+        "五间房矿区",
+        "牙克石（五九煤田）",
+        "伊宁矿区北区",
+        "伊泰煤矿（露天）",
+        "月儿湾矿井"
+      ],
+      "subject_variants": [
+        "氨氮"
+      ],
+      "object_variants": [
+        "矿井水处理后回用"
+      ],
+      "mechanical_desc": "样例库 19 份报告共现：氨氮（pollutant）配 矿井水处理后回用（treatment_measure）——治理规律（B 库蒸馏，跨报告支持度 19）"
+    },
+    {
+      "pattern_id": "dp-c8225f42f7",
+      "pattern_type": "治理",
+      "pair": "氨氮（pollutant）→ 经处理后回用（treatment_measure）",
+      "predicate": "emitted_as+treated_by",
+      "support": 19,
+      "occurrence": 1,
+      "total_samples": 22,
+      "source_reports": [
+        "白音华二号露天矿",
+        "巴拉素",
+        "高头窑矿区",
+        "郭家台二号矿井",
+        "鹤岗矿区",
+        "横城矿区",
+        "华亭矿区",
+        "九龙川矿井",
+        "灵台矿区",
+        "纳林希里矿区",
+        "淖毛湖矿区",
+        "三塘湖矿区",
+        "四季屯",
+        "韦州矿区",
+        "五间房矿区",
+        "牙克石（五九煤田）",
+        "伊宁矿区北区",
+        "伊泰煤矿（露天）",
+        "月儿湾矿井"
+      ],
+      "subject_variants": [
+        "氨氮"
+      ],
+      "object_variants": [
+        "经处理后回用"
+      ],
+      "mechanical_desc": "样例库 19 份报告共现：氨氮（pollutant）配 经处理后回用（treatment_measure）——治理规律（B 库蒸馏，跨报告支持度 19）"
+    },
+    {
+      "pattern_id": "dp-7034bf6d8f",
+      "pattern_type": "治理",
+      "pair": "矿化度（pollutant）→ 生活污水处理站（treatment_measure）",
+      "predicate": "emitted_as+treated_by",
+      "support": 19,
+      "occurrence": 1,
+      "total_samples": 22,
+      "source_reports": [
+        "白音华二号露天矿",
+        "白音华三号露天矿",
+        "巴拉素",
+        "高头窑矿区",
+        "郭家台二号矿井",
+        "鹤岗矿区",
+        "横城矿区",
+        "华亭矿区",
+        "九龙川矿井",
+        "灵台矿区",
+        "纳林希里矿区",
+        "淖毛湖矿区",
+        "四季屯",
+        "韦州矿区",
+        "五间房矿区",
+        "牙克石（五九煤田）",
+        "伊宁矿区北区",
+        "伊泰煤矿（露天）",
+        "月儿湾矿井"
+      ],
+      "subject_variants": [
+        "悬浮物、cod、石油类、氟化物、溶解性总固体"
+      ],
+      "object_variants": [
+        "生活污水处理站"
+      ],
+      "mechanical_desc": "样例库 19 份报告共现：矿化度（pollutant）配 生活污水处理站（treatment_measure）——治理规律（B 库蒸馏，跨报告支持度 19）"
+    },
+    {
+      "pattern_id": "dp-ce0f88b126",
+      "pattern_type": "治理",
+      "pair": "硫化物（pollutant）→ 生活污水处理站（treatment_measure）",
+      "predicate": "emitted_as+treated_by",
+      "support": 19,
+      "occurrence": 1,
+      "total_samples": 22,
+      "source_reports": [
+        "白音华二号露天矿",
+        "白音华三号露天矿",
+        "巴拉素",
+        "高头窑矿区",
+        "郭家台二号矿井",
+        "鹤岗矿区",
+        "横城矿区",
+        "华亭矿区",
+        "九龙川矿井",
+        "灵台矿区",
+        "纳林希里矿区",
+        "淖毛湖矿区",
+        "四季屯",
+        "韦州矿区",
+        "五间房矿区",
+        "牙克石（五九煤田）",
+        "伊宁矿区北区",
+        "伊泰煤矿（露天）",
+        "月儿湾矿井"
+      ],
+      "subject_variants": [
+        "硫化物"
+      ],
+      "object_variants": [
+        "生活污水处理站"
+      ],
+      "mechanical_desc": "样例库 19 份报告共现：硫化物（pollutant）配 生活污水处理站（treatment_measure）——治理规律（B 库蒸馏，跨报告支持度 19）"
+    },
+    {
+      "pattern_id": "dp-e6cce6b918",
+      "pattern_type": "处置",
+      "pair": "矸石（waste_stream）→ 综合利用（treatment_measure）",
+      "predicate": "utilized_by",
+      "support": 17,
+      "occurrence": 1,
+      "total_samples": 22,
+      "source_reports": [
+        "巴拉素",
+        "郭家台二号矿井",
+        "鹤岗矿区",
+        "横城矿区",
+        "华亭矿区",
+        "九龙川矿井",
+        "灵台矿区",
+        "纳林希里矿区",
+        "淖毛湖矿区",
+        "四季屯",
+        "韦州矿区",
+        "五间房矿区",
+        "牙克石（五九煤田）",
+        "伊敏矿区（总规）",
+        "伊宁矿区北区",
+        "伊泰煤矿（露天）",
+        "月儿湾矿井"
+      ],
+      "subject_variants": [
+        "矸石"
+      ],
+      "object_variants": [
+        "综合利用"
+      ],
+      "mechanical_desc": "样例库 17 份报告共现：矸石（waste_stream）配 综合利用（treatment_measure）（utilized_by）——处置规律（B 库蒸馏，跨报告支持度 17）"
+    },
+    {
+      "pattern_id": "dp-01aae4f5e3",
+      "pattern_type": "处置",
+      "pair": "矸石（waste_stream）→ 综合利用（treatment_measure）",
+      "predicate": "disposed_by",
+      "support": 17,
+      "occurrence": 1,
+      "total_samples": 22,
+      "source_reports": [
+        "巴拉素",
+        "郭家台二号矿井",
+        "鹤岗矿区",
+        "横城矿区",
+        "华亭矿区",
+        "九龙川矿井",
+        "灵台矿区",
+        "纳林希里矿区",
+        "淖毛湖矿区",
+        "四季屯",
+        "韦州矿区",
+        "五间房矿区",
+        "牙克石（五九煤田）",
+        "伊敏矿区（总规）",
+        "伊宁矿区北区",
+        "伊泰煤矿（露天）",
+        "月儿湾矿井"
+      ],
+      "subject_variants": [
+        "矸石"
+      ],
+      "object_variants": [
+        "综合利用"
+      ],
+      "mechanical_desc": "样例库 17 份报告共现：矸石（waste_stream）配 综合利用（treatment_measure）（disposed_by）——处置规律（B 库蒸馏，跨报告支持度 17）"
+    },
+    {
+      "pattern_id": "dp-e609c7f0f8",
+      "pattern_type": "处置",
+      "pair": "危险废物（waste_stream）→ 有资质单位（org）",
+      "predicate": "disposed_by",
+      "support": 16,
+      "occurrence": 11,
+      "total_samples": 22,
+      "source_reports": [
+        "白音华二号露天矿",
+        "郭家台二号矿井",
+        "鹤岗矿区",
+        "横城矿区",
+        "华亭矿区",
+        "九龙川矿井",
+        "灵台矿区",
+        "纳林希里矿区",
+        "韦州矿区",
+        "五间房矿区",
+        "牙克石（五九煤田）",
+        "伊敏矿区（总规）",
+        "伊敏3500万吨",
+        "伊宁矿区北区",
+        "伊泰煤矿（露天）",
+        "月儿湾矿井"
+      ],
+      "subject_variants": [
+        "危险废物"
+      ],
+      "object_variants": [
+        "有危废资质的处置单位",
+        "有相关资质的单位",
+        "有资质单位",
+        "有资质危废处置单位",
+        "有资质的专业公司",
+        "有资质的专业公司安全处置",
+        "有资质的公司",
+        "有资质的单位",
+        "有资质的单位进行安全处置",
+        "有资质的危废处置公司"
+      ],
+      "mechanical_desc": "样例库 16 份报告共现：危险废物（waste_stream）配 有资质单位（org）（disposed_by）——处置规律（B 库蒸馏，跨报告支持度 16）"
+    },
+    {
+      "pattern_id": "dp-bd612fea3e",
+      "pattern_type": "处置",
+      "pair": "矸石（waste_stream）→ 井下充填（treatment_measure）",
+      "predicate": "disposed_by",
+      "support": 16,
+      "occurrence": 5,
+      "total_samples": 22,
+      "source_reports": [
+        "巴拉素",
+        "郭家台二号矿井",
+        "鹤岗矿区",
+        "横城矿区",
+        "华亭矿区",
+        "九龙川矿井",
+        "灵台矿区",
+        "纳林希里矿区",
+        "淖毛湖矿区",
+        "三塘湖矿区",
+        "四季屯",
+        "牙克石（五九煤田）",
+        "伊敏矿区（总规）",
+        "伊宁矿区北区",
+        "伊泰煤矿（露天）",
+        "月儿湾矿井"
+      ],
+      "subject_variants": [
+        "矸石"
+      ],
+      "object_variants": [
+        "井下充填",
+        "井下处置",
+        "回填井下",
+        "矸石井下充填",
+        "采空区注浆充填"
+      ],
+      "mechanical_desc": "样例库 16 份报告共现：矸石（waste_stream）配 井下充填（treatment_measure）（disposed_by）——处置规律（B 库蒸馏，跨报告支持度 16）"
+    },
+    {
+      "pattern_id": "dp-e4a4fb822d",
+      "pattern_type": "处置",
+      "pair": "生活垃圾（waste_stream）→ 环卫部门（org）",
+      "predicate": "disposed_by",
+      "support": 16,
+      "occurrence": 4,
+      "total_samples": 22,
+      "source_reports": [
+        "白音华二号露天矿",
+        "白音华三号露天矿",
+        "巴拉素",
+        "高头窑矿区",
+        "郭家台二号矿井",
+        "鹤岗矿区",
+        "华亭矿区",
+        "九龙川矿井",
+        "纳林希里矿区",
+        "三塘湖矿区",
+        "韦州矿区",
+        "五间房矿区",
+        "牙克石（五九煤田）",
+        "伊宁矿区北区",
+        "伊泰煤矿（露天）",
+        "月儿湾矿井"
+      ],
+      "subject_variants": [
+        "生活垃圾"
+      ],
+      "object_variants": [
+        "地方环卫部门",
+        "城建环卫部门",
+        "当地环卫部门",
+        "环卫部门"
+      ],
+      "mechanical_desc": "样例库 16 份报告共现：生活垃圾（waste_stream）配 环卫部门（org）（disposed_by）——处置规律（B 库蒸馏，跨报告支持度 16）"
+    },
+    {
+      "pattern_id": "dp-bbf958912e",
+      "pattern_type": "处置",
+      "pair": "危险废物（waste_stream）→ 内蒙古东联循环技术有限公司（org）",
+      "predicate": "disposed_by",
+      "support": 16,
+      "occurrence": 1,
+      "total_samples": 22,
+      "source_reports": [
+        "白音华二号露天矿",
+        "郭家台二号矿井",
+        "鹤岗矿区",
+        "横城矿区",
+        "华亭矿区",
+        "九龙川矿井",
+        "灵台矿区",
+        "纳林希里矿区",
+        "韦州矿区",
+        "五间房矿区",
+        "牙克石（五九煤田）",
+        "伊敏矿区（总规）",
+        "伊敏3500万吨",
+        "伊宁矿区北区",
+        "伊泰煤矿（露天）",
+        "月儿湾矿井"
+      ],
+      "subject_variants": [
+        "危险废物"
+      ],
+      "object_variants": [
+        "内蒙古东联循环技术有限公司"
+      ],
+      "mechanical_desc": "样例库 16 份报告共现：危险废物（waste_stream）配 内蒙古东联循环技术有限公司（org）（disposed_by）——处置规律（B 库蒸馏，跨报告支持度 16）"
+    },
+    {
+      "pattern_id": "dp-ff64a2e2a7",
+      "pattern_type": "处置",
+      "pair": "危险废物（waste_stream）→ 内蒙古志飞环保科技有限公司（org）",
+      "predicate": "disposed_by",
+      "support": 16,
+      "occurrence": 1,
+      "total_samples": 22,
+      "source_reports": [
+        "白音华二号露天矿",
+        "郭家台二号矿井",
+        "鹤岗矿区",
+        "横城矿区",
+        "华亭矿区",
+        "九龙川矿井",
+        "灵台矿区",
+        "纳林希里矿区",
+        "韦州矿区",
+        "五间房矿区",
+        "牙克石（五九煤田）",
+        "伊敏矿区（总规）",
+        "伊敏3500万吨",
+        "伊宁矿区北区",
+        "伊泰煤矿（露天）",
+        "月儿湾矿井"
+      ],
+      "subject_variants": [
+        "危险废物"
+      ],
+      "object_variants": [
+        "内蒙古志飞环保科技有限公司"
+      ],
+      "mechanical_desc": "样例库 16 份报告共现：危险废物（waste_stream）配 内蒙古志飞环保科技有限公司（org）（disposed_by）——处置规律（B 库蒸馏，跨报告支持度 16）"
+    },
+    {
+      "pattern_id": "dp-a64288aa93",
+      "pattern_type": "处置",
+      "pair": "矸石（waste_stream）→ 排矸场（engineering_site）",
+      "predicate": "disposed_by",
+      "support": 16,
+      "occurrence": 1,
+      "total_samples": 22,
+      "source_reports": [
+        "巴拉素",
+        "郭家台二号矿井",
+        "鹤岗矿区",
+        "横城矿区",
+        "华亭矿区",
+        "九龙川矿井",
+        "灵台矿区",
+        "纳林希里矿区",
+        "淖毛湖矿区",
+        "三塘湖矿区",
+        "四季屯",
+        "牙克石（五九煤田）",
+        "伊敏矿区（总规）",
+        "伊宁矿区北区",
+        "伊泰煤矿（露天）",
+        "月儿湾矿井"
+      ],
+      "subject_variants": [
+        "矸石"
+      ],
+      "object_variants": [
+        "排矸场"
+      ],
+      "mechanical_desc": "样例库 16 份报告共现：矸石（waste_stream）配 排矸场（engineering_site）（disposed_by）——处置规律（B 库蒸馏，跨报告支持度 16）"
+    },
+    {
+      "pattern_id": "dp-5396aba979",
+      "pattern_type": "处置",
+      "pair": "矸石（waste_stream）→ 露天矿排土场（engineering_site）",
+      "predicate": "disposed_by",
+      "support": 16,
+      "occurrence": 1,
+      "total_samples": 22,
+      "source_reports": [
+        "巴拉素",
+        "高头窑矿区",
+        "郭家台二号矿井",
+        "鹤岗矿区",
+        "横城矿区",
+        "华亭矿区",
+        "九龙川矿井",
+        "灵台矿区",
+        "纳林希里矿区",
+        "淖毛湖矿区",
+        "四季屯",
+        "牙克石（五九煤田）",
+        "伊敏矿区（总规）",
+        "伊宁矿区北区",
+        "伊泰煤矿（露天）",
+        "月儿湾矿井"
+      ],
+      "subject_variants": [
+        "矸石"
+      ],
+      "object_variants": [
+        "露天矿排土场"
+      ],
+      "mechanical_desc": "样例库 16 份报告共现：矸石（waste_stream）配 露天矿排土场（engineering_site）（disposed_by）——处置规律（B 库蒸馏，跨报告支持度 16）"
+    },
+    {
+      "pattern_id": "dp-c0535decb2",
+      "pattern_type": "处置",
+      "pair": "生活垃圾（waste_stream）→ 市政垃圾处理厂（place）",
+      "predicate": "disposed_by",
+      "support": 15,
+      "occurrence": 9,
+      "total_samples": 22,
+      "source_reports": [
+        "白音华二号露天矿",
+        "白音华三号露天矿",
+        "巴拉素",
+        "高头窑矿区",
+        "郭家台二号矿井",
+        "华亭矿区",
+        "九龙川矿井",
+        "纳林希里矿区",
+        "三塘湖矿区",
+        "韦州矿区",
+        "五间房矿区",
+        "牙克石（五九煤田）",
+        "伊宁矿区北区",
+        "伊泰煤矿（露天）",
+        "月儿湾矿井"
+      ],
+      "subject_variants": [
+        "生活垃圾"
+      ],
+      "object_variants": [
+        "垃圾场",
+        "垃圾填埋厂",
+        "宁县政垃圾填埋场",
+        "察布查尔县垃圾填埋场",
+        "市政垃圾处理厂",
+        "市政生活垃圾处理厂",
+        "当地垃圾处理场",
+        "白音花镇垃圾场",
+        "鄂尔多斯市垃圾处理场"
+      ],
+      "mechanical_desc": "样例库 15 份报告共现：生活垃圾（waste_stream）配 市政垃圾处理厂（place）（disposed_by）——处置规律（B 库蒸馏，跨报告支持度 15）"
+    },
+    {
+      "pattern_id": "dp-9389ae7902",
+      "pattern_type": "处置",
+      "pair": "矸石（waste_stream）→ 井下充填（measure_process_concept）",
+      "predicate": "utilized_by",
+      "support": 15,
+      "occurrence": 7,
+      "total_samples": 22,
+      "source_reports": [
+        "巴拉素",
+        "郭家台二号矿井",
+        "鹤岗矿区",
+        "横城矿区",
+        "华亭矿区",
+        "九龙川矿井",
+        "灵台矿区",
+        "纳林希里矿区",
+        "淖毛湖矿区",
+        "四季屯",
+        "牙克石（五九煤田）",
+        "伊敏矿区（总规）",
+        "伊宁矿区北区",
+        "伊泰煤矿（露天）",
+        "月儿湾矿井"
+      ],
+      "subject_variants": [
+        "矸石"
+      ],
+      "object_variants": [
+        "井下充填",
+        "井下充填技术",
+        "井下处理",
+        "井下膏体充填",
+        "充填",
+        "充填井下",
+        "回填井下"
+      ],
+      "mechanical_desc": "样例库 15 份报告共现：矸石（waste_stream）配 井下充填（measure_process_concept）（utilized_by）——处置规律（B 库蒸馏，跨报告支持度 15）"
+    },
+    {
+      "pattern_id": "dp-bd1b5dfbbd",
+      "pattern_type": "处置",
+      "pair": "矸石（waste_stream）→ 沉陷区充填（treatment_measure）",
+      "predicate": "utilized_by",
+      "support": 15,
+      "occurrence": 5,
+      "total_samples": 22,
+      "source_reports": [
+        "巴拉素",
+        "郭家台二号矿井",
+        "鹤岗矿区",
+        "横城矿区",
+        "华亭矿区",
+        "九龙川矿井",
+        "灵台矿区",
+        "纳林希里矿区",
+        "淖毛湖矿区",
+        "四季屯",
+        "牙克石（五九煤田）",
+        "伊敏矿区（总规）",
+        "伊宁矿区北区",
+        "伊泰煤矿（露天）",
+        "月儿湾矿井"
+      ],
+      "subject_variants": [
+        "矸石"
+      ],
+      "object_variants": [
+        "充填沉陷区",
+        "沉陷区充填",
+        "沉陷区回填",
+        "矸石充填沉陷区",
+        "矸石充填沉陷区的复垦措施"
+      ],
+      "mechanical_desc": "样例库 15 份报告共现：矸石（waste_stream）配 沉陷区充填（treatment_measure）（utilized_by）——处置规律（B 库蒸馏，跨报告支持度 15）"
+    },
+    {
+      "pattern_id": "dp-b35b9536e4",
+      "pattern_type": "处置",
+      "pair": "矸石（waste_stream）→ 场地平整（measure_process_concept）",
+      "predicate": "utilized_by",
+      "support": 15,
+      "occurrence": 2,
+      "total_samples": 22,
+      "source_reports": [
+        "巴拉素",
+        "郭家台二号矿井",
+        "鹤岗矿区",
+        "横城矿区",
+        "华亭矿区",
+        "九龙川矿井",
+        "灵台矿区",
+        "纳林希里矿区",
+        "淖毛湖矿区",
+        "四季屯",
+        "牙克石（五九煤田）",
+        "伊敏矿区（总规）",
+        "伊宁矿区北区",
+        "伊泰煤矿（露天）",
+        "月儿湾矿井"
+      ],
+      "subject_variants": [
+        "矸石"
+      ],
+      "object_variants": [
+        "场地平整",
+        "工业场地、道路地基铺设"
+      ],
+      "mechanical_desc": "样例库 15 份报告共现：矸石（waste_stream）配 场地平整（measure_process_concept）（utilized_by）——处置规律（B 库蒸馏，跨报告支持度 15）"
+    },
+    {
+      "pattern_id": "dp-9f6bfdf71c",
+      "pattern_type": "处置",
+      "pair": "矸石（waste_stream）→ 沉陷区充填（place）",
+      "predicate": "disposed_by",
+      "support": 15,
+      "occurrence": 2,
+      "total_samples": 22,
+      "source_reports": [
+        "巴拉素",
+        "郭家台二号矿井",
+        "鹤岗矿区",
+        "横城矿区",
+        "华亭矿区",
+        "九龙川矿井",
+        "灵台矿区",
+        "纳林希里矿区",
+        "淖毛湖矿区",
+        "四季屯",
+        "牙克石（五九煤田）",
+        "伊敏矿区（总规）",
+        "伊宁矿区北区",
+        "伊泰煤矿（露天）",
+        "月儿湾矿井"
+      ],
+      "subject_variants": [
+        "矸石"
+      ],
+      "object_variants": [
+        "充填塌陷坑",
+        "塌陷坑"
+      ],
+      "mechanical_desc": "样例库 15 份报告共现：矸石（waste_stream）配 沉陷区充填（place）（disposed_by）——处置规律（B 库蒸馏，跨报告支持度 15）"
+    },
+    {
+      "pattern_id": "dp-5a77e04e37",
+      "pattern_type": "处置",
+      "pair": "矸石（waste_stream）→ 矸石充填站（treatment_measure）",
+      "predicate": "disposed_by",
+      "support": 15,
+      "occurrence": 2,
+      "total_samples": 22,
+      "source_reports": [
+        "巴拉素",
+        "郭家台二号矿井",
+        "鹤岗矿区",
+        "横城矿区",
+        "华亭矿区",
+        "九龙川矿井",
+        "灵台矿区",
+        "纳林希里矿区",
+        "淖毛湖矿区",
+        "四季屯",
+        "牙克石（五九煤田）",
+        "伊敏矿区（总规）",
+        "伊宁矿区北区",
+        "伊泰煤矿（露天）",
+        "月儿湾矿井"
+      ],
+      "subject_variants": [
+        "矸石"
+      ],
+      "object_variants": [
+        "矸石充填站"
+      ],
+      "mechanical_desc": "样例库 15 份报告共现：矸石（waste_stream）配 矸石充填站（treatment_measure）（disposed_by）——处置规律（B 库蒸馏，跨报告支持度 15）"
+    },
+    {
+      "pattern_id": "dp-622f43ddcf",
+      "pattern_type": "处置",
+      "pair": "矸石（waste_stream）→ 采坑回填（treatment_measure）",
+      "predicate": "disposed_by",
+      "support": 15,
+      "occurrence": 2,
+      "total_samples": 22,
+      "source_reports": [
+        "巴拉素",
+        "郭家台二号矿井",
+        "鹤岗矿区",
+        "横城矿区",
+        "华亭矿区",
+        "九龙川矿井",
+        "灵台矿区",
+        "纳林希里矿区",
+        "淖毛湖矿区",
+        "四季屯",
+        "牙克石（五九煤田）",
+        "伊敏矿区（总规）",
+        "伊宁矿区北区",
+        "伊泰煤矿（露天）",
+        "月儿湾矿井"
+      ],
+      "subject_variants": [
+        "矸石"
+      ],
+      "object_variants": [
+        "回填新岭露天矿露天采坑",
+        "采坑回填"
+      ],
+      "mechanical_desc": "样例库 15 份报告共现：矸石（waste_stream）配 采坑回填（treatment_measure）（disposed_by）——处置规律（B 库蒸馏，跨报告支持度 15）"
+    },
+    {
+      "pattern_id": "dp-e3a5d03192",
+      "pattern_type": "处置",
+      "pair": "生活垃圾（waste_stream）→ 压缩式垃圾中转站（treatment_measure）",
+      "predicate": "disposed_by",
+      "support": 15,
+      "occurrence": 1,
+      "total_samples": 22,
+      "source_reports": [
+        "白音华二号露天矿",
+        "白音华三号露天矿",
+        "巴拉素",
+        "高头窑矿区",
+        "郭家台二号矿井",
+        "华亭矿区",
+        "九龙川矿井",
+        "纳林希里矿区",
+        "三塘湖矿区",
+        "韦州矿区",
+        "五间房矿区",
+        "牙克石（五九煤田）",
+        "伊宁矿区北区",
+        "伊泰煤矿（露天）",
+        "月儿湾矿井"
+      ],
+      "subject_variants": [
+        "生活垃圾"
+      ],
+      "object_variants": [
+        "压缩式垃圾中转站"
+      ],
+      "mechanical_desc": "样例库 15 份报告共现：生活垃圾（waste_stream）配 压缩式垃圾中转站（treatment_measure）（disposed_by）——处置规律（B 库蒸馏，跨报告支持度 15）"
+    },
+    {
+      "pattern_id": "dp-f0de9e0fa8",
+      "pattern_type": "处置",
+      "pair": "生活垃圾（waste_stream）→ 合理处置（treatment_measure）",
+      "predicate": "disposed_by",
+      "support": 15,
+      "occurrence": 1,
+      "total_samples": 22,
+      "source_reports": [
+        "白音华二号露天矿",
+        "白音华三号露天矿",
+        "巴拉素",
+        "高头窑矿区",
+        "郭家台二号矿井",
+        "华亭矿区",
+        "九龙川矿井",
+        "纳林希里矿区",
+        "三塘湖矿区",
+        "韦州矿区",
+        "五间房矿区",
+        "牙克石（五九煤田）",
+        "伊宁矿区北区",
+        "伊泰煤矿（露天）",
+        "月儿湾矿井"
+      ],
+      "subject_variants": [
+        "生活垃圾"
+      ],
+      "object_variants": [
+        "合理处置"
+      ],
+      "mechanical_desc": "样例库 15 份报告共现：生活垃圾（waste_stream）配 合理处置（treatment_measure）（disposed_by）——处置规律（B 库蒸馏，跨报告支持度 15）"
+    },
+    {
+      "pattern_id": "dp-59a648683a",
+      "pattern_type": "处置",
+      "pair": "生活垃圾（waste_stream）→ 巴里坤县环卫部门统一处置（org）",
+      "predicate": "disposed_by",
+      "support": 15,
+      "occurrence": 1,
+      "total_samples": 22,
+      "source_reports": [
+        "白音华二号露天矿",
+        "白音华三号露天矿",
+        "巴拉素",
+        "高头窑矿区",
+        "郭家台二号矿井",
+        "华亭矿区",
+        "九龙川矿井",
+        "纳林希里矿区",
+        "三塘湖矿区",
+        "韦州矿区",
+        "五间房矿区",
+        "牙克石（五九煤田）",
+        "伊宁矿区北区",
+        "伊泰煤矿（露天）",
+        "月儿湾矿井"
+      ],
+      "subject_variants": [
+        "生活垃圾"
+      ],
+      "object_variants": [
+        "巴里坤县环卫部门统一处置"
+      ],
+      "mechanical_desc": "样例库 15 份报告共现：生活垃圾（waste_stream）配 巴里坤县环卫部门统一处置（org）（disposed_by）——处置规律（B 库蒸馏，跨报告支持度 15）"
+    },
+    {
+      "pattern_id": "dp-6fa621b16f",
+      "pattern_type": "处置",
+      "pair": "生活垃圾（waste_stream）→ 当地环卫部门处理（treatment_measure）",
+      "predicate": "disposed_by",
+      "support": 15,
+      "occurrence": 1,
+      "total_samples": 22,
+      "source_reports": [
+        "白音华二号露天矿",
+        "白音华三号露天矿",
+        "巴拉素",
+        "高头窑矿区",
+        "郭家台二号矿井",
+        "华亭矿区",
+        "九龙川矿井",
+        "纳林希里矿区",
+        "三塘湖矿区",
+        "韦州矿区",
+        "五间房矿区",
+        "牙克石（五九煤田）",
+        "伊宁矿区北区",
+        "伊泰煤矿（露天）",
+        "月儿湾矿井"
+      ],
+      "subject_variants": [
+        "生活垃圾"
+      ],
+      "object_variants": [
+        "当地环卫部门处理"
+      ],
+      "mechanical_desc": "样例库 15 份报告共现：生活垃圾（waste_stream）配 当地环卫部门处理（treatment_measure）（disposed_by）——处置规律（B 库蒸馏，跨报告支持度 15）"
+    },
+    {
+      "pattern_id": "dp-9abf474194",
+      "pattern_type": "处置",
+      "pair": "生活垃圾（waste_stream）→ 无害化处置率100%（treatment_measure）",
+      "predicate": "disposed_by",
+      "support": 15,
+      "occurrence": 1,
+      "total_samples": 22,
+      "source_reports": [
+        "白音华二号露天矿",
+        "白音华三号露天矿",
+        "巴拉素",
+        "高头窑矿区",
+        "郭家台二号矿井",
+        "华亭矿区",
+        "九龙川矿井",
+        "纳林希里矿区",
+        "三塘湖矿区",
+        "韦州矿区",
+        "五间房矿区",
+        "牙克石（五九煤田）",
+        "伊宁矿区北区",
+        "伊泰煤矿（露天）",
+        "月儿湾矿井"
+      ],
+      "subject_variants": [
+        "生活垃圾"
+      ],
+      "object_variants": [
+        "无害化处置率100%"
+      ],
+      "mechanical_desc": "样例库 15 份报告共现：生活垃圾（waste_stream）配 无害化处置率100%（treatment_measure）（disposed_by）——处置规律（B 库蒸馏，跨报告支持度 15）"
+    },
+    {
+      "pattern_id": "dp-90aeddb6fa",
+      "pattern_type": "处置",
+      "pair": "生活垃圾（waste_stream）→ 榆林绿能新能源有限公司集中焚烧处置（treatment_measure）",
+      "predicate": "disposed_by",
+      "support": 15,
+      "occurrence": 1,
+      "total_samples": 22,
+      "source_reports": [
+        "白音华二号露天矿",
+        "白音华三号露天矿",
+        "巴拉素",
+        "高头窑矿区",
+        "郭家台二号矿井",
+        "华亭矿区",
+        "九龙川矿井",
+        "纳林希里矿区",
+        "三塘湖矿区",
+        "韦州矿区",
+        "五间房矿区",
+        "牙克石（五九煤田）",
+        "伊宁矿区北区",
+        "伊泰煤矿（露天）",
+        "月儿湾矿井"
+      ],
+      "subject_variants": [
+        "生活垃圾"
+      ],
+      "object_variants": [
+        "榆林绿能新能源有限公司集中焚烧处置"
+      ],
+      "mechanical_desc": "样例库 15 份报告共现：生活垃圾（waste_stream）配 榆林绿能新能源有限公司集中焚烧处置（treatment_measure）（disposed_by）——处置规律（B 库蒸馏，跨报告支持度 15）"
+    },
+    {
+      "pattern_id": "dp-3f9ed07324",
+      "pattern_type": "处置",
+      "pair": "生活垃圾（waste_stream）→ 榆阳市芹河乡环境卫生管理站（org）",
+      "predicate": "disposed_by",
+      "support": 15,
+      "occurrence": 1,
+      "total_samples": 22,
+      "source_reports": [
+        "白音华二号露天矿",
+        "白音华三号露天矿",
+        "巴拉素",
+        "高头窑矿区",
+        "郭家台二号矿井",
+        "华亭矿区",
+        "九龙川矿井",
+        "纳林希里矿区",
+        "三塘湖矿区",
+        "韦州矿区",
+        "五间房矿区",
+        "牙克石（五九煤田）",
+        "伊宁矿区北区",
+        "伊泰煤矿（露天）",
+        "月儿湾矿井"
+      ],
+      "subject_variants": [
+        "生活垃圾"
+      ],
+      "object_variants": [
+        "榆阳市芹河乡环境卫生管理站"
+      ],
+      "mechanical_desc": "样例库 15 份报告共现：生活垃圾（waste_stream）配 榆阳市芹河乡环境卫生管理站（org）（disposed_by）——处置规律（B 库蒸馏，跨报告支持度 15）"
+    },
+    {
+      "pattern_id": "dp-16335f8d7e",
+      "pattern_type": "处置",
+      "pair": "生活垃圾（waste_stream）→ 环卫部门统一处理（treatment_measure）",
+      "predicate": "disposed_by",
+      "support": 15,
+      "occurrence": 1,
+      "total_samples": 22,
+      "source_reports": [
+        "白音华二号露天矿",
+        "白音华三号露天矿",
+        "巴拉素",
+        "高头窑矿区",
+        "郭家台二号矿井",
+        "华亭矿区",
+        "九龙川矿井",
+        "纳林希里矿区",
+        "三塘湖矿区",
+        "韦州矿区",
+        "五间房矿区",
+        "牙克石（五九煤田）",
+        "伊宁矿区北区",
+        "伊泰煤矿（露天）",
+        "月儿湾矿井"
+      ],
+      "subject_variants": [
+        "生活垃圾"
+      ],
+      "object_variants": [
+        "环卫部门统一处理"
+      ],
+      "mechanical_desc": "样例库 15 份报告共现：生活垃圾（waste_stream）配 环卫部门统一处理（treatment_measure）（disposed_by）——处置规律（B 库蒸馏，跨报告支持度 15）"
+    },
+    {
+      "pattern_id": "dp-495dfb591d",
+      "pattern_type": "处置",
+      "pair": "生活垃圾（waste_stream）→ 白银三峰环保发电有限公司（org）",
+      "predicate": "utilized_by",
+      "support": 15,
+      "occurrence": 1,
+      "total_samples": 22,
+      "source_reports": [
+        "白音华二号露天矿",
+        "白音华三号露天矿",
+        "巴拉素",
+        "高头窑矿区",
+        "郭家台二号矿井",
+        "华亭矿区",
+        "九龙川矿井",
+        "纳林希里矿区",
+        "三塘湖矿区",
+        "韦州矿区",
+        "五间房矿区",
+        "牙克石（五九煤田）",
+        "伊宁矿区北区",
+        "伊泰煤矿（露天）",
+        "月儿湾矿井"
+      ],
+      "subject_variants": [
+        "生活垃圾"
+      ],
+      "object_variants": [
+        "白银三峰环保发电有限公司"
+      ],
+      "mechanical_desc": "样例库 15 份报告共现：生活垃圾（waste_stream）配 白银三峰环保发电有限公司（org）（utilized_by）——处置规律（B 库蒸馏，跨报告支持度 15）"
+    },
+    {
+      "pattern_id": "dp-07fb874bf3",
+      "pattern_type": "处置",
+      "pair": "生活垃圾（waste_stream）→ 白银三峰环保发电有限公司（org）",
+      "predicate": "disposed_by",
+      "support": 15,
+      "occurrence": 1,
+      "total_samples": 22,
+      "source_reports": [
+        "白音华二号露天矿",
+        "白音华三号露天矿",
+        "巴拉素",
+        "高头窑矿区",
+        "郭家台二号矿井",
+        "华亭矿区",
+        "九龙川矿井",
+        "纳林希里矿区",
+        "三塘湖矿区",
+        "韦州矿区",
+        "五间房矿区",
+        "牙克石（五九煤田）",
+        "伊宁矿区北区",
+        "伊泰煤矿（露天）",
+        "月儿湾矿井"
+      ],
+      "subject_variants": [
+        "生活垃圾"
+      ],
+      "object_variants": [
+        "白银三峰环保发电有限公司"
+      ],
+      "mechanical_desc": "样例库 15 份报告共现：生活垃圾（waste_stream）配 白银三峰环保发电有限公司（org）（disposed_by）——处置规律（B 库蒸馏，跨报告支持度 15）"
+    },
+    {
+      "pattern_id": "dp-f6df66e67f",
+      "pattern_type": "处置",
+      "pair": "生活垃圾（waste_stream）→ 鄂尔多斯市环卫部门统一处置（treatment_measure）",
+      "predicate": "disposed_by",
+      "support": 15,
+      "occurrence": 1,
+      "total_samples": 22,
+      "source_reports": [
+        "白音华二号露天矿",
+        "白音华三号露天矿",
+        "巴拉素",
+        "高头窑矿区",
+        "郭家台二号矿井",
+        "华亭矿区",
+        "九龙川矿井",
+        "纳林希里矿区",
+        "三塘湖矿区",
+        "韦州矿区",
+        "五间房矿区",
+        "牙克石（五九煤田）",
+        "伊宁矿区北区",
+        "伊泰煤矿（露天）",
+        "月儿湾矿井"
+      ],
+      "subject_variants": [
+        "生活垃圾"
+      ],
+      "object_variants": [
+        "鄂尔多斯市环卫部门统一处置"
+      ],
+      "mechanical_desc": "样例库 15 份报告共现：生活垃圾（waste_stream）配 鄂尔多斯市环卫部门统一处置（treatment_measure）（disposed_by）——处置规律（B 库蒸馏，跨报告支持度 15）"
+    },
+    {
+      "pattern_id": "dp-9d4d68cf57",
+      "pattern_type": "处置",
+      "pair": "生活垃圾（waste_stream）→ 鄂尔多斯市蓝盈环保科技有限公司（org）",
+      "predicate": "disposed_by",
+      "support": 15,
+      "occurrence": 1,
+      "total_samples": 22,
+      "source_reports": [
+        "白音华二号露天矿",
+        "白音华三号露天矿",
+        "巴拉素",
+        "高头窑矿区",
+        "郭家台二号矿井",
+        "华亭矿区",
+        "九龙川矿井",
+        "纳林希里矿区",
+        "三塘湖矿区",
+        "韦州矿区",
+        "五间房矿区",
+        "牙克石（五九煤田）",
+        "伊宁矿区北区",
+        "伊泰煤矿（露天）",
+        "月儿湾矿井"
+      ],
+      "subject_variants": [
+        "生活垃圾"
+      ],
+      "object_variants": [
+        "鄂尔多斯市蓝盈环保科技有限公司"
+      ],
+      "mechanical_desc": "样例库 15 份报告共现：生活垃圾（waste_stream）配 鄂尔多斯市蓝盈环保科技有限公司（org）（disposed_by）——处置规律（B 库蒸馏，跨报告支持度 15）"
+    },
+    {
+      "pattern_id": "dp-22e6f1dffe",
+      "pattern_type": "处置",
+      "pair": "矸石（waste_stream）→ 临时排矸场（engineering_site）",
+      "predicate": "disposed_by",
+      "support": 15,
+      "occurrence": 1,
+      "total_samples": 22,
+      "source_reports": [
+        "巴拉素",
+        "郭家台二号矿井",
+        "鹤岗矿区",
+        "横城矿区",
+        "华亭矿区",
+        "九龙川矿井",
+        "灵台矿区",
+        "纳林希里矿区",
+        "淖毛湖矿区",
+        "四季屯",
+        "牙克石（五九煤田）",
+        "伊敏矿区（总规）",
+        "伊宁矿区北区",
+        "伊泰煤矿（露天）",
+        "月儿湾矿井"
+      ],
+      "subject_variants": [
+        "矸石"
+      ],
+      "object_variants": [
+        "临时排矸场"
+      ],
+      "mechanical_desc": "样例库 15 份报告共现：矸石（waste_stream）配 临时排矸场（engineering_site）（disposed_by）——处置规律（B 库蒸馏，跨报告支持度 15）"
+    },
+    {
+      "pattern_id": "dp-0669b1a502",
+      "pattern_type": "处置",
+      "pair": "矸石（waste_stream）→ 二号煤矿矸石周转场（engineering_site）",
+      "predicate": "disposed_by",
+      "support": 15,
+      "occurrence": 1,
+      "total_samples": 22,
+      "source_reports": [
+        "巴拉素",
+        "郭家台二号矿井",
+        "鹤岗矿区",
+        "横城矿区",
+        "华亭矿区",
+        "九龙川矿井",
+        "灵台矿区",
+        "纳林希里矿区",
+        "淖毛湖矿区",
+        "四季屯",
+        "牙克石（五九煤田）",
+        "伊敏矿区（总规）",
+        "伊宁矿区北区",
+        "伊泰煤矿（露天）",
+        "月儿湾矿井"
+      ],
+      "subject_variants": [
+        "矸石"
+      ],
+      "object_variants": [
+        "二号煤矿矸石周转场"
+      ],
+      "mechanical_desc": "样例库 15 份报告共现：矸石（waste_stream）配 二号煤矿矸石周转场（engineering_site）（disposed_by）——处置规律（B 库蒸馏，跨报告支持度 15）"
+    },
+    {
+      "pattern_id": "dp-a505254c51",
+      "pattern_type": "处置",
+      "pair": "矸石（waste_stream）→ 充填开采综合利用（treatment_measure）",
+      "predicate": "utilized_by",
+      "support": 15,
+      "occurrence": 1,
+      "total_samples": 22,
+      "source_reports": [
+        "巴拉素",
+        "郭家台二号矿井",
+        "鹤岗矿区",
+        "横城矿区",
+        "华亭矿区",
+        "九龙川矿井",
+        "灵台矿区",
+        "纳林希里矿区",
+        "淖毛湖矿区",
+        "四季屯",
+        "牙克石（五九煤田）",
+        "伊敏矿区（总规）",
+        "伊宁矿区北区",
+        "伊泰煤矿（露天）",
+        "月儿湾矿井"
+      ],
+      "subject_variants": [
+        "矸石"
+      ],
+      "object_variants": [
+        "充填开采综合利用"
+      ],
+      "mechanical_desc": "样例库 15 份报告共现：矸石（waste_stream）配 充填开采综合利用（treatment_measure）（utilized_by）——处置规律（B 库蒸馏，跨报告支持度 15）"
+    },
+    {
+      "pattern_id": "dp-23a6bd963f",
+      "pattern_type": "处置",
+      "pair": "矸石（waste_stream）→ 制建材（measure_process_concept）",
+      "predicate": "utilized_by",
+      "support": 15,
+      "occurrence": 1,
+      "total_samples": 22,
+      "source_reports": [
+        "巴拉素",
+        "郭家台二号矿井",
+        "鹤岗矿区",
+        "横城矿区",
+        "华亭矿区",
+        "九龙川矿井",
+        "灵台矿区",
+        "纳林希里矿区",
+        "淖毛湖矿区",
+        "四季屯",
+        "牙克石（五九煤田）",
+        "伊敏矿区（总规）",
+        "伊宁矿区北区",
+        "伊泰煤矿（露天）",
+        "月儿湾矿井"
+      ],
+      "subject_variants": [
+        "矸石"
+      ],
+      "object_variants": [
+        "制建材"
+      ],
+      "mechanical_desc": "样例库 15 份报告共现：矸石（waste_stream）配 制建材（measure_process_concept）（utilized_by）——处置规律（B 库蒸馏，跨报告支持度 15）"
+    },
+    {
+      "pattern_id": "dp-8af2043506",
+      "pattern_type": "处置",
+      "pair": "矸石（waste_stream）→ 制砖（measure_process_concept）",
+      "predicate": "utilized_by",
+      "support": 15,
+      "occurrence": 1,
+      "total_samples": 22,
+      "source_reports": [
+        "巴拉素",
+        "郭家台二号矿井",
+        "鹤岗矿区",
+        "横城矿区",
+        "华亭矿区",
+        "九龙川矿井",
+        "灵台矿区",
+        "纳林希里矿区",
+        "淖毛湖矿区",
+        "四季屯",
+        "牙克石（五九煤田）",
+        "伊敏矿区（总规）",
+        "伊宁矿区北区",
+        "伊泰煤矿（露天）",
+        "月儿湾矿井"
+      ],
+      "subject_variants": [
+        "矸石"
+      ],
+      "object_variants": [
+        "制砖"
+      ],
+      "mechanical_desc": "样例库 15 份报告共现：矸石（waste_stream）配 制砖（measure_process_concept）（utilized_by）——处置规律（B 库蒸馏，跨报告支持度 15）"
+    },
+    {
+      "pattern_id": "dp-cc046af5ac",
+      "pattern_type": "处置",
+      "pair": "矸石（waste_stream）→ 回填矿区洼地、填作路基、平整工业场地（treatment_measure）",
+      "predicate": "utilized_by",
+      "support": 15,
+      "occurrence": 1,
+      "total_samples": 22,
+      "source_reports": [
+        "巴拉素",
+        "郭家台二号矿井",
+        "鹤岗矿区",
+        "横城矿区",
+        "华亭矿区",
+        "九龙川矿井",
+        "灵台矿区",
+        "纳林希里矿区",
+        "淖毛湖矿区",
+        "四季屯",
+        "牙克石（五九煤田）",
+        "伊敏矿区（总规）",
+        "伊宁矿区北区",
+        "伊泰煤矿（露天）",
+        "月儿湾矿井"
+      ],
+      "subject_variants": [
+        "矸石"
+      ],
+      "object_variants": [
+        "回填矿区洼地、填作路基、平整工业场地"
+      ],
+      "mechanical_desc": "样例库 15 份报告共现：矸石（waste_stream）配 回填矿区洼地、填作路基、平整工业场地（treatment_measure）（utilized_by）——处置规律（B 库蒸馏，跨报告支持度 15）"
+    },
+    {
+      "pattern_id": "dp-00c9bf4092",
+      "pattern_type": "处置",
+      "pair": "矸石（waste_stream）→ 地面充填系统（treatment_measure）",
+      "predicate": "utilized_by",
+      "support": 15,
+      "occurrence": 1,
+      "total_samples": 22,
+      "source_reports": [
+        "巴拉素",
+        "郭家台二号矿井",
+        "鹤岗矿区",
+        "横城矿区",
+        "华亭矿区",
+        "九龙川矿井",
+        "灵台矿区",
+        "纳林希里矿区",
+        "淖毛湖矿区",
+        "四季屯",
+        "牙克石（五九煤田）",
+        "伊敏矿区（总规）",
+        "伊宁矿区北区",
+        "伊泰煤矿（露天）",
+        "月儿湾矿井"
+      ],
+      "subject_variants": [
+        "矸石"
+      ],
+      "object_variants": [
+        "地面充填系统"
+      ],
+      "mechanical_desc": "样例库 15 份报告共现：矸石（waste_stream）配 地面充填系统（treatment_measure）（utilized_by）——处置规律（B 库蒸馏，跨报告支持度 15）"
+    },
+    {
+      "pattern_id": "dp-6b34c74b65",
+      "pattern_type": "处置",
+      "pair": "矸石（waste_stream）→ 场地平整（treatment_measure）",
+      "predicate": "disposed_by",
+      "support": 15,
+      "occurrence": 1,
+      "total_samples": 22,
+      "source_reports": [
+        "巴拉素",
+        "郭家台二号矿井",
+        "鹤岗矿区",
+        "横城矿区",
+        "华亭矿区",
+        "九龙川矿井",
+        "灵台矿区",
+        "纳林希里矿区",
+        "淖毛湖矿区",
+        "四季屯",
+        "牙克石（五九煤田）",
+        "伊敏矿区（总规）",
+        "伊宁矿区北区",
+        "伊泰煤矿（露天）",
+        "月儿湾矿井"
+      ],
+      "subject_variants": [
+        "矸石"
+      ],
+      "object_variants": [
+        "工业场地填方"
+      ],
+      "mechanical_desc": "样例库 15 份报告共现：矸石（waste_stream）配 场地平整（treatment_measure）（disposed_by）——处置规律（B 库蒸馏，跨报告支持度 15）"
+    },
+    {
+      "pattern_id": "dp-c44645d762",
+      "pattern_type": "处置",
+      "pair": "矸石（waste_stream）→ 填沟造地（measure_process_concept）",
+      "predicate": "utilized_by",
+      "support": 15,
+      "occurrence": 1,
+      "total_samples": 22,
+      "source_reports": [
+        "巴拉素",
+        "郭家台二号矿井",
+        "鹤岗矿区",
+        "横城矿区",
+        "华亭矿区",
+        "九龙川矿井",
+        "灵台矿区",
+        "纳林希里矿区",
+        "淖毛湖矿区",
+        "四季屯",
+        "牙克石（五九煤田）",
+        "伊敏矿区（总规）",
+        "伊宁矿区北区",
+        "伊泰煤矿（露天）",
+        "月儿湾矿井"
+      ],
+      "subject_variants": [
+        "矸石"
+      ],
+      "object_variants": [
+        "填沟造地"
+      ],
+      "mechanical_desc": "样例库 15 份报告共现：矸石（waste_stream）配 填沟造地（measure_process_concept）（utilized_by）——处置规律（B 库蒸馏，跨报告支持度 15）"
+    },
+    {
+      "pattern_id": "dp-fc0c792119",
+      "pattern_type": "处置",
+      "pair": "矸石（waste_stream）→ 填沟造地和水土保持生态综合治理（treatment_measure）",
+      "predicate": "utilized_by",
+      "support": 15,
+      "occurrence": 1,
+      "total_samples": 22,
+      "source_reports": [
+        "巴拉素",
+        "郭家台二号矿井",
+        "鹤岗矿区",
+        "横城矿区",
+        "华亭矿区",
+        "九龙川矿井",
+        "灵台矿区",
+        "纳林希里矿区",
+        "淖毛湖矿区",
+        "四季屯",
+        "牙克石（五九煤田）",
+        "伊敏矿区（总规）",
+        "伊宁矿区北区",
+        "伊泰煤矿（露天）",
+        "月儿湾矿井"
+      ],
+      "subject_variants": [
+        "矸石"
+      ],
+      "object_variants": [
+        "填沟造地和水土保持生态综合治理"
+      ],
+      "mechanical_desc": "样例库 15 份报告共现：矸石（waste_stream）配 填沟造地和水土保持生态综合治理（treatment_measure）（utilized_by）——处置规律（B 库蒸馏，跨报告支持度 15）"
+    },
+    {
+      "pattern_id": "dp-489d7e9429",
+      "pattern_type": "处置",
+      "pair": "矸石（waste_stream）→ 工广西侧临时排矸场地（place）",
+      "predicate": "disposed_by",
+      "support": 15,
+      "occurrence": 1,
+      "total_samples": 22,
+      "source_reports": [
+        "巴拉素",
+        "郭家台二号矿井",
+        "鹤岗矿区",
+        "横城矿区",
+        "华亭矿区",
+        "九龙川矿井",
+        "灵台矿区",
+        "纳林希里矿区",
+        "淖毛湖矿区",
+        "四季屯",
+        "牙克石（五九煤田）",
+        "伊敏矿区（总规）",
+        "伊宁矿区北区",
+        "伊泰煤矿（露天）",
+        "月儿湾矿井"
+      ],
+      "subject_variants": [
+        "矸石"
+      ],
+      "object_variants": [
+        "工广西侧临时排矸场地"
+      ],
+      "mechanical_desc": "样例库 15 份报告共现：矸石（waste_stream）配 工广西侧临时排矸场地（place）（disposed_by）——处置规律（B 库蒸馏，跨报告支持度 15）"
+    },
+    {
+      "pattern_id": "dp-af21e5caa1",
+      "pattern_type": "处置",
+      "pair": "矸石（waste_stream）→ 建筑材料（measure_process_concept）",
+      "predicate": "utilized_by",
+      "support": 15,
+      "occurrence": 1,
+      "total_samples": 22,
+      "source_reports": [
+        "巴拉素",
+        "郭家台二号矿井",
+        "鹤岗矿区",
+        "横城矿区",
+        "华亭矿区",
+        "九龙川矿井",
+        "灵台矿区",
+        "纳林希里矿区",
+        "淖毛湖矿区",
+        "四季屯",
+        "牙克石（五九煤田）",
+        "伊敏矿区（总规）",
+        "伊宁矿区北区",
+        "伊泰煤矿（露天）",
+        "月儿湾矿井"
+      ],
+      "subject_variants": [
+        "矸石"
+      ],
+      "object_variants": [
+        "建筑材料"
+      ],
+      "mechanical_desc": "样例库 15 份报告共现：矸石（waste_stream）配 建筑材料（measure_process_concept）（utilized_by）——处置规律（B 库蒸馏，跨报告支持度 15）"
+    },
+    {
+      "pattern_id": "dp-95c192089d",
+      "pattern_type": "处置",
+      "pair": "矸石（waste_stream）→ 排土场（engineering_site）",
+      "predicate": "disposed_by",
+      "support": 15,
+      "occurrence": 1,
+      "total_samples": 22,
+      "source_reports": [
+        "巴拉素",
+        "郭家台二号矿井",
+        "鹤岗矿区",
+        "横城矿区",
+        "华亭矿区",
+        "九龙川矿井",
+        "灵台矿区",
+        "纳林希里矿区",
+        "淖毛湖矿区",
+        "四季屯",
+        "牙克石（五九煤田）",
+        "伊敏矿区（总规）",
+        "伊宁矿区北区",
+        "伊泰煤矿（露天）",
+        "月儿湾矿井"
+      ],
+      "subject_variants": [
+        "矸石"
+      ],
+      "object_variants": [
+        "排土场"
+      ],
+      "mechanical_desc": "样例库 15 份报告共现：矸石（waste_stream）配 排土场（engineering_site）（disposed_by）——处置规律（B 库蒸馏，跨报告支持度 15）"
+    },
+    {
+      "pattern_id": "dp-4602a32451",
+      "pattern_type": "处置",
+      "pair": "矸石（waste_stream）→ 煤柱置换回收（measure_process_concept）",
+      "predicate": "utilized_by",
+      "support": 15,
+      "occurrence": 1,
+      "total_samples": 22,
+      "source_reports": [
+        "巴拉素",
+        "郭家台二号矿井",
+        "鹤岗矿区",
+        "横城矿区",
+        "华亭矿区",
+        "九龙川矿井",
+        "灵台矿区",
+        "纳林希里矿区",
+        "淖毛湖矿区",
+        "四季屯",
+        "牙克石（五九煤田）",
+        "伊敏矿区（总规）",
+        "伊宁矿区北区",
+        "伊泰煤矿（露天）",
+        "月儿湾矿井"
+      ],
+      "subject_variants": [
+        "矸石"
+      ],
+      "object_variants": [
+        "煤柱置换回收"
+      ],
+      "mechanical_desc": "样例库 15 份报告共现：矸石（waste_stream）配 煤柱置换回收（measure_process_concept）（utilized_by）——处置规律（B 库蒸馏，跨报告支持度 15）"
+    },
+    {
+      "pattern_id": "dp-2ced2bef03",
+      "pattern_type": "处置",
+      "pair": "矸石（waste_stream）→ 矸石仓（engineering_site）",
+      "predicate": "disposed_by",
+      "support": 15,
+      "occurrence": 1,
+      "total_samples": 22,
+      "source_reports": [
+        "巴拉素",
+        "郭家台二号矿井",
+        "鹤岗矿区",
+        "横城矿区",
+        "华亭矿区",
+        "九龙川矿井",
+        "灵台矿区",
+        "纳林希里矿区",
+        "淖毛湖矿区",
+        "四季屯",
+        "牙克石（五九煤田）",
+        "伊敏矿区（总规）",
+        "伊宁矿区北区",
+        "伊泰煤矿（露天）",
+        "月儿湾矿井"
+      ],
+      "subject_variants": [
+        "矸石"
+      ],
+      "object_variants": [
+        "矸石仓"
+      ],
+      "mechanical_desc": "样例库 15 份报告共现：矸石（waste_stream）配 矸石仓（engineering_site）（disposed_by）——处置规律（B 库蒸馏，跨报告支持度 15）"
+    },
+    {
+      "pattern_id": "dp-de0694694d",
+      "pattern_type": "处置",
+      "pair": "矸石（waste_stream）→ 矸石周转场（engineering_site）",
+      "predicate": "disposed_by",
+      "support": 15,
+      "occurrence": 1,
+      "total_samples": 22,
+      "source_reports": [
+        "巴拉素",
+        "郭家台二号矿井",
+        "鹤岗矿区",
+        "横城矿区",
+        "华亭矿区",
+        "九龙川矿井",
+        "灵台矿区",
+        "纳林希里矿区",
+        "淖毛湖矿区",
+        "四季屯",
+        "牙克石（五九煤田）",
+        "伊敏矿区（总规）",
+        "伊宁矿区北区",
+        "伊泰煤矿（露天）",
+        "月儿湾矿井"
+      ],
+      "subject_variants": [
+        "矸石"
+      ],
+      "object_variants": [
+        "矸石周转场"
+      ],
+      "mechanical_desc": "样例库 15 份报告共现：矸石（waste_stream）配 矸石周转场（engineering_site）（disposed_by）——处置规律（B 库蒸馏，跨报告支持度 15）"
+    },
+    {
+      "pattern_id": "dp-fd3a3f3dd2",
+      "pattern_type": "处置",
+      "pair": "矸石（waste_stream）→ 矸石回填井下、充填沉陷区（treatment_measure）",
+      "predicate": "utilized_by",
+      "support": 15,
+      "occurrence": 1,
+      "total_samples": 22,
+      "source_reports": [
+        "巴拉素",
+        "郭家台二号矿井",
+        "鹤岗矿区",
+        "横城矿区",
+        "华亭矿区",
+        "九龙川矿井",
+        "灵台矿区",
+        "纳林希里矿区",
+        "淖毛湖矿区",
+        "四季屯",
+        "牙克石（五九煤田）",
+        "伊敏矿区（总规）",
+        "伊宁矿区北区",
+        "伊泰煤矿（露天）",
+        "月儿湾矿井"
+      ],
+      "subject_variants": [
+        "矸石"
+      ],
+      "object_variants": [
+        "矸石回填井下、充填沉陷区"
+      ],
+      "mechanical_desc": "样例库 15 份报告共现：矸石（waste_stream）配 矸石回填井下、充填沉陷区（treatment_measure）（utilized_by）——处置规律（B 库蒸馏，跨报告支持度 15）"
+    },
+    {
+      "pattern_id": "dp-be479a86e6",
+      "pattern_type": "处置",
+      "pair": "矸石（waste_stream）→ 采坑回填（measure_process_concept）",
+      "predicate": "utilized_by",
+      "support": 15,
+      "occurrence": 1,
+      "total_samples": 22,
+      "source_reports": [
+        "巴拉素",
+        "郭家台二号矿井",
+        "鹤岗矿区",
+        "横城矿区",
+        "华亭矿区",
+        "九龙川矿井",
+        "灵台矿区",
+        "纳林希里矿区",
+        "淖毛湖矿区",
+        "四季屯",
+        "牙克石（五九煤田）",
+        "伊敏矿区（总规）",
+        "伊宁矿区北区",
+        "伊泰煤矿（露天）",
+        "月儿湾矿井"
+      ],
+      "subject_variants": [
+        "矸石"
+      ],
+      "object_variants": [
+        "矸石回填矿坑"
+      ],
+      "mechanical_desc": "样例库 15 份报告共现：矸石（waste_stream）配 采坑回填（measure_process_concept）（utilized_by）——处置规律（B 库蒸馏，跨报告支持度 15）"
+    },
+    {
+      "pattern_id": "dp-e9b21e66d0",
+      "pattern_type": "处置",
+      "pair": "矸石（waste_stream）→ 黄土掩埋（treatment_measure）",
+      "predicate": "disposed_by",
+      "support": 15,
+      "occurrence": 1,
+      "total_samples": 22,
+      "source_reports": [
+        "巴拉素",
+        "郭家台二号矿井",
+        "鹤岗矿区",
+        "横城矿区",
+        "华亭矿区",
+        "九龙川矿井",
+        "灵台矿区",
+        "纳林希里矿区",
+        "淖毛湖矿区",
+        "四季屯",
+        "牙克石（五九煤田）",
+        "伊敏矿区（总规）",
+        "伊宁矿区北区",
+        "伊泰煤矿（露天）",
+        "月儿湾矿井"
+      ],
+      "subject_variants": [
+        "矸石"
+      ],
+      "object_variants": [
+        "黄土掩埋"
+      ],
+      "mechanical_desc": "样例库 15 份报告共现：矸石（waste_stream）配 黄土掩埋（treatment_measure）（disposed_by）——处置规律（B 库蒸馏，跨报告支持度 15）"
+    },
+    {
+      "pattern_id": "dp-f154260c88",
+      "pattern_type": "处置",
+      "pair": "煤矸石（waste_stream）→ 井下充填（measure_process_concept）",
+      "predicate": "utilized_by",
+      "support": 14,
+      "occurrence": 3,
+      "total_samples": 22,
+      "source_reports": [
+        "高头窑矿区",
+        "郭家台二号矿井",
+        "鹤岗矿区",
+        "华亭矿区",
+        "九龙川矿井",
+        "灵台矿区",
+        "淖毛湖矿区",
+        "三塘湖矿区",
+        "韦州矿区",
+        "牙克石（五九煤田）",
+        "伊敏矿区（总规）",
+        "伊宁矿区北区",
+        "伊泰煤矿（露天）",
+        "月儿湾矿井"
+      ],
+      "subject_variants": [
+        "煤矸石"
+      ],
+      "object_variants": [
+        "井下充填",
+        "井下填充填"
+      ],
+      "mechanical_desc": "样例库 14 份报告共现：煤矸石（waste_stream）配 井下充填（measure_process_concept）（utilized_by）——处置规律（B 库蒸馏，跨报告支持度 14）"
+    },
+    {
+      "pattern_id": "dp-bcfa6384ff",
+      "pattern_type": "处置",
+      "pair": "煤矸石（waste_stream）→ 井下充填（treatment_measure）",
+      "predicate": "disposed_by",
+      "support": 14,
+      "occurrence": 1,
+      "total_samples": 22,
+      "source_reports": [
+        "高头窑矿区",
+        "郭家台二号矿井",
+        "鹤岗矿区",
+        "华亭矿区",
+        "九龙川矿井",
+        "灵台矿区",
+        "淖毛湖矿区",
+        "三塘湖矿区",
+        "韦州矿区",
+        "牙克石（五九煤田）",
+        "伊敏矿区（总规）",
+        "伊宁矿区北区",
+        "伊泰煤矿（露天）",
+        "月儿湾矿井"
+      ],
+      "subject_variants": [
+        "煤矸石"
+      ],
+      "object_variants": [
+        "井下充填"
+      ],
+      "mechanical_desc": "样例库 14 份报告共现：煤矸石（waste_stream）配 井下充填（treatment_measure）（disposed_by）——处置规律（B 库蒸馏，跨报告支持度 14）"
+    },
+    {
+      "pattern_id": "dp-bdc1b55939",
+      "pattern_type": "处置",
+      "pair": "洗选矸石（waste_stream）→ 综合利用（treatment_measure）",
+      "predicate": "utilized_by",
+      "support": 13,
+      "occurrence": 1,
+      "total_samples": 22,
+      "source_reports": [
+        "巴拉素",
+        "高头窑矿区",
+        "郭家台二号矿井",
+        "鹤岗矿区",
+        "横城矿区",
+        "九龙川矿井",
+        "灵台矿区",
+        "纳林希里矿区",
+        "淖毛湖矿区",
+        "韦州矿区",
+        "五间房矿区",
+        "伊宁矿区北区",
+        "月儿湾矿井"
+      ],
+      "subject_variants": [
+        "洗选矸石"
+      ],
+      "object_variants": [
+        "综合利用"
+      ],
+      "mechanical_desc": "样例库 13 份报告共现：洗选矸石（waste_stream）配 综合利用（treatment_measure）（utilized_by）——处置规律（B 库蒸馏，跨报告支持度 13）"
+    },
+    {
+      "pattern_id": "dp-7b432c68ca",
+      "pattern_type": "处置",
+      "pair": "煤矸石（waste_stream）→ 综合利用（treatment_measure）",
+      "predicate": "utilized_by",
+      "support": 13,
+      "occurrence": 1,
+      "total_samples": 22,
+      "source_reports": [
+        "高头窑矿区",
+        "郭家台二号矿井",
+        "鹤岗矿区",
+        "华亭矿区",
+        "灵台矿区",
+        "淖毛湖矿区",
+        "三塘湖矿区",
+        "韦州矿区",
+        "五间房矿区",
+        "牙克石（五九煤田）",
+        "伊敏矿区（总规）",
+        "伊宁矿区北区",
+        "伊泰煤矿（露天）"
+      ],
+      "subject_variants": [
+        "煤矸石"
+      ],
+      "object_variants": [
+        "综合利用"
+      ],
+      "mechanical_desc": "样例库 13 份报告共现：煤矸石（waste_stream）配 综合利用（treatment_measure）（utilized_by）——处置规律（B 库蒸馏，跨报告支持度 13）"
+    },
+    {
+      "pattern_id": "dp-94772a3a29",
+      "pattern_type": "处置",
+      "pair": "洗选矸石（waste_stream）→ 井下充填（treatment_measure）",
+      "predicate": "disposed_by",
+      "support": 12,
+      "occurrence": 4,
+      "total_samples": 22,
+      "source_reports": [
+        "巴拉素",
+        "高头窑矿区",
+        "郭家台二号矿井",
+        "鹤岗矿区",
+        "横城矿区",
+        "华亭矿区",
+        "九龙川矿井",
+        "灵台矿区",
+        "纳林希里矿区",
+        "牙克石（五九煤田）",
+        "伊宁矿区北区",
+        "月儿湾矿井"
+      ],
+      "subject_variants": [
+        "洗选矸石"
+      ],
+      "object_variants": [
+        "井下充填",
+        "井下充填采空区",
+        "井下注浆充填",
+        "井下邻位采空区注浆充填"
+      ],
+      "mechanical_desc": "样例库 12 份报告共现：洗选矸石（waste_stream）配 井下充填（treatment_measure）（disposed_by）——处置规律（B 库蒸馏，跨报告支持度 12）"
+    },
+    {
+      "pattern_id": "dp-de48670750",
+      "pattern_type": "处置",
+      "pair": "掘进矸石（waste_stream）→ 井下充填（treatment_measure）",
+      "predicate": "utilized_by",
+      "support": 12,
+      "occurrence": 3,
+      "total_samples": 22,
+      "source_reports": [
+        "郭家台二号矿井",
+        "鹤岗矿区",
+        "横城矿区",
+        "华亭矿区",
+        "九龙川矿井",
+        "灵台矿区",
+        "纳林希里矿区",
+        "淖毛湖矿区",
+        "三塘湖矿区",
+        "牙克石（五九煤田）",
+        "伊宁矿区北区",
+        "月儿湾矿井"
+      ],
+      "subject_variants": [
+        "掘进矸石"
+      ],
+      "object_variants": [
+        "井下充填",
+        "充填废弃巷道",
+        "回填井下废弃巷道"
+      ],
+      "mechanical_desc": "样例库 12 份报告共现：掘进矸石（waste_stream）配 井下充填（treatment_measure）（utilized_by）——处置规律（B 库蒸馏，跨报告支持度 12）"
+    },
+    {
+      "pattern_id": "dp-b43f016784",
+      "pattern_type": "处置",
+      "pair": "洗选矸石（waste_stream）→ 井下充填（measure_process_concept）",
+      "predicate": "utilized_by",
+      "support": 12,
+      "occurrence": 2,
+      "total_samples": 22,
+      "source_reports": [
+        "巴拉素",
+        "高头窑矿区",
+        "郭家台二号矿井",
+        "鹤岗矿区",
+        "横城矿区",
+        "华亭矿区",
+        "九龙川矿井",
+        "灵台矿区",
+        "纳林希里矿区",
+        "牙克石（五九煤田）",
+        "伊宁矿区北区",
+        "月儿湾矿井"
+      ],
+      "subject_variants": [
+        "洗选矸石"
+      ],
+      "object_variants": [
+        "井下充填",
+        "井下充填采空区"
+      ],
+      "mechanical_desc": "样例库 12 份报告共现：洗选矸石（waste_stream）配 井下充填（measure_process_concept）（utilized_by）——处置规律（B 库蒸馏，跨报告支持度 12）"
+    },
+    {
+      "pattern_id": "dp-63e0eb8084",
+      "pattern_type": "处置",
+      "pair": "煤矸石（waste_stream）→ 沉陷区充填（treatment_measure）",
+      "predicate": "utilized_by",
+      "support": 12,
+      "occurrence": 2,
+      "total_samples": 22,
+      "source_reports": [
+        "高头窑矿区",
+        "郭家台二号矿井",
+        "鹤岗矿区",
+        "华亭矿区",
+        "灵台矿区",
+        "淖毛湖矿区",
+        "三塘湖矿区",
+        "韦州矿区",
+        "牙克石（五九煤田）",
+        "伊敏矿区（总规）",
+        "伊宁矿区北区",
+        "伊泰煤矿（露天）"
+      ],
+      "subject_variants": [
+        "煤矸石"
+      ],
+      "object_variants": [
+        "塌陷土地复垦",
+        "沉陷区回填"
+      ],
+      "mechanical_desc": "样例库 12 份报告共现：煤矸石（waste_stream）配 沉陷区充填（treatment_measure）（utilized_by）——处置规律（B 库蒸馏，跨报告支持度 12）"
+    },
+    {
+      "pattern_id": "dp-b08a283de7",
+      "pattern_type": "处置",
+      "pair": "煤矸石（waste_stream）→ 内排土场（engineering_site）",
+      "predicate": "disposed_by",
+      "support": 12,
+      "occurrence": 1,
+      "total_samples": 22,
+      "source_reports": [
+        "高头窑矿区",
+        "郭家台二号矿井",
+        "鹤岗矿区",
+        "华亭矿区",
+        "灵台矿区",
+        "淖毛湖矿区",
+        "三塘湖矿区",
+        "韦州矿区",
+        "牙克石（五九煤田）",
+        "伊敏矿区（总规）",
+        "伊宁矿区北区",
+        "伊泰煤矿（露天）"
+      ],
+      "subject_variants": [
+        "煤矸石"
+      ],
+      "object_variants": [
+        "内排土场"
+      ],
+      "mechanical_desc": "样例库 12 份报告共现：煤矸石（waste_stream）配 内排土场（engineering_site）（disposed_by）——处置规律（B 库蒸馏，跨报告支持度 12）"
+    },
+    {
+      "pattern_id": "dp-545bd9946b",
+      "pattern_type": "处置",
+      "pair": "煤矸石（waste_stream）→ 回填沉陷坑（treatment_measure）",
+      "predicate": "disposed_by",
+      "support": 12,
+      "occurrence": 1,
+      "total_samples": 22,
+      "source_reports": [
+        "高头窑矿区",
+        "郭家台二号矿井",
+        "鹤岗矿区",
+        "华亭矿区",
+        "灵台矿区",
+        "淖毛湖矿区",
+        "三塘湖矿区",
+        "韦州矿区",
+        "牙克石（五九煤田）",
+        "伊敏矿区（总规）",
+        "伊宁矿区北区",
+        "伊泰煤矿（露天）"
+      ],
+      "subject_variants": [
+        "煤矸石"
+      ],
+      "object_variants": [
+        "回填沉陷坑"
+      ],
+      "mechanical_desc": "样例库 12 份报告共现：煤矸石（waste_stream）配 回填沉陷坑（treatment_measure）（disposed_by）——处置规律（B 库蒸馏，跨报告支持度 12）"
+    },
+    {
+      "pattern_id": "dp-aa312e6ebe",
+      "pattern_type": "处置",
+      "pair": "煤矸石（waste_stream）→ 场地平整（treatment_measure）",
+      "predicate": "utilized_by",
+      "support": 12,
+      "occurrence": 1,
+      "total_samples": 22,
+      "source_reports": [
+        "高头窑矿区",
+        "郭家台二号矿井",
+        "鹤岗矿区",
+        "华亭矿区",
+        "灵台矿区",
+        "淖毛湖矿区",
+        "三塘湖矿区",
+        "韦州矿区",
+        "牙克石（五九煤田）",
+        "伊敏矿区（总规）",
+        "伊宁矿区北区",
+        "伊泰煤矿（露天）"
+      ],
+      "subject_variants": [
+        "煤矸石"
+      ],
+      "object_variants": [
+        "平整工业场地"
+      ],
+      "mechanical_desc": "样例库 12 份报告共现：煤矸石（waste_stream）配 场地平整（treatment_measure）（utilized_by）——处置规律（B 库蒸馏，跨报告支持度 12）"
+    },
+    {
+      "pattern_id": "dp-779fec8f9f",
+      "pattern_type": "处置",
+      "pair": "煤矸石（waste_stream）→ 填作路基（treatment_measure）",
+      "predicate": "utilized_by",
+      "support": 12,
+      "occurrence": 1,
+      "total_samples": 22,
+      "source_reports": [
+        "高头窑矿区",
+        "郭家台二号矿井",
+        "鹤岗矿区",
+        "华亭矿区",
+        "灵台矿区",
+        "淖毛湖矿区",
+        "三塘湖矿区",
+        "韦州矿区",
+        "牙克石（五九煤田）",
+        "伊敏矿区（总规）",
+        "伊宁矿区北区",
+        "伊泰煤矿（露天）"
+      ],
+      "subject_variants": [
+        "煤矸石"
+      ],
+      "object_variants": [
+        "填作路基"
+      ],
+      "mechanical_desc": "样例库 12 份报告共现：煤矸石（waste_stream）配 填作路基（treatment_measure）（utilized_by）——处置规律（B 库蒸馏，跨报告支持度 12）"
+    },
+    {
+      "pattern_id": "dp-1f4f032ad3",
+      "pattern_type": "处置",
+      "pair": "煤矸石（waste_stream）→ 填作铁路路基（treatment_measure）",
+      "predicate": "utilized_by",
+      "support": 12,
+      "occurrence": 1,
+      "total_samples": 22,
+      "source_reports": [
+        "高头窑矿区",
+        "郭家台二号矿井",
+        "鹤岗矿区",
+        "华亭矿区",
+        "灵台矿区",
+        "淖毛湖矿区",
+        "三塘湖矿区",
+        "韦州矿区",
+        "牙克石（五九煤田）",
+        "伊敏矿区（总规）",
+        "伊宁矿区北区",
+        "伊泰煤矿（露天）"
+      ],
+      "subject_variants": [
+        "煤矸石"
+      ],
+      "object_variants": [
+        "填作铁路路基"
+      ],
+      "mechanical_desc": "样例库 12 份报告共现：煤矸石（waste_stream）配 填作铁路路基（treatment_measure）（utilized_by）——处置规律（B 库蒸馏，跨报告支持度 12）"
+    },
+    {
+      "pattern_id": "dp-4dc81e9379",
+      "pattern_type": "处置",
+      "pair": "煤矸石（waste_stream）→ 排土场（engineering_site）",
+      "predicate": "disposed_by",
+      "support": 12,
+      "occurrence": 1,
+      "total_samples": 22,
+      "source_reports": [
+        "高头窑矿区",
+        "郭家台二号矿井",
+        "鹤岗矿区",
+        "华亭矿区",
+        "灵台矿区",
+        "淖毛湖矿区",
+        "三塘湖矿区",
+        "韦州矿区",
+        "牙克石（五九煤田）",
+        "伊敏矿区（总规）",
+        "伊宁矿区北区",
+        "伊泰煤矿（露天）"
+      ],
+      "subject_variants": [
+        "煤矸石"
+      ],
+      "object_variants": [
+        "排土场"
+      ],
+      "mechanical_desc": "样例库 12 份报告共现：煤矸石（waste_stream）配 排土场（engineering_site）（disposed_by）——处置规律（B 库蒸馏，跨报告支持度 12）"
+    },
+    {
+      "pattern_id": "dp-acbd383768",
+      "pattern_type": "处置",
+      "pair": "煤矸石（waste_stream）→ 沉陷区充填（treatment_measure）",
+      "predicate": "disposed_by",
+      "support": 12,
+      "occurrence": 1,
+      "total_samples": 22,
+      "source_reports": [
+        "高头窑矿区",
+        "郭家台二号矿井",
+        "鹤岗矿区",
+        "华亭矿区",
+        "灵台矿区",
+        "淖毛湖矿区",
+        "三塘湖矿区",
+        "韦州矿区",
+        "牙克石（五九煤田）",
+        "伊敏矿区（总规）",
+        "伊宁矿区北区",
+        "伊泰煤矿（露天）"
+      ],
+      "subject_variants": [
+        "煤矸石"
+      ],
+      "object_variants": [
+        "回填矿区洼地"
+      ],
+      "mechanical_desc": "样例库 12 份报告共现：煤矸石（waste_stream）配 沉陷区充填（treatment_measure）（disposed_by）——处置规律（B 库蒸馏，跨报告支持度 12）"
+    },
+    {
+      "pattern_id": "dp-6bd0950822",
+      "pattern_type": "处置",
+      "pair": "煤矸石（waste_stream）→ 煤矸石制砖（treatment_measure）",
+      "predicate": "utilized_by",
+      "support": 12,
+      "occurrence": 1,
+      "total_samples": 22,
+      "source_reports": [
+        "高头窑矿区",
+        "郭家台二号矿井",
+        "鹤岗矿区",
+        "华亭矿区",
+        "灵台矿区",
+        "淖毛湖矿区",
+        "三塘湖矿区",
+        "韦州矿区",
+        "牙克石（五九煤田）",
+        "伊敏矿区（总规）",
+        "伊宁矿区北区",
+        "伊泰煤矿（露天）"
+      ],
+      "subject_variants": [
+        "煤矸石"
+      ],
+      "object_variants": [
+        "煤矸石制砖"
+      ],
+      "mechanical_desc": "样例库 12 份报告共现：煤矸石（waste_stream）配 煤矸石制砖（treatment_measure）（utilized_by）——处置规律（B 库蒸馏，跨报告支持度 12）"
+    },
+    {
+      "pattern_id": "dp-7251ed734b",
+      "pattern_type": "处置",
+      "pair": "煤矸石（waste_stream）→ 筑路基、回填沉陷坑、回填露天采坑（measure_process_concept）",
+      "predicate": "utilized_by",
+      "support": 12,
+      "occurrence": 1,
+      "total_samples": 22,
+      "source_reports": [
+        "高头窑矿区",
+        "郭家台二号矿井",
+        "鹤岗矿区",
+        "华亭矿区",
+        "灵台矿区",
+        "淖毛湖矿区",
+        "三塘湖矿区",
+        "韦州矿区",
+        "牙克石（五九煤田）",
+        "伊敏矿区（总规）",
+        "伊宁矿区北区",
+        "伊泰煤矿（露天）"
+      ],
+      "subject_variants": [
+        "煤矸石"
+      ],
+      "object_variants": [
+        "筑路基、回填沉陷坑、回填露天采坑"
+      ],
+      "mechanical_desc": "样例库 12 份报告共现：煤矸石（waste_stream）配 筑路基、回填沉陷坑、回填露天采坑（measure_process_concept）（utilized_by）——处置规律（B 库蒸馏，跨报告支持度 12）"
+    },
+    {
+      "pattern_id": "dp-6e70ded8af",
+      "pattern_type": "处置",
+      "pair": "煤矸石（waste_stream）→ 综合利用电厂（treatment_measure）",
+      "predicate": "utilized_by",
+      "support": 12,
+      "occurrence": 1,
+      "total_samples": 22,
+      "source_reports": [
+        "高头窑矿区",
+        "郭家台二号矿井",
+        "鹤岗矿区",
+        "华亭矿区",
+        "灵台矿区",
+        "淖毛湖矿区",
+        "三塘湖矿区",
+        "韦州矿区",
+        "牙克石（五九煤田）",
+        "伊敏矿区（总规）",
+        "伊宁矿区北区",
+        "伊泰煤矿（露天）"
+      ],
+      "subject_variants": [
+        "煤矸石"
+      ],
+      "object_variants": [
+        "综合利用电厂"
+      ],
+      "mechanical_desc": "样例库 12 份报告共现：煤矸石（waste_stream）配 综合利用电厂（treatment_measure）（utilized_by）——处置规律（B 库蒸馏，跨报告支持度 12）"
+    },
+    {
+      "pattern_id": "dp-09568dfa1a",
+      "pattern_type": "处置",
+      "pair": "煤矸石（waste_stream）→ 采坑回填（engineering_site）",
+      "predicate": "disposed_by",
+      "support": 12,
+      "occurrence": 1,
+      "total_samples": 22,
+      "source_reports": [
+        "高头窑矿区",
+        "郭家台二号矿井",
+        "鹤岗矿区",
+        "华亭矿区",
+        "灵台矿区",
+        "淖毛湖矿区",
+        "三塘湖矿区",
+        "韦州矿区",
+        "牙克石（五九煤田）",
+        "伊敏矿区（总规）",
+        "伊宁矿区北区",
+        "伊泰煤矿（露天）"
+      ],
+      "subject_variants": [
+        "煤矸石"
+      ],
+      "object_variants": [
+        "新岭露天煤矿采坑"
+      ],
+      "mechanical_desc": "样例库 12 份报告共现：煤矸石（waste_stream）配 采坑回填（engineering_site）（disposed_by）——处置规律（B 库蒸馏，跨报告支持度 12）"
+    },
+    {
+      "pattern_id": "dp-2ce56c72eb",
+      "pattern_type": "标准",
+      "pair": "矸石充填系统（treatment_measure）→ 《煤炭工业污染物排放标准》(gb20426-2006)（emission_standard）",
+      "predicate": "governed_by",
+      "support": 4,
+      "occurrence": 1,
+      "total_samples": 22,
+      "source_reports": [
+        "白音华二号露天矿",
+        "白音华三号露天矿",
+        "郭家台二号矿井",
+        "九龙川矿井"
+      ],
+      "subject_variants": [
+        "矸石充填系统"
+      ],
+      "object_variants": [
+        "《煤炭工业污染物排放标准》(gb20426-2006)"
+      ],
+      "mechanical_desc": "样例库 4 份报告共现：矸石充填系统（treatment_measure）配 《煤炭工业污染物排放标准》(gb20426-2006)（emission_standard）——标准规律（B 库蒸馏，跨报告支持度 4）"
+    },
+    {
+      "pattern_id": "dp-7ce8121e2e",
+      "pattern_type": "标准",
+      "pair": "除尘设备（treatment_measure）→ 《煤炭工业污染物排放标准》(gb20426-2006)（emission_standard）",
+      "predicate": "governed_by",
+      "support": 3,
+      "occurrence": 1,
+      "total_samples": 22,
+      "source_reports": [
+        "白音华二号露天矿",
+        "白音华三号露天矿",
+        "郭家台二号矿井"
+      ],
+      "subject_variants": [
+        "除尘设备"
+      ],
+      "object_variants": [
+        "《煤炭工业污染物排放标准》(gb20426-2006)"
+      ],
+      "mechanical_desc": "样例库 3 份报告共现：除尘设备（treatment_measure）配 《煤炭工业污染物排放标准》(gb20426-2006)（emission_standard）——标准规律（B 库蒸馏，跨报告支持度 3）"
+    }
+  ]
+}
