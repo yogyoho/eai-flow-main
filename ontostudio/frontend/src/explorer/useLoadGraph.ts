@@ -690,8 +690,10 @@ export function useLoadGraph(options: UseLoadGraphOptions = {}) {
             weight: edge.weight,
             edgeType: edge.type,
             properties: edge.properties,
-            size: clamp(0.18, 0.22 + Math.sqrt(Math.max(Number(edge.weight) || 1, 1)) * 0.2, 0.88),
-            baseSize: clamp(0.18, 0.22 + Math.sqrt(Math.max(Number(edge.weight) || 1, 1)) * 0.2, 0.88),
+            // EAI-CUSTOM(2026-09-30): 原 0.88px 钳制使语义关系边在任何缩放/透明度下都低于人眼可见阈值
+            // （0.42px×0.30α 实测不可见）——上限提到 1.6px，配合 explorerDataSource 权重 25 得 ~1.2px。
+            size: clamp(0.5, 0.22 + Math.sqrt(Math.max(Number(edge.weight) || 1, 1)) * 0.2, 1.6),
+            baseSize: clamp(0.5, 0.22 + Math.sqrt(Math.max(Number(edge.weight) || 1, 1)) * 0.2, 1.6),
             color: GRAPH_THEME.palette.muted.edgeStructure,
             baseColor: GRAPH_THEME.palette.muted.edgeStructure,
             mutedColor: GRAPH_THEME.palette.muted.edgeOverview,

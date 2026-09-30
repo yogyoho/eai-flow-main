@@ -57,7 +57,8 @@ export function toExplorerEdge(edge: GraphEdge): ApiEdge {
     source: edge.source,
     target: edge.target,
     type: edge.type,
-    weight: 1,
+    // EAI-CUSTOM(2026-09-30): 权重 25 → 边宽 sqrt(25)*0.2+0.22 ≈ 1.22px——语义关系边必须肉眼可见
+    weight: 25,
     properties: {
       label: edge.label,
       // EAI-CUSTOM(2026-09-30 关系折叠边): flat 边携带关系行 id 供溯源；default 边无此字段
