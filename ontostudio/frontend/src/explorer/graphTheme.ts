@@ -429,7 +429,7 @@ export const GRAPH_THEME: GraphTheme = {
       nodeAlpha: 0.12,
       edgeOverview: "rgba(32, 45, 55, 0.035)",
       // EAI-CUSTOM(2026-09-30): 同上——默认视图(muted)边色 0.055 不可见，提至 0.30
-      edgeStructure: "rgba(70, 92, 112, 0.30)",
+      edgeStructure: "rgba(53, 76, 99, 0.45)",
       edgeInspection: "rgba(62, 84, 104, 0.075)",
       edgeFocus: "rgba(132, 178, 202, 0.26)",
     },
@@ -868,8 +868,10 @@ export const GRAPH_THEME: GraphTheme = {
       bridgeMaxSize: 0.7,
       // EAI-CUSTOM(2026-09-30 视觉调档): 0.45 全显在 4500 节点全景成 hairball——
       // 默认态降到 0.22（结构隐约可见），inspection（放大细看）0.30 保持清晰。
-      structureEdgeAlpha: 0.22,
-      inspectionEdgeAlpha: 0.3,
+      // EAI-CUSTOM(2026-09-30 视觉调档二): 0.22/0.3 在白底实测仍浅青难辨——放大(inspection)
+      // 是"看关系"的主场景提到 0.6，结构层 0.35。
+      structureEdgeAlpha: 0.35,
+      inspectionEdgeAlpha: 0.6,
     },
     // Staged rollout — set mode to "auto" to enable cross-community curve rendering.
     // Currently "off" so the canvas overlay layer is inactive in production.
