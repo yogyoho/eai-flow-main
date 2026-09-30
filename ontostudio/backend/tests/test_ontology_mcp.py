@@ -27,6 +27,12 @@ EXPECTED_TOOLS = {
     # 动作 id 与 registry 的一致性由 tests/test_actions_mcp.py 钉。
     "invoke_action",
     "review_entity",
+    # EIA 校验规则/写作消费通道（子项目 3, spec 2026-09-30 §6）：4 只读工具挂同一 server；
+    # 查询语义由 tests/test_eia_rules_mcp.py 钉。
+    "query_entity",
+    "check_consistency",
+    "get_writing_context",
+    "get_rule_violations",
 }
 
 

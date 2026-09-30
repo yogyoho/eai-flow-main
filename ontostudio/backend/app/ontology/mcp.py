@@ -113,6 +113,43 @@ _TOOLS_SPEC = [
             "required": ["pk", "decision"],
         },
     ),
+    # ---- EIA 校验规则 / 写作消费通道（子项目 3, spec 2026-09-30 §6；只读，走 sigma kernel 图）----
+    (
+        "query_entity",
+        "按名称/实体类型查询环评（EIA）图实体并带邻域关系（出/入边+对端名）。写作取材与跨章节核对入口。etype 如 waste_stream/sensitive_point/emission_point；name 支持子串。",
+        {
+            "type": "object",
+            "properties": {
+                "name": {"type": "string", "description": "实体名子串（与 etype 至少给一个）"},
+                "etype": {"type": "string", "description": "实体类型（registry eia etype，如 pollution_source）"},
+                "limit": {"type": "integer", "description": "返回实体数上限（默认 10，最大 50）"},
+            },
+            "required": [],
+        },
+    ),
+    (
+        "check_consistency",
+        "对 EIA 图全量跑 12 条校验规则（矸石闭合/敏感点防护/监测覆盖/限值适配等），返回各规则违规计数+样例消息+分级汇总。报告出稿前体检用。",
+        {"type": "object", "properties": {}, "required": []},
+    ),
+    (
+        "get_writing_context",
+        "取某实体的写作上下文：实体+邻域关系+关联阈值/条款/标准等约束实体的 attrs。写章节前注入核心，防跨章节数据打架。",
+        {"type": "object", "properties": {"entity_name": {"type": "string", "description": "实体名（精确优先，退化为子串）"}}, "required": ["entity_name"]},
+    ),
+    (
+        "get_rule_violations",
+        "取校验规则违规清单（完整变量绑定+message）。可按 severity=error|warn|info 或 rule_id 过滤；只返回有违规的规则。",
+        {
+            "type": "object",
+            "properties": {
+                "severity": {"type": "string", "enum": ["error", "warn", "info"]},
+                "rule_id": {"type": "string", "description": "如 rule_gangue_closure"},
+                "limit": {"type": "integer", "description": "每规则违规返回上限（默认 50，最大 1000）"},
+            },
+            "required": [],
+        },
+    ),
 ]
 
 TOOLS = [Tool(name=n, description=d, inputSchema=s) for n, d, s in _TOOLS_SPEC]
@@ -267,6 +304,180 @@ async def _review_entity(arguments: dict) -> list[TextContent]:
         return _err(e)
 
 
+# ── EIA 消费通道 handlers（子项目 3，只读，走 sigma kernel 图）──
+
+
+def _kernel_store():
+    from app.ontology.kernel.service import get_kernel
+
+    return get_kernel().store
+
+
+_EIA_NS = "https://ontology.eai-flow.com/eia#"
+_ASSERTED = "graph:asserted"
+# 写作上下文的约束类邻居（阈值/条款/标准/规划/措施规格——attrs 承载裁决数值）
+_CONSTRAINT_ETYPES = ("standard_threshold", "regulation_clause", "emission_standard", "planning_scheme", "measure_spec")
+
+
+def _etype_class_map_eia() -> dict[str, str]:
+    """etype → 实体类 IRI（如 waste_stream → eia:WasteStream）。"""
+    from app.ontology.kernel.compile import collect_vocabularies
+    from app.ontology.kernel.loader import etype_class_map
+    from app.ontology.registry import get_registry
+
+    registry = get_registry()
+    vocab = collect_vocabularies(registry)["eia"]
+    return {etype: str(vocab.class_ref(cls)) for etype, cls in etype_class_map(registry, "eia").items()}
+
+
+def _class_etype_map() -> dict[str, str]:
+    return {cls: etype for etype, cls in _etype_class_map_eia().items()}
+
+
+def _local(iri: str, ns: str) -> str:
+    return iri[len(ns):] if iri.startswith(ns) else iri
+
+
+def _names_for(store, iris: list[str]) -> dict[str, str]:  # noqa: ANN001 - OxStore
+    """一批 IRI → norm_name（邻域对端名回填，单查询）。"""
+    if not iris:
+        return {}
+    uniq = list(dict.fromkeys(iris))[:200]
+    lst = ", ".join(f"<{i}>" for i in uniq)
+    rows = store.query(f"SELECT ?e ?n WHERE {{ GRAPH <{_ASSERTED}> {{ ?e <{_EIA_NS}attr/norm_name> ?n . FILTER(?e IN ({lst})) }} }}")
+    return {r["e"]: r["n"] for r in rows if r.get("n") is not None}
+
+
+def _neighborhood(store, iri: str, cap: int = 20) -> dict:  # noqa: ANN001 - OxStore
+    """实体出/入关系邻域（谓词取局部名，对端回填名）。"""
+    pred_ns = _EIA_NS + "predicate/"
+    out_rows = [r for r in store.query(f"SELECT ?p ?o WHERE {{ GRAPH <{_ASSERTED}> {{ <{iri}> ?p ?o }} }}") if isinstance(r.get("p"), str) and r["p"].startswith(pred_ns)][:cap]
+    in_rows = [r for r in store.query(f"SELECT ?s ?p WHERE {{ GRAPH <{_ASSERTED}> {{ ?s ?p <{iri}> }} }}") if isinstance(r.get("p"), str) and r["p"].startswith(pred_ns)][:cap]
+    names = _names_for(store, [r["o"] for r in out_rows] + [r["s"] for r in in_rows])
+    return {
+        "out": [{"predicate": _local(r["p"], pred_ns), "target": r["o"], "target_name": names.get(r["o"])} for r in out_rows],
+        "in": [{"predicate": _local(r["p"], pred_ns), "source": r["s"], "source_name": names.get(r["s"])} for r in in_rows],
+    }
+
+
+def _resolve_entities(store, name: str, limit: int = 5) -> list[dict]:  # noqa: ANN001 - OxStore
+    """按名解析实体：精确匹配优先，退化为子串。"""
+    rows = store.query(
+        f"SELECT ?e ?name WHERE {{ GRAPH <{_ASSERTED}> {{ ?e <{_EIA_NS}attr/norm_name> ?name . FILTER(CONTAINS(?name, {json.dumps(name, ensure_ascii=False)})) }} }} LIMIT {int(limit)}"
+    )
+    exact = [r for r in rows if r.get("name") == name]
+    return exact + [r for r in rows if r.get("name") != name]
+
+
+async def _query_entity(a: dict) -> list[TextContent]:
+    name = (a.get("name") or "").strip()
+    etype = (a.get("etype") or "").strip()
+    if not name and not etype:
+        return _err(ValueError("name 与 etype 至少给一个"))
+    limit = max(1, min(int(a.get("limit", 10)), 50))
+    class_map = _etype_class_map_eia()
+    type_filter = ""
+    if etype:
+        cls = class_map.get(etype)
+        if cls is None:
+            return _err(ValueError(f"未知 etype: {etype}（可用示例: {sorted(class_map)[:12]}…）"))
+        type_filter = f"FILTER(?cls = <{cls}>)"
+    name_filter = f"FILTER(CONTAINS(?name, {json.dumps(name, ensure_ascii=False)}))" if name else ""
+    where = f"?e a ?cls ; <{_EIA_NS}attr/norm_name> ?name . {type_filter} {name_filter}".strip()
+    rows = _kernel_store().query(f"SELECT DISTINCT ?e ?name ?cls WHERE {{ GRAPH <{_ASSERTED}> {{ {where} }} }} LIMIT {limit}")
+    etype_of = _class_etype_map()
+    store = _kernel_store()
+    entities = []
+    for r in rows:
+        iri = r["e"]
+        entities.append({"iri": iri, "name": r.get("name"), "etype": etype_of.get(r.get("cls") or ""), "neighborhood": _neighborhood(store, iri)})
+    return _ok({"success": True, "count": len(entities), "entities": entities})
+
+
+async def _check_consistency(_: dict) -> list[TextContent]:
+    """同 REST /rules/execute 全量执行，MCP 侧压缩为计数+样例（消息前 3 条/规则）。"""
+    from app.ontology.rules_executor import DEFAULT_VIOLATION_LIMIT, execute_rules
+
+    out = execute_rules(_kernel_store(), limit=DEFAULT_VIOLATION_LIMIT)
+    by_severity: dict[str, int] = {}
+    for r in out["results"]:
+        by_severity[r["severity"]] = by_severity.get(r["severity"], 0) + r["violation_count"]
+    return _ok(
+        {
+            "success": True,
+            "executed_at": out["executed_at"],
+            "total_violations": out["total_violations"],
+            "by_severity": by_severity,
+            "results": [
+                {"rule_id": r["rule_id"], "name": r["name"], "severity": r["severity"], "violation_count": r["violation_count"], "samples": [v["message"] for v in r["violations"][:3]]}
+                for r in out["results"]
+            ],
+        }
+    )
+
+
+async def _get_writing_context(a: dict) -> list[TextContent]:
+    entity_name = (a.get("entity_name") or "").strip()
+    if not entity_name:
+        return _err(ValueError("entity_name 必填"))
+    store = _kernel_store()
+    found = _resolve_entities(store, entity_name)
+    if not found:
+        return _ok({"success": False, "message": f"图中未找到实体「{entity_name}」"})
+    iri = found[0]["e"]
+    constraint_classes = [c for et, c in _etype_class_map_eia().items() if et in _CONSTRAINT_ETYPES]
+    neighborhood = _neighborhood(store, iri, cap=30)
+    nb_iris = [e["target"] for e in neighborhood["out"]] + [e["source"] for e in neighborhood["in"]]
+    # 2 跳出边也纳入约束扫描（敏感点→措施→阈值：裁决数值常隔一层措施）
+    hop2_iris: list[str] = []
+    if nb_iris:
+        pred_ns = _EIA_NS + "predicate/"
+        lst = ", ".join(f"<{i}>" for i in list(dict.fromkeys(nb_iris))[:200])
+        hop2_iris = [r["o"] for r in store.query(f"SELECT ?o WHERE {{ GRAPH <{_ASSERTED}> {{ ?n ?p ?o . FILTER(?n IN ({lst}) && STRSTARTS(STR(?p), \"{pred_ns}\")) }} }}") if r.get("o")][:100]
+    all_iris = list(dict.fromkeys([iri, *nb_iris, *hop2_iris]))[:300]
+    cls_rows = store.query("SELECT ?e ?cls WHERE { GRAPH <" + _ASSERTED + "> { ?e a ?cls . FILTER(?e IN (" + ", ".join(f"<{i}>" for i in all_iris) + ")) } }")
+    cls_of = {r["e"]: r.get("cls") for r in cls_rows}
+    etype_of = _class_etype_map()
+    constraints = []
+    for nb in dict.fromkeys(nb_iris + hop2_iris):
+        if cls_of.get(nb) not in constraint_classes:
+            continue
+        attr_ns_str = _EIA_NS + "attr/"
+        attr_rows = store.query(f'SELECT ?p ?o WHERE {{ GRAPH <{_ASSERTED}> {{ <{nb}> ?p ?o . FILTER(STRSTARTS(STR(?p), "{attr_ns_str}")) }} }}')
+        attrs = {_local(r["p"], _EIA_NS + "attr/"): r["o"] for r in attr_rows}
+        constraints.append({"iri": nb, "etype": etype_of.get(cls_of.get(nb) or ""), "attrs": attrs})
+    names = _names_for(store, nb_iris)
+    return _ok(
+        {
+            "success": True,
+            "entity": {"iri": iri, "name": found[0].get("name"), "etype": etype_of.get(cls_of.get(iri) or "")},
+            "aliases_considered": [r.get("name") for r in found[:5]],
+            "neighborhood": neighborhood,
+            "neighbor_names": names,
+            "constraints": constraints,
+            "hint": "写前核对 constraints 中的阈值/条款数值与邻域关系方向；跨章节同名实体先查 rule_entity_naming 违规。",
+        }
+    )
+
+
+async def _get_rule_violations(a: dict) -> list[TextContent]:
+    from app.ontology.rules_executor import execute_rules
+
+    limit = max(1, min(int(a.get("limit", 50)), 1000))
+    out = execute_rules(_kernel_store(), ids=[a["rule_id"]] if a.get("rule_id") else None, limit=limit)
+    severity = a.get("severity")
+    results = [r for r in out["results"] if r["violation_count"] > 0 and (not severity or r["severity"] == severity)]
+    return _ok(
+        {
+            "success": True,
+            "executed_at": out["executed_at"],
+            "total_violations": out["total_violations"],
+            "matching_violations": sum(r["violation_count"] for r in results),
+            "results": results,
+        }
+    )
+
+
 server = Server("ontology")
 
 
@@ -288,6 +499,10 @@ async def call_tool(name: str, arguments: dict):
         "ontology_reason": _ontology_reason,
         "invoke_action": _invoke_action,
         "review_entity": _review_entity,
+        "query_entity": _query_entity,
+        "check_consistency": _check_consistency,
+        "get_writing_context": _get_writing_context,
+        "get_rule_violations": _get_rule_violations,
     }
     handler = handlers.get(name)
     if handler is None:

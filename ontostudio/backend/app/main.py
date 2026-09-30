@@ -33,6 +33,7 @@ from app.ontology.formal import router as formal_router
 from app.ontology.mcp import server as ontology_mcp_server
 from app.ontology.registry_content import router as registry_content_router
 from app.ontology.routers import router as ontology_router
+from app.ontology.rules_executor import router as rules_router
 
 _DEFAULT_CORS_ORIGINS = "http://localhost:2026,http://localhost:3010"
 
@@ -130,6 +131,7 @@ def create_app() -> FastAPI:
     app.include_router(ontology_router)
     app.include_router(registry_content_router)
     app.include_router(formal_router)
+    app.include_router(rules_router)
     app.include_router(doc_graph_router)
 
     # MCP streamable-http 双端点（Route 精确匹配; harness 条目 url 即此路径, 无尾斜杠）

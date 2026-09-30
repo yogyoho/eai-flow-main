@@ -1,0 +1,252 @@
+# 煤炭环评（EIA）校验规则集——12 条 SPARQL 规则（子项目 3，spec 2026-09-30 §3/§4）
+#
+# 设计: docs/superpowers/specs/2026-09-30-eia-rules-mcp-design.md
+# 执行: app/ontology/rules_executor.py（对 sigma kernel named graph 逐条 SELECT，违规=结果行）
+# 图约定（与 scripts/eia_schema_mining/cq/*.rq 一致）:
+#   断言边在 <graph:asserted>；派生结论在 <graph:derived:chain_*>（先跑推理 /rules/execute refresh=true）
+#   eia:  实体类型 <https://ontology.eai-flow.com/eia#<Class>>
+#   pred: 谓词     <https://ontology.eai-flow.com/eia#predicate/<name>>
+#   attr: 属性     <https://ontology.eai-flow.com/eia#attr/<key>>（值一律纯字符串字面量，数值比较须 xsd:decimal 转型）
+# 数据未抽取的规则空转（返回 0 违规，无害）——每条 data_requirements 标注数据依赖。
+# severity: error=报告不得带此缺陷出稿 | warn=出稿前应核查 | info=提示
+- id: rule_water_balance
+  name: 物料/水平衡闭合
+  severity: error
+  description: 矿井涌水量应与利用量+排放量闭合（容差 5%）——物料平衡是水平衡章节的自洽底线
+  data_requirements: mine 的 attr:water_inflow / attr:water_reuse / attr:water_discharge 数值（未抽取→空转）
+  sparql: |
+    PREFIX eia: <https://ontology.eai-flow.com/eia#>
+    PREFIX attr: <https://ontology.eai-flow.com/eia#attr/>
+    PREFIX xsd: <http://www.w3.org/2001/XMLSchema#>
+    SELECT ?mine ?mineName ?inflow ?reuse ?discharge WHERE {
+      GRAPH <graph:asserted> {
+        ?mine a eia:Mine ; attr:norm_name ?mineName ;
+              attr:water_inflow ?inflow ; attr:water_reuse ?reuse ; attr:water_discharge ?discharge .
+        FILTER (ABS(xsd:decimal(?inflow) - (xsd:decimal(?reuse) + xsd:decimal(?discharge))) > 0.05 * xsd:decimal(?inflow))
+      }
+    }
+  message_template: "矿井 {mineName} 水平衡不闭合：涌水量 {inflow} ≠ 利用量 {reuse} + 排放量 {discharge}（容差 5%）"
+
+- id: rule_prep_zero_discharge
+  name: 洗选废水零排放
+  severity: error
+  description: 选煤厂废水应闭路循环零外排——任何 drains_to 受纳介质的边即违反（GB 20426 闭路循环要求）
+  data_requirements: coal_prep_plant 的 drains_to 关系（当前图无选煤厂实例→空转）
+  sparql: |
+    PREFIX eia: <https://ontology.eai-flow.com/eia#>
+    PREFIX pred: <https://ontology.eai-flow.com/eia#predicate/>
+    PREFIX attr: <https://ontology.eai-flow.com/eia#attr/>
+    SELECT ?plant ?plantName ?medium ?mediumName WHERE {
+      GRAPH <graph:asserted> {
+        ?plant a eia:CoalPrepPlant ; attr:norm_name ?plantName ;
+               pred:drains_to ?medium .
+        ?medium a eia:ReceivingMedium .
+        OPTIONAL { ?medium attr:norm_name ?mediumName }
+      }
+    }
+  message_template: "选煤厂 {plantName} 废水外排至 {mediumName}——违反洗选废水闭路循环零排放要求"
+
+- id: rule_gangue_closure
+  name: 矸石去向闭合
+  severity: error
+  description: 每条固废流的产生源数应等于利用+处置去向数，不等即产生-利用-处置路径未闭合（CQ-04 升级）
+  data_requirements: waste_stream 的 generates_waste / utilized_by / disposed_by 关系（已抽取，首战实测 93 违规）
+  sparql: |
+    PREFIX eia: <https://ontology.eai-flow.com/eia#>
+    PREFIX pred: <https://ontology.eai-flow.com/eia#predicate/>
+    PREFIX attr: <https://ontology.eai-flow.com/eia#attr/>
+    SELECT ?ws ?wsName (COUNT(DISTINCT ?src) AS ?genN) (COUNT(DISTINCT ?dst) AS ?outN) WHERE {
+      GRAPH <graph:asserted> { ?ws a eia:WasteStream ; attr:norm_name ?wsName }
+      OPTIONAL { GRAPH <graph:asserted> { ?src pred:generates_waste ?ws } }
+      OPTIONAL {
+        GRAPH <graph:asserted> {
+          { ?ws pred:utilized_by ?dst } UNION { ?ws pred:disposed_by ?dst }
+        }
+      }
+    } GROUP BY ?ws ?wsName HAVING (COUNT(DISTINCT ?src) != COUNT(DISTINCT ?dst))
+  message_template: "矸石流 {wsName} 产生-利用-处置不闭合（产生源 {genN} vs 去向 {outN}）"
+
+- id: rule_series_efficiency
+  name: 串联效率一致性
+  severity: warn
+  description: 串联治理链各级效率乘积应与声明的总效率一致（偏差 >0.05 告警）
+  data_requirements: treated_by 串联链 + 各级 measure attr:efficiency + 源 attr:overall_efficiency（η 未抽取→空转）
+  sparql: |
+    PREFIX pred: <https://ontology.eai-flow.com/eia#predicate/>
+    PREFIX attr: <https://ontology.eai-flow.com/eia#attr/>
+    PREFIX xsd: <http://www.w3.org/2001/XMLSchema#>
+    SELECT ?src ?m1 ?m2 ?e1 ?e2 ?total WHERE {
+      GRAPH <graph:asserted> {
+        ?src pred:treated_by ?m1 .
+        ?m1 pred:treated_by ?m2 .
+        ?m1 attr:efficiency ?e1 .
+        ?m2 attr:efficiency ?e2 .
+        ?src attr:overall_efficiency ?total .
+        FILTER (ABS(xsd:decimal(?e1) * xsd:decimal(?e2) - xsd:decimal(?total)) > 0.05)
+      }
+    }
+  message_template: "串联治理链 {src}→{m1}→{m2} 效率不一致：各级 {e1}×{e2} 与总效率 {total} 偏差超 5 个百分点"
+
+- id: rule_limit_standard_fit
+  name: 限值适配（GB 20426 代 GB 8978）
+  severity: warn
+  description: 污染源仍执行 GB 8978 综合排放标准，而图中已有煤炭行业专属 GB 20426——限值应换用行业标
+  data_requirements: emission_standard 的 norm_name（含"8978"/"20426"）+ governed_by 关系（✅ 已抽取）
+  sparql: |
+    PREFIX eia: <https://ontology.eai-flow.com/eia#>
+    PREFIX pred: <https://ontology.eai-flow.com/eia#predicate/>
+    PREFIX attr: <https://ontology.eai-flow.com/eia#attr/>
+    SELECT ?src ?std ?stdName WHERE {
+      GRAPH <graph:asserted> {
+        ?src pred:governed_by ?std .
+        ?std a eia:EmissionStandard ; attr:norm_name ?stdName .
+        FILTER (CONTAINS(?stdName, "8978"))
+        FILTER EXISTS {
+          GRAPH <graph:asserted> {
+            ?newStd a eia:EmissionStandard ; attr:norm_name ?newName .
+            FILTER (CONTAINS(?newName, "20426"))
+          }
+        }
+      }
+    }
+  message_template: "污染源 {src} 仍执行 {stdName}——煤炭行业应换用 GB 20426（图中已有该标准）"
+
+- id: rule_mine_water_dual
+  name: 矿井水外排双门槛
+  severity: warn
+  description: 外排受纳水域的污染源应同时声明水量与含盐量（溶解性总固体）指标——双门槛缺一即告警
+  data_requirements: drains_to + receiving_medium 的 attr:medium 枚举 + 污染物 norm_name 含"盐"/"溶解性总固体"（介质枚举未抽取→空转）
+  sparql: |
+    PREFIX eia: <https://ontology.eai-flow.com/eia#>
+    PREFIX pred: <https://ontology.eai-flow.com/eia#predicate/>
+    PREFIX attr: <https://ontology.eai-flow.com/eia#attr/>
+    SELECT ?src ?medium ?mediumName WHERE {
+      GRAPH <graph:asserted> {
+        ?src a eia:PollutionSource ; pred:drains_to ?medium .
+        ?medium a eia:ReceivingMedium ; attr:norm_name ?mediumName ; attr:medium ?kind .
+        FILTER (CONTAINS(?kind, "水"))
+        FILTER NOT EXISTS {
+          GRAPH <graph:asserted> {
+            ?src pred:emitted_as ?salt .
+            ?salt attr:norm_name ?saltName .
+            FILTER (CONTAINS(?saltName, "盐") || CONTAINS(?saltName, "溶解性总固体"))
+          }
+        }
+      }
+    }
+  message_template: "外排源 {src} 排入 {mediumName} 但未声明含盐量/溶解性总固体指标——矿井水外排双门槛（水量+含盐量）覆盖缺失"
+
+- id: rule_gas_tier
+  name: 瓦斯分档生效裁决
+  severity: warn
+  description: 高瓦斯煤层应绑定瓦斯抽采约束；且规范版本按矿井建成时间裁决（旧井/新井适用版本不同）
+  data_requirements: coal_seam 的 attr:gas_grade + mine 的 attr:commission_date + constrained_by（建成时间未抽取→空转）
+  sparql: |
+    PREFIX eia: <https://ontology.eai-flow.com/eia#>
+    PREFIX pred: <https://ontology.eai-flow.com/eia#predicate/>
+    PREFIX attr: <https://ontology.eai-flow.com/eia#attr/>
+    SELECT ?seam ?seamName ?grade ?commissionDate WHERE {
+      GRAPH <graph:asserted> {
+        ?seam a eia:CoalSeam ; attr:norm_name ?seamName ; attr:gas_grade ?grade .
+        FILTER (CONTAINS(?grade, "高瓦斯"))
+        ?mine pred:mines ?seam .
+        ?mine attr:commission_date ?commissionDate .
+        FILTER NOT EXISTS { GRAPH <graph:asserted> { ?seam pred:constrained_by ?gasReq } }
+      }
+    }
+  message_template: "高瓦斯煤层 {seamName}（等级 {grade}，矿井建成 {commissionDate}）未绑定瓦斯抽采约束——分档规范版本需按建成时间裁决"
+
+- id: rule_subsidence_params
+  name: 沉陷七参数齐套
+  severity: error
+  description: 沉陷预测结果应齐套七参数（下沉系数/主要影响角正切/水平移动系数/开采影响传播角/拐点偏移距/充分采动角/表土层移动角），缺一即无法复核
+  data_requirements: impact_result(attrs.result_type=subsidence) 的 attr:subsidence_params 汇总串（七参数名均应出现；部分抽取）
+  sparql: |
+    PREFIX eia: <https://ontology.eai-flow.com/eia#>
+    PREFIX attr: <https://ontology.eai-flow.com/eia#attr/>
+    SELECT ?ir ?irName ?missing WHERE {
+      GRAPH <graph:asserted> {
+        ?ir a eia:ImpactResult ; attr:result_type "subsidence" ; attr:norm_name ?irName .
+      }
+      VALUES ?missing { "下沉系数" "主要影响角正切" "水平移动系数" "开采影响传播角" "拐点偏移距" "充分采动角" "表土层移动角" }
+      FILTER NOT EXISTS {
+        GRAPH <graph:asserted> {
+          ?ir attr:subsidence_params ?params .
+          FILTER (CONTAINS(?params, ?missing))
+        }
+      }
+    }
+  message_template: "沉陷结果 {irName} 缺参数【{missing}】——七参数不齐套无法复核预测"
+
+- id: rule_sensitive_coverage
+  name: 敏感目标防护齐套
+  severity: error
+  description: 每个敏感保护目标应有至少一条防护措施绑定（protected_by 出边缺失即无防护——CQ-9）
+  data_requirements: sensitive_point 的 protected_by 关系（✅ 已抽取，首战实测 273 违规）
+  sparql: |
+    PREFIX eia: <https://ontology.eai-flow.com/eia#>
+    PREFIX pred: <https://ontology.eai-flow.com/eia#predicate/>
+    PREFIX attr: <https://ontology.eai-flow.com/eia#attr/>
+    SELECT ?sp ?name WHERE {
+      GRAPH <graph:asserted> {
+        ?sp a eia:SensitivePoint ; attr:norm_name ?name .
+        FILTER NOT EXISTS { ?sp pred:protected_by ?measure }
+      }
+    }
+  message_template: "敏感目标 {name} 无任何防护措施绑定（protected_by 缺失）"
+
+- id: rule_emission_monitoring
+  name: 排放口监测覆盖
+  severity: warn
+  description: 排放口应被监测体系覆盖（污染源→治理→标准→监测三段链结论 covered_by_monitoring 缺失——CQ-5）
+  data_requirements: emitted_via 关系 + 推理产物 graph:derived:chain_covered_by_monitoring（✅ 已抽取，先跑推理，首战实测 7 违规）
+  sparql: |
+    PREFIX eia: <https://ontology.eai-flow.com/eia#>
+    PREFIX pred: <https://ontology.eai-flow.com/eia#predicate/>
+    PREFIX attr: <https://ontology.eai-flow.com/eia#attr/>
+    SELECT ?src ?srcName ?ep ?epName WHERE {
+      GRAPH <graph:asserted> {
+        ?src pred:emitted_via ?ep .
+        ?ep a eia:EmissionPoint .
+        OPTIONAL { ?src attr:norm_name ?srcName }
+        OPTIONAL { ?ep attr:norm_name ?epName }
+      }
+      FILTER NOT EXISTS {
+        GRAPH <graph:derived:chain_covered_by_monitoring> { ?src pred:covered_by_monitoring ?mon }
+      }
+    }
+  message_template: "排放口 {epName}（污染源 {srcName}）无监测覆盖——covered_by_monitoring 链结论缺失"
+
+- id: rule_planning_compliance
+  name: 规划符合性前置
+  severity: error
+  description: 井田应在报告中前置声明矿区总体规划符合性（complies_with 边缺失即未建立符合性结论）；图中无任何规划数据时不裁决
+  data_requirements: planning_scheme 实例存在 + mine_field 的 complies_with 关系（规划符合性边未抽取，图有 14 个规划实例→会实测）
+  sparql: |
+    PREFIX eia: <https://ontology.eai-flow.com/eia#>
+    PREFIX pred: <https://ontology.eai-flow.com/eia#predicate/>
+    PREFIX attr: <https://ontology.eai-flow.com/eia#attr/>
+    SELECT ?mf ?mfName WHERE {
+      GRAPH <graph:asserted> {
+        ?mf a eia:MineField ; attr:norm_name ?mfName .
+        FILTER EXISTS { GRAPH <graph:asserted> { ?ps a eia:PlanningScheme } }
+        FILTER NOT EXISTS { GRAPH <graph:asserted> { ?mf pred:complies_with ?anyPlan } }
+      }
+    }
+  message_template: "井田 {mfName} 未声明矿区总体规划符合性（complies_with 缺失）——符合性结论应前置"
+
+- id: rule_entity_naming
+  name: 跨章节实体一致
+  severity: warn
+  description: 同一归一名被多个实体使用（跨类型或跨章节重复）即命名不一致——写作时同一事物会被拆成多实体
+  data_requirements: attr:norm_name（✅ 已抽取，重复检测）
+  sparql: |
+    PREFIX attr: <https://ontology.eai-flow.com/eia#attr/>
+    SELECT ?name (COUNT(DISTINCT ?e) AS ?entityCount) (COUNT(DISTINCT ?cls) AS ?typeCount) (GROUP_CONCAT(DISTINCT ?localName; separator="|") AS ?types) WHERE {
+      GRAPH <graph:asserted> {
+        ?e attr:norm_name ?name ; a ?cls .
+        FILTER (STRSTARTS(STR(?cls), "https://ontology.eai-flow.com/eia#"))
+      }
+      BIND (STRAFTER(STR(?cls), "https://ontology.eai-flow.com/eia#") AS ?localName)
+    } GROUP BY ?name HAVING (COUNT(DISTINCT ?e) > 1 || COUNT(DISTINCT ?cls) > 1)
+  message_template: "归一名 {name} 被 {entityCount} 个实体使用（类型 {types}）——跨章节实体命名不一致，写作前应合并"
