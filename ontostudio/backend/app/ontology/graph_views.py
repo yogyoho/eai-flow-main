@@ -9,6 +9,9 @@ EAI-CUSTOM(2026-09-12, plan Task1): 设计 docs/superpowers/specs/2026-09-12-ont
 - 节点 = {"id", "type", "label", "properties"}；id = "<api_name>:<pk>"，label = 首个非空 searchable
   属性值，回退 pk 值。properties 直接透出 engine 序列化行（hidden 列已在引擎层剔除）。
 - 边 = {"source", "target", "type", "label"}；stub（enabled:false）链接不产生边。
+- EAI-CUSTOM(2026-09-30 关系折叠边): edges 另有 mode="flat" 折叠投影——关系行直接投影为
+  实体—谓词—实体 带标签连线（source/target=实体节点 id、type=label=谓词值、relation_pk=行 id），
+  画布上关系以连线呈现；缺省 default 模式行为不变，见 _flat_edges_page。
 - 排水: 逐类型翻页取尽后原地前进，同一响应内跨类型衔接；末页 next_cursor=None。
 
 实现要点（对计划草稿的重写，理由见各函数 docstring）:
@@ -193,25 +196,14 @@ async def nodes_page(reg: Any, engine: Any, cursor: str | None, limit: int, incl
 # ---------- 边投影 ----------
 
 
-async def edges_page(reg: Any, engine: Any, cursor: str | None, limit: int, include_mentions: bool = False, domain: str | None = None) -> dict[str, Any]:
-    """全部 enabled 链接实例投影（逐链接排水；stub 不进入迭代，天然不产生边）。
+def _ordered_links(reg: Any, include_mentions: bool) -> list[Any]:
+    """参与边投影的 enabled 链接序（default/flat 两模式共用；自 edges_page 提取，语义逐字节不变）。
 
-    游标复用同款编解码，type_idx 表链接序号、offset 表该链接内已发出的边数。每次对当前链接
-    以 LIMIT capacity+1 OFFSET offset 探测：有富余 → 停留本链接并推进 offset；无富余 → 取尽并前进。
-    SQL 固定 ORDER BY 两侧 pk，保证 OFFSET 切片跨响应稳定。
-
-    EAI-CUSTOM(2026-09-29 图谱投影域过滤): domain 非 None 时，链接两端声明了 filterable
-    domain 属性的一侧加 ``表.domain = :gd`` 行域守卫（如 relation_subject 的实体端
-    dg_entities 有域列、关系端 dg_relations 无域列则只守实体端）——与节点侧"有域列才裁剪"
-    同一语义。缺省（None）行为逐字节不变。
+    EAI-CUSTOM(2026-09-27 双透镜去重): 指向让位透镜的链接不产生边（同一 FK 的域透镜
+    版本）；同 FK 签名的链接只保留 api_name 序首个——边与节点同规则去重。
+    EAI-CUSTOM(2026-09-29): 与 nodes 同规则排除 mention 链接——mention 节点默认不在场，
+    保留 mention 边会成孤端；include_mentions=True 与节点同步恢复全集。
     """
-    pos = decode_cursor(cursor)
-    if pos is None:
-        pos = {"type_idx": 0, "offset": 0}
-    # EAI-CUSTOM(2026-09-27 双透镜去重): 指向让位透镜的链接不产生边（同一 FK 的域透镜
-    # 版本）；同 FK 签名的链接只保留 api_name 序首个——边与节点同规则去重。
-    # EAI-CUSTOM(2026-09-29): 与 nodes 同规则排除 mention 链接——mention 节点默认不在场，
-    # 保留 mention 边会成孤端；include_mentions=True 与节点同步恢复全集。
     _, lens = projection_order(reg)
     mentions = frozenset() if include_mentions else _MENTION_TYPES
     ordered_raw = sorted(
@@ -234,6 +226,33 @@ async def edges_page(reg: Any, engine: Any, cursor: str | None, limit: int, incl
             continue
         seen_sig.add(sig)
         ordered.append(lt)
+    return ordered
+
+
+async def edges_page(reg: Any, engine: Any, cursor: str | None, limit: int, include_mentions: bool = False, domain: str | None = None, mode: str = "default") -> dict[str, Any]:
+    """全部 enabled 链接实例投影（逐链接排水；stub 不进入迭代，天然不产生边）。
+
+    游标复用同款编解码，type_idx 表链接序号、offset 表该链接内已发出的边数。每次对当前链接
+    以 LIMIT capacity+1 OFFSET offset 探测：有富余 → 停留本链接并推进 offset；无富余 → 取尽并前进。
+    SQL 固定 ORDER BY 两侧 pk，保证 OFFSET 切片跨响应稳定。
+
+    EAI-CUSTOM(2026-09-29 图谱投影域过滤): domain 非 None 时，链接两端声明了 filterable
+    domain 属性的一侧加 ``表.domain = :gd`` 行域守卫（如 relation_subject 的实体端
+    dg_entities 有域列、关系端 dg_relations 无域列则只守实体端）——与节点侧"有域列才裁剪"
+    同一语义。缺省（None）行为逐字节不变。
+
+    EAI-CUSTOM(2026-09-30 关系折叠边): mode="flat" 切换折叠投影（_flat_edges_page）——
+    关系行直接投影为 实体—谓词—实体 带标签连线，画布上关系不再依赖关系节点在场；
+    include_mentions/domain 参数在 flat 下同一语义。缺省 "default" 行为逐字节不变。
+    """
+    if mode == "flat":
+        return await _flat_edges_page(reg, engine, cursor, limit, include_mentions=include_mentions, domain=domain)
+    if mode != "default":
+        raise ValueError(f"未知 mode: {mode}（可用: default|flat）")
+    pos = decode_cursor(cursor)
+    if pos is None:
+        pos = {"type_idx": 0, "offset": 0}
+    ordered = _ordered_links(reg, include_mentions)
     out: list[dict[str, Any]] = []
     link_idx, offset = pos["type_idx"], pos["offset"]
     while link_idx < len(ordered) and len(out) < limit:
@@ -343,6 +362,132 @@ async def _cross_connector_link_rows(reg: Any, engine: Any, lt: Any, src_obj: An
         if not keyset:
             break
     return out[offset:]
+
+
+# ---------- 折叠边投影（EAI-CUSTOM 2026-09-30, mode="flat"） ----------
+#
+# 用户可见问题: 关系在数据层是一等对象（有独立溯源提及/审核/审计），default 投影为
+# graph_relation 节点 + relation_subject/object 两条边；画布节点窗口装不下关系节点时
+# （实体远多于关系），这两条边因一端不在场全部被前端丢弃——画布只见圆点不见线。
+# flat 模式把关系行**直接**投影为 实体—谓词—实体 折叠边（source=主体实体节点 id、
+# target=客体实体节点 id、type=label=谓词值、relation_pk=关系行 id 供前端溯源），
+# 关系以带标签连线呈现。关系双轨设计不动: DetailPanel 对 relation 的懒加载仍走
+# /objects 通道，本投影只改图面形态。
+
+
+def _predicate_property(obj: Any) -> Any | None:
+    """对象类型声明的 ``predicate`` 属性（折叠边的谓词列）；没有则 None。
+
+    无谓词列的行（如 dg_mentions 证据行）无法标注三元组，flat 模式不产出——mention
+    折叠组由此天然静默（include_mentions=True 也不产 mention 噪声边）。
+    """
+    props = obj.visible_properties() if hasattr(obj, "visible_properties") else obj.properties
+    for p in props:
+        if getattr(p, "name", "") == "predicate" or getattr(p, "api_name", "") == "predicate":
+            return p
+    return None
+
+
+def _flat_groups(reg: Any, include_mentions: bool) -> list[tuple[Any, list[Any]]]:
+    """再ification 折叠组: 同一关系对象类型下**恰好两条** enabled FK 链接（经与 default
+    同一套 mention/透镜/同签名去重后的链接序，见 _ordered_links），且源类型声明 predicate 属性。
+
+    组序 = 关系类型 api_name 序（游标 type_idx 跨响应稳定）；组内端点序 = 源类型属性
+    声明序（doc_graph.yaml graph_relation 先声明 subject_id 后 object_id → source=主体、
+    target=客体，三元组方向随声明走，不硬编码列名）。k>2 或非 FK 的组 fail-closed 跳过
+    （当前注册表全部恰为 k=2 FK；未来出现时先补分页契约再放开）。
+    """
+    by_source: dict[str, list[Any]] = {}
+    for lt in _ordered_links(reg, include_mentions):
+        if lt.join.type == "foreign_key":
+            by_source.setdefault(lt.source, []).append(lt)
+    groups: list[tuple[Any, list[Any]]] = []
+    for src_name in sorted(by_source):
+        links = by_source[src_name]
+        if len(links) != 2:
+            continue
+        src_obj = reg.object_types[src_name]
+        if _predicate_property(src_obj) is None:
+            continue
+        props = src_obj.visible_properties() if hasattr(src_obj, "visible_properties") else src_obj.properties
+        decl = {p.name: i for i, p in enumerate(props)}
+        links.sort(key=lambda lt: (decl.get(lt.join.source_column, len(decl)), lt.api_name))
+        groups.append((src_obj, links))
+    return groups
+
+
+async def _flat_edges_page(reg: Any, engine: Any, cursor: str | None, limit: int, include_mentions: bool = False, domain: str | None = None) -> dict[str, Any]:
+    """折叠边逐组排水——游标/探针协议与 edges_page 逐条同构（type_idx=组序、offset=组内
+    已发行数、capacity+1 探针判尽），仅"每链接一查询"换成"每折叠组一查询"。"""
+    pos = decode_cursor(cursor)
+    if pos is None:
+        pos = {"type_idx": 0, "offset": 0}
+    groups = _flat_groups(reg, include_mentions)
+    out: list[dict[str, Any]] = []
+    group_idx, offset = pos["type_idx"], pos["offset"]
+    while group_idx < len(groups) and len(out) < limit:
+        group = groups[group_idx]
+        capacity = limit - len(out)
+        rows = await _flat_group_rows(reg, engine, group, capacity + 1, offset, domain=domain)
+        take = rows[:capacity]
+        out.extend(_project_flat_edge(group, r) for r in take)
+        if len(rows) <= len(take):
+            group_idx += 1  # 探针无富余: 本组取尽
+            offset = 0
+        else:
+            offset += len(take)
+    return {"edges": out, "next_cursor": encode_cursor(group_idx, offset) if group_idx < len(groups) else None}
+
+
+def _project_flat_edge(group: tuple[Any, list[Any]], row: dict[str, Any]) -> dict[str, Any]:
+    """折叠行（__ep_0/__ep_1/__predicate/__relation_pk）→ Explorer 折叠边。
+
+    source/target 与 nodes 投影同构（"<端点类型 api_name>:<端点实体 pk>"）；type=label=
+    谓词值（空值回退关系类型 api_name，不猜中文）；relation_pk 原样透出（前端溯源用）。
+    """
+    src_obj, links = group
+    pred = row.get("__predicate")
+    if pred in (None, ""):
+        pred = src_obj.api_name
+    return {"source": f"{links[0].target}:{row.get('__ep_0')}", "target": f"{links[1].target}:{row.get('__ep_1')}", "type": str(pred), "label": str(pred), "relation_pk": row.get("__relation_pk")}
+
+
+async def _flat_group_rows(reg: Any, engine: Any, group: tuple[Any, list[Any]], capacity: int, offset: int, domain: str | None = None) -> list[dict[str, Any]]:
+    """单个折叠组的行（__ep_i=两端实体 pk、__predicate、__relation_pk）。capacity 含 +1 探针余量。
+
+    仅同 connector FK 组（_flat_groups 已保证 FK）；跨 connector fail-closed 到空（与
+    跨 connector 边同语义，当前注册表不可达）。SQL: 关系表 s INNER JOIN 两端实体表
+    t0/t1，端点 pk 从实体行取（悬挂 FK 天然被 JOIN 丢弃）。域过滤语义与 default 边一致:
+    **有域列的端点**才加行域守卫（dg_relations 无域列、dg_entities 两端都有 → 双端守卫，
+    即"两端实体都在域内才出边"——与 default 下同一关系的两条边各守实体端等价）；
+    gd_i/sf_i_k 命名空间独立。
+    """
+    src_obj, links = group
+    t_objs = [reg.object_types[lt.target] for lt in links]
+    if not all(engine._resolver.same(src_obj.access, t.access) for t in t_objs):
+        return []
+    pred = _predicate_property(src_obj)
+    params: dict[str, Any] = {}
+    select = ", ".join(f't{i}."{t.pk.column}" AS "__ep_{i}"' for i, t in enumerate(t_objs))
+    select += f', s."{pred.name}" AS "__predicate", s."{src_obj.pk.column}" AS "__relation_pk"'
+    joins: list[str] = []
+    guards: list[str] = []
+    for i, (lt, t) in enumerate(zip(links, t_objs)):
+        joins.append(f'JOIN "{_table(t)}" t{i} ON t{i}."{lt.join.target_column}" = s."{lt.join.source_column}"')
+        if lt.join.source_filter:
+            for k, v in lt.join.source_filter.items():
+                guards.append(f's."{k}" = :sf_{i}_{k}')
+                params[f"sf_{i}_{k}"] = v
+        if domain:
+            dom = domain_property(t)
+            if dom is not None:
+                guards.append(f't{i}."{dom.name}" = :gd_{i}')
+                params[f"gd_{i}"] = domain
+    sql = f'SELECT {select} FROM "{_table(src_obj)}" s {" ".join(joins)}'
+    if guards:
+        sql += " WHERE " + " AND ".join(guards)
+    sql += f" ORDER BY 1, 2, 3, 4 LIMIT {max(0, capacity)} OFFSET {max(0, offset)}"
+    return await engine._resolver.fetch(src_obj.access, sql, params)
 
 
 # ---------- SQL 拼接小工具（与引擎同级语义的本地副本，避免触引擎私有方法） ----------

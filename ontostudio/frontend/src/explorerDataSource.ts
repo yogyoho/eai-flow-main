@@ -15,6 +15,17 @@
  * - ApiEdge.weight ← 1（T1 无权重；log1p(1) 走 Explorer 默认视觉基线）。
  * - ApiEdge.properties ← { label }（保留 display_name 供详情展示）。
  * - ApiNode.valid_from/valid_until 不设（本系统无时间界 → Explorer 时间徽章恒灭）。
+ *
+ * EAI-CUSTOM(2026-09-30 关系折叠边): fetchEdges 改走 mode=flat 折叠投影——关系行由后端
+ * 直接折叠为 实体—谓词—实体 带标签连线，画布上关系是连线不是圆点（旧 default 双轨投影
+ * 的悬挂边在关系节点不在窗口时全部不可见）。映射沿用同一 ApiEdge 形状：
+ * - ApiEdge.type/familyId ← 谓词值（family 计数即"按谓词聚合"，正是关系类型维度语义）；
+ *   同一实体对同谓词的平行关系行按确定性 id 合并为一条（Explorer 既有语义）。
+ * - ApiEdge.label 显示谓词值（英文，如 bidder_of_project）。注册表端点不吐谓词值级中文
+ *   标注（/registry 仅计数指纹、/object-types 仅属性名清单），按任务口径回退英文谓词名，
+ *   不硬编码中文对照表。
+ * - relation_pk（关系行 id）透传进 properties，供溯源/详情延伸（DetailPanel 对 relation
+ *   的懒加载仍走 /objects 通道，不受折叠影响）。
  */
 import {
   fetchEdges as fetchEdgesPage,
@@ -46,7 +57,11 @@ export function toExplorerEdge(edge: GraphEdge): ApiEdge {
     target: edge.target,
     type: edge.type,
     weight: 1,
-    properties: { label: edge.label },
+    properties: {
+      label: edge.label,
+      // EAI-CUSTOM(2026-09-30 关系折叠边): flat 边携带关系行 id 供溯源；default 边无此字段
+      ...(edge.relation_pk != null ? { relation_pk: edge.relation_pk } : {}),
+    },
   };
 }
 
@@ -92,7 +107,8 @@ export function makeExplorerFetchers(domain = ""): {
     const seenEdgeIds = new Set<string>();
 
     while (true) {
-      const page = await fetchEdgesPage(cursor, { signal, domain: domain || undefined });
+      // EAI-CUSTOM(2026-09-30 关系折叠边): mode=flat —— 关系折叠为实体间带谓词标签的连线
+      const page = await fetchEdgesPage(cursor, { signal, domain: domain || undefined, mode: "flat" });
       if (!page.edges.length) {
         break;
       }

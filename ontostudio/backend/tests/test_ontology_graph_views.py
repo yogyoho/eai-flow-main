@@ -568,3 +568,132 @@ async def test_edges_page_domain_fails_closed_on_cross_connector():
     page = await graph_views.edges_page(reg, eng, None, 100, domain="doc_graph")
     assert page["edges"] == [] and page["next_cursor"] is None
     assert eng.fetch_calls == 0  # 未发起任何 SQL（在枚举之前短路）
+
+
+# ---------- 折叠边投影契约（EAI-CUSTOM 2026-09-30, mode="flat"） ----------
+#
+# 用户期望: 画布上关系是连线不是圆点。flat 模式把关系行直接折叠为 实体—谓词—实体
+# 带标签边（source=主体实体节点 id、target=客体实体节点 id、type=label=谓词值、
+# relation_pk=关系行 id），悬挂的 relation_subject/object 边不再依赖关系节点在场。
+# default 模式逐字节不变（回归钉见末例）。
+
+
+def _flat_reg() -> SimpleNamespace:
+    """仿真 doc_graph.yaml 拓扑: graph_relation(属性声明序 subject_id→predicate→object_id,
+    有谓词列) 经 relation_subject/object 两条 FK 链接指向 graph_entity(有 filterable 域列);
+    graph_mention 组两条链接但无谓词列——flat 下折叠组直接不形成（证据行无三元组可标）。"""
+
+    def obj(api_name: str, table: str, props: list[PropertySchema]) -> ObjectType:
+        return ObjectType(
+            api_name=api_name,
+            display_name=api_name,
+            description="折叠边契约测试",
+            domain="test",
+            access=AccessConfig(path="postgres_ext", table=table),
+            pk=PKConfig(column="id", api_name="id", type="string"),
+            properties=props,
+        )
+
+    types = {
+        "graph_entity": obj(
+            "graph_entity",
+            "dg_entities",
+            [
+                PropertySchema(name="id", api_name="id", type="string"),
+                PropertySchema(name="domain", api_name="domain", type="string", filterable=True),
+            ],
+        ),
+        "graph_relation": obj(
+            "graph_relation",
+            "dg_relations",
+            [
+                PropertySchema(name="id", api_name="id", type="string"),
+                PropertySchema(name="subject_id", api_name="subjectId", type="string"),
+                PropertySchema(name="predicate", api_name="predicate", type="string"),
+                PropertySchema(name="object_id", api_name="objectId", type="string"),
+            ],
+        ),
+        "graph_mention": obj(
+            "graph_mention",
+            "dg_mentions",
+            [
+                PropertySchema(name="id", api_name="id", type="string"),
+                PropertySchema(name="entity_id", api_name="entityId", type="string"),
+                PropertySchema(name="relation_id", api_name="relationId", type="string"),
+            ],
+        ),
+    }
+    links = {
+        "relation_subject": _edge_link("relation_subject", "graph_relation", "graph_entity", type="foreign_key", source_column="subject_id", target_column="id"),
+        "relation_object": _edge_link("relation_object", "graph_relation", "graph_entity", type="foreign_key", source_column="object_id", target_column="id"),
+        "mention_of_entity": _edge_link("mention_of_entity", "graph_mention", "graph_entity", type="foreign_key", source_column="entity_id", target_column="id"),
+        "mention_of_relation": _edge_link("mention_of_relation", "graph_mention", "graph_relation", type="foreign_key", source_column="relation_id", target_column="id"),
+    }
+    return SimpleNamespace(object_types=types, link_types=links)
+
+
+_FLAT_TRIPLES = [
+    {"__ep_0": "e1", "__ep_1": "e2", "__predicate": "bidder_supplies_goods", "__relation_pk": "r1"},
+    {"__ep_0": "e0", "__ep_1": "e2", "__predicate": "bidder_of_project", "__relation_pk": "r0"},
+]
+
+
+@pytest.mark.asyncio
+async def test_edges_page_flat_collapses_relations_into_labeled_entity_edges():
+    """flat: 关系行 → 实体—谓词—实体 折叠边——两端为实体节点 id（与 nodes 投影同构）、
+    type=label=谓词值、relation_pk=行 id；SQL 端点经 JOIN 从实体表取 pk（悬挂 FK 天然
+    丢弃），subject/object 方向随属性声明序（subject_id 先声明 → __ep_0=主体端）。"""
+    reg = _flat_reg()
+    resolver = FakeResolver({"dg_relations": _FLAT_TRIPLES})  # 折叠 SQL 的 FROM 表 = 关系表
+    page = await graph_views.edges_page(reg, SimpleNamespace(_resolver=resolver), None, 100, mode="flat")
+    assert page["next_cursor"] is None  # 单组取尽
+    assert page["edges"] == [
+        {"source": "graph_entity:e1", "target": "graph_entity:e2", "type": "bidder_supplies_goods", "label": "bidder_supplies_goods", "relation_pk": "r1"},
+        {"source": "graph_entity:e0", "target": "graph_entity:e2", "type": "bidder_of_project", "label": "bidder_of_project", "relation_pk": "r0"},
+    ]
+    sql = resolver.calls[0]
+    assert 'FROM "dg_relations" s' in sql
+    assert 't0."id" = s."subject_id"' in sql and 't1."id" = s."object_id"' in sql  # __ep_0=主体、__ep_1=客体
+    assert 's."predicate" AS "__predicate"' in sql and 's."id" AS "__relation_pk"' in sql
+    assert "ORDER BY" in sql and "LIMIT" in sql and "OFFSET" in sql  # 分页尾巴与 default 同款
+
+
+@pytest.mark.asyncio
+async def test_edges_page_flat_mention_and_domain_params_effective():
+    """mention: flat 下 mention 链接默认排除，include_mentions=True 也不产 mention 噪声边
+    （证据行无谓词列，折叠组直接不形成——证据表从未被查询）；domain: 两端实体都有域列 →
+    双端行域守卫（与 default 下同一关系的两条边各守实体端等价），缺省无守卫。"""
+    reg = _flat_reg()
+    resolver = FakeResolver({"dg_relations": _FLAT_TRIPLES})
+    eng = SimpleNamespace(_resolver=resolver)
+    default = await graph_views.edges_page(reg, eng, None, 100, mode="flat")
+    opted_in = await graph_views.edges_page(reg, eng, None, 100, mode="flat", include_mentions=True)
+    assert default == opted_in  # mention 折叠组无谓词列，opt-in 也不产出
+    assert all('FROM "dg_mentions"' not in sql for sql in resolver.calls)  # 证据表从未进 SQL
+    assert all(e["source"].startswith("graph_entity:") and e["target"].startswith("graph_entity:") for e in default["edges"])
+
+    resolver_dom = FakeResolver({"dg_relations": _FLAT_TRIPLES})
+    await graph_views.edges_page(reg, SimpleNamespace(_resolver=resolver_dom), None, 100, mode="flat", domain="eia")
+    sql = resolver_dom.calls[0]
+    assert 't0."domain" = :gd_0' in sql and 't1."domain" = :gd_1' in sql, "两端实体都有域列必须双端守卫"
+    assert "gd_0" not in resolver.calls[0], "缺省（无 domain 参数）折叠 SQL 无域守卫"
+
+
+@pytest.mark.asyncio
+async def test_edges_page_default_mode_regression_with_flat_available():
+    """default 回归: 不传 mode 与 mode="default" 输出完全一致，边形状仍为悬挂双轨
+    （source=关系节点 id、四键无 relation_pk）；未知 mode 显式拒绝。"""
+    reg = _flat_reg()
+    rows = {
+        "dg_entities": [{"__src_pk": "r0", "__tgt_pk": "e0"}, {"__src_pk": "r1", "__tgt_pk": "e1"}],  # default 边 SQL 的 FROM = 链接目标表
+        "dg_relations": _FLAT_TRIPLES,
+    }
+    eng = SimpleNamespace(_resolver=FakeResolver(rows))
+    d1 = await graph_views.edges_page(reg, eng, None, 100)
+    d2 = await graph_views.edges_page(reg, eng, None, 100, mode="default")
+    assert d1 == d2
+    assert Counter(e["type"] for e in d1["edges"]) == {"relation_subject": 2, "relation_object": 2}
+    assert all(set(e.keys()) == {"source", "target", "type", "label"} for e in d1["edges"])  # 无 relation_pk
+    assert all(e["source"].startswith("graph_relation:") for e in d1["edges"])  # 悬挂双轨形态原样
+    with pytest.raises(ValueError):
+        await graph_views.edges_page(reg, eng, None, 100, mode="bogus")

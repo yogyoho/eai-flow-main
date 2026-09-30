@@ -23,12 +23,15 @@ export interface GraphNode {
   properties: Record<string, unknown>;
 }
 
-/** Explorer 方言边：source/target 均为节点 id。 */
+/** Explorer 方言边：source/target 均为节点 id。
+ *  EAI-CUSTOM(2026-09-30 关系折叠边): mode=flat 时后端把关系行折叠为 实体—谓词—实体 边，
+ *  附带 relation_pk（关系行 id，溯源/去重提示用）；default 模式无此字段。 */
 export interface GraphEdge {
   source: string;
   target: string;
   type: string;
   label: string;
+  relation_pk?: string | number | null;
 }
 
 export interface NodesPage {
@@ -95,13 +98,16 @@ export async function fetchNodes(
 
 /** 分页拉取全部 enabled 链接实例的统一边投影（stub 链接不产生边）。
  *  EAI-CUSTOM(2026-09-29 图谱投影域过滤): options.domain 与节点同参——链接两端有域列
- *  的一侧加行域守卫。 */
+ *  的一侧加行域守卫。
+ *  EAI-CUSTOM(2026-09-30 关系折叠边): options.mode="flat" 取折叠投影——关系行直接折叠为
+ *  实体—谓词—实体 带标签连线（画布上关系是连线不是圆点）；缺省 "default" 行为不变。 */
 export async function fetchEdges(
   cursor?: string | null,
-  options?: { signal?: AbortSignal; domain?: string },
+  options?: { signal?: AbortSignal; domain?: string; mode?: "default" | "flat" },
 ): Promise<EdgesPage> {
   const domainQs = options?.domain ? `&domain=${encodeURIComponent(options.domain)}` : "";
-  const url = withCursor(`${BASE}/graph/edges?limit=${EDGES_LIMIT}${domainQs}`, cursor);
+  const modeQs = options?.mode ? `&mode=${encodeURIComponent(options.mode)}` : "";
+  const url = withCursor(`${BASE}/graph/edges?limit=${EDGES_LIMIT}${domainQs}${modeQs}`, cursor);
   const res = await authFetch<Partial<EdgesPage>>(url, {
     signal: options?.signal,
   });

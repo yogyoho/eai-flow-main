@@ -189,6 +189,7 @@ async def graph_edges(
     cursor: str | None = None,
     include: str | None = None,
     domain: str | None = None,
+    mode: str = "default",
     _: CurrentUser = Depends(require_permission("system:access")),
 ):
     """语义地图统一边投影（全部 enabled 链接；stub 不产生边）。
@@ -198,9 +199,14 @@ async def graph_edges(
     EAI-CUSTOM(2026-09-29 图谱投影域过滤): `domain=` 与节点同参——链接两端声明了域属性的
     一侧加行域守卫（如 relation_subject 的实体端），无域列的一端不裁剪（与节点侧
     脚手架语义一致）。缺省行为不变。
+    EAI-CUSTOM(2026-09-30 关系折叠边): `mode=flat` 折叠投影——关系行直接投影为
+    实体—谓词—实体 带标签连线（source/target=实体节点 id、type=label=谓词、relation_pk=
+    关系行 id），画布上关系以连线呈现而非节点；缺省 "default" 行为不变，未知值 422。
     """
+    if mode not in ("default", "flat"):
+        raise HTTPException(status_code=422, detail=f"未知 mode: {mode}（可用: default|flat）")
     try:
-        return await edges_page(get_registry(), _get_engine(), cursor, max(1, min(limit, 5000)), _include_mentions(include), domain=_domain_or_422(domain))
+        return await edges_page(get_registry(), _get_engine(), cursor, max(1, min(limit, 5000)), _include_mentions(include), domain=_domain_or_422(domain), mode=mode)
     except OntologyError as e:
         raise _http_error(e) from e
 
