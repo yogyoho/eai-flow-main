@@ -752,7 +752,6 @@ export const GRAPH_THEME: GraphTheme = {
           mutedAlpha: 0.1,
           inactiveAlpha: 0.012,
           neighborAlpha: 0.85,
-          neighborAlpha: 0.32,
           sizeMultiplier: 0.62,
           hideMuted: false,
         },
