@@ -1453,7 +1453,10 @@ export function classifyFullGraphEdge(
   }
 
   if (primaryNodeId && (source === primaryNodeId || target === primaryNodeId)) {
-    return "muted";
+    // EAI-CUSTOM(2026-09-30 用户定案语义): 主节点的邻接边=highlighted（点亮它与邻居的连线），
+    // 而非 muted——原实现把选中节点的邻接边归入 muted（渲染实测 0.15 muted 色），
+    // 直接导致"点节点后连线全消失"。local-context → hovered/selected 亮态。
+    return "local-context";
   }
 
   if (overviewBackboneEdgeIds.has(edgeId)) {
