@@ -515,7 +515,13 @@ export const GRAPH_THEME: GraphTheme = {
       nodeScale: 0.94,
       labelThreshold: 0.95,
       labelBudget: 12,
-      edgePriorityThreshold: 0.4,
+      // EAI-CUSTOM (bug-3310): 0.4 hid nearly all flat ontology edges —
+      // visualPriority derives from endpoint degree ratios (geometric mean),
+      // so on a scale-free graph the bulk of edges sit far below any positive
+      // threshold → resolveEdgeElementStyle returns hidden:true. Structure
+      // edges must always be visible (hover/selection still enhance). 0
+      // matches the inspection tier and keeps isEdgeInteractable consistent.
+      edgePriorityThreshold: 0,
       arrowPriorityThreshold: 0.75,
       edgeSizeScale: 0.92,
       showBadges: false,
@@ -694,14 +700,22 @@ export const GRAPH_THEME: GraphTheme = {
   },
   edges: {
     states: {
-      default: { color: "structure", sizeMultiplier: 0.48, minSize: 0.2, zIndex: 0, forceArrow: false, hide: false },
+      // EAI-CUSTOM (bug-3310): default-state minSize 0.2 rendered sub-pixel
+      // lines — sigma edge size is screen-space pixels, and antialiasing
+      // dilutes a 0.3px line to near-invisible even at readable alpha.
+      // 0.9 gives structure edges a real 1px hairline (hover/selected/path
+      // keep their own larger minimums).
+      default: { color: "structure", sizeMultiplier: 0.48, minSize: 0.9, zIndex: 0, forceArrow: false, hide: false },
       backbone: { color: "backbone", sizeMultiplier: 0.62, minSize: 0.36, zIndex: 1, forceArrow: false, hide: false },
       hovered: { color: "hover", sizeMultiplier: 1.42, minSize: 1.85, zIndex: 5, forceArrow: true, hide: false },
       selected: { color: "hover", sizeMultiplier: 1.42, minSize: 1.85, zIndex: 5, forceArrow: true, hide: false },
       neighbor: { color: "focus", sizeMultiplier: 0.96, minSize: 0.86, zIndex: 1, forceArrow: false, hide: false },
       path: { color: "path", sizeMultiplier: 1.82, minSize: 2.55, zIndex: 6, forceArrow: true, hide: false },
-      inactive: { color: "muted", sizeMultiplier: 0.24, minSize: 0.18, zIndex: 0, forceArrow: false, hide: false },
-      muted: { color: "muted", sizeMultiplier: 0.24, minSize: 0.18, zIndex: 0, forceArrow: false, hide: false },
+      // EAI-CUSTOM (bug-3310): muted/inactive minSize 0.18 was sub-pixel —
+      // dimmed focus-background edges rendered as invisible hairlines.
+      // 0.7 keeps them clearly dimmer than default/hovered edges but visible.
+      inactive: { color: "muted", sizeMultiplier: 0.24, minSize: 0.7, zIndex: 0, forceArrow: false, hide: false },
+      muted: { color: "muted", sizeMultiplier: 0.24, minSize: 0.7, zIndex: 0, forceArrow: false, hide: false },
     },
     variants: {
       line: { baseType: "line", arrowPolicy: "hidden", curveStrength: 0, sizeMultiplier: 1, glowAlpha: 0 },
@@ -723,24 +737,33 @@ export const GRAPH_THEME: GraphTheme = {
           hideMuted: true,
         },
         structure: {
-          defaultPriorityThreshold: 0.82,
-          backgroundSampleRate: 0.16,
+          // EAI-CUSTOM (bug-3310): threshold 0.82 + sampleRate 0.16 hid the
+          // bulk of flat ontology edges at structure tier (visualPriority is
+          // degree-derived and lands far below the threshold on scale-free
+          // graphs). Edges always visible here; hover/selection enhance.
+          // hideMuted false + raised mutedAlpha: focusing a node dims the
+          // other edges instead of erasing them (erasing made the canvas
+          // look edge-less whenever a node was hovered/selected).
+          defaultPriorityThreshold: 0,
+          backgroundSampleRate: 1,
           defaultAlpha: 0.04,
-          mutedAlpha: 0.014,
+          mutedAlpha: 0.14,
           inactiveAlpha: 0.012,
           neighborAlpha: 0.32,
           sizeMultiplier: 0.62,
-          hideMuted: true,
+          hideMuted: false,
         },
         inspection: {
-          defaultPriorityThreshold: 0.72,
-          backgroundSampleRate: 0.28,
+          // EAI-CUSTOM (bug-3310): same as structure — 0.72/0.28 hid default
+          // edges even when zoomed in. Full visibility at inspection tier.
+          defaultPriorityThreshold: 0,
+          backgroundSampleRate: 1,
           defaultAlpha: 0.052,
-          mutedAlpha: 0.012,
+          mutedAlpha: 0.15,
           inactiveAlpha: 0.01,
           neighborAlpha: 0.38,
           sizeMultiplier: 0.64,
-          hideMuted: true,
+          hideMuted: false,
         },
       },
       grouped: {
@@ -826,15 +849,20 @@ export const GRAPH_THEME: GraphTheme = {
       },
     },
     fullGraphStructure: {
-      ambientBackboneAlpha: 0.12,
-      backboneAlpha: 0.08,
-      bridgeAlpha: 0.14,
+      // EAI-CUSTOM (bug-3310): these alphas were calibrated for the vendored
+      // dark theme; on this light background 0.08-0.14 backbone/bridge lines
+      // vanish entirely and 0.12/0.1 default-edge alphas replaced (withAlpha
+      // substitutes, not multiplies) the 0.30-0.32 palette alpha raised in
+      // 15fa7457e. Raised to light-background-readable levels.
+      ambientBackboneAlpha: 0.22,
+      backboneAlpha: 0.2,
+      bridgeAlpha: 0.28,
       bridgeCurvePriorityThreshold: 0.78,
       bridgeCurveStrength: 0.1,
       backboneMaxSize: 0.5,
       bridgeMaxSize: 0.7,
-      structureEdgeAlpha: 0.12,
-      inspectionEdgeAlpha: 0.1,
+      structureEdgeAlpha: 0.45,
+      inspectionEdgeAlpha: 0.45,
     },
     // Staged rollout — set mode to "auto" to enable cross-community curve rendering.
     // Currently "off" so the canvas overlay layer is inactive in production.

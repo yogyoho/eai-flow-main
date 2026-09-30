@@ -1165,11 +1165,17 @@ function applySceneState(
     const attrs = data as EdgeAttributes;
     const [source, target] = currentGraph.extremities(edge);
     const stableEdgeId = String(edge);
+    // EAI-CUSTOM (bug-3310): relation-hub nodes carry 0 incident display
+    // edges (flat entity→entity edges never terminate on them), so focusing
+    // one highlighted nothing yet muted/hid every edge in the graph — blank
+    // canvas. An edge-less primary node conveys no focus for the edge layer,
+    // so treat it as no active interaction (nodes keep their own dimming).
+    const primaryId = currentState.hoveredNodeId || currentState.selectedNodeId;
+    const primaryHasDisplayEdges = Boolean(primaryId && currentGraph.degree(primaryId) > 0);
     const hasActiveInteraction = Boolean(
-      currentState.hoveredNodeId
-      || currentState.selectedNodeId
-      || currentState.selectedEdgeId
-      || currentState.pathEdgeIds.size > 0,
+      currentState.selectedEdgeId
+      || currentState.pathEdgeIds.size > 0
+      || (primaryHasDisplayEdges && (currentState.hoveredNodeId || currentState.selectedNodeId)),
     );
     const fullEdgeClass = currentState.viewMode === "full"
       ? getFullGraphEdgeClass(currentGraph, stableEdgeId, currentState)
