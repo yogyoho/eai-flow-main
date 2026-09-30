@@ -32,6 +32,7 @@ import {
   fetchNodes as fetchNodesPage,
 } from "./api/ontology-graph-api";
 import type { GraphEdge, GraphNode } from "./api/ontology-graph-api";
+import { fetchRegistryContent } from "./api/registry-api";
 import { createGraphLoadProgress } from "./explorer/graphLoading";
 import type { ApiEdge, ApiNode, GraphLoadProgress } from "./explorer/types";
 // type-only：接缝类型定义在 vendored useLoadGraph（仅取类型，不拉运行时模块图）
@@ -67,6 +68,32 @@ export function toExplorerEdge(edge: GraphEdge): ApiEdge {
 
 function yieldToMain(): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, 0));
+}
+
+// EAI-CUSTOM(2026-09-30 谓词中文标注): eia.yaml 的 "# 谓词中文标注: xxx=中文" 注释块是
+// 唯一真源（与后端 llm_extract.load_enums 同源解析），用户规则=本体英文必有对应中文。
+// 边标签优先中文，标注缺失/接口不可达时回退英文谓词值；模块级缓存一次。
+let predicateLabelCache: Map<string, string> | null = null;
+async function getPredicateLabels(): Promise<Map<string, string>> {
+  if (predicateLabelCache) {
+    return predicateLabelCache;
+  }
+  const map = new Map<string, string>();
+  try {
+    const content = await fetchRegistryContent("eia.yaml");
+    for (const m of (content.raw ?? "").matchAll(/# 谓词中文标注: (.+)/g)) {
+      for (const pair of m[1].trim().split(/\s+/)) {
+        const eq = pair.indexOf("=");
+        if (eq > 0) {
+          map.set(pair.slice(0, eq), pair.slice(eq + 1));
+        }
+      }
+    }
+  } catch {
+    // 标注不可达：保持空表，回退英文谓词值
+  }
+  predicateLabelCache = map;
+  return map;
 }
 
 /** EAI-CUSTOM(2026-09-29 图谱投影域过滤): domain 非空 → /graph/* 带 domain= 服务端过滤；
@@ -105,6 +132,7 @@ export function makeExplorerFetchers(domain = ""): {
     let cursor: string | null = null;
     const collected: ApiEdge[] = [];
     const seenEdgeIds = new Set<string>();
+    const predicateLabels = await getPredicateLabels();
 
     while (true) {
       // EAI-CUSTOM(2026-09-30 关系折叠边): mode=flat —— 关系折叠为实体间带谓词标签的连线
@@ -114,6 +142,11 @@ export function makeExplorerFetchers(domain = ""): {
       }
       for (const edge of page.edges) {
         const mapped = toExplorerEdge(edge);
+        // EAI-CUSTOM(2026-09-30): 边标签优先谓词中文（标注真源=eia.yaml 注释块），回退英文谓词值
+        const zh = predicateLabels.get(edge.type);
+        if (zh) {
+          mapped.properties.label = zh;
+        }
         if (!nodeIds.has(mapped.source) || !nodeIds.has(mapped.target)) {
           continue;
         }
