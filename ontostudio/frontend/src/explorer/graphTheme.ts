@@ -808,7 +808,7 @@ export const GRAPH_THEME: GraphTheme = {
           // EAI-CUSTOM(2026-09-30 用户实测): focused(点选/悬停节点)时 hideMuted:true 把全部
           // 连线藏掉、邻接线 0.06 不可见——用户期望"点节点看到它与邻居的连线"。改为不藏、
           // 邻接高亮 0.85、其余 0.1 淡出。
-          mutedAlpha: 0.1,
+          mutedAlpha: 0.05,
           inactiveAlpha: 0.02,
           neighborAlpha: 0.85,
           sizeMultiplier: 0.72,
@@ -818,7 +818,7 @@ export const GRAPH_THEME: GraphTheme = {
           defaultPriorityThreshold: 0.6,
           backgroundSampleRate: 0.8,
           defaultAlpha: 0.12,
-          mutedAlpha: 0.12,
+          mutedAlpha: 0.06,
           inactiveAlpha: 0.025,
           neighborAlpha: 0.9,
           sizeMultiplier: 0.9,
@@ -828,7 +828,7 @@ export const GRAPH_THEME: GraphTheme = {
           defaultPriorityThreshold: 0.52,
           backgroundSampleRate: 0.9,
           defaultAlpha: 0.14,
-          mutedAlpha: 0.14,
+          mutedAlpha: 0.06,
           inactiveAlpha: 0.03,
           neighborAlpha: 0.9,
           sizeMultiplier: 0.88,
@@ -870,8 +870,10 @@ export const GRAPH_THEME: GraphTheme = {
       // 默认态降到 0.22（结构隐约可见），inspection（放大细看）0.30 保持清晰。
       // EAI-CUSTOM(2026-09-30 视觉调档二): 0.22/0.3 在白底实测仍浅青难辨——放大(inspection)
       // 是"看关系"的主场景提到 0.6，结构层 0.35。
-      structureEdgeAlpha: 0.35,
-      inspectionEdgeAlpha: 0.6,
+      // EAI-CUSTOM(2026-09-30 语义反转·用户定案): 初始化只显点阵——全部连线降到幽灵级，
+      // 悬停/点击节点时由 focused 上下文点亮邻接边(neighborAlpha 0.85-0.9)。0.04 是余晖。
+      structureEdgeAlpha: 0.04,
+      inspectionEdgeAlpha: 0.05,
     },
     // Staged rollout — set mode to "auto" to enable cross-community curve rendering.
     // Currently "off" so the canvas overlay layer is inactive in production.
