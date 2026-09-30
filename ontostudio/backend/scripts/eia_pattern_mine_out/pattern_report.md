@@ -1,13 +1,13 @@
 # EIA B 库领域规律挖掘报告（子项目 5 交付 1 · 归并深化版）
 
-- 挖掘时间：2026-09-30T15:12:52.805413+00:00
+- 挖掘时间：2026-09-30T23:20:41.298192+00:00
 - 数据：真实图断言层（dg_* 全量 → 内存 kernel，生产同路径 load）；只挖 scope=sample 实体
 - support 定义：去重报告数（mention 溯源 ∪ attrs.source_report）；入图门槛 ≥2
-- 归并：受控词表归一（D:\eai\eai-flow-main\ontostudio\backend\scripts\eia_schema_mining\controlled_vocab.yaml），名称归一命中 256 次、复合名全分解 13 次
+- 归并：受控词表归一（D:\eai\eai-flow-main\ontostudio\backend\scripts\eia_schema_mining\controlled_vocab.yaml），名称归一命中 313 次、复合名全分解 47 次
 
 | 类型 | 配对数 | 入图候选（support≥2） |
 |---|---|---|
-| 治理规律 | 298 | 298 |
+| 治理规律 | 250 | 250 |
 | 标准规律 | 7 | 2 |
 | 处置规律 | 228 | 179 |
 
@@ -15,26 +15,26 @@
 
 | 配对 | 谓词 | support(报告) | occurrence(路径) | 报告 |
 |---|---|---|---|---|
+| 化学需氧量（pollutant）→ 生活污水处理站（treatment_measure） | emitted_as+treated_by | 22 | 7 | baiyinhua2、baiyinhua3、balasu、gaotaoyao、guojiatai… |
 | 悬浮物（pollutant）→ 矿井水处理站（treatment_measure） | emitted_as+treated_by | 22 | 6 | baiyinhua2、baiyinhua3、balasu、gaotaoyao、guojiatai… |
-| 化学需氧量（pollutant）→ 生活污水处理站（treatment_measure） | emitted_as+treated_by | 22 | 5 | baiyinhua2、baiyinhua3、balasu、gaotaoyao、guojiatai… |
-| 氨氮（pollutant）→ 生活污水处理站（treatment_measure） | emitted_as+treated_by | 22 | 3 | baiyinhua2、baiyinhua3、balasu、gaotaoyao、guojiatai… |
-| 悬浮物（pollutant）→ 处理后回用（treatment_measure） | emitted_as+treated_by | 21 | 6 | baiyinhua2、baiyinhua3、balasu、gaotaoyao、guojiatai… |
+| 氨氮（pollutant）→ 生活污水处理站（treatment_measure） | emitted_as+treated_by | 22 | 4 | baiyinhua2、baiyinhua3、balasu、gaotaoyao、guojiatai… |
+| 悬浮物（pollutant）→ 处理后回用（treatment_measure） | emitted_as+treated_by | 21 | 7 | baiyinhua2、baiyinhua3、balasu、gaotaoyao、guojiatai… |
+| 化学需氧量（pollutant）→ 处理后回用（treatment_measure） | emitted_as+treated_by | 21 | 5 | baiyinhua2、baiyinhua3、balasu、gaotaoyao、guojiatai… |
 | 悬浮物（pollutant）→ 矿井水处理（treatment_measure） | emitted_as+treated_by | 21 | 5 | baiyinhua2、baiyinhua3、balasu、gaotaoyao、guojiatai… |
-| 化学需氧量（pollutant）→ 处理后回用（treatment_measure） | emitted_as+treated_by | 21 | 3 | baiyinhua2、baiyinhua3、balasu、gaotaoyao、guojiatai… |
-| bod（pollutant）→ 生活污水处理站（treatment_measure） | emitted_as+treated_by | 21 | 2 | baiyinhua2、baiyinhua3、balasu、gaotaoyao、guojiatai… |
-| 氨氮（pollutant）→ 处理后回用（treatment_measure） | emitted_as+treated_by | 21 | 2 | baiyinhua2、baiyinhua3、balasu、gaotaoyao、guojiatai… |
-| 悬浮物（pollutant）→ 生活污水处理站（treatment_measure） | emitted_as+treated_by | 20 | 6 | baiyinhua2、baiyinhua3、balasu、gaotaoyao、guojiatai… |
-| 化学需氧量（pollutant）→ 移动式生活污水处理装置（treatment_measure） | emitted_as+treated_by | 20 | 3 | baiyinhua2、baiyinhua3、balasu、gaotaoyao、guojiatai… |
-| bod（pollutant）→ 移动式生活污水处理装置（treatment_measure） | emitted_as+treated_by | 20 | 2 | baiyinhua2、baiyinhua3、balasu、gaotaoyao、guojiatai… |
+| 生化需氧量（pollutant）→ 生活污水处理站（treatment_measure） | emitted_as+treated_by | 21 | 5 | baiyinhua2、baiyinhua3、balasu、gaotaoyao、guojiatai… |
+| 氨氮（pollutant）→ 处理后回用（treatment_measure） | emitted_as+treated_by | 21 | 3 | baiyinhua2、baiyinhua3、balasu、gaotaoyao、guojiatai… |
+| 悬浮物（pollutant）→ 生活污水处理站（treatment_measure） | emitted_as+treated_by | 20 | 7 | baiyinhua2、baiyinhua3、balasu、gaotaoyao、guojiatai… |
+| 化学需氧量（pollutant）→ 移动式生活污水处理装置（treatment_measure） | emitted_as+treated_by | 20 | 5 | baiyinhua2、baiyinhua3、balasu、gaotaoyao、guojiatai… |
+| 生化需氧量（pollutant）→ 移动式生活污水处理装置（treatment_measure） | emitted_as+treated_by | 20 | 5 | baiyinhua2、baiyinhua3、balasu、gaotaoyao、guojiatai… |
+| 氨氮（pollutant）→ 移动式生活污水处理装置（treatment_measure） | emitted_as+treated_by | 20 | 3 | baiyinhua2、baiyinhua3、balasu、gaotaoyao、guojiatai… |
+| 石油类（pollutant）→ 生活污水处理站（treatment_measure） | emitted_as+treated_by | 20 | 3 | baiyinhua2、baiyinhua3、balasu、gaotaoyao、guojiatai… |
 | 化学需氧量（pollutant）→ 矿井水处理站（treatment_measure） | emitted_as+treated_by | 20 | 2 | baiyinhua2、balasu、gaotaoyao、guojiatai、hegang… |
 | 氨氮（pollutant）→ 矿井水处理站（treatment_measure） | emitted_as+treated_by | 20 | 2 | baiyinhua2、balasu、gaotaoyao、guojiatai、hegang… |
-| 氨氮（pollutant）→ 移动式生活污水处理装置（treatment_measure） | emitted_as+treated_by | 20 | 2 | baiyinhua2、baiyinhua3、balasu、gaotaoyao、guojiatai… |
+| 石油类（pollutant）→ 处理后回用（treatment_measure） | emitted_as+treated_by | 20 | 2 | baiyinhua2、baiyinhua3、balasu、gaotaoyao、guojiatai… |
 | 氟化物（pollutant）→ 矿井水处理站（treatment_measure） | emitted_as+treated_by | 20 | 1 | baiyinhua2、balasu、gaotaoyao、guojiatai、hegang… |
 | 石油类（pollutant）→ 矿井水处理站（treatment_measure） | emitted_as+treated_by | 20 | 1 | baiyinhua2、balasu、gaotaoyao、guojiatai、hegang… |
 | 矿化度（pollutant）→ 矿井水处理站（treatment_measure） | emitted_as+treated_by | 20 | 1 | baiyinhua2、balasu、gaotaoyao、guojiatai、hegang… |
 | 硫化物（pollutant）→ 矿井水处理站（treatment_measure） | emitted_as+treated_by | 20 | 1 | baiyinhua2、balasu、gaotaoyao、guojiatai、hegang… |
-| 悬浮物（pollutant）→ 水处理站（treatment_measure） | emitted_as+treated_by | 19 | 5 | baiyinhua2、baiyinhua3、balasu、gaotaoyao、guojiatai… |
-| 悬浮物（pollutant）→ 矿井水处理及回用措施（treatment_measure） | emitted_as+treated_by | 19 | 4 | baiyinhua2、baiyinhua3、balasu、gaotaoyao、guojiatai… |
 
 ## 标准规律（按 support 降序，Top 20）
 

@@ -11,6 +11,9 @@ pollutant_concept:
     - { name: 氨氮, aliases: ["NH3-N", "氨氮(NH3-N)"] }
     # 悬浮/悬浮性固体: 2026-09-30 图内碎片变体实测补充
     - { name: 悬浮物, aliases: ["SS", "悬浮物(SS)", "悬浮", "悬浮性固体"] }
+    # 生化需氧量/动植物油: 2026-10-01 三批——复合污染物名全分解解锁（cod、bod5、ss、石油类 等）+ bod/bod5 平行条目归并
+    - { name: 生化需氧量, aliases: ["BOD", "BOD5"] }
+    - { name: 动植物油, aliases: [] }
     - { name: 石油类, aliases: ["油类"] }
     - { name: 总铁, aliases: [] }
     - { name: 总锰, aliases: [] }
@@ -27,6 +30,8 @@ measure_process_concept:
     - { name: 隔声屏障, aliases: ["声屏障", "隔声窗"] }
     - { name: 矸石井下充填, aliases: ["充填开采", "井下充填系统"] }
     - { name: 瓦斯抽采, aliases: ["瓦斯抽放", "瓦斯综合利用"] }
+    # 伊敏矿区同一受纳设施的同名异写（2026-10-01 三批；治理宾语=measure 作用域生效）
+    - { name: 伊敏河镇污水处理厂, aliases: ["伊敏污水处理厂", "伊敏镇生活污水处理厂"] }
 pollution_process_concept:
   concepts:
     - { name: 凿岩爆破, aliases: ["爆破", "井下爆破"] }

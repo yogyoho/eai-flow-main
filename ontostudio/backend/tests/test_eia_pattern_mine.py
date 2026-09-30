@@ -65,7 +65,8 @@ def test_alias_chinese_and_no_hit_passthrough(normalizer):
 
 
 def test_compound_full_split_and_partial_kept(normalizer):
-    """复合名：每段都命中→全分解去重；任一段词表外→整体保留。"""
+    """复合名：每段都命中→全分解去重；任一段词表外→整体保留。三批词表后 bod/bod5 入表，
+    「cod、bod5、ss、石油类」等含 BOD 复合名已可全分解；部分命中仍保原名。"""
     assert normalizer.expand("悬浮物、cod、石油类、氟化物、溶解性总固体", ("pollutant_concept",)) == [
         "悬浮物",
         "化学需氧量",
@@ -73,7 +74,18 @@ def test_compound_full_split_and_partial_kept(normalizer):
         "氟化物",
         "矿化度",
     ]
-    assert normalizer.expand("cod、bod5、ss、石油类", ("pollutant_concept",)) == ["cod、bod5、ss、石油类"]
+    assert normalizer.expand("cod、bod5、ss、石油类", ("pollutant_concept",)) == [
+        "化学需氧量",
+        "生化需氧量",
+        "悬浮物",
+        "石油类",
+    ]
+    assert normalizer.expand("cod、烟气、ss", ("pollutant_concept",)) == ["cod、烟气、ss"]
+    # bod/bod5 平行条目经 生化需氧量 规范名归并
+    assert normalizer.expand("bod", ("pollutant_concept",)) == ["生化需氧量"]
+    assert normalizer.expand("bod5", ("pollutant_concept",)) == ["生化需氧量"]
+    # 伊敏设施同名异写归并（治理宾语=measure 表作用域）
+    assert normalizer.expand("伊敏污水处理厂", ("measure_process_concept",)) == ["伊敏河镇污水处理厂"]
 
 
 def test_position_scope_disposal_table_not_on_treat_object(normalizer):
