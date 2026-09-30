@@ -689,6 +689,9 @@ export function useLoadGraph(options: UseLoadGraphOptions = {}) {
             targetId: edge.target,
             weight: edge.weight,
             edgeType: edge.type,
+            // EAI-CUSTOM(2026-09-30): 边标签中文优先——properties.label 已在 explorerDataSource
+            // 按 eia.yaml 标注块映射为中文，sigma 标签渲染读顶层 label（否则显示英文谓词值）
+            label: (edge.properties && edge.properties.label) || edge.type,
             properties: edge.properties,
             // EAI-CUSTOM(2026-09-30): 原 0.88px 钳制使语义关系边在任何缩放/透明度下都低于人眼可见阈值
             // （0.42px×0.30α 实测不可见）——上限提到 1.6px，配合 explorerDataSource 权重 25 得 ~1.2px。
