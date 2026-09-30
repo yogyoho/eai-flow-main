@@ -293,6 +293,10 @@ class ExtractionPayload(BaseModel):
     domain: str  # 域标识（基类契约, ingest 通用取值依赖）; Literal 收窄由子类覆盖
     extracted_by: str = Field(default="llm", max_length=100)
     thread_id: str = Field(default="", max_length=100)
+    # C 库项目工作本机制预留（ontostudio 子项目 5 交付 3）：payload 携带 project_id 时
+    # ingest_extraction 给实体 attrs 自动打 scope=project + project_id 归属标（零 DDL）。
+    # 缺省 None = 既有行为不变（不打标，按未打标缺省归属 sample）。
+    project_id: str | None = Field(default=None, max_length=200)
     entities: list[EntityPayload] = Field(min_length=1)
     relations: list[RelationPayload] = []
 

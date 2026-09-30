@@ -35,6 +35,23 @@ def _tz_aware(d: datetime | None) -> datetime | None:
     return d.replace(tzinfo=_CST)
 
 
+def project_scoped_attrs(attrs: dict | None, project_id: str | None) -> dict:
+    """C 库（scope=project）归属打标（ontostudio 子项目 5 交付 3，机制预留）。
+
+    payload 携带 project_id 时实体 attrs 自动加 scope=project + project_id——C 库归属模型
+    与 B 库蒸馏同走 attrs 三态标（sample/domain_common/project），零 DDL。project_id 为空
+    时原样返回（不打标，既有 A 库行为不变）。
+
+    ⚠️ 自然键碰撞提示：dg_entities 幂等键是 (domain,etype,norm_name)——若项目工作本实体与
+    既有 sample 实体同键，attrs || 合并会给该共享行打上 project 标（从 sample 缺省归属翻转为
+    project）。这是双库共用自然键的固有语义：项目本应引用既有共性实体时是预期行为；需要
+    项目私有副本时应使用项目前缀命名区分。本机制不做隐式改名（预留层不做业务决策）。
+    """
+    if not project_id:
+        return attrs or {}
+    return {**(attrs or {}), "scope": "project", "project_id": project_id}
+
+
 async def ingest_extraction(payload: ExtractionPayload) -> dict[str, Any]:
     """校验通过的抽取结果入库（任意域 *Extraction 子类, 函数体按基类字段通用取值）。返回计数供 MCP 工具向 agent 汇报。"""
     engine = create_async_engine(_ext_url(), poolclass=NullPool)
@@ -64,7 +81,7 @@ async def ingest_extraction(payload: ExtractionPayload) -> dict[str, Any]:
                             "etype": e.etype,
                             "name": e.name,
                             "norm": norm,
-                            "attrs": json.dumps(e.attrs, ensure_ascii=False),
+                            "attrs": json.dumps(project_scoped_attrs(e.attrs, payload.project_id), ensure_ascii=False),
                             "conf": e.confidence,
                             "status": status,
                             "vfrom": _tz_aware(e.valid_from),

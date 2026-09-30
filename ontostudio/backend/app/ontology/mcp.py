@@ -166,11 +166,12 @@ _TOOLS_SPEC = [
     ),
     (
         "query_analogy",
-        "样例库类比素材查询（恒定 scope=sample）：查样例实体+邻接关系，每条必带 source_report 可溯源到来源报告。etype 或 label_contains 至少给一个。类比值引用须在写作侧标注 param_source=analog_mine+来源报告（纪律在技能侧）。",
+        "类比素材与领域规律查询（A 库样例 scope=sample + B 库领域共性 scope=domain_common；C 库 project 不入本通道，走 query_entity scope=project）：查实体+邻接关系，每条必带 source_report 可溯源到来源报告。"
+        "etype=domain_pattern 查 B 库蒸馏规律条目（attrs 含 pattern_type/subject_name/object_name/support_count）。etype 或 label_contains 至少给一个。类比值引用须在写作侧标注 param_source=analog_mine+来源报告（纪律在技能侧）。",
         {
             "type": "object",
             "properties": {
-                "etype": {"type": "string", "description": "实体类型（registry eia etype，如 waste_stream）"},
+                "etype": {"type": "string", "description": "实体类型（registry eia etype，如 waste_stream；domain_pattern=领域规律条目）"},
                 "label_contains": {"type": "string", "description": "名称子串（与 etype 至少给一个）"},
                 "limit": {"type": "integer", "description": "返回实体数上限（默认 10，最大 50）"},
             },
@@ -622,16 +623,19 @@ def _adjacency_peers(store, iri: str, cap: int = 20) -> dict[str, list[dict]]:  
     return {"out": [{"predicate": _local(r["p"], pred_ns), "peer": r["o"]} for r in out_rows], "in": [{"predicate": _local(r["p"], pred_ns), "peer": r["s"]} for r in in_rows]}
 
 
-# 身份/归属属性单列（不混入业务 attrs——label/scope/source_report 已在响应顶层）
-_IDENTITY_ATTRS = ("canonical_name", "norm_name", "scope", "source_report")
+# 身份/归属属性单列（不混入业务 attrs——label/scope/source_report/source_reports 已在响应顶层）
+_IDENTITY_ATTRS = ("canonical_name", "norm_name", "scope", "source_report", "source_reports")
 
 
 async def _query_analogy(a: dict) -> list[TextContent]:
-    """样例库（A 库）类比素材查询——类比合规通道（子项目 4 spec §4），恒定 scope=sample。
+    """类比素材（A 库 sample）+ 领域规律（B 库 domain_common）查询——类比合规通道。
 
-    出参每条必带 source_report（attrs.source_report，缺标 fallback "unknown"）——类比值
-    溯源到"哪份报告"。邻接边给谓词+对端名+对端属性：裁决数值的载体在对端 attrs（阈值/
-    措施规格），关系 attrs 不入图（loader 不装载 dg_relations.attrs），边级无额外属性可给。
+    子项目 4 spec §4 恒定 scope=sample；子项目 5 扩入 B 库 domain_common（etype=domain_pattern
+    蒸馏规律条目可被 etype/名称过滤查到）——类比通道的消费语义就是「写作取材」，样例与领域
+    规律同属取材面，C 库 project 工作本仍排除（走 query_entity scope=project）。
+    出参每条必带 source_report（attrs.source_report；B 库 pattern 条目回退 attrs.source_reports
+    「、」串；缺标 fallback "unknown"）——类比值溯源到"哪份报告"。邻接边给谓词+对端名+对端属性：
+    裁决数值的载体在对端 attrs（阈值/措施规格），关系 attrs 不入图（loader 不装载 dg_relations.attrs）。
     未打标行按 sample 归属（与 _scope_filter_sparql 同一缺省规则，kernel 重载前后语义连续）。
     """
     etype = (a.get("etype") or "").strip()
@@ -647,7 +651,9 @@ async def _query_analogy(a: dict) -> list[TextContent]:
             return _err(ValueError(f"未知 etype: {etype}（可用示例: {sorted(class_map)[:12]}…）"))
         type_filter = f"FILTER(?cls = <{cls}>)"
     label_filter = f"FILTER(CONTAINS(?name, {json.dumps(label, ensure_ascii=False)}))" if label else ""
-    where = f"?e a ?cls ; <{_EIA_NS}attr/norm_name> ?name . {type_filter} {label_filter} {_scope_filter_sparql('sample')}".strip()
+    # A+B 双库：未打标按 sample 缺省 + domain_common 精确命中（FILTER 在 OPTIONAL 组外，见 _scope_filter_sparql 注）
+    scope_clause = f'OPTIONAL {{ ?e <{_EIA_NS}attr/scope> ?sc }} FILTER(!BOUND(?sc) || ?sc = "{_DEFAULT_SCOPE}" || ?sc = "domain_common")'
+    where = f"?e a ?cls ; <{_EIA_NS}attr/norm_name> ?name . {type_filter} {label_filter} {scope_clause}".strip()
     store = _kernel_store()
     rows = store.query(f"SELECT DISTINCT ?e ?name ?cls WHERE {{ GRAPH <{_ASSERTED}> {{ {where} }} }} LIMIT {limit}")
     etype_of = _class_etype_map()
@@ -677,7 +683,7 @@ async def _query_analogy(a: dict) -> list[TextContent]:
                 "norm_name": r.get("name"),
                 "etype": etype_of.get(r.get("cls") or ""),
                 "scope": attrs.get("scope") or _DEFAULT_SCOPE,
-                "source_report": attrs.get("source_report") or "unknown",
+                "source_report": attrs.get("source_report") or attrs.get("source_reports") or "unknown",
                 "attrs": {k: v for k, v in attrs.items() if k not in _IDENTITY_ATTRS},
                 "adjacency": {"out": [edge(e) for e in adj_of[iri]["out"]], "in": [edge(e) for e in adj_of[iri]["in"]]},
             }
@@ -686,9 +692,9 @@ async def _query_analogy(a: dict) -> list[TextContent]:
         {
             "success": True,
             "count": len(entities),
-            "scope": "sample",
+            "scope": "sample+domain_common",
             "entities": entities,
-            "hint": "类比值仅作类比参考：引用须在 stage JSON 标注 param_source=analog_mine + 来源报告名（source_report）；未经本通道的样例实体禁入。",
+            "hint": "类比值仅作类比参考：引用须在 stage JSON 标注 param_source=analog_mine + 来源报告名（source_report）；未经本通道的样例实体禁入。domain_pattern 条目引用时标注规律条目 pattern_id 与 support_count。",
         }
     )
 

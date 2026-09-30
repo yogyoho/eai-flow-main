@@ -239,7 +239,40 @@ async def test_query_entity_scope_project_only_explicit_rows(memory_kernel):
     d = await _call("query_entity", {"etype": "mine", "scope": "project"})
     assert [e["name"] for e in d["entities"]] == ["项目矿P"]
     d2 = await _call("query_entity", {"etype": "mine", "scope": "domain_common"})
-    assert d2["success"] is True and d2["count"] == 0  # B 库挂载点未填充 → 空
+    assert d2["success"] is True and d2["count"] == 0  # mine etype 无 B 库条目 → 空
+
+
+def _populate_pattern(kernel: KernelService) -> None:
+    """B 库已填充态（子项目 5）：一条 domain_pattern 蒸馏条目（scope=domain_common）。"""
+    from app.ontology.kernel.compile import collect_vocabularies
+
+    store = kernel.store
+    vocab = collect_vocabularies(load_registry())["eia"]
+    classes = etype_class_map(load_registry(), "eia")
+    upsert_entity(
+        store,
+        vocab,
+        class_name=classes["domain_pattern"],
+        entity_uuid=uuid.uuid5(uuid.NAMESPACE_URL, "eia-scope-pat"),
+        etype="domain_pattern",
+        canonical_name="治理规律：矿井水→沉淀池",
+        norm_name="治理规律：矿井水→沉淀池",
+        attrs={"scope": "domain_common", "pattern_type": "治理", "support_count": "5"},
+        confidence=0.95,
+    )
+
+
+@pytest.mark.asyncio
+async def test_query_entity_scope_domain_common_hits_pattern(memory_kernel):
+    """scope=domain_common：B 库 domain_pattern 条目按 etype/名称可查（子项目 5 蒸馏入图后的查询通道）。"""
+    _populate_pattern(memory_kernel)
+    d = await _call("query_entity", {"etype": "domain_pattern", "scope": "domain_common"})
+    assert d["success"] is True and d["count"] == 1
+    assert d["entities"][0]["name"] == "治理规律：矿井水→沉淀池" and d["entities"][0]["scope"] == "domain_common"
+    d2 = await _call("query_entity", {"name": "治理规律", "scope": "domain_common"})
+    assert d2["count"] == 1
+    d3 = await _call("query_entity", {"etype": "domain_pattern", "scope": "sample"})
+    assert d3["count"] == 0  # B 库条目不混入 sample 视角
 
 
 @pytest.mark.asyncio

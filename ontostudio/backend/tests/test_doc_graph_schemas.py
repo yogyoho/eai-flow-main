@@ -369,3 +369,41 @@ def test_registry_yaml_enums_superset_of_schemas_literals():
     assert set(get_args(schemas._ETYPE)) <= yaml_etypes
     assert set(get_args(schemas._PREDICATE)) <= yaml_preds
     assert "org_involved_in" in yaml_preds  # 推理派生谓词（不落库, 仅事实空间）
+
+
+# --- C 库 project 写入机制（ontostudio 子项目 5 交付 3，机制预留）---
+
+
+def test_project_id_roundtrip_and_default_none():
+    """payload 携带 project_id 可解析透传；缺省 None = 既有行为（不打标）。"""
+    p = EiaExtraction.model_validate(_eia_payload(project_id="proj-hengcheng-2026"))
+    assert p.project_id == "proj-hengcheng-2026"
+    assert EiaExtraction.model_validate(_eia_payload()).project_id is None
+    assert BidExtraction.model_validate(_payload(project_id="proj-bid-1")).project_id == "proj-bid-1"  # 基类字段两域共享
+
+
+def test_project_id_over_length_rejected():
+    with pytest.raises(ValidationError):
+        EiaExtraction.model_validate(_eia_payload(project_id="x" * 201))
+
+
+def test_project_scoped_attrs_tagging():
+    """project_id 在场 → attrs 自动加 scope=project + project_id；缺席原样返回（A 库行为不变）。"""
+    from app.doc_graph.ingest import project_scoped_attrs
+
+    assert project_scoped_attrs(None, None) == {}
+    original = {"quality": "SS超标"}
+    assert project_scoped_attrs(original, None) is original or project_scoped_attrs(original, None) == original
+    tagged = project_scoped_attrs(original, "proj-42")
+    assert tagged == {"quality": "SS超标", "scope": "project", "project_id": "proj-42"}
+    assert original == {"quality": "SS超标"}  # 不原地改调用方 dict
+    assert project_scoped_attrs(None, "proj-42") == {"scope": "project", "project_id": "proj-42"}
+    assert project_scoped_attrs({"scope": "domain_common"}, "proj-42") == {"scope": "project", "project_id": "proj-42"}  # 显式携带的 scope 被项目归属覆盖
+
+
+def test_ingest_wiring_uses_project_scoped_attrs():
+    """ingest_extraction 实体落库必须经 project_scoped_attrs（防旁路直写 e.attrs 丢打标）。"""
+    import inspect
+
+    src = inspect.getsource(ingest_extraction)
+    assert "project_scoped_attrs" in src

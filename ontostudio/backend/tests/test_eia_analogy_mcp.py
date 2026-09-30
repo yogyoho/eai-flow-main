@@ -1,10 +1,10 @@
-"""query_analogy MCP 工具（子项目 4 spec §4）：样例库类比通道查询语义.
+"""query_analogy MCP 工具（子项目 4 spec §4 + 子项目 5 扩展）：类比通道查询语义.
 
 设计: docs/superpowers/specs/2026-09-30-coal-eia-mcp-integration-design.md §4
 
-覆盖：sample 命中（含未打标缺省归属）/ 非 sample（project/domain_common）不命中 /
-etype 过滤 / limit / source_report+邻接边出参契约。打桩内存 kernel
-（与 test_eia_rules_mcp 同手法），不碰持久化 kernel、不碰真库。
+覆盖：sample 命中（含未打标缺省归属）/ B 库 domain_common（子项目 5：etype=domain_pattern
+蒸馏规律条目入类比通道）/ C 库 project 不命中 / etype 过滤 / limit / source_report+邻接边
+出参契约。打桩内存 kernel（与 test_eia_rules_mcp 同手法），不碰持久化 kernel、不碰真库。
 """
 
 from __future__ import annotations
@@ -64,9 +64,17 @@ def _populate(kernel: KernelService) -> None:
     st = ent("st", "standard_threshold", "样例悬浮物阈值", {"scope": "sample", "source_report": "yueerwan-planning", "max": "70", "unit": "mg/L"})
     rel(ws, "treated_by", tm)
     rel(tm, "specified_by", st)
-    # 非 sample 归属：query_analogy 恒定 scope=sample，不得命中
+    # B 库蒸馏条目（子项目 5）：domain_pattern + analogous_to 实例→模式边，scope=domain_common 入类比通道
+    pat = ent(
+        "pat",
+        "domain_pattern",
+        "治理规律：样例矿井水→样例沉淀池",
+        {"scope": "domain_common", "pattern_id": "dp-test0001", "pattern_type": "治理", "subject_name": "样例矿井水", "object_name": "样例沉淀池", "support_count": "5", "source_reports": "yueerwan-planning、hengcheng-planning"},
+    )
+    rel(ws, "analogous_to", pat)
+    rel(tm, "analogous_to", pat)
+    # C 库 project 归属：query_analogy 不得命中（走 query_entity scope=project）
     ent("pj", "waste_stream", "项目矿井水", {"scope": "project", "source_report": "current-project"})
-    ent("dc", "waste_stream", "共性矿井水", {"scope": "domain_common", "source_report": "b-lib"})
     # 未打标 → 缺省按 sample 归属，命中
     ent("un", "mine", "无标样例矿", None)
     ent("m1", "mine", "样例矿甲", {"scope": "sample", "source_report": "r1"})
@@ -106,29 +114,49 @@ async def test_unknown_etype_rejected(memory_kernel):
 
 @pytest.mark.asyncio
 async def test_sample_hit_with_source_report_and_adjacency(memory_kernel):
-    """sample 命中：source_report 必带 + 邻接边带谓词/对端名/对端属性。"""
+    """sample 命中：source_report 必带 + 邻接边带谓词/对端名/对端属性（含 B 库 analogous_to 边）。"""
     _populate(memory_kernel)
     d = await _call("query_analogy", {"label_contains": "样例矿井水"})
-    assert d["success"] is True and d["scope"] == "sample" and d["count"] == 1
-    ent = d["entities"][0]
-    assert ent["label"] == "样例矿井水" and ent["etype"] == "waste_stream"
+    # 名称子串同时命中样例实体与其 B 库规律条目（「治理规律：样例矿井水→…」）——按 etype 取目标行
+    assert d["success"] is True and d["scope"] == "sample+domain_common" and d["count"] == 2
+    ent = next(e for e in d["entities"] if e["etype"] == "waste_stream")
+    assert ent["label"] == "样例矿井水"
     assert ent["source_report"] == "yueerwan-planning"  # 类比值溯源到"哪份报告"
     out_edges = ent["adjacency"]["out"]
     edge = next(e for e in out_edges if e["predicate"] == "treated_by")
     assert edge["peer_name"] == "样例沉淀池" and edge["peer_etype"] == "treatment_measure"
     assert edge["peer_attrs"]["process"] == "混凝沉淀"
+    pat_edge = next(e for e in out_edges if e["predicate"] == "analogous_to")
+    assert pat_edge["peer_etype"] == "domain_pattern"  # 实例→模式边在邻接出参可见
     # 身份/归属属性不混入业务 attrs
     assert "source_report" not in ent["attrs"] and "scope" not in ent["attrs"]
     assert ent["attrs"]["quality"] == "SS超标"
 
 
 @pytest.mark.asyncio
-async def test_non_sample_not_hit(memory_kernel):
-    """非 sample（project/domain_common）不命中；未打标按缺省归属 sample 命中。"""
+async def test_pattern_entry_via_etype_and_label(memory_kernel):
+    """B 库蒸馏条目（子项目 5）：etype=domain_pattern / label_contains 均可查到 scope=domain_common 条目。"""
+    _populate(memory_kernel)
+    for args in ({"etype": "domain_pattern"}, {"label_contains": "治理规律"}):
+        d = await _call("query_analogy", args)
+        assert d["success"] is True and d["count"] == 1, args
+        ent = d["entities"][0]
+        assert ent["etype"] == "domain_pattern" and ent["scope"] == "domain_common"
+        assert ent["source_report"] == "yueerwan-planning、hengcheng-planning"  # B 库条目 source_reports 回退溯源字段
+        assert ent["attrs"]["pattern_type"] == "治理" and ent["attrs"]["support_count"] == "5"
+        assert ent["attrs"]["pattern_id"] == "dp-test0001"
+        # 模式节点邻接：实例→模式边回填对端名/对端类型
+        in_peers = {e["peer_name"]: e["peer_etype"] for e in ent["adjacency"]["in"] if e["predicate"] == "analogous_to"}
+        assert in_peers == {"样例矿井水": "waste_stream", "样例沉淀池": "treatment_measure"}
+
+
+@pytest.mark.asyncio
+async def test_project_scope_still_excluded(memory_kernel):
+    """C 库 project 仍不命中（走 query_entity scope=project）；未打标按缺省归属 sample 命中。"""
     _populate(memory_kernel)
     d = await _call("query_analogy", {"etype": "waste_stream"})
     names = {e["label"] for e in d["entities"]}
-    assert names == {"样例矿井水"}  # 项目矿井水/共性矿井水排除
+    assert names == {"样例矿井水"}  # 项目矿井水（project）排除
     d2 = await _call("query_analogy", {"label_contains": "无标样例矿"})
     assert d2["count"] == 1 and d2["entities"][0]["scope"] == "sample"
     assert d2["entities"][0]["source_report"] == "unknown"  # 未打标 fallback unknown，字段必在场
@@ -147,9 +175,9 @@ async def test_etype_filter(memory_kernel):
 @pytest.mark.asyncio
 async def test_limit(memory_kernel):
     _populate(memory_kernel)
-    # label_contains "样例矿" 命中 4 条（样例矿井水/无标样例矿/样例矿甲/样例矿乙）
+    # label_contains "样例矿" 命中 5 条（样例矿井水/无标样例矿/样例矿甲/样例矿乙 + B 库规律条目「治理规律：样例矿井水→…」）
     full = await _call("query_analogy", {"label_contains": "样例矿"})
-    assert full["count"] == 4
+    assert full["count"] == 5
     capped = await _call("query_analogy", {"label_contains": "样例矿", "limit": 1})
     assert capped["count"] == 1
 
