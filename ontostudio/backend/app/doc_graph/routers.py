@@ -67,10 +67,12 @@ def _resolution_http_error(e: Exception) -> HTTPException:
 async def resolution_pending(
     etype: str | None = None,
     limit: int = 50,
+    search: str | None = None,
+    offset: int = 0,
     _: CurrentUser = Depends(require_permission("system:access")),
 ):
-    """status=pending_review 实体列表（置信度升序; limit 钳制在 service）。"""
-    return await service.list_pending_review(etype, limit)
+    """status=pending_review 实体列表（置信度升序; limit/offset 钳制在 service；search=canonical_name 子串）。"""
+    return await service.list_pending_review(etype, limit, search, offset)
 
 
 @router.get("/resolution/suggestions")
