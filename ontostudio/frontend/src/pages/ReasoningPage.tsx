@@ -16,7 +16,7 @@ import { Chip, DemoTag, PageHeader, Panel } from "@/pages/shared";
  * 硬编码会漏新规则——2026-09-29 抽查修复）；未知键回退通用描述 + 谓词 = 键名去
  * chain_ 前缀 + NAMED GRAPH = graph:derived:<键>。
  */
-const RULE_META: Record<string, { desc: string; pred?: string }> = {
+export const RULE_META: Record<string, { desc: string; pred?: string }> = {
   org_in_ecosystem: { desc: "组织沿承包链归入生态（rules.yaml）", pred: "org_in_ecosystem_of" },
   qualified_bidder: { desc: "投标资格预审（Phase B 试点，CQ#3）", pred: "bidder_qualified_for" },
   chain_covered_by_standard: { desc: "环评治理合规链：设施→监测→限值→标准（eia formal 自动生成）", pred: "covered_by_standard" },
@@ -27,7 +27,7 @@ const RULE_META: Record<string, { desc: string; pred?: string }> = {
   sameas_propagation: { desc: "sameAs 候选等价传播（内置）", pred: "*" },
 };
 
-interface RuleRow {
+export interface RuleRow {
   name: string;
   desc: string;
   pred: string;
@@ -36,7 +36,7 @@ interface RuleRow {
 }
 
 /** rule_counts → 规则行（已知键按 META 顺序在前、未知键按响应顺序附后，渲染稳定）。 */
-function ruleRows(ruleCounts: Record<string, number>): RuleRow[] {
+export function ruleRows(ruleCounts: Record<string, number>): RuleRow[] {
   const keys = Object.keys(ruleCounts);
   const known = keys.filter((key) => key in RULE_META);
   const unknown = keys.filter((key) => !(key in RULE_META));

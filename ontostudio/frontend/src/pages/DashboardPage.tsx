@@ -9,8 +9,9 @@
  * - 域健康：registry 文件 × summary（类/谓词数）× aggregate 域计数 + cross_module
  *   链路禁用真信号（object-types link_types enabled:false）
  * - 三小卡：校验状态（GET /formal/validate，与校验中心同 key 共享）；数据面
- *   （registry 版本 + 全量装载按钮）；抽取活动（任务队列规划态）
- * - 治理链抽样：规划态示例（逐条物化溯源已入 TODOS「推理白盒化」）
+ *   （registry 版本 + 全量装载按钮，二次确认 + 失败可见）；抽取活动（任务统计真数据）
+ * - 治理合规链：CONSTRUCT 规则真实派生计数（与推理工作台同源 rule_counts，零硬编码；
+ *   逐条物化下钻已列入待办）
  */
 import { useMutation, useQueries, useQuery } from "@tanstack/react-query";
 import {
@@ -35,7 +36,6 @@ import {
   fetchObjectTypes,
   fetchPendingReviewCount,
   fetchRegistryMeta,
-  PENDING_REVIEW_LIMIT,
 } from "@/api/ontology-graph-api";
 import {
   fetchFormalValidate,
@@ -45,9 +45,16 @@ import {
 } from "@/api/formal-api";
 import { fetchRegistryContent, fetchRegistryFiles } from "@/api/registry-api";
 import { fetchTaskStats } from "@/api/ingest-tasks-api";
+import { ruleRows } from "@/pages/ReasoningPage";
+import { domainAlias } from "@/lib/terms";
 import { PageHeader, Panel } from "@/pages/shared";
 import { withAlpha } from "@/explorer/graphTheme";
 import { cn } from "@/lib/utils";
+
+/** ms → 人话时长（<1s 显示毫秒，其余取整秒——F5：裸毫秒对操作者无感）。 */
+function formatDuration(ms: number): string {
+  return ms < 1000 ? `${ms}ms` : `约 ${Math.round(ms / 1000)} 秒`;
+}
 
 // ── 多色彩系统（EAI-CUSTOM 2026-09-27）──
 // 与既有语义色同源的 Ant 家族色：蓝=主/实体 紫=关系 青=推理 琥珀=待审 绿=校验。
@@ -178,6 +185,11 @@ export function DashboardPage() {
     onSuccess: (data) => setLoadResult(data),
   });
 
+  // 治理合规链（G5/H1 接真）：与推理工作台同源 rule_counts，派生数降序取前 4——零硬编码
+  const derivedRules = inferQuery.data
+    ? [...ruleRows(inferQuery.data.rule_counts)].sort((a, b) => b.count - a.count).slice(0, 4)
+    : null;
+
   return (
     /* 横向滚动（样式=全站 6px 细条，同合同价格分析页）：min-w 保四瓦片/双列布局
        不被窄视口压扁裁切，超出部分横向滚动查看 */
@@ -197,21 +209,23 @@ export function DashboardPage() {
       {/* 瓦片行——四色标识：实体蓝 / 关系紫 / 推理青 / 待审琥珀 */}
       <div className="grid grid-cols-2 gap-3.5 lg:grid-cols-4">
         <Tile
-          k="实体（dg_entities）"
+          k="实体"
           v={entAggQuery.isLoading ? null : entityTotal}
           unit="行"
           d={topDomain ? `最大域 ${topDomain.group ?? "—"} · ${topDomain.value} 行` : "—"}
           tone={TONE_BLUE}
           icon={Database}
+          title="dg_entities 表行数（跨域合计）"
           onClick={() => go("entities")}
         />
         <Tile
-          k="关系（dg_relations）"
+          k="关系"
           v={relAggQuery.isLoading ? null : relationTotal}
           unit="条"
-          d="双端点齐备才入图"
+          d="两端实体都存在的关系才计入"
           tone={TONE_PURPLE}
           icon={GitBranch}
+          title="dg_relations 表行数"
         />
         <Tile
           k="推理物化三元组"
@@ -219,19 +233,18 @@ export function DashboardPage() {
           unit=""
           d={
             inferQuery.data
-              ? `闭包 ${inferQuery.data.duration_ms}ms`
-              : "尚未运行 · 点击运行全量推理"
+              ? `闭包 ${formatDuration(inferQuery.data.duration_ms)} · 前往推理工作台查看规则明细`
+              : "尚未运行 · 全量重算约 30 秒，前往推理工作台"
           }
           tone={TONE_CYAN}
           icon={BrainCircuit}
-          onAction={inferQuery.isFetching ? undefined : () => inferQuery.refetch()}
-          actionLabel={inferQuery.isFetching ? undefined : "运行推理"}
+          onClick={() => go("reasoning")}
         />
         <Tile
           k="待审实体"
           v={pending ?? null}
           unit=""
-          d={pending !== null && pending >= PENDING_REVIEW_LIMIT ? `已达拉取上限 ${PENDING_REVIEW_LIMIT}` : "点击进入消解审核 →"}
+          d={pending !== null && pending > 0 ? "点击进入消解审核逐条确认 →" : "暂无待审"}
           tone={TONE_AMBER}
           icon={GitMerge}
           accent
@@ -266,6 +279,7 @@ export function DashboardPage() {
                   <tr
                     key={row.domain}
                     className="border-border cursor-pointer border-b transition-colors last:border-b-0 hover:bg-muted"
+                    title="前往本体建模器查看该域模型"
                     onClick={() => go("modeler")}
                   >
                     <td className="px-4 py-2.5">
@@ -274,7 +288,7 @@ export function DashboardPage() {
                           className="h-2 w-2 flex-none rounded-full"
                           style={{ background: dot }}
                         />
-                        {row.domain}
+                        {domainAlias(row.domain) ?? row.domain}
                       </span>
                     </td>
                     <td className="px-4 py-2.5 text-center text-sm tabular-nums">{row.classes}</td>
@@ -306,44 +320,70 @@ export function DashboardPage() {
           </div>
           <div className="border-border text-muted-foreground flex flex-none items-center gap-2 border-t px-4 py-2.5 text-xs">
             <GitBranch className="h-3 w-3" />
-            跨域链路（cross_module）四条全禁用——单域闭环优先，跨域待业务触发（TODOS）
+            <span title="cross_module">
+              跨域链路 {disabledLinks.length} 条禁用——单域闭环优先，跨域待业务触发（已列入待办）
+            </span>
           </div>
         </Panel>
 
         <Panel
-          title="治理链抽样"
-          subtitle="covered_by_standard 推导"
+          title="治理合规链 · 规则派生"
+          subtitle="CONSTRUCT 真实派生计数（与推理工作台同源）"
           tone={TONE_PURPLE}
           icon={Network}
           actions={
-            <span className="text-muted-foreground/70 border-border/70 rounded border border-dashed px-1.5 py-px font-mono text-xs">
-              规划 · 示例数据
-            </span>
+            <button
+              type="button"
+              onClick={() => go("reasoning")}
+              className="text-primary flex items-center gap-1 text-xs font-medium"
+            >
+              推理工作台 <ArrowRight className="h-3 w-3" />
+            </button>
           }
         >
-          <ol className="flex flex-col gap-3 p-4 text-[13px]">
-            {CHAIN_SAMPLES.map((chain, i) => {
-              const tone = CHAIN_TONES[i % CHAIN_TONES.length] ?? TONE_BLUE;
-              return (
-              <li
-                key={chain.ttl}
-                className="border-l-2 pl-3"
-                style={{ borderColor: withAlpha(tone, 0.45) }}
+          {derivedRules === null ? (
+            <div className="text-muted-foreground flex flex-col gap-2 p-4 text-xs">
+              <p className="leading-relaxed">
+                推理尚未运行——全量重算（约 30 秒）后此处展示各治理合规链规则的真实派生计数。
+              </p>
+              <button
+                type="button"
+                onClick={() => go("reasoning")}
+                className="border-border bg-card hover:bg-muted flex items-center gap-1 self-start rounded-lg border px-2.5 py-1.5 text-[13px] font-medium"
               >
-                <b className="text-[13px]">{chain.title}</b>
-                <span
-                  className="ml-2 rounded px-1.5 py-0.5 font-mono text-xs"
-                  style={{ background: withAlpha(tone, 0.1), color: toneText(tone) }}
-                >
-                  {chain.rule}
-                </span>
-                <div className="text-muted-foreground mt-0.5 font-mono text-xs">{chain.ttl}</div>
-              </li>
-              );
-            })}
-          </ol>
+                前往推理工作台 <ArrowRight className="h-3 w-3" />
+              </button>
+            </div>
+          ) : (
+            <ol className="flex flex-col gap-3 p-4 text-[13px]">
+              {derivedRules.map((rule, i) => {
+                const tone = CHAIN_TONES[i % CHAIN_TONES.length] ?? TONE_BLUE;
+                return (
+                  <li
+                    key={rule.name}
+                    className="border-l-2 pl-3"
+                    style={{ borderColor: withAlpha(tone, 0.45) }}
+                  >
+                    <div className="flex items-center gap-2">
+                      <b className="text-[13px]">{rule.desc}</b>
+                      <span
+                        className="ml-auto flex-none rounded px-1.5 py-0.5 font-mono text-xs tabular-nums"
+                        style={{ background: withAlpha(tone, 0.1), color: toneText(tone) }}
+                        title={`派生三元组数（named graph: ${rule.graph}）`}
+                      >
+                        {rule.count} 条
+                      </span>
+                    </div>
+                    <div className="text-muted-foreground mt-0.5 font-mono text-xs" title={`规则 ${rule.name} · 谓词 ${rule.pred}`}>
+                      {rule.name}
+                    </div>
+                  </li>
+                );
+              })}
+            </ol>
+          )}
           <p className="text-muted-foreground border-border border-t px-4 py-2.5 text-xs">
-            逐条物化可下钻（named graph 归属即触发轨迹）已入 TODOS「推理白盒化」——当前图面判据见导出互操作页。
+            逐条物化下钻已列入待办——当前图面判据见导出互操作页。
           </p>
         </Panel>
       </div>
@@ -353,16 +393,22 @@ export function DashboardPage() {
         <Panel title="校验状态" tone={TONE_GREEN} icon={ShieldCheck} className="flex flex-col">
           <div className="flex flex-1 flex-col gap-2.5 p-4 text-xs">
             <div className="flex items-center justify-between">
-              <span>国标符合性（5.3/5.4/附录A/§9）</span>
+              <span>国标符合性</span>
               <span
                 className={cn(
                   "rounded-full px-2 py-0.5 text-xs font-medium",
-                  conformance.length > 0 && passedCount === conformance.length
-                    ? "bg-success/10 text-success"
-                    : "bg-warning/15 text-warning",
+                  validateQuery.isError
+                    ? "bg-destructive/10 text-destructive"
+                    : conformance.length > 0 && passedCount === conformance.length
+                      ? "bg-success/10 text-success"
+                      : "bg-warning/15 text-warning",
                 )}
               >
-                {validateQuery.data ? `${passedCount} / ${conformance.length} 通过` : "加载中…"}
+                {validateQuery.isError
+                  ? "获取失败"
+                  : validateQuery.data
+                    ? `${passedCount} / ${conformance.length} 通过`
+                    : "加载中…"}
               </span>
             </div>
             <div className="flex items-center justify-between">
@@ -399,7 +445,12 @@ export function DashboardPage() {
               <button
                 type="button"
                 disabled={loadMutation.isPending}
-                onClick={() => loadMutation.mutate()}
+                onClick={() => {
+                  // G4：全量装载=重写 dg_* 全表的重操作（数十秒级），二次确认 + 失败可见
+                  if (window.confirm("全量装载将重写图数据全表（耗时数十秒），确认执行？")) {
+                    loadMutation.mutate();
+                  }
+                }}
                 className="border-border bg-card hover:bg-muted flex items-center gap-1 rounded-lg border px-2.5 py-1.5 text-[13px] font-medium disabled:opacity-50"
               >
                 {loadMutation.isPending ? (
@@ -409,7 +460,14 @@ export function DashboardPage() {
                 )}
                 全量装载（对账）
               </button>
-              {loadResult ? (
+              {loadMutation.isError ? (
+                <span
+                  className="text-destructive max-w-[16rem] truncate text-xs"
+                  title={loadMutation.error instanceof Error ? loadMutation.error.message : String(loadMutation.error)}
+                >
+                  装载失败：{loadMutation.error instanceof Error ? loadMutation.error.message : String(loadMutation.error)}
+                </span>
+              ) : loadResult ? (
                 <span className="text-muted-foreground font-mono text-xs">
                   {loadResult.entities} 实体 / {loadResult.relations} 关系已装载
                 </span>
@@ -483,6 +541,7 @@ function Tile({
   tone,
   icon: Icon,
   accent,
+  title,
   onClick,
   onAction,
   actionLabel,
@@ -494,6 +553,7 @@ function Tile({
   tone: string;
   icon: LucideIcon;
   accent?: boolean;
+  title?: string;
   onClick?: () => void;
   onAction?: () => void;
   actionLabel?: string;
@@ -503,6 +563,7 @@ function Tile({
       type="button"
       onClick={onClick}
       disabled={!onClick}
+      title={title}
       className={cn(
         "rounded-xl border p-3.5 text-left shadow-sm transition-all duration-200",
         onClick && "hover:-translate-y-px cursor-pointer",
@@ -554,22 +615,3 @@ function Tile({
     </button>
   );
 }
-
-/** 治理链示例（示例数据——真实逐条溯源待推理白盒化）。 */
-const CHAIN_SAMPLES = [
-  {
-    title: "矿井水处理站 → GB 50383-2010",
-    rule: "prp-spo2×2",
-    ttl: "monitored_by(矿井水处理站, 悬浮物浓度) ∧ has_limit(悬浮物浓度, …) ⇒ covered_by_standard",
-  },
-  {
-    title: "锅炉烟气排放 → GB 13223-2011",
-    rule: "prp-spo2×2",
-    ttl: "双碱法脱硫 + 45m 烟囱 · 阈值约束来自条款抽取",
-  },
-  {
-    title: "矸石山 → GB 50383-2010 第 6 章",
-    rule: "sameas",
-    ttl: "实体消解后由 sameas 传播继承治理关系",
-  },
-];
