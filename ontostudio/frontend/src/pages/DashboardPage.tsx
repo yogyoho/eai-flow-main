@@ -185,6 +185,21 @@ export function DashboardPage() {
     onSuccess: (data) => setLoadResult(data),
   });
 
+  // ── 待办主轴 + 管线健康（V4 信息架构增量，CEO 复审追加）──
+  const todoFailed = activityFailed;
+  const todoActive = activityActive;
+  const attentionItems =
+    (pending !== null && pending > 0 ? 1 : 0) + (todoFailed > 0 ? 1 : 0);
+  // 管线各站状态：抽取=有进行中则琥珀；审核=有待审则琥珀；图=恒绿（对账见同步卡）；
+  // 推理=未运行灰/已运行绿；校验=全过绿否则琥珀
+  const stageExtract: "ok" | "warn" = todoActive > 0 ? "warn" : "ok";
+  const stageReview: "ok" | "warn" = pending !== null && pending > 0 ? "warn" : "ok";
+  const stageInfer: "ok" | "idle" = inferQuery.data ? "ok" : "idle";
+  const stageValidate: "ok" | "warn" =
+    validateQuery.data && conformance.length > 0 && passedCount === conformance.length && violationCount.length === 0
+      ? "ok"
+      : "warn";
+
   // 治理合规链（G5/H1 接真）：与推理工作台同源 rule_counts，派生数降序取前 4——零硬编码
   const derivedRules = inferQuery.data
     ? [...ruleRows(inferQuery.data.rule_counts)].sort((a, b) => b.count - a.count).slice(0, 4)
@@ -205,6 +220,140 @@ export function DashboardPage() {
           ) : null
         }
       />
+
+      {/* 待办主轴——今天需要你处理（V4 信息架构） */}
+      <div className="mb-3.5 grid grid-cols-2 gap-3.5 lg:grid-cols-4">
+        <button
+          type="button"
+          onClick={() => go("resolve")}
+          className="rounded-xl border p-3.5 text-left shadow-sm transition-all duration-200 hover:-translate-y-px cursor-pointer"
+          style={{
+            background: `linear-gradient(135deg, ${withAlpha(TONE_AMBER, 0.08)}, ${withAlpha(TONE_AMBER, 0.02)} 60%), var(--card, #fff)`,
+            borderColor: withAlpha(TONE_AMBER, 0.45),
+          }}
+        >
+          <div className="text-muted-foreground flex items-center gap-2 text-sm font-medium">
+            <span className="bg-warning inline-block h-2 w-2 rounded-full" />
+            现在需要你处理
+            <span className="text-muted-foreground/70 text-xs">· 按批处理优先级</span>
+          </div>
+          <div className="mt-1.5 font-mono text-[40px] font-bold leading-tight tabular-nums" style={{ color: toneText(TONE_AMBER) }}>
+            {pending ?? "—"}
+            <small className="text-muted-foreground ml-2 text-sm font-normal">条实体待审</small>
+          </div>
+          <div className="text-muted-foreground mt-0.5 text-xs">五间房批次已入图待人工确认 · 支持批量勾选</div>
+          <span className="bg-primary text-primary-foreground mt-2.5 inline-flex items-center gap-1 rounded-md px-3 py-1 text-xs font-medium">
+            进入消解审核 →
+          </span>
+        </button>
+        <div className="border-border rounded-xl border bg-card p-3.5">
+          <div className="text-muted-foreground flex items-center gap-2 text-sm font-medium">
+            <span className={cn("inline-block h-2 w-2 rounded-full", todoFailed > 0 ? "bg-destructive" : "bg-success")} />
+            失败任务
+          </div>
+          <div className={cn("mt-1.5 font-mono text-3xl font-bold tabular-nums", todoFailed > 0 ? "text-destructive" : "text-success")}>
+            {todoFailed}
+          </div>
+          <div className="text-muted-foreground mt-0.5 text-xs">抽取队列 · 近 24h</div>
+        </div>
+        <div className="border-border rounded-xl border bg-card p-3.5">
+          <div className="text-muted-foreground flex items-center gap-2 text-sm font-medium">
+            <span className={cn("inline-block h-2 w-2 rounded-full", todoActive > 0 ? "bg-warning" : "bg-success")} />
+            进行中
+          </div>
+          <div className="mt-1.5 font-mono text-3xl font-bold tabular-nums">{todoActive}</div>
+          <div className="text-muted-foreground mt-0.5 text-xs">队列 · 今日已完成 {activityDone}</div>
+        </div>
+        <div className="border-border rounded-xl border bg-card p-3.5">
+          <div className="text-muted-foreground flex items-center gap-2 text-sm font-medium">
+            <span className={cn("inline-block h-2 w-2 rounded-full", attentionItems > 0 ? "bg-warning" : "bg-success")} />
+            系统状态
+          </div>
+          <div className={cn("mt-1.5 font-bold", attentionItems > 0 ? "text-[22px] leading-relaxed" : "font-mono text-3xl", attentionItems > 0 ? "" : "text-success")}>
+            {pending === null ? "…" : attentionItems > 0 ? `${attentionItems} 项需关注` : "全部正常"}
+          </div>
+          <div className="text-muted-foreground mt-0.5 text-xs">
+            {pending === null ? "加载中" : attentionItems > 0 ? "待审积压 · 其余指标正常" : "管线各站健康"}
+          </div>
+        </div>
+      </div>
+
+      {/* 管线健康——五站站线（V4 信息架构） */}
+      <Panel title="管线健康" subtitle="抽取 → 人工审核 → 知识图谱 → 推理 → 校验" icon={Network} className="mb-3.5">
+        <div className="grid grid-cols-2 gap-3 px-4 pb-4 md:grid-cols-5">
+          {[
+            {
+              nm: "抽取",
+              dot: stageExtract,
+              num: activityDone,
+              unit: "已完成",
+              sub: todoActive > 0 ? `进行中 ${todoActive} · 高置信 ${activityQuery.data?.confidence?.high ?? 0}` : `队列空闲 · 高置信 ${activityQuery.data?.confidence?.high ?? 0}`,
+              onClick: () => go("ingest"),
+            },
+            {
+              nm: "人工审核",
+              dot: stageReview,
+              num: pending ?? 0,
+              unit: "待确认",
+              sub: pending !== null && pending > 0 ? "积压 · 建议尽快清零" : "无积压",
+              onClick: () => go("resolve"),
+            },
+            {
+              nm: "知识图谱",
+              dot: "ok" as const,
+              num: entityTotal,
+              unit: "实体行",
+              sub: `关系 ${relationTotal} 条 · 对账见同步卡`,
+              onClick: () => go("entities"),
+            },
+            {
+              nm: "推理",
+              dot: stageInfer,
+              num: inferQuery.data ? inferQuery.data.entailment_triples : null,
+              unit: inferQuery.data ? "物化" : "未运行",
+              sub: inferQuery.data ? `闭包 ${formatDuration(inferQuery.data.duration_ms)}` : "全量重算约 30 秒 · 前往工作台",
+              onClick: () => go("reasoning"),
+            },
+            {
+              nm: "校验",
+              dot: stageValidate,
+              num: validateQuery.data ? passedCount : null,
+              unit: validateQuery.data ? `/ ${conformance.length} 通过` : "—",
+              sub: `SHACL 违规 ${violationCount.length}`,
+              onClick: () => go("validation"),
+            },
+          ].map((st) => (
+            <button
+              key={st.nm}
+              type="button"
+              onClick={st.onClick}
+              title={`前往${st.nm}页面`}
+              className={cn(
+                "border-border hover:bg-muted rounded-lg border p-3 text-left transition-colors",
+                st.dot === "warn" && "border-warning/40",
+              )}
+              style={st.dot === "warn" ? { background: withAlpha(TONE_AMBER, 0.05) } : undefined}
+            >
+              <div className="flex items-center gap-2">
+                <span
+                  className={cn(
+                    "inline-block h-2 w-2 flex-none rounded-full",
+                    st.dot === "warn" && "bg-warning",
+                    st.dot === "ok" && "bg-success",
+                    st.dot === "idle" && "bg-muted-foreground/50",
+                  )}
+                />
+                <span className="text-[13px] font-medium">{st.nm}</span>
+              </div>
+              <div className="mt-1 font-mono text-[22px] font-bold tabular-nums">
+                {st.num === null ? "—" : st.num.toLocaleString()}
+                <small className="text-muted-foreground ml-1 text-[11px] font-normal">{st.unit}</small>
+              </div>
+              <div className="text-muted-foreground mt-0.5 truncate text-[11px]">{st.sub}</div>
+            </button>
+          ))}
+        </div>
+      </Panel>
 
       {/* 瓦片行——四色标识：实体蓝 / 关系紫 / 推理青 / 待审琥珀 */}
       <div className="grid grid-cols-2 gap-3.5 lg:grid-cols-4">
