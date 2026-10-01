@@ -846,16 +846,13 @@ export function ResolutionPanel({
             </div>
 
             <div className="rounded-[14px]" style={{ background: CARD, border: `1px solid ${CARD_BORDER}` }}>
-              {/* v2 B1.5：开发者契约文档折叠——默认收起，操作者只见摘要行 */}
-              <details>
-                <summary className="border-b px-4 py-3 text-sm font-semibold cursor-pointer select-none" style={{ borderColor: CARD_BORDER, color: INK }}>
-                  操作反馈四态
-                  <span className="text-muted-foreground ml-2 text-xs font-normal">成功 / 降级 / 冲突 409 / 在途——点开查看实现契约</span>
-                </summary>
               <div className="border-b px-4 py-3" style={{ borderColor: CARD_BORDER }}>
                 <b className="text-sm font-semibold" style={{ color: INK }}>
                   操作反馈四态（实现契约）
                 </b>
+                <span className="text-muted-foreground ml-2 text-xs font-normal">
+                  成功 / 降级 / 冲突 409 / 在途——点开查看实现契约
+                </span>
               </div>
               <table className="w-full text-sm">
                 <thead>
@@ -874,7 +871,7 @@ export function ResolutionPanel({
                     <td className="px-2 py-2 text-xs">绿勾 + 行内「已入图」；图浏览可立即看到</td>
                   </tr>
                   <tr className="border-border/60 border-b" style={{ borderColor: CARD_BORDER }}>
-                    <td className="px-4 py-2 text-xs"><span className="mr-1.5 inline-block h-2 w-2 rounded-full" style={{ background: AMBER }} />degraded</td>
+                    <td className="px-4 py-2 text-xs"><span className="mr-1.5 inline-block h-2 w-2 rounded-full" style={{ background: AMBER }} />降级</td>
                     <td className="px-2 py-2 font-mono text-xs">projected:false + errors</td>
                     <td className="px-2 py-2 text-xs">黄警 + 明细 + 「重跑全量装载即自动对账（数据无损失）」</td>
                   </tr>
@@ -890,7 +887,6 @@ export function ResolutionPanel({
                   </tr>
                 </tbody>
               </table>
-              </details>
             </div>
           </div>
         </div>

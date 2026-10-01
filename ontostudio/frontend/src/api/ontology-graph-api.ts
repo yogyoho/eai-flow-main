@@ -295,7 +295,7 @@ export async function fetchPending(
   if (etype) qs.set("etype", etype);
   if (search) qs.set("search", search);
   if (offset) qs.set("offset", String(offset));
-  const url = `}${RESOLUTION_BASE}/pending?}${qs.toString()}`;
+  const url = `${RESOLUTION_BASE}/pending?${qs.toString()}`;
   const res = await authFetch<Partial<PendingPage>>(url);
   return {
     entities: res.entities ?? [],
