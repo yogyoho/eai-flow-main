@@ -20,7 +20,6 @@ import {
   Database,
   FileInput,
   GitBranch,
-  GitMerge,
   Layers,
   LayoutDashboard,
   Loader2,
@@ -355,8 +354,8 @@ export function DashboardPage() {
         </div>
       </Panel>
 
-      {/* 瓦片行——四色标识：实体蓝 / 关系紫 / 推理青 / 待审琥珀 */}
-      <div className="grid grid-cols-2 gap-3.5 lg:grid-cols-4">
+      {/* 瓦片行——三色标识：实体蓝 / 关系紫 / 推理青（待审已上移至首行待办主轴） */}
+      <div className="grid grid-cols-2 gap-3.5 lg:grid-cols-3">
         <Tile
           k="实体"
           v={entAggQuery.isLoading ? null : entityTotal}
@@ -388,16 +387,6 @@ export function DashboardPage() {
           tone={TONE_CYAN}
           icon={BrainCircuit}
           onClick={() => go("reasoning")}
-        />
-        <Tile
-          k="待审实体"
-          v={pending ?? null}
-          unit=""
-          d={pending !== null && pending > 0 ? "点击进入消解审核逐条确认 →" : "暂无待审"}
-          tone={TONE_AMBER}
-          icon={GitMerge}
-          accent
-          onClick={() => go("resolve")}
         />
       </div>
 
