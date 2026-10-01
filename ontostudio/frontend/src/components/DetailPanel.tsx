@@ -177,28 +177,28 @@ function RelationNodeCard({
       </div>
       <h3 className="text-muted-foreground mb-1.5 text-xs font-medium tracking-widest">关系</h3>
       <dl className="grid grid-cols-[96px_1fr] gap-x-2.5 gap-y-1 text-sm">
-        <dt className="text-muted-foreground">谓词</dt>
+        <dt className="text-muted-foreground break-words text-[13px]">谓词<span className="ml-1 font-mono text-[9.5px] opacity-60">predicate</span></dt>
         <dd className="text-foreground font-mono text-xs">
           {predicate}
           {predicateCn !== predicate ? `（${predicateCn}）` : ""}
         </dd>
-        <dt className="text-muted-foreground">主体实体</dt>
+        <dt className="text-muted-foreground break-words text-[13px]">主体实体<span className="ml-1 font-mono text-[9.5px] opacity-60">subjectId</span></dt>
         <dd className="text-foreground">
           <EntityNameLink entityPk={subjectId} onFocusNode={onFocusNode}>
             {subject.name}
           </EntityNameLink>
         </dd>
-        <dt className="text-muted-foreground">客体实体</dt>
+        <dt className="text-muted-foreground break-words text-[13px]">客体实体<span className="ml-1 font-mono text-[9.5px] opacity-60">objectId</span></dt>
         <dd className="text-foreground">
           <EntityNameLink entityPk={objectId} onFocusNode={onFocusNode}>
             {object.name}
           </EntityNameLink>
         </dd>
-        <dt className="text-muted-foreground">置信度</dt>
+        <dt className="text-muted-foreground break-words text-[13px]">置信度<span className="ml-1 font-mono text-[9.5px] opacity-60">confidence</span></dt>
         <dd className="text-foreground tabular-nums">{String(properties.confidence ?? "—")}</dd>
         {Object.entries(attrs).map(([k, v]) => (
           <div key={k} className="col-span-2 grid grid-cols-subgrid">
-            <dt className="text-muted-foreground">{ATTR_KEY_LABELS[k] ?? k}</dt>
+            <dt className="text-muted-foreground break-words text-[13px]">{ATTR_KEY_LABELS[k] ?? k}<span className="ml-1 font-mono text-[9.5px] opacity-60">{k}</span></dt>
             <dd className="text-foreground break-all tabular-nums">
               {typeof v === "boolean" ? (v ? "是" : "否") : String(v ?? "—")}
             </dd>
