@@ -12,6 +12,8 @@ EAI-CUSTOM(2026-09-30, 子项目 5): 写库脚本（eia 域内），不碰容器
     PYTHONPATH=. ./.venv/Scripts/python.exe scripts/eia_pattern_ingest.py --refined scripts/eia_pattern_mine_out/refined_desc.json --apply   # 精炼描述入 attrs
 
 输入 = scripts/eia_pattern_mine_out/patterns.json（交付 1 归并版产物），取 support_count >= --min-support 的候选：
+  --types 敏感点防护,监测覆盖（批次 2 2026-10-01 新增）：只取指定 pattern_type 的候选——批次增量
+    入图时旧类型节点一个字节不碰（连 attrs 刷新都不做，图内既有条目原样冻结）；缺省全类型。
   - 每条一个 domain_pattern 节点：etype=domain_pattern（B 库挂载点, eia.yaml 已注册 DomainPattern）、
     scope=domain_common、attrs 记 pattern_type/subject/object/support/source_reports/pattern_desc
     （+归并版 subject_variants/object_variants 变体名清单）；--refined 时叠加 refined=true/refined_desc/refined_at；
@@ -62,14 +64,17 @@ def _clip(name: str, pattern_id: str) -> str:
     return name[: NAME_MAX - len(pattern_id) - 1] + "-" + pattern_id
 
 
-def _load_candidates(min_support: int) -> list[dict]:
+def _load_candidates(min_support: int, types: tuple[str, ...] | None = None) -> list[dict]:
     payload = json.loads(MINE_OUT.read_text(encoding="utf-8"))
     entries = [e for entries in payload["patterns"].values() for e in entries]
+    if types:
+        entries = [e for e in entries if e["pattern_type"] in types]
     candidates = sorted(
         (e for e in entries if e["support_count"] >= min_support),
         key=lambda e: (-e["support_count"], e["pattern_id"]),
     )
-    print(f"输入 {len(entries)} 配对，support>={min_support} 候选 {len(candidates)} 条")
+    type_cut = f"，类型限定 {','.join(types)}" if types else ""
+    print(f"输入 {len(entries)} 配对{type_cut}，support>={min_support} 候选 {len(candidates)} 条")
     return candidates
 
 
@@ -306,10 +311,12 @@ def main() -> None:
     parser.add_argument("--min-support", type=int, default=3, help="入图门槛（跨报告支持度，默认 3；归并扩量用 2）")
     parser.add_argument("--prune", action="store_true", help="归并同步：删除不在新候选集内的旧 pattern 节点（先删边）")
     parser.add_argument("--refined", type=Path, default=None, help="精炼描述 JSON（pattern_id → {refined_desc,...}）写入 attrs")
+    parser.add_argument("--types", type=str, default=None, help="逗号分隔 pattern_type 过滤（如 敏感点防护,监测覆盖）；缺省全类型")
     parser.add_argument("--skip-verify", action="store_true", help="apply 后跳过 DB 对账")
     args = parser.parse_args()
 
-    candidates = _load_candidates(args.min_support)
+    types = tuple(t.strip() for t in args.types.split(",") if t.strip()) if args.types else None
+    candidates = _load_candidates(args.min_support, types)
     if not candidates:
         print("无候选，退出")
         return

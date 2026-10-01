@@ -61,27 +61,29 @@ SLUG_DISPLAY = {
     "yueerwan": "月儿湾矿井",
 }
 
-PRED_DISPLAY = {"emitted_as+treated_by": "产污+治理", "governed_by": "执行标准", "disposed_by": "处置", "utilized_by": "综合利用"}
+PRED_DISPLAY = {"emitted_as+treated_by": "产污+治理", "governed_by": "执行标准", "disposed_by": "处置", "utilized_by": "综合利用", "protected_by": "防护", "monitored_by": "监测"}
+
+_TYPE_ORDER = {"治理": 0, "处置": 1, "标准": 2, "敏感点防护": 3, "监测覆盖": 4}
 
 
 def _display(slug: str) -> str:
     return SLUG_DISPLAY.get(slug, slug)
 
 
-def _load_patterns() -> list[dict]:
-    payload = json.loads(PATTERNS_JSON.read_text(encoding="utf-8"))
+def _load_patterns(patterns_path: Path = PATTERNS_JSON) -> list[dict]:
+    payload = json.loads(patterns_path.read_text(encoding="utf-8"))
     entries = [e for v in payload["patterns"].values() for e in v]
     total_samples = len({s for e in entries for s in e["source_reports"]})
     return total_samples, entries  # type: ignore[return-value]
 
 
-def emit_facts(type_cut: dict[str, int]) -> None:
-    """按类型分别取头部：治理/处置/标准各自的 support 门槛（头部形态按类型差异大，全局排序会单类型倾斜）。"""
-    total_samples, entries = _load_patterns()
+def emit_facts(type_cut: dict[str, int], patterns_path: Path = PATTERNS_JSON, facts_path: Path = FACTS_JSON) -> None:
+    """按类型分别取头部：各类型自己的 support 门槛（头部形态按类型差异大，全局排序会单类型倾斜）。"""
+    total_samples, entries = _load_patterns(patterns_path)
     cand: list[dict] = []
     for t, floor in type_cut.items():
         cand += [e for e in entries if e["pattern_type"] == t and e["support_count"] >= floor]
-    cand.sort(key=lambda e: ({"治理": 0, "处置": 1, "标准": 2}.get(e["pattern_type"], 3), -e["support_count"], -e["occurrence_count"], e["subject_name"], e["object_name"]))
+    cand.sort(key=lambda e: (_TYPE_ORDER.get(e["pattern_type"], 9), -e["support_count"], -e["occurrence_count"], e["subject_name"], e["object_name"]))
     facts = []
     for e in cand:
         facts.append(
@@ -99,8 +101,8 @@ def emit_facts(type_cut: dict[str, int]) -> None:
                 "mechanical_desc": e["pattern_desc"],
             }
         )
-    FACTS_JSON.write_text(json.dumps({"emitted_at": datetime.now(UTC).isoformat(), "count": len(facts), "facts": facts}, ensure_ascii=False, indent=2), encoding="utf-8")
-    print(f"落盘: {FACTS_JSON}（{len(facts)} 条；全库样例 {total_samples} 份）")
+    facts_path.write_text(json.dumps({"emitted_at": datetime.now(UTC).isoformat(), "count": len(facts), "facts": facts}, ensure_ascii=False, indent=2), encoding="utf-8")
+    print(f"落盘: {facts_path}（{len(facts)} 条；全库样例 {total_samples} 份）")
     band: dict[int, int] = {}
     for f in facts:
         band[f["support"]] = band.get(f["support"], 0) + 1
@@ -111,9 +113,9 @@ def emit_facts(type_cut: dict[str, int]) -> None:
     print("类型分布:", by_type)
 
 
-def emit_review() -> None:
-    refined = json.loads(REFINED_JSON.read_text(encoding="utf-8"))
-    _, entries = _load_patterns()
+def emit_review(refined_path: Path = REFINED_JSON, patterns_path: Path = PATTERNS_JSON, out_path: Path = REVIEW_MD) -> None:
+    refined = json.loads(refined_path.read_text(encoding="utf-8"))
+    total_samples, entries = _load_patterns(patterns_path)
     by_id = {e["pattern_id"]: e for e in entries}
     rows = []
     for pid, ref in refined.items():
@@ -124,13 +126,13 @@ def emit_review() -> None:
             print(f"告警：refined_desc 中 {pid} 不在当前 patterns.json，跳过")
             continue
         rows.append((e["support_count"], e, ref))
-    rows.sort(key=lambda x: (-x[0], x[0] and -x[1]["occurrence_count"]))
+    rows.sort(key=lambda x: (_TYPE_ORDER.get(x[1]["pattern_type"], 9), -x[0], x[0] and -x[1]["occurrence_count"]))
     now = datetime.now(UTC).isoformat()
     L = [
         "# EIA B 库头部规律精炼人审清单",
         "",
         f"- 生成时间：{now}",
-        f"- 待审 {len(rows)} 条（头部精炼，refined=true）；支持度定义=配对级去重报告数（全库样例 22 份）",
+        f"- 待审 {len(rows)} 条（头部精炼，refined=true）；支持度定义=配对级去重报告数（全库样例 {total_samples} 份）",
         "- 纪律声明：精炼仅做表述专业化与领域通识补充，support/来源为数据原值，未引入任何数值区间或标准号",
         "- 审法建议：抽检优先看「领域通识补充」是否越界（出现数据之外的数字/标准号即不合格）+ 领域表述是否准确",
         "",
@@ -143,8 +145,8 @@ def emit_review() -> None:
         src = "、".join(_display(s) for s in e["source_reports"][:6]) + ("…" if len(e["source_reports"]) > 6 else "")
         desc = ref["refined_desc"].replace("|", "\\|")
         L.append(f"| {i} | {e['pattern_type']} | {pair} | {pred} | {sup} | {desc} | {src} |")
-    REVIEW_MD.write_text("\n".join(L), encoding="utf-8")
-    print(f"落盘: {REVIEW_MD}（{len(rows)} 条）")
+    out_path.write_text("\n".join(L), encoding="utf-8")
+    print(f"落盘: {out_path}（{len(rows)} 条）")
 
 
 def main() -> None:
@@ -154,11 +156,22 @@ def main() -> None:
     parser.add_argument("--g-min", type=int, default=19, help="治理规律 support 门槛（默认 19）")
     parser.add_argument("--d-min", type=int, default=12, help="处置规律 support 门槛（默认 12）")
     parser.add_argument("--s-min", type=int, default=1, help="标准规律 support 门槛（默认 1，全量）")
+    parser.add_argument("--sp-min", type=int, default=None, help="敏感点防护 support 门槛（批次 2；给了才参与 facts）")
+    parser.add_argument("--mon-min", type=int, default=None, help="监测覆盖 support 门槛（批次 2；给了才参与 facts）")
+    parser.add_argument("--patterns", type=Path, default=PATTERNS_JSON, help="patterns.json 路径覆盖（默认批次 1 产物）")
+    parser.add_argument("--facts-out", type=Path, default=FACTS_JSON, help="facts 输出路径覆盖")
+    parser.add_argument("--refined", type=Path, default=REFINED_JSON, help="review 读取的 refined JSON 路径覆盖（批次 2 = refined_desc_b2.json）")
+    parser.add_argument("--review-out", type=Path, default=REVIEW_MD, help="review 输出路径覆盖（批次 2 = refined_review_b2.md）")
     args = parser.parse_args()
     if args.facts:
-        emit_facts({"治理": args.g_min, "处置": args.d_min, "标准": args.s_min})
+        type_cut = {"治理": args.g_min, "处置": args.d_min, "标准": args.s_min}
+        if args.sp_min is not None:
+            type_cut["敏感点防护"] = args.sp_min
+        if args.mon_min is not None:
+            type_cut["监测覆盖"] = args.mon_min
+        emit_facts(type_cut, patterns_path=args.patterns, facts_path=args.facts_out)
     if args.review:
-        emit_review()
+        emit_review(refined_path=args.refined, patterns_path=args.patterns, out_path=args.review_out)
 
 
 if __name__ == "__main__":

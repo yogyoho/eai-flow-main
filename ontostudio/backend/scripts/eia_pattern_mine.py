@@ -20,10 +20,20 @@ EAI-CUSTOM(2026-09-30, 子项目 5): 只读脚本，不写库、不碰容器。�
 算术累加虚高），碎片对消失；entries 额外带 subject_variants/object_variants（变体名+实际 etype
 清单，供 eia_pattern_ingest 把变体实例也连 analogous_to 边）。
 
-三类组合（support 阈值见 --min-support，默认 3）：
+五类组合（support 阈值见 --min-support，默认 3；批次 2 2026-10-01 新增④⑤）：
   ① 治理规律  X —emitted_as→ 污染物 P，X —treated_by→ 治理措施 T   （什么污染物配什么工艺）
   ② 标准规律  治理措施 T —governed_by→ 排放标准 S                 （什么工艺配什么标准）
   ③ 处置规律  固废流 W —disposed_by/utilized_by→ 处置去向 G       （什么固废去什么处置）
+  ④ 敏感点防护 敏感点 —protected_by→ 治理措施 T                   （哪类敏感点配什么防护）
+  ⑤ 监测覆盖  矿区/工程场地 —monitored_by→ 监测要求 M             （哪类源配什么监测）
+
+批次 2 类型归组（EAI-CUSTOM 2026-10-01）：④⑤主语是「类型」不是单点名——敏感点/源的名
+一报告一换（王家村/吕家沟村…），类型才跨报告可比。主体名按关键词归组表
+（SENSITIVE_POINT_TYPES / MONITOR_SOURCE_TYPES，顺序=优先级 first-match，维护=往组内加
+关键词）映射为类型名作 canonical subject；实际单点实例名照旧记入 subject_variants 供
+ingest 变体连边（support 口径不变=配对级去重报告数）。未命中关键词表的主体跳过并打印
+（mine 主体另有 etype 兜底矿区整体）；④的宾语侧只收 treatment_measure（protected_by 的
+measure_spec 煤柱规格对 6 条不收，保持任务口径），object 侧照旧走受控词表位置归一。
 
 support 定义（B 库 domain_common 语义要求跨项目共性，同报告多条同配对是冗余不是共性）：
   support_count    = 配对级**去重报告数**——按构成该配对路径的**边的自身溯源**
@@ -68,6 +78,11 @@ _DOC_PREFIXES = ("eia-batch:", "eia-sample:")
 # 处置/利用去向的目标 etype 白名单（谓词角色表 2026-09-29 R2 支持域）
 _DISPOSAL_TARGET_ETYPES = ("treatment_measure", "org", "engineering_site", "place", "measure_process_concept")
 
+# B2 批次 etype 白名单：④防护宾语只收治理措施（protected_by 的 measure_spec 煤柱规格对不收，保持任务口径）；
+# ⑤监测主语=矿区/工程场地（monitored_by 角色表支持域；emission_standard→monitoring 0 边不设）。
+_PROTECT_TARGET_ETYPES = ("treatment_measure",)
+_MONITOR_SOURCE_ETYPES = ("mine", "engineering_site")
+
 
 # ---------------------------------------------------------------- 受控词表归一
 
@@ -82,7 +97,54 @@ POSITION_TABLES: dict[str, dict[str, tuple[str, ...]]] = {
     "治理": {"subject": ("pollutant_concept",), "object": ("measure_process_concept",)},
     "标准": {"subject": ("measure_process_concept",), "object": ()},
     "处置": {"subject": (), "object": ("disposal_target_concept", "measure_process_concept")},
+    # B2：敏感点防护 subject=类型归组（关键词表，见 SENSITIVE_POINT_TYPES，非词表归一）/ object=measure 表；
+    # 监测覆盖 subject=源类型归组 / object=monitoring（无词表，保原名）。
+    "敏感点防护": {"subject": (), "object": ("measure_process_concept",)},
+    "监测覆盖": {"subject": (), "object": ()},
 }
+
+# ---------------------------------------------------------------- B2 类型归组表（顺序=优先级 first-match；维护=往组内加关键词）
+
+
+# 敏感点类型关键词表：单点名一报告一换（王家村/吕家沟村…），按类型归组才跨报告可比。
+# 注意优先级语义：「基本农田保护区」归农田不归保护区（①先于③）、「达溪河中华鳖…保护区」
+# 归保护区不归水体/保护生物（③先于⑤⑥）。未命中任何关键词的敏感点跳过（打印清单供增补）。
+SENSITIVE_POINT_TYPES: list[tuple[str, tuple[str, ...]]] = [
+    ("基本农田", ("基本农田", "永久农田")),
+    ("遗址文物", ("遗址", "烽火台", "烽燧", "古墓", "墓", "文物", "化石", "岩画", "坎儿井", "清真寺", "纪念址", "堡址", "出土点", "古城", "长城", "古建筑")),
+    ("保护区", ("保护区", "森林公园", "地质公园", "公园", "生态红线", "保护红线")),
+    ("公益林", ("公益林", "林地")),
+    ("保护生物", ("古树", "动物", "植物", "生物", "产卵场", "越冬场", "种质", "候鸟", "龟", "鳖", "鱼")),
+    ("水体", ("河", "水库", "湿地", "水源", "水体", "河道", "湖泊", "湖")),
+    ("城镇边界", ("开发边界",)),
+    ("村庄居民点", ("村", "居民点", "村镇", "集镇", "社区", "城镇", "镇")),
+    ("线路", ("高速", "公路", "国道", "省道", "铁路", "专用线", "输电", "输气", "特高压", "千伏", "kv", "大桥", "管道")),
+    ("草地", ("草原", "草地")),
+]
+
+# 监测源类型关键词表：污染源/场地主体按源类型归组（与敏感点同机制）。
+# 「…排土场/矸石场地」堆存语义优先于工业场地（③先于④）。
+MONITOR_SOURCE_TYPES: list[tuple[str, tuple[str, ...]]] = [
+    ("矿井水", ("矿井水", "矿坑水", "生活污水")),
+    ("锅炉烟气", ("锅炉", "烟气", "供热", "废气")),
+    ("矸石堆场", ("矸石", "排矸", "排土场", "煤泥")),
+    ("工业场地", ("工业场地", "工业广场", "厂界", "厂区", "场地")),
+    ("线路", ("铁路", "专用线", "道路", "公路", "输电")),
+    ("矿区整体", ("矿区", "煤矿", "矿井", "露天", "井田")),
+]
+
+# 关键词未命中时的 etype 兜底：mine 主体多为「XX煤矿/XX一井」专名碎片，按矿区整体聚合；
+# engineering_site 无兜底——未命中即跳过（场地专名归组价值低，打印清单）。
+MONITOR_SOURCE_FALLBACK: dict[str, str] = {"mine": "矿区整体"}
+
+
+def _classify_by_keywords(name: str, table: list[tuple[str, tuple[str, ...]]]) -> str | None:
+    """名字 → 类型名（表顺序 first-match，子串命中，latin 关键词大小写不敏感）；全未命中 None。"""
+    lowered = (name or "").strip().lower()
+    for type_name, keywords in table:
+        if any(k in lowered for k in keywords):
+            return type_name
+    return None
 
 
 def load_normalizer(vocab_path: Path) -> NameNormalizer:
@@ -312,7 +374,86 @@ def _aggregate(
     return entries
 
 
-# ---------------------------------------------------------------- 三类链模式挖掘
+# ---------------------------------------------------------------- B2 两类链模式挖掘（路径收集，模块级可单测）
+
+
+def _edge_reports(edge_docs: dict[tuple[str, str, str], set[str]], *triples: tuple[str, str, str]) -> set[str]:
+    """边级溯源聚合（_mine 内 edge_reports 闭包的模块级版，B2 函数用；口径同批次 1）。"""
+    rep: set[str] = set()
+    for t in triples:
+        rep |= edge_docs.get(t, set())
+    return rep
+
+
+def _sensitive_protect_paths(
+    out_edges: dict[str, list[tuple[str, str]]],
+    etype_of: dict[str, str],
+    scope_of: dict[str, str],
+    name_of: dict[str, str],
+    edge_docs: dict[tuple[str, str, str], set[str]],
+    normalizer: NameNormalizer | None,
+) -> tuple[list[tuple], list[str]]:
+    """④ 敏感点防护：SP —protected_by→ 治理措施。subject canonical=类型归组名（单点实例名入变体），
+    object 走受控词表位置归一（含「、」复合名展开）。返回 (expand 后 paths, 未归类敏感点名清单)。"""
+    paths: list[tuple] = []
+    unclassified: list[str] = []
+    tables = POSITION_TABLES["敏感点防护"]
+    for sp, elist in out_edges.items():
+        if etype_of.get(sp) != "sensitive_point" or not _in_scope_sample(sp, scope_of):
+            continue
+        sp_type = _classify_by_keywords(name_of.get(sp, ""), SENSITIVE_POINT_TYPES)
+        if sp_type is None:
+            unclassified.append(name_of.get(sp, ""))
+            continue
+        for p, o in elist:
+            if p != "protected_by" or etype_of.get(o) not in _PROTECT_TARGET_ETYPES or not _in_scope_sample(o, scope_of):
+                continue
+            o_name = name_of.get(o)
+            if not o_name:
+                continue
+            reports = _edge_reports(edge_docs, (sp, p, o))
+            o_list = normalizer.expand(o_name, tables["object"]) if normalizer else [o_name]
+            for oc in o_list:
+                paths.append((sp, o, p, [], reports, sp_type, oc))
+    return paths, unclassified
+
+
+def _monitor_paths(
+    out_edges: dict[str, list[tuple[str, str]]],
+    etype_of: dict[str, str],
+    scope_of: dict[str, str],
+    name_of: dict[str, str],
+    edge_docs: dict[tuple[str, str, str], set[str]],
+    normalizer: NameNormalizer | None,
+) -> tuple[list[tuple], list[str]]:
+    """⑤ 监测覆盖：矿区/工程场地 —monitored_by→ 监测要求。subject canonical=源类型归组名
+    （关键词表 first-match，mine 未命中 etype 兜底矿区整体；engineering_site 未命中跳过）。
+    返回 (expand 后 paths, 未归类源名清单)。"""
+    paths: list[tuple] = []
+    unclassified: list[str] = []
+    tables = POSITION_TABLES["监测覆盖"]
+    for s, elist in out_edges.items():
+        if etype_of.get(s) not in _MONITOR_SOURCE_ETYPES or not _in_scope_sample(s, scope_of):
+            continue
+        s_name = name_of.get(s, "")
+        s_type = _classify_by_keywords(s_name, MONITOR_SOURCE_TYPES) or MONITOR_SOURCE_FALLBACK.get(etype_of.get(s, ""))
+        if s_type is None:
+            unclassified.append(s_name)
+            continue
+        for p, o in elist:
+            if p != "monitored_by" or etype_of.get(o) != "monitoring" or not _in_scope_sample(o, scope_of):
+                continue
+            o_name = name_of.get(o)
+            if not o_name:
+                continue
+            reports = _edge_reports(edge_docs, (s, p, o))
+            o_list = normalizer.expand(o_name, tables["object"]) if normalizer else [o_name]
+            for oc in o_list:
+                paths.append((s, o, p, [], reports, s_type, oc))
+    return paths, unclassified
+
+
+# ---------------------------------------------------------------- 五类链模式挖掘
 
 
 def _mine(kernel: KernelService, normalizer: NameNormalizer | None) -> dict[str, list[dict]]:
@@ -368,7 +509,20 @@ def _mine(kernel: KernelService, normalizer: NameNormalizer | None) -> dict[str,
                 disp_paths.append((w, o, p, [], edge_reports((w, p, o))))
     disp = _aggregate("处置", expand_paths(disp_paths, POSITION_TABLES["处置"]), name_of, etype_of, docs_of, sr_of)
 
-    return {"治理": treat, "标准": std, "处置": disp}
+    # ④ 敏感点防护规律（B2）：敏感点 —protected_by→ 治理措施（主体按类型关键词归组，未归类跳过）
+    prot_paths, prot_unclassified = _sensitive_protect_paths(out, etype_of, scope_of, name_of, edge_docs, normalizer)
+    prot = _aggregate("敏感点防护", prot_paths, name_of, etype_of, docs_of, sr_of)
+
+    # ⑤ 监测覆盖规律（B2）：矿区/工程场地 —monitored_by→ 监测要求（主体按源类型关键词归组 + mine 兜底）
+    mon_paths, mon_unclassified = _monitor_paths(out, etype_of, scope_of, name_of, edge_docs, normalizer)
+    mon = _aggregate("监测覆盖", mon_paths, name_of, etype_of, docs_of, sr_of)
+
+    if prot_unclassified:
+        print(f"[敏感点防护] 未归类敏感点跳过 {len(prot_unclassified)} 个（词表增补候选）：{'、'.join(sorted(set(prot_unclassified)))}")
+    if mon_unclassified:
+        print(f"[监测覆盖] 未归类源跳过 {len(mon_unclassified)} 个（词表增补候选）：{'、'.join(sorted(set(mon_unclassified)))}")
+
+    return {"治理": treat, "标准": std, "处置": disp, "敏感点防护": prot, "监测覆盖": mon}
 
 
 # ---------------------------------------------------------------- 落盘

@@ -1,0 +1,283 @@
+{
+  "emitted_at": "2026-10-01T03:55:38.924621+00:00",
+  "count": 11,
+  "facts": [
+    {
+      "pattern_id": "dp-55f4bae42c",
+      "pattern_type": "敏感点防护",
+      "pair": "公益林（sensitive_point）→ 禁止开采措施（treatment_measure）",
+      "predicate": "protected_by",
+      "support": 9,
+      "occurrence": 1,
+      "total_samples": 22,
+      "source_reports": [
+        "鹤岗矿区",
+        "横城矿区",
+        "灵台矿区",
+        "淖毛湖矿区",
+        "三塘湖矿区",
+        "韦州矿区",
+        "五间房矿区",
+        "伊宁矿区北区",
+        "月儿湾矿井"
+      ],
+      "subject_variants": [
+        "公益林"
+      ],
+      "object_variants": [
+        "禁止开采措施"
+      ],
+      "mechanical_desc": "样例库 9 份报告共现：公益林（sensitive_point）配 禁止开采措施（treatment_measure）——敏感点防护规律（B 库蒸馏，跨报告支持度 9）"
+    },
+    {
+      "pattern_id": "dp-7c05679c43",
+      "pattern_type": "敏感点防护",
+      "pair": "公益林（sensitive_point）→ 经济补偿、边开采边恢复（treatment_measure）",
+      "predicate": "protected_by",
+      "support": 9,
+      "occurrence": 1,
+      "total_samples": 22,
+      "source_reports": [
+        "鹤岗矿区",
+        "横城矿区",
+        "灵台矿区",
+        "淖毛湖矿区",
+        "三塘湖矿区",
+        "韦州矿区",
+        "五间房矿区",
+        "伊宁矿区北区",
+        "月儿湾矿井"
+      ],
+      "subject_variants": [
+        "公益林"
+      ],
+      "object_variants": [
+        "经济补偿、边开采边恢复"
+      ],
+      "mechanical_desc": "样例库 9 份报告共现：公益林（sensitive_point）配 经济补偿、边开采边恢复（treatment_measure）——敏感点防护规律（B 库蒸馏，跨报告支持度 9）"
+    },
+    {
+      "pattern_id": "dp-acf3f942f2",
+      "pattern_type": "敏感点防护",
+      "pair": "水体（sensitive_point）→ 保护煤柱（treatment_measure）",
+      "predicate": "protected_by",
+      "support": 7,
+      "occurrence": 3,
+      "total_samples": 22,
+      "source_reports": [
+        "高头窑矿区",
+        "郭家台二号矿井",
+        "横城矿区",
+        "九龙川矿井",
+        "灵台矿区",
+        "韦州矿区",
+        "月儿湾矿井"
+      ],
+      "subject_variants": [
+        "九龙河",
+        "河道",
+        "黑河"
+      ],
+      "object_variants": [
+        "保护煤柱"
+      ],
+      "mechanical_desc": "样例库 7 份报告共现：水体（sensitive_point）配 保护煤柱（treatment_measure）——敏感点防护规律（B 库蒸馏，跨报告支持度 7）"
+    },
+    {
+      "pattern_id": "dp-a83c8667de",
+      "pattern_type": "敏感点防护",
+      "pair": "保护区（sensitive_point）→ 保护煤柱（treatment_measure）",
+      "predicate": "protected_by",
+      "support": 7,
+      "occurrence": 2,
+      "total_samples": 22,
+      "source_reports": [
+        "高头窑矿区",
+        "郭家台二号矿井",
+        "横城矿区",
+        "九龙川矿井",
+        "灵台矿区",
+        "韦州矿区",
+        "月儿湾矿井"
+      ],
+      "subject_variants": [
+        "白芨滩国家级自然保护区",
+        "白芨滩自然保护区"
+      ],
+      "object_variants": [
+        "保护煤柱"
+      ],
+      "mechanical_desc": "样例库 7 份报告共现：保护区（sensitive_point）配 保护煤柱（treatment_measure）——敏感点防护规律（B 库蒸馏，跨报告支持度 7）"
+    },
+    {
+      "pattern_id": "dp-bd31603ec6",
+      "pattern_type": "敏感点防护",
+      "pair": "线路（sensitive_point）→ 保护煤柱（treatment_measure）",
+      "predicate": "protected_by",
+      "support": 7,
+      "occurrence": 2,
+      "total_samples": 22,
+      "source_reports": [
+        "高头窑矿区",
+        "郭家台二号矿井",
+        "横城矿区",
+        "九龙川矿井",
+        "灵台矿区",
+        "韦州矿区",
+        "月儿湾矿井"
+      ],
+      "subject_variants": [
+        "定武高速公路",
+        "银百高速公路等敏感目标"
+      ],
+      "object_variants": [
+        "保护煤柱"
+      ],
+      "mechanical_desc": "样例库 7 份报告共现：线路（sensitive_point）配 保护煤柱（treatment_measure）——敏感点防护规律（B 库蒸馏，跨报告支持度 7）"
+    },
+    {
+      "pattern_id": "dp-a1ea15af7e",
+      "pattern_type": "敏感点防护",
+      "pair": "城镇边界（sensitive_point）→ 保护煤柱（treatment_measure）",
+      "predicate": "protected_by",
+      "support": 7,
+      "occurrence": 1,
+      "total_samples": 22,
+      "source_reports": [
+        "高头窑矿区",
+        "郭家台二号矿井",
+        "横城矿区",
+        "九龙川矿井",
+        "灵台矿区",
+        "韦州矿区",
+        "月儿湾矿井"
+      ],
+      "subject_variants": [
+        "宁县城镇开发边界"
+      ],
+      "object_variants": [
+        "保护煤柱"
+      ],
+      "mechanical_desc": "样例库 7 份报告共现：城镇边界（sensitive_point）配 保护煤柱（treatment_measure）——敏感点防护规律（B 库蒸馏，跨报告支持度 7）"
+    },
+    {
+      "pattern_id": "dp-f830d87bf6",
+      "pattern_type": "敏感点防护",
+      "pair": "村庄居民点（sensitive_point）→ 保护煤柱（treatment_measure）",
+      "predicate": "protected_by",
+      "support": 7,
+      "occurrence": 1,
+      "total_samples": 22,
+      "source_reports": [
+        "高头窑矿区",
+        "郭家台二号矿井",
+        "横城矿区",
+        "九龙川矿井",
+        "灵台矿区",
+        "韦州矿区",
+        "月儿湾矿井"
+      ],
+      "subject_variants": [
+        "韦州镇等地面设施"
+      ],
+      "object_variants": [
+        "保护煤柱"
+      ],
+      "mechanical_desc": "样例库 7 份报告共现：村庄居民点（sensitive_point）配 保护煤柱（treatment_measure）——敏感点防护规律（B 库蒸馏，跨报告支持度 7）"
+    },
+    {
+      "pattern_id": "dp-ff3d21d776",
+      "pattern_type": "敏感点防护",
+      "pair": "遗址文物（sensitive_point）→ 保护煤柱（treatment_measure）",
+      "predicate": "protected_by",
+      "support": 7,
+      "occurrence": 1,
+      "total_samples": 22,
+      "source_reports": [
+        "高头窑矿区",
+        "郭家台二号矿井",
+        "横城矿区",
+        "九龙川矿井",
+        "灵台矿区",
+        "韦州矿区",
+        "月儿湾矿井"
+      ],
+      "subject_variants": [
+        "尖尖墩烽火台"
+      ],
+      "object_variants": [
+        "保护煤柱"
+      ],
+      "mechanical_desc": "样例库 7 份报告共现：遗址文物（sensitive_point）配 保护煤柱（treatment_measure）——敏感点防护规律（B 库蒸馏，跨报告支持度 7）"
+    },
+    {
+      "pattern_id": "dp-905e91684f",
+      "pattern_type": "敏感点防护",
+      "pair": "基本农田（sensitive_point）→ 充填整治恢复耕种功能（treatment_measure）",
+      "predicate": "protected_by",
+      "support": 5,
+      "occurrence": 1,
+      "total_samples": 22,
+      "source_reports": [
+        "郭家台二号矿井",
+        "鹤岗矿区",
+        "灵台矿区",
+        "韦州矿区",
+        "月儿湾矿井"
+      ],
+      "subject_variants": [
+        "永久基本农田"
+      ],
+      "object_variants": [
+        "充填整治恢复耕种功能"
+      ],
+      "mechanical_desc": "样例库 5 份报告共现：基本农田（sensitive_point）配 充填整治恢复耕种功能（treatment_measure）——敏感点防护规律（B 库蒸馏，跨报告支持度 5）"
+    },
+    {
+      "pattern_id": "dp-db2150d05f",
+      "pattern_type": "敏感点防护",
+      "pair": "草地（sensitive_point）→ 生态治理（treatment_measure）",
+      "predicate": "protected_by",
+      "support": 3,
+      "occurrence": 1,
+      "total_samples": 22,
+      "source_reports": [
+        "白音华三号露天矿",
+        "五间房矿区",
+        "牙克石（五九煤田）"
+      ],
+      "subject_variants": [
+        "草地"
+      ],
+      "object_variants": [
+        "生态治理"
+      ],
+      "mechanical_desc": "样例库 3 份报告共现：草地（sensitive_point）配 生态治理（treatment_measure）——敏感点防护规律（B 库蒸馏，跨报告支持度 3）"
+    },
+    {
+      "pattern_id": "dp-723bfa5835",
+      "pattern_type": "监测覆盖",
+      "pair": "工业场地（engineering_site）→ 地表岩移观测（monitoring）",
+      "predicate": "monitored_by",
+      "support": 7,
+      "occurrence": 1,
+      "total_samples": 22,
+      "source_reports": [
+        "白音华二号露天矿",
+        "白音华三号露天矿",
+        "巴拉素",
+        "郭家台二号矿井",
+        "九龙川矿井",
+        "韦州矿区",
+        "月儿湾矿井"
+      ],
+      "subject_variants": [
+        "工业场地"
+      ],
+      "object_variants": [
+        "地表岩移观测"
+      ],
+      "mechanical_desc": "样例库 7 份报告共现：工业场地（engineering_site）配 地表岩移观测（monitoring）——监测覆盖规律（B 库蒸馏，跨报告支持度 7）"
+    }
+  ]
+}

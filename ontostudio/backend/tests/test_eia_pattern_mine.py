@@ -4,6 +4,9 @@
 模式位置作用域（治理宾语不吃处置表、处置宾语吃 disposal∪measure）/ 同名跨表（矸石井下充填）无冲突 /
 pattern_id 稳定 / _aggregate 变体合并（support=报告集并集、变体清单记录）/ ingest _load_refined
 （_meta 跳过、缺字段报错）/ _variant_endpoints 新旧格式 / _clip 截断。
+批次 2（2026-10-01）: 敏感点防护/监测覆盖两型的关键词归组表（优先级 first-match、未归类跳过、
+mine 主体 etype 兜底）/ 类型归组挖掘路径（同类型变体合并 support=并集、实际单点实例名入变体清单）/
+ingest --types 类型过滤 / B2 pattern_id 与批次 1 同名配对不冲突（幂等前提）。
 """
 
 import importlib.util
@@ -167,7 +170,100 @@ def test_aggregate_ghost_iri_not_in_variants():
     assert {v["name"] for v in e["object_variants"]} == {"矿井水处理站"}
 
 
-# ---------------------------------------------------------------- ingest 侧
+# ---------------------------------------------------------------- 批次 2 类型归组（敏感点防护/监测覆盖）
+
+
+def test_sensitive_point_classification_priority():
+    """敏感点关键词归组：first-match 优先级——「基本农田保护区」归农田不归保护区、
+    「达溪河中华鳖…保护区」归保护区不归水体/保护生物、公园归保护区。"""
+    t = mine.SENSITIVE_POINT_TYPES
+    assert mine._classify_by_keywords("王家村", t) == "村庄居民点"
+    assert mine._classify_by_keywords("村庄建筑物", t) == "村庄居民点"
+    assert mine._classify_by_keywords("基本农田保护区", t) == "基本农田"
+    assert mine._classify_by_keywords("永久基本农田", t) == "基本农田"
+    assert mine._classify_by_keywords("达溪河中华鳖国家级水产种质资源保护区", t) == "保护区"
+    assert mine._classify_by_keywords("四爪陆龟自然保护区", t) == "保护区"
+    assert mine._classify_by_keywords("五龙山省级森林公园", t) == "保护区"
+    assert mine._classify_by_keywords("公益林", t) == "公益林"
+    assert mine._classify_by_keywords("九龙河", t) == "水体"
+    assert mine._classify_by_keywords("伊敏河镇水源地", t) == "水体"
+    assert mine._classify_by_keywords("750kv、1100kv输电线路", t) == "线路"
+    assert mine._classify_by_keywords("定武高速公路", t) == "线路"
+    assert mine._classify_by_keywords("尖尖墩烽火台", t) == "遗址文物"
+    assert mine._classify_by_keywords("古树", t) == "保护生物"
+    assert mine._classify_by_keywords("基本草原", t) == "草地"
+    assert mine._classify_by_keywords("城镇开发边界", t) == "城镇边界"
+    assert mine._classify_by_keywords("噪声敏感点", t) is None  # 未归类 → 挖掘侧跳过
+
+
+def test_monitor_source_classification_and_fallback():
+    """监测源类型归组：排土场/矸石场地归堆场优先于工业场地；mine 未命中关键词走 etype 兜底。"""
+    t = mine.MONITOR_SOURCE_TYPES
+    assert mine._classify_by_keywords("各排矸场", t) == "矸石堆场"
+    assert mine._classify_by_keywords("露天矿排土场边坡、平台", t) == "矸石堆场"
+    assert mine._classify_by_keywords("各矿工业场地、矸石场地", t) == "矸石堆场"
+    assert mine._classify_by_keywords("工业场地厂界", t) == "工业场地"
+    assert mine._classify_by_keywords("苇子坑铁路专用线", t) == "线路"
+    assert mine._classify_by_keywords("韦州矿区", t) == "矿区整体"
+    assert mine._classify_by_keywords("锅炉烟气", t) == "锅炉烟气"
+    assert mine._classify_by_keywords("伊敏一井", t) is None  # 专名未命中 → mine etype 兜底
+    assert mine.MONITOR_SOURCE_FALLBACK == {"mine": "矿区整体"}  # engineering_site 无兜底 → 跳过
+
+
+def _protect_env():
+    name_of = {"v1": "王家村", "v2": "吕家沟村", "m1": "保护煤柱", "m2": "土地复垦"}
+    etype_of = {"v1": "sensitive_point", "v2": "sensitive_point", "m1": "treatment_measure", "m2": "treatment_measure"}
+    out = {"v1": [("protected_by", "m1")], "v2": [("protected_by", "m1"), ("protected_by", "m2")]}
+    edge_docs = {
+        ("v1", "protected_by", "m1"): {"r1"},
+        ("v2", "protected_by", "m1"): {"r2"},
+        ("v2", "protected_by", "m2"): {"r2"},
+    }
+    return name_of, etype_of, out, edge_docs
+
+
+def test_mine_sensitive_protect_groups_variants_by_type():
+    """④ 挖掘：不同村庄单点 → 同一类型 canonical「村庄居民点」，与同一措施聚成一条 pattern；
+    support=报告集并集（非算术和）；变体清单=实际敏感点实例名+etype（供入图变体连边）。"""
+    name_of, etype_of, out, edge_docs = _protect_env()
+    paths, unclassified = mine._sensitive_protect_paths(out, etype_of, {}, name_of, edge_docs, None)
+    assert unclassified == []
+    entries = mine._aggregate("敏感点防护", paths, name_of, etype_of, {}, {})
+    by_key = {(e["subject_name"], e["object_name"]): e for e in entries}
+    assert set(by_key) == {("村庄居民点", "保护煤柱"), ("村庄居民点", "土地复垦")}
+    merged = by_key[("村庄居民点", "保护煤柱")]
+    assert merged["support_count"] == 2  # {r1,r2} 并集
+    assert merged["subject_etype"] == "sensitive_point"
+    assert {v["name"] for v in merged["subject_variants"]} == {"王家村", "吕家沟村"}
+    assert merged["pattern_id"] == mine._pattern_id("敏感点防护", "村庄居民点", "保护煤柱", "protected_by")
+
+
+def test_mine_sensitive_protect_skips_unclassified_and_measure_spec():
+    """④ 口径：未命中关键词表的敏感点跳过（返回清单不产路径）；measure_spec 宾语不收（保持任务口径）。"""
+    name_of, etype_of, out, edge_docs = _protect_env()
+    name_of["x1"], etype_of["x1"] = "噪声敏感点", "sensitive_point"
+    name_of["spec1"], etype_of["spec1"] = "留设170m宽煤柱", "measure_spec"
+    out["x1"] = [("protected_by", "m1"), ("protected_by", "spec1")]
+    paths, unclassified = mine._sensitive_protect_paths(out, etype_of, {}, name_of, edge_docs, None)
+    assert unclassified == ["噪声敏感点"]
+    assert all(p[0] != "x1" and p[1] != "spec1" for p in paths)
+
+
+def test_mine_monitor_groups_by_source_and_skips_unclassified_site():
+    """⑤ 挖掘：mine 主体未命中关键词走 etype 兜底矿区整体；engineering_site 未命中跳过进清单。"""
+    name_of = {"m1": "伊敏一井", "e1": "工业场地", "e2": "综合办公楼", "g1": "地下水水位观测", "g2": "厂界噪声监测", "g3": "某监测"}
+    etype_of = {"m1": "mine", "e1": "engineering_site", "e2": "engineering_site", "g1": "monitoring", "g2": "monitoring", "g3": "monitoring"}
+    out = {"m1": [("monitored_by", "g1")], "e1": [("monitored_by", "g2")], "e2": [("monitored_by", "g3")]}
+    edge_docs = {("m1", "monitored_by", "g1"): {"r1"}, ("e1", "monitored_by", "g2"): {"r2"}, ("e2", "monitored_by", "g3"): {"r9"}}
+    paths, unclassified = mine._monitor_paths(out, etype_of, {}, name_of, edge_docs, None)
+    assert unclassified == ["综合办公楼"]
+    entries = mine._aggregate("监测覆盖", paths, name_of, etype_of, {}, {})
+    by_key = {(e["subject_name"], e["object_name"]): e for e in entries}
+    assert set(by_key) == {("矿区整体", "地下水水位观测"), ("工业场地", "厂界噪声监测")}
+    assert by_key[("矿区整体", "地下水水位观测")]["subject_variants"][0] == {"name": "伊敏一井", "etype": "mine"}
+
+
+# ---------------------------------------------------------------- ingest 侧（含批次 2 --types 与 id 不冲突）
 
 
 def test_load_refined_skips_meta_and_requires_desc(tmp_path):
@@ -212,3 +308,36 @@ def test_clip_appends_pattern_id_on_overflow():
     out = ingest._clip(long_name, "dp-abcdef1234")
     assert len(out) <= ingest.NAME_MAX and out.endswith("dp-abcdef1234")
     assert ingest._clip("短名", "dp-abcdef1234") == "短名"
+
+
+def test_load_candidates_types_filter(tmp_path, monkeypatch, capsys):
+    """批次 2 --types：候选集按 pattern_type 过滤（批次增量入图时旧类型节点零触碰的机制）。"""
+    payload = {
+        "patterns": {
+            "治理": [{"pattern_id": "dp-old1", "pattern_type": "治理", "support_count": 5, "pattern_name": "x"}],
+            "敏感点防护": [
+                {"pattern_id": "dp-new1", "pattern_type": "敏感点防护", "support_count": 3, "pattern_name": "y"},
+                {"pattern_id": "dp-low", "pattern_type": "敏感点防护", "support_count": 1, "pattern_name": "z"},
+            ],
+            "监测覆盖": [{"pattern_id": "dp-new2", "pattern_type": "监测覆盖", "support_count": 2, "pattern_name": "w"}],
+        }
+    }
+    f = tmp_path / "patterns.json"
+    f.write_text(json.dumps(payload, ensure_ascii=False), encoding="utf-8")
+    monkeypatch.setattr(ingest, "MINE_OUT", f)
+    c2 = ingest._load_candidates(2, ("敏感点防护", "监测覆盖"))
+    assert {e["pattern_id"] for e in c2} == {"dp-new1", "dp-new2"}  # 旧类型剔除 + support<门槛剔除
+    c3 = ingest._load_candidates(3)
+    assert {e["pattern_id"] for e in c3} == {"dp-old1", "dp-new1"}  # 缺省全类型不受影响
+    assert "类型限定 敏感点防护,监测覆盖" in capsys.readouterr().out
+
+
+def test_b2_pattern_ids_stable_and_distinct_from_batch1():
+    """B2 幂等前提：pattern_id 由 (type, s, o, pred) 决定——同配对不同 pattern_type id 必不同
+    （不与批次 1 既有节点冲突），复算稳定（复跑 0 新建）。"""
+    a1 = mine._pattern_id("敏感点防护", "村庄居民点", "保护煤柱", "protected_by")
+    a2 = mine._pattern_id("敏感点防护", "村庄居民点", "保护煤柱", "protected_by")
+    b1 = mine._pattern_id("监测覆盖", "矿区整体", "地下水水位观测", "monitored_by")
+    old = mine._pattern_id("治理", "村庄居民点", "保护煤柱", "protected_by")
+    assert a1 == a2 and a1 != b1 and a1 != old and b1 != old
+    assert all(x.startswith("dp-") for x in (a1, b1, old))

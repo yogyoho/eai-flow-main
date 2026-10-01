@@ -1,27 +1,35 @@
 {
-  "mined_at": "2026-09-30T23:20:41.298192+00:00",
+  "mined_at": "2026-10-01T03:44:49.568559+00:00",
   "scope": "真实图断言层（dg_* 全量装载 → 内存 kernel，生产同路径 load；只挖 scope=sample）",
   "support_definition": "support_count=配对级去重报告数（按路径各边的 relation mention.document_id slug 聚合，边缺 relation mention 回退端点实体溯源）；occurrence_count=去重路径实例数",
-  "min_support": 2,
+  "min_support": 3,
   "normalization": {
     "vocab": "D:\\eai\\eai-flow-main\\ontostudio\\backend\\scripts\\eia_schema_mining\\controlled_vocab.yaml",
     "alias_conflicts": [],
-    "normalized_name_hits": 313,
+    "normalized_name_hits": 270,
     "compound_expansions": 47,
     "rule": "聚合前按受控词表 aliases 归一到规范名；「、」复合名每段都命中才全分解；support=报告集并集（不 arithmetic 累加）"
   },
   "counts": {
     "治理": {
-      "pairs": 250,
-      "candidates": 250
+      "pairs": 249,
+      "candidates": 245
     },
     "标准": {
       "pairs": 7,
       "candidates": 2
     },
     "处置": {
-      "pairs": 228,
-      "candidates": 179
+      "pairs": 190,
+      "candidates": 114
+    },
+    "敏感点防护": {
+      "pairs": 25,
+      "candidates": 10
+    },
+    "监测覆盖": {
+      "pairs": 49,
+      "candidates": 1
     }
   },
   "patterns": {
@@ -5293,52 +5301,6 @@
         ]
       },
       {
-        "pattern_id": "dp-9e5b489078",
-        "pattern_name": "治理规律：悬浮物→综合利用",
-        "pattern_type": "治理",
-        "subject_name": "悬浮物",
-        "subject_etype": "pollutant",
-        "object_name": "综合利用",
-        "object_etype": "treatment_measure",
-        "predicate": "emitted_as+treated_by",
-        "occurrence_count": 1,
-        "support_count": 18,
-        "source_reports": [
-          "baiyinhua3",
-          "balasu",
-          "gaotaoyao",
-          "guojiatai",
-          "hegang",
-          "hengcheng",
-          "huating",
-          "jiulongchuan",
-          "lingtai",
-          "nalinxili",
-          "naomaohu2025",
-          "santanghu",
-          "weizhou",
-          "wujianfang",
-          "yakeshi2026",
-          "yimin",
-          "yining",
-          "yitai"
-        ],
-        "pattern_desc": "样例库 18 份报告共现：悬浮物（pollutant）配 综合利用（treatment_measure）——治理规律（B 库蒸馏，跨报告支持度 18）",
-        "mixed_etype": false,
-        "subject_variants": [
-          {
-            "name": "ss",
-            "etype": "pollutant"
-          }
-        ],
-        "object_variants": [
-          {
-            "name": "综合利用",
-            "etype": "treatment_measure"
-          }
-        ]
-      },
-      {
         "pattern_id": "dp-8a4c23309f",
         "pattern_name": "治理规律：氟化物→处理后回用",
         "pattern_type": "治理",
@@ -9116,54 +9078,6 @@
         ]
       },
       {
-        "pattern_id": "dp-6da3ed63bb",
-        "pattern_name": "治理规律：颗粒物→布袋除尘",
-        "pattern_type": "治理",
-        "subject_name": "颗粒物",
-        "subject_etype": "pollutant",
-        "object_name": "布袋除尘",
-        "object_etype": "treatment_measure",
-        "predicate": "emitted_as+treated_by",
-        "occurrence_count": 5,
-        "support_count": 12,
-        "source_reports": [
-          "baiyinhua2",
-          "baiyinhua3",
-          "balasu",
-          "guojiatai",
-          "hegang",
-          "lingtai",
-          "nalinxili",
-          "santanghu",
-          "weizhou",
-          "yakeshi2026",
-          "yimin3500",
-          "yitai"
-        ],
-        "pattern_desc": "样例库 12 份报告共现：颗粒物（pollutant）配 布袋除尘（treatment_measure）——治理规律（B 库蒸馏，跨报告支持度 12）",
-        "mixed_etype": false,
-        "subject_variants": [
-          {
-            "name": "pm10",
-            "etype": "pollutant"
-          },
-          {
-            "name": "颗粒物",
-            "etype": "pollutant"
-          }
-        ],
-        "object_variants": [
-          {
-            "name": "布袋除尘",
-            "etype": "treatment_measure"
-          },
-          {
-            "name": "布袋除尘器",
-            "etype": "treatment_measure"
-          }
-        ]
-      },
-      {
         "pattern_id": "dp-7dd3f754b5",
         "pattern_name": "治理规律：悬浮物→新建矿坑水处理站",
         "pattern_type": "治理",
@@ -9359,90 +9273,6 @@
         "object_variants": [
           {
             "name": "矿坑水处理站",
-            "etype": "treatment_measure"
-          }
-        ]
-      },
-      {
-        "pattern_id": "dp-fe454d8493",
-        "pattern_name": "治理规律：二氧化硫→布袋除尘",
-        "pattern_type": "治理",
-        "subject_name": "二氧化硫",
-        "subject_etype": "pollutant",
-        "object_name": "布袋除尘",
-        "object_etype": "treatment_measure",
-        "predicate": "emitted_as+treated_by",
-        "occurrence_count": 4,
-        "support_count": 10,
-        "source_reports": [
-          "baiyinhua2",
-          "baiyinhua3",
-          "balasu",
-          "guojiatai",
-          "hegang",
-          "lingtai",
-          "nalinxili",
-          "weizhou",
-          "wujianfang",
-          "yakeshi2026"
-        ],
-        "pattern_desc": "样例库 10 份报告共现：二氧化硫（pollutant）配 布袋除尘（treatment_measure）——治理规律（B 库蒸馏，跨报告支持度 10）",
-        "mixed_etype": false,
-        "subject_variants": [
-          {
-            "name": "so2",
-            "etype": "pollutant"
-          }
-        ],
-        "object_variants": [
-          {
-            "name": "布袋除尘",
-            "etype": "treatment_measure"
-          },
-          {
-            "name": "布袋除尘器",
-            "etype": "treatment_measure"
-          }
-        ]
-      },
-      {
-        "pattern_id": "dp-27a17421d1",
-        "pattern_name": "治理规律：氮氧化物→布袋除尘",
-        "pattern_type": "治理",
-        "subject_name": "氮氧化物",
-        "subject_etype": "pollutant",
-        "object_name": "布袋除尘",
-        "object_etype": "treatment_measure",
-        "predicate": "emitted_as+treated_by",
-        "occurrence_count": 4,
-        "support_count": 10,
-        "source_reports": [
-          "baiyinhua3",
-          "balasu",
-          "guojiatai",
-          "hegang",
-          "lingtai",
-          "nalinxili",
-          "weizhou",
-          "yakeshi2026",
-          "yimin3500",
-          "yitai"
-        ],
-        "pattern_desc": "样例库 10 份报告共现：氮氧化物（pollutant）配 布袋除尘（treatment_measure）——治理规律（B 库蒸馏，跨报告支持度 10）",
-        "mixed_etype": false,
-        "subject_variants": [
-          {
-            "name": "nox",
-            "etype": "pollutant"
-          }
-        ],
-        "object_variants": [
-          {
-            "name": "布袋除尘",
-            "etype": "treatment_measure"
-          },
-          {
-            "name": "布袋除尘器",
             "etype": "treatment_measure"
           }
         ]
@@ -9727,6 +9557,42 @@
         "object_variants": [
           {
             "name": "袋式除尘器",
+            "etype": "treatment_measure"
+          }
+        ]
+      },
+      {
+        "pattern_id": "dp-fe454d8493",
+        "pattern_name": "治理规律：二氧化硫→布袋除尘",
+        "pattern_type": "治理",
+        "subject_name": "二氧化硫",
+        "subject_etype": "pollutant",
+        "object_name": "布袋除尘",
+        "object_etype": "treatment_measure",
+        "predicate": "emitted_as+treated_by",
+        "occurrence_count": 1,
+        "support_count": 8,
+        "source_reports": [
+          "baiyinhua2",
+          "baiyinhua3",
+          "balasu",
+          "guojiatai",
+          "lingtai",
+          "nalinxili",
+          "wujianfang",
+          "yakeshi2026"
+        ],
+        "pattern_desc": "样例库 8 份报告共现：二氧化硫（pollutant）配 布袋除尘（treatment_measure）——治理规律（B 库蒸馏，跨报告支持度 8）",
+        "mixed_etype": false,
+        "subject_variants": [
+          {
+            "name": "so2",
+            "etype": "pollutant"
+          }
+        ],
+        "object_variants": [
+          {
+            "name": "布袋除尘",
             "etype": "treatment_measure"
           }
         ]
@@ -10128,6 +9994,42 @@
         ]
       },
       {
+        "pattern_id": "dp-27a17421d1",
+        "pattern_name": "治理规律：氮氧化物→布袋除尘",
+        "pattern_type": "治理",
+        "subject_name": "氮氧化物",
+        "subject_etype": "pollutant",
+        "object_name": "布袋除尘",
+        "object_etype": "treatment_measure",
+        "predicate": "emitted_as+treated_by",
+        "occurrence_count": 1,
+        "support_count": 8,
+        "source_reports": [
+          "baiyinhua3",
+          "balasu",
+          "guojiatai",
+          "lingtai",
+          "nalinxili",
+          "yakeshi2026",
+          "yimin3500",
+          "yitai"
+        ],
+        "pattern_desc": "样例库 8 份报告共现：氮氧化物（pollutant）配 布袋除尘（treatment_measure）——治理规律（B 库蒸馏，跨报告支持度 8）",
+        "mixed_etype": false,
+        "subject_variants": [
+          {
+            "name": "nox",
+            "etype": "pollutant"
+          }
+        ],
+        "object_variants": [
+          {
+            "name": "布袋除尘",
+            "etype": "treatment_measure"
+          }
+        ]
+      },
+      {
         "pattern_id": "dp-3ead468d44",
         "pattern_name": "治理规律：氮氧化物→石灰石-石膏法脱硫工艺",
         "pattern_type": "治理",
@@ -10385,6 +10287,41 @@
         "object_variants": [
           {
             "name": "洒水降尘、及时进行生态恢复",
+            "etype": "treatment_measure"
+          }
+        ]
+      },
+      {
+        "pattern_id": "dp-6da3ed63bb",
+        "pattern_name": "治理规律：颗粒物→布袋除尘",
+        "pattern_type": "治理",
+        "subject_name": "颗粒物",
+        "subject_etype": "pollutant",
+        "object_name": "布袋除尘",
+        "object_etype": "treatment_measure",
+        "predicate": "emitted_as+treated_by",
+        "occurrence_count": 1,
+        "support_count": 7,
+        "source_reports": [
+          "baiyinhua2",
+          "baiyinhua3",
+          "balasu",
+          "guojiatai",
+          "lingtai",
+          "nalinxili",
+          "yakeshi2026"
+        ],
+        "pattern_desc": "样例库 7 份报告共现：颗粒物（pollutant）配 布袋除尘（treatment_measure）——治理规律（B 库蒸馏，跨报告支持度 7）",
+        "mixed_etype": false,
+        "subject_variants": [
+          {
+            "name": "颗粒物",
+            "etype": "pollutant"
+          }
+        ],
+        "object_variants": [
+          {
+            "name": "布袋除尘",
             "etype": "treatment_measure"
           }
         ]
@@ -11827,96 +11764,6 @@
     ],
     "处置": [
       {
-        "pattern_id": "dp-e6cce6b918",
-        "pattern_name": "处置规律：矸石→综合利用（utilized_by）",
-        "pattern_type": "处置",
-        "subject_name": "矸石",
-        "subject_etype": "waste_stream",
-        "object_name": "综合利用",
-        "object_etype": "treatment_measure",
-        "predicate": "utilized_by",
-        "occurrence_count": 1,
-        "support_count": 17,
-        "source_reports": [
-          "balasu",
-          "guojiatai",
-          "hegang",
-          "hengcheng",
-          "huating",
-          "jiulongchuan",
-          "lingtai",
-          "nalinxili",
-          "naomaohu2025",
-          "sijitun",
-          "weizhou",
-          "wujianfang",
-          "yakeshi2026",
-          "yimin",
-          "yining",
-          "yitai",
-          "yueerwan"
-        ],
-        "pattern_desc": "样例库 17 份报告共现：矸石（waste_stream）配 综合利用（treatment_measure）（utilized_by）——处置规律（B 库蒸馏，跨报告支持度 17）",
-        "mixed_etype": false,
-        "subject_variants": [
-          {
-            "name": "矸石",
-            "etype": "waste_stream"
-          }
-        ],
-        "object_variants": [
-          {
-            "name": "综合利用",
-            "etype": "treatment_measure"
-          }
-        ]
-      },
-      {
-        "pattern_id": "dp-01aae4f5e3",
-        "pattern_name": "处置规律：矸石→综合利用（disposed_by）",
-        "pattern_type": "处置",
-        "subject_name": "矸石",
-        "subject_etype": "waste_stream",
-        "object_name": "综合利用",
-        "object_etype": "treatment_measure",
-        "predicate": "disposed_by",
-        "occurrence_count": 1,
-        "support_count": 17,
-        "source_reports": [
-          "balasu",
-          "guojiatai",
-          "hegang",
-          "hengcheng",
-          "huating",
-          "jiulongchuan",
-          "lingtai",
-          "nalinxili",
-          "naomaohu2025",
-          "sijitun",
-          "weizhou",
-          "wujianfang",
-          "yakeshi2026",
-          "yimin",
-          "yining",
-          "yitai",
-          "yueerwan"
-        ],
-        "pattern_desc": "样例库 17 份报告共现：矸石（waste_stream）配 综合利用（treatment_measure）（disposed_by）——处置规律（B 库蒸馏，跨报告支持度 17）",
-        "mixed_etype": false,
-        "subject_variants": [
-          {
-            "name": "矸石",
-            "etype": "waste_stream"
-          }
-        ],
-        "object_variants": [
-          {
-            "name": "综合利用",
-            "etype": "treatment_measure"
-          }
-        ]
-      },
-      {
         "pattern_id": "dp-e609c7f0f8",
         "pattern_name": "处置规律：危险废物→有资质单位（disposed_by）",
         "pattern_type": "处置",
@@ -11992,66 +11839,6 @@
           },
           {
             "name": "有资质的危废处置公司",
-            "etype": "treatment_measure"
-          }
-        ]
-      },
-      {
-        "pattern_id": "dp-bd612fea3e",
-        "pattern_name": "处置规律：矸石→井下充填（disposed_by）",
-        "pattern_type": "处置",
-        "subject_name": "矸石",
-        "subject_etype": "waste_stream",
-        "object_name": "井下充填",
-        "object_etype": "treatment_measure",
-        "predicate": "disposed_by",
-        "occurrence_count": 5,
-        "support_count": 16,
-        "source_reports": [
-          "balasu",
-          "guojiatai",
-          "hegang",
-          "hengcheng",
-          "huating",
-          "jiulongchuan",
-          "lingtai",
-          "nalinxili",
-          "naomaohu2025",
-          "santanghu",
-          "sijitun",
-          "yakeshi2026",
-          "yimin",
-          "yining",
-          "yitai",
-          "yueerwan"
-        ],
-        "pattern_desc": "样例库 16 份报告共现：矸石（waste_stream）配 井下充填（treatment_measure）（disposed_by）——处置规律（B 库蒸馏，跨报告支持度 16）",
-        "mixed_etype": false,
-        "subject_variants": [
-          {
-            "name": "矸石",
-            "etype": "waste_stream"
-          }
-        ],
-        "object_variants": [
-          {
-            "name": "井下充填",
-            "etype": "treatment_measure"
-          },
-          {
-            "name": "井下处置",
-            "etype": "treatment_measure"
-          },
-          {
-            "name": "回填井下",
-            "etype": "treatment_measure"
-          },
-          {
-            "name": "矸石井下充填",
-            "etype": "treatment_measure"
-          },
-          {
-            "name": "采空区注浆充填",
             "etype": "treatment_measure"
           }
         ]
@@ -12201,94 +11988,6 @@
         ]
       },
       {
-        "pattern_id": "dp-5396aba979",
-        "pattern_name": "处置规律：矸石→露天矿排土场（disposed_by）",
-        "pattern_type": "处置",
-        "subject_name": "矸石",
-        "subject_etype": "waste_stream",
-        "object_name": "露天矿排土场",
-        "object_etype": "engineering_site",
-        "predicate": "disposed_by",
-        "occurrence_count": 1,
-        "support_count": 16,
-        "source_reports": [
-          "balasu",
-          "gaotaoyao",
-          "guojiatai",
-          "hegang",
-          "hengcheng",
-          "huating",
-          "jiulongchuan",
-          "lingtai",
-          "nalinxili",
-          "naomaohu2025",
-          "sijitun",
-          "yakeshi2026",
-          "yimin",
-          "yining",
-          "yitai",
-          "yueerwan"
-        ],
-        "pattern_desc": "样例库 16 份报告共现：矸石（waste_stream）配 露天矿排土场（engineering_site）（disposed_by）——处置规律（B 库蒸馏，跨报告支持度 16）",
-        "mixed_etype": false,
-        "subject_variants": [
-          {
-            "name": "矸石",
-            "etype": "waste_stream"
-          }
-        ],
-        "object_variants": [
-          {
-            "name": "露天矿排土场",
-            "etype": "engineering_site"
-          }
-        ]
-      },
-      {
-        "pattern_id": "dp-a64288aa93",
-        "pattern_name": "处置规律：矸石→排矸场（disposed_by）",
-        "pattern_type": "处置",
-        "subject_name": "矸石",
-        "subject_etype": "waste_stream",
-        "object_name": "排矸场",
-        "object_etype": "engineering_site",
-        "predicate": "disposed_by",
-        "occurrence_count": 1,
-        "support_count": 16,
-        "source_reports": [
-          "balasu",
-          "guojiatai",
-          "hegang",
-          "hengcheng",
-          "huating",
-          "jiulongchuan",
-          "lingtai",
-          "nalinxili",
-          "naomaohu2025",
-          "santanghu",
-          "sijitun",
-          "yakeshi2026",
-          "yimin",
-          "yining",
-          "yitai",
-          "yueerwan"
-        ],
-        "pattern_desc": "样例库 16 份报告共现：矸石（waste_stream）配 排矸场（engineering_site）（disposed_by）——处置规律（B 库蒸馏，跨报告支持度 16）",
-        "mixed_etype": false,
-        "subject_variants": [
-          {
-            "name": "矸石",
-            "etype": "waste_stream"
-          }
-        ],
-        "object_variants": [
-          {
-            "name": "排矸场",
-            "etype": "engineering_site"
-          }
-        ]
-      },
-      {
         "pattern_id": "dp-c0535decb2",
         "pattern_name": "处置规律：生活垃圾→市政垃圾处理厂（disposed_by）",
         "pattern_type": "处置",
@@ -12360,316 +12059,6 @@
           {
             "name": "鄂尔多斯市垃圾处理场",
             "etype": "place"
-          }
-        ]
-      },
-      {
-        "pattern_id": "dp-9389ae7902",
-        "pattern_name": "处置规律：矸石→井下充填（utilized_by）",
-        "pattern_type": "处置",
-        "subject_name": "矸石",
-        "subject_etype": "waste_stream",
-        "object_name": "井下充填",
-        "object_etype": "measure_process_concept",
-        "predicate": "utilized_by",
-        "occurrence_count": 7,
-        "support_count": 15,
-        "source_reports": [
-          "balasu",
-          "guojiatai",
-          "hegang",
-          "hengcheng",
-          "huating",
-          "jiulongchuan",
-          "lingtai",
-          "nalinxili",
-          "naomaohu2025",
-          "sijitun",
-          "yakeshi2026",
-          "yimin",
-          "yining",
-          "yitai",
-          "yueerwan"
-        ],
-        "pattern_desc": "样例库 15 份报告共现：矸石（waste_stream）配 井下充填（measure_process_concept）（utilized_by）——处置规律（B 库蒸馏，跨报告支持度 15）",
-        "mixed_etype": true,
-        "subject_variants": [
-          {
-            "name": "矸石",
-            "etype": "waste_stream"
-          }
-        ],
-        "object_variants": [
-          {
-            "name": "井下充填",
-            "etype": "treatment_measure"
-          },
-          {
-            "name": "井下充填技术",
-            "etype": "measure_process_concept"
-          },
-          {
-            "name": "井下处理",
-            "etype": "treatment_measure"
-          },
-          {
-            "name": "井下膏体充填",
-            "etype": "treatment_measure"
-          },
-          {
-            "name": "充填",
-            "etype": "measure_process_concept"
-          },
-          {
-            "name": "充填井下",
-            "etype": "measure_process_concept"
-          },
-          {
-            "name": "回填井下",
-            "etype": "measure_process_concept"
-          }
-        ]
-      },
-      {
-        "pattern_id": "dp-bd1b5dfbbd",
-        "pattern_name": "处置规律：矸石→沉陷区充填（utilized_by）",
-        "pattern_type": "处置",
-        "subject_name": "矸石",
-        "subject_etype": "waste_stream",
-        "object_name": "沉陷区充填",
-        "object_etype": "treatment_measure",
-        "predicate": "utilized_by",
-        "occurrence_count": 5,
-        "support_count": 15,
-        "source_reports": [
-          "balasu",
-          "guojiatai",
-          "hegang",
-          "hengcheng",
-          "huating",
-          "jiulongchuan",
-          "lingtai",
-          "nalinxili",
-          "naomaohu2025",
-          "sijitun",
-          "yakeshi2026",
-          "yimin",
-          "yining",
-          "yitai",
-          "yueerwan"
-        ],
-        "pattern_desc": "样例库 15 份报告共现：矸石（waste_stream）配 沉陷区充填（treatment_measure）（utilized_by）——处置规律（B 库蒸馏，跨报告支持度 15）",
-        "mixed_etype": true,
-        "subject_variants": [
-          {
-            "name": "矸石",
-            "etype": "waste_stream"
-          }
-        ],
-        "object_variants": [
-          {
-            "name": "充填沉陷区",
-            "etype": "measure_process_concept"
-          },
-          {
-            "name": "沉陷区充填",
-            "etype": "treatment_measure"
-          },
-          {
-            "name": "沉陷区回填",
-            "etype": "treatment_measure"
-          },
-          {
-            "name": "矸石充填沉陷区",
-            "etype": "measure_process_concept"
-          },
-          {
-            "name": "矸石充填沉陷区的复垦措施",
-            "etype": "treatment_measure"
-          }
-        ]
-      },
-      {
-        "pattern_id": "dp-9f6bfdf71c",
-        "pattern_name": "处置规律：矸石→沉陷区充填（disposed_by）",
-        "pattern_type": "处置",
-        "subject_name": "矸石",
-        "subject_etype": "waste_stream",
-        "object_name": "沉陷区充填",
-        "object_etype": "place",
-        "predicate": "disposed_by",
-        "occurrence_count": 2,
-        "support_count": 15,
-        "source_reports": [
-          "balasu",
-          "guojiatai",
-          "hegang",
-          "hengcheng",
-          "huating",
-          "jiulongchuan",
-          "lingtai",
-          "nalinxili",
-          "naomaohu2025",
-          "sijitun",
-          "yakeshi2026",
-          "yimin",
-          "yining",
-          "yitai",
-          "yueerwan"
-        ],
-        "pattern_desc": "样例库 15 份报告共现：矸石（waste_stream）配 沉陷区充填（place）（disposed_by）——处置规律（B 库蒸馏，跨报告支持度 15）",
-        "mixed_etype": true,
-        "subject_variants": [
-          {
-            "name": "矸石",
-            "etype": "waste_stream"
-          }
-        ],
-        "object_variants": [
-          {
-            "name": "充填塌陷坑",
-            "etype": "treatment_measure"
-          },
-          {
-            "name": "塌陷坑",
-            "etype": "place"
-          }
-        ]
-      },
-      {
-        "pattern_id": "dp-b35b9536e4",
-        "pattern_name": "处置规律：矸石→场地平整（utilized_by）",
-        "pattern_type": "处置",
-        "subject_name": "矸石",
-        "subject_etype": "waste_stream",
-        "object_name": "场地平整",
-        "object_etype": "measure_process_concept",
-        "predicate": "utilized_by",
-        "occurrence_count": 2,
-        "support_count": 15,
-        "source_reports": [
-          "balasu",
-          "guojiatai",
-          "hegang",
-          "hengcheng",
-          "huating",
-          "jiulongchuan",
-          "lingtai",
-          "nalinxili",
-          "naomaohu2025",
-          "sijitun",
-          "yakeshi2026",
-          "yimin",
-          "yining",
-          "yitai",
-          "yueerwan"
-        ],
-        "pattern_desc": "样例库 15 份报告共现：矸石（waste_stream）配 场地平整（measure_process_concept）（utilized_by）——处置规律（B 库蒸馏，跨报告支持度 15）",
-        "mixed_etype": false,
-        "subject_variants": [
-          {
-            "name": "矸石",
-            "etype": "waste_stream"
-          }
-        ],
-        "object_variants": [
-          {
-            "name": "场地平整",
-            "etype": "measure_process_concept"
-          },
-          {
-            "name": "工业场地、道路地基铺设",
-            "etype": "measure_process_concept"
-          }
-        ]
-      },
-      {
-        "pattern_id": "dp-622f43ddcf",
-        "pattern_name": "处置规律：矸石→采坑回填（disposed_by）",
-        "pattern_type": "处置",
-        "subject_name": "矸石",
-        "subject_etype": "waste_stream",
-        "object_name": "采坑回填",
-        "object_etype": "treatment_measure",
-        "predicate": "disposed_by",
-        "occurrence_count": 2,
-        "support_count": 15,
-        "source_reports": [
-          "balasu",
-          "guojiatai",
-          "hegang",
-          "hengcheng",
-          "huating",
-          "jiulongchuan",
-          "lingtai",
-          "nalinxili",
-          "naomaohu2025",
-          "sijitun",
-          "yakeshi2026",
-          "yimin",
-          "yining",
-          "yitai",
-          "yueerwan"
-        ],
-        "pattern_desc": "样例库 15 份报告共现：矸石（waste_stream）配 采坑回填（treatment_measure）（disposed_by）——处置规律（B 库蒸馏，跨报告支持度 15）",
-        "mixed_etype": false,
-        "subject_variants": [
-          {
-            "name": "矸石",
-            "etype": "waste_stream"
-          }
-        ],
-        "object_variants": [
-          {
-            "name": "回填新岭露天矿露天采坑",
-            "etype": "treatment_measure"
-          },
-          {
-            "name": "采坑回填",
-            "etype": "treatment_measure"
-          }
-        ]
-      },
-      {
-        "pattern_id": "dp-5a77e04e37",
-        "pattern_name": "处置规律：矸石→矸石充填站（disposed_by）",
-        "pattern_type": "处置",
-        "subject_name": "矸石",
-        "subject_etype": "waste_stream",
-        "object_name": "矸石充填站",
-        "object_etype": "treatment_measure",
-        "predicate": "disposed_by",
-        "occurrence_count": 2,
-        "support_count": 15,
-        "source_reports": [
-          "balasu",
-          "guojiatai",
-          "hegang",
-          "hengcheng",
-          "huating",
-          "jiulongchuan",
-          "lingtai",
-          "nalinxili",
-          "naomaohu2025",
-          "sijitun",
-          "yakeshi2026",
-          "yimin",
-          "yining",
-          "yitai",
-          "yueerwan"
-        ],
-        "pattern_desc": "样例库 15 份报告共现：矸石（waste_stream）配 矸石充填站（treatment_measure）（disposed_by）——处置规律（B 库蒸馏，跨报告支持度 15）",
-        "mixed_etype": true,
-        "subject_variants": [
-          {
-            "name": "矸石",
-            "etype": "waste_stream"
-          }
-        ],
-        "object_variants": [
-          {
-            "name": "矸石充填站",
-            "etype": "engineering_site"
           }
         ]
       },
@@ -13190,823 +12579,6 @@
         ]
       },
       {
-        "pattern_id": "dp-cc046af5ac",
-        "pattern_name": "处置规律：矸石→回填矿区洼地、填作路基、平整工业场地（utilized_by）",
-        "pattern_type": "处置",
-        "subject_name": "矸石",
-        "subject_etype": "waste_stream",
-        "object_name": "回填矿区洼地、填作路基、平整工业场地",
-        "object_etype": "treatment_measure",
-        "predicate": "utilized_by",
-        "occurrence_count": 1,
-        "support_count": 15,
-        "source_reports": [
-          "balasu",
-          "guojiatai",
-          "hegang",
-          "hengcheng",
-          "huating",
-          "jiulongchuan",
-          "lingtai",
-          "nalinxili",
-          "naomaohu2025",
-          "sijitun",
-          "yakeshi2026",
-          "yimin",
-          "yining",
-          "yitai",
-          "yueerwan"
-        ],
-        "pattern_desc": "样例库 15 份报告共现：矸石（waste_stream）配 回填矿区洼地、填作路基、平整工业场地（treatment_measure）（utilized_by）——处置规律（B 库蒸馏，跨报告支持度 15）",
-        "mixed_etype": false,
-        "subject_variants": [
-          {
-            "name": "矸石",
-            "etype": "waste_stream"
-          }
-        ],
-        "object_variants": [
-          {
-            "name": "回填矿区洼地、填作路基、平整工业场地",
-            "etype": "treatment_measure"
-          }
-        ]
-      },
-      {
-        "pattern_id": "dp-00c9bf4092",
-        "pattern_name": "处置规律：矸石→地面充填系统（utilized_by）",
-        "pattern_type": "处置",
-        "subject_name": "矸石",
-        "subject_etype": "waste_stream",
-        "object_name": "地面充填系统",
-        "object_etype": "treatment_measure",
-        "predicate": "utilized_by",
-        "occurrence_count": 1,
-        "support_count": 15,
-        "source_reports": [
-          "balasu",
-          "guojiatai",
-          "hegang",
-          "hengcheng",
-          "huating",
-          "jiulongchuan",
-          "lingtai",
-          "nalinxili",
-          "naomaohu2025",
-          "sijitun",
-          "yakeshi2026",
-          "yimin",
-          "yining",
-          "yitai",
-          "yueerwan"
-        ],
-        "pattern_desc": "样例库 15 份报告共现：矸石（waste_stream）配 地面充填系统（treatment_measure）（utilized_by）——处置规律（B 库蒸馏，跨报告支持度 15）",
-        "mixed_etype": false,
-        "subject_variants": [
-          {
-            "name": "矸石",
-            "etype": "waste_stream"
-          }
-        ],
-        "object_variants": [
-          {
-            "name": "地面充填系统",
-            "etype": "treatment_measure"
-          }
-        ]
-      },
-      {
-        "pattern_id": "dp-fd3a3f3dd2",
-        "pattern_name": "处置规律：矸石→矸石回填井下、充填沉陷区（utilized_by）",
-        "pattern_type": "处置",
-        "subject_name": "矸石",
-        "subject_etype": "waste_stream",
-        "object_name": "矸石回填井下、充填沉陷区",
-        "object_etype": "treatment_measure",
-        "predicate": "utilized_by",
-        "occurrence_count": 1,
-        "support_count": 15,
-        "source_reports": [
-          "balasu",
-          "guojiatai",
-          "hegang",
-          "hengcheng",
-          "huating",
-          "jiulongchuan",
-          "lingtai",
-          "nalinxili",
-          "naomaohu2025",
-          "sijitun",
-          "yakeshi2026",
-          "yimin",
-          "yining",
-          "yitai",
-          "yueerwan"
-        ],
-        "pattern_desc": "样例库 15 份报告共现：矸石（waste_stream）配 矸石回填井下、充填沉陷区（treatment_measure）（utilized_by）——处置规律（B 库蒸馏，跨报告支持度 15）",
-        "mixed_etype": false,
-        "subject_variants": [
-          {
-            "name": "矸石",
-            "etype": "waste_stream"
-          }
-        ],
-        "object_variants": [
-          {
-            "name": "矸石回填井下、充填沉陷区",
-            "etype": "treatment_measure"
-          }
-        ]
-      },
-      {
-        "pattern_id": "dp-e9b21e66d0",
-        "pattern_name": "处置规律：矸石→黄土掩埋（disposed_by）",
-        "pattern_type": "处置",
-        "subject_name": "矸石",
-        "subject_etype": "waste_stream",
-        "object_name": "黄土掩埋",
-        "object_etype": "treatment_measure",
-        "predicate": "disposed_by",
-        "occurrence_count": 1,
-        "support_count": 15,
-        "source_reports": [
-          "balasu",
-          "guojiatai",
-          "hegang",
-          "hengcheng",
-          "huating",
-          "jiulongchuan",
-          "lingtai",
-          "nalinxili",
-          "naomaohu2025",
-          "sijitun",
-          "yakeshi2026",
-          "yimin",
-          "yining",
-          "yitai",
-          "yueerwan"
-        ],
-        "pattern_desc": "样例库 15 份报告共现：矸石（waste_stream）配 黄土掩埋（treatment_measure）（disposed_by）——处置规律（B 库蒸馏，跨报告支持度 15）",
-        "mixed_etype": false,
-        "subject_variants": [
-          {
-            "name": "矸石",
-            "etype": "waste_stream"
-          }
-        ],
-        "object_variants": [
-          {
-            "name": "黄土掩埋",
-            "etype": "treatment_measure"
-          }
-        ]
-      },
-      {
-        "pattern_id": "dp-6b34c74b65",
-        "pattern_name": "处置规律：矸石→场地平整（disposed_by）",
-        "pattern_type": "处置",
-        "subject_name": "矸石",
-        "subject_etype": "waste_stream",
-        "object_name": "场地平整",
-        "object_etype": "treatment_measure",
-        "predicate": "disposed_by",
-        "occurrence_count": 1,
-        "support_count": 15,
-        "source_reports": [
-          "balasu",
-          "guojiatai",
-          "hegang",
-          "hengcheng",
-          "huating",
-          "jiulongchuan",
-          "lingtai",
-          "nalinxili",
-          "naomaohu2025",
-          "sijitun",
-          "yakeshi2026",
-          "yimin",
-          "yining",
-          "yitai",
-          "yueerwan"
-        ],
-        "pattern_desc": "样例库 15 份报告共现：矸石（waste_stream）配 场地平整（treatment_measure）（disposed_by）——处置规律（B 库蒸馏，跨报告支持度 15）",
-        "mixed_etype": false,
-        "subject_variants": [
-          {
-            "name": "矸石",
-            "etype": "waste_stream"
-          }
-        ],
-        "object_variants": [
-          {
-            "name": "工业场地填方",
-            "etype": "treatment_measure"
-          }
-        ]
-      },
-      {
-        "pattern_id": "dp-95c192089d",
-        "pattern_name": "处置规律：矸石→排土场（disposed_by）",
-        "pattern_type": "处置",
-        "subject_name": "矸石",
-        "subject_etype": "waste_stream",
-        "object_name": "排土场",
-        "object_etype": "engineering_site",
-        "predicate": "disposed_by",
-        "occurrence_count": 1,
-        "support_count": 15,
-        "source_reports": [
-          "balasu",
-          "guojiatai",
-          "hegang",
-          "hengcheng",
-          "huating",
-          "jiulongchuan",
-          "lingtai",
-          "nalinxili",
-          "naomaohu2025",
-          "sijitun",
-          "yakeshi2026",
-          "yimin",
-          "yining",
-          "yitai",
-          "yueerwan"
-        ],
-        "pattern_desc": "样例库 15 份报告共现：矸石（waste_stream）配 排土场（engineering_site）（disposed_by）——处置规律（B 库蒸馏，跨报告支持度 15）",
-        "mixed_etype": false,
-        "subject_variants": [
-          {
-            "name": "矸石",
-            "etype": "waste_stream"
-          }
-        ],
-        "object_variants": [
-          {
-            "name": "排土场",
-            "etype": "engineering_site"
-          }
-        ]
-      },
-      {
-        "pattern_id": "dp-be479a86e6",
-        "pattern_name": "处置规律：矸石→采坑回填（utilized_by）",
-        "pattern_type": "处置",
-        "subject_name": "矸石",
-        "subject_etype": "waste_stream",
-        "object_name": "采坑回填",
-        "object_etype": "measure_process_concept",
-        "predicate": "utilized_by",
-        "occurrence_count": 1,
-        "support_count": 15,
-        "source_reports": [
-          "balasu",
-          "guojiatai",
-          "hegang",
-          "hengcheng",
-          "huating",
-          "jiulongchuan",
-          "lingtai",
-          "nalinxili",
-          "naomaohu2025",
-          "sijitun",
-          "yakeshi2026",
-          "yimin",
-          "yining",
-          "yitai",
-          "yueerwan"
-        ],
-        "pattern_desc": "样例库 15 份报告共现：矸石（waste_stream）配 采坑回填（measure_process_concept）（utilized_by）——处置规律（B 库蒸馏，跨报告支持度 15）",
-        "mixed_etype": false,
-        "subject_variants": [
-          {
-            "name": "矸石",
-            "etype": "waste_stream"
-          }
-        ],
-        "object_variants": [
-          {
-            "name": "矸石回填矿坑",
-            "etype": "measure_process_concept"
-          }
-        ]
-      },
-      {
-        "pattern_id": "dp-a505254c51",
-        "pattern_name": "处置规律：矸石→充填开采综合利用（utilized_by）",
-        "pattern_type": "处置",
-        "subject_name": "矸石",
-        "subject_etype": "waste_stream",
-        "object_name": "充填开采综合利用",
-        "object_etype": "treatment_measure",
-        "predicate": "utilized_by",
-        "occurrence_count": 1,
-        "support_count": 15,
-        "source_reports": [
-          "balasu",
-          "guojiatai",
-          "hegang",
-          "hengcheng",
-          "huating",
-          "jiulongchuan",
-          "lingtai",
-          "nalinxili",
-          "naomaohu2025",
-          "sijitun",
-          "yakeshi2026",
-          "yimin",
-          "yining",
-          "yitai",
-          "yueerwan"
-        ],
-        "pattern_desc": "样例库 15 份报告共现：矸石（waste_stream）配 充填开采综合利用（treatment_measure）（utilized_by）——处置规律（B 库蒸馏，跨报告支持度 15）",
-        "mixed_etype": false,
-        "subject_variants": [
-          {
-            "name": "矸石",
-            "etype": "waste_stream"
-          }
-        ],
-        "object_variants": [
-          {
-            "name": "充填开采综合利用",
-            "etype": "treatment_measure"
-          }
-        ]
-      },
-      {
-        "pattern_id": "dp-c44645d762",
-        "pattern_name": "处置规律：矸石→填沟造地（utilized_by）",
-        "pattern_type": "处置",
-        "subject_name": "矸石",
-        "subject_etype": "waste_stream",
-        "object_name": "填沟造地",
-        "object_etype": "measure_process_concept",
-        "predicate": "utilized_by",
-        "occurrence_count": 1,
-        "support_count": 15,
-        "source_reports": [
-          "balasu",
-          "guojiatai",
-          "hegang",
-          "hengcheng",
-          "huating",
-          "jiulongchuan",
-          "lingtai",
-          "nalinxili",
-          "naomaohu2025",
-          "sijitun",
-          "yakeshi2026",
-          "yimin",
-          "yining",
-          "yitai",
-          "yueerwan"
-        ],
-        "pattern_desc": "样例库 15 份报告共现：矸石（waste_stream）配 填沟造地（measure_process_concept）（utilized_by）——处置规律（B 库蒸馏，跨报告支持度 15）",
-        "mixed_etype": false,
-        "subject_variants": [
-          {
-            "name": "矸石",
-            "etype": "waste_stream"
-          }
-        ],
-        "object_variants": [
-          {
-            "name": "填沟造地",
-            "etype": "measure_process_concept"
-          }
-        ]
-      },
-      {
-        "pattern_id": "dp-af21e5caa1",
-        "pattern_name": "处置规律：矸石→建筑材料（utilized_by）",
-        "pattern_type": "处置",
-        "subject_name": "矸石",
-        "subject_etype": "waste_stream",
-        "object_name": "建筑材料",
-        "object_etype": "measure_process_concept",
-        "predicate": "utilized_by",
-        "occurrence_count": 1,
-        "support_count": 15,
-        "source_reports": [
-          "balasu",
-          "guojiatai",
-          "hegang",
-          "hengcheng",
-          "huating",
-          "jiulongchuan",
-          "lingtai",
-          "nalinxili",
-          "naomaohu2025",
-          "sijitun",
-          "yakeshi2026",
-          "yimin",
-          "yining",
-          "yitai",
-          "yueerwan"
-        ],
-        "pattern_desc": "样例库 15 份报告共现：矸石（waste_stream）配 建筑材料（measure_process_concept）（utilized_by）——处置规律（B 库蒸馏，跨报告支持度 15）",
-        "mixed_etype": false,
-        "subject_variants": [
-          {
-            "name": "矸石",
-            "etype": "waste_stream"
-          }
-        ],
-        "object_variants": [
-          {
-            "name": "建筑材料",
-            "etype": "measure_process_concept"
-          }
-        ]
-      },
-      {
-        "pattern_id": "dp-fc0c792119",
-        "pattern_name": "处置规律：矸石→填沟造地和水土保持生态综合治理（utilized_by）",
-        "pattern_type": "处置",
-        "subject_name": "矸石",
-        "subject_etype": "waste_stream",
-        "object_name": "填沟造地和水土保持生态综合治理",
-        "object_etype": "treatment_measure",
-        "predicate": "utilized_by",
-        "occurrence_count": 1,
-        "support_count": 15,
-        "source_reports": [
-          "balasu",
-          "guojiatai",
-          "hegang",
-          "hengcheng",
-          "huating",
-          "jiulongchuan",
-          "lingtai",
-          "nalinxili",
-          "naomaohu2025",
-          "sijitun",
-          "yakeshi2026",
-          "yimin",
-          "yining",
-          "yitai",
-          "yueerwan"
-        ],
-        "pattern_desc": "样例库 15 份报告共现：矸石（waste_stream）配 填沟造地和水土保持生态综合治理（treatment_measure）（utilized_by）——处置规律（B 库蒸馏，跨报告支持度 15）",
-        "mixed_etype": false,
-        "subject_variants": [
-          {
-            "name": "矸石",
-            "etype": "waste_stream"
-          }
-        ],
-        "object_variants": [
-          {
-            "name": "填沟造地和水土保持生态综合治理",
-            "etype": "treatment_measure"
-          }
-        ]
-      },
-      {
-        "pattern_id": "dp-4602a32451",
-        "pattern_name": "处置规律：矸石→煤柱置换回收（utilized_by）",
-        "pattern_type": "处置",
-        "subject_name": "矸石",
-        "subject_etype": "waste_stream",
-        "object_name": "煤柱置换回收",
-        "object_etype": "measure_process_concept",
-        "predicate": "utilized_by",
-        "occurrence_count": 1,
-        "support_count": 15,
-        "source_reports": [
-          "balasu",
-          "guojiatai",
-          "hegang",
-          "hengcheng",
-          "huating",
-          "jiulongchuan",
-          "lingtai",
-          "nalinxili",
-          "naomaohu2025",
-          "sijitun",
-          "yakeshi2026",
-          "yimin",
-          "yining",
-          "yitai",
-          "yueerwan"
-        ],
-        "pattern_desc": "样例库 15 份报告共现：矸石（waste_stream）配 煤柱置换回收（measure_process_concept）（utilized_by）——处置规律（B 库蒸馏，跨报告支持度 15）",
-        "mixed_etype": false,
-        "subject_variants": [
-          {
-            "name": "矸石",
-            "etype": "waste_stream"
-          }
-        ],
-        "object_variants": [
-          {
-            "name": "煤柱置换回收",
-            "etype": "measure_process_concept"
-          }
-        ]
-      },
-      {
-        "pattern_id": "dp-23a6bd963f",
-        "pattern_name": "处置规律：矸石→制建材（utilized_by）",
-        "pattern_type": "处置",
-        "subject_name": "矸石",
-        "subject_etype": "waste_stream",
-        "object_name": "制建材",
-        "object_etype": "measure_process_concept",
-        "predicate": "utilized_by",
-        "occurrence_count": 1,
-        "support_count": 15,
-        "source_reports": [
-          "balasu",
-          "guojiatai",
-          "hegang",
-          "hengcheng",
-          "huating",
-          "jiulongchuan",
-          "lingtai",
-          "nalinxili",
-          "naomaohu2025",
-          "sijitun",
-          "yakeshi2026",
-          "yimin",
-          "yining",
-          "yitai",
-          "yueerwan"
-        ],
-        "pattern_desc": "样例库 15 份报告共现：矸石（waste_stream）配 制建材（measure_process_concept）（utilized_by）——处置规律（B 库蒸馏，跨报告支持度 15）",
-        "mixed_etype": false,
-        "subject_variants": [
-          {
-            "name": "矸石",
-            "etype": "waste_stream"
-          }
-        ],
-        "object_variants": [
-          {
-            "name": "制建材",
-            "etype": "measure_process_concept"
-          }
-        ]
-      },
-      {
-        "pattern_id": "dp-8af2043506",
-        "pattern_name": "处置规律：矸石→制砖（utilized_by）",
-        "pattern_type": "处置",
-        "subject_name": "矸石",
-        "subject_etype": "waste_stream",
-        "object_name": "制砖",
-        "object_etype": "measure_process_concept",
-        "predicate": "utilized_by",
-        "occurrence_count": 1,
-        "support_count": 15,
-        "source_reports": [
-          "balasu",
-          "guojiatai",
-          "hegang",
-          "hengcheng",
-          "huating",
-          "jiulongchuan",
-          "lingtai",
-          "nalinxili",
-          "naomaohu2025",
-          "sijitun",
-          "yakeshi2026",
-          "yimin",
-          "yining",
-          "yitai",
-          "yueerwan"
-        ],
-        "pattern_desc": "样例库 15 份报告共现：矸石（waste_stream）配 制砖（measure_process_concept）（utilized_by）——处置规律（B 库蒸馏，跨报告支持度 15）",
-        "mixed_etype": false,
-        "subject_variants": [
-          {
-            "name": "矸石",
-            "etype": "waste_stream"
-          }
-        ],
-        "object_variants": [
-          {
-            "name": "制砖",
-            "etype": "measure_process_concept"
-          }
-        ]
-      },
-      {
-        "pattern_id": "dp-489d7e9429",
-        "pattern_name": "处置规律：矸石→工广西侧临时排矸场地（disposed_by）",
-        "pattern_type": "处置",
-        "subject_name": "矸石",
-        "subject_etype": "waste_stream",
-        "object_name": "工广西侧临时排矸场地",
-        "object_etype": "place",
-        "predicate": "disposed_by",
-        "occurrence_count": 1,
-        "support_count": 15,
-        "source_reports": [
-          "balasu",
-          "guojiatai",
-          "hegang",
-          "hengcheng",
-          "huating",
-          "jiulongchuan",
-          "lingtai",
-          "nalinxili",
-          "naomaohu2025",
-          "sijitun",
-          "yakeshi2026",
-          "yimin",
-          "yining",
-          "yitai",
-          "yueerwan"
-        ],
-        "pattern_desc": "样例库 15 份报告共现：矸石（waste_stream）配 工广西侧临时排矸场地（place）（disposed_by）——处置规律（B 库蒸馏，跨报告支持度 15）",
-        "mixed_etype": false,
-        "subject_variants": [
-          {
-            "name": "矸石",
-            "etype": "waste_stream"
-          }
-        ],
-        "object_variants": [
-          {
-            "name": "工广西侧临时排矸场地",
-            "etype": "place"
-          }
-        ]
-      },
-      {
-        "pattern_id": "dp-0669b1a502",
-        "pattern_name": "处置规律：矸石→二号煤矿矸石周转场（disposed_by）",
-        "pattern_type": "处置",
-        "subject_name": "矸石",
-        "subject_etype": "waste_stream",
-        "object_name": "二号煤矿矸石周转场",
-        "object_etype": "engineering_site",
-        "predicate": "disposed_by",
-        "occurrence_count": 1,
-        "support_count": 15,
-        "source_reports": [
-          "balasu",
-          "guojiatai",
-          "hegang",
-          "hengcheng",
-          "huating",
-          "jiulongchuan",
-          "lingtai",
-          "nalinxili",
-          "naomaohu2025",
-          "sijitun",
-          "yakeshi2026",
-          "yimin",
-          "yining",
-          "yitai",
-          "yueerwan"
-        ],
-        "pattern_desc": "样例库 15 份报告共现：矸石（waste_stream）配 二号煤矿矸石周转场（engineering_site）（disposed_by）——处置规律（B 库蒸馏，跨报告支持度 15）",
-        "mixed_etype": false,
-        "subject_variants": [
-          {
-            "name": "矸石",
-            "etype": "waste_stream"
-          }
-        ],
-        "object_variants": [
-          {
-            "name": "二号煤矿矸石周转场",
-            "etype": "engineering_site"
-          }
-        ]
-      },
-      {
-        "pattern_id": "dp-22e6f1dffe",
-        "pattern_name": "处置规律：矸石→临时排矸场（disposed_by）",
-        "pattern_type": "处置",
-        "subject_name": "矸石",
-        "subject_etype": "waste_stream",
-        "object_name": "临时排矸场",
-        "object_etype": "engineering_site",
-        "predicate": "disposed_by",
-        "occurrence_count": 1,
-        "support_count": 15,
-        "source_reports": [
-          "balasu",
-          "guojiatai",
-          "hegang",
-          "hengcheng",
-          "huating",
-          "jiulongchuan",
-          "lingtai",
-          "nalinxili",
-          "naomaohu2025",
-          "sijitun",
-          "yakeshi2026",
-          "yimin",
-          "yining",
-          "yitai",
-          "yueerwan"
-        ],
-        "pattern_desc": "样例库 15 份报告共现：矸石（waste_stream）配 临时排矸场（engineering_site）（disposed_by）——处置规律（B 库蒸馏，跨报告支持度 15）",
-        "mixed_etype": false,
-        "subject_variants": [
-          {
-            "name": "矸石",
-            "etype": "waste_stream"
-          }
-        ],
-        "object_variants": [
-          {
-            "name": "临时排矸场",
-            "etype": "engineering_site"
-          }
-        ]
-      },
-      {
-        "pattern_id": "dp-de0694694d",
-        "pattern_name": "处置规律：矸石→矸石周转场（disposed_by）",
-        "pattern_type": "处置",
-        "subject_name": "矸石",
-        "subject_etype": "waste_stream",
-        "object_name": "矸石周转场",
-        "object_etype": "engineering_site",
-        "predicate": "disposed_by",
-        "occurrence_count": 1,
-        "support_count": 15,
-        "source_reports": [
-          "balasu",
-          "guojiatai",
-          "hegang",
-          "hengcheng",
-          "huating",
-          "jiulongchuan",
-          "lingtai",
-          "nalinxili",
-          "naomaohu2025",
-          "sijitun",
-          "yakeshi2026",
-          "yimin",
-          "yining",
-          "yitai",
-          "yueerwan"
-        ],
-        "pattern_desc": "样例库 15 份报告共现：矸石（waste_stream）配 矸石周转场（engineering_site）（disposed_by）——处置规律（B 库蒸馏，跨报告支持度 15）",
-        "mixed_etype": false,
-        "subject_variants": [
-          {
-            "name": "矸石",
-            "etype": "waste_stream"
-          }
-        ],
-        "object_variants": [
-          {
-            "name": "矸石周转场",
-            "etype": "engineering_site"
-          }
-        ]
-      },
-      {
-        "pattern_id": "dp-2ced2bef03",
-        "pattern_name": "处置规律：矸石→矸石仓（disposed_by）",
-        "pattern_type": "处置",
-        "subject_name": "矸石",
-        "subject_etype": "waste_stream",
-        "object_name": "矸石仓",
-        "object_etype": "engineering_site",
-        "predicate": "disposed_by",
-        "occurrence_count": 1,
-        "support_count": 15,
-        "source_reports": [
-          "balasu",
-          "guojiatai",
-          "hegang",
-          "hengcheng",
-          "huating",
-          "jiulongchuan",
-          "lingtai",
-          "nalinxili",
-          "naomaohu2025",
-          "sijitun",
-          "yakeshi2026",
-          "yimin",
-          "yining",
-          "yitai",
-          "yueerwan"
-        ],
-        "pattern_desc": "样例库 15 份报告共现：矸石（waste_stream）配 矸石仓（engineering_site）（disposed_by）——处置规律（B 库蒸馏，跨报告支持度 15）",
-        "mixed_etype": false,
-        "subject_variants": [
-          {
-            "name": "矸石",
-            "etype": "waste_stream"
-          }
-        ],
-        "object_variants": [
-          {
-            "name": "矸石仓",
-            "etype": "engineering_site"
-          }
-        ]
-      },
-      {
         "pattern_id": "dp-f154260c88",
         "pattern_name": "处置规律：煤矸石→井下充填（utilized_by）",
         "pattern_type": "处置",
@@ -14090,88 +12662,6 @@
         "object_variants": [
           {
             "name": "井下充填",
-            "etype": "treatment_measure"
-          }
-        ]
-      },
-      {
-        "pattern_id": "dp-bdc1b55939",
-        "pattern_name": "处置规律：洗选矸石→综合利用（utilized_by）",
-        "pattern_type": "处置",
-        "subject_name": "洗选矸石",
-        "subject_etype": "waste_stream",
-        "object_name": "综合利用",
-        "object_etype": "treatment_measure",
-        "predicate": "utilized_by",
-        "occurrence_count": 1,
-        "support_count": 13,
-        "source_reports": [
-          "balasu",
-          "gaotaoyao",
-          "guojiatai",
-          "hegang",
-          "hengcheng",
-          "jiulongchuan",
-          "lingtai",
-          "nalinxili",
-          "naomaohu2025",
-          "weizhou",
-          "wujianfang",
-          "yining",
-          "yueerwan"
-        ],
-        "pattern_desc": "样例库 13 份报告共现：洗选矸石（waste_stream）配 综合利用（treatment_measure）（utilized_by）——处置规律（B 库蒸馏，跨报告支持度 13）",
-        "mixed_etype": false,
-        "subject_variants": [
-          {
-            "name": "洗选矸石",
-            "etype": "waste_stream"
-          }
-        ],
-        "object_variants": [
-          {
-            "name": "综合利用",
-            "etype": "treatment_measure"
-          }
-        ]
-      },
-      {
-        "pattern_id": "dp-7b432c68ca",
-        "pattern_name": "处置规律：煤矸石→综合利用（utilized_by）",
-        "pattern_type": "处置",
-        "subject_name": "煤矸石",
-        "subject_etype": "waste_stream",
-        "object_name": "综合利用",
-        "object_etype": "treatment_measure",
-        "predicate": "utilized_by",
-        "occurrence_count": 1,
-        "support_count": 13,
-        "source_reports": [
-          "gaotaoyao",
-          "guojiatai",
-          "hegang",
-          "huating",
-          "lingtai",
-          "naomaohu2025",
-          "santanghu",
-          "weizhou",
-          "wujianfang",
-          "yakeshi2026",
-          "yimin",
-          "yining",
-          "yitai"
-        ],
-        "pattern_desc": "样例库 13 份报告共现：煤矸石（waste_stream）配 综合利用（treatment_measure）（utilized_by）——处置规律（B 库蒸馏，跨报告支持度 13）",
-        "mixed_etype": false,
-        "subject_variants": [
-          {
-            "name": "煤矸石",
-            "etype": "waste_stream"
-          }
-        ],
-        "object_variants": [
-          {
-            "name": "综合利用",
             "etype": "treatment_measure"
           }
         ]
@@ -15016,45 +13506,6 @@
         ]
       },
       {
-        "pattern_id": "dp-f02215b72b",
-        "pattern_name": "处置规律：锅炉灰渣→综合利用（disposed_by）",
-        "pattern_type": "处置",
-        "subject_name": "锅炉灰渣",
-        "subject_etype": "waste_stream",
-        "object_name": "综合利用",
-        "object_etype": "treatment_measure",
-        "predicate": "disposed_by",
-        "occurrence_count": 1,
-        "support_count": 11,
-        "source_reports": [
-          "baiyinhua2",
-          "baiyinhua3",
-          "gaotaoyao",
-          "guojiatai",
-          "huating",
-          "nalinxili",
-          "naomaohu2025",
-          "weizhou",
-          "wujianfang",
-          "yakeshi2026",
-          "yining"
-        ],
-        "pattern_desc": "样例库 11 份报告共现：锅炉灰渣（waste_stream）配 综合利用（treatment_measure）（disposed_by）——处置规律（B 库蒸馏，跨报告支持度 11）",
-        "mixed_etype": false,
-        "subject_variants": [
-          {
-            "name": "锅炉灰渣",
-            "etype": "waste_stream"
-          }
-        ],
-        "object_variants": [
-          {
-            "name": "综合利用",
-            "etype": "treatment_measure"
-          }
-        ]
-      },
-      {
         "pattern_id": "dp-d9d861db50",
         "pattern_name": "处置规律：洗选矸石→采坑回填（disposed_by）",
         "pattern_type": "处置",
@@ -15724,46 +14175,6 @@
           {
             "name": "掺入混煤外售",
             "etype": "measure_process_concept"
-          }
-        ]
-      },
-      {
-        "pattern_id": "dp-1eb4b9983c",
-        "pattern_name": "处置规律：选煤厂洗选矸石→井下充填（disposed_by）",
-        "pattern_type": "处置",
-        "subject_name": "选煤厂洗选矸石",
-        "subject_etype": "waste_stream",
-        "object_name": "井下充填",
-        "object_etype": "treatment_measure",
-        "predicate": "disposed_by",
-        "occurrence_count": 2,
-        "support_count": 8,
-        "source_reports": [
-          "balasu",
-          "guojiatai",
-          "hegang",
-          "huating",
-          "jiulongchuan",
-          "lingtai",
-          "yakeshi2026",
-          "yueerwan"
-        ],
-        "pattern_desc": "样例库 8 份报告共现：选煤厂洗选矸石（waste_stream）配 井下充填（treatment_measure）（disposed_by）——处置规律（B 库蒸馏，跨报告支持度 8）",
-        "mixed_etype": false,
-        "subject_variants": [
-          {
-            "name": "选煤厂洗选矸石",
-            "etype": "waste_stream"
-          }
-        ],
-        "object_variants": [
-          {
-            "name": "井下充填",
-            "etype": "treatment_measure"
-          },
-          {
-            "name": "矸石井下充填",
-            "etype": "treatment_measure"
           }
         ]
       },
@@ -16478,6 +14889,41 @@
         ]
       },
       {
+        "pattern_id": "dp-1eb4b9983c",
+        "pattern_name": "处置规律：选煤厂洗选矸石→井下充填（disposed_by）",
+        "pattern_type": "处置",
+        "subject_name": "选煤厂洗选矸石",
+        "subject_etype": "waste_stream",
+        "object_name": "井下充填",
+        "object_etype": "treatment_measure",
+        "predicate": "disposed_by",
+        "occurrence_count": 1,
+        "support_count": 7,
+        "source_reports": [
+          "guojiatai",
+          "hegang",
+          "huating",
+          "jiulongchuan",
+          "lingtai",
+          "yakeshi2026",
+          "yueerwan"
+        ],
+        "pattern_desc": "样例库 7 份报告共现：选煤厂洗选矸石（waste_stream）配 井下充填（treatment_measure）（disposed_by）——处置规律（B 库蒸馏，跨报告支持度 7）",
+        "mixed_etype": false,
+        "subject_variants": [
+          {
+            "name": "选煤厂洗选矸石",
+            "etype": "waste_stream"
+          }
+        ],
+        "object_variants": [
+          {
+            "name": "井下充填",
+            "etype": "treatment_measure"
+          }
+        ]
+      },
+      {
         "pattern_id": "dp-b6009557b6",
         "pattern_name": "处置规律：选煤厂矸石→井下充填（utilized_by）",
         "pattern_type": "处置",
@@ -16881,39 +15327,6 @@
         ]
       },
       {
-        "pattern_id": "dp-25da6a2d2d",
-        "pattern_name": "处置规律：露天矿剥离物→综合利用（utilized_by）",
-        "pattern_type": "处置",
-        "subject_name": "露天矿剥离物",
-        "subject_etype": "waste_stream",
-        "object_name": "综合利用",
-        "object_etype": "treatment_measure",
-        "predicate": "utilized_by",
-        "occurrence_count": 1,
-        "support_count": 5,
-        "source_reports": [
-          "naomaohu2025",
-          "santanghu",
-          "weizhou",
-          "wujianfang",
-          "yining"
-        ],
-        "pattern_desc": "样例库 5 份报告共现：露天矿剥离物（waste_stream）配 综合利用（treatment_measure）（utilized_by）——处置规律（B 库蒸馏，跨报告支持度 5）",
-        "mixed_etype": false,
-        "subject_variants": [
-          {
-            "name": "露天矿剥离物",
-            "etype": "waste_stream"
-          }
-        ],
-        "object_variants": [
-          {
-            "name": "综合利用",
-            "etype": "treatment_measure"
-          }
-        ]
-      },
-      {
         "pattern_id": "dp-7cb3d645c2",
         "pattern_name": "处置规律：露天矿矸石→排土场（disposed_by）",
         "pattern_type": "处置",
@@ -17203,38 +15616,6 @@
         ]
       },
       {
-        "pattern_id": "dp-d9dc7aeb93",
-        "pattern_name": "处置规律：粉煤灰→综合利用（utilized_by）",
-        "pattern_type": "处置",
-        "subject_name": "粉煤灰",
-        "subject_etype": "waste_stream",
-        "object_name": "综合利用",
-        "object_etype": "treatment_measure",
-        "predicate": "utilized_by",
-        "occurrence_count": 1,
-        "support_count": 4,
-        "source_reports": [
-          "naomaohu2025",
-          "weizhou",
-          "wujianfang",
-          "yining"
-        ],
-        "pattern_desc": "样例库 4 份报告共现：粉煤灰（waste_stream）配 综合利用（treatment_measure）（utilized_by）——处置规律（B 库蒸馏，跨报告支持度 4）",
-        "mixed_etype": false,
-        "subject_variants": [
-          {
-            "name": "粉煤灰",
-            "etype": "waste_stream"
-          }
-        ],
-        "object_variants": [
-          {
-            "name": "综合利用",
-            "etype": "treatment_measure"
-          }
-        ]
-      },
-      {
         "pattern_id": "dp-9637308de3",
         "pattern_name": "处置规律：冲洗废水→废水隔油沉淀池（disposed_by）",
         "pattern_type": "处置",
@@ -17478,37 +15859,6 @@
         "object_variants": [
           {
             "name": "井下充填废弃巷道",
-            "etype": "treatment_measure"
-          }
-        ]
-      },
-      {
-        "pattern_id": "dp-6dba5d745f",
-        "pattern_name": "处置规律：矿井掘进矸石→井下充填（disposed_by）",
-        "pattern_type": "处置",
-        "subject_name": "矿井掘进矸石",
-        "subject_etype": "waste_stream",
-        "object_name": "井下充填",
-        "object_etype": "treatment_measure",
-        "predicate": "disposed_by",
-        "occurrence_count": 1,
-        "support_count": 3,
-        "source_reports": [
-          "balasu",
-          "jiulongchuan",
-          "nalinxili"
-        ],
-        "pattern_desc": "样例库 3 份报告共现：矿井掘进矸石（waste_stream）配 井下充填（treatment_measure）（disposed_by）——处置规律（B 库蒸馏，跨报告支持度 3）",
-        "mixed_etype": false,
-        "subject_variants": [
-          {
-            "name": "矿井掘进矸石",
-            "etype": "waste_stream"
-          }
-        ],
-        "object_variants": [
-          {
-            "name": "矸石井下充填",
             "etype": "treatment_measure"
           }
         ]
@@ -17847,66 +16197,6 @@
           {
             "name": "专业单位",
             "etype": "org"
-          }
-        ]
-      },
-      {
-        "pattern_id": "dp-851c4dbb5a",
-        "pattern_name": "处置规律：废机油→武威豫鑫源环保科技有限公司（disposed_by）",
-        "pattern_type": "处置",
-        "subject_name": "废机油",
-        "subject_etype": "waste_stream",
-        "object_name": "武威豫鑫源环保科技有限公司",
-        "object_etype": "org",
-        "predicate": "disposed_by",
-        "occurrence_count": 1,
-        "support_count": 2,
-        "source_reports": [
-          "guojiatai",
-          "lingtai"
-        ],
-        "pattern_desc": "样例库 2 份报告共现：废机油（waste_stream）配 武威豫鑫源环保科技有限公司（org）（disposed_by）——处置规律（B 库蒸馏，跨报告支持度 2）",
-        "mixed_etype": false,
-        "subject_variants": [
-          {
-            "name": "废机油",
-            "etype": "waste_stream"
-          }
-        ],
-        "object_variants": [
-          {
-            "name": "武威豫鑫源环保科技有限公司",
-            "etype": "org"
-          }
-        ]
-      },
-      {
-        "pattern_id": "dp-76933be4c2",
-        "pattern_name": "处置规律：废机油→有资质单位（disposed_by）",
-        "pattern_type": "处置",
-        "subject_name": "废机油",
-        "subject_etype": "waste_stream",
-        "object_name": "有资质单位",
-        "object_etype": "treatment_measure",
-        "predicate": "disposed_by",
-        "occurrence_count": 1,
-        "support_count": 2,
-        "source_reports": [
-          "guojiatai",
-          "lingtai"
-        ],
-        "pattern_desc": "样例库 2 份报告共现：废机油（waste_stream）配 有资质单位（treatment_measure）（disposed_by）——处置规律（B 库蒸馏，跨报告支持度 2）",
-        "mixed_etype": false,
-        "subject_variants": [
-          {
-            "name": "废机油",
-            "etype": "waste_stream"
-          }
-        ],
-        "object_variants": [
-          {
-            "name": "有资质单位处置",
-            "etype": "treatment_measure"
           }
         ]
       },
@@ -20018,6 +18308,2240 @@
           {
             "name": "宁东垃圾处理场",
             "etype": "engineering_site"
+          }
+        ]
+      }
+    ],
+    "敏感点防护": [
+      {
+        "pattern_id": "dp-55f4bae42c",
+        "pattern_name": "敏感点防护规律：公益林→禁止开采措施",
+        "pattern_type": "敏感点防护",
+        "subject_name": "公益林",
+        "subject_etype": "sensitive_point",
+        "object_name": "禁止开采措施",
+        "object_etype": "treatment_measure",
+        "predicate": "protected_by",
+        "occurrence_count": 1,
+        "support_count": 9,
+        "source_reports": [
+          "hegang",
+          "hengcheng",
+          "lingtai",
+          "naomaohu2025",
+          "santanghu",
+          "weizhou",
+          "wujianfang",
+          "yining",
+          "yueerwan"
+        ],
+        "pattern_desc": "样例库 9 份报告共现：公益林（sensitive_point）配 禁止开采措施（treatment_measure）——敏感点防护规律（B 库蒸馏，跨报告支持度 9）",
+        "mixed_etype": false,
+        "subject_variants": [
+          {
+            "name": "公益林",
+            "etype": "sensitive_point"
+          }
+        ],
+        "object_variants": [
+          {
+            "name": "禁止开采措施",
+            "etype": "treatment_measure"
+          }
+        ]
+      },
+      {
+        "pattern_id": "dp-7c05679c43",
+        "pattern_name": "敏感点防护规律：公益林→经济补偿、边开采边恢复",
+        "pattern_type": "敏感点防护",
+        "subject_name": "公益林",
+        "subject_etype": "sensitive_point",
+        "object_name": "经济补偿、边开采边恢复",
+        "object_etype": "treatment_measure",
+        "predicate": "protected_by",
+        "occurrence_count": 1,
+        "support_count": 9,
+        "source_reports": [
+          "hegang",
+          "hengcheng",
+          "lingtai",
+          "naomaohu2025",
+          "santanghu",
+          "weizhou",
+          "wujianfang",
+          "yining",
+          "yueerwan"
+        ],
+        "pattern_desc": "样例库 9 份报告共现：公益林（sensitive_point）配 经济补偿、边开采边恢复（treatment_measure）——敏感点防护规律（B 库蒸馏，跨报告支持度 9）",
+        "mixed_etype": false,
+        "subject_variants": [
+          {
+            "name": "公益林",
+            "etype": "sensitive_point"
+          }
+        ],
+        "object_variants": [
+          {
+            "name": "经济补偿、边开采边恢复",
+            "etype": "treatment_measure"
+          }
+        ]
+      },
+      {
+        "pattern_id": "dp-acf3f942f2",
+        "pattern_name": "敏感点防护规律：水体→保护煤柱",
+        "pattern_type": "敏感点防护",
+        "subject_name": "水体",
+        "subject_etype": "sensitive_point",
+        "object_name": "保护煤柱",
+        "object_etype": "treatment_measure",
+        "predicate": "protected_by",
+        "occurrence_count": 3,
+        "support_count": 7,
+        "source_reports": [
+          "gaotaoyao",
+          "guojiatai",
+          "hengcheng",
+          "jiulongchuan",
+          "lingtai",
+          "weizhou",
+          "yueerwan"
+        ],
+        "pattern_desc": "样例库 7 份报告共现：水体（sensitive_point）配 保护煤柱（treatment_measure）——敏感点防护规律（B 库蒸馏，跨报告支持度 7）",
+        "mixed_etype": false,
+        "subject_variants": [
+          {
+            "name": "九龙河",
+            "etype": "sensitive_point"
+          },
+          {
+            "name": "河道",
+            "etype": "sensitive_point"
+          },
+          {
+            "name": "黑河",
+            "etype": "sensitive_point"
+          }
+        ],
+        "object_variants": [
+          {
+            "name": "保护煤柱",
+            "etype": "treatment_measure"
+          }
+        ]
+      },
+      {
+        "pattern_id": "dp-a83c8667de",
+        "pattern_name": "敏感点防护规律：保护区→保护煤柱",
+        "pattern_type": "敏感点防护",
+        "subject_name": "保护区",
+        "subject_etype": "sensitive_point",
+        "object_name": "保护煤柱",
+        "object_etype": "treatment_measure",
+        "predicate": "protected_by",
+        "occurrence_count": 2,
+        "support_count": 7,
+        "source_reports": [
+          "gaotaoyao",
+          "guojiatai",
+          "hengcheng",
+          "jiulongchuan",
+          "lingtai",
+          "weizhou",
+          "yueerwan"
+        ],
+        "pattern_desc": "样例库 7 份报告共现：保护区（sensitive_point）配 保护煤柱（treatment_measure）——敏感点防护规律（B 库蒸馏，跨报告支持度 7）",
+        "mixed_etype": false,
+        "subject_variants": [
+          {
+            "name": "白芨滩国家级自然保护区",
+            "etype": "sensitive_point"
+          },
+          {
+            "name": "白芨滩自然保护区",
+            "etype": "sensitive_point"
+          }
+        ],
+        "object_variants": [
+          {
+            "name": "保护煤柱",
+            "etype": "treatment_measure"
+          }
+        ]
+      },
+      {
+        "pattern_id": "dp-bd31603ec6",
+        "pattern_name": "敏感点防护规律：线路→保护煤柱",
+        "pattern_type": "敏感点防护",
+        "subject_name": "线路",
+        "subject_etype": "sensitive_point",
+        "object_name": "保护煤柱",
+        "object_etype": "treatment_measure",
+        "predicate": "protected_by",
+        "occurrence_count": 2,
+        "support_count": 7,
+        "source_reports": [
+          "gaotaoyao",
+          "guojiatai",
+          "hengcheng",
+          "jiulongchuan",
+          "lingtai",
+          "weizhou",
+          "yueerwan"
+        ],
+        "pattern_desc": "样例库 7 份报告共现：线路（sensitive_point）配 保护煤柱（treatment_measure）——敏感点防护规律（B 库蒸馏，跨报告支持度 7）",
+        "mixed_etype": false,
+        "subject_variants": [
+          {
+            "name": "定武高速公路",
+            "etype": "sensitive_point"
+          },
+          {
+            "name": "银百高速公路等敏感目标",
+            "etype": "sensitive_point"
+          }
+        ],
+        "object_variants": [
+          {
+            "name": "保护煤柱",
+            "etype": "treatment_measure"
+          }
+        ]
+      },
+      {
+        "pattern_id": "dp-a1ea15af7e",
+        "pattern_name": "敏感点防护规律：城镇边界→保护煤柱",
+        "pattern_type": "敏感点防护",
+        "subject_name": "城镇边界",
+        "subject_etype": "sensitive_point",
+        "object_name": "保护煤柱",
+        "object_etype": "treatment_measure",
+        "predicate": "protected_by",
+        "occurrence_count": 1,
+        "support_count": 7,
+        "source_reports": [
+          "gaotaoyao",
+          "guojiatai",
+          "hengcheng",
+          "jiulongchuan",
+          "lingtai",
+          "weizhou",
+          "yueerwan"
+        ],
+        "pattern_desc": "样例库 7 份报告共现：城镇边界（sensitive_point）配 保护煤柱（treatment_measure）——敏感点防护规律（B 库蒸馏，跨报告支持度 7）",
+        "mixed_etype": false,
+        "subject_variants": [
+          {
+            "name": "宁县城镇开发边界",
+            "etype": "sensitive_point"
+          }
+        ],
+        "object_variants": [
+          {
+            "name": "保护煤柱",
+            "etype": "treatment_measure"
+          }
+        ]
+      },
+      {
+        "pattern_id": "dp-f830d87bf6",
+        "pattern_name": "敏感点防护规律：村庄居民点→保护煤柱",
+        "pattern_type": "敏感点防护",
+        "subject_name": "村庄居民点",
+        "subject_etype": "sensitive_point",
+        "object_name": "保护煤柱",
+        "object_etype": "treatment_measure",
+        "predicate": "protected_by",
+        "occurrence_count": 1,
+        "support_count": 7,
+        "source_reports": [
+          "gaotaoyao",
+          "guojiatai",
+          "hengcheng",
+          "jiulongchuan",
+          "lingtai",
+          "weizhou",
+          "yueerwan"
+        ],
+        "pattern_desc": "样例库 7 份报告共现：村庄居民点（sensitive_point）配 保护煤柱（treatment_measure）——敏感点防护规律（B 库蒸馏，跨报告支持度 7）",
+        "mixed_etype": false,
+        "subject_variants": [
+          {
+            "name": "韦州镇等地面设施",
+            "etype": "sensitive_point"
+          }
+        ],
+        "object_variants": [
+          {
+            "name": "保护煤柱",
+            "etype": "treatment_measure"
+          }
+        ]
+      },
+      {
+        "pattern_id": "dp-ff3d21d776",
+        "pattern_name": "敏感点防护规律：遗址文物→保护煤柱",
+        "pattern_type": "敏感点防护",
+        "subject_name": "遗址文物",
+        "subject_etype": "sensitive_point",
+        "object_name": "保护煤柱",
+        "object_etype": "treatment_measure",
+        "predicate": "protected_by",
+        "occurrence_count": 1,
+        "support_count": 7,
+        "source_reports": [
+          "gaotaoyao",
+          "guojiatai",
+          "hengcheng",
+          "jiulongchuan",
+          "lingtai",
+          "weizhou",
+          "yueerwan"
+        ],
+        "pattern_desc": "样例库 7 份报告共现：遗址文物（sensitive_point）配 保护煤柱（treatment_measure）——敏感点防护规律（B 库蒸馏，跨报告支持度 7）",
+        "mixed_etype": false,
+        "subject_variants": [
+          {
+            "name": "尖尖墩烽火台",
+            "etype": "sensitive_point"
+          }
+        ],
+        "object_variants": [
+          {
+            "name": "保护煤柱",
+            "etype": "treatment_measure"
+          }
+        ]
+      },
+      {
+        "pattern_id": "dp-905e91684f",
+        "pattern_name": "敏感点防护规律：基本农田→充填整治恢复耕种功能",
+        "pattern_type": "敏感点防护",
+        "subject_name": "基本农田",
+        "subject_etype": "sensitive_point",
+        "object_name": "充填整治恢复耕种功能",
+        "object_etype": "treatment_measure",
+        "predicate": "protected_by",
+        "occurrence_count": 1,
+        "support_count": 5,
+        "source_reports": [
+          "guojiatai",
+          "hegang",
+          "lingtai",
+          "weizhou",
+          "yueerwan"
+        ],
+        "pattern_desc": "样例库 5 份报告共现：基本农田（sensitive_point）配 充填整治恢复耕种功能（treatment_measure）——敏感点防护规律（B 库蒸馏，跨报告支持度 5）",
+        "mixed_etype": false,
+        "subject_variants": [
+          {
+            "name": "永久基本农田",
+            "etype": "sensitive_point"
+          }
+        ],
+        "object_variants": [
+          {
+            "name": "充填整治恢复耕种功能",
+            "etype": "treatment_measure"
+          }
+        ]
+      },
+      {
+        "pattern_id": "dp-db2150d05f",
+        "pattern_name": "敏感点防护规律：草地→生态治理",
+        "pattern_type": "敏感点防护",
+        "subject_name": "草地",
+        "subject_etype": "sensitive_point",
+        "object_name": "生态治理",
+        "object_etype": "treatment_measure",
+        "predicate": "protected_by",
+        "occurrence_count": 1,
+        "support_count": 3,
+        "source_reports": [
+          "baiyinhua3",
+          "wujianfang",
+          "yakeshi2026"
+        ],
+        "pattern_desc": "样例库 3 份报告共现：草地（sensitive_point）配 生态治理（treatment_measure）——敏感点防护规律（B 库蒸馏，跨报告支持度 3）",
+        "mixed_etype": false,
+        "subject_variants": [
+          {
+            "name": "草地",
+            "etype": "sensitive_point"
+          }
+        ],
+        "object_variants": [
+          {
+            "name": "生态治理",
+            "etype": "treatment_measure"
+          }
+        ]
+      },
+      {
+        "pattern_id": "dp-2e29af4da0",
+        "pattern_name": "敏感点防护规律：村庄居民点→留设保护煤柱或搬迁",
+        "pattern_type": "敏感点防护",
+        "subject_name": "村庄居民点",
+        "subject_etype": "sensitive_point",
+        "object_name": "留设保护煤柱或搬迁",
+        "object_etype": "treatment_measure",
+        "predicate": "protected_by",
+        "occurrence_count": 1,
+        "support_count": 2,
+        "source_reports": [
+          "huating",
+          "lingtai"
+        ],
+        "pattern_desc": "样例库 2 份报告共现：村庄居民点（sensitive_point）配 留设保护煤柱或搬迁（treatment_measure）——敏感点防护规律（B 库蒸馏，跨报告支持度 2）",
+        "mixed_etype": false,
+        "subject_variants": [
+          {
+            "name": "村庄建筑物",
+            "etype": "sensitive_point"
+          }
+        ],
+        "object_variants": [
+          {
+            "name": "留设保护煤柱或搬迁",
+            "etype": "treatment_measure"
+          }
+        ]
+      },
+      {
+        "pattern_id": "dp-46dbd3b025",
+        "pattern_name": "敏感点防护规律：水体→污染防治措施",
+        "pattern_type": "敏感点防护",
+        "subject_name": "水体",
+        "subject_etype": "sensitive_point",
+        "object_name": "污染防治措施",
+        "object_etype": "treatment_measure",
+        "predicate": "protected_by",
+        "occurrence_count": 1,
+        "support_count": 2,
+        "source_reports": [
+          "jiulongchuan",
+          "yakeshi2026"
+        ],
+        "pattern_desc": "样例库 2 份报告共现：水体（sensitive_point）配 污染防治措施（treatment_measure）——敏感点防护规律（B 库蒸馏，跨报告支持度 2）",
+        "mixed_etype": false,
+        "subject_variants": [
+          {
+            "name": "湿地",
+            "etype": "sensitive_point"
+          }
+        ],
+        "object_variants": [
+          {
+            "name": "污染防治措施",
+            "etype": "treatment_measure"
+          }
+        ]
+      },
+      {
+        "pattern_id": "dp-29bc61098c",
+        "pattern_name": "敏感点防护规律：水体→留设煤柱的避让措施",
+        "pattern_type": "敏感点防护",
+        "subject_name": "水体",
+        "subject_etype": "sensitive_point",
+        "object_name": "留设煤柱的避让措施",
+        "object_etype": "treatment_measure",
+        "predicate": "protected_by",
+        "occurrence_count": 1,
+        "support_count": 2,
+        "source_reports": [
+          "jiulongchuan",
+          "yakeshi2026"
+        ],
+        "pattern_desc": "样例库 2 份报告共现：水体（sensitive_point）配 留设煤柱的避让措施（treatment_measure）——敏感点防护规律（B 库蒸馏，跨报告支持度 2）",
+        "mixed_etype": false,
+        "subject_variants": [
+          {
+            "name": "湿地",
+            "etype": "sensitive_point"
+          }
+        ],
+        "object_variants": [
+          {
+            "name": "留设煤柱的避让措施",
+            "etype": "treatment_measure"
+          }
+        ]
+      },
+      {
+        "pattern_id": "dp-1beb310410",
+        "pattern_name": "敏感点防护规律：保护区→禁采及530-600m宽保护煤柱",
+        "pattern_type": "敏感点防护",
+        "subject_name": "保护区",
+        "subject_etype": "sensitive_point",
+        "object_name": "禁采及530-600m宽保护煤柱",
+        "object_etype": "treatment_measure",
+        "predicate": "protected_by",
+        "occurrence_count": 1,
+        "support_count": 1,
+        "source_reports": [
+          "lingtai"
+        ],
+        "pattern_desc": "样例库 1 份报告共现：保护区（sensitive_point）配 禁采及530-600m宽保护煤柱（treatment_measure）——敏感点防护规律（B 库蒸馏，跨报告支持度 1）",
+        "mixed_etype": false,
+        "subject_variants": [
+          {
+            "name": "达溪河中华鳖国家级水产种质资源保护区",
+            "etype": "sensitive_point"
+          }
+        ],
+        "object_variants": [
+          {
+            "name": "禁采及530-600m宽保护煤柱",
+            "etype": "treatment_measure"
+          }
+        ]
+      },
+      {
+        "pattern_id": "dp-25011c349b",
+        "pattern_name": "敏感点防护规律：保护区→禁采并留设保护煤柱",
+        "pattern_type": "敏感点防护",
+        "subject_name": "保护区",
+        "subject_etype": "sensitive_point",
+        "object_name": "禁采并留设保护煤柱",
+        "object_etype": "treatment_measure",
+        "predicate": "protected_by",
+        "occurrence_count": 1,
+        "support_count": 1,
+        "source_reports": [
+          "lingtai"
+        ],
+        "pattern_desc": "样例库 1 份报告共现：保护区（sensitive_point）配 禁采并留设保护煤柱（treatment_measure）——敏感点防护规律（B 库蒸馏，跨报告支持度 1）",
+        "mixed_etype": false,
+        "subject_variants": [
+          {
+            "name": "达溪河中华鳖国家级水产种质资源保护区",
+            "etype": "sensitive_point"
+          }
+        ],
+        "object_variants": [
+          {
+            "name": "禁采并留设保护煤柱",
+            "etype": "treatment_measure"
+          }
+        ]
+      },
+      {
+        "pattern_id": "dp-d05c782e5d",
+        "pattern_name": "敏感点防护规律：保护生物→围栏",
+        "pattern_type": "敏感点防护",
+        "subject_name": "保护生物",
+        "subject_etype": "sensitive_point",
+        "object_name": "围栏",
+        "object_etype": "treatment_measure",
+        "predicate": "protected_by",
+        "occurrence_count": 1,
+        "support_count": 1,
+        "source_reports": [
+          "jiulongchuan"
+        ],
+        "pattern_desc": "样例库 1 份报告共现：保护生物（sensitive_point）配 围栏（treatment_measure）——敏感点防护规律（B 库蒸馏，跨报告支持度 1）",
+        "mixed_etype": false,
+        "subject_variants": [
+          {
+            "name": "1#、2#、3#古树",
+            "etype": "sensitive_point"
+          }
+        ],
+        "object_variants": [
+          {
+            "name": "围栏",
+            "etype": "treatment_measure"
+          }
+        ]
+      },
+      {
+        "pattern_id": "dp-807c84276b",
+        "pattern_name": "敏感点防护规律：保护生物→拯救措施",
+        "pattern_type": "敏感点防护",
+        "subject_name": "保护生物",
+        "subject_etype": "sensitive_point",
+        "object_name": "拯救措施",
+        "object_etype": "treatment_measure",
+        "predicate": "protected_by",
+        "occurrence_count": 1,
+        "support_count": 1,
+        "source_reports": [
+          "yakeshi2026"
+        ],
+        "pattern_desc": "样例库 1 份报告共现：保护生物（sensitive_point）配 拯救措施（treatment_measure）——敏感点防护规律（B 库蒸馏，跨报告支持度 1）",
+        "mixed_etype": false,
+        "subject_variants": [
+          {
+            "name": "野生保护植物",
+            "etype": "sensitive_point"
+          }
+        ],
+        "object_variants": [
+          {
+            "name": "拯救措施",
+            "etype": "treatment_measure"
+          }
+        ]
+      },
+      {
+        "pattern_id": "dp-788412389c",
+        "pattern_name": "敏感点防护规律：保护生物→标志牌",
+        "pattern_type": "敏感点防护",
+        "subject_name": "保护生物",
+        "subject_etype": "sensitive_point",
+        "object_name": "标志牌",
+        "object_etype": "treatment_measure",
+        "predicate": "protected_by",
+        "occurrence_count": 1,
+        "support_count": 1,
+        "source_reports": [
+          "jiulongchuan"
+        ],
+        "pattern_desc": "样例库 1 份报告共现：保护生物（sensitive_point）配 标志牌（treatment_measure）——敏感点防护规律（B 库蒸馏，跨报告支持度 1）",
+        "mixed_etype": false,
+        "subject_variants": [
+          {
+            "name": "古树",
+            "etype": "sensitive_point"
+          }
+        ],
+        "object_variants": [
+          {
+            "name": "标志牌",
+            "etype": "treatment_measure"
+          }
+        ]
+      },
+      {
+        "pattern_id": "dp-c59738dea6",
+        "pattern_name": "敏感点防护规律：城镇边界→禁采及保护煤柱",
+        "pattern_type": "敏感点防护",
+        "subject_name": "城镇边界",
+        "subject_etype": "sensitive_point",
+        "object_name": "禁采及保护煤柱",
+        "object_etype": "treatment_measure",
+        "predicate": "protected_by",
+        "occurrence_count": 1,
+        "support_count": 1,
+        "source_reports": [
+          "lingtai"
+        ],
+        "pattern_desc": "样例库 1 份报告共现：城镇边界（sensitive_point）配 禁采及保护煤柱（treatment_measure）——敏感点防护规律（B 库蒸馏，跨报告支持度 1）",
+        "mixed_etype": false,
+        "subject_variants": [
+          {
+            "name": "城镇开发边界",
+            "etype": "sensitive_point"
+          }
+        ],
+        "object_variants": [
+          {
+            "name": "禁采及保护煤柱",
+            "etype": "treatment_measure"
+          }
+        ]
+      },
+      {
+        "pattern_id": "dp-05255ea827",
+        "pattern_name": "敏感点防护规律：水体→禁采及570-610m宽保护煤柱",
+        "pattern_type": "敏感点防护",
+        "subject_name": "水体",
+        "subject_etype": "sensitive_point",
+        "object_name": "禁采及570-610m宽保护煤柱",
+        "object_etype": "treatment_measure",
+        "predicate": "protected_by",
+        "occurrence_count": 1,
+        "support_count": 1,
+        "source_reports": [
+          "lingtai"
+        ],
+        "pattern_desc": "样例库 1 份报告共现：水体（sensitive_point）配 禁采及570-610m宽保护煤柱（treatment_measure）——敏感点防护规律（B 库蒸馏，跨报告支持度 1）",
+        "mixed_etype": false,
+        "subject_variants": [
+          {
+            "name": "水源地",
+            "etype": "sensitive_point"
+          }
+        ],
+        "object_variants": [
+          {
+            "name": "禁采及570-610m宽保护煤柱",
+            "etype": "treatment_measure"
+          }
+        ]
+      },
+      {
+        "pattern_id": "dp-9415b83691",
+        "pattern_name": "敏感点防护规律：水体→留设煤柱",
+        "pattern_type": "敏感点防护",
+        "subject_name": "水体",
+        "subject_etype": "sensitive_point",
+        "object_name": "留设煤柱",
+        "object_etype": "treatment_measure",
+        "predicate": "protected_by",
+        "occurrence_count": 1,
+        "support_count": 1,
+        "source_reports": [
+          "yimin"
+        ],
+        "pattern_desc": "样例库 1 份报告共现：水体（sensitive_point）配 留设煤柱（treatment_measure）——敏感点防护规律（B 库蒸馏，跨报告支持度 1）",
+        "mixed_etype": false,
+        "subject_variants": [
+          {
+            "name": "伊敏三井东侧伊敏河及湿地",
+            "etype": "sensitive_point"
+          }
+        ],
+        "object_variants": [
+          {
+            "name": "留设煤柱",
+            "etype": "treatment_measure"
+          }
+        ]
+      },
+      {
+        "pattern_id": "dp-8cd14a9200",
+        "pattern_name": "敏感点防护规律：线路→留设保护煤柱",
+        "pattern_type": "敏感点防护",
+        "subject_name": "线路",
+        "subject_etype": "sensitive_point",
+        "object_name": "留设保护煤柱",
+        "object_etype": "treatment_measure",
+        "predicate": "protected_by",
+        "occurrence_count": 1,
+        "support_count": 1,
+        "source_reports": [
+          "yimin"
+        ],
+        "pattern_desc": "样例库 1 份报告共现：线路（sensitive_point）配 留设保护煤柱（treatment_measure）——敏感点防护规律（B 库蒸馏，跨报告支持度 1）",
+        "mixed_etype": false,
+        "subject_variants": [
+          {
+            "name": "两伊铁路和s202省道、梦根楚鲁苏木",
+            "etype": "sensitive_point"
+          }
+        ],
+        "object_variants": [
+          {
+            "name": "留设保护煤柱",
+            "etype": "treatment_measure"
+          }
+        ]
+      },
+      {
+        "pattern_id": "dp-3d0ab4ebf0",
+        "pattern_name": "敏感点防护规律：线路→320-600m保护煤柱",
+        "pattern_type": "敏感点防护",
+        "subject_name": "线路",
+        "subject_etype": "sensitive_point",
+        "object_name": "320-600m保护煤柱",
+        "object_etype": "treatment_measure",
+        "predicate": "protected_by",
+        "occurrence_count": 1,
+        "support_count": 1,
+        "source_reports": [
+          "lingtai"
+        ],
+        "pattern_desc": "样例库 1 份报告共现：线路（sensitive_point）配 320-600m保护煤柱（treatment_measure）——敏感点防护规律（B 库蒸馏，跨报告支持度 1）",
+        "mixed_etype": false,
+        "subject_variants": [
+          {
+            "name": "750kv、1100kv输电线路",
+            "etype": "sensitive_point"
+          }
+        ],
+        "object_variants": [
+          {
+            "name": "320-600m保护煤柱",
+            "etype": "treatment_measure"
+          }
+        ]
+      },
+      {
+        "pattern_id": "dp-fce07eaf43",
+        "pattern_name": "敏感点防护规律：草地→土地复垦和生态恢复与修复",
+        "pattern_type": "敏感点防护",
+        "subject_name": "草地",
+        "subject_etype": "sensitive_point",
+        "object_name": "土地复垦和生态恢复与修复",
+        "object_etype": "treatment_measure",
+        "predicate": "protected_by",
+        "occurrence_count": 1,
+        "support_count": 1,
+        "source_reports": [
+          "lingtai"
+        ],
+        "pattern_desc": "样例库 1 份报告共现：草地（sensitive_point）配 土地复垦和生态恢复与修复（treatment_measure）——敏感点防护规律（B 库蒸馏，跨报告支持度 1）",
+        "mixed_etype": false,
+        "subject_variants": [
+          {
+            "name": "基本草原",
+            "etype": "sensitive_point"
+          }
+        ],
+        "object_variants": [
+          {
+            "name": "土地复垦和生态恢复与修复",
+            "etype": "treatment_measure"
+          }
+        ]
+      },
+      {
+        "pattern_id": "dp-4eaa9b79c7",
+        "pattern_name": "敏感点防护规律：遗址文物→高压输电线路及达溪河种质保护区煤柱",
+        "pattern_type": "敏感点防护",
+        "subject_name": "遗址文物",
+        "subject_etype": "sensitive_point",
+        "object_name": "高压输电线路及达溪河种质保护区煤柱",
+        "object_etype": "treatment_measure",
+        "predicate": "protected_by",
+        "occurrence_count": 1,
+        "support_count": 1,
+        "source_reports": [
+          "lingtai"
+        ],
+        "pattern_desc": "样例库 1 份报告共现：遗址文物（sensitive_point）配 高压输电线路及达溪河种质保护区煤柱（treatment_measure）——敏感点防护规律（B 库蒸馏，跨报告支持度 1）",
+        "mixed_etype": false,
+        "subject_variants": [
+          {
+            "name": "西山遗址",
+            "etype": "sensitive_point"
+          }
+        ],
+        "object_variants": [
+          {
+            "name": "高压输电线路及达溪河种质保护区煤柱",
+            "etype": "treatment_measure"
+          }
+        ]
+      }
+    ],
+    "监测覆盖": [
+      {
+        "pattern_id": "dp-723bfa5835",
+        "pattern_name": "监测覆盖规律：工业场地→地表岩移观测",
+        "pattern_type": "监测覆盖",
+        "subject_name": "工业场地",
+        "subject_etype": "engineering_site",
+        "object_name": "地表岩移观测",
+        "object_etype": "monitoring",
+        "predicate": "monitored_by",
+        "occurrence_count": 1,
+        "support_count": 7,
+        "source_reports": [
+          "baiyinhua2",
+          "baiyinhua3",
+          "balasu",
+          "guojiatai",
+          "jiulongchuan",
+          "weizhou",
+          "yueerwan"
+        ],
+        "pattern_desc": "样例库 7 份报告共现：工业场地（engineering_site）配 地表岩移观测（monitoring）——监测覆盖规律（B 库蒸馏，跨报告支持度 7）",
+        "mixed_etype": false,
+        "subject_variants": [
+          {
+            "name": "工业场地",
+            "etype": "engineering_site"
+          }
+        ],
+        "object_variants": [
+          {
+            "name": "地表岩移观测",
+            "etype": "monitoring"
+          }
+        ]
+      },
+      {
+        "pattern_id": "dp-f351eba134",
+        "pattern_name": "监测覆盖规律：矿区整体→地表岩移观测",
+        "pattern_type": "监测覆盖",
+        "subject_name": "矿区整体",
+        "subject_etype": "mine",
+        "object_name": "地表岩移观测",
+        "object_etype": "monitoring",
+        "predicate": "monitored_by",
+        "occurrence_count": 1,
+        "support_count": 2,
+        "source_reports": [
+          "guojiatai",
+          "weizhou"
+        ],
+        "pattern_desc": "样例库 2 份报告共现：矿区整体（mine）配 地表岩移观测（monitoring）——监测覆盖规律（B 库蒸馏，跨报告支持度 2）",
+        "mixed_etype": false,
+        "subject_variants": [
+          {
+            "name": "小泉煤矿",
+            "etype": "mine"
+          }
+        ],
+        "object_variants": [
+          {
+            "name": "地表岩移观测",
+            "etype": "monitoring"
+          }
+        ]
+      },
+      {
+        "pattern_id": "dp-40823acf73",
+        "pattern_name": "监测覆盖规律：工业场地→13个监测点",
+        "pattern_type": "监测覆盖",
+        "subject_name": "工业场地",
+        "subject_etype": "engineering_site",
+        "object_name": "13个监测点",
+        "object_etype": "monitoring",
+        "predicate": "monitored_by",
+        "occurrence_count": 1,
+        "support_count": 1,
+        "source_reports": [
+          "jiulongchuan"
+        ],
+        "pattern_desc": "样例库 1 份报告共现：工业场地（engineering_site）配 13个监测点（monitoring）——监测覆盖规律（B 库蒸馏，跨报告支持度 1）",
+        "mixed_etype": false,
+        "subject_variants": [
+          {
+            "name": "拟建工业场地、场外道路及风井场地及其周边村庄",
+            "etype": "engineering_site"
+          }
+        ],
+        "object_variants": [
+          {
+            "name": "13个监测点",
+            "etype": "monitoring"
+          }
+        ]
+      },
+      {
+        "pattern_id": "dp-3ec45f75e3",
+        "pattern_name": "监测覆盖规律：工业场地→地下水水质补充监测",
+        "pattern_type": "监测覆盖",
+        "subject_name": "工业场地",
+        "subject_etype": "engineering_site",
+        "object_name": "地下水水质补充监测",
+        "object_etype": "monitoring",
+        "predicate": "monitored_by",
+        "occurrence_count": 1,
+        "support_count": 1,
+        "source_reports": [
+          "balasu"
+        ],
+        "pattern_desc": "样例库 1 份报告共现：工业场地（engineering_site）配 地下水水质补充监测（monitoring）——监测覆盖规律（B 库蒸馏，跨报告支持度 1）",
+        "mixed_etype": false,
+        "subject_variants": [
+          {
+            "name": "矿井工业场地",
+            "etype": "engineering_site"
+          }
+        ],
+        "object_variants": [
+          {
+            "name": "地下水水质补充监测",
+            "etype": "monitoring"
+          }
+        ]
+      },
+      {
+        "pattern_id": "dp-43cbd95343",
+        "pattern_name": "监测覆盖规律：工业场地→厂界噪声监测",
+        "pattern_type": "监测覆盖",
+        "subject_name": "工业场地",
+        "subject_etype": "engineering_site",
+        "object_name": "厂界噪声监测",
+        "object_etype": "monitoring",
+        "predicate": "monitored_by",
+        "occurrence_count": 1,
+        "support_count": 1,
+        "source_reports": [
+          "baiyinhua3"
+        ],
+        "pattern_desc": "样例库 1 份报告共现：工业场地（engineering_site）配 厂界噪声监测（monitoring）——监测覆盖规律（B 库蒸馏，跨报告支持度 1）",
+        "mixed_etype": false,
+        "subject_variants": [
+          {
+            "name": "工业场地厂界",
+            "etype": "engineering_site"
+          }
+        ],
+        "object_variants": [
+          {
+            "name": "厂界噪声监测",
+            "etype": "monitoring"
+          }
+        ]
+      },
+      {
+        "pattern_id": "dp-774cf0ea5e",
+        "pattern_name": "监测覆盖规律：矸石堆场→放射性监测",
+        "pattern_type": "监测覆盖",
+        "subject_name": "矸石堆场",
+        "subject_etype": "mine",
+        "object_name": "放射性监测",
+        "object_etype": "monitoring",
+        "predicate": "monitored_by",
+        "occurrence_count": 1,
+        "support_count": 1,
+        "source_reports": [
+          "yueerwan"
+        ],
+        "pattern_desc": "样例库 1 份报告共现：矸石堆场（mine）配 放射性监测（monitoring）——监测覆盖规律（B 库蒸馏，跨报告支持度 1）",
+        "mixed_etype": false,
+        "subject_variants": [
+          {
+            "name": "掘进矸石、原煤、洗选矸石",
+            "etype": "mine"
+          }
+        ],
+        "object_variants": [
+          {
+            "name": "放射性监测",
+            "etype": "monitoring"
+          }
+        ]
+      },
+      {
+        "pattern_id": "dp-60d8197b5c",
+        "pattern_name": "监测覆盖规律：矸石堆场→土壤侵蚀",
+        "pattern_type": "监测覆盖",
+        "subject_name": "矸石堆场",
+        "subject_etype": "engineering_site",
+        "object_name": "土壤侵蚀",
+        "object_etype": "monitoring",
+        "predicate": "monitored_by",
+        "occurrence_count": 1,
+        "support_count": 1,
+        "source_reports": [
+          "wujianfang"
+        ],
+        "pattern_desc": "样例库 1 份报告共现：矸石堆场（engineering_site）配 土壤侵蚀（monitoring）——监测覆盖规律（B 库蒸馏，跨报告支持度 1）",
+        "mixed_etype": false,
+        "subject_variants": [
+          {
+            "name": "各排矸场",
+            "etype": "engineering_site"
+          }
+        ],
+        "object_variants": [
+          {
+            "name": "土壤侵蚀",
+            "etype": "monitoring"
+          }
+        ]
+      },
+      {
+        "pattern_id": "dp-4627a26e85",
+        "pattern_name": "监测覆盖规律：矸石堆场→地下水水质跟踪监测点",
+        "pattern_type": "监测覆盖",
+        "subject_name": "矸石堆场",
+        "subject_etype": "engineering_site",
+        "object_name": "地下水水质跟踪监测点",
+        "object_etype": "monitoring",
+        "predicate": "monitored_by",
+        "occurrence_count": 1,
+        "support_count": 1,
+        "source_reports": [
+          "lingtai"
+        ],
+        "pattern_desc": "样例库 1 份报告共现：矸石堆场（engineering_site）配 地下水水质跟踪监测点（monitoring）——监测覆盖规律（B 库蒸馏，跨报告支持度 1）",
+        "mixed_etype": false,
+        "subject_variants": [
+          {
+            "name": "各矿工业场地、矸石场地",
+            "etype": "engineering_site"
+          }
+        ],
+        "object_variants": [
+          {
+            "name": "地下水水质跟踪监测点",
+            "etype": "monitoring"
+          }
+        ]
+      },
+      {
+        "pattern_id": "dp-e4ff7c893d",
+        "pattern_name": "监测覆盖规律：矸石堆场→植被跟踪监测",
+        "pattern_type": "监测覆盖",
+        "subject_name": "矸石堆场",
+        "subject_etype": "engineering_site",
+        "object_name": "植被跟踪监测",
+        "object_etype": "monitoring",
+        "predicate": "monitored_by",
+        "occurrence_count": 1,
+        "support_count": 1,
+        "source_reports": [
+          "gaotaoyao"
+        ],
+        "pattern_desc": "样例库 1 份报告共现：矸石堆场（engineering_site）配 植被跟踪监测（monitoring）——监测覆盖规律（B 库蒸馏，跨报告支持度 1）",
+        "mixed_etype": false,
+        "subject_variants": [
+          {
+            "name": "露天矿排土场边坡、平台",
+            "etype": "engineering_site"
+          }
+        ],
+        "object_variants": [
+          {
+            "name": "植被跟踪监测",
+            "etype": "monitoring"
+          }
+        ]
+      },
+      {
+        "pattern_id": "dp-3d4623de45",
+        "pattern_name": "监测覆盖规律：矿区整体→工业场地绿化率达到20%监测",
+        "pattern_type": "监测覆盖",
+        "subject_name": "矿区整体",
+        "subject_etype": "mine",
+        "object_name": "工业场地绿化率达到20%监测",
+        "object_etype": "monitoring",
+        "predicate": "monitored_by",
+        "occurrence_count": 1,
+        "support_count": 1,
+        "source_reports": [
+          "weizhou"
+        ],
+        "pattern_desc": "样例库 1 份报告共现：矿区整体（mine）配 工业场地绿化率达到20%监测（monitoring）——监测覆盖规律（B 库蒸馏，跨报告支持度 1）",
+        "mixed_etype": false,
+        "subject_variants": [
+          {
+            "name": "韦州矿区",
+            "etype": "mine"
+          }
+        ],
+        "object_variants": [
+          {
+            "name": "工业场地绿化率达到20%监测",
+            "etype": "monitoring"
+          }
+        ]
+      },
+      {
+        "pattern_id": "dp-02392e5376",
+        "pattern_name": "监测覆盖规律：矿区整体→区域土地资源承载力监测",
+        "pattern_type": "监测覆盖",
+        "subject_name": "矿区整体",
+        "subject_etype": "mine",
+        "object_name": "区域土地资源承载力监测",
+        "object_etype": "monitoring",
+        "predicate": "monitored_by",
+        "occurrence_count": 1,
+        "support_count": 1,
+        "source_reports": [
+          "weizhou"
+        ],
+        "pattern_desc": "样例库 1 份报告共现：矿区整体（mine）配 区域土地资源承载力监测（monitoring）——监测覆盖规律（B 库蒸馏，跨报告支持度 1）",
+        "mixed_etype": false,
+        "subject_variants": [
+          {
+            "name": "韦州矿区",
+            "etype": "mine"
+          }
+        ],
+        "object_variants": [
+          {
+            "name": "区域土地资源承载力监测",
+            "etype": "monitoring"
+          }
+        ]
+      },
+      {
+        "pattern_id": "dp-612b1af47f",
+        "pattern_name": "监测覆盖规律：矿区整体→生态系统整体性和生态功能变化趋势监测",
+        "pattern_type": "监测覆盖",
+        "subject_name": "矿区整体",
+        "subject_etype": "mine",
+        "object_name": "生态系统整体性和生态功能变化趋势监测",
+        "object_etype": "monitoring",
+        "predicate": "monitored_by",
+        "occurrence_count": 1,
+        "support_count": 1,
+        "source_reports": [
+          "weizhou"
+        ],
+        "pattern_desc": "样例库 1 份报告共现：矿区整体（mine）配 生态系统整体性和生态功能变化趋势监测（monitoring）——监测覆盖规律（B 库蒸馏，跨报告支持度 1）",
+        "mixed_etype": false,
+        "subject_variants": [
+          {
+            "name": "韦州矿区",
+            "etype": "mine"
+          }
+        ],
+        "object_variants": [
+          {
+            "name": "生态系统整体性和生态功能变化趋势监测",
+            "etype": "monitoring"
+          }
+        ]
+      },
+      {
+        "pattern_id": "dp-8ded3a3b4b",
+        "pattern_name": "监测覆盖规律：矿区整体→污染物排放总量符合率监测",
+        "pattern_type": "监测覆盖",
+        "subject_name": "矿区整体",
+        "subject_etype": "mine",
+        "object_name": "污染物排放总量符合率监测",
+        "object_etype": "monitoring",
+        "predicate": "monitored_by",
+        "occurrence_count": 1,
+        "support_count": 1,
+        "source_reports": [
+          "weizhou"
+        ],
+        "pattern_desc": "样例库 1 份报告共现：矿区整体（mine）配 污染物排放总量符合率监测（monitoring）——监测覆盖规律（B 库蒸馏，跨报告支持度 1）",
+        "mixed_etype": false,
+        "subject_variants": [
+          {
+            "name": "韦州矿区",
+            "etype": "mine"
+          }
+        ],
+        "object_variants": [
+          {
+            "name": "污染物排放总量符合率监测",
+            "etype": "monitoring"
+          }
+        ]
+      },
+      {
+        "pattern_id": "dp-4f5ac8b54a",
+        "pattern_name": "监测覆盖规律：矿区整体→煤矸石煤泥处置率监测",
+        "pattern_type": "监测覆盖",
+        "subject_name": "矿区整体",
+        "subject_etype": "mine",
+        "object_name": "煤矸石煤泥处置率监测",
+        "object_etype": "monitoring",
+        "predicate": "monitored_by",
+        "occurrence_count": 1,
+        "support_count": 1,
+        "source_reports": [
+          "weizhou"
+        ],
+        "pattern_desc": "样例库 1 份报告共现：矿区整体（mine）配 煤矸石煤泥处置率监测（monitoring）——监测覆盖规律（B 库蒸馏，跨报告支持度 1）",
+        "mixed_etype": false,
+        "subject_variants": [
+          {
+            "name": "韦州矿区",
+            "etype": "mine"
+          }
+        ],
+        "object_variants": [
+          {
+            "name": "煤矸石煤泥处置率监测",
+            "etype": "monitoring"
+          }
+        ]
+      },
+      {
+        "pattern_id": "dp-9155420b3e",
+        "pattern_name": "监测覆盖规律：矿区整体→单位入选原煤取水量监测",
+        "pattern_type": "监测覆盖",
+        "subject_name": "矿区整体",
+        "subject_etype": "mine",
+        "object_name": "单位入选原煤取水量监测",
+        "object_etype": "monitoring",
+        "predicate": "monitored_by",
+        "occurrence_count": 1,
+        "support_count": 1,
+        "source_reports": [
+          "weizhou"
+        ],
+        "pattern_desc": "样例库 1 份报告共现：矿区整体（mine）配 单位入选原煤取水量监测（monitoring）——监测覆盖规律（B 库蒸馏，跨报告支持度 1）",
+        "mixed_etype": false,
+        "subject_variants": [
+          {
+            "name": "韦州矿区",
+            "etype": "mine"
+          }
+        ],
+        "object_variants": [
+          {
+            "name": "单位入选原煤取水量监测",
+            "etype": "monitoring"
+          }
+        ]
+      },
+      {
+        "pattern_id": "dp-03d7fca51d",
+        "pattern_name": "监测覆盖规律：矿区整体→矿区资源回采率监测",
+        "pattern_type": "监测覆盖",
+        "subject_name": "矿区整体",
+        "subject_etype": "mine",
+        "object_name": "矿区资源回采率监测",
+        "object_etype": "monitoring",
+        "predicate": "monitored_by",
+        "occurrence_count": 1,
+        "support_count": 1,
+        "source_reports": [
+          "weizhou"
+        ],
+        "pattern_desc": "样例库 1 份报告共现：矿区整体（mine）配 矿区资源回采率监测（monitoring）——监测覆盖规律（B 库蒸馏，跨报告支持度 1）",
+        "mixed_etype": false,
+        "subject_variants": [
+          {
+            "name": "韦州矿区",
+            "etype": "mine"
+          }
+        ],
+        "object_variants": [
+          {
+            "name": "矿区资源回采率监测",
+            "etype": "monitoring"
+          }
+        ]
+      },
+      {
+        "pattern_id": "dp-b04e32e2f7",
+        "pattern_name": "监测覆盖规律：矿区整体→塌陷稳定后土地复垦率监测",
+        "pattern_type": "监测覆盖",
+        "subject_name": "矿区整体",
+        "subject_etype": "mine",
+        "object_name": "塌陷稳定后土地复垦率监测",
+        "object_etype": "monitoring",
+        "predicate": "monitored_by",
+        "occurrence_count": 1,
+        "support_count": 1,
+        "source_reports": [
+          "weizhou"
+        ],
+        "pattern_desc": "样例库 1 份报告共现：矿区整体（mine）配 塌陷稳定后土地复垦率监测（monitoring）——监测覆盖规律（B 库蒸馏，跨报告支持度 1）",
+        "mixed_etype": false,
+        "subject_variants": [
+          {
+            "name": "韦州矿区",
+            "etype": "mine"
+          }
+        ],
+        "object_variants": [
+          {
+            "name": "塌陷稳定后土地复垦率监测",
+            "etype": "monitoring"
+          }
+        ]
+      },
+      {
+        "pattern_id": "dp-f5b295252c",
+        "pattern_name": "监测覆盖规律：矿区整体→扰动区林草植被恢复率监测",
+        "pattern_type": "监测覆盖",
+        "subject_name": "矿区整体",
+        "subject_etype": "mine",
+        "object_name": "扰动区林草植被恢复率监测",
+        "object_etype": "monitoring",
+        "predicate": "monitored_by",
+        "occurrence_count": 1,
+        "support_count": 1,
+        "source_reports": [
+          "weizhou"
+        ],
+        "pattern_desc": "样例库 1 份报告共现：矿区整体（mine）配 扰动区林草植被恢复率监测（monitoring）——监测覆盖规律（B 库蒸馏，跨报告支持度 1）",
+        "mixed_etype": false,
+        "subject_variants": [
+          {
+            "name": "韦州矿区",
+            "etype": "mine"
+          }
+        ],
+        "object_variants": [
+          {
+            "name": "扰动区林草植被恢复率监测",
+            "etype": "monitoring"
+          }
+        ]
+      },
+      {
+        "pattern_id": "dp-19225baa57",
+        "pattern_name": "监测覆盖规律：矿区整体→水土流失总治理度监测",
+        "pattern_type": "监测覆盖",
+        "subject_name": "矿区整体",
+        "subject_etype": "mine",
+        "object_name": "水土流失总治理度监测",
+        "object_etype": "monitoring",
+        "predicate": "monitored_by",
+        "occurrence_count": 1,
+        "support_count": 1,
+        "source_reports": [
+          "weizhou"
+        ],
+        "pattern_desc": "样例库 1 份报告共现：矿区整体（mine）配 水土流失总治理度监测（monitoring）——监测覆盖规律（B 库蒸馏，跨报告支持度 1）",
+        "mixed_etype": false,
+        "subject_variants": [
+          {
+            "name": "韦州矿区",
+            "etype": "mine"
+          }
+        ],
+        "object_variants": [
+          {
+            "name": "水土流失总治理度监测",
+            "etype": "monitoring"
+          }
+        ]
+      },
+      {
+        "pattern_id": "dp-cf893119a1",
+        "pattern_name": "监测覆盖规律：矿区整体→农用地土壤污染风险管制值达标率监测",
+        "pattern_type": "监测覆盖",
+        "subject_name": "矿区整体",
+        "subject_etype": "mine",
+        "object_name": "农用地土壤污染风险管制值达标率监测",
+        "object_etype": "monitoring",
+        "predicate": "monitored_by",
+        "occurrence_count": 1,
+        "support_count": 1,
+        "source_reports": [
+          "weizhou"
+        ],
+        "pattern_desc": "样例库 1 份报告共现：矿区整体（mine）配 农用地土壤污染风险管制值达标率监测（monitoring）——监测覆盖规律（B 库蒸馏，跨报告支持度 1）",
+        "mixed_etype": false,
+        "subject_variants": [
+          {
+            "name": "韦州矿区",
+            "etype": "mine"
+          }
+        ],
+        "object_variants": [
+          {
+            "name": "农用地土壤污染风险管制值达标率监测",
+            "etype": "monitoring"
+          }
+        ]
+      },
+      {
+        "pattern_id": "dp-02e7589fe8",
+        "pattern_name": "监测覆盖规律：矿区整体→地表水iv类水体达标率监测",
+        "pattern_type": "监测覆盖",
+        "subject_name": "矿区整体",
+        "subject_etype": "mine",
+        "object_name": "地表水iv类水体达标率监测",
+        "object_etype": "monitoring",
+        "predicate": "monitored_by",
+        "occurrence_count": 1,
+        "support_count": 1,
+        "source_reports": [
+          "weizhou"
+        ],
+        "pattern_desc": "样例库 1 份报告共现：矿区整体（mine）配 地表水iv类水体达标率监测（monitoring）——监测覆盖规律（B 库蒸馏，跨报告支持度 1）",
+        "mixed_etype": false,
+        "subject_variants": [
+          {
+            "name": "韦州矿区",
+            "etype": "mine"
+          }
+        ],
+        "object_variants": [
+          {
+            "name": "地表水iv类水体达标率监测",
+            "etype": "monitoring"
+          }
+        ]
+      },
+      {
+        "pattern_id": "dp-712d812a4c",
+        "pattern_name": "监测覆盖规律：矿区整体→工业废水及生活污水处理率监测",
+        "pattern_type": "监测覆盖",
+        "subject_name": "矿区整体",
+        "subject_etype": "mine",
+        "object_name": "工业废水及生活污水处理率监测",
+        "object_etype": "monitoring",
+        "predicate": "monitored_by",
+        "occurrence_count": 1,
+        "support_count": 1,
+        "source_reports": [
+          "weizhou"
+        ],
+        "pattern_desc": "样例库 1 份报告共现：矿区整体（mine）配 工业废水及生活污水处理率监测（monitoring）——监测覆盖规律（B 库蒸馏，跨报告支持度 1）",
+        "mixed_etype": false,
+        "subject_variants": [
+          {
+            "name": "韦州矿区",
+            "etype": "mine"
+          }
+        ],
+        "object_variants": [
+          {
+            "name": "工业废水及生活污水处理率监测",
+            "etype": "monitoring"
+          }
+        ]
+      },
+      {
+        "pattern_id": "dp-3e142bcdf4",
+        "pattern_name": "监测覆盖规律：矿区整体→区域生态承载力监测",
+        "pattern_type": "监测覆盖",
+        "subject_name": "矿区整体",
+        "subject_etype": "mine",
+        "object_name": "区域生态承载力监测",
+        "object_etype": "monitoring",
+        "predicate": "monitored_by",
+        "occurrence_count": 1,
+        "support_count": 1,
+        "source_reports": [
+          "weizhou"
+        ],
+        "pattern_desc": "样例库 1 份报告共现：矿区整体（mine）配 区域生态承载力监测（monitoring）——监测覆盖规律（B 库蒸馏，跨报告支持度 1）",
+        "mixed_etype": false,
+        "subject_variants": [
+          {
+            "name": "韦州矿区",
+            "etype": "mine"
+          }
+        ],
+        "object_variants": [
+          {
+            "name": "区域生态承载力监测",
+            "etype": "monitoring"
+          }
+        ]
+      },
+      {
+        "pattern_id": "dp-3fbcbfc51a",
+        "pattern_name": "监测覆盖规律：矿区整体→单位生产总值用水量降低监测",
+        "pattern_type": "监测覆盖",
+        "subject_name": "矿区整体",
+        "subject_etype": "mine",
+        "object_name": "单位生产总值用水量降低监测",
+        "object_etype": "monitoring",
+        "predicate": "monitored_by",
+        "occurrence_count": 1,
+        "support_count": 1,
+        "source_reports": [
+          "weizhou"
+        ],
+        "pattern_desc": "样例库 1 份报告共现：矿区整体（mine）配 单位生产总值用水量降低监测（monitoring）——监测覆盖规律（B 库蒸馏，跨报告支持度 1）",
+        "mixed_etype": false,
+        "subject_variants": [
+          {
+            "name": "韦州矿区",
+            "etype": "mine"
+          }
+        ],
+        "object_variants": [
+          {
+            "name": "单位生产总值用水量降低监测",
+            "etype": "monitoring"
+          }
+        ]
+      },
+      {
+        "pattern_id": "dp-8a65b85aba",
+        "pattern_name": "监测覆盖规律：矿区整体→单位生产总值能耗降低监测",
+        "pattern_type": "监测覆盖",
+        "subject_name": "矿区整体",
+        "subject_etype": "mine",
+        "object_name": "单位生产总值能耗降低监测",
+        "object_etype": "monitoring",
+        "predicate": "monitored_by",
+        "occurrence_count": 1,
+        "support_count": 1,
+        "source_reports": [
+          "weizhou"
+        ],
+        "pattern_desc": "样例库 1 份报告共现：矿区整体（mine）配 单位生产总值能耗降低监测（monitoring）——监测覆盖规律（B 库蒸馏，跨报告支持度 1）",
+        "mixed_etype": false,
+        "subject_variants": [
+          {
+            "name": "韦州矿区",
+            "etype": "mine"
+          }
+        ],
+        "object_variants": [
+          {
+            "name": "单位生产总值能耗降低监测",
+            "etype": "monitoring"
+          }
+        ]
+      },
+      {
+        "pattern_id": "dp-a5ce0ddd9d",
+        "pattern_name": "监测覆盖规律：矿区整体→污泥处置率监测",
+        "pattern_type": "监测覆盖",
+        "subject_name": "矿区整体",
+        "subject_etype": "mine",
+        "object_name": "污泥处置率监测",
+        "object_etype": "monitoring",
+        "predicate": "monitored_by",
+        "occurrence_count": 1,
+        "support_count": 1,
+        "source_reports": [
+          "weizhou"
+        ],
+        "pattern_desc": "样例库 1 份报告共现：矿区整体（mine）配 污泥处置率监测（monitoring）——监测覆盖规律（B 库蒸馏，跨报告支持度 1）",
+        "mixed_etype": false,
+        "subject_variants": [
+          {
+            "name": "韦州矿区",
+            "etype": "mine"
+          }
+        ],
+        "object_variants": [
+          {
+            "name": "污泥处置率监测",
+            "etype": "monitoring"
+          }
+        ]
+      },
+      {
+        "pattern_id": "dp-ec18749645",
+        "pattern_name": "监测覆盖规律：矿区整体→生活垃圾无害化处置率监测",
+        "pattern_type": "监测覆盖",
+        "subject_name": "矿区整体",
+        "subject_etype": "mine",
+        "object_name": "生活垃圾无害化处置率监测",
+        "object_etype": "monitoring",
+        "predicate": "monitored_by",
+        "occurrence_count": 1,
+        "support_count": 1,
+        "source_reports": [
+          "weizhou"
+        ],
+        "pattern_desc": "样例库 1 份报告共现：矿区整体（mine）配 生活垃圾无害化处置率监测（monitoring）——监测覆盖规律（B 库蒸馏，跨报告支持度 1）",
+        "mixed_etype": false,
+        "subject_variants": [
+          {
+            "name": "韦州矿区",
+            "etype": "mine"
+          }
+        ],
+        "object_variants": [
+          {
+            "name": "生活垃圾无害化处置率监测",
+            "etype": "monitoring"
+          }
+        ]
+      },
+      {
+        "pattern_id": "dp-1076e83760",
+        "pattern_name": "监测覆盖规律：矿区整体→矿区生活污水综合利用率监测",
+        "pattern_type": "监测覆盖",
+        "subject_name": "矿区整体",
+        "subject_etype": "mine",
+        "object_name": "矿区生活污水综合利用率监测",
+        "object_etype": "monitoring",
+        "predicate": "monitored_by",
+        "occurrence_count": 1,
+        "support_count": 1,
+        "source_reports": [
+          "weizhou"
+        ],
+        "pattern_desc": "样例库 1 份报告共现：矿区整体（mine）配 矿区生活污水综合利用率监测（monitoring）——监测覆盖规律（B 库蒸馏，跨报告支持度 1）",
+        "mixed_etype": false,
+        "subject_variants": [
+          {
+            "name": "韦州矿区",
+            "etype": "mine"
+          }
+        ],
+        "object_variants": [
+          {
+            "name": "矿区生活污水综合利用率监测",
+            "etype": "monitoring"
+          }
+        ]
+      },
+      {
+        "pattern_id": "dp-a2e5579346",
+        "pattern_name": "监测覆盖规律：矿区整体→矿井水利用率监测",
+        "pattern_type": "监测覆盖",
+        "subject_name": "矿区整体",
+        "subject_etype": "mine",
+        "object_name": "矿井水利用率监测",
+        "object_etype": "monitoring",
+        "predicate": "monitored_by",
+        "occurrence_count": 1,
+        "support_count": 1,
+        "source_reports": [
+          "weizhou"
+        ],
+        "pattern_desc": "样例库 1 份报告共现：矿区整体（mine）配 矿井水利用率监测（monitoring）——监测覆盖规律（B 库蒸馏，跨报告支持度 1）",
+        "mixed_etype": false,
+        "subject_variants": [
+          {
+            "name": "韦州矿区",
+            "etype": "mine"
+          }
+        ],
+        "object_variants": [
+          {
+            "name": "矿井水利用率监测",
+            "etype": "monitoring"
+          }
+        ]
+      },
+      {
+        "pattern_id": "dp-20c4619b1a",
+        "pattern_name": "监测覆盖规律：矿区整体→原煤生产水耗监测",
+        "pattern_type": "监测覆盖",
+        "subject_name": "矿区整体",
+        "subject_etype": "mine",
+        "object_name": "原煤生产水耗监测",
+        "object_etype": "monitoring",
+        "predicate": "monitored_by",
+        "occurrence_count": 1,
+        "support_count": 1,
+        "source_reports": [
+          "weizhou"
+        ],
+        "pattern_desc": "样例库 1 份报告共现：矿区整体（mine）配 原煤生产水耗监测（monitoring）——监测覆盖规律（B 库蒸馏，跨报告支持度 1）",
+        "mixed_etype": false,
+        "subject_variants": [
+          {
+            "name": "韦州矿区",
+            "etype": "mine"
+          }
+        ],
+        "object_variants": [
+          {
+            "name": "原煤生产水耗监测",
+            "etype": "monitoring"
+          }
+        ]
+      },
+      {
+        "pattern_id": "dp-d092f5c04e",
+        "pattern_name": "监测覆盖规律：矿区整体→原煤生产电耗监测",
+        "pattern_type": "监测覆盖",
+        "subject_name": "矿区整体",
+        "subject_etype": "mine",
+        "object_name": "原煤生产电耗监测",
+        "object_etype": "monitoring",
+        "predicate": "monitored_by",
+        "occurrence_count": 1,
+        "support_count": 1,
+        "source_reports": [
+          "weizhou"
+        ],
+        "pattern_desc": "样例库 1 份报告共现：矿区整体（mine）配 原煤生产电耗监测（monitoring）——监测覆盖规律（B 库蒸馏，跨报告支持度 1）",
+        "mixed_etype": false,
+        "subject_variants": [
+          {
+            "name": "韦州矿区",
+            "etype": "mine"
+          }
+        ],
+        "object_variants": [
+          {
+            "name": "原煤生产电耗监测",
+            "etype": "monitoring"
+          }
+        ]
+      },
+      {
+        "pattern_id": "dp-6fd58863bb",
+        "pattern_name": "监测覆盖规律：矿区整体→原煤入选率监测",
+        "pattern_type": "监测覆盖",
+        "subject_name": "矿区整体",
+        "subject_etype": "mine",
+        "object_name": "原煤入选率监测",
+        "object_etype": "monitoring",
+        "predicate": "monitored_by",
+        "occurrence_count": 1,
+        "support_count": 1,
+        "source_reports": [
+          "weizhou"
+        ],
+        "pattern_desc": "样例库 1 份报告共现：矿区整体（mine）配 原煤入选率监测（monitoring）——监测覆盖规律（B 库蒸馏，跨报告支持度 1）",
+        "mixed_etype": false,
+        "subject_variants": [
+          {
+            "name": "韦州矿区",
+            "etype": "mine"
+          }
+        ],
+        "object_variants": [
+          {
+            "name": "原煤入选率监测",
+            "etype": "monitoring"
+          }
+        ]
+      },
+      {
+        "pattern_id": "dp-eae188771c",
+        "pattern_name": "监测覆盖规律：矿区整体→煤矿机械化采煤比例监测",
+        "pattern_type": "监测覆盖",
+        "subject_name": "矿区整体",
+        "subject_etype": "mine",
+        "object_name": "煤矿机械化采煤比例监测",
+        "object_etype": "monitoring",
+        "predicate": "monitored_by",
+        "occurrence_count": 1,
+        "support_count": 1,
+        "source_reports": [
+          "weizhou"
+        ],
+        "pattern_desc": "样例库 1 份报告共现：矿区整体（mine）配 煤矿机械化采煤比例监测（monitoring）——监测覆盖规律（B 库蒸馏，跨报告支持度 1）",
+        "mixed_etype": false,
+        "subject_variants": [
+          {
+            "name": "韦州矿区",
+            "etype": "mine"
+          }
+        ],
+        "object_variants": [
+          {
+            "name": "煤矿机械化采煤比例监测",
+            "etype": "monitoring"
+          }
+        ]
+      },
+      {
+        "pattern_id": "dp-42ec5db58d",
+        "pattern_name": "监测覆盖规律：矿区整体→工业广场绿化率监测",
+        "pattern_type": "监测覆盖",
+        "subject_name": "矿区整体",
+        "subject_etype": "mine",
+        "object_name": "工业广场绿化率监测",
+        "object_etype": "monitoring",
+        "predicate": "monitored_by",
+        "occurrence_count": 1,
+        "support_count": 1,
+        "source_reports": [
+          "weizhou"
+        ],
+        "pattern_desc": "样例库 1 份报告共现：矿区整体（mine）配 工业广场绿化率监测（monitoring）——监测覆盖规律（B 库蒸馏，跨报告支持度 1）",
+        "mixed_etype": false,
+        "subject_variants": [
+          {
+            "name": "韦州矿区",
+            "etype": "mine"
+          }
+        ],
+        "object_variants": [
+          {
+            "name": "工业广场绿化率监测",
+            "etype": "monitoring"
+          }
+        ]
+      },
+      {
+        "pattern_id": "dp-17227331ed",
+        "pattern_name": "监测覆盖规律：矿区整体→沉陷区治理率监测",
+        "pattern_type": "监测覆盖",
+        "subject_name": "矿区整体",
+        "subject_etype": "mine",
+        "object_name": "沉陷区治理率监测",
+        "object_etype": "monitoring",
+        "predicate": "monitored_by",
+        "occurrence_count": 1,
+        "support_count": 1,
+        "source_reports": [
+          "weizhou"
+        ],
+        "pattern_desc": "样例库 1 份报告共现：矿区整体（mine）配 沉陷区治理率监测（monitoring）——监测覆盖规律（B 库蒸馏，跨报告支持度 1）",
+        "mixed_etype": false,
+        "subject_variants": [
+          {
+            "name": "韦州矿区",
+            "etype": "mine"
+          }
+        ],
+        "object_variants": [
+          {
+            "name": "沉陷区治理率监测",
+            "etype": "monitoring"
+          }
+        ]
+      },
+      {
+        "pattern_id": "dp-efbdd6e507",
+        "pattern_name": "监测覆盖规律：矿区整体→停用矸石场地覆土绿化率监测",
+        "pattern_type": "监测覆盖",
+        "subject_name": "矿区整体",
+        "subject_etype": "mine",
+        "object_name": "停用矸石场地覆土绿化率监测",
+        "object_etype": "monitoring",
+        "predicate": "monitored_by",
+        "occurrence_count": 1,
+        "support_count": 1,
+        "source_reports": [
+          "weizhou"
+        ],
+        "pattern_desc": "样例库 1 份报告共现：矿区整体（mine）配 停用矸石场地覆土绿化率监测（monitoring）——监测覆盖规律（B 库蒸馏，跨报告支持度 1）",
+        "mixed_etype": false,
+        "subject_variants": [
+          {
+            "name": "韦州矿区",
+            "etype": "mine"
+          }
+        ],
+        "object_variants": [
+          {
+            "name": "停用矸石场地覆土绿化率监测",
+            "etype": "monitoring"
+          }
+        ]
+      },
+      {
+        "pattern_id": "dp-2d354d0c5e",
+        "pattern_name": "监测覆盖规律：矿区整体→危害性滑坡裂缝治理率监测",
+        "pattern_type": "监测覆盖",
+        "subject_name": "矿区整体",
+        "subject_etype": "mine",
+        "object_name": "危害性滑坡裂缝治理率监测",
+        "object_etype": "monitoring",
+        "predicate": "monitored_by",
+        "occurrence_count": 1,
+        "support_count": 1,
+        "source_reports": [
+          "weizhou"
+        ],
+        "pattern_desc": "样例库 1 份报告共现：矿区整体（mine）配 危害性滑坡裂缝治理率监测（monitoring）——监测覆盖规律（B 库蒸馏，跨报告支持度 1）",
+        "mixed_etype": false,
+        "subject_variants": [
+          {
+            "name": "韦州矿区",
+            "etype": "mine"
+          }
+        ],
+        "object_variants": [
+          {
+            "name": "危害性滑坡裂缝治理率监测",
+            "etype": "monitoring"
+          }
+        ]
+      },
+      {
+        "pattern_id": "dp-04717b2262",
+        "pattern_name": "监测覆盖规律：矿区整体→土壤流失控制比监测",
+        "pattern_type": "监测覆盖",
+        "subject_name": "矿区整体",
+        "subject_etype": "mine",
+        "object_name": "土壤流失控制比监测",
+        "object_etype": "monitoring",
+        "predicate": "monitored_by",
+        "occurrence_count": 1,
+        "support_count": 1,
+        "source_reports": [
+          "weizhou"
+        ],
+        "pattern_desc": "样例库 1 份报告共现：矿区整体（mine）配 土壤流失控制比监测（monitoring）——监测覆盖规律（B 库蒸馏，跨报告支持度 1）",
+        "mixed_etype": false,
+        "subject_variants": [
+          {
+            "name": "韦州矿区",
+            "etype": "mine"
+          }
+        ],
+        "object_variants": [
+          {
+            "name": "土壤流失控制比监测",
+            "etype": "monitoring"
+          }
+        ]
+      },
+      {
+        "pattern_id": "dp-ed78b15d07",
+        "pattern_name": "监测覆盖规律：矿区整体→扰动土地治理率监测",
+        "pattern_type": "监测覆盖",
+        "subject_name": "矿区整体",
+        "subject_etype": "mine",
+        "object_name": "扰动土地治理率监测",
+        "object_etype": "monitoring",
+        "predicate": "monitored_by",
+        "occurrence_count": 1,
+        "support_count": 1,
+        "source_reports": [
+          "weizhou"
+        ],
+        "pattern_desc": "样例库 1 份报告共现：矿区整体（mine）配 扰动土地治理率监测（monitoring）——监测覆盖规律（B 库蒸馏，跨报告支持度 1）",
+        "mixed_etype": false,
+        "subject_variants": [
+          {
+            "name": "韦州矿区",
+            "etype": "mine"
+          }
+        ],
+        "object_variants": [
+          {
+            "name": "扰动土地治理率监测",
+            "etype": "monitoring"
+          }
+        ]
+      },
+      {
+        "pattern_id": "dp-191bc037a8",
+        "pattern_name": "监测覆盖规律：矿区整体→声环境功能区达标率监测",
+        "pattern_type": "监测覆盖",
+        "subject_name": "矿区整体",
+        "subject_etype": "mine",
+        "object_name": "声环境功能区达标率监测",
+        "object_etype": "monitoring",
+        "predicate": "monitored_by",
+        "occurrence_count": 1,
+        "support_count": 1,
+        "source_reports": [
+          "weizhou"
+        ],
+        "pattern_desc": "样例库 1 份报告共现：矿区整体（mine）配 声环境功能区达标率监测（monitoring）——监测覆盖规律（B 库蒸馏，跨报告支持度 1）",
+        "mixed_etype": false,
+        "subject_variants": [
+          {
+            "name": "韦州矿区",
+            "etype": "mine"
+          }
+        ],
+        "object_variants": [
+          {
+            "name": "声环境功能区达标率监测",
+            "etype": "monitoring"
+          }
+        ]
+      },
+      {
+        "pattern_id": "dp-3e29779686",
+        "pattern_name": "监测覆盖规律：矿区整体→声环境3类区达标率监测",
+        "pattern_type": "监测覆盖",
+        "subject_name": "矿区整体",
+        "subject_etype": "mine",
+        "object_name": "声环境3类区达标率监测",
+        "object_etype": "monitoring",
+        "predicate": "monitored_by",
+        "occurrence_count": 1,
+        "support_count": 1,
+        "source_reports": [
+          "weizhou"
+        ],
+        "pattern_desc": "样例库 1 份报告共现：矿区整体（mine）配 声环境3类区达标率监测（monitoring）——监测覆盖规律（B 库蒸馏，跨报告支持度 1）",
+        "mixed_etype": false,
+        "subject_variants": [
+          {
+            "name": "韦州矿区",
+            "etype": "mine"
+          }
+        ],
+        "object_variants": [
+          {
+            "name": "声环境3类区达标率监测",
+            "etype": "monitoring"
+          }
+        ]
+      },
+      {
+        "pattern_id": "dp-0602da991d",
+        "pattern_name": "监测覆盖规律：矿区整体→地下水iii类水达标率监测",
+        "pattern_type": "监测覆盖",
+        "subject_name": "矿区整体",
+        "subject_etype": "mine",
+        "object_name": "地下水iii类水达标率监测",
+        "object_etype": "monitoring",
+        "predicate": "monitored_by",
+        "occurrence_count": 1,
+        "support_count": 1,
+        "source_reports": [
+          "weizhou"
+        ],
+        "pattern_desc": "样例库 1 份报告共现：矿区整体（mine）配 地下水iii类水达标率监测（monitoring）——监测覆盖规律（B 库蒸馏，跨报告支持度 1）",
+        "mixed_etype": false,
+        "subject_variants": [
+          {
+            "name": "韦州矿区",
+            "etype": "mine"
+          }
+        ],
+        "object_variants": [
+          {
+            "name": "地下水iii类水达标率监测",
+            "etype": "monitoring"
+          }
+        ]
+      },
+      {
+        "pattern_id": "dp-d7044a6d98",
+        "pattern_name": "监测覆盖规律：矿区整体→环境空气质量2类区达标率监测",
+        "pattern_type": "监测覆盖",
+        "subject_name": "矿区整体",
+        "subject_etype": "mine",
+        "object_name": "环境空气质量2类区达标率监测",
+        "object_etype": "monitoring",
+        "predicate": "monitored_by",
+        "occurrence_count": 1,
+        "support_count": 1,
+        "source_reports": [
+          "weizhou"
+        ],
+        "pattern_desc": "样例库 1 份报告共现：矿区整体（mine）配 环境空气质量2类区达标率监测（monitoring）——监测覆盖规律（B 库蒸馏，跨报告支持度 1）",
+        "mixed_etype": false,
+        "subject_variants": [
+          {
+            "name": "韦州矿区",
+            "etype": "mine"
+          }
+        ],
+        "object_variants": [
+          {
+            "name": "环境空气质量2类区达标率监测",
+            "etype": "monitoring"
+          }
+        ]
+      },
+      {
+        "pattern_id": "dp-b0c6d08eaa",
+        "pattern_name": "监测覆盖规律：矿区整体→水污染达标排放率监测",
+        "pattern_type": "监测覆盖",
+        "subject_name": "矿区整体",
+        "subject_etype": "mine",
+        "object_name": "水污染达标排放率监测",
+        "object_etype": "monitoring",
+        "predicate": "monitored_by",
+        "occurrence_count": 1,
+        "support_count": 1,
+        "source_reports": [
+          "weizhou"
+        ],
+        "pattern_desc": "样例库 1 份报告共现：矿区整体（mine）配 水污染达标排放率监测（monitoring）——监测覆盖规律（B 库蒸馏，跨报告支持度 1）",
+        "mixed_etype": false,
+        "subject_variants": [
+          {
+            "name": "韦州矿区",
+            "etype": "mine"
+          }
+        ],
+        "object_variants": [
+          {
+            "name": "水污染达标排放率监测",
+            "etype": "monitoring"
+          }
+        ]
+      },
+      {
+        "pattern_id": "dp-1a87cca543",
+        "pattern_name": "监测覆盖规律：矿区整体→大气污染物达标排放率监测",
+        "pattern_type": "监测覆盖",
+        "subject_name": "矿区整体",
+        "subject_etype": "mine",
+        "object_name": "大气污染物达标排放率监测",
+        "object_etype": "monitoring",
+        "predicate": "monitored_by",
+        "occurrence_count": 1,
+        "support_count": 1,
+        "source_reports": [
+          "weizhou"
+        ],
+        "pattern_desc": "样例库 1 份报告共现：矿区整体（mine）配 大气污染物达标排放率监测（monitoring）——监测覆盖规律（B 库蒸馏，跨报告支持度 1）",
+        "mixed_etype": false,
+        "subject_variants": [
+          {
+            "name": "韦州矿区",
+            "etype": "mine"
+          }
+        ],
+        "object_variants": [
+          {
+            "name": "大气污染物达标排放率监测",
+            "etype": "monitoring"
+          }
+        ]
+      },
+      {
+        "pattern_id": "dp-ef0f3bfd9a",
+        "pattern_name": "监测覆盖规律：矿区整体→工业废气处理率监测",
+        "pattern_type": "监测覆盖",
+        "subject_name": "矿区整体",
+        "subject_etype": "mine",
+        "object_name": "工业废气处理率监测",
+        "object_etype": "monitoring",
+        "predicate": "monitored_by",
+        "occurrence_count": 1,
+        "support_count": 1,
+        "source_reports": [
+          "weizhou"
+        ],
+        "pattern_desc": "样例库 1 份报告共现：矿区整体（mine）配 工业废气处理率监测（monitoring）——监测覆盖规律（B 库蒸馏，跨报告支持度 1）",
+        "mixed_etype": false,
+        "subject_variants": [
+          {
+            "name": "韦州矿区",
+            "etype": "mine"
+          }
+        ],
+        "object_variants": [
+          {
+            "name": "工业废气处理率监测",
+            "etype": "monitoring"
+          }
+        ]
+      },
+      {
+        "pattern_id": "dp-2face2c183",
+        "pattern_name": "监测覆盖规律：矿区整体→地下水水位观测",
+        "pattern_type": "监测覆盖",
+        "subject_name": "矿区整体",
+        "subject_etype": "mine",
+        "object_name": "地下水水位观测",
+        "object_etype": "monitoring",
+        "predicate": "monitored_by",
+        "occurrence_count": 1,
+        "support_count": 1,
+        "source_reports": [
+          "yimin"
+        ],
+        "pattern_desc": "样例库 1 份报告共现：矿区整体（mine）配 地下水水位观测（monitoring）——监测覆盖规律（B 库蒸馏，跨报告支持度 1）",
+        "mixed_etype": false,
+        "subject_variants": [
+          {
+            "name": "伊敏一井",
+            "etype": "mine"
+          }
+        ],
+        "object_variants": [
+          {
+            "name": "地下水水位观测",
+            "etype": "monitoring"
+          }
+        ]
+      },
+      {
+        "pattern_id": "dp-b3bdab08bd",
+        "pattern_name": "监测覆盖规律：矿区整体→例行监测",
+        "pattern_type": "监测覆盖",
+        "subject_name": "矿区整体",
+        "subject_etype": "mine",
+        "object_name": "例行监测",
+        "object_etype": "monitoring",
+        "predicate": "monitored_by",
+        "occurrence_count": 1,
+        "support_count": 1,
+        "source_reports": [
+          "huating"
+        ],
+        "pattern_desc": "样例库 1 份报告共现：矿区整体（mine）配 例行监测（monitoring）——监测覆盖规律（B 库蒸馏，跨报告支持度 1）",
+        "mixed_etype": false,
+        "subject_variants": [
+          {
+            "name": "山寨煤矿",
+            "etype": "mine"
+          }
+        ],
+        "object_variants": [
+          {
+            "name": "例行监测",
+            "etype": "monitoring"
+          }
+        ]
+      },
+      {
+        "pattern_id": "dp-2fd25d4c7b",
+        "pattern_name": "监测覆盖规律：线路→噪声监测",
+        "pattern_type": "监测覆盖",
+        "subject_name": "线路",
+        "subject_etype": "engineering_site",
+        "object_name": "噪声监测",
+        "object_etype": "monitoring",
+        "predicate": "monitored_by",
+        "occurrence_count": 1,
+        "support_count": 1,
+        "source_reports": [
+          "yimin"
+        ],
+        "pattern_desc": "样例库 1 份报告共现：线路（engineering_site）配 噪声监测（monitoring）——监测覆盖规律（B 库蒸馏，跨报告支持度 1）",
+        "mixed_etype": false,
+        "subject_variants": [
+          {
+            "name": "苇子坑铁路专用线",
+            "etype": "engineering_site"
+          }
+        ],
+        "object_variants": [
+          {
+            "name": "噪声监测",
+            "etype": "monitoring"
           }
         ]
       }
