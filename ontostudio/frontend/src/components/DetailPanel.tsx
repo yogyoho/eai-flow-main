@@ -30,6 +30,20 @@ const FIELD_LABELS: Record<string, string> = {
   document_id: "来源文档",
 };
 
+/** attrs 键中文名 + 已知值可读化（v4 A 方案：attrs 渲染为中文键值行）。 */
+const ATTR_KEY_LABELS: Record<string, string> = {
+  scope: "归属",
+  source_report: "来源报告",
+  ingest_task: "抽取任务",
+  evidence_type: "佐证类型",
+  src: "来源",
+  distillable: "可蒸馏",
+};
+const ATTR_VALUE_LABELS: Record<string, string> = {
+  sample: "样例库",
+  project: "项目",
+};
+
 
 import {
   fetchObjectLinks,
@@ -70,6 +84,16 @@ function formatPropertyValue(value: unknown): string {
   } catch {
     return "—";
   }
+}
+
+/** 时间属性 → 本地时区 yyyy-MM-dd HH:mm:ss（原始为 UTC ISO 串；非法值回退原样）。 */
+function formatDateTime(value: unknown): string {
+  const d = value instanceof Date ? value : new Date(String(value ?? ""));
+  if (isNaN(d.getTime())) {
+    return formatPropertyValue(value);
+  }
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
 }
 
 /** pk 值安全字符串化（行数据为 unknown 投影，非原始值回退空串）。 */
@@ -376,6 +400,12 @@ export function DetailPanel({ nodeId }: { nodeId: string | null }) {
   const genericEntries = Object.entries(properties).filter(
     ([key]) => !(patternAttrs && key === "attrs"),
   );
+  // 字段分层（v4 文案包 F1 续）：核心业务字段常驻；技术字段（ID/时间戳/时效）收进
+  // 「技术信息」折叠；空值整行隐藏——生效自/至 实测常为 null，空行纯噪音。
+  const TECH_FIELDS = new Set(["id", "createdAt", "updatedAt", "validFrom", "validTo"]);
+  const isEmptyVal = (v: unknown) => v === null || v === undefined || v === "";
+  const coreEntries = genericEntries.filter(([k, v]) => !TECH_FIELDS.has(k) && !isEmptyVal(v));
+  const techEntries = genericEntries.filter(([k, v]) => TECH_FIELDS.has(k) && !isEmptyVal(v));
   const linkTypes = (schemaQuery.data?.link_types ?? []).filter(
     (lt) => lt.enabled && (lt.source === apiName || lt.target === apiName),
   );
@@ -406,7 +436,7 @@ export function DetailPanel({ nodeId }: { nodeId: string | null }) {
       <h3 className="text-muted-foreground mb-1.5 text-xs font-medium tracking-widest">属性</h3>
       {genericEntries.length > 0 ? (
         <dl className="grid grid-cols-[96px_1fr] gap-x-2.5 gap-y-1 text-sm">
-          {genericEntries.map(([key, value]) => {
+          {coreEntries.map(([key, value]) => {
             const label = FIELD_LABELS[key];
             return (
             <div key={key} className="col-span-2 grid grid-cols-subgrid">
@@ -414,7 +444,28 @@ export function DetailPanel({ nodeId }: { nodeId: string | null }) {
                 {label ?? key}
                 {label ? <span className="ml-1 font-mono text-[9.5px] opacity-60">{key}</span> : null}
               </dt>
-              <dd className="text-foreground break-all tabular-nums">{formatPropertyValue(value)}</dd>
+              <dd className="text-foreground break-all tabular-nums">
+                {value !== null && typeof value === "object" && !Array.isArray(value) ? (
+                  <span className="flex flex-col gap-0.5">
+                    {Object.entries(value as Record<string, unknown>).map(([k2, v2]) => (
+                      <span key={k2} className="flex items-baseline justify-between gap-2">
+                        <span className="text-muted-foreground font-mono text-[10.5px]">
+                          {ATTR_KEY_LABELS[k2] ?? k2}
+                        </span>
+                        <span className="break-all">
+                          {typeof v2 === "boolean"
+                            ? v2
+                              ? "是"
+                              : "否"
+                            : ATTR_VALUE_LABELS[String(v2)] ?? String(v2)}
+                        </span>
+                      </span>
+                    ))}
+                  </span>
+                ) : (
+                  formatPropertyValue(value)
+                )}
+              </dd>
             </div>
             );
           })}
@@ -424,6 +475,32 @@ export function DetailPanel({ nodeId }: { nodeId: string | null }) {
           {schemaQuery.isLoading ? "加载属性清单…" : "无可显示属性"}
         </div>
       )}
+
+      {techEntries.length > 0 ? (
+        <details className="mt-2">
+          <summary className="text-muted-foreground cursor-pointer select-none text-[11px] hover:text-foreground">
+            其他信息（ID / 时间戳 / 时效）
+          </summary>
+          <dl className="mt-1.5 grid grid-cols-[96px_1fr] gap-x-2.5 gap-y-1 text-xs">
+            {techEntries.map(([key, value]) => {
+              const label = FIELD_LABELS[key];
+              return (
+                <div key={key} className="col-span-2 grid grid-cols-subgrid">
+                  <dt className="text-muted-foreground break-words">
+                    {label ?? key}
+                    {label ? <span className="ml-1 font-mono text-[9.5px] opacity-60">{key}</span> : null}
+                  </dt>
+                  <dd className="text-foreground break-all tabular-nums">
+                    {key === "createdAt" || key === "updatedAt" || key === "validFrom" || key === "validTo"
+                      ? formatDateTime(value)
+                      : formatPropertyValue(value)}
+                  </dd>
+                </div>
+              );
+            })}
+          </dl>
+        </details>
+      ) : null}
 
       <h3 className="text-muted-foreground mt-4 mb-1.5 text-xs font-medium tracking-widest">
         关联链接
