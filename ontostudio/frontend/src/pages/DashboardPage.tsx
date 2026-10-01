@@ -225,7 +225,7 @@ export function DashboardPage() {
         <button
           type="button"
           onClick={() => go("resolve")}
-          className="rounded-xl border p-3.5 text-left shadow-sm transition-all duration-200 hover:-translate-y-px cursor-pointer"
+          className="col-span-2 flex flex-col rounded-xl border p-3.5 text-left shadow-sm transition-all duration-200 hover:-translate-y-px cursor-pointer lg:col-span-1 lg:row-span-2"
           style={{
             background: `linear-gradient(135deg, ${withAlpha(TONE_AMBER, 0.08)}, ${withAlpha(TONE_AMBER, 0.02)} 60%), var(--card, #fff)`,
             borderColor: withAlpha(TONE_AMBER, 0.45),
@@ -241,7 +241,7 @@ export function DashboardPage() {
             <small className="text-muted-foreground ml-2 text-sm font-normal">条实体待审</small>
           </div>
           <div className="text-muted-foreground mt-0.5 text-xs">五间房批次已入图待人工确认 · 支持批量勾选</div>
-          <span className="bg-primary text-primary-foreground mt-2.5 inline-flex items-center gap-1 rounded-md px-3 py-1 text-xs font-medium">
+          <span className="bg-primary text-primary-foreground mt-auto inline-flex items-center gap-1 self-start rounded-md px-3 py-1 text-xs font-medium">
             进入消解审核 →
           </span>
         </button>
@@ -275,6 +275,38 @@ export function DashboardPage() {
             {pending === null ? "加载中" : attentionItems > 0 ? "待审积压 · 其余指标正常" : "管线各站健康"}
           </div>
         </div>
+        <Tile
+          k="实体"
+          v={entAggQuery.isLoading ? null : entityTotal}
+          unit="行"
+          d={topDomain ? `最大域 ${topDomain.group ?? "—"} · ${topDomain.value} 行` : "—"}
+          tone={TONE_BLUE}
+          icon={Database}
+          title="dg_entities 表行数（跨域合计）"
+          onClick={() => go("entities")}
+        />
+        <Tile
+          k="关系"
+          v={relAggQuery.isLoading ? null : relationTotal}
+          unit="条"
+          d="两端实体都存在的关系才计入"
+          tone={TONE_PURPLE}
+          icon={GitBranch}
+          title="dg_relations 表行数"
+        />
+        <Tile
+          k="推理物化三元组"
+          v={inferQuery.data ? inferQuery.data.entailment_triples : null}
+          unit=""
+          d={
+            inferQuery.data
+              ? `闭包 ${formatDuration(inferQuery.data.duration_ms)} · 前往推理工作台查看规则明细`
+              : "尚未运行 · 全量重算约 30 秒，前往推理工作台"
+          }
+          tone={TONE_CYAN}
+          icon={BrainCircuit}
+          onClick={() => go("reasoning")}
+        />
       </div>
 
       {/* 管线健康——五站站线（V4 信息架构） */}
@@ -354,41 +386,6 @@ export function DashboardPage() {
         </div>
       </Panel>
 
-      {/* 瓦片行——三色标识：实体蓝 / 关系紫 / 推理青（待审已上移至首行待办主轴） */}
-      <div className="grid grid-cols-2 gap-3.5 lg:grid-cols-3">
-        <Tile
-          k="实体"
-          v={entAggQuery.isLoading ? null : entityTotal}
-          unit="行"
-          d={topDomain ? `最大域 ${topDomain.group ?? "—"} · ${topDomain.value} 行` : "—"}
-          tone={TONE_BLUE}
-          icon={Database}
-          title="dg_entities 表行数（跨域合计）"
-          onClick={() => go("entities")}
-        />
-        <Tile
-          k="关系"
-          v={relAggQuery.isLoading ? null : relationTotal}
-          unit="条"
-          d="两端实体都存在的关系才计入"
-          tone={TONE_PURPLE}
-          icon={GitBranch}
-          title="dg_relations 表行数"
-        />
-        <Tile
-          k="推理物化三元组"
-          v={inferQuery.data ? inferQuery.data.entailment_triples : null}
-          unit=""
-          d={
-            inferQuery.data
-              ? `闭包 ${formatDuration(inferQuery.data.duration_ms)} · 前往推理工作台查看规则明细`
-              : "尚未运行 · 全量重算约 30 秒，前往推理工作台"
-          }
-          tone={TONE_CYAN}
-          icon={BrainCircuit}
-          onClick={() => go("reasoning")}
-        />
-      </div>
 
       {/* 域健康 + 治理链抽样 */}
       <div className="mt-3.5 grid grid-cols-1 gap-3.5 xl:grid-cols-2">
