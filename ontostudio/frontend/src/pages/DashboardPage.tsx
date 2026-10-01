@@ -437,15 +437,13 @@ export function DashboardPage() {
                 key={nd.nm}
                 type="button"
                 onClick={nd.onClick}
-                className={cn(
-                  "hover:bg-muted rounded py-1 text-center text-xs transition-colors",
-                  nd.state === "warn" && "text-warning",
-                )}
+                className="hover:bg-muted rounded py-1 text-center text-xs transition-colors"
+                style={{ color: nd.color }}
               >
                 <span className="block font-medium">{nd.nm}</span>
                 <span className="mono block font-mono text-[19px] font-bold tabular-nums">
                   {nd.legendNum === null ? "—" : nd.legendNum.toLocaleString()}
-                  <small className="text-muted-foreground ml-1 text-[10px] font-normal">{nd.legendUnit}</small>
+                  <small className="ml-1 text-[10px] font-normal opacity-70">{nd.legendUnit}</small>
                 </span>
                 <span className="text-muted-foreground block text-[10.5px]">{nd.sub}</span>
               </button>
