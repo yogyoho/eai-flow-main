@@ -25,7 +25,7 @@ import asyncio
 import json
 import logging
 import uuid
-from datetime import UTC, datetime, timedelta
+from datetime import datetime
 from typing import Any
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
@@ -202,7 +202,6 @@ async def _task_alive(conn, task_id: str) -> bool:
 async def _run_task(task_id: str, sample_id: str, document_id: str, force_review: bool) -> None:
     """后台执行体（串行：_TASK_LOCK；阶段枚举推进；异常→failed 不静默）。"""
     extracted_by = f"ingest-task:{task_id}"[:100]
-    started_at = datetime.now(UTC) - timedelta(seconds=1)  # -1s 抵消时钟精度边缘
     async with _TASK_LOCK:
         engine = _engine()
         try:
@@ -256,27 +255,10 @@ async def _run_task(task_id: str, sample_id: str, document_id: str, force_review
             finally:
                 await engine2.dispose()
 
-            counts = await ingest_extraction(payload)
-
-            # force_review（D11/11A）：只降级**本任务新造**的实体行（created_at > started_at），
-            # 自然键合并进既有 active 行的不动——守住 ingest.py promote-only 不变量。
-            if force_review:
-                engine3 = _engine()
-                try:
-                    async with engine3.begin() as conn:
-                        await conn.execute(
-                            text(
-                                """
-                                UPDATE dg_entities e SET status = 'pending_review', updated_at = NOW()
-                                WHERE e.attrs->>'ingest_task' = :tid
-                                  AND e.status = 'active'
-                                  AND e.created_at > :started_at
-                                """
-                            ),
-                            {"tid": task_id, "started_at": started_at},
-                        )
-                finally:
-                    await engine3.dispose()
+            # force_review（D11 终裁 v2）：下沉为 ingest_extraction 的 force_pending——新行直接 pending、
+            # 冲突行覆盖 promote-only 提升；后置 UPDATE 补丁废弃（重跑时 created_at 窗口挡不住
+            # ingest 提升路径，两不变量打架——eng-review 演练实测）
+            counts = await ingest_extraction(payload, force_pending=force_review)
 
             await _set_status(
                 task_id,

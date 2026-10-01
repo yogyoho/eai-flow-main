@@ -301,9 +301,10 @@ export function IngestPage() {
                             onClick={() => {
                               window.location.hash = "resolve";
                             }}
+                            title={`本任务 ${task.stats?.entities_upserted ?? "—"} 条实体已入待审队列；队列按置信度升序排列，force_review 批次（0.85+）位于列表后段——用搜索或逐条确认处理`}
                             className="border-border bg-card hover:bg-muted rounded-md border px-2 py-1 text-xs font-medium"
                           >
-                            送审待复核
+                            查看待审队列
                           </button>
                         ) : isActiveStatus(task.status) ? (
                           <button

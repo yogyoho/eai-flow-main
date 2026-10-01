@@ -52,8 +52,14 @@ def project_scoped_attrs(attrs: dict | None, project_id: str | None) -> dict:
     return {**(attrs or {}), "scope": "project", "project_id": project_id}
 
 
-async def ingest_extraction(payload: ExtractionPayload) -> dict[str, Any]:
-    """校验通过的抽取结果入库（任意域 *Extraction 子类, 函数体按基类字段通用取值）。返回计数供 MCP 工具向 agent 汇报。"""
+async def ingest_extraction(payload: ExtractionPayload, force_pending: bool = False) -> dict[str, Any]:
+    """校验通过的抽取结果入库（任意域 *Extraction 子类, 函数体按基类字段通用取值）。返回计数供 MCP 工具向 agent 汇报。
+
+    EAI-CUSTOM(2026-10-01 B2/D11): force_pending=True 时本载荷触碰的实体一律置
+    pending_review（新行直接 pending；冲突行覆盖 promote-only 提升）——抽取任务
+    force_review 的落地机制。注意：载荷经自然键合并会连带置 pending 既有 active 行
+    （复核意图由操作者显式给出，视作文档化行为）；缺省 False 时行为与原版完全一致。
+    """
     engine = create_async_engine(_ext_url(), poolclass=NullPool)
     entity_ids: dict[str, Any] = {}  # payload 内 name → entity id（DB 返回 uuid.UUID, 注解用 Any）
     counts: dict[str, Any] = {"entities_upserted": 0, "relations": 0, "mentions": 0}
@@ -61,7 +67,7 @@ async def ingest_extraction(payload: ExtractionPayload) -> dict[str, Any]:
         async with engine.begin() as conn:
             for e in payload.entities:
                 norm = normalize_name(e.name)[:300]
-                status = "pending_review" if e.confidence < REVIEW_CONFIDENCE else "active"
+                status = "pending_review" if (force_pending or e.confidence < REVIEW_CONFIDENCE) else "active"
                 row = (
                     await conn.execute(
                         text(
@@ -70,7 +76,10 @@ async def ingest_extraction(payload: ExtractionPayload) -> dict[str, Any]:
                             VALUES (:domain, :etype, :name, :norm, CAST(:attrs AS jsonb), :conf, :status, :vfrom, :vto)
                             ON CONFLICT (domain, etype, norm_name)
                               DO UPDATE SET attrs = dg_entities.attrs || EXCLUDED.attrs,
-                                status = CASE WHEN dg_entities.status = 'pending_review' AND EXCLUDED.confidence >= 0.7 THEN 'active' ELSE dg_entities.status END,  -- 0.7 = REVIEW_CONFIDENCE（裸 SQL 内联）
+                                status = CASE
+                                  WHEN CAST(:force_pending AS boolean) THEN 'pending_review'  -- B2/D11 force_review：任务载荷触碰即置待审
+                                  WHEN dg_entities.status = 'pending_review' AND EXCLUDED.confidence >= 0.7 THEN 'active'  -- 0.7 = REVIEW_CONFIDENCE（裸 SQL 内联）
+                                  ELSE dg_entities.status END,
                                 confidence = GREATEST(dg_entities.confidence, EXCLUDED.confidence),
                                 updated_at = NOW()
                             RETURNING id
@@ -86,6 +95,7 @@ async def ingest_extraction(payload: ExtractionPayload) -> dict[str, Any]:
                             "status": status,
                             "vfrom": _tz_aware(e.valid_from),
                             "vto": _tz_aware(e.valid_to),
+                            "force_pending": force_pending,
                         },
                     )
                 ).first()
