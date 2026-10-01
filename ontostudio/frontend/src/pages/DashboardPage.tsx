@@ -15,20 +15,25 @@
  */
 import { useMutation, useQueries, useQuery } from "@tanstack/react-query";
 import {
+  Activity,
   ArrowRight,
   BrainCircuit,
+  CheckCircle2,
   Database,
   FileInput,
   GitBranch,
+  HeartPulse,
   Layers,
   LayoutDashboard,
   Loader2,
   Network,
   PlayCircle,
+  Share2,
   ShieldCheck,
+  XCircle,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 
 import {
   fetchAggregate,
@@ -53,6 +58,18 @@ import { cn } from "@/lib/utils";
 /** ms → 人话时长（<1s 显示毫秒，其余取整秒——F5：裸毫秒对操作者无感）。 */
 function formatDuration(ms: number): string {
   return ms < 1000 ? `${ms}ms` : `约 ${Math.round(ms / 1000)} 秒`;
+}
+
+/** 卡片头图标徽章（v4：圆点升级为贴切图标 + 软底色 chip，沿用 PageHeader 图标习语）。 */
+function CardIcon({ bg, tone, children }: { bg: string; tone: string; children: ReactNode }) {
+  return (
+    <span
+      className="grid h-7 w-7 flex-none place-items-center rounded-md"
+      style={{ background: bg, color: tone }}
+    >
+      {children}
+    </span>
+  );
 }
 
 // ── 多色彩系统（EAI-CUSTOM 2026-09-27）──
@@ -247,8 +264,10 @@ export function DashboardPage() {
         </button>
         <div className="border-border rounded-lg border bg-card px-3.5 py-2.5">
           <div className="flex items-center justify-between gap-2.5">
-            <span className="flex min-w-0 items-center gap-2 text-[12.5px]">
-              <span className={cn("inline-block h-[7px] w-[7px] flex-none rounded-full", todoFailed > 0 ? "bg-destructive" : "bg-success")} />
+            <span className="flex min-w-0 items-center gap-2.5 text-[12.5px]">
+              <CardIcon bg={todoFailed > 0 ? "var(--red-bg)" : "var(--green-soft)"} tone={todoFailed > 0 ? "var(--red)" : "var(--green)"}>
+                {todoFailed > 0 ? <XCircle className="h-3.5 w-3.5" /> : <CheckCircle2 className="h-3.5 w-3.5" />}
+              </CardIcon>
               <span className="min-w-0">
                 失败任务
                 <span className="text-muted-foreground block text-[10.5px] leading-tight">抽取队列 · 近 24h</span>
@@ -262,8 +281,10 @@ export function DashboardPage() {
         </div>
         <div className="border-border rounded-lg border bg-card px-3.5 py-2.5">
           <div className="flex items-center justify-between gap-2.5">
-            <span className="flex min-w-0 items-center gap-2 text-[12.5px]">
-              <span className={cn("inline-block h-[7px] w-[7px] flex-none rounded-full", todoActive > 0 ? "bg-warning" : "bg-success")} />
+            <span className="flex min-w-0 items-center gap-2.5 text-[12.5px]">
+              <CardIcon bg={todoActive > 0 ? "var(--amber-soft)" : "var(--green-soft)"} tone={todoActive > 0 ? "var(--amber)" : "var(--green)"}>
+                {todoActive > 0 ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <CheckCircle2 className="h-3.5 w-3.5" />}
+              </CardIcon>
               <span className="min-w-0">
                 进行中
                 <span className="text-muted-foreground block text-[10.5px] leading-tight">今日已完成 {activityDone}</span>
@@ -277,8 +298,16 @@ export function DashboardPage() {
         </div>
         <div className="border-border rounded-lg border bg-card px-3.5 py-2.5">
           <div className="flex items-center justify-between gap-2.5">
-            <span className="flex min-w-0 items-center gap-2 text-[12.5px]">
-              <span className={cn("inline-block h-[7px] w-[7px] flex-none rounded-full", attentionItems > 0 ? "bg-warning" : "bg-success")} />
+            <span className="flex min-w-0 items-center gap-2.5 text-[12.5px]">
+              <CardIcon bg={pending === null ? "var(--muted)" : attentionItems > 0 ? "var(--amber-soft)" : "var(--green-soft)"} tone={pending === null ? "var(--ink-3)" : attentionItems > 0 ? "var(--amber)" : "var(--green)"}>
+                {pending === null ? (
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                ) : attentionItems > 0 ? (
+                  <HeartPulse className="h-3.5 w-3.5" />
+                ) : (
+                  <ShieldCheck className="h-3.5 w-3.5" />
+                )}
+              </CardIcon>
               <span className="min-w-0">
                 系统状态
                 <span className="text-muted-foreground block text-[10.5px] leading-tight">
@@ -296,8 +325,10 @@ export function DashboardPage() {
         </div>
         <div className="border-border rounded-lg border bg-card px-3.5 py-2.5" title="dg_entities 表行数（跨域合计）">
           <div className="flex items-center justify-between gap-2.5">
-            <span className="flex min-w-0 items-center gap-2 text-[12.5px]">
-              <span className="inline-block h-[7px] w-[7px] flex-none rounded-full" style={{ background: TONE_BLUE }} />
+            <span className="flex min-w-0 items-center gap-2.5 text-[12.5px]">
+              <CardIcon bg="var(--primary-soft)" tone="var(--primary)">
+                <Database className="h-3.5 w-3.5" />
+              </CardIcon>
               <span className="min-w-0">
                 实体
                 <span className="text-muted-foreground block text-[10.5px] leading-tight">
@@ -313,8 +344,10 @@ export function DashboardPage() {
         </div>
         <div className="border-border rounded-lg border bg-card px-3.5 py-2.5" title="dg_relations 表行数">
           <div className="flex items-center justify-between gap-2.5">
-            <span className="flex min-w-0 items-center gap-2 text-[12.5px]">
-              <span className="inline-block h-[7px] w-[7px] flex-none rounded-full" style={{ background: TONE_PURPLE }} />
+            <span className="flex min-w-0 items-center gap-2.5 text-[12.5px]">
+              <CardIcon bg="#f3efff" tone="#7c5cd6">
+                <Share2 className="h-3.5 w-3.5" />
+              </CardIcon>
               <span className="min-w-0">
                 关系
                 <span className="text-muted-foreground block text-[10.5px] leading-tight">两端实体都存在的关系才计入</span>
@@ -328,8 +361,10 @@ export function DashboardPage() {
         </div>
         <div className="border-border rounded-lg border bg-card px-3.5 py-2.5" onClick={() => go("reasoning")} style={{ cursor: "pointer" }} title="前往推理工作台">
           <div className="flex items-center justify-between gap-2.5">
-            <span className="flex min-w-0 items-center gap-2 text-[12.5px]">
-              <span className="inline-block h-[7px] w-[7px] flex-none rounded-full" style={{ background: TONE_CYAN }} />
+            <span className="flex min-w-0 items-center gap-2.5 text-[12.5px]">
+              <CardIcon bg="#e6f7f5" tone="#0e9488">
+                <BrainCircuit className="h-3.5 w-3.5" />
+              </CardIcon>
               <span className="min-w-0">
                 推理物化三元组
                 <span className="text-muted-foreground block text-[10.5px] leading-tight">
