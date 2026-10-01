@@ -264,10 +264,7 @@ export function DashboardPage() {
         <div className="border-border rounded-lg border bg-card px-3.5 py-2.5">
           <div className="flex items-center justify-between gap-2.5">
             <span className="flex min-w-0 items-center gap-2.5 text-[12.5px]">
-              <CardIcon
-                bg={todoFailed > 0 ? "var(--red-bg)" : "var(--muted)"}
-                tone={todoFailed > 0 ? "var(--red)" : "var(--ink-3)"}
-              >
+              <CardIcon bg="var(--red-bg)" tone="var(--red)">
                 <AlertTriangle className="h-3.5 w-3.5" />
               </CardIcon>
               <span className="min-w-0">
