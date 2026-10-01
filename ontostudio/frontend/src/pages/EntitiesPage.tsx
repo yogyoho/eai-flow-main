@@ -7,7 +7,7 @@
  * - 列序 = 原型：实体 / 类型 / 规范名（norm）/ 置信度 / 状态 / 提及 / 更新 / 行操作
  *   （pending→去审核、merged→查看合并、其余→详情）；无裸 pk 列。
  * - 页脚 = 原型：左「共 N 行 · 每页 50 · 分页控件」+ 真实上一页/下一页；
- *   右「导出当前筛选（规划）」「批量送审（TODOS·批量摊销）」。
+ *   右「导出当前筛选」「批量送审」（均规划中，见按钮 tooltip）。
  * 数据面：/ontology/object-types + /objects/{type}（q + filters + cursor）
  * + /ontology/aggregate（域计数 / 总行数 / 提及计数 Top200）。
  */
