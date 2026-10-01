@@ -93,6 +93,22 @@
   /* 代码块：浅色下与主系统 code 惯例一致（muted 底/深字） */
   --code-bg: #f5f7f7;
   --code-fg: #151616;
+
+  /* EAI-CUSTOM(2026-10-01 总览卡徽章软底令牌): 卡片图标 chip 语义软色（v2 亮色份）。
+     命名纪律：*-soft=chip 软底 / 同名无后缀=图标色；暗色份见 .dark 块 */
+  --blue: #4d8dff;
+  --blue-soft: #e7efff;
+  --purple: #7c5cd6;
+  --purple-soft: #f3efff;
+  --cyan: #0e9488;
+  --cyan-soft: #e6f7f5;
+  --amber: #ad6800;
+  --amber-soft: #fdf3e0;
+  --green: #1a7f4b;
+  --green-soft: #e9f6ef;
+  --red: #c53030;
+  --red-bg: #fbf0ee;
+  --ink-3: #8a9096;
 }
 
 .dark {
@@ -128,6 +144,21 @@
 
   --code-bg: #1e1f1f;
   --code-fg: #eff2f2;
+
+  /* EAI-CUSTOM(2026-10-01 总览卡徽章软底令牌): 暗色份（软底改低透明度色，避免暗底刺眼） */
+  --blue: #7dabff;
+  --blue-soft: rgba(125, 171, 255, 0.14);
+  --purple: #b39cf0;
+  --purple-soft: rgba(179, 156, 240, 0.14);
+  --cyan: #3fd6c4;
+  --cyan-soft: rgba(63, 214, 196, 0.12);
+  --amber: #f5c451;
+  --amber-soft: rgba(245, 196, 81, 0.12);
+  --green: #5fd39a;
+  --green-soft: rgba(95, 211, 154, 0.12);
+  --red: #ff8080;
+  --red-bg: rgba(255, 128, 128, 0.12);
+  --ink-3: #74839a;
 }
 
 @layer base {

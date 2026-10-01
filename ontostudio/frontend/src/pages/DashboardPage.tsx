@@ -325,7 +325,7 @@ export function DashboardPage() {
         <div className="border-border rounded-lg border bg-card px-3.5 py-2.5" title="dg_entities 表行数（跨域合计）">
           <div className="flex items-center justify-between gap-2.5">
             <span className="flex min-w-0 items-center gap-2.5 text-[12.5px]">
-              <CardIcon bg="#e7efff" tone="#4d8dff">
+              <CardIcon bg="var(--blue-soft)" tone="var(--blue)">
                 <Database className="h-3.5 w-3.5" />
               </CardIcon>
               <span className="min-w-0">
@@ -344,7 +344,7 @@ export function DashboardPage() {
         <div className="border-border rounded-lg border bg-card px-3.5 py-2.5" title="dg_relations 表行数">
           <div className="flex items-center justify-between gap-2.5">
             <span className="flex min-w-0 items-center gap-2.5 text-[12.5px]">
-              <CardIcon bg="#f3efff" tone="#7c5cd6">
+              <CardIcon bg="var(--purple-soft)" tone="var(--purple)">
                 <Share2 className="h-3.5 w-3.5" />
               </CardIcon>
               <span className="min-w-0">
@@ -361,7 +361,7 @@ export function DashboardPage() {
         <div className="border-border rounded-lg border bg-card px-3.5 py-2.5" onClick={() => go("reasoning")} style={{ cursor: "pointer" }} title="前往推理工作台">
           <div className="flex items-center justify-between gap-2.5">
             <span className="flex min-w-0 items-center gap-2.5 text-[12.5px]">
-              <CardIcon bg="#e6f7f5" tone="#0e9488">
+              <CardIcon bg="var(--cyan-soft)" tone="var(--cyan)">
                 <BrainCircuit className="h-3.5 w-3.5" />
               </CardIcon>
               <span className="min-w-0">
