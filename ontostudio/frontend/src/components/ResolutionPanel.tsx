@@ -416,7 +416,7 @@ export function ResolutionPanel({
       <div className="space-y-4 p-6" style={{ background: PAGE_BG, minHeight: "100%" }}>
         {/* 超管提示横幅（原型 warnb） */}
         <div
-          className="flex items-start gap-2.5 rounded-[12px] px-3.5 py-2.5 text-xs"
+          className="flex items-start gap-2.5 rounded-[12px] px-3.5 py-2.5 text-sm"
           style={{ background: withAlpha(AMBER, 0.1), border: `1px solid ${withAlpha(AMBER, 0.45)}`, color: "#874d00" }}
           data-testid="resolution-superadmin-banner"
         >
@@ -432,7 +432,7 @@ export function ResolutionPanel({
         {notice ? (
           <div
             className={cn(
-              "flex items-start gap-2.5 rounded-[12px] px-3.5 py-2.5 text-xs",
+              "flex items-start gap-2.5 rounded-[12px] px-3.5 py-2.5 text-sm",
               notice.kind === "error" ? "bg-destructive/10 text-destructive" : "bg-primary/10 text-primary",
             )}
             data-testid="resolution-notice"
@@ -456,7 +456,7 @@ export function ResolutionPanel({
               </b>
               {pendingTotal !== undefined && pendingTotal > 0 ? (
                 <span
-                  className="rounded-full px-2 py-0.5 text-[11px] font-medium"
+                  className="rounded-full px-2 py-0.5 text-xs font-medium"
                   style={{ background: withAlpha(AMBER, 0.15), color: "#ad6800" }}
                 >
                   {search
@@ -470,7 +470,7 @@ export function ResolutionPanel({
               {visibleEntities.length > 0 ? (
                 /* 全选（EAI-CUSTOM 2026-09-29 批量确认）：只作用于检索可见的行 */
                 <label
-                  className="ml-auto flex cursor-pointer items-center gap-1.5 text-[11px] font-medium select-none"
+                  className="ml-auto flex cursor-pointer items-center gap-1.5 text-xs font-medium select-none"
                   style={{ color: INK_2 }}
                 >
                   <input
@@ -484,7 +484,7 @@ export function ResolutionPanel({
                   全选
                 </label>
               ) : null}
-              <span className="text-muted-foreground/80 hidden font-mono text-[10px] sm:inline">
+              <span className="text-muted-foreground/80 hidden font-mono text-xs sm:inline">
                 POST /actions/invoke
               </span>
             </div>
@@ -498,24 +498,24 @@ export function ResolutionPanel({
                 <button
                   type="button"
                   onClick={() => void pendingQuery.refetch()}
-                  className="shrink-0 rounded-md px-2.5 py-1 text-xs font-medium"
+                  className="shrink-0 rounded-md px-2.5 py-1 text-sm font-medium"
                   style={{ background: ACCENT_SOFT, color: BLUE }}
                 >
                   重试
                 </button>
               </div>
             ) : pendingQuery.isLoading ? (
-              <div className="text-muted-foreground flex items-center justify-center gap-2 px-4 py-10 text-xs">
+              <div className="text-muted-foreground flex items-center justify-center gap-2 px-4 py-10 text-sm">
                 <Loader2 className="h-4 w-4 animate-spin" />
                 加载待审列表…
               </div>
             ) : entities.length === 0 ? (
-              <div className="text-muted-foreground px-4 py-10 text-center text-xs">
+              <div className="text-muted-foreground px-4 py-10 text-center text-sm">
                 暂无待复核实体 ✅
               </div>
             ) : visibleEntities.length === 0 ? (
               /* 检索无命中（EAI-CUSTOM 2026-09-29）：与「暂无待审」区分开 */
-              <div className="text-muted-foreground px-4 py-10 text-center text-xs">
+              <div className="text-muted-foreground px-4 py-10 text-center text-sm">
                 未找到匹配「{searchQuery.trim()}」的待审实体
               </div>
             ) : (
@@ -556,18 +556,18 @@ export function ResolutionPanel({
                         <span className="min-w-0 flex-1 truncate text-[13.5px] font-semibold" title={entity.canonical_name}>
                           {entity.canonical_name}
                         </span>
-                        <span className="bg-secondary text-secondary-foreground shrink-0 rounded-md px-1.5 py-0.5 font-mono text-[10.5px]">
+                        <span className="bg-secondary text-secondary-foreground shrink-0 rounded-md px-1.5 py-0.5 font-mono text-xs">
                           {entity.etype}
                         </span>
                         <span
-                          className="w-10 shrink-0 text-right font-mono text-[11.5px] font-semibold tabular-nums"
+                          className="w-10 shrink-0 text-right font-mono text-xs font-semibold tabular-nums"
                           style={{ color: entity.confidence < 0.8 ? "#ad6800" : INK_2 }}
                           title="抽取置信度"
                         >
                           {Number(entity.confidence).toFixed(2)}
                         </span>
                         <span
-                          className="hidden w-[4.5rem] shrink-0 font-mono text-[10.5px] sm:inline"
+                          className="hidden w-[4.5rem] shrink-0 font-mono text-xs sm:inline"
                           style={{ color: INK_3 }}
                           title={entity.id}
                         >
@@ -575,7 +575,7 @@ export function ResolutionPanel({
                         </span>
                         </button>
                       </div>
-                      <div className="text-muted-foreground px-3.5 pt-1 font-mono text-[10.5px]" style={{ color: INK_3 }}>
+                      <div className="text-muted-foreground px-3.5 pt-1 font-mono text-xs" style={{ color: INK_3 }}>
                         {entity.domain} · pending_review
                       </div>
 
@@ -583,7 +583,7 @@ export function ResolutionPanel({
                        * 成功后由 reviewMutation 摘标并刷新列表） */}
                       {failedDetail && review.phase === "idle" ? (
                         <div
-                          className="flex flex-wrap items-center gap-2 px-3.5 pb-1 text-xs"
+                          className="flex flex-wrap items-center gap-2 px-3.5 pb-1 text-sm"
                           style={{ color: RED }}
                           data-testid="resolution-batch-failed"
                         >
@@ -594,7 +594,7 @@ export function ResolutionPanel({
                           <button
                             type="button"
                             onClick={() => handleReview(entity.id, "confirm")}
-                            className="shrink-0 rounded-md border px-2 py-0.5 text-[11px] font-medium transition-colors hover:bg-black/[0.03]"
+                            className="shrink-0 rounded-md border px-2 py-0.5 text-xs font-medium transition-colors hover:bg-black/[0.03]"
                             style={{ color: RED, borderColor: withAlpha(RED, 0.45) }}
                             data-testid="resolution-batch-retry"
                           >
@@ -610,7 +610,7 @@ export function ResolutionPanel({
                            * 数十秒），仅按钮 spinner 会被误读为卡死/未生效而手动刷新——刷新
                            * 若落在提交前反而看到"没生效"（EAI-CUSTOM 2026-09-29 抽查修复）。 */
                           <span
-                            className="flex items-center gap-1.5 text-xs font-medium"
+                            className="flex items-center gap-1.5 text-sm font-medium"
                             style={{ color: BLUE }}
                             data-testid="resolution-review-running"
                           >
@@ -620,17 +620,17 @@ export function ResolutionPanel({
                           </span>
                         ) : review.phase === "done" && review.outcome ? (
                           review.outcome === "ok" ? (
-                            <span className="flex items-center gap-1.5 text-xs font-medium" style={{ color: GREEN }} data-testid="resolution-review-outcome">
+                            <span className="flex items-center gap-1.5 text-sm font-medium" style={{ color: GREEN }} data-testid="resolution-review-outcome">
                               <CheckCircle2 className="h-3.5 w-3.5" />
                               {review.decision === "reject" ? "已驳回归档（rejected，实体与提及保留）" : "已确认入图（断言图已更新）"}
                             </span>
                           ) : review.outcome === "degraded" ? (
-                            <span className="flex items-center gap-1.5 text-xs" style={{ color: "#ad6800" }}>
+                            <span className="flex items-center gap-1.5 text-sm" style={{ color: "#ad6800" }}>
                               <AlertTriangle className="h-3.5 w-3.5 flex-none" style={{ color: AMBER }} />
                               投影未生效（degraded）：已提交；管理员重跑全量装载即自动对账，数据无损失
                             </span>
                           ) : (
-                            <span className="flex items-center gap-1.5 text-xs" style={{ color: INK_2 }}>
+                            <span className="flex items-center gap-1.5 text-sm" style={{ color: INK_2 }}>
                               <RefreshCw className="h-3.5 w-3.5 flex-none" />
                               状态已变更（可能已驳回/已合并），请刷新
                             </span>
@@ -644,7 +644,7 @@ export function ResolutionPanel({
                               disabled={batchMutation.isPending}
                               onClick={() => handleReview(entity.id, "confirm")}
                               data-testid="resolution-confirm"
-                              className="flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-medium text-white transition-opacity hover:opacity-90 disabled:opacity-50"
+                              className="flex items-center gap-1.5 rounded-md px-2.5 py-1 text-sm font-medium text-white transition-opacity hover:opacity-90 disabled:opacity-50"
                               style={{ background: BLUE }}
                             >
                               <Check className="h-3 w-3" />
@@ -655,12 +655,12 @@ export function ResolutionPanel({
                               disabled={batchMutation.isPending}
                               onClick={() => handleReview(entity.id, "reject")}
                               data-testid="resolution-reject"
-                              className="flex items-center gap-1.5 rounded-md border px-2.5 py-1 text-xs font-medium transition-colors hover:bg-black/[0.03] disabled:opacity-50"
+                              className="flex items-center gap-1.5 rounded-md border px-2.5 py-1 text-sm font-medium transition-colors hover:bg-black/[0.03] disabled:opacity-50"
                               style={{ color: RED, borderColor: withAlpha(RED, 0.45) }}
                             >
                               驳回
                             </button>
-                            <span className="text-muted-foreground/80 text-[10.5px]">
+                            <span className="text-muted-foreground/80 text-xs">
                               确认 → status 强制翻转为 active，断言图即时生效
                             </span>
                           </>
@@ -673,13 +673,13 @@ export function ResolutionPanel({
             )}
 
             <div className="flex flex-wrap items-center justify-between gap-2 border-t px-4 py-2.5" style={{ borderColor: CARD_BORDER }}>
-              <span className="text-muted-foreground text-[10.5px]">
+              <span className="text-muted-foreground text-xs">
                 勾选后批量确认：行级写逐条提交（审计逐条留痕），全批一次投影入图
               </span>
               {batchMutation.isPending ? (
                 /* 在途进度行（EAI-CUSTOM 2026-09-29 批量确认摊销）：与单条同款防误读文案 */
                 <span
-                  className="flex items-center gap-1.5 text-xs font-medium"
+                  className="flex items-center gap-1.5 text-sm font-medium"
                   style={{ color: BLUE }}
                   data-testid="resolution-batch-running"
                 >
@@ -693,7 +693,7 @@ export function ResolutionPanel({
                   disabled={selectedCount === 0}
                   onClick={() => batchMutation.mutate([...selectedPks])}
                   title={selectedCount === 0 ? "先勾选待确认实体（驳回批量未开放）" : `批量确认选中 ${selectedCount} 条`}
-                  className="flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-medium text-white transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
+                  className="flex items-center gap-1.5 rounded-md px-2.5 py-1 text-sm font-medium text-white transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
                   style={{ background: BLUE }}
                   data-testid="resolution-batch-confirm"
                 >
@@ -712,32 +712,32 @@ export function ResolutionPanel({
                   相似实体合并建议
                 </b>
                 {selectedEntity ? (
-                  <span className="text-muted-foreground truncate text-[11px]" title={selectedEntity.canonical_name}>
+                  <span className="text-muted-foreground truncate text-xs" title={selectedEntity.canonical_name}>
                     · {selectedEntity.canonical_name}
                   </span>
                 ) : null}
-                <span className="text-muted-foreground/80 ml-auto hidden font-mono text-[10px] sm:inline">
+                <span className="text-muted-foreground/80 ml-auto hidden font-mono text-xs sm:inline">
                   GET /doc-graph/resolution/suggestions
                 </span>
               </div>
               <div className="flex flex-col gap-2.5 p-3" data-testid="resolution-suggestions">
                 {!expandedId ? (
-                  <div className="text-muted-foreground px-2 py-8 text-center text-xs leading-loose">
+                  <div className="text-muted-foreground px-2 py-8 text-center text-sm leading-loose">
                     ← 在左侧点选一张待审卡
                     <br />
                     查看它的 Top 5 相似建议
                   </div>
                 ) : suggestionsQuery.isLoading ? (
-                  <div className="text-muted-foreground flex items-center justify-center gap-2 px-2 py-6 text-xs">
+                  <div className="text-muted-foreground flex items-center justify-center gap-2 px-2 py-6 text-sm">
                     <Loader2 className="h-3.5 w-3.5 animate-spin" style={{ color: INK_3 }} />
                     计算相似建议…
                   </div>
                 ) : suggestionsQuery.error ? (
-                  <p className="text-destructive px-2 py-4 text-xs">
+                  <p className="text-destructive px-2 py-4 text-sm">
                     建议加载失败：{(suggestionsQuery.error as ApiError).message}
                   </p>
                 ) : (suggestionsQuery.data?.suggestions ?? []).length === 0 ? (
-                  <div className="text-muted-foreground px-2 py-6 text-center text-xs">
+                  <div className="text-muted-foreground px-2 py-6 text-center text-sm">
                     无相似建议（同类型相似度均低于阈值）
                   </div>
                 ) : (
@@ -748,7 +748,7 @@ export function ResolutionPanel({
                           {sug.canonical_name}
                         </span>
                         <span
-                          className="rounded-full px-2 py-0.5 text-[10.5px] font-medium"
+                          className="rounded-full px-2 py-0.5 text-xs font-medium"
                           style={{
                             background: withAlpha(sug.action === "auto_merge" ? GREEN : AMBER, 0.12),
                             color: sug.action === "auto_merge" ? "#389e0d" : "#ad6800",
@@ -756,7 +756,7 @@ export function ResolutionPanel({
                         >
                           {actionLabel(sug.action)}
                         </span>
-                        <span className="font-mono text-[11.5px] font-semibold tabular-nums" style={{ color: INK_2 }}>
+                        <span className="font-mono text-xs font-semibold tabular-nums" style={{ color: INK_2 }}>
                           {sug.similarity.toFixed(2)}
                         </span>
                       </div>
@@ -767,7 +767,7 @@ export function ResolutionPanel({
                           onClick={() =>
                             handleMerge(sug.id, expandedId, sug.canonical_name, selectedEntity?.canonical_name ?? "")
                           }
-                          className="bg-primary text-primary-foreground hover:opacity-90 flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-medium disabled:opacity-50"
+                          className="bg-primary text-primary-foreground hover:opacity-90 flex items-center gap-1.5 rounded-md px-2.5 py-1 text-sm font-medium disabled:opacity-50"
                         >
                           {mergeMutation.isPending ? <Loader2 className="h-3 w-3 animate-spin" /> : <GitMerge className="h-3 w-3" />}
                           合并
@@ -775,11 +775,11 @@ export function ResolutionPanel({
                         <button
                           type="button"
                           onClick={() => setExpandedId(null)}
-                          className="border-border bg-card text-foreground hover:bg-muted rounded-md border px-2.5 py-1 text-xs"
+                          className="border-border bg-card text-foreground hover:bg-muted rounded-md border px-2.5 py-1 text-sm"
                         >
                           不合并
                         </button>
-                        <span className="text-muted-foreground/80 text-[10px]">
+                        <span className="text-muted-foreground/80 text-xs">
                           POST /resolution/merge · undo 可回放
                         </span>
                       </div>
@@ -790,7 +790,7 @@ export function ResolutionPanel({
               {/* 撤销合并横幅 */}
               {undoable ? (
                 <div
-                  className="mx-3 mb-3 flex flex-wrap items-center gap-2 rounded-[10px] px-3 py-2.5 text-xs"
+                  className="mx-3 mb-3 flex flex-wrap items-center gap-2 rounded-[10px] px-3 py-2.5 text-sm"
                   style={{ background: withAlpha(GREEN, 0.08), border: `1px solid ${withAlpha(GREEN, 0.35)}` }}
                   data-testid="resolution-undo"
                 >
@@ -802,7 +802,7 @@ export function ResolutionPanel({
                     type="button"
                     disabled={unmergeMutation.isPending}
                     onClick={() => unmergeMutation.mutate(undoable.mergeId)}
-                    className="ml-auto flex items-center gap-1 rounded-md border px-2 py-0.5 text-[11px] font-medium disabled:opacity-50"
+                    className="ml-auto flex items-center gap-1 rounded-md border px-2 py-0.5 text-xs font-medium disabled:opacity-50"
                     style={{ color: BLUE, borderColor: withAlpha(BLUE, 0.4) }}
                   >
                     {unmergeMutation.isPending ? <Loader2 className="h-3 w-3 animate-spin" /> : null}
@@ -810,7 +810,7 @@ export function ResolutionPanel({
                   </button>
                 </div>
               ) : null}
-              <div className="text-muted-foreground flex items-center justify-between border-t px-4 py-2 text-[10.5px]" style={{ borderColor: CARD_BORDER }}>
+              <div className="text-muted-foreground flex items-center justify-between border-t px-4 py-2 text-xs" style={{ borderColor: CARD_BORDER }}>
                 <span>已合并实体（图快照）</span>
                 <span className="font-mono tabular-nums">{mergedCount ?? "—"}</span>
               </div>
@@ -822,11 +822,11 @@ export function ResolutionPanel({
                   操作反馈四态（实现契约）
                 </b>
               </div>
-              <table className="w-full text-xs">
+              <table className="w-full text-sm">
                 <thead>
                   <tr className="border-border bg-muted/60 border-b" style={{ borderColor: CARD_BORDER }}>
                     {["态", "触发", "呈现"].map((h) => (
-                      <th key={h} className="text-muted-foreground px-4 py-2 text-left text-[11px] font-medium">
+                      <th key={h} className="text-muted-foreground px-4 py-2 text-left text-xs font-medium">
                         {h}
                       </th>
                     ))}
@@ -835,22 +835,22 @@ export function ResolutionPanel({
                 <tbody>
                   <tr className="border-border/60 border-b" style={{ borderColor: CARD_BORDER }}>
                     <td className="px-4 py-2"><span className="mr-1.5 inline-block h-2 w-2 rounded-full" style={{ background: GREEN }} />成功</td>
-                    <td className="px-2 py-2 font-mono text-[10.5px]">projected:true</td>
+                    <td className="px-2 py-2 font-mono text-xs">projected:true</td>
                     <td className="px-2 py-2">绿勾 + 行内「已入图」；图浏览可立即看到</td>
                   </tr>
                   <tr className="border-border/60 border-b" style={{ borderColor: CARD_BORDER }}>
                     <td className="px-4 py-2"><span className="mr-1.5 inline-block h-2 w-2 rounded-full" style={{ background: AMBER }} />degraded</td>
-                    <td className="px-2 py-2 font-mono text-[10.5px]">projected:false + errors</td>
+                    <td className="px-2 py-2 font-mono text-xs">projected:false + errors</td>
                     <td className="px-2 py-2">黄警 + 明细 + 「重跑全量装载即自动对账（数据无损失）」</td>
                   </tr>
                   <tr className="border-border/60 border-b" style={{ borderColor: CARD_BORDER }}>
                     <td className="px-4 py-2"><span className="mr-1.5 inline-block h-2 w-2 rounded-full" style={{ background: INK_3 }} />冲突 409</td>
-                    <td className="px-2 py-2 font-mono text-[10.5px]">前置条件不满足</td>
+                    <td className="px-2 py-2 font-mono text-xs">前置条件不满足</td>
                     <td className="px-2 py-2">中性提示「状态已变更，请刷新」（不得渲染为已确认）</td>
                   </tr>
                   <tr>
                     <td className="px-4 py-2"><span className="mr-1.5 inline-block h-2 w-2 rounded-full" style={{ background: BLUE }} />在途</td>
-                    <td className="px-2 py-2 font-mono text-[10.5px]">invoke 进行中</td>
+                    <td className="px-2 py-2 font-mono text-xs">invoke 进行中</td>
                     <td className="px-2 py-2">按钮 disabled + spinner + 卡内进度行（同步投影实测数十秒）</td>
                   </tr>
                 </tbody>

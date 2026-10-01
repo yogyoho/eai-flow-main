@@ -8,6 +8,9 @@
  */
 @import "tailwindcss";
 
+/* EAI-CUSTOM 字号阶梯（2026-10-01，规范见 docs/designs/ui-style-spec.md §9）：
+ * 主内容 14px(text-sm) / 次要 13px(text-[13px]) / 辅助 12px(text-xs，全站最小档)。
+ * 禁止再引入 ≤11px 字面量（豁免：Sigma 画布 chip/图表刻度/边标签）。 */
 @custom-variant dark (&:is(.dark *));
 
 @theme inline {

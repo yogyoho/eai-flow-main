@@ -133,10 +133,10 @@ function DomainPatternCard({ properties }: { properties: Record<string, unknown>
       className="border-primary/25 bg-primary/[0.04] mb-3 rounded-lg border p-2.5"
       data-testid="domain-pattern-card"
     >
-      <div className="text-muted-foreground mb-1.5 flex items-center gap-1.5 text-[10.5px] font-medium tracking-widest">
+      <div className="text-muted-foreground mb-1.5 flex items-center gap-1.5 text-xs font-medium tracking-widest">
         领域模式 · B 库规律
         {patternType ? (
-          <span className="bg-primary/10 text-primary ml-auto rounded-full px-2 py-0.5 text-[10px] tracking-normal">
+          <span className="bg-primary/10 text-primary ml-auto rounded-full px-2 py-0.5 text-xs tracking-normal">
             {patternType}规律
           </span>
         ) : null}
@@ -144,7 +144,7 @@ function DomainPatternCard({ properties }: { properties: Record<string, unknown>
 
       {/* 主体 → 客体 */}
       <div className="border-border bg-card mb-2 rounded-md border px-2.5 py-2">
-        <div className="text-foreground flex items-center gap-1.5 text-xs font-medium">
+        <div className="text-foreground flex items-center gap-1.5 text-sm font-medium">
           <span className="truncate" title={subject.text}>
             {subject.text || "—"}
           </span>
@@ -154,7 +154,7 @@ function DomainPatternCard({ properties }: { properties: Record<string, unknown>
           </span>
         </div>
         {subject.text || object.text ? (
-          <div className="text-muted-foreground mt-0.5 flex items-center gap-1.5 text-[10px]">
+          <div className="text-muted-foreground mt-0.5 flex items-center gap-1.5 text-xs">
             <span className="truncate">{zhEtype(patternAttr(attrs, "subject_etype").text)}</span>
             <span className="shrink-0">→</span>
             <span className="truncate">{zhEtype(patternAttr(attrs, "object_etype").text)}</span>
@@ -163,7 +163,7 @@ function DomainPatternCard({ properties }: { properties: Record<string, unknown>
       </div>
 
       {/* 指标行：支撑样本 / 共现 / 谓词 */}
-      <div className="mb-2 flex flex-wrap gap-x-3 gap-y-1 text-[11px]">
+      <div className="mb-2 flex flex-wrap gap-x-3 gap-y-1 text-xs">
         {support !== null ? (
           <span className="text-muted-foreground">
             支撑样本 <b className="text-foreground tabular-nums">{support}</b> 份报告
@@ -189,18 +189,18 @@ function DomainPatternCard({ properties }: { properties: Record<string, unknown>
       {/* 来源报告 chips */}
       {reports.length > 0 ? (
         <div className="mb-2">
-          <div className="text-muted-foreground mb-1 text-[10.5px]">来源报告 · {reports.length}</div>
+          <div className="text-muted-foreground mb-1 text-xs">来源报告 · {reports.length}</div>
           <div className="flex flex-wrap gap-1">
             {reports.slice(0, PATTERN_REPORT_CHIPS).map((report) => (
               <span
                 key={report}
-                className="border-border text-muted-foreground rounded-full border px-1.5 py-0.5 font-mono text-[10px]"
+                className="border-border text-muted-foreground rounded-full border px-1.5 py-0.5 font-mono text-xs"
               >
                 {report}
               </span>
             ))}
             {reports.length > PATTERN_REPORT_CHIPS ? (
-              <span className="text-muted-foreground px-0.5 py-0.5 text-[10px] tabular-nums">
+              <span className="text-muted-foreground px-0.5 py-0.5 text-xs tabular-nums">
                 +{reports.length - PATTERN_REPORT_CHIPS}
               </span>
             ) : null}
@@ -211,12 +211,12 @@ function DomainPatternCard({ properties }: { properties: Record<string, unknown>
       {/* 端点变体名（归并版蒸馏产物，缺省不渲染） */}
       {subjectVariants.length > 0 || objectVariants.length > 0 ? (
         <div className="mb-2">
-          <div className="text-muted-foreground mb-1 text-[10.5px]">端点变体</div>
+          <div className="text-muted-foreground mb-1 text-xs">端点变体</div>
           <div className="flex flex-wrap gap-1">
             {subjectVariants.map((variant) => (
               <span
                 key={`s-${variant}`}
-                className="border-border bg-card text-muted-foreground rounded-full border px-1.5 py-0.5 text-[10px]"
+                className="border-border bg-card text-muted-foreground rounded-full border px-1.5 py-0.5 text-xs"
               >
                 主: {variant}
               </span>
@@ -224,7 +224,7 @@ function DomainPatternCard({ properties }: { properties: Record<string, unknown>
             {objectVariants.map((variant) => (
               <span
                 key={`o-${variant}`}
-                className="border-border bg-card text-muted-foreground rounded-full border px-1.5 py-0.5 text-[10px]"
+                className="border-border bg-card text-muted-foreground rounded-full border px-1.5 py-0.5 text-xs"
               >
                 客: {variant}
               </span>
@@ -236,15 +236,15 @@ function DomainPatternCard({ properties }: { properties: Record<string, unknown>
       {/* 规律描述 */}
       {desc ? (
         <div className="mb-2">
-          <div className="text-muted-foreground mb-1 text-[10.5px]">规律描述</div>
-          <p className="text-foreground text-[11.5px] leading-relaxed">{desc}</p>
+          <div className="text-muted-foreground mb-1 text-xs">规律描述</div>
+          <p className="text-foreground text-xs leading-relaxed">{desc}</p>
         </div>
       ) : null}
 
       {/* 精炼解读（引用块） */}
       {refinedDesc ? (
         <div className="border-primary/40 border-l-2 pl-2">
-          <div className="text-primary mb-1 text-[10.5px] font-medium">
+          <div className="text-primary mb-1 text-xs font-medium">
             精炼解读
             {refinedAt ? (
               <span className="text-muted-foreground ml-1 font-normal tabular-nums">
@@ -252,7 +252,7 @@ function DomainPatternCard({ properties }: { properties: Record<string, unknown>
               </span>
             ) : null}
           </div>
-          <p className="text-foreground text-[11.5px] leading-relaxed">{refinedDesc}</p>
+          <p className="text-foreground text-xs leading-relaxed">{refinedDesc}</p>
         </div>
       ) : null}
     </div>
@@ -280,13 +280,13 @@ function LinkTypeRows({ apiName, pk, linkType, opposite }: LinkTypeRowsProps) {
 
   return (
     <div className="mb-2">
-      <div className="text-muted-foreground mb-1 flex items-center gap-1.5 text-[10.5px]">
+      <div className="text-muted-foreground mb-1 flex items-center gap-1.5 text-xs">
         <span className="text-primary font-mono">{linkType.name}</span>
         <span>{outgoing ? "→ 出" : "← 入"}</span>
         <span className="ml-auto tabular-nums">{linksQuery.isLoading ? "…" : rows.length}</span>
       </div>
       {linksQuery.isError ? (
-        <div className="text-muted-foreground border-border rounded-md border border-dashed px-2 py-1.5 text-[11px]">
+        <div className="text-muted-foreground border-border rounded-md border border-dashed px-2 py-1.5 text-xs">
           {String(linksQuery.error)}
         </div>
       ) : null}
@@ -301,19 +301,19 @@ function LinkTypeRows({ apiName, pk, linkType, opposite }: LinkTypeRowsProps) {
         return (
           <div
             key={`${oppositeId}-${index}`}
-            className="border-border text-foreground mt-1 flex items-center gap-1.5 rounded-md border px-2 py-1.5 text-[11.5px]"
+            className="border-border text-foreground mt-1 flex items-center gap-1.5 rounded-md border px-2 py-1.5 text-xs"
           >
             <span className="truncate" title={label}>
               {label}
             </span>
-            <span className="text-muted-foreground ml-auto shrink-0 text-[10px]">
+            <span className="text-muted-foreground ml-auto shrink-0 text-xs">
               {outgoing ? "→" : "←"} {outgoing ? linkType.target : linkType.source}
             </span>
           </div>
         );
       })}
       {!linksQuery.isError && !linksQuery.isLoading && rows.length === 0 ? (
-        <div className="text-muted-foreground px-2 py-1 text-[11px]">无关联实例</div>
+        <div className="text-muted-foreground px-2 py-1 text-xs">无关联实例</div>
       ) : null}
     </div>
   );
@@ -327,7 +327,7 @@ export function DetailPanel({ nodeId }: { nodeId: string | null }) {
 
   if (!nodeId) {
     return (
-      <div className="text-muted-foreground px-3 py-10 text-center text-xs leading-loose">
+      <div className="text-muted-foreground px-3 py-10 text-center text-sm leading-loose">
         点击图中节点查看
         <br />
         属性与关联链接
@@ -338,7 +338,7 @@ export function DetailPanel({ nodeId }: { nodeId: string | null }) {
   const parsed = splitNodeId(nodeId);
   if (!parsed) {
     return (
-      <div className="text-muted-foreground px-3 py-10 text-center text-xs">
+      <div className="text-muted-foreground px-3 py-10 text-center text-sm">
         无法识别的节点标识：{nodeId}
       </div>
     );
@@ -367,16 +367,16 @@ export function DetailPanel({ nodeId }: { nodeId: string | null }) {
         {attrs?.label ?? pk}
       </div>
       <div className="mb-3 flex flex-wrap gap-1">
-        <span className="border-border text-muted-foreground rounded-full border px-2 py-0.5 text-[10.5px]">
+        <span className="border-border text-muted-foreground rounded-full border px-2 py-0.5 text-xs">
           {apiName}
         </span>
         {findObjectType(schemaQuery.data, apiName) ? (
-          <span className="border-border text-muted-foreground rounded-full border px-2 py-0.5 text-[10.5px]">
+          <span className="border-border text-muted-foreground rounded-full border px-2 py-0.5 text-xs">
             {findObjectType(schemaQuery.data, apiName)?.display_name}
           </span>
         ) : null}
         {isDomainPattern ? (
-          <span className="border-primary/40 text-primary rounded-full border px-2 py-0.5 text-[10.5px]">
+          <span className="border-primary/40 text-primary rounded-full border px-2 py-0.5 text-xs">
             领域模式
           </span>
         ) : null}
@@ -384,9 +384,9 @@ export function DetailPanel({ nodeId }: { nodeId: string | null }) {
 
       {isDomainPattern ? <DomainPatternCard properties={properties} /> : null}
 
-      <h3 className="text-muted-foreground mb-1.5 text-[10.5px] font-medium tracking-widest">属性</h3>
+      <h3 className="text-muted-foreground mb-1.5 text-xs font-medium tracking-widest">属性</h3>
       {genericEntries.length > 0 ? (
-        <dl className="grid grid-cols-[96px_1fr] gap-x-2.5 gap-y-1 text-xs">
+        <dl className="grid grid-cols-[96px_1fr] gap-x-2.5 gap-y-1 text-sm">
           {genericEntries.map(([key, value]) => (
             <div key={key} className="col-span-2 grid grid-cols-subgrid">
               <dt className="text-muted-foreground break-words">{key}</dt>
@@ -395,21 +395,21 @@ export function DetailPanel({ nodeId }: { nodeId: string | null }) {
           ))}
         </dl>
       ) : (
-        <div className="text-muted-foreground text-[11px]">
+        <div className="text-muted-foreground text-xs">
           {schemaQuery.isLoading ? "加载属性清单…" : "无可显示属性"}
         </div>
       )}
 
-      <h3 className="text-muted-foreground mt-4 mb-1.5 text-[10.5px] font-medium tracking-widest">
+      <h3 className="text-muted-foreground mt-4 mb-1.5 text-xs font-medium tracking-widest">
         关联链接
       </h3>
       {schemaQuery.isLoading ? (
-        <div className="text-muted-foreground flex items-center gap-1.5 text-[11px]">
+        <div className="text-muted-foreground flex items-center gap-1.5 text-xs">
           <Loader2 className="h-3 w-3 animate-spin" />
           加载链接类型…
         </div>
       ) : linkTypes.length === 0 ? (
-        <div className="text-muted-foreground text-[11px]">该对象类型未声明 enabled 链接</div>
+        <div className="text-muted-foreground text-xs">该对象类型未声明 enabled 链接</div>
       ) : (
         linkTypes.map((lt) => {
           const oppositeName = lt.source === apiName ? lt.target : lt.source;
@@ -430,13 +430,13 @@ export function DetailPanel({ nodeId }: { nodeId: string | null }) {
       )}
       {/* 跨页入口（EAI-CUSTOM 2026-09-27 原型重构③） */}
       <div className="border-border mt-3 flex flex-wrap items-center gap-2 border-t pt-3">
-        <span className="text-muted-foreground text-[10px]">快捷：</span>
+        <span className="text-muted-foreground text-xs">快捷：</span>
         <button
           type="button"
           onClick={() => {
             window.location.hash = "resolve";
           }}
-          className="border-border bg-card hover:bg-muted rounded-md border px-2 py-0.5 text-[10.5px] font-medium"
+          className="border-border bg-card hover:bg-muted rounded-md border px-2 py-0.5 text-xs font-medium"
         >
           消解审核
         </button>
@@ -445,7 +445,7 @@ export function DetailPanel({ nodeId }: { nodeId: string | null }) {
           onClick={() => {
             window.location.hash = "modeler";
           }}
-          className="border-border bg-card hover:bg-muted rounded-md border px-2 py-0.5 text-[10.5px] font-medium"
+          className="border-border bg-card hover:bg-muted rounded-md border px-2 py-0.5 text-xs font-medium"
         >
           本体建模器
         </button>

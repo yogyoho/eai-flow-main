@@ -440,7 +440,7 @@ export function ModelerPage() {
         />
         {saveMsg ? <SaveBanner msg={saveMsg} /> : null}
         {contentQuery.isLoading ? (
-          <div className="text-muted-foreground py-16 text-center text-xs">
+          <div className="text-muted-foreground py-16 text-center text-sm">
             <Loader2 className="mx-auto mb-2 h-4 w-4 animate-spin" />
             加载 registry…
           </div>
@@ -449,7 +449,7 @@ export function ModelerPage() {
             {/* 左栏：域文件列表 */}
             <div className="border-border bg-card rounded-xl border p-1.5 shadow-sm">
               {filesQuery.isLoading ? (
-                <div className="text-muted-foreground p-2 text-xs">加载中…</div>
+                <div className="text-muted-foreground p-2 text-sm">加载中…</div>
               ) : (
                 files.map((file) => (
                   <FileTab
@@ -472,7 +472,7 @@ export function ModelerPage() {
                     type="button"
                     onClick={() => setMode("vis")}
                     className={cn(
-                      "px-2.5 py-1 text-xs font-medium",
+                      "px-2.5 py-1 text-sm font-medium",
                       mode === "vis"
                         ? "bg-primary/10 text-primary font-semibold"
                         : "bg-card text-muted-foreground hover:bg-accent",
@@ -484,7 +484,7 @@ export function ModelerPage() {
                     type="button"
                     onClick={() => setMode("yaml")}
                     className={cn(
-                      "px-2.5 py-1 text-xs font-medium",
+                      "px-2.5 py-1 text-sm font-medium",
                       mode === "yaml"
                         ? "bg-primary/10 text-primary font-semibold"
                         : "bg-card text-muted-foreground hover:bg-accent",
@@ -494,12 +494,12 @@ export function ModelerPage() {
                   </button>
                 </div>
                 {dirty ? (
-                  <span className="bg-warning/15 text-warning rounded-full px-2 py-0.5 text-[11px] font-medium">
+                  <span className="bg-warning/15 text-warning rounded-full px-2 py-0.5 text-xs font-medium">
                     未保存
                   </span>
                 ) : null}
                 <div className="ml-auto flex items-center gap-2">
-                  <span className="text-muted-foreground font-mono text-[10.5px]">
+                  <span className="text-muted-foreground font-mono text-xs">
                     v{content?.registry_version ?? "—"} ·{" "}
                     {content?.fingerprint?.slice(0, 6) ?? "—"}
                   </span>
@@ -507,7 +507,7 @@ export function ModelerPage() {
                     type="button"
                     onClick={handleValidate}
                     disabled={busy || !text}
-                    className="border-border bg-card hover:bg-muted rounded-md border px-2 py-1 text-xs font-medium disabled:opacity-50"
+                    className="border-border bg-card hover:bg-muted rounded-md border px-2 py-1 text-sm font-medium disabled:opacity-50"
                   >
                     校验
                   </button>
@@ -515,7 +515,7 @@ export function ModelerPage() {
                     type="button"
                     onClick={handleSave}
                     disabled={busy || !text}
-                    className="bg-primary text-primary-foreground hover:bg-primary/90 rounded-md px-2 py-1 text-xs font-medium disabled:opacity-50"
+                    className="bg-primary text-primary-foreground hover:bg-primary/90 rounded-md px-2 py-1 text-sm font-medium disabled:opacity-50"
                   >
                     {busy ? <Loader2 className="mr-1 inline h-3 w-3 animate-spin" /> : null}
                     保存
@@ -530,7 +530,7 @@ export function ModelerPage() {
                     <button
                       type="button"
                       onClick={addClass}
-                      className="bg-primary text-primary-foreground hover:opacity-90 rounded-md px-2.5 py-1 text-xs font-medium"
+                      className="bg-primary text-primary-foreground hover:opacity-90 rounded-md px-2.5 py-1 text-sm font-medium"
                     >
                       ＋ 新建类
                     </button>
@@ -545,7 +545,7 @@ export function ModelerPage() {
                       }
                       onClick={() => setConnectChild(selectedClass)}
                       className={cn(
-                        "rounded-md border px-2.5 py-1 text-xs font-medium disabled:opacity-40",
+                        "rounded-md border px-2.5 py-1 text-sm font-medium disabled:opacity-40",
                         connectChild
                           ? "border-primary/50 bg-primary/10 text-primary"
                           : "border-border bg-card text-muted-foreground",
@@ -558,16 +558,16 @@ export function ModelerPage() {
                       disabled={!selectedClass}
                       onClick={() => removeClass(selectedClass as string)}
                       title="删除前先查引用（属性链/实例），确认后从草稿移除"
-                      className="border-destructive/40 text-destructive rounded-md border px-2.5 py-1 text-xs disabled:opacity-40"
+                      className="border-destructive/40 text-destructive rounded-md border px-2.5 py-1 text-sm disabled:opacity-40"
                     >
                       ✕ 删除
                     </button>
                     {connectChild ? (
-                      <span className="bg-primary/10 text-primary animate-pulse rounded-full px-2.5 py-0.5 text-[11px] font-medium">
+                      <span className="bg-primary/10 text-primary animate-pulse rounded-full px-2.5 py-0.5 text-xs font-medium">
                         连线模式：为 {connectChild} 点击父类节点（Esc 取消）
                       </span>
                     ) : (
-                      <span className="text-muted-foreground text-[10.5px]">
+                      <span className="text-muted-foreground text-xs">
                         拖拽节点移位（视图态）· 连线写 subClassOf（结构数据）
                       </span>
                     )}
@@ -634,7 +634,7 @@ export function ModelerPage() {
               />
               <AxiomsPanel axioms={axioms} predicates={domainPredicates} />
               <Panel title="校验面板" subtitle="保存前必须通过">
-                <div className="p-4 text-xs">
+                <div className="p-4 text-sm">
                   <button
                     type="button"
                     onClick={handleValidate}
@@ -643,7 +643,7 @@ export function ModelerPage() {
                   >
                     校验当前草稿
                   </button>
-                  <p className="text-muted-foreground mt-2 text-[10.5px]">
+                  <p className="text-muted-foreground mt-2 text-xs">
                     检查 schema/引用/环。结果同时显示在顶部横幅。
                   </p>
                 </div>
@@ -662,7 +662,7 @@ function SaveBanner({ msg }: { msg: string }) {
   const ok = msg.startsWith("✓");
   return (
     <div
-      className={`${ok ? "bg-success/10 text-success" : "bg-destructive/10 text-destructive"} mb-3.5 rounded-lg border px-4 py-2.5 text-xs font-medium whitespace-pre-wrap`}
+      className={`${ok ? "bg-success/10 text-success" : "bg-destructive/10 text-destructive"} mb-3.5 rounded-lg border px-4 py-2.5 text-sm font-medium whitespace-pre-wrap`}
     >
       {msg}
     </div>
@@ -693,7 +693,7 @@ function FileTab({
     >
       <span className="truncate">{name}</span>
       {classCount !== undefined ? (
-        <span className="text-muted-foreground ml-2 flex-none text-[12px]">
+        <span className="text-muted-foreground ml-2 flex-none text-[13px]">
           {classCount} 类
         </span>
       ) : null}
@@ -730,7 +730,7 @@ function ClassDetailForm({
         <div className="border-border flex items-center gap-2 border-b px-4 py-3">
           <b className="text-sm font-semibold">选中元素 · 类</b>
         </div>
-        <div className="text-muted-foreground p-4 text-xs">
+        <div className="text-muted-foreground p-4 text-sm">
           ← 从画布中选择一个类开始编辑
         </div>
       </div>
@@ -743,33 +743,33 @@ function ClassDetailForm({
         <b className="text-sm font-semibold">选中元素 · {selected.name}</b>
         <Chip tone="primary">owl:Class</Chip>
       </div>
-      <div className="space-y-4 px-4 py-3 text-xs">
+      <div className="space-y-4 px-4 py-3 text-sm">
         {/* 基础信息 */}
         <fieldset>
-          <legend className="text-primary mb-2 text-[10.5px] font-semibold tracking-wide">◆ 基础信息</legend>
+          <legend className="text-primary mb-2 text-xs font-semibold tracking-wide">◆ 基础信息</legend>
           <div className="space-y-2.5">
             <label className="block">
-              <span className="text-muted-foreground text-[10.5px]">名称（IRI 局部）</span>
+              <span className="text-muted-foreground text-xs">名称（IRI 局部）</span>
               <input
                 defaultValue={selected.name}
                 key={`name-${selected.name}`}
                 readOnly
-                className="border-border bg-muted text-muted-foreground mt-0.5 h-7 w-full rounded-md border px-2 font-mono text-xs"
+                className="border-border bg-muted text-muted-foreground mt-0.5 h-7 w-full rounded-md border px-2 font-mono text-sm"
               />
             </label>
             <label className="block">
-              <span className="text-muted-foreground text-[10.5px]">显示名 label</span>
+              <span className="text-muted-foreground text-xs">显示名 label</span>
               <input
                 defaultValue={selected.label}
                 key={`label-${selected.name}`}
                 onBlur={(e) => {
                   if (e.target.value !== selected.label) onEdit("label", e.target.value);
                 }}
-                className="border-input focus:border-primary mt-0.5 h-7 w-full rounded-md border px-2 text-xs outline-none"
+                className="border-input focus:border-primary mt-0.5 h-7 w-full rounded-md border px-2 text-sm outline-none"
               />
             </label>
             <label className="block">
-              <span className="text-muted-foreground text-[10.5px]">定义 definition</span>
+              <span className="text-muted-foreground text-xs">定义 definition</span>
               <textarea
                 defaultValue={selected.definition}
                 key={`def-${selected.name}`}
@@ -777,21 +777,21 @@ function ClassDetailForm({
                   if (e.target.value !== selected.definition) onEdit("definition", e.target.value);
                 }}
                 rows={3}
-                className="border-input focus:border-primary mt-0.5 w-full resize-y rounded-md border px-2 py-1.5 text-xs outline-none"
+                className="border-input focus:border-primary mt-0.5 w-full resize-y rounded-md border px-2 py-1.5 text-sm outline-none"
               />
             </label>
           </div>
         </fieldset>
         {/* 继承关系 */}
         <fieldset>
-          <legend className="text-primary mb-2 text-[10.5px] font-semibold tracking-wide">◆ 继承关系</legend>
+          <legend className="text-primary mb-2 text-xs font-semibold tracking-wide">◆ 继承关系</legend>
           <div>
-            <span className="text-muted-foreground text-[10.5px]">父类 parents</span>
+            <span className="text-muted-foreground text-xs">父类 parents</span>
             <div className="mt-1 flex flex-wrap items-center gap-1.5">
               {localParents.map((p) => (
                 <span
                   key={p}
-                  className="border-primary/25 bg-primary/5 text-primary flex items-center gap-1 rounded-full border px-2.5 py-0.5 font-mono text-[10.5px]"
+                  className="border-primary/25 bg-primary/5 text-primary flex items-center gap-1 rounded-full border px-2.5 py-0.5 font-mono text-xs"
                 >
                   {p}
                   <button
@@ -811,7 +811,7 @@ function ClassDetailForm({
                   e.target.value = "";
                 }}
                 aria-label="添加父类"
-                className="border-border bg-card text-muted-foreground hover:border-primary/40 h-6 rounded-md border px-1.5 text-[10.5px]"
+                className="border-border bg-card text-muted-foreground hover:border-primary/40 h-6 rounded-md border px-1.5 text-xs"
               >
                 <option value="">＋ 添加父类</option>
                 {domainClasses
@@ -827,34 +827,34 @@ function ClassDetailForm({
         </fieldset>
         {/* 类型标注 */}
         <fieldset>
-          <legend className="text-primary mb-2 text-[10.5px] font-semibold tracking-wide">类型标注</legend>
+          <legend className="text-primary mb-2 text-xs font-semibold tracking-wide">类型标注</legend>
           <label className="block">
-            <span className="text-muted-foreground text-[10.5px]">键 hasKey</span>
+            <span className="text-muted-foreground text-xs">键 hasKey</span>
             <input
               defaultValue={selected.hasKey.join(", ")}
               key={`key-${selected.name}`}
               readOnly
               placeholder="如 name"
-              className="border-border bg-muted text-muted-foreground mt-0.5 h-7 w-full rounded-md border px-2 font-mono text-xs"
+              className="border-border bg-muted text-muted-foreground mt-0.5 h-7 w-full rounded-md border px-2 font-mono text-sm"
             />
           </label>
           <div className="mt-2">
-            <span className="text-muted-foreground text-[10.5px]">实例类型 etypes</span>
+            <span className="text-muted-foreground text-xs">实例类型 etypes</span>
             <div className="mt-1 flex flex-wrap items-center gap-1.5">
               {selected.etypes.length === 0 ? (
-                <span className="text-muted-foreground text-[11px]">—</span>
+                <span className="text-muted-foreground text-xs">—</span>
               ) : (
                 selected.etypes.map((et) => (
                   <span
                     key={et}
-                    className="inline-flex items-center rounded-full border border-primary/25 bg-primary/5 px-2.5 py-0.5 font-mono text-[10.5px] text-primary"
+                    className="inline-flex items-center rounded-full border border-primary/25 bg-primary/5 px-2.5 py-0.5 font-mono text-xs text-primary"
                   >
                     {et}
                   </span>
                 ))
               )}
             </div>
-            <span className="text-muted-foreground/60 mt-1 block text-[10px]">
+            <span className="text-muted-foreground/60 mt-1 block text-xs">
               由 registry etype_class_map 派生
             </span>
           </div>
@@ -884,7 +884,7 @@ function ParentAddSelect({
           e.target.value = "";
         }
       }}
-      className="border-border bg-card text-muted-foreground h-6 rounded-md border px-1.5 text-[10.5px]"
+      className="border-border bg-card text-muted-foreground h-6 rounded-md border px-1.5 text-xs"
     >
       <option value="">＋ 添加父类</option>
       {candidates.map((c) => (
@@ -908,7 +908,7 @@ function EtypeAddSelect({
           e.target.value = "";
         }
       }}
-      className="border-border bg-card text-muted-foreground h-6 rounded-md border px-1.5 text-[10.5px]"
+      className="border-border bg-card text-muted-foreground h-6 rounded-md border px-1.5 text-xs"
     >
       <option value="">＋ 添加 etype</option>
     </select>
@@ -926,22 +926,22 @@ function ReadonlyChips({
 }) {
   return (
     <div>
-      <span className="text-muted-foreground text-[11px] font-medium">{title}</span>
+      <span className="text-muted-foreground text-xs font-medium">{title}</span>
       <div className="border-border mt-1 flex min-h-8 flex-wrap items-center gap-1.5 rounded-md border px-2 py-1.5">
         {items.length === 0 ? (
-          <span className="text-muted-foreground text-[11px]">—</span>
+          <span className="text-muted-foreground text-xs">—</span>
         ) : (
           items.map((item) => (
             <span
               key={item}
-              className="border-primary/25 bg-primary/5 text-primary rounded-full border px-2 py-0.5 font-mono text-[10.5px]"
+              className="border-primary/25 bg-primary/5 text-primary rounded-full border px-2 py-0.5 font-mono text-xs"
             >
               {item}
             </span>
           ))
         )}
       </div>
-      {hint ? <span className="text-muted-foreground/70 mt-0.5 block text-[10px]">{hint}</span> : null}
+      {hint ? <span className="text-muted-foreground/70 mt-0.5 block text-xs">{hint}</span> : null}
     </div>
   );
 }
@@ -955,22 +955,22 @@ function AxiomsPanel({
 }) {
   return (
     <Panel title="公理" subtitle="结构只读 · 编辑走 YAML 模式">
-      <div className="space-y-3 p-4 text-xs">
+      <div className="space-y-3 p-4 text-sm">
         <div>
-          <span className="text-muted-foreground text-[11px] font-medium">
+          <span className="text-muted-foreground text-xs font-medium">
             属性链 property_chains
           </span>
           <div className="mt-1 space-y-1">
             {(axioms?.property_chains ?? []).map((chain) => (
               <div
                 key={chain.derived}
-                className="border-primary/20 bg-primary/5 rounded-md border px-2.5 py-1.5 font-mono text-[11px]"
+                className="border-primary/20 bg-primary/5 rounded-md border px-2.5 py-1.5 font-mono text-xs"
               >
                 {chain.chain.join(" ∘ ")} ⇒ <b>{chain.derived}</b>
               </div>
             ))}
             {(axioms?.property_chains ?? []).length === 0 ? (
-              <span className="text-muted-foreground text-[11px]">—</span>
+              <span className="text-muted-foreground text-xs">—</span>
             ) : null}
           </div>
         </div>
@@ -983,8 +983,8 @@ function AxiomsPanel({
           />
         </div>
         <div>
-          <span className="text-muted-foreground text-[11px] font-medium">逆 inverse</span>
-          <div className="border-border mt-1 min-h-8 rounded-md border px-2 py-1.5 font-mono text-[10.5px]">
+          <span className="text-muted-foreground text-xs font-medium">逆 inverse</span>
+          <div className="border-border mt-1 min-h-8 rounded-md border px-2 py-1.5 font-mono text-xs">
             {(axioms?.inverse ?? []).length === 0
               ? "—"
               : (axioms?.inverse ?? [])
@@ -1172,7 +1172,7 @@ function TBoxCanvas({
             >
               <span
                 className={cn(
-                  "block min-w-14 rounded-[10px] border-2 px-2.5 py-1.5 text-xs font-semibold shadow-sm",
+                  "block min-w-14 rounded-[10px] border-2 px-2.5 py-1.5 text-sm font-semibold shadow-sm",
                   isSel || isPending ? "text-white" : "text-foreground",
                 )}
                 style={{
@@ -1191,7 +1191,7 @@ function TBoxCanvas({
                 {cls.name}
                 <small
                   className={cn(
-                    "block text-[10px] font-normal",
+                    "block text-xs font-normal",
                     isSel || isPending ? "text-white/75" : "text-muted-foreground",
                   )}
                 >
@@ -1201,7 +1201,7 @@ function TBoxCanvas({
               {(() => {
                 const c = count ?? undefined;
                 return c !== undefined ? (
-                  <span className="text-muted-foreground mt-0.5 block text-[10px] tabular-nums">
+                  <span className="text-muted-foreground mt-0.5 block text-xs tabular-nums">
                     {c} 实例
                   </span>
                 ) : null;
@@ -1210,21 +1210,21 @@ function TBoxCanvas({
           );
         })}
         {connectChild ? (
-          <div className="border-primary/40 bg-primary/10 text-primary absolute inset-x-3 top-3 z-10 rounded-md border px-3 py-1.5 text-[11px] font-medium">
+          <div className="border-primary/40 bg-primary/10 text-primary absolute inset-x-3 top-3 z-10 rounded-md border px-3 py-1.5 text-xs font-medium">
             连线模式：点击目标父类节点（Esc 取消）
           </div>
         ) : null}
       </div>
       {connectChild ? null : (
         <div className="flex flex-wrap items-center gap-1.5">
-          <span className="text-muted-foreground text-[10.5px] font-medium">谓词：</span>
+          <span className="text-muted-foreground text-xs font-medium">谓词：</span>
           {predicates.length === 0 ? (
-            <span className="text-muted-foreground text-[10.5px]">—</span>
+            <span className="text-muted-foreground text-xs">—</span>
           ) : (
             predicates.map((p) => (
               <span
                 key={p}
-                className="border-primary/25 bg-primary/5 text-primary rounded-full border px-2 py-0.5 font-mono text-[10px]"
+                className="border-primary/25 bg-primary/5 text-primary rounded-full border px-2 py-0.5 font-mono text-xs"
               >
                 {p}
               </span>
@@ -1234,12 +1234,12 @@ function TBoxCanvas({
       )}
       <div className="flex flex-col gap-1.5">
         {chains.length === 0 ? (
-          <span className="text-muted-foreground text-[10.5px]">本域无属性链公理</span>
+          <span className="text-muted-foreground text-xs">本域无属性链公理</span>
         ) : (
           chains.map((chain) => (
             <div
               key={chain.derived}
-              className="border-primary/25 bg-primary/5 text-primary rounded-lg border border-dashed px-2.5 py-1.5 font-mono text-[11px]"
+              className="border-primary/25 bg-primary/5 text-primary rounded-lg border border-dashed px-2.5 py-1.5 font-mono text-xs"
             >
               {chain.chain.join(" ∘ ")} ⇒ <b>{chain.derived}</b>
             </div>

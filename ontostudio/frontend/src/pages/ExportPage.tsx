@@ -53,17 +53,17 @@ export function ExportPage() {
       <div className="mb-3.5 grid grid-cols-1 gap-3.5 xl:grid-cols-2">
         <Panel className="overflow-hidden">
           <div className="border-border flex items-center gap-2.5 border-b px-4 py-3">
-            <span className="bg-primary text-primary-foreground rounded px-1.5 py-0.5 font-mono text-[11px] font-semibold">
+            <span className="bg-primary text-primary-foreground rounded px-1.5 py-0.5 font-mono text-xs font-semibold">
               .ttl
             </span>
             <b className="text-sm font-semibold">Turtle</b>
-            <span className="text-muted-foreground text-[11px]">
+            <span className="text-muted-foreground text-xs">
               {turtleQuery.data ? `${turtleQuery.data.length} 字符` : "加载中…"}
             </span>
             <span className="ml-auto flex gap-1.5">
               <Chip tone="primary">推荐</Chip>
               <button
-                className="border-border hover:border-primary h-6 rounded-md border px-2 text-[11px] font-medium"
+                className="border-border hover:border-primary h-6 rounded-md border px-2 text-xs font-medium"
                 disabled={!turtleQuery.data}
                 onClick={() => turtleQuery.data && downloadText("ontostudio-all.ttl", turtleQuery.data, "text/turtle")}
               >
@@ -72,22 +72,22 @@ export function ExportPage() {
             </span>
           </div>
           <div className="p-3">
-            <pre className="bg-code text-code-fg max-h-72 overflow-auto rounded-lg p-3.5 font-mono text-[11.5px] leading-relaxed">
+            <pre className="bg-code text-code-fg max-h-72 overflow-auto rounded-lg p-3.5 font-mono text-xs leading-relaxed">
               {turtleQuery.error ? `导出失败：${(turtleQuery.error as Error).message}` : turtleQuery.data || "加载中…"}
             </pre>
           </div>
         </Panel>
         <Panel className="overflow-hidden">
           <div className="border-border flex items-center gap-2.5 border-b px-4 py-3">
-            <span className="bg-primary text-primary-foreground rounded px-1.5 py-0.5 font-mono text-[11px] font-semibold">
+            <span className="bg-primary text-primary-foreground rounded px-1.5 py-0.5 font-mono text-xs font-semibold">
               .jsonld
             </span>
             <b className="text-sm font-semibold">JSON-LD 1.1</b>
-            <span className="text-muted-foreground text-[11px]">schema 图</span>
+            <span className="text-muted-foreground text-xs">schema 图</span>
             <span className="ml-auto flex gap-1.5">
               <Chip>互操作</Chip>
               <button
-                className="border-border hover:border-primary h-6 rounded-md border px-2 text-[11px] font-medium"
+                className="border-border hover:border-primary h-6 rounded-md border px-2 text-xs font-medium"
                 disabled={!jsonldText}
                 onClick={() => jsonldText && downloadText("ontostudio-schema.jsonld", jsonldText, "application/ld+json")}
               >
@@ -96,7 +96,7 @@ export function ExportPage() {
             </span>
           </div>
           <div className="p-3">
-            <pre className="bg-code text-code-fg max-h-72 overflow-auto rounded-lg p-3.5 font-mono text-[11.5px] leading-relaxed">
+            <pre className="bg-code text-code-fg max-h-72 overflow-auto rounded-lg p-3.5 font-mono text-xs leading-relaxed">
               {jsonldQuery.error ? `导出失败：${(jsonldQuery.error as Error).message}` : jsonldText || "加载中…"}
             </pre>
           </div>
@@ -113,7 +113,7 @@ export function ExportPage() {
                 type="button"
                 disabled={loadMutation.isPending}
                 onClick={() => loadMutation.mutate()}
-                className="flex items-center gap-1.5 rounded-lg bg-primary px-3 py-1.5 text-xs font-medium text-white transition-opacity hover:opacity-90 disabled:opacity-50"
+                className="flex items-center gap-1.5 rounded-lg bg-primary px-3 py-1.5 text-sm font-medium text-white transition-opacity hover:opacity-90 disabled:opacity-50"
               >
                 {loadMutation.isPending ? (
                   <Loader2 className="h-3.5 w-3.5 animate-spin" />
@@ -122,12 +122,12 @@ export function ExportPage() {
                 )}
                 全量装载（对账）
               </button>
-              <span className="text-muted-foreground text-[11px]">
+              <span className="text-muted-foreground text-xs">
                 装载即重写 DB 真相——投影失败（degraded）后重跑本操作即恢复一致，数据无损失
               </span>
             </div>
             {loadMutation.isError ? (
-              <p className="text-destructive mt-3 text-xs">
+              <p className="text-destructive mt-3 text-sm">
                 装载失败：{(loadMutation.error as Error).message}
               </p>
             ) : null}
@@ -143,13 +143,13 @@ export function ExportPage() {
                     <div className="text-foreground text-base font-semibold tabular-nums">
                       {v as number}
                     </div>
-                    <div className="text-muted-foreground text-[10.5px]">{k as string}</div>
+                    <div className="text-muted-foreground text-xs">{k as string}</div>
                   </div>
                 ))}
               </div>
             ) : null}
             {loadResult && loadResult.skipped_entities.length > 0 ? (
-              <p className="text-warning mt-2 text-[11px]">
+              <p className="text-warning mt-2 text-xs">
                 跳过 {loadResult.skipped_entities.length} 行（etype 未在 registry 声明，详见后端日志）
               </p>
             ) : null}
@@ -160,11 +160,11 @@ export function ExportPage() {
             {SNAPSHOTS.map((snapshot) => (
               <div
                 key={snapshot.when}
-                className="border-border flex items-center gap-3 border-b px-4 py-2.5 text-xs last:border-b-0"
+                className="border-border flex items-center gap-3 border-b px-4 py-2.5 text-sm last:border-b-0"
               >
                 <span className="text-muted-foreground w-36 flex-none font-mono">{snapshot.when}</span>
                 <Chip tone="primary">计划中</Chip>
-                <span className="text-muted-foreground ml-auto font-mono text-[11.5px]">{snapshot.size}</span>
+                <span className="text-muted-foreground ml-auto font-mono text-xs">{snapshot.size}</span>
               </div>
             ))}
           </div>

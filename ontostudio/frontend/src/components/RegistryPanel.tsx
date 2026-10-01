@@ -27,7 +27,7 @@ export function RegistryPanel() {
 
   if (schemaQuery.isLoading || metaQuery.isLoading) {
     return (
-      <div className="text-muted-foreground flex items-center justify-center gap-2 py-10 text-xs">
+      <div className="text-muted-foreground flex items-center justify-center gap-2 py-10 text-sm">
         <Loader2 className="h-4 w-4 animate-spin" />
         加载注册表…
       </div>
@@ -36,7 +36,7 @@ export function RegistryPanel() {
 
   if (schemaQuery.isError) {
     return (
-      <div className="text-muted-foreground py-10 text-center text-xs">
+      <div className="text-muted-foreground py-10 text-center text-sm">
         注册表加载失败：{String(schemaQuery.error)}
       </div>
     );
@@ -52,7 +52,7 @@ export function RegistryPanel() {
   return (
     <div className="flex flex-col gap-4">
       <section>
-        <h3 className="text-muted-foreground mb-2 text-[10.5px] font-medium tracking-widest">
+        <h3 className="text-muted-foreground mb-2 text-xs font-medium tracking-widest">
           对象类型（{schema.object_types.length}）
         </h3>
         <div className="flex flex-col gap-2">
@@ -60,13 +60,13 @@ export function RegistryPanel() {
             <div key={obj.name} className="border-border rounded-lg border px-2.5 py-2">
               <div className="flex items-center gap-2">
                 <b className="text-foreground text-[12.5px] font-semibold">{obj.display_name}</b>
-                <span className="text-muted-foreground font-mono text-[10px]">{obj.name}</span>
-                <span className="text-muted-foreground ml-auto text-[11px] tabular-nums">
+                <span className="text-muted-foreground font-mono text-xs">{obj.name}</span>
+                <span className="text-muted-foreground ml-auto text-xs tabular-nums">
                   {obj.properties.length} 属性
                 </span>
               </div>
               {obj.description ? (
-                <p className="text-muted-foreground mt-1 text-[11px] leading-relaxed">{obj.description}</p>
+                <p className="text-muted-foreground mt-1 text-xs leading-relaxed">{obj.description}</p>
               ) : null}
             </div>
           ))}
@@ -75,7 +75,7 @@ export function RegistryPanel() {
 
       {stubLinks.length > 0 ? (
         <section>
-          <h3 className="text-muted-foreground mb-2 text-[10.5px] font-medium tracking-widest">
+          <h3 className="text-muted-foreground mb-2 text-xs font-medium tracking-widest">
             stub 链接（enabled:false，{stubLinks.length}）
           </h3>
           <div className="flex flex-col gap-2">
@@ -85,12 +85,12 @@ export function RegistryPanel() {
                 className="border-border rounded-lg border border-dashed px-2.5 py-2"
               >
                 <div className="flex items-center gap-2">
-                  <b className="text-foreground font-mono text-[11.5px]">{lt.name}</b>
-                  <span className="ml-auto text-[10.5px] text-amber-600 dark:text-amber-400">
+                  <b className="text-foreground font-mono text-xs">{lt.name}</b>
+                  <span className="ml-auto text-xs text-amber-600 dark:text-amber-400">
                     ⛔ traverse 拒绝
                   </span>
                 </div>
-                <p className="text-muted-foreground mt-1 text-[11px] leading-relaxed">
+                <p className="text-muted-foreground mt-1 text-xs leading-relaxed">
                   {lt.note ?? `${lt.source} → ${lt.target}`}
                 </p>
               </div>

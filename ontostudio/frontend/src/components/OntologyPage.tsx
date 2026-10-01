@@ -225,14 +225,14 @@ function OntologyWorkspace({
             placeholder="检索实体名…"
             aria-label="检索实体"
             autoComplete="off"
-            className="border-border bg-muted text-foreground placeholder:text-muted-foreground focus:border-primary h-8 w-full rounded-lg border px-8 text-xs outline-none"
+            className="border-border bg-muted text-foreground placeholder:text-muted-foreground focus:border-primary h-8 w-full rounded-lg border px-8 text-sm outline-none"
           />
           {/* 节点候选下拉仅地图视图有意义；消解视图该输入框语义 = 过滤待审列表
            * （透传 ResolutionPanel.searchQuery），出图节点下拉反而是噪音。 */}
           {view !== "resolution" && searchQuery.trim() ? (
             <div className="border-border bg-card absolute top-full left-0 z-20 mt-1 w-full overflow-hidden rounded-lg border shadow-sm">
               {searchMatches.length === 0 ? (
-                <div className="text-muted-foreground px-3 py-2 text-xs">
+                <div className="text-muted-foreground px-3 py-2 text-sm">
                   未找到匹配节点
                 </div>
               ) : (
@@ -241,7 +241,7 @@ function OntologyWorkspace({
                     key={match.id}
                     type="button"
                     onClick={() => handlePickMatch(match.id)}
-                    className="hover:bg-accent block w-full truncate px-3 py-1.5 text-left text-xs"
+                    className="hover:bg-accent block w-full truncate px-3 py-1.5 text-left text-sm"
                     title={`${match.label}（${match.id}）`}
                   >
                     {match.label}
@@ -260,7 +260,7 @@ function OntologyWorkspace({
               onClick={() => setColorByStatus((previous) => !previous)}
               data-testid="status-color-toggle"
               className={cn(
-                "inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1 text-xs transition-colors",
+                "inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1 text-sm transition-colors",
                 colorByStatus
                   ? "border-primary/40 bg-primary/10 text-primary"
                   : "border-border text-muted-foreground hover:text-foreground",
@@ -274,7 +274,7 @@ function OntologyWorkspace({
               onClick={() => setActiveOnly((previous) => !previous)}
               data-testid="active-only-toggle"
               className={cn(
-                "inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1 text-xs transition-colors",
+                "inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1 text-sm transition-colors",
                 activeOnly
                   ? "border-primary/40 bg-primary/10 text-primary"
                   : "border-border text-muted-foreground hover:text-foreground",
@@ -291,7 +291,7 @@ function OntologyWorkspace({
                 aria-label="按域过滤"
                 data-testid="domain-filter"
                 className={cn(
-                  "text-muted-foreground h-7 w-auto gap-1 rounded-lg px-2 text-xs font-medium shadow-none",
+                  "text-muted-foreground h-7 w-auto gap-1 rounded-lg px-2 text-sm font-medium shadow-none",
                   domainFilter ? "border-primary/40 text-primary" : "",
                 )}
               >
@@ -309,7 +309,7 @@ function OntologyWorkspace({
               onClick={() => setColorByCommunity((previous) => !previous)}
               data-testid="community-color-toggle"
               className={cn(
-                "inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1 text-xs transition-colors",
+                "inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1 text-sm transition-colors",
                 colorByCommunity
                   ? "border-primary/40 bg-primary/10 text-primary"
                   : "border-border text-muted-foreground hover:text-foreground",
@@ -320,7 +320,7 @@ function OntologyWorkspace({
           </>
         ) : null}
         <span
-          className="border-border text-muted-foreground inline-flex items-center gap-1 rounded-full border px-2.5 py-0.5 text-[11px] whitespace-nowrap tabular-nums"
+          className="border-border text-muted-foreground inline-flex items-center gap-1 rounded-full border px-2.5 py-0.5 text-xs whitespace-nowrap tabular-nums"
           title="registry 指纹（SHA-256 前 8 位）与版本"
         >
           <span className="font-mono">{fingerprint}</span>
@@ -357,7 +357,7 @@ function OntologyWorkspace({
                   type="button"
                   onClick={() => setActiveTab(tab)}
                   className={cn(
-                    "flex-1 border-b-2 py-2 text-xs transition-colors",
+                    "flex-1 border-b-2 py-2 text-sm transition-colors",
                     activeTab === tab
                       ? "border-primary text-primary font-semibold"
                       : "text-muted-foreground hover:text-foreground border-transparent",
@@ -405,7 +405,7 @@ function OntologyWorkspace({
 
       {/* 状态条（overviewOnly 模式隐藏） */}
       {!overviewOnly && (
-      <footer className="border-border bg-card text-muted-foreground flex shrink-0 items-center gap-3.5 overflow-x-auto border-t px-3.5 py-1 text-[10.5px] whitespace-nowrap tabular-nums">
+      <footer className="border-border bg-card text-muted-foreground flex shrink-0 items-center gap-3.5 overflow-x-auto border-t px-3.5 py-1 text-xs whitespace-nowrap tabular-nums">
         <span>
           registry <b className="font-mono">v{meta?.registry_version ?? "—"}</b>
         </span>
@@ -445,7 +445,7 @@ export function OntologyPage({
         <p className="text-muted-foreground text-sm">无语义地图访问权限</p>
         <a
           href={MAIN_LOGIN_URL}
-          className="border-border hover:bg-accent inline-flex items-center rounded-md border px-3 py-1.5 text-xs font-medium"
+          className="border-border hover:bg-accent inline-flex items-center rounded-md border px-3 py-1.5 text-sm font-medium"
         >
           前往主系统登录
         </a>

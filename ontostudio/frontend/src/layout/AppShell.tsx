@@ -191,7 +191,7 @@ export function AppShell() {
                 <b className="block text-[15px] leading-tight font-black tracking-wide">
                   OntoStudio
                 </b>
-                <small className="text-muted-foreground text-[10.5px] tracking-[0.14em]">
+                <small className="text-muted-foreground text-xs tracking-[0.14em]">
                   本体建模工作台
                 </small>
               </div>
@@ -218,7 +218,7 @@ export function AppShell() {
               {collapsed ? (
                 <div className="border-sidebar-border mx-2 mt-4 border-t" />
               ) : (
-                <div className="text-muted-foreground mt-4 px-2.5 pb-1.5 text-[10.5px] font-medium tracking-[0.1em]">
+                <div className="text-muted-foreground mt-4 px-2.5 pb-1.5 text-xs font-medium tracking-[0.1em]">
                   {section.group}
                 </div>
               )}
@@ -270,7 +270,7 @@ export function AppShell() {
             {collapsed ? (
               <div className="border-sidebar-border mx-2 mt-4 border-t" />
             ) : (
-              <div className="text-muted-foreground mt-4 px-2.5 pb-1.5 text-[10.5px] font-medium tracking-[0.1em]">
+              <div className="text-muted-foreground mt-4 px-2.5 pb-1.5 text-xs font-medium tracking-[0.1em]">
                 文档
               </div>
             )}
@@ -295,13 +295,13 @@ export function AppShell() {
             collapsed && "justify-center px-2",
           )}
         >
-          <span className="bg-primary text-primary-foreground grid h-7 w-7 flex-none place-items-center rounded-full text-[11px] font-semibold">
+          <span className="bg-primary text-primary-foreground grid h-7 w-7 flex-none place-items-center rounded-full text-xs font-semibold">
             管
           </span>
           {!collapsed ? (
             <div className="leading-tight">
-              <b className="block text-xs font-medium">知识工程组</b>
-              <span className="text-muted-foreground text-[10.5px]">admin@eai-flow.com</span>
+              <b className="block text-sm font-medium">知识工程组</b>
+              <span className="text-muted-foreground text-xs">admin@eai-flow.com</span>
             </div>
           ) : null}
         </div>

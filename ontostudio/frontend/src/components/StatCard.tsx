@@ -45,7 +45,7 @@ export function StatCard({ label, value, delta }: StatCardProps) {
       </p>
       {delta ? (
         <p
-          className="mt-1.5 text-xs [font-variant-numeric:tabular-nums]"
+          className="mt-1.5 text-sm [font-variant-numeric:tabular-nums]"
           style={{ color: INK_3 }}
         >
           {delta}

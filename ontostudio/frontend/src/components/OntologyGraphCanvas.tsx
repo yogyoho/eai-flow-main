@@ -399,7 +399,7 @@ export function OntologyGraphCanvas({
                 <button
                   type="button"
                   onClick={handleRetry}
-                  className="border-border text-foreground hover:bg-accent inline-flex items-center gap-1.5 rounded-md border px-3 py-1.5 text-xs"
+                  className="border-border text-foreground hover:bg-accent inline-flex items-center gap-1.5 rounded-md border px-3 py-1.5 text-sm"
                 >
                   <RefreshCw className="h-3.5 w-3.5" />
                   重试
@@ -423,7 +423,7 @@ export function OntologyGraphCanvas({
             <span
               key={item.status}
               title={`${STATUS_LABELS[item.status] ?? item.status} · ${item.size} 实体`}
-              className="bg-background/80 flex items-center gap-1 rounded-full px-2 py-0.5 text-[10.5px] backdrop-blur-sm"
+              className="bg-background/80 flex items-center gap-1 rounded-full px-2 py-0.5 text-xs backdrop-blur-sm"
             >
               <span
                 className="h-2 w-2 shrink-0 rounded-[3px]"
@@ -445,7 +445,7 @@ export function OntologyGraphCanvas({
             <span
               key={item.community}
               title={`社区 #${item.community} · ${item.size} 实体`}
-              className="bg-background/80 flex items-center gap-1 rounded-full px-2 py-0.5 text-[10.5px] backdrop-blur-sm"
+              className="bg-background/80 flex items-center gap-1 rounded-full px-2 py-0.5 text-xs backdrop-blur-sm"
             >
               <span
                 className="h-2 w-2 shrink-0 rounded-[3px]"

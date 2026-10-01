@@ -104,35 +104,35 @@ export function ReasoningPage() {
       />
       <div className="mb-3.5 grid grid-cols-3 gap-3.5">
         <Panel className="px-4 py-3.5">
-          <div className="text-muted-foreground text-xs font-medium">entailment 物化</div>
+          <div className="text-muted-foreground text-sm font-medium">entailment 物化</div>
           <div className="mt-0.5 text-3xl font-black tracking-tight">
             {inferQuery.data ? inferQuery.data.entailment_triples.toLocaleString() : "—"}
           </div>
-          <div className="text-muted-foreground mt-0.5 text-xs">
+          <div className="text-muted-foreground mt-0.5 text-sm">
             输入 {inferQuery.data ? inferQuery.data.input_triples.toLocaleString() : "—"} · 门限过滤{" "}
             {inferQuery.data?.filtered_low_confidence ?? 0}
           </div>
         </Panel>
         <Panel className="px-4 py-3.5">
-          <div className="text-muted-foreground text-xs font-medium">CONSTRUCT 派生</div>
+          <div className="text-muted-foreground text-sm font-medium">CONSTRUCT 派生</div>
           <div className="mt-0.5 text-3xl font-black tracking-tight">{derivedTotal}</div>
-          <div className="text-muted-foreground mt-0.5 text-xs">
+          <div className="text-muted-foreground mt-0.5 text-sm">
             {inferQuery.data ? `${rules.length} 条规则` : "— 条规则"} · 上次全量{" "}
             {inferQuery.data ? "刚刚" : "—"}
           </div>
         </Panel>
         <Panel className="px-4 py-3.5">
-          <div className="text-muted-foreground text-xs font-medium">闭包耗时</div>
+          <div className="text-muted-foreground text-sm font-medium">闭包耗时</div>
           <div className="mt-0.5 text-3xl font-black tracking-tight">
             {inferQuery.data ? `${inferQuery.data.duration_ms}ms` : "—"}
           </div>
-          <div className="text-muted-foreground mt-0.5 text-xs">5k 实体校准门限 ≤ 15s ✓</div>
+          <div className="text-muted-foreground mt-0.5 text-sm">5k 实体校准门限 ≤ 15s ✓</div>
         </Panel>
       </div>
       <Panel
         title="CONSTRUCT 规则"
         subtitle="替代 Rete · join 型派生"
-        actions={<button className="text-primary text-xs font-medium">新增规则</button>}
+        actions={<button className="text-primary text-sm font-medium">新增规则</button>}
       >
         <div className="overflow-x-auto">
           <table className="w-full text-[13px]">
@@ -141,7 +141,7 @@ export function ReasoningPage() {
                 {["规则", "派生谓词", "named graph", "派生数", "状态"].map((head, index) => (
                   <th
                     key={head}
-                    className={`text-muted-foreground px-4 py-3 text-xs font-semibold uppercase tracking-wider whitespace-nowrap ${index === 3 ? "text-right" : "text-left"}`}
+                    className={`text-muted-foreground px-4 py-3 text-sm font-semibold uppercase tracking-wider whitespace-nowrap ${index === 3 ? "text-right" : "text-left"}`}
                   >
                     {head}
                   </th>
@@ -151,7 +151,7 @@ export function ReasoningPage() {
             <tbody className="divide-border divide-y">
               {rules.length === 0 ? (
                 <tr>
-                  <td colSpan={5} className="text-muted-foreground px-4 py-8 text-center text-xs">
+                  <td colSpan={5} className="text-muted-foreground px-4 py-8 text-center text-sm">
                     {inferQuery.isPending ? "推理计算中…" : "暂无规则计数"}
                   </td>
                 </tr>
@@ -160,10 +160,10 @@ export function ReasoningPage() {
                   <tr key={rule.name} className="hover:bg-muted/50 cursor-pointer">
                     <td className="px-4 py-3">
                       <b className="font-medium">{rule.name}</b>
-                      <div className="text-muted-foreground text-[11.5px]">{rule.desc}</div>
+                      <div className="text-muted-foreground text-xs">{rule.desc}</div>
                     </td>
-                    <td className="text-muted-foreground px-4 py-3 font-mono text-xs">{rule.pred}</td>
-                    <td className="text-muted-foreground px-4 py-3 font-mono text-xs">{rule.graph}</td>
+                    <td className="text-muted-foreground px-4 py-3 font-mono text-sm">{rule.pred}</td>
+                    <td className="text-muted-foreground px-4 py-3 font-mono text-sm">{rule.graph}</td>
                     <td className="px-4 py-3 text-right tabular-nums">{rule.count}</td>
                     <td className="px-4 py-3">
                       <Chip tone="primary">现行</Chip>
@@ -179,7 +179,7 @@ export function ReasoningPage() {
         <div className="flex flex-col gap-3.5">
           <Panel title="规则预览" subtitle="bidder_qualified · Phase B 验收问题 #3">
             <div className="p-3">
-              <pre className="bg-code-bg text-code-fg overflow-x-auto rounded-lg p-3.5 font-mono text-[11.5px] leading-relaxed">
+              <pre className="bg-code-bg text-code-fg overflow-x-auto rounded-lg p-3.5 font-mono text-xs leading-relaxed">
                 {SPARQL}
               </pre>
             </div>
@@ -192,13 +192,13 @@ export function ReasoningPage() {
             <ol className="flex flex-col gap-3 p-4 text-[13px]">
               <li className="border-primary/20 border-l-2 pl-3">
                 <b className="text-[12.5px]">① 基础事实（确认入图）</b>
-                <div className="text-muted-foreground font-mono text-[11px]">
+                <div className="text-muted-foreground font-mono text-xs">
                   monitored_by(矿井水处理站, 悬浮物浓度) · 源: 环评报告-横城 §4.2
                 </div>
               </li>
               <li className="border-primary/20 border-l-2 pl-3">
                 <b className="text-[12.5px]">② 基础事实（确认入图）</b>
-                <div className="text-muted-foreground font-mono text-[11px]">
+                <div className="text-muted-foreground font-mono text-xs">
                   has_limit(悬浮物浓度, GB 50383-2010/表2) · 源: 条款抽取
                 </div>
               </li>
@@ -206,7 +206,7 @@ export function ReasoningPage() {
                 <b className="text-[12.5px]">
                   ③ 属性链推导 <Chip tone="primary">prp-spo2</Chip>
                 </b>
-                <div className="text-muted-foreground font-mono text-[11px]">
+                <div className="text-muted-foreground font-mono text-xs">
                   monitored_by∘has_limit ⇒ covered_by_standard · graph: rules/eia/chain-1
                 </div>
               </li>
@@ -214,12 +214,12 @@ export function ReasoningPage() {
                 <b className="text-[12.5px]">
                   ④ sameas 传播 <Chip tone="primary">sameas_propagation</Chip>
                 </b>
-                <div className="text-muted-foreground font-mono text-[11px]">
+                <div className="text-muted-foreground font-mono text-xs">
                   同义设施（回用水车间）继承同一治理关系
                 </div>
               </li>
             </ol>
-            <p className="text-muted-foreground border-border border-t px-4 py-2.5 text-[11px]">
+            <p className="text-muted-foreground border-border border-t px-4 py-2.5 text-xs">
               白盒化（逐条物化可下钻 + 反事实「为什么没推出来」）已入 TODOS「推理白盒化」，触发条件驱动开工。
             </p>
           </Panel>
@@ -240,7 +240,7 @@ export function ReasoningPage() {
                 className="border-border flex items-start gap-2.5 border-b py-2.5 last:border-b-0"
               >
                 <span
-                  className={`shrink-0 rounded-md px-2 py-0.5 text-[11px] font-semibold ${
+                  className={`shrink-0 rounded-md px-2 py-0.5 text-xs font-semibold ${
                     question.verdict === "PASS"
                       ? "bg-primary/10 text-primary"
                       : "bg-destructive/10 text-destructive"
@@ -250,7 +250,7 @@ export function ReasoningPage() {
                 </span>
                 <div className="min-w-0">
                   <div className="text-[12.5px]">{question.text}</div>
-                  <div className="text-muted-foreground mt-0.5 font-mono text-[10.5px]">
+                  <div className="text-muted-foreground mt-0.5 font-mono text-xs">
                     → {question.answer}
                   </div>
                 </div>

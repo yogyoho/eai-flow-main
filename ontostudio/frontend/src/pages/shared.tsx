@@ -26,7 +26,7 @@ export function PageHeader({
     <div className="mb-5 flex flex-wrap items-center gap-3">
       {Icon ? <Icon className="text-primary h-[18px] w-[18px] flex-none" /> : null}
       {clause ? (
-        <span className="border-primary/25 bg-primary/8 text-primary rounded-md border px-2 py-0.5 font-mono text-[11px]">
+        <span className="border-primary/25 bg-primary/8 text-primary rounded-md border px-2 py-0.5 font-mono text-xs">
           {clause}
         </span>
       ) : null}
@@ -48,7 +48,7 @@ export function Chip({
   return (
     <span
       className={cn(
-        "inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-[11.5px] font-medium whitespace-nowrap",
+        "inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-medium whitespace-nowrap",
         tone === "gray" && "border-border text-muted-foreground border",
         tone === "primary" && "bg-primary/10 text-primary",
         tone === "danger" && "bg-destructive/10 text-destructive",
@@ -107,7 +107,7 @@ export function Panel({
           ) : null}
           <b className="text-sm font-semibold">{title}</b>
           {subtitle ? (
-            <span className="text-muted-foreground text-xs font-normal">
+            <span className="text-muted-foreground text-sm font-normal">
               {subtitle}
             </span>
           ) : null}
@@ -124,7 +124,7 @@ export function DemoTag({ className }: { className?: string }) {
   return (
     <span
       className={cn(
-        "text-muted-foreground/70 border-border/70 rounded border border-dashed px-1.5 py-px font-mono text-[10px]",
+        "text-muted-foreground/70 border-border/70 rounded border border-dashed px-1.5 py-px font-mono text-xs",
         className,
       )}
     >

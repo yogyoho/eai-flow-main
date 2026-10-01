@@ -111,7 +111,7 @@ function FilterSelect({
         size="sm"
         aria-label={label}
         className={cn(
-          "h-7 w-auto gap-1 rounded-md px-2.5 text-xs font-medium shadow-none",
+          "h-7 w-auto gap-1 rounded-md px-2.5 text-sm font-medium shadow-none",
           active
             ? "border-primary/40 text-primary"
             : "text-muted-foreground",
@@ -245,7 +245,7 @@ export function EntitiesPage() {
             e.stopPropagation();
             window.location.hash = "resolve";
           }}
-          className="bg-primary text-primary-foreground hover:opacity-90 rounded-md px-2 py-1 text-[11px] font-medium"
+          className="bg-primary text-primary-foreground hover:opacity-90 rounded-md px-2 py-1 text-xs font-medium"
         >
           去审核
         </button>
@@ -259,14 +259,14 @@ export function EntitiesPage() {
             e.stopPropagation();
             setSelectedId((current) => current); // 打开抽屉查看合并上下文
           }}
-          className="border-border bg-card text-foreground hover:bg-muted rounded-md border px-2 py-1 text-[11px]"
+          className="border-border bg-card text-foreground hover:bg-muted rounded-md border px-2 py-1 text-xs"
         >
           查看合并
         </button>
       );
     }
     return (
-      <span className="text-primary text-[11.5px]">详情</span>
+      <span className="text-primary text-xs">详情</span>
     );
   }
 
@@ -333,7 +333,7 @@ export function EntitiesPage() {
                 }))}
               />
             ) : null}
-            <span className="text-muted-foreground/80 hidden font-mono text-[10px] lg:inline">
+            <span className="text-muted-foreground/80 hidden font-mono text-xs lg:inline">
               GET /ontology/objects/{"{type}"}
             </span>
             <div className="relative">
@@ -348,7 +348,7 @@ export function EntitiesPage() {
                   }
                 }}
                 placeholder="检索实体名…"
-                className="border-border bg-muted text-foreground placeholder:text-muted-foreground focus:border-primary h-7 w-40 rounded-md border pr-2 pl-7 text-xs outline-none"
+                className="border-border bg-muted text-foreground placeholder:text-muted-foreground focus:border-primary h-7 w-40 rounded-md border pr-2 pl-7 text-sm outline-none"
               />
             </div>
           </div>
@@ -362,7 +362,7 @@ export function EntitiesPage() {
                   <th
                     key={c.api}
                     className={cn(
-                      "text-muted-foreground px-4 py-2 text-left text-[11.5px] font-medium",
+                      "text-muted-foreground px-4 py-2 text-left text-xs font-medium",
                       c.api === "confidence" || c.api === "__mentions"
                         ? "text-right"
                         : "text-left",
@@ -379,7 +379,7 @@ export function EntitiesPage() {
                 <tr>
                   <td
                     colSpan={columns.length + 1}
-                    className="text-muted-foreground px-4 py-10 text-center text-xs"
+                    className="text-muted-foreground px-4 py-10 text-center text-sm"
                   >
                     <Loader2 className="mx-auto mb-1 h-4 w-4 animate-spin" />
                     加载中…
@@ -389,7 +389,7 @@ export function EntitiesPage() {
                 <tr>
                   <td
                     colSpan={columns.length + 1}
-                    className="text-destructive px-4 py-10 text-center text-xs"
+                    className="text-destructive px-4 py-10 text-center text-sm"
                   >
                     加载失败：{(rowsQuery.error as Error).message}
                   </td>
@@ -398,7 +398,7 @@ export function EntitiesPage() {
                 <tr>
                   <td
                     colSpan={columns.length + 1}
-                    className="text-muted-foreground px-4 py-10 text-center text-xs"
+                    className="text-muted-foreground px-4 py-10 text-center text-sm"
                   >
                     {hasFilter ? "无匹配结果——试试放宽过滤器" : "该类型暂无实例"}
                   </td>
@@ -434,7 +434,7 @@ export function EntitiesPage() {
                         if (c.api === "etype") {
                           return (
                             <td key={c.api} className="px-4 py-2.5">
-                              <span className="bg-secondary text-secondary-foreground rounded-md px-1.5 py-0.5 font-mono text-[10.5px]">
+                              <span className="bg-secondary text-secondary-foreground rounded-md px-1.5 py-0.5 font-mono text-xs">
                                 {renderCell(value)}
                               </span>
                             </td>
@@ -444,7 +444,7 @@ export function EntitiesPage() {
                           return (
                             <td
                               key={c.api}
-                              className="max-w-[12rem] truncate px-4 py-2.5 font-mono text-xs"
+                              className="max-w-[12rem] truncate px-4 py-2.5 font-mono text-sm"
                             >
                               {renderCell(value)}
                             </td>
@@ -454,7 +454,7 @@ export function EntitiesPage() {
                           return (
                             <td
                               key={c.api}
-                              className="px-4 py-2.5 text-right font-mono text-[11.5px] tabular-nums"
+                              className="px-4 py-2.5 text-right font-mono text-xs tabular-nums"
                             >
                               {value === null || value === undefined
                                 ? "—"
@@ -484,7 +484,7 @@ export function EntitiesPage() {
                           return (
                             <td
                               key={c.api}
-                              className="text-muted-foreground px-4 py-2.5 font-mono text-[11px]"
+                              className="text-muted-foreground px-4 py-2.5 font-mono text-xs"
                             >
                               {fmtTime(value)}
                             </td>
@@ -515,7 +515,7 @@ export function EntitiesPage() {
 
       {/* 页脚（合同价格分项校验同款分页条）：左计数 · 右 首页/◀/页码窗/▶/末页 + 规划动作 */}
       <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
-        <span className="text-muted-foreground text-xs">
+        <span className="text-muted-foreground text-sm">
           共 <b className="text-foreground tabular-nums">{total.toLocaleString()}</b> 条 · 第{" "}
           {page + 1}/{totalPages} 页
           {hasFilter ? " · 已过滤" : ""}
@@ -532,7 +532,7 @@ export function EntitiesPage() {
             <SelectTrigger
               size="sm"
               aria-label="每页条数"
-              className="text-muted-foreground h-7 w-auto gap-1 rounded-md px-2 text-xs font-medium shadow-none"
+              className="text-muted-foreground h-7 w-auto gap-1 rounded-md px-2 text-sm font-medium shadow-none"
             >
               <SelectValue />
             </SelectTrigger>
@@ -551,7 +551,7 @@ export function EntitiesPage() {
               setPage(0);
               setSelectedId(null);
             }}
-            className="border-border bg-card hover:bg-muted rounded-md border px-2.5 py-1 text-xs font-medium disabled:opacity-40"
+            className="border-border bg-card hover:bg-muted rounded-md border px-2.5 py-1 text-sm font-medium disabled:opacity-40"
           >
             首页
           </button>
@@ -563,7 +563,7 @@ export function EntitiesPage() {
               setPage(page - 1);
               setSelectedId(null);
             }}
-            className="border-border bg-card hover:bg-muted rounded-md border px-2 py-1 text-xs disabled:opacity-40"
+            className="border-border bg-card hover:bg-muted rounded-md border px-2 py-1 text-sm disabled:opacity-40"
           >
             <ChevronLeft className="h-3.5 w-3.5" />
           </button>
@@ -576,7 +576,7 @@ export function EntitiesPage() {
                 setSelectedId(null);
               }}
               className={cn(
-                "rounded-md border px-2.5 py-1 text-xs font-medium tabular-nums",
+                "rounded-md border px-2.5 py-1 text-sm font-medium tabular-nums",
                 p === page
                   ? "border-primary bg-primary text-primary-foreground"
                   : "border-border bg-card text-foreground hover:bg-muted",
@@ -593,7 +593,7 @@ export function EntitiesPage() {
               setPage(page + 1);
               setSelectedId(null);
             }}
-            className="border-border bg-card hover:bg-muted rounded-md border px-2 py-1 text-xs disabled:opacity-40"
+            className="border-border bg-card hover:bg-muted rounded-md border px-2 py-1 text-sm disabled:opacity-40"
           >
             <ChevronRight className="h-3.5 w-3.5" />
           </button>
@@ -604,7 +604,7 @@ export function EntitiesPage() {
               setPage(totalPages - 1);
               setSelectedId(null);
             }}
-            className="border-border bg-card hover:bg-muted rounded-md border px-2.5 py-1 text-xs font-medium disabled:opacity-40"
+            className="border-border bg-card hover:bg-muted rounded-md border px-2.5 py-1 text-sm font-medium disabled:opacity-40"
           >
             末页
           </button>
@@ -613,19 +613,19 @@ export function EntitiesPage() {
             type="button"
             disabled
             title="规划中"
-            className="border-border bg-card rounded-md border px-2.5 py-1 text-xs opacity-60"
+            className="border-border bg-card rounded-md border px-2.5 py-1 text-sm opacity-60"
           >
             导出当前筛选{" "}
-            <span className="text-warning font-mono text-[10px]">规划</span>
+            <span className="text-warning font-mono text-xs">规划</span>
           </button>
           <button
             type="button"
             disabled
             title="规划中（TODOS·批量摊销）"
-            className="bg-primary text-primary-foreground rounded-md px-2.5 py-1 text-xs font-medium opacity-60"
+            className="bg-primary text-primary-foreground rounded-md px-2.5 py-1 text-sm font-medium opacity-60"
           >
             批量送审{" "}
-            <span className="font-mono text-[10px] opacity-80">TODOS·批量摊销</span>
+            <span className="font-mono text-xs opacity-80">TODOS·批量摊销</span>
           </button>
         </div>
       </div>
@@ -648,7 +648,7 @@ export function EntitiesPage() {
               <button
                 type="button"
                 onClick={() => setSelectedId(null)}
-                className="border-border text-muted-foreground hover:text-foreground rounded-md border px-2 py-0.5 text-xs"
+                className="border-border text-muted-foreground hover:text-foreground rounded-md border px-2 py-0.5 text-sm"
               >
                 关闭 ✕
               </button>

@@ -237,7 +237,7 @@ export function DashboardPage() {
                     <th
                       key={h}
                       className={cn(
-                        "text-muted-foreground px-4 py-2 text-[11.5px] font-medium",
+                        "text-muted-foreground px-4 py-2 text-xs font-medium",
                         i === 0 ? "text-left" : "text-center",
                       )}
                     >
@@ -264,18 +264,18 @@ export function DashboardPage() {
                         {row.domain}
                       </span>
                     </td>
-                    <td className="px-4 py-2.5 text-center text-xs tabular-nums">{row.classes}</td>
-                    <td className="px-4 py-2.5 text-center text-xs tabular-nums">{row.predicates}</td>
-                    <td className="px-4 py-2.5 text-center text-xs tabular-nums">{row.count}</td>
+                    <td className="px-4 py-2.5 text-center text-sm tabular-nums">{row.classes}</td>
+                    <td className="px-4 py-2.5 text-center text-sm tabular-nums">{row.predicates}</td>
+                    <td className="px-4 py-2.5 text-center text-sm tabular-nums">{row.count}</td>
                     <td className="px-4 py-2.5 text-center">
                       {row.disabledHere ? (
-                        <span className="bg-destructive/10 text-destructive rounded-full px-2 py-0.5 text-[11px]">
+                        <span className="bg-destructive/10 text-destructive rounded-full px-2 py-0.5 text-xs">
                           链路禁用（{disabledLinks.length} 条）
                         </span>
                       ) : row.count > 0 ? (
-                        <span className="bg-primary/10 text-primary rounded-full px-2 py-0.5 text-[11px]">活跃</span>
+                        <span className="bg-primary/10 text-primary rounded-full px-2 py-0.5 text-xs">活跃</span>
                       ) : (
-                        <span className="text-muted-foreground text-[11px]">暂无实体</span>
+                        <span className="text-muted-foreground text-xs">暂无实体</span>
                       )}
                     </td>
                   </tr>
@@ -283,7 +283,7 @@ export function DashboardPage() {
                 })}
                 {domainRows.length === 0 ? (
                   <tr>
-                    <td colSpan={5} className="text-muted-foreground px-4 py-8 text-center text-xs">
+                    <td colSpan={5} className="text-muted-foreground px-4 py-8 text-center text-sm">
                       {filesQuery.isLoading ? "加载 registry…" : "registry 为空"}
                     </td>
                   </tr>
@@ -291,7 +291,7 @@ export function DashboardPage() {
               </tbody>
             </table>
           </div>
-          <div className="border-border text-muted-foreground flex flex-none items-center gap-2 border-t px-4 py-2.5 text-[11px]">
+          <div className="border-border text-muted-foreground flex flex-none items-center gap-2 border-t px-4 py-2.5 text-xs">
             <GitBranch className="h-3 w-3" />
             跨域链路（cross_module）四条全禁用——单域闭环优先，跨域待业务触发（TODOS）
           </div>
@@ -303,7 +303,7 @@ export function DashboardPage() {
           tone={TONE_PURPLE}
           icon={Network}
           actions={
-            <span className="text-muted-foreground/70 border-border/70 rounded border border-dashed px-1.5 py-px font-mono text-[10px]">
+            <span className="text-muted-foreground/70 border-border/70 rounded border border-dashed px-1.5 py-px font-mono text-xs">
               规划 · 示例数据
             </span>
           }
@@ -319,17 +319,17 @@ export function DashboardPage() {
               >
                 <b className="text-[13px]">{chain.title}</b>
                 <span
-                  className="ml-2 rounded px-1.5 py-0.5 font-mono text-[10px]"
+                  className="ml-2 rounded px-1.5 py-0.5 font-mono text-xs"
                   style={{ background: withAlpha(tone, 0.1), color: toneText(tone) }}
                 >
                   {chain.rule}
                 </span>
-                <div className="text-muted-foreground mt-0.5 font-mono text-[11px]">{chain.ttl}</div>
+                <div className="text-muted-foreground mt-0.5 font-mono text-xs">{chain.ttl}</div>
               </li>
               );
             })}
           </ol>
-          <p className="text-muted-foreground border-border border-t px-4 py-2.5 text-[11px]">
+          <p className="text-muted-foreground border-border border-t px-4 py-2.5 text-xs">
             逐条物化可下钻（named graph 归属即触发轨迹）已入 TODOS「推理白盒化」——当前图面判据见导出互操作页。
           </p>
         </Panel>
@@ -338,12 +338,12 @@ export function DashboardPage() {
       {/* 三小卡——绿=校验 蓝=数据面 琥珀=抽取 */}
       <div className="mt-3.5 grid grid-cols-1 gap-3.5 xl:grid-cols-3">
         <Panel title="校验状态" tone={TONE_GREEN} icon={ShieldCheck} className="flex flex-col">
-          <div className="flex flex-1 flex-col gap-2.5 p-4 text-xs">
+          <div className="flex flex-1 flex-col gap-2.5 p-4 text-sm">
             <div className="flex items-center justify-between">
               <span>国标符合性（5.3/5.4/附录A/§9）</span>
               <span
                 className={cn(
-                  "rounded-full px-2 py-0.5 text-[11px] font-medium",
+                  "rounded-full px-2 py-0.5 text-xs font-medium",
                   conformance.length > 0 && passedCount === conformance.length
                     ? "bg-success/10 text-success"
                     : "bg-warning/15 text-warning",
@@ -361,7 +361,7 @@ export function DashboardPage() {
             <button
               type="button"
               onClick={() => go("validation")}
-              className="border-border bg-card hover:bg-muted mt-auto flex items-center gap-1 self-start rounded-lg border px-2.5 py-1.5 text-[12px] font-medium"
+              className="border-border bg-card hover:bg-muted mt-auto flex items-center gap-1 self-start rounded-lg border px-2.5 py-1.5 text-[13px] font-medium"
             >
               进入校验中心 <ArrowRight className="h-3 w-3" />
             </button>
@@ -369,7 +369,7 @@ export function DashboardPage() {
         </Panel>
 
         <Panel title="图数据同步" subtitle="本体库与图保持一致" tone={TONE_BLUE} icon={Database} className="flex flex-col">
-          <div className="flex flex-1 flex-col gap-2.5 p-4 text-xs">
+          <div className="flex flex-1 flex-col gap-2.5 p-4 text-sm">
             <div className="flex items-center justify-between">
               <span>registry 版本</span>
               <span className="font-mono">v{registryMetaQuery.data?.registry_version ?? "—"}</span>
@@ -387,7 +387,7 @@ export function DashboardPage() {
                 type="button"
                 disabled={loadMutation.isPending}
                 onClick={() => loadMutation.mutate()}
-                className="border-border bg-card hover:bg-muted flex items-center gap-1 rounded-lg border px-2.5 py-1.5 text-[12px] font-medium disabled:opacity-50"
+                className="border-border bg-card hover:bg-muted flex items-center gap-1 rounded-lg border px-2.5 py-1.5 text-[13px] font-medium disabled:opacity-50"
               >
                 {loadMutation.isPending ? (
                   <Loader2 className="h-3 w-3 animate-spin" />
@@ -397,14 +397,14 @@ export function DashboardPage() {
                 全量装载（对账）
               </button>
               {loadResult ? (
-                <span className="text-muted-foreground font-mono text-[11px]">
+                <span className="text-muted-foreground font-mono text-xs">
                   {loadResult.entities} 实体 / {loadResult.relations} 关系已装载
                 </span>
               ) : (
                 <button
                   type="button"
                   onClick={() => go("export")}
-                  className="text-primary flex items-center gap-1 text-[11.5px] font-medium"
+                  className="text-primary flex items-center gap-1 text-xs font-medium"
                 >
                   装载 / 导出 <ArrowRight className="h-3 w-3" />
                 </button>
@@ -419,12 +419,12 @@ export function DashboardPage() {
           tone={TONE_AMBER}
           icon={FileInput}
           actions={
-            <span className="text-muted-foreground/70 border-border/70 rounded border border-dashed px-1.5 py-px font-mono text-[10px]">
+            <span className="text-muted-foreground/70 border-border/70 rounded border border-dashed px-1.5 py-px font-mono text-xs">
               规划
             </span>
           }
         >
-          <div className="flex flex-1 flex-col gap-2.5 p-4 text-xs">
+          <div className="flex flex-1 flex-col gap-2.5 p-4 text-sm">
             <p className="text-muted-foreground leading-relaxed">
               抽取任务概念（队列/进度/置信度分布）待后端任务 API——当前生产线
               <span className="text-foreground font-mono"> regex/v1</span>，
@@ -433,7 +433,7 @@ export function DashboardPage() {
             <button
               type="button"
               onClick={() => go("ingest")}
-              className="border-border bg-card hover:bg-muted mt-auto flex items-center gap-1 self-start rounded-lg border px-2.5 py-1.5 text-[12px] font-medium"
+              className="border-border bg-card hover:bg-muted mt-auto flex items-center gap-1 self-start rounded-lg border px-2.5 py-1.5 text-[13px] font-medium"
             >
               进入抽取导入 <ArrowRight className="h-3 w-3" />
             </button>
@@ -492,16 +492,16 @@ function Tile({
         >
           <Icon className="h-[18px] w-[18px]" style={{ color: tone }} />
         </span>
-        <span className="text-muted-foreground text-xs font-medium">{k}</span>
+        <span className="text-muted-foreground text-sm font-medium">{k}</span>
       </div>
       <div
         className="mt-2 text-2xl font-semibold tracking-tight tabular-nums"
         style={{ color: accent && v !== null && v > 0 ? toneText(tone) : undefined }}
       >
         {v === null ? "—" : v.toLocaleString()}
-        {unit ? <small className="text-muted-foreground ml-1.5 text-xs font-normal">{unit}</small> : null}
+        {unit ? <small className="text-muted-foreground ml-1.5 text-sm font-normal">{unit}</small> : null}
       </div>
-      <div className="text-muted-foreground mt-1 flex items-center gap-1 text-[11px]">
+      <div className="text-muted-foreground mt-1 flex items-center gap-1 text-xs">
         <span
           className="h-1.5 w-1.5 flex-none rounded-full"
           style={{ background: withAlpha(tone, 0.55) }}

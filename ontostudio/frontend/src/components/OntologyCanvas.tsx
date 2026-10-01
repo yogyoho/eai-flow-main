@@ -130,7 +130,8 @@ function OntologyCanvasInner({
         label: e.label,
         animated: false,
         style: { stroke: "var(--primary, #2563eb)", strokeWidth: 1.5 },
-        labelStyle: { fontSize: 10, fill: "var(--muted-foreground, #71717a)" },
+        // EAI-CUSTOM: 边标签最小 11px（画布内元数据低于全局辅助档 12px，避免挤爆布局）
+        labelStyle: { fontSize: 11, fill: "var(--muted-foreground, #71717a)" },
       })),
     [edgesData],
   );

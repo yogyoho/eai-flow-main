@@ -50,7 +50,7 @@ export function SectionCard({
         className="flex w-full items-start gap-3 pt-1 text-left"
       >
         <span
-          className="mt-0.5 rounded-md px-2 py-0.5 text-xs font-semibold"
+          className="mt-0.5 rounded-md px-2 py-0.5 text-sm font-semibold"
           style={{ background: ACCENT_SOFT, color: BLUE }}
         >
           {badge}

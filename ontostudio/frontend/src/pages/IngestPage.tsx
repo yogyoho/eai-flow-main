@@ -124,30 +124,30 @@ export function IngestPage() {
             type="button"
             disabled
             title="规划中（任务 API）"
-            className="bg-primary text-primary-foreground flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium opacity-60"
+            className="bg-primary text-primary-foreground flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium opacity-60"
           >
             ＋ 新建抽取任务
-            <span className="rounded bg-white/15 px-1 py-px font-mono text-[10px]">规划·任务API</span>
+            <span className="rounded bg-white/15 px-1 py-px font-mono text-xs">规划·任务API</span>
           </button>
           <button
             type="button"
             disabled={loadMutation.isPending}
             onClick={() => loadMutation.mutate()}
-            className="border-border bg-card hover:bg-muted flex items-center gap-1.5 rounded-md border px-3 py-1.5 text-xs font-medium disabled:opacity-50"
+            className="border-border bg-card hover:bg-muted flex items-center gap-1.5 rounded-md border px-3 py-1.5 text-sm font-medium disabled:opacity-50"
           >
             {loadMutation.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : null}
             从主系统线程导入
           </button>
-          <span className="text-muted-foreground ml-auto max-w-[52ch] text-[11px] leading-relaxed">
+          <span className="text-muted-foreground ml-auto max-w-[52ch] text-xs leading-relaxed">
             抽取来源 <span className="text-foreground font-mono">eia-batch-v2-llm</span>
             （LLM 离线批量管线，etype/谓词与 eia.yaml v2 枚举严格同名）· 在线任务 API 规划中 ·
             v1 历史参考：月儿湾全链路 460 实体 / 205 关系 / 318 提及 → 装载 → infer 1857 物化（该批 v1 数据已清除）
           </span>
         </div>
         {loadMutation.isError ? (
-          <p className="text-destructive mb-3 text-xs">{loadMsg}</p>
+          <p className="text-destructive mb-3 text-sm">{loadMsg}</p>
         ) : loadMsg ? (
-          <p className="text-success mb-3 text-xs">{loadMsg}</p>
+          <p className="text-success mb-3 text-sm">{loadMsg}</p>
         ) : null}
 
         {/* 抽取任务队列（静态示例——「任务」概念后端 TODOS） */}
@@ -169,7 +169,7 @@ export function IngestPage() {
                     <th
                       key={head}
                       className={cn(
-                        "text-muted-foreground px-4 py-2 text-[11.5px] font-medium whitespace-nowrap",
+                        "text-muted-foreground px-4 py-2 text-xs font-medium whitespace-nowrap",
                         index >= 3 && index <= 5 ? "text-right" : "text-left",
                       )}
                     >
@@ -182,9 +182,9 @@ export function IngestPage() {
                 {TASKS.map((task) => (
                   <tr key={task.doc} className="border-border hover:bg-muted/50 border-b last:border-b-0">
                     <td className="max-w-[20rem] truncate px-4 py-2.5 font-medium">{task.doc}</td>
-                    <td className="text-muted-foreground px-4 py-2.5 font-mono text-xs">{task.domain}</td>
+                    <td className="text-muted-foreground px-4 py-2.5 font-mono text-sm">{task.domain}</td>
                     <td className="px-4 py-2.5">
-                      <span className="flex items-center gap-2 text-xs">
+                      <span className="flex items-center gap-2 text-sm">
                         <span className={cn("inline-block h-2 w-2 flex-none rounded-full", STATUS_DOT[task.status])} />
                         {task.status}
                         {task.progress ? (
@@ -202,7 +202,7 @@ export function IngestPage() {
                           onClick={() => {
                             window.location.hash = "resolve";
                           }}
-                          className="border-border bg-card hover:bg-muted rounded-md border px-2 py-1 text-[11px] font-medium"
+                          className="border-border bg-card hover:bg-muted rounded-md border px-2 py-1 text-xs font-medium"
                         >
                           送审待复核
                         </button>
@@ -211,12 +211,12 @@ export function IngestPage() {
                           type="button"
                           disabled
                           title="任务 API 规划中"
-                          className="border-border bg-card rounded-md border px-2 py-1 text-[11px] opacity-50"
+                          className="border-border bg-card rounded-md border px-2 py-1 text-xs opacity-50"
                         >
                           ↑ 提前
                         </button>
                       ) : (
-                        <span className="text-muted-foreground text-[11px]">等待完成</span>
+                        <span className="text-muted-foreground text-xs">等待完成</span>
                       )}
                     </td>
                   </tr>
@@ -231,13 +231,13 @@ export function IngestPage() {
           <Panel title="置信度分布" subtitle="graph_entity 实时统计">
             <div className="flex flex-col gap-2 p-4">
               {entitiesQuery.isLoading ? (
-                <div className="text-muted-foreground flex items-center justify-center gap-2 py-4 text-xs">
+                <div className="text-muted-foreground flex items-center justify-center gap-2 py-4 text-sm">
                   <Loader2 className="h-3.5 w-3.5 animate-spin" />
                   加载实体…
                 </div>
               ) : (
                 histogram.map((bar) => (
-                  <div key={bar.label} className="flex items-center gap-2.5 text-[11.5px]">
+                  <div key={bar.label} className="flex items-center gap-2.5 text-xs">
                     <span className="text-muted-foreground w-9 flex-none font-mono">{bar.label}</span>
                     <div className="bg-muted h-3.5 min-w-0 flex-1 overflow-hidden rounded">
                       <div
@@ -249,7 +249,7 @@ export function IngestPage() {
                   </div>
                 ))
               )}
-              <p className="text-muted-foreground mt-1 text-[11px]">
+              <p className="text-muted-foreground mt-1 text-xs">
                 低置信段（&lt;.7）优先进入人审队列；高置信段规划供方案 C（agent 预审）自动确认（后端规划中）。
               </p>
             </div>
@@ -258,22 +258,22 @@ export function IngestPage() {
           <Panel title="证据链引文" subtitle="mention 永不删">
             <div className="flex flex-col gap-2.5 p-4">
               {mentionsQuery.isLoading ? (
-                <div className="text-muted-foreground flex items-center justify-center gap-2 py-4 text-xs">
+                <div className="text-muted-foreground flex items-center justify-center gap-2 py-4 text-sm">
                   <Loader2 className="h-3.5 w-3.5 animate-spin" />
                   加载最近引文…
                 </div>
               ) : recentMentions.length === 0 ? (
-                <div className="text-muted-foreground px-2 py-6 text-center text-xs">
+                <div className="text-muted-foreground px-2 py-6 text-center text-sm">
                   暂无提及记录——抽取导入后证据链在此展示
                 </div>
               ) : (
                 recentMentions.map((m) => (
                   <figure
                     key={m.id}
-                    className="border-border bg-muted rounded-lg border px-3 py-2.5 text-xs"
+                    className="border-border bg-muted rounded-lg border px-3 py-2.5 text-sm"
                   >
                     <blockquote>{m.quote ? `"${m.quote}"` : "—"}</blockquote>
-                    <figcaption className="text-muted-foreground/80 mt-1 font-mono text-[10.5px]">
+                    <figcaption className="text-muted-foreground/80 mt-1 font-mono text-xs">
                       doc:{m.documentId || "—"} · thread:{m.threadId?.slice(0, 6) || "—"}
                       {m.extractedBy ? ` · ${m.extractedBy}` : ""}
                     </figcaption>

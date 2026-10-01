@@ -45,7 +45,7 @@ export function ChartCard({
           {action}
         </div>
         {meta ? (
-          <p className="mt-0.5 text-xs leading-normal" style={{ color: INK_3 }}>
+          <p className="mt-0.5 text-sm leading-normal" style={{ color: INK_3 }}>
             {meta}
           </p>
         ) : null}

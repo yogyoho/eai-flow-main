@@ -318,7 +318,7 @@ function CountTooltip(props: {
   if (!props.active || !data) return null;
   return (
     <div
-      className="rounded-[10px] px-3 py-2 text-xs shadow-[0_4px_16px_rgba(0,0,0,0.08)]"
+      className="rounded-[10px] px-3 py-2 text-sm shadow-[0_4px_16px_rgba(0,0,0,0.08)]"
       style={{ background: CARD, border: `1px solid ${CARD_BORDER}` }}
     >
       <p

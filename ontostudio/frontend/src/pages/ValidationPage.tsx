@@ -39,7 +39,7 @@ export function ValidationPage() {
           actions={
             <button
               type="button"
-              className="border-border bg-card hover:bg-muted h-8 rounded-md border px-3 text-xs font-medium disabled:opacity-50"
+              className="border-border bg-card hover:bg-muted h-8 rounded-md border px-3 text-sm font-medium disabled:opacity-50"
               disabled={!data}
               onClick={() =>
                 downloadReport({
@@ -64,7 +64,7 @@ export function ValidationPage() {
               ))
             : conformance.map((check) => (
                 <div key={check.name} className="border-border bg-card rounded-xl border p-3.5 shadow-sm">
-                  <div className="text-muted-foreground truncate text-[11.5px] font-medium" title={`${check.clause} ${check.name}`}>
+                  <div className="text-muted-foreground truncate text-xs font-medium" title={`${check.clause} ${check.name}`}>
                     {check.clause} {check.name}
                   </div>
                   <div
@@ -77,7 +77,7 @@ export function ValidationPage() {
                   </div>
                   <div
                     className={cn(
-                      "mt-1 text-[11px] font-medium",
+                      "mt-1 text-xs font-medium",
                       check.passed ? "text-success" : "text-destructive",
                     )}
                   >
@@ -88,7 +88,7 @@ export function ValidationPage() {
         </div>
 
         {validateQuery.error ? (
-          <div className="border-destructive/40 bg-destructive/10 text-destructive mt-3.5 rounded-lg border px-4 py-3 text-xs">
+          <div className="border-destructive/40 bg-destructive/10 text-destructive mt-3.5 rounded-lg border px-4 py-3 text-sm">
             校验服务不可达或未登录：{(validateQuery.error as Error).message}
           </div>
         ) : null}
@@ -101,7 +101,7 @@ export function ValidationPage() {
               <span className="flex items-center gap-1.5">
                 <Chip tone={errorCount > 0 ? "danger" : "primary"}>{errorCount} 错误</Chip>
                 <Chip tone={warningCount > 0 ? "warning" : "gray"}>{warningCount} 警告</Chip>
-                <span className="text-muted-foreground/80 hidden font-mono text-[10px] lg:inline">
+                <span className="text-muted-foreground/80 hidden font-mono text-xs lg:inline">
                   GET /formal/validate
                 </span>
               </span>
@@ -113,7 +113,7 @@ export function ValidationPage() {
                 <thead>
                   <tr className="border-border bg-muted/60 border-b">
                     {["级别", "形状", "目标", "说明"].map((head) => (
-                      <th key={head} className="text-muted-foreground px-4 py-2 text-left text-[11.5px] font-medium">
+                      <th key={head} className="text-muted-foreground px-4 py-2 text-left text-xs font-medium">
                         {head}
                       </th>
                     ))}
@@ -122,13 +122,13 @@ export function ValidationPage() {
                 <tbody>
                   {!data ? (
                     <tr>
-                      <td colSpan={4} className="text-muted-foreground px-4 py-8 text-center text-xs">
+                      <td colSpan={4} className="text-muted-foreground px-4 py-8 text-center text-sm">
                         <Loader /> 加载中…
                       </td>
                     </tr>
                   ) : violations.length === 0 ? (
                     <tr>
-                      <td colSpan={4} className="text-muted-foreground px-4 py-8 text-center text-xs">
+                      <td colSpan={4} className="text-muted-foreground px-4 py-8 text-center text-sm">
                         当前断言图无 SHACL 违规
                       </td>
                     </tr>
@@ -142,8 +142,8 @@ export function ValidationPage() {
                               {isWarning ? "warning" : "violation"}
                             </Chip>
                           </td>
-                          <td className="px-4 py-2.5 font-mono text-[11.5px]">{violation.source ?? "—"}</td>
-                          <td className="max-w-[12rem] truncate px-4 py-2.5 font-mono text-[11.5px]" title={violation.focusNode ?? undefined}>
+                          <td className="px-4 py-2.5 font-mono text-xs">{violation.source ?? "—"}</td>
+                          <td className="max-w-[12rem] truncate px-4 py-2.5 font-mono text-xs" title={violation.focusNode ?? undefined}>
                             {violation.focusNode ?? "—"}
                           </td>
                           <td className="max-w-[18rem] truncate px-4 py-2.5" title={violation.message ?? undefined}>
@@ -162,7 +162,7 @@ export function ValidationPage() {
           <Panel
             title="校验运行"
             actions={
-              <span className="text-muted-foreground/80 hidden font-mono text-[10px] lg:inline">
+              <span className="text-muted-foreground/80 hidden font-mono text-xs lg:inline">
                 pyshacl 0.40 · shacl_graph 参数
               </span>
             }
@@ -173,7 +173,7 @@ export function ValidationPage() {
                   type="button"
                   onClick={() => validateQuery.refetch()}
                   disabled={validateQuery.isFetching}
-                  className="bg-primary text-primary-foreground hover:bg-primary/90 flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium disabled:opacity-50"
+                  className="bg-primary text-primary-foreground hover:bg-primary/90 flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium disabled:opacity-50"
                 >
                   {validateQuery.isFetching ? <LoaderInline /> : <Play className="h-3 w-3 fill-current" />}
                   重新校验
@@ -182,12 +182,12 @@ export function ValidationPage() {
                   type="button"
                   disabled
                   title="按域过滤校验为规划项"
-                  className="border-border bg-card rounded-md border px-3 py-1.5 text-xs opacity-60"
+                  className="border-border bg-card rounded-md border px-3 py-1.5 text-sm opacity-60"
                 >
                   范围：全域
                 </button>
               </div>
-              <p className="text-muted-foreground text-[11px]">
+              <p className="text-muted-foreground text-xs">
                 上次运行{" "}
                 {validateQuery.dataUpdatedAt
                   ? new Date(validateQuery.dataUpdatedAt).toLocaleString("zh-CN", { hour12: false })
@@ -195,7 +195,7 @@ export function ValidationPage() {
                 · {data ? `${data.shacl.duration_ms}ms` : "—"} · 国标五项 + SHACL shapes 编译一次性完成。
               </p>
               <div className="border-border flex flex-wrap items-center justify-between gap-2 border-t pt-3">
-                <span className="text-muted-foreground text-[11px]">
+                <span className="text-muted-foreground text-xs">
                   注册表草稿校验（建模器保存前）另行走 validate 端点。
                 </span>
                 <button
@@ -203,7 +203,7 @@ export function ValidationPage() {
                   onClick={() => {
                     window.location.hash = "modeler";
                   }}
-                  className="text-primary text-[11.5px] font-medium underline-offset-2 hover:underline"
+                  className="text-primary text-xs font-medium underline-offset-2 hover:underline"
                 >
                   去建模器校验草稿
                 </button>
@@ -212,7 +212,7 @@ export function ValidationPage() {
           </Panel>
         </div>
 
-        <p className="text-muted-foreground mt-3.5 text-[11px]">
+        <p className="text-muted-foreground mt-3.5 text-xs">
           本套件不覆盖 §6.2 核心实体类型、§7.3.2 表 1 的 34 条对象属性、§8.2 的 10 条公理规则。判定口径见
           docs/ontology/methodology.md §4.4。
         </p>
