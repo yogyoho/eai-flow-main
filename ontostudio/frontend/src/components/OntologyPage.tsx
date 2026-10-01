@@ -415,7 +415,13 @@ function OntologyWorkspace({
             </div>
             <div className="min-h-0 flex-1 overflow-y-auto">
               {activeTab === "detail" ? (
-                <DetailPanel nodeId={selectedNodeId || null} />
+                <DetailPanel
+                  nodeId={selectedNodeId || null}
+                  onFocusNode={(dialectId) => {
+                    handleSelectNode(dialectId);
+                    canvasHandleRef.current?.focusNode?.(dialectId);
+                  }}
+                />
               ) : (
                 <div className="p-3">
                   <RegistryPanel />

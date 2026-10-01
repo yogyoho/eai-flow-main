@@ -307,11 +307,34 @@ interface LinkTypeRowsProps {
   pk: string;
   linkType: LinkTypeSummary;
   opposite: ObjectTypeSummary;
+  onFocusNode?: (dialectId: string) => void;
+}
+
+/** 链型组头中文（v4 关联链接语义化）：未知链型回退原样。 */
+const LINK_TYPE_LABELS: Record<string, string> = {
+  relation_subject: "作为主体的关系",
+  relation_object: "作为客体的关系",
+  mention_of_entity: "证据引文",
+};
+
+/** 关系行→对侧实体 pk（入向=主体，出向=客体）。 */
+function oppositeEntityPk(row: Record<string, unknown>, thisPk: string): string {
+  const subject = String(row.subject_id ?? "");
+  const object = String(row.object_id ?? "");
+  return subject === thisPk ? object : subject;
 }
 
 /** 单个链接类型的对侧行列表（ TanStack Query 按需拉取，仅节点被选中时 enabled）。 */
-function LinkTypeRows({ apiName, pk, linkType, opposite }: LinkTypeRowsProps) {
+function LinkTypeRows({ apiName, pk, linkType, opposite, onFocusNode }: LinkTypeRowsProps) {
   const outgoing = linkType.source === apiName;
+  const predicateLabels = useQuery({
+    queryKey: ["ontology", "predicate-labels"],
+    queryFn: getPredicateLabels,
+    staleTime: Number.POSITIVE_INFINITY,
+    retry: false,
+  });
+  const isRelationLink = opposite.name === "graph_relation";
+  const isMentionLink = opposite.name === "graph_mention";
   const linksQuery = useQuery({
     queryKey: ["ontology", "links", apiName, pk, linkType.name],
     queryFn: ({ signal }) => fetchObjectLinks(apiName, pk, linkType.name, { signal }),
@@ -324,7 +347,8 @@ function LinkTypeRows({ apiName, pk, linkType, opposite }: LinkTypeRowsProps) {
   return (
     <div className="mb-2">
       <div className="text-muted-foreground mb-1 flex items-center gap-1.5 text-xs">
-        <span className="text-primary font-mono">{linkType.name}</span>
+        <span className="text-primary font-medium">{LINK_TYPE_LABELS[linkType.name] ?? linkType.name}</span>
+        <span className="text-muted-foreground font-mono text-[10px]">{linkType.name}</span>
         <span>{outgoing ? "→ 出" : "← 入"}</span>
         <span className="ml-auto tabular-nums">{linksQuery.isLoading ? "…" : rows.length}</span>
       </div>
@@ -336,23 +360,69 @@ function LinkTypeRows({ apiName, pk, linkType, opposite }: LinkTypeRowsProps) {
       {!linksQuery.isError && rows.map((row, index) => {
         const pkText = pkToString(row[opposite.pk]);
         const oppositeId = `${opposite.name}:${pkText}`;
+
+        // 关系行：对侧实体（入向行本实体是 object→对侧=subject；出向反之）+谓词中文
+        if (isRelationLink) {
+          const otherPk = oppositeEntityPk(row, pk);
+          const otherNodeId = `graph_entity:${otherPk}`;
+          const otherName = graph.hasNode(otherNodeId)
+            ? String(graph.getNodeAttribute(otherNodeId, "label"))
+            : `实体 ${otherPk.slice(0, 8)}…`;
+          const predicate = localizePredicate(
+            String(row.predicate ?? ""),
+            predicateLabels.data ?? new Map(),
+          );
+          return (
+            <button
+              key={`${oppositeId}-${index}`}
+              type="button"
+              onClick={() => onFocusNode?.(otherNodeId)}
+              title={`${predicate} · 点击在图中定位 ${otherName}`}
+              className="border-border text-foreground hover:border-primary/50 hover:bg-primary/5 mt-1 flex w-full items-center gap-1.5 rounded-md border px-2 py-1.5 text-left text-xs transition-colors"
+            >
+              <span className="text-primary truncate font-medium">{otherName}</span>
+              <span className="text-muted-foreground ml-auto shrink-0 font-mono text-[10px]">{predicate}</span>
+              <span className="text-muted-foreground shrink-0">{outgoing ? "→" : "←"}</span>
+            </button>
+          );
+        }
+
+        // 引文行：quote 片段优先（v4：引文=证据，不再是 UUID 卡）
+        if (isMentionLink) {
+          const quote = String(row.quote ?? "").trim();
+          const doc = String(row.document_id ?? "");
+          return (
+            <div
+              key={`${oppositeId}-${index}`}
+              className="border-border text-foreground mt-1 rounded-md border px-2 py-1.5 text-xs"
+            >
+              <div className="truncate" title={quote || doc}>
+                {quote ? `「${quote}」` : doc || "（无上下文引文）"}
+              </div>
+              {doc ? <div className="text-muted-foreground mt-0.5 truncate font-mono text-[10px]">{doc}</div> : null}
+            </div>
+          );
+        }
+
+        // 其余链型：对侧节点在图中→名称可点；否则回退原 UUID 行
         const label = (
           graph.hasNode(oppositeId)
             ? String(graph.getNodeAttribute(oppositeId, "label"))
             : ""
         ) || pkText || "?";
         return (
-          <div
+          <button
             key={`${oppositeId}-${index}`}
-            className="border-border text-foreground mt-1 flex items-center gap-1.5 rounded-md border px-2 py-1.5 text-xs"
+            type="button"
+            onClick={() => onFocusNode?.(oppositeId)}
+            title={label}
+            className="border-border text-foreground hover:border-primary/50 hover:bg-primary/5 mt-1 flex w-full items-center gap-1.5 rounded-md border px-2 py-1.5 text-left text-xs transition-colors"
           >
-            <span className="truncate" title={label}>
-              {label}
-            </span>
+            <span className="truncate">{label}</span>
             <span className="text-muted-foreground ml-auto shrink-0 text-xs">
               {outgoing ? "→" : "←"} {outgoing ? linkType.target : linkType.source}
             </span>
-          </div>
+          </button>
         );
       })}
       {!linksQuery.isError && !linksQuery.isLoading && rows.length === 0 ? (
@@ -362,7 +432,13 @@ function LinkTypeRows({ apiName, pk, linkType, opposite }: LinkTypeRowsProps) {
   );
 }
 
-export function DetailPanel({ nodeId }: { nodeId: string | null }) {
+export function DetailPanel({
+  nodeId,
+  onFocusNode,
+}: {
+  nodeId: string | null;
+  onFocusNode?: (dialectId: string) => void;
+}) {
   const schemaQuery = useQuery({
     queryKey: ["ontology", "object-types"],
     queryFn: fetchObjectTypes,
@@ -401,7 +477,7 @@ export function DetailPanel({ nodeId }: { nodeId: string | null }) {
     ([key]) => !(patternAttrs && key === "attrs"),
   );
   // 字段分层（v4 文案包 F1 续）：核心业务字段常驻；技术字段（ID/时间戳/时效）收进
-  // 「技术信息」折叠；空值整行隐藏——生效自/至 实测常为 null，空行纯噪音。
+  // 「其他信息」折叠；空值整行隐藏——生效自/至 实测常为 null，空行纯噪音。
   const TECH_FIELDS = new Set(["id", "createdAt", "updatedAt", "validFrom", "validTo"]);
   const isEmptyVal = (v: unknown) => v === null || v === undefined || v === "";
   const coreEntries = genericEntries.filter(([k, v]) => !TECH_FIELDS.has(k) && !isEmptyVal(v));
@@ -432,10 +508,11 @@ export function DetailPanel({ nodeId }: { nodeId: string | null }) {
       </div>
 
       {isDomainPattern ? <DomainPatternCard properties={properties} /> : null}
-
+      <hr className="my-2" />
       <h3 className="text-muted-foreground mb-1.5 text-xs font-medium tracking-widest">属性</h3>
+      
       {genericEntries.length > 0 ? (
-        <dl className="grid grid-cols-[96px_1fr] gap-x-2.5 gap-y-1 text-sm">
+        <dl className="grid grid-cols-[96px_1fr] gap-x-2.5 gap-y-1 text-[13px]">
           {coreEntries.map(([key, value]) => {
             const label = FIELD_LABELS[key];
             return (
@@ -501,7 +578,7 @@ export function DetailPanel({ nodeId }: { nodeId: string | null }) {
           </dl>
         </details>
       ) : null}
-
+      <hr className="my-2" />
       <h3 className="text-muted-foreground mt-4 mb-1.5 text-xs font-medium tracking-widest">
         关联链接
       </h3>
@@ -526,6 +603,7 @@ export function DetailPanel({ nodeId }: { nodeId: string | null }) {
               pk={pk}
               linkType={lt}
               opposite={opposite}
+              onFocusNode={onFocusNode}
             />
           );
         })
