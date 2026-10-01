@@ -1,0 +1,1046 @@
+{
+ "summary": {
+  "驳回": 19,
+  "确认": 80,
+  "存疑": 3
+ },
+ "recommendations": {
+  "驳回": [
+   {
+    "id": "bfcc07f6-481a-4cc4-b318-9ea51ae54682",
+    "etype": "chapter",
+    "name": "12",
+    "deg": 1,
+    "reasons": [
+     "名称过短"
+    ],
+    "note": "碎片/泛指/错挂"
+   },
+   {
+    "id": "1add40a9-4bbd-438b-80ed-c96f27a7048e",
+    "etype": "chapter",
+    "name": "13",
+    "deg": 1,
+    "reasons": [
+     "名称过短"
+    ],
+    "note": "碎片/泛指/错挂"
+   },
+   {
+    "id": "8353f33b-bb47-4604-9e76-6311b496b770",
+    "etype": "coal_seam",
+    "name": "焦煤",
+    "deg": 1,
+    "reasons": [
+     "名称过短"
+    ],
+    "note": "碎片/泛指/错挂"
+   },
+   {
+    "id": "cf718f87-ecca-4e4e-a23a-719d1f27d459",
+    "etype": "emission_standard",
+    "name": "达标排放要求",
+    "deg": 1,
+    "reasons": [
+     "泛指性名称",
+     "泛指前缀"
+    ],
+    "note": "碎片/泛指/错挂"
+   },
+   {
+    "id": "3ceaf07b-3332-4061-bba2-08ed347e34e9",
+    "etype": "impact_result",
+    "name": "超标",
+    "deg": 1,
+    "reasons": [
+     "名称过短"
+    ],
+    "note": "碎片/泛指/错挂"
+   },
+   {
+    "id": "f8b1f74b-0c44-48b0-9113-772150d836f0",
+    "etype": "measure_process_concept",
+    "name": "综合利用",
+    "deg": 0,
+    "reasons": [
+     "无邻接孤岛"
+    ],
+    "note": "泛指概念词"
+   },
+   {
+    "id": "b21069b5-577e-42e9-a17a-402e8cffd7bf",
+    "etype": "mine",
+    "name": "煤矿",
+    "deg": 1,
+    "reasons": [
+     "名称过短"
+    ],
+    "note": "泛指矿名无具体指代"
+   },
+   {
+    "id": "97920d34-91c7-4489-84f2-2d3ed490f6b9",
+    "etype": "mine",
+    "name": "矿井",
+    "deg": 1,
+    "reasons": [
+     "名称过短"
+    ],
+    "note": "泛指矿名无具体指代"
+   },
+   {
+    "id": "394821cf-c0c8-45e0-81c2-1aa8bab1d0dd",
+    "etype": "mine",
+    "name": "矿区",
+    "deg": 3,
+    "reasons": [
+     "泛指性名称",
+     "名称过短"
+    ],
+    "note": "泛指矿名无具体指代"
+   },
+   {
+    "id": "1db59420-0071-4169-bbbe-74a7c8efb7ff",
+    "etype": "mine_field",
+    "name": "井田",
+    "deg": 1,
+    "reasons": [
+     "名称过短"
+    ],
+    "note": "泛指矿名无具体指代"
+   },
+   {
+    "id": "d1ea35a5-1e7f-4b7c-bfb3-f5b7baf5b8c9",
+    "etype": "mine_field",
+    "name": "矿区",
+    "deg": 2,
+    "reasons": [
+     "泛指性名称",
+     "名称过短"
+    ],
+    "note": "泛指矿名无具体指代"
+   },
+   {
+    "id": "7abcb53b-dade-4118-a397-c16511defc66",
+    "etype": "mine_field",
+    "name": "矿田",
+    "deg": 2,
+    "reasons": [
+     "名称过短"
+    ],
+    "note": "泛指矿名无具体指代"
+   },
+   {
+    "id": "704f1970-1d59-463a-b9aa-12914f73b052",
+    "etype": "mining_district",
+    "name": "矿区",
+    "deg": 2,
+    "reasons": [
+     "泛指性名称",
+     "名称过短"
+    ],
+    "note": "泛指矿名无具体指代"
+   },
+   {
+    "id": "3e6c255f-cb0b-4860-9448-b0d2f990dfd9",
+    "etype": "org",
+    "name": "矿方",
+    "deg": 1,
+    "reasons": [
+     "泛指性名称"
+    ],
+    "note": "碎片/泛指/错挂"
+   },
+   {
+    "id": "aa83fc7b-3189-46ca-8c15-2f01a283686a",
+    "etype": "place",
+    "name": "本区",
+    "deg": 1,
+    "reasons": [
+     "名称过短"
+    ],
+    "note": "碎片/泛指/错挂"
+   },
+   {
+    "id": "8dc884d1-7071-4b55-b3dd-207644b4978c",
+    "etype": "planning_change",
+    "name": "规划方案",
+    "deg": 1,
+    "reasons": [
+     "泛指性名称",
+     "泛指前缀"
+    ],
+    "note": "碎片/泛指/错挂"
+   },
+   {
+    "id": "a9146643-7b53-4a83-9c55-c7d0d7ac6819",
+    "etype": "treatment_measure",
+    "name": "处理",
+    "deg": 1,
+    "reasons": [
+     "名称过短"
+    ],
+    "note": "碎片/泛指/错挂"
+   },
+   {
+    "id": "e859b4f4-cccb-4e09-bb11-996fa0ce5d9b",
+    "etype": "treatment_measure",
+    "name": "池体",
+    "deg": 1,
+    "reasons": [
+     "名称过短"
+    ],
+    "note": "碎片/泛指/错挂"
+   },
+   {
+    "id": "1359547a-a7f7-4a3a-ad54-397474313198",
+    "etype": "treatment_measure",
+    "name": "综合利用途径",
+    "deg": 1,
+    "reasons": [
+     "泛指性名称",
+     "泛指前缀"
+    ],
+    "note": "碎片/泛指/错挂"
+   }
+  ],
+  "确认": [
+   {
+    "id": "90c46ba1-32c6-4730-b62c-575b60d1fdb0",
+    "etype": "chapter",
+    "name": "总则",
+    "deg": 7,
+    "reasons": [
+     "名称过短"
+    ],
+    "note": "行业通用简称/真实简称，建议后续归并受控词表"
+   },
+   {
+    "id": "452ebac6-ce9f-4bfe-ab4a-bf52b1dd8d03",
+    "etype": "chapter",
+    "name": "总论",
+    "deg": 4,
+    "reasons": [
+     "名称过短"
+    ],
+    "note": "行业通用简称/真实简称，建议后续归并受控词表"
+   },
+   {
+    "id": "ebef5761-0f62-43d5-b907-082550ba0be3",
+    "etype": "chapter",
+    "name": "规划方案概况及分析",
+    "deg": 3,
+    "reasons": [
+     "泛指前缀"
+    ],
+    "note": "报告自身/区域泛指节点，有邻接结构价值"
+   },
+   {
+    "id": "43bb65ce-9974-46c3-b89a-e83c5cc1a3ba",
+    "etype": "engineering_site",
+    "name": "道路",
+    "deg": 2,
+    "reasons": [
+     "名称过短"
+    ],
+    "note": "行业通用简称/真实简称，建议后续归并受控词表"
+   },
+   {
+    "id": "748ab7e0-7822-4b9e-9ff0-3fc10f2343da",
+    "etype": "impact_result",
+    "name": "沉陷",
+    "deg": 2,
+    "reasons": [
+     "名称过短"
+    ],
+    "note": "行业通用简称/真实简称，建议后续归并受控词表"
+   },
+   {
+    "id": "40134454-a159-47d2-a266-f7962a328702",
+    "etype": "impact_result",
+    "name": "积水",
+    "deg": 1,
+    "reasons": [
+     "名称过短"
+    ],
+    "note": "行业通用简称/真实简称，建议后续归并受控词表"
+   },
+   {
+    "id": "a05c7951-f619-45ba-8855-7f40ac7f8ae5",
+    "etype": "measure_process_concept",
+    "name": "充填",
+    "deg": 1,
+    "reasons": [
+     "名称过短"
+    ],
+    "note": "行业通用简称/真实简称，建议后续归并受控词表"
+   },
+   {
+    "id": "9d2cb376-a3f5-42af-a630-7037442640bd",
+    "etype": "measure_process_concept",
+    "name": "制砖",
+    "deg": 3,
+    "reasons": [
+     "名称过短"
+    ],
+    "note": "行业通用简称/真实简称，建议后续归并受控词表"
+   },
+   {
+    "id": "a10972c5-9b63-4598-be7a-01c38de59882",
+    "etype": "measure_process_concept",
+    "name": "建材",
+    "deg": 1,
+    "reasons": [
+     "名称过短"
+    ],
+    "note": "行业通用简称/真实简称，建议后续归并受控词表"
+   },
+   {
+    "id": "7614c901-fece-49ed-b669-1d00cccb9b7d",
+    "etype": "measure_process_concept",
+    "name": "铺路",
+    "deg": 1,
+    "reasons": [
+     "名称过短"
+    ],
+    "note": "行业通用简称/真实简称，建议后续归并受控词表"
+   },
+   {
+    "id": "83ce624f-d67e-49c2-85a5-1530d58015d3",
+    "etype": "measure_spec",
+    "name": "除尘效率>98%",
+    "deg": 0,
+    "reasons": [
+     "无邻接孤岛"
+    ],
+    "note": "真实实体，关系未抽取（关系覆盖改进信号）"
+   },
+   {
+    "id": "9ae8ddf9-fc08-46b5-9201-0f09aae0ca0a",
+    "etype": "mine",
+    "name": "东三",
+    "deg": 1,
+    "reasons": [
+     "名称过短"
+    ],
+    "note": "行业通用简称/真实简称，建议后续归并受控词表"
+   },
+   {
+    "id": "b885ae25-0233-4758-845f-789a0d97a357",
+    "etype": "mine",
+    "name": "兴盛露天矿",
+    "deg": 0,
+    "reasons": [
+     "无邻接孤岛"
+    ],
+    "note": "真实实体，关系未抽取（关系覆盖改进信号）"
+   },
+   {
+    "id": "93068914-ed26-48c2-a7ac-58c789701ade",
+    "etype": "mine_field",
+    "name": "九龙川井田中部",
+    "deg": 0,
+    "reasons": [
+     "无邻接孤岛"
+    ],
+    "note": "真实实体，关系未抽取（关系覆盖改进信号）"
+   },
+   {
+    "id": "ad2b2ee8-fa38-48ce-b0ca-76fae1cad4da",
+    "etype": "mine_field",
+    "name": "安家庄井田、唐家河井田",
+    "deg": 0,
+    "reasons": [
+     "无邻接孤岛"
+    ],
+    "note": "真实实体，关系未抽取（关系覆盖改进信号）"
+   },
+   {
+    "id": "6c6bbd24-69ff-4267-a590-277763ad903c",
+    "etype": "mine_field",
+    "name": "灵北井田",
+    "deg": 0,
+    "reasons": [
+     "无邻接孤岛"
+    ],
+    "note": "真实实体，关系未抽取（关系覆盖改进信号）"
+   },
+   {
+    "id": "dd256eae-a274-486f-ae4c-1dec80988439",
+    "etype": "mining_method",
+    "name": "立井",
+    "deg": 1,
+    "reasons": [
+     "名称过短"
+    ],
+    "note": "行业通用简称/真实简称，建议后续归并受控词表"
+   },
+   {
+    "id": "2aeae546-224a-4824-a750-6a82a81af667",
+    "etype": "org",
+    "name": "电厂",
+    "deg": 0,
+    "reasons": [
+     "无邻接孤岛"
+    ],
+    "note": "真实实体，关系未抽取（关系覆盖改进信号）"
+   },
+   {
+    "id": "3eb21d59-1536-4d36-9846-283b62034225",
+    "etype": "place",
+    "name": "东区",
+    "deg": 1,
+    "reasons": [
+     "名称过短"
+    ],
+    "note": "行业通用简称/真实简称，建议后续归并受控词表"
+   },
+   {
+    "id": "01344fb2-63b2-470e-b9ae-99adfec47ec0",
+    "etype": "place",
+    "name": "二号煤矿工业场地",
+    "deg": 0,
+    "reasons": [
+     "无邻接孤岛"
+    ],
+    "note": "真实实体，关系未抽取（关系覆盖改进信号）"
+   },
+   {
+    "id": "f87ef569-9ddf-4203-9c2e-e9739581c2d9",
+    "etype": "place",
+    "name": "井田西南部",
+    "deg": 0,
+    "reasons": [
+     "无邻接孤岛"
+    ],
+    "note": "真实实体，关系未抽取（关系覆盖改进信号）"
+   },
+   {
+    "id": "0a6022f7-03eb-43e1-a18c-a783a83b3799",
+    "etype": "place",
+    "name": "八号井田装车站",
+    "deg": 0,
+    "reasons": [
+     "无邻接孤岛"
+    ],
+    "note": "真实实体，关系未抽取（关系覆盖改进信号）"
+   },
+   {
+    "id": "d5f95418-2e49-43e4-9078-c32828e0fa73",
+    "etype": "place",
+    "name": "内蒙古自治区鄂尔多斯市",
+    "deg": 0,
+    "reasons": [
+     "无邻接孤岛"
+    ],
+    "note": "真实实体，关系未抽取（关系覆盖改进信号）"
+   },
+   {
+    "id": "94c1716b-d1df-4cd0-b1fc-37b5c079f12f",
+    "etype": "place",
+    "name": "内蒙古自治区鄂尔多斯市伊金霍洛旗和杭锦旗",
+    "deg": 0,
+    "reasons": [
+     "无邻接孤岛"
+    ],
+    "note": "真实实体，关系未抽取（关系覆盖改进信号）"
+   },
+   {
+    "id": "6b5c1d73-a894-4b00-8275-125ed0e5a5ce",
+    "etype": "place",
+    "name": "喀赞其装车站",
+    "deg": 0,
+    "reasons": [
+     "无邻接孤岛"
+    ],
+    "note": "真实实体，关系未抽取（关系覆盖改进信号）"
+   },
+   {
+    "id": "d54bce8e-e5f1-4ffd-a8d9-7f8a83929d47",
+    "etype": "place",
+    "name": "新疆",
+    "deg": 1,
+    "reasons": [
+     "名称过短"
+    ],
+    "note": "行业通用简称/真实简称，建议后续归并受控词表"
+   },
+   {
+    "id": "316a9c10-e8ca-400e-96ba-a90cb49dbdeb",
+    "etype": "place",
+    "name": "未开发建设区域",
+    "deg": 0,
+    "reasons": [
+     "无邻接孤岛"
+    ],
+    "note": "真实实体，关系未抽取（关系覆盖改进信号）"
+   },
+   {
+    "id": "7c4226e5-db9b-4098-9167-b04d41d09b44",
+    "etype": "place",
+    "name": "矿区",
+    "deg": 4,
+    "reasons": [
+     "泛指性名称",
+     "名称过短"
+    ],
+    "note": "行业通用简称/真实简称，建议后续归并受控词表"
+   },
+   {
+    "id": "d0d509b7-15f5-4bf5-afb8-ea1e9a980e2a",
+    "etype": "place",
+    "name": "耕地",
+    "deg": 1,
+    "reasons": [
+     "名称过短"
+    ],
+    "note": "行业通用简称/真实简称，建议后续归并受控词表"
+   },
+   {
+    "id": "09728680-535a-48c3-a646-ad7bdd1bf6f6",
+    "etype": "place",
+    "name": "草原",
+    "deg": 1,
+    "reasons": [
+     "名称过短"
+    ],
+    "note": "行业通用简称/真实简称，建议后续归并受控词表"
+   },
+   {
+    "id": "786a1c2e-af2d-4407-9e15-e2f92f0bf771",
+    "etype": "place",
+    "name": "西区",
+    "deg": 3,
+    "reasons": [
+     "名称过短"
+    ],
+    "note": "行业通用简称/真实简称，建议后续归并受控词表"
+   },
+   {
+    "id": "d3c73163-b3b7-4471-8662-9d8b63002385",
+    "etype": "place",
+    "name": "陇东",
+    "deg": 1,
+    "reasons": [
+     "名称过短"
+    ],
+    "note": "行业通用简称/真实简称，建议后续归并受控词表"
+   },
+   {
+    "id": "28bb840c-8834-445b-bf99-9abeb342d3fa",
+    "etype": "place",
+    "name": "首采区东侧",
+    "deg": 0,
+    "reasons": [
+     "无邻接孤岛"
+    ],
+    "note": "真实实体，关系未抽取（关系覆盖改进信号）"
+   },
+   {
+    "id": "efe71b55-0da6-44db-b467-07198b0cea6a",
+    "etype": "planning_scheme",
+    "name": "规划",
+    "deg": 3,
+    "reasons": [
+     "名称过短"
+    ],
+    "note": "行业通用简称/真实简称，建议后续归并受控词表"
+   },
+   {
+    "id": "05228b9e-9fff-4fff-b191-da848bb51c11",
+    "etype": "pollutant",
+    "name": "硫酸盐",
+    "deg": 0,
+    "reasons": [
+     "无邻接孤岛"
+    ],
+    "note": "真实实体，关系未抽取（关系覆盖改进信号）"
+   },
+   {
+    "id": "b46fd9eb-8040-4ac7-9775-398d780a5033",
+    "etype": "pollution_source",
+    "name": "卡车",
+    "deg": 1,
+    "reasons": [
+     "名称过短"
+    ],
+    "note": "行业通用简称/真实简称，建议后续归并受控词表"
+   },
+   {
+    "id": "05956cc8-3b08-4985-906c-dae0d99da51b",
+    "etype": "pollution_source",
+    "name": "噪声",
+    "deg": 1,
+    "reasons": [
+     "名称过短"
+    ],
+    "note": "行业通用简称/真实简称，建议后续归并受控词表"
+   },
+   {
+    "id": "bb5b2201-b851-4660-ab78-9bc41a07da02",
+    "etype": "pollution_source",
+    "name": "水泵",
+    "deg": 2,
+    "reasons": [
+     "名称过短"
+    ],
+    "note": "行业通用简称/真实简称，建议后续归并受控词表"
+   },
+   {
+    "id": "1fd2a4e2-064a-4613-830d-3c320240fdde",
+    "etype": "pollution_source",
+    "name": "爆破",
+    "deg": 3,
+    "reasons": [
+     "名称过短"
+    ],
+    "note": "行业通用简称/真实简称，建议后续归并受控词表"
+   },
+   {
+    "id": "4a64891b-433b-47d8-8264-33abf3640b6e",
+    "etype": "pollution_source",
+    "name": "电铲",
+    "deg": 1,
+    "reasons": [
+     "名称过短"
+    ],
+    "note": "行业通用简称/真实简称，建议后续归并受控词表"
+   },
+   {
+    "id": "dced1d3a-743e-4f4f-8be6-535b6b9d1711",
+    "etype": "pollution_source",
+    "name": "矿井工业场地生活污水",
+    "deg": 0,
+    "reasons": [
+     "无邻接孤岛"
+    ],
+    "note": "真实实体，关系未抽取（关系覆盖改进信号）"
+   },
+   {
+    "id": "58b6983c-e4da-4f9b-a744-89cda71091e1",
+    "etype": "pollution_source",
+    "name": "穿孔",
+    "deg": 1,
+    "reasons": [
+     "名称过短"
+    ],
+    "note": "行业通用简称/真实简称，建议后续归并受控词表"
+   },
+   {
+    "id": "72f61bf3-5b5e-4949-9e00-6a2ad95675b4",
+    "etype": "pollution_source",
+    "name": "道路",
+    "deg": 1,
+    "reasons": [
+     "名称过短"
+    ],
+    "note": "行业通用简称/真实简称，建议后续归并受控词表"
+   },
+   {
+    "id": "071bbc67-fa2e-4ed1-b847-a19285da150c",
+    "etype": "pollution_source",
+    "name": "锅炉",
+    "deg": 6,
+    "reasons": [
+     "名称过短"
+    ],
+    "note": "行业通用简称/真实简称，建议后续归并受控词表"
+   },
+   {
+    "id": "07972749-be7f-45b0-8640-9e543be94c5e",
+    "etype": "project",
+    "name": "矿区",
+    "deg": 1,
+    "reasons": [
+     "泛指性名称",
+     "名称过短"
+    ],
+    "note": "行业通用简称/真实简称，建议后续归并受控词表"
+   },
+   {
+    "id": "36d3e073-4080-4683-bd2e-943b524e1eeb",
+    "etype": "receiving_medium",
+    "name": "冲沟",
+    "deg": 1,
+    "reasons": [
+     "名称过短"
+    ],
+    "note": "行业通用简称/真实简称，建议后续归并受控词表"
+   },
+   {
+    "id": "8484a834-183c-42e2-aad7-a1227a5ebbe6",
+    "etype": "receiving_medium",
+    "name": "大莫拐河",
+    "deg": 0,
+    "reasons": [
+     "无邻接孤岛"
+    ],
+    "note": "真实实体，关系未抽取（关系覆盖改进信号）"
+   },
+   {
+    "id": "185dac62-c55f-4a39-8e06-9328328565c6",
+    "etype": "receiving_medium",
+    "name": "汭河",
+    "deg": 1,
+    "reasons": [
+     "名称过短"
+    ],
+    "note": "行业通用简称/真实简称，建议后续归并受控词表"
+   },
+   {
+    "id": "6cee97b4-0737-4a18-98da-fc55bfbe9838",
+    "etype": "receiving_medium",
+    "name": "泾河",
+    "deg": 2,
+    "reasons": [
+     "名称过短"
+    ],
+    "note": "行业通用简称/真实简称，建议后续归并受控词表"
+   },
+   {
+    "id": "081bed98-67f2-4a2e-b39e-64e082e6b2c9",
+    "etype": "receiving_medium",
+    "name": "黄河",
+    "deg": 1,
+    "reasons": [
+     "名称过短"
+    ],
+    "note": "行业通用简称/真实简称，建议后续归并受控词表"
+   },
+   {
+    "id": "b9b171d2-9718-4959-b72a-3adab955d5bd",
+    "etype": "regulation_clause",
+    "name": "《煤炭矿区总体规划管理暂行规定》第十七条",
+    "deg": 0,
+    "reasons": [
+     "无邻接孤岛"
+    ],
+    "note": "真实实体，关系未抽取（关系覆盖改进信号）"
+   },
+   {
+    "id": "e5902350-6a5f-4c99-8c5b-34268e1a27a7",
+    "etype": "report",
+    "name": "本报告",
+    "deg": 2,
+    "reasons": [
+     "泛指性名称",
+     "泛指自指"
+    ],
+    "note": "报告自身/区域泛指节点，有邻接结构价值"
+   },
+   {
+    "id": "e5327034-c960-43f8-888f-61e4b851ae97",
+    "etype": "report",
+    "name": "本次环评",
+    "deg": 2,
+    "reasons": [
+     "泛指性名称",
+     "泛指自指"
+    ],
+    "note": "报告自身/区域泛指节点，有邻接结构价值"
+   },
+   {
+    "id": "43539f65-d7c7-447f-8abc-ed53ad90a5c6",
+    "etype": "retrospective_problem",
+    "name": "采煤沉陷",
+    "deg": 0,
+    "reasons": [
+     "无邻接孤岛"
+    ],
+    "note": "真实实体，关系未抽取（关系覆盖改进信号）"
+   },
+   {
+    "id": "33550d30-3a40-4170-b64e-fd3773eb9f90",
+    "etype": "section",
+    "name": "地下水环境质量现状监测",
+    "deg": 0,
+    "reasons": [
+     "无邻接孤岛"
+    ],
+    "note": "真实实体，关系未抽取（关系覆盖改进信号）"
+   },
+   {
+    "id": "a2df56c0-2ea7-4ad6-a47f-f9c71bef8383",
+    "etype": "sensitive_point",
+    "name": "二级国家级公益林",
+    "deg": 0,
+    "reasons": [
+     "无邻接孤岛"
+    ],
+    "note": "真实实体，关系未抽取（关系覆盖改进信号）"
+   },
+   {
+    "id": "b5ac42c3-edeb-4d19-acdd-b128a712c857",
+    "etype": "sensitive_point",
+    "name": "古树",
+    "deg": 1,
+    "reasons": [
+     "名称过短"
+    ],
+    "note": "行业通用简称/真实简称，建议后续归并受控词表"
+   },
+   {
+    "id": "5f8c9694-a4bd-46c8-b6fd-19dce20d71db",
+    "etype": "sensitive_point",
+    "name": "太阳山国家湿地公园",
+    "deg": 0,
+    "reasons": [
+     "无邻接孤岛"
+    ],
+    "note": "真实实体，关系未抽取（关系覆盖改进信号）"
+   },
+   {
+    "id": "9cf5b850-3e50-44aa-9cd5-2cc09a8516fe",
+    "etype": "sensitive_point",
+    "name": "植被",
+    "deg": 2,
+    "reasons": [
+     "名称过短"
+    ],
+    "note": "行业通用简称/真实简称，建议后续归并受控词表"
+   },
+   {
+    "id": "a996cba0-acc8-46b9-a55a-93a5ea548074",
+    "etype": "sensitive_point",
+    "name": "河道",
+    "deg": 1,
+    "reasons": [
+     "名称过短"
+    ],
+    "note": "行业通用简称/真实简称，建议后续归并受控词表"
+   },
+   {
+    "id": "2b2dc034-0327-449b-a198-e33a45a72a5d",
+    "etype": "sensitive_point",
+    "name": "湿地",
+    "deg": 4,
+    "reasons": [
+     "名称过短"
+    ],
+    "note": "行业通用简称/真实简称，建议后续归并受控词表"
+   },
+   {
+    "id": "eb04e1d7-d396-4f45-85ca-67de08466148",
+    "etype": "sensitive_point",
+    "name": "灵台",
+    "deg": 1,
+    "reasons": [
+     "名称过短"
+    ],
+    "note": "行业通用简称/真实简称，建议后续归并受控词表"
+   },
+   {
+    "id": "1ca71331-10b7-4e12-a84a-7c2550f6c6c7",
+    "etype": "sensitive_point",
+    "name": "罗山国家级自然保护区",
+    "deg": 0,
+    "reasons": [
+     "无邻接孤岛"
+    ],
+    "note": "真实实体，关系未抽取（关系覆盖改进信号）"
+   },
+   {
+    "id": "c9a45251-6712-49ea-bc6d-f7711ef3a394",
+    "etype": "sensitive_point",
+    "name": "草地",
+    "deg": 3,
+    "reasons": [
+     "名称过短"
+    ],
+    "note": "行业通用简称/真实简称，建议后续归并受控词表"
+   },
+   {
+    "id": "b8336dee-12a5-4786-873d-a32fbdd87deb",
+    "etype": "sensitive_point",
+    "name": "蒲河",
+    "deg": 1,
+    "reasons": [
+     "名称过短"
+    ],
+    "note": "行业通用简称/真实简称，建议后续归并受控词表"
+   },
+   {
+    "id": "1b7f1202-b543-4235-be23-c8ec98aee43e",
+    "etype": "sensitive_point",
+    "name": "马鹿",
+    "deg": 1,
+    "reasons": [
+     "名称过短"
+    ],
+    "note": "行业通用简称/真实简称，建议后续归并受控词表"
+   },
+   {
+    "id": "b932be6e-05ea-45da-bc4b-2654d2349a90",
+    "etype": "sensitive_point",
+    "name": "黑河",
+    "deg": 1,
+    "reasons": [
+     "名称过短"
+    ],
+    "note": "行业通用简称/真实简称，建议后续归并受控词表"
+   },
+   {
+    "id": "949f7514-9f1f-4344-90f5-424ab240522e",
+    "etype": "treatment_measure",
+    "name": "制砖",
+    "deg": 2,
+    "reasons": [
+     "名称过短"
+    ],
+    "note": "行业通用简称/真实简称，建议后续归并受控词表"
+   },
+   {
+    "id": "7dc01e48-82df-43cf-a654-10b646798ccd",
+    "etype": "treatment_measure",
+    "name": "发电",
+    "deg": 1,
+    "reasons": [
+     "名称过短"
+    ],
+    "note": "行业通用简称/真实简称，建议后续归并受控词表"
+   },
+   {
+    "id": "40f2e5ec-5279-4fed-8faf-0f830c6f88ad",
+    "etype": "treatment_measure",
+    "name": "回用",
+    "deg": 3,
+    "reasons": [
+     "名称过短"
+    ],
+    "note": "行业通用简称/真实简称，建议后续归并受控词表"
+   },
+   {
+    "id": "06fc136b-0fd5-4f18-8b77-e2b449797d90",
+    "etype": "treatment_measure",
+    "name": "围栏",
+    "deg": 1,
+    "reasons": [
+     "名称过短"
+    ],
+    "note": "行业通用简称/真实简称，建议后续归并受控词表"
+   },
+   {
+    "id": "2736f626-bd58-42f4-8cc9-1c1012159404",
+    "etype": "treatment_measure",
+    "name": "沉淀",
+    "deg": 1,
+    "reasons": [
+     "名称过短"
+    ],
+    "note": "行业通用简称/真实简称，建议后续归并受控词表"
+   },
+   {
+    "id": "d0a11814-8092-4ac2-91b2-19029d18697e",
+    "etype": "treatment_measure",
+    "name": "输排措施",
+    "deg": 0,
+    "reasons": [
+     "无邻接孤岛"
+    ],
+    "note": "真实实体，关系未抽取（关系覆盖改进信号）"
+   },
+   {
+    "id": "760f0b09-0dcb-4e18-9650-5c50dee1d783",
+    "etype": "waste_stream",
+    "name": "危废",
+    "deg": 2,
+    "reasons": [
+     "名称过短"
+    ],
+    "note": "行业通用简称/真实简称，建议后续归并受控词表"
+   },
+   {
+    "id": "058c4a83-3483-46f8-a9bf-9f2e8deda9e0",
+    "etype": "waste_stream",
+    "name": "弃方",
+    "deg": 1,
+    "reasons": [
+     "名称过短"
+    ],
+    "note": "行业通用简称/真实简称，建议后续归并受控词表"
+   },
+   {
+    "id": "ebc0ca00-82b1-4589-b834-241d13379c63",
+    "etype": "waste_stream",
+    "name": "污泥",
+    "deg": 5,
+    "reasons": [
+     "名称过短"
+    ],
+    "note": "行业通用简称/真实简称，建议后续归并受控词表"
+   },
+   {
+    "id": "afc0b4b2-e6ab-40b6-8976-d721a83c1e67",
+    "etype": "waste_stream",
+    "name": "灰渣",
+    "deg": 5,
+    "reasons": [
+     "名称过短"
+    ],
+    "note": "行业通用简称/真实简称，建议后续归并受控词表"
+   },
+   {
+    "id": "2aa8f1fc-f2c4-4c61-b220-07fbae853fae",
+    "etype": "waste_stream",
+    "name": "炉灰",
+    "deg": 1,
+    "reasons": [
+     "名称过短"
+    ],
+    "note": "行业通用简称/真实简称，建议后续归并受控词表"
+   },
+   {
+    "id": "022f823d-aced-479f-b14a-427f487edb77",
+    "etype": "waste_stream",
+    "name": "煤泥",
+    "deg": 1,
+    "reasons": [
+     "名称过短"
+    ],
+    "note": "行业通用简称/真实简称，建议后续归并受控词表"
+   },
+   {
+    "id": "928b54f0-1f63-4838-9a89-cfa0ec4c0508",
+    "etype": "waste_stream",
+    "name": "矸石",
+    "deg": 55,
+    "reasons": [
+     "名称过短"
+    ],
+    "note": "行业通用简称/真实简称，建议后续归并受控词表"
+   }
+  ],
+  "存疑": [
+   {
+    "id": "96fe5b8c-7c53-4d9a-9018-9c34ebc096ba",
+    "etype": "chapter",
+    "name": "规划方案概括及分析",
+    "deg": 1,
+    "reasons": [
+     "泛指前缀"
+    ],
+    "note": "报告自身/区域泛指节点，有邻接结构价值"
+   },
+   {
+    "id": "26aacb32-5948-4d59-8de9-db75ffd5a86a",
+    "etype": "project",
+    "name": "矿区开发",
+    "deg": 1,
+    "reasons": [
+     "泛指性名称"
+    ],
+    "note": "报告自身/区域泛指节点，有邻接结构价值"
+   },
+   {
+    "id": "24d734da-585b-4bc7-baf4-e0f582a620ea",
+    "etype": "report",
+    "name": "环评报告",
+    "deg": 1,
+    "reasons": [
+     "泛指性名称",
+     "泛指自指"
+    ],
+    "note": "报告自身/区域泛指节点，有邻接结构价值"
+   }
+  ]
+ }
+}

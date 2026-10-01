@@ -1,34 +1,12 @@
 {
-  "mode": "dry-run",
-  "executed_at": "2026-09-30T12:49:40.201744+00:00",
-  "distillable_etypes": [
-    "treatment_measure",
-    "pollutant",
-    "standard_threshold"
-  ],
-  "ids_filter_applied": false,
+  "mode": "report-only",
+  "executed_at": "2026-09-30T13:06:17.247703+00:00",
   "before": {
     "entities": {
-      "(untagged)": 2521
+      "sample": 2521
     },
     "relations": {
-      "(untagged)": 1985
+      "sample": 1985
     }
-  },
-  "plan": {
-    "entities": {
-      "to_tag": 2521,
-      "already": 0,
-      "unknown_source": 0,
-      "distillable": 523
-    },
-    "relations": {
-      "to_tag": 1985,
-      "already": 0,
-      "unknown_source": 0,
-      "distillable": 0,
-      "cross_domain": 0
-    }
-  },
-  "hint": "dry-run 未写任何行；确认 plan 计数后加 --apply 真打标（判定回填轮可加 --ids-file 限定范围）"
+  }
 }
