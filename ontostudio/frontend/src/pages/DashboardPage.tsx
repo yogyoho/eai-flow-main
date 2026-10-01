@@ -44,6 +44,7 @@ import {
   type FormalLoadResult,
 } from "@/api/formal-api";
 import { fetchRegistryContent, fetchRegistryFiles } from "@/api/registry-api";
+import { fetchTaskStats } from "@/api/ingest-tasks-api";
 import { PageHeader, Panel } from "@/pages/shared";
 import { withAlpha } from "@/explorer/graphTheme";
 import { cn } from "@/lib/utils";
@@ -106,6 +107,18 @@ export function DashboardPage() {
     queryFn: fetchFormalValidate,
     staleTime: 30_000,
   });
+  // 抽取活动（真数据，T6）：任务计数 + 置信度分布——仪表盘非操作位，30s 轮询足够
+  const activityQuery = useQuery({
+    queryKey: ["ingest", "task-stats"],
+    queryFn: ({ signal }) => fetchTaskStats(signal),
+    refetchInterval: 30_000,
+  });
+  const activityActive = Object.entries(activityQuery.data?.tasks_by_status ?? {})
+    .filter(([s]) => s === "queued" || s === "extracting" || s === "loading")
+    .reduce((acc, [, v]) => acc + v, 0);
+  const activityDone = activityQuery.data?.tasks_by_status?.done ?? 0;
+  const activityFailed =
+    (activityQuery.data?.tasks_by_status?.failed ?? 0) + (activityQuery.data?.tasks_by_status?.aborted ?? 0);
   const typesQuery = useQuery({
     queryKey: ["ontology", "object-types"],
     queryFn: fetchObjectTypes,
@@ -415,21 +428,36 @@ export function DashboardPage() {
 
         <Panel
           title="抽取活动"
-          subtitle="任务队列 · 规划中"
-          tone={TONE_AMBER}
+          subtitle="任务队列 · 实时"
+          tone={TONE_BLUE}
           icon={FileInput}
-          actions={
-            <span className="text-muted-foreground/70 border-border/70 rounded border border-dashed px-1.5 py-px font-mono text-xs">
-              规划
-            </span>
-          }
         >
           <div className="flex flex-1 flex-col gap-2.5 p-4 text-xs">
-            <p className="text-muted-foreground leading-relaxed">
-              抽取任务概念（队列/进度/置信度分布）待后端任务 API——当前生产线
-              <span className="text-foreground font-mono"> regex/v1</span>，
-              抽取结果直接落 <span className="font-mono">dg_*</span>，待审进消解审核。
-            </p>
+            {activityQuery.isLoading ? (
+              <p className="text-muted-foreground flex items-center gap-1.5">
+                <Loader2 className="h-3 w-3 animate-spin" /> 加载任务统计…
+              </p>
+            ) : (
+              <>
+                <div className="flex flex-wrap gap-x-4 gap-y-1">
+                  <span>
+                    进行中 <b className="text-foreground tabular-nums">{activityActive}</b>
+                  </span>
+                  <span>
+                    已完成 <b className="text-foreground tabular-nums">{activityDone}</b>
+                  </span>
+                  <span>
+                    失败 <b className={activityFailed > 0 ? "text-destructive tabular-nums" : "text-foreground tabular-nums"}>{activityFailed}</b>
+                  </span>
+                  <span className="text-muted-foreground">
+                    置信度 高 {activityQuery.data?.confidence?.high ?? 0} / 中 {activityQuery.data?.confidence?.mid ?? 0} / 低 {activityQuery.data?.confidence?.low ?? 0}
+                  </span>
+                </div>
+                <p className="text-muted-foreground leading-relaxed">
+                  任务=消费 kf_samples 已提取产物入图，force_review 全量进人审（消解审核）。
+                </p>
+              </>
+            )}
             <button
               type="button"
               onClick={() => go("ingest")}

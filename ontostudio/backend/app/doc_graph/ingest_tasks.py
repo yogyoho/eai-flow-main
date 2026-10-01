@@ -25,7 +25,7 @@ import asyncio
 import json
 import logging
 import uuid
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from typing import Any
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
@@ -202,7 +202,7 @@ async def _task_alive(conn, task_id: str) -> bool:
 async def _run_task(task_id: str, sample_id: str, document_id: str, force_review: bool) -> None:
     """后台执行体（串行：_TASK_LOCK；阶段枚举推进；异常→failed 不静默）。"""
     extracted_by = f"ingest-task:{task_id}"[:100]
-    started_at = datetime.now(timezone.utc) - timedelta(seconds=1)  # -1s 抵消时钟精度边缘
+    started_at = datetime.now(UTC) - timedelta(seconds=1)  # -1s 抵消时钟精度边缘
     async with _TASK_LOCK:
         engine = _engine()
         try:
@@ -453,6 +453,32 @@ async def delete_task(task_id: str, _: CurrentUser = Depends(require_permission(
                 return {"id": task_id, "result": "aborted"}
             await conn.execute(text("DELETE FROM ingest_tasks WHERE id = CAST(:tid AS uuid)"), {"tid": task_id})
             return {"id": task_id, "result": "deleted"}
+    finally:
+        await engine.dispose()
+
+
+@router.get("/samples")
+async def list_samples(_: CurrentUser = Depends(require_permission("system:access"))) -> dict:
+    """可建任务的样例清单（outline_json.ontology 非空）——新建任务的选取源（T6 前端接线配套）."""
+    engine = _engine()
+    try:
+        async with engine.connect() as conn:
+            rows = (
+                await conn.execute(
+                    text(
+                        """
+                        SELECT id::text, title, status,
+                               jsonb_array_length(outline_json->'ontology'->'entities') AS entity_count,
+                               updated_at
+                        FROM kf_samples
+                        WHERE outline_json->'ontology'->'entities' IS NOT NULL
+                          AND jsonb_array_length(outline_json->'ontology'->'entities') > 0
+                        ORDER BY updated_at DESC LIMIT 100
+                        """
+                    )
+                )
+            ).mappings().all()
+        return {"samples": [dict(r) for r in rows]}
     finally:
         await engine.dispose()
 

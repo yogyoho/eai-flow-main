@@ -1,44 +1,33 @@
 /**
- * 08 抽取导入（EAI-CUSTOM, 2026-09-28 审计升级；09-29 口径订正）——真数据区块：
+ * 08 抽取导入（EAI-CUSTOM, 2026-09-28 审计升级；2026-10-01 T6 队列接真）——真数据区块：
  *
+ * - 抽取任务队列：GET /ingest-tasks 真数据 + 2s 轮询（阶段枚举文案，无百分比——后端无进度生产者）；
+ * - 新建抽取任务：POST /ingest-tasks（sample 选自 kf_samples 已提取产物）；
  * - 置信度分布：graph_entity objects → 客户端分桶计算（真数据）；
  * - 证据链引文：graph_mention objects → 按 extracted_at 倒序取最近 5 条（真数据）；
- * - 抽取任务队列：静态示例（DemoTag 标注——「任务」概念后端 TODOS）；
  * - 从主系统线程导入：POST /formal/load 真端点（dg_* 全量装载）。
  * 生产线口径：LLM 离线批量管线（extracted_by=eia-batch-v2-llm，etype/谓词与 eia.yaml v2 枚举严格同名，kernel loader 直读）。
  */
-import { useMutation, useQuery } from "@tanstack/react-query";
-import { FileInput, Loader2 } from "lucide-react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { FileInput, Loader2, Trash2 } from "lucide-react";
 import { useMemo, useState } from "react";
 
+import {
+  createTask,
+  deleteTask,
+  fetchSamples,
+  fetchTasks,
+  isActiveStatus,
+  STATUS_DOT,
+  STATUS_LABEL,
+  type IngestTask,
+  type TaskStatus,
+} from "@/api/ingest-tasks-api";
 import { runFormalLoad } from "@/api/formal-api";
 import { fetchObjects } from "@/api/ontology-graph-api";
-import { Chip, DemoTag, PageHeader, Panel } from "@/pages/shared";
+import { domainAlias } from "@/lib/terms";
+import { Chip, PageHeader, Panel } from "@/pages/shared";
 import { cn } from "@/lib/utils";
-
-/* 静态示例——「抽取任务」概念后端 TODOS，落地后替换为真 API。 */
-interface Task {
-  doc: string;
-  domain: string;
-  status: "完成" | "抽取中" | "排队中";
-  progress?: string;
-  e: string;
-  r: string;
-  m: string;
-}
-
-const STATUS_DOT: Record<Task["status"], string> = {
-  完成: "bg-success",
-  抽取中: "bg-primary",
-  排队中: "bg-warning",
-};
-
-const TASKS: Task[] = [
-  { doc: "环评报告-横城（送审稿）.docx", domain: "eia", status: "完成", e: "460", r: "205", m: "318" },
-  { doc: "横城煤矿投标文件-2024-017.pdf", domain: "doc_graph", status: "抽取中", progress: "62%", e: "87", r: "104", m: "156" },
-  { doc: "中标候选人公示-0912.pdf", domain: "bid_quote", status: "抽取中", progress: "31%", e: "22", r: "35", m: "48" },
-  { doc: "GB 13223-2011 火电厂大气污染物排放标准.pdf", domain: "eia", status: "排队中", e: "—", r: "—", m: "—" },
-];
 
 /* 置信度分桶定义 */
 const BUCKETS = [
@@ -59,6 +48,7 @@ interface Mention {
 }
 
 export function IngestPage() {
+  const queryClient = useQueryClient();
   // 从主系统线程导入 = POST /formal/load（dg_* 全量装载，真端点）
   const [loadMsg, setLoadMsg] = useState<string | null>(null);
   const loadMutation = useMutation({
@@ -66,6 +56,44 @@ export function IngestPage() {
     onSuccess: (data) =>
       setLoadMsg(`✓ 已装载 ${data.entities} 实体 / ${data.relations} 关系 / ${data.mentions} 提及——图已对账，可在消解审核处理待审、在导出互操作查看图面`),
     onError: (e) => setLoadMsg(`装载失败：${e instanceof Error ? e.message : String(e)}`),
+  });
+
+  // 抽取任务队列（真数据，2s 轮询——T6；有活动任务才轮也行，v1 恒轮代价可忽略）
+  const tasksQuery = useQuery({
+    queryKey: ["ingest", "tasks"],
+    queryFn: ({ signal }) => fetchTasks(signal),
+    refetchInterval: 2000,
+  });
+  const tasks: IngestTask[] = tasksQuery.data?.tasks ?? [];
+  const activeCount = tasks.filter((t) => isActiveStatus(t.status)).length;
+
+  // 新建任务（内联表单）
+  const [createOpen, setCreateOpen] = useState(false);
+  const [sampleId, setSampleId] = useState("");
+  const [createMsg, setCreateMsg] = useState<string | null>(null);
+
+  // 可建任务样例（新建表单选取源）
+  const samplesQuery = useQuery({
+    queryKey: ["ingest", "samples"],
+    queryFn: ({ signal }) => fetchSamples(signal),
+    enabled: createOpen,
+    staleTime: 30_000,
+  });
+  const createMutation = useMutation({
+    mutationFn: () => createTask({ sample_id: sampleId, force_review: true }),
+    onSuccess: () => {
+      setCreateOpen(false);
+      setSampleId("");
+      setCreateMsg("✓ 任务已排队——队列将实时推进，完成后可送审待复核");
+      queryClient.invalidateQueries({ queryKey: ["ingest", "tasks"] });
+    },
+    onError: (e) => setCreateMsg(`创建失败：${e instanceof Error ? e.message : String(e)}`),
+  });
+
+  // 删除/中止任务
+  const deleteMutation = useMutation({
+    mutationFn: (taskId: string) => deleteTask(taskId),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["ingest", "tasks"] }),
   });
 
   // 置信度分布（真数据）：graph_entity objects → 客户端分桶计算
@@ -115,19 +143,17 @@ export function IngestPage() {
         <PageHeader
           icon={FileInput}
           title="抽取导入"
-          description="真数据区块：置信度分布（graph_entity 实时统计）+ 证据链引文（graph_mention 最近记录）。任务队列为静态示例（DemoTag——「任务」概念后端 TODOS）。"
+          description="抽取任务队列（实时轮询）、置信度分布与证据链引文。任务=消费 kf_samples 已提取产物 → converter → 入图，force_review 全量进人审。"
         />
 
         {/* 顶部动作行 */}
         <div className="mb-3.5 flex flex-wrap items-center gap-2">
           <button
             type="button"
-            disabled
-            title="规划中（任务 API）"
-            className="bg-primary text-primary-foreground flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium opacity-60"
+            onClick={() => setCreateOpen((v) => !v)}
+            className="bg-primary text-primary-foreground flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium hover:opacity-90"
           >
             ＋ 新建抽取任务
-            <span className="rounded bg-white/15 px-1 py-px font-mono text-xs">规划·任务API</span>
           </button>
           <button
             type="button"
@@ -140,7 +166,7 @@ export function IngestPage() {
           </button>
           <span className="text-muted-foreground ml-auto max-w-[52ch] text-xs leading-relaxed">
             抽取来源 <span className="text-foreground font-mono">eia-batch-v2-llm</span>
-            （LLM 离线批量管线，etype/谓词与 eia.yaml v2 枚举严格同名）· 在线任务 API 规划中 ·
+            （LLM 离线批量管线）· 在线任务 = 消费已提取产物入图（v1）·
             v1 历史参考：月儿湾全链路 460 实体 / 205 关系 / 318 提及 → 装载 → infer 1857 物化（该批 v1 数据已清除）
           </span>
         </div>
@@ -149,15 +175,64 @@ export function IngestPage() {
         ) : loadMsg ? (
           <p className="text-success mb-3 text-sm">{loadMsg}</p>
         ) : null}
+        {createMsg ? <p className="text-success mb-3 text-sm">{createMsg}</p> : null}
 
-        {/* 抽取任务队列（静态示例——「任务」概念后端 TODOS） */}
+        {/* 新建任务内联表单 */}
+        {createOpen ? (
+          <Panel title="新建抽取任务" className="mb-3.5">
+            <div className="flex flex-col gap-2 p-4 text-sm">
+              <label className="text-muted-foreground text-[13px]">
+                选择样例（已提取产物）：
+                <select
+                  value={sampleId}
+                  onChange={(e) => setSampleId(e.target.value)}
+                  className="border-input bg-card mt-1 w-full max-w-xl rounded-md border px-2.5 py-1.5 text-sm"
+                >
+                  <option value="">— 选择 —</option>
+                  {(samplesQuery.data?.samples ?? []).map((s) => (
+                    <option key={s.id} value={s.id}>
+                      {s.title}（{s.entity_count} 实体 · {s.status}）
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <p className="text-muted-foreground text-xs">
+                force_review 默认开启：入库实体全量置待复核（D11/11A），消解审核逐条确认后入图。
+              </p>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  disabled={!sampleId || createMutation.isPending}
+                  onClick={() => createMutation.mutate()}
+                  className="bg-primary text-primary-foreground rounded-md px-3 py-1.5 text-sm font-medium disabled:opacity-50"
+                >
+                  {createMutation.isPending ? <Loader2 className="inline h-3.5 w-3.5 animate-spin" /> : null}
+                  创建并排队
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setCreateOpen(false)}
+                  className="border-border bg-card rounded-md border px-3 py-1.5 text-sm"
+                >
+                  取消
+                </button>
+                {createMutation.isError ? (
+                  <span className="text-destructive text-xs">{createMsg}</span>
+                ) : null}
+              </div>
+            </div>
+          </Panel>
+        ) : null}
+
+        {/* 抽取任务队列（真数据，2s 轮询） */}
         <Panel
           title="抽取任务"
           actions={
-            <span className="flex items-center gap-1.5">
-              <Chip tone="warning">2 进行中</Chip>
-              <DemoTag />
-            </span>
+            activeCount > 0 ? (
+              <Chip tone="warning">{activeCount} 进行中</Chip>
+            ) : (
+              <span className="text-muted-foreground text-xs">空闲</span>
+            )
           }
           className="mb-3.5 overflow-hidden"
         >
@@ -165,7 +240,7 @@ export function IngestPage() {
             <table className="w-full text-[13px]">
               <thead>
                 <tr className="border-border bg-muted/60 border-b">
-                  {["来源", "域 profile", "状态", "实体", "关系", "提及", "操作"].map((head, index) => (
+                  {["来源", "域", "状态", "实体", "关系", "提及", "操作"].map((head, index) => (
                     <th
                       key={head}
                       className={cn(
@@ -179,48 +254,82 @@ export function IngestPage() {
                 </tr>
               </thead>
               <tbody>
-                {TASKS.map((task) => (
-                  <tr key={task.doc} className="border-border hover:bg-muted/50 border-b last:border-b-0">
-                    <td className="max-w-[20rem] truncate px-4 py-2.5 font-medium">{task.doc}</td>
-                    <td className="text-muted-foreground px-4 py-2.5 font-mono text-sm">{task.domain}</td>
-                    <td className="px-4 py-2.5">
-                      <span className="flex items-center gap-2 font-medium">
-                        <span className={cn("inline-block h-2 w-2 flex-none rounded-full", STATUS_DOT[task.status])} />
-                        {task.status}
-                        {task.progress ? (
-                          <span className="text-muted-foreground tabular-nums">{task.progress}</span>
-                        ) : null}
-                      </span>
-                    </td>
-                    <td className="px-4 py-2.5 text-right tabular-nums">{task.e}</td>
-                    <td className="px-4 py-2.5 text-right tabular-nums">{task.r}</td>
-                    <td className="px-4 py-2.5 text-right tabular-nums">{task.m}</td>
-                    <td className="px-4 py-2.5 text-right">
-                      {task.status === "完成" ? (
-                        <button
-                          type="button"
-                          onClick={() => {
-                            window.location.hash = "resolve";
-                          }}
-                          className="border-border bg-card hover:bg-muted rounded-md border px-2 py-1 text-xs font-medium"
-                        >
-                          送审待复核
-                        </button>
-                      ) : task.status === "排队中" ? (
-                        <button
-                          type="button"
-                          disabled
-                          title="任务 API 规划中"
-                          className="border-border bg-card rounded-md border px-2 py-1 text-xs opacity-50"
-                        >
-                          ↑ 提前
-                        </button>
-                      ) : (
-                        <span className="text-muted-foreground text-xs">等待完成</span>
-                      )}
+                {tasksQuery.isLoading ? (
+                  <tr>
+                    <td colSpan={7} className="text-muted-foreground px-4 py-6 text-center text-sm">
+                      <Loader2 className="mr-1.5 inline h-3.5 w-3.5 animate-spin" />
+                      加载任务队列…
                     </td>
                   </tr>
-                ))}
+                ) : tasks.length === 0 ? (
+                  <tr>
+                    <td colSpan={7} className="text-muted-foreground px-4 py-6 text-center text-sm">
+                      队列为空——点「＋ 新建抽取任务」从已提取样例创建
+                    </td>
+                  </tr>
+                ) : (
+                  tasks.map((task: IngestTask) => (
+                    <tr key={task.id} className="border-border hover:bg-muted/50 border-b last:border-b-0">
+                      <td className="max-w-[20rem] truncate px-4 py-2.5 font-medium" title={task.error || task.sample_title || task.document_id}>
+                        {task.sample_title || task.document_id}
+                        {task.error ? <span className="text-destructive ml-1.5 text-xs">⚠</span> : null}
+                      </td>
+                      <td className="text-muted-foreground px-4 py-2.5 font-mono text-sm" title={domainAlias("eia") ?? "eia"}>
+                        eia
+                      </td>
+                      <td className="px-4 py-2.5">
+                        <span className="flex items-center gap-2 font-medium">
+                          <span className={cn("inline-block h-2 w-2 flex-none rounded-full", STATUS_DOT[task.status])} />
+                          {STATUS_LABEL[task.status]}
+                          {isActiveStatus(task.status) ? (
+                            <Loader2 className="text-muted-foreground h-3 w-3 animate-spin" />
+                          ) : null}
+                        </span>
+                        {task.error ? (
+                          <span className="text-destructive mt-0.5 block max-w-[24rem] truncate text-xs" title={task.error}>
+                            {task.error}
+                          </span>
+                        ) : null}
+                      </td>
+                      <td className="px-4 py-2.5 text-right tabular-nums">{task.stats?.entities_upserted ?? "—"}</td>
+                      <td className="px-4 py-2.5 text-right tabular-nums">{task.stats?.relations ?? "—"}</td>
+                      <td className="px-4 py-2.5 text-right tabular-nums">{task.stats?.mentions ?? "—"}</td>
+                      <td className="px-4 py-2.5 text-right">
+                        {task.status === "done" ? (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              window.location.hash = "resolve";
+                            }}
+                            className="border-border bg-card hover:bg-muted rounded-md border px-2 py-1 text-xs font-medium"
+                          >
+                            送审待复核
+                          </button>
+                        ) : isActiveStatus(task.status) ? (
+                          <button
+                            type="button"
+                            disabled={deleteMutation.isPending}
+                            onClick={() => deleteMutation.mutate(task.id)}
+                            title="中止任务（运行中=置已中止标记，不强杀进程）"
+                            className="border-border bg-card hover:bg-muted rounded-md border px-2 py-1 text-xs font-medium disabled:opacity-50"
+                          >
+                            <Trash2 className="inline h-3 w-3" /> 中止
+                          </button>
+                        ) : (
+                          <button
+                            type="button"
+                            disabled={deleteMutation.isPending}
+                            onClick={() => deleteMutation.mutate(task.id)}
+                            title="从队列移除该任务行"
+                            className="border-border bg-card hover:bg-muted rounded-md border px-2 py-1 text-xs font-medium disabled:opacity-50"
+                          >
+                            移除
+                          </button>
+                        )}
+                      </td>
+                    </tr>
+                  ))
+                )}
               </tbody>
             </table>
           </div>
