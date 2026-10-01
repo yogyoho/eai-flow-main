@@ -86,7 +86,9 @@ def test_four_eia_tools_registered():
     for tool in ("query_entity", "check_consistency", "get_writing_context", "get_rule_violations"):
         assert names.count(tool) == 1, tool
     spec = {t.name: t for t in ontomcp.TOOLS}
-    assert spec["get_writing_context"].inputSchema["required"] == ["entity_name"]
+    # EAI-CUSTOM(子项目 4): get_writing_context 扩展 chapter 模式——entity_name/chapter 至少一个，
+    # 校验移入 handler（schema required 放开为 []）。
+    assert spec["get_writing_context"].inputSchema["required"] == []
     assert spec["get_rule_violations"].inputSchema["properties"]["severity"]["enum"] == ["error", "warn", "info"]
     assert spec["query_entity"].inputSchema["required"] == []
 
@@ -158,8 +160,9 @@ async def test_check_consistency_empty_graph_zero(memory_kernel):
 
 @pytest.mark.asyncio
 async def test_writing_context_requires_entity_name():
+    # EAI-CUSTOM(子项目 4): entity_name/chapter 至少一个——空参仍结构化报错
     d = await _call("get_writing_context", {})
-    assert d["success"] is False
+    assert d["success"] is False and "至少" in d["error"]
 
 
 @pytest.mark.asyncio

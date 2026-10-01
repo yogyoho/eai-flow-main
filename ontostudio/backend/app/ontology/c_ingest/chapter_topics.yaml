@@ -1,0 +1,50 @@
+# 写前注入章节主题表——get_writing_context(chapter=...) 的声明式过滤依据
+#
+# 设计: docs/superpowers/specs/2026-09-30-c-ingest-pipeline-design.md §5.5
+# EAI-CUSTOM(2026-10-01, 子项目 4): 新文件。
+#
+# schema（fail-closed，mcp._load_chapter_topics 校验）：
+#   topics[]:
+#     chapter   章节主题名（展示用）
+#     keywords  匹配关键词：入参 chapter 与关键词双向包含即命中（"矸石" 命中 "矸石处置"，
+#               "第六章 矸石处置" 也命中 "矸石"）
+#     etypes    项目实体（C 库 scope=project）按这些类型过滤
+#     patterns  B 库 domain_pattern 过滤关键词（对 pattern 名称/attrs.subject_name/object_name
+#               做子串匹配，任一命中即收）
+#
+# 谓词语义纪律同映射表：etypes 必须在 eia 域枚举内（load 时校验，fail-closed）。
+
+version: 1
+topics:
+  - chapter: 矸石处置与固废
+    keywords: [矸石, 固废, 渣场, 危废]
+    etypes: [waste_stream, engineering_site, treatment_measure]
+    patterns: [矸石, 处置, 固废]
+  - chapter: 矿井水与水资源
+    keywords: [矿井水, 涌水, 水资源, 受纳水体, 给排水, 供水]
+    etypes: [waste_stream, receiving_medium, place, treatment_measure]
+    patterns: [矿井水, 涌水, 水处理]
+  - chapter: 锅炉烟气与大气环境
+    keywords: [锅炉, 烟气, 大气, 除尘, 环境空气]
+    etypes: [pollution_source, treatment_measure, emission_standard]
+    patterns: [锅炉, 除尘, 烟气]
+  - chapter: 敏感点与生态保护
+    keywords: [敏感点, 保护目标, 敏感目标, 生态, 保护区]
+    etypes: [sensitive_point, treatment_measure]
+    patterns: [敏感点, 保护, 生态]
+  - chapter: 环境治理措施
+    keywords: [措施, 治理, 减缓, 整治]
+    etypes: [treatment_measure]
+    patterns: [治理, 措施, 整治]
+  - chapter: 标准与限值
+    keywords: [标准, 限值, 排放标准, 质量标准]
+    etypes: [emission_standard, standard_threshold]
+    patterns: [标准, 限值]
+  - chapter: 环境监测计划
+    keywords: [监测]
+    etypes: [monitoring]
+    patterns: [监测]
+  - chapter: 规划协调与总体
+    keywords: [规划, 总体, 矿区, 项目概况]
+    etypes: [mine, org, place]
+    patterns: [规划, 矿区]

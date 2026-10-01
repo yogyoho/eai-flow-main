@@ -36,6 +36,10 @@ EXPECTED_TOOLS = {
     # 样例库类比通道（子项目 4, spec 2026-09-30 §4）：恒定 scope=sample 的类比查询；
     # 查询语义由 tests/test_eia_analogy_mcp.py 钉。
     "query_analogy",
+    # C 库沉淀管线（子项目 4 完整版, spec 2026-09-30-c-ingest-pipeline-design §5）：
+    # 写入工具 + 图上齐套检查；查询语义由 tests/test_c_ingest_pipeline.py 钉。
+    "ingest_project_forms",
+    "check_project_coverage",
 }
 
 

@@ -1,0 +1,229 @@
+# C 库沉淀管线映射表——stage JSON forms → dg_* 实体/关系（scope=project, project_id）
+#
+# 设计: docs/superpowers/specs/2026-09-30-c-ingest-pipeline-design.md §4/§5
+# EAI-CUSTOM(2026-10-01, 子项目 4): 新文件；禁改 skills/ 下任何文件——本表是
+# skills/public/coal-eia-report/references/stages/planning_eia.json（只读参考）的
+# 图侧投影声明，非第二写者（stage JSON 唯一写者纪律不变）。
+#
+# schema（fail-closed，管线 load_mapping 校验）：
+#   families.<族名>.fields[] 条目:
+#     name        forms 字段名（与 stage JSON forms 实际键对齐）
+#     required    该字段缺席时计入 skipped_fields（fail-visible）；coverage 按族级判定
+#     entity      标量/object 字段 → 单实体 {etype, name}；name: "." = 标量值即实体名
+#     items       array 字段 → 逐元素实体 {etype, name_from, name_template}
+#                   name_from: 键序列（数组元素内按序取第一个非空字符串）或 "."（字符串元素值即名）
+#                   name_template: 无名回退模板（{idx} 占位）；模板缺省且解析不出名 → 跳过+fallback_named 计数
+#     entities    一字段产多类实体（如 standards triplets → 标准+阈值）
+#     collect     同族其他标量字段并入本实体 attrs（配固定名实体）
+#     relations   族内边：{predicate, from: <etype>| omit, to: <etype>}（entities 多类时同元素连边）
+#                 或 {predicate, to_field: <字段名>}（本字段全部实体 → 目标字段全部实体）
+#   cross_relations[] 跨族边：{predicate, from/to: {family, field, entity?: <etype>, match?: {field, equals}}}
+#                 笛卡尔连边（from 实体集 × to 实体集）；match 对数组元素级条件过滤。
+#
+# 谓词语义纪律：所有 (subject_etype, predicate, object_etype) 必须在
+# app/doc_graph/schemas.py::_EIA_PREDICATE_ROLES 内——语义不匹配不强行连边
+# （如 drains_to 需排放口字段而表单无 → 本表不声明，受纳水体只建实体）。
+
+version: 1
+domain: eia
+stages:
+  planning_eia:
+    display_name: 规划环评
+    project_entity_hint: project.mine_area_name  # project_id 对应矿区主体（提示用，不参与校验）
+    families:
+      project:
+        element: 总体
+        fields:
+          - name: mine_area_name
+            required: true
+            entity: {etype: mine, name: "."}
+          - name: commissioning_unit
+            entity: {etype: org, name: "."}
+          - name: undertaking_unit
+            entity: {etype: org, name: "."}
+
+      water:
+        element: 水
+        fields:
+          - name: mine_inflow
+            required: true
+            items:
+              etype: waste_stream
+              name_from: [mine]
+              name_template: "矿井涌水#{idx}"
+          - name: sources
+            required: true
+            items:
+              etype: place
+              name_from: [name]
+              name_template: "水源地#{idx}"
+          - name: receiving_water
+            entity: {etype: receiving_medium, name: 受纳水体}
+          - name: demand
+            entity: {etype: receiving_medium, name: 项目需水}
+
+      air:
+        element: 气
+        fields:
+          - name: boilers
+            required: true
+            items:
+              etype: pollution_source
+              name_template: "工业场地锅炉烟气源#{idx}"
+
+      solid_waste:
+        element: 固废
+        fields:
+          - name: gangue_generation
+            required: true
+            entity: {etype: waste_stream, name: 矸石}
+            collect: [gangue_rate, gangue_generation]
+          - name: disposal_sites
+            required: true
+            items:
+              etype: engineering_site
+              name_from: [name, site]
+              name_template: "渣场#{idx}"
+          - name: hazardous
+            required: true
+            items:
+              etype: waste_stream
+              name_from: [name, category]
+              name_template: "危废#{idx}"
+          - name: disposal_method
+            required: true
+            items:
+              etype: treatment_measure
+              name_from: "."
+
+      sensitive_targets:
+        element: 生态
+        fields:
+          - name: targets
+            required: true
+            items:
+              etype: sensitive_point
+              name_from: [name]
+              name_template: "保护目标#{idx}"
+
+      measures:
+        element: 措施
+        fields:
+          - name: eco
+            required: true
+            items:
+              etype: treatment_measure
+              name_from: [content, name, zoning]
+              name_template: "生态整治措施#{idx}"
+          - name: air
+            required: true
+            items:
+              etype: treatment_measure
+              name_from: [content, name]
+              name_template: "大气治理措施#{idx}"
+          - name: water
+            required: true
+            items:
+              etype: treatment_measure
+              name_from: [content, name]
+              name_template: "水治理措施#{idx}"
+          - name: noise
+            required: true
+            items:
+              etype: treatment_measure
+              name_from: [content, name]
+              name_template: "噪声防治措施#{idx}"
+          - name: solid_waste
+            required: true
+            items:
+              etype: treatment_measure
+              name_from: [content, name]
+              name_template: "固废处置措施#{idx}"
+          - name: risk_response
+            required: true
+            items:
+              etype: treatment_measure
+              name_from: [prevention, content, name]
+              name_template: "风险防范措施#{idx}"
+
+      standards_confirm:
+        element: 标准
+        fields:
+          - name: triplets
+            required: true
+            entities:
+              - etype: emission_standard
+                name_from: [standard_code]
+                name_template: "执行标准#{idx}"
+              - etype: standard_threshold
+                name_from: [limit_note]
+                name_template: "限值档位#{idx}"
+            relations:
+              - {predicate: specifies_threshold, from: emission_standard, to: standard_threshold}
+
+      protected_area_detail:
+        element: 生态
+        fields:
+          - name: sections
+            items:
+              etype: sensitive_point
+              name_from: [target, name]
+              name_template: "保护区专节#{idx}"
+
+      eco_restoration:
+        element: 生态
+        fields:
+          - name: zoning
+            items:
+              etype: treatment_measure
+              name_from: [content, name, zoning]
+              name_template: "整治区划措施#{idx}"
+          - name: reclamation
+            items:
+              etype: treatment_measure
+              name_from: [content, name]
+              name_template: "复垦重建措施#{idx}"
+
+      monitoring_plan:
+        element: 监测
+        fields:
+          - name: plans
+            required: true
+            items:
+              etype: monitoring
+              name_template: "{point}·{factor}监测"
+              name_template_keys: [point, factor]
+
+      circular_economy:
+        element: 固废
+        fields:
+          - name: gangue_reuse
+            required: true
+            entity: {etype: treatment_measure, name: 矸石综合利用}
+          - name: mine_water_reuse
+            required: true
+            entity: {etype: treatment_measure, name: 矿井水综合利用}
+
+    # 族内边（solid_waste 特例：名称实体锚定 collect 出的"矸石"，字段条目表达不了，收拢在此）
+    intra_relations:
+      - {family: solid_waste, from_entity_name: 矸石, predicate: disposed_by, to_field: disposal_sites}
+      - {family: solid_waste, from_entity_name: 矸石, predicate: disposed_by, to_field: disposal_method}
+      - {family: solid_waste, from_field: hazardous, predicate: disposed_by, to_field: disposal_method}
+
+    cross_relations:
+      # 水：矿井涌水 → 水治理措施（treated_by: waste_stream→treatment_measure ✓）
+      - {predicate: treated_by, from_family: water, from_field: mine_inflow, to_family: measures, to_field: water}
+      # 水：矿井涌水 → 矿井水综合利用（utilized_by: waste_stream→treatment_measure ✓）
+      - {predicate: utilized_by, from_family: water, from_field: mine_inflow, to_family: circular_economy, to_field: mine_water_reuse}
+      # 气：锅炉烟气源 → 大气治理措施（treated_by: pollution_source→treatment_measure ✓）
+      - {predicate: treated_by, from_family: air, from_field: boilers, to_family: measures, to_field: air}
+      # 气：锅炉烟气源 → 大气类执行标准（complies_with: pollution_source→emission_standard ✓；element 条件匹配）
+      - {predicate: complies_with, from_family: air, from_field: boilers, to_family: standards_confirm, to_field: triplets, to_entity: emission_standard, match_field: element, match_equals: 大气}
+      # 固废：矸石 → 固废处置措施（disposed_by: waste_stream→treatment_measure ✓）
+      - {predicate: disposed_by, from_family: solid_waste, from_field: gangue_generation, to_family: measures, to_field: solid_waste}
+      # 固废：矸石 → 矸石综合利用（utilized_by ✓）
+      - {predicate: utilized_by, from_family: solid_waste, from_field: gangue_generation, to_family: circular_economy, to_field: gangue_reuse}
+      # 生态：保护目标 → 生态整治措施（protected_by: sensitive_point→treatment_measure ✓）
+      - {predicate: protected_by, from_family: sensitive_targets, from_field: targets, to_family: measures, to_field: eco}
+      # 监测：矿区主体 → 监测点（monitored_by: mine→monitoring ✓）
+      - {predicate: monitored_by, from_family: project, from_field: mine_area_name, to_family: monitoring_plan, to_field: plans}

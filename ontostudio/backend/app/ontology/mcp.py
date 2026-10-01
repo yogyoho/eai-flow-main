@@ -19,7 +19,10 @@ from __future__ import annotations
 
 import asyncio
 import json
+from pathlib import Path
+from typing import Any
 
+import yaml
 from mcp.server import Server
 from mcp.server.stdio import stdio_server
 from mcp.types import TextContent, Tool
@@ -148,8 +151,16 @@ _TOOLS_SPEC = [
     ),
     (
         "get_writing_context",
-        "取某实体的写作上下文：实体+邻域关系+关联阈值/条款/标准等约束实体的 attrs。写章节前注入核心，防跨章节数据打架。",
-        {"type": "object", "properties": {"entity_name": {"type": "string", "description": "实体名（精确优先，退化为子串）"}}, "required": ["entity_name"]},
+        "取某实体的写作上下文：实体+邻域关系+关联阈值/条款/标准等约束实体的 attrs。写章节前注入核心，防跨章节数据打架。chapter 模式（子项目 4）：按章节关键词返回主题过滤的 B 库规律（domain_pattern）+ C 库项目实体，供每节开写前注入。",
+        {
+            "type": "object",
+            "properties": {
+                "entity_name": {"type": "string", "description": "实体名（精确优先，退化为子串）；与 chapter 至少给一个"},
+                "chapter": {"type": "string", "description": "章节关键词（如 矸石/矿井水/锅炉烟气）：按 chapter_topics.yaml 主题表过滤 domain_pattern + 项目实体"},
+                "project_id": {"type": "string", "description": "项目标识（chapter 模式可选）：过滤 C 库项目实体归属；缺省收全部 project 实体"},
+            },
+            "required": [],
+        },
     ),
     (
         "get_rule_violations",
@@ -176,6 +187,34 @@ _TOOLS_SPEC = [
                 "limit": {"type": "integer", "description": "返回实体数上限（默认 10，最大 50）"},
             },
             "required": [],
+        },
+    ),
+    # ---- C 库沉淀管线（子项目 4, spec 2026-09-30-c-ingest-pipeline-design §5）----
+    (
+        "ingest_project_forms",
+        "C 库沉淀写入：门 1 数据齐套后把整份 stage JSON 的 forms 对象经声明式映射写进项目工作本"
+        "（dg_*，scope=project + project_id）并投影装载进图。返回实体/关系计数 + unmapped_families"
+        "（未映射族清单——汇报不阻塞，按 spec 恒不 fail）。stage JSON 唯一写者纪律不变：本工具是图侧投影消费者，不回写 stage JSON。",
+        {
+            "type": "object",
+            "properties": {
+                "project_id": {"type": "string", "description": "技能工作区项目标识（progress.json 项目名，≤200 字符）"},
+                "stage": {"type": "string", "description": "stage 名（缺省 planning_eia，映射表按族名对齐 references/stages）"},
+                "forms": {"type": "object", "description": "整份 stage JSON 的 forms 对象（全族传入；未映射族自动跳过并进 unmapped_families）"},
+            },
+            "required": ["project_id", "forms"],
+        },
+    ),
+    (
+        "check_project_coverage",
+        "门 1「图上齐套」检查：对照映射表必填族，报告本项目 C 库（scope=project + project_id）实体覆盖度与缺失族清单——替代旧的 JSON 文件在场检查。coverage_complete=false 时按缺失族回技能侧补数。",
+        {
+            "type": "object",
+            "properties": {
+                "project_id": {"type": "string", "description": "技能工作区项目标识"},
+                "stage": {"type": "string", "description": "stage 名（缺省 planning_eia）"},
+            },
+            "required": ["project_id"],
         },
     ),
 ]
@@ -555,12 +594,22 @@ async def _check_consistency(a: dict) -> list[TextContent]:
 
 async def _get_writing_context(a: dict) -> list[TextContent]:
     entity_name = (a.get("entity_name") or "").strip()
-    if not entity_name:
-        return _err(ValueError("entity_name 必填"))
+    chapter = (a.get("chapter") or "").strip()
+    if not entity_name and not chapter:
+        return _err(ValueError("entity_name 与 chapter 至少给一个"))
+    if entity_name:
+        out = await _entity_writing_context(entity_name)
+        if chapter:
+            out["topic_section"] = _chapter_context(_kernel_store(), chapter, (a.get("project_id") or "").strip())  # 追加节，既有字段不动
+        return _ok(out)
+    return _ok({"success": True, **_chapter_context(_kernel_store(), chapter, (a.get("project_id") or "").strip())})
+
+
+async def _entity_writing_context(entity_name: str) -> dict:
     store = _kernel_store()
     found = _resolve_entities(store, entity_name)
     if not found:
-        return _ok({"success": False, "message": f"图中未找到实体「{entity_name}」"})
+        return {"success": False, "message": f"图中未找到实体「{entity_name}」"}
     iri = found[0]["e"]
     constraint_classes = [c for et, c in _etype_class_map_eia().items() if et in _CONSTRAINT_ETYPES]
     neighborhood = _neighborhood(store, iri, cap=30)
@@ -584,17 +633,148 @@ async def _get_writing_context(a: dict) -> list[TextContent]:
         attrs = {_local(r["p"], _EIA_NS + "attr/"): r["o"] for r in attr_rows}
         constraints.append({"iri": nb, "etype": etype_of.get(cls_of.get(nb) or ""), "attrs": attrs})
     names = _names_for(store, nb_iris)
-    return _ok(
-        {
-            "success": True,
-            "entity": {"iri": iri, "name": found[0].get("name"), "etype": etype_of.get(cls_of.get(iri) or "")},
-            "aliases_considered": [r.get("name") for r in found[:5]],
-            "neighborhood": neighborhood,
-            "neighbor_names": names,
-            "constraints": constraints,
-            "hint": "写前核对 constraints 中的阈值/条款数值与邻域关系方向；跨章节同名实体先查 rule_entity_naming 违规。",
+    return {
+        "success": True,
+        "entity": {"iri": iri, "name": found[0].get("name"), "etype": etype_of.get(cls_of.get(iri) or "")},
+        "aliases_considered": [r.get("name") for r in found[:5]],
+        "neighborhood": neighborhood,
+        "neighbor_names": names,
+        "constraints": constraints,
+        "hint": "写前核对 constraints 中的阈值/条款数值与邻域关系方向；跨章节同名实体先查 rule_entity_naming 违规。",
+    }
+
+
+# ---- 写前注入：章节主题模式（子项目 4 spec §5.5，chapter_topics.yaml 声明式）----
+
+_CHAPTER_TOPICS_PATH = Path(__file__).parent / "c_ingest" / "chapter_topics.yaml"
+_chapter_topics_cache: list[dict] | None = None
+
+
+def _load_chapter_topics() -> list[dict]:
+    """章节主题表加载。fail-closed：缺字段 / etype 不在 eia 域枚举 → ValueError（坏表比空结果危险）。"""
+    global _chapter_topics_cache
+    if _chapter_topics_cache is not None:
+        return _chapter_topics_cache
+    from app.doc_graph.schemas import EiaExtraction
+
+    data = yaml.safe_load(_CHAPTER_TOPICS_PATH.read_text(encoding="utf-8"))
+    if not isinstance(data, dict) or not isinstance(data.get("topics"), list):
+        raise ValueError("chapter_topics.yaml 顶层须为 {version, topics: [...]}")
+    topics = []
+    for t in data["topics"]:
+        missing = [k for k in ("chapter", "keywords", "etypes", "patterns") if not t.get(k)]
+        if missing:
+            raise ValueError(f"章节主题缺字段 {missing}: {t!r}")
+        bad = [e for e in t["etypes"] if e not in EiaExtraction.domain_etypes]
+        if bad:
+            raise ValueError(f"章节主题 {t['chapter']!r}: etype {bad} 不在 eia 域枚举内")
+        topics.append({"chapter": t["chapter"], "keywords": list(t["keywords"]), "etypes": list(t["etypes"]), "patterns": list(t["patterns"])})
+    _chapter_topics_cache = topics
+    return topics
+
+
+def _match_chapter_topics(chapter: str, topics: list[dict]) -> list[dict]:
+    """双向包含即命中（"矸石" 命中 "矸石处置"，"第六章 矸石处置" 也命中 "矸石"）。"""
+    hits = []
+    for t in topics:
+        if any(kw in chapter or chapter in kw for kw in t["keywords"]):
+            hits.append(t)
+    return hits
+
+
+def _chapter_context(store: Any, chapter: str, project_id: str) -> dict:  # noqa: ANN001 - OxStore
+    """章节主题上下文：主题过滤的 B 库规律（domain_pattern）+ C 库项目实体 + 邻域约束。"""
+    hits = _match_chapter_topics(chapter, _load_chapter_topics())
+    if not hits:
+        return {
+            "chapter": chapter,
+            "topic_matched": False,
+            "available_topics": [t["chapter"] for t in _load_chapter_topics()],
+            "hint": "章节关键词未命中主题表——可用 available_topics 就近改写 chapter 关键词，或直接用 entity_name 查具体实体。",
         }
+    etype_of = _class_etype_map()
+    class_map = _etype_class_map_eia()
+    etypes = sorted({e for t in hits for e in t["etypes"]})
+    patterns = list(dict.fromkeys(k for t in hits for k in t["patterns"]))
+    topics_named = [t["chapter"] for t in hits]
+
+    # C 库项目实体：scope=project，etype ∈ 主题；project_id 给了就精确归属过滤
+    cls_list = ", ".join(f"<{class_map[e]}>" for e in etypes if e in class_map)
+    pid_clause = f"; <{_EIA_NS}attr/project_id> {json.dumps(project_id, ensure_ascii=False)}" if project_id else ""
+    proj_rows = store.query(f'SELECT DISTINCT ?e ?name ?cls WHERE {{ GRAPH <{_ASSERTED}> {{ ?e a ?cls ; <{_EIA_NS}attr/norm_name> ?name ; <{_EIA_NS}attr/scope> "project" {pid_clause} . FILTER(?cls IN ({cls_list})) }} }}')
+    proj_iris = [r["e"] for r in proj_rows][:50]
+    proj_attrs = _attrs_for(store, proj_iris)
+    project_entities = [
+        {
+            "iri": r["e"],
+            "name": r.get("name"),
+            "etype": etype_of.get(r.get("cls") or ""),
+            "attrs": {k: v for k, v in proj_attrs.get(r["e"], {}).items() if k not in _IDENTITY_ATTRS and k != "project_id"},
+        }
+        for r in proj_rows
+        if r["e"] in proj_iris
+    ]
+
+    # B 库规律：etype=domain_pattern + scope=domain_common，名称/subject_name/object_name 命中任一主题关键词
+    pat_cls = class_map.get("domain_pattern", "")
+    kw_conds = " || ".join(f'CONTAINS(?name, {json.dumps(k, ensure_ascii=False)}) || CONTAINS(COALESCE(?sn, ""), {json.dumps(k, ensure_ascii=False)}) || CONTAINS(COALESCE(?on, ""), {json.dumps(k, ensure_ascii=False)})' for k in patterns)
+    pat_rows = store.query(
+        f'SELECT DISTINCT ?e ?name ?sn ?on WHERE {{ GRAPH <{_ASSERTED}> {{ ?e a <{pat_cls}> ; <{_EIA_NS}attr/norm_name> ?name ; <{_EIA_NS}attr/scope> "domain_common" . '
+        f"OPTIONAL {{ ?e <{_EIA_NS}attr/subject_name> ?sn }} OPTIONAL {{ ?e <{_EIA_NS}attr/object_name> ?on }} FILTER({kw_conds}) }} }}"
     )
+    pat_iris = [r["e"] for r in pat_rows][:30]
+    pat_attrs = _attrs_for(store, pat_iris)
+    domain_patterns = [
+        {
+            "iri": r["e"],
+            "label": (pat_attrs.get(r["e"], {}).get("canonical_name") or r.get("name")),
+            "pattern_type": pat_attrs.get(r["e"], {}).get("pattern_type"),
+            "subject_name": r.get("sn"),
+            "object_name": r.get("on"),
+            "support_count": pat_attrs.get(r["e"], {}).get("support_count"),
+            "source_reports": pat_attrs.get(r["e"], {}).get("source_reports"),
+        }
+        for r in pat_rows
+        if r["e"] in pat_iris
+    ]
+
+    # 主题实体的邻域约束（阈值/标准/条款——裁决数值常隔一层）：取项目实体 + 邻域 2 跳内约束类实体
+    constraint_classes = {c for et, c in class_map.items() if et in _CONSTRAINT_ETYPES}
+    pred_ns = _EIA_NS + "predicate/"
+    near: set[str] = set()
+    for iri in proj_iris[:20]:
+        for row in store.query(f"SELECT ?o WHERE {{ GRAPH <{_ASSERTED}> {{ <{iri}> ?p ?o . FILTER(STRSTARTS(STR(?p), \"{pred_ns}\")) }} }}"):
+            near.add(row["o"])
+    constraint_iris = []
+    if near:
+        lst = ", ".join(f"<{i}>" for i in list(near)[:200])
+        for row in store.query(f"SELECT ?e ?cls WHERE {{ GRAPH <{_ASSERTED}> {{ ?e a ?cls . FILTER(?e IN ({lst})) }} }}"):
+            if row.get("cls") in constraint_classes:
+                constraint_iris.append(row["e"])
+    c_attrs = _attrs_for(store, constraint_iris)
+    cls2: dict[str, Any] = {}
+    if constraint_iris:
+        cls_rows2 = store.query("SELECT ?e ?cls WHERE { GRAPH <" + _ASSERTED + "> { ?e a ?cls . FILTER(?e IN (" + ", ".join(f"<{i}>" for i in constraint_iris) + ")) } }")
+        cls2 = {r["e"]: r.get("cls") for r in cls_rows2}
+    constraints = [
+        {
+            "iri": i,
+            "etype": etype_of.get(cls2.get(i) or ""),
+            "attrs": {k: v for k, v in c_attrs.get(i, {}).items() if k not in _IDENTITY_ATTRS},
+        }
+        for i in constraint_iris
+    ]
+
+    return {
+        "chapter": chapter,
+        "topic_matched": True,
+        "matched_topics": topics_named,
+        "etypes": etypes,
+        "project_entities": project_entities,
+        "domain_patterns": domain_patterns,
+        "constraints": constraints,
+        "hint": "写前注入：先核对 domain_patterns 的规律条目（引用标注 pattern_id 与 support_count）与 project_entities 的项目实体取值；constraints 承载跨实体裁决数值。",
+    }
 
 
 async def _get_rule_violations(a: dict) -> list[TextContent]:
@@ -699,6 +879,33 @@ async def _query_analogy(a: dict) -> list[TextContent]:
     )
 
 
+async def _ingest_project_forms(a: dict) -> list[TextContent]:
+    """C 库沉淀写工具（子项目 4）：声明式映射 + ingest_extraction（scope=project）+ 图投影。"""
+    from app.ontology.c_ingest.pipeline import ingest_project_forms
+
+    project_id = (a.get("project_id") or "").strip()
+    if not project_id:
+        return _err(ValueError("project_id 必填（技能工作区项目标识，≤200 字符）"))
+    forms = a.get("forms")
+    if not isinstance(forms, dict) or not forms:
+        return _err(ValueError("forms 必填且须为对象（整份 stage JSON 的 forms）"))
+    stage = (a.get("stage") or "planning_eia").strip()
+    out = await ingest_project_forms(project_id, stage, forms)
+    return _ok({"success": True, **out})
+
+
+async def _check_project_coverage(a: dict) -> list[TextContent]:
+    """门 1 图上齐套检查（子项目 4）：映射表必填族 vs C 库覆盖度。"""
+    from app.ontology.c_ingest.pipeline import check_project_coverage
+
+    project_id = (a.get("project_id") or "").strip()
+    if not project_id:
+        return _err(ValueError("project_id 必填"))
+    stage = (a.get("stage") or "planning_eia").strip()
+    out = check_project_coverage(project_id, stage)
+    return _ok({"success": True, **out})
+
+
 server = Server("ontology")
 
 
@@ -725,6 +932,8 @@ async def call_tool(name: str, arguments: dict):
         "get_writing_context": _get_writing_context,
         "get_rule_violations": _get_rule_violations,
         "query_analogy": _query_analogy,
+        "ingest_project_forms": _ingest_project_forms,
+        "check_project_coverage": _check_project_coverage,
     }
     handler = handlers.get(name)
     if handler is None:

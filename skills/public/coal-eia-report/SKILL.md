@@ -261,10 +261,12 @@ run 级预算硬顶（按 run 计）：recursion_limit 1000 步、LoopDetection 
 
 ## 本体知识查询（ontostudio MCP）
 
-工具全名带 server 前缀 `ontology_*`（照 `knowledge-factory_kf_*` 惯例）。**服务不可用/调用失败一律 WARN 降级不阻断**（照「载荷缺席降级 manual」既有语义），如实汇报后走既有缺数路径。两条时序：
+工具全名带 server 前缀 `ontology_*`（照 `knowledge-factory_kf_*` 惯例）。**服务不可用/调用失败一律 WARN 降级不阻断**（照「载荷缺席降级 manual」既有语义），如实汇报后走既有缺数路径。四条时序：
 
 1. **步骤 1 数据收集缺数 → `ontology_query_analogy`（类比合规通道，红线 3）**：可类比量（监测值/工艺参数/产能规模等）缺数时，先查样例库（A 库，恒定 scope=sample）类比素材再问用户/落 `[待确认]`——入参 `etype`（如 waste_stream/treatment_measure/sensitive_point）或 `label_contains`，返回样例实体（label/etype/**source_report** 来源报告）+ 邻接关系（谓词+对端名+对端属性）。类比值**由代理转录**进 stage JSON（仍经 `ingest.py forms` 通道落盘，唯一写者纪律不变），与沉陷软件成果转录同纪律（红线 6：数字不经 LLM 生成，禁换算/推算/公式硬凑），转录必带来源标注（`param_source: analog_mine` + 来源报告名）；标准编号/限值不走本通道（仍只从 `standards_index.json` 枚举，红线 5 不变）。查询无命中视同无类比素材，照常 `ask_clarification`/`[待确认]`。
 2. **步骤 5–7 一致性门文本合约通过后 → `ontology_check_consistency`（语义规则层 12 条）**：21 条文本合约跑过后对图谱跑语义规则体检（矸石闭合/敏感点防护/监测覆盖/限值适配等），返回违规清单（rule_id+计数+样例消息）**并入修订报告**——涉及节走既有修订回路，禁改 data/ 绕过（同合约 FAIL 纪律）。
+3. **门 1 通过后 → `ontology_ingest_project_forms`（C 库项目工作本沉淀，子项目 4）**：把整份 stage JSON 的 forms 对象传入（入参 `project_id`=progress.json 项目名 + `forms`，全族传不筛选）——经声明式映射写进项目工作本图库（scope=project）并投影装载。返回实体/关系计数 + `unmapped_families`（未映射族清单，**如实汇报不阻塞**，照常走既有管线）。纪律不变：本工具是 stage JSON 的**图侧投影消费者，非第二写者**（`ingest.py forms` 唯一写者不变，禁把本工具当数据修改通道）；配套 `ontology_check_project_coverage{project_id}` 作语义层**补充**体检（图上齐套视角），**不替代也不修改既有 gate CLI 门 1 逻辑**。
+4. **步骤 4 每节开写前 → `ontology_get_writing_context(project_id, chapter)`（写前注入，子项目 4）**：入参 `chapter`=本节主题关键词（如 矸石/矿井水/锅炉烟气），返回按 `chapter_topics.yaml` 主题表过滤的 B 库规律（`domain_patterns`：pattern_type/subject_name/support_count/source_reports）+ C 库项目实体（本项目 forms 沉淀的实体+属性）+ 跨实体约束（阈值/标准数值）——先核对再动笔，防跨章节数据打架。规律条目引用须标注 pattern_id 与 support_count（同 `query_analogy` 既有纪律）；项目实体取值以 stage JSON 为准（图侧是投影，冲突时以 data/ 为准并汇报）。
 
 ## 参考文件（v2 新体系）
 
