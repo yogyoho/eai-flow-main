@@ -215,6 +215,21 @@ export function DashboardPage() {
       ? "ok"
       : "warn";
 
+  // 管线健康轨道（A 轨道节点式）：节点值/状态 + 蓝线填充到首个非健康站
+  const pipeValidateOk = !!(validateQuery.data && conformance.length > 0 && passedCount === conformance.length && violationCount.length === 0);
+  const pipeNodes = [
+    { nm: "抽取", state: stageExtract, nodeVal: String(activityDone), legendNum: activityDone as number | null, legendUnit: "完成", sub: todoActive > 0 ? `进行中 ${todoActive}` : "队列空闲", onClick: () => go("ingest") },
+    { nm: "人工审核", state: stageReview, nodeVal: pending === null ? "…" : String(pending), legendNum: pending, legendUnit: "待确认", sub: pending !== null && pending > 0 ? "积压 · 建议尽快清零" : "无积压", onClick: () => go("resolve") },
+    { nm: "知识图谱", state: "ok" as const, nodeVal: "✓", legendNum: entityTotal, legendUnit: "节点", sub: `关系 ${relationTotal.toLocaleString()} 条`, onClick: () => go("entities") },
+    { nm: "推理", state: stageInfer, nodeVal: "—", legendNum: null as number | null, legendUnit: "未运行", sub: inferQuery.data ? `闭包 ${formatDuration(inferQuery.data.duration_ms)}` : "全量重算约 30 秒", onClick: () => go("reasoning") },
+    { nm: "校验", state: stageValidate, nodeVal: pipeValidateOk ? "✓" : "!", legendNum: validateQuery.data ? passedCount : null, legendUnit: `/ ${conformance.length} 通过`, sub: `SHACL 违规 ${violationCount.length}`, onClick: () => go("validation") },
+  ];
+  const pipeFillPct = (() => {
+    const percents = [5, 27.5, 50, 72.5, 95];
+    const firstBad = pipeNodes.findIndex((n) => n.state !== "ok");
+    return firstBad === -1 ? 100 : percents[Math.max(0, firstBad)];
+  })();
+
   // 治理合规链（G5/H1 接真）：与推理工作台同源 rule_counts，派生数降序取前 4——零硬编码
   const derivedRules = inferQuery.data
     ? [...ruleRows(inferQuery.data.rule_counts)].sort((a, b) => b.count - a.count).slice(0, 4)
@@ -379,83 +394,52 @@ export function DashboardPage() {
         </div>
       </div>
 
-      {/* 管线健康——五站站线（V4 信息架构） */}
+      {/* 管线健康——轨道节点式（A 变体：一条轨道串五站，蓝线填充到首个非健康站） */}
       <Panel title="管线健康" subtitle="抽取 → 人工审核 → 知识图谱 → 推理 → 校验" icon={Network} className="mb-3.5">
-        <div className="grid grid-cols-2 gap-3 px-4 pb-4 md:grid-cols-5">
-          {[
-            {
-              nm: "抽取",
-              dot: stageExtract,
-              num: activityDone,
-              unit: "已完成",
-              sub: todoActive > 0 ? `进行中 ${todoActive} · 高置信 ${activityQuery.data?.confidence?.high ?? 0}` : `队列空闲 · 高置信 ${activityQuery.data?.confidence?.high ?? 0}`,
-              onClick: () => go("ingest"),
-            },
-            {
-              nm: "人工审核",
-              dot: stageReview,
-              num: pending ?? 0,
-              unit: "待确认",
-              sub: pending !== null && pending > 0 ? "积压 · 建议尽快清零" : "无积压",
-              onClick: () => go("resolve"),
-            },
-            {
-              nm: "知识图谱",
-              dot: "ok" as const,
-              num: entityTotal,
-              unit: "实体行",
-              sub: `关系 ${relationTotal} 条 · 对账见同步卡`,
-              onClick: () => go("entities"),
-            },
-            {
-              nm: "推理",
-              dot: stageInfer,
-              num: inferQuery.data ? inferQuery.data.entailment_triples : null,
-              unit: inferQuery.data ? "物化" : "未运行",
-              sub: inferQuery.data ? `闭包 ${formatDuration(inferQuery.data.duration_ms)}` : "全量重算约 30 秒 · 前往工作台",
-              onClick: () => go("reasoning"),
-            },
-            {
-              nm: "校验",
-              dot: stageValidate,
-              num: validateQuery.data ? passedCount : null,
-              unit: validateQuery.data ? `/ ${conformance.length} 通过` : "—",
-              sub: `SHACL 违规 ${violationCount.length}`,
-              onClick: () => go("validation"),
-            },
-          ].map((st) => (
-            <button
-              key={st.nm}
-              type="button"
-              onClick={st.onClick}
-              title={`前往${st.nm}页面`}
-              className={cn(
-                "border-border hover:bg-muted rounded-lg border p-3 text-left transition-colors",
-                st.dot === "warn" && "border-warning/40",
-              )}
-              style={st.dot === "warn" ? { background: withAlpha(TONE_AMBER, 0.05) } : undefined}
-            >
-              <div className="flex items-center gap-2">
-                <span
-                  className={cn(
-                    "inline-block h-2 w-2 flex-none rounded-full",
-                    st.dot === "warn" && "bg-warning",
-                    st.dot === "ok" && "bg-success",
-                    st.dot === "idle" && "bg-muted-foreground/50",
-                  )}
-                />
-                <span className="text-[13px] font-medium">{st.nm}</span>
-              </div>
-              <div className="mt-1 font-mono text-[22px] font-bold tabular-nums">
-                {st.num === null ? "—" : st.num.toLocaleString()}
-                <small className="text-muted-foreground ml-1 text-[11px] font-normal">{st.unit}</small>
-              </div>
-              <div className="text-muted-foreground mt-0.5 truncate text-[11px]">{st.sub}</div>
-            </button>
-          ))}
+        <div className="px-9 pt-6 pb-2">
+          <div className="relative mx-2 h-7">
+            <div className="border-border absolute left-0 right-0 top-[13px] h-0.5 bg-border" />
+            <div className="absolute left-0 top-[13px] h-0.5 bg-primary/55" style={{ width: `${pipeFillPct}%` }} />
+            {pipeNodes.map((nd, i) => (
+              <button
+                key={nd.nm}
+                type="button"
+                onClick={nd.onClick}
+                title={`前往${nd.nm}页面`}
+                className={cn(
+                  "bg-card absolute top-0 z-10 h-7 w-7 -translate-x-1/2 place-items-center rounded-full border-2 font-mono text-[10px] font-bold grid transition-shadow hover:shadow-md",
+                  nd.state === "ok" && "border-[#34d17b] text-[#1a7f4b]",
+                  nd.state === "warn" && "border-warning bg-warning/10 text-warning shadow-[0_0_0_4px_rgba(245,166,35,0.15)]",
+                  nd.state === "idle" && "border-dashed border-[#b9c2cc] text-muted-foreground",
+                )}
+                style={{ left: `${[5, 27.5, 50, 72.5, 95][i]}%` }}
+              >
+                {nd.nodeVal}
+              </button>
+            ))}
+          </div>
+          <div className="mx-2 mt-2 grid grid-cols-5">
+            {pipeNodes.map((nd) => (
+              <button
+                key={nd.nm}
+                type="button"
+                onClick={nd.onClick}
+                className={cn(
+                  "hover:bg-muted rounded py-1 text-center text-xs transition-colors",
+                  nd.state === "warn" && "text-warning",
+                )}
+              >
+                <span className="block font-medium">{nd.nm}</span>
+                <span className="mono block font-mono text-[19px] font-bold tabular-nums">
+                  {nd.legendNum === null ? "—" : nd.legendNum.toLocaleString()}
+                  <small className="text-muted-foreground ml-1 text-[10px] font-normal">{nd.legendUnit}</small>
+                </span>
+                <span className="text-muted-foreground block text-[10.5px]">{nd.sub}</span>
+              </button>
+            ))}
+          </div>
         </div>
       </Panel>
-
 
       {/* 域健康 + 治理链抽样 */}
       <div className="mt-3.5 grid grid-cols-1 gap-3.5 xl:grid-cols-2">
