@@ -10,6 +10,7 @@
  * （explorer/graphStore 单例），查不到回退 pk。证据链（dg_mention）本 v1 不做。
  */
 import { useQuery } from "@tanstack/react-query";
+import { useMemo, useState, type ReactNode } from "react";
 import { Loader2 } from "lucide-react";
 
 /** 字段中文名映射（v4 文案包 F1）：中文主标 + 括注英文字段名；未映射键原样展示。 */
@@ -46,7 +47,9 @@ const ATTR_VALUE_LABELS: Record<string, string> = {
 
 
 import {
+  fetchObjectDetail,
   fetchObjectLinks,
+  fetchObjects,
   fetchObjectTypes,
   type LinkTypeSummary,
   type ObjectTypeSummary,
@@ -94,6 +97,122 @@ function formatDateTime(value: unknown): string {
   }
   const pad = (n: number) => String(n).padStart(2, "0");
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
+}
+
+/** 对侧实体名解析 hook：图内 label 优先，图外按需单行 GET canonicalName（缓存 5min）。 */
+function useEntityName(entityPk: string) {
+  const nodeId = `graph_entity:${entityPk}`;
+  const inGraph = entityPk !== "" && graph.hasNode(nodeId);
+  const q = useQuery({
+    queryKey: ["ontology", "object", "graph_entity", entityPk],
+    queryFn: ({ signal }) => fetchObjectDetail("graph_entity", entityPk, { signal }),
+    enabled: !inGraph,
+    staleTime: 5 * 60_000,
+    retry: false,
+  });
+  const fromGraph = inGraph
+    ? String(graph.getNodeAttribute(nodeId, "label"))
+    : "";
+  const name =
+    fromGraph ||
+    String((q.data as { canonicalName?: string } | undefined)?.canonicalName ?? "") ||
+    (entityPk ? `实体 ${entityPk.slice(0, 8)}…` : "—");
+  return { name, inGraph };
+}
+
+/** 实体名链接：点击 → onFocusNode 在图中定位对侧。 */
+function EntityNameLink({
+  entityPk,
+  onFocusNode,
+  children,
+}: {
+  entityPk: string;
+  onFocusNode?: (dialectId: string) => void;
+  children: ReactNode;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={() => onFocusNode?.(`graph_entity:${entityPk}`)}
+      title="点击在图中定位该实体"
+      className="text-primary inline-flex items-center gap-1 font-medium hover:underline"
+    >
+      {children}
+    </button>
+  );
+}
+
+/** 图谱关系节点——三元组语义卡（主体 → 谓词 → 客体），替代 UUID 属性表（v4 图谱关系体验）。 */
+function RelationNodeCard({
+  pk,
+  properties,
+  onFocusNode,
+  predicateLabels,
+}: {
+  pk: string;
+  properties: Record<string, unknown>;
+  onFocusNode?: (dialectId: string) => void;
+  predicateLabels: Map<string, string>;
+}) {
+  const subjectId = String(properties.subjectId ?? "");
+  const objectId = String(properties.objectId ?? "");
+  const predicate = String(properties.predicate ?? "");
+  const predicateCn = localizePredicate(predicate, predicateLabels);
+  const subject = useEntityName(subjectId);
+  const object = useEntityName(objectId);
+  const attrs = (properties.attrs ?? {}) as Record<string, unknown>;
+
+  return (
+    <div className="px-3 py-3">
+      <div className="mb-1 text-sm font-semibold leading-snug text-foreground">
+        {subject.name}
+        <span className="text-primary mx-1.5 font-mono text-xs">
+          {predicateCn || predicate}
+        </span>
+        {object.name}
+      </div>
+      <div className="mb-3 flex flex-wrap gap-1">
+        <span className="border-border text-muted-foreground rounded-full border px-2 py-0.5 text-xs">graph_relation</span>
+        <span className="border-border text-muted-foreground rounded-full border px-2 py-0.5 text-xs">图谱关系</span>
+      </div>
+      <h3 className="text-muted-foreground mb-1.5 text-xs font-medium tracking-widest">关系</h3>
+      <dl className="grid grid-cols-[96px_1fr] gap-x-2.5 gap-y-1 text-sm">
+        <dt className="text-muted-foreground">谓词</dt>
+        <dd className="text-foreground font-mono text-xs">
+          {predicate}
+          {predicateCn !== predicate ? `（${predicateCn}）` : ""}
+        </dd>
+        <dt className="text-muted-foreground">主体实体</dt>
+        <dd className="text-foreground">
+          <EntityNameLink entityPk={subjectId} onFocusNode={onFocusNode}>
+            {subject.name}
+          </EntityNameLink>
+        </dd>
+        <dt className="text-muted-foreground">客体实体</dt>
+        <dd className="text-foreground">
+          <EntityNameLink entityPk={objectId} onFocusNode={onFocusNode}>
+            {object.name}
+          </EntityNameLink>
+        </dd>
+        <dt className="text-muted-foreground">置信度</dt>
+        <dd className="text-foreground tabular-nums">{String(properties.confidence ?? "—")}</dd>
+        {Object.entries(attrs).map(([k, v]) => (
+          <div key={k} className="col-span-2 grid grid-cols-subgrid">
+            <dt className="text-muted-foreground">{ATTR_KEY_LABELS[k] ?? k}</dt>
+            <dd className="text-foreground break-all tabular-nums">
+              {typeof v === "boolean" ? (v ? "是" : "否") : String(v ?? "—")}
+            </dd>
+          </div>
+        ))}
+      </dl>
+      <details className="mt-2">
+        <summary className="text-muted-foreground cursor-pointer select-none text-[11px] hover:text-foreground">
+          技术信息（关系 ID）
+        </summary>
+        <div className="text-muted-foreground mt-1 font-mono text-[10.5px] break-all">{pk}</div>
+      </details>
+    </div>
+  );
 }
 
 /** pk 值安全字符串化（行数据为 unknown 投影，非原始值回退空串）。 */
@@ -319,8 +438,12 @@ const LINK_TYPE_LABELS: Record<string, string> = {
 
 /** 关系行→对侧实体 pk（入向=主体，出向=客体）。 */
 function oppositeEntityPk(row: Record<string, unknown>, thisPk: string): string {
-  const subject = String(row.subject_id ?? "");
-  const object = String(row.object_id ?? "");
+  // objects API 行键为 camelCase（api_name 映射）——subjectId/objectId；snake 为历史兜底
+  const subject = String(row.subjectId ?? row.subject_id ?? "");
+  const object = String(row.objectId ?? row.object_id ?? "");
+  if (!subject || !object) {
+    return subject || object;
+  }
   return subject === thisPk ? object : subject;
 }
 
@@ -335,6 +458,18 @@ function LinkTypeRows({ apiName, pk, linkType, opposite, onFocusNode }: LinkType
   });
   const isRelationLink = opposite.name === "graph_relation";
   const isMentionLink = opposite.name === "graph_mention";
+
+  // 名称索引（v4 关联链接语义化兜底）：对侧实体不在已加载图（graph/nodes 钳制 2000）
+  // 时，从全量实体清单解析 canonical_name——一次拉取缓存 5min，与实体库同源。
+  const namesQuery = useQuery({
+    queryKey: ["ontology", "objects", "graph_entity", "name-index"],
+    queryFn: ({ signal }) => fetchObjects("graph_entity", { limit: 5000, signal }),
+    staleTime: 5 * 60_000,
+  });
+  const entityNameIndex = useMemo(
+    () => new Map((namesQuery.data?.data ?? []).map((r) => [String(r.id), String((r as { canonicalName?: string }).canonicalName ?? r.label ?? r.id)])),
+    [namesQuery.data],
+  );
   const linksQuery = useQuery({
     queryKey: ["ontology", "links", apiName, pk, linkType.name],
     queryFn: ({ signal }) => fetchObjectLinks(apiName, pk, linkType.name, { signal }),
@@ -365,9 +500,10 @@ function LinkTypeRows({ apiName, pk, linkType, opposite, onFocusNode }: LinkType
         if (isRelationLink) {
           const otherPk = oppositeEntityPk(row, pk);
           const otherNodeId = `graph_entity:${otherPk}`;
-          const otherName = graph.hasNode(otherNodeId)
+          // 名称解析三级：图内 label → 按需单行 GET（graph 外实体）→ 短 pk
+          const otherName = (graph.hasNode(otherNodeId)
             ? String(graph.getNodeAttribute(otherNodeId, "label"))
-            : `实体 ${otherPk.slice(0, 8)}…`;
+            : "") || entityNameIndex.get(otherPk) || `实体 ${otherPk.slice(0, 8)}…`;
           const predicate = localizePredicate(
             String(row.predicate ?? ""),
             predicateLabels.data ?? new Map(),
@@ -443,6 +579,12 @@ export function DetailPanel({
     queryKey: ["ontology", "object-types"],
     queryFn: fetchObjectTypes,
   });
+  // 谓词中文标注（图谱关系节点语义卡与规律卡共用，模块级缓存）
+  const predicateLabelsQuery = useQuery({
+    queryKey: ["ontology", "predicate-labels"],
+    queryFn: getPredicateLabels,
+    staleTime: Number.POSITIVE_INFINITY,
+  });
 
   if (!nodeId) {
     return (
@@ -485,6 +627,19 @@ export function DetailPanel({
   const linkTypes = (schemaQuery.data?.link_types ?? []).filter(
     (lt) => lt.enabled && (lt.source === apiName || lt.target === apiName),
   );
+
+  // EAI-CUSTOM(2026-10-01 v4 图谱关系节点): 三元组语义卡——UUID 标题与 subjectId/objectId
+  // 裸行对操作者无意义，改为主体→谓词→客体的句子式呈现。
+  if (apiName === "graph_relation") {
+    return (
+      <RelationNodeCard
+        pk={pk}
+        properties={properties}
+        predicateLabels={predicateLabelsQuery.data ?? new Map()}
+        onFocusNode={onFocusNode}
+      />
+    );
+  }
 
   return (
     <div className="px-3 py-3">

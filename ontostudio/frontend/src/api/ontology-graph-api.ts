@@ -225,6 +225,18 @@ export async function fetchObjects(
 }
 
 /** 单对象沿一个链接类型取对侧行（DetailPanel 关联链接区按需拉取）。 */
+/** 单对象详情（GET /objects/{api}/{pk}）——关联链接对侧取名按需用。 */
+export async function fetchObjectDetail(
+  apiName: string,
+  pk: string,
+  options?: { signal?: AbortSignal },
+): Promise<Record<string, unknown>> {
+  return authFetch(
+    `${BASE}/objects/${encodeURIComponent(apiName)}/${encodeURIComponent(pk)}`,
+    { signal: options?.signal },
+  );
+}
+
 export async function fetchObjectLinks(
   apiName: string,
   pk: string,
