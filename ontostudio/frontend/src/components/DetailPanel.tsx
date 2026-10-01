@@ -39,6 +39,18 @@ const ATTR_KEY_LABELS: Record<string, string> = {
   evidence_type: "佐证类型",
   src: "来源",
   distillable: "可蒸馏",
+  mined_by: "开采",
+  pattern_name: "规律名称",
+  pattern_type: "规律类型",
+  subject_name: "主体",
+  object_name: "客体",
+  subject_variants: "主体变体",
+  object_variants: "客体变体",
+  pattern_desc: "规律描述",
+  refined_desc: "精炼解读",
+  support_count: "支持数",
+  occurrence_count: "出现次数",
+  source_reports: "来源报告集",
 };
 const ATTR_VALUE_LABELS: Record<string, string> = {
   sample: "样例库",
@@ -198,7 +210,12 @@ function RelationNodeCard({
         <dd className="text-foreground tabular-nums">{String(properties.confidence ?? "—")}</dd>
         {Object.entries(attrs).map(([k, v]) => (
           <div key={k} className="col-span-2 grid grid-cols-subgrid">
-            <dt className="text-muted-foreground break-words text-[13px]">{ATTR_KEY_LABELS[k] ?? k}<span className="ml-1 font-mono text-[9.5px] opacity-60">{k}</span></dt>
+            <dt className="text-muted-foreground break-words text-[13px]">
+              {ATTR_KEY_LABELS[k] ?? predicateLabels.get(k) ?? k}
+              {ATTR_KEY_LABELS[k] || predicateLabels.get(k) ? (
+                <span className="ml-1 font-mono text-[9.5px] opacity-60">{k}</span>
+              ) : null}
+            </dt>
             <dd className="text-foreground break-all tabular-nums">
               {typeof v === "boolean" ? (v ? "是" : "否") : String(v ?? "—")}
             </dd>
