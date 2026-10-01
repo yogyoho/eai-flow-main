@@ -284,13 +284,18 @@ export interface SuggestionsResult {
 
 const RESOLUTION_BASE = "/doc-graph/resolution";
 
-/** 待复核实体列表（置信度升序；count = 钳制后行数，达 PENDING_REVIEW_LIMIT 只说明"≥200"）。 */
+/** 待复核实体列表（置信度升序）。count = 真实总数（服务端同过滤条件 COUNT，不随行数钳制）。
+ *  EAI-CUSTOM(2026-10-01 v2 B2): search=canonical_name 服务端子串过滤；offset=翻页游标。 */
 export async function fetchPending(
   etype?: string | null,
+  search?: string,
+  offset?: number,
 ): Promise<PendingPage> {
-  const url = etype
-    ? `${RESOLUTION_BASE}/pending?limit=${PENDING_REVIEW_LIMIT}&etype=${encodeURIComponent(etype)}`
-    : `${RESOLUTION_BASE}/pending?limit=${PENDING_REVIEW_LIMIT}`;
+  const qs = new URLSearchParams({ limit: String(PENDING_REVIEW_LIMIT) });
+  if (etype) qs.set("etype", etype);
+  if (search) qs.set("search", search);
+  if (offset) qs.set("offset", String(offset));
+  const url = `}${RESOLUTION_BASE}/pending?}${qs.toString()}`;
   const res = await authFetch<Partial<PendingPage>>(url);
   return {
     entities: res.entities ?? [],

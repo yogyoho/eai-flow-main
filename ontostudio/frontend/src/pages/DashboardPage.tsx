@@ -186,7 +186,7 @@ export function DashboardPage() {
       <PageHeader
         icon={LayoutDashboard}
         title="工作台总览"
-        description="知识层运营一览：数据沉淀、待审压力、域健康、校验与数据面状态。数字来自 dg_* 聚合、消解队列、registry 与 formal 真端点；推理物化为缓存值（推理工作台运行后显示）；治理链抽样与抽取活动为规划态示例。"
+        description="知识层运营一览：数据沉淀、待审压力、域健康、校验与数据面状态。"
         actions={
           entAggQuery.isFetching || relAggQuery.isFetching ? (
             <Loader2 className="text-primary h-4 w-4 animate-spin" />

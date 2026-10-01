@@ -187,7 +187,6 @@ export function ReasoningPage() {
           <Panel
             title="解释视图 · covered_by_standard 推导链示例"
             subtitle="named graph 归属即触发轨迹"
-            actions={<DemoTag />}
           >
             <ol className="flex flex-col gap-3 p-4 text-[13px]">
               <li className="border-primary/20 border-l-2 pl-3">

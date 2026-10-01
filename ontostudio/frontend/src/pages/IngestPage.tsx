@@ -240,7 +240,7 @@ export function IngestPage() {
             <table className="w-full text-[13px]">
               <thead>
                 <tr className="border-border bg-muted/60 border-b">
-                  {["来源", "域", "状态", "实体", "关系", "提及", "操作"].map((head, index) => (
+                  {["来源", "创建时间", "域", "状态", "实体", "关系", "提及", "操作"].map((head, index) => (
                     <th
                       key={head}
                       className={cn(
@@ -256,14 +256,14 @@ export function IngestPage() {
               <tbody>
                 {tasksQuery.isLoading ? (
                   <tr>
-                    <td colSpan={7} className="text-muted-foreground px-4 py-6 text-center text-sm">
+                    <td colSpan={8} className="text-muted-foreground px-4 py-6 text-center text-sm">
                       <Loader2 className="mr-1.5 inline h-3.5 w-3.5 animate-spin" />
                       加载任务队列…
                     </td>
                   </tr>
                 ) : tasks.length === 0 ? (
                   <tr>
-                    <td colSpan={7} className="text-muted-foreground px-4 py-6 text-center text-sm">
+                    <td colSpan={8} className="text-muted-foreground px-4 py-6 text-center text-sm">
                       队列为空——点「＋ 新建抽取任务」从已提取样例创建
                     </td>
                   </tr>
@@ -273,6 +273,16 @@ export function IngestPage() {
                       <td className="max-w-[20rem] truncate px-4 py-2.5 font-medium" title={task.error || task.sample_title || task.document_id}>
                         {task.sample_title || task.document_id}
                         {task.error ? <span className="text-destructive ml-1.5 text-xs">⚠</span> : null}
+                      </td>
+                      <td className="text-muted-foreground whitespace-nowrap px-4 py-2.5 text-xs tabular-nums">
+                        {task.created_at
+                          ? new Date(task.created_at).toLocaleString("zh-CN", {
+                              month: "2-digit",
+                              day: "2-digit",
+                              hour: "2-digit",
+                              minute: "2-digit",
+                            })
+                          : "—"}
                       </td>
                       <td className="text-muted-foreground px-4 py-2.5 font-mono text-sm" title={domainAlias("eia") ?? "eia"}>
                         eia
@@ -382,7 +392,7 @@ export function IngestPage() {
                     key={m.id}
                     className="border-border bg-muted rounded-lg border px-3 py-2.5 text-sm"
                   >
-                    <blockquote>{m.quote ? `"${m.quote}"` : "—"}</blockquote>
+                    <blockquote>{m.quote ? `"${m.quote}"` : <span className="text-muted-foreground">（无上下文引文——产物消费路径不含句子级 quote）</span>}</blockquote>
                     <figcaption className="text-muted-foreground/80 mt-1 font-mono text-xs">
                       doc:{m.documentId || "—"} · thread:{m.threadId?.slice(0, 6) || "—"}
                       {m.extractedBy ? ` · ${m.extractedBy}` : ""}

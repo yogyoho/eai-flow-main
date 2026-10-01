@@ -280,7 +280,7 @@ export function EntitiesPage() {
         clause="03"
         icon={Database}
         title="实体库"
-        description="重构点：旧版为静态示例表；后端 GET /objects/{type} 与 /aggregate 均已存在，本页补接线即成真。支持跨域检索、状态过滤、行级详情（抽屉）。"
+        description="跨域实体检索与状态过滤，支持行级详情抽屉。"
         actions={
           rowsQuery.isFetching ? (
             <Loader2 className="text-primary h-4 w-4 animate-spin" />
@@ -627,8 +627,7 @@ export function EntitiesPage() {
             title="规划中（TODOS·批量摊销）"
             className="bg-primary text-primary-foreground rounded-md px-2.5 py-1 text-sm font-medium opacity-60"
           >
-            批量送审{" "}
-            <span className="font-mono text-xs opacity-80">TODOS·批量摊销</span>
+            批量送审
           </button>
         </div>
       </div>

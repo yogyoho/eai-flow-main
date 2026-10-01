@@ -143,9 +143,17 @@ export function ResolutionPanel({
   const setReviewState = (pk: string, next: ReviewUiState) =>
     setReviewStates((prev) => ({ ...prev, [pk]: next }));
 
+  // 翻页游标（v2 B2/N1：230+ 待审时 200 上限页翻完全量）；检索词变化时归零
+  const [pageIndex, setPageIndex] = useState(0);
+  const trimmedSearch = searchQuery.trim();
+  useEffect(() => {
+    setPageIndex(0);
+  }, [trimmedSearch]);
+
   const pendingQuery = useQuery({
-    queryKey: ["ontology", "resolution", "pending"],
-    queryFn: () => fetchPending(),
+    queryKey: ["ontology", "resolution", "pending", trimmedSearch, pageIndex],
+    queryFn: () =>
+      fetchPending(null, trimmedSearch || undefined, pageIndex * PENDING_REVIEW_LIMIT),
     // 硬失败直接出错误+重试按钮（评审 Fix 2：默认 3× backoff 会转圈 10-15s）
     retry: false,
   });
@@ -462,9 +470,30 @@ export function ResolutionPanel({
                   {search
                     ? `${visibleEntities.length} / ${pendingTotal} 条匹配`
                     : `${pendingTotal} 条待审`}
-                  {!search && pendingTotal >= PENDING_REVIEW_LIMIT
-                    ? `（已达拉取上限 ${PENDING_REVIEW_LIMIT}）`
-                    : ""}
+                </span>
+              ) : null}
+              {pendingTotal !== undefined && pendingTotal > PENDING_REVIEW_LIMIT ? (
+                /* 翻页（v2 B2/N1）：服务端 offset，每页 PENDING_REVIEW_LIMIT 条 */
+                <span className="flex items-center gap-1 text-xs">
+                  <button
+                    type="button"
+                    disabled={pageIndex === 0}
+                    onClick={() => setPageIndex((p) => Math.max(0, p - 1))}
+                    className="border-border bg-card hover:bg-muted rounded border px-1.5 py-0.5 disabled:opacity-40"
+                  >
+                    上一页
+                  </button>
+                  <span className="text-muted-foreground tabular-nums">
+                    {pageIndex + 1} / {Math.ceil(pendingTotal / PENDING_REVIEW_LIMIT)} 页
+                  </span>
+                  <button
+                    type="button"
+                    disabled={(pageIndex + 1) * PENDING_REVIEW_LIMIT >= pendingTotal}
+                    onClick={() => setPageIndex((p) => p + 1)}
+                    className="border-border bg-card hover:bg-muted rounded border px-1.5 py-0.5 disabled:opacity-40"
+                  >
+                    下一页
+                  </button>
                 </span>
               ) : null}
               {visibleEntities.length > 0 ? (
@@ -817,6 +846,12 @@ export function ResolutionPanel({
             </div>
 
             <div className="rounded-[14px]" style={{ background: CARD, border: `1px solid ${CARD_BORDER}` }}>
+              {/* v2 B1.5：开发者契约文档折叠——默认收起，操作者只见摘要行 */}
+              <details>
+                <summary className="border-b px-4 py-3 text-sm font-semibold cursor-pointer select-none" style={{ borderColor: CARD_BORDER, color: INK }}>
+                  操作反馈四态
+                  <span className="text-muted-foreground ml-2 text-xs font-normal">成功 / 降级 / 冲突 409 / 在途——点开查看实现契约</span>
+                </summary>
               <div className="border-b px-4 py-3" style={{ borderColor: CARD_BORDER }}>
                 <b className="text-sm font-semibold" style={{ color: INK }}>
                   操作反馈四态（实现契约）
@@ -855,6 +890,7 @@ export function ResolutionPanel({
                   </tr>
                 </tbody>
               </table>
+              </details>
             </div>
           </div>
         </div>

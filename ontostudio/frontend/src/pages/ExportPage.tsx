@@ -15,7 +15,7 @@ import {
   runFormalLoad,
   type FormalLoadResult,
 } from "@/api/formal-api";
-import { Chip, DemoTag, PageHeader, Panel } from "@/pages/shared";
+import { Chip, PageHeader, Panel } from "@/pages/shared";
 
 const SNAPSHOTS = [
   { when: "2026-09-20 06:00", size: "— 待快照调度" },

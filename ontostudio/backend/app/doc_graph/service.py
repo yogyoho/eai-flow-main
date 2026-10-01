@@ -28,21 +28,42 @@ class MergeConflict(RuntimeError):
     """candidate 已有未撤销合并留痕（REST→409; MCP 走通用 _err 结构化, 零改动）。"""
 
 
-async def list_pending_review(etype: str | None = None, limit: int = 50) -> dict[str, Any]:
-    """status=pending_review 实体列表（置信度升序）。count 恒为真实总数（不随行数钳制）——侧栏红点/面板总数直读。"""
+async def list_pending_review(
+    etype: str | None = None,
+    limit: int = 50,
+    search: str | None = None,
+    offset: int = 0,
+) -> dict[str, Any]:
+    """status=pending_review 实体列表（置信度升序）。count 恒为真实总数（不随行数钳制）——侧栏红点/面板总数直读。
+
+    EAI-CUSTOM(2026-10-01 ux-governance-v2 B2): search=canonical_name 大小写不敏感子串
+    （%/_ 剥除防通配注入），offset=翻页游标——230+ 待审时全量可达（v2 N1）。
+    """
     lim = max(1, min(int(limit), 200))
+    off = max(0, int(offset))
+    q = (search or "").replace("%", "").replace("_", "")
     engine = create_async_engine(_ext_url(), poolclass=NullPool)
     try:
         async with engine.connect() as conn:
             res = await conn.execute(
-                text("SELECT id, domain, etype, canonical_name, confidence FROM dg_entities WHERE status = 'pending_review' AND (CAST(:etype AS text) IS NULL OR etype = CAST(:etype AS text)) ORDER BY confidence ASC LIMIT :lim"),
-                {"etype": etype, "lim": lim},
+                text(
+                    "SELECT id, domain, etype, canonical_name, confidence FROM dg_entities "
+                    "WHERE status = 'pending_review' "
+                    "AND (CAST(:etype AS text) IS NULL OR etype = CAST(:etype AS text)) "
+                    "AND (CAST(:search AS text) IS NULL OR canonical_name ILIKE '%' || CAST(:search AS text) || '%') "
+                    "ORDER BY confidence ASC LIMIT :lim OFFSET :off"
+                ),
+                {"etype": etype, "lim": lim, "search": q or None, "off": off},
             )
             rows = [dict(r) for r in res.mappings().all()]
             total = (
                 await conn.execute(
-                    text("SELECT count(*) FROM dg_entities WHERE status = 'pending_review' AND (CAST(:etype AS text) IS NULL OR etype = CAST(:etype AS text))"),
-                    {"etype": etype},
+                    text(
+                        "SELECT count(*) FROM dg_entities WHERE status = 'pending_review' "
+                        "AND (CAST(:etype AS text) IS NULL OR etype = CAST(:etype AS text)) "
+                        "AND (CAST(:search AS text) IS NULL OR canonical_name ILIKE '%' || CAST(:search AS text) || '%')"
+                    ),
+                    {"etype": etype, "search": q or None},
                 )
             ).scalar_one()
     finally:
