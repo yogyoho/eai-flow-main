@@ -23,6 +23,7 @@ import {
   FileInput,
   GitBranch,
   Layers,
+  UserCheck,
   LayoutDashboard,
   Loader2,
   Network,
@@ -218,14 +219,14 @@ export function DashboardPage() {
   // 管线健康轨道（A 轨道节点式）：节点值/状态 + 蓝线填充到首个非健康站
   const pipeValidateOk = !!(validateQuery.data && conformance.length > 0 && passedCount === conformance.length && violationCount.length === 0);
   const pipeNodes = [
-    { nm: "抽取", state: stageExtract, nodeVal: String(activityDone), legendNum: activityDone as number | null, legendUnit: "完成", sub: todoActive > 0 ? `进行中 ${todoActive}` : "队列空闲", onClick: () => go("ingest") },
-    { nm: "人工审核", state: stageReview, nodeVal: pending === null ? "…" : String(pending), legendNum: pending, legendUnit: "待确认", sub: pending !== null && pending > 0 ? "积压 · 建议尽快清零" : "无积压", onClick: () => go("resolve") },
-    { nm: "知识图谱", state: "ok" as const, nodeVal: "✓", legendNum: entityTotal, legendUnit: "节点", sub: `关系 ${relationTotal.toLocaleString()} 条`, onClick: () => go("entities") },
-    { nm: "推理", state: stageInfer, nodeVal: "—", legendNum: null as number | null, legendUnit: "未运行", sub: inferQuery.data ? `闭包 ${formatDuration(inferQuery.data.duration_ms)}` : "全量重算约 30 秒", onClick: () => go("reasoning") },
-    { nm: "校验", state: stageValidate, nodeVal: pipeValidateOk ? "✓" : "!", legendNum: validateQuery.data ? passedCount : null, legendUnit: `/ ${conformance.length} 通过`, sub: `SHACL 违规 ${violationCount.length}`, onClick: () => go("validation") },
+    { nm: "抽取", icon: FileInput, state: stageExtract, legendNum: activityDone as number | null, legendUnit: "完成", sub: todoActive > 0 ? `进行中 ${todoActive}` : "队列空闲", onClick: () => go("ingest") },
+    { nm: "人工审核", icon: UserCheck, state: stageReview, legendNum: pending, legendUnit: "待确认", sub: pending !== null && pending > 0 ? "积压 · 建议尽快清零" : "无积压", onClick: () => go("resolve") },
+    { nm: "知识图谱", icon: Network, state: "ok" as const, legendNum: entityTotal, legendUnit: "节点", sub: `关系 ${relationTotal.toLocaleString()} 条`, onClick: () => go("entities") },
+    { nm: "推理", icon: BrainCircuit, state: stageInfer, legendNum: null as number | null, legendUnit: "未运行", sub: inferQuery.data ? `闭包 ${formatDuration(inferQuery.data.duration_ms)}` : "全量重算约 30 秒", onClick: () => go("reasoning") },
+    { nm: "校验", icon: ShieldCheck, state: stageValidate, legendNum: validateQuery.data ? passedCount : null, legendUnit: `/ ${conformance.length} 通过`, sub: `SHACL 违规 ${violationCount.length}`, onClick: () => go("validation") },
   ];
   const pipeFillPct = (() => {
-    const percents = [5, 27.5, 50, 72.5, 95];
+    const percents = [10, 30, 50, 70, 90];
     const firstBad = pipeNodes.findIndex((n) => n.state !== "ok");
     return firstBad === -1 ? 100 : percents[Math.max(0, firstBad)];
   })();
@@ -412,9 +413,9 @@ export function DashboardPage() {
                   nd.state === "warn" && "border-warning bg-warning/10 text-warning shadow-[0_0_0_4px_rgba(245,166,35,0.15)]",
                   nd.state === "idle" && "border-dashed border-[#b9c2cc] text-muted-foreground",
                 )}
-                style={{ left: `${[5, 27.5, 50, 72.5, 95][i]}%` }}
+                style={{ left: `${[10, 30, 50, 70, 90][i]}%` }}
               >
-                {nd.nodeVal}
+                <nd.icon className="h-3.5 w-3.5" />
               </button>
             ))}
           </div>
