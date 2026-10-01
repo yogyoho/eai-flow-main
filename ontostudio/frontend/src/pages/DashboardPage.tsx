@@ -395,7 +395,7 @@ export function DashboardPage() {
       </div>
 
       {/* 管线健康——轨道节点式（A 变体：一条轨道串五站，蓝线填充到首个非健康站） */}
-      <Panel title="管线健康" subtitle="抽取 → 人工审核 → 知识图谱 → 推理 → 校验" icon={Network} className="mb-3.5">
+      <Panel title="管线健康" subtitle="抽取 → 人工审核 → 知识图谱 → 推理 → 校验" tone={TONE_BLUE} icon={Network} className="mb-3.5">
         <div className="px-9 pt-6 pb-2">
           <div className="relative mx-2 h-7">
             <div className="border-border absolute left-0 right-0 top-[13px] h-0.5 bg-border" />
