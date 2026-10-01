@@ -245,68 +245,104 @@ export function DashboardPage() {
             进入消解审核 →
           </span>
         </button>
-        <div className="border-border rounded-xl border bg-card p-3.5">
-          <div className="text-muted-foreground flex items-center gap-2 text-sm font-medium">
-            <span className={cn("inline-block h-2 w-2 rounded-full", todoFailed > 0 ? "bg-destructive" : "bg-success")} />
-            失败任务
-          </div>
-          <div className={cn("mt-1.5 font-mono text-3xl font-bold tabular-nums", todoFailed > 0 ? "text-destructive" : "text-success")}>
-            {todoFailed}
-          </div>
-          <div className="text-muted-foreground mt-0.5 text-xs">抽取队列 · 近 24h</div>
-        </div>
-        <div className="border-border rounded-xl border bg-card p-3.5">
-          <div className="text-muted-foreground flex items-center gap-2 text-sm font-medium">
-            <span className={cn("inline-block h-2 w-2 rounded-full", todoActive > 0 ? "bg-warning" : "bg-success")} />
-            进行中
-          </div>
-          <div className="mt-1.5 font-mono text-3xl font-bold tabular-nums">{todoActive}</div>
-          <div className="text-muted-foreground mt-0.5 text-xs">队列 · 今日已完成 {activityDone}</div>
-        </div>
-        <div className="border-border rounded-xl border bg-card p-3.5">
-          <div className="text-muted-foreground flex items-center gap-2 text-sm font-medium">
-            <span className={cn("inline-block h-2 w-2 rounded-full", attentionItems > 0 ? "bg-warning" : "bg-success")} />
-            系统状态
-          </div>
-          <div className={cn("mt-1.5 font-bold", attentionItems > 0 ? "text-[22px] leading-relaxed" : "font-mono text-3xl", attentionItems > 0 ? "" : "text-success")}>
-            {pending === null ? "…" : attentionItems > 0 ? `${attentionItems} 项需关注` : "全部正常"}
-          </div>
-          <div className="text-muted-foreground mt-0.5 text-xs">
-            {pending === null ? "加载中" : attentionItems > 0 ? "待审积压 · 其余指标正常" : "管线各站健康"}
+        <div className="border-border rounded-lg border bg-card px-3.5 py-2.5">
+          <div className="flex items-center justify-between gap-2.5">
+            <span className="flex min-w-0 items-center gap-2 text-[12.5px]">
+              <span className={cn("inline-block h-[7px] w-[7px] flex-none rounded-full", todoFailed > 0 ? "bg-destructive" : "bg-success")} />
+              <span className="min-w-0">
+                失败任务
+                <span className="text-muted-foreground block text-[10.5px] leading-tight">抽取队列 · 近 24h</span>
+              </span>
+            </span>
+            <span className={cn("flex-none font-mono text-2xl font-bold leading-none tabular-nums", todoFailed > 0 ? "text-destructive" : "text-success")}>
+              {todoFailed}
+              <small className="text-muted-foreground block text-right text-[10px] font-normal">条</small>
+            </span>
           </div>
         </div>
-        <Tile
-          k="实体"
-          v={entAggQuery.isLoading ? null : entityTotal}
-          unit="行"
-          d={topDomain ? `最大域 ${topDomain.group ?? "—"} · ${topDomain.value} 行` : "—"}
-          tone={TONE_BLUE}
-          icon={Database}
-          title="dg_entities 表行数（跨域合计）"
-          onClick={() => go("entities")}
-        />
-        <Tile
-          k="关系"
-          v={relAggQuery.isLoading ? null : relationTotal}
-          unit="条"
-          d="两端实体都存在的关系才计入"
-          tone={TONE_PURPLE}
-          icon={GitBranch}
-          title="dg_relations 表行数"
-        />
-        <Tile
-          k="推理物化三元组"
-          v={inferQuery.data ? inferQuery.data.entailment_triples : null}
-          unit=""
-          d={
-            inferQuery.data
-              ? `闭包 ${formatDuration(inferQuery.data.duration_ms)} · 前往推理工作台查看规则明细`
-              : "尚未运行 · 全量重算约 30 秒，前往推理工作台"
-          }
-          tone={TONE_CYAN}
-          icon={BrainCircuit}
-          onClick={() => go("reasoning")}
-        />
+        <div className="border-border rounded-lg border bg-card px-3.5 py-2.5">
+          <div className="flex items-center justify-between gap-2.5">
+            <span className="flex min-w-0 items-center gap-2 text-[12.5px]">
+              <span className={cn("inline-block h-[7px] w-[7px] flex-none rounded-full", todoActive > 0 ? "bg-warning" : "bg-success")} />
+              <span className="min-w-0">
+                进行中
+                <span className="text-muted-foreground block text-[10.5px] leading-tight">今日已完成 {activityDone}</span>
+              </span>
+            </span>
+            <span className="flex-none font-mono text-2xl font-bold leading-none tabular-nums">
+              {todoActive}
+              <small className="text-muted-foreground block text-right text-[10px] font-normal">个</small>
+            </span>
+          </div>
+        </div>
+        <div className="border-border rounded-lg border bg-card px-3.5 py-2.5">
+          <div className="flex items-center justify-between gap-2.5">
+            <span className="flex min-w-0 items-center gap-2 text-[12.5px]">
+              <span className={cn("inline-block h-[7px] w-[7px] flex-none rounded-full", attentionItems > 0 ? "bg-warning" : "bg-success")} />
+              <span className="min-w-0">
+                系统状态
+                <span className="text-muted-foreground block text-[10.5px] leading-tight">
+                  {pending === null ? "加载中" : attentionItems > 0 ? "待审积压 · 其余正常" : "管线各站健康"}
+                </span>
+              </span>
+            </span>
+            <span className={cn("flex-none font-mono text-2xl font-bold leading-none tabular-nums", pending !== null && attentionItems > 0 ? "text-[17px] text-warning" : "text-success")}>
+              {pending === null ? "…" : attentionItems}
+              <small className="block text-right text-[10px] font-normal">
+                {pending === null ? "加载中" : attentionItems > 0 ? "项需关注" : "项待办"}
+              </small>
+            </span>
+          </div>
+        </div>
+        <div className="border-border rounded-lg border bg-card px-3.5 py-2.5" title="dg_entities 表行数（跨域合计）">
+          <div className="flex items-center justify-between gap-2.5">
+            <span className="flex min-w-0 items-center gap-2 text-[12.5px]">
+              <span className="inline-block h-[7px] w-[7px] flex-none rounded-full" style={{ background: TONE_BLUE }} />
+              <span className="min-w-0">
+                实体
+                <span className="text-muted-foreground block text-[10.5px] leading-tight">
+                  {topDomain ? `最大域 ${topDomain.group ?? "—"} · ${topDomain.value} 行` : "—"}
+                </span>
+              </span>
+            </span>
+            <span className="flex-none font-mono text-2xl font-bold leading-none tabular-nums">
+              {entAggQuery.isLoading ? "…" : entityTotal.toLocaleString()}
+              <small className="text-muted-foreground block text-right text-[10px] font-normal">行</small>
+            </span>
+          </div>
+        </div>
+        <div className="border-border rounded-lg border bg-card px-3.5 py-2.5" title="dg_relations 表行数">
+          <div className="flex items-center justify-between gap-2.5">
+            <span className="flex min-w-0 items-center gap-2 text-[12.5px]">
+              <span className="inline-block h-[7px] w-[7px] flex-none rounded-full" style={{ background: TONE_PURPLE }} />
+              <span className="min-w-0">
+                关系
+                <span className="text-muted-foreground block text-[10.5px] leading-tight">两端实体都存在的关系才计入</span>
+              </span>
+            </span>
+            <span className="flex-none font-mono text-2xl font-bold leading-none tabular-nums">
+              {relAggQuery.isLoading ? "…" : relationTotal.toLocaleString()}
+              <small className="text-muted-foreground block text-right text-[10px] font-normal">条</small>
+            </span>
+          </div>
+        </div>
+        <div className="border-border rounded-lg border bg-card px-3.5 py-2.5" onClick={() => go("reasoning")} style={{ cursor: "pointer" }} title="前往推理工作台">
+          <div className="flex items-center justify-between gap-2.5">
+            <span className="flex min-w-0 items-center gap-2 text-[12.5px]">
+              <span className="inline-block h-[7px] w-[7px] flex-none rounded-full" style={{ background: TONE_CYAN }} />
+              <span className="min-w-0">
+                推理物化三元组
+                <span className="text-muted-foreground block text-[10.5px] leading-tight">
+                  {inferQuery.data ? `闭包 ${formatDuration(inferQuery.data.duration_ms)}` : "未运行 · 全量重算约 30 秒"}
+                </span>
+              </span>
+            </span>
+            <span className="flex-none font-mono text-2xl font-bold leading-none tabular-nums">
+              {inferQuery.isLoading ? "…" : inferQuery.data ? inferQuery.data.entailment_triples.toLocaleString() : "—"}
+              <small className="text-muted-foreground block text-right text-[10px] font-normal">{inferQuery.data ? "条" : " "}</small>
+            </span>
+          </div>
+        </div>
       </div>
 
       {/* 管线健康——五站站线（V4 信息架构） */}
