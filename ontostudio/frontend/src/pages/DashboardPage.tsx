@@ -16,21 +16,20 @@
 import { useMutation, useQueries, useQuery } from "@tanstack/react-query";
 import {
   Activity,
+  AlertTriangle,
   ArrowRight,
   BrainCircuit,
-  CheckCircle2,
   Database,
   FileInput,
   GitBranch,
-  HeartPulse,
   Layers,
   LayoutDashboard,
   Loader2,
   Network,
   PlayCircle,
+  RefreshCw,
   Share2,
   ShieldCheck,
-  XCircle,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { useState, type ReactNode } from "react";
@@ -265,8 +264,11 @@ export function DashboardPage() {
         <div className="border-border rounded-lg border bg-card px-3.5 py-2.5">
           <div className="flex items-center justify-between gap-2.5">
             <span className="flex min-w-0 items-center gap-2.5 text-[12.5px]">
-              <CardIcon bg={todoFailed > 0 ? "var(--red-bg)" : "var(--green-soft)"} tone={todoFailed > 0 ? "var(--red)" : "var(--green)"}>
-                {todoFailed > 0 ? <XCircle className="h-3.5 w-3.5" /> : <CheckCircle2 className="h-3.5 w-3.5" />}
+              <CardIcon
+                bg={todoFailed > 0 ? "var(--red-bg)" : "var(--muted)"}
+                tone={todoFailed > 0 ? "var(--red)" : "var(--ink-3)"}
+              >
+                <AlertTriangle className="h-3.5 w-3.5" />
               </CardIcon>
               <span className="min-w-0">
                 失败任务
@@ -282,8 +284,11 @@ export function DashboardPage() {
         <div className="border-border rounded-lg border bg-card px-3.5 py-2.5">
           <div className="flex items-center justify-between gap-2.5">
             <span className="flex min-w-0 items-center gap-2.5 text-[12.5px]">
-              <CardIcon bg={todoActive > 0 ? "var(--amber-soft)" : "var(--green-soft)"} tone={todoActive > 0 ? "var(--amber)" : "var(--green)"}>
-                {todoActive > 0 ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <CheckCircle2 className="h-3.5 w-3.5" />}
+              <CardIcon
+                bg={todoActive > 0 ? "var(--amber-soft)" : "var(--muted)"}
+                tone={todoActive > 0 ? "var(--amber)" : "var(--ink-3)"}
+              >
+                <RefreshCw className={cn("h-3.5 w-3.5", todoActive > 0 && "animate-spin")} />
               </CardIcon>
               <span className="min-w-0">
                 进行中
@@ -299,14 +304,11 @@ export function DashboardPage() {
         <div className="border-border rounded-lg border bg-card px-3.5 py-2.5">
           <div className="flex items-center justify-between gap-2.5">
             <span className="flex min-w-0 items-center gap-2.5 text-[12.5px]">
-              <CardIcon bg={pending === null ? "var(--muted)" : attentionItems > 0 ? "var(--amber-soft)" : "var(--green-soft)"} tone={pending === null ? "var(--ink-3)" : attentionItems > 0 ? "var(--amber)" : "var(--green)"}>
-                {pending === null ? (
-                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                ) : attentionItems > 0 ? (
-                  <HeartPulse className="h-3.5 w-3.5" />
-                ) : (
-                  <ShieldCheck className="h-3.5 w-3.5" />
-                )}
+              <CardIcon
+                bg={pending === null ? "var(--muted)" : attentionItems > 0 ? "var(--amber-soft)" : "var(--green-soft)"}
+                tone={pending === null ? "var(--ink-3)" : attentionItems > 0 ? "var(--amber)" : "var(--green)"}
+              >
+                <Activity className={cn("h-3.5 w-3.5", pending !== null && todoActive > 0 && "animate-pulse")} />
               </CardIcon>
               <span className="min-w-0">
                 系统状态
