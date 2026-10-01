@@ -272,7 +272,7 @@ export function DashboardPage() {
                 <span className="text-muted-foreground block text-[10.5px] leading-tight">抽取队列 · 近 24h</span>
               </span>
             </span>
-            <span className={cn("flex-none font-mono text-2xl font-bold leading-none tabular-nums", todoFailed > 0 ? "text-destructive" : "text-success")}>
+            <span className="flex-none font-mono text-2xl font-bold leading-none tabular-nums text-destructive">
               {todoFailed}
               <small className="text-muted-foreground block text-right text-[10px] font-normal">条</small>
             </span>
@@ -292,7 +292,7 @@ export function DashboardPage() {
                 <span className="text-muted-foreground block text-[10.5px] leading-tight">今日已完成 {activityDone}</span>
               </span>
             </span>
-            <span className="flex-none font-mono text-2xl font-bold leading-none tabular-nums">
+            <span className="flex-none font-mono text-2xl font-bold leading-none tabular-nums text-success">
               {todoActive}
               <small className="text-muted-foreground block text-right text-[10px] font-normal">个</small>
             </span>
