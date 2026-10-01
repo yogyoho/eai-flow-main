@@ -825,7 +825,7 @@ export function ResolutionPanel({
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-border bg-muted/60 border-b" style={{ borderColor: CARD_BORDER }}>
-                    {["态", "触发", "呈现"].map((h) => (
+                    {["状态", "触发", "呈现"].map((h) => (
                       <th key={h} className="text-muted-foreground px-4 py-2 text-left text-xs font-medium">
                         {h}
                       </th>
@@ -834,24 +834,24 @@ export function ResolutionPanel({
                 </thead>
                 <tbody>
                   <tr className="border-border/60 border-b" style={{ borderColor: CARD_BORDER }}>
-                    <td className="px-4 py-2"><span className="mr-1.5 inline-block h-2 w-2 rounded-full" style={{ background: GREEN }} />成功</td>
+                    <td className="px-4 py-2 text-xs"><span className="mr-1.5 inline-block h-2 w-2 rounded-full" style={{ background: GREEN }} />成功</td>
                     <td className="px-2 py-2 font-mono text-xs">projected:true</td>
-                    <td className="px-2 py-2">绿勾 + 行内「已入图」；图浏览可立即看到</td>
+                    <td className="px-2 py-2 text-xs">绿勾 + 行内「已入图」；图浏览可立即看到</td>
                   </tr>
                   <tr className="border-border/60 border-b" style={{ borderColor: CARD_BORDER }}>
-                    <td className="px-4 py-2"><span className="mr-1.5 inline-block h-2 w-2 rounded-full" style={{ background: AMBER }} />degraded</td>
+                    <td className="px-4 py-2 text-xs"><span className="mr-1.5 inline-block h-2 w-2 rounded-full" style={{ background: AMBER }} />degraded</td>
                     <td className="px-2 py-2 font-mono text-xs">projected:false + errors</td>
-                    <td className="px-2 py-2">黄警 + 明细 + 「重跑全量装载即自动对账（数据无损失）」</td>
+                    <td className="px-2 py-2 text-xs">黄警 + 明细 + 「重跑全量装载即自动对账（数据无损失）」</td>
                   </tr>
                   <tr className="border-border/60 border-b" style={{ borderColor: CARD_BORDER }}>
-                    <td className="px-4 py-2"><span className="mr-1.5 inline-block h-2 w-2 rounded-full" style={{ background: INK_3 }} />冲突 409</td>
+                    <td className="px-4 py-2 text-xs"><span className="mr-1.5 inline-block h-2 w-2 rounded-full" style={{ background: INK_3 }} />冲突 409</td>
                     <td className="px-2 py-2 font-mono text-xs">前置条件不满足</td>
-                    <td className="px-2 py-2">中性提示「状态已变更，请刷新」（不得渲染为已确认）</td>
+                    <td className="px-2 py-2 text-xs">中性提示「状态已变更，请刷新」（不得渲染为已确认）</td>
                   </tr>
                   <tr>
-                    <td className="px-4 py-2"><span className="mr-1.5 inline-block h-2 w-2 rounded-full" style={{ background: BLUE }} />在途</td>
+                    <td className="px-4 py-2 text-xs"><span className="mr-1.5 inline-block h-2 w-2 rounded-full" style={{ background: BLUE }} />在途</td>
                     <td className="px-2 py-2 font-mono text-xs">invoke 进行中</td>
-                    <td className="px-2 py-2">按钮 disabled + spinner + 卡内进度行（同步投影实测数十秒）</td>
+                    <td className="px-2 py-2 text-xs">按钮 disabled + spinner + 卡内进度行（同步投影实测数十秒）</td>
                   </tr>
                 </tbody>
               </table>

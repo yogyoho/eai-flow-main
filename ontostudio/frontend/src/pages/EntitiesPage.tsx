@@ -35,6 +35,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Chip, PageHeader, Panel } from "@/pages/shared";
+import { domainAlias } from "@/lib/terms";
 import { cn } from "@/lib/utils";
 
 const PAGE_SIZES = [10, 25, 50, 100] as const;
@@ -167,7 +168,8 @@ export function EntitiesPage() {
     return map;
   }, [mentionAggQuery.data]);
 
-  const [domainFilter, setDomainFilter] = useState("");
+  // EAI-CUSTOM(2026-10-01 B1.6): 默认域改 eia——doc_graph 域 0 行, 缺省落空态像「无数据」假象
+  const [domainFilter, setDomainFilter] = useState("eia");
   const [statusFilter, setStatusFilter] = useState("");
   const [searchInput, setSearchInput] = useState("");
   const [search, setSearch] = useState("");
@@ -302,7 +304,8 @@ export function EntitiesPage() {
                 active={Boolean(domainFilter)}
                 options={domainOptions.map((r) => ({
                   value: r.group ?? "",
-                  label: `${r.group || "—"}（${r.value}）`,
+                  // EAI-CUSTOM(2026-10-01 B1.5): 域名附中文别名（terms.ts 单源）
+                  label: `${r.group || "—"}${r.group ? `（${domainAlias(r.group) ?? r.group}）` : ""}`,
                 }))}
               />
             ) : null}
@@ -444,7 +447,7 @@ export function EntitiesPage() {
                           return (
                             <td
                               key={c.api}
-                              className="max-w-[12rem] truncate px-4 py-2.5 font-mono text-sm"
+                              className="max-w-[12rem] truncate px-4 py-2.5 font-medium"
                             >
                               {renderCell(value)}
                             </td>

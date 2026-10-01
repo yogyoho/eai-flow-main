@@ -105,7 +105,7 @@ export function ExportPage() {
       <div className="grid grid-cols-1 gap-3.5 xl:grid-cols-2">
         <Panel
           title="装载与对账"
-          subtitle="POST /formal/load · 重读 dg_* 全表（行级 force_status）"
+          subtitle="全量装载重写数据库真相——投影失败后重跑本操作即恢复一致"
         >
           <div className="p-4">
             <div className="flex items-center gap-2.5">
@@ -113,7 +113,7 @@ export function ExportPage() {
                 type="button"
                 disabled={loadMutation.isPending}
                 onClick={() => loadMutation.mutate()}
-                className="flex items-center gap-1.5 rounded-lg bg-primary px-3 py-1.5 text-sm font-medium text-white transition-opacity hover:opacity-90 disabled:opacity-50"
+                className="flex items-center gap-1.5 whitespace-nowrap rounded-lg bg-primary px-3 py-1.5 text-sm font-medium text-white transition-opacity hover:opacity-90 disabled:opacity-50"
               >
                 {loadMutation.isPending ? (
                   <Loader2 className="h-3.5 w-3.5 animate-spin" />

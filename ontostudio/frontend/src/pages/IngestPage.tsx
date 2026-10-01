@@ -184,7 +184,7 @@ export function IngestPage() {
                     <td className="max-w-[20rem] truncate px-4 py-2.5 font-medium">{task.doc}</td>
                     <td className="text-muted-foreground px-4 py-2.5 font-mono text-sm">{task.domain}</td>
                     <td className="px-4 py-2.5">
-                      <span className="flex items-center gap-2 text-sm">
+                      <span className="flex items-center gap-2 font-medium">
                         <span className={cn("inline-block h-2 w-2 flex-none rounded-full", STATUS_DOT[task.status])} />
                         {task.status}
                         {task.progress ? (

@@ -108,7 +108,7 @@ export function ReasoningPage() {
           <div className="mt-0.5 text-3xl font-black tracking-tight">
             {inferQuery.data ? inferQuery.data.entailment_triples.toLocaleString() : "—"}
           </div>
-          <div className="text-muted-foreground mt-0.5 text-sm">
+          <div className="text-muted-foreground mt-0.5 text-xs">
             输入 {inferQuery.data ? inferQuery.data.input_triples.toLocaleString() : "—"} · 门限过滤{" "}
             {inferQuery.data?.filtered_low_confidence ?? 0}
           </div>
@@ -116,7 +116,7 @@ export function ReasoningPage() {
         <Panel className="px-4 py-3.5">
           <div className="text-muted-foreground text-sm font-medium">CONSTRUCT 派生</div>
           <div className="mt-0.5 text-3xl font-black tracking-tight">{derivedTotal}</div>
-          <div className="text-muted-foreground mt-0.5 text-sm">
+          <div className="text-muted-foreground mt-0.5 text-xs">
             {inferQuery.data ? `${rules.length} 条规则` : "— 条规则"} · 上次全量{" "}
             {inferQuery.data ? "刚刚" : "—"}
           </div>
@@ -126,7 +126,7 @@ export function ReasoningPage() {
           <div className="mt-0.5 text-3xl font-black tracking-tight">
             {inferQuery.data ? `${inferQuery.data.duration_ms}ms` : "—"}
           </div>
-          <div className="text-muted-foreground mt-0.5 text-sm">5k 实体校准门限 ≤ 15s ✓</div>
+          <div className="text-muted-foreground mt-0.5 text-xs">5k 实体校准门限 ≤ 15s ✓</div>
         </Panel>
       </div>
       <Panel
@@ -141,7 +141,7 @@ export function ReasoningPage() {
                 {["规则", "派生谓词", "named graph", "派生数", "状态"].map((head, index) => (
                   <th
                     key={head}
-                    className={`text-muted-foreground px-4 py-3 text-sm font-semibold uppercase tracking-wider whitespace-nowrap ${index === 3 ? "text-right" : "text-left"}`}
+                    className={`text-muted-foreground px-4 py-3 text-xs font-semibold uppercase tracking-wider whitespace-nowrap ${index === 3 ? "text-right" : "text-left"}`}
                   >
                     {head}
                   </th>

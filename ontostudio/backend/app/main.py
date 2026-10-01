@@ -28,6 +28,8 @@ from starlette.types import Receive, Scope, Send
 from app import auth
 from app.db import ensure_tables
 from app.doc_graph.mcp import server as doc_graph_mcp_server
+from app.doc_graph.ingest_tasks import router as ingest_tasks_router
+from app.doc_graph.ingest_tasks import sweep_orphan_tasks
 from app.doc_graph.routers import router as doc_graph_router
 from app.ontology.formal import router as formal_router
 from app.ontology.mcp import server as ontology_mcp_server
@@ -111,6 +113,7 @@ def create_app() -> FastAPI:
         #          一个与写路径竞争的建表者。
         try:
             await ensure_tables()
+            await sweep_orphan_tasks()  # EAI-CUSTOM(2026-10-01 B2): 启动清扫孤儿任务行——同一 try 内, 42P01 no-op（ingest_tasks.sweep_orphan_tasks 自吞）
             application.state.tables_ready = True
         except Exception as exc:  # 建表失败不阻断启动（见上），但必须留痕且可观测
             application.state.tables_ready = False
@@ -133,6 +136,7 @@ def create_app() -> FastAPI:
     app.include_router(formal_router)
     app.include_router(rules_router)
     app.include_router(doc_graph_router)
+    app.include_router(ingest_tasks_router)
 
     # MCP streamable-http 双端点（Route 精确匹配; harness 条目 url 即此路径, 无尾斜杠）
     app.routes.append(Route("/mcp/ontology", ontology_guard, methods=["GET", "POST", "DELETE"], name="mcp_ontology"))

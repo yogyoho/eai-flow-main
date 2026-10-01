@@ -107,7 +107,7 @@ export function Panel({
           ) : null}
           <b className="text-sm font-semibold">{title}</b>
           {subtitle ? (
-            <span className="text-muted-foreground text-sm font-normal">
+            <span className="text-muted-foreground text-xs font-normal">
               {subtitle}
             </span>
           ) : null}

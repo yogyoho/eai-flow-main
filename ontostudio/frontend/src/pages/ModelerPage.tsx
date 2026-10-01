@@ -472,7 +472,7 @@ export function ModelerPage() {
                     type="button"
                     onClick={() => setMode("vis")}
                     className={cn(
-                      "px-2.5 py-1 text-sm font-medium",
+                      "px-2.5 py-1 text-xs font-medium",
                       mode === "vis"
                         ? "bg-primary/10 text-primary font-semibold"
                         : "bg-card text-muted-foreground hover:bg-accent",
@@ -484,7 +484,7 @@ export function ModelerPage() {
                     type="button"
                     onClick={() => setMode("yaml")}
                     className={cn(
-                      "px-2.5 py-1 text-sm font-medium",
+                      "px-2.5 py-1 text-xs font-medium",
                       mode === "yaml"
                         ? "bg-primary/10 text-primary font-semibold"
                         : "bg-card text-muted-foreground hover:bg-accent",
@@ -507,7 +507,7 @@ export function ModelerPage() {
                     type="button"
                     onClick={handleValidate}
                     disabled={busy || !text}
-                    className="border-border bg-card hover:bg-muted rounded-md border px-2 py-1 text-sm font-medium disabled:opacity-50"
+                    className="border-border bg-card hover:bg-muted rounded-sm border px-2 py-1 text-sm font-medium disabled:opacity-50"
                   >
                     校验
                   </button>
@@ -515,7 +515,7 @@ export function ModelerPage() {
                     type="button"
                     onClick={handleSave}
                     disabled={busy || !text}
-                    className="bg-primary text-primary-foreground hover:bg-primary/90 rounded-md px-2 py-1 text-sm font-medium disabled:opacity-50"
+                    className="bg-primary text-primary-foreground hover:bg-primary/90 rounded-sm px-2 py-1 text-sm font-medium disabled:opacity-50"
                   >
                     {busy ? <Loader2 className="mr-1 inline h-3 w-3 animate-spin" /> : null}
                     保存
@@ -530,7 +530,7 @@ export function ModelerPage() {
                     <button
                       type="button"
                       onClick={addClass}
-                      className="bg-primary text-primary-foreground hover:opacity-90 rounded-md px-2.5 py-1 text-sm font-medium"
+                      className="bg-primary text-primary-foreground hover:opacity-90 rounded-sm px-2.5 py-1 text-xs font-medium"
                     >
                       ＋ 新建类
                     </button>
@@ -545,7 +545,7 @@ export function ModelerPage() {
                       }
                       onClick={() => setConnectChild(selectedClass)}
                       className={cn(
-                        "rounded-md border px-2.5 py-1 text-sm font-medium disabled:opacity-40",
+                        "rounded-sm border px-2.5 py-1 text-xs font-medium disabled:opacity-40",
                         connectChild
                           ? "border-primary/50 bg-primary/10 text-primary"
                           : "border-border bg-card text-muted-foreground",
@@ -558,7 +558,7 @@ export function ModelerPage() {
                       disabled={!selectedClass}
                       onClick={() => removeClass(selectedClass as string)}
                       title="删除前先查引用（属性链/实例），确认后从草稿移除"
-                      className="border-destructive/40 text-destructive rounded-md border px-2.5 py-1 text-sm disabled:opacity-40"
+                      className="border-destructive/40 text-destructive rounded-sm border px-2.5 py-1 text-xs disabled:opacity-40"
                     >
                       ✕ 删除
                     </button>

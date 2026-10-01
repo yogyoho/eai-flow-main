@@ -256,7 +256,7 @@ export function DashboardPage() {
                     onClick={() => go("modeler")}
                   >
                     <td className="px-4 py-2.5">
-                      <span className="flex items-center gap-2 font-mono text-[13px]">
+                      <span className="flex items-center gap-2 font-mono text-sm">
                         <span
                           className="h-2 w-2 flex-none rounded-full"
                           style={{ background: dot }}
@@ -338,7 +338,7 @@ export function DashboardPage() {
       {/* 三小卡——绿=校验 蓝=数据面 琥珀=抽取 */}
       <div className="mt-3.5 grid grid-cols-1 gap-3.5 xl:grid-cols-3">
         <Panel title="校验状态" tone={TONE_GREEN} icon={ShieldCheck} className="flex flex-col">
-          <div className="flex flex-1 flex-col gap-2.5 p-4 text-sm">
+          <div className="flex flex-1 flex-col gap-2.5 p-4 text-xs">
             <div className="flex items-center justify-between">
               <span>国标符合性（5.3/5.4/附录A/§9）</span>
               <span
@@ -369,7 +369,7 @@ export function DashboardPage() {
         </Panel>
 
         <Panel title="图数据同步" subtitle="本体库与图保持一致" tone={TONE_BLUE} icon={Database} className="flex flex-col">
-          <div className="flex flex-1 flex-col gap-2.5 p-4 text-sm">
+          <div className="flex flex-1 flex-col gap-2.5 p-4 text-xs">
             <div className="flex items-center justify-between">
               <span>registry 版本</span>
               <span className="font-mono">v{registryMetaQuery.data?.registry_version ?? "—"}</span>
@@ -424,7 +424,7 @@ export function DashboardPage() {
             </span>
           }
         >
-          <div className="flex flex-1 flex-col gap-2.5 p-4 text-sm">
+          <div className="flex flex-1 flex-col gap-2.5 p-4 text-xs">
             <p className="text-muted-foreground leading-relaxed">
               抽取任务概念（队列/进度/置信度分布）待后端任务 API——当前生产线
               <span className="text-foreground font-mono"> regex/v1</span>，

@@ -349,7 +349,7 @@ function OntologyWorkspace({
               {(
                 [
                   ["detail", "详情"],
-                  ["registry", "Registry"],
+                  ["registry", "注册表"],
                 ] as Array<[PanelTab, string]>
               ).map(([tab, label]) => (
                 <button
@@ -406,11 +406,11 @@ function OntologyWorkspace({
       {/* 状态条（overviewOnly 模式隐藏） */}
       {!overviewOnly && (
       <footer className="border-border bg-card text-muted-foreground flex shrink-0 items-center gap-3.5 overflow-x-auto border-t px-3.5 py-1 text-xs whitespace-nowrap tabular-nums">
-        <span>
-          registry <b className="font-mono">v{meta?.registry_version ?? "—"}</b>
+        <span title={`registry v${meta?.registry_version ?? "—"}`}>
+          注册表 <b className="font-mono">v{meta?.registry_version ?? "—"}</b>
         </span>
-        <span>
-          fingerprint <span className="font-mono">{fingerprint}</span>
+        <span title={`registry fingerprint（技术指纹，排障用）: ${meta?.fingerprint ?? "—"}`}>
+          指纹 <span className="font-mono">{fingerprint}</span>
         </span>
         <span>
           {meta
