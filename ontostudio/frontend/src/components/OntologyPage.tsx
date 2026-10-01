@@ -92,7 +92,38 @@ function OntologyWorkspace({
   const [activeTab, setActiveTab] = useState<PanelTab>("detail");
   const [summary, setSummary] = useState<GraphLoadSummary | null>(null);
   const [view, setView] = useState<PageView>(initialView);
-  const [colorByCommunity, setColorByCommunity] = useState(false);
+  // EAI-CUSTOM(2026-10-01 v4 B): 社区着色默认开启（毛球→彩色聚落的首屏感知质变），
+  // localStorage 记忆用户选择——显式关过就不再自动开
+  const [colorByCommunity, setColorByCommunity] = useState(() => {
+    try {
+      return localStorage.getItem("ontostudio-graph-community") !== "0";
+    } catch {
+      return true;
+    }
+  });
+  useEffect(() => {
+    try {
+      localStorage.setItem("ontostudio-graph-community", colorByCommunity ? "1" : "0");
+    } catch {
+      /* 私密窗口等场景静默 */
+    }
+  }, [colorByCommunity]);
+  // 轻引导条（一次性，可关闭）
+  const [graphHintOpen, setGraphHintOpen] = useState(() => {
+    try {
+      return localStorage.getItem("ontostudio-graph-hint") !== "1";
+    } catch {
+      return true;
+    }
+  });
+  const dismissGraphHint = () => {
+    setGraphHintOpen(false);
+    try {
+      localStorage.setItem("ontostudio-graph-hint", "1");
+    } catch {
+      /* 静默 */
+    }
+  };
   // EAI-CUSTOM(2026-09-27 原型重构): T2A 状态可视化——按状态着色 + 只看已确认过滤
   const [colorByStatus, setColorByStatus] = useState(false);
   const [activeOnly, setActiveOnly] = useState(false);
@@ -299,8 +330,8 @@ function OntologyWorkspace({
               </SelectTrigger>
               <SelectContent position="popper">
                 <SelectItem value="__all__">域：全部</SelectItem>
-                <SelectItem value="doc_graph">doc_graph</SelectItem>
-                <SelectItem value="eia">eia</SelectItem>
+                <SelectItem value="doc_graph">文档图谱（doc_graph）</SelectItem>
+                <SelectItem value="eia">环评（eia）</SelectItem>
               </SelectContent>
             </Select>
             <button
@@ -333,6 +364,21 @@ function OntologyWorkspace({
       <div className={cn("min-h-0 flex-1", view !== "map" && "hidden")}>
         <div className="flex h-full min-h-0">
           <div className="relative min-w-0 flex-1">
+            {graphHintOpen ? (
+              <div className="border-border/70 bg-primary/5 text-muted-foreground mb-2 flex flex-wrap items-center gap-x-4 gap-y-1 rounded-md border px-3 py-1.5 text-xs" data-testid="graph-hint">
+                <span className="text-primary font-medium">提示</span>
+                <span>顶部检索可定位节点</span>
+                <span>社区着色可看聚类结构</span>
+                <span>域筛选可缩小范围</span>
+                <button
+                  type="button"
+                  onClick={dismissGraphHint}
+                  className="text-muted-foreground ml-auto hover:text-foreground"
+                >
+                  知道了
+                </button>
+              </div>
+            ) : null}
             <OntologyGraphCanvas
               selectedNodeId={selectedNodeId}
               onSelectNode={handleSelectNode}

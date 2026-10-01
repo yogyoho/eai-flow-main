@@ -12,6 +12,25 @@
 import { useQuery } from "@tanstack/react-query";
 import { Loader2 } from "lucide-react";
 
+/** 字段中文名映射（v4 文案包 F1）：中文主标 + 括注英文字段名；未映射键原样展示。 */
+const FIELD_LABELS: Record<string, string> = {
+  id: "实体 ID",
+  domain: "域",
+  etype: "类型",
+  canonicalName: "名称",
+  normName: "规范名",
+  attrs: "属性",
+  confidence: "置信度",
+  status: "状态",
+  validFrom: "生效自",
+  validTo: "生效至",
+  createdAt: "创建时间",
+  updatedAt: "更新时间",
+  thread_id: "来源会话",
+  document_id: "来源文档",
+};
+
+
 import {
   fetchObjectLinks,
   fetchObjectTypes,
@@ -387,12 +406,18 @@ export function DetailPanel({ nodeId }: { nodeId: string | null }) {
       <h3 className="text-muted-foreground mb-1.5 text-xs font-medium tracking-widest">属性</h3>
       {genericEntries.length > 0 ? (
         <dl className="grid grid-cols-[96px_1fr] gap-x-2.5 gap-y-1 text-sm">
-          {genericEntries.map(([key, value]) => (
+          {genericEntries.map(([key, value]) => {
+            const label = FIELD_LABELS[key];
+            return (
             <div key={key} className="col-span-2 grid grid-cols-subgrid">
-              <dt className="text-muted-foreground break-words">{key}</dt>
+              <dt className="text-muted-foreground break-words">
+                {label ?? key}
+                {label ? <span className="ml-1 font-mono text-[9.5px] opacity-60">{key}</span> : null}
+              </dt>
               <dd className="text-foreground break-all tabular-nums">{formatPropertyValue(value)}</dd>
             </div>
-          ))}
+            );
+          })}
         </dl>
       ) : (
         <div className="text-muted-foreground text-xs">

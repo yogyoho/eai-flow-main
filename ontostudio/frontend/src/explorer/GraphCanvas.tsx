@@ -2687,7 +2687,8 @@ export const GraphCanvas = forwardRef<GraphCanvasHandle, GraphCanvasProps>(
               letterSpacing: "0.01em",
             }}
           >
-            Fit View
+            {/* EAI-CUSTOM(2026-10-01 文案包): 按钮文案中文化，逻辑零改动 */}
+            适配视图
           </button>
         ) : null}
       </div>
