@@ -326,7 +326,7 @@ export function DashboardPage() {
         <div className="border-border rounded-lg border bg-card px-3.5 py-2.5" title="dg_entities 表行数（跨域合计）">
           <div className="flex items-center justify-between gap-2.5">
             <span className="flex min-w-0 items-center gap-2.5 text-[12.5px]">
-              <CardIcon bg="var(--primary-soft)" tone="var(--primary)">
+              <CardIcon bg="#e7efff" tone="#4d8dff">
                 <Database className="h-3.5 w-3.5" />
               </CardIcon>
               <span className="min-w-0">
