@@ -96,6 +96,9 @@ const TONE_TEXT: Record<string, string> = {
 };
 const toneText = (tone: string) => TONE_TEXT[tone] ?? tone;
 
+/** 管线五站标识色（轨道分段与节点环同源）：抽取蓝 / 审核琥珀 / 图谱紫 / 推理青 / 校验绿 */
+const PIPE_COLORS = ["#4d8dff", "#f5a623", "#7c5cd6", "#0e9488", "#1a7f4b"];
+
 function go(route: string) {
   window.location.hash = route;
 }
@@ -219,17 +222,13 @@ export function DashboardPage() {
   // 管线健康轨道（A 轨道节点式）：节点值/状态 + 蓝线填充到首个非健康站
   const pipeValidateOk = !!(validateQuery.data && conformance.length > 0 && passedCount === conformance.length && violationCount.length === 0);
   const pipeNodes = [
-    { nm: "抽取", icon: FileInput, state: stageExtract, legendNum: activityDone as number | null, legendUnit: "完成", sub: todoActive > 0 ? `进行中 ${todoActive}` : "队列空闲", onClick: () => go("ingest") },
-    { nm: "人工审核", icon: UserCheck, state: stageReview, legendNum: pending, legendUnit: "待确认", sub: pending !== null && pending > 0 ? "积压 · 建议尽快清零" : "无积压", onClick: () => go("resolve") },
-    { nm: "知识图谱", icon: Network, state: "ok" as const, legendNum: entityTotal, legendUnit: "节点", sub: `关系 ${relationTotal.toLocaleString()} 条`, onClick: () => go("entities") },
-    { nm: "推理", icon: BrainCircuit, state: stageInfer, legendNum: null as number | null, legendUnit: "未运行", sub: inferQuery.data ? `闭包 ${formatDuration(inferQuery.data.duration_ms)}` : "全量重算约 30 秒", onClick: () => go("reasoning") },
-    { nm: "校验", icon: ShieldCheck, state: stageValidate, legendNum: validateQuery.data ? passedCount : null, legendUnit: `/ ${conformance.length} 通过`, sub: `SHACL 违规 ${violationCount.length}`, onClick: () => go("validation") },
+    { nm: "抽取", color: PIPE_COLORS[0], icon: FileInput, state: stageExtract, legendNum: activityDone as number | null, legendUnit: "完成", sub: todoActive > 0 ? `进行中 ${todoActive}` : "队列空闲", onClick: () => go("ingest") },
+    { nm: "人工审核", color: PIPE_COLORS[1], icon: UserCheck, state: stageReview, legendNum: pending, legendUnit: "待确认", sub: pending !== null && pending > 0 ? "积压 · 建议尽快清零" : "无积压", onClick: () => go("resolve") },
+    { nm: "知识图谱", color: PIPE_COLORS[2], icon: Network, state: "ok" as const, legendNum: entityTotal, legendUnit: "节点", sub: `关系 ${relationTotal.toLocaleString()} 条`, onClick: () => go("entities") },
+    { nm: "推理", color: PIPE_COLORS[3], icon: BrainCircuit, state: stageInfer, legendNum: null as number | null, legendUnit: "未运行", sub: inferQuery.data ? `闭包 ${formatDuration(inferQuery.data.duration_ms)}` : "全量重算约 30 秒", onClick: () => go("reasoning") },
+    { nm: "校验", color: PIPE_COLORS[4], icon: ShieldCheck, state: stageValidate, legendNum: validateQuery.data ? passedCount : null, legendUnit: `/ ${conformance.length} 通过`, sub: `SHACL 违规 ${violationCount.length}`, onClick: () => go("validation") },
   ];
-  const pipeFillPct = (() => {
-    const percents = [10, 30, 50, 70, 90];
-    const firstBad = pipeNodes.findIndex((n) => n.state !== "ok");
-    return firstBad === -1 ? 100 : percents[Math.max(0, firstBad)];
-  })();
+
 
   // 治理合规链（G5/H1 接真）：与推理工作台同源 rule_counts，派生数降序取前 4——零硬编码
   const derivedRules = inferQuery.data
@@ -400,7 +399,17 @@ export function DashboardPage() {
         <div className="px-9 pt-6 pb-2">
           <div className="relative mx-2 h-7">
             <div className="border-border absolute left-0 right-0 top-[13px] h-0.5 bg-border" />
-            <div className="absolute left-0 top-[13px] h-0.5 bg-primary/55" style={{ width: `${pipeFillPct}%` }} />
+            {[0, 1, 2, 3].map((i) => (
+              <div
+                key={i}
+                className="absolute top-[13px] h-0.5"
+                style={{
+                  left: `${[10, 30, 50, 70][i]}%`,
+                  width: "20%",
+                  background: `linear-gradient(90deg, ${PIPE_COLORS[i]}, ${PIPE_COLORS[i + 1]})`,
+                }}
+              />
+            ))}
             {pipeNodes.map((nd, i) => (
               <button
                 key={nd.nm}
@@ -409,11 +418,14 @@ export function DashboardPage() {
                 title={`前往${nd.nm}页面`}
                 className={cn(
                   "bg-card absolute top-0 z-10 h-7 w-7 -translate-x-1/2 place-items-center rounded-full border-2 font-mono text-[10px] font-bold grid transition-shadow hover:shadow-md",
-                  nd.state === "ok" && "border-[#34d17b] text-[#1a7f4b]",
-                  nd.state === "warn" && "border-warning bg-warning/10 text-warning shadow-[0_0_0_4px_rgba(245,166,35,0.15)]",
-                  nd.state === "idle" && "border-dashed border-[#b9c2cc] text-muted-foreground",
+                  nd.state === "idle" && "border-dashed",
                 )}
-                style={{ left: `${[10, 30, 50, 70, 90][i]}%` }}
+                style={{
+                  left: `${[10, 30, 50, 70, 90][i]}%`,
+                  borderColor: nd.color,
+                  color: nd.color,
+                  ...(nd.state === "warn" ? { boxShadow: "0 0 0 4px rgba(245, 166, 35, 0.15)" } : {}),
+                }}
               >
                 <nd.icon className="h-3.5 w-3.5" />
               </button>
