@@ -87,3 +87,30 @@
 - **Cons:** 新表（dg_extraction_tasks）+ 状态机（排队/运行/完成/失败）+ 与主系统线程的来源关联字段；08 页从静态转真需要前后端同步动。
 - **Context:** 2026-09-26 会话页面盘点（设计 docs/designs/2026-09-26-ontostudio-review-loop-closure.md「Status Quo」节）；IngestPage 原型稿已按真任务概念画好（docs/designs/ontostudio-frontend-redesign-20260926.html#ingest），后端就绪即可接线。**触发条件：多文档批量抽取场景实际出现（≥3 篇/批），或用户抱怨「不知道抽到哪了」。**
 - **Depends on / blocked by:** 人审闭环切片已落地（2026-09-27，2ae60a40b/41504e3cb）——任务产出与待审队列已能衔接；无其他前置。
+
+## TODO: ingest 任务进度真百分比插桩（2A 延期项）
+
+- **What:** 给 ontostudio ingest 任务进度加真实百分比（持久化循环 item 计数回调），替代阶段枚举制的粗粒度展示。
+- **Why:** 2026-10-01 eng-review D3 裁决阶段枚举（queued/extracting/loading/done/failed）满足 v1；但任务量/时长涨上去后操作者无法区分「62% 推进中」和「卡住」。
+- **Pros:** 进度可信；UI 可恢复 IngestPage 原型的百分比列形态。
+- **Cons:** 侵入 ingest_extraction 内部或包一层计数回调；单人内网工具当前收益低。
+- **Context:** 插桩点=ontostudio/backend/app/doc_graph/ingest.py:55 的落库循环；UI 侧前端无测试 runner，改完靠容器 build+截图验收。任务 API 契约见 docs/designs/2026-10-01-ontostudio-ux-governance.md B2。
+- **Depends on / blocked by:** B2（ingest_tasks 表+runner）落地。
+
+## TODO: OntoStudio 快照调度 + 跨域链路启用（office-hours 方案 C 遗项）
+
+- **What:** ①每日 06:00 可恢复快照调度器（导出页快照历史卡已画好等接真）；②cross_module 四链路启用评估与补数据。
+- **Why:** 导出页自述「计划中——待快照调度」；跨域四链路全禁用（3×NO_DATA+1×匹配率 0.0%）=本体平台宣称的跨域能力是死链（2026-09-22 三轴判定，2026-10-01 复核仍成立）。
+- **Pros:** 「计划中」标记清零；跨域是平台核心卖点。
+- **Cons:** 快照调度=新 cron 基建；跨域是数据/匹配率问题非纯代码，强启产出低质量链路。
+- **Context:** 2026-10-01 office-hours 方案 C 被否决理由=深水区单独立项；跨域阈值 30% 匹配率，数据基础=cross_module.yaml（ontostudio/backend/app/ontology/registry/）；快照历史卡 UI 在 ExportPage。
+- **Depends on / blocked by:** 快照调度无前置；跨域启用前置=匹配率达标或人工入库补链。
+
+## TODO: OntoStudio 直连文档抽取通道（extract.py 文档→text + samples 卷挂载）
+
+- **What:** 让 ontostudio ingest 任务能直连原始文档抽取（gateway eia_samples/extract.py 的 read_source_text/_read_docx ~300 行移植 + kf_samples 源文件卷挂载进 ontostudio-backend + extract_ontology.py 移植），替代当前「消费 kf_samples.outline_json 已持久化产物」的 v1 路径。
+- **Why:** 2026-10-01 eng-review D10 终裁 v1 走产物消费（outline_json），因源文件在 gateway 容器文件系统（kf_samples 真源不在仓库内）且 ontostudio-backend 只挂 kernel 卷——worker 打不开引用文件。直连通道是任务化抽取的完整形态。
+- **Pros:** 新上传文档可即时任务化抽取，不依赖离线批量管线预产 outline_json。
+- **Cons:** ~300 行移植 + 容器卷变更 + mention 合成边界（首次去重跨文档、quote 归属）需重新设计。
+- **Context:** 外部声音 2026-10-01 证伪移植路径三连（text→dict 边界/文件可达性/置信度过 0.7 人审门——末条已由 force_review 解）；converter 模式参照 ontostudio/backend/app/ontology/c_ingest/pipeline.py:374。
+- **Depends on / blocked by:** B2 v1（产物消费路径）落地并验证闭环。
