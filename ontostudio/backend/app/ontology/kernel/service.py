@@ -7,10 +7,13 @@ refresh() 编排：schema 重编 → owlrl 闭包 → CONSTRUCT 派生（防抖�
 
 from __future__ import annotations
 
+import json
 import os
 import re
 import threading
 from dataclasses import asdict
+from datetime import datetime, timezone
+from pathlib import Path
 
 from app.ontology.kernel.cq import load_cqs, run_cqs
 from app.ontology.kernel.infer import InferStats, compute_entailment, refresh_schema
@@ -30,25 +33,28 @@ _IRI_RE = re.compile(r"^[A-Za-z][A-Za-z0-9+.\-]*:[^\s<>\"{}|^`\\]*$")
 
 class KernelService:
     def __init__(self) -> None:
-        path = os.environ.get("ONTOSTUDIO_KERNEL_PATH")
-        self.store = OxStore(path) if path else OxStore()
+        self.kernel_path = os.environ.get("ONTOSTUDIO_KERNEL_PATH")
+        self.store = OxStore(self.kernel_path) if self.kernel_path else OxStore()
 
     def refresh(self, min_confidence: float = 0.7, dry: bool = False) -> InferStats:
         """schema 重编 → 闭包 → 派生全量重算。
 
         dry=试算（F6）：跳过 schema 重编、闭包只算不写、规则只计数——全程零落盘。
+        停用规则（F8）不参与重算。
         """
         registry = get_registry()
+        disabled = self._disabled_rules()
+        all_rules = [r for r in self._all_rules(registry) if r.name not in disabled]
         if not dry:
             refresh_schema(self.store, registry)
         stats = compute_entailment(self.store, min_confidence=min_confidence, write=not dry)
-        all_rules = self._all_rules(registry)
         if dry:
             stats.rule_counts = {
                 r.name: len(list(self.store._store.query(r.construct))) for r in all_rules
             }
         else:
             stats.rule_counts = run_all_rules(self.store, all_rules)
+            self._append_history(min_confidence, stats)
         return stats
 
     def _all_rules(self, registry) -> list:  # noqa: ANN001 - Registry
@@ -157,6 +163,118 @@ class KernelService:
             except Exception:  # noqa: BLE001 - 单行弹性（谓词越域等历史数据）
                 skipped.append(str(r["subject"]) + "->" + str(r["object"]))
         return {"entities": inserted, "relations": rel_count, "skipped": skipped}
+
+    def rule_sources(self) -> list[dict]:
+        """F1 规则清单 + F8 启用状态（enabled 由 rules_state.json overlay 合成）。"""
+        from app.ontology.kernel.rules import (
+            BUILTIN_SAMEAS_PROPAGATION,
+            builtin_chain_rules,
+            load_rules,
+        )
+
+        registry = get_registry()
+        disabled = self._disabled_rules()
+        return [
+            {"name": r.name, "construct": r.construct, "origin": origin, "enabled": r.name not in disabled}
+            for origin, group in (
+                ("yaml", load_rules()),
+                ("builtin", [BUILTIN_SAMEAS_PROPAGATION]),
+                ("chain", builtin_chain_rules(registry)),
+            )
+            for r in group
+        ]
+
+    # ---- F8 规则启停（状态 overlay：kernel 数据卷 rules_state.json，与定义分离）----
+
+    def _rules_state_path(self) -> Path | None:
+        return Path(self.kernel_path) / "rules_state.json" if self.kernel_path else None
+
+    def _disabled_rules(self) -> set[str]:
+        path = self._rules_state_path()
+        if not path or not path.exists():
+            return set()
+        try:
+            return set(json.loads(path.read_text(encoding="utf-8")).get("disabled", []))
+        except Exception:  # noqa: BLE001 - 状态文件损坏视为全启用（fail-open 到可用态）
+            return set()
+
+    def set_rule_enabled(self, name: str, enabled: bool) -> dict:
+        """启停规则并即时生效：启用=单规则重算恢复派生；停用=清空对应派生图。"""
+        import re
+
+        if not re.fullmatch(r"[a-z0-9_]+", name):
+            raise ValueError("规则名不合法")
+        path = self._rules_state_path()
+        if not path:
+            raise ValueError("内核为内存模式，规则状态不持久")
+        state: dict = {}
+        if path.exists():
+            try:
+                state = json.loads(path.read_text(encoding="utf-8"))
+            except Exception:  # noqa: BLE001
+                state = {}
+        disabled = set(state.get("disabled", []))
+        if enabled:
+            disabled.discard(name)
+        else:
+            disabled.add(name)
+        state["disabled"] = sorted(disabled)
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(json.dumps(state, ensure_ascii=False, indent=2), encoding="utf-8")
+
+        rule = next((r for r in self._all_rules(get_registry()) if r.name == name), None)
+        if rule is None:
+            raise KeyError(name)
+        if enabled:
+            from app.ontology.kernel.rules import run_rule
+
+            count = run_rule(self.store, rule)
+        else:
+            self.store.clear_graph(f"graph:derived:{name}")
+            count = 0
+        return {"rule": name, "enabled": enabled, "count": count}
+
+    # ---- F9 推理历史 ----
+
+    def _history_path(self) -> Path | None:
+        return Path(self.kernel_path) / "infer_history.jsonl" if self.kernel_path else None
+
+    def _append_history(self, min_confidence: float, stats: InferStats) -> None:
+        path = self._history_path()
+        if not path:
+            return
+        try:
+            row = {
+                "ts": datetime.now(timezone.utc).isoformat(timespec="seconds"),
+                "min_conf": min_confidence,
+                "input_triples": stats.input_triples,
+                "entailment_triples": stats.entailment_triples,
+                "rule_counts": stats.rule_counts,
+                "duration_ms": stats.duration_ms,
+            }
+            with path.open("a", encoding="utf-8") as f:
+                f.write(json.dumps(row, ensure_ascii=False) + "\n")
+        except Exception:  # noqa: BLE001 - 历史失败不影响主流程
+            pass
+
+    def infer_history(self, limit: int = 20) -> list[dict]:
+        """近 N 次落盘重算（倒序）；前端做相邻 diff。"""
+        path = self._history_path()
+        if not path or not path.exists():
+            return []
+        rows: list[dict] = []
+        try:
+            for line in path.read_text(encoding="utf-8").splitlines():
+                line = line.strip()
+                if not line:
+                    continue
+                try:
+                    rows.append(json.loads(line))
+                except Exception:  # noqa: BLE001 - 坏行跳过
+                    pass
+        except Exception:  # noqa: BLE001
+            return []
+        return list(reversed(rows[-limit:]))
 
     def run_cqs(self) -> list[dict]:
         """CQ 验收（F5）：cq.yaml 逐条 ASK 真跑，FAIL 不阻断（推理工作台页数据源）。"""

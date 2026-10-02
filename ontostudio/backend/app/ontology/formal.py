@@ -49,24 +49,8 @@ async def formal_cq_run(_: CurrentUser = Depends(require_permission("system:acce
 
 @router.get("/rules")
 async def formal_rules(_: CurrentUser = Depends(require_permission("system:access"))):
-    """规则清单+源码（F1）：YAML 规则 + 内置 sameAs + registry 属性链自动生成。"""
-    from app.ontology.kernel.rules import (
-        BUILTIN_SAMEAS_PROPAGATION,
-        builtin_chain_rules,
-        load_rules,
-    )
-    from app.ontology.registry import get_registry
-
-    rules = [
-        {"name": r.name, "construct": r.construct, "origin": origin}
-        for origin, group in (
-            ("yaml", load_rules()),
-            ("builtin", [BUILTIN_SAMEAS_PROPAGATION]),
-            ("chain", builtin_chain_rules(get_registry())),
-        )
-        for r in group
-    ]
-    return {"success": True, "rules": rules}
+    """规则清单+源码+启用状态（F1/F8）：YAML 规则 + 内置 sameAs + registry 属性链自动生成。"""
+    return {"success": True, "rules": get_kernel().rule_sources()}
 
 
 @router.get("/rules/{name}/derivations")
@@ -118,6 +102,31 @@ async def formal_rule_explain_miss(
         raise HTTPException(status_code=422, detail=str(e)) from e
     except KeyError as e:
         raise HTTPException(status_code=404, detail=f"规则不存在: {e}") from e
+
+
+@router.post("/rules/{name}/enabled")
+async def formal_rule_set_enabled(
+    name: str,
+    payload: dict,
+    _: CurrentUser = Depends(require_permission("system:access")),
+):
+    """规则启停（F8）：状态写 kernel 卷 overlay，启用即单规则重算、停用即撤派生图。"""
+    enabled = bool(payload.get("enabled", True))
+    try:
+        return {"success": True, **get_kernel().set_rule_enabled(name, enabled)}
+    except ValueError as e:
+        raise HTTPException(status_code=422, detail=str(e)) from e
+    except KeyError as e:
+        raise HTTPException(status_code=404, detail=f"规则不存在: {e}") from e
+
+
+@router.get("/history")
+async def formal_history(
+    limit: int = Query(20, ge=1, le=100),
+    _: CurrentUser = Depends(require_permission("system:access")),
+):
+    """推理历史（F9）：近 N 次落盘重算（倒序），前端做相邻 diff。"""
+    return {"success": True, "history": get_kernel().infer_history(limit)}
 
 
 @router.post("/load-ontology")

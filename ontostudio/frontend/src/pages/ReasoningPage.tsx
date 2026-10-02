@@ -4,7 +4,7 @@
  */
 import { BrainCircuit } from "lucide-react";
 
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
 
 import {
@@ -12,8 +12,10 @@ import {
   fetchRuleDerivations,
   fetchRuleExplainMiss,
   fetchRuleTrace,
+  fetchInferHistory,
   runCqs,
   runFormalInfer,
+  setRuleEnabled,
   type DerivationRow,
   type InferStats,
 } from "@/api/formal-api";
@@ -69,6 +71,7 @@ function iriLocal(iri: string): string {
 }
 
 export function ReasoningPage() {
+  const qc = useQueryClient();
   // F7 门限可调（2026-10-02 一期）：仅作用于下一次全量重算；页面展示的始终是已落盘
   // 的当前物化——缓存 key 不含门限，与总览治理合规链共享同一份「最新落盘」数据。
   const [minConf, setMinConf] = useState(0.7);
@@ -80,10 +83,35 @@ export function ReasoningPage() {
   const derivedTotal = inferQuery.data
     ? Object.values(inferQuery.data.rule_counts).reduce((sum, n) => sum + n, 0)
     : 0;
-  const rules = useMemo(
-    () => (inferQuery.data ? ruleRows(inferQuery.data.rule_counts) : []),
-    [inferQuery.data],
-  );
+  // F8：规则行以规则源清单为驱动（含未派生/已停用规则），counts 仅作数值
+  const rulesSourceQuery = useQuery({
+    queryKey: ["formal", "rules"],
+    queryFn: fetchFormalRules,
+    staleTime: 5 * 60_000,
+  });
+  const rules = useMemo(() => {
+    const counts = inferQuery.data?.rule_counts;
+    if (!counts) return [];
+    const src = rulesSourceQuery.data?.rules;
+    if (!src || src.length === 0) return ruleRows(counts).map((r) => ({ ...r, enabled: true }));
+    return src.map((r) => {
+      const meta = RULE_META[r.name];
+      return {
+        name: r.name,
+        desc:
+          meta?.desc ??
+          (r.origin === "chain"
+            ? "registry 属性链自动生成"
+            : r.origin === "builtin"
+              ? "内置规则（sameAs 候选传播）"
+              : "rules.yaml 定义"),
+        pred: meta?.pred ?? r.name.replace(/^chain_/, ""),
+        graph: `graph:derived:${r.name}`,
+        count: counts[r.name] ?? 0,
+        enabled: r.enabled,
+      };
+    });
+  }, [inferQuery.data, rulesSourceQuery.data]);
   // G-B（2026-10-02 深审）：规则行此前 cursor-pointer 无 onClick，预览写死
   // bidder_qualified——选中态驱动预览；缺省落 qualified_bidder（唯一有 SPARQL 源码）。
   const [selectedRuleName, setSelectedRuleName] = useState<string | null>(null);
@@ -95,11 +123,6 @@ export function ReasoningPage() {
 
   // F1 规则源码 + F2 派生下钻（2026-10-02 一期）：预览面板三视图（信息/源码/派生）。
   const [previewView, setPreviewView] = useState<"meta" | "source" | "derivations">("meta");
-  const rulesSourceQuery = useQuery({
-    queryKey: ["formal", "rules"],
-    queryFn: fetchFormalRules,
-    staleTime: 5 * 60_000,
-  });
   const sourceMap = useMemo(
     () => new Map((rulesSourceQuery.data?.rules ?? []).map((r) => [r.name, r])),
     [rulesSourceQuery.data],
@@ -148,6 +171,23 @@ export function ReasoningPage() {
   const cqResults = cqQuery.data?.results ?? [];
   const cqFailed = cqResults.filter((r) => !r.passed).length;
 
+  // F8 规则启停：启用即单规则重算、停用即撤派生图——广播失效让 infer/cq/下钻同步
+  const toggleRuleMutation = useMutation({
+    mutationFn: ({ name, enabled }: { name: string; enabled: boolean }) =>
+      setRuleEnabled(name, enabled),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ["formal"] });
+    },
+  });
+  // F9 推理历史
+  const [historyOpen, setHistoryOpen] = useState(false);
+  const historyQuery = useQuery({
+    queryKey: ["formal", "history"],
+    queryFn: () => fetchInferHistory(20),
+    enabled: historyOpen,
+    staleTime: 10_000,
+  });
+
   return (
     /* 纵向滚动层（样式=全站 6px 细条）+ min-w 保底（同总览/实体库手法） */
     <div className="h-full overflow-x-auto overflow-y-auto">
@@ -190,6 +230,18 @@ export function ReasoningPage() {
               }}
             >
               {inferQuery.isFetching ? "推理中…" : "全量重算"}
+            </button>
+            <button
+              type="button"
+              onClick={() => setHistoryOpen((v) => !v)}
+              className={cn(
+                "h-9 rounded-md border px-4 text-sm font-medium",
+                historyOpen
+                  ? "border-primary/40 bg-primary/10 text-primary"
+                  : "border-border bg-card text-foreground hover:bg-muted",
+              )}
+            >
+              历史
             </button>
           </span>
         }
@@ -336,7 +388,23 @@ export function ReasoningPage() {
                       )}
                     </td>
                     <td className="px-4 py-3">
-                      <Chip tone="primary">现行</Chip>
+                      {/* F8：状态 + 行内启停（启用即单规则重算，停用即撤派生图） */}
+                      <span className="flex items-center justify-end gap-1.5">
+                        {rule.enabled ? <Chip tone="primary">现行</Chip> : <Chip tone="warning">停用</Chip>}
+                        <button
+                          type="button"
+                          onClick={() => toggleRuleMutation.mutate({ name: rule.name, enabled: !rule.enabled })}
+                          disabled={toggleRuleMutation.isPending}
+                          title={
+                            rule.enabled
+                              ? "停用规则：派生图即时清空，下次重算不再生成"
+                              : "启用规则：即时单规则重算恢复派生"
+                          }
+                          className="text-muted-foreground hover:text-foreground text-xs underline disabled:opacity-50"
+                        >
+                          {rule.enabled ? "停用" : "启用"}
+                        </button>
+                      </span>
                     </td>
                   </tr>
                 ))
@@ -345,6 +413,67 @@ export function ReasoningPage() {
           </table>
         </div>
       </Panel>
+      {historyOpen ? (
+        <div className="mt-3.5">
+          <Panel title="推理历史" subtitle="近 20 次落盘重算（不含试算）· 每行对比上一次">
+            {historyQuery.isLoading ? (
+              <p className="text-muted-foreground p-4 text-sm">加载历史…</p>
+            ) : (historyQuery.data?.history.length ?? 0) === 0 ? (
+              <p className="text-muted-foreground p-4 text-sm">暂无历史——全量重算后自动记录。</p>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-[13px]">
+                  <thead>
+                    <tr className="border-border bg-muted/50 border-b">
+                      {["时间", "门限", "输入", "物化", "派生合计", "Δ 物化", "规则变化"].map((head) => (
+                        <th key={head} className="text-muted-foreground px-4 py-2 text-left text-xs font-medium">
+                          {head}
+                        </th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody className="divide-border divide-y">
+                    {historyQuery.data!.history.map((h, i) => {
+                      const prev = historyQuery.data!.history[i + 1];
+                      const dEnt = prev ? h.entailment_triples - prev.entailment_triples : null;
+                      const sum = Object.values(h.rule_counts).reduce((a, b) => a + b, 0);
+                      const ruleDiff = prev
+                        ? Object.keys({ ...prev.rule_counts, ...h.rule_counts })
+                            .filter((k) => (h.rule_counts[k] ?? 0) !== (prev.rule_counts?.[k] ?? 0))
+                            .map((k) => {
+                              const d = (h.rule_counts[k] ?? 0) - (prev.rule_counts?.[k] ?? 0);
+                              return `${k.replace(/^chain_/, "")} ${d > 0 ? "+" : ""}${d}`;
+                            })
+                            .join(" · ") || "—"
+                        : "—";
+                      return (
+                        <tr key={h.ts} className="hover:bg-muted/50">
+                          <td className="text-muted-foreground whitespace-nowrap px-4 py-2 text-xs">
+                            {new Date(h.ts).toLocaleString("zh-CN", { month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", hour12: false })}
+                          </td>
+                          <td className="px-4 py-2 font-mono text-xs tabular-nums">{h.min_conf}</td>
+                          <td className="px-4 py-2 text-right tabular-nums">{h.input_triples.toLocaleString()}</td>
+                          <td className="px-4 py-2 text-right tabular-nums">{h.entailment_triples.toLocaleString()}</td>
+                          <td className="px-4 py-2 text-right tabular-nums">{sum.toLocaleString()}</td>
+                          <td
+                            className={cn(
+                              "px-4 py-2 text-right tabular-nums",
+                              dEnt == null ? "" : dEnt > 0 ? "text-success" : dEnt < 0 ? "text-destructive" : "text-muted-foreground",
+                            )}
+                          >
+                            {dEnt == null ? "—" : `${dEnt > 0 ? "+" : ""}${dEnt}`}
+                          </td>
+                          <td className="text-muted-foreground px-4 py-2 text-xs">{ruleDiff}</td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </Panel>
+        </div>
+      ) : null}
       <div className="mt-3.5 grid grid-cols-1 gap-3.5 xl:grid-cols-[1.4fr_1fr]">
         <div className="flex flex-col gap-3.5">
           <Panel

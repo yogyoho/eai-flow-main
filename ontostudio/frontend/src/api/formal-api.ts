@@ -55,10 +55,35 @@ export interface RuleSource {
   /** 自包含 CONSTRUCT 查询（含 PREFIX）。 */
   construct: string;
   origin: RuleOrigin;
+  /** F8：false = 已停用（rules_state overlay）。 */
+  enabled: boolean;
 }
 
 export function fetchFormalRules(): Promise<{ rules: RuleSource[] }> {
   return authFetch<{ success: boolean; rules: RuleSource[] }>(`${BASE}/rules`);
+}
+
+/** F8 规则启停：启用即单规则重算、停用即撤派生图。 */
+export function setRuleEnabled(name: string, enabled: boolean): Promise<{ rule: string; enabled: boolean; count: number }> {
+  return authFetch(`${BASE}/rules/${encodeURIComponent(name)}/enabled`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ enabled }),
+  });
+}
+
+/** F9 推理历史行（ts 倒序由后端保证）。 */
+export interface InferHistoryRow {
+  ts: string;
+  min_conf: number;
+  input_triples: number;
+  entailment_triples: number;
+  rule_counts: Record<string, number>;
+  duration_ms: number;
+}
+
+export function fetchInferHistory(limit = 20): Promise<{ history: InferHistoryRow[] }> {
+  return authFetch(`${BASE}/history?limit=${limit}`);
 }
 
 export interface DerivationRow {
