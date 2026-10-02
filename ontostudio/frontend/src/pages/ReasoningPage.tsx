@@ -10,8 +10,10 @@ import { useMemo, useState } from "react";
 import {
   fetchFormalRules,
   fetchRuleDerivations,
+  fetchRuleTrace,
   runCqs,
   runFormalInfer,
+  type DerivationRow,
 } from "@/api/formal-api";
 import { Chip, PageHeader, Panel } from "@/pages/shared";
 import { cn } from "@/lib/utils";
@@ -104,6 +106,13 @@ export function ReasoningPage() {
     queryKey: ["formal", "derivations", selectedRule?.name],
     queryFn: () => fetchRuleDerivations(selectedRule!.name),
     enabled: previewView === "derivations" && !!selectedRule,
+  });
+  // F3 溯源：点击派生行的「溯源」→ 查触发该结论的基础事实链
+  const [traceTarget, setTraceTarget] = useState<DerivationRow | null>(null);
+  const traceQuery = useQuery({
+    queryKey: ["formal", "trace", selectedRule?.name, traceTarget?.s, traceTarget?.p, traceTarget?.o],
+    queryFn: () => fetchRuleTrace(selectedRule!.name, traceTarget!.s, traceTarget!.p, traceTarget!.o),
+    enabled: !!traceTarget && !!selectedRule,
   });
 
   // F5 CQ 验收自动化（2026-10-02）：ASK 真跑于内核（取代静态演示判定）；
@@ -246,6 +255,7 @@ export function ReasoningPage() {
                             e.stopPropagation();
                             setSelectedRuleName(rule.name);
                             setPreviewView("derivations");
+                            setTraceTarget(null);
                           }}
                           title="查看该规则的派生三元组"
                           className="text-primary hover:underline"
@@ -324,16 +334,74 @@ export function ReasoningPage() {
                 ) : (
                   <div className="flex flex-col gap-1">
                     <p className="text-muted-foreground text-xs">
-                      共 {derivationsQuery.data!.total.toLocaleString()} 条（显示前 {derivationsQuery.data!.rows.length} 条）
+                      共 {derivationsQuery.data!.total.toLocaleString()} 条（显示前 {derivationsQuery.data!.rows.length} 条）· 点「溯源」查触发事实链
                     </p>
+                    {traceTarget ? (
+                      <div className="border-primary/30 bg-primary/5 rounded-lg border p-2.5">
+                        <div className="mb-1.5 flex items-center gap-2">
+                          <b className="text-xs">溯源结果</b>
+                          {traceQuery.data ? (
+                            <Chip tone={traceQuery.data.satisfied ? "primary" : "warning"}>
+                              {traceQuery.data.satisfied ? "触发事实链完整" : "断言图中未找到完整链"}
+                            </Chip>
+                          ) : null}
+                          <button
+                            type="button"
+                            onClick={() => setTraceTarget(null)}
+                            className="text-muted-foreground hover:text-foreground ml-auto text-xs"
+                          >
+                            收起
+                          </button>
+                        </div>
+                        {traceQuery.isLoading ? (
+                          <p className="text-muted-foreground text-xs">追溯触发事实…</p>
+                        ) : traceQuery.isError ? (
+                          <p className="text-destructive text-xs">{(traceQuery.error as Error).message}</p>
+                        ) : traceQuery.data ? (
+                          <>
+                            <div className="flex flex-col gap-1">
+                              {traceQuery.data.evidence.map((ev, i) => (
+                                <div
+                                  key={i}
+                                  className="bg-background rounded-md border px-2.5 py-1.5 font-mono text-xs"
+                                >
+                                  {iriLocal(ev.s)}{" "}
+                                  <span className="text-primary font-semibold">{iriLocal(ev.p)}</span>{" "}
+                                  {iriLocal(ev.o)}
+                                </div>
+                              ))}
+                            </div>
+                            {traceQuery.data.details ? (
+                              <div className="mt-1.5 flex flex-col gap-0.5">
+                                {traceQuery.data.details.map((d) => (
+                                  <span key={d.qualification} className="text-xs">
+                                    {d.held ? "✓" : "✗"} 资质 {iriLocal(d.qualification)}
+                                  </span>
+                                ))}
+                              </div>
+                            ) : null}
+                          </>
+                        ) : null}
+                      </div>
+                    ) : null}
                     {derivationsQuery.data!.rows.map((row, i) => (
                       <div
                         key={`${row.s}-${row.p}-${row.o}-${i}`}
-                        className="bg-muted/60 rounded-md px-2.5 py-1.5 font-mono text-xs"
+                        className="bg-muted/60 flex items-center gap-2 rounded-md px-2.5 py-1.5 font-mono text-xs"
                       >
-                        {iriLocal(row.s)}{" "}
-                        <span className="text-primary font-semibold">{iriLocal(row.p)}</span>{" "}
-                        {iriLocal(row.o)}
+                        <span className="min-w-0 flex-1">
+                          {iriLocal(row.s)}{" "}
+                          <span className="text-primary font-semibold">{iriLocal(row.p)}</span>{" "}
+                          {iriLocal(row.o)}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => setTraceTarget(row)}
+                          title="追溯触发该结论的基础事实链"
+                          className="text-primary flex-none hover:underline"
+                        >
+                          溯源
+                        </button>
                       </div>
                     ))}
                   </div>

@@ -5,6 +5,10 @@
 # 注意：谓词 IRI 含 '/'，SPARQL 前缀名局部部分未转义 '/' 非法——一律写全 IRI <>。
 rules:
   - name: org_in_ecosystem
+    # F3 溯源链：参与派生的谓词序列（与 construct WHERE 同源，改 WHERE 须同步改 trace）
+    trace:
+      - https://ontology.eai-flow.com/doc_graph#predicate/org_compiles_project
+      - https://ontology.eai-flow.com/doc_graph#predicate/org_parent_of
     construct: >
       CONSTRUCT { ?a <https://ontology.eai-flow.com/doc_graph#predicate/org_in_ecosystem_of> ?c }
       WHERE {

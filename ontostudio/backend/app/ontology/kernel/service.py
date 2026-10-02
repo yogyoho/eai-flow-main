@@ -8,6 +8,7 @@ refresh() 编排：schema 重编 → owlrl 闭包 → CONSTRUCT 派生（防抖�
 from __future__ import annotations
 
 import os
+import re
 import threading
 from dataclasses import asdict
 
@@ -20,8 +21,11 @@ from app.ontology.kernel.rules import (
     load_rules,
     run_all_rules,
 )
-from app.ontology.kernel.store import OxStore
+from app.ontology.kernel.store import ASSERTED_GRAPH, OxStore
 from app.ontology.registry import get_registry
+
+# 合法 IRI（防注入：溯源端点把 s/p/o 直接拼进 SPARQL 尖括号字面量）
+_IRI_RE = re.compile(r"^[A-Za-z][A-Za-z0-9+.\-]*:[^\s<>\"{}|^`\\]*$")
 
 
 class KernelService:
@@ -34,9 +38,12 @@ class KernelService:
         registry = get_registry()
         refresh_schema(self.store, registry)
         stats = compute_entailment(self.store, min_confidence=min_confidence)
-        rules = load_rules() + builtin_chain_rules(registry) + [BUILTIN_SAMEAS_PROPAGATION]
-        stats.rule_counts = run_all_rules(self.store, rules)
+        stats.rule_counts = run_all_rules(self.store, self._all_rules(registry))
         return stats
+
+    def _all_rules(self, registry) -> list:  # noqa: ANN001 - Registry
+        """规则全集 = YAML + registry 链生成 + 内置 sameAs（refresh 与溯源共用）。"""
+        return load_rules() + builtin_chain_rules(registry) + [BUILTIN_SAMEAS_PROPAGATION]
 
     def load_ontology(self, payload: dict, domain: str = "eia") -> dict:
         """四类目标抽取结果（extract_ontology 输出形态）写入断言图.
@@ -161,6 +168,99 @@ class KernelService:
             f"ORDER BY ?s ?p ?o LIMIT {int(limit)} OFFSET {int(offset)}"
         )
         return {"total": total, "rows": rows}
+
+    def rule_trace(self, name: str, s: str, p: str, o: str) -> dict:
+        """F3 溯源：派生三元组 (s, p, o) 的触发基础事实。
+
+        分派：链规则（trace=谓词 IRI 序列）→ 逐段路径查询；qualified_bidder →
+        资质满足清单；sameas_propagation → sameAs 链接 + 规范实体事实。
+        """
+        for iri in (s, p, o):
+            if not _IRI_RE.match(iri):
+                raise ValueError(f"IRI 不合法: {iri[:60]}")
+        rule = next((r for r in self._all_rules(get_registry()) if r.name == name), None)
+        if rule is None:
+            raise KeyError(name)
+        if name == "qualified_bidder":
+            return self._trace_requirements(s, o)
+        if name == "sameas_propagation":
+            return self._trace_sameas(s, p, o)
+        trace = rule.trace
+        if not trace or len(trace) < 2:
+            raise ValueError("该规则未定义溯源链（trace）")
+        mids = [f"m{i}" for i in range(len(trace) - 1)]
+        patterns = ["<" + s + "> <" + trace[0] + "> ?" + mids[0]]
+        for i in range(1, len(trace) - 1):
+            patterns.append("?" + mids[i - 1] + " <" + trace[i] + "> ?" + mids[i])
+        patterns.append("?" + mids[-1] + " <" + trace[-1] + "> <" + o + ">")
+        rows = self.store.query(
+            "SELECT " + " ".join("?" + m for m in mids)
+            + " WHERE { GRAPH <" + ASSERTED_GRAPH + "> { " + " . ".join(patterns) + " } }"
+        )
+        evidence: list[dict] = []
+        for row in rows:
+            nodes = [s] + [row[m] for m in mids] + [o]
+            for i, pred in enumerate(trace):
+                evidence.append({"s": nodes[i], "p": pred, "o": nodes[i + 1]})
+        return {"rule": name, "kind": "chain", "satisfied": bool(rows), "evidence": evidence}
+
+    _P_BIDDER_OF = "https://ontology.eai-flow.com/doc_graph#predicate/bidder_of_project"
+    _P_REQUIRES = "https://ontology.eai-flow.com/doc_graph#predicate/requires_qualification"
+    _P_HOLDS = "https://ontology.eai-flow.com/doc_graph#predicate/bidder_holds_qualification"
+
+    def _trace_requirements(self, bidder: str, project: str) -> dict:
+        """qualified_bidder 溯源：项目资质要求 × 投标人持有 对照清单。"""
+        req = self.store.query(
+            "SELECT ?q WHERE { GRAPH <" + ASSERTED_GRAPH
+            + "> { <" + project + "> <" + self._P_REQUIRES + "> ?q } }"
+        )
+        held = {
+            r["q"]
+            for r in self.store.query(
+                "SELECT ?q WHERE { GRAPH <" + ASSERTED_GRAPH
+                + "> { <" + bidder + "> <" + self._P_HOLDS + "> ?q } }"
+            )
+        }
+        evidence = [{"s": bidder, "p": self._P_BIDDER_OF, "o": project}]
+        for r in req:
+            evidence.append({"s": project, "p": self._P_REQUIRES, "o": r["q"]})
+            if r["q"] in held:
+                evidence.append({"s": bidder, "p": self._P_HOLDS, "o": r["q"]})
+        satisfied = bool(req) and all(r["q"] in held for r in req)
+        return {
+            "rule": "qualified_bidder",
+            "kind": "requirements",
+            "satisfied": satisfied,
+            "evidence": evidence,
+            "details": [
+                {"qualification": r["q"], "held": r["q"] in held} for r in req
+            ],
+        }
+
+    def _trace_sameas(self, alias: str, p: str, o: str) -> dict:
+        """sameas_propagation 溯源：sameAs 链接 + 规范实体的对应事实。"""
+        owl_sameas = "http://www.w3.org/2002/07/owl#sameAs"
+        rows = self.store.query(
+            "SELECT ?canonical WHERE { GRAPH <graph:alignment> { { <" + alias
+            + "> <" + owl_sameas + "> ?canonical } UNION { ?canonical <"
+            + owl_sameas + "> <" + alias + "> } } }"
+        )
+        evidence: list[dict] = []
+        for r in rows:
+            canonical = r["canonical"]
+            evidence.append({"s": alias, "p": owl_sameas, "o": canonical})
+            facts = self.store.query(
+                "SELECT ?f WHERE { GRAPH <" + ASSERTED_GRAPH
+                + "> { <" + canonical + "> <" + p + "> <" + o + "> } LIMIT 1 }"
+            )
+            if facts:
+                evidence.append({"s": canonical, "p": p, "o": o})
+        return {
+            "rule": "sameas_propagation",
+            "kind": "sameas",
+            "satisfied": bool(evidence),
+            "evidence": evidence,
+        }
 
     def validate(self) -> dict:
         """SHACL 报告 + 国标五项符合性（校验中心页数据源）。"""

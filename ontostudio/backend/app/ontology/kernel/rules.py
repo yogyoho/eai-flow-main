@@ -26,6 +26,9 @@ DEFAULT_RULES_PATH = RULES_DIR / "rules.yaml"
 class DeriveRule:
     name: str
     construct: str  # 自包含 CONSTRUCT 查询（含 PREFIX 声明）
+    # F3 溯源链：参与派生的谓词 IRI 序列（链规则由生成器自动填；YAML 规则可选
+    # trace 键；内置 special 规则走名字分派的专用解释器）。None = 无通用溯源。
+    trace: list[str] | None = None
 
 
 # 内置规则：sameAs 候选传播（等价/对齐推理的派生面——结论只进 derived 图，
@@ -52,7 +55,8 @@ def load_rules(path: Path = DEFAULT_RULES_PATH) -> list[DeriveRule]:
         construct = (item or {}).get("construct")
         if not name or not construct:
             raise ValueError(f"规则缺 name/construct: {item!r}")
-        rules.append(DeriveRule(name=name, construct=construct))
+        trace = [str(x) for x in ((item or {}).get("trace") or [])]
+        rules.append(DeriveRule(name=name, construct=construct, trace=trace or None))
     return rules
 
 
@@ -93,6 +97,7 @@ def builtin_chain_rules(registry) -> list[DeriveRule]:  # noqa: ANN001 - Registr
                 DeriveRule(
                     name=f"chain_{axiom.derived}",
                     construct="CONSTRUCT { ?a <" + derived + "> ?c } WHERE { GRAPH <" + ASSERTED_GRAPH + "> { ?a " + path + " ?c } }",
+                    trace=[str(vocab.predicate_ref(step)) for step in axiom.chain],
                 )
             )
     return rules

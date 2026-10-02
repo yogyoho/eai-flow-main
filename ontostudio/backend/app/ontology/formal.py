@@ -86,6 +86,23 @@ async def formal_rule_derivations(
         raise HTTPException(status_code=422, detail=str(e)) from e
 
 
+@router.get("/rules/{name}/trace")
+async def formal_rule_trace(
+    name: str,
+    s: str = Query(..., description="派生三元组主体 IRI"),
+    p: str = Query(..., description="派生谓词 IRI"),
+    o: str = Query(..., description="派生三元组客体 IRI"),
+    _: CurrentUser = Depends(require_permission("system:access")),
+):
+    """单三元组溯源（F3）：返回触发该派生结论的基础事实链。"""
+    try:
+        return {"success": True, **get_kernel().rule_trace(name, s, p, o)}
+    except ValueError as e:
+        raise HTTPException(status_code=422, detail=str(e)) from e
+    except KeyError as e:
+        raise HTTPException(status_code=404, detail=f"规则不存在: {e}") from e
+
+
 @router.post("/load-ontology")
 async def formal_load_ontology(
     payload: dict,

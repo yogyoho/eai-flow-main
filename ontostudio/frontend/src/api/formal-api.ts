@@ -76,6 +76,29 @@ export function fetchRuleDerivations(
   );
 }
 
+// ---- 单三元组溯源（F3，2026-10-02 二期）----
+
+export interface TraceEvidence {
+  s: string;
+  p: string;
+  o: string;
+}
+
+export interface RuleTrace {
+  rule: string;
+  kind: "chain" | "requirements" | "sameas";
+  satisfied: boolean;
+  evidence: TraceEvidence[];
+  /** requirements 类：资质满足对照。 */
+  details?: Array<{ qualification: string; held: boolean }>;
+}
+
+export function fetchRuleTrace(name: string, s: string, p: string, o: string): Promise<RuleTrace> {
+  return authFetch(
+    `${BASE}/rules/${encodeURIComponent(name)}/trace?s=${encodeURIComponent(s)}&p=${encodeURIComponent(p)}&o=${encodeURIComponent(o)}`,
+  );
+}
+
 // ---- validate ----
 
 export interface ShaclViolation {
