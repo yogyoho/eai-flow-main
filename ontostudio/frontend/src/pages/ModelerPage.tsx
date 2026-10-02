@@ -78,6 +78,8 @@ interface Pos {
   x: number;
   y: number;
 }
+/** stage 逻辑高度（px）：节点位置是 stage 高度的百分比，缩放换算依赖此常量。 */
+const STAGE_H = 440;
 
 export function ModelerPage({ initialFile }: { initialFile?: string }) {
   const qc = useQueryClient();
@@ -1202,9 +1204,10 @@ function TBoxCanvas({
     const drag = dragRef.current;
     const rect = containerRef.current?.getBoundingClientRect();
     if (!drag || !rect) return;
-    // 缩放下：屏幕位移换算回 stage 百分比须除以 zoom（stage 视觉宽 = 容器宽 × zoom）
+    // 缩放下：屏幕位移换算回 stage 百分比——水平除以 stage 视觉宽（=容器宽×zoom），
+    // 竖直除以 stage 视觉高（=STAGE_H×zoom）。竖直误用容器宽会让下拖灵敏度虚低（bug 修复）。
     const dxPct = ((e.clientX - drag.startX) / (rect.width * zoom)) * 100;
-    const dyPct = ((e.clientY - drag.startY) / (rect.width * zoom)) * 100;
+    const dyPct = ((e.clientY - drag.startY) / (STAGE_H * zoom)) * 100;
     if (!drag.moved && Math.hypot(dxPct, dyPct) < 1) return; // 死区：区分点击
     drag.moved = true;
     const x = Math.min(96, Math.max(4, drag.orig.x + dxPct));
@@ -1320,10 +1323,10 @@ function TBoxCanvas({
           </button>
         </div>
         {/* sizer 撑出滚动范围；stage 原尺寸经 scale(zoom) 放大，节点/边随缩放 */}
-        <div style={{ width: `${zoom * 100}%`, height: `${440 * zoom}px` }}>
+        <div style={{ width: `${zoom * 100}%`, height: `${STAGE_H * zoom}px` }}>
           <div
             className="relative origin-top-left"
-            style={{ width: `${100 / zoom}%`, height: "440px", transform: `scale(${zoom})` }}
+            style={{ width: `${100 / zoom}%`, height: STAGE_H, transform: `scale(${zoom})` }}
           >
         <svg
           className="pointer-events-none absolute inset-0 h-full w-full"
