@@ -11,7 +11,7 @@
  * 并发 + registry_version 递增 + SHA 热重载）。
  */
 import { useQuery, useQueryClient, useQueries } from "@tanstack/react-query";
-import { DraftingCompass, Loader2 } from "lucide-react";
+import { DraftingCompass, Loader2, Maximize2, Minimize2 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { ReactNode } from "react";
 import CodeMirror from "@uiw/react-codemirror";
@@ -85,6 +85,8 @@ export function ModelerPage({ initialFile }: { initialFile?: string }) {
   const [selectedClass, setSelectedClass] = useState<string | null>(null);
   const [saveMsg, setSaveMsg] = useState<string | null>(null);
   const [mode, setMode] = useState<"vis" | "yaml">("vis");
+  // 编辑面板最大化（2026-10-02 用户要求）：fixed 覆盖视口，画布随之加高
+  const [maximized, setMaximized] = useState(false);
   const [busy, setBusy] = useState(false);
 
   const contentQuery = useQuery({
@@ -513,8 +515,12 @@ export function ModelerPage({ initialFile }: { initialFile?: string }) {
               )}
             </div>
 
-            {/* 中：编辑器单面板 */}
-            <div className="border-border bg-card rounded-xl border shadow-sm">
+            {/* 中：编辑器面板（可最大化）+ 谓词与公理独立面板（画布下方不堆叠行——遮挡节点） */}
+            <div className="flex flex-col gap-3.5">
+            <div className={cn(
+              "border-border bg-card border shadow-sm",
+              maximized ? "fixed inset-4 z-50 overflow-auto rounded-xl bg-background" : "rounded-xl",
+            )}>
               <div className="border-border flex flex-wrap items-center gap-2 border-b px-4 py-2.5">
                 <span className="font-mono text-sm">{selectedFile}</span>
                 <div className="border-border ml-1 flex overflow-hidden rounded-lg border">
@@ -569,6 +575,15 @@ export function ModelerPage({ initialFile }: { initialFile?: string }) {
                   >
                     {busy ? <Loader2 className="mr-1 inline h-3 w-3 animate-spin" /> : null}
                     保存
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setMaximized((m) => !m)}
+                    title={maximized ? "还原面板" : "最大化编辑面板"}
+                    aria-label={maximized ? "还原面板" : "最大化编辑面板"}
+                    className="border-border bg-card hover:bg-muted rounded-sm border px-2 py-1 text-sm disabled:opacity-50"
+                  >
+                    {maximized ? <Minimize2 className="h-3.5 w-3.5" /> : <Maximize2 className="h-3.5 w-3.5" />}
                   </button>
                 </div>
               </div>
@@ -630,11 +645,8 @@ export function ModelerPage({ initialFile }: { initialFile?: string }) {
                     instancesOf={instancesOf}
                     onNodeClick={handleNodeClick}
                     onNodeMove={handleNodeMove}
-                    axioms={axioms}
-                    predicates={domainPredicates}
-                    predicateCounts={countByPredicate}
-                    predicateLabels={predicateLabelsQuery.data}
                     draftEdges={draftEdges}
+                    heightClass={maximized ? "h-[calc(100vh-230px)]" : "h-[440px]"}
                   />
                 </>
               ) : (
@@ -646,6 +658,17 @@ export function ModelerPage({ initialFile }: { initialFile?: string }) {
                   }}
                 />
               )}
+            </div>
+
+            {/* 谓词与公理独立面板（2026-10-02 用户纠正：不放画布下方）；最大化时隐藏 */}
+            {!maximized ? (
+              <PredicateAxiomPanel
+                predicates={domainPredicates}
+                counts={countByPredicate}
+                labels={predicateLabelsQuery.data}
+                axioms={axioms}
+              />
+            ) : null}
             </div>
 
             {/* 右栏 */}
@@ -1125,8 +1148,8 @@ function YamlEditor({
   );
 }
 
-/** TBox 画布：节点可拖拽移位（视图态）、连线模式点选父类、实例计数、谓词条（P1：中文
- *  标注+使用计数）、公理摘要行（A1 去重：全集在右栏「公理」面板）。 */
+/** TBox 画布：节点可拖拽移位（视图态）、连线模式点选父类、实例计数、缩放工具栏。
+ *  谓词/公理不在此渲染（用户纠正 2026-10-02：画布下方堆叠行遮挡下部节点）→ 独立 PredicateAxiomPanel。 */
 function TBoxCanvas({
   classes,
   positions,
@@ -1135,11 +1158,8 @@ function TBoxCanvas({
   instancesOf,
   onNodeClick,
   onNodeMove,
-  axioms,
-  predicates,
-  predicateCounts,
-  predicateLabels,
   draftEdges,
+  heightClass = "h-[440px]",
 }: {
   classes: ClassEntry[];
   positions: Map<string, Pos>;
@@ -1148,13 +1168,12 @@ function TBoxCanvas({
   instancesOf: (cls: ClassEntry) => number | null;
   onNodeClick: (name: string) => void;
   onNodeMove: (name: string, pos: Pos) => void;
-  axioms?: RegistryAxioms;
-  predicates: string[];
-  predicateCounts: Map<string, number>;
-  predicateLabels?: Map<string, string>;
   draftEdges: Array<{ key: string; parent: string; child: string }>;
+  /** 最大化模式下传更高的高度类。 */
+  heightClass?: string;
 }) {
   const containerRef = useRef<HTMLDivElement | null>(null);
+  const [zoom, setZoom] = useState(1);
   const dragRef = useRef<{
     name: string;
     startX: number;
@@ -1183,8 +1202,9 @@ function TBoxCanvas({
     const drag = dragRef.current;
     const rect = containerRef.current?.getBoundingClientRect();
     if (!drag || !rect) return;
-    const dxPct = ((e.clientX - drag.startX) / rect.width) * 100;
-    const dyPct = ((e.clientY - drag.startY) / rect.height) * 100;
+    // 缩放下：屏幕位移换算回 stage 百分比须除以 zoom（stage 视觉宽 = 容器宽 × zoom）
+    const dxPct = ((e.clientX - drag.startX) / (rect.width * zoom)) * 100;
+    const dyPct = ((e.clientY - drag.startY) / (rect.width * zoom)) * 100;
     if (!drag.moved && Math.hypot(dxPct, dyPct) < 1) return; // 死区：区分点击
     drag.moved = true;
     const x = Math.min(96, Math.max(4, drag.orig.x + dxPct));
@@ -1260,13 +1280,51 @@ function TBoxCanvas({
     <div className="flex flex-col gap-2">
       <div
         ref={containerRef}
-        className="relative h-[440px] overflow-hidden"
+        className={cn("relative overflow-auto", heightClass)}
         style={{
           background:
             "radial-gradient(circle at 1px 1px, var(--border) 1px, transparent 0) 0 0 / 22px 22px, #fcfdfd",
         }}
         data-testid="tbox-canvas"
       >
+        {/* 缩放工具栏（z 最高、不随缩放；stage 本体在 sizer 内等比缩放） */}
+        <div className="border-border absolute right-2 top-2 z-20 flex items-center gap-0.5 rounded-md border bg-card/95 px-1 py-0.5 shadow-sm">
+          <button
+            type="button"
+            onClick={() => setZoom((z) => Math.max(0.5, Number((z - 0.25).toFixed(2))))}
+            title="缩小"
+            aria-label="缩小画布"
+            className="text-muted-foreground hover:text-foreground hover:bg-muted rounded px-1.5 py-0.5 text-sm font-bold"
+          >
+            －
+          </button>
+          <span className="text-muted-foreground w-10 text-center font-mono text-[10px] tabular-nums">
+            {Math.round(zoom * 100)}%
+          </span>
+          <button
+            type="button"
+            onClick={() => setZoom((z) => Math.min(2.5, Number((z + 0.25).toFixed(2))))}
+            title="放大"
+            aria-label="放大画布"
+            className="text-muted-foreground hover:text-foreground hover:bg-muted rounded px-1.5 py-0.5 text-sm font-bold"
+          >
+            ＋
+          </button>
+          <button
+            type="button"
+            onClick={() => setZoom(1)}
+            title="重置缩放"
+            className="text-muted-foreground hover:text-foreground hover:bg-muted rounded px-1.5 py-0.5 text-xs font-medium"
+          >
+            重置
+          </button>
+        </div>
+        {/* sizer 撑出滚动范围；stage 原尺寸经 scale(zoom) 放大，节点/边随缩放 */}
+        <div style={{ width: `${zoom * 100}%`, height: `${440 * zoom}px` }}>
+          <div
+            className="relative origin-top-left"
+            style={{ width: `${100 / zoom}%`, height: "440px", transform: `scale(${zoom})` }}
+          >
         <svg
           className="pointer-events-none absolute inset-0 h-full w-full"
           viewBox="0 0 100 100"
@@ -1362,40 +1420,9 @@ function TBoxCanvas({
             连线模式：点击目标父类节点（Esc 取消）
           </div>
         ) : null}
+          </div>
+        </div>
       </div>
-      {/* 谓词区（P1）：本域关系词汇——中文名 + 图中三元组计数；常显（与公理摘要行为一致） */}
-      <div className="flex flex-wrap items-center gap-1.5">
-        <span className="text-muted-foreground text-xs font-medium">谓词（关系类型）：</span>
-        {predicates.length === 0 ? (
-          <span className="text-muted-foreground text-xs">—</span>
-        ) : (
-          predicates.map((p) => {
-            const label = predicateLabels?.get(p);
-            const count = predicateCounts.get(p);
-            return (
-              <span
-                key={p}
-                className="border-primary/25 bg-primary/5 text-primary rounded-full border px-2 py-0.5 font-mono text-xs"
-                title={`本域定义的关系类型${label ? `：${label}` : ""}${
-                  count !== undefined
-                    ? `；图中该谓词 ${count.toLocaleString()} 条三元组${count === 0 ? "（已定义未使用）" : ""}`
-                    : ""
-                }`}
-              >
-                {p}
-                {label ? <span className="text-muted-foreground ml-1">{label}</span> : null}
-                {count !== undefined ? (
-                  <span className="text-muted-foreground ml-1 tabular-nums">
-                    · {count.toLocaleString()}
-                  </span>
-                ) : null}
-              </span>
-            );
-          })
-        )}
-      </div>
-      {/* 公理摘要（A1 去重）：全集在右栏「公理」面板，此处一行报数指路；未加载不渲染——空态不撒谎 */}
-      <AxiomSummary axioms={axioms} />
     </div>
   );
 }
@@ -1414,5 +1441,57 @@ function AxiomSummary({ axioms }: { axioms?: RegistryAxioms }) {
         ? `自动派生规则：${parts.join(" · ")} → 详见右栏「公理」`
         : "本域暂无自动派生规则——如需跨关系推导，在 YAML 模式 axioms 块添加（property_chains / transitive / inverse）"}
     </span>
+  );
+}
+
+/** 谓词与公理独立面板（2026-10-02 用户纠正：不堆叠画布下方遮挡节点）。
+ *  谓词芯片 = 英文名 + 中文标注（YAML 注释块解析）+ 图中三元组计数；公理行报数指路。 */
+function PredicateAxiomPanel({
+  predicates,
+  counts,
+  labels,
+  axioms,
+}: {
+  predicates: string[];
+  counts: Map<string, number>;
+  labels?: Map<string, string>;
+  axioms?: RegistryAxioms;
+}) {
+  return (
+    <Panel title="谓词与公理" subtitle="本域关系词汇使用情况与自动派生规则">
+      <div className="flex flex-col gap-2.5 p-4">
+        <div className="flex flex-wrap items-center gap-1.5">
+          <span className="text-muted-foreground text-xs font-medium">谓词（关系类型）：</span>
+          {predicates.length === 0 ? (
+            <span className="text-muted-foreground text-xs">—</span>
+          ) : (
+            predicates.map((p) => {
+              const label = labels?.get(p);
+              const count = counts.get(p);
+              return (
+                <span
+                  key={p}
+                  className="border-primary/25 bg-primary/5 text-primary rounded-full border px-2 py-0.5 font-mono text-xs"
+                  title={`本域定义的关系类型${label ? `：${label}` : ""}${
+                    count !== undefined
+                      ? `；图中该谓词 ${count.toLocaleString()} 条三元组${count === 0 ? "（已定义未使用）" : ""}`
+                      : ""
+                  }`}
+                >
+                  {p}
+                  {label ? <span className="text-muted-foreground ml-1">{label}</span> : null}
+                  {count !== undefined ? (
+                    <span className="text-muted-foreground ml-1 tabular-nums">
+                      · {count.toLocaleString()}
+                    </span>
+                  ) : null}
+                </span>
+              );
+            })
+          )}
+        </div>
+        <AxiomSummary axioms={axioms} />
+      </div>
+    </Panel>
   );
 }
