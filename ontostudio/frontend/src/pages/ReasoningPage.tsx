@@ -226,7 +226,11 @@ export function ReasoningPage() {
             <button
               className="bg-primary hover:bg-primary/90 text-primary-foreground h-9 rounded-md px-4 text-sm font-medium"
               onClick={() => {
-                void inferQuery.refetch().then(() => cqQuery.refetch());
+                void inferQuery.refetch().then(() => {
+                  void cqQuery.refetch();
+                  // 重算改变断言/派生图 → 校验中心缓存一并失效（声明"装载/推理后可重跑"）
+                  void qc.invalidateQueries({ queryKey: ["formal", "validate"] });
+                });
               }}
             >
               {inferQuery.isFetching ? "推理中…" : "全量重算"}

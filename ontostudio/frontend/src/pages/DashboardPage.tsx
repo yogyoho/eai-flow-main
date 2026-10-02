@@ -13,7 +13,7 @@
  * - 治理合规链：CONSTRUCT 规则真实派生计数（与推理工作台同源 rule_counts，零硬编码；
  *   逐条物化下钻已列入待办）
  */
-import { useMutation, useQueries, useQuery } from "@tanstack/react-query";
+import { useMutation, useQueries, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   Activity,
   AlertTriangle,
@@ -198,9 +198,14 @@ export function DashboardPage() {
 
   // ── 装载对账 ──
   const [loadResult, setLoadResult] = useState<FormalLoadResult | null>(null);
+  const qc = useQueryClient();
   const loadMutation = useMutation({
     mutationFn: () => runFormalLoad(),
-    onSuccess: (data) => setLoadResult(data),
+    onSuccess: (data) => {
+      setLoadResult(data);
+      // 装载重写内核图 → 校验中心缓存失效（校验口径：装载后可重跑）
+      void qc.invalidateQueries({ queryKey: ["formal", "validate"] });
+    },
   });
 
   // ── 待办主轴 + 管线健康（V4 信息架构增量，CEO 复审追加）──

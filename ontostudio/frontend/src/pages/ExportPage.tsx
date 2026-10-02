@@ -5,7 +5,7 @@
  */
 import { FileOutput, Loader2, PlayCircle } from "lucide-react";
 
-import { useMutation, useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 
 import {
@@ -37,10 +37,15 @@ export function ExportPage() {
     : "";
 
   // 全量装载（对账）——人审闭环切片：行级 force_status 重写 DB 真相，degraded 自愈的执行者
+  const queryClient = useQueryClient();
   const [loadResult, setLoadResult] = useState<FormalLoadResult | null>(null);
   const loadMutation = useMutation({
     mutationFn: () => runFormalLoad(),
-    onSuccess: (data) => setLoadResult(data),
+    onSuccess: (data) => {
+      setLoadResult(data);
+      // 装载重写内核图 → 校验中心缓存失效
+      void queryClient.invalidateQueries({ queryKey: ["formal", "validate"] });
+    },
   });
 
   return (

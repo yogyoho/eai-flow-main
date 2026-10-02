@@ -53,7 +53,7 @@ export function ValidationPage() {
           }
         />
 
-        {/* 国标 C1-C5 五连小卡 */}
+        {/* 国标 C1-C5 五连小卡（V-A：detail 诊断接真——失败原因/通过摘要来自后端 CheckResult） */}
         <div className="grid grid-cols-2 gap-3.5 md:grid-cols-3 lg:grid-cols-5">
           {validateQuery.isLoading
             ? Array.from({ length: 5 }, (_, i) => (
@@ -63,7 +63,14 @@ export function ValidationPage() {
                 </div>
               ))
             : conformance.map((check) => (
-                <div key={check.name} className="border-border bg-card rounded-xl border p-3.5 shadow-sm">
+                <div
+                  key={check.name}
+                  className={cn(
+                    "rounded-xl border p-3.5 shadow-sm",
+                    check.passed ? "border-border bg-card" : "border-destructive/40 bg-destructive/5",
+                  )}
+                  title={check.detail}
+                >
                   <div className="text-muted-foreground truncate text-xs font-medium" title={`${check.clause} ${check.name}`}>
                     {check.clause} {check.name}
                   </div>
@@ -83,9 +90,27 @@ export function ValidationPage() {
                   >
                     {check.passed ? "通过" : "未通过"}
                   </div>
+                  <div
+                    className={cn(
+                      "mt-1 line-clamp-2 text-[11px] leading-tight",
+                      check.passed ? "text-muted-foreground" : "text-destructive",
+                    )}
+                    title={check.detail}
+                  >
+                    {check.detail}
+                  </div>
                 </div>
               ))}
+          {!validateQuery.isLoading && validateQuery.data && conformance.length === 0 ? (
+            <div className="text-muted-foreground col-span-full py-6 text-center text-sm">
+              国标符合性套件无检查项——请确认 registry 已装载。
+            </div>
+          ) : null}
         </div>
+        <p className="text-muted-foreground mt-2 text-xs">
+          C1-C5 为 <span className="font-medium">schema / 报告形态层</span>检查（registry 结构与序列化），
+          与实例数据合规无关——实例层看下方 SHACL 违规表；需先全量装载。
+        </p>
 
         {validateQuery.error ? (
           <div className="border-destructive/40 bg-destructive/10 text-destructive mt-3.5 rounded-lg border px-4 py-3 text-sm">
@@ -139,7 +164,7 @@ export function ValidationPage() {
                         <tr key={index} className="border-border hover:bg-muted/50 border-b last:border-b-0">
                           <td className="px-4 py-2.5">
                             <Chip tone={isWarning ? "warning" : "danger"}>
-                              {isWarning ? "warning" : "violation"}
+                              {isWarning ? "警告" : "违规"}
                             </Chip>
                           </td>
                           <td className="px-4 py-2.5 font-mono text-xs">{violation.source ?? "—"}</td>

@@ -53,8 +53,11 @@ export function IngestPage() {
   const [loadMsg, setLoadMsg] = useState<string | null>(null);
   const loadMutation = useMutation({
     mutationFn: () => runFormalLoad(),
-    onSuccess: (data) =>
-      setLoadMsg(`✓ 已装载 ${data.entities} 实体 / ${data.relations} 关系 / ${data.mentions} 提及——图已对账，可在消解审核处理待审、在导出互操作查看图面`),
+    onSuccess: (data) => {
+      setLoadMsg(`✓ 已装载 ${data.entities} 实体 / ${data.relations} 关系 / ${data.mentions} 提及——图已对账，可在消解审核处理待审、在导出互操作查看图面`);
+      // 装载重写内核图 → 校验中心缓存失效
+      void queryClient.invalidateQueries({ queryKey: ["formal", "validate"] });
+    },
     onError: (e) => setLoadMsg(`装载失败：${e instanceof Error ? e.message : String(e)}`),
   });
 
