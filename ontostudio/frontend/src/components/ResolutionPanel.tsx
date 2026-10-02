@@ -141,6 +141,7 @@ export function ResolutionPanel({
   const [selectedPks, setSelectedPks] = useState<Set<string>>(new Set());
   const [batchFailed, setBatchFailed] = useState<Map<string, string>>(new Map());
   const [batchSize, setBatchSize] = useState(0);
+  const [batchDecision, setBatchDecision] = useState<"confirm" | "reject">("confirm");
   const setReviewState = (pk: string, next: ReviewUiState) =>
     setReviewStates((prev) => ({ ...prev, [pk]: next }));
 
@@ -305,9 +306,10 @@ export function ResolutionPanel({
   // 一次 refresh。部分成功是正常形态（HTTP 200 + 逐行结果）；失败行留在待审列表，
   // 标红并给单条重试入口。
   const batchMutation = useMutation({
-    mutationFn: (pks: string[]) => {
+    mutationFn: ({ pks, decision }: { pks: string[]; decision: "confirm" | "reject" }) => {
       setBatchSize(pks.length);
-      return invokeReviewEntityBatch(pks, "confirm");
+      setBatchDecision(decision);
+      return invokeReviewEntityBatch(pks, decision);
     },
     onSuccess: (data) => {
       setBatchFailed((prev) => {
@@ -324,14 +326,14 @@ export function ResolutionPanel({
       if (failedCount > 0) {
         setNotice({
           kind: failedCount === data.requested ? "error" : "info",
-          text: `批量确认完成：成功 ${data.succeeded.length} 条，失败 ${failedCount} 条（行已标红，可逐条重试）${degradedSuffix}`,
+          text: `批量${batchDecision === "reject" ? "驳回" : "确认"}完成：成功 ${data.succeeded.length} 条，失败 ${failedCount} 条（行已标红，可逐条重试）${degradedSuffix}`,
         });
       } else {
         setNotice({
           kind: data.projected ? "info" : "error",
           text: data.projected
-            ? `批量确认 ${data.succeeded.length} 条完成：已提交并投影入图（全批一次 refresh）`
-            : `批量确认 ${data.succeeded.length} 条已提交，但投影 degraded：重跑全量装载即自动对账，数据无损失`,
+            ? `批量${batchDecision === "reject" ? "驳回" : "确认"} ${data.succeeded.length} 条完成：已提交并投影入图（全批一次 refresh）`
+            : `批量${batchDecision === "reject" ? "驳回" : "确认"} ${data.succeeded.length} 条已提交，但投影 degraded：重跑全量装载即自动对账，数据无损失`,
         });
       }
       // 成功行离开选择集合（列表刷新后它们也不再出现在待审里）
@@ -731,18 +733,30 @@ export function ResolutionPanel({
                   秒（全批仅刷新一次断言图）——请勿刷新或离开本页
                 </span>
               ) : (
-                <button
-                  type="button"
-                  disabled={selectedCount === 0}
-                  onClick={() => batchMutation.mutate([...selectedPks])}
-                  title={selectedCount === 0 ? "先勾选待确认实体（驳回批量未开放）" : `批量确认选中 ${selectedCount} 条`}
-                  className="flex items-center gap-1.5 rounded-md px-2.5 py-1 text-sm font-medium text-white transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
-                  style={{ background: BLUE }}
-                  data-testid="resolution-batch-confirm"
-                >
-                  <Check className="h-3 w-3" />
-                  确认选中 {selectedCount} 条
-                </button>
+                <>
+                  <button
+                    type="button"
+                    disabled={selectedCount === 0}
+                    onClick={() => batchMutation.mutate({ pks: [...selectedPks], decision: "confirm" })}
+                    title={`批量确认选中 ${selectedCount} 条（入图并即时生效）`}
+                    className="flex items-center gap-1.5 rounded-md px-2.5 py-1 text-sm font-medium text-white transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
+                    style={{ background: BLUE }}
+                    data-testid="resolution-batch-confirm"
+                  >
+                    <Check className="h-3 w-3" />
+                    确认选中 {selectedCount} 条
+                  </button>
+                  <button
+                    type="button"
+                    disabled={selectedCount === 0}
+                    onClick={() => batchMutation.mutate({ pks: [...selectedPks], decision: "reject" })}
+                    title={`批量驳回选中 ${selectedCount} 条（归档保留，不删数据）`}
+                    className="border-border text-muted-foreground hover:border-destructive/50 hover:text-destructive disabled:cursor-not-allowed disabled:opacity-50 flex items-center gap-1.5 rounded-md border px-2.5 py-1 text-sm font-medium transition-colors"
+                    data-testid="resolution-batch-reject"
+                  >
+                    驳回选中 {selectedCount} 条
+                  </button>
+                </>
               )}
             </div>
           </div>
