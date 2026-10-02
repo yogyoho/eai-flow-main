@@ -749,6 +749,17 @@ function ClassDetailForm({
   const [parentQuery, setParentQuery] = useState("");
   const [etypeInput, setEtypeInput] = useState("");
   const [parentOpen, setParentOpen] = useState(false);
+  const parentBoxRef = useRef<HTMLDivElement | null>(null);
+  useEffect(() => {
+    if (!parentOpen) return;
+    const onDocMouseDown = (e: MouseEvent) => {
+      if (parentBoxRef.current && !parentBoxRef.current.contains(e.target as Node)) {
+        setParentOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", onDocMouseDown);
+    return () => document.removeEventListener("mousedown", onDocMouseDown);
+  }, [parentOpen]);
   const addParentLocal = (p: string) => {
     if (!p || localParents.includes(p)) return;
     setLocalParents((prev) => [...prev, p]);
@@ -836,7 +847,7 @@ function ClassDetailForm({
           <legend className="text-primary mb-2 text-xs font-semibold tracking-wide">◆ 继承关系</legend>
           <div>
             <span className="text-muted-foreground text-xs">父类 parents</span>
-            <div className="relative mt-1">
+            <div className="relative mt-1" ref={parentBoxRef}>
               <input
                 value={parentQuery}
                 onChange={(e) => {
@@ -869,6 +880,7 @@ function ClassDetailForm({
                         onClick={() => {
                           addParentLocal(c);
                           setParentQuery("");
+                          setParentOpen(false);
                         }}
                         className="hover:bg-primary-soft block w-full px-2.5 py-1 text-left text-xs"
                       >
