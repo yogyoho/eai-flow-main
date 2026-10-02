@@ -56,6 +56,7 @@ import {
   PAGE_BG,
   RED,
 } from "@/components/chartTheme";
+import { fetchEiaEtypeLabels } from "@/explorerDataSource";
 import { withAlpha } from "@/explorer/graphTheme";
 import { cn } from "@/lib/utils";
 
@@ -150,6 +151,13 @@ export function ResolutionPanel({
     setPageIndex(0);
   }, [trimmedSearch]);
 
+  // EAI-CUSTOM(2026-10-01 v4 文案包 R1): etype 中文标注（eia.yaml etype 注释块，
+  // 与 DetailPanel 规律卡同源）——待审卡 etype 芯片显示中文+英文次注。
+  const etypeLabels = useQuery({
+    queryKey: ["ontology", "eia-etype-labels"],
+    queryFn: fetchEiaEtypeLabels,
+    staleTime: Number.POSITIVE_INFINITY,
+  });
   const pendingQuery = useQuery({
     queryKey: ["ontology", "resolution", "pending", trimmedSearch, pageIndex],
     queryFn: () =>
@@ -432,7 +440,7 @@ export function ResolutionPanel({
           <div>
             <b>当前以 superadmin 操作（第一版仅超管可审）。</b>
             正式审阅角色授权为后续批次；观察日可用{" "}
-            <span className="font-mono">roles_custom.yaml</span> overlay 临时授权真实审阅者。
+            角色覆盖配置临时授权真实审阅者。
           </div>
         </div>
 
@@ -585,8 +593,11 @@ export function ResolutionPanel({
                         <span className="min-w-0 flex-1 truncate text-[13.5px] font-semibold" title={entity.canonical_name}>
                           {entity.canonical_name}
                         </span>
-                        <span className="bg-secondary text-secondary-foreground shrink-0 rounded-md px-1.5 py-0.5 font-mono text-xs">
-                          {entity.etype}
+                        <span
+                          className="bg-secondary text-secondary-foreground shrink-0 rounded-md px-1.5 py-0.5 text-xs"
+                          title={entity.etype}
+                        >
+                          {etypeLabels.data?.get(entity.etype) ?? entity.etype}
                         </span>
                         <span
                           className="w-10 shrink-0 text-right font-mono text-xs font-semibold tabular-nums"
@@ -604,8 +615,8 @@ export function ResolutionPanel({
                         </span>
                         </button>
                       </div>
-                      <div className="text-muted-foreground px-3.5 pt-1 font-mono text-xs" style={{ color: INK_3 }}>
-                        {entity.domain} · pending_review
+                      <div className="text-muted-foreground px-3.5 pt-1 text-xs" style={{ color: INK_3 }}>
+                        环评 · 待审
                       </div>
 
                       {/* 批量失败行（EAI-CUSTOM 2026-09-29）：标红 + 单条重试入口（走单条管线，
@@ -689,8 +700,11 @@ export function ResolutionPanel({
                             >
                               驳回
                             </button>
-                            <span className="text-muted-foreground/80 text-xs">
-                              确认 → status 强制翻转为 active，断言图即时生效
+                            <span
+                              className="text-muted-foreground/80 text-xs"
+                              title="确认后实体入图并即时生效；详情见右侧「操作反馈四态」"
+                            >
+                              确认即生效
                             </span>
                           </>
                         )}
