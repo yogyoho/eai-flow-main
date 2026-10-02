@@ -1176,6 +1176,17 @@ function TBoxCanvas({
 }) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const [zoom, setZoom] = useState(1);
+  // stage 高度实测跟随容器（最大化时容器=calc(100vh-230px)，固定 440 会让下半段成为
+  // 节点拖不进去的死区——用户报告 2026-10-02）；位置是 stage 百分比，stage 铺满即全程可拖。
+  const [stageH, setStageH] = useState(STAGE_H);
+  useEffect(() => {
+    const el = containerRef.current;
+    if (!el) return;
+    const ro = new ResizeObserver(() => setStageH(el.clientHeight));
+    ro.observe(el);
+    setStageH(el.clientHeight);
+    return () => ro.disconnect();
+  }, []);
   const dragRef = useRef<{
     name: string;
     startX: number;
@@ -1205,9 +1216,9 @@ function TBoxCanvas({
     const rect = containerRef.current?.getBoundingClientRect();
     if (!drag || !rect) return;
     // 缩放下：屏幕位移换算回 stage 百分比——水平除以 stage 视觉宽（=容器宽×zoom），
-    // 竖直除以 stage 视觉高（=STAGE_H×zoom）。竖直误用容器宽会让下拖灵敏度虚低（bug 修复）。
+    // 竖直除以 stage 视觉高（=stageH×zoom）。竖直误用容器宽会让下拖灵敏度虚低（bug 修复）。
     const dxPct = ((e.clientX - drag.startX) / (rect.width * zoom)) * 100;
-    const dyPct = ((e.clientY - drag.startY) / (STAGE_H * zoom)) * 100;
+    const dyPct = ((e.clientY - drag.startY) / (stageH * zoom)) * 100;
     if (!drag.moved && Math.hypot(dxPct, dyPct) < 1) return; // 死区：区分点击
     drag.moved = true;
     const x = Math.min(96, Math.max(4, drag.orig.x + dxPct));
@@ -1323,10 +1334,10 @@ function TBoxCanvas({
           </button>
         </div>
         {/* sizer 撑出滚动范围；stage 原尺寸经 scale(zoom) 放大，节点/边随缩放 */}
-        <div style={{ width: `${zoom * 100}%`, height: `${STAGE_H * zoom}px` }}>
+        <div style={{ width: `${zoom * 100}%`, height: `${stageH * zoom}px` }}>
           <div
             className="relative origin-top-left"
-            style={{ width: `${100 / zoom}%`, height: STAGE_H, transform: `scale(${zoom})` }}
+            style={{ width: `${100 / zoom}%`, height: stageH, transform: `scale(${zoom})` }}
           >
         <svg
           className="pointer-events-none absolute inset-0 h-full w-full"
