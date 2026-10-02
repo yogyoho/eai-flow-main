@@ -40,6 +40,12 @@ async def formal_infer(
     return {"success": True, **asdict(stats)}
 
 
+@router.post("/cq/run")
+async def formal_cq_run(_: CurrentUser = Depends(require_permission("system:access"))):
+    """CQ 验收自动化（F5）：cq.yaml 逐条 ASK 真跑（推理工作台验收问题面板数据源）。"""
+    return {"success": True, "results": get_kernel().run_cqs()}
+
+
 @router.post("/load-ontology")
 async def formal_load_ontology(
     payload: dict,

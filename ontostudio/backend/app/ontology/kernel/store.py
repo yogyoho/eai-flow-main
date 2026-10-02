@@ -80,6 +80,14 @@ class OxStore:
             results.append({name: _term_to_python(solution[name]) for name in names})
         return results
 
+    def ask(self, sparql: str) -> bool:
+        """ASK 查询 → 布尔（CQ 验收自动化 F5）。pyoxigraph 0.5 QueryBoolean 无 .ask
+        属性，bool(result) 即答案；SELECT/CONSTRUCT 误入显式报错。"""
+        result = self._store.query(sparql)
+        if isinstance(result, (ox.QuerySolutions, ox.QueryTriples)):
+            raise ValueError("ask() 仅接受 ASK 查询")
+        return bool(result)
+
     def count_quads(self, graph_name: str) -> int:
         rows = self.query(f"SELECT (COUNT(*) AS ?n) WHERE {{ GRAPH <{graph_name}> {{ ?s ?p ?o }} }}")
         return int(rows[0]["n"] or 0) if rows else 0

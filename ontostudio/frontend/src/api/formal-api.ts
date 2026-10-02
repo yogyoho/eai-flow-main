@@ -27,6 +27,24 @@ export function runFormalInfer(minConfidence = 0.7): Promise<InferStats> {
   });
 }
 
+// ---- CQ 验收（F5，2026-10-02）----
+
+/** 单条 CQ 结果：ASK 真跑于内核，passed = actual === expected。 */
+export interface CqResult {
+  id: string;
+  question: string;
+  expected: boolean;
+  actual: boolean;
+  passed: boolean;
+  error?: string;
+}
+
+export function runCqs(): Promise<{ results: CqResult[] }> {
+  return authFetch<{ success: boolean; results: CqResult[] }>(`${BASE}/cq/run`, {
+    method: "POST",
+  });
+}
+
 // ---- validate ----
 
 export interface ShaclViolation {

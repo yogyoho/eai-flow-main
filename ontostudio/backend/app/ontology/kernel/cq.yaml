@@ -1,0 +1,29 @@
+# CQ 验收问题（F5，2026-10-02）——ASK 真跑于内核 store；graph 名即派生规则名约定
+# （graph:derived:<name>）。种子 4 条由推理工作台静态演示转写：原「矸石山最小距离」
+# FAIL 语义由含水层链（当前样例库零派生，谓词芯片无计数）承接——真实暴露数据缺口，
+# 而非印死判定。FAIL 的反事实解释（为什么没推出来）归白盒化 L3 explain-miss。
+cqs:
+  - id: cq_governance_chain
+    question: 治理合规链（设施→监测→限值→标准）已有派生结论？
+    expect: true
+    ask: |
+      ASK { GRAPH <graph:derived:chain_covered_by_standard> { ?s ?p ?o } }
+  - id: cq_gb13223
+    question: 有设施受 GB 13223-2011 约束（合规链派生至该标准）？
+    expect: true
+    ask: |
+      ASK {
+        GRAPH <graph:derived:chain_covered_by_standard> {
+          ?s ?p ?o FILTER(CONTAINS(STR(?o), "13223"))
+        }
+      }
+  - id: cq_bidder_qualified
+    question: 存在具备项目所需全部资质的投标人派生（Phase B 验收问题 #3）？
+    expect: true
+    ask: |
+      ASK { GRAPH <graph:derived:qualified_bidder> { ?s ?p ?o } }
+  - id: cq_aquifer_impact
+    question: 含水层影响链已有派生（当前样例库缺含水层实体，预期暴露缺口）？
+    expect: true
+    ask: |
+      ASK { GRAPH <graph:derived:chain_aquifer_impact> { ?s ?p ?o } }

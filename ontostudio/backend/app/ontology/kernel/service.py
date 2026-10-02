@@ -11,6 +11,7 @@ import os
 import threading
 from dataclasses import asdict
 
+from app.ontology.kernel.cq import load_cqs, run_cqs
 from app.ontology.kernel.infer import InferStats, compute_entailment, refresh_schema
 from app.ontology.kernel.loader import load_doc_graph_rows
 from app.ontology.kernel.rules import (
@@ -139,6 +140,10 @@ class KernelService:
             except Exception:  # noqa: BLE001 - 单行弹性（谓词越域等历史数据）
                 skipped.append(str(r["subject"]) + "->" + str(r["object"]))
         return {"entities": inserted, "relations": rel_count, "skipped": skipped}
+
+    def run_cqs(self) -> list[dict]:
+        """CQ 验收（F5）：cq.yaml 逐条 ASK 真跑，FAIL 不阻断（推理工作台页数据源）。"""
+        return run_cqs(self.store, load_cqs())
 
     def validate(self) -> dict:
         """SHACL 报告 + 国标五项符合性（校验中心页数据源）。"""

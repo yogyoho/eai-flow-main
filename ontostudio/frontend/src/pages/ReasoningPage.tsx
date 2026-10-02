@@ -7,8 +7,8 @@ import { BrainCircuit } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
 
-import { runFormalInfer } from "@/api/formal-api";
-import { Chip, DemoTag, PageHeader, Panel } from "@/pages/shared";
+import { runCqs, runFormalInfer } from "@/api/formal-api";
+import { Chip, PageHeader, Panel } from "@/pages/shared";
 import { cn } from "@/lib/utils";
 
 /**
@@ -63,13 +63,6 @@ WHERE {
                       FILTER NOT EXISTS { ?b :holdsQualification ?q2 } }
 }`;
 
-const QUESTIONS = [
-  { verdict: "PASS", text: "矿井水处理站的悬浮物执行哪个标准？", answer: "GB 50383-2010 · 路径 monitored_by→has_limit⇒covered_by_standard" },
-  { verdict: "PASS", text: "哪些设施受 GB 13223-2011 约束？", answer: "锅炉烟气排放系统 · 1 条治理链" },
-  { verdict: "FAIL", text: "矸石山与水源保护区的最小距离要求？", answer: "无路径：located_in 链首缺实例（prp-spo2 静默零推断）· 建议补桑干河实体" },
-  { verdict: "PASS", text: "投标人须具备哪些资质？", answer: "2 条 · 来自 bid_quote 域 qualification" },
-] as const;
-
 export function ReasoningPage() {
   const inferQuery = useQuery({
     queryKey: ["formal", "infer"],
@@ -91,6 +84,16 @@ export function ReasoningPage() {
     rules.find((r) => r.name === "qualified_bidder") ??
     rules[0] ??
     null;
+
+  // F5 CQ 验收自动化（2026-10-02）：ASK 真跑于内核（取代静态演示判定）；
+  // 结果基于上次全量重算，面板内可手动重跑。
+  const cqQuery = useQuery({
+    queryKey: ["formal", "cq"],
+    queryFn: runCqs,
+    staleTime: 30_000,
+  });
+  const cqResults = cqQuery.data?.results ?? [];
+  const cqFailed = cqResults.filter((r) => !r.passed).length;
 
   return (
     /* 纵向滚动层（样式=全站 6px 细条）+ min-w 保底（同总览/实体库手法） */
@@ -278,36 +281,65 @@ export function ReasoningPage() {
         </div>
         <Panel
           title="验收问题（Competency Questions）"
+          subtitle="ASK 真跑于内核 · 结果基于上次全量重算"
           actions={
             <span className="flex items-center gap-1.5">
-              <DemoTag />
-              <Chip tone="warning">规划中</Chip>
+              {cqResults.length > 0 ? (
+                <Chip tone={cqFailed > 0 ? "warning" : "primary"}>
+                  {cqFailed > 0 ? `${cqFailed} 未过` : `${cqResults.length} 全过`}
+                </Chip>
+              ) : null}
+              <button
+                type="button"
+                onClick={() => cqQuery.refetch()}
+                disabled={cqQuery.isFetching}
+                className="border-border bg-card hover:bg-muted rounded-md border px-2 py-0.5 text-xs font-medium disabled:opacity-50"
+              >
+                {cqQuery.isFetching ? "运行中…" : "重跑"}
+              </button>
             </span>
           }
         >
           <div className="flex flex-col p-4">
-            {QUESTIONS.map((question) => (
-              <div
-                key={question.text}
-                className="border-border flex items-start gap-2.5 border-b py-2.5 last:border-b-0"
-              >
-                <span
-                  className={`shrink-0 rounded-md px-2 py-0.5 text-xs font-semibold ${
-                    question.verdict === "PASS"
-                      ? "bg-primary/10 text-primary"
-                      : "bg-destructive/10 text-destructive"
-                  }`}
+            {cqQuery.isLoading ? (
+              <p className="text-muted-foreground py-2 text-sm">运行 CQ 验收…</p>
+            ) : cqQuery.isError ? (
+              <p className="text-destructive py-2 text-sm">
+                CQ 验收失败：{(cqQuery.error as Error).message}
+              </p>
+            ) : cqResults.length === 0 ? (
+              <p className="text-muted-foreground py-2 text-sm">暂无验收问题（kernel/cq.yaml）。</p>
+            ) : (
+              cqResults.map((cq) => (
+                <div
+                  key={cq.id}
+                  className="border-border flex items-start gap-2.5 border-b py-2.5 last:border-b-0"
                 >
-                  {question.verdict}
-                </span>
-                <div className="min-w-0">
-                  <div className="text-[12.5px]">{question.text}</div>
-                  <div className="text-muted-foreground mt-0.5 font-mono text-xs">
-                    → {question.answer}
+                  <span
+                    className={cn(
+                      "shrink-0 rounded-md px-2 py-0.5 text-xs font-semibold",
+                      cq.passed
+                        ? "bg-primary/10 text-primary"
+                        : "bg-destructive/10 text-destructive",
+                    )}
+                  >
+                    {cq.passed ? "PASS" : "FAIL"}
+                  </span>
+                  <div className="min-w-0">
+                    <div className="text-[12.5px]">{cq.question}</div>
+                    <div className="text-muted-foreground mt-0.5 font-mono text-xs">
+                      → 预期 {cq.expected ? "真" : "假"} · 实际 {cq.actual ? "真" : "假"}
+                      {cq.error ? ` · ${cq.error}` : ""}
+                    </div>
+                    {!cq.passed ? (
+                      <div className="text-muted-foreground/70 mt-0.5 text-xs">
+                        反事实解释（为什么没推出来）归白盒化三期（explain-miss）。
+                      </div>
+                    ) : null}
                   </div>
                 </div>
-              </div>
-            ))}
+              ))
+            )}
           </div>
         </Panel>
       </div>
