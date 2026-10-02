@@ -187,7 +187,8 @@ function RelationNodeCard({
         <span className="border-border text-muted-foreground rounded-full border px-2 py-0.5 text-xs">graph_relation</span>
         <span className="border-border text-muted-foreground rounded-full border px-2 py-0.5 text-xs">图谱关系</span>
       </div>
-      <h3 className="text-muted-foreground mb-1.5 text-xs font-medium tracking-widest">关系</h3>
+      <hr className="my-2" />
+      <h3 className="text-muted-foreground mb-1.5 text-xs font-medium tracking-widest">关系属性</h3>
       <dl className="grid grid-cols-[96px_1fr] gap-x-2.5 gap-y-1 text-sm">
         <dt className="text-muted-foreground break-words text-[13px]">谓词<span className="ml-1 font-mono text-[9.5px] opacity-60">predicate</span></dt>
         <dd className="text-foreground font-mono text-xs">
@@ -681,7 +682,7 @@ export function DetailPanel({
 
       {isDomainPattern ? <DomainPatternCard properties={properties} /> : null}
       <hr className="my-2" />
-      <h3 className="text-muted-foreground mb-1.5 text-xs font-medium tracking-widest">属性</h3>
+      <h3 className="text-muted-foreground mb-1.5 text-xs font-medium tracking-widest">实体属性</h3>
       
       {genericEntries.length > 0 ? (
         <dl className="grid grid-cols-[96px_1fr] gap-x-2.5 gap-y-1 text-[13px]">
