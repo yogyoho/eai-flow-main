@@ -5,10 +5,11 @@
 import { BrainCircuit } from "lucide-react";
 
 import { useQuery } from "@tanstack/react-query";
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 
 import { runFormalInfer } from "@/api/formal-api";
 import { Chip, DemoTag, PageHeader, Panel } from "@/pages/shared";
+import { cn } from "@/lib/utils";
 
 /**
  * 已知规则的中文描述与派生谓词（对照 rules.yaml / eia formal 链生成器）。
@@ -82,6 +83,14 @@ export function ReasoningPage() {
     () => (inferQuery.data ? ruleRows(inferQuery.data.rule_counts) : []),
     [inferQuery.data],
   );
+  // G-B（2026-10-02 深审）：规则行此前 cursor-pointer 无 onClick，预览写死
+  // bidder_qualified——选中态驱动预览；缺省落 qualified_bidder（唯一有 SPARQL 源码）。
+  const [selectedRuleName, setSelectedRuleName] = useState<string | null>(null);
+  const selectedRule =
+    rules.find((r) => r.name === selectedRuleName) ??
+    rules.find((r) => r.name === "qualified_bidder") ??
+    rules[0] ??
+    null;
 
   return (
     /* 纵向滚动层（样式=全站 6px 细条）+ min-w 保底（同总览/实体库手法） */
@@ -92,14 +101,12 @@ export function ReasoningPage() {
         title="推理工作台"
         description="单引擎：owlrl 闭包（graph:entailment）+ SPARQL CONSTRUCT 派生（每规则独立 named graph，named graph 归属即触发轨迹）"
         actions={
-          <>
-            <button className="border-border bg-card hover:bg-accent h-9 rounded-md border px-4 text-sm font-medium shadow-xs" onClick={() => inferQuery.refetch()}>
-              dry 运行规则
-            </button>
-            <button className="bg-primary hover:bg-primary/90 text-primary-foreground h-9 rounded-md px-4 text-sm font-medium" onClick={() => inferQuery.refetch()}>
-              {inferQuery.isFetching ? "推理中…" : "全量重算"}
-            </button>
-          </>
+          /* G-A（2026-10-02 深审）：原「dry 运行规则」按钮与全量重算同调 refetch，
+           * 后端 /infer 无 dry 模式（一律清空重写 entailment）——语义谎言按钮删除；
+           * dry 试算归「推理白盒化」（TODOS，触发条件驱动）。 */
+          <button className="bg-primary hover:bg-primary/90 text-primary-foreground h-9 rounded-md px-4 text-sm font-medium" onClick={() => inferQuery.refetch()}>
+            {inferQuery.isFetching ? "推理中…" : "全量重算"}
+          </button>
         }
       />
       <div className="mb-3.5 grid grid-cols-3 gap-3.5">
@@ -171,7 +178,14 @@ export function ReasoningPage() {
                 </tr>
               ) : (
                 rules.map((rule) => (
-                  <tr key={rule.name} className="hover:bg-muted/50 cursor-pointer">
+                  <tr
+                    key={rule.name}
+                    onClick={() => setSelectedRuleName(rule.name)}
+                    className={cn(
+                      "cursor-pointer",
+                      rule.name === selectedRule?.name ? "bg-primary/5" : "hover:bg-muted/50",
+                    )}
+                  >
                     <td className="px-4 py-3">
                       <b className="font-medium">{rule.name}</b>
                       <div className="text-muted-foreground text-xs">{rule.desc}</div>
@@ -191,11 +205,36 @@ export function ReasoningPage() {
       </Panel>
       <div className="mt-3.5 grid grid-cols-1 gap-3.5 xl:grid-cols-[1.4fr_1fr]">
         <div className="flex flex-col gap-3.5">
-          <Panel title="规则预览" subtitle="bidder_qualified · Phase B 验收问题 #3">
+          <Panel
+            title={selectedRule ? `规则预览 · ${selectedRule.name}` : "规则预览"}
+            subtitle={selectedRule?.desc ?? "点击上方规则行切换"}
+          >
             <div className="p-3">
-              <pre className="bg-code-bg text-code-fg overflow-x-auto rounded-lg p-3.5 font-mono text-xs leading-relaxed">
-                {SPARQL}
-              </pre>
+              {selectedRule?.name === "qualified_bidder" ? (
+                <pre className="bg-code-bg text-code-fg overflow-x-auto rounded-lg p-3.5 font-mono text-xs leading-relaxed">
+                  {SPARQL}
+                </pre>
+              ) : selectedRule ? (
+                <div className="flex flex-col gap-1.5 p-1 text-[13px]">
+                  <div className="flex justify-between gap-3">
+                    <span className="text-muted-foreground">派生谓词</span>
+                    <span className="font-mono text-xs">{selectedRule.pred}</span>
+                  </div>
+                  <div className="flex justify-between gap-3">
+                    <span className="text-muted-foreground">named graph</span>
+                    <span className="font-mono text-xs">{selectedRule.graph}</span>
+                  </div>
+                  <div className="flex justify-between gap-3">
+                    <span className="text-muted-foreground">派生数</span>
+                    <span className="font-mono text-xs tabular-nums">{selectedRule.count}</span>
+                  </div>
+                  <p className="text-muted-foreground mt-1.5 text-xs">
+                    规则源码在内核（rules.yaml / eia formal 链生成器），在线查看为规划项。
+                  </p>
+                </div>
+              ) : (
+                <p className="text-muted-foreground p-1 text-sm">暂无规则——先点右上「全量重算」。</p>
+              )}
             </div>
           </Panel>
           <Panel
