@@ -33,12 +33,22 @@ class KernelService:
         path = os.environ.get("ONTOSTUDIO_KERNEL_PATH")
         self.store = OxStore(path) if path else OxStore()
 
-    def refresh(self, min_confidence: float = 0.7) -> InferStats:
-        """schema 重编 → 闭包 → 派生全量重算。"""
+    def refresh(self, min_confidence: float = 0.7, dry: bool = False) -> InferStats:
+        """schema 重编 → 闭包 → 派生全量重算。
+
+        dry=试算（F6）：跳过 schema 重编、闭包只算不写、规则只计数——全程零落盘。
+        """
         registry = get_registry()
-        refresh_schema(self.store, registry)
-        stats = compute_entailment(self.store, min_confidence=min_confidence)
-        stats.rule_counts = run_all_rules(self.store, self._all_rules(registry))
+        if not dry:
+            refresh_schema(self.store, registry)
+        stats = compute_entailment(self.store, min_confidence=min_confidence, write=not dry)
+        all_rules = self._all_rules(registry)
+        if dry:
+            stats.rule_counts = {
+                r.name: len(list(self.store._store.query(r.construct))) for r in all_rules
+            }
+        else:
+            stats.rule_counts = run_all_rules(self.store, all_rules)
         return stats
 
     def _all_rules(self, registry) -> list:  # noqa: ANN001 - Registry
@@ -260,6 +270,83 @@ class KernelService:
             "kind": "sameas",
             "satisfied": bool(evidence),
             "evidence": evidence,
+        }
+
+    def rule_explain_miss(self, name: str, s: str, o: str) -> dict:
+        """F4 反事实：期望派生未出现时，沿 trace 逐段走断言图，报第一处断裂。
+
+        satisfied=True 表示路径实际存在（结论应可派生，若缺失请全量重算）。
+        """
+        for iri in (s, o):
+            if not _IRI_RE.match(iri):
+                raise ValueError(f"IRI 不合法: {iri[:60]}")
+        rule = next((r for r in self._all_rules(get_registry()) if r.name == name), None)
+        if rule is None:
+            raise KeyError(name)
+        if name == "qualified_bidder":
+            res = self._trace_requirements(s, o)
+            details = res.get("details") or []
+            missing = [d["qualification"] for d in details if not d["held"]]
+            if res["satisfied"]:
+                res["hint"] = "全部资质满足——结论应可派生（若缺失请全量重算）"
+            elif not details:
+                res["hint"] = "项目未声明任何资质要求（requires_qualification 缺失）"
+            else:
+                res["hint"] = f"缺少资质 {len(missing)} 项: " + ", ".join(missing)
+            return res
+        if name == "sameas_propagation":
+            res = self._trace_sameas(s, "", o)
+            res["hint"] = (
+                "无 sameAs 候选链接（graph:alignment 为空）" if not res["evidence"]
+                else "候选链接存在但规范实体无对应事实"
+            )
+            return res
+        trace = rule.trace
+        if not trace or len(trace) < 2:
+            raise ValueError("该规则未定义溯源链（trace），反事实仅支持链规则")
+        reached = s
+        evidence: list[dict] = []
+        for i, pred in enumerate(trace):
+            rows = self.store.query(
+                "SELECT ?n WHERE { GRAPH <" + ASSERTED_GRAPH
+                + "> { <" + reached + "> <" + pred + "> ?n } } LIMIT 1"
+            )
+            if not rows:
+                return {
+                    "rule": name,
+                    "kind": "chain",
+                    "satisfied": False,
+                    "missing_at": i,
+                    "missing_pred": pred,
+                    "reached": reached,
+                    "evidence": evidence,
+                    "hint": (
+                        "链首缺实例——" + s[:80] + " 无 <" + pred.rsplit("/", 1)[-1]
+                        + "> 边（owlrl prp-spo2 对此类静默零推断，建议补该事实或换参照实体）"
+                        if i == 0
+                        else "第 " + str(i + 1) + " 段缺后续事实：<" + pred.rsplit("/", 1)[-1]
+                        + "> 在 " + reached[:80] + " 处断裂"
+                    ),
+                }
+            evidence.append({"s": reached, "p": pred, "o": rows[0]["n"]})
+            reached = rows[0]["n"]
+        if reached == o:
+            return {
+                "rule": name,
+                "kind": "chain",
+                "satisfied": True,
+                "evidence": evidence,
+                "hint": "路径实际存在——结论应可派生（若缺失请全量重算）",
+            }
+        return {
+            "rule": name,
+            "kind": "chain",
+            "satisfied": False,
+            "missing_at": len(trace) - 1,
+            "missing_pred": trace[-1],
+            "reached": reached,
+            "evidence": evidence,
+            "hint": "链尾到达 " + reached[:80] + "，非期望客体 " + o[:80],
         }
 
     def validate(self) -> dict:

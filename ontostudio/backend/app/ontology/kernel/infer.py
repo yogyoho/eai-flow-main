@@ -102,8 +102,11 @@ def build_inference_graph(store: OxStore, *, min_confidence: float = 0.7) -> tup
     return graph, filtered
 
 
-def compute_entailment(store: OxStore, *, min_confidence: float = 0.7) -> InferStats:
-    """全量重算 graph:entailment（清空重写；owlrl 失败 → 保留旧物化并记 errors）。"""
+def compute_entailment(store: OxStore, *, min_confidence: float = 0.7, write: bool = True) -> InferStats:
+    """全量重算 graph:entailment（清空重写；owlrl 失败 → 保留旧物化并记 errors）。
+
+    write=False 为 F6 dry 试算：闭包在内存完成、不落任何图，仅返回统计。
+    """
     stats = InferStats()
     started = time.perf_counter()
     input_graph, filtered = build_inference_graph(store, min_confidence=min_confidence)
@@ -119,15 +122,14 @@ def compute_entailment(store: OxStore, *, min_confidence: float = 0.7) -> InferS
         return stats
 
     entailment = [t for t in input_graph if t not in input_snapshot]
-    store.clear_graph(ENTAILMENT_GRAPH)
-    skipped = 0
-    for s, p, o in entailment:
-        # RDF 合法性守卫：owlrl 字面量推理可能产生 Literal 主体的"三元组"（非合法 RDF），跳过
-        if isinstance(s, Literal) or not isinstance(p, URIRef):
-            skipped += 1
-            continue
-        store._store.add(_triple_to_quad(s, p, o))
-    stats.entailment_triples = len(entailment) - skipped
+    # RDF 合法性守卫：owlrl 字面量推理可能产生 Literal 主体的"三元组"（非合法 RDF），剔除
+    valid = [t for t in entailment if not (isinstance(t[0], Literal) or not isinstance(t[1], URIRef))]
+    skipped = len(entailment) - len(valid)
+    if write:
+        store.clear_graph(ENTAILMENT_GRAPH)
+        for s, p, o in valid:
+            store._store.add(_triple_to_quad(s, p, o))
+    stats.entailment_triples = len(valid)
     stats.duration_ms = int((time.perf_counter() - started) * 1000)
     return stats
 

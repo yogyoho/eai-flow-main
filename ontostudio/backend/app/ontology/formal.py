@@ -34,10 +34,11 @@ async def formal_load(
 @router.post("/infer")
 async def formal_infer(
     min_confidence: float = Query(0.7, ge=0.0, le=1.0),
+    dry: bool = Query(False, description="F6 试算：不落盘，仅返回统计"),
     _: CurrentUser = Depends(require_permission("system:access")),
 ):
-    stats = get_kernel().refresh(min_confidence=min_confidence)
-    return {"success": True, **asdict(stats)}
+    stats = get_kernel().refresh(min_confidence=min_confidence, dry=dry)
+    return {"success": True, "dry": dry, **asdict(stats)}
 
 
 @router.post("/cq/run")
@@ -97,6 +98,22 @@ async def formal_rule_trace(
     """单三元组溯源（F3）：返回触发该派生结论的基础事实链。"""
     try:
         return {"success": True, **get_kernel().rule_trace(name, s, p, o)}
+    except ValueError as e:
+        raise HTTPException(status_code=422, detail=str(e)) from e
+    except KeyError as e:
+        raise HTTPException(status_code=404, detail=f"规则不存在: {e}") from e
+
+
+@router.get("/rules/{name}/explain-miss")
+async def formal_rule_explain_miss(
+    name: str,
+    s: str = Query(..., description="期望结论主体 IRI"),
+    o: str = Query(..., description="期望结论客体 IRI"),
+    _: CurrentUser = Depends(require_permission("system:access")),
+):
+    """反事实解释（F4）：期望派生未出现时，逐段定位断言图断裂点。"""
+    try:
+        return {"success": True, **get_kernel().rule_explain_miss(name, s, o)}
     except ValueError as e:
         raise HTTPException(status_code=422, detail=str(e)) from e
     except KeyError as e:

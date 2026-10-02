@@ -10,10 +10,12 @@ import { useMemo, useState } from "react";
 import {
   fetchFormalRules,
   fetchRuleDerivations,
+  fetchRuleExplainMiss,
   fetchRuleTrace,
   runCqs,
   runFormalInfer,
   type DerivationRow,
+  type InferStats,
 } from "@/api/formal-api";
 import { Chip, PageHeader, Panel } from "@/pages/shared";
 import { cn } from "@/lib/utils";
@@ -114,6 +116,27 @@ export function ReasoningPage() {
     queryFn: () => fetchRuleTrace(selectedRule!.name, traceTarget!.s, traceTarget!.p, traceTarget!.o),
     enabled: !!traceTarget && !!selectedRule,
   });
+  // F4 反事实：期望派生 (主体, *, 客体) 未出现时逐段定位断裂
+  const [missS, setMissS] = useState("");
+  const [missO, setMissO] = useState("");
+  const missQuery = useQuery({
+    queryKey: ["formal", "explain-miss", selectedRule?.name, missS, missO],
+    queryFn: () => fetchRuleExplainMiss(selectedRule!.name, missS, missO),
+    enabled: false,
+  });
+  // F6 dry 试算：闭包只算不写，与当前落盘对比
+  const [dry, setDry] = useState<{ loading: boolean; stats: InferStats | null; minConf: number | null; error: string | null }>({
+    loading: false,
+    stats: null,
+    minConf: null,
+    error: null,
+  });
+  const runDry = () => {
+    setDry({ loading: true, stats: null, minConf, error: null });
+    runFormalInfer(minConf, true)
+      .then((stats) => setDry({ loading: false, stats, minConf, error: null }))
+      .catch((e: Error) => setDry({ loading: false, stats: null, minConf, error: e.message }));
+  };
 
   // F5 CQ 验收自动化（2026-10-02）：ASK 真跑于内核（取代静态演示判定）；
   // 结果基于上次全量重算，面板内可手动重跑。
@@ -152,6 +175,14 @@ export function ReasoningPage() {
                 className="border-input focus:border-primary h-8 w-20 rounded-md border px-2 font-mono text-sm outline-none"
               />
             </label>
+            <button
+              className="border-border bg-card hover:bg-muted h-9 rounded-md border px-4 text-sm font-medium disabled:opacity-50"
+              onClick={runDry}
+              disabled={dry.loading}
+              title="F6 试算：闭包只算不写，与当前落盘对比"
+            >
+              {dry.loading ? "试算中…" : "试算"}
+            </button>
             <button
               className="bg-primary hover:bg-primary/90 text-primary-foreground h-9 rounded-md px-4 text-sm font-medium"
               onClick={() => {
@@ -195,6 +226,44 @@ export function ReasoningPage() {
           </div>
         </Panel>
       </div>
+      {dry.stats || dry.error ? (
+        <div
+          className={cn(
+            "mt-3.5 flex flex-wrap items-center gap-x-4 gap-y-1 rounded-lg border px-4 py-2.5 text-xs",
+            dry.error
+              ? "border-destructive/40 bg-destructive/10 text-destructive"
+              : "border-primary/30 bg-primary/5 text-muted-foreground",
+          )}
+        >
+          {dry.error ? (
+            <span>试算失败：{dry.error}</span>
+          ) : (
+            <>
+              <b className="text-foreground">试算（未落盘）</b>
+              <span>门限 {dry.minConf}</span>
+              <span>
+                物化 <b className="text-foreground">{dry.stats!.entailment_triples.toLocaleString()}</b> vs 落盘{" "}
+                {(inferQuery.data?.entailment_triples ?? 0).toLocaleString()}
+              </span>
+              <span>
+                派生合计{" "}
+                <b className="text-foreground">
+                  {Object.values(dry.stats!.rule_counts).reduce((a, b) => a + b, 0).toLocaleString()}
+                </b>{" "}
+                vs 落盘 {Object.values(inferQuery.data?.rule_counts ?? {}).reduce((a, b) => a + b, 0).toLocaleString()}
+              </span>
+              <span>{dry.stats!.duration_ms}ms</span>
+              <button
+                type="button"
+                onClick={() => setDry({ loading: false, stats: null, minConf: null, error: null })}
+                className="ml-auto hover:text-foreground"
+              >
+                清除
+              </button>
+            </>
+          )}
+        </div>
+      ) : null}
       <Panel
         title="CONSTRUCT 规则"
         subtitle="替代 Rete · join 型派生"
@@ -381,6 +450,65 @@ export function ReasoningPage() {
                               </div>
                             ) : null}
                           </>
+                        ) : null}
+                      </div>
+                    ) : null}
+                    {/* F4 反事实表单：为什么没推出来？ */}
+                    <div className="border-border mt-1.5 flex flex-wrap items-center gap-1.5 rounded-md border border-dashed p-2">
+                      <span className="text-muted-foreground text-xs">反事实：为什么没推出来？</span>
+                      <input
+                        value={missS}
+                        onChange={(e) => setMissS(e.target.value)}
+                        placeholder="主体 IRI（从派生列表或图谱复制）"
+                        className="border-input focus:border-primary h-6 w-56 rounded border px-1.5 font-mono text-xs outline-none"
+                      />
+                      <input
+                        value={missO}
+                        onChange={(e) => setMissO(e.target.value)}
+                        placeholder="客体 IRI"
+                        className="border-input focus:border-primary h-6 w-56 rounded border px-1.5 font-mono text-xs outline-none"
+                      />
+                      <button
+                        type="button"
+                        disabled={!missS || !missO || missQuery.isFetching}
+                        onClick={() => void missQuery.refetch()}
+                        className="border-border bg-card hover:bg-muted rounded border px-2 py-0.5 text-xs font-medium disabled:opacity-50"
+                      >
+                        {missQuery.isFetching ? "分析中…" : "分析"}
+                      </button>
+                    </div>
+                    {missQuery.data ? (
+                      <div
+                        className={cn(
+                          "rounded-md border p-2.5 text-xs",
+                          missQuery.data.satisfied
+                            ? "border-primary/30 bg-primary/5"
+                            : "border-warning/40 bg-warning/5",
+                        )}
+                      >
+                        <div className="mb-1 flex flex-wrap items-center gap-2">
+                          <b>{missQuery.data.satisfied ? "路径存在——应可派生" : "链条断裂"}</b>
+                          <span className="text-muted-foreground">{missQuery.data.hint}</span>
+                        </div>
+                        {(missQuery.data.evidence ?? []).length > 0 ? (
+                          <div className="flex flex-col gap-0.5">
+                            {(missQuery.data.evidence ?? []).map((ev, i) => (
+                              <div key={i} className="font-mono">
+                                {iriLocal(ev.s)}{" "}
+                                <span className="text-primary font-semibold">{iriLocal(ev.p)}</span>{" "}
+                                {iriLocal(ev.o)}
+                              </div>
+                            ))}
+                          </div>
+                        ) : null}
+                        {missQuery.data.missing_pred ? (
+                          <div className="text-muted-foreground mt-1">
+                            断裂于第 {(missQuery.data.missing_at ?? 0) + 1} 段{" "}
+                            <span className="font-mono">{iriLocal(missQuery.data.missing_pred)}</span>
+                            {missQuery.data.reached
+                              ? `（到达 ${iriLocal(missQuery.data.reached)}）`
+                              : ""}
+                          </div>
                         ) : null}
                       </div>
                     ) : null}

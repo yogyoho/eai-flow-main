@@ -21,10 +21,11 @@ export interface InferStats {
   errors: string[];
 }
 
-export function runFormalInfer(minConfidence = 0.7): Promise<InferStats> {
-  return authFetch<InferStats>(`${BASE}/infer?min_confidence=${minConfidence}`, {
-    method: "POST",
-  });
+export function runFormalInfer(minConfidence = 0.7, dry = false): Promise<InferStats> {
+  return authFetch<InferStats>(
+    `${BASE}/infer?min_confidence=${minConfidence}${dry ? "&dry=true" : ""}`,
+    { method: "POST" },
+  );
 }
 
 // ---- CQ 验收（F5，2026-10-02）----
@@ -91,11 +92,23 @@ export interface RuleTrace {
   evidence: TraceEvidence[];
   /** requirements 类：资质满足对照。 */
   details?: Array<{ qualification: string; held: boolean }>;
+  /** F4 反事实：断裂位置与提示。 */
+  missing_at?: number;
+  missing_pred?: string;
+  reached?: string;
+  hint?: string;
 }
 
 export function fetchRuleTrace(name: string, s: string, p: string, o: string): Promise<RuleTrace> {
   return authFetch(
     `${BASE}/rules/${encodeURIComponent(name)}/trace?s=${encodeURIComponent(s)}&p=${encodeURIComponent(p)}&o=${encodeURIComponent(o)}`,
+  );
+}
+
+/** F4 反事实：期望派生 (s, *, o) 未出现时，逐段定位断言图断裂点。 */
+export function fetchRuleExplainMiss(name: string, s: string, o: string): Promise<RuleTrace> {
+  return authFetch(
+    `${BASE}/rules/${encodeURIComponent(name)}/explain-miss?s=${encodeURIComponent(s)}&o=${encodeURIComponent(o)}`,
   );
 }
 
