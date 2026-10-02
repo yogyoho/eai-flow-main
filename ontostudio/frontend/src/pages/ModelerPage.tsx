@@ -727,9 +727,50 @@ function ClassDetailForm({
   onRemoveEtype: (et: string) => void;
 }) {
   // 本地 parents 狀態：初始化自 selected，操作即時更新 UI，
-  // 同時通過 onAddParent/onRemoveParent 同步到草稿管線
+  // 同時通過 onAddParent/onRemoveParent 同步到草稿管線。
+  // v4 修复冻结 bug：useState 初始值只在首挂生效——切换选中类必须显式同步，
+  // 否则芯片停留在第一个选中类的父类（v4 审计实证）。
   const [localParents, setLocalParents] = useState<string[]>(
     selected ? [...selected.parents] : [],
+  );
+  useEffect(() => {
+    setLocalParents(selected ? [...selected.parents] : []);
+  }, [selected?.name]);
+
+  // etypes 本地态（v4 接线死 props：onAddEtype/onRemoveEtype 原本无 UI 调用点）
+  const [localEtypes, setLocalEtypes] = useState<string[]>(
+    selected ? [...selected.etypes] : [],
+  );
+  useEffect(() => {
+    setLocalEtypes(selected ? [...selected.etypes] : []);
+  }, [selected?.name]);
+
+  // 父类 Combobox 状态
+  const [parentQuery, setParentQuery] = useState("");
+  const [etypeInput, setEtypeInput] = useState("");
+  const [parentOpen, setParentOpen] = useState(false);
+  const addParentLocal = (p: string) => {
+    if (!p || localParents.includes(p)) return;
+    setLocalParents((prev) => [...prev, p]);
+    onAddParent(p);
+  };
+  const removeParentLocal = (p: string) => {
+    setLocalParents((prev) => prev.filter((x) => x !== p));
+    onRemoveParent(p);
+  };
+  const addEtypeLocal = (et: string) => {
+    const et2 = et.trim();
+    if (!et2 || localEtypes.includes(et2)) return;
+    setLocalEtypes((prev) => [...prev, et2]);
+    onAddEtype(et2);
+  };
+  const removeEtypeLocal = (et: string) => {
+    setLocalEtypes((prev) => prev.filter((x) => x !== et));
+    onRemoveEtype(et);
+  };
+  const parentCandidates = domainClasses.filter(
+    (c) => !localParents.includes(c) &&
+      (!parentQuery || c.toLowerCase().includes(parentQuery.toLowerCase())),
   );
 
   if (!selected) {
@@ -795,41 +836,70 @@ function ClassDetailForm({
           <legend className="text-primary mb-2 text-xs font-semibold tracking-wide">◆ 继承关系</legend>
           <div>
             <span className="text-muted-foreground text-xs">父类 parents</span>
-            <div className="mt-1 flex flex-wrap items-center gap-1.5">
-              {localParents.map((p) => (
-                <span
-                  key={p}
-                  className="border-primary/25 bg-primary/5 text-primary flex items-center gap-1 rounded-full border px-2.5 py-0.5 font-mono text-xs"
-                >
-                  {p}
-                  <button
-                    type="button"
-                    aria-label={`移除父类 ${p}`}
-                    onClick={() => onRemoveParent(p)}
-                    className="opacity-60 hover:opacity-100"
-                  >
-                    ✕
-                  </button>
-                </span>
-              ))}
-              <select
-                value=""
+            <div className="relative mt-1">
+              <input
+                value={parentQuery}
                 onChange={(e) => {
-                  if (e.target.value) onAddParent(e.target.value);
-                  e.target.value = "";
+                  setParentQuery(e.target.value);
+                  setParentOpen(true);
                 }}
+                onFocus={() => setParentOpen(true)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && parentCandidates.length > 0) {
+                    const first = parentCandidates[0];
+                    if (first) addParentLocal(first);
+                    setParentQuery("");
+                    setParentOpen(false);
+                  }
+                  if (e.key === "Escape") setParentOpen(false);
+                }}
+                placeholder="输入筛选父类（类名）…"
                 aria-label="添加父类"
-                className="border-border bg-card text-muted-foreground hover:border-primary/40 h-6 rounded-md border px-1.5 text-xs"
-              >
-                <option value="">＋ 添加父类</option>
-                {domainClasses
-                  .filter((c) => !selected.parents.includes(c))
-                  .map((c) => (
-                    <option key={c} value={c}>
-                      {c}
-                    </option>
-                  ))}
-              </select>
+                className="border-input focus:border-primary h-7 w-full rounded-md border px-2 text-sm outline-none"
+              />
+              {parentOpen ? (
+                <div className="border-border absolute z-10 mt-0.5 max-h-44 w-full overflow-y-auto rounded-md border bg-card shadow-md">
+                  {parentCandidates.length === 0 ? (
+                    <div className="text-muted-foreground px-2 py-1.5 text-xs">无可添加的父类（已全部选中）</div>
+                  ) : (
+                    parentCandidates.map((c) => (
+                      <button
+                        key={c}
+                        type="button"
+                        onClick={() => {
+                          addParentLocal(c);
+                          setParentQuery("");
+                        }}
+                        className="hover:bg-primary-soft block w-full px-2.5 py-1 text-left text-xs"
+                      >
+                        {c}
+                      </button>
+                    ))
+                  )}
+                </div>
+              ) : null}
+            </div>
+            <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
+              {localParents.length === 0 ? (
+                <span className="text-muted-foreground text-xs">—（根类）</span>
+              ) : (
+                localParents.map((p) => (
+                  <span
+                    key={p}
+                    className="border-primary/25 bg-primary/5 text-primary flex items-center gap-1 rounded-full border px-2.5 py-0.5 font-mono text-xs"
+                  >
+                    {p}
+                    <button
+                      type="button"
+                      aria-label={`移除父类 ${p}`}
+                      onClick={() => removeParentLocal(p)}
+                      className="opacity-60 hover:opacity-100"
+                    >
+                      ✕
+                    </button>
+                  </span>
+                ))
+              )}
             </div>
           </div>
         </fieldset>
@@ -849,21 +919,39 @@ function ClassDetailForm({
           <div className="mt-2">
             <span className="text-muted-foreground text-xs">实例类型 etypes</span>
             <div className="mt-1 flex flex-wrap items-center gap-1.5">
-              {selected.etypes.length === 0 ? (
+              {localEtypes.length === 0 ? (
                 <span className="text-muted-foreground text-xs">—</span>
               ) : (
-                selected.etypes.map((et) => (
+                localEtypes.map((et) => (
                   <span
                     key={et}
-                    className="inline-flex items-center rounded-full border border-primary/25 bg-primary/5 px-2.5 py-0.5 font-mono text-xs text-primary"
+                    className="inline-flex items-center gap-1 rounded-full border border-primary/25 bg-primary/5 px-2.5 py-0.5 font-mono text-xs text-primary"
                   >
                     {et}
+                    <button
+                      type="button"
+                      aria-label={`移除实例类型 ${et}`}
+                      onClick={() => removeEtypeLocal(et)}
+                      className="opacity-60 hover:opacity-100"
+                    >
+                      ✕
+                    </button>
                   </span>
                 ))
               )}
+              <input
+                value={etypeInput}
+                onChange={(e) => setEtypeInput(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") addEtypeLocal(etypeInput);
+                }}
+                placeholder="＋ 输入 etype 后回车"
+                aria-label="添加实例类型"
+                className="border-input focus:border-primary h-6 w-32 rounded-md border px-1.5 font-mono text-xs outline-none"
+              />
             </div>
             <span className="text-muted-foreground/60 mt-1 block text-xs">
-              由 registry etype_class_map 派生
+              由 registry etype_class_map 派生；Enter 添加，✕ 移除（写草稿 etypes 数组）
             </span>
           </div>
         </fieldset>
