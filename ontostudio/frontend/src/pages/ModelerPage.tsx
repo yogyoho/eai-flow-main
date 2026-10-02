@@ -500,8 +500,15 @@ export function ModelerPage({ initialFile }: { initialFile?: string }) {
           </div>
         ) : (
           <div className="grid grid-cols-1 gap-3.5 xl:grid-cols-[200px_minmax(0,1fr)_300px]">
-            {/* 左栏：域文件列表 */}
-            <div className="border-border bg-card rounded-xl border p-1.5 shadow-sm">
+            {/* 左栏：域文件列表（标题与全站「域」词汇一致：业务域/域筛选/域健康） */}
+            <div className="border-border bg-card flex flex-col rounded-xl border shadow-sm">
+              <div className="border-border flex items-center gap-2 border-b px-3 py-2.5">
+                <b className="text-sm font-semibold">域文件</b>
+                {!filesQuery.isLoading && files.length > 0 ? (
+                  <span className="text-muted-foreground ml-auto text-xs">{files.length} 个</span>
+                ) : null}
+              </div>
+              <div className="min-h-0 flex-1 overflow-y-auto p-1.5">
               {filesQuery.isLoading ? (
                 <div className="text-muted-foreground p-2 text-sm">加载中…</div>
               ) : (
@@ -515,13 +522,14 @@ export function ModelerPage({ initialFile }: { initialFile?: string }) {
                   />
                 ))
               )}
+              </div>
             </div>
 
             {/* 中：编辑器面板（可最大化）+ 谓词与公理独立面板（画布下方不堆叠行——遮挡节点） */}
             <div className="flex flex-col gap-3.5">
             <div className={cn(
-              "border-border bg-card border shadow-sm",
-              maximized ? "fixed inset-4 z-50 overflow-auto rounded-xl bg-background" : "rounded-xl",
+              "border-border bg-card flex flex-col border shadow-sm",
+              maximized ? "fixed inset-4 z-50 overflow-hidden rounded-xl bg-background" : "rounded-xl",
             )}>
               <div className="border-border flex flex-wrap items-center gap-2 border-b px-4 py-2.5">
                 <span className="font-mono text-sm">{selectedFile}</span>
@@ -591,7 +599,7 @@ export function ModelerPage({ initialFile }: { initialFile?: string }) {
               </div>
 
               {mode === "vis" ? (
-                <>
+                <div className="flex min-h-0 flex-1 flex-col">
                   {/* 工具栏 */}
                   <div className="border-border flex flex-wrap items-center gap-2 border-b px-3.5 py-2.5">
                     <button
@@ -647,10 +655,11 @@ export function ModelerPage({ initialFile }: { initialFile?: string }) {
                     instancesOf={instancesOf}
                     onNodeClick={handleNodeClick}
                     onNodeMove={handleNodeMove}
+                    onRebase={(map) => setPositionOverrides(map)}
                     draftEdges={draftEdges}
-                    heightClass={maximized ? "h-[calc(100vh-230px)]" : "h-[440px]"}
+                    heightClass={maximized ? "min-h-0 flex-1" : "h-[440px]"}
                   />
-                </>
+                </div>
               ) : (
                 <YamlEditor
                   text={text}
@@ -1160,6 +1169,7 @@ function TBoxCanvas({
   instancesOf,
   onNodeClick,
   onNodeMove,
+  onRebase,
   draftEdges,
   heightClass = "h-[440px]",
 }: {
@@ -1170,21 +1180,35 @@ function TBoxCanvas({
   instancesOf: (cls: ClassEntry) => number | null;
   onNodeClick: (name: string) => void;
   onNodeMove: (name: string, pos: Pos) => void;
+  /** stage 生长：传入按像素冻结好的新几何整表（父组件只落 state）。 */
+  onRebase: (map: Map<string, Pos>) => void;
   draftEdges: Array<{ key: string; parent: string; child: string }>;
   /** 最大化模式下传更高的高度类。 */
   heightClass?: string;
 }) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const [zoom, setZoom] = useState(1);
-  // stage 高度实测跟随容器（最大化时容器=calc(100vh-230px)，固定 440 会让下半段成为
-  // 节点拖不进去的死区——用户报告 2026-10-02）；位置是 stage 百分比，stage 铺满即全程可拖。
+  // 画布视口高度 = 容器实测；stage 布局高度 ≥ 视口——拖近底缘时自动生长（无限画布语义），
+  // 生长时其余节点按 px 冻结（换算成新几何写 overrides），只有被拖节点下移。
+  // 几何以 ref 为准：同步多次 pointermove 期间 React state 不 flush，闭包旧值会让
+  // 生长算术逐帧复利（实测节点被甩到 top 1997%）。
+  const [viewportH, setViewportH] = useState(STAGE_H);
   const [stageH, setStageH] = useState(STAGE_H);
+  const stageHRef = useRef(STAGE_H);
+  const posRef = useRef<Map<string, Pos>>(positions);
+  posRef.current = positions;
   useEffect(() => {
     const el = containerRef.current;
     if (!el) return;
-    const ro = new ResizeObserver(() => setStageH(el.clientHeight));
+    const ro = new ResizeObserver(() => {
+      setViewportH(el.clientHeight);
+      stageHRef.current = Math.max(stageHRef.current, el.clientHeight);
+      setStageH(stageHRef.current);
+    });
     ro.observe(el);
-    setStageH(el.clientHeight);
+    setViewportH(el.clientHeight);
+    stageHRef.current = Math.max(stageHRef.current, el.clientHeight);
+    setStageH(stageHRef.current);
     return () => ro.disconnect();
   }, []);
   const dragRef = useRef<{
@@ -1206,7 +1230,7 @@ function TBoxCanvas({
     if (connectChild) return; // 连线模式点击走 click
     const rect = containerRef.current?.getBoundingClientRect();
     if (!rect) return;
-    const orig = positions.get(name) ?? { x: 50, y: 50 };
+    const orig = posRef.current.get(name) ?? { x: 50, y: 50 };
     dragRef.current = { name, startX: e.clientX, startY: e.clientY, orig, moved: false };
     e.currentTarget.setPointerCapture(e.pointerId);
   };
@@ -1215,15 +1239,55 @@ function TBoxCanvas({
     const drag = dragRef.current;
     const rect = containerRef.current?.getBoundingClientRect();
     if (!drag || !rect) return;
+    const h = stageHRef.current;
     // 缩放下：屏幕位移换算回 stage 百分比——水平除以 stage 视觉宽（=容器宽×zoom），
-    // 竖直除以 stage 视觉高（=stageH×zoom）。竖直误用容器宽会让下拖灵敏度虚低（bug 修复）。
+    // 竖直除以 stage 视觉高（=h×zoom）。
     const dxPct = ((e.clientX - drag.startX) / (rect.width * zoom)) * 100;
-    const dyPct = ((e.clientY - drag.startY) / (stageH * zoom)) * 100;
+    const dyPct = ((e.clientY - drag.startY) / (h * zoom)) * 100;
     if (!drag.moved && Math.hypot(dxPct, dyPct) < 1) return; // 死区：区分点击
     drag.moved = true;
     const x = Math.min(96, Math.max(4, drag.orig.x + dxPct));
-    const y = Math.min(94, Math.max(6, drag.orig.y + dyPct));
+    const rawY = Math.max(6, drag.orig.y + dyPct);
+    // 视口跟随：把被拖节点滚进视口。scrollIntoView(nearest) 交给浏览器钳制——
+    // 手算 scrollTop 会被提交前旧 scrollHeight/滚动锚定轮番拽回（实测恒停 338）。
+    // rAF 等提交后执行。
+    const followView = (name: string) => {
+      const el = containerRef.current;
+      if (!el) return;
+      requestAnimationFrame(() => {
+        el.querySelector(`[data-testid="tbox-node-${CSS.escape(name)}"]`)
+          ?.scrollIntoView({ block: "nearest", behavior: "auto" });
+      });
+    };
+    // 底部自动生长：被拖节点底缘逼近 stage 底（28px 余量）→ stage 加高，其余节点
+    // 按像素位置冻结进新几何（写 overrides），仅被拖节点继续随指针下移。
+    const rawPx = (rawY / 100) * h;
+    if (rawPx > h - 28) {
+      const nextH = Math.min(Math.ceil(rawPx) + 48, viewportH * 3);
+      const k = h / nextH;
+      const next = new Map<string, Pos>();
+      posRef.current.forEach((p, n) => next.set(n, { x: p.x, y: p.y * k }));
+      // 被拖节点：px → 新几何百分比（rawPx/nextH×100）；写成 px×k 会把节点甩出画布
+      const draggedY = (rawPx / nextH) * 100;
+      next.set(drag.name, { x, y: draggedY });
+      posRef.current = next;
+      stageHRef.current = nextH;
+      onRebase(next);
+      setStageH(nextH);
+      followView(drag.name);
+      // 坐标基点一并重置到当前指针——orig 已含本段位移，再累加全量 dy 会双重计账
+      //（实测 stage 冲到 3× 上限、节点 top 1997%）。
+      dragRef.current = {
+        ...drag,
+        startX: e.clientX,
+        startY: e.clientY,
+        orig: { x, y: draggedY },
+      };
+      return;
+    }
+    const y = Math.min(94, rawY);
     onNodeMove(drag.name, { x, y });
+    followView(drag.name);
   };
 
   const onNodePointerUp = () => {
@@ -1291,11 +1355,13 @@ function TBoxCanvas({
   }, [classes, positions, draftEdges]);
 
   return (
-    <div className="flex flex-col gap-2">
+    <div className={cn("flex flex-col gap-2", heightClass)}>
       <div
         ref={containerRef}
-        className={cn("relative overflow-auto", heightClass)}
+        className="relative min-h-0 flex-1 overflow-auto"
         style={{
+          // overflow-anchor none：Chrome 滚动锚定会在生长重排时拽回 scrollTop，破坏视口跟随
+          overflowAnchor: "none",
           background:
             "radial-gradient(circle at 1px 1px, var(--border) 1px, transparent 0) 0 0 / 22px 22px, #fcfdfd",
         }}
