@@ -292,6 +292,14 @@ export function ModelerPage() {
       const ok = mutateDraft((obj) => {
         const classes = { ...((obj.classes ?? {}) as Draft) };
         delete classes[clsName];
+        // 联动清理：子类的 parents 引用同步摘除（否则幽灵父类留到保存后，
+        // 子类芯片与画布边持续引用已删类；v4 审计 M1）
+        for (const [name, entry] of Object.entries(classes) as Array<[string, Draft]>) {
+          const parents = ((entry as Draft).parents as string[]) ?? [];
+          if (parents.includes(clsName)) {
+            classes[name] = { ...entry, parents: parents.filter((p) => p !== clsName) };
+          }
+        }
         obj.classes = classes;
       });
       if (ok) {
@@ -861,57 +869,6 @@ function ClassDetailForm({
         </fieldset>
       </div>
     </div>
-  );
-}
-
-function ParentAddSelect({
-  domainClasses,
-  existing,
-  onAdd,
-}: {
-  domainClasses: string[];
-  existing: string[];
-  onAdd: (v: string) => void;
-}) {
-  const candidates = domainClasses.filter((c) => !existing.includes(c));
-  if (candidates.length === 0) return null;
-  return (
-    <select
-      value=""
-      onChange={(e) => {
-        if (e.target.value) {
-          onAdd(e.target.value);
-          e.target.value = "";
-        }
-      }}
-      className="border-border bg-card text-muted-foreground h-6 rounded-md border px-1.5 text-xs"
-    >
-      <option value="">＋ 添加父类</option>
-      {candidates.map((c) => (
-        <option key={c} value={c}>{c}</option>
-      ))}
-    </select>
-  );
-}
-
-function EtypeAddSelect({
-  onAdd,
-}: {
-  onAdd: (v: string) => void;
-}) {
-  return (
-    <select
-      value=""
-      onChange={(e) => {
-        if (e.target.value) {
-          onAdd(e.target.value);
-          e.target.value = "";
-        }
-      }}
-      className="border-border bg-card text-muted-foreground h-6 rounded-md border px-1.5 text-xs"
-    >
-      <option value="">＋ 添加 etype</option>
-    </select>
   );
 }
 
