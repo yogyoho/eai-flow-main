@@ -27,6 +27,7 @@ import {
   type RegistryAxioms,
 } from "@/api/registry-api";
 import { Chip, PageHeader, Panel } from "@/pages/shared";
+import { fetchPredicateLabels } from "@/explorerDataSource";
 import { cn } from "@/lib/utils";
 import { withAlpha } from "@/explorer/graphTheme";
 
@@ -78,9 +79,9 @@ interface Pos {
   y: number;
 }
 
-export function ModelerPage() {
+export function ModelerPage({ initialFile }: { initialFile?: string }) {
   const qc = useQueryClient();
-  const [selectedFile, setSelectedFile] = useState("doc_graph.yaml");
+  const [selectedFile, setSelectedFile] = useState(initialFile ?? "doc_graph.yaml");
   const [selectedClass, setSelectedClass] = useState<string | null>(null);
   const [saveMsg, setSaveMsg] = useState<string | null>(null);
   const [mode, setMode] = useState<"vis" | "yaml">("vis");
@@ -189,6 +190,29 @@ export function ModelerPage() {
     },
     [countByEtype],
   );
+
+  // P1 谓词区补齐（2026-10-02 CEO 审核项）：中文标注（YAML 注释块解析，同 etypeLabels 先例）
+  // + 使用计数。谓词枚举按域互斥（eia/doc_graph 不相交），全局 predicate 聚合 ∩ 本域枚举
+  // 即本域计数——graph_relation 无 domain 列，这是零后端改动的正确口径；与总览页共享缓存 key。
+  const predicateLabelsQuery = useQuery({
+    queryKey: ["ontology", "predicate-labels", selectedFile],
+    queryFn: () => fetchPredicateLabels(selectedFile),
+    enabled: domainPredicates.length > 0,
+    staleTime: Number.POSITIVE_INFINITY,
+  });
+  const predicateCountQuery = useQuery({
+    queryKey: ["ontology", "aggregate", "graph_relation", "predicate"],
+    queryFn: ({ signal }) => fetchAggregate("graph_relation", "predicate", { signal }),
+    enabled: domainPredicates.length > 0,
+    staleTime: 60_000,
+  });
+  const countByPredicate = useMemo(() => {
+    const map = new Map<string, number>();
+    for (const row of predicateCountQuery.data ?? []) {
+      if (row.group) map.set(row.group, row.value);
+    }
+    return map;
+  }, [predicateCountQuery.data]);
 
   // 基础布局（继承深度分层 + 网格防重叠）；用户拖拽写 overrides，读时覆盖
   const baseLayout = useMemo(() => {
@@ -606,8 +630,10 @@ export function ModelerPage() {
                     instancesOf={instancesOf}
                     onNodeClick={handleNodeClick}
                     onNodeMove={handleNodeMove}
-                    chains={axioms?.property_chains ?? []}
+                    axioms={axioms}
                     predicates={domainPredicates}
+                    predicateCounts={countByPredicate}
+                    predicateLabels={predicateLabelsQuery.data}
                     draftEdges={draftEdges}
                   />
                 </>
@@ -1030,7 +1056,7 @@ function AxiomsPanel({
   predicates: string[];
 }) {
   return (
-    <Panel title="公理" subtitle="结构只读 · 编辑走 YAML 模式">
+    <Panel title="公理" subtitle="本域自动派生规则全集 · 结构只读 · 编辑走 YAML 模式">
       <div className="space-y-3 p-4 text-sm">
         <div>
           <span className="text-muted-foreground text-xs font-medium">
@@ -1099,7 +1125,8 @@ function YamlEditor({
   );
 }
 
-/** TBox 画布：节点可拖拽移位（视图态）、连线模式点选父类、实例计数、谓词条、属性链。 */
+/** TBox 画布：节点可拖拽移位（视图态）、连线模式点选父类、实例计数、谓词条（P1：中文
+ *  标注+使用计数）、公理摘要行（A1 去重：全集在右栏「公理」面板）。 */
 function TBoxCanvas({
   classes,
   positions,
@@ -1108,8 +1135,10 @@ function TBoxCanvas({
   instancesOf,
   onNodeClick,
   onNodeMove,
-  chains,
+  axioms,
   predicates,
+  predicateCounts,
+  predicateLabels,
   draftEdges,
 }: {
   classes: ClassEntry[];
@@ -1119,8 +1148,10 @@ function TBoxCanvas({
   instancesOf: (cls: ClassEntry) => number | null;
   onNodeClick: (name: string) => void;
   onNodeMove: (name: string, pos: Pos) => void;
-  chains: RegistryAxioms["property_chains"];
+  axioms?: RegistryAxioms;
   predicates: string[];
+  predicateCounts: Map<string, number>;
+  predicateLabels?: Map<string, string>;
   draftEdges: Array<{ key: string; parent: string; child: string }>;
 }) {
   const containerRef = useRef<HTMLDivElement | null>(null);
@@ -1332,37 +1363,56 @@ function TBoxCanvas({
           </div>
         ) : null}
       </div>
-      {connectChild ? null : (
-        <div className="flex flex-wrap items-center gap-1.5">
-          <span className="text-muted-foreground text-xs font-medium">谓词：</span>
-          {predicates.length === 0 ? (
-            <span className="text-muted-foreground text-xs">—</span>
-          ) : (
-            predicates.map((p) => (
+      {/* 谓词区（P1）：本域关系词汇——中文名 + 图中三元组计数；常显（与公理摘要行为一致） */}
+      <div className="flex flex-wrap items-center gap-1.5">
+        <span className="text-muted-foreground text-xs font-medium">谓词（关系类型）：</span>
+        {predicates.length === 0 ? (
+          <span className="text-muted-foreground text-xs">—</span>
+        ) : (
+          predicates.map((p) => {
+            const label = predicateLabels?.get(p);
+            const count = predicateCounts.get(p);
+            return (
               <span
                 key={p}
                 className="border-primary/25 bg-primary/5 text-primary rounded-full border px-2 py-0.5 font-mono text-xs"
+                title={`本域定义的关系类型${label ? `：${label}` : ""}${
+                  count !== undefined
+                    ? `；图中该谓词 ${count.toLocaleString()} 条三元组${count === 0 ? "（已定义未使用）" : ""}`
+                    : ""
+                }`}
               >
                 {p}
+                {label ? <span className="text-muted-foreground ml-1">{label}</span> : null}
+                {count !== undefined ? (
+                  <span className="text-muted-foreground ml-1 tabular-nums">
+                    · {count.toLocaleString()}
+                  </span>
+                ) : null}
               </span>
-            ))
-          )}
-        </div>
-      )}
-      <div className="flex flex-col gap-1.5">
-        {chains.length === 0 ? (
-          <span className="text-muted-foreground text-xs">本域无属性链公理</span>
-        ) : (
-          chains.map((chain) => (
-            <div
-              key={chain.derived}
-              className="border-primary/25 bg-primary/5 text-primary rounded-lg border border-dashed px-2.5 py-1.5 font-mono text-xs"
-            >
-              {chain.chain.join(" ∘ ")} ⇒ <b>{chain.derived}</b>
-            </div>
-          ))
+            );
+          })
         )}
       </div>
+      {/* 公理摘要（A1 去重）：全集在右栏「公理」面板，此处一行报数指路；未加载不渲染——空态不撒谎 */}
+      <AxiomSummary axioms={axioms} />
     </div>
+  );
+}
+
+/** 画布下公理摘要行（A1，2026-10-02 CEO 审核）：只报数指路，避免与右栏「公理」面板双渲染。 */
+function AxiomSummary({ axioms }: { axioms?: RegistryAxioms }) {
+  if (!axioms) return null;
+  const parts: string[] = [];
+  if (axioms.property_chains.length > 0) parts.push(`属性链 ${axioms.property_chains.length} 条`);
+  if (axioms.transitive.length > 0) parts.push(`传递 ${axioms.transitive.length} 项`);
+  if (axioms.inverse.length > 0) parts.push(`逆 ${axioms.inverse.length} 对`);
+  if (axioms.disjoint.length > 0) parts.push(`不相交 ${axioms.disjoint.length} 组`);
+  return (
+    <span className="text-muted-foreground text-xs">
+      {parts.length > 0
+        ? `自动派生规则：${parts.join(" · ")} → 详见右栏「公理」`
+        : "本域暂无自动派生规则——如需跨关系推导，在 YAML 模式 axioms 块添加（property_chains / transitive / inverse）"}
+    </span>
   );
 }

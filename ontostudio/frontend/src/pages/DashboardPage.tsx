@@ -32,7 +32,6 @@ import {
   Share2,
   ShieldCheck,
 } from "lucide-react";
-import type { LucideIcon } from "lucide-react";
 import { useState, type ReactNode } from "react";
 
 import {
@@ -207,8 +206,13 @@ export function DashboardPage() {
   // ── 待办主轴 + 管线健康（V4 信息架构增量，CEO 复审追加）──
   const todoFailed = activityFailed;
   const todoActive = activityActive;
+  // 「需关注」口径与管线健康轨道一致：待审积压 / 失败任务 / 校验未全过（F7）
+  const validationWarn =
+    validateQuery.data && conformance.length > 0 && (passedCount < conformance.length || violationCount.length > 0)
+      ? 1
+      : 0;
   const attentionItems =
-    (pending !== null && pending > 0 ? 1 : 0) + (todoFailed > 0 ? 1 : 0);
+    (pending !== null && pending > 0 ? 1 : 0) + (todoFailed > 0 ? 1 : 0) + validationWarn;
   // 管线各站状态：抽取=有进行中则琥珀；审核=有待审则琥珀；图=恒绿（对账见同步卡）；
   // 推理=未运行灰/已运行绿；校验=全过绿否则琥珀
   const stageExtract: "ok" | "warn" = todoActive > 0 ? "warn" : "ok";
@@ -225,7 +229,7 @@ export function DashboardPage() {
     { nm: "抽取", color: PIPE_COLORS[0], icon: FileInput, state: stageExtract, legendNum: activityDone as number | null, legendUnit: "完成", sub: todoActive > 0 ? `进行中 ${todoActive}` : "队列空闲", onClick: () => go("ingest") },
     { nm: "人工审核", color: PIPE_COLORS[1], icon: UserCheck, state: stageReview, legendNum: pending, legendUnit: "待确认", sub: pending !== null && pending > 0 ? "积压 · 建议尽快清零" : "无积压", onClick: () => go("resolve") },
     { nm: "知识图谱", color: PIPE_COLORS[2], icon: Network, state: "ok" as const, legendNum: entityTotal, legendUnit: "节点", sub: `关系 ${relationTotal.toLocaleString()} 条`, onClick: () => go("entities") },
-    { nm: "推理", color: PIPE_COLORS[3], icon: BrainCircuit, state: stageInfer, legendNum: null as number | null, legendUnit: "未运行", sub: inferQuery.data ? `闭包 ${formatDuration(inferQuery.data.duration_ms)}` : "全量重算约 30 秒", onClick: () => go("reasoning") },
+    { nm: "推理", color: PIPE_COLORS[3], icon: BrainCircuit, state: stageInfer, legendNum: null as number | null, legendUnit: "未运行", sub: inferQuery.data ? `闭包 ${formatDuration(inferQuery.data.duration_ms)}` : "前往推理工作台运行", onClick: () => go("reasoning") },
     { nm: "校验", color: PIPE_COLORS[4], icon: ShieldCheck, state: stageValidate, legendNum: validateQuery.data ? passedCount : null, legendUnit: `/ ${conformance.length} 通过`, sub: `SHACL 违规 ${violationCount.length}`, onClick: () => go("validation") },
   ];
 
@@ -271,7 +275,7 @@ export function DashboardPage() {
             {pending ?? "—"}
             <small className="text-muted-foreground ml-2 text-sm font-normal">条实体待审</small>
           </div>
-          <div className="text-muted-foreground mt-0.5 text-xs">五间房批次已入图待人工确认 · 支持批量勾选</div>
+          <div className="text-muted-foreground mt-0.5 text-xs">已提取实体入图待人工确认 · 支持批量勾选</div>
           <span className="bg-primary text-primary-foreground mt-auto inline-flex items-center gap-1 self-start rounded-md px-3 py-1 text-xs font-medium">
             进入消解审核 →
           </span>
@@ -284,7 +288,7 @@ export function DashboardPage() {
               </CardIcon>
               <span className="min-w-0">
                 失败任务
-                <span className="text-muted-foreground block text-[10.5px] leading-tight">抽取队列 · 近 24h</span>
+                <span className="text-muted-foreground block text-[10.5px] leading-tight">抽取队列 · 累计</span>
               </span>
             </span>
             <span className="flex-none font-mono text-2xl font-bold leading-none tabular-nums text-destructive">
@@ -325,7 +329,7 @@ export function DashboardPage() {
               <span className="min-w-0">
                 系统状态
                 <span className="text-muted-foreground block text-[10.5px] leading-tight">
-                  {pending === null ? "加载中" : attentionItems > 0 ? "待审积压 · 其余正常" : "管线各站健康"}
+                  {pending === null ? "加载中" : attentionItems > 0 ? "存在需处理项" : "管线各站健康"}
                 </span>
               </span>
             </span>
@@ -382,7 +386,7 @@ export function DashboardPage() {
               <span className="min-w-0">
                 推理物化三元组
                 <span className="text-muted-foreground block text-[10.5px] leading-tight">
-                  {inferQuery.data ? `闭包 ${formatDuration(inferQuery.data.duration_ms)}` : "未运行 · 全量重算约 30 秒"}
+                  {inferQuery.data ? `闭包 ${formatDuration(inferQuery.data.duration_ms)}` : "未运行 · 前往推理工作台运行"}
                 </span>
               </span>
             </span>
@@ -479,8 +483,8 @@ export function DashboardPage() {
                   <tr
                     key={row.domain}
                     className="border-border cursor-pointer border-b transition-colors last:border-b-0 hover:bg-muted"
-                    title="前往本体建模器查看该域模型"
-                    onClick={() => go("modeler")}
+                    title={`前往本体建模器查看「${domainAlias(row.domain) ?? row.domain}」域模型`}
+                    onClick={() => go(`modeler:${row.domain}`)}
                   >
                     <td className="px-4 py-2.5">
                       <span className="flex items-center gap-2 font-mono text-sm">
@@ -521,7 +525,7 @@ export function DashboardPage() {
           <div className="border-border text-muted-foreground flex flex-none items-center gap-2 border-t px-4 py-2.5 text-xs">
             <GitBranch className="h-3 w-3" />
             <span title="cross_module">
-              跨域链路 {disabledLinks.length} 条禁用——单域闭环优先，跨域待业务触发（已列入待办）
+              跨域链路 {disabledLinks.length} 条禁用——单域闭环优先，跨域待业务触发。
             </span>
           </div>
         </Panel>
@@ -544,7 +548,7 @@ export function DashboardPage() {
           {derivedRules === null ? (
             <div className="text-muted-foreground flex flex-col gap-2 p-4 text-xs">
               <p className="leading-relaxed">
-                推理尚未运行——全量重算（约 30 秒）后此处展示各治理合规链规则的真实派生计数。
+                推理尚未运行——运行后此处展示各治理合规链规则的真实派生计数。
               </p>
               <button
                 type="button"
@@ -554,6 +558,8 @@ export function DashboardPage() {
                 前往推理工作台 <ArrowRight className="h-3 w-3" />
               </button>
             </div>
+          ) : derivedRules.length === 0 ? (
+            <p className="text-muted-foreground p-4 text-xs">推理已运行，当前规则集暂无派生记录。</p>
           ) : (
             <ol className="flex flex-col gap-3 p-4 text-[13px]">
               {derivedRules.map((rule, i) => {
@@ -583,7 +589,7 @@ export function DashboardPage() {
             </ol>
           )}
           <p className="text-muted-foreground border-border border-t px-4 py-2.5 text-xs">
-            逐条物化下钻已列入待办——当前图面判据见导出互操作页。
+            逐条派生明细与图面判据见导出互操作页。
           </p>
         </Panel>
       </div>
@@ -712,7 +718,7 @@ export function DashboardPage() {
                   </span>
                 </div>
                 <p className="text-muted-foreground leading-relaxed">
-                  任务=消费 kf_samples 已提取产物入图，force_review 全量进人审（消解审核）。
+                  任务=把样例库已提取产物批量写入图谱；开启强制人审的任务会全部进入消解审核。
                 </p>
               </>
             )}
@@ -728,90 +734,5 @@ export function DashboardPage() {
       </div>
       </div>
     </div>
-  );
-}
-
-/** 统计瓦片（多色版）：tone 决定图标 chip/色底/边框色相，数字保持 ink 深色保证对比度。
- *  k 指标名 / v 大数字（null→"—"）/ d 注脚；onClick 整卡可点；onAction 右上小动作。 */
-function Tile({
-  k,
-  v,
-  unit,
-  d,
-  tone,
-  icon: Icon,
-  accent,
-  title,
-  onClick,
-  onAction,
-  actionLabel,
-}: {
-  k: string;
-  v: number | null;
-  unit: string;
-  d: string;
-  tone: string;
-  icon: LucideIcon;
-  accent?: boolean;
-  title?: string;
-  onClick?: () => void;
-  onAction?: () => void;
-  actionLabel?: string;
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      disabled={!onClick}
-      title={title}
-      className={cn(
-        "rounded-xl border p-3.5 text-left shadow-sm transition-all duration-200",
-        onClick && "hover:-translate-y-px cursor-pointer",
-        !onClick && "cursor-default",
-      )}
-      style={{
-        background: withAlpha(tone, 0.05),
-        borderColor: withAlpha(tone, 0.28),
-      }}
-    >
-      <div className="flex items-center gap-2.5">
-        <span
-          className="grid h-9 w-9 flex-none place-items-center rounded-lg"
-          style={{ background: withAlpha(tone, 0.14) }}
-        >
-          <Icon className="h-[18px] w-[18px]" style={{ color: tone }} />
-        </span>
-        <span className="text-muted-foreground text-sm font-medium">{k}</span>
-      </div>
-      <div
-        className="mt-2 text-2xl font-semibold tracking-tight tabular-nums"
-        style={{ color: accent && v !== null && v > 0 ? toneText(tone) : undefined }}
-      >
-        {v === null ? "—" : v.toLocaleString()}
-        {unit ? <small className="text-muted-foreground ml-1.5 text-sm font-normal">{unit}</small> : null}
-      </div>
-      <div className="text-muted-foreground mt-1 flex items-center gap-1 text-xs">
-        <span
-          className="h-1.5 w-1.5 flex-none rounded-full"
-          style={{ background: withAlpha(tone, 0.55) }}
-        />
-        <span className="truncate">{d}</span>
-        {onAction ? (
-          <span
-            role="button"
-            tabIndex={0}
-            onClick={(e) => {
-              e.stopPropagation();
-              onAction();
-            }}
-            onKeyDown={(e) => e.key === "Enter" && onAction()}
-            className="ml-auto flex-none font-medium underline-offset-2 hover:underline"
-            style={{ color: toneText(tone) }}
-          >
-            {actionLabel}
-          </span>
-        ) : null}
-      </div>
-    </button>
   );
 }

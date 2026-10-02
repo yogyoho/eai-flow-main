@@ -206,6 +206,20 @@ export async function fetchEiaEtypeLabels(): Promise<Map<string, string>> {
   return map;
 }
 
+/** EAI-CUSTOM(2026-10-02 谓词中文标注, 建模器 P1): registry YAML「# 谓词中文标注: k=v …」
+ *  注释块 → 标签 map。标注维护在 YAML 注释（eia.yaml 全量 37 谓词），无结构化字段——正则抽取。 */
+export async function fetchPredicateLabels(file: string): Promise<Map<string, string>> {
+  const content = await fetchRegistryContent(file);
+  const map = new Map<string, string>();
+  for (const m of content.raw.matchAll(/谓词中文标注[：:](.+)/g)) {
+    for (const pair of (m[1] ?? "").trim().split(/\s+/)) {
+      const eq = pair.indexOf("=");
+      if (eq > 0) map.set(pair.slice(0, eq), pair.slice(eq + 1));
+    }
+  }
+  return map;
+}
+
 /** EAI-CUSTOM(2026-09-29 图谱投影域过滤): domain 非空 → /graph/* 带 domain= 服务端过滤；
  *  取数器随域重建（调用方 useMemo 依赖域），切域即换一组 fetchers。 */
 export function makeExplorerFetchers(domain = ""): {

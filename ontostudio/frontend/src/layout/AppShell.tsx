@@ -111,10 +111,11 @@ const ROUTE_ICON: Record<RouteId, LucideIcon> = {
   export: FileOutput,
 };
 
-/** hash 路由：解析非法/空 hash 落到 graph（知识层主视图）。 */
+/** hash 路由：解析非法/空 hash 落到 graph（知识层主视图）。
+ *  EAI-CUSTOM(F6 深链): 支持 `modeler:<domain>` 后缀——总览域行点击直达建模器对应域。 */
 function useHashRoute(): [RouteId, (id: RouteId) => void] {
   const parse = useCallback((): RouteId => {
-    const raw = window.location.hash.replace(/^#/, "");
+    const raw = window.location.hash.replace(/^#/, "").split(":")[0] ?? "";
     return (ROUTE_IDS as string[]).includes(raw) ? (raw as RouteId) : "graph";
   }, []);
   const [route, setRoute] = useState<RouteId>(parse);
@@ -139,6 +140,13 @@ function useHashRoute(): [RouteId, (id: RouteId) => void] {
 export function AppShell() {
   const [route, go] = useHashRoute();
   const knowledgeView = ROUTE_VIEW[route];
+  // F6 深链参数：`#modeler:<domain>` → 建模器初始域文件；无后缀时 undefined（保持默认选中）
+  const modelerInitialFile = (() => {
+    const raw = window.location.hash.replace(/^#/, "");
+    if (!raw.startsWith("modeler:")) return undefined;
+    const domain = decodeURIComponent(raw.slice("modeler:".length));
+    return domain ? `${domain}.yaml` : undefined;
+  })();
 
   // 侧栏消解待审红点：真实 pending 计数；失败（403/网络）静默隐藏
   const pendingQuery = useQuery({
@@ -318,7 +326,7 @@ export function AppShell() {
         </div>
         {route === "dashboard" ? <DashboardPage /> : null}
         {route === "entities" ? <EntitiesPage /> : null}
-        {route === "modeler" ? <ModelerPage /> : null}
+        {route === "modeler" ? <ModelerPage initialFile={modelerInitialFile} /> : null}
         {route === "reasoning" ? <ReasoningPage /> : null}
         {route === "validation" ? <ValidationPage /> : null}
         {route === "ingest" ? <IngestPage /> : null}

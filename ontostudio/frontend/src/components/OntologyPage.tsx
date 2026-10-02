@@ -16,6 +16,7 @@ import { GitMerge, Loader2, Network, Search } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { fetchPendingReviewCount, fetchRegistryMeta } from "@/api/ontology-graph-api";
+import { fetchRegistryFiles } from "@/api/registry-api";
 import { DetailPanel } from "@/components/DetailPanel";
 import { OverviewPanel } from "@/components/OverviewPanel";
 import { RegistryPanel } from "@/components/RegistryPanel";
@@ -33,6 +34,7 @@ import { graph, type NodeAttributes } from "@/explorer/graphStore";
 import type { GraphLoadSummary } from "@/explorer/types";
 import { useReloadGraph } from "@/explorer/useLoadGraph";
 import { MAIN_LOGIN_URL, usePermission } from "@/lib/permissions";
+import { domainAlias } from "@/lib/terms";
 import { cn } from "@/lib/utils";
 import { readGraphSnapshot, type GraphSnapshot } from "@/graphSnapshot";
 
@@ -148,6 +150,15 @@ function OntologyWorkspace({
     queryFn: fetchRegistryMeta,
   });
   const meta = metaQuery.data;
+
+  // G1 去硬编码（2026-10-02 CEO 审核）：域筛选项动态遍历 registry 文件（与总览域健康表
+  // 同源缓存），新域上线自动出现在下拉——此前写死 doc_graph/eia 两项，bid_quote 已漏。
+  const filesQuery = useQuery({
+    queryKey: ["ontology", "registry-files"],
+    queryFn: fetchRegistryFiles,
+    staleTime: 5 * 60_000,
+  });
+  const domainOptions = (filesQuery.data?.files ?? []).map((f) => f.replace(/\.yaml$/, ""));
 
   // 待复核实体计数：仅概览 tab 挂载时拉取；失败（含无 system:access 403）→ null → "—"
   const pendingQuery = useQuery({
@@ -330,8 +341,11 @@ function OntologyWorkspace({
               </SelectTrigger>
               <SelectContent position="popper">
                 <SelectItem value="__all__">域：全部</SelectItem>
-                <SelectItem value="doc_graph">文档图谱（doc_graph）</SelectItem>
-                <SelectItem value="eia">环评（eia）</SelectItem>
+                {domainOptions.map((d) => (
+                  <SelectItem key={d} value={d}>
+                    {domainAlias(d) ?? d}（{d}）
+                  </SelectItem>
+                ))}
               </SelectContent>
             </Select>
             <button

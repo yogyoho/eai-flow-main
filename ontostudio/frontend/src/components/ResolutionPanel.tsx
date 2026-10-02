@@ -58,6 +58,7 @@ import {
 } from "@/components/chartTheme";
 import { fetchEiaEtypeLabels } from "@/explorerDataSource";
 import { withAlpha } from "@/explorer/graphTheme";
+import { domainAlias } from "@/lib/terms";
 import { cn } from "@/lib/utils";
 
 type ApiError = Error & { status?: number };
@@ -618,7 +619,8 @@ export function ResolutionPanel({
                         </button>
                       </div>
                       <div className="text-muted-foreground px-3.5 pt-1 text-xs" style={{ color: INK_3 }}>
-                        环评 · 待审
+                        {/* R1 去硬编码（2026-10-02 CEO 审核）：域随实体数据，此前写死「环评」 */}
+                        {domainAlias(entity.domain) ?? entity.domain} · 待审
                       </div>
 
                       {/* 批量失败行（EAI-CUSTOM 2026-09-29）：标红 + 单条重试入口（走单条管线，
