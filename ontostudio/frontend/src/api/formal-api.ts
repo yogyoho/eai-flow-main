@@ -45,6 +45,37 @@ export function runCqs(): Promise<{ results: CqResult[] }> {
   });
 }
 
+// ---- 规则源码（F1）/ 派生下钻（F2）----
+
+export type RuleOrigin = "yaml" | "builtin" | "chain";
+
+export interface RuleSource {
+  name: string;
+  /** 自包含 CONSTRUCT 查询（含 PREFIX）。 */
+  construct: string;
+  origin: RuleOrigin;
+}
+
+export function fetchFormalRules(): Promise<{ rules: RuleSource[] }> {
+  return authFetch<{ success: boolean; rules: RuleSource[] }>(`${BASE}/rules`);
+}
+
+export interface DerivationRow {
+  s: string;
+  p: string;
+  o: string;
+}
+
+export function fetchRuleDerivations(
+  name: string,
+  limit = 200,
+  offset = 0,
+): Promise<{ total: number; rows: DerivationRow[] }> {
+  return authFetch(
+    `${BASE}/rules/${encodeURIComponent(name)}/derivations?limit=${limit}&offset=${offset}`,
+  );
+}
+
 // ---- validate ----
 
 export interface ShaclViolation {

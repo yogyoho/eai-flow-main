@@ -7,7 +7,12 @@ import { BrainCircuit } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
 
-import { runCqs, runFormalInfer } from "@/api/formal-api";
+import {
+  fetchFormalRules,
+  fetchRuleDerivations,
+  runCqs,
+  runFormalInfer,
+} from "@/api/formal-api";
 import { Chip, PageHeader, Panel } from "@/pages/shared";
 import { cn } from "@/lib/utils";
 
@@ -53,20 +58,19 @@ export function ruleRows(ruleCounts: Record<string, number>): RuleRow[] {
   });
 }
 
-const SPARQL = `# 投标人具备项目所需全部资质 → bidder_qualified_for
-CONSTRUCT { ?b a :QualifiedBidder ; :qualifiedFor ?p }
-WHERE {
-  ?b a :Bidder ; :bidderOf ?p .
-  ?p :requiresQualification ?q .
-  ?b :holdsQualification ?q .
-  FILTER NOT EXISTS { ?p :requiresQualification ?q2 .
-                      FILTER NOT EXISTS { ?b :holdsQualification ?q2 } }
-}`;
+/** IRI → 局部名（# 或最后一个 / 之后）——F2 下钻列表的紧凑显示。 */
+function iriLocal(iri: string): string {
+  const i = Math.max(iri.lastIndexOf("#"), iri.lastIndexOf("/"));
+  return i >= 0 ? iri.slice(i + 1) : iri;
+}
 
 export function ReasoningPage() {
+  // F7 门限可调（2026-10-02 一期）：仅作用于下一次全量重算；页面展示的始终是已落盘
+  // 的当前物化——缓存 key 不含门限，与总览治理合规链共享同一份「最新落盘」数据。
+  const [minConf, setMinConf] = useState(0.7);
   const inferQuery = useQuery({
     queryKey: ["formal", "infer"],
-    queryFn: () => runFormalInfer(),
+    queryFn: () => runFormalInfer(minConf),
     staleTime: 30_000,
   });
   const derivedTotal = inferQuery.data
@@ -84,6 +88,23 @@ export function ReasoningPage() {
     rules.find((r) => r.name === "qualified_bidder") ??
     rules[0] ??
     null;
+
+  // F1 规则源码 + F2 派生下钻（2026-10-02 一期）：预览面板三视图（信息/源码/派生）。
+  const [previewView, setPreviewView] = useState<"meta" | "source" | "derivations">("meta");
+  const rulesSourceQuery = useQuery({
+    queryKey: ["formal", "rules"],
+    queryFn: fetchFormalRules,
+    staleTime: 5 * 60_000,
+  });
+  const sourceMap = useMemo(
+    () => new Map((rulesSourceQuery.data?.rules ?? []).map((r) => [r.name, r])),
+    [rulesSourceQuery.data],
+  );
+  const derivationsQuery = useQuery({
+    queryKey: ["formal", "derivations", selectedRule?.name],
+    queryFn: () => fetchRuleDerivations(selectedRule!.name),
+    enabled: previewView === "derivations" && !!selectedRule,
+  });
 
   // F5 CQ 验收自动化（2026-10-02）：ASK 真跑于内核（取代静态演示判定）；
   // 结果基于上次全量重算，面板内可手动重跑。
@@ -104,12 +125,33 @@ export function ReasoningPage() {
         title="推理工作台"
         description="单引擎：owlrl 闭包（graph:entailment）+ SPARQL CONSTRUCT 派生（每规则独立 named graph，named graph 归属即触发轨迹）"
         actions={
-          /* G-A（2026-10-02 深审）：原「dry 运行规则」按钮与全量重算同调 refetch，
-           * 后端 /infer 无 dry 模式（一律清空重写 entailment）——语义谎言按钮删除；
-           * dry 试算归「推理白盒化」（TODOS，触发条件驱动）。 */
-          <button className="bg-primary hover:bg-primary/90 text-primary-foreground h-9 rounded-md px-4 text-sm font-medium" onClick={() => inferQuery.refetch()}>
-            {inferQuery.isFetching ? "推理中…" : "全量重算"}
-          </button>
+          /* G-A：dry 按钮已删（后端无 dry 模式）；F7 门限输入作用于下一次全量重算 */
+          <span className="flex items-center gap-2">
+            <label className="text-muted-foreground flex items-center gap-1.5 text-xs">
+              置信度门限
+              <input
+                type="number"
+                min={0.5}
+                max={1}
+                step={0.05}
+                value={minConf}
+                onChange={(e) => {
+                  const v = Number(e.target.value);
+                  if (!Number.isNaN(v)) setMinConf(Math.min(1, Math.max(0.5, v)));
+                }}
+                title="低于此抽取置信度的实体不参与推理；点全量重算时生效"
+                className="border-input focus:border-primary h-8 w-20 rounded-md border px-2 font-mono text-sm outline-none"
+              />
+            </label>
+            <button
+              className="bg-primary hover:bg-primary/90 text-primary-foreground h-9 rounded-md px-4 text-sm font-medium"
+              onClick={() => {
+                void inferQuery.refetch().then(() => cqQuery.refetch());
+              }}
+            >
+              {inferQuery.isFetching ? "推理中…" : "全量重算"}
+            </button>
+          </span>
         }
       />
       <div className="mb-3.5 grid grid-cols-3 gap-3.5">
@@ -195,7 +237,25 @@ export function ReasoningPage() {
                     </td>
                     <td className="text-muted-foreground px-4 py-3 font-mono text-sm">{rule.pred}</td>
                     <td className="text-muted-foreground px-4 py-3 font-mono text-sm">{rule.graph}</td>
-                    <td className="px-4 py-3 text-right tabular-nums">{rule.count}</td>
+                    <td className="px-4 py-3 text-right tabular-nums">
+                      {/* F2：派生数可点 → 下钻该规则派生三元组 */}
+                      {rule.count > 0 ? (
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setSelectedRuleName(rule.name);
+                            setPreviewView("derivations");
+                          }}
+                          title="查看该规则的派生三元组"
+                          className="text-primary hover:underline"
+                        >
+                          {rule.count}
+                        </button>
+                      ) : (
+                        rule.count
+                      )}
+                    </td>
                     <td className="px-4 py-3">
                       <Chip tone="primary">现行</Chip>
                     </td>
@@ -211,13 +271,74 @@ export function ReasoningPage() {
           <Panel
             title={selectedRule ? `规则预览 · ${selectedRule.name}` : "规则预览"}
             subtitle={selectedRule?.desc ?? "点击上方规则行切换"}
+            actions={
+              selectedRule ? (
+                <span className="flex items-center gap-1">
+                  {(
+                    [
+                      ["meta", "信息"],
+                      ["source", "源码"],
+                      ["derivations", "派生"],
+                    ] as const
+                  ).map(([v, label]) => (
+                    <button
+                      key={v}
+                      type="button"
+                      onClick={() => setPreviewView(v)}
+                      className={cn(
+                        "rounded-md border px-2 py-0.5 text-xs font-medium",
+                        previewView === v
+                          ? "border-primary/40 bg-primary/10 text-primary"
+                          : "border-border text-muted-foreground hover:text-foreground",
+                      )}
+                    >
+                      {label}
+                    </button>
+                  ))}
+                </span>
+              ) : null
+            }
           >
             <div className="p-3">
-              {selectedRule?.name === "qualified_bidder" ? (
-                <pre className="bg-code-bg text-code-fg overflow-x-auto rounded-lg p-3.5 font-mono text-xs leading-relaxed">
-                  {SPARQL}
-                </pre>
-              ) : selectedRule ? (
+              {!selectedRule ? (
+                <p className="text-muted-foreground p-1 text-sm">暂无规则——先点右上「全量重算」。</p>
+              ) : previewView === "source" ? (
+                sourceMap.get(selectedRule.name) ? (
+                  <pre className="bg-code-bg text-code-fg max-h-72 overflow-auto rounded-lg p-3.5 font-mono text-xs leading-relaxed">
+                    {sourceMap.get(selectedRule.name)!.construct}
+                  </pre>
+                ) : (
+                  <p className="text-muted-foreground p-1 text-xs">
+                    规则源码加载中或不可得（rules.yaml / 链生成器）。
+                  </p>
+                )
+              ) : previewView === "derivations" ? (
+                derivationsQuery.isLoading ? (
+                  <p className="text-muted-foreground p-1 text-sm">加载派生…</p>
+                ) : derivationsQuery.isError ? (
+                  <p className="text-destructive p-1 text-xs">{(derivationsQuery.error as Error).message}</p>
+                ) : (derivationsQuery.data?.rows.length ?? 0) === 0 ? (
+                  <p className="text-muted-foreground p-1 text-sm">
+                    该规则暂无派生——前置关系数据不足（缺口可见即 CQ FAIL 的根源）。
+                  </p>
+                ) : (
+                  <div className="flex flex-col gap-1">
+                    <p className="text-muted-foreground text-xs">
+                      共 {derivationsQuery.data!.total.toLocaleString()} 条（显示前 {derivationsQuery.data!.rows.length} 条）
+                    </p>
+                    {derivationsQuery.data!.rows.map((row, i) => (
+                      <div
+                        key={`${row.s}-${row.p}-${row.o}-${i}`}
+                        className="bg-muted/60 rounded-md px-2.5 py-1.5 font-mono text-xs"
+                      >
+                        {iriLocal(row.s)}{" "}
+                        <span className="text-primary font-semibold">{iriLocal(row.p)}</span>{" "}
+                        {iriLocal(row.o)}
+                      </div>
+                    ))}
+                  </div>
+                )
+              ) : (
                 <div className="flex flex-col gap-1.5 p-1 text-[13px]">
                   <div className="flex justify-between gap-3">
                     <span className="text-muted-foreground">派生谓词</span>
@@ -232,11 +353,9 @@ export function ReasoningPage() {
                     <span className="font-mono text-xs tabular-nums">{selectedRule.count}</span>
                   </div>
                   <p className="text-muted-foreground mt-1.5 text-xs">
-                    规则源码在内核（rules.yaml / eia formal 链生成器），在线查看为规划项。
+                    规则 SPARQL 见「源码」页；逐条派生结论见「派生」页。
                   </p>
                 </div>
-              ) : (
-                <p className="text-muted-foreground p-1 text-sm">暂无规则——先点右上「全量重算」。</p>
               )}
             </div>
           </Panel>

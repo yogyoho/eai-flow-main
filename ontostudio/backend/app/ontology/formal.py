@@ -46,6 +46,46 @@ async def formal_cq_run(_: CurrentUser = Depends(require_permission("system:acce
     return {"success": True, "results": get_kernel().run_cqs()}
 
 
+@router.get("/rules")
+async def formal_rules(_: CurrentUser = Depends(require_permission("system:access"))):
+    """规则清单+源码（F1）：YAML 规则 + 内置 sameAs + registry 属性链自动生成。"""
+    from app.ontology.kernel.rules import (
+        BUILTIN_SAMEAS_PROPAGATION,
+        builtin_chain_rules,
+        load_rules,
+    )
+    from app.ontology.registry import get_registry
+
+    rules = [
+        {"name": r.name, "construct": r.construct, "origin": origin}
+        for origin, group in (
+            ("yaml", load_rules()),
+            ("builtin", [BUILTIN_SAMEAS_PROPAGATION]),
+            ("chain", builtin_chain_rules(get_registry())),
+        )
+        for r in group
+    ]
+    return {"success": True, "rules": rules}
+
+
+@router.get("/rules/{name}/derivations")
+async def formal_rule_derivations(
+    name: str,
+    limit: int = Query(200, ge=1, le=1000),
+    offset: int = Query(0, ge=0),
+    _: CurrentUser = Depends(require_permission("system:access")),
+):
+    """派生三元组下钻（F2）：graph:derived:<name> 内容分页（named graph 归属即触发轨迹）。"""
+    try:
+        return {
+            "success": True,
+            "rule": name,
+            **get_kernel().rule_derivations(name, limit=limit, offset=offset),
+        }
+    except ValueError as e:
+        raise HTTPException(status_code=422, detail=str(e)) from e
+
+
 @router.post("/load-ontology")
 async def formal_load_ontology(
     payload: dict,

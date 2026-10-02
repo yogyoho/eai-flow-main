@@ -145,6 +145,23 @@ class KernelService:
         """CQ 验收（F5）：cq.yaml 逐条 ASK 真跑，FAIL 不阻断（推理工作台页数据源）。"""
         return run_cqs(self.store, load_cqs())
 
+    def rule_derivations(self, name: str, *, limit: int = 200, offset: int = 0) -> dict:
+        """graph:derived:<name> 内容（F2 下钻）：派生三元组分页 + 总数。"""
+        import re
+
+        if not re.fullmatch(r"[a-z0-9_]+", name):
+            raise ValueError("规则名不合法")
+        graph = f"graph:derived:{name}"
+        total_rows = self.store.query(
+            f"SELECT (COUNT(*) AS ?n) WHERE {{ GRAPH <{graph}> {{ ?s ?p ?o }} }}"
+        )
+        total = int(total_rows[0]["n"] or 0) if total_rows else 0
+        rows = self.store.query(
+            f"SELECT ?s ?p ?o WHERE {{ GRAPH <{graph}> {{ ?s ?p ?o }} }} "
+            f"ORDER BY ?s ?p ?o LIMIT {int(limit)} OFFSET {int(offset)}"
+        )
+        return {"total": total, "rows": rows}
+
     def validate(self) -> dict:
         """SHACL 报告 + 国标五项符合性（校验中心页数据源）。"""
         from app.ontology.kernel.conformance import run_conformance
