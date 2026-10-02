@@ -1192,24 +1192,37 @@ function TBoxCanvas({
     const serverKeys = new Set(
       classes.flatMap((cls) => cls.parents.map((p) => `${p}-${cls.name}`)),
     );
-    const draftOnly = draftEdges.filter((de) => !serverKeys.has(de.key));
-    const serverList = classes.flatMap((cls) =>
-      cls.parents
-        .filter((p) => positions.has(p) && positions.has(cls.name))
-        .map((p) => ({
-          key: `${p}-${cls.name}`,
-          parent: p,
-          child: cls.name,
-          draftOnly: false,
-        })),
-    );
-    const extra = draftEdges
-      .filter((de) => !serverList.some((s) => s.key === de.key))
-      .map((de) => ({ ...de, draftOnly: true }));
-    return [
-      ...serverList.map((e) => ({ ...e, draftOnly: false })),
-      ...extra,
-    ];
+    const list: Array<{ key: string; parent: string; child: string; x1: number; y1: number; x2: number; y2: number; draftOnly: boolean }> = [];
+    for (const cls of classes) {
+      for (const p of cls.parents) {
+        const a = positions.get(p);
+        const b = positions.get(cls.name);
+        if (a && b) {
+          list.push({
+            key: `${p}-${cls.name}`,
+            parent: p,
+            child: cls.name,
+            x1: a.x, y1: a.y, x2: b.x, y2: b.y,
+            draftOnly: false,
+          });
+        }
+      }
+    }
+    for (const de of draftEdges) {
+      if (serverKeys.has(de.key)) continue;
+      const a = positions.get(de.parent);
+      const b = positions.get(de.child);
+      if (a && b) {
+        list.push({
+          key: de.key,
+          parent: de.parent,
+          child: de.child,
+          x1: a.x, y1: a.y, x2: b.x, y2: b.y,
+          draftOnly: true,
+        });
+      }
+    }
+    return list;
   }, [classes, positions, draftEdges]);
 
   return (
@@ -1228,7 +1241,7 @@ function TBoxCanvas({
           viewBox="0 0 100 100"
           preserveAspectRatio="none"
         >
-          {edges.map((edge) => {
+          {mergedEdges.map((edge) => {
             const isPending = connectChild === edge.child;
             return (
               <line
@@ -1237,8 +1250,9 @@ function TBoxCanvas({
                 y1={edge.y1}
                 x2={edge.x2}
                 y2={edge.y2}
-                stroke={isPending ? withAlpha(AMBER, 0.7) : withAlpha(TONE_BLUE, 0.35)}
+                stroke={isPending ? withAlpha(AMBER, 0.7) : edge.draftOnly ? withAlpha(AMBER, 0.55) : withAlpha(TONE_BLUE, 0.35)}
                 strokeWidth={1.5}
+                strokeDasharray={edge.draftOnly ? "6 4" : undefined}
                 vectorEffect="non-scaling-stroke"
               />
             );
