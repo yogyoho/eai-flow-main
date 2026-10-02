@@ -132,7 +132,7 @@ function FilterSelect({
   );
 }
 
-export function EntitiesPage() {
+export function EntitiesPage({ initialEntity }: { initialEntity?: string }) {
   const schemaQuery = useQuery({
     queryKey: ["ontology", "object-types"],
     queryFn: fetchObjectTypes,
@@ -176,7 +176,10 @@ export function EntitiesPage() {
   // 页码分页（0 基，对齐合同价格分项校验）：skip = page * pageSize，total 由服务端返回
   const [page, setPage] = useState(0);
   const [pageSize, setPageSize] = useState<number>(10);
-  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [selectedId, setSelectedId] = useState<string | null>(
+    // 深链直开（校验违规下钻 #entities:<uuid>）：抽屉打开该实体详情
+    initialEntity ? `graph_entity:${initialEntity}` : null,
+  );
 
   const filters = useMemo(() => {
     const list: Array<{ column: string; op: string; value: unknown }> = [];

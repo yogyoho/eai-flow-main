@@ -86,6 +86,19 @@ export function fetchInferHistory(limit = 20): Promise<{ history: InferHistoryRo
   return authFetch(`${BASE}/history?limit=${limit}`);
 }
 
+/** 校验历史行（F9 同构）：每次 GET /validate 自动记录。 */
+export interface ValidateHistoryRow {
+  ts: string;
+  conforms: boolean;
+  errors: number;
+  warnings: number;
+  duration_ms: number;
+}
+
+export function fetchValidateHistory(limit = 20): Promise<{ history: ValidateHistoryRow[] }> {
+  return authFetch(`${BASE}/validate-history?limit=${limit}`);
+}
+
 export interface DerivationRow {
   s: string;
   p: string;

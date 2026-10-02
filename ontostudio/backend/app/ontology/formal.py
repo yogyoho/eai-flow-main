@@ -129,6 +129,15 @@ async def formal_history(
     return {"success": True, "history": get_kernel().infer_history(limit)}
 
 
+@router.get("/validate-history")
+async def formal_validate_history(
+    limit: int = Query(20, ge=1, le=100),
+    _: CurrentUser = Depends(require_permission("system:access")),
+):
+    """校验历史：近 N 次 SHACL 运行（倒序，每次 GET /validate 自动记录）。"""
+    return {"success": True, "history": get_kernel().validate_history(limit)}
+
+
 @router.post("/load-ontology")
 async def formal_load_ontology(
     payload: dict,

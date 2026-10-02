@@ -147,6 +147,13 @@ export function AppShell() {
     const domain = decodeURIComponent(raw.slice("modeler:".length));
     return domain ? `${domain}.yaml` : undefined;
   })();
+  // 校验违规下钻深链：`#entities:<uuid>` → 实体库抽屉直开该实体
+  const entitiesInitial = (() => {
+    const raw = window.location.hash.replace(/^#/, "");
+    return raw.startsWith("entities:")
+      ? decodeURIComponent(raw.slice("entities:".length)) || undefined
+      : undefined;
+  })();
 
   // 侧栏消解待审红点：真实 pending 计数；失败（403/网络）静默隐藏
   const pendingQuery = useQuery({
@@ -325,7 +332,7 @@ export function AppShell() {
           />
         </div>
         {route === "dashboard" ? <DashboardPage /> : null}
-        {route === "entities" ? <EntitiesPage /> : null}
+        {route === "entities" ? <EntitiesPage initialEntity={entitiesInitial} /> : null}
         {route === "modeler" ? <ModelerPage initialFile={modelerInitialFile} /> : null}
         {route === "reasoning" ? <ReasoningPage /> : null}
         {route === "validation" ? <ValidationPage /> : null}

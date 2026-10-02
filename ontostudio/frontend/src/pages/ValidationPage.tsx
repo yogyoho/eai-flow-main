@@ -11,16 +11,31 @@
  */
 import { useQuery } from "@tanstack/react-query";
 import { Play, ShieldCheck } from "lucide-react";
+import { useState } from "react";
 
-import { fetchFormalValidate, type ShaclViolation } from "@/api/formal-api";
+import { fetchFormalValidate, fetchValidateHistory, type ShaclViolation } from "@/api/formal-api";
 import { Chip, PageHeader, Panel } from "@/pages/shared";
 import { cn } from "@/lib/utils";
 
+/** SHACL focusNode → 实体 uuid（IRI 尾段；非实体 IRI 返回 null，不提供下钻）。 */
+function uuidOf(iri: unknown): string | null {
+  const m = String(iri ?? "").match(/([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})/i);
+  return m?.[1] ?? null;
+}
+
 export function ValidationPage() {
+  // F9 同构：校验历史面板（每次「重新校验」自动记录于后端）
+  const [historyOpen, setHistoryOpen] = useState(false);
   const validateQuery = useQuery({
     queryKey: ["formal", "validate"],
     queryFn: fetchFormalValidate,
     staleTime: 30_000,
+  });
+  const historyQuery = useQuery({
+    queryKey: ["formal", "validate-history"],
+    queryFn: () => fetchValidateHistory(20),
+    enabled: historyOpen,
+    staleTime: 10_000,
   });
   const data = validateQuery.data;
   const conformance = data?.conformance ?? [];
@@ -37,19 +52,33 @@ export function ValidationPage() {
           title="校验中心"
           description="SHACL 形状校验 + 国标 GB/T 48000 系符合性套件（C1-C5），每次全量装载/推理后可重跑。"
           actions={
-            <button
-              type="button"
-              className="border-border bg-card hover:bg-muted h-8 rounded-md border px-3 text-sm font-medium disabled:opacity-50"
-              disabled={!data}
-              onClick={() =>
-                downloadReport({
-                  shacl: data?.shacl,
-                  conformance,
-                })
-              }
-            >
-              导出报告 JSON
-            </button>
+            <span className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setHistoryOpen((v) => !v)}
+                className={cn(
+                  "h-8 rounded-md border px-3 text-sm font-medium",
+                  historyOpen
+                    ? "border-primary/40 bg-primary/10 text-primary"
+                    : "border-border bg-card text-foreground hover:bg-muted",
+                )}
+              >
+                历史
+              </button>
+              <button
+                type="button"
+                className="border-border bg-card hover:bg-muted h-8 rounded-md border px-3 text-sm font-medium disabled:opacity-50"
+                disabled={!data}
+                onClick={() =>
+                  downloadReport({
+                    shacl: data?.shacl,
+                    conformance,
+                  })
+                }
+              >
+                导出报告 JSON
+              </button>
+            </span>
           }
         />
 
@@ -170,6 +199,18 @@ export function ValidationPage() {
                           <td className="px-4 py-2.5 font-mono text-xs">{violation.source ?? "—"}</td>
                           <td className="max-w-[12rem] truncate px-4 py-2.5 font-mono text-xs" title={violation.focusNode ?? undefined}>
                             {violation.focusNode ?? "—"}
+                            {uuidOf(violation.focusNode) ? (
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  window.location.hash = `entities:${uuidOf(violation.focusNode)}`;
+                                }}
+                                title="在实体库中打开该实体"
+                                className="text-primary ml-1.5 hover:underline"
+                              >
+                                查看实体
+                              </button>
+                            ) : null}
                           </td>
                           <td className="max-w-[18rem] truncate px-4 py-2.5" title={violation.message ?? undefined}>
                             {violation.message ?? "—"}
@@ -236,6 +277,47 @@ export function ValidationPage() {
             </div>
           </Panel>
         </div>
+
+        {historyOpen ? (
+          <div className="mt-3.5">
+            <Panel title="校验历史" subtitle="近 20 次 SHACL 运行（每次「重新校验」自动记录）">
+              {historyQuery.isLoading ? (
+                <p className="text-muted-foreground p-4 text-sm">加载历史…</p>
+              ) : (historyQuery.data?.history.length ?? 0) === 0 ? (
+                <p className="text-muted-foreground p-4 text-sm">暂无历史——点「重新校验」后自动记录。</p>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="w-full text-[13px]">
+                    <thead>
+                      <tr className="border-border bg-muted/50 border-b">
+                        {["时间", "结论", "错误", "警告", "耗时"].map((head) => (
+                          <th key={head} className="text-muted-foreground px-4 py-2 text-left text-xs font-medium">
+                            {head}
+                          </th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody className="divide-border divide-y">
+                      {historyQuery.data!.history.map((h) => (
+                        <tr key={h.ts} className="hover:bg-muted/50">
+                          <td className="text-muted-foreground whitespace-nowrap px-4 py-2 text-xs">
+                            {new Date(h.ts).toLocaleString("zh-CN", { month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", hour12: false })}
+                          </td>
+                          <td className="px-4 py-2">
+                            <Chip tone={h.conforms ? "primary" : "warning"}>{h.conforms ? "通过" : "不通过"}</Chip>
+                          </td>
+                          <td className={cn("px-4 py-2 text-right tabular-nums", h.errors > 0 && "text-destructive")}>{h.errors}</td>
+                          <td className={cn("px-4 py-2 text-right tabular-nums", h.warnings > 0 && "text-warning")}>{h.warnings}</td>
+                          <td className="text-muted-foreground px-4 py-2 text-right tabular-nums">{h.duration_ms}ms</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </Panel>
+          </div>
+        ) : null}
 
         <p className="text-muted-foreground mt-3.5 text-xs">
           本套件不覆盖 §6.2 核心实体类型、§7.3.2 表 1 的 34 条对象属性、§8.2 的 10 条公理规则。判定口径见

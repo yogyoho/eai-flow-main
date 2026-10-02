@@ -468,17 +468,54 @@ class KernelService:
         }
 
     def validate(self) -> dict:
-        """SHACL 报告 + 国标五项符合性（校验中心页数据源）。"""
+        """SHACL 报告 + 国标五项符合性（校验中心页数据源）。跑完即记历史（F9 同构）。"""
         from app.ontology.kernel.conformance import run_conformance
         from app.ontology.kernel.validate import run_shacl
 
         registry = get_registry()
         report = run_shacl(self.store, registry)
         conformance = run_conformance(self.store, registry, shacl_report=report)
+        self._append_validate_history(report)
         return {
             "shacl": {"conforms": report.conforms, "violations": report.violations, "duration_ms": report.duration_ms},
             "conformance": [asdict(c) for c in conformance],
         }
+
+    def _append_validate_history(self, report) -> None:  # noqa: ANN001 - ValidationReport
+        path = Path(self.kernel_path) / "validate_history.jsonl" if self.kernel_path else None
+        if not path:
+            return
+        try:
+            row = {
+                "ts": datetime.now(timezone.utc).isoformat(timespec="seconds"),
+                "conforms": report.conforms,
+                "errors": sum(1 for v in report.violations if not (v.get("severity") or "").endswith("Warning")),
+                "warnings": sum(1 for v in report.violations if (v.get("severity") or "").endswith("Warning")),
+                "duration_ms": report.duration_ms,
+            }
+            with path.open("a", encoding="utf-8") as f:
+                f.write(json.dumps(row, ensure_ascii=False) + "\n")
+        except Exception:  # noqa: BLE001 - 历史失败不影响主流程
+            pass
+
+    def validate_history(self, limit: int = 20) -> list[dict]:
+        """校验历史（F9 同构）：近 N 次 SHACL 运行（倒序）。"""
+        path = Path(self.kernel_path) / "validate_history.jsonl" if self.kernel_path else None
+        if not path or not path.exists():
+            return []
+        rows: list[dict] = []
+        try:
+            for line in path.read_text(encoding="utf-8").splitlines():
+                line = line.strip()
+                if not line:
+                    continue
+                try:
+                    rows.append(json.loads(line))
+                except Exception:  # noqa: BLE001
+                    pass
+        except Exception:  # noqa: BLE001
+            return []
+        return list(reversed(rows[-limit:]))
 
     def export(self, fmt: str = "turtle", graphs: str = "all") -> str | dict:
         """图真源 → 标准序列化（国标 §5.3 交付物）。graphs: all|schema|asserted|entailment。"""
