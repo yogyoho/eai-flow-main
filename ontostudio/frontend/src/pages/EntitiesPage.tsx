@@ -48,10 +48,10 @@ const STATUS_META: Record<
   EntityStatus,
   { label: string; tone: "primary" | "warning" | "gray" | "danger" }
 > = {
-  active: { label: "active", tone: "primary" },
-  pending_review: { label: "pending_review", tone: "warning" },
-  merged: { label: "merged", tone: "gray" },
-  rejected: { label: "rejected", tone: "danger" },
+  active: { label: "已确认", tone: "primary" },
+  pending_review: { label: "待审", tone: "warning" },
+  merged: { label: "已合并", tone: "gray" },
+  rejected: { label: "已驳回", tone: "danger" },
 };
 
 /** 原型列序（graph_entity）；提及 = graph_mention 按 entity_id 聚合（Top 200，窗口外 "—"）。
@@ -62,7 +62,7 @@ const STATUS_META: Record<
 const GRAPH_ENTITY_COLUMNS = [
   { api: "canonicalName", label: "实体" },
   { api: "etype", label: "类型" },
-  { api: "normName", label: "规范名（norm）" },
+  { api: "normName", label: "规范名" },
   { api: "confidence", label: "置信度" },
   { api: "status", label: "状态" },
   { api: "__mentions", label: "提及" },
@@ -238,7 +238,7 @@ export function EntitiesPage() {
   const hasFilter = Boolean(domainFilter || statusFilter || search);
 
   /** 行操作（原型列尾）：pending→去审核（实心）/ merged→查看合并 / 其余→详情（幽灵）。 */
-  function RowAction({ status }: { status: EntityStatus | "" }) {
+  function RowAction({ status, nodeId }: { status: EntityStatus | ""; nodeId: string }) {
     if (status === "pending_review") {
       return (
         <button
@@ -259,7 +259,7 @@ export function EntitiesPage() {
           type="button"
           onClick={(e) => {
             e.stopPropagation();
-            setSelectedId((current) => current); // 打开抽屉查看合并上下文
+            setSelectedId(nodeId); // 打开抽屉查看合并上下文
           }}
           className="border-border bg-card text-foreground hover:bg-muted rounded-md border px-2 py-1 text-xs"
         >
@@ -336,8 +336,11 @@ export function EntitiesPage() {
                 }))}
               />
             ) : null}
-            <span className="text-muted-foreground/80 hidden font-mono text-xs lg:inline">
-              GET /ontology/objects/{"{type}"}
+            <span
+              className="text-muted-foreground/80 hidden cursor-help font-mono text-xs lg:inline"
+              title="数据源：GET /ontology/objects/{type}（q + filters + cursor 分页）"
+            >
+              实体数据服务
             </span>
             <div className="relative">
               <Search className="text-muted-foreground pointer-events-none absolute top-1/2 left-2 h-3.5 w-3.5 -translate-y-1/2" />
@@ -504,7 +507,7 @@ export function EntitiesPage() {
                       })}
                       <td className="px-4 py-2.5">
                         <div className="flex items-center justify-end">
-                          <RowAction status={status} />
+                          <RowAction status={status} nodeId={String(row[pkField] ?? "")} />
                         </div>
                       </td>
                     </tr>
