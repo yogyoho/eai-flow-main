@@ -112,7 +112,12 @@ export function ExportPage() {
               <button
                 type="button"
                 disabled={loadMutation.isPending}
-                onClick={() => loadMutation.mutate()}
+                onClick={() => {
+                  // G4 同款二次确认（与总览页全量装载一致，2026-10-02 审核补齐一致性）
+                  if (window.confirm("全量装载将重写图数据全表（耗时数十秒），确认执行？")) {
+                    loadMutation.mutate();
+                  }
+                }}
                 className="flex items-center gap-1.5 whitespace-nowrap rounded-lg bg-primary px-3 py-1.5 text-sm font-medium text-white transition-opacity hover:opacity-90 disabled:opacity-50"
               >
                 {loadMutation.isPending ? (
@@ -155,7 +160,7 @@ export function ExportPage() {
             ) : null}
           </div>
         </Panel>
-        <Panel title="快照历史" subtitle="每日 06:00 · 可恢复">
+        <Panel title="快照历史" subtitle="规划：每日 06:00 快照调度">
           <div>
             {SNAPSHOTS.map((snapshot) => (
               <div

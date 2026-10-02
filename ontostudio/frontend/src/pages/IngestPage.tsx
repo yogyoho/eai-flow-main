@@ -143,7 +143,7 @@ export function IngestPage() {
         <PageHeader
           icon={FileInput}
           title="抽取导入"
-          description="抽取任务队列（实时轮询）、置信度分布与证据链引文。任务=消费 kf_samples 已提取产物 → converter → 入图，force_review 全量进人审。"
+          description="抽取任务队列（实时轮询）、置信度分布与证据链引文。任务=把样例库已提取产物转换并批量写入图谱；开启强制人审的任务会全部进入消解审核。"
         />
 
         {/* 顶部动作行 */}
@@ -158,7 +158,12 @@ export function IngestPage() {
           <button
             type="button"
             disabled={loadMutation.isPending}
-            onClick={() => loadMutation.mutate()}
+            onClick={() => {
+              // G4 同款（与总览页全量装载一致，2026-10-02 审核补齐一致性）：重操作二次确认
+              if (window.confirm("全量装载将重写图数据全表（耗时数十秒），确认执行？")) {
+                loadMutation.mutate();
+              }
+            }}
             className="border-border bg-card hover:bg-muted flex items-center gap-1.5 rounded-md border px-3 py-1.5 text-sm font-medium disabled:opacity-50"
           >
             {loadMutation.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : null}
@@ -284,6 +289,7 @@ export function IngestPage() {
                             })
                           : "—"}
                       </td>
+                      {/* 域：v1 任务通道仅 eia（IngestTask 无 domain 字段）——多域任务落地后改 task.domain 数据驱动 */}
                       <td className="text-muted-foreground px-4 py-2.5 font-mono text-sm" title={domainAlias("eia") ?? "eia"}>
                         eia
                       </td>
@@ -348,7 +354,7 @@ export function IngestPage() {
 
         {/* 置信度分布（真数据） + 证据链引文（真数据） */}
         <div className="grid grid-cols-1 gap-3.5 xl:grid-cols-2">
-          <Panel title="置信度分布" subtitle="graph_entity 实时统计">
+          <Panel title="置信度分布" subtitle="graph_entity 最新 200 行抽样">
             <div className="flex flex-col gap-2 p-4">
               {entitiesQuery.isLoading ? (
                 <div className="text-muted-foreground flex items-center justify-center gap-2 py-4 text-sm">

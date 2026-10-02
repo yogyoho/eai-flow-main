@@ -118,7 +118,9 @@ export function ReasoningPage() {
           <div className="mt-0.5 text-3xl font-black tracking-tight">{derivedTotal}</div>
           <div className="text-muted-foreground mt-0.5 text-xs">
             {inferQuery.data ? `${rules.length} 条规则` : "— 条规则"} · 上次全量{" "}
-            {inferQuery.data ? "刚刚" : "—"}
+            {inferQuery.dataUpdatedAt
+              ? new Date(inferQuery.dataUpdatedAt).toLocaleString("zh-CN", { hour12: false })
+              : "—"}
           </div>
         </Panel>
         <Panel className="px-4 py-3.5">
@@ -126,13 +128,25 @@ export function ReasoningPage() {
           <div className="mt-0.5 text-3xl font-black tracking-tight">
             {inferQuery.data ? `${inferQuery.data.duration_ms}ms` : "—"}
           </div>
-          <div className="text-muted-foreground mt-0.5 text-xs">5k 实体校准门限 ≤ 15s ✓</div>
+          <div className="text-muted-foreground mt-0.5 text-xs">
+            5k 实体校准门限 ≤ 15s
+            {inferQuery.data ? (inferQuery.data.duration_ms <= 15_000 ? " ✓" : " · 本次超限") : ""}
+          </div>
         </Panel>
       </div>
       <Panel
         title="CONSTRUCT 规则"
         subtitle="替代 Rete · join 型派生"
-        actions={<button className="text-primary text-sm font-medium">新增规则</button>}
+        actions={
+          <button
+            type="button"
+            disabled
+            title="规则集由 eia formal 链生成器与 rules.yaml 静态定义——在线新增规则为规划项"
+            className="text-primary text-sm font-medium opacity-60"
+          >
+            新增规则 <span className="text-warning font-mono text-xs">规划</span>
+          </button>
+        }
       >
         <div className="overflow-x-auto">
           <table className="w-full text-[13px]">
