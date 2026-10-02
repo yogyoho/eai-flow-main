@@ -227,6 +227,24 @@ export function ModelerPage() {
     return positions;
   }, [allClasses]);
 
+  // 草稿预览边（v4）：从草稿 YAML 解析 subClassOf 关系，保存前画布即见新边
+  // （琥珀虚线=未保存；保存后转实线蓝）。YAML 非法时回退空。
+  const draftEdges = useMemo(() => {
+    try {
+      const obj = yamlLoad(text) as Draft;
+      const classes = (obj.classes ?? {}) as Draft;
+      const list: Array<{ key: string; parent: string; child: string }> = [];
+      for (const [child, entry] of Object.entries(classes) as Array<[string, Draft]>) {
+        for (const p of ((entry.parents as string[]) ?? [])) {
+          list.push({ key: `${p}-${child}`, parent: p, child });
+        }
+      }
+      return list;
+    } catch {
+      return [];
+    }
+  }, [text]);
+
   const effectivePositions = useMemo(() => {
     const merged = new Map(baseLayout);
     positionOverrides.forEach((pos, name) => {
@@ -590,6 +608,7 @@ export function ModelerPage() {
                     onNodeMove={handleNodeMove}
                     chains={axioms?.property_chains ?? []}
                     predicates={domainPredicates}
+                    draftEdges={draftEdges}
                   />
                 </>
               ) : (
@@ -1091,6 +1110,7 @@ function TBoxCanvas({
   onNodeMove,
   chains,
   predicates,
+  draftEdges,
 }: {
   classes: ClassEntry[];
   positions: Map<string, Pos>;
@@ -1101,6 +1121,7 @@ function TBoxCanvas({
   onNodeMove: (name: string, pos: Pos) => void;
   chains: RegistryAxioms["property_chains"];
   predicates: string[];
+  draftEdges: Array<{ key: string; parent: string; child: string }>;
 }) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const dragRef = useRef<{
@@ -1164,7 +1185,32 @@ function TBoxCanvas({
       }
     }
     return list;
-  }, [classes, positions]);
+  }, [classes, positions, draftEdges]);
+
+  // 合并：服务端 subClassOf 边（实线蓝）+ 仅草稿中的新边（虚线琥珀=未保存）
+  const mergedEdges = useMemo(() => {
+    const serverKeys = new Set(
+      classes.flatMap((cls) => cls.parents.map((p) => `${p}-${cls.name}`)),
+    );
+    const draftOnly = draftEdges.filter((de) => !serverKeys.has(de.key));
+    const serverList = classes.flatMap((cls) =>
+      cls.parents
+        .filter((p) => positions.has(p) && positions.has(cls.name))
+        .map((p) => ({
+          key: `${p}-${cls.name}`,
+          parent: p,
+          child: cls.name,
+          draftOnly: false,
+        })),
+    );
+    const extra = draftEdges
+      .filter((de) => !serverList.some((s) => s.key === de.key))
+      .map((de) => ({ ...de, draftOnly: true }));
+    return [
+      ...serverList.map((e) => ({ ...e, draftOnly: false })),
+      ...extra,
+    ];
+  }, [classes, positions, draftEdges]);
 
   return (
     <div className="flex flex-col gap-2">
