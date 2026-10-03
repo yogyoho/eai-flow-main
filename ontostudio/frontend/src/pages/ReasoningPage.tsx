@@ -547,7 +547,7 @@ export function ReasoningPage() {
         <div className="flex flex-col gap-3.5">
           <Panel
             title={selectedRule ? `规则预览 · ${selectedRule.name}` : "规则预览"}
-            subtitle={selectedRule?.desc ?? "点击上方规则行切换"}
+            subtitle={selectedRule ? undefined : "点击上方规则行切换"}
             actions={
               selectedRule ? (
                 <span className="flex items-center gap-1">
@@ -760,6 +760,10 @@ export function ReasoningPage() {
                 )
               ) : (
                 <div className="flex flex-col gap-1.5 p-1 text-[13px]">
+                  <div className="flex justify-between gap-3">
+                    <span className="text-muted-foreground flex-none">描述</span>
+                    <span className="min-w-0 text-right">{selectedRule.desc}</span>
+                  </div>
                   <div className="flex justify-between gap-3">
                     <span className="text-muted-foreground">派生谓词</span>
                     <span className="font-mono text-xs">{selectedRule.pred}</span>
