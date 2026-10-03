@@ -17,11 +17,13 @@ cqs:
           ?s ?p ?o FILTER(CONTAINS(STR(?o), "13223"))
         }
       }
-  - id: cq_bidder_qualified
-    question: 存在具备项目所需全部资质的投标人派生（Phase B 验收问题 #3）？
-    expect: true
-    ask: |
-      ASK { GRAPH <graph:derived:qualified_bidder> { ?s ?p ?o } }
+  # Phase B 投标域 CQ（2026-10-04 停用：投标数据走独立平台模块，不进本内核——
+  # qualified_bidder 规则已停用（rules_state overlay），数据接入后取消注释恢复）
+  # - id: cq_bidder_qualified
+  #   question: 存在具备项目所需全部资质的投标人派生（Phase B 验收问题 #3）？
+  #   expect: true
+  #   ask: |
+  #     ASK { GRAPH <graph:derived:qualified_bidder> { ?s ?p ?o } }
   - id: cq_aquifer_impact
     question: 含水层影响链已有派生（当前样例库缺含水层实体，预期暴露缺口）？
     expect: true
