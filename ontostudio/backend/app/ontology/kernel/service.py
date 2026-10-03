@@ -617,13 +617,33 @@ class KernelService:
         return list(reversed(rows[-limit:]))
 
     def export(self, fmt: str = "turtle", graphs: str = "all") -> str | dict:
-        """图真源 → 标准序列化（国标 §5.3 交付物）。graphs: all|schema|asserted|entailment。"""
+        """图真源 → 标准序列化（国标 §5.3 交付物）。graphs: all|all+derived|schema|asserted|entailment|derived。
 
-        from rdflib import Graph
+        fmt=trig 为 D8 快照格式：Dataset 序列化保留 named graph 结构——可回导（图归属不丢）；
+        turtle/json-ld 为压平三元组（交付物形态，不含派生档默认）。
+        """
+        from rdflib import Dataset, Graph, URIRef
 
         from app.ontology.kernel.export import to_jsonld, to_turtle
 
-        wanted = {"graph:schema", "graph:asserted", "graph:entailment"} if graphs == "all" else {"graph:" + graphs}
+        wanted = {"graph:schema", "graph:asserted", "graph:entailment"}
+        if graphs == "all+derived":
+            wanted |= {
+                q.graph_name.value
+                for q in self.store._store.quads_for_pattern(None, None, None, None)
+                if q.graph_name.value.startswith("graph:derived:")
+            }
+        elif graphs in ("schema", "asserted", "entailment", "derived"):
+            wanted = {"graph:" + graphs}
+        if fmt == "trig":
+            from pyoxigraph import NamedNode
+
+            ds = Dataset()
+            for gname in sorted(wanted):
+                grd = ds.graph(URIRef(gname))
+                for q in self.store._store.quads_for_pattern(None, None, None, NamedNode(gname)):
+                    grd.add(_rdflib_triple(q))
+            return ds.serialize(format="trig")
         g = Graph()
         for quad in self.store._store.quads_for_pattern(None, None, None, None):
             if quad.graph_name.value in wanted:
@@ -631,6 +651,104 @@ class KernelService:
         if fmt == "json-ld":
             return to_jsonld(g)
         return to_turtle(g)
+
+    # ---- 快照（D8）：TriG 全图落盘 / 清单 / 恢复（自动回滚点）----
+
+    def snapshots_dir(self) -> Path | None:
+        return Path(self.kernel_path) / "snapshots" if self.kernel_path else None
+
+    def create_snapshot(self) -> dict:
+        """TriG 全图快照（含派生）落盘 snapshots/——备份 + 可回导原语。"""
+        from pyoxigraph import NamedNode
+        from rdflib import Dataset, URIRef
+
+        d = self.snapshots_dir()
+        if not d:
+            raise ValueError("内核为内存模式，无快照目录")
+        ds = Dataset()
+        for gname in sorted({q.graph_name.value for q in self.store._store.quads_for_pattern(None, None, None, None)}):
+            grd = ds.graph(URIRef(gname))
+            for q in self.store._store.quads_for_pattern(None, None, None, NamedNode(gname)):
+                grd.add(_rdflib_triple(q))
+        data = ds.serialize(format="trig")
+        d.mkdir(parents=True, exist_ok=True)
+        ts = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+        fname = f"snapshot-{ts}.trig"
+        (d / fname).write_text(data, encoding="utf-8")
+        return {"file": fname, "bytes": len(data.encode("utf-8"))}
+
+    def list_snapshots(self) -> list[dict]:
+        d = self.snapshots_dir()
+        if not d or not d.exists():
+            return []
+        out = []
+        for f in sorted(d.glob("snapshot-*.trig"), reverse=True):
+            out.append(
+                {
+                    "file": f.name,
+                    "bytes": f.stat().st_size,
+                    "mtime": datetime.fromtimestamp(f.stat().st_mtime, timezone.utc).isoformat(timespec="seconds"),
+                }
+            )
+        return out
+
+    def restore_snapshot(self, file: str) -> dict:
+        """TriG 快照 → 清空全部 named graph → 原样回灌；恢复前自动生成回滚点快照。"""
+        import re as _re
+
+        from pyoxigraph import NamedNode
+        from rdflib import Dataset
+
+        from app.ontology.kernel.infer import _triple_to_quad
+
+        if not _re.fullmatch(r"snapshot-[A-Za-z0-9._\-]+\.trig", file):
+            raise ValueError("快照文件名不合法")
+        d = self.snapshots_dir()
+        path = d / file if d else None
+        if not path or not path.exists():
+            raise KeyError(file)
+        pre = self.create_snapshot()
+        pre_name = pre["file"].replace("snapshot-", "pre-restore-")
+        (d / pre["file"]).rename(d / pre_name)
+
+        ds = Dataset()
+        ds.parse(data=path.read_text(encoding="utf-8"), format="trig")
+        for gname in {q.graph_name.value for q in self.store._store.quads_for_pattern(None, None, None, None)}:
+            self.store.clear_graph(gname)
+        loaded: dict[str, int] = {}
+        for ctx in ds.contexts():
+            gname = str(ctx.identifier)
+            if not gname.startswith("graph:"):
+                continue
+            n = 0
+            for t in ctx:
+                self.store._store.add(_triple_to_quad(t[0], t[1], t[2], gname))
+                n += 1
+            loaded[gname] = n
+        return {"restored": loaded, "pre_restore": pre_name}
+
+    def delete_snapshot(self, file: str) -> dict:
+        import re as _re
+
+        if not _re.fullmatch(r"snapshot-[A-Za-z0-9._\-]+\.trig", file):
+            raise ValueError("快照文件名不合法")
+        d = self.snapshots_dir()
+        path = d / file if d else None
+        if not path or not path.exists():
+            raise KeyError(file)
+        path.unlink()
+        return {"deleted": file}
+
+    def snapshot_content(self, file: str) -> str:
+        import re as _re
+
+        if not _re.fullmatch(r"snapshot-[A-Za-z0-9._\-]+\.trig", file):
+            raise ValueError("快照文件名不合法")
+        d = self.snapshots_dir()
+        path = d / file if d else None
+        if not path or not path.exists():
+            raise KeyError(file)
+        return path.read_text(encoding="utf-8")
 
     async def load_from_sql(self, dsn: str | None = None, domain: str | None = None) -> dict:
         """SQL 测试数据装载（兼任主系统桥接器）。"""

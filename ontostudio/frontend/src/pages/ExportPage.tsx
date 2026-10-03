@@ -1,7 +1,8 @@
 /**
- * 09 导出互操作（EAI-CUSTOM，2026-09-27 原型重构）——真实数据源：
- * GET /ontology/formal/export（Turtle all 图 / JSON-LD schema 图）+ POST /formal/load
- * （全量装载=对账，degraded 自愈执行者）。命名空间表静态；快照/导入为规划项。
+ * 09 导出互操作（EAI-CUSTOM，2026-09-27 原型重构；2026-10-03 D8 快照/回导落地）——
+ * GET /ontology/formal/export（Turtle all / 含派生档 / JSON-LD schema）+ POST /formal/load
+ * （全量装载=对账）+ 快照：TriG 全图（含派生）落盘 / 清单 / 恢复（自动回滚点）/ 删除。
+ * 「IRI 机械可逆可回导」由 TriG 快照成真（Turtle 交付物仍是压平三元组形态）。
  */
 import { FileOutput, Loader2, PlayCircle } from "lucide-react";
 
@@ -12,19 +13,22 @@ import {
   downloadText,
   fetchFormalExportJsonld,
   fetchFormalExportText,
+  fetchSnapshots,
+  createSnapshot,
+  restoreSnapshot,
+  deleteSnapshot,
   runFormalLoad,
   type FormalLoadResult,
 } from "@/api/formal-api";
 import { Chip, PageHeader, Panel } from "@/pages/shared";
-
-const SNAPSHOTS = [
-  { when: "2026-09-20 06:00", size: "— 待快照调度" },
-];
+import { cn } from "@/lib/utils";
 
 export function ExportPage() {
+  // D9：交付物默认不含派生（可重算）——「含派生图」勾选切换 all+derived 档
+  const [withDerived, setWithDerived] = useState(false);
   const turtleQuery = useQuery({
-    queryKey: ["formal", "export", "turtle", "all"],
-    queryFn: () => fetchFormalExportText("turtle", "all"),
+    queryKey: ["formal", "export", "turtle", withDerived ? "all+derived" : "all"],
+    queryFn: () => fetchFormalExportText("turtle", withDerived ? "all+derived" : "all"),
     staleTime: 60_000,
   });
   const jsonldQuery = useQuery({
@@ -48,12 +52,38 @@ export function ExportPage() {
     },
   });
 
+  // D8 快照：TriG 全图落盘 / 清单 / 恢复（自动回滚点）/ 删除
+  const [restoreMsg, setRestoreMsg] = useState<string | null>(null);
+  const snapshotsQuery = useQuery({
+    queryKey: ["formal", "snapshots"],
+    queryFn: fetchSnapshots,
+  });
+  const createSnapMutation = useMutation({
+    mutationFn: createSnapshot,
+    onSuccess: () => void queryClient.invalidateQueries({ queryKey: ["formal", "snapshots"] }),
+  });
+  const restoreMutation = useMutation({
+    mutationFn: (v: { file: string }) => restoreSnapshot(v.file),
+    onSuccess: (r) => {
+      const total = Object.values(r.restored).reduce((a, b) => a + b, 0);
+      setRestoreMsg(
+        `已恢复 ${total.toLocaleString()} 三元组（回滚点 ${r.pre_restore}）——建议到推理工作台全量重算刷新派生`,
+      );
+      void queryClient.invalidateQueries({ queryKey: ["formal"] });
+    },
+    onError: (e: Error) => setRestoreMsg(`恢复失败：${e.message}`),
+  });
+  const deleteSnapMutation = useMutation({
+    mutationFn: deleteSnapshot,
+    onSuccess: () => void queryClient.invalidateQueries({ queryKey: ["formal", "snapshots"] }),
+  });
+
   return (
     <div className="p-6">
       <PageHeader
         icon={ FileOutput }
         title="导出互操作"
-        description="图真源 → 标准序列化 · 每日快照即国标 §5.3 交付物 · IRI 机械可逆可回导"
+        description="图真源 → 标准序列化 · TriG 快照可回导（国标 §5.3）· 每日调度为规划项"
       />
       <div className="mb-3.5 grid grid-cols-1 gap-3.5 xl:grid-cols-2">
         <Panel className="overflow-hidden">
@@ -62,6 +92,16 @@ export function ExportPage() {
               .ttl
             </span>
             <b className="text-sm font-semibold">Turtle</b>
+            <label className="text-muted-foreground flex items-center gap-1 text-xs">
+              <input
+                type="checkbox"
+                checked={withDerived}
+                onChange={(e) => setWithDerived(e.target.checked)}
+                className="h-3 w-3"
+                title="派生结论可随时重算——交付物默认不含（D9 口径）"
+              />
+              含派生图
+            </label>
             <span className="text-muted-foreground text-xs">
               {turtleQuery.data ? `${turtleQuery.data.length} 字符` : "加载中…"}
             </span>
@@ -70,7 +110,14 @@ export function ExportPage() {
               <button
                 className="border-border hover:border-primary h-6 rounded-md border px-2 text-xs font-medium"
                 disabled={!turtleQuery.data}
-                onClick={() => turtleQuery.data && downloadText("ontostudio-all.ttl", turtleQuery.data, "text/turtle")}
+                onClick={() =>
+                  turtleQuery.data &&
+                  downloadText(
+                    withDerived ? "ontostudio-all-plus-derived.ttl" : "ontostudio-all.ttl",
+                    turtleQuery.data,
+                    "text/turtle",
+                  )
+                }
               >
                 下载
               </button>
@@ -165,18 +212,93 @@ export function ExportPage() {
             ) : null}
           </div>
         </Panel>
-        <Panel title="快照历史" subtitle="规划：每日 06:00 快照调度">
-          <div>
-            {SNAPSHOTS.map((snapshot) => (
-              <div
-                key={snapshot.when}
-                className="border-border flex items-center gap-3 border-b px-4 py-2.5 text-sm last:border-b-0"
+        <Panel
+          title="快照与恢复"
+          subtitle="TriG 全图（含派生）落盘内核卷 · 恢复前自动生成回滚点"
+          actions={
+            <button
+              type="button"
+              onClick={() => createSnapMutation.mutate()}
+              disabled={createSnapMutation.isPending}
+              className="border-border bg-card hover:bg-muted rounded-md border px-2.5 py-1 text-xs font-medium disabled:opacity-50"
+            >
+              {createSnapMutation.isPending ? "生成中…" : "生成快照"}
+            </button>
+          }
+        >
+          <div className="p-4">
+            {restoreMsg ? (
+              <p
+                className={cn(
+                  "mb-2 rounded-md border px-2.5 py-1.5 text-xs",
+                  restoreMsg.startsWith("已恢复")
+                    ? "border-primary/30 bg-primary/5 text-foreground"
+                    : "border-destructive/40 bg-destructive/10 text-destructive",
+                )}
               >
-                <span className="text-muted-foreground w-36 flex-none font-mono">{snapshot.when}</span>
-                <Chip tone="primary">计划中</Chip>
-                <span className="text-muted-foreground ml-auto font-mono text-xs">{snapshot.size}</span>
+                {restoreMsg}
+              </p>
+            ) : null}
+            {snapshotsQuery.isLoading ? (
+              <p className="text-muted-foreground text-sm">加载快照…</p>
+            ) : (snapshotsQuery.data?.snapshots.length ?? 0) === 0 ? (
+              <p className="text-muted-foreground text-sm">暂无快照——点「生成快照」把当前内核全图（含派生）落盘。</p>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-[13px]">
+                  <thead>
+                    <tr className="border-border bg-muted/50 border-b">
+                      {["文件", "大小", "时间", "操作"].map((head) => (
+                        <th key={head} className="text-muted-foreground px-3 py-2 text-left text-xs font-medium">
+                          {head}
+                        </th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody className="divide-border divide-y">
+                    {snapshotsQuery.data!.snapshots.map((snap) => (
+                      <tr key={snap.file} className="hover:bg-muted/50">
+                        <td className="px-3 py-2 font-mono text-xs">{snap.file}</td>
+                        <td className="px-3 py-2 text-right font-mono text-xs tabular-nums">
+                          {(snap.bytes / 1024).toFixed(0)} KB
+                        </td>
+                        <td className="text-muted-foreground whitespace-nowrap px-3 py-2 text-xs">
+                          {new Date(snap.mtime).toLocaleString("zh-CN", { month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", hour12: false })}
+                        </td>
+                        <td className="px-3 py-2 text-right">
+                          <span className="flex items-center justify-end gap-1.5">
+                            <button
+                              type="button"
+                              disabled={restoreMutation.isPending}
+                              title="清空当前内核全部图并从该快照回灌（恢复前自动生成回滚点）"
+                              onClick={() => {
+                                if (!window.confirm(`恢复 ${snap.file} 将覆盖当前内核全部图（恢复前自动生成回滚点），确认？`)) return;
+                                setRestoreMsg(null);
+                                restoreMutation.mutate({ file: snap.file });
+                              }}
+                              className="text-primary text-xs font-medium hover:underline disabled:opacity-50"
+                            >
+                              恢复
+                            </button>
+                            <button
+                              type="button"
+                              disabled={deleteSnapMutation.isPending}
+                              onClick={() => {
+                                if (!window.confirm(`删除快照 ${snap.file}？`)) return;
+                                deleteSnapMutation.mutate(snap.file);
+                              }}
+                              className="text-muted-foreground text-xs hover:text-destructive disabled:opacity-50"
+                            >
+                              删除
+                            </button>
+                          </span>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
               </div>
-            ))}
+            )}
           </div>
         </Panel>
       </div>

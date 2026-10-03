@@ -122,6 +122,36 @@ export function fetchValidateHistory(limit = 20): Promise<{ history: ValidateHis
   return authFetch(`${BASE}/validate-history?limit=${limit}`);
 }
 
+// ---- 快照（D8）：TriG 全图落盘 / 清单 / 恢复 / 删除 ----
+
+export interface SnapshotRow {
+  file: string;
+  bytes: number;
+  mtime: string;
+}
+
+export function fetchSnapshots(): Promise<{ snapshots: SnapshotRow[] }> {
+  return authFetch(`${BASE}/snapshots`);
+}
+
+export function createSnapshot(): Promise<{ file: string; bytes: number }> {
+  return authFetch(`${BASE}/snapshots`, { method: "POST" });
+}
+
+export function restoreSnapshot(
+  file: string,
+): Promise<{ restored: Record<string, number>; pre_restore: string }> {
+  return authFetch(`${BASE}/snapshots/restore`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ file }),
+  });
+}
+
+export function deleteSnapshot(file: string): Promise<{ deleted: string }> {
+  return authFetch(`${BASE}/snapshots/${encodeURIComponent(file)}`, { method: "DELETE" });
+}
+
 // ---- 内核孤儿治理 ----
 
 export interface OrphanReport {
@@ -263,7 +293,7 @@ export function runFormalLoad(domain?: string): Promise<FormalLoadResult> {
 // ---- export ----
 
 export type ExportFormat = "turtle" | "json-ld";
-export type ExportGraphs = "all" | "schema" | "asserted" | "entailment";
+export type ExportGraphs = "all" | "all+derived" | "schema" | "asserted" | "entailment" | "derived";
 
 /** Turtle 返回纯文本（authFetch 只会解析 JSON，这里单走 fetch）。 */
 export async function fetchFormalExportText(

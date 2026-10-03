@@ -214,8 +214,8 @@ async def formal_validate(_: CurrentUser = Depends(require_permission("system:ac
 
 @router.get("/export")
 async def formal_export(
-    format: str = Query("turtle", pattern="^(turtle|json-ld)$"),
-    graphs: str = Query("all", pattern="^(all|schema|asserted|entailment)$"),
+    format: str = Query("turtle", pattern="^(turtle|json-ld|trig)$"),
+    graphs: str = Query("all", pattern="^(all|all\\+derived|schema|asserted|entailment|derived)$"),
     _: CurrentUser = Depends(require_permission("system:access")),
 ):
     out = get_kernel().export(fmt=format, graphs=graphs)
@@ -224,4 +224,69 @@ async def formal_export(
         return {"success": True, "format": format, "graphs": graphs, "document": out}
     from fastapi import Response
 
-    return Response(content=out, media_type="text/turtle; charset=utf-8")
+    media = "application/trig" if format == "trig" else "text/turtle; charset=utf-8"
+    return Response(content=out, media_type=media)
+
+
+# ---- 快照（D8）：TriG 全图落盘 / 清单 / 内容下载 / 恢复（自动回滚点）/ 删除 ----
+
+_SNAP_NAME = "snapshot-[A-Za-z0-9._\\-]+\\.trig"
+
+
+@router.post("/snapshots")
+async def formal_snapshot_create(_: CurrentUser = Depends(require_permission("system:access"))):
+    """生成 TriG 全图快照（含派生）落盘内核卷 snapshots/。"""
+    return {"success": True, **get_kernel().create_snapshot()}
+
+
+@router.get("/snapshots")
+async def formal_snapshot_list(_: CurrentUser = Depends(require_permission("system:access"))):
+    return {"success": True, "snapshots": get_kernel().list_snapshots()}
+
+
+@router.get("/snapshots/{file}")
+async def formal_snapshot_download(
+    file: str,
+    _: CurrentUser = Depends(require_permission("system:access")),
+):
+    import re as _re
+
+    from fastapi import Response
+
+    if not _re.fullmatch(_SNAP_NAME, file):
+        raise HTTPException(status_code=422, detail="快照文件名不合法")
+    try:
+        content = get_kernel().snapshot_content(file)
+    except KeyError as e:
+        raise HTTPException(status_code=404, detail="快照不存在") from e
+    return Response(content=content, media_type="application/trig")
+
+
+@router.post("/snapshots/restore")
+async def formal_snapshot_restore(
+    payload: dict,
+    _: CurrentUser = Depends(require_permission("system:access")),
+):
+    """恢复快照：清空全部 named graph 后原样回灌；恢复前自动生成 pre-restore 回滚点。"""
+    file = str(payload.get("file", ""))
+    try:
+        return {"success": True, **get_kernel().restore_snapshot(file)}
+    except ValueError as e:
+        raise HTTPException(status_code=422, detail=str(e)) from e
+    except KeyError as e:
+        raise HTTPException(status_code=404, detail="快照不存在") from e
+
+
+@router.delete("/snapshots/{file}")
+async def formal_snapshot_delete(
+    file: str,
+    _: CurrentUser = Depends(require_permission("system:access")),
+):
+    import re as _re
+
+    if not _re.fullmatch(_SNAP_NAME, file):
+        raise HTTPException(status_code=422, detail="快照文件名不合法")
+    try:
+        return {"success": True, **get_kernel().delete_snapshot(file)}
+    except KeyError as e:
+        raise HTTPException(status_code=404, detail="快照不存在") from e
