@@ -824,7 +824,6 @@ export function ReasoningPage() {
         </div>
         <Panel
           title="验收问题（Competency Questions）"
-          subtitle="ASK 真跑于内核 · 结果基于上次全量重算"
           actions={
             <span className="flex items-center gap-1.5">
               {cqResults.length > 0 ? (
@@ -884,6 +883,9 @@ export function ReasoningPage() {
               ))
             )}
           </div>
+          <p className="text-muted-foreground border-border border-t px-4 py-2.5 text-xs">
+            ASK 真跑于内核 · 结果基于上次全量重算
+          </p>
         </Panel>
       </div>
       </div>
