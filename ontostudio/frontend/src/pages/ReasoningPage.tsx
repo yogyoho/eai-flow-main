@@ -581,7 +581,7 @@ export function ReasoningPage() {
                 <p className="text-muted-foreground p-1 text-sm">暂无规则——先点右上「全量重算」。</p>
               ) : previewView === "source" ? (
                 sourceMap.get(selectedRule.name) ? (
-                  <pre className="bg-code-bg text-code-fg max-h-72 overflow-auto rounded-lg p-3.5 font-mono text-xs leading-relaxed">
+                  <pre className="bg-code-bg text-code-fg max-h-72 overflow-auto whitespace-pre-wrap break-all rounded-lg p-3.5 font-mono text-xs leading-relaxed">
                     {sourceMap.get(selectedRule.name)!.construct}
                   </pre>
                 ) : (
