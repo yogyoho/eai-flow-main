@@ -49,6 +49,8 @@ object_types:
       # org_involved_in = 推理派生谓词（规则 derive 结论, 仅存在于 evaluate_rules 返回值, 不落库——
       # 写侧 doc_graph/schemas.py 的 _PREDICATE Literal 不含它, 抽取校验不受影响）
       - { name: predicate, api_name: predicate, type: string, description: 谓词, indexed: true, filterable: true, enum: [bidder_of_project, bidder_supplies_goods, bidder_holds_qualification, project_won_by_bidder, org_compiles_project, org_commissions_project, org_develops_project, org_involved_in] }
+# 谓词中文标注: org_in_ecosystem_of=归入生态 bidder_qualified_for=具备投标资质
+# 谓词中文标注: bidder_of_project=投标 bidder_supplies_goods=供货 bidder_holds_qualification=持有资质 project_won_by_bidder=中标 org_compiles_project=编制 org_commissions_project=委托 org_develops_project=开发 org_involved_in=参与
       - { name: object_id, api_name: objectId, type: uuid, description: 客体实体, indexed: true, filterable: true }
       - { name: attrs, api_name: attrs, type: json, description: 属性 }
       - { name: confidence, api_name: confidence, type: number, description: 抽取置信度, filterable: true }

@@ -310,8 +310,19 @@ class KernelService:
         """CQ 验收（F5）：cq.yaml 逐条 ASK 真跑，FAIL 不阻断（推理工作台页数据源）。"""
         return run_cqs(self.store, load_cqs())
 
+    def _labels_for(self, iris: list[str]) -> dict[str, str]:
+        """IRI → canonical_name（匹配任意域 attr/canonical_name 谓词）；无名不进表。"""
+        if not iris:
+            return {}
+        iris_list = ", ".join("<" + i + ">" for i in iris)
+        rows = self.store.query(
+            "SELECT ?e ?l WHERE { ?e ?pp ?l . FILTER(STRENDS(STR(?pp), 'attr/canonical_name'))"
+            " FILTER(?e IN (" + iris_list + ")) }"
+        )
+        return {r["e"]: r["l"] for r in rows if r.get("l")}
+
     def rule_derivations(self, name: str, *, limit: int = 200, offset: int = 0) -> dict:
-        """graph:derived:<name> 内容（F2 下钻）：派生三元组分页 + 总数。"""
+        """graph:derived:<name> 内容（F2 下钻）：派生三元组分页 + 总数 + 实体名映射（可读性）。"""
         import re
 
         if not re.fullmatch(r"[a-z0-9_]+", name):
@@ -325,7 +336,8 @@ class KernelService:
             f"SELECT ?s ?p ?o WHERE {{ GRAPH <{graph}> {{ ?s ?p ?o }} }} "
             f"ORDER BY ?s ?p ?o LIMIT {int(limit)} OFFSET {int(offset)}"
         )
-        return {"total": total, "rows": rows}
+        labels = self._labels_for([r["s"] for r in rows] + [r["o"] for r in rows])
+        return {"total": total, "labels": labels, "rows": rows}
 
     def rule_trace(self, name: str, s: str, p: str, o: str) -> dict:
         """F3 溯源：派生三元组 (s, p, o) 的触发基础事实。
@@ -360,7 +372,8 @@ class KernelService:
             nodes = [s] + [row[m] for m in mids] + [o]
             for i, pred in enumerate(trace):
                 evidence.append({"s": nodes[i], "p": pred, "o": nodes[i + 1]})
-        return {"rule": name, "kind": "chain", "satisfied": bool(rows), "evidence": evidence}
+        labels = self._labels_for(sorted({e for ev in evidence for e in (ev["s"], ev["o"])}))
+        return {"rule": name, "kind": "chain", "satisfied": bool(rows), "evidence": evidence, "labels": labels}
 
     _P_BIDDER_OF = "https://ontology.eai-flow.com/doc_graph#predicate/bidder_of_project"
     _P_REQUIRES = "https://ontology.eai-flow.com/doc_graph#predicate/requires_qualification"
@@ -385,11 +398,13 @@ class KernelService:
             if r["q"] in held:
                 evidence.append({"s": bidder, "p": self._P_HOLDS, "o": r["q"]})
         satisfied = bool(req) and all(r["q"] in held for r in req)
+        labels = self._labels_for([bidder, project] + [r["q"] for r in req])
         return {
             "rule": "qualified_bidder",
             "kind": "requirements",
             "satisfied": satisfied,
             "evidence": evidence,
+            "labels": labels,
             "details": [
                 {"qualification": r["q"], "held": r["q"] in held} for r in req
             ],
@@ -468,6 +483,7 @@ class KernelService:
                     "missing_pred": pred,
                     "reached": reached,
                     "evidence": evidence,
+                    "labels": self._labels_for([reached, s, o]),
                     "hint": (
                         "链首缺实例——" + s[:80] + " 无 <" + pred.rsplit("/", 1)[-1]
                         + "> 边（owlrl prp-spo2 对此类静默零推断，建议补该事实或换参照实体）"
@@ -484,6 +500,7 @@ class KernelService:
                 "kind": "chain",
                 "satisfied": True,
                 "evidence": evidence,
+                "labels": self._labels_for(sorted({e for ev in evidence for e in (ev["s"], ev["o"])} | {s, o})),
                 "hint": "路径实际存在——结论应可派生（若缺失请全量重算）",
             }
         return {
@@ -494,6 +511,7 @@ class KernelService:
             "missing_pred": trace[-1],
             "reached": reached,
             "evidence": evidence,
+            "labels": self._labels_for(sorted({e for ev in evidence for e in (ev["s"], ev["o"])} | {s, o, reached})),
             "hint": "链尾到达 " + reached[:80] + "，非期望客体 " + o[:80],
         }
 

@@ -8,6 +8,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
 
 import {
+  fetchEntityLabels,
   fetchFormalRules,
   fetchInferLast,
   fetchRuleDerivations,
@@ -21,6 +22,7 @@ import {
   type InferStats,
 } from "@/api/formal-api";
 import { Chip, PageHeader, Panel } from "@/pages/shared";
+import { fetchPredicateLabels } from "@/explorerDataSource";
 import { cn } from "@/lib/utils";
 
 /**
@@ -135,12 +137,55 @@ export function ReasoningPage() {
     queryFn: () => fetchRuleDerivations(selectedRule!.name),
     enabled: previewView === "derivations" && !!selectedRule,
   });
+  // 可读性（2026-10-03）：谓词中文标注（eia + doc_graph 两张标注表合并）+
+  // 实体名 = dg_entities SQL 批量解析（uuid → canonical_name，名字真相源）；
+  // 服务端 labels（kernel 内 canonical_name，仅抽取导入实体有）作次选。
+  const eiaPredLabels = useQuery({
+    queryKey: ["ontology", "predicate-labels", "eia.yaml"],
+    queryFn: () => fetchPredicateLabels("eia.yaml"),
+    staleTime: Number.POSITIVE_INFINITY,
+  });
+  const dgPredLabels = useQuery({
+    queryKey: ["ontology", "predicate-labels", "doc_graph.yaml"],
+    queryFn: () => fetchPredicateLabels("doc_graph.yaml"),
+    staleTime: Number.POSITIVE_INFINITY,
+  });
+  const predLabels = useMemo(
+    () => new Map([...(eiaPredLabels.data ?? []), ...(dgPredLabels.data ?? [])]),
+    [eiaPredLabels.data, dgPredLabels.data],
+  );
+  const predLabel = (p: string) => predLabels.get(iriLocal(p));
+  const UUID_RE = /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i;
+  const uuidsFrom = (list: Array<{ s: string; o: string }>) => {
+    const set = new Set<string>();
+    for (const it of list) {
+      for (const iri of [it.s, it.o]) {
+        const m = iri.match(UUID_RE);
+        if (m) set.add(m[0]);
+      }
+    }
+    return [...set];
+  };
+  const derivUuids = useMemo(() => uuidsFrom(derivationsQuery.data?.rows ?? []), [derivationsQuery.data]);
+  const entityLabelsQuery = useQuery({
+    queryKey: ["formal", "entity-labels", derivUuids],
+    queryFn: () => fetchEntityLabels(derivUuids),
+    enabled: derivUuids.length > 0,
+    staleTime: 60_000,
+  });
   // F3 溯源：点击派生行的「溯源」→ 查触发该结论的基础事实链
   const [traceTarget, setTraceTarget] = useState<DerivationRow | null>(null);
   const traceQuery = useQuery({
     queryKey: ["formal", "trace", selectedRule?.name, traceTarget?.s, traceTarget?.p, traceTarget?.o],
     queryFn: () => fetchRuleTrace(selectedRule!.name, traceTarget!.s, traceTarget!.p, traceTarget!.o),
     enabled: !!traceTarget && !!selectedRule,
+  });
+  const traceUuids = useMemo(() => uuidsFrom(traceQuery.data?.evidence ?? []), [traceQuery.data]);
+  const traceSqlLabels = useQuery({
+    queryKey: ["formal", "entity-labels", "trace", traceUuids],
+    queryFn: () => fetchEntityLabels(traceUuids),
+    enabled: traceUuids.length > 0,
+    staleTime: 60_000,
   });
   // F4 反事实：期望派生 (主体, *, 客体) 未出现时逐段定位断裂
   const [missS, setMissS] = useState("");
@@ -149,6 +194,13 @@ export function ReasoningPage() {
     queryKey: ["formal", "explain-miss", selectedRule?.name, missS, missO],
     queryFn: () => fetchRuleExplainMiss(selectedRule!.name, missS, missO),
     enabled: false,
+  });
+  const missUuids = useMemo(() => uuidsFrom(missQuery.data?.evidence ?? []), [missQuery.data]);
+  const missSqlLabels = useQuery({
+    queryKey: ["formal", "entity-labels", "miss", missUuids],
+    queryFn: () => fetchEntityLabels(missUuids),
+    enabled: missUuids.length > 0,
+    staleTime: 60_000,
   });
   // F6 dry 试算：闭包只算不写，与当前落盘对比
   const [dry, setDry] = useState<{ loading: boolean; stats: InferStats | null; minConf: number | null; error: string | null }>({
@@ -575,16 +627,23 @@ export function ReasoningPage() {
                         ) : traceQuery.data ? (
                           <>
                             <div className="flex flex-col gap-1">
-                              {traceQuery.data.evidence.map((ev, i) => (
-                                <div
-                                  key={i}
-                                  className="bg-background rounded-md border px-2.5 py-1.5 font-mono text-xs"
-                                >
-                                  {iriLocal(ev.s)}{" "}
-                                  <span className="text-primary font-semibold">{iriLocal(ev.p)}</span>{" "}
-                                  {iriLocal(ev.o)}
-                                </div>
-                              ))}
+                              {traceQuery.data.evidence.map((ev, i) => {
+                                const tl = traceQuery.data?.labels ?? {};
+                                const sqlT = traceSqlLabels.data ?? {};
+                                const nmL = (iri: string) =>
+                                  sqlT[iri.match(UUID_RE)?.[0] ?? ""] || tl[iri] || iriLocal(iri);
+                                return (
+                                  <div
+                                    key={i}
+                                    className="bg-background rounded-md border px-2.5 py-1.5 font-mono text-xs"
+                                  >
+                                    {nmL(ev.s)}{" "}
+                                    <span className="text-primary font-semibold">{predLabel(ev.p) ?? iriLocal(ev.p)}</span>
+                                    <span className="text-muted-foreground/60"> {iriLocal(ev.p)}</span>{" "}
+                                    {nmL(ev.o)}
+                                  </div>
+                                );
+                              })}
                             </div>
                             {traceQuery.data.details ? (
                               <div className="mt-1.5 flex flex-col gap-0.5">
@@ -638,13 +697,20 @@ export function ReasoningPage() {
                         </div>
                         {(missQuery.data.evidence ?? []).length > 0 ? (
                           <div className="flex flex-col gap-0.5">
-                            {(missQuery.data.evidence ?? []).map((ev, i) => (
-                              <div key={i} className="font-mono">
-                                {iriLocal(ev.s)}{" "}
-                                <span className="text-primary font-semibold">{iriLocal(ev.p)}</span>{" "}
-                                {iriLocal(ev.o)}
-                              </div>
-                            ))}
+                            {(missQuery.data.evidence ?? []).map((ev, i) => {
+                              const ml = missQuery.data?.labels ?? {};
+                              const sqlM = missSqlLabels.data ?? {};
+                              const nmM = (iri: string) =>
+                                sqlM[iri.match(UUID_RE)?.[0] ?? ""] || ml[iri] || iriLocal(iri);
+                              return (
+                                <div key={i} className="font-mono">
+                                  {nmM(ev.s)}{" "}
+                                  <span className="text-primary font-semibold">{predLabel(ev.p) ?? iriLocal(ev.p)}</span>
+                                  <span className="text-muted-foreground/60"> {iriLocal(ev.p)}</span>{" "}
+                                  {nmM(ev.o)}
+                                </div>
+                              );
+                            })}
                           </div>
                         ) : null}
                         {missQuery.data.missing_pred ? (
@@ -658,26 +724,38 @@ export function ReasoningPage() {
                         ) : null}
                       </div>
                     ) : null}
-                    {derivationsQuery.data!.rows.map((row, i) => (
-                      <div
-                        key={`${row.s}-${row.p}-${row.o}-${i}`}
-                        className="bg-muted/60 flex items-center gap-2 rounded-md px-2.5 py-1.5 font-mono text-xs"
-                      >
-                        <span className="min-w-0 flex-1">
-                          {iriLocal(row.s)}{" "}
-                          <span className="text-primary font-semibold">{iriLocal(row.p)}</span>{" "}
-                          {iriLocal(row.o)}
-                        </span>
-                        <button
-                          type="button"
-                          onClick={() => setTraceTarget(row)}
-                          title="追溯触发该结论的基础事实链"
-                          className="text-primary flex-none hover:underline"
+                    {(() => {
+                      const serverLabels = derivationsQuery.data!.labels ?? {};
+                      const sqlLabels = entityLabelsQuery.data ?? {};
+                      const nm = (iri: string) =>
+                        sqlLabels[iri.match(UUID_RE)?.[0] ?? ""] || serverLabels[iri] || iriLocal(iri);
+                      return derivationsQuery.data!.rows.map((row, i) => (
+                        <div
+                          key={`${row.s}-${row.p}-${row.o}-${i}`}
+                          className="bg-muted/60 flex items-center gap-2 rounded-md px-2.5 py-1.5 font-mono text-xs"
                         >
-                          溯源
-                        </button>
-                      </div>
-                    ))}
+                          <span className="min-w-0 flex-1">
+                            {nm(row.s)}{" "}
+                            <span
+                              className="text-primary font-semibold"
+                              title={predLabel(row.p) ? row.p : undefined}
+                            >
+                              {predLabel(row.p) ?? iriLocal(row.p)}
+                            </span>
+                            <span className="text-muted-foreground/60"> {iriLocal(row.p)}</span>{" "}
+                            {nm(row.o)}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => setTraceTarget(row)}
+                            title="追溯触发该结论的基础事实链"
+                            className="text-primary flex-none hover:underline"
+                          >
+                            溯源
+                          </button>
+                        </div>
+                      ));
+                    })()}
                   </div>
                 )
               ) : (

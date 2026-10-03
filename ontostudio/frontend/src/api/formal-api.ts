@@ -128,14 +128,22 @@ export interface DerivationRow {
   o: string;
 }
 
+/** 可读性标注：IRI → canonical_name（服务端批量解析，缺名不在表内）。 */
 export function fetchRuleDerivations(
   name: string,
   limit = 200,
   offset = 0,
-): Promise<{ total: number; rows: DerivationRow[] }> {
+): Promise<{ total: number; labels: Record<string, string>; rows: DerivationRow[] }> {
   return authFetch(
     `${BASE}/rules/${encodeURIComponent(name)}/derivations?limit=${limit}&offset=${offset}`,
   );
+}
+
+/** uuid → canonical_name（dg_entities 批量；SQL 是名字真相源）。 */
+export function fetchEntityLabels(ids: string[]): Promise<Record<string, string>> {
+  return authFetch<{ success: boolean; labels: Record<string, string> }>(
+    `${BASE}/entity-labels?ids=${ids.map(encodeURIComponent).join(",")}`,
+  ).then((d) => d.labels);
 }
 
 // ---- 单三元组溯源（F3，2026-10-02 二期）----
@@ -151,6 +159,8 @@ export interface RuleTrace {
   kind: "chain" | "requirements" | "sameas";
   satisfied: boolean;
   evidence: TraceEvidence[];
+  /** 可读性标注：IRI → canonical_name。 */
+  labels?: Record<string, string>;
   /** requirements 类：资质满足对照。 */
   details?: Array<{ qualification: string; held: boolean }>;
   /** F4 反事实：断裂位置与提示。 */
@@ -172,7 +182,6 @@ export function fetchRuleExplainMiss(name: string, s: string, o: string): Promis
     `${BASE}/rules/${encodeURIComponent(name)}/explain-miss?s=${encodeURIComponent(s)}&o=${encodeURIComponent(o)}`,
   );
 }
-
 // ---- validate ----
 
 export interface ShaclViolation {

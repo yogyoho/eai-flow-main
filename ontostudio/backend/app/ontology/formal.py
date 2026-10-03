@@ -135,6 +135,41 @@ async def formal_history(
     return {"success": True, "history": get_kernel().infer_history(limit)}
 
 
+@router.get("/entity-labels")
+async def formal_entity_labels(
+    ids: str = Query(..., description="逗号分隔实体 uuid（≤500）"),
+    _: CurrentUser = Depends(require_permission("system:access")),
+):
+    """uuid → canonical_name（F2 下钻可读性）：dg_entities 按主键批量（SQL 是名字真相源——
+    kernel 图不存 canonical_name，全量装载路径不写名字三元组）。"""
+    import uuid as uuid_mod
+
+    from sqlalchemy import text
+    from sqlalchemy.ext.asyncio import create_async_engine
+
+    from app.config import DatabaseConfig
+
+    uuid_list = [u.strip() for u in ids.split(",") if u.strip()][:500]
+    if not uuid_list:
+        return {"success": True, "labels": {}}
+    try:
+        params = [uuid_mod.UUID(u) for u in uuid_list]
+    except ValueError as e:
+        raise HTTPException(status_code=422, detail=f"uuid 不合法: {e}") from e
+    engine = create_async_engine(DatabaseConfig.from_env().url)
+    try:
+        async with engine.connect() as conn:
+            rows = (
+                await conn.execute(
+                    text("SELECT id::text AS id, canonical_name FROM dg_entities WHERE id = ANY(:ids)"),
+                    {"ids": params},
+                )
+            ).mappings().all()
+    finally:
+        await engine.dispose()
+    return {"success": True, "labels": {r["id"]: r["canonical_name"] for r in rows if r["canonical_name"]}}
+
+
 @router.get("/validate-history")
 async def formal_validate_history(
     limit: int = Query(20, ge=1, le=100),
