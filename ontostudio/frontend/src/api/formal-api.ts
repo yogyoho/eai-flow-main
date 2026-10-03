@@ -28,6 +28,29 @@ export function runFormalInfer(minConfidence = 0.7, dry = false): Promise<InferS
   );
 }
 
+/** 内核当前推理状态（初始化读路径，零重算）：派生/闭包实时数图，元数据取最近落盘。 */
+export function fetchInferLast(): Promise<InferStats & { ranAt?: string }> {
+  return authFetch<{
+    success: boolean;
+    entailment_triples: number;
+    rule_counts: Record<string, number>;
+    input_triples: number;
+    filtered_low_confidence: number;
+    duration_ms: number;
+    min_conf: number | null;
+    ran_at: string | null;
+  }>(`${BASE}/infer-last`).then((d) => ({
+    success: true,
+    input_triples: d.input_triples,
+    entailment_triples: d.entailment_triples,
+    filtered_low_confidence: d.filtered_low_confidence,
+    rule_counts: d.rule_counts,
+    duration_ms: d.duration_ms,
+    errors: [] as string[],
+    ranAt: d.ran_at ?? undefined,
+  }));
+}
+
 // ---- CQ 验收（F5，2026-10-02）----
 
 /** 单条 CQ 结果：ASK 真跑于内核，passed = actual === expected。 */

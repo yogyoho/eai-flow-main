@@ -120,6 +120,12 @@ async def formal_rule_set_enabled(
         raise HTTPException(status_code=404, detail=f"规则不存在: {e}") from e
 
 
+@router.get("/infer-last")
+async def formal_infer_last(_: CurrentUser = Depends(require_permission("system:access"))):
+    """内核当前推理状态（初始化读路径）：实时数图 + 最近落盘元数据，不触发重算。"""
+    return {"success": True, **get_kernel().infer_last()}
+
+
 @router.get("/history")
 async def formal_history(
     limit: int = Query(20, ge=1, le=100),

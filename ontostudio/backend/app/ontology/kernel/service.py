@@ -248,6 +248,7 @@ class KernelService:
                 "ts": datetime.now(timezone.utc).isoformat(timespec="seconds"),
                 "min_conf": min_confidence,
                 "input_triples": stats.input_triples,
+                "filtered_low_confidence": stats.filtered_low_confidence,
                 "entailment_triples": stats.entailment_triples,
                 "rule_counts": stats.rule_counts,
                 "duration_ms": stats.duration_ms,
@@ -275,6 +276,35 @@ class KernelService:
         except Exception:  # noqa: BLE001
             return []
         return list(reversed(rows[-limit:]))
+
+    def infer_last(self) -> dict:
+        """内核当前推理状态（页面初始化读路径，零重算）。
+
+        派生/闭包计数 = 实时数图（含启停/装载后的真实状态）；
+        输入/过滤/耗时/时间戳 = 最近一次落盘重算记录（infer_history 首行）。
+        """
+        registry = get_registry()
+        counts: dict[str, int] = {}
+        for r in self._all_rules(registry):
+            rows = self.store.query(
+                "SELECT (COUNT(*) AS ?n) WHERE { GRAPH <graph:derived:" + r.name + "> { ?s ?p ?o } }"
+            )
+            counts[r.name] = int(rows[0]["n"] or 0) if rows else 0
+        ent = self.store.query(
+            "SELECT (COUNT(*) AS ?n) WHERE { GRAPH <graph:entailment> { ?s ?p ?o } }"
+        )
+        entailment = int(ent[0]["n"] or 0) if ent else 0
+        last = self.infer_history(1)
+        head = last[0] if last else {}
+        return {
+            "entailment_triples": entailment,
+            "rule_counts": counts,
+            "input_triples": head.get("input_triples", 0),
+            "filtered_low_confidence": head.get("filtered_low_confidence", 0),
+            "duration_ms": head.get("duration_ms", 0),
+            "min_conf": head.get("min_conf"),
+            "ran_at": head.get("ts"),
+        }
 
     def run_cqs(self) -> list[dict]:
         """CQ 验收（F5）：cq.yaml 逐条 ASK 真跑，FAIL 不阻断（推理工作台页数据源）。"""

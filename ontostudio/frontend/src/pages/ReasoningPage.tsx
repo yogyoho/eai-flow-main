@@ -9,6 +9,7 @@ import { useMemo, useState } from "react";
 
 import {
   fetchFormalRules,
+  fetchInferLast,
   fetchRuleDerivations,
   fetchRuleExplainMiss,
   fetchRuleTrace,
@@ -75,9 +76,11 @@ export function ReasoningPage() {
   // F7 门限可调（2026-10-02 一期）：仅作用于下一次全量重算；页面展示的始终是已落盘
   // 的当前物化——缓存 key 不含门限，与总览治理合规链共享同一份「最新落盘」数据。
   const [minConf, setMinConf] = useState(0.7);
+  // 初始化 = 读路径（fetchInferLast：实时数图 + 最近落盘元数据，零重算）；
+  // 全量重算是写操作，只由按钮触发（2026-10-03 用户定案）
   const inferQuery = useQuery({
     queryKey: ["formal", "infer"],
-    queryFn: () => runFormalInfer(minConf),
+    queryFn: fetchInferLast,
     staleTime: 30_000,
   });
   const derivedTotal = inferQuery.data
@@ -171,6 +174,16 @@ export function ReasoningPage() {
   const cqResults = cqQuery.data?.results ?? [];
   const cqFailed = cqResults.filter((r) => !r.passed).length;
 
+  // 全量重算 = 写操作，走 mutation：成功后把结果写进缓存（免二次请求）并联动 CQ/校验
+  const recomputeMutation = useMutation({
+    mutationFn: () => runFormalInfer(minConf),
+    onSuccess: (stats) => {
+      qc.setQueryData(["formal", "infer"], stats);
+      void cqQuery.refetch();
+      void qc.invalidateQueries({ queryKey: ["formal", "validate"] });
+    },
+  });
+
   // F8 规则启停：启用即单规则重算、停用即撤派生图——广播失效让 infer/cq/下钻同步
   const toggleRuleMutation = useMutation({
     mutationFn: ({ name, enabled }: { name: string; enabled: boolean }) =>
@@ -225,16 +238,16 @@ export function ReasoningPage() {
             </button>
             <button
               className="bg-primary hover:bg-primary/90 text-primary-foreground h-9 rounded-md px-4 text-sm font-medium"
-              onClick={() => {
-                void inferQuery.refetch().then(() => {
-                  void cqQuery.refetch();
-                  // 重算改变断言/派生图 → 校验中心缓存一并失效（声明"装载/推理后可重跑"）
-                  void qc.invalidateQueries({ queryKey: ["formal", "validate"] });
-                });
-              }}
+              onClick={() => recomputeMutation.mutate()}
+              disabled={recomputeMutation.isPending}
             >
-              {inferQuery.isFetching ? "推理中…" : "全量重算"}
+              {recomputeMutation.isPending ? "推理中…" : "全量重算"}
             </button>
+            {recomputeMutation.isError ? (
+              <span className="text-destructive max-w-[16rem] truncate text-xs">
+                重算失败：{(recomputeMutation.error as Error).message}
+              </span>
+            ) : null}
             <button
               type="button"
               onClick={() => setHistoryOpen((v) => !v)}
@@ -266,8 +279,8 @@ export function ReasoningPage() {
           <div className="mt-0.5 text-3xl font-black tracking-tight">{derivedTotal}</div>
           <div className="text-muted-foreground mt-0.5 text-xs">
             {inferQuery.data ? `${rules.length} 条规则` : "— 条规则"} · 上次全量{" "}
-            {inferQuery.dataUpdatedAt
-              ? new Date(inferQuery.dataUpdatedAt).toLocaleString("zh-CN", { hour12: false })
+            {inferQuery.data?.ranAt
+              ? new Date(inferQuery.data.ranAt).toLocaleString("zh-CN", { hour12: false })
               : "—"}
           </div>
         </Panel>

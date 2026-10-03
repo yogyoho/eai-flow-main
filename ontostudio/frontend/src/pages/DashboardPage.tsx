@@ -42,7 +42,7 @@ import {
 } from "@/api/ontology-graph-api";
 import {
   fetchFormalValidate,
-  runFormalInfer,
+  fetchInferLast,
   runFormalLoad,
   type FormalLoadResult,
 } from "@/api/formal-api";
@@ -123,7 +123,7 @@ export function DashboardPage() {
   // 推理物化：只订阅缓存（ReasoningPage 运行后出现），不自动跑全量推理（worker 秒级占用）
   const inferQuery = useQuery({
     queryKey: ["formal", "infer"],
-    queryFn: () => runFormalInfer(),
+    queryFn: fetchInferLast,
     enabled: false,
     staleTime: 5 * 60_000,
   });
