@@ -122,6 +122,26 @@ export function fetchValidateHistory(limit = 20): Promise<{ history: ValidateHis
   return authFetch(`${BASE}/validate-history?limit=${limit}`);
 }
 
+// ---- 内核孤儿治理 ----
+
+export interface OrphanReport {
+  total_subjects: number;
+  orphan_count: number;
+  orphans: string[];
+}
+
+export function fetchOrphans(): Promise<OrphanReport> {
+  return authFetch(`${BASE}/orphans`);
+}
+
+export function purgeOrphans(iris: string[]): Promise<{ entities: number; removed_triples: number }> {
+  return authFetch(`${BASE}/orphans/purge`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ iris }),
+  });
+}
+
 export interface DerivationRow {
   s: string;
   p: string;

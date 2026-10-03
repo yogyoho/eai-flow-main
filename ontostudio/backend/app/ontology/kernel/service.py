@@ -306,6 +306,57 @@ class KernelService:
             "ran_at": head.get("ts"),
         }
 
+    async def orphans(self) -> dict:
+        """内核孤儿实体（治理）：asserted 图实体 IRI 中，dg_entities 无对应行者。
+
+        实体 IRI 形态 = {ns}id/{uuid}；uuid 不在 dg_entities（或 IRI 非该形态）即候选孤儿
+        ——装载为增量并集（只增不删），SQL 侧删除的行会以孤儿形式永驻内核并持续参与推理。
+        """
+        from pyoxigraph import NamedNode
+        from sqlalchemy import text
+        from sqlalchemy.ext.asyncio import create_async_engine
+
+        from app.config import DatabaseConfig
+
+        # subjects 用 SPARQL DISTINCT（trace/explain 同款通道，实测可见全部实体）；
+        # quads_for_pattern 迭代在此处存在行为差异（漏实体 → 孤儿恒 0 的教训）
+        rows = self.store.query(
+            "SELECT DISTINCT ?s WHERE { GRAPH <" + ASSERTED_GRAPH + "> { ?s ?p ?o } }"
+        )
+        subjects = {r["s"] for r in rows}
+        engine = create_async_engine(DatabaseConfig.from_env().url)
+        try:
+            async with engine.connect() as conn:
+                rows = (await conn.execute(text("SELECT id::text FROM dg_entities"))).all()
+        finally:
+            await engine.dispose()
+        known = {r[0] for r in rows}
+        # 治理范围限定：eia 域实体 IRI 形态 {eia_ns}id/{uuid}——mention/合同价等其它形态
+        # 节点不属 dg_entities 治理域，不算孤儿（首轮误判 21709 全孤儿的教训）
+        prefix = "https://ontology.eai-flow.com/eia#id/"
+        orphans: list[str] = []
+        for s in sorted(subjects):
+            if s.startswith(prefix) and s[len(prefix):].lower() not in known:
+                orphans.append(s)
+        return {"total_subjects": len(subjects), "orphan_count": len(orphans), "orphans": orphans}
+
+    def purge_orphans(self, iris: list[str]) -> dict:
+        """精确清除指定实体的全部 asserted 三元组（主体/客体两侧）；派生图待全量重算刷新。"""
+        from pyoxigraph import NamedNode
+
+        gn = NamedNode(ASSERTED_GRAPH)
+        removed = 0
+        valid = [i for i in iris if _IRI_RE.match(i)]
+        for iri in valid:
+            node = NamedNode(iri)
+            for q in list(self.store._store.quads_for_pattern(node, None, None, gn)):
+                self.store._store.remove(q)
+                removed += 1
+            for q in list(self.store._store.quads_for_pattern(None, None, node, gn)):
+                self.store._store.remove(q)
+                removed += 1
+        return {"entities": len(valid), "removed_triples": removed}
+
     def run_cqs(self) -> list[dict]:
         """CQ 验收（F5）：cq.yaml 逐条 ASK 真跑，FAIL 不阻断（推理工作台页数据源）。"""
         return run_cqs(self.store, load_cqs())

@@ -170,6 +170,22 @@ async def formal_entity_labels(
     return {"success": True, "labels": {r["id"]: r["canonical_name"] for r in rows if r["canonical_name"]}}
 
 
+@router.get("/orphans")
+async def formal_orphans(_: CurrentUser = Depends(require_permission("system:access"))):
+    """内核孤儿实体清单（治理）：asserted 实体 IRI 中 dg_entities 无对应行者。"""
+    return {"success": True, **await get_kernel().orphans()}
+
+
+@router.post("/orphans/purge")
+async def formal_orphans_purge(
+    payload: dict,
+    _: CurrentUser = Depends(require_permission("system:access")),
+):
+    """精确清除指定实体的 asserted 三元组（治理确认后执行；派生图建议随后全量重算）。"""
+    iris = [str(i) for i in payload.get("iris", [])]
+    return {"success": True, **get_kernel().purge_orphans(iris)}
+
+
 @router.get("/validate-history")
 async def formal_validate_history(
     limit: int = Query(20, ge=1, le=100),

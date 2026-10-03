@@ -13,7 +13,13 @@ import { useQuery } from "@tanstack/react-query";
 import { Play, ShieldCheck } from "lucide-react";
 import { useState } from "react";
 
-import { fetchFormalValidate, fetchValidateHistory, type ShaclViolation } from "@/api/formal-api";
+import {
+  fetchFormalValidate,
+  fetchOrphans,
+  fetchValidateHistory,
+  purgeOrphans,
+  type ShaclViolation,
+} from "@/api/formal-api";
 import { Chip, PageHeader, Panel } from "@/pages/shared";
 import { cn } from "@/lib/utils";
 
@@ -37,6 +43,15 @@ export function ValidationPage() {
     enabled: historyOpen,
     staleTime: 10_000,
   });
+  // 内核孤儿治理：扫描(asserted 实体 vs dg_entities)→ 确认 → 精确清除
+  const [orphanScan, setOrphanScan] = useState(false);
+  const orphansQuery = useQuery({
+    queryKey: ["formal", "orphans"],
+    queryFn: fetchOrphans,
+    enabled: orphanScan,
+  });
+  const [purging, setPurging] = useState(false);
+  const [purgeMsg, setPurgeMsg] = useState<string | null>(null);
   const data = validateQuery.data;
   const conformance = data?.conformance ?? [];
   const passedCount = conformance.filter((check) => check.passed).length;
@@ -53,6 +68,18 @@ export function ValidationPage() {
           description="SHACL 形状校验 + 国标 GB/T 48000 系符合性套件（C1-C5），每次全量装载/推理后可重跑。"
           actions={
             <span className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setOrphanScan((v) => !v)}
+                className={cn(
+                  "h-8 rounded-md border px-3 text-sm font-medium",
+                  orphanScan
+                    ? "border-primary/40 bg-primary/10 text-primary"
+                    : "border-border bg-card text-foreground hover:bg-muted",
+                )}
+              >
+                数据治理
+              </button>
               <button
                 type="button"
                 onClick={() => setHistoryOpen((v) => !v)}
@@ -313,6 +340,61 @@ export function ValidationPage() {
                       ))}
                     </tbody>
                   </table>
+                </div>
+              )}
+            </Panel>
+          </div>
+        ) : null}
+
+        {orphanScan ? (
+          <div className="mt-3.5">
+            <Panel title="内核孤儿治理" subtitle="断言图实体中 dg_entities 已无对应行——增量装载只增不删的残留">
+              {orphansQuery.isLoading ? (
+                <p className="text-muted-foreground p-4 text-sm">扫描断言图…</p>
+              ) : orphansQuery.isError ? (
+                <p className="text-destructive p-4 text-sm">扫描失败：{(orphansQuery.error as Error).message}</p>
+              ) : (
+                <div className="flex flex-col gap-2 p-4 text-sm">
+                  <p className="text-muted-foreground text-xs">
+                    断言图实体 {orphansQuery.data!.total_subjects.toLocaleString()} 个，其中孤儿{" "}
+                    <b className={orphansQuery.data!.orphan_count > 0 ? "text-destructive" : "text-success"}>
+                      {orphansQuery.data!.orphan_count}
+                    </b>{" "}
+                    个（无名 UUID、持续参与推理的残留数据）。
+                  </p>
+                  {orphansQuery.data!.orphan_count > 0 ? (
+                    <>
+                      <div className="bg-muted/60 max-h-40 overflow-y-auto rounded-md p-2 font-mono text-xs">
+                        {orphansQuery.data!.orphans.slice(0, 20).map((iri) => (
+                          <div key={iri} className="truncate">
+                            {iri}
+                          </div>
+                        ))}
+                        {orphansQuery.data!.orphan_count > 20 ? (
+                          <div className="text-muted-foreground">… 其余 {orphansQuery.data!.orphan_count - 20} 条略</div>
+                        ) : null}
+                      </div>
+                      <button
+                        type="button"
+                        disabled={purging}
+                        onClick={() => {
+                          if (!window.confirm(`确认清除 ${orphansQuery.data!.orphan_count} 个孤儿实体的全部断言三元组？清除后建议全量重算刷新派生。`)) return;
+                          setPurging(true);
+                          purgeOrphans(orphansQuery.data!.orphans)
+                            .then((r) => {
+                              setPurgeMsg(`已清除 ${r.entities} 个实体 / ${r.removed_triples} 条三元组——建议到推理工作台全量重算刷新派生。`);
+                              void orphansQuery.refetch();
+                            })
+                            .catch((e: Error) => setPurgeMsg(`清除失败：${e.message}`))
+                            .finally(() => setPurging(false));
+                        }}
+                        className="border-destructive/40 text-destructive hover:bg-destructive/10 self-start rounded-md border px-3 py-1.5 text-sm font-medium disabled:opacity-50"
+                      >
+                        {purging ? "清除中…" : `清除全部孤儿（${orphansQuery.data!.orphan_count}）`}
+                      </button>
+                    </>
+                  ) : null}
+                  {purgeMsg ? <p className="text-muted-foreground text-xs">{purgeMsg}</p> : null}
                 </div>
               )}
             </Panel>
