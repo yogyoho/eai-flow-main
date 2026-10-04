@@ -11,7 +11,7 @@
  */
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Play, ShieldCheck } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 import {
   fetchFormalValidate,
@@ -68,6 +68,17 @@ export function ValidationPage() {
   const conformance = data?.conformance ?? [];
   const passedCount = conformance.filter((check) => check.passed).length;
   const violations = data?.shacl.violations ?? [];
+  // SHACL 违规分页（2026-10-04 用户反馈）：报告整包在内存, 客户端分页 50 条/页
+  // （真实数据内核可产生千级违规, 全量渲染卡顿）; 新结果落缓存时回到第 1 页
+  const [violPage, setViolPage] = useState(0);
+  const VIOL_PAGE_SIZE = 50;
+  useEffect(() => setViolPage(0), [violations]);
+  const violTotalPages = Math.max(1, Math.ceil(violations.length / VIOL_PAGE_SIZE));
+  const violPageRows = violations.slice(violPage * VIOL_PAGE_SIZE, violPage * VIOL_PAGE_SIZE + VIOL_PAGE_SIZE);
+  const violPageWindow = useMemo(() => {
+    const start = Math.max(0, Math.min(violPage - 2, violTotalPages - 5));
+    return Array.from({ length: Math.min(5, violTotalPages) }, (_, i) => start + i);
+  }, [violPage, violTotalPages]);
   const errorCount = violations.filter((v) => !(v.severity ?? "").endsWith("Warning")).length;
   const warningCount = violations.length - errorCount;
 
@@ -236,7 +247,7 @@ export function ValidationPage() {
                       </td>
                     </tr>
                   ) : (
-                    violations.map((violation, index) => {
+                    violPageRows.map((violation, index) => {
                       const isWarning = (violation.severity ?? "").endsWith("Warning");
                       return (
                         <tr key={index} className="border-border hover:bg-muted/50 border-b last:border-b-0">
@@ -271,6 +282,65 @@ export function ValidationPage() {
                 </tbody>
               </table>
             </div>
+            {violations.length > VIOL_PAGE_SIZE ? (
+              <div className="flex flex-wrap items-center justify-between gap-2 border-t px-4 py-2.5 text-xs">
+                <span className="text-muted-foreground">
+                  共 <b className="text-foreground tabular-nums">{violations.length.toLocaleString()}</b> 条违规 · 第 {violPage + 1}/
+                  {violTotalPages} 页
+                </span>
+                <div className="flex flex-wrap items-center gap-1">
+                  <button
+                    type="button"
+                    disabled={violPage === 0}
+                    onClick={() => setViolPage(0)}
+                    className="border-border bg-card hover:bg-muted rounded-md border px-2 py-1 font-medium disabled:opacity-40"
+                  >
+                    首页
+                  </button>
+                  <button
+                    type="button"
+                    aria-label="上一页"
+                    disabled={violPage === 0}
+                    onClick={() => setViolPage((p) => Math.max(0, p - 1))}
+                    className="border-border bg-card hover:bg-muted rounded-md border px-2 py-1 disabled:opacity-40"
+                  >
+                    ◀
+                  </button>
+                  {violPageWindow.map((p) => (
+                    <button
+                      key={p}
+                      type="button"
+                      onClick={() => setViolPage(p)}
+                      className={cn(
+                        "rounded-md border px-2.5 py-1 font-medium tabular-nums",
+                        p === violPage
+                          ? "border-primary bg-primary text-primary-foreground"
+                          : "border-border bg-card text-foreground hover:bg-muted",
+                      )}
+                    >
+                      {p + 1}
+                    </button>
+                  ))}
+                  <button
+                    type="button"
+                    aria-label="下一页"
+                    disabled={violPage >= violTotalPages - 1}
+                    onClick={() => setViolPage((p) => Math.min(violTotalPages - 1, p + 1))}
+                    className="border-border bg-card hover:bg-muted rounded-md border px-2 py-1 disabled:opacity-40"
+                  >
+                    ▶
+                  </button>
+                  <button
+                    type="button"
+                    disabled={violPage >= violTotalPages - 1}
+                    onClick={() => setViolPage(violTotalPages - 1)}
+                    className="border-border bg-card hover:bg-muted rounded-md border px-2 py-1 font-medium disabled:opacity-40"
+                  >
+                    末页
+                  </button>
+                </div>
+              </div>
+            ) : null}
           </Panel>
 
           {/* 校验运行（原型） */}
