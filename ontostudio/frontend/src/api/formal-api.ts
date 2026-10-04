@@ -172,6 +172,16 @@ export function purgeOrphans(iris: string[]): Promise<{ entities: number; remove
   });
 }
 
+/** 零边 mention 清单（无效证据：未指向实体/关系任一）。 */
+export function fetchOrphanMentions(): Promise<{ mention_count: number; orphans: string[] }> {
+  return authFetch(`${BASE}/orphan-mentions`);
+}
+
+/** 精确清除全部零边 mention 节点。 */
+export function purgeOrphanMentions(): Promise<{ entities: number; removed_triples: number }> {
+  return authFetch(`${BASE}/orphan-mentions/purge`, { method: "POST" });
+}
+
 export interface DerivationRow {
   s: string;
   p: string;

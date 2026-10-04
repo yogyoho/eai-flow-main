@@ -83,14 +83,15 @@ def compile_shapes(registry: Registry) -> Graph:
             _status_shape(shapes, node_shape)
             _min_count(shapes, node_shape, f"{vocab.scheme.namespace}attr/norm_name", 1, f"{class_name} 规范化名必填")
 
-    # Mention：实体/关系指向二选一（sh:xone 两个备选 NodeShape）
+    # Mention：实体/关系指向至少其一（sh:or）——原 sh:xone(恰好其一) 把同时挂实体+关系的
+    # 合法证据全部误报(2026-10-04 实测 2494/2494 全量误报); 业务语义=至少其一
     mention = BNode()
     shapes.add((mention, RDF.type, URIRef(SH + "NodeShape")))
     _p(shapes, mention, "targetClass", URIRef(C_MENTION))
     alt_entity, alt_relation = BNode(), BNode()
     xone_head = BNode()
     Collection(shapes, xone_head, [alt_entity, alt_relation])
-    _p(shapes, mention, "xone", xone_head)
+    _p(shapes, mention, "or", xone_head)
     _min_count(shapes, alt_entity, P_MENTION_OF_ENTITY, 1, "证据必须指向实体")
     _min_count(shapes, alt_relation, P_MENTION_OF_RELATION, 1, "证据必须指向关系")
 

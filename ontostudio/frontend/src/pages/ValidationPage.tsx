@@ -16,8 +16,10 @@ import { useEffect, useMemo, useState } from "react";
 import {
   fetchFormalValidate,
   fetchOrphans,
+  fetchOrphanMentions,
   fetchValidateHistory,
   fetchValidateLast,
+  purgeOrphanMentions,
   purgeOrphans,
   type ShaclViolation,
 } from "@/api/formal-api";
@@ -64,6 +66,15 @@ export function ValidationPage() {
   });
   const [purging, setPurging] = useState(false);
   const [purgeMsg, setPurgeMsg] = useState<string | null>(null);
+  // 零边 mention（无效证据）治理：SHACL sh:or(至少指向实体/关系其一)违规的根因
+  const [mentionScan, setMentionScan] = useState(false);
+  const mentionScanQuery = useQuery({
+    queryKey: ["formal", "orphan-mentions"],
+    queryFn: fetchOrphanMentions,
+    enabled: mentionScan,
+  });
+  const [purgingMentions, setPurgingMentions] = useState(false);
+  const [purgeMentionsMsg, setPurgeMentionsMsg] = useState<string | null>(null);
   const data = validateQuery.data;
   const conformance = data?.conformance ?? [];
   const passedCount = conformance.filter((check) => check.passed).length;
@@ -490,6 +501,49 @@ export function ValidationPage() {
                     </>
                   ) : null}
                   {purgeMsg ? <p className="text-muted-foreground text-xs">{purgeMsg}</p> : null}
+                </div>
+              )}
+            </Panel>
+          </div>
+        ) : null}
+        {orphanScan ? (
+          <div className="mt-3.5">
+            <Panel title="无效证据治理" subtitle="零边 mention（未指向实体/关系任一）——SHACL sh:or 违规的根源">
+              {mentionScanQuery.isLoading ? (
+                <p className="text-muted-foreground p-4 text-sm">扫描 mention 节点…</p>
+              ) : mentionScanQuery.isError ? (
+                <p className="text-destructive p-4 text-sm">扫描失败：{(mentionScanQuery.error as Error).message}</p>
+              ) : (
+                <div className="flex flex-col gap-2 p-4 text-sm">
+                  <p className="text-muted-foreground text-xs">
+                    零边 mention{" "}
+                    <b className={mentionScanQuery.data!.mention_count > 0 ? "text-destructive" : "text-success"}>
+                      {mentionScanQuery.data!.mention_count}
+                    </b>{" "}
+                    个（证据节点存在但未挂任何实体/关系——历史装载残留，SHACL 违规的全部来源）。
+                  </p>
+                  {mentionScanQuery.data!.mention_count > 0 ? (
+                    <button
+                      type="button"
+                      disabled={purgingMentions}
+                      onClick={() => {
+                        if (!window.confirm(`确认清除 ${mentionScanQuery.data!.mention_count} 个零边 mention 节点？清除后建议重新校验验证归零。`)) return;
+                        setPurgingMentions(true);
+                        purgeOrphanMentions()
+                          .then((r) => {
+                            setPurgeMentionsMsg(`已清除 ${r.entities} 个零边 mention / ${r.removed_triples} 条三元组——点「重新校验」验证违规归零。`);
+                            void mentionScanQuery.refetch();
+                            void qc.invalidateQueries({ queryKey: ["formal"] });
+                          })
+                          .catch((e: Error) => setPurgeMentionsMsg(`清除失败：${e.message}`))
+                          .finally(() => setPurgingMentions(false));
+                      }}
+                      className="border-destructive/40 text-destructive hover:bg-destructive/10 self-start rounded-md border px-3 py-1.5 text-sm font-medium disabled:opacity-50"
+                    >
+                      {purgingMentions ? "清除中…" : `清除全部零边 mention（${mentionScanQuery.data!.mention_count}）`}
+                    </button>
+                  ) : null}
+                  {purgeMentionsMsg ? <p className="text-muted-foreground text-xs">{purgeMentionsMsg}</p> : null}
                 </div>
               )}
             </Panel>

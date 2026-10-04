@@ -186,6 +186,18 @@ async def formal_orphans_purge(
     return {"success": True, **get_kernel().purge_orphans(iris)}
 
 
+@router.get("/orphan-mentions")
+async def formal_orphan_mentions(_: CurrentUser = Depends(require_permission("system:access"))):
+    """零边 mention 清单（无效证据治理）：证据未指向实体/关系任一。"""
+    return {"success": True, **get_kernel().orphan_mentions()}
+
+
+@router.post("/orphan-mentions/purge")
+async def formal_orphan_mentions_purge(_: CurrentUser = Depends(require_permission("system:access"))):
+    """精确清除全部零边 mention 节点（无效证据治理确认后执行）。"""
+    return {"success": True, **get_kernel().purge_orphan_mentions()}
+
+
 @router.get("/validate-last")
 async def formal_validate_last(_: CurrentUser = Depends(require_permission("system:access"))):
     """最近一次校验完整结果（初始化读路径）：不触发 pyshacl，原样还原校验中心面板。"""

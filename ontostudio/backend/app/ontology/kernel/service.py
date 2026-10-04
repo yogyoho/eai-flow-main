@@ -357,6 +357,32 @@ class KernelService:
                 removed += 1
         return {"entities": len(valid), "removed_triples": removed}
 
+    def orphan_mentions(self) -> dict:
+        """零边 mention（无效证据）：有 C_MENTION 类型但既无 mentionOfEntity 也无
+        mentionOfRelation 的节点——证据链必须至少指向其一，零边即历史残留。"""
+        rows = self.store.query(
+            "SELECT ?m WHERE { GRAPH <" + ASSERTED_GRAPH + "> { ?m a <"
+            + "https://ontology.eai-flow.com/kernel#Mention> . "
+            "FILTER NOT EXISTS { ?m <https://ontology.eai-flow.com/kernel#mentionOfEntity> ?x } "
+            "FILTER NOT EXISTS { ?m <https://ontology.eai-flow.com/kernel#mentionOfRelation> ?y } } }"
+        )
+        orphans = sorted(r["m"] for r in rows)
+        return {"mention_count": len(orphans), "orphans": orphans}
+
+    def purge_orphan_mentions(self) -> dict:
+        """精确清除全部零边 mention 节点（rdf:type + 属性边一并移除）。"""
+        from pyoxigraph import NamedNode
+
+        gn = NamedNode(ASSERTED_GRAPH)
+        scan = self.orphan_mentions()
+        removed = 0
+        for iri in scan["orphans"]:
+            node = NamedNode(iri)
+            for q in list(self.store._store.quads_for_pattern(node, None, None, gn)):
+                self.store._store.remove(q)
+                removed += 1
+        return {"entities": scan["mention_count"], "removed_triples": removed}
+
     def run_cqs(self) -> list[dict]:
         """CQ 验收（F5）：cq.yaml 逐条 ASK 真跑，FAIL 不阻断（推理工作台页数据源）。"""
         return run_cqs(self.store, load_cqs())
