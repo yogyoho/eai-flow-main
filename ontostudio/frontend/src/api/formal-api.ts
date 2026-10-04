@@ -266,6 +266,17 @@ export function fetchFormalValidate(): Promise<FormalValidateResult> {
   return authFetch<FormalValidateResult>(`${BASE}/validate`);
 }
 
+/** 最近一次校验完整结果（初始化读路径，不触发 pyshacl）；从未运行返回 null。 */
+export function fetchValidateLast(): Promise<(FormalValidateResult & { ranAt: string }) | null> {
+  return authFetch<{ success: boolean; last: ({ ts: string } & FormalValidateResult) | null }>(
+    `${BASE}/validate-last`,
+  ).then((d) =>
+    d.last
+      ? { success: true, shacl: d.last.shacl, conformance: d.last.conformance, ranAt: d.last.ts }
+      : null,
+  );
+}
+
 // ---- load（全量装载 = 对账，人审闭环切片语义）----
 
 export interface FormalLoadResult {

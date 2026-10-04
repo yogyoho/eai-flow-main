@@ -186,6 +186,12 @@ async def formal_orphans_purge(
     return {"success": True, **get_kernel().purge_orphans(iris)}
 
 
+@router.get("/validate-last")
+async def formal_validate_last(_: CurrentUser = Depends(require_permission("system:access"))):
+    """最近一次校验完整结果（初始化读路径）：不触发 pyshacl，原样还原校验中心面板。"""
+    return {"success": True, "last": get_kernel().validate_last()}
+
+
 @router.get("/validate-history")
 async def formal_validate_history(
     limit: int = Query(20, ge=1, le=100),

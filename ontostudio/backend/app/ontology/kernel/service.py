@@ -574,28 +574,54 @@ class KernelService:
         registry = get_registry()
         report = run_shacl(self.store, registry)
         conformance = run_conformance(self.store, registry, shacl_report=report)
-        self._append_validate_history(report)
-        return {
+        result = {
             "shacl": {"conforms": report.conforms, "violations": report.violations, "duration_ms": report.duration_ms},
             "conformance": [asdict(c) for c in conformance],
         }
+        self._append_validate_history(report, conformance, result)
+        return result
 
-    def _append_validate_history(self, report) -> None:  # noqa: ANN001 - ValidationReport
+    def _append_validate_history(self, report, conformance, result: dict) -> None:  # noqa: ANN001
         path = Path(self.kernel_path) / "validate_history.jsonl" if self.kernel_path else None
         if not path:
             return
         try:
             row = {
                 "ts": datetime.now(timezone.utc).isoformat(timespec="seconds"),
-                "conforms": report.conforms,
                 "errors": sum(1 for v in report.violations if not (v.get("severity") or "").endswith("Warning")),
                 "warnings": sum(1 for v in report.violations if (v.get("severity") or "").endswith("Warning")),
                 "duration_ms": report.duration_ms,
+                # 完整结果随行存储——validate-last 初始化读路径可原样还原面板
+                "result": result,
             }
             with path.open("a", encoding="utf-8") as f:
                 f.write(json.dumps(row, ensure_ascii=False) + "\n")
         except Exception:  # noqa: BLE001 - 历史失败不影响主流程
             pass
+
+    def validate_last(self) -> dict | None:
+        """最近一次校验完整结果（初始化读路径，不触发 pyshacl）。"""
+        path = Path(self.kernel_path) / "validate_history.jsonl" if self.kernel_path else None
+        if not path or not path.exists():
+            return None
+        rows: list[dict] = []
+        try:
+            for line in path.read_text(encoding="utf-8").splitlines():
+                line = line.strip()
+                if not line:
+                    continue
+                try:
+                    parsed = json.loads(line)
+                    if "result" in parsed:
+                        rows.append(parsed)
+                except Exception:  # noqa: BLE001
+                    pass
+        except Exception:  # noqa: BLE001
+            return []
+        if not rows:
+            return None
+        last = rows[-1]
+        return {"ts": last.get("ts"), **last.get("result", {})}
 
     def validate_history(self, limit: int = 20) -> list[dict]:
         """校验历史（F9 同构）：近 N 次 SHACL 运行（倒序）。"""

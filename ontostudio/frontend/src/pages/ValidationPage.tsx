@@ -9,7 +9,7 @@
  * 口径（P0-5）：本套件只覆盖 §5.3 / §5.4 / 附录 A / 第 9 章，**不是**全文符合性——
  * 标题/副题不得声称「GB/T 48000.3 符合性」。判定口径见 docs/ontology/methodology.md §4.4。
  */
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Play, ShieldCheck } from "lucide-react";
 import { useState } from "react";
 
@@ -17,6 +17,7 @@ import {
   fetchFormalValidate,
   fetchOrphans,
   fetchValidateHistory,
+  fetchValidateLast,
   purgeOrphans,
   type ShaclViolation,
 } from "@/api/formal-api";
@@ -32,11 +33,22 @@ function uuidOf(iri: unknown): string | null {
 export function ValidationPage() {
   // F9 同构：校验历史面板（每次「重新校验」自动记录于后端）
   const [historyOpen, setHistoryOpen] = useState(false);
+  // 初始化 = 读路径（fetchValidateLast：上次完整结果原样还原，零 pyshacl）；
+  // 校验运算是重操作（全图 pyshacl ~20s），只由「重新校验」按钮触发（2026-10-04 用户定案）
+  const qc = useQueryClient();
   const validateQuery = useQuery({
     queryKey: ["formal", "validate"],
-    queryFn: fetchFormalValidate,
+    queryFn: fetchValidateLast,
     staleTime: 30_000,
   });
+  const revalidateMutation = useMutation({
+    mutationFn: fetchFormalValidate,
+    onSuccess: (result) => {
+      qc.setQueryData(["formal", "validate"], { ...result, ranAt: new Date().toISOString() });
+      void qc.invalidateQueries({ queryKey: ["formal", "validate-history"] });
+    },
+  });
+  const ranAt = validateQuery.data?.ranAt ?? null;
   const historyQuery = useQuery({
     queryKey: ["formal", "validate-history"],
     queryFn: () => fetchValidateHistory(20),
@@ -157,7 +169,11 @@ export function ValidationPage() {
                   </div>
                 </div>
               ))}
-          {!validateQuery.isLoading && validateQuery.data && conformance.length === 0 ? (
+          {!validateQuery.isLoading && validateQuery.data === null ? (
+            <div className="text-muted-foreground col-span-full py-6 text-center text-sm">
+              尚未校验——点右上「重新校验」运行 SHACL 全图检查与国标五项。
+            </div>
+          ) : !validateQuery.isLoading && validateQuery.data && conformance.length === 0 ? (
             <div className="text-muted-foreground col-span-full py-6 text-center text-sm">
               国标符合性套件无检查项——请确认 registry 已装载。
             </div>
@@ -201,10 +217,16 @@ export function ValidationPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {!data ? (
+                  {validateQuery.isLoading ? (
                     <tr>
                       <td colSpan={4} className="text-muted-foreground px-4 py-8 text-center text-sm">
                         <Loader /> 加载中…
+                      </td>
+                    </tr>
+                  ) : data === null ? (
+                    <tr>
+                      <td colSpan={4} className="text-muted-foreground px-4 py-8 text-center text-sm">
+                        尚未校验——点「重新校验」运行 SHACL 全图检查
                       </td>
                     </tr>
                   ) : violations.length === 0 ? (
@@ -264,13 +286,16 @@ export function ValidationPage() {
               <div className="flex flex-wrap items-center gap-2">
                 <button
                   type="button"
-                  onClick={() => validateQuery.refetch()}
-                  disabled={validateQuery.isFetching}
+                  onClick={() => revalidateMutation.mutate()}
+                  disabled={revalidateMutation.isPending}
                   className="bg-primary text-primary-foreground hover:bg-primary/90 flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium disabled:opacity-50"
                 >
-                  {validateQuery.isFetching ? <LoaderInline /> : <Play className="h-3 w-3 fill-current" />}
+                  {revalidateMutation.isPending ? <LoaderInline /> : <Play className="h-3 w-3 fill-current" />}
                   重新校验
                 </button>
+                {revalidateMutation.isError ? (
+                  <span className="text-destructive text-xs">校验失败：{(revalidateMutation.error as Error).message}</span>
+                ) : null}
                 <button
                   type="button"
                   disabled
@@ -282,8 +307,8 @@ export function ValidationPage() {
               </div>
               <p className="text-muted-foreground text-xs">
                 上次运行{" "}
-                {validateQuery.dataUpdatedAt
-                  ? new Date(validateQuery.dataUpdatedAt).toLocaleString("zh-CN", { hour12: false })
+                {ranAt
+                  ? new Date(ranAt).toLocaleString("zh-CN", { hour12: false })
                   : "—"}{" "}
                 · {data ? `${data.shacl.duration_ms}ms` : "—"} · 国标五项 + SHACL shapes 编译一次性完成。
               </p>
