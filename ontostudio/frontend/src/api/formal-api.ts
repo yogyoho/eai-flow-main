@@ -314,7 +314,7 @@ export async function fetchFormalExportText(
 export function fetchFormalExportJsonld(
   graphs: ExportGraphs = "schema",
 ): Promise<{ success: boolean; document: unknown }> {
-  return authFetch(`/formal/export?format=json-ld&graphs=${graphs}`);
+  return authFetch(`${BASE}/export?format=json-ld&graphs=${graphs}`);
 }
 
 /** 浏览器侧下载（blob + 隐式锚点，导出互操作页"下载"按钮）。 */
