@@ -24,11 +24,13 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
+import os
 import uuid
 from datetime import datetime
+from pathlib import Path
 from typing import Any
 
-from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Request
 from pydantic import BaseModel
 from sqlalchemy import JSON, Boolean, DateTime, String, Text, func, text
 from sqlalchemy.dialects.postgresql import JSONB, UUID
@@ -104,6 +106,53 @@ async def _set_status(task_id: str, status: str, extra: str = "", params_extra: 
             )
     finally:
         await engine.dispose()
+
+
+# ── G3 直连抽取：源文件预取（创建时透传 Cookie 自 gateway 拉副本到内核卷）──────────
+
+_KF_SRC_DIR = Path("/data/kernel/kf-src")
+
+
+def _find_src_copy(task_id: str) -> Path | None:
+    for f in _KF_SRC_DIR.glob(task_id + ".*"):
+        return f
+    return None
+
+
+def _cleanup_src_copy(task_id: str) -> None:
+    for f in _KF_SRC_DIR.glob(task_id + ".*"):
+        f.unlink(missing_ok=True)
+
+
+def _direct_extract_outline(path: str) -> dict:
+    """G3 直连抽取：源文件副本 → 规则抽取大纲/实体候选/本体产物（run_extract 同构）。"""
+    from .text_extract import run_extract
+
+    return run_extract(path)
+
+async def prefetch_source_file(
+    gateway_base: str, sample_id: str, cookie: str, dest_no_ext: str
+) -> str | None:
+    """透传 Cookie 自 gateway 拉源文件副本 → /data/kernel/kf-src/<dest>.<ext>。
+
+    返回落盘路径；404（源文件缺失）返回 None；其余 HTTP 错误抛 HTTPException——
+    创建时快速失败，好过执行中才发现不可达。
+    """
+    import httpx
+
+    url = f"{gateway_base}/api/extensions/eia-samples/{sample_id}/source-file"
+    async with httpx.AsyncClient(timeout=120.0) as client:
+        resp = await client.get(url, headers={"Cookie": f"access_token={cookie}"} if cookie else {})
+    if resp.status_code == 404:
+        return None
+    if resp.status_code != 200:
+        raise HTTPException(resp.status_code, f"源文件预取失败: {resp.text[:200]}")
+    ctype = resp.headers.get("content-type", "")
+    ext = ".docx" if "wordprocessingml" in ctype else ".txt"
+    _KF_SRC_DIR.mkdir(parents=True, exist_ok=True)
+    dest = _KF_SRC_DIR / (dest_no_ext + ext)
+    dest.write_bytes(resp.content)
+    return str(dest)
 
 
 # ── converter：outline_json.ontology → EiaExtraction（纯函数，独立测试覆盖）──────────
@@ -225,6 +274,30 @@ async def _run_task(task_id: str, sample_id: str, document_id: str, force_review
                 return
             outline = row.outline_json if isinstance(row.outline_json, dict) else None
 
+            # G3 直连抽取：任务创建时预取的源文件副本在 → 规则抽取补产物 → 写回 kf_samples
+            # （与离线管线同构, 下游 converter 零改动）; 无副本走 v1 产物消费。
+            src_copy = _find_src_copy(task_id)
+            if src_copy:
+                try:
+                    outline_direct = await asyncio.to_thread(_direct_extract_outline, str(src_copy))
+                    async with engine.begin() as conn:
+                        await conn.execute(
+                            text(
+                                "UPDATE kf_samples SET outline_json = CAST(:o AS jsonb), updated_at = NOW() WHERE id = CAST(:sid AS uuid)"
+                            ),
+                            {"o": json.dumps(outline_direct, ensure_ascii=False), "sid": sample_id},
+                        )
+                    outline = outline_direct
+                except Exception as exc:  # noqa: BLE001 - 直连抽取失败落行可见
+                    await _set_status(
+                        task_id,
+                        "failed",
+                        extra="error = :err, finished_at = NOW()",
+                        params_extra={"err": f"直连抽取失败: {exc}"},
+                    )
+                    _cleanup_src_copy(task_id)
+                    return
+
             # converter 纯 CPU 段入线程池（P1 裁决 1A：不在事件循环跑 CPU 密集段）
             payload, stats = await asyncio.to_thread(
                 build_payload_from_outline,
@@ -289,6 +362,7 @@ async def _run_task(task_id: str, sample_id: str, document_id: str, force_review
                 extra="stats = CAST(:stats AS jsonb), finished_at = NOW()",
                 params_extra={"stats": json.dumps({**stats, **counts}, ensure_ascii=False)},
             )
+            _cleanup_src_copy(task_id)  # G3: 直连抽取的源文件副本用毕即清
         except Exception as exc:  # noqa: BLE001——任务失败必须落行可见，不静默
             await _set_status(
                 task_id,
@@ -340,9 +414,14 @@ async def sweep_orphan_tasks() -> None:
 async def create_task(
     body: CreateTaskBody,
     background: BackgroundTasks,
+    request: Request,
     _: CurrentUser = Depends(require_permission("system:access")),
 ) -> dict:
-    """登记并触发抽取任务。同 sample 活动任务 409；sample 缺失 404；未提取产物 422。"""
+    """登记并触发抽取任务。同 sample 活动任务 409；sample 缺失 404。
+
+    G3 双通道（2026-10-05）：样例已有产物 → v1 消费 outline_json；无产物但台账有
+    source_path → 创建时透传 Cookie 预取源文件副本，执行期规则抽取补产物（直连）。
+    """
     engine = _engine()
     try:
         async with engine.begin() as conn:
@@ -355,14 +434,19 @@ async def create_task(
                 raise HTTPException(409, "该样例已有进行中的抽取任务")
             sample = await _fetch_row(
                 conn,
-                "SELECT title, outline_json FROM kf_samples WHERE id = CAST(:sid AS uuid)",
+                "SELECT title, outline_json, source_path FROM kf_samples WHERE id = CAST(:sid AS uuid)",
                 {"sid": str(body.sample_id)},
             )
             if sample is None:
                 raise HTTPException(404, "kf_samples 中不存在该样例")
             onto = (sample.outline_json or {}).get("ontology") if isinstance(sample.outline_json, dict) else None
-            if not onto or not onto.get("entities"):
-                raise HTTPException(422, "该样例尚无已提取产物（outline_json.ontology 为空）——先跑提取流水线")
+            has_products = bool(onto and onto.get("entities"))
+            source_path = getattr(sample, "source_path", None)
+            if not has_products and not source_path:
+                raise HTTPException(
+                    422,
+                    "该样例尚无已提取产物且台账无源文件路径——无法创建抽取任务",
+                )
             task_id = str(uuid.uuid4())
             document_id = f"kf-sample:{body.sample_id}"
             await conn.execute(
@@ -376,8 +460,19 @@ async def create_task(
             )
     finally:
         await engine.dispose()
+    # G3 直连：无产物但台账有源文件 → 创建时透传 Cookie 预取源文件副本（用户在线, 快速失败）
+    direct_mode = False
+    if not has_products and source_path:
+        cookie = request.cookies.get("access_token", "")
+        await prefetch_source_file(
+            os.environ.get("ONTOSTUDIO_GATEWAY_URL", "http://gateway:8001"),
+            str(body.sample_id),
+            cookie,
+            task_id,
+        )
+        direct_mode = True
     background.add_task(_run_task, task_id, str(body.sample_id), document_id, body.force_review)
-    return {"id": task_id, "status": "queued", "document_id": document_id}
+    return {"id": task_id, "status": "queued", "document_id": document_id, "mode": "direct" if direct_mode else "v1"}
 
 
 @router.get("")
