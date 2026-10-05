@@ -309,22 +309,40 @@ export function IngestPage() {
               {/* 路径②：上传新文件直连抽取 */}
               {taskMode === "upload" && (
                 <div className="flex flex-col gap-2">
-                  <label className="text-muted-foreground text-[13px]">上传源文件（txt/docx）</label>
-                  <input
-                    type="file"
-                    accept=".txt,.docx"
-                    onChange={(e) => setUploadFile(e.target.files?.[0] ?? null)}
-                    className="text-xs file:border-border file:bg-card file:text-muted-foreground hover:file:text-foreground file:mr-2 file:rounded-md file:border-0 file:px-2 file:py-1 file:text-xs file:font-medium file:hover:bg-muted"
-                  />
+                  <label className="text-muted-foreground text-[13px]">上传源文件（txt/docx，规则抽取）</label>
                   {uploadFile ? (
-                    <button
-                      type="button"
-                      disabled={uploadMutation.isPending}
-                      onClick={() => uploadMutation.mutate(uploadFile)}
-                      className="bg-primary text-primary-foreground self-start rounded-md px-3 py-1.5 text-sm font-medium disabled:opacity-50"
-                    >
-                      {uploadMutation.isPending ? "上传抽取中…" : "上传并抽取"}
-                    </button>
+                    <div className="flex items-center gap-2 rounded-md border bg-muted/50 px-3 py-2">
+                      <FileText className="h-4 w-4 shrink-0 text-primary" />
+                      <span className="min-w-0 flex-1 truncate text-xs font-medium">{uploadFile.name}</span>
+                      <span className="text-muted-foreground flex-none text-xs">
+                        {(uploadFile.size / 1024).toFixed(0)} KB
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => setUploadFile(null)}
+                        className="text-muted-foreground hover:text-destructive ml-1 flex-none text-xs"
+                        aria-label="移除文件"
+                      >
+                        ✕
+                      </button>
+                    </div>
+                  ) : null}
+                  <button
+                    type="button"
+                    disabled={uploadMutation.isPending}
+                    onClick={() => uploadMutation.mutate(uploadFile!)}
+                    className="bg-primary text-primary-foreground self-start rounded-md px-3 py-1.5 text-sm font-medium disabled:opacity-50"
+                  >
+                    {uploadMutation.isPending ? (
+                      <span className="inline-flex items-center gap-1.5">
+                        <Loader2 className="h-3.5 w-3.5 animate-spin" /> 上传抽取中…
+                      </span>
+                    ) : (
+                      "上传并抽取"
+                    )}
+                  </button>
+                  {uploadMsg ? (
+                    <p className={cn("text-xs", uploadMsg.startsWith("✓") ? "text-success" : "text-destructive")}>{uploadMsg}</p>
                   ) : null}
                 </div>
               )}
