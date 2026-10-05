@@ -95,6 +95,21 @@ async def filter_doc_ids(rf_client, dataset_id: str, condition: dict) -> tuple[l
     return ids[:_FILTER_DOC_CAP], truncated
 
 
+def resolve_local_doc_path(base_path: str, file_path: str) -> Path | None:
+    """EAI-CUSTOM (bug-3307): 解析文档本地路径, 找不到返回 None。
+
+    DB file_path 历史上已含 ``data/users/`` 前缀(相对 backend CWD 直接可用);
+    同时兜底 ``base_path`` 拼接形态。s3:// 远端 URI 由调用方先行排除。
+    """
+    p = Path(file_path)
+    if p.is_absolute():
+        return p
+    for cand in (p, Path(base_path) / p):
+        if cand.exists():
+            return cand
+    return None
+
+
 class KnowledgeBaseService:
     """Knowledge base service with RAGFlow integration."""
 
@@ -329,6 +344,141 @@ class KnowledgeBaseService:
         except Exception as e:
             logger.warning(f"Failed to sync RAGFlow status: {e}")
             return {"status": "error", "message": str(e)}
+
+    @staticmethod
+    async def relink_ragflow(
+        db: AsyncSession,
+        kb: KnowledgeBase,
+        *,
+        include_documents: bool = True,
+        embedding_model_override: str | None = None,
+    ) -> dict:
+        """EAI-CUSTOM (bug-3307): 为孤儿 KB(ragflow_dataset_id IS NULL)补建 RAGFlow dataset 并回写 id。
+
+        create_kb 在 RAGFlow 不可用时静默降级落库, 此方法是事后修复通道(此前无任何
+        relink 端点, NULL 永不自愈)。幂等: 已链接的 KB 直接返回 already_linked。
+
+        include_documents=True 时把缺 ragflow_document_id 的本地文档尽力重传并触发解析
+        (逐文档 try/except, 单文档失败不影响链接本身; 已链接 KB 重跑时仅回填漏网文档,
+        按 ragflow_document_id IS NULL 逐文档幂等)。s3:// 远端对象无读回通道
+        (storage provider 只有 upload/delete), 记入 documents_skipped。
+
+        embedding_model_override: 覆盖 KB 存储的 embedding 模型并回写 —— 用于修复
+        存量模型在当前 RAGFlow 租户已不存在的孤儿库(如 ZHIPU-AI 下线、:latest 后缀漂移)。
+        """
+        already_linked = bool(kb.ragflow_dataset_id)
+        if already_linked:
+            result = {
+                "status": "already_linked",
+                "ragflow_dataset_id": kb.ragflow_dataset_id,
+                "documents_uploaded": 0,
+                "documents_failed": [],
+                "documents_skipped": 0,
+            }
+        else:
+            rf_client = KnowledgeBaseService._get_ragflow_client()
+            if not rf_client:
+                return {"status": "error", "message": "RAGFlow not configured"}
+            try:
+                if not await rf_client.is_available():
+                    return {"status": "error", "message": "RAGFlow service unavailable"}
+            except Exception as e:
+                return {"status": "error", "message": f"RAGFlow unreachable: {e}"}
+
+            embed_model = embedding_model_override or kb.embedding_model
+            if embedding_model_override:
+                kb.embedding_model = embedding_model_override
+            if not embed_model and kb.kb_type == "ragflow":
+                try:
+                    available = await rf_client.list_available_embedding_models()
+                    if available:
+                        embed_model = available[0]
+                        kb.embedding_model = embed_model
+                        logger.info(f"Relink '{kb.name}': auto-selected embedding model: {embed_model}")
+                except Exception as e:
+                    logger.warning(f"Relink '{kb.name}': embedding model list failed, continuing: {e}")
+
+            # EAI-CUSTOM (bug-3307): KB.chunk_method 允许 EAI 内部值(report), RAGFlow dataset 只收
+            # 上游枚举 —— 与文档上传同源映射(report→manual)。这正是孤儿产生的根因之一: create_kb
+            # 裸传 data.chunk_method, report 建库被 RAGFlow 101 拒绝后静默降级。
+            rf_chunk_method = DocumentService._CHUNK_METHOD_TO_PARSER.get(kb.chunk_method or "", None) or kb.chunk_method
+            try:
+                rf_result = await rf_client.create_dataset(
+                    name=kb.name,
+                    description=kb.description or "",
+                    embedding_model=embed_model,
+                    chunk_method=rf_chunk_method,
+                    parser_config=kb.parser_config,
+                )
+            except Exception as e:
+                # 修复通道显式失败(转 503), 不留半链接状态 —— 此处尚未 commit, id 仍为 NULL
+                return {"status": "error", "message": f"RAGFlow create_dataset failed: {e}"}
+            dataset_id = (rf_result.get("data") or {}).get("id")
+            if not dataset_id:
+                return {"status": "error", "message": "RAGFlow create_dataset returned no id"}
+            kb.ragflow_dataset_id = dataset_id
+            await db.commit()
+            logger.info(f"Relinked KB '{kb.name}' to RAGFlow dataset: {dataset_id}")
+
+            result = {
+                "status": "linked",
+                "ragflow_dataset_id": dataset_id,
+                "documents_uploaded": 0,
+                "documents_failed": [],
+                "documents_skipped": 0,
+            }
+        if not include_documents:
+            return result
+
+        # 文档回填(already_linked 重跑时同样执行): 只处理缺 ragflow_document_id 的文档,
+        # 逐文档幂等 —— 上传过的不再动。
+        rf_client = rf_client if not already_linked else KnowledgeBaseService._get_ragflow_client()
+        if rf_client is None:
+            logger.warning(f"Relink '{kb.name}': doc backfill skipped, RAGFlow not configured")
+            return result
+        config = get_extensions_config()
+        stmt = select(Document).where(
+            Document.knowledge_base_id == kb.id,
+            Document.ragflow_document_id.is_(None),
+        )
+        docs = (await db.execute(stmt)).scalars().all()
+        parser_id = DocumentService._CHUNK_METHOD_TO_PARSER.get(kb.chunk_method or "", "naive")
+        for doc in docs:
+            if is_remote_uri(doc.file_path):
+                result["documents_skipped"] += 1
+                logger.warning(f"Relink '{kb.name}': remote URI has no read-back path, skipped: {doc.file_path}")
+                continue
+            local = resolve_local_doc_path(config.storage.base_path, doc.file_path)
+            if local is None:
+                result["documents_skipped"] += 1
+                logger.warning(f"Relink '{kb.name}': file missing on disk, skipped: {doc.file_path}")
+                continue
+            try:
+                file_ext = doc.file_type or Path(doc.name).suffix.lower().lstrip(".")
+                DocumentService._validate_file_type(file_ext, parser_id)
+                rf_doc = await rf_client.upload_document(
+                    dataset_id=kb.ragflow_dataset_id,
+                    file_path=str(local),
+                    file_name=doc.name,
+                    parser_id=parser_id,
+                    parser_config=kb.parser_config,
+                )
+                rf_doc_id = (rf_doc.get("data") or {}).get("id")
+                if not rf_doc_id:
+                    raise RuntimeError("upload_document returned no id")
+                doc.ragflow_document_id = rf_doc_id
+                # 回到 uploading 态, 交给既有 list 端点的状态同步轮询推进
+                doc.status = DocumentStatus.UPLOADING.value
+                try:
+                    await rf_client.parse_document(kb.ragflow_dataset_id, rf_doc_id)
+                except Exception as parse_err:
+                    logger.warning(f"Relink '{kb.name}': parse trigger failed for {rf_doc_id}: {parse_err}")
+                result["documents_uploaded"] += 1
+            except Exception as e:
+                result["documents_failed"].append(doc.name)
+                logger.warning(f"Relink '{kb.name}': document re-upload failed for '{doc.name}': {e}")
+        await db.commit()
+        return result
 
     @staticmethod
     def to_response(kb: KnowledgeBase) -> KnowledgeBaseResponse:

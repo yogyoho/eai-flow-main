@@ -226,6 +226,40 @@ async def update_knowledge_base_retrieval_config(
     return await KnowledgeBaseService.update_retrieval_config(db, kb, config)
 
 
+@router.post("/{kb_id}/link-ragflow")
+async def link_knowledge_base_ragflow(
+    kb_id: UUID,
+    include_documents: bool = Query(True, description="补链后重传缺 ragflow_document_id 的本地文档"),
+    embedding_model: str | None = Query(None, description="覆盖 KB 存储的 embedding 模型并回写(修复存量模型失效的孤儿库)"),
+    db: AsyncSession = Depends(get_db),
+    current_user: CurrentUser = Depends(require_permission("kb:update")),
+    scope: FilterRule = Depends(with_data_scope("knowledge")),
+    identity: AttributeSet = Depends(current_identity),
+):
+    """EAI-CUSTOM (bug-3307): 孤儿 KB(ragflow_dataset_id IS NULL)补链 RAGFlow, 幂等。
+
+    为 KB 补建同名 dataset 并回写 id; include_documents=True 时尽力重传本地文档。
+    RAGFlow 未配置/不可用时返回 503 —— 与 create_kb 的静默降级相反, 修复通道必须显式失败。
+    """
+    kb = await _load_kb_scoped(db, kb_id, scope, identity)
+    if kb is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Knowledge base not found")
+    from app.extensions.knowledge.access import has_kb_grant
+
+    # EAI-CUSTOM (bug-3307): 写门 = owner | write-grantee | 超管 (verbatim 镜像 update_knowledge_base)
+    is_admin = await is_superadmin(db, current_user.id)
+    has_write = await has_kb_grant(db, kb.id, identity, "write")
+    if kb.owner_id != current_user.id and not is_admin and not has_write:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not authorized")
+
+    result = await KnowledgeBaseService.relink_ragflow(
+        db, kb, include_documents=include_documents, embedding_model_override=embedding_model
+    )
+    if result["status"] == "error":
+        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=result["message"])
+    return result
+
+
 @router.delete("/{kb_id}", response_model=MessageResponse)
 async def delete_knowledge_base(
     kb_id: UUID,
