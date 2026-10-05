@@ -46,6 +46,8 @@ export interface SampleRef {
   title: string;
   status: string;
   entity_count: number;
+  /** G3 双通道：false = 仅源文件（创建时走直连抽取）。 */
+  has_source: boolean;
   updated_at: string;
 }
 

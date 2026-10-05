@@ -161,7 +161,7 @@ export function IngestPage() {
         <PageHeader
           icon={FileInput}
           title="抽取导入"
-          description="抽取任务队列（实时轮询）、置信度分布与证据链引文。任务=把样例库已提取产物转换并批量写入图谱；开启强制人审的任务会全部进入消解审核。"
+          description="抽取任务队列（实时轮询）、置信度分布与证据链引文。任务双通道：样例有已提取产物 → 直接消费；仅有源文件 → 规则抽取补产物（直连）。开启强制人审的任务会全部进入消解审核。"
         />
 
         {/* 顶部动作行 */}
@@ -208,7 +208,9 @@ export function IngestPage() {
                 <SelectContent position="popper" className="max-h-72">
                   {(samplesQuery.data?.samples ?? []).map((s) => (
                     <SelectItem key={s.id} value={s.id}>
-                      {s.title}（{s.entity_count} 实体 · {s.status}）
+                      {s.entity_count > 0
+                        ? `${s.title}（${s.entity_count} 实体 · ${s.status}）`
+                        : `${s.title}（直连抽取 · ${s.status}）`}
                     </SelectItem>
                   ))}
                 </SelectContent>

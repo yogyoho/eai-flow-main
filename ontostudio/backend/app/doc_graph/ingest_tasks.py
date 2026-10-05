@@ -559,7 +559,7 @@ async def delete_task(task_id: str, _: CurrentUser = Depends(require_permission(
 
 @router.get("/samples")
 async def list_samples(_: CurrentUser = Depends(require_permission("system:access"))) -> dict:
-    """可建任务的样例清单（outline_json.ontology 非空）——新建任务的选取源（T6 前端接线配套）."""
+    """可建任务的样例清单（G3 双通道：有已提取产物 → v1 消费；仅有源文件 → 直连抽取）."""
     engine = _engine()
     try:
         async with engine.connect() as conn:
@@ -568,11 +568,13 @@ async def list_samples(_: CurrentUser = Depends(require_permission("system:acces
                     text(
                         """
                         SELECT id::text, title, status,
-                               jsonb_array_length(outline_json->'ontology'->'entities') AS entity_count,
+                               COALESCE(jsonb_array_length(outline_json->'ontology'->'entities'), 0) AS entity_count,
+                               (source_path IS NOT NULL AND source_path <> '') AS has_source,
                                updated_at
                         FROM kf_samples
-                        WHERE outline_json->'ontology'->'entities' IS NOT NULL
-                          AND jsonb_array_length(outline_json->'ontology'->'entities') > 0
+                        WHERE (outline_json->'ontology'->'entities' IS NOT NULL
+                               AND jsonb_array_length(outline_json->'ontology'->'entities') > 0)
+                           OR (source_path IS NOT NULL AND source_path <> '')
                         ORDER BY updated_at DESC LIMIT 100
                         """
                     )
