@@ -172,11 +172,6 @@ export function IngestPage() {
             {loadMutation.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : null}
             从主系统线程导入
           </button>
-          <span className="text-muted-foreground ml-auto max-w-[52ch] text-xs leading-relaxed">
-            抽取来源 <span className="text-foreground font-mono">eia-batch-v2-llm</span>
-            （LLM 离线批量管线）· 在线任务 = 消费已提取产物入图（v1）·
-            v1 历史参考：月儿湾全链路 460 实体 / 205 关系 / 318 提及 → 装载 → infer 1857 物化（该批 v1 数据已清除）
-          </span>
         </div>
         {loadMutation.isError ? (
           <p className="text-destructive mb-3 text-sm">{loadMsg}</p>
