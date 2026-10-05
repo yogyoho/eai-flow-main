@@ -114,3 +114,20 @@
 - **Cons:** ~300 行移植 + 容器卷变更 + mention 合成边界（首次去重跨文档、quote 归属）需重新设计。
 - **Context:** 外部声音 2026-10-01 证伪移植路径三连（text→dict 边界/文件可达性/置信度过 0.7 人审门——末条已由 force_review 解）；converter 模式参照 ontostudio/backend/app/ontology/c_ingest/pipeline.py:374。
 - **Depends on / blocked by:** B2 v1（产物消费路径）落地并验证闭环。
+## TODO: OntoStudio 多域接入四步清单（标注聚合/域筛选/同域合并约束/透镜注册）
+
+- **What:** 接入第二域（bid_quote 等）时的四步：①etype/谓词中文标注改多域聚合（各域 yaml 注释块合并，键加域名空间防同名冲突）②pending 端点（fetchPending/resolution/pending）与消解面板加域筛选 ③合并建议加同域硬约束（跨域实体禁止合并建议——防同名 etype 误配事故）④registry 注册新域透镜对象类型（实体库类型选择器才可浏览）。
+- **Why:** 现有中文标注源（fetchEiaEtypeLabels/getPredicateLabels，explorerDataSource.ts）只解析 eia.yaml 注释块——其他域 etype/谓词回退英文；pending 队列（fetchPending）不带域参数——多域待审混流无法拆分；相似合并按 etype 匹配——跨域同名 etype 会产生错误合并建议（合并跨域实体是数据事故）。
+- **Pros:** 多域数据可审可管；实体库/消解审核/图谱浏览全链路支持新域。
+- **Cons:** 四处改动分散（标注解析/resolution 端点/前端面板/registry yaml），需一次性设计。
+- **Context:** 2026-10-02 消解审核页审计探针实证：registry 仅 5 对象类型（图谱实体/关系/证据 + eia 实体/关系双透镜），待审 230 全 eia 域；当前单 eia 闭环刚打通，多域改造无真实第二域数据验证，刻意缓行。涉及：explorerDataSource.ts（fetchEiaEtypeLabels/getPredicateLabels）、ontology-graph-api.ts（fetchPending）、ResolutionPanel.tsx、registry yaml。
+- **Depends on / blocked by:** 第二域真实数据产生（bid_quote 管线或新域接入）。
+
+## TODO: OntoStudio 抽取管线多域化（converter 域分发 + kf_samples 域标注）
+
+- **What:** 抽取导入管线从单域硬编码改多域分发：①converter（ingest_tasks.py:155 `_drop_invalid(onto, EiaExtraction.domain_etypes, ...)` 与 :185 `payload = EiaExtraction(domain="eia", ...)`）按样例内容自动判域——entities 的 etype 命中哪个域的 domain_etypes 集即分发到对应 Extraction 子类（BidExtraction 类已存在于 schemas.py:329，域分发器是唯一缺口；基类 fail-closed 已拒未知域）；②kf_samples 加 domain 列（或 etype 推断）显式标注；③/samples 下拉加域列过滤与标注。
+- **Why:** 2026-10-10 CEO 审核定案：v1 单域硬编码是有意边界，但第二条域接入抽取时此处是唯一分发缺口——BidExtraction 骨架已备（与 qualified_bidder 规则同源，Phase B 试点），届时只差分发器。下拉全环评样例是数据事实非缺陷。
+- **Pros:** 多域产物可任务化入图；BidExtraction/未来域 Extraction 子类即插即用；样例域可追溯。
+- **Cons:** domain 判定按内容启发式有误分风险（fail-closed 兜底：不命中任何域即拒）；kf_samples 加列需迁移。
+- **Context:** 消费端/UI 侧配套见「OntoStudio 多域接入四步清单」（标注聚合/域筛选/同域合并约束/透镜注册）——两条合计才是完整多域抽取。强制人审（force_review=true）与白名单清洗（_drop_invalid）语义在各域通用，保留。
+- **Depends on / blocked by:** 第二域真实抽取产物产生（同四步清单前置）；kf_samples 表结构变更窗口。
