@@ -131,3 +131,21 @@
 - **Cons:** domain 判定按内容启发式有误分风险（fail-closed 兜底：不命中任何域即拒）；kf_samples 加列需迁移。
 - **Context:** 消费端/UI 侧配套见「OntoStudio 多域接入四步清单」（标注聚合/域筛选/同域合并约束/透镜注册）——两条合计才是完整多域抽取。强制人审（force_review=true）与白名单清洗（_drop_invalid）语义在各域通用，保留。
 - **Depends on / blocked by:** 第二域真实抽取产物产生（同四步清单前置）；kf_samples 表结构变更窗口。
+
+## TODO: OntoStudio 审阅角色授权 + 操作审计日志(多人化前置)
+
+- **What:** ①消解审核/建模器/治理动作按角色授权(审阅者/建模者/只读三档, 替代当前 system:access 一刀切+superadmin 超管横幅); ②关键操作审计留痕(审核确认/驳回/合并/规则启停/快照恢复/装载——who/when/what, 现有 history jsonl 只有事件无操作者)。
+- **Why:** 2026-10-05 能力矩阵新识别盲区 B1/B2——消解面板横幅自述「第一版仅超管可审」; 多人使用前任何有权限者可驳回/合并/停用规则且无追责通道。
+- **Pros:** 多人协作安全前置; 审计满足内部合规。
+- **Cons:** 角色模型需与主系统权限体系(role-management yaml 驱动)对齐, 跨模块设计。
+- **Context:** 权限机制参照主系统 role-management yaml 驱动方案(memory: role-management-yaml-driven); 消解面板横幅与 rules_state/快照/装载等操作点为审计插桩位。
+- **Depends on / blocked by:** 多人真实使用需求确认(单人当前低危)。
+
+## TODO: OntoStudio 低优先增强池(通知/registry回滚UI/CQ库机制)
+
+- **What:** 三件低优先: ①任务失败/违规突增/装载失败通知通道; ②建模器 registry 变更回滚 UI(yaml 在 git 有历史, 现需手工 revert); ③CQ 库扩充机制(cq.yaml 维护规范+入口, 现仅 4 条种子 1 条停用)。
+- **Why:** 2026-10-05 能力矩阵 B3/B4/B5——均为低频改进, 不阻塞任何当前使用。
+- **Pros:** 运维体验与工程实践完善。
+- **Cons:** 均无日常痛点驱动, 排期价值低。
+- **Context:** 能力矩阵 docs/designs/2026-10-05-ontostudio-capability-matrix.md; mention 治理已入「数据治理」面板可定期手动跑。
+- **Depends on / blocked by:** 无硬前置, 按需认领。
