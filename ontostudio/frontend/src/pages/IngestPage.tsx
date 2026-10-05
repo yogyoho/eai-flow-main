@@ -25,6 +25,13 @@ import {
 } from "@/api/ingest-tasks-api";
 import { runFormalLoad } from "@/api/formal-api";
 import { fetchObjects } from "@/api/ontology-graph-api";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { domainAlias } from "@/lib/terms";
 import { Chip, PageHeader, Panel } from "@/pages/shared";
 import { cn } from "@/lib/utils";
@@ -75,11 +82,10 @@ export function IngestPage() {
   const [sampleId, setSampleId] = useState("");
   const [createMsg, setCreateMsg] = useState<string | null>(null);
 
-  // 可建任务样例（新建表单选取源）
+  // 可建任务样例（新建表单选取源）+ 证据链引文的样例名解析——证据链需要, 常驻拉取
   const samplesQuery = useQuery({
     queryKey: ["ingest", "samples"],
     queryFn: ({ signal }) => fetchSamples(signal),
-    enabled: createOpen,
     staleTime: 30_000,
   });
   const createMutation = useMutation({
@@ -139,6 +145,15 @@ export function IngestPage() {
     threadId?: string;
     extractedBy?: string;
   }>;
+  // 引文人话化（2026-10-05 用户反馈）：doc:kf-sample:<uuid> → 样例标题；
+  // extractedBy ingest-task:<uuid> → 「抽取任务 <短id>」；离线管线名原样
+  const sampleTitleOf = (docId?: string) => {
+    if (!docId) return null;
+    const id = docId.split(":").pop() ?? "";
+    return samplesQuery.data?.samples.find((s) => s.id === id)?.title ?? null;
+  };
+  const extractedByLabel = (by: string) =>
+    by.startsWith("ingest-task:") ? `抽取任务 ${by.split(":")[1]?.slice(0, 8) ?? ""}` : by;
 
   return (
     <div className="h-full overflow-x-auto overflow-y-auto">
@@ -184,21 +199,21 @@ export function IngestPage() {
         {createOpen ? (
           <Panel title="新建抽取任务" className="mb-3.5">
             <div className="flex flex-col gap-2 p-4 text-sm">
-              <label className="text-muted-foreground text-[13px]">
-                选择样例（已提取产物）：
-                <select
-                  value={sampleId}
-                  onChange={(e) => setSampleId(e.target.value)}
-                  className="border-input bg-card mt-1 w-full max-w-xl rounded-md border px-2.5 py-1.5 text-sm"
-                >
-                  <option value="">— 选择 —</option>
+            <div className="flex flex-col gap-1">
+              <label className="text-muted-foreground text-[13px]">选择样例（已提取产物）</label>
+              <Select value={sampleId || undefined} onValueChange={(v) => setSampleId(v || "")}>
+                <SelectTrigger className="w-full max-w-xl">
+                  <SelectValue placeholder="— 选择 —" />
+                </SelectTrigger>
+                <SelectContent position="popper" className="max-h-72">
                   {(samplesQuery.data?.samples ?? []).map((s) => (
-                    <option key={s.id} value={s.id}>
+                    <SelectItem key={s.id} value={s.id}>
                       {s.title}（{s.entity_count} 实体 · {s.status}）
-                    </option>
+                    </SelectItem>
                   ))}
-                </select>
-              </label>
+                </SelectContent>
+              </Select>
+            </div>
               <p className="text-muted-foreground text-xs">
                 force_review 默认开启：入库实体全量置待复核（D11/11A），消解审核逐条确认后入图。
               </p>
@@ -396,10 +411,17 @@ export function IngestPage() {
                     key={m.id}
                     className="border-border bg-muted rounded-lg border px-3 py-2.5 text-sm"
                   >
-                    <blockquote>{m.quote ? `"${m.quote}"` : <span className="text-muted-foreground">（无上下文引文——产物消费路径不含句子级 quote）</span>}</blockquote>
-                    <figcaption className="text-muted-foreground/80 mt-1 font-mono text-xs">
-                      doc:{m.documentId || "—"} · thread:{m.threadId?.slice(0, 6) || "—"}
-                      {m.extractedBy ? ` · ${m.extractedBy}` : ""}
+                    <blockquote className="leading-relaxed">
+                      {m.quote ? (
+                        `"${m.quote}"`
+                      ) : (
+                        <span className="text-muted-foreground">（离线批量抽取产物未携带原文引文）</span>
+                      )}
+                    </blockquote>
+                    <figcaption className="text-muted-foreground/80 mt-1 text-xs">
+                      来源样例 {sampleTitleOf(m.documentId) ?? `doc:${(m.documentId || "").split(":").pop()?.slice(0, 8) || "—"}`}
+                      {m.threadId ? ` · 会话 ${m.threadId.slice(0, 6)}` : ""}
+                      {m.extractedBy ? ` · ${extractedByLabel(m.extractedBy)}` : ""}
                     </figcaption>
                   </figure>
                 ))
