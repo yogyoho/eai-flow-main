@@ -1,7 +1,7 @@
 /**
  * 08 抽取导入（EAI-CUSTOM, 2026-09-28 审计升级；2026-10-01 T6 队列接真）——真数据区块：
  *
- * - 抽取任务队列：GET /ingest-tasks 真数据 + 2s 轮询（阶段枚举文案，无百分比——后端无进度生产者）；
+ * - 抽取任务队列：GET /ingest-tasks 真数据 + 2s 轮询（G6 进度百分比：loading 阶段 stats 独立连接实时写入）；
  * - 新建抽取任务：POST /ingest-tasks（sample 选自 kf_samples 已提取产物）；
  * - 置信度分布：graph_entity objects → 客户端分桶计算（真数据）；
  * - 证据链引文：graph_mention objects → 按 extracted_at 倒序取最近 5 条（真数据）；
