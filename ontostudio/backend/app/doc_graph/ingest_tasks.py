@@ -84,6 +84,12 @@ class CreateTaskBody(BaseModel):
     force_review: bool = True
 
 
+class UploadExtractBody(BaseModel):
+    """POST /ingest-tasks/upload 请求体（G3 文件上传一体流）。"""
+
+    force_review: bool = True
+
+
 # ── 连接（照 ingest.py 既有模式：每操作自建引擎 + NullPool + 显式 dispose）──────────
 
 
@@ -111,6 +117,75 @@ async def _set_status(task_id: str, status: str, extra: str = "", params_extra: 
 # ── G3 直连抽取：源文件预取（创建时透传 Cookie 自 gateway 拉副本到内核卷）──────────
 
 _KF_SRC_DIR = Path("/data/kernel/kf-src")
+
+_UPLOADS_DIR = Path("/data/kernel/kf-uploads")
+_ALLOWED_SOURCE_EXT = {".txt", ".docx"}
+
+
+def _upload_extract_and_register(
+    upload_path: Path, original_name: str, force_review: bool, user_id: str
+) -> dict:
+    """G3 上传一体流（CPU 段，后台执行）：kf_samples 行 → run_extract → outline_json → 建任务行。
+
+    kf_samples 双写（同库同 schema， OntoStudio 上传入口 + EAI 向导入口双向可见）。
+    规则抽取失败 → 样例行保留（status=failed_extract）+ 任务行 failed，文件不删（可重试）。
+    """
+    import hashlib
+
+    from app.doc_graph.text_extract import ExtractSourceError, run_extract
+
+    task_id = str(uuid.uuid4())
+    engine = _engine()
+    try:
+        ext = upload_path.suffix.lower()
+        file_hash = hashlib.sha256(upload_path.read_bytes()).hexdigest()[:32]
+        with engine.begin() as conn:
+            conn.execute(
+                text(
+                    """
+                    INSERT INTO kf_samples (id, title, source_path, file_hash, scenario, status)
+                    VALUES (CAST(:sid AS uuid), :title, :spath, :fhash, 'other', 'parsed')
+                    ON CONFLICT (file_hash) DO UPDATE SET source_path = EXCLUDED.source_path, updated_at = NOW()
+                    RETURNING id
+                    """
+                ).bindparams(),
+                {"sid": uuid.uuid4(), "title": original_name, "spath": str(upload_path), "fhash": file_hash},
+            )
+        try:
+            outline = run_extract(str(upload_path))
+        except ExtractSourceError as exc:
+            with engine.begin() as conn:
+                conn.execute(
+                    text("UPDATE kf_samples SET status = 'failed_extract', notes = :n WHERE source_path = :sp"),
+                    {"n": str(exc)[:500], "sp": str(upload_path)},
+                )
+            raise
+        with engine.begin() as conn:
+            conn.execute(
+                text(
+                    "UPDATE kf_samples SET outline_json = CAST(:o AS jsonb), status = 'parsed', updated_at = NOW() WHERE source_path = :sp"
+                ),
+                {"o": json.dumps(outline, ensure_ascii=False), "sp": str(upload_path)},
+            )
+        document_id = f"kf-sample:{file_hash[:8]}"
+        asyncio.get_event_loop().run_in_executor(
+            None,
+            lambda: _run_task_with_sample_uuid(task_id, _sample_uuid_for_hash(file_hash), document_id, force_review),
+        )
+        return {"task_id": task_id, "mode": "upload-direct", "file": original_name}
+    except ExtractSourceError as exc:
+        raise HTTPException(400, f"源文件不可读: {exc}") from exc
+
+
+def _sample_uuid_for_hash(file_hash: str) -> str:
+    """file_hash → 稳定 uuid5（与 kf_samples id 列 uuid 类型对齐）。"""
+    import uuid as _uuid
+
+    return str(_uuid.uuid5(_uuid.NAMESPACE_URL, f"kf-upload:{file_hash}"))
+
+
+def _run_task_with_sample_uuid(task_id: str, sample_uuid: str, document_id: str, force_review: bool) -> None:
+    _run_task(task_id, sample_uuid, document_id, force_review)
 
 
 def _find_src_copy(task_id: str) -> Path | None:
