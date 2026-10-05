@@ -12,7 +12,7 @@ import os
 import re
 import threading
 from dataclasses import asdict
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 from app.ontology.kernel.cq import load_cqs, run_cqs
@@ -743,6 +743,28 @@ class KernelService:
                 }
             )
         return out
+
+    def prune_snapshots(self, keep_days: int = 30) -> dict:
+        """按文件名时间戳滚动清理 snapshot-*.trig（pre-restore-* 回滚点不受影响）。"""
+        import re as _re
+
+        d = self.snapshots_dir()
+        if not d or not d.exists():
+            return {"removed": 0}
+        cutoff = datetime.now(timezone.utc) - timedelta(days=keep_days)
+        removed = 0
+        for f in d.glob("snapshot-*.trig"):
+            m = _re.search(r"snapshot-(\d{8}T\d{6}Z)\.trig", f.name)
+            if not m:
+                continue
+            try:
+                ts = datetime.strptime(m.group(1), "%Y%m%dT%H%M%SZ").replace(tzinfo=timezone.utc)
+            except ValueError:
+                continue
+            if ts < cutoff:
+                f.unlink()
+                removed += 1
+        return {"removed": removed}
 
     def restore_snapshot(self, file: str) -> dict:
         """TriG 快照 → 清空全部 named graph → 原样回灌；恢复前自动生成回滚点快照。"""

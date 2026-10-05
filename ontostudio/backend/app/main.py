@@ -27,11 +27,14 @@ from starlette.types import Receive, Scope, Send
 
 from app import auth
 from app.db import ensure_tables
+import asyncio
+
 from app.doc_graph.mcp import server as doc_graph_mcp_server
 from app.doc_graph.ingest_tasks import router as ingest_tasks_router
 from app.doc_graph.ingest_tasks import sweep_orphan_tasks
 from app.doc_graph.routers import router as doc_graph_router
 from app.ontology.formal import router as formal_router
+from app.ontology.kernel.snapshot_scheduler import snapshot_daily_loop
 from app.ontology.mcp import server as ontology_mcp_server
 from app.ontology.registry_content import router as registry_content_router
 from app.ontology.routers import router as ontology_router
@@ -126,8 +129,12 @@ def create_app() -> FastAPI:
         doc_graph_mcp = StreamableHTTPSessionManager(app=doc_graph_mcp_server, stateless=True, json_response=True)
         ontology_guard.bind(ontology_mcp)
         doc_graph_guard.bind(doc_graph_mcp)
+        snapshot_task = asyncio.create_task(snapshot_daily_loop())  # G1/B6: 每日 06:00 自动快照+30 天滚动清理
         async with ontology_mcp.run(), doc_graph_mcp.run():
-            yield
+            try:
+                yield
+            finally:
+                snapshot_task.cancel()
 
     app = FastAPI(title="OntoStudio 本体建模系统", version="0.1.0", lifespan=lifespan)
     app.add_middleware(CORSMiddleware, allow_origins=_cors_origins(), allow_credentials=True, allow_methods=["*"], allow_headers=["*"])

@@ -214,7 +214,7 @@ export function ExportPage() {
         </Panel>
         <Panel
           title="快照与恢复"
-          subtitle="TriG 全图（含派生）落盘内核卷 · 恢复前自动生成回滚点"
+          subtitle="TriG 全图（含派生）· 每日 06:00 自动 + 手动 · 保留 30 天 · 恢复前自动回滚点"
           actions={
             <button
               type="button"
