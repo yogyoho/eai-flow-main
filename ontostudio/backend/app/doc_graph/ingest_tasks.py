@@ -207,8 +207,8 @@ async def _run_task(task_id: str, sample_id: str, document_id: str, force_review
         try:
             async with engine.begin() as conn:
                 await conn.execute(
-                    text("UPDATE ingest_tasks SET status='extracting', started_at=NOW(), updated_at=NOW() WHERE id = CAST(:tid AS uuid)"),
-                    {"tid": task_id},
+                    text("UPDATE ingest_tasks SET status='extracting', started_at=NOW(), updated_at=NOW(), stats = CAST(:s AS jsonb) WHERE id = CAST(:tid AS uuid)"),
+                    {"tid": task_id, "s": json.dumps({"progress": {"stage": "extracting", "pct": 10}}, ensure_ascii=False)},
                 )
                 row = await _fetch_row(
                     conn,
@@ -245,6 +245,26 @@ async def _run_task(task_id: str, sample_id: str, document_id: str, force_review
             alive = await _alive_check(task_id)
             if not alive:
                 return  # aborted——用户已放弃本任务
+            total = len(payload.entities) + len(payload.relations)
+
+            async def _set_progress(done: int, total: int) -> None:
+                """G6 进度：loading 阶段经独立连接写 stats jsonb（主事务外可见；失败静默）。"""
+                engine3 = _engine()
+                try:
+                    async with engine3.begin() as conn:
+                        await conn.execute(
+                            text("UPDATE ingest_tasks SET stats = CAST(:s AS jsonb), updated_at = NOW() WHERE id = CAST(:tid AS uuid)"),
+                            {
+                                "s": json.dumps({"progress": {"stage": "loading", "done": done, "total": total, "pct": 30 + int(60 * done / total) if total else 100}}, ensure_ascii=False),
+                                "tid": str(task_id),
+                            },
+                        )
+                except Exception:  # noqa: BLE001 - 进度写失败不碰任务主流程
+                    pass
+                finally:
+                    await engine3.dispose()
+
+            await _set_progress(0, total)
             await _set_status(task_id, "loading")
 
             # 重跑=替换（D12/12A）：dg_mentions 无唯一键，先清同文档旧产物再入库
@@ -258,7 +278,10 @@ async def _run_task(task_id: str, sample_id: str, document_id: str, force_review
             # force_review（D11 终裁 v2）：下沉为 ingest_extraction 的 force_pending——新行直接 pending、
             # 冲突行覆盖 promote-only 提升；后置 UPDATE 补丁废弃（重跑时 created_at 窗口挡不住
             # ingest 提升路径，两不变量打架——eng-review 演练实测）
-            counts = await ingest_extraction(payload, force_pending=force_review)
+            def _progress_cb(done: int, total: int) -> None:
+                asyncio.create_task(_set_progress(done, total))
+
+            counts = await ingest_extraction(payload, force_pending=force_review, progress_cb=_progress_cb)
 
             await _set_status(
                 task_id,

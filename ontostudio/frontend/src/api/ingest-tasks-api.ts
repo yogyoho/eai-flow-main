@@ -33,6 +33,8 @@ export interface IngestTask {
     mentions?: number;
     entities_upserted?: number;
     dropped?: { entities: number; relations: number };
+    /** G6 进度：loading 阶段实时写（独立连接），done 后 stats 被最终计数覆盖。 */
+    progress?: { stage: string; done?: number; total?: number; pct?: number } | null;
   } | null;
   created_at: string;
   started_at: string | null;

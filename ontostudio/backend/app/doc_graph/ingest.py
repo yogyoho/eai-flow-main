@@ -52,7 +52,9 @@ def project_scoped_attrs(attrs: dict | None, project_id: str | None) -> dict:
     return {**(attrs or {}), "scope": "project", "project_id": project_id}
 
 
-async def ingest_extraction(payload: ExtractionPayload, force_pending: bool = False) -> dict[str, Any]:
+async def ingest_extraction(
+    payload: ExtractionPayload, force_pending: bool = False, progress_cb: Any = None
+) -> dict[str, Any]:
     """校验通过的抽取结果入库（任意域 *Extraction 子类, 函数体按基类字段通用取值）。返回计数供 MCP 工具向 agent 汇报。
 
     EAI-CUSTOM(2026-10-01 B2/D11): force_pending=True 时本载荷触碰的实体一律置
@@ -63,6 +65,8 @@ async def ingest_extraction(payload: ExtractionPayload, force_pending: bool = Fa
     engine = create_async_engine(_ext_url(), poolclass=NullPool)
     entity_ids: dict[str, Any] = {}  # payload 内 name → entity id（DB 返回 uuid.UUID, 注解用 Any）
     counts: dict[str, Any] = {"entities_upserted": 0, "relations": 0, "mentions": 0}
+    total = len(payload.entities) + len(payload.relations)
+    done = 0
     try:
         async with engine.begin() as conn:
             for e in payload.entities:
@@ -117,7 +121,12 @@ async def ingest_extraction(payload: ExtractionPayload, force_pending: bool = Fa
                     },
                 )
                 counts["mentions"] += 1
+                done += 1
+                if progress_cb is not None and done % 100 == 0:
+                    progress_cb(done, total)
             counts["entities_upserted"] = len(entity_ids)
+            if progress_cb is not None:
+                progress_cb(done, total)
 
             for r in payload.relations:
                 rel_row = (
@@ -157,6 +166,9 @@ async def ingest_extraction(payload: ExtractionPayload, force_pending: bool = Fa
                     },
                 )
                 counts["relations"] += 1
+                done += 1
+                if progress_cb is not None and (done % 100 == 0 or done == total):
+                    progress_cb(done, total)
                 counts["mentions"] += 1
     finally:
         await engine.dispose()

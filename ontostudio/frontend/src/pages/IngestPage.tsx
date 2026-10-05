@@ -258,12 +258,12 @@ export function IngestPage() {
             <table className="w-full text-[13px]">
               <thead>
                 <tr className="border-border bg-muted/60 border-b">
-                  {["来源", "创建时间", "域", "状态", "实体", "关系", "提及", "操作"].map((head, index) => (
+                  {["来源", "创建时间", "域", "状态", "进度", "实体", "关系", "提及", "操作"].map((head, index) => (
                     <th
                       key={head}
                       className={cn(
                         "text-muted-foreground px-4 py-2 text-xs font-medium whitespace-nowrap",
-                        index >= 3 && index <= 5 ? "text-right" : "text-left",
+                        index >= 4 && index <= 6 ? "text-right" : "text-left",
                       )}
                     >
                       {head}
@@ -274,14 +274,14 @@ export function IngestPage() {
               <tbody>
                 {tasksQuery.isLoading ? (
                   <tr>
-                    <td colSpan={8} className="text-muted-foreground px-4 py-6 text-center text-sm">
+                    <td colSpan={9} className="text-muted-foreground px-4 py-6 text-center text-sm">
                       <Loader2 className="mr-1.5 inline h-3.5 w-3.5 animate-spin" />
                       加载任务队列…
                     </td>
                   </tr>
                 ) : tasks.length === 0 ? (
                   <tr>
-                    <td colSpan={8} className="text-muted-foreground px-4 py-6 text-center text-sm">
+                    <td colSpan={9} className="text-muted-foreground px-4 py-6 text-center text-sm">
                       队列为空——点「＋ 新建抽取任务」从已提取样例创建
                     </td>
                   </tr>
@@ -319,6 +319,14 @@ export function IngestPage() {
                             {task.error}
                           </span>
                         ) : null}
+                      </td>
+                      {/* G6 进度列：loading 阶段实时百分比（独立连接写 stats），完成 ✓，其余 — */}
+                      <td className="px-4 py-2.5 text-right font-mono text-xs tabular-nums">
+                        {isActiveStatus(task.status) && task.stats?.progress?.pct != null
+                          ? `${task.stats.progress.pct}%`
+                          : task.status === "done"
+                            ? "✓"
+                            : "—"}
                       </td>
                       <td className="px-4 py-2.5 text-right tabular-nums">{task.stats?.entities_upserted ?? "—"}</td>
                       <td className="px-4 py-2.5 text-right tabular-nums">{task.stats?.relations ?? "—"}</td>
