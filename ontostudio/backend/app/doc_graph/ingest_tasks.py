@@ -440,7 +440,7 @@ async def task_stats(_: CurrentUser = Depends(require_permission("system:access"
 
 
 @router.delete("/{task_id}")
-async def delete_task(task_id: str, _: CurrentUser = Depends(require_permission("system:access"))) -> dict:
+async def delete_task(task_id: str, _: CurrentUser = Depends(require_permission("ontology:model"))) -> dict:
     """终态行删除；运行中置 aborted（runner 中途检查退出；不强杀进程——v1 契约）。"""
     engine = _engine()
     try:

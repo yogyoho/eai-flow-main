@@ -52,6 +52,17 @@ ACCESS_TOKEN_COOKIE = "access_token"
 # v1 superadmin-only 口径：角色/权限 claim 命中其一即视为 system:access 通过
 _ADMIN_ROLE_CODES = {"superadmin", "admin"}
 
+# ── OntoStudio 权限点目录（B1 角色授权, 2026-10-05 D12 方案 A：授权委托 EAI 策略中心）──
+# 判定链 = require_permission → gateway /api/permissions/me（UnifiedPermissionEngine
+# 单一真相源）→ is_admin 短路 或 permissions 含目标点；EAI 系统管理模块·策略中心给
+# 角色/用户勾选这些点（与 page:/nav: 同机制）。未授权点 → 403 fail-closed。
+# 授权动作一律在 EAI 侧配置，本系统不自建用户/角色管理（D12 决策）。
+PERM_ACCESS = "system:access"  # 登录基础门：全部只读页面/列表/明细
+PERM_REVIEW = "ontology:review"  # 消解审核：确认/驳回/合并/撤销/批量/CQ 验收运行
+PERM_MODEL = "ontology:model"  # 建模与抽取：建模器保存/删除、新建/中止抽取任务、推理全量重算、草稿校验
+PERM_GOVERNANCE = "ontology:governance"  # 治理：全量装载、规则启停、孤儿/零边 mention 清除、快照生成/恢复/删除
+PERM_EXPORT = "ontology:export"  # 交付物流出：图导出下载、快照内容下载
+
 # HS256 对称密钥最低字节数（RFC 7518 §3.2 建议 ≥32 字节；防弱 secret 被 PyJWT 静默接受）
 _MIN_SECRET_LEN = 32
 

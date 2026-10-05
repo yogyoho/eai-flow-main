@@ -32,6 +32,8 @@ interface PermissionsMeResponse {
 export interface PermissionGate {
   /** 页面可见性判定（签名对齐主系统 usePermission.canPage；加载中 fail-open）。 */
   canPage: (pageId: string) => boolean;
+  /** 通用权限点判定（B1: ontology:review/model/governance/export）；加载中 fail-open；is_admin 短路。 */
+  can: (permission: string) => boolean;
   isLoading: boolean;
   /** 预检的页面 id（本体页固定 ontology:page:map）。 */
   pageId: string;
@@ -61,15 +63,23 @@ function fetchPermissionsMe(): Promise<PermissionsMeResponse> {
 
 export function usePermission(): PermissionGate {
   const [pages, setPages] = useState<string[] | null>(null);
+  const [permissions, setPermissions] = useState<string[] | null>(null);
+  const [isAdmin, setIsAdmin] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
     fetchPermissionsMe()
       .then((data) => {
-        if (!cancelled) setPages(data.pages ?? []);
+        if (cancelled) return;
+        setPages(data.pages ?? []);
+        setPermissions(data.permissions ?? []);
+        setIsAdmin(Boolean(data.is_admin));
       })
       .catch(() => {
-        if (!cancelled) setPages([]);
+        if (!cancelled) {
+          setPages([]);
+          setPermissions([]);
+        }
       });
     return () => {
       cancelled = true;
@@ -79,9 +89,26 @@ export function usePermission(): PermissionGate {
   const isLoading = pages === null;
   const canPage = (pageId: string): boolean => {
     if (isLoading) return true; // Fail-open: 与主系统一致，加载中先渲染
-    if (pages.includes("*")) return true;
-    return pages.includes(pageId);
+    if (pages!.includes("*") || isAdmin) return true;
+    return pages!.includes(pageId);
+  };
+  const can = (permission: string): boolean => {
+    if (isLoading) return true; // fail-open 与 canPage 同约定
+    if (isAdmin || permissions!.includes("*")) return true;
+    return permissions!.includes(permission);
   };
 
-  return { canPage, isLoading, pageId: PAGE_ID };
+  return { canPage, can, isLoading, pageId: PAGE_ID };
 }
+
+/** OntoStudio 权限点目录（B1, 2026-10-05）——与后端 auth.py PERM_* 一一对应。 */
+export const PERM = {
+  /** 消解审核：确认/驳回/合并/撤销/批量/CQ 验收运行 */
+  REVIEW: "ontology:review",
+  /** 建模与抽取：建模器保存/删除、新建/中止抽取任务、推理全量重算 */
+  MODEL: "ontology:model",
+  /** 治理：全量装载、规则启停、孤儿/零边 mention 清除、快照生成/恢复/删除 */
+  GOVERNANCE: "ontology:governance",
+  /** 交付物流出：图导出下载、快照内容下载 */
+  EXPORT: "ontology:export",
+} as const;

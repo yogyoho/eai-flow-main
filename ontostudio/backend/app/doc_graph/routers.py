@@ -92,7 +92,7 @@ async def resolution_suggestions(
 @router.post("/resolution/merge")
 async def resolution_merge(
     body: MergeBody,
-    _: CurrentUser = Depends(require_permission("system:access")),
+    _: CurrentUser = Depends(require_permission("ontology:review")),
 ):
     """candidate 并入 canonical（candidate 置 merged + dg_merges 留痕, 可 unmerge 撤销）。"""
     cid = _uuid_or_404(body.candidate_id, f"candidate {body.candidate_id}")
@@ -107,7 +107,7 @@ async def resolution_merge(
 @router.post("/resolution/unmerge")
 async def resolution_unmerge(
     body: UnmergeBody,
-    _: CurrentUser = Depends(require_permission("system:access")),
+    _: CurrentUser = Depends(require_permission("ontology:review")),
 ):
     """撤销一次合并（删留痕行, candidate 置回 active）。"""
     mid = _uuid_or_404(body.merge_id, f"merge {body.merge_id}")

@@ -23,7 +23,7 @@ router = APIRouter(prefix="/api/extensions/ontology/formal", tags=["ontology-for
 @router.post("/load")
 async def formal_load(
     domain: str | None = Query(None, description="缺省域（行自带 domain 时按行解析）"),
-    _: CurrentUser = Depends(require_permission("system:access")),
+    _: CurrentUser = Depends(require_permission("ontology:governance")),
 ):
     try:
         return {"success": True, **await get_kernel().load_from_sql(domain=domain)}
@@ -35,14 +35,14 @@ async def formal_load(
 async def formal_infer(
     min_confidence: float = Query(0.7, ge=0.0, le=1.0),
     dry: bool = Query(False, description="F6 试算：不落盘，仅返回统计"),
-    _: CurrentUser = Depends(require_permission("system:access")),
+    _: CurrentUser = Depends(require_permission("ontology:model")),
 ):
     stats = get_kernel().refresh(min_confidence=min_confidence, dry=dry)
     return {"success": True, "dry": dry, **asdict(stats)}
 
 
 @router.post("/cq/run")
-async def formal_cq_run(_: CurrentUser = Depends(require_permission("system:access"))):
+async def formal_cq_run(_: CurrentUser = Depends(require_permission("ontology:review"))):
     """CQ 验收自动化（F5）：cq.yaml 逐条 ASK 真跑（推理工作台验收问题面板数据源）。"""
     return {"success": True, "results": get_kernel().run_cqs()}
 
@@ -108,7 +108,7 @@ async def formal_rule_explain_miss(
 async def formal_rule_set_enabled(
     name: str,
     payload: dict,
-    _: CurrentUser = Depends(require_permission("system:access")),
+    _: CurrentUser = Depends(require_permission("ontology:governance")),
 ):
     """规则启停（F8）：状态写 kernel 卷 overlay，启用即单规则重算、停用即撤派生图。"""
     enabled = bool(payload.get("enabled", True))
@@ -179,7 +179,7 @@ async def formal_orphans(_: CurrentUser = Depends(require_permission("system:acc
 @router.post("/orphans/purge")
 async def formal_orphans_purge(
     payload: dict,
-    _: CurrentUser = Depends(require_permission("system:access")),
+    _: CurrentUser = Depends(require_permission("ontology:governance")),
 ):
     """精确清除指定实体的 asserted 三元组（治理确认后执行；派生图建议随后全量重算）。"""
     iris = [str(i) for i in payload.get("iris", [])]
@@ -193,7 +193,7 @@ async def formal_orphan_mentions(_: CurrentUser = Depends(require_permission("sy
 
 
 @router.post("/orphan-mentions/purge")
-async def formal_orphan_mentions_purge(_: CurrentUser = Depends(require_permission("system:access"))):
+async def formal_orphan_mentions_purge(_: CurrentUser = Depends(require_permission("ontology:governance"))):
     """精确清除全部零边 mention 节点（无效证据治理确认后执行）。"""
     return {"success": True, **get_kernel().purge_orphan_mentions()}
 
@@ -216,7 +216,7 @@ async def formal_validate_history(
 @router.post("/load-ontology")
 async def formal_load_ontology(
     payload: dict,
-    _: CurrentUser = Depends(require_permission("system:access")),
+    _: CurrentUser = Depends(require_permission("ontology:governance")),
 ):
     """四类目标抽取结果 → kernel 断言图（抽取导入页数据源）。"""
     try:
@@ -234,7 +234,7 @@ async def formal_validate(_: CurrentUser = Depends(require_permission("system:ac
 async def formal_export(
     format: str = Query("turtle", pattern="^(turtle|json-ld|trig)$"),
     graphs: str = Query("all", pattern="^(all|all\\+derived|schema|asserted|entailment|derived)$"),
-    _: CurrentUser = Depends(require_permission("system:access")),
+    _: CurrentUser = Depends(require_permission("ontology:export")),
 ):
     out = get_kernel().export(fmt=format, graphs=graphs)
     if format == "json-ld":
@@ -252,7 +252,7 @@ _SNAP_NAME = "snapshot-[A-Za-z0-9._\\-]+\\.trig"
 
 
 @router.post("/snapshots")
-async def formal_snapshot_create(_: CurrentUser = Depends(require_permission("system:access"))):
+async def formal_snapshot_create(_: CurrentUser = Depends(require_permission("ontology:governance"))):
     """生成 TriG 全图快照（含派生）落盘内核卷 snapshots/。"""
     return {"success": True, **get_kernel().create_snapshot()}
 
@@ -265,7 +265,7 @@ async def formal_snapshot_list(_: CurrentUser = Depends(require_permission("syst
 @router.get("/snapshots/{file}")
 async def formal_snapshot_download(
     file: str,
-    _: CurrentUser = Depends(require_permission("system:access")),
+    _: CurrentUser = Depends(require_permission("ontology:export")),
 ):
     import re as _re
 
@@ -283,7 +283,7 @@ async def formal_snapshot_download(
 @router.post("/snapshots/restore")
 async def formal_snapshot_restore(
     payload: dict,
-    _: CurrentUser = Depends(require_permission("system:access")),
+    _: CurrentUser = Depends(require_permission("ontology:governance")),
 ):
     """恢复快照：清空全部 named graph 后原样回灌；恢复前自动生成 pre-restore 回滚点。"""
     file = str(payload.get("file", ""))
@@ -298,7 +298,7 @@ async def formal_snapshot_restore(
 @router.delete("/snapshots/{file}")
 async def formal_snapshot_delete(
     file: str,
-    _: CurrentUser = Depends(require_permission("system:access")),
+    _: CurrentUser = Depends(require_permission("ontology:governance")),
 ):
     import re as _re
 

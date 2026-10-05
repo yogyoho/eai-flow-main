@@ -60,6 +60,7 @@ import { fetchEiaEtypeLabels } from "@/explorerDataSource";
 import { withAlpha } from "@/explorer/graphTheme";
 import { domainAlias } from "@/lib/terms";
 import { cn } from "@/lib/utils";
+import { PERM, usePermission } from "@/lib/permissions";
 
 type ApiError = Error & { status?: number };
 
@@ -133,6 +134,8 @@ export function ResolutionPanel({
   searchQuery = "",
 }: ResolutionPanelProps) {
   const queryClient = useQueryClient();
+  const { can: canReview } = usePermission();
+  const canReviewActions = canReview(PERM.REVIEW);
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [notice, setNotice] = useState<Notice | null>(null);
   const [undoable, setUndoable] = useState<UndoableMerge | null>(null);
@@ -434,18 +437,32 @@ export function ResolutionPanel({
     <div className="h-full overflow-y-auto" data-testid="ontology-resolution-panel">
       <div className="space-y-4 p-6" style={{ background: PAGE_BG, minHeight: "100%" }}>
         {/* 超管提示横幅（原型 warnb） */}
-        <div
-          className="flex items-start gap-2.5 rounded-[12px] px-3.5 py-2.5 text-sm"
-          style={{ background: withAlpha(AMBER, 0.1), border: `1px solid ${withAlpha(AMBER, 0.45)}`, color: "#874d00" }}
-          data-testid="resolution-superadmin-banner"
-        >
-          <AlertTriangle className="mt-0.5 h-3.5 w-3.5 flex-none" style={{ color: AMBER }} />
-          <div>
-            <b>当前以 superadmin 操作（第一版仅超管可审）。</b>
-            正式审阅角色授权为后续批次；观察日可用{" "}
-            角色覆盖配置临时授权真实审阅者。
+        {/* 权限横幅（B1：原「仅超管可审」v1 横幅退役, 授权走 EAI 策略中心 ontology:review） */}
+        {!canReviewActions ? (
+          <div
+            className="flex items-start gap-2.5 rounded-[12px] border px-3.5 py-2.5 text-sm"
+            style={{ background: withAlpha(AMBER, 0.1), border: `1px solid ${withAlpha(AMBER, 0.45)}`, color: "#874d00" }}
+            data-testid="resolution-no-review-perm"
+          >
+            <AlertTriangle className="mt-0.5 h-3.5 w-3.5 flex-none" style={{ color: AMBER }} />
+            <div>
+              <b>当前账号无审核权限。</b>
+              需要权限点 <code>ontology:review</code>——请在 EAI 系统管理·策略中心授权后刷新本页。
+            </div>
           </div>
-        </div>
+        ) : (
+          <div
+            className="flex items-start gap-2.5 rounded-[12px] px-3.5 py-2.5 text-sm"
+            style={{ background: withAlpha(AMBER, 0.1), border: `1px solid ${withAlpha(AMBER, 0.45)}`, color: "#874d00" }}
+            data-testid="resolution-superadmin-banner"
+          >
+            <AlertTriangle className="mt-0.5 h-3.5 w-3.5 flex-none" style={{ color: AMBER }} />
+            <div>
+              <b>当前以 superadmin 操作。</b>
+              审阅授权已迁移 EAI 策略中心（权限点 ontology:review）。
+            </div>
+          </div>
+        )}
 
         {/* 顶部通知（info/error） */}
         {notice ? (
@@ -685,7 +702,7 @@ export function ResolutionPanel({
                           <>
                             <button
                               type="button"
-                              disabled={batchMutation.isPending}
+                              disabled={batchMutation.isPending || !canReviewActions}
                               onClick={() => handleReview(entity.id, "confirm")}
                               data-testid="resolution-confirm"
                               className="flex items-center gap-1.5 rounded-md px-2.5 py-1 text-sm font-medium text-white transition-opacity hover:opacity-90 disabled:opacity-50"
@@ -696,7 +713,7 @@ export function ResolutionPanel({
                             </button>
                             <button
                               type="button"
-                              disabled={batchMutation.isPending}
+                              disabled={batchMutation.isPending || !canReviewActions}
                               onClick={() => handleReview(entity.id, "reject")}
                               data-testid="resolution-reject"
                               className="flex items-center gap-1.5 rounded-md border px-2.5 py-1 text-sm font-medium transition-colors hover:bg-black/[0.03] disabled:opacity-50"
@@ -738,7 +755,7 @@ export function ResolutionPanel({
                 <>
                   <button
                     type="button"
-                    disabled={selectedCount === 0}
+                    disabled={selectedCount === 0 || !canReviewActions}
                     onClick={() => batchMutation.mutate({ pks: [...selectedPks], decision: "confirm" })}
                     title={`批量确认选中 ${selectedCount} 条（入图并即时生效）`}
                     className="flex items-center gap-1.5 rounded-md px-2.5 py-1 text-sm font-medium text-white transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
@@ -750,7 +767,7 @@ export function ResolutionPanel({
                   </button>
                   <button
                     type="button"
-                    disabled={selectedCount === 0}
+                    disabled={selectedCount === 0 || !canReviewActions}
                     onClick={() => batchMutation.mutate({ pks: [...selectedPks], decision: "reject" })}
                     title={`批量驳回选中 ${selectedCount} 条（归档保留，不删数据）`}
                     className="border-border text-muted-foreground hover:border-destructive/50 hover:text-destructive disabled:cursor-not-allowed disabled:opacity-50 flex items-center gap-1.5 rounded-md border px-2.5 py-1 text-sm font-medium transition-colors"
@@ -822,7 +839,7 @@ export function ResolutionPanel({
                       <div className="mt-2 flex flex-wrap items-center gap-2">
                         <button
                           type="button"
-                          disabled={mergeMutation.isPending}
+                          disabled={mergeMutation.isPending || !canReviewActions}
                           onClick={() =>
                             handleMerge(sug.id, expandedId, sug.canonical_name, selectedEntity?.canonical_name ?? "")
                           }
