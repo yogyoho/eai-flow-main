@@ -9,7 +9,7 @@
  * 生产线口径：LLM 离线批量管线（extracted_by=eia-batch-v2-llm，etype/谓词与 eia.yaml v2 枚举严格同名，kernel loader 直读）。
  */
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { FileInput, Loader2, Trash2 } from "lucide-react";
+import { FileText, FileInput, FileUp, Loader2, Trash2 } from "lucide-react";
 import { useMemo, useState } from "react";
 
 import {
@@ -81,6 +81,8 @@ export function IngestPage() {
   const [createOpen, setCreateOpen] = useState(false);
   const [sampleId, setSampleId] = useState("");
   const [createMsg, setCreateMsg] = useState<string | null>(null);
+  // G3 双通道模式切换
+  const [taskMode, setTaskMode] = useState<"sample" | "upload">("sample");
   // G3 上传直连
   const [uploadFile, setUploadFile] = useState<File | null>(null);
   const [uploadMsg, setUploadMsg] = useState<string | null>(null);
@@ -226,40 +228,88 @@ export function IngestPage() {
         {createOpen ? (
           <Panel title="新建抽取任务" className="mb-3.5">
             <div className="flex flex-col gap-2 p-4 text-sm">
-              {/* 路径① 选择已有样例 */}
-              <div className="flex flex-col gap-1">
-                <label className="text-muted-foreground text-[13px]">路径① 选择已有样例（消费已提取产物）</label>
-                <Select value={sampleId || undefined} onValueChange={(v) => setSampleId(v || "")}>
-                  <SelectTrigger className="w-full max-w-xl">
-                    <SelectValue placeholder="— 选择 —" />
-                  </SelectTrigger>
-                  <SelectContent position="popper" className="max-h-72">
-                    {(samplesQuery.data?.samples ?? []).filter(s => s.entity_count > 0).map((s) => (
-                      <SelectItem key={s.id} value={s.id}>
-                        {s.title}（{s.entity_count} 实体 · {s.status}）
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="flex items-center gap-2">
+              {/* 二选一切换（参照知识工厂 ExtractionTaskModal 卡片式模式切换） */}
+              <div className="grid grid-cols-2 gap-2">
                 <button
                   type="button"
-                  disabled={!sampleId || createMutation.isPending}
-                  onClick={() => createMutation.mutate()}
-                  className="bg-primary text-primary-foreground rounded-md px-3 py-1.5 text-sm font-medium disabled:opacity-50"
+                  onClick={() => setTaskMode("sample")}
+                  className={cn(
+                    "flex items-start gap-2.5 rounded-lg border-2 p-3 text-left transition-all",
+                    taskMode === "sample"
+                      ? "border-primary bg-primary/5 shadow-sm"
+                      : "border-border hover:border-primary/40 hover:bg-accent/50",
+                  )}
                 >
-                  {createMutation.isPending ? <Loader2 className="inline h-3.5 w-3.5 animate-spin" /> : null}
-                  创建并排队
+                  <FileText
+                    className={cn(
+                      "mt-0.5 h-4 w-4 shrink-0",
+                      taskMode === "sample" ? "text-primary" : "text-muted-foreground",
+                    )}
+                  />
+                  <div className="min-w-0">
+                    <div className={cn("text-sm font-semibold", taskMode === "sample" ? "text-primary" : "text-foreground")}>
+                      选择已有样例
+                    </div>
+                    <div className="text-muted-foreground text-[10px] leading-tight">消费已提取产物入图</div>
+                  </div>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setTaskMode("upload")}
+                  className={cn(
+                    "flex items-start gap-2.5 rounded-lg border-2 p-3 text-left transition-all",
+                    taskMode === "upload"
+                      ? "border-primary bg-primary/5 shadow-sm"
+                      : "border-border hover:border-primary/40 hover:bg-accent/50",
+                  )}
+                >
+                  <FileUp
+                    className={cn(
+                      "mt-0.5 h-4 w-4 shrink-0",
+                      taskMode === "upload" ? "text-primary" : "text-muted-foreground",
+                    )}
+                  />
+                  <div className="min-w-0">
+                    <div className={cn("text-sm font-semibold", taskMode === "upload" ? "text-primary" : "text-foreground")}>
+                      上传新文件
+                    </div>
+                    <div className="text-muted-foreground text-[10px] leading-tight">直连规则抽取（txt/docx）</div>
+                  </div>
                 </button>
               </div>
 
-              <div className="border-border border-t" />
+              {/* 路径①：选择已有样例 */}
+              {taskMode === "sample" && (
+                <div className="flex flex-col gap-2">
+                  <label className="text-muted-foreground text-[13px]">选择样例（消费已提取产物）</label>
+                  <Select value={sampleId || undefined} onValueChange={(v) => setSampleId(v || "")}>
+                    <SelectTrigger className="w-full max-w-xl">
+                      <SelectValue placeholder="— 选择 —" />
+                    </SelectTrigger>
+                    <SelectContent position="popper" className="max-h-72">
+                      {(samplesQuery.data?.samples ?? []).filter(s => s.entity_count > 0).map((s) => (
+                        <SelectItem key={s.id} value={s.id}>
+                          {s.title}（{s.entity_count} 实体 · {s.status}）
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <button
+                    type="button"
+                    disabled={!sampleId || createMutation.isPending}
+                    onClick={() => createMutation.mutate()}
+                    className="bg-primary text-primary-foreground self-start rounded-md px-3 py-1.5 text-sm font-medium disabled:opacity-50"
+                  >
+                    {createMutation.isPending ? <Loader2 className="inline h-3.5 w-3.5 animate-spin" /> : null}
+                    创建并排队
+                  </button>
+                </div>
+              )}
 
-              {/* 路径② 上传新文件（直连抽取） */}
-              <div className="flex flex-col gap-1">
-                <label className="text-muted-foreground text-[13px]">路径② 上传新文件（直连抽取）</label>
-                <div className="flex items-center gap-2">
+              {/* 路径②：上传新文件直连抽取 */}
+              {taskMode === "upload" && (
+                <div className="flex flex-col gap-2">
+                  <label className="text-muted-foreground text-[13px]">上传源文件（txt/docx）</label>
                   <input
                     type="file"
                     accept=".txt,.docx"
@@ -271,16 +321,16 @@ export function IngestPage() {
                       type="button"
                       disabled={uploadMutation.isPending}
                       onClick={() => uploadMutation.mutate(uploadFile)}
-                      className="bg-primary text-primary-foreground rounded-md px-2.5 py-1 text-xs font-medium disabled:opacity-50"
+                      className="bg-primary text-primary-foreground self-start rounded-md px-3 py-1.5 text-sm font-medium disabled:opacity-50"
                     >
                       {uploadMutation.isPending ? "上传抽取中…" : "上传并抽取"}
                     </button>
                   ) : null}
                 </div>
-                {uploadMsg ? (
-                  <p className={cn("text-xs", uploadMsg.startsWith("✓") ? "text-success" : "text-destructive")}>{uploadMsg}</p>
-                ) : null}
-              </div>
+              )}
+              {uploadMsg ? (
+                <p className={cn("text-xs", uploadMsg.startsWith("✓") ? "text-success" : "text-destructive")}>{uploadMsg}</p>
+              ) : null}
 
               <p className="text-muted-foreground text-xs">
                 force_review 默认开启：入库实体全量置待复核（D11/11A），消解审核逐条确认后入图。
