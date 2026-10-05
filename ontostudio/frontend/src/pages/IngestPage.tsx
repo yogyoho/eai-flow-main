@@ -9,8 +9,8 @@
  * 生产线口径：LLM 离线批量管线（extracted_by=eia-batch-v2-llm，etype/谓词与 eia.yaml v2 枚举严格同名，kernel loader 直读）。
  */
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { FileText, FileInput, FileUp, Loader2, Trash2 } from "lucide-react";
-import { useMemo, useState } from "react";
+import { FileText, FileInput, FileUp, Loader2, Trash2, UploadCloud, X } from "lucide-react";
+import { useMemo, useRef, useState, type DragEvent } from "react";
 
 import {
   createTask,
@@ -83,9 +83,11 @@ export function IngestPage() {
   const [createMsg, setCreateMsg] = useState<string | null>(null);
   // G3 双通道模式切换
   const [taskMode, setTaskMode] = useState<"sample" | "upload">("sample");
-  // G3 上传直连
+  // G3 上传直连（拖拽区对齐知识工厂 ExtractionTaskModal B 模式：暂存文件，底部统一按钮提交）
+  const [dragging, setDragging] = useState(false);
   const [uploadFile, setUploadFile] = useState<File | null>(null);
   const [uploadMsg, setUploadMsg] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const uploadMutation = useMutation({
     mutationFn: (file: File) => {
       const fd = new FormData();
@@ -104,12 +106,26 @@ export function IngestPage() {
       });
     },
     onSuccess: (data) => {
-      setUploadMsg(`✓ 已上传并创建任务（直连抽取）——${data.file}`);
+      // 与样例路径同口径：关对话框 + 页面级成功消息（上传端点本身即创建任务）
+      setCreateOpen(false);
       setUploadFile(null);
+      setCreateMsg(`✓ 已上传并创建任务（直连抽取）——${data.file}`);
       void queryClient.invalidateQueries({ queryKey: ["ingest", "tasks"] });
     },
     onError: (e: Error) => setUploadMsg(`✗ ${e.message}`),
   });
+
+  const handleFileSelect = (files: FileList | null) => {
+    const file = files?.[0];
+    setUploadFile(file ?? null);
+    setUploadMsg(null);
+    if (fileInputRef.current) fileInputRef.current.value = "";
+  };
+  const handleDrop = (e: DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    setDragging(false);
+    handleFileSelect(e.dataTransfer.files);
+  };
 
   // 可建任务样例（新建表单选取源）+ 证据链引文的样例名解析——证据链需要, 常驻拉取
   const samplesQuery = useQuery({
@@ -224,153 +240,193 @@ export function IngestPage() {
         ) : null}
         {createMsg ? <p className="text-success mb-3 text-sm">{createMsg}</p> : null}
 
-        {/* 新建任务内联表单 */}
+        {/* 新建任务弹出对话框（结构对齐知识工厂 ExtractionTaskModal） */}
         {createOpen ? (
-          <Panel title="新建抽取任务" className="mb-3.5">
-            <div className="flex flex-col gap-2 p-4 text-sm">
-              {/* 二选一切换（参照知识工厂 ExtractionTaskModal 卡片式模式切换） */}
-              <div className="grid grid-cols-2 gap-2">
-                <button
-                  type="button"
-                  onClick={() => setTaskMode("sample")}
-                  className={cn(
-                    "flex items-start gap-2.5 rounded-lg border-2 p-3 text-left transition-all",
-                    taskMode === "sample"
-                      ? "border-primary bg-primary/5 shadow-sm"
-                      : "border-border hover:border-primary/40 hover:bg-accent/50",
-                  )}
-                >
-                  <FileText
-                    className={cn(
-                      "mt-0.5 h-4 w-4 shrink-0",
-                      taskMode === "sample" ? "text-primary" : "text-muted-foreground",
-                    )}
-                  />
-                  <div className="min-w-0">
-                    <div className={cn("text-sm font-semibold", taskMode === "sample" ? "text-primary" : "text-foreground")}>
-                      选择已有样例
-                    </div>
-                    <div className="text-muted-foreground text-[10px] leading-tight">消费已提取产物入图</div>
-                  </div>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setTaskMode("upload")}
-                  className={cn(
-                    "flex items-start gap-2.5 rounded-lg border-2 p-3 text-left transition-all",
-                    taskMode === "upload"
-                      ? "border-primary bg-primary/5 shadow-sm"
-                      : "border-border hover:border-primary/40 hover:bg-accent/50",
-                  )}
-                >
-                  <FileUp
-                    className={cn(
-                      "mt-0.5 h-4 w-4 shrink-0",
-                      taskMode === "upload" ? "text-primary" : "text-muted-foreground",
-                    )}
-                  />
-                  <div className="min-w-0">
-                    <div className={cn("text-sm font-semibold", taskMode === "upload" ? "text-primary" : "text-foreground")}>
-                      上传新文件
-                    </div>
-                    <div className="text-muted-foreground text-[10px] leading-tight">直连规则抽取（txt/docx）</div>
-                  </div>
-                </button>
-              </div>
-
-              {/* 路径①：选择已有样例 */}
-              {taskMode === "sample" && (
-                <div className="flex flex-col gap-2">
-                  <label className="text-muted-foreground text-[13px]">选择样例（消费已提取产物）</label>
-                  <Select value={sampleId || undefined} onValueChange={(v) => setSampleId(v || "")}>
-                    <SelectTrigger className="w-full max-w-xl">
-                      <SelectValue placeholder="— 选择 —" />
-                    </SelectTrigger>
-                    <SelectContent position="popper" className="max-h-72">
-                      {(samplesQuery.data?.samples ?? []).filter(s => s.entity_count > 0).map((s) => (
-                        <SelectItem key={s.id} value={s.id}>
-                          {s.title}（{s.entity_count} 实体 · {s.status}）
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <button
-                    type="button"
-                    disabled={!sampleId || createMutation.isPending}
-                    onClick={() => createMutation.mutate()}
-                    className="bg-primary text-primary-foreground self-start rounded-md px-3 py-1.5 text-sm font-medium disabled:opacity-50"
-                  >
-                    {createMutation.isPending ? <Loader2 className="inline h-3.5 w-3.5 animate-spin" /> : null}
-                    创建并排队
-                  </button>
-                </div>
-              )}
-
-              {/* 路径②：上传新文件直连抽取 */}
-              {/* 路径②：上传新文件直连抽取 */}
-              {taskMode === "upload" && (
-                <div className="flex flex-col gap-2">
-                  <label className="text-muted-foreground text-[13px]">上传源文件（txt/docx，规则抽取）</label>
-                  <input
-                    type="file"
-                    accept=".txt,.docx"
-                    onChange={(e) => setUploadFile(e.target.files?.[0] ?? null)}
-                    className="text-xs file:border-border file:bg-card file:text-muted-foreground hover:file:text-foreground file:mr-2 file:rounded-md file:border-0 file:px-2 file:py-1 file:text-xs file:font-medium file:hover:bg-muted"
-                  />
-                  {uploadFile ? (
-                    <div className="flex items-center gap-2 rounded-md border bg-muted/50 px-3 py-2">
-                      <FileText className="h-4 w-4 shrink-0 text-primary" />
-                      <span className="min-w-0 flex-1 truncate text-xs font-medium">{uploadFile.name}</span>
-                      <span className="text-muted-foreground flex-none text-xs">
-                        {(uploadFile.size / 1024).toFixed(0)} KB
-                      </span>
-                      <button
-                        type="button"
-                        onClick={() => setUploadFile(null)}
-                        className="text-muted-foreground hover:text-destructive ml-1 flex-none text-xs"
-                        aria-label="移除文件"
-                      >
-                        ✕
-                      </button>
-                    </div>
-                  ) : null}
-                  <button
-                    type="button"
-                    disabled={uploadMutation.isPending}
-                    onClick={() => uploadMutation.mutate(uploadFile!)}
-                    className="bg-primary text-primary-foreground self-start rounded-md px-3 py-1.5 text-sm font-medium disabled:opacity-50"
-                  >
-                    {uploadMutation.isPending ? (
-                      <span className="inline-flex items-center gap-1.5">
-                        <Loader2 className="h-3.5 w-3.5 animate-spin" /> 上传抽取中…
-                      </span>
-                    ) : (
-                      "上传并抽取"
-                    )}
-                  </button>
-                  {uploadMsg ? (
-                    <p className={cn("text-xs", uploadMsg.startsWith("✓") ? "text-success" : "text-destructive")}>{uploadMsg}</p>
-                  ) : null}
-                </div>
-              )}
-              {uploadMsg ? (
-                <p className={cn("text-xs", uploadMsg.startsWith("✓") ? "text-success" : "text-destructive")}>{uploadMsg}</p>
-              ) : null}
-
-              <p className="text-muted-foreground text-xs">
-                force_review 默认开启：入库实体全量置待复核（D11/11A），消解审核逐条确认后入图。
-              </p>
-              <div className="flex items-center gap-2">
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 backdrop-blur-sm">
+            <div className="bg-background flex max-h-[90vh] w-full max-w-2xl flex-col overflow-y-auto rounded-2xl shadow-2xl">
+              {/* Header */}
+              <div className="border-border bg-background sticky top-0 z-10 flex shrink-0 items-center justify-between border-b px-6 py-4">
+                <h3 className="text-foreground text-lg font-semibold">新建抽取任务</h3>
                 <button
                   type="button"
                   onClick={() => setCreateOpen(false)}
-                  className="border-border bg-card rounded-md border px-3 py-1.5 text-sm"
+                  className="hover:bg-accent rounded-lg p-1.5 transition-colors"
+                  aria-label="关闭"
+                >
+                  <X className="text-muted-foreground h-5 w-5" />
+                </button>
+              </div>
+
+              {/* Body */}
+              <div className="flex-1 space-y-5 px-6 py-5 text-sm">
+                {/* 二选一切换（参照知识工厂 ExtractionTaskModal 卡片式模式切换） */}
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setTaskMode("sample")}
+                    className={cn(
+                      "flex items-start gap-2.5 rounded-lg border-2 p-3 text-left transition-all",
+                      taskMode === "sample"
+                        ? "border-primary bg-primary/5 shadow-sm"
+                        : "border-border hover:border-primary/40 hover:bg-accent/50",
+                    )}
+                  >
+                    <FileText
+                      className={cn(
+                        "mt-0.5 h-4 w-4 shrink-0",
+                        taskMode === "sample" ? "text-primary" : "text-muted-foreground",
+                      )}
+                    />
+                    <div className="min-w-0">
+                      <div className={cn("text-sm font-semibold", taskMode === "sample" ? "text-primary" : "text-foreground")}>
+                        选择已有样例
+                      </div>
+                      <div className="text-muted-foreground text-[10px] leading-tight">消费已提取产物入图</div>
+                    </div>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setTaskMode("upload")}
+                    className={cn(
+                      "flex items-start gap-2.5 rounded-lg border-2 p-3 text-left transition-all",
+                      taskMode === "upload"
+                        ? "border-primary bg-primary/5 shadow-sm"
+                        : "border-border hover:border-primary/40 hover:bg-accent/50",
+                    )}
+                  >
+                    <FileUp
+                      className={cn(
+                        "mt-0.5 h-4 w-4 shrink-0",
+                        taskMode === "upload" ? "text-primary" : "text-muted-foreground",
+                      )}
+                    />
+                    <div className="min-w-0">
+                      <div className={cn("text-sm font-semibold", taskMode === "upload" ? "text-primary" : "text-foreground")}>
+                        上传新文件
+                      </div>
+                      <div className="text-muted-foreground text-[10px] leading-tight">直连规则抽取（txt/docx）</div>
+                    </div>
+                  </button>
+                </div>
+
+                {/* 路径①：选择已有样例 */}
+                {taskMode === "sample" && (
+                  <div className="flex flex-col gap-2">
+                    <label className="text-muted-foreground text-[13px]">选择样例（消费已提取产物）</label>
+                    <Select value={sampleId || undefined} onValueChange={(v) => setSampleId(v || "")}>
+                      <SelectTrigger className="w-full max-w-xl">
+                        <SelectValue placeholder="— 选择 —" />
+                      </SelectTrigger>
+                      <SelectContent position="popper" className="max-h-72">
+                        {(samplesQuery.data?.samples ?? []).filter(s => s.entity_count > 0).map((s) => (
+                          <SelectItem key={s.id} value={s.id}>
+                            {s.title}（{s.entity_count} 实体 · {s.status}）
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
+
+                {/* 路径②：上传新文件直连抽取（拖拽区样式对齐知识工厂 ExtractionTaskModal B 模式） */}
+                {taskMode === "upload" && (
+                  <div className="flex flex-col gap-2">
+                    <label className="text-foreground text-sm font-medium">
+                      上传源文件
+                      <span className="text-muted-foreground ml-2 text-xs">直接上传 txt/docx，规则抽取直连入图</span>
+                    </label>
+                    <div
+                      onDragOver={(e) => {
+                        e.preventDefault();
+                        setDragging(true);
+                      }}
+                      onDragLeave={() => setDragging(false)}
+                      onDrop={handleDrop}
+                      onClick={() => !uploadMutation.isPending && fileInputRef.current?.click()}
+                      className={cn(
+                        "cursor-pointer rounded-lg border-2 border-dashed px-6 py-10 text-center transition-colors",
+                        dragging ? "border-primary bg-primary/5" : "border-border hover:border-primary/50 hover:bg-accent/30",
+                        uploadMutation.isPending && "cursor-wait opacity-80",
+                      )}
+                    >
+                      <input
+                        ref={fileInputRef}
+                        type="file"
+                        accept=".txt,.docx"
+                        onChange={(e) => handleFileSelect(e.target.files)}
+                        disabled={uploadMutation.isPending}
+                        className="hidden"
+                      />
+                      {uploadMutation.isPending ? (
+                        <div className="text-muted-foreground flex flex-col items-center gap-2">
+                          <Loader2 className="h-7 w-7 animate-spin" />
+                          <span className="text-sm">上传抽取中...</span>
+                        </div>
+                      ) : (
+                        <div className="text-muted-foreground flex flex-col items-center gap-2">
+                          <UploadCloud className="h-7 w-7" />
+                          <span className="text-foreground text-sm font-medium">点击或拖拽 txt/docx 文件到此处</span>
+                          <span className="text-xs">支持 .txt / .docx，单文件</span>
+                        </div>
+                      )}
+                    </div>
+                    {uploadFile ? (
+                      <div className="flex items-center gap-2 rounded-md border bg-muted/50 px-3 py-2">
+                        <FileText className="h-4 w-4 shrink-0 text-primary" />
+                        <span className="min-w-0 flex-1 truncate text-xs font-medium">{uploadFile.name}</span>
+                        <span className="text-muted-foreground flex-none text-xs">{(uploadFile.size / 1024).toFixed(0)} KB</span>
+                        <button
+                          type="button"
+                          onClick={() => setUploadFile(null)}
+                          className="text-muted-foreground hover:text-destructive ml-1 flex-none text-xs"
+                          aria-label="移除文件"
+                        >
+                          ✕
+                        </button>
+                      </div>
+                    ) : null}
+                  </div>
+                )}
+                {uploadMsg ? <p className="text-destructive text-xs">{uploadMsg}</p> : null}
+
+                <p className="text-muted-foreground text-xs">
+                  force_review 默认开启：入库实体全量置待复核（D11/11A），消解审核逐条确认后入图。
+                </p>
+              </div>
+
+              {/* Footer */}
+              <div className="border-border bg-background sticky bottom-0 z-10 flex shrink-0 justify-end gap-3 border-t px-6 py-4">
+                <button
+                  type="button"
+                  onClick={() => setCreateOpen(false)}
+                  className="border-border bg-card hover:bg-accent rounded-lg border px-4 py-2 text-sm transition-colors"
                 >
                   取消
                 </button>
+                <button
+                  type="button"
+                  disabled={
+                    createMutation.isPending ||
+                    uploadMutation.isPending ||
+                    (taskMode === "sample" ? !sampleId : !uploadFile)
+                  }
+                  onClick={() => {
+                    if (taskMode === "sample") createMutation.mutate();
+                    else if (uploadFile) uploadMutation.mutate(uploadFile);
+                  }}
+                  className="bg-primary text-primary-foreground hover:bg-primary/90 flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  {createMutation.isPending || uploadMutation.isPending ? (
+                    <>
+                      <Loader2 className="h-4 w-4 animate-spin" /> 创建中...
+                    </>
+                  ) : (
+                    "创建并排队"
+                  )}
+                </button>
               </div>
             </div>
-          </Panel>
+          </div>
         ) : null}
 
         {/* 抽取任务队列（真数据，2s 轮询） */}
