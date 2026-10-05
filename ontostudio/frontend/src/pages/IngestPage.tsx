@@ -307,9 +307,16 @@ export function IngestPage() {
               )}
 
               {/* 路径②：上传新文件直连抽取 */}
+              {/* 路径②：上传新文件直连抽取 */}
               {taskMode === "upload" && (
                 <div className="flex flex-col gap-2">
                   <label className="text-muted-foreground text-[13px]">上传源文件（txt/docx，规则抽取）</label>
+                  <input
+                    type="file"
+                    accept=".txt,.docx"
+                    onChange={(e) => setUploadFile(e.target.files?.[0] ?? null)}
+                    className="text-xs file:border-border file:bg-card file:text-muted-foreground hover:file:text-foreground file:mr-2 file:rounded-md file:border-0 file:px-2 file:py-1 file:text-xs file:font-medium file:hover:bg-muted"
+                  />
                   {uploadFile ? (
                     <div className="flex items-center gap-2 rounded-md border bg-muted/50 px-3 py-2">
                       <FileText className="h-4 w-4 shrink-0 text-primary" />
