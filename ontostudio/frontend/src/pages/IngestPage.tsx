@@ -81,6 +81,33 @@ export function IngestPage() {
   const [createOpen, setCreateOpen] = useState(false);
   const [sampleId, setSampleId] = useState("");
   const [createMsg, setCreateMsg] = useState<string | null>(null);
+  // G3 上传直连
+  const [uploadFile, setUploadFile] = useState<File | null>(null);
+  const [uploadMsg, setUploadMsg] = useState<string | null>(null);
+  const uploadMutation = useMutation({
+    mutationFn: (file: File) => {
+      const fd = new FormData();
+      fd.append("file", file);
+      fd.append("force_review", "true");
+      return fetch("/api/ontostudio/api/extensions/ingest-tasks/upload", {
+        method: "POST",
+        credentials: "include",
+        body: fd,
+      }).then(async (res) => {
+        if (!res.ok) {
+          const body = await res.json().catch(() => ({}));
+          throw new Error(body.detail || `上传失败(${res.status})`);
+        }
+        return res.json();
+      });
+    },
+    onSuccess: (data) => {
+      setUploadMsg(`✓ 已上传并创建任务（直连抽取）——${data.file}`);
+      setUploadFile(null);
+      void queryClient.invalidateQueries({ queryKey: ["ingest", "tasks"] });
+    },
+    onError: (e: Error) => setUploadMsg(`✗ ${e.message}`),
+  });
 
   // 可建任务样例（新建表单选取源）+ 证据链引文的样例名解析——证据链需要, 常驻拉取
   const samplesQuery = useQuery({
@@ -199,26 +226,22 @@ export function IngestPage() {
         {createOpen ? (
           <Panel title="新建抽取任务" className="mb-3.5">
             <div className="flex flex-col gap-2 p-4 text-sm">
-            <div className="flex flex-col gap-1">
-              <label className="text-muted-foreground text-[13px]">选择样例（已提取产物）</label>
-              <Select value={sampleId || undefined} onValueChange={(v) => setSampleId(v || "")}>
-                <SelectTrigger className="w-full max-w-xl">
-                  <SelectValue placeholder="— 选择 —" />
-                </SelectTrigger>
-                <SelectContent position="popper" className="max-h-72">
-                  {(samplesQuery.data?.samples ?? []).map((s) => (
-                    <SelectItem key={s.id} value={s.id}>
-                      {s.entity_count > 0
-                        ? `${s.title}（${s.entity_count} 实体 · ${s.status}）`
-                        : `${s.title}（直连抽取 · ${s.status}）`}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-              <p className="text-muted-foreground text-xs">
-                force_review 默认开启：入库实体全量置待复核（D11/11A），消解审核逐条确认后入图。
-              </p>
+              {/* 路径① 选择已有样例 */}
+              <div className="flex flex-col gap-1">
+                <label className="text-muted-foreground text-[13px]">路径① 选择已有样例（消费已提取产物）</label>
+                <Select value={sampleId || undefined} onValueChange={(v) => setSampleId(v || "")}>
+                  <SelectTrigger className="w-full max-w-xl">
+                    <SelectValue placeholder="— 选择 —" />
+                  </SelectTrigger>
+                  <SelectContent position="popper" className="max-h-72">
+                    {(samplesQuery.data?.samples ?? []).filter(s => s.entity_count > 0).map((s) => (
+                      <SelectItem key={s.id} value={s.id}>
+                        {s.title}（{s.entity_count} 实体 · {s.status}）
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
               <div className="flex items-center gap-2">
                 <button
                   type="button"
@@ -229,6 +252,40 @@ export function IngestPage() {
                   {createMutation.isPending ? <Loader2 className="inline h-3.5 w-3.5 animate-spin" /> : null}
                   创建并排队
                 </button>
+              </div>
+
+              <div className="border-border border-t" />
+
+              {/* 路径② 上传新文件（直连抽取） */}
+              <div className="flex flex-col gap-1">
+                <label className="text-muted-foreground text-[13px]">路径② 上传新文件（直连抽取）</label>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="file"
+                    accept=".txt,.docx"
+                    onChange={(e) => setUploadFile(e.target.files?.[0] ?? null)}
+                    className="text-xs file:border-border file:bg-card file:text-muted-foreground hover:file:text-foreground file:mr-2 file:rounded-md file:border-0 file:px-2 file:py-1 file:text-xs file:font-medium file:hover:bg-muted"
+                  />
+                  {uploadFile ? (
+                    <button
+                      type="button"
+                      disabled={uploadMutation.isPending}
+                      onClick={() => uploadMutation.mutate(uploadFile)}
+                      className="bg-primary text-primary-foreground rounded-md px-2.5 py-1 text-xs font-medium disabled:opacity-50"
+                    >
+                      {uploadMutation.isPending ? "上传抽取中…" : "上传并抽取"}
+                    </button>
+                  ) : null}
+                </div>
+                {uploadMsg ? (
+                  <p className={cn("text-xs", uploadMsg.startsWith("✓") ? "text-success" : "text-destructive")}>{uploadMsg}</p>
+                ) : null}
+              </div>
+
+              <p className="text-muted-foreground text-xs">
+                force_review 默认开启：入库实体全量置待复核（D11/11A），消解审核逐条确认后入图。
+              </p>
+              <div className="flex items-center gap-2">
                 <button
                   type="button"
                   onClick={() => setCreateOpen(false)}
@@ -236,9 +293,6 @@ export function IngestPage() {
                 >
                   取消
                 </button>
-                {createMutation.isError ? (
-                  <span className="text-destructive text-xs">{createMsg}</span>
-                ) : null}
               </div>
             </div>
           </Panel>

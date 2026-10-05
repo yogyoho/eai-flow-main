@@ -321,7 +321,7 @@ def _read_docx(path: Path) -> str:
 
 # ── 流水线编排 ──
 
-from app.extensions.eia_samples.extract_ontology import extract_ontology  # noqa: E402 (四类目标抽取, 见 extract_ontology.py)
+from .ontology_extract import extract_ontology  # noqa: E402 (本地副本, G3 移植)
 
 OUTLINE_SCHEMA = "eia-sample-outline/v1"
 
