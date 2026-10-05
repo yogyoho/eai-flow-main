@@ -309,6 +309,9 @@
     "geological-report": {
       "enabled": true
     },
+    "ontology-graph-query": {
+      "enabled": true
+    },
     "markdown-to-docx": {
       "enabled": true
     },
