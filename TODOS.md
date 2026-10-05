@@ -149,3 +149,12 @@
 - **Cons:** 均无日常痛点驱动, 排期价值低。
 - **Context:** 能力矩阵 docs/designs/2026-10-05-ontostudio-capability-matrix.md; mention 治理已入「数据治理」面板可定期手动跑。
 - **Depends on / blocked by:** 无硬前置, 按需认领。
+
+## TODO: OntoStudio 校验中心按域校验（「范围:全域」按钮接真）
+
+- **What:** 校验运行面板「范围:全域」disabled 按钮接真——run_shacl 支持域过滤(按 registry 域 shapes/data 子集校验), 前端范围选择器(全域/单域)。
+- **Why:** 2026-10-05 能力矩阵缺口 G-校验——单域数据下全域校验已够用, 但多域化(G4/G5)落地后按域校验成为排查刚需。
+- **Pros:** 违规定位到域; 大图校验可分段跑。
+- **Cons:** shapes/data 按域切分需摸清跨域引用边界。
+- **Context:** 按钮已在 ValidationPage 校验运行面板(title「按域过滤校验为规划项」); registry formal_by_domain 已按域组织, 切分基础存在。
+- **Depends on / blocked by:** 建议排在 G4/G5 多域化之后(单域阶段收益低)。
