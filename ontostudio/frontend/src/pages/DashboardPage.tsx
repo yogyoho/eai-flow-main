@@ -604,10 +604,16 @@ export function DashboardPage() {
         <Panel title="校验状态" tone={TONE_GREEN} icon={ShieldCheck} className="flex flex-col">
           <div className="flex flex-1 flex-col gap-2.5 p-4 text-xs">
             <div className="flex items-center justify-between">
-              <span>国标符合性</span>
+              <span
+                className="min-w-0 leading-tight"
+                title="GB/T 48000.3—2026《标准数字化 第3部分：本体建模要求》· 覆盖 §5.3/§5.4/附录 A/条款 9（部分条款，非全文符合性）· 判定口径 docs/ontology/methodology.md §4.4"
+              >
+                <span className="block">GB/T 48000.3—2026</span>
+                <span className="text-muted-foreground block text-[11px]">符合性（C1-C5 部分条款）</span>
+              </span>
               <span
                 className={cn(
-                  "rounded-full px-2 py-0.5 text-xs font-medium",
+                  "flex-none rounded-full px-2 py-0.5 text-xs font-medium",
                   validateQuery.isError
                     ? "bg-destructive/10 text-destructive"
                     : conformance.length > 0 && passedCount === conformance.length
