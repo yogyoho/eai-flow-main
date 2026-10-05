@@ -30,7 +30,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
-from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Request
+from fastapi import APIRouter, BackgroundTasks, Depends, Form, HTTPException, Request, UploadFile
 from pydantic import BaseModel
 from sqlalchemy import JSON, Boolean, DateTime, String, Text, func, text
 from sqlalchemy.dialects.postgresql import JSONB, UUID
@@ -548,6 +548,59 @@ async def create_task(
         direct_mode = True
     background.add_task(_run_task, task_id, str(body.sample_id), document_id, body.force_review)
     return {"id": task_id, "status": "queued", "document_id": document_id, "mode": "direct" if direct_mode else "v1"}
+
+
+
+@router.post("/upload")
+async def upload_and_extract(
+    file: UploadFile,
+    background: BackgroundTasks,
+    force_review: bool = Form(True),
+    _: CurrentUser = Depends(require_permission("system:access")),
+) -> dict:
+    """G3 上传一体流：上传源文件 → 建 kf_samples 行 → 规则抽取 → 建任务（一步到位）."""
+    import hashlib
+
+    original_name = file.filename or "unnamed"
+    ext = Path(original_name).suffix.lower()
+    if ext not in _ALLOWED_SOURCE_EXT:
+        raise HTTPException(422, f"不支持的文件格式 .{ext}（仅 .txt/.docx）")
+    content = await file.read()
+    if len(content) > 150 * 1024 * 1024:
+        raise HTTPException(422, "文件过大（>150MB）")
+
+    task_id = str(uuid.uuid4())
+    sample_id = str(uuid.uuid4())
+    file_hash = hashlib.sha256(content).hexdigest()[:32]
+    document_id = f"kf-upload:{task_id}"
+
+    _KF_SRC_DIR.mkdir(parents=True, exist_ok=True)
+    src_path = _KF_SRC_DIR / (task_id + ext)
+    src_path.write_bytes(content)
+
+    engine = _engine()
+    try:
+        async with engine.begin() as conn:
+            await conn.execute(
+                text("""
+                INSERT INTO kf_samples (id, title, source_path, file_hash, scenario, status)
+                VALUES (CAST(:sid AS uuid), :title, :spath, :fhash, 'other', 'parsed')
+                """),
+                {"sid": sample_id, "title": original_name.rsplit('.', 1)[0], "spath": str(src_path), "fhash": file_hash},
+            )
+            await conn.execute(
+                text("""
+                INSERT INTO ingest_tasks (id, sample_id, sample_title, document_id, force_review, status)
+                VALUES (CAST(:tid AS uuid), CAST(:sid AS uuid), :title, :doc, :fr, 'queued')
+                """
+            ),
+            {"tid": task_id, "sid": sample_id, "title": original_name.rsplit('.', 1)[0], "doc": document_id, "fr": force_review},
+        )
+    finally:
+        await engine.dispose()
+
+    background.add_task(_run_task, task_id, sample_id, document_id, force_review)
+    return {"id": task_id, "status": "queued", "document_id": document_id, "mode": "upload-direct", "file": original_name}
 
 
 @router.get("")
