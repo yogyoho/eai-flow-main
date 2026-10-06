@@ -555,6 +555,10 @@ export function ModelerPage({ initialFile }: { initialFile?: string }) {
                 ))
               )}
               </div>
+              <div className="border-sidebar-border text-muted-foreground border-t px-2.5 py-2 text-[10px] leading-snug">
+                两份均为 <b className="font-semibold">TBox</b>（术语层声明）；实例
+                （ABox）落 <code>dg_*</code> 表与内核图，不经 yaml。
+              </div>
             </div>
 
             {/* 中：编辑器面板（可最大化）+ 谓词与公理独立面板（画布下方不堆叠行——遮挡节点） */}
@@ -788,6 +792,14 @@ function SaveBanner({ msg }: { msg: string }) {
   );
 }
 
+// 域文件角色徽标（2026-10-06）：两份 yaml 均为 TBox（术语层声明），分工不同——
+// doc_graph=域无关结构骨架（实体/关系/证据容器+审核动作），eia=环评业务域词汇
+// （etype/谓词/公理/类标签）。实例（ABox）落 dg_* 表与内核图，不经 yaml。
+const FILE_ROLES: Record<string, { tag: string; desc: string }> = {
+  "doc_graph.yaml": { tag: "TBox · 结构骨架", desc: "域无关底座：实体/关系/证据容器 + 审核动作" },
+  "eia.yaml": { tag: "TBox · 业务域词汇", desc: "环评域 etype/谓词/公理/类标签声明" },
+};
+
 function FileTab({
   name,
   active,
@@ -799,21 +811,32 @@ function FileTab({
   classCount?: number;
   onClick: () => void;
 }) {
+  const role = FILE_ROLES[name];
   return (
     <button
       type="button"
       onClick={onClick}
+      title={role?.desc}
       className={cn(
-        "mb-0.5 flex w-full items-center justify-between rounded-md px-2.5 py-1.5 text-left font-mono text-sm transition-colors",
+        "mb-0.5 w-full rounded-md px-2.5 py-1.5 text-left font-mono text-sm transition-colors",
         active
           ? "bg-primary/10 text-primary font-semibold"
           : "text-muted-foreground hover:bg-accent hover:text-foreground",
       )}
     >
-      <span className="truncate">{name}</span>
-      {classCount !== undefined ? (
-        <span className="text-muted-foreground ml-2 flex-none text-[13px]">
-          {classCount} 类
+      <span className="flex items-center justify-between">
+        <span className="truncate">{name}</span>
+        {classCount !== undefined ? (
+          <span className="text-muted-foreground ml-2 flex-none text-[13px]">
+            {classCount} 类
+          </span>
+        ) : null}
+      </span>
+      {role ? (
+        <span className="mt-0.5 flex">
+          <span className="rounded border border-current/20 px-1 py-px font-sans text-[10px] leading-none opacity-80">
+            {role.tag}
+          </span>
         </span>
       ) : null}
     </button>
