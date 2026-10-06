@@ -6,3 +6,4 @@ hot_reload: true
 files:
   - file: doc_graph.yaml
   - file: eia.yaml
+  - file: market.yaml

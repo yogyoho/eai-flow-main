@@ -1,0 +1,118 @@
+# 营销域（market）v1——天玛智控营销本体定制（方法论: 外部《Palantir 本体实操指南》+ 天玛智控营销域本体模型设计指南）
+# 设计对照: docs/designs/2026-10-06-ontostudio-vs-palantir-ontology-completeness.md（缺口 #1 Function 等）
+# 建模范围: 文章 §七 MVP（客户/产品/商机/合同 4 类簇）+ 差异化资产（已装机台账/证书准入/竞争失标码）
+#           —— 21 etype / 21 谓词 / 传递归属公理；覆盖交付稿验收用例 V1-V7 的模型侧
+# 表模型: 同驻 dg_entities / dg_relations / dg_mentions（domain 列 = market），零 DDL——与 eia 域同模式
+# 数据接入: 抽取侧 MarketExtraction（doc_graph/schemas.py 域分发器）尚未实现（TODOS「抽取管线多域化」）——
+#           本文件先落 TBox（自顶向下：顶层概念专家定，实例层用数据回填）；写入路径 = 既有 review 动作/人工
+namespaces:
+  market: "https://ontology.eai-flow.com/market#"
+object_types:
+  - api_name: market_entity
+    display_name: 营销实体
+    description: 营销域实体（客户集团/矿井/工作面/产品线/型号/证书/商机/标段/投标/合同/订单/已装机/竞品/示范面/销售服务区/政策 v1）
+    domain: market
+    icon: 📈
+    access:
+      path: postgres_ext
+      table: dg_entities
+    pk:
+      column: id
+      api_name: id
+      type: uuid
+    properties:
+      - { name: id, api_name: id, type: uuid, description: 主键 }
+      - { name: domain, api_name: domain, type: string, description: 抽取域, filterable: true }
+# etype中文标注: customer_group=客户集团 mine_site=矿井 working_face=工作面 contact_person=联系人 sales_org=销售服务区 product_line=产品线 product_model=产品型号 solution=成套解决方案 certificate=资质证书 pilot_project=示范工作面 opportunity=商机 tender=招标事件 bid=投标 bid_result=投标结果 contract=合同 order=订单 quote=报价单 installed_base=已装机台账 competitor=竞争对手 policy=政策标准
+      - { name: etype, api_name: etype, type: string, description: 实体类型, filterable: true, enum: [customer_group, mine_site, working_face, contact_person, sales_org, product_line, product_model, solution, certificate, pilot_project, opportunity, tender, bid, bid_result, contract, order, quote, installed_base, competitor, policy] }
+      - { name: canonical_name, api_name: canonicalName, type: string, description: 规范名, searchable: true }
+      - { name: norm_name, api_name: normName, type: string, description: 归一化名（同义词典落地——矿井异写/产品线口语如 SAC=支架电液控） }
+      - { name: attrs, api_name: attrs, type: json, description: 属性（商机阶段/金额币种/证书有效期/失标原因码/服役年限/关联方标记等摊平存放） }
+      - { name: confidence, api_name: confidence, type: number, description: 抽取置信度, filterable: true }
+      - { name: status, api_name: status, type: string, description: 状态, filterable: true, enum: [active, pending_review, merged] }
+      - { name: valid_from, api_name: validFrom, type: datetime, description: 业务有效期起 }
+      - { name: valid_to, api_name: validTo, type: datetime, description: 业务有效期止 }
+      - { name: created_at, api_name: createdAt, type: datetime, description: 创建时间 }
+    # 动作层数据范围：同 eia 域（EAI-CUSTOM 2026-09-27 registry 缩编注）——market 行与
+    # doc_graph/eia 行同驻 dg_* 表、同经 ontology 面审核/消费；review_entity 动作目标
+    # graph_entity 直达本域行，经下方 mention 链接满足 lint 可达性检查。
+    scope_resource: ontology
+    etype_classes:
+      customer_group: { class: CustomerGroup, label: 客户集团, definition: 能源集团级客户（集团—子公司—矿井—工作面四级嵌套顶层；决策权在集团时子公司仅为执行主体；关联方标记在 attrs.is_related_party，影响定价审批流与披露口径） }
+      mine_site: { class: MineSite, label: 矿井, definition: 生产矿井（与在建/筹建处区分——后者不产生当期需求；二级子公司层级经 belongs_to_group 关系表达，不作类公理） }
+      working_face: { class: WorkingFace, label: 工作面, definition: 采煤工作面（最小装机与复购单元，必须绑定所属矿井—— located_at） }
+      contact_person: { class: ContactPerson, label: 联系人, definition: 客户侧关键人（attrs.role=决策者|技术把关|采购|使用者，经 decides_by 挂决策单元） }
+      sales_org: { class: SalesOrg, label: 销售服务区, definition: 区域经营体（服务区经理制；商机归属裁决链=客户主数据>服务区>首接触） }
+      product_line: { class: ProductLine, label: 产品线, definition: SAC 电液控制（大脑）/SAM 综采自动化（神经）/SAP 智能供液（心脏）三大产品线 + 非煤第二曲线 }
+      product_model: { class: ProductModel, label: 产品型号, definition: 配置型产品型号（如 SAC3500；可选项/工况参数在 attrs） }
+      solution: { class: Solution, label: 成套解决方案, definition: 跨产品线组合方案（一体化/总包——独立于单品报价的实体） }
+      certificate: { class: Certificate, label: 资质证书, definition: MA 煤安/IECEx/ATEX 认证（按型号+发证机构+有效期管理，attrs.valid_to 到期前 90 天触发续期预警；准入硬约束） }
+      pilot_project: { class: PilotProject, label: 示范工作面, definition: 智能化示范面/样板工程（技术营销资产——新客户集团投标立项的前置信号，转化率强关联） }
+      opportunity: { class: Opportunity, label: 商机, definition: 项目型销售商机（周期 6-24 月；阶段状态机在 attrs.stage：线索→初步接触→需求确认→技术方案/示范面→投标立项→报价审批→投标→中标/失标→合同生效；金额含税挂币种；is_related_party 关联方标记） }
+      tender: { class: Tender, label: 招标事件, definition: 标段（招标编号/预算/评标办法/原文 URL；资格要求必须结构化在 attrs——必需证书/最低业绩台数/类似工况案例数/交期上限，是准入自动判定输入源） }
+      bid: { class: Bid, label: 投标, definition: 投标动作（报价金额/技术方案版本/投标团队/是否联合体/提交时间） }
+      bid_result: { class: BidResult, label: 投标结果, definition: 中标/失标/流标/撤标（失标原因码枚举在 attrs.reason_code：C01 价格偏高…C99 其他须附说明——禁止自由文本，跑满年度做归因分析） }
+      contract: { class: Contract, label: 合同, definition: 签约合同（签约额口径=ERP 生效金额；交付范围挂 BOM 层级；质保期/付款节点计划；关联新增装机） }
+      order: { class: Order, label: 订单, definition: 订单行项（承诺/实际交期；在手口径=未交付，与计划域对齐） }
+      quote: { class: Quote, label: 报价单, definition: 报价建议实体（价格/币种/有效期/审批状态——同一商机仅一份正式报价有效） }
+      installed_base: { class: InstalledBase, label: 已装机台账, definition: 装机存量（型号/装机日期/服役年限/工况/质保止期——后市场与改造商机的源头，本体最有差异化的一块） }
+      competitor: { class: Competitor, label: 竞争对手, definition: 竞品主体（如恒达智控/浙江中煤；持有证书经 holds 竞争准入对比） }
+      policy: { class: Policy, label: 政策标准, definition: 驱动商机的政策/标准/等级认定（如煤矿智能化建设指导意见；生效期在 attrs） }
+  - api_name: market_relation
+    display_name: 营销关系
+    description: 营销域实体间关系（客户层级/装机/竞争/招投标/合同回款/准入 v1 谓词）
+    domain: market
+    icon: 🔗
+    access:
+      path: postgres_ext
+      table: dg_relations
+    pk:
+      column: id
+      api_name: id
+      type: uuid
+    properties:
+      - { name: id, api_name: id, type: uuid, description: 主键 }
+      - { name: subject_id, api_name: subjectId, type: uuid, description: 主体实体, indexed: true, filterable: true }
+# 谓词中文标注: belongs_to_group=归属集团 located_at=位于 has_installed=已装机 served_by=服务区为 targets=瞄准 originates_from=源自 competes_in=竞争于 driven_by=受驱动于 derived_from=衍生自 requires_cert=要求证书 bids_on=投标于 results_in=产生结果 converts_to=转化为 fulfilled_by=履行为 accepted_via=验收于 paid_by=回款于 paired_with=配套于 qualified_for=具备准入 decides_by=决策角色 covers=覆盖归因 same_as=跨系统对齐
+      - { name: predicate, api_name: predicate, type: string, description: 谓词, indexed: true, filterable: true, enum: [belongs_to_group, located_at, has_installed, served_by, targets, originates_from, competes_in, driven_by, derived_from, requires_cert, bids_on, results_in, converts_to, fulfilled_by, accepted_via, paid_by, paired_with, qualified_for, decides_by, covers, same_as] }
+      - { name: object_id, api_name: objectId, type: uuid, description: 客体实体, indexed: true, filterable: true }
+      - { name: attrs, api_name: attrs, type: json, description: 关系属性（装机日期/工况参数/时间窗/竞争标段等——关键关系必须带 valid_from/valid_to，防「过期正确」推理） }
+      - { name: confidence, api_name: confidence, type: number, description: 抽取置信度, filterable: true }
+      - { name: valid_from, api_name: validFrom, type: datetime, description: 业务有效期起 }
+      - { name: valid_to, api_name: validTo, type: datetime, description: 业务有效期止 }
+      - { name: created_at, api_name: createdAt, type: datetime, description: 创建时间 }
+    # 动作层数据范围：同 market_entity。
+    scope_resource: ontology
+
+link_types:
+  # 证据链挂接（同 eia.yaml 先例）：market 实体/关系行同驻 dg_* 表，graph_mention 的
+  # 外键对 market 域行同样成立——跨文件链接由加载器 pending 机制支持，
+  # 同时满足 lint 的 check_action_reachable_objects_are_scoped（可达者必须绑定 scope）。
+  - api_name: mention_of_market_entity
+    display_name: 证据指向营销实体
+    source: graph_mention
+    target: market_entity
+    cardinality: N:1
+    reverse: market_entity_has_mentions
+    join:
+      type: foreign_key
+      source_column: entity_id
+      target_column: id
+
+  - api_name: mention_of_market_relation
+    display_name: 证据指向营销关系
+    source: graph_mention
+    target: market_relation
+    cardinality: N:1
+    reverse: market_relation_has_mentions
+    join:
+      type: foreign_key
+      source_column: relation_id
+      target_column: id
+
+formal:
+  # 客户层级穿透（交付稿验收用例 V1）：工作面 located_at 矿井、矿井 belongs_to_group 集团
+  # ⇒ 工作面 belongs_to_group 集团；叠加 transitive 支持任意深度（集团—子公司—矿井—工作面四级）
+  transitive: [belongs_to_group]
+  property_chains:
+    - { derived: belongs_to_group, chain: [located_at, belongs_to_group] }

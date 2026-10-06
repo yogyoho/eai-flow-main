@@ -798,6 +798,7 @@ function SaveBanner({ msg }: { msg: string }) {
 const FILE_ROLES: Record<string, { tag: string; desc: string }> = {
   "doc_graph.yaml": { tag: "TBox · 结构骨架", desc: "域无关底座：实体/关系/证据容器 + 审核动作" },
   "eia.yaml": { tag: "TBox · 业务域词汇", desc: "环评域 etype/谓词/公理/类标签声明" },
+  "market.yaml": { tag: "TBox · 营销域词汇", desc: "营销域 etype/谓词/公理/类标签声明（天玛智控定制 v1）" },
 };
 
 function FileTab({
