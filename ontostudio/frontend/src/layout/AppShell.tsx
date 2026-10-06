@@ -24,6 +24,7 @@ import {
 import type { LucideIcon } from "lucide-react";
 
 import { fetchPendingReviewCount } from "@/api/ontology-graph-api";
+import eaiLogo from "@/assets/eai-logo.svg";
 import { OntologyPage, type PageView } from "@/components/OntologyPage";
 import { DashboardPage } from "@/pages/DashboardPage";
 import { EntitiesPage } from "@/pages/EntitiesPage";
@@ -116,7 +117,7 @@ const ROUTE_ICON: Record<RouteId, LucideIcon> = {
 function useHashRoute(): [RouteId, (id: RouteId) => void] {
   const parse = useCallback((): RouteId => {
     const raw = window.location.hash.replace(/^#/, "").split(":")[0] ?? "";
-    return (ROUTE_IDS as string[]).includes(raw) ? (raw as RouteId) : "graph";
+    return (ROUTE_IDS as string[]).includes(raw) ? (raw as RouteId) : "dashboard";
   }, []);
   const [route, setRoute] = useState<RouteId>(parse);
   useEffect(() => {
@@ -199,9 +200,11 @@ export function AppShell() {
         >
           {!collapsed ? (
             <>
-              <span className="bg-primary text-primary-foreground grid h-8 w-8 flex-none place-items-center rounded-lg text-[15px] font-black">
-                本
-              </span>
+              <img
+                src={eaiLogo}
+                alt="EAI"
+                className="h-9 w-8 flex-none object-contain"
+              />
               <div className="min-w-0">
                 <b className="block text-[15px] leading-tight font-black tracking-wide">
                   OntoStudio
