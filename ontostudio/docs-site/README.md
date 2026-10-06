@@ -15,8 +15,8 @@ pnpm build      # 产物 .vitepress/dist
 | 路径 | 内容 |
 |---|---|
 | `index.md` | 首页 |
-| `glossary/` | 术语解释（总览 + eia 域 + doc_graph 域） |
-| `design/` | 业务本体设计（eia 域模型 / doc_graph 骨架） |
+| `glossary/` | 术语解释（总览 + eia 域 + core_graph 域 + market 域） |
+| `design/` | 业务本体设计（eia 域模型 / core_graph 骨架） |
 | `guide/index.md` | 九大模块功能操作 |
 | `changelog.md` | 更新记录 |
 

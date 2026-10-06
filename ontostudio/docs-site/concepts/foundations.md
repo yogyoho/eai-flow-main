@@ -16,7 +16,7 @@
 
 **命名空间与前缀**：IRI 很长，用前缀缩写。如 `dg:` 展开为 `http://ontostudio.example/dg#`，`dg:graph_entity` 就是完整 IRI 的速记。每个域有自己的命名空间，登记在 registry 中。
 
-**registry**：OntoStudio 的"字典+语法书"本体——`ontostudio/backend/app/ontology/registry/` 下的 yaml 文件（`doc_graph.yaml`、`eia.yaml`、`_manifest.yaml`），声明每个域有哪些对象类型（类）、属性列、链接（谓词）。建模器页编辑的就是它的草稿。
+**registry**：OntoStudio 的"字典+语法书"本体——`ontostudio/backend/app/ontology/registry/` 下的 yaml 文件（`core_graph.yaml`、`eia.yaml`、`market.yaml`、`_manifest.yaml`），声明每个域有哪些对象类型（类）、属性列、链接（谓词）。建模器页编辑的就是它的草稿。
 
 ## 你在哪能看到/操作它
 

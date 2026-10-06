@@ -69,7 +69,7 @@ export default defineConfig({
           items: [
             { text: "术语总览", link: "/glossary/" },
             { text: "eia 域（环评）", link: "/glossary/eia" },
-            { text: "doc_graph 域（文档图谱）", link: "/glossary/doc-graph" },
+            { text: "core_graph 域（图谱底座）", link: "/glossary/core-graph" },
           ],
         },
       ],
@@ -78,7 +78,7 @@ export default defineConfig({
           text: "业务本体设计",
           items: [
             { text: "eia 域模型", link: "/design/eia-model" },
-            { text: "doc_graph 骨架", link: "/design/doc-graph" },
+            { text: "core_graph 骨架", link: "/design/core-graph" },
           ],
         },
       ],

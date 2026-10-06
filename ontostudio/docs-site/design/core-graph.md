@@ -1,8 +1,8 @@
-# doc_graph 骨架设计
+# core_graph 骨架设计
 
-> 对齐：`doc_graph.yaml` + ingest_tasks @ 2026-10-06
+> 对齐：`core_graph.yaml`（原 doc_graph.yaml，2026-10-06 更名）+ ingest_tasks @ 2026-10-06
 
-`doc_graph.yaml` 是文档图谱的**结构骨架**——它不描述业务语义（那是各业务域 yaml 的事），而声明支撑消解审核、实体库、图谱浏览的底座：
+`core_graph.yaml` 是图谱底座的**结构骨架**——它不描述业务语义（那是各业务域 yaml 的事），而声明支撑消解审核、实体库、图谱浏览的底座：
 
 ## 三类对象（双透镜体系）
 
