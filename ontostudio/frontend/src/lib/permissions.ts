@@ -27,6 +27,18 @@ interface PermissionsMeResponse {
   nav?: string[];
   pages?: string[];
   is_admin?: boolean;
+  /** EAI-CUSTOM (2026-10-06): 身份展示字段（侧栏账户区，替代此前硬编码）。 */
+  email?: string | null;
+  full_name?: string | null;
+  dept_name?: string | null;
+}
+
+export interface MeIdentity {
+  email: string;
+  fullName: string;
+  deptName: string;
+  /** 头像字：full_name → email → username 依次取首字符。 */
+  avatarChar: string;
 }
 
 export interface PermissionGate {
@@ -37,6 +49,8 @@ export interface PermissionGate {
   isLoading: boolean;
   /** 预检的页面 id（本体页固定 ontology:page:map）。 */
   pageId: string;
+  /** 当前用户展示身份（未知字段回退空串，调用方自行兜底）。 */
+  me: MeIdentity;
 }
 
 // 模块级单次拉取：整个 SPA 只打一次 /me，避免多调用方重复请求
@@ -65,6 +79,12 @@ export function usePermission(): PermissionGate {
   const [pages, setPages] = useState<string[] | null>(null);
   const [permissions, setPermissions] = useState<string[] | null>(null);
   const [isAdmin, setIsAdmin] = useState(false);
+  const [me, setMe] = useState<MeIdentity>({
+    email: "",
+    fullName: "",
+    deptName: "",
+    avatarChar: "",
+  });
 
   useEffect(() => {
     let cancelled = false;
@@ -74,6 +94,11 @@ export function usePermission(): PermissionGate {
         setPages(data.pages ?? []);
         setPermissions(data.permissions ?? []);
         setIsAdmin(Boolean(data.is_admin));
+        const email = data.email ?? "";
+        const fullName = data.full_name ?? "";
+        const deptName = data.dept_name ?? "";
+        const avatarChar = [...(fullName || email)][0] ?? "";
+        setMe({ email, fullName, deptName, avatarChar });
       })
       .catch(() => {
         if (!cancelled) {
@@ -98,7 +123,7 @@ export function usePermission(): PermissionGate {
     return permissions!.includes(permission);
   };
 
-  return { canPage, can, isLoading, pageId: PAGE_ID };
+  return { canPage, can, isLoading, pageId: PAGE_ID, me };
 }
 
 /** OntoStudio 权限点目录（B1, 2026-10-05）——与后端 auth.py PERM_* 一一对应。 */

@@ -26,6 +26,7 @@ import type { LucideIcon } from "lucide-react";
 import { fetchPendingReviewCount } from "@/api/ontology-graph-api";
 import eaiLogo from "@/assets/eai-logo.svg";
 import { OntologyPage, type PageView } from "@/components/OntologyPage";
+import { usePermission } from "@/lib/permissions";
 import { DashboardPage } from "@/pages/DashboardPage";
 import { EntitiesPage } from "@/pages/EntitiesPage";
 import { ExportPage } from "@/pages/ExportPage";
@@ -140,6 +141,7 @@ function useHashRoute(): [RouteId, (id: RouteId) => void] {
 
 export function AppShell() {
   const [route, go] = useHashRoute();
+  const { me } = usePermission();
   const knowledgeView = ROUTE_VIEW[route];
   // F6 深链参数：`#modeler:<domain>` → 建模器初始域文件；无后缀时 undefined（保持默认选中）
   const modelerInitialFile = (() => {
@@ -200,7 +202,7 @@ export function AppShell() {
         >
           {!collapsed ? (
             <>
-              <span className="bg-primary grid h-8 w-8 flex-none place-items-center overflow-hidden rounded-lg p-1">
+              <span className="grid h-8 w-8 flex-none place-items-center overflow-hidden rounded-lg p-1">
                 <img src={eaiLogo} alt="EAI" className="h-full w-full object-contain" />
               </span>
               <div className="min-w-0">
@@ -305,6 +307,8 @@ export function AppShell() {
             </a>
           </div>
         </nav>
+        {/* 账户区（2026-10-06）：真身份——/api/permissions/me 的 email/full_name/dept_name，
+            替代此前硬编码「知识工程组/admin@eai-flow.com」。加载中/未登录回退占位。 */}
         <div
           className={cn(
             "border-border flex items-center gap-2.5 border-t px-4 py-3",
@@ -312,12 +316,16 @@ export function AppShell() {
           )}
         >
           <span className="bg-primary text-primary-foreground grid h-7 w-7 flex-none place-items-center rounded-full text-xs font-semibold">
-            管
+            {me.avatarChar || "·"}
           </span>
           {!collapsed ? (
-            <div className="leading-tight">
-              <b className="block text-sm font-medium">知识工程组</b>
-              <span className="text-muted-foreground text-xs">admin@eai-flow.com</span>
+            <div className="min-w-0 leading-tight">
+              <b className="block truncate text-sm font-medium">
+                {me.fullName || me.email || "未登录"}
+              </b>
+              <span className="text-muted-foreground block truncate text-xs">
+                {me.email || me.deptName || "—"}
+              </span>
             </div>
           ) : null}
         </div>

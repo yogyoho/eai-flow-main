@@ -20,6 +20,21 @@ def test_me_superadmin_full_set_and_is_admin(monkeypatch):
     assert "*" not in data["permissions"], "list_permissions 输出具体点，不含裸通配"
 
 
+def test_me_returns_identity_display_fields(monkeypatch):
+    """EAI-CUSTOM (2026-10-06): /me 回带 email/full_name/dept_name——OntoStudio 侧栏
+    账户区曾硬编码「知识工程组/admin@eai-flow.com」，任何用户都显示同一份；修复后以此为准。"""
+    patch_identity(monkeypatch, fake_identity(role_code="superadmin"))
+    tc = build_app(
+        router,
+        user=make_user(role_name="超级管理员", email="zhang.san@eai-flow.com", full_name="张三", dept_name="知识工程组"),
+        db=policy_rows_db([]),
+    )
+    data = tc.get("/api/permissions/me").json()
+    assert data["email"] == "zhang.san@eai-flow.com"
+    assert data["full_name"] == "张三"
+    assert data["dept_name"] == "知识工程组"
+
+
 def test_me_policy_grant_appears_and_deny_overrides(monkeypatch):
     patch_identity(monkeypatch, fake_identity(role_code="user"))
     db = policy_rows_db(

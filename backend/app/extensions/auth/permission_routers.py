@@ -116,6 +116,12 @@ async def get_my_permissions(
         "data_scopes": data_scopes,
         "is_admin": is_admin,
         "identity": identity.to_dict(),
+        # EAI-CUSTOM (2026-10-06): 身份展示字段——OntoStudio 侧栏账户区此前硬编码
+        # 「知识工程组/admin@eai-flow.com」，任何登录用户都看到同一份。email/full_name/
+        # dept_name 直接取自 current_user（会话真源），零额外查询。
+        "email": current_user.email,
+        "full_name": current_user.full_name,
+        "dept_name": current_user.dept_name,
     }
 
 
