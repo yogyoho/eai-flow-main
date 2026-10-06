@@ -58,6 +58,7 @@ export default defineConfig({
           items: [
             { text: "MCP 工具总表", link: "/reference/mcp-tools" },
             { text: "GB/T 48000.3—2026 符合性", link: "/reference/gbt-48000" },
+            { text: "GB/T 48000.3—2026 全文", link: "/reference/gbt-48000-fulltext" },
             { text: "Agent 集成指南", link: "/reference/agent-integration" },
           ],
         },
