@@ -1,5 +1,7 @@
 # doc_graph 骨架设计
 
+> 对齐：`doc_graph.yaml` + ingest_tasks @ 2026-10-06
+
 `doc_graph.yaml` 是文档图谱的**结构骨架**——它不描述业务语义（那是各业务域 yaml 的事），而声明支撑消解审核、实体库、图谱浏览的底座：
 
 ## 三类对象（双透镜体系）
@@ -35,8 +37,16 @@ dg_mentions ─投影──▶ graph_mention（证据链，永不删）
 | **promote-only 重入库** | 同文档重抽不降级人工清理过的 active/merged |
 | **Postgres 唯一真相源** | `dg_*` 表是事实层；内核图是可随时重建的投影（装载=对账） |
 
+## 抽取任务化（B2 + G3 + G6）
+
+抽取从"内部装载器"升级为可观测的任务流：
+
+- **B2 任务表**（`dg_extraction_tasks`）：排队 / 抽取中 / 装载 / 完成 / 失败状态机；「08 抽取导入」页 2s 轮询消费
+- **G3 直连通道**：`upload-and-extract` 端点——txt/docx 上传 → 规则抽取 → 建任务，一体流不依赖离线管线预产产物
+- **G6 进度 stats**：loading 阶段实时百分比由独立连接写入（零 DDL），任务队列进度列消费
+
 ## 与主系统的关系
 
-- `dg_*` 表由主系统抽取管线（eia_samples regex/v1）写入；OntoStudio 消费
-- agent 经 MCP（ontology server 8 只读 + 2 动作 / doc-graph server 5 工具）读写本体
+- `dg_*` 表由主系统抽取管线（eia_samples regex/v1 / G3 直连规则抽取）写入；OntoStudio 消费
+- agent 经 MCP（ontology server 17 工具——只读为主，含受治理动作 / doc-graph server 5 工具）读写本体（契约：[MCP 工具总表](../reference/mcp-tools)）
 - 协同文档编辑**不在** OntoStudio 范围——使用主系统 docmgr（EAI 文档子系统）

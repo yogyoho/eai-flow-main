@@ -1,6 +1,11 @@
 # eia 域模型设计
 
 > 设计依据：环评样例四类目标抽取（章节结构 / 上下文逻辑链 / 标准阈值与法规条款 / 业务节点佐证需求），词汇与 registry `eia.yaml` 严格同名。
+> 对齐：`registry/eia.yaml` v2 @ 2026-10-06
+
+## 词汇扩容现状（v2）
+
+相对 v1：**+24 etype / +19 谓词 / 逻辑链 3→5**（新增 `impact_on_receptor`、`aquifer_impact` 等），枚举以 `registry/eia.yaml` 头注与文件体为准——建模器画布即当前词表的可视化。
 
 ## 两条逻辑链
 
@@ -46,9 +51,18 @@ axioms:
                     推理物化（covered_by_standard 等派生）
 ```
 
-- 抽取结果置信度 < 0.7 落 `pending_review`，≥ 0.7 直落 `active`
+- 状态轴（[审阅闭环](../guide/review-loop)）：`pending_review → active / rejected / merged`（合并留痕可撤销）
+- v1 按置信度分流（<0.7 待审）；**当前抽取导入默认 `force_review=true` 全量置待审**（D11/11A）——置信度决定队列排序与复核优先级，不再自动入图
 - 重入库 promote-only：人工清理过的状态永不降级
 - 全量装载 = 对账：重读 `dg_*` 全表强制重写图（degraded 自愈的执行者）
+
+## 三库 scope（图谱归属）
+
+| 库 | scope | 装什么 | Agent 查询入口 |
+|---|---|---|---|
+| A 样例素材 | `sample` | 历史样例报告抽取产物 | `query_analogy`（类比素材，带 source_report 溯源） |
+| B 领域共性 | `domain_common` | 跨项目蒸馏规律（etype=domain_pattern） | `query_analogy` |
+| C 项目工作本 | `project` | 当前项目实体（报告正文取材池） | `query_entity scope=project` |
 
 ## 双透镜与图面判据
 
