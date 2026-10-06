@@ -68,11 +68,20 @@ export async function authFetch<T>(
         const detailMessages: string[] = Array.isArray(error.detail)
           ? error.detail.map((x: { msg?: string }) => x?.msg).filter(Boolean)
           : [];
+        // EAI-CUSTOM (2026-10-06): registry-content 保存失败返回对象形态 detail
+        // （{"errors": [...]}，registry_content.py:179）——此前三分支全不命中，
+        // 兜底成裸 "Request failed"，真实校验错误被吞（建模器 label 保存实测）。
+        const objectDetailErrors: string[] =
+          error.detail && typeof error.detail === "object"
+            ? (error.detail.errors ?? []).filter((x: unknown) => typeof x === "string")
+            : [];
         message =
           typeof error.detail === "string"
             ? error.detail
             : detailMessages.length > 0
               ? detailMessages.join("; ")
+              : objectDetailErrors.length > 0
+                ? objectDetailErrors.join("; ")
               : message;
       } else {
         const text = await response.text();

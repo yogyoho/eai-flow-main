@@ -302,14 +302,46 @@ export function ModelerPage({ initialFile }: { initialFile?: string }) {
 
   const editClassField = useCallback(
     (clsName: string, field: "label" | "definition", value: string) => {
-      mutateDraft((obj) => {
-        const classes = (obj.classes ?? {}) as Draft;
-        const entry = (classes[clsName] ?? {}) as Draft;
-        classes[clsName] = { ...entry, [field]: value };
-        obj.classes = classes;
+      // EAI-CUSTOM (2026-10-06): 类元数据的 schema 合法载体是 object_types[] 内嵌
+      // etype_classes（schemas.py ObjectType extra=forbid）——旧实现写顶层 classes:，
+      // 保存恒 422「Extra inputs are not permitted」且对象形态 detail 被 authFetch
+      // 吞成裸 "Request failed"，用户看不到真实原因（doc_graph.yaml label 编辑实测）。
+      const pascal = (et: string) => et.replace(/(^|_)([a-z])/g, (_, _s, c) => c.toUpperCase());
+      const root = yamlLoad(text) as Draft;
+      const ots = (root.object_types ?? []) as Draft[];
+      let ownerApiName: string | null = null;
+      let etypeKey: string | null = null;
+      for (const ot of ots) {
+        const props = (ot.properties ?? []) as Draft[];
+        const etypeEnum = (props.find((p) => p.name === "etype")?.enum ?? []) as string[];
+        if (etypeEnum.length === 0) continue;
+        const ec = (ot.etype_classes ?? {}) as Record<string, Draft>;
+        const byMapping = Object.entries(ec).find(([, m]) => m.class === clsName)?.[0];
+        const byEtype = etypeEnum.find((et) => pascal(et) === clsName);
+        if (byMapping || byEtype) {
+          ownerApiName = ot.api_name as string;
+          etypeKey = byMapping ?? byEtype ?? null;
+          break;
+        }
+      }
+      if (!ownerApiName || !etypeKey) {
+        // 类元数据住在其他域文件（如 doc_graph 域部分类声明于 eia.yaml）——写本文件必 422
+        setSaveMsg(`✗ 类 ${clsName} 的元数据不在当前文件（声明于其他域 yaml）——请切换到对应文件编辑`);
+        return;
+      }
+      const ok = mutateDraft((obj) => {
+        const list = (obj.object_types ?? []) as Draft[];
+        const ot = list.find((o) => o.api_name === ownerApiName);
+        if (!ot) return;
+        const ec = { ...((ot.etype_classes ?? {}) as Record<string, Draft>) };
+        ec[etypeKey] = { ...(ec[etypeKey] ?? {}), [field]: value };
+        ot.etype_classes = ec;
       });
+      if (ok) {
+        setSelectedClass(clsName);
+      }
     },
-    [mutateDraft],
+    [text, mutateDraft],
   );
 
   const addClass = useCallback(() => {
