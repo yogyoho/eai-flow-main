@@ -146,8 +146,8 @@ export function ReasoningPage() {
     staleTime: Number.POSITIVE_INFINITY,
   });
   const dgPredLabels = useQuery({
-    queryKey: ["ontology", "predicate-labels", "doc_graph.yaml"],
-    queryFn: () => fetchPredicateLabels("doc_graph.yaml"),
+    queryKey: ["ontology", "predicate-labels", "core_graph.yaml"],
+    queryFn: () => fetchPredicateLabels("core_graph.yaml"),
     staleTime: Number.POSITIVE_INFINITY,
   });
   const predLabels = useMemo(

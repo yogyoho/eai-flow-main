@@ -40,7 +40,7 @@ import { cn } from "@/lib/utils";
 
 const PAGE_SIZES = [10, 25, 50, 100] as const;
 
-/** graph_entity 状态枚举（registry doc_graph.yaml 声明）。 */
+/** graph_entity 状态枚举（registry core_graph.yaml 声明）。 */
 const STATUS_ENUM = ["active", "pending_review", "merged", "rejected"] as const;
 type EntityStatus = (typeof STATUS_ENUM)[number];
 

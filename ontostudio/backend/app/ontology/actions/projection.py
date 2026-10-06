@@ -57,7 +57,7 @@ def project_row(action_id: str, pk: uuid.UUID, row: dict[str, Any] | None) -> No
             entity_rows=[dict(row)],
             relation_rows=[],
             mention_rows=[],
-            domain=str(row.get("domain") or "doc_graph"),
+            domain=str(row.get("domain") or "core_graph"),
         )
         if stats.entities == 0:
             raise RuntimeError(f"动作行未投影（etype 未在 registry 声明或域词表缺失）: pk={pk} etype={row.get('etype')!r} domain={row.get('domain')!r}")
@@ -98,7 +98,7 @@ def project_rows(action_id: str, rows: dict[uuid.UUID, dict[str, Any]]) -> set[u
         entity_rows=loadable,
         relation_rows=[],
         mention_rows=[],
-        domain="doc_graph",
+        domain="core_graph",
     )
     if stats.entities == 0:
         # 与单条路径同语义（project_row 的 stats.entities == 0 → RuntimeError）：一行都没装进去

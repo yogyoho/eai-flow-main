@@ -6,7 +6,7 @@
 
 export const DOMAIN_ALIASES: Record<string, string> = {
   eia: "环评",
-  doc_graph: "文档图谱",
+  core_graph: "图谱底座",
   bid_quote: "投标报价",
 };
 

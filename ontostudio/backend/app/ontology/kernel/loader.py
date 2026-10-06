@@ -49,7 +49,7 @@ def load_doc_graph_rows(
     entity_rows: list[dict],
     relation_rows: list[dict],
     mention_rows: list[dict],
-    domain: str | None = "doc_graph",
+    domain: str | None = "core_graph",
 ) -> LoaderStats:
     """dg_entities/dg_relations/dg_mentions 行 → 断言图（自然键幂等，可重复执行）。
 

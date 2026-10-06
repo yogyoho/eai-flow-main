@@ -48,7 +48,7 @@ const EMPTY_SNAPSHOT: GraphSnapshot = { nodes: [], edges: [] };
  * 已加载图节点中按 label / canonicalName 子串检索（大小写不敏感）；前缀命中排前，截取前 8 条。
  * EAI-CUSTOM(2026-09-29 检索修复)：label 理论上 = 首个非空 searchable 值（graph_entity 即
  * canonicalName），但 searchable 缺失时后端回退 pk——此时只能靠 properties 里的规范名兜底。
- * 图投影属性键走 engine api_name = camelCase canonicalName（doc_graph.yaml），resolution
+ * 图投影属性键走 engine api_name = camelCase canonicalName（core_graph.yaml），resolution
  * REST 才是 snake_case——两个拼写都试，防通道差异漏匹配。
  */
 function searchGraphNodes(query: string): Array<{ id: string; label: string }> {
@@ -176,7 +176,7 @@ function OntologyWorkspace({
   );
 
   // 已合并实体计数：图快照中 graph_entity 节点 properties.status === "merged"
-  // （doc_graph.yaml 注册表把 dg_entities 投影为 graph_entity，status 是可见属性）；
+  // （core_graph.yaml 注册表把 dg_entities 投影为 graph_entity，status 是可见属性）；
   // merge/unmerge 后经 reloadGraph 全量重载 → summary 更新 → 此计数随之刷新
   const mergedCount = useMemo(() => {
     if (!summary) {

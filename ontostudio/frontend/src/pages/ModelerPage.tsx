@@ -83,7 +83,7 @@ const STAGE_H = 440;
 
 export function ModelerPage({ initialFile }: { initialFile?: string }) {
   const qc = useQueryClient();
-  const [selectedFile, setSelectedFile] = useState(initialFile ?? "doc_graph.yaml");
+  const [selectedFile, setSelectedFile] = useState(initialFile ?? "core_graph.yaml");
   const [selectedClass, setSelectedClass] = useState<string | null>(null);
   const [saveMsg, setSaveMsg] = useState<string | null>(null);
   const [mode, setMode] = useState<"vis" | "yaml">("vis");
@@ -152,7 +152,7 @@ export function ModelerPage({ initialFile }: { initialFile?: string }) {
   const dirty = draftText !== null && draftText !== remoteText;
 
   // 类数据来源：domainSummary（服務端 API 已解析 registry YAML 為結構化數據）——
-  // 正確處理 eia.yaml 的 etype_classes 嵌套結構和 doc_graph.yaml 的 classes 結構
+  // 正確處理 eia.yaml 的 etype_classes 嵌套結構和 core_graph.yaml 的 classes 結構
   const allClasses: ClassEntry[] = useMemo(() => {
     if (!domainSummary) return [];
     return domainSummary.classes.map((c) => ({
@@ -305,7 +305,7 @@ export function ModelerPage({ initialFile }: { initialFile?: string }) {
       // EAI-CUSTOM (2026-10-06): 类元数据的 schema 合法载体是 object_types[] 内嵌
       // etype_classes（schemas.py ObjectType extra=forbid）——旧实现写顶层 classes:，
       // 保存恒 422「Extra inputs are not permitted」且对象形态 detail 被 authFetch
-      // 吞成裸 "Request failed"，用户看不到真实原因（doc_graph.yaml label 编辑实测）。
+      // 吞成裸 "Request failed"，用户看不到真实原因（core_graph.yaml label 编辑实测）。
       const pascal = (et: string) => et.replace(/(^|_)([a-z])/g, (_, _s, c) => c.toUpperCase());
       const root = yamlLoad(text) as Draft;
       const ots = (root.object_types ?? []) as Draft[];
@@ -796,7 +796,7 @@ function SaveBanner({ msg }: { msg: string }) {
 // doc_graph=域无关结构骨架（实体/关系/证据容器+审核动作），eia=环评业务域词汇
 // （etype/谓词/公理/类标签）。实例（ABox）落 dg_* 表与内核图，不经 yaml。
 const FILE_ROLES: Record<string, { tag: string; desc: string }> = {
-  "doc_graph.yaml": { tag: "TBox · 结构骨架", desc: "域无关底座：实体/关系/证据容器 + 审核动作" },
+  "core_graph.yaml": { tag: "TBox · 结构骨架", desc: "域无关底座：实体/关系/证据容器 + 审核动作" },
   "eia.yaml": { tag: "TBox · 业务域词汇", desc: "环评域 etype/谓词/公理/类标签声明" },
   "market.yaml": { tag: "TBox · 营销域词汇", desc: "营销域 etype/谓词/公理/类标签声明（天玛智控定制 v1）" },
 };
