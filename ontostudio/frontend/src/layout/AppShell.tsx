@@ -196,7 +196,9 @@ export function AppShell() {
       >
         <div
           className={cn(
-            "border-border flex items-center gap-2 border-b px-3 py-4",
+            // 固定高度（h-14）：展开态最高子块是两行文字(~37px)、收起态只有按钮(28px)，
+            // 不锁高则收起时整行塌缩、下方全部上移——logo 视觉上「从下往上跳」。锁高后两态零位移。
+            "border-border flex h-14 items-center gap-2 border-b px-3",
             collapsed && "justify-center px-1.5",
           )}
         >
