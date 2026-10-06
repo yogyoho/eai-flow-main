@@ -20938,3 +20938,1950 @@
 | 18:18 | Session end: 104 writes across 32 files (message-list.tsx, App.tsx, index.ts, page.tsx, LicensePage.tsx) | 47 reads | ~40031 tok |
 | 18:58 | Edited docs/designs/ui-style-spec.md | 47→46 lines | ~418 |
 | 19:03 | Session end: 105 writes across 32 files (message-list.tsx, App.tsx, index.ts, page.tsx, LicensePage.tsx) | 61 reads | ~40479 tok |
+| 20:02 | Card全站收敛: 基准=项目卡519行(真浏览器验证hover三件套), 8模块对齐+规范§6定稿, aab38879a已推送 | frontend/src/** ui-style-spec.md | 同步0 0 | ~40k |
+| 20:02 | Session end: 105 writes across 32 files (message-list.tsx, App.tsx, index.ts, page.tsx, LicensePage.tsx) | 61 reads | ~40479 tok |
+| 20:21 | Session end: 105 writes across 32 files (message-list.tsx, App.tsx, index.ts, page.tsx, LicensePage.tsx) | 61 reads | ~40479 tok |
+| 20:29 | Session end: 105 writes across 32 files (message-list.tsx, App.tsx, index.ts, page.tsx, LicensePage.tsx) | 61 reads | ~40479 tok |
+| 20:41 | Session end: 105 writes across 32 files (message-list.tsx, App.tsx, index.ts, page.tsx, LicensePage.tsx) | 61 reads | ~40479 tok |
+| 20:42 | Edited frontend/src/app/workflow-admin/page.tsx | reduced (-10 lines) | ~64 |
+| 20:43 | Edited frontend/src/app/workflow-admin/page.tsx | added 1 import(s) | ~30 |
+| 20:43 | Edited frontend/src/app/workflow-admin/page.tsx | modified CUSTOM() | ~128 |
+| 20:44 | Edited docs/designs/ui-style-spec.md | expanded (+14 lines) | ~269 |
+| 20:44 | Edited C:/Users/admin/.gstack/projects/yogyoho-eai-flow-main/admin-main-dev-fork-design-20260926-131630-ontostudio-review-loop.md | 4→6 lines | ~319 |
+| 20:44 | Edited C:/Users/admin/.gstack/projects/yogyoho-eai-flow-main/admin-main-dev-fork-design-20260926-131630-ontostudio-review-loop.md | "status=" → "tests/test_actions_e2e.py" | ~96 |
+| 20:44 | Edited C:/Users/admin/.gstack/projects/yogyoho-eai-flow-main/admin-main-dev-fork-design-20260926-131630-ontostudio-review-loop.md | inline fix | ~93 |
+| 20:45 | Edited C:/Users/admin/.gstack/projects/yogyoho-eai-flow-main/admin-main-dev-fork-design-20260926-131630-ontostudio-review-loop.md | 2→2 lines | ~111 |
+| 20:45 | Edited C:/Users/admin/.gstack/projects/yogyoho-eai-flow-main/admin-main-dev-fork-design-20260926-131630-ontostudio-review-loop.md | 1→2 lines | ~92 |
+| 20:45 | Edited C:/Users/admin/.gstack/projects/yogyoho-eai-flow-main/admin-main-dev-fork-design-20260926-131630-ontostudio-review-loop.md | inline fix | ~87 |
+| 20:45 | Edited C:/Users/admin/.gstack/projects/yogyoho-eai-flow-main/admin-main-dev-fork-design-20260926-131630-ontostudio-review-loop.md | inline fix | ~97 |
+| 20:45 | Edited C:/Users/admin/.gstack/projects/yogyoho-eai-flow-main/admin-main-dev-fork-design-20260926-131630-ontostudio-review-loop.md | 1→2 lines | ~39 |
+| 20:45 | Edited C:/Users/admin/.gstack/projects/yogyoho-eai-flow-main/admin-main-dev-fork-design-20260926-131630-ontostudio-review-loop.md | 3→3 lines | ~100 |
+| 20:51 | Edited frontend/src/extensions/docmgr/DocumentManagement.tsx | CSS: hover, hover | ~283 |
+| 20:51 | Edited docs/designs/ui-style-spec.md | inline fix | ~68 |
+| 20:52 | Edited docs/designs/ui-style-spec.md | "rounded-[6px]/sm border b" → "rounded-sm border bg-card" | ~23 |
+| 20:52 | Session end: 121 writes across 32 files (message-list.tsx, App.tsx, index.ts, page.tsx, LicensePage.tsx) | 62 reads | ~47305 tok |
+| 20:53 | Edited docs/designs/ui-style-spec.md | inline fix | ~67 |
+| 20:54 | Session end: 122 writes across 32 files (message-list.tsx, App.tsx, index.ts, page.tsx, LicensePage.tsx) | 62 reads | ~47377 tok |
+| 20:56 | Edited docs/designs/ui-style-spec.md | inline fix | ~66 |
+| 20:57 | Session end: 123 writes across 32 files (message-list.tsx, App.tsx, index.ts, page.tsx, LicensePage.tsx) | 62 reads | ~47448 tok |
+| 21:00 | Edited frontend/src/extensions/contract-price/components/ClustersView.tsx | CSS: EAI-CUSTOM | ~338 |
+| 21:04 | Session end: 124 writes across 32 files (message-list.tsx, App.tsx, index.ts, page.tsx, LicensePage.tsx) | 62 reads | ~47786 tok |
+| 21:10 | Edited frontend/src/extensions/knowledge-factory/components/scraper/ScraperTaskCenter.tsx | CSS: EAI-CUSTOM | ~286 |
+| 21:11 | Session end: 125 writes across 33 files (message-list.tsx, App.tsx, index.ts, page.tsx, LicensePage.tsx) | 62 reads | ~48072 tok |
+| 21:20 | eng-review 收口:外部声音10发现全吸收(5决议T1-T5),设计稿实施节重写,2 TODO入册,评审报告落稿 | docs/designs/...closure.md + TODOS.md | ENG CLEARED | ~12k |
+| 21:39 | Session end: 125 writes across 33 files (message-list.tsx, App.tsx, index.ts, page.tsx, LicensePage.tsx) | 65 reads | ~52472 tok |
+| 21:42 | Edited docs/designs/2026-09-26-landing-v2-optimization.md | inline fix | ~10 |
+| 21:42 | Edited docs/designs/2026-09-26-landing-v2-optimization.md | 1→3 lines | ~44 |
+| 21:42 | Created frontend/src/app/landing-v2/page.tsx | — | ~143 |
+| 21:42 | 对 landing-v2 优化设计稿做五维对抗评审(核对 landing-new/v2 App.tsx 行号引用与权限模块) | docs/designs/2026-09-26-landing-v2-optimization.md | 已核验,7/10,5 issues | ~6k |
+| 21:42 | Edited frontend/src/extensions/knowledge-factory/components/scraper/ScraperTaskCenter.tsx | added 1 import(s) | ~45 |
+| 21:43 | Edited frontend/src/extensions/knowledge-factory/components/scraper/ScraperTaskCenter.tsx | reduced (-14 lines) | ~118 |
+| 21:43 | Created frontend/src/components/landing-v2/App.tsx | — | ~5654 |
+| 21:43 | Edited docs/designs/2026-09-26-landing-v2-optimization.md | inline fix | ~27 |
+| 21:44 | Edited docs/designs/2026-09-26-landing-v2-optimization.md | expanded (+7 lines) | ~198 |
+| 21:44 | Edited docs/designs/2026-09-26-landing-v2-optimization.md | 5→9 lines | ~98 |
+| 21:44 | Session end: 134 writes across 34 files (message-list.tsx, App.tsx, index.ts, page.tsx, LicensePage.tsx) | 67 reads | ~58899 tok |
+| 21:47 | Edited frontend/src/extensions/knowledge-factory/components/scraper/ScraperDraftBox.tsx | added 1 import(s) | ~47 |
+| 21:47 | Edited frontend/src/extensions/knowledge-factory/components/scraper/ScraperDraftBox.tsx | CSS: EAI-CUSTOM | ~112 |
+| 21:47 | Session end: 136 writes across 35 files (message-list.tsx, App.tsx, index.ts, page.tsx, LicensePage.tsx) | 67 reads | ~59058 tok |
+| 21:48 | Session end: 136 writes across 35 files (message-list.tsx, App.tsx, index.ts, page.tsx, LicensePage.tsx) | 67 reads | ~59058 tok |
+| 21:51 | Edited frontend/src/components/landing-v2/App.tsx | 2→2 lines | ~25 |
+| 17:30 | office-hours 分析 landing-v2 缺口(7项P0×1/P1×3/P2×3)+设计文档落地;用户拍板方案B(登录感知双形态)并落地:副文案行业锚定+stats语境行+差异点行+徽章中性化+metadata+登录态workband(8卡权限过滤)+用户菜单;评审代理1轮5 issue全修;lint/tsc绿,明暗+登录/未登录截图+DOM取证过验 | docs/designs/2026-09-26-landing-v2-optimization.md frontend/src/components/landing-v2/ frontend/src/app/landing-v2/ | done | ~15000 |
+| 22:00 | Session end: 137 writes across 35 files (message-list.tsx, App.tsx, index.ts, page.tsx, LicensePage.tsx) | 72 reads | ~59083 tok |
+| 22:08 | Edited frontend/src/components/landing-v2/App.tsx | CSS: background-image, background-size, mask-image | ~355 |
+| 18:05 | landing-v2 背景优化:纯白→三层组合(主色渐变打底+点阵网格 token 上色顶部聚焦+光晕增强 info 次级色),全 token 衍生暗色自适应,双主题截图过验 | frontend/src/components/landing-v2/App.tsx | done | ~1200 |
+| 22:13 | Session end: 138 writes across 35 files (message-list.tsx, App.tsx, index.ts, page.tsx, LicensePage.tsx) | 76 reads | ~59438 tok |
+| 22:22 | Session end: 138 writes across 35 files (message-list.tsx, App.tsx, index.ts, page.tsx, LicensePage.tsx) | 77 reads | ~59438 tok |
+| 21:35 | TODOS 入册:推理白盒化(解释视图+CQ验收) | TODOS.md | 触发条件驱动 | ~2k |
+| 22:55 | Session end: 138 writes across 35 files (message-list.tsx, App.tsx, index.ts, page.tsx, LicensePage.tsx) | 77 reads | ~59438 tok |
+| 23:46 | Created docs/designs/ontostudio-frontend-redesign-20260926.html | — | ~14482 |
+| 23:47 | Edited docs/designs/ontostudio-frontend-redesign-20260926.html | 3→2 lines | ~31 |
+| 21:55 | 原型:OntoStudio 9页重构HTML(EAI对齐) | docs/designs/ontostudio-frontend-redesign-20260926.html | 4页截图自检通过 | ~18k |
+| 23:50 | Session end: 140 writes across 36 files (message-list.tsx, App.tsx, index.ts, page.tsx, LicensePage.tsx) | 82 reads | ~74987 tok |
+| 09:08 | Edited docs/designs/ontostudio-frontend-redesign-20260926.html | modified media() | ~855 |
+| 09:09 | Edited docs/designs/ontostudio-frontend-redesign-20260926.html | 2→2 lines | ~54 |
+| 09:09 | Edited docs/designs/ontostudio-frontend-redesign-20260926.html | expanded (+24 lines) | ~803 |
+| 09:10 | Edited docs/designs/ontostudio-frontend-redesign-20260926.html | expanded (+17 lines) | ~590 |
+| 09:10 | Edited docs/designs/ontostudio-frontend-redesign-20260926.html | modified pickFile() | ~224 |
+| 09:11 | Edited docs/designs/ontostudio-frontend-redesign-20260926.html | inline fix | ~41 |
+| 09-27 09:05 | 建模器页升级:可视化建模一等公民(双模式/TBox画布/公理表单),修axiombox定位 | docs/designs/...redesign...html | 截图验证 | ~6k |
+| 09:12 | Session end: 146 writes across 36 files (message-list.tsx, App.tsx, index.ts, page.tsx, LicensePage.tsx) | 85 reads | ~77738 tok |
+| 09:56 | Session end: 146 writes across 36 files (message-list.tsx, App.tsx, index.ts, page.tsx, LicensePage.tsx) | 85 reads | ~77738 tok |
+| 10:08 | Edited docs/designs/ontostudio-frontend-redesign-20260926.html | inline fix | ~6 |
+| 10:08 | Edited docs/designs/ontostudio-frontend-redesign-20260926.html | inline fix | ~63 |
+| 09-27 09:20 | 原型抽取标注改 regex/v1(4处)+IngestPage生产线注明 | docs/designs/...redesign...html | done | ~1k |
+| 10:08 | Session end: 148 writes across 36 files (message-list.tsx, App.tsx, index.ts, page.tsx, LicensePage.tsx) | 85 reads | ~77812 tok |
+| 10:13 | Edited ontostudio/backend/app/ontology/kernel/graph_ops.py | expanded (+7 lines) | ~127 |
+| 10:13 | Edited ontostudio/backend/app/ontology/kernel/graph_ops.py | 3→3 lines | ~42 |
+| 10:13 | Edited ontostudio/backend/app/ontology/kernel/loader.py | modified CUSTOM() | ~91 |
+| 10:14 | Edited ontostudio/backend/app/ontology/kernel/loader.py | modified CUSTOM() | ~85 |
+| 10:18 | Created ontostudio/backend/app/ontology/actions/projection.py | — | ~649 |
+| 10:19 | Edited ontostudio/backend/app/ontology/actions/executor.py | 9→12 lines | ~156 |
+| 10:19 | Edited ontostudio/backend/app/ontology/actions/executor.py | modified _write_txn() | ~164 |
+| 10:19 | Edited ontostudio/backend/app/ontology/actions/executor.py | expanded (+6 lines) | ~100 |
+| 10:19 | Edited ontostudio/backend/app/ontology/actions/executor.py | modified CUSTOM() | ~46 |
+| 10:19 | Edited ontostudio/backend/app/ontology/actions/executor.py | 5→5 lines | ~91 |
+| 10:21 | Edited ontostudio/backend/tests/test_actions_rest.py | 5→5 lines | ~81 |
+| 10:21 | Edited ontostudio/backend/tests/test_actions_rest.py | modified raises() | ~62 |
+| 10:23 | Edited ontostudio/backend/tests/test_actions_e2e.py | 9→9 lines | ~160 |
+| 10:23 | Edited ontostudio/backend/tests/test_actions_e2e.py | modified _seed() | ~175 |
+| 10:23 | Edited ontostudio/backend/tests/test_actions_e2e.py | modified _entity_iri() | ~956 |
+| 10:25 | Edited ontostudio/backend/tests/test_actions_e2e.py | inline fix | ~20 |
+| 10:28 | Edited ontostudio/backend/tests/test_actions_e2e.py | modified _purge() | ~155 |
+| 10:28 | Edited ontostudio/backend/tests/test_actions_e2e.py | 8→10 lines | ~140 |
+| 10:29 | Created ontostudio/frontend/src/api/actions-api.ts | — | ~538 |
+| 10:31 | Edited ontostudio/frontend/src/api/actions-api.ts | added optional chaining | ~133 |
+| 10:31 | Edited ontostudio/frontend/src/components/ResolutionPanel.tsx | expanded (+10 lines) | ~78 |
+| 10:32 | Edited ontostudio/frontend/src/components/ResolutionPanel.tsx | expanded (+6 lines) | ~92 |
+| 10:32 | Edited ontostudio/frontend/src/components/ResolutionPanel.tsx | CSS: phase, REVIEW_IDLE, phase | ~94 |
+| 10:32 | Edited ontostudio/frontend/src/components/ResolutionPanel.tsx | CSS: pk, next | ~80 |
+| 10:33 | Edited ontostudio/frontend/src/components/ResolutionPanel.tsx | added optional chaining | ~619 |
+| 10:33 | Edited ontostudio/frontend/src/components/ResolutionPanel.tsx | added nullish coalescing | ~88 |
+| 10:33 | Edited ontostudio/frontend/src/components/ResolutionPanel.tsx | CSS: review, onReview, decision | ~157 |
+| 10:33 | Edited ontostudio/frontend/src/components/ResolutionPanel.tsx | expanded (+74 lines) | ~884 |
+| 09-27 10:05 | 人审闭环切片实施:T1 force_status+装载对账/T2 projection.py双通道/T3 四正测(KNOWN_GAP退役)+MCP钉约更新/T4 actions-api+四态按钮/T5 镜像重建+容器验证;全套419 pass | ontostudio/* | DONE(登录链路待用户点验) | ~35k |
+| 10:43 | Created C:/Users/admin/.claude/projects/D--eai-eai-flow-main/memory/ontostudio-review-loop-slice.md | — | ~364 |
+| 10:43 | Session end: 177 writes across 45 files (message-list.tsx, App.tsx, index.ts, page.tsx, LicensePage.tsx) | 85 reads | ~84265 tok |
+| 10:52 | Edited ontostudio/frontend/src/api/ontology-graph-api.ts | added optional chaining | ~341 |
+| 10:53 | Created ontostudio/frontend/src/pages/EntitiesPage.tsx | — | ~2746 |
+| 10:53 | Edited ontostudio/frontend/src/api/formal-api.ts | modified runFormalLoad() | ~181 |
+| 10:54 | Edited frontend/src/extensions/shell/Sidebar.tsx | reduced (-12 lines) | ~50 |
+| 10:55 | Edited frontend/src/extensions/shell/Sidebar.tsx | 4→3 lines | ~14 |
+| 10:55 | Edited ontostudio/frontend/src/pages/ExportPage.tsx | 19→22 lines | ~182 |
+| 10:55 | Edited ontostudio/frontend/src/pages/ExportPage.tsx | CSS: mutationFn, onSuccess | ~108 |
+| 10:55 | Edited ontostudio/frontend/src/pages/ExportPage.tsx | CSS: hover, disabled | ~843 |
+| 10:56 | Edited ontostudio/frontend/src/pages/ReasoningPage.tsx | 11→10 lines | ~98 |
+| 10:56 | Edited ontostudio/frontend/src/pages/ReasoningPage.tsx | 5→6 lines | ~125 |
+| 10:57 | Edited ontostudio/frontend/src/pages/ReasoningPage.tsx | CSS: graph, last | ~1019 |
+| 10:58 | Created ontostudio/frontend/src/pages/ModelerPage.tsx | — | ~5008 |
+| 10:59 | Edited ontostudio/frontend/src/pages/IngestPage.tsx | 5→5 lines | ~53 |
+| 09-27 10:50 | 主系统语义地图入口删除(Sidebar)+查证净;ontostudio 前端按原型重构:Entities 真数据/Modeler 双模式/Reasoning 白盒规划态/Export 装载对账/Ingest regex口径 | frontend/Sidebar.tsx + ontostudio/frontend/* | typecheck绿,镜像重建中 | ~40k |
+| 11:00 | Session end: 190 writes across 53 files (message-list.tsx, App.tsx, index.ts, page.tsx, LicensePage.tsx) | 95 reads | ~113113 tok |
+| 11:01 | Session end: 190 writes across 53 files (message-list.tsx, App.tsx, index.ts, page.tsx, LicensePage.tsx) | 95 reads | ~113113 tok |
+| 09-27 11:05 | 三笔提交落地:2ae60a40b切片后端/41504e3cb切片前端/a64806f0b页面重构+入口删除 | main-dev-fork | 未推送 | ~2k |
+| 11:07 | Edited ontostudio/frontend/src/api/ontology-graph-api.ts | added optional chaining | ~223 |
+| 11:08 | Created ontostudio/frontend/src/pages/DashboardPage.tsx | — | ~4653 |
+| 11:08 | Edited ontostudio/frontend/src/pages/DashboardPage.tsx | added 1 import(s) | ~120 |
+| 11:08 | Edited ontostudio/frontend/src/pages/DashboardPage.tsx | 5→5 lines | ~40 |
+| 11:08 | Edited ontostudio/frontend/src/pages/DashboardPage.tsx | CSS: classes | ~399 |
+| 11:09 | Edited ontostudio/frontend/src/layout/AppShell.tsx | modified CUSTOM() | ~124 |
+| 11:09 | Edited ontostudio/frontend/src/layout/AppShell.tsx | 11→11 lines | ~145 |
+| 11:09 | Edited ontostudio/frontend/src/layout/AppShell.tsx | added 1 import(s) | ~71 |
+| 11:09 | Edited ontostudio/frontend/src/pages/DashboardPage.tsx | 14→14 lines | ~101 |
+| 11:11 | Session end: 199 writes across 55 files (message-list.tsx, App.tsx, index.ts, page.tsx, LicensePage.tsx) | 96 reads | ~118989 tok |
+| 11:19 | Edited ontostudio/frontend/src/pages/DashboardPage.tsx | 3→6 lines | ~62 |
+| 11:20 | Edited ontostudio/frontend/src/pages/DashboardPage.tsx | 7→8 lines | ~44 |
+| 11:21 | Session end: 201 writes across 55 files (message-list.tsx, App.tsx, index.ts, page.tsx, LicensePage.tsx) | 96 reads | ~119095 tok |
+| 11:36 | Session end: 201 writes across 55 files (message-list.tsx, App.tsx, index.ts, page.tsx, LicensePage.tsx) | 96 reads | ~119095 tok |
+| 11:42 | Edited ontostudio/frontend/src/components/OntologyGraphCanvas.tsx | modified OntologyGraphCanvas() | ~224 |
+| 11:42 | Edited ontostudio/frontend/src/components/OntologyGraphCanvas.tsx | added 7 condition(s) | ~1604 |
+| 11:43 | Edited ontostudio/frontend/src/components/OntologyGraphCanvas.tsx | 4→4 lines | ~48 |
+| 11:43 | Edited ontostudio/frontend/src/components/OntologyGraphCanvas.tsx | modified if() | ~28 |
+| 11:43 | Edited ontostudio/frontend/src/components/OntologyGraphCanvas.tsx | expanded (+14 lines) | ~95 |
+| 11:43 | Edited ontostudio/frontend/src/components/OntologyGraphCanvas.tsx | added nullish coalescing | ~260 |
+| 11:43 | Edited ontostudio/frontend/src/components/OntologyPage.tsx | expanded (+30 lines) | ~534 |
+| 11:43 | Edited ontostudio/frontend/src/components/OntologyPage.tsx | modified CUSTOM() | ~70 |
+| 11:43 | Edited ontostudio/frontend/src/components/OntologyPage.tsx | 7→9 lines | ~101 |
+| 09-27 11:40 | 图谱状态着色/过滤+总览重构+抽取任务TODO提交 cb33fdb48;重构清单收官 | ontostudio/frontend | 已部署验证 | ~3k |
+| 11:45 | Session end: 210 writes across 57 files (message-list.tsx, App.tsx, index.ts, page.tsx, LicensePage.tsx) | 97 reads | ~122059 tok |
+| 11:59 | Edited ontostudio/frontend/src/pages/shared.tsx | CSS: background, background | ~348 |
+| 11:59 | Edited ontostudio/frontend/src/pages/shared.tsx | added 1 import(s) | ~50 |
+| 11:59 | Edited ontostudio/frontend/src/pages/DashboardPage.tsx | expanded (+19 lines) | ~377 |
+| 11:59 | Edited ontostudio/frontend/src/pages/DashboardPage.tsx | expanded (+8 lines) | ~416 |
+| 12:00 | Edited ontostudio/frontend/src/pages/DashboardPage.tsx | added nullish coalescing | ~1298 |
+| 12:00 | Edited ontostudio/frontend/src/pages/shared.tsx | CSS: icon, color | ~287 |
+| 12:00 | Edited ontostudio/frontend/src/pages/DashboardPage.tsx | 3→3 lines | ~50 |
+| 12:00 | Edited ontostudio/frontend/src/pages/DashboardPage.tsx | inline fix | ~25 |
+| 12:00 | Edited ontostudio/frontend/src/pages/DashboardPage.tsx | 4→6 lines | ~42 |
+| 12:01 | Edited ontostudio/frontend/src/pages/DashboardPage.tsx | modified Tile() | ~668 |
+| 12:02 | Edited ontostudio/frontend/src/pages/DashboardPage.tsx | added nullish coalescing | ~113 |
+| 12:02 | Edited ontostudio/frontend/src/pages/DashboardPage.tsx | modified toneText() | ~52 |
+| 12:02 | Edited ontostudio/frontend/src/pages/DashboardPage.tsx | 6→6 lines | ~74 |
+| 12:02 | Edited ontostudio/frontend/src/pages/DashboardPage.tsx | 5→5 lines | ~55 |
+| 09-27 11:55 | 总览页多色改造:四瓦片四色/Panel tone+icon/域彩点/链轮转色/TONE_TEXT对比度变体 | DashboardPage+shared | 已部署 | ~4k |
+| 12:03 | Session end: 224 writes across 58 files (message-list.tsx, App.tsx, index.ts, page.tsx, LicensePage.tsx) | 97 reads | ~125914 tok |
+| 12:07 | Edited ontostudio/frontend/src/pages/shared.tsx | 6→7 lines | ~68 |
+| 12:07 | Edited ontostudio/frontend/src/pages/DashboardPage.tsx | inline fix | ~34 |
+| 12:07 | Edited ontostudio/frontend/src/pages/DashboardPage.tsx | 5→6 lines | ~45 |
+| 12:07 | Edited ontostudio/frontend/src/pages/DashboardPage.tsx | 11→13 lines | ~50 |
+| 12:08 | Session end: 228 writes across 58 files (message-list.tsx, App.tsx, index.ts, page.tsx, LicensePage.tsx) | 97 reads | ~126111 tok |
+| 12:16 | Edited ontostudio/frontend/src/api/ontology-graph-api.ts | added 1 condition(s) | ~243 |
+| 12:17 | Created ontostudio/frontend/src/pages/EntitiesPage.tsx | — | ~5040 |
+| 09-27 12:10 | 实体库按原型全面重构:域/状态过滤器(filters JSON)+策划列序+状态徽章+待审去审核+页脚规划动作 | EntitiesPage+ontology-graph-api | typecheck绿已部署 | ~5k |
+| 12:19 | Session end: 230 writes across 58 files (message-list.tsx, App.tsx, index.ts, page.tsx, LicensePage.tsx) | 97 reads | ~131394 tok |
+| 12:22 | Edited ontostudio/backend/app/ontology/registry/doc_graph.yaml | 2→3 lines | ~66 |
+| 12:22 | Edited ontostudio/frontend/src/api/ontology-graph-api.ts | modified fetchAggregate() | ~184 |
+| 12:22 | Edited ontostudio/frontend/src/pages/EntitiesPage.tsx | CSS: limit | ~284 |
+| 12:22 | Edited ontostudio/frontend/src/pages/EntitiesPage.tsx | 9→12 lines | ~121 |
+| 12:22 | Edited ontostudio/frontend/src/pages/EntitiesPage.tsx | CSS: c, api, row | ~274 |
+| 12:23 | Edited ontostudio/frontend/src/pages/EntitiesPage.tsx | CSS: 1, 1, 1 | ~1859 |
+| 12:23 | Edited ontostudio/frontend/src/pages/EntitiesPage.tsx | expanded (+6 lines) | ~128 |
+| 12:25 | Session end: 237 writes across 59 files (message-list.tsx, App.tsx, index.ts, page.tsx, LicensePage.tsx) | 97 reads | ~134310 tok |
+| 12:30 | Created ontostudio/frontend/src/pages/EntitiesPage.tsx | — | ~5707 |
+| 09-27 12:25 | 实体库完全按原型还原:全宽检索面板+hd三过滤钮+原型列序行操作(去审核/查看合并/详情)+抽屉详情+页脚规划动作 | EntitiesPage | typecheck绿已部署 | ~3k |
+| 12:31 | Session end: 238 writes across 59 files (message-list.tsx, App.tsx, index.ts, page.tsx, LicensePage.tsx) | 97 reads | ~140017 tok |
+| 12:40 | Edited ontostudio/frontend/package.json | 2→3 lines | ~27 |
+| 12:42 | Edited ontostudio/frontend/src/pages/EntitiesPage.tsx | expanded (+7 lines) | ~103 |
+| 12:42 | Edited ontostudio/frontend/src/pages/EntitiesPage.tsx | modified FilterSelect() | ~334 |
+| 12:44 | Session end: 241 writes across 60 files (message-list.tsx, App.tsx, index.ts, page.tsx, LicensePage.tsx) | 97 reads | ~140481 tok |
+| 12:50 | Edited ontostudio/backend/app/ontology/engine.py | modified list_objects() | ~96 |
+| 12:50 | Edited ontostudio/backend/app/ontology/engine.py | modified CUSTOM() | ~351 |
+| 12:50 | Edited ontostudio/backend/app/ontology/routers.py | modified list_objects() | ~259 |
+| 12:51 | Edited ontostudio/frontend/src/api/ontology-graph-api.ts | modified fetchObjects() | ~399 |
+| 12:51 | Edited ontostudio/frontend/src/pages/EntitiesPage.tsx | 7→7 lines | ~109 |
+| 12:51 | Edited ontostudio/frontend/src/pages/EntitiesPage.tsx | CSS: offset, order, desc | ~179 |
+| 12:51 | Edited ontostudio/frontend/src/pages/EntitiesPage.tsx | CSS: length | ~153 |
+| 12:52 | Edited ontostudio/frontend/src/pages/EntitiesPage.tsx | expanded (+43 lines) | ~966 |
+| 12:52 | Edited ontostudio/frontend/src/pages/EntitiesPage.tsx | expanded (+6 lines) | ~28 |
+| 12:52 | Edited ontostudio/frontend/src/pages/EntitiesPage.tsx | 2→1 lines | ~15 |
+| 09-27 12:40 | 实体库真分页:引擎offset+total(cursor路径保留)/合同价格分项校验同款分页条(首页/页码窗5/末页/共N条第X-Y页) | engine+routers+EntitiesPage | lint+33tests绿 已部署 | ~6k |
+| 12:54 | Session end: 251 writes across 62 files (message-list.tsx, App.tsx, index.ts, page.tsx, LicensePage.tsx) | 97 reads | ~143036 tok |
+| 12:56 | Edited ontostudio/frontend/src/pages/EntitiesPage.tsx | 3→5 lines | ~51 |
+| 12:57 | Edited ontostudio/frontend/src/pages/EntitiesPage.tsx | 4→5 lines | ~26 |
+| 12:58 | Session end: 253 writes across 62 files (message-list.tsx, App.tsx, index.ts, page.tsx, LicensePage.tsx) | 97 reads | ~143113 tok |
+| 13:12 | Edited ontostudio/frontend/src/pages/EntitiesPage.tsx | inline fix | ~14 |
+| 13:12 | Edited ontostudio/frontend/src/pages/EntitiesPage.tsx | 3→4 lines | ~65 |
+| 13:14 | Session end: 255 writes across 62 files (message-list.tsx, App.tsx, index.ts, page.tsx, LicensePage.tsx) | 97 reads | ~143192 tok |
+| 13:42 | Edited ontostudio/frontend/src/pages/EntitiesPage.tsx | 50 → 10 | ~16 |
+| 13:43 | Session end: 256 writes across 62 files (message-list.tsx, App.tsx, index.ts, page.tsx, LicensePage.tsx) | 97 reads | ~143208 tok |
+| 13:47 | Edited ontostudio/frontend/src/pages/EntitiesPage.tsx | modified FilterSelect() | ~357 |
+| 13:47 | Edited ontostudio/frontend/src/pages/EntitiesPage.tsx | 11→12 lines | ~116 |
+| 13:48 | Session end: 258 writes across 62 files (message-list.tsx, App.tsx, index.ts, page.tsx, LicensePage.tsx) | 97 reads | ~143681 tok |
+| 13:56 | Created ontostudio/frontend/src/components/ResolutionPanel.tsx | — | ~8081 |
+| 13:57 | Edited ontostudio/frontend/src/components/ResolutionPanel.tsx | inline fix | ~15 |
+| 09-27 12:35 | 消解审核按原型完全移植:超管横幅+双列(待审卡流/合并建议+四态契约表),数据流全保留(四态/合并/撤销/建议) | ResolutionPanel 整文件重写 | typecheck绿已部署 | ~6k |
+| 13:58 | Session end: 260 writes across 62 files (message-list.tsx, App.tsx, index.ts, page.tsx, LicensePage.tsx) | 97 reads | ~151777 tok |
+| 14:02 | Edited ontostudio/frontend/src/components/ResolutionPanel.tsx | reduced (-11 lines) | ~35 |
+| 14:03 | Session end: 261 writes across 62 files (message-list.tsx, App.tsx, index.ts, page.tsx, LicensePage.tsx) | 97 reads | ~151812 tok |
+| 09-27 13:00 | 三笔提交:920c15224总览多色/9055cdef7实体库还原+shadcn/1e1915fe8消解移植 | main-dev-fork | 未推送 | ~2k |
+| 14:19 | Session end: 261 writes across 62 files (message-list.tsx, App.tsx, index.ts, page.tsx, LicensePage.tsx) | 97 reads | ~151812 tok |
+| 14:24 | Edited ontostudio/frontend/src/pages/ReasoningPage.tsx | 3→5 lines | ~53 |
+| 14:24 | Edited ontostudio/frontend/src/pages/ReasoningPage.tsx | 8→9 lines | ~39 |
+| 14:25 | Session end: 263 writes across 62 files (message-list.tsx, App.tsx, index.ts, page.tsx, LicensePage.tsx) | 97 reads | ~151904 tok |
+| 14:40 | Created ontostudio/frontend/src/pages/IngestPage.tsx | — | ~2731 |
+| 14:40 | Edited ontostudio/frontend/src/pages/IngestPage.tsx | CSS: onError, message | ~122 |
+| 14:40 | Edited ontostudio/frontend/src/pages/IngestPage.tsx | 7→5 lines | ~60 |
+| 09-27 12:50 | 抽取导入按原型移植:顶部动作行(新建规划/线程导入真端点formal-load)+任务队列表操作列+横向置信度条+引文面板+regex/v1口径 | IngestPage 整文件重写 | typecheck绿已部署 | ~4k |
+| 14:42 | Session end: 266 writes across 62 files (message-list.tsx, App.tsx, index.ts, page.tsx, LicensePage.tsx) | 97 reads | ~154817 tok |
+| 15:07 | Created ontostudio/frontend/src/pages/ValidationPage.tsx | — | ~2875 |
+| 09-27 13:05 | 校验中心按原型移植:C1-C5五连卡+SHACL违规表格(级别/形状/目标/说明)+校验运行面板(重跑/上次耗时/草稿指引) | ValidationPage 整文件重写 | typecheck绿已部署 | ~4k |
+| 15:09 | Session end: 267 writes across 63 files (message-list.tsx, App.tsx, index.ts, page.tsx, LicensePage.tsx) | 97 reads | ~157692 tok |
+| 15:15 | Edited ontostudio/frontend/src/pages/ValidationPage.tsx | 8→9 lines | ~137 |
+| 15:15 | Edited ontostudio/frontend/src/pages/ValidationPage.tsx | 2→2 lines | ~29 |
+| 15:15 | Edited ontostudio/frontend/src/pages/ValidationPage.tsx | 2→2 lines | ~38 |
+| 15:16 | Session end: 270 writes across 63 files (message-list.tsx, App.tsx, index.ts, page.tsx, LicensePage.tsx) | 97 reads | ~157896 tok |
+| 15:55 | Session end: 270 writes across 63 files (message-list.tsx, App.tsx, index.ts, page.tsx, LicensePage.tsx) | 97 reads | ~157896 tok |
+| 16:00 | Edited ontostudio/frontend/src/api/ontology-graph-api.ts | modified fetchAggregate() | ~240 |
+| 16:01 | Created ontostudio/frontend/src/pages/ModelerPage.tsx | — | ~8385 |
+| 16:02 | Edited ontostudio/frontend/src/pages/ModelerPage.tsx | entries() → get() | ~227 |
+| 16:03 | Edited ontostudio/frontend/src/pages/ModelerPage.tsx | added 1 import(s) | ~48 |
+| 16:03 | Edited ontostudio/frontend/src/pages/ModelerPage.tsx | 8→9 lines | ~102 |
+| 16:03 | Edited ontostudio/frontend/src/pages/ModelerPage.tsx | 2→2 lines | ~21 |
+| 09-27 13:20 | 建模器移植建议A+B+C实施:画布真类层次(SVG连线/实例计数aggregate filters)/新建类实装/选中联动真表单/axiombox真渲染/批次2钮禁用 | ModelerPage+ontology-graph-api | typecheck绿已部署 | ~6k |
+| 16:05 | Session end: 276 writes across 63 files (message-list.tsx, App.tsx, index.ts, page.tsx, LicensePage.tsx) | 97 reads | ~166919 tok |
+| 16:13 | Created ontostudio/frontend/src/pages/ModelerPage.tsx | — | ~8911 |
+| 16:13 | Edited ontostudio/frontend/src/pages/ModelerPage.tsx | filesFromSummary() → contentCountFor() | ~186 |
+| 16:13 | Edited ontostudio/frontend/src/pages/ModelerPage.tsx | reduced (-12 lines) | ~19 |
+| 16:13 | Edited ontostudio/frontend/src/pages/ModelerPage.tsx | 8→9 lines | ~56 |
+| 16:13 | Edited ontostudio/frontend/src/pages/ModelerPage.tsx | added optional chaining | ~259 |
+| 16:13 | Edited ontostudio/frontend/src/pages/ModelerPage.tsx | added 1 import(s) | ~68 |
+| 16:14 | Edited ontostudio/frontend/src/pages/ModelerPage.tsx | inline fix | ~22 |
+| 09-27 13:35 | 建模器第四版(原型骨架精确还原):找回左栏域文件列表(真API+类数)/单面板一体hd(seg+版本+校验保存)/行号YAML编辑器/右栏校验面板回归/碎片卡合并 | ModelerPage 整文件重写 | typecheck绿已部署 | ~5k |
+| 16:15 | Session end: 283 writes across 63 files (message-list.tsx, App.tsx, index.ts, page.tsx, LicensePage.tsx) | 97 reads | ~176440 tok |
+| 16:22 | Created ontostudio/frontend/src/pages/ModelerPage.tsx | — | ~10563 |
+| 16:23 | Edited ontostudio/frontend/src/pages/ModelerPage.tsx | 1→2 lines | ~16 |
+| 16:23 | Edited ontostudio/frontend/src/pages/ModelerPage.tsx | setNoticeText() → setSaveMsg() | ~25 |
+| 16:23 | Edited ontostudio/frontend/src/pages/ModelerPage.tsx | CSS: cls, pos | ~38 |
+| 16:24 | Edited ontostudio/frontend/src/pages/ModelerPage.tsx | 5→4 lines | ~50 |
+| 09-27 13:50 | 建模器批次2画布交互转正:节点拖拽移位(视图态)/＋子类连线模式写parents/表单父类chips增删=边编辑/Esc取消/死区防误拖 | ModelerPage | typecheck绿已部署 | ~5k |
+| 16:25 | Session end: 288 writes across 63 files (message-list.tsx, App.tsx, index.ts, page.tsx, LicensePage.tsx) | 97 reads | ~187132 tok |
+| 16:48 | Session end: 288 writes across 63 files (message-list.tsx, App.tsx, index.ts, page.tsx, LicensePage.tsx) | 97 reads | ~187132 tok |
+| 16:49 | Session end: 288 writes across 63 files (message-list.tsx, App.tsx, index.ts, page.tsx, LicensePage.tsx) | 101 reads | ~187132 tok |
+| 16:56 | Edited ontostudio/backend/app/ontology/registry/eia.yaml | 4→3 lines | ~28 |
+| 16:56 | Edited ontostudio/backend/app/ontology/registry/eia.yaml | 3→4 lines | ~27 |
+| 16:56 | Edited ontostudio/backend/app/ontology/registry/eia.yaml | expanded (+6 lines) | ~145 |
+| 16:57 | Edited ontostudio/backend/app/ontology/registry/eia.yaml | expanded (+29 lines) | ~341 |
+| 16:58 | Edited ontostudio/backend/app/ontology/registry/eia.yaml | 4→3 lines | ~35 |
+| 16:59 | Edited ontostudio/backend/tests/test_ontology_lint.py | modified test_all_checks_pass_on_real_registry() | ~371 |
+| 17:00 | Edited ontostudio/backend/tests/test_ontology_engine.py | modified __init__() | ~293 |
+| 17:01 | Edited ontostudio/backend/tests/test_ontology_engine.py | modified test_filter_values_are_bound_params() | ~755 |
+| 17:01 | Edited ontostudio/backend/tests/test_ontology_engine.py | modified test_unknown_and_disabled_link_traversal_rejected() | ~534 |
+| 17:02 | Edited ontostudio/backend/tests/test_ontology_engine.py | modified test_keyset_pagination_pk_tiebreaker() | ~1269 |
+| 17:03 | Edited ontostudio/backend/tests/test_ontology_engine.py | modified test_keyset_pagination_pk_tiebreaker() | ~228 |
+| 17:03 | Edited ontostudio/backend/tests/test_ontology_engine.py | inline fix | ~24 |
+| 17:04 | Edited ontostudio/backend/tests/test_ontology_registry.py | modified test_load_real_registry() | ~1519 |
+| 17:05 | Edited ontostudio/backend/tests/test_ontology_mcp.py | modified test_describe_compact_under_token_budget() | ~544 |
+| 17:06 | Edited ontostudio/backend/tests/test_ontology_rest.py | modified test_registry_meta_and_availability() | ~884 |
+| 17:06 | Edited ontostudio/backend/tests/test_ontology_graph_views.py | not() → CUSTOM() | ~298 |
+| 21:30 | ontostudio registry缩编测试面修复: eia.yaml补mention_of_eia_*链2条+scope_resource=ontology(lint孤儿消除), 6个测试文件改幸存类型/UnknownLink路径, 全套421p+1skip绿 | ontostudio/backend/app/ontology/registry/eia.yaml + tests/test_ontology_{engine,registry,rest,mcp,lint,graph_views}.py | 0 failed, lint OK(5 obj/6 link), ruff clean | ~40k |
+| 09-27 14:10 | registry缩编+测试面修复+页面批次一笔提交 5f7e7504c(删四测试域/27测试修复/421绿) | main-dev-fork | 未推送 | ~3k |
+| 17:15 | Session end: 304 writes across 70 files (message-list.tsx, App.tsx, index.ts, page.tsx, LicensePage.tsx) | 109 reads | ~207282 tok |
+| 21:55 | 图谱测试数据清理: 删 dg_entities doc_graph域测试实体2854(测试实体2724+E2E 114+T10验收16), 无级联(relations/mentions/merges零牵连), POST /formal/load 重投影1041实体; 备份.wolf/tmp/dg_backup_20260927.sql | eai-flow-postgres-ext dg_entities + ontostudio kernel | 0 orphan, graph页面投影全净 | ~15k |
+| 17:29 | Session end: 304 writes across 70 files (message-list.tsx, App.tsx, index.ts, page.tsx, LicensePage.tsx) | 109 reads | ~207282 tok |
+| 17:30 | Edited ontostudio/frontend/src/pages/DashboardPage.tsx | 11→12 lines | ~48 |
+| 17:30 | Edited ontostudio/frontend/src/pages/DashboardPage.tsx | 4→3 lines | ~20 |
+| 17:31 | Session end: 306 writes across 70 files (message-list.tsx, App.tsx, index.ts, page.tsx, LicensePage.tsx) | 109 reads | ~207350 tok |
+| 17:56 | Edited ontostudio/frontend/src/pages/DashboardPage.tsx | 5→5 lines | ~72 |
+| 17:56 | Edited ontostudio/frontend/src/pages/DashboardPage.tsx | 13→13 lines | ~217 |
+| 17:57 | Session end: 308 writes across 70 files (message-list.tsx, App.tsx, index.ts, page.tsx, LicensePage.tsx) | 109 reads | ~207639 tok |
+| 17:59 | Edited ontostudio/frontend/src/pages/DashboardPage.tsx | expanded (+6 lines) | ~122 |
+| 18:00 | Edited ontostudio/frontend/src/pages/DashboardPage.tsx | "flex justify-center gap-2" → "flex items-center gap-2 f" | ~24 |
+| 18:01 | Session end: 310 writes across 70 files (message-list.tsx, App.tsx, index.ts, page.tsx, LicensePage.tsx) | 109 reads | ~207785 tok |
+| 18:04 | Session end: 310 writes across 70 files (message-list.tsx, App.tsx, index.ts, page.tsx, LicensePage.tsx) | 109 reads | ~207785 tok |
+| 18:19 | Edited ontostudio/frontend/src/pages/DashboardPage.tsx | inline fix | ~42 |
+| 18:19 | Edited ontostudio/frontend/src/pages/DashboardPage.tsx | 2→2 lines | ~36 |
+| 18:19 | Edited ontostudio/frontend/src/pages/DashboardPage.tsx | 4→4 lines | ~72 |
+| 18:21 | Session end: 313 writes across 70 files (message-list.tsx, App.tsx, index.ts, page.tsx, LicensePage.tsx) | 109 reads | ~207935 tok |
+| 18:24 | Session end: 313 writes across 70 files (message-list.tsx, App.tsx, index.ts, page.tsx, LicensePage.tsx) | 109 reads | ~207935 tok |
+| 18:30 | Session end: 313 writes across 70 files (message-list.tsx, App.tsx, index.ts, page.tsx, LicensePage.tsx) | 109 reads | ~207935 tok |
+| 18:58 | Session end: 313 writes across 70 files (message-list.tsx, App.tsx, index.ts, page.tsx, LicensePage.tsx) | 109 reads | ~207935 tok |
+| 19:01 | Created ontostudio/docs-site/package.json | — | ~63 |
+| 19:01 | Created ontostudio/docs-site/.vitepress/config.mts | — | ~499 |
+| 19:01 | Created ontostudio/docs-site/index.md | — | ~180 |
+| 19:01 | Created ontostudio/docs-site/glossary/index.md | — | ~221 |
+| 19:01 | Created ontostudio/docs-site/glossary/eia.md | — | ~450 |
+| 19:02 | Created ontostudio/docs-site/glossary/doc-graph.md | — | ~362 |
+| 19:02 | Created ontostudio/docs-site/design/eia-model.md | — | ~523 |
+| 19:02 | Created ontostudio/docs-site/design/doc-graph.md | — | ~314 |
+| 19:03 | Created ontostudio/docs-site/guide/index.md | — | ~343 |
+| 19:03 | Created ontostudio/docs-site/changelog.md | — | ~94 |
+| 19:03 | Created ontostudio/docs-site/README.md | — | ~192 |
+| 19:03 | Created ontostudio/docs-site/Dockerfile | — | ~107 |
+| 19:14 | Edited ontostudio/docs-site/package.json | 4→5 lines | ~29 |
+| 19:15 | Created ontostudio/docs-site/.dockerignore | — | ~13 |
+| 19:18 | Edited ontostudio/docs-site/Dockerfile | 4→6 lines | ~76 |
+| 19:19 | Edited ontostudio/docs-site/Dockerfile | 6→6 lines | ~108 |
+| 19:20 | Edited ontostudio/docs-site/Dockerfile | 6→8 lines | ~143 |
+| 19:21 | Session end: 330 writes across 79 files (message-list.tsx, App.tsx, index.ts, page.tsx, LicensePage.tsx) | 109 reads | ~211909 tok |
+| 19:27 | Edited ontostudio/frontend/src/layout/AppShell.tsx | 2→1 lines | ~4 |
+| 19:27 | Edited ontostudio/frontend/src/layout/AppShell.tsx | CSS: hover, hover, hover | ~206 |
+| 19:27 | Edited ontostudio/frontend/src/layout/AppShell.tsx | 11→12 lines | ~50 |
+| 19:28 | Session end: 333 writes across 79 files (message-list.tsx, App.tsx, index.ts, page.tsx, LicensePage.tsx) | 109 reads | ~212169 tok |
+| 19:37 | Created ontostudio/docs-site/.gitignore | — | ~13 |
+| 09-27 14:20 | 文档中心上线提交 ffb297007(VitePress站点+docs容器+nginx路由+侧栏分组+总览微调) | main-dev-fork | 未推送 | ~2k |
+| 19:38 | Session end: 334 writes across 80 files (message-list.tsx, App.tsx, index.ts, page.tsx, LicensePage.tsx) | 109 reads | ~212183 tok |
+| 19:43 | Edited ontostudio/frontend/src/pages/DashboardPage.tsx | "知识层运营一览：数据沉淀、待审压力、校验与数据面状" → "知识层运营一览：数据沉淀、待审压力、域健康、校验与" | ~38 |
+| 19:44 | Session end: 335 writes across 80 files (message-list.tsx, App.tsx, index.ts, page.tsx, LicensePage.tsx) | 109 reads | ~212221 tok |
+| 19:50 | Session end: 335 writes across 80 files (message-list.tsx, App.tsx, index.ts, page.tsx, LicensePage.tsx) | 109 reads | ~212221 tok |
+| 20:03 | Edited ontostudio/frontend/src/layout/AppShell.tsx | added error handling | ~617 |
+| 20:03 | Edited ontostudio/frontend/src/layout/AppShell.tsx | 3→5 lines | ~24 |
+| 20:03 | Edited ontostudio/frontend/src/layout/AppShell.tsx | 5→9 lines | ~112 |
+| 20:04 | Edited ontostudio/frontend/src/layout/AppShell.tsx | CSS: label | ~490 |
+| 20:04 | Edited ontostudio/frontend/src/layout/AppShell.tsx | expanded (+8 lines) | ~279 |
+| 20:04 | Edited ontostudio/frontend/src/layout/AppShell.tsx | expanded (+7 lines) | ~184 |
+| 09-27 14:30 | 侧栏折叠功能:图标轨道模式(60px)+PanelLeft切换钮+localStorage持久化+原生tooltip | AppShell.tsx | typecheck绿已部署 | ~3k |
+| 20:06 | Session end: 341 writes across 80 files (message-list.tsx, App.tsx, index.ts, page.tsx, LicensePage.tsx) | 109 reads | ~216323 tok |
+| 20:23 | Edited ontostudio/backend/app/ontology/graph_views.py | modified projection_order() | ~350 |
+| 20:23 | Edited ontostudio/backend/app/ontology/graph_views.py | 5→5 lines | ~50 |
+| 20:23 | Edited ontostudio/backend/app/ontology/graph_views.py | modified CUSTOM() | ~329 |
+| 20:26 | Edited ontostudio/backend/tests/test_ontology_graph_views.py | modified _edges_reg_fk_only() | ~263 |
+| 20:26 | Edited ontostudio/backend/tests/test_ontology_graph_views.py | modified CUSTOM() | ~224 |
+| 20:30 | Edited ontostudio/backend/app/ontology/graph_views.py | modified projection_order() | ~377 |
+| 20:31 | Edited ontostudio/backend/app/ontology/graph_views.py | modified projection_order() | ~412 |
+| 20:33 | Edited ontostudio/frontend/src/components/DetailPanel.tsx | CSS: hover, hover | ~241 |
+| 20:34 | Edited ontostudio/frontend/src/components/OntologyPage.tsx | modified CUSTOM() | ~67 |
+| 20:34 | Edited ontostudio/frontend/src/components/OntologyGraphCanvas.tsx | modified OntologyGraphCanvas() | ~122 |
+| 20:35 | Edited ontostudio/frontend/src/components/OntologyGraphCanvas.tsx | added optional chaining | ~283 |
+| 20:35 | Edited ontostudio/frontend/src/components/OntologyGraphCanvas.tsx | inline fix | ~24 |
+| 20:35 | Edited ontostudio/frontend/src/components/OntologyPage.tsx | 2→1 lines | ~16 |
+| 20:35 | Edited ontostudio/frontend/src/components/OntologyPage.tsx | 9→10 lines | ~113 |
+| 20:35 | Edited ontostudio/frontend/src/components/OntologyPage.tsx | expanded (+14 lines) | ~342 |
+| 09-27 15:00 | 图谱浏览三项升级:双透镜去重(projection_order 链引用计数优先)+域过滤下拉+DetailPanel 跨页入口 | graph_views.py+OntologyPage+OntologyGraphCanvas+DetailPanel | typecheck绿 双镜像部署 | ~6k |
+| 20:37 | Session end: 356 writes across 82 files (message-list.tsx, App.tsx, index.ts, page.tsx, LicensePage.tsx) | 111 reads | ~227352 tok |
+| 20:45 | Edited ontostudio/frontend/src/components/OntologyPage.tsx | expanded (+7 lines) | ~255 |
+| 20:46 | Edited ontostudio/frontend/src/components/OntologyPage.tsx | expanded (+7 lines) | ~54 |
+| 20:47 | Session end: 358 writes across 82 files (message-list.tsx, App.tsx, index.ts, page.tsx, LicensePage.tsx) | 111 reads | ~227661 tok |
+| 20:49 | Session end: 358 writes across 82 files (message-list.tsx, App.tsx, index.ts, page.tsx, LicensePage.tsx) | 111 reads | ~227661 tok |
+| 21:49 | Session end: 358 writes across 82 files (message-list.tsx, App.tsx, index.ts, page.tsx, LicensePage.tsx) | 111 reads | ~227661 tok |
+| 21:51 | Edited ontostudio/frontend/src/components/OntologyGraphCanvas.tsx | CSS: dominant, topLabel | ~61 |
+| 21:51 | Edited ontostudio/frontend/src/components/OntologyGraphCanvas.tsx | added optional chaining | ~353 |
+| 21:52 | Edited ontostudio/frontend/src/components/OntologyGraphCanvas.tsx | 15→15 lines | ~180 |
+| 09-27 15:10 | 社区图例改造:从编号·数量→主导etype分布+代表实体名(title含代表名),同步着色逻辑不变 | OntologyGraphCanvas | typecheck绿已部署 | ~3k |
+| 21:53 | Session end: 361 writes across 82 files (message-list.tsx, App.tsx, index.ts, page.tsx, LicensePage.tsx) | 111 reads | ~232610 tok |
+| 21:58 | Edited ontostudio/frontend/src/components/OntologyGraphCanvas.tsx | modified OntologyGraphCanvas() | ~129 |
+| 21:58 | Edited ontostudio/frontend/src/components/OntologyGraphCanvas.tsx | inline fix | ~23 |
+| 21:59 | Edited ontostudio/frontend/src/components/OntologyGraphCanvas.tsx | added optional chaining | ~163 |
+| 21:59 | Edited ontostudio/frontend/src/components/OntologyGraphCanvas.tsx | inline fix | ~24 |
+| 09-27 15:15 | 社区图例enrichment退回(用户裁决效果不佳)+domainFilter保留恢复 | OntologyGraphCanvas | typecheck绿已部署 | ~2k |
+| 22:01 | Session end: 365 writes across 82 files (message-list.tsx, App.tsx, index.ts, page.tsx, LicensePage.tsx) | 111 reads | ~232833 tok |
+| 22:10 | Edited ontostudio/frontend/src/layout/AppShell.tsx | 35→35 lines | ~393 |
+| 22:11 | Session end: 366 writes across 82 files (message-list.tsx, App.tsx, index.ts, page.tsx, LicensePage.tsx) | 111 reads | ~233941 tok |
+| 22:19 | Session end: 366 writes across 82 files (message-list.tsx, App.tsx, index.ts, page.tsx, LicensePage.tsx) | 111 reads | ~233941 tok |
+| 22:24 | Edited ontostudio/frontend/src/pages/ModelerPage.tsx | added 2 import(s) | ~45 |
+| 22:25 | Edited ontostudio/frontend/src/pages/ModelerPage.tsx | modified YamlEditor() | ~155 |
+| 22:25 | Edited ontostudio/frontend/src/pages/ModelerPage.tsx | 8→7 lines | ~60 |
+| 22:26 | Edited ontostudio/frontend/src/pages/ModelerPage.tsx | 3→1 lines | ~9 |
+| 22:30 | Session end: 370 writes across 82 files (message-list.tsx, App.tsx, index.ts, page.tsx, LicensePage.tsx) | 112 reads | ~234210 tok |
+| 00:21 | Edited ontostudio/frontend/package.json | 2→4 lines | ~44 |
+| 00:24 | Session end: 371 writes across 82 files (message-list.tsx, App.tsx, index.ts, page.tsx, LicensePage.tsx) | 113 reads | ~234254 tok |
+| 09-28 09:30 | 建模器YAML编辑器升级:textarea→CodeMirror6(语法高亮/行号/自动缩进/active line),依赖@uiw/react-codemirror+@codemirror/lang-yaml | ModelerPage+package.json | 已部署 | ~3k |
+| 00:39 | Session end: 371 writes across 82 files (message-list.tsx, App.tsx, index.ts, page.tsx, LicensePage.tsx) | 113 reads | ~234254 tok |
+| 00:42 | Session end: 371 writes across 82 files (message-list.tsx, App.tsx, index.ts, page.tsx, LicensePage.tsx) | 114 reads | ~234254 tok |
+| 09-28 09:35 | 建模器CodeMirror集成最终确认:bundle内容grep命中4处codemirror,SPA 200 | 已部署 | ~1k |
+| 06:53 | Session end: 371 writes across 82 files (message-list.tsx, App.tsx, index.ts, page.tsx, LicensePage.tsx) | 114 reads | ~234254 tok |
+| 07:42 | Edited ontostudio/frontend/src/pages/ModelerPage.tsx | 6→8 lines | ~80 |
+| 07:44 | Session end: 372 writes across 82 files (message-list.tsx, App.tsx, index.ts, page.tsx, LicensePage.tsx) | 114 reads | ~244754 tok |
+| 07:45 | Edited ontostudio/frontend/src/pages/ModelerPage.tsx | 8→6 lines | ~58 |
+| 07:47 | Edited ontostudio/frontend/src/pages/ModelerPage.tsx | expanded (+31 lines) | ~400 |
+| 07:49 | Edited ontostudio/frontend/src/pages/ModelerPage.tsx | modified ClassDetailForm() | ~51 |
+| 07:49 | Edited ontostudio/frontend/src/pages/ModelerPage.tsx | 2→3 lines | ~22 |
+| 07:49 | Edited ontostudio/frontend/src/pages/ModelerPage.tsx | removed 19 lines | ~23 |
+| 07:51 | Edited ontostudio/frontend/src/pages/ModelerPage.tsx | added 1 import(s) | ~33 |
+| 07:52 | Edited ontostudio/frontend/src/pages/ModelerPage.tsx | expanded (+21 lines) | ~433 |
+| 07:54 | Edited ontostudio/frontend/src/pages/ModelerPage.tsx | 5→5 lines | ~31 |
+| 07:58 | Edited ontostudio/frontend/src/pages/ModelerPage.tsx | 5→4 lines | ~28 |
+| 08:00 | Session end: 381 writes across 82 files (message-list.tsx, App.tsx, index.ts, page.tsx, LicensePage.tsx) | 114 reads | ~246289 tok |
+| 09:39 | Edited ontostudio/frontend/src/pages/ModelerPage.tsx | reduced (-21 lines) | ~149 |
+| 09:39 | Edited ontostudio/frontend/src/pages/ModelerPage.tsx | modified ClassDetailForm() | ~46 |
+| 09:40 | Edited ontostudio/frontend/src/pages/ModelerPage.tsx | 3→2 lines | ~14 |
+| 09:40 | Edited ontostudio/frontend/src/pages/ModelerPage.tsx | inline fix | ~19 |
+| 09:41 | Edited ontostudio/frontend/src/pages/ModelerPage.tsx | 1→3 lines | ~42 |
+| 09:42 | Session end: 386 writes across 82 files (message-list.tsx, App.tsx, index.ts, page.tsx, LicensePage.tsx) | 114 reads | ~246559 tok |
+| 09:48 | Edited ontostudio/frontend/src/pages/ModelerPage.tsx | modified for() | ~345 |
+| 09:49 | Session end: 387 writes across 82 files (message-list.tsx, App.tsx, index.ts, page.tsx, LicensePage.tsx) | 114 reads | ~246623 tok |
+| 09:56 | Edited ontostudio/frontend/src/pages/ModelerPage.tsx | added error handling | ~384 |
+| 09:57 | Edited ontostudio/frontend/src/pages/ModelerPage.tsx | added error handling | ~172 |
+| 09:57 | Edited ontostudio/frontend/src/pages/ModelerPage.tsx | removed 6 lines | ~14 |
+| 09:59 | Edited ontostudio/frontend/src/pages/ModelerPage.tsx | 3→2 lines | ~31 |
+| 10:00 | Edited ontostudio/frontend/src/pages/ModelerPage.tsx | 7→4 lines | ~25 |
+| 10:02 | Session end: 392 writes across 82 files (message-list.tsx, App.tsx, index.ts, page.tsx, LicensePage.tsx) | 114 reads | ~247320 tok |
+| 10:11 | Edited ontostudio/frontend/src/pages/ModelerPage.tsx | 5→6 lines | ~59 |
+| 10:13 | Edited ontostudio/frontend/src/pages/ModelerPage.tsx | 4→5 lines | ~31 |
+| 10:16 | Session end: 394 writes across 82 files (message-list.tsx, App.tsx, index.ts, page.tsx, LicensePage.tsx) | 114 reads | ~247410 tok |
+| 10:34 | Edited ontostudio/frontend/src/pages/ModelerPage.tsx | expanded (+16 lines) | ~755 |
+| 10:38 | Edited ontostudio/frontend/src/pages/ModelerPage.tsx | 8→6 lines | ~19 |
+| 10:40 | Edited ontostudio/frontend/src/pages/ModelerPage.tsx | 9→6 lines | ~18 |
+| 10:42 | Session end: 397 writes across 82 files (message-list.tsx, App.tsx, index.ts, page.tsx, LicensePage.tsx) | 114 reads | ~248821 tok |
+| 10:54 | Edited ontostudio/frontend/src/pages/ModelerPage.tsx | added nullish coalescing | ~704 |
+| 10:58 | Edited ontostudio/frontend/src/pages/ModelerPage.tsx | reduced (-12 lines) | ~265 |
+| 11:00 | Session end: 399 writes across 82 files (message-list.tsx, App.tsx, index.ts, page.tsx, LicensePage.tsx) | 114 reads | ~249722 tok |
+| 11:08 | Edited ontostudio/frontend/src/pages/ModelerPage.tsx | 47→46 lines | ~555 |
+| 11:09 | Edited ontostudio/frontend/src/pages/ModelerPage.tsx | modified ClassDetailForm() | ~121 |
+| 11:11 | Edited ontostudio/frontend/src/pages/ModelerPage.tsx | added nullish coalescing | ~316 |
+| 11:12 | Edited ontostudio/frontend/src/pages/ModelerPage.tsx | added 3 condition(s) | ~331 |
+| 11:14 | Edited ontostudio/frontend/src/pages/ModelerPage.tsx | added 2 condition(s) | ~301 |
+
+## Session: 2026-09-28 11:14
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 11:32 | OntoStudio 功能梳理完成(3并行代理: 后端/前端/环评语料),brainstorming 启动进入澄清环节 | ontostudio/*, docs/ontology/*, skills/public/coal-eia-report/* | 梳理报告已呈现,待澄清Q1 | ~260k |
+| 11:58 | Edited ontostudio/frontend/src/pages/ModelerPage.tsx | modified if() | ~114 |
+| 12:02 | Session end: 1 writes across 1 files (ModelerPage.tsx) | 27 reads | ~43951 tok |
+| 12:08 | Edited ontostudio/frontend/src/pages/ModelerPage.tsx | CSS: focus | ~188 |
+| 12:08 | Session end: 2 writes across 1 files (ModelerPage.tsx) | 27 reads | ~44139 tok |
+| 12:10 | Session end: 2 writes across 1 files (ModelerPage.tsx) | 27 reads | ~44139 tok |
+| 12:24 | Session end: 2 writes across 1 files (ModelerPage.tsx) | 27 reads | ~44398 tok |
+| 12:29 | Session end: 2 writes across 1 files (ModelerPage.tsx) | 28 reads | ~44398 tok |
+| 13:05 | Session end: 2 writes across 1 files (ModelerPage.tsx) | 28 reads | ~44398 tok |
+| 13:05 | Edited ontostudio/frontend/src/pages/ModelerPage.tsx | added error handling | ~278 |
+| 13:08 | Session end: 3 writes across 1 files (ModelerPage.tsx) | 28 reads | ~44676 tok |
+| 13:13 | Created docs/superpowers/specs/2026-09-28-eia-ontology-v2-design.md | — | ~3157 |
+| 13:13 | Edited docs/superpowers/specs/2026-09-28-eia-ontology-v2-design.md | inline fix | ~18 |
+| 13:13 | Edited docs/superpowers/specs/2026-09-28-eia-ontology-v2-design.md | inline fix | ~12 |
+| 13:13 | Edited docs/superpowers/specs/2026-09-28-eia-ontology-v2-design.md | inline fix | ~38 |
+| 13:14 | 环评本体v2 spec 定稿并自审修复3处(计数x2+附录占位符);brainstorming七节设计用户已确认 | docs/superpowers/specs/2026-09-28-eia-ontology-v2-design.md | 待用户审阅后转 writing-plans | ~18k |
+| 13:14 | Edited ontostudio/frontend/src/pages/ModelerPage.tsx | reduced (-14 lines) | ~128 |
+| 13:14 | Session end: 8 writes across 2 files (ModelerPage.tsx, 2026-09-28-eia-ontology-v2-design.md) | 28 reads | ~48258 tok |
+| 13:15 | Session end: 8 writes across 2 files (ModelerPage.tsx, 2026-09-28-eia-ontology-v2-design.md) | 28 reads | ~48258 tok |
+| 13:25 | Edited docs/superpowers/specs/2026-09-28-eia-ontology-v2-design.md | inline fix | ~23 |
+| 13:25 | Edited docs/superpowers/specs/2026-09-28-eia-ontology-v2-design.md | 1→3 lines | ~54 |
+| 13:25 | Edited docs/superpowers/specs/2026-09-28-eia-ontology-v2-design.md | inline fix | ~39 |
+| 13:25 | Edited docs/superpowers/specs/2026-09-28-eia-ontology-v2-design.md | inline fix | ~66 |
+| 13:25 | Edited docs/superpowers/specs/2026-09-28-eia-ontology-v2-design.md | 1→3 lines | ~92 |
+| 13:25 | Edited docs/superpowers/specs/2026-09-28-eia-ontology-v2-design.md | 8→11 lines | ~79 |
+| 13:25 | Edited docs/superpowers/specs/2026-09-28-eia-ontology-v2-design.md | 3→4 lines | ~44 |
+| 13:25 | Edited docs/superpowers/specs/2026-09-28-eia-ontology-v2-design.md | expanded (+10 lines) | ~204 |
+| 13:25 | Edited docs/superpowers/specs/2026-09-28-eia-ontology-v2-design.md | inline fix | ~20 |
+| 13:26 | spec 复查修订:legacy改清除+CQ验收集补强+附录A补10行对照(用户要求对比第一轮参考) | docs/superpowers/specs/2026-09-28-eia-ontology-v2-design.md | 9处编辑完成 | ~20k |
+| 13:26 | Session end: 17 writes across 2 files (ModelerPage.tsx, 2026-09-28-eia-ontology-v2-design.md) | 28 reads | ~48924 tok |
+| 13:34 | Edited docs/superpowers/specs/2026-09-28-eia-ontology-v2-design.md | 3→5 lines | ~122 |
+| 13:34 | Edited docs/superpowers/specs/2026-09-28-eia-ontology-v2-design.md | 1→2 lines | ~70 |
+| 13:35 | Edited docs/superpowers/specs/2026-09-28-eia-ontology-v2-design.md | expanded (+12 lines) | ~306 |
+| 13:35 | spec 第二轮参考复查:conflicts_with+value_origin+accounting_method 三处补强,附录A增W层对照13行 | docs/superpowers/specs/2026-09-28-eia-ontology-v2-design.md | 完成 | ~16k |
+| 13:35 | Session end: 20 writes across 2 files (ModelerPage.tsx, 2026-09-28-eia-ontology-v2-design.md) | 28 reads | ~49599 tok |
+| 13:39 | Edited ontostudio/frontend/src/pages/ModelerPage.tsx | modified if() | ~75 |
+| 13:39 | Edited ontostudio/frontend/src/pages/ModelerPage.tsx | inline fix | ~11 |
+| 13:44 | Edited docs/superpowers/specs/2026-09-28-eia-ontology-v2-design.md | 2→3 lines | ~65 |
+| 13:44 | Edited docs/superpowers/specs/2026-09-28-eia-ontology-v2-design.md | 4→5 lines | ~82 |
+| 13:44 | spec 增补技能冻结约束:coal-eia-report现有版本不改,子项目5=新版本并行重构 | docs/superpowers/specs/2026-09-28-eia-ontology-v2-design.md | 2处编辑 | ~4k |
+| 13:45 | Session end: 24 writes across 2 files (ModelerPage.tsx, 2026-09-28-eia-ontology-v2-design.md) | 28 reads | ~49843 tok |
+| 13:48 | Edited docs/superpowers/specs/2026-09-28-eia-ontology-v2-design.md | inline fix | ~18 |
+| 13:48 | Edited docs/superpowers/specs/2026-09-28-eia-ontology-v2-design.md | 1→2 lines | ~33 |
+| 13:48 | Edited docs/superpowers/specs/2026-09-28-eia-ontology-v2-design.md | inline fix | ~77 |
+| 13:48 | Edited docs/superpowers/specs/2026-09-28-eia-ontology-v2-design.md | inline fix | ~50 |
+| 13:48 | Edited docs/superpowers/specs/2026-09-28-eia-ontology-v2-design.md | 1→2 lines | ~71 |
+| 13:48 | Edited docs/superpowers/specs/2026-09-28-eia-ontology-v2-design.md | inline fix | ~89 |
+| 13:49 | Edited docs/superpowers/specs/2026-09-28-eia-ontology-v2-design.md | inline fix | ~36 |
+| 13:49 | Edited docs/superpowers/specs/2026-09-28-eia-ontology-v2-design.md | inline fix | ~25 |
+| 13:49 | Edited docs/superpowers/specs/2026-09-28-eia-ontology-v2-design.md | expanded (+10 lines) | ~261 |
+| 13:49 | spec 第三轮煤炭特化复查:4缺口补强(fault/water_conducting_zone/产污词表/沉陷表)+4候选+附录A增11行 | docs/superpowers/specs/2026-09-28-eia-ontology-v2-design.md | 8处编辑 | ~18k |
+| 13:50 | Session end: 33 writes across 2 files (ModelerPage.tsx, 2026-09-28-eia-ontology-v2-design.md) | 28 reads | ~50549 tok |
+| 13:55 | Session end: 33 writes across 2 files (ModelerPage.tsx, 2026-09-28-eia-ontology-v2-design.md) | 33 reads | ~53464 tok |
+| 13:55 | Session end: 33 writes across 2 files (ModelerPage.tsx, 2026-09-28-eia-ontology-v2-design.md) | 37 reads | ~56619 tok |
+| 13:55 | Session end: 33 writes across 2 files (ModelerPage.tsx, 2026-09-28-eia-ontology-v2-design.md) | 38 reads | ~56619 tok |
+| 14:04 | Created docs/superpowers/plans/2026-09-28-eia-ontology-v2-subproject1.md | — | ~11322 |
+| 14:05 | Edited docs/superpowers/plans/2026-09-28-eia-ontology-v2-subproject1.md | modified purge() | ~383 |
+| 14:05 | Edited docs/superpowers/plans/2026-09-28-eia-ontology-v2-subproject1.md | inline fix | ~16 |
+| 14:05 | Edited docs/superpowers/plans/2026-09-28-eia-ontology-v2-subproject1.md | 6→6 lines | ~75 |
+| 14:05 | Edited docs/superpowers/plans/2026-09-28-eia-ontology-v2-subproject1.md | inline fix | ~9 |
+| 14:05 | writing-plans:子项目1实施计划定稿(12任务/3用户门/自审4处修复:purge显式分支+CQ图名+计数),docs/superpowers/plans/2026-09-28-eia-ontology-v2-subproject1.md | 同左 | 待用户选执行方式 | ~120k |
+| 14:05 | Session end: 38 writes across 3 files (ModelerPage.tsx, 2026-09-28-eia-ontology-v2-design.md, 2026-09-28-eia-ontology-v2-subproject1.md) | 40 reads | ~69265 tok |
+| 14:09 | Session end: 38 writes across 3 files (ModelerPage.tsx, 2026-09-28-eia-ontology-v2-design.md, 2026-09-28-eia-ontology-v2-subproject1.md) | 41 reads | ~79884 tok |
+| 14:10 | Created ontostudio/backend/tests/test_kernel_rules_two_seg.py | — | ~768 |
+| 14:11 | Edited ontostudio/backend/app/ontology/kernel/rules.py | modified items() | ~155 |
+| 14:14 | Task1 owlrl 2段链CONSTRUCT修复(反例golden先行,422+1sk全绿) | ontostudio/backend/app/ontology/kernel/rules.py + tests/test_kernel_rules_two_seg.py | commit d8ed3c3d5 | ~30k |
+| 18:35 | Session end: 40 writes across 5 files (ModelerPage.tsx, 2026-09-28-eia-ontology-v2-design.md, 2026-09-28-eia-ontology-v2-subproject1.md, test_kernel_rules_two_seg.py, rules.py) | 42 reads | ~82552 tok |
+| 18:36 | Session end: 40 writes across 5 files (ModelerPage.tsx, 2026-09-28-eia-ontology-v2-design.md, 2026-09-28-eia-ontology-v2-subproject1.md, test_kernel_rules_two_seg.py, rules.py) | 42 reads | ~82552 tok |
+| 18:40 | review Task1(eia ontology v2 subproject1): commit d8ed3c3d5核对(仅2文件/计划逐条一致/p5惯用法镜像/TDD反例成立) + 全量422 passed 1 skipped复跑绿 + coal-eia-report零改动 + ruff双检绿, 无需review修 | ontostudio/backend/app/ontology/kernel/rules.py, tests/test_kernel_rules_two_seg.py | PASS | ~9k |
+| 18:46 | Created ontostudio/backend/scripts/eia_purge_v1.py | — | ~1424 |
+| 18:47 | Created ontostudio/backend/tests/test_eia_purge.py | — | ~1498 |
+| 18:51 | Task2 eia v1实例清除脚本落地(dry-run默认+DSN解析勘误+merges步加固), 测试5新增全量427绿 | ontostudio/backend/scripts/eia_purge_v1.py ontostudio/backend/tests/test_eia_purge.py | commit d329f19c6 | ~6k |
+| 18:54 | Created ontostudio/backend/scripts/eia_schema_mining/coal_terms.py | — | ~600 |
+| 18:54 | Created ontostudio/backend/scripts/eia_schema_mining/controlled_vocab.yaml | — | ~526 |
+| 18:54 | Created ontostudio/backend/scripts/eia_schema_mining/out/.gitignore | — | ~4 |
+| 18:57 | Task3挖掘脚手架骨架落地: coal_terms词典62条+三受控词表yaml+out/.gitignore | ontostudio/backend/scripts/eia_schema_mining/ | commit 92a3d43a2, 427 passed 1 skipped | ~2k |
+| 19:00 | Created ontostudio/backend/scripts/eia_schema_mining/digest_stats.py | — | ~554 |
+| 19:04 | Created ontostudio/backend/scripts/eia_schema_mining/digest_stats.py | — | ~794 |
+| 19:05 | Edited ontostudio/backend/scripts/eia_schema_mining/digest_stats.py | inline fix | ~23 |
+| 19:15 | Task4源①digest统计器: token四级report_type归类+MULTILINE修复, 25份=14规划/9项目/2后评价 | ontostudio/backend/scripts/eia_schema_mining/digest_stats.py | commit 0d7de2ac1, 427 passed 1 skipped | ~1.5k |
+| 19:14 | Created ontostudio/backend/scripts/eia_schema_mining/table_extract.py | — | ~666 |
+| 19:17 | Task5 源②表格结构化器落地: 锚点+数值行启发式, 4份fulltext五类候选(沉陷114-125/源强51-63), parse.json核查无表格数据仅计数, 427 passed 1 skipped, commit 6c1d28ddd | ontostudio/backend/scripts/eia_schema_mining/table_extract.py | done | ~2000 |
+| 19:23 | Created ontostudio/backend/scripts/eia_schema_mining/llm_extract.py | — | ~1276 |
+| 19:23 | Created ontostudio/backend/scripts/eia_schema_mining/samples.json | — | ~418 |
+| 19:31 | Task6 源③LLM因果链抽取器落地(仅Step1): llm_extract.py(schema-constrained, resolve_fulltext兜底无前缀fulltext.txt=gaotaoyao规划环评) + samples.json占位(4 slug: gaotaoyao/yakeshi2026/sijitun/baiyinhua2 + 待补候选); Step2-4中GATE确认与LLM冒烟deferred不跑; 427 passed 1 skipped; commit d992f68ca | ontostudio/backend/scripts/eia_schema_mining/llm_extract.py,samples.json | done | ~1300 |
+| 19:38 | Created ontostudio/backend/scripts/eia_schema_mining/stats_report.py | — | ~2236 |
+| 19:38 | Created ontostudio/backend/scripts/eia_schema_mining/cq/CQ-01.rq | — | ~109 |
+| 19:38 | Created ontostudio/backend/scripts/eia_schema_mining/cq/CQ-02.rq | — | ~147 |
+| 19:38 | Created ontostudio/backend/scripts/eia_schema_mining/cq/CQ-03.rq | — | ~223 |
+| 19:38 | Created ontostudio/backend/scripts/eia_schema_mining/cq/CQ-04.rq | — | ~167 |
+| 19:38 | Created ontostudio/backend/scripts/eia_schema_mining/cq/CQ-05.rq | — | ~122 |
+| 19:38 | Created ontostudio/backend/scripts/eia_schema_mining/cq/CQ-06.rq | — | ~126 |
+| 19:38 | Created ontostudio/backend/scripts/eia_schema_mining/cq/CQ-07.rq | — | ~107 |
+| 19:38 | Created ontostudio/backend/scripts/eia_schema_mining/cq/CQ-08.rq | — | ~137 |
+| 19:38 | Created ontostudio/backend/scripts/eia_schema_mining/cq/CQ-09.rq | — | ~101 |
+| 19:38 | Created ontostudio/backend/scripts/eia_schema_mining/cq/CQ-10.rq | — | ~101 |
+| 19:38 | Created ontostudio/backend/scripts/eia_schema_mining/cq/CQ-11.rq | — | ~123 |
+| 19:38 | Created ontostudio/backend/scripts/eia_schema_mining/cq/CQ-12.rq | — | ~184 |
+| 19:39 | Created ontostudio/backend/scripts/eia_schema_mining/cq/CQ-01.rq | — | ~143 |
+| 19:39 | Created ontostudio/backend/scripts/eia_schema_mining/cq/CQ-02.rq | — | ~153 |
+| 19:40 | Created ontostudio/backend/scripts/eia_schema_mining/cq/CQ-03.rq | — | ~251 |
+| 19:40 | Created ontostudio/backend/scripts/eia_schema_mining/cq/CQ-04.rq | — | ~176 |
+| 19:40 | Created ontostudio/backend/scripts/eia_schema_mining/cq/CQ-05.rq | — | ~133 |
+| 19:40 | Created ontostudio/backend/scripts/eia_schema_mining/cq/CQ-06.rq | — | ~135 |
+| 19:40 | Created ontostudio/backend/scripts/eia_schema_mining/cq/CQ-07.rq | — | ~120 |
+| 19:40 | Created ontostudio/backend/scripts/eia_schema_mining/cq/CQ-08.rq | — | ~151 |
+| 19:40 | Created ontostudio/backend/scripts/eia_schema_mining/cq/CQ-09.rq | — | ~128 |
+| 19:40 | Created ontostudio/backend/scripts/eia_schema_mining/cq/CQ-10.rq | — | ~115 |
+| 19:40 | Created ontostudio/backend/scripts/eia_schema_mining/cq/CQ-11.rq | — | ~137 |
+| 19:40 | Created ontostudio/backend/scripts/eia_schema_mining/cq/CQ-12.rq | — | ~210 |
+| 19:43 | Task7 eia-ontology-v2: stats_report.py(四节全写)+CQ验收集12条.rq落盘; 修计划骨架PN_LOCAL裸/解析错(pred:/attr:前缀); pytest 427 passed 1 skipped; commit babad1881; Step2跑报告+GATE呈报 deferred(等Task6数据) | ontostudio/backend/scripts/eia_schema_mining/stats_report.py, cq/ | done | ~35k |
+| 19:46 | Created ontostudio/backend/scripts/eia_schema_mining/eia_v2_draft.yaml | — | ~3199 |
+| 19:49 | Task8 eia.yaml v2草案落YAML+tmp编译冒烟(46etype/37谓词/5链规则全编译通过) | ontostudio/backend/scripts/eia_schema_mining/eia_v2_draft.yaml | d111318cb commit, 427 passed 1 skipped | ~6k |
+| 19:55 | Edited ontostudio/backend/scripts/eia_schema_mining/eia_v2_draft.yaml | inline fix | ~29 |
+| 19:57 | review Task8 eia_v2_draft: smoke复跑(load_registry+collect_vocabularies+refresh_schema全过,24类/19+5谓词入vocab)+全量427绿+冻结目录零改动+注释链计数澄清 | ontostudio/backend/scripts/eia_schema_mining/eia_v2_draft.yaml | 670919d49 | ~3k |
+| 20:01 | Edited ontostudio/backend/tests/test_eia_four_targets_schema.py | modified test_role_mismatch_rejected() | ~499 |
+| 20:01 | Edited ontostudio/backend/app/doc_graph/schemas.py | expanded (+26 lines) | ~221 |
+| 20:01 | Edited ontostudio/backend/app/doc_graph/schemas.py | expanded (+21 lines) | ~168 |
+| 20:01 | Edited ontostudio/backend/app/doc_graph/schemas.py | expanded (+21 lines) | ~448 |
+| 20:02 | Edited ontostudio/backend/app/doc_graph/schemas.py | expanded (+26 lines) | ~289 |
+| 20:02 | Edited ontostudio/backend/tests/test_doc_graph_schemas.py | modified test_registry_yaml_enums_superset_of_schemas_literals() | ~430 |
+| 20:02 | Edited ontostudio/backend/tests/test_eia_four_targets_schema.py | modified test_v2_new_etypes_and_predicate_roles() | ~239 |
+| 20:04 | Task9 EiaExtraction v2扩容: 2失败测试→schemas四处扩容(Literal+角色表+domain_etypes)+registry超集不变式过渡并 draft yaml; plan原稿emitted_via角色错已修; 429 passed 1 skipped | ontostudio/backend/app/doc_graph/schemas.py, tests/test_eia_four_targets_schema.py, tests/test_doc_graph_schemas.py | commit 0d6a3a369 | ~12k |
+| 20:09 | review Task9(EiaExtraction v2扩容): commit 0d6a3a369 三文件=计划2+不变式强制schemas Literal; 全量429p1s复跑绿; 冻结目录零改动; 判定pass | ontostudio/backend/app/doc_graph/schemas.py | ok | ~30k |
+| 20:14 | Created ontostudio/backend/tests/test_kernel_eia_v2_golden.py | — | ~2796 |
+| 20:15 | Edited ontostudio/backend/tests/test_kernel_eia_v2_golden.py | 3→4 lines | ~74 |
+| 20:15 | Edited ontostudio/backend/tests/test_kernel_eia_v2_golden.py | modified eia_env() | ~180 |
+| 20:17 | Edited ontostudio/backend/tests/test_kernel_eia_v2_golden.py | 14→16 lines | ~168 |
+| 2026-09-28 | Task10: eia v2 golden 7测全绿(草案tmp-manifest fixture,6 golden+CQ执行器);发现OPTIONAL在GRAPH块外匹配空默认图致时效过滤失效 | tests/test_kernel_eia_v2_golden.py | 436 passed 1 skipped, commit d99f6d751 | ~14k |
+| 20:25 | Edited ontostudio/backend/tests/test_kernel_eia_v2_golden.py | 3→5 lines | ~71 |
+| 20:26 | review Task10 golden测试:提交范围/计划逐步核对/全量436绿/冻结目录零改动;弱断言len>=0→==0已修 | ontostudio/backend/tests/test_kernel_eia_v2_golden.py | commit 56862920a | ~8k |
+| 20:33 | eia v2 子项目1 Task1-10 全部完成:15代理(10执行+4评审+终审clean),436 passed全绿,11 commit(d8ed3c3d5→56862920a);owlrl修复/purge脚本/脚手架/T3+CQ/草案/扩容/golden全落地;GATE1抽样清单呈报 | ontostudio/backend/* | 待用户GATE1 | ~1583k |
+| 20:33 | Session end: 90 writes across 32 files (ModelerPage.tsx, 2026-09-28-eia-ontology-v2-design.md, 2026-09-28-eia-ontology-v2-subproject1.md, test_kernel_rules_two_seg.py, rules.py) | 56 reads | ~121759 tok |
+| 20:48 | Edited ontostudio/backend/scripts/eia_schema_mining/llm_extract.py | added 2 import(s) | ~52 |
+| 20:48 | Edited ontostudio/backend/scripts/eia_schema_mining/llm_extract.py | modified extract_chunk() | ~413 |
+| 20:48 | Edited ontostudio/backend/scripts/eia_schema_mining/llm_extract.py | 1→4 lines | ~76 |
+| 20:48 | Edited ontostudio/backend/scripts/eia_schema_mining/llm_extract.py | modified job() | ~331 |
+| 20:48 | Edited ontostudio/backend/scripts/eia_schema_mining/samples.json | inline fix | ~23 |
+| 20:49 | Session end: 95 writes across 32 files (ModelerPage.tsx, 2026-09-28-eia-ontology-v2-design.md, 2026-09-28-eia-ontology-v2-subproject1.md, test_kernel_rules_two_seg.py, rules.py) | 57 reads | ~123930 tok |
+| 21:05 | Created ontostudio/backend/scripts/eia_schema_mining/out/check_candidates.py | — | ~601 |
+| 21:05 | Session end: 96 writes across 33 files (ModelerPage.tsx, 2026-09-28-eia-ontology-v2-design.md, 2026-09-28-eia-ontology-v2-subproject1.md, test_kernel_rules_two_seg.py, rules.py) | 57 reads | ~124531 tok |
+| 21:17 | Session end: 96 writes across 33 files (ModelerPage.tsx, 2026-09-28-eia-ontology-v2-design.md, 2026-09-28-eia-ontology-v2-subproject1.md, test_kernel_rules_two_seg.py, rules.py) | 57 reads | ~124531 tok |
+| 21:30 | Edited ontostudio/backend/scripts/eia_schema_mining/out/check_candidates.py | modified fulltext_of() | ~183 |
+| 21:30 | Edited ontostudio/backend/scripts/eia_schema_mining/out/check_candidates.py | not() → _norm() | ~103 |
+| 21:31 | Edited ontostudio/backend/scripts/eia_schema_mining/out/check_candidates.py | modified _canon() | ~168 |
+| 21:31 | Edited ontostudio/backend/scripts/eia_schema_mining/out/check_candidates.py | modified items() | ~91 |
+| 21:32 | Edited ontostudio/backend/scripts/eia_schema_mining/llm_extract.py | modified load_enums() | ~249 |
+| 21:32 | Edited ontostudio/backend/scripts/eia_schema_mining/llm_extract.py | modified build_user_prompt() | ~52 |
+| 21:32 | Edited ontostudio/backend/scripts/eia_schema_mining/llm_extract.py | 2→3 lines | ~49 |
+| 21:32 | Edited ontostudio/backend/scripts/eia_schema_mining/llm_extract.py | modified job() | ~46 |
+| 21:32 | Edited ontostudio/backend/scripts/eia_schema_mining/llm_extract.py | modified extract_chunk() | ~242 |
+| 21:35 | Session end: 105 writes across 33 files (ModelerPage.tsx, 2026-09-28-eia-ontology-v2-design.md, 2026-09-28-eia-ontology-v2-subproject1.md, test_kernel_rules_two_seg.py, rules.py) | 57 reads | ~125714 tok |
+| 21:36 | Session end: 105 writes across 33 files (ModelerPage.tsx, 2026-09-28-eia-ontology-v2-design.md, 2026-09-28-eia-ontology-v2-subproject1.md, test_kernel_rules_two_seg.py, rules.py) | 57 reads | ~125714 tok |
+| 21:38 | Session end: 105 writes across 33 files (ModelerPage.tsx, 2026-09-28-eia-ontology-v2-design.md, 2026-09-28-eia-ontology-v2-subproject1.md, test_kernel_rules_two_seg.py, rules.py) | 57 reads | ~125714 tok |
+| 21:39 | Created ontostudio/backend/scripts/eia_schema_mining/out/compare_v1_v2.py | — | ~912 |
+| 21:40 | Session end: 106 writes across 34 files (ModelerPage.tsx, 2026-09-28-eia-ontology-v2-design.md, 2026-09-28-eia-ontology-v2-subproject1.md, test_kernel_rules_two_seg.py, rules.py) | 57 reads | ~126626 tok |
+| 21:41 | Session end: 106 writes across 34 files (ModelerPage.tsx, 2026-09-28-eia-ontology-v2-design.md, 2026-09-28-eia-ontology-v2-subproject1.md, test_kernel_rules_two_seg.py, rules.py) | 57 reads | ~126626 tok |
+| 22:41 | v2枚举版抽取完成:1564候选(5x),谓词枚举命中95.3%,幻觉15.3%;T3报告出炉待GATE2 | scripts/eia_schema_mining/* | ⛔GATE2呈报 | ~180k |
+| 22:41 | Session end: 106 writes across 34 files (ModelerPage.tsx, 2026-09-28-eia-ontology-v2-design.md, 2026-09-28-eia-ontology-v2-subproject1.md, test_kernel_rules_two_seg.py, rules.py) | 58 reads | ~126626 tok |
+| 06:40 | Session end: 106 writes across 34 files (ModelerPage.tsx, 2026-09-28-eia-ontology-v2-design.md, 2026-09-28-eia-ontology-v2-subproject1.md, test_kernel_rules_two_seg.py, rules.py) | 58 reads | ~126626 tok |
+| 08:03 | Edited ontostudio/backend/tests/test_kernel_eia_v2_golden.py | 8→6 lines | ~97 |
+| 08:03 | Edited ontostudio/backend/tests/test_kernel_eia_v2_golden.py | modified eia_env() | ~81 |
+| 08:04 | Edited ontostudio/backend/tests/test_kernel_eia_v2_golden.py | 3→2 lines | ~11 |
+| 08:04 | Edited ontostudio/backend/tests/test_kernel_eia_v2_golden.py | 4→2 lines | ~33 |
+| 08:14 | GATE3 完成:eia.yaml v2定型+golden切正式registry+436全绿+v1清除1041删净+容器formal三端点冒烟全过(44ff6b3b7);子项目1全部验收门达成 | ontostudio/backend/* | 子项目1收官 | ~120k |
+| 08:15 | Session end: 110 writes across 34 files (ModelerPage.tsx, 2026-09-28-eia-ontology-v2-design.md, 2026-09-28-eia-ontology-v2-subproject1.md, test_kernel_rules_two_seg.py, rules.py) | 58 reads | ~126870 tok |
+| 08:21 | Edited ontostudio/backend/scripts/eia_schema_mining/llm_extract.py | modified load_enums() | ~310 |
+| 08:23 | eia.yaml全枚举中文标注(46etype+37谓词)+load_enums同源读取;437绿;热重载validate过
+| 08:23 | Session end: 111 writes across 34 files (ModelerPage.tsx, 2026-09-28-eia-ontology-v2-design.md, 2026-09-28-eia-ontology-v2-subproject1.md, test_kernel_rules_two_seg.py, rules.py) | 66 reads | ~138014 tok |
+| 08:24 | Session end: 111 writes across 34 files (ModelerPage.tsx, 2026-09-28-eia-ontology-v2-design.md, 2026-09-28-eia-ontology-v2-subproject1.md, test_kernel_rules_two_seg.py, rules.py) | 66 reads | ~138014 tok |
+| 08:26 | Created docs/superpowers/plans/2026-09-29-eia-batch-ingest-subproject2.md | — | ~4062 |
+| 08:27 | Session end: 112 writes across 35 files (ModelerPage.tsx, 2026-09-28-eia-ontology-v2-design.md, 2026-09-28-eia-ontology-v2-subproject1.md, test_kernel_rules_two_seg.py, rules.py) | 67 reads | ~146174 tok |
+| 08:30 | Created ontostudio/backend/scripts/eia_schema_mining/batch24.json | — | ~104 |
+| 08:30 | Created ontostudio/backend/scripts/eia_schema_mining/parse_docx.py | — | ~869 |
+| 08:34 | 子项目2-T1: batch24.json 22份docx清单+parse_docx.py解析器落地,22 ok/0 MISS;slug→文件名真源取kf_samples_seed.json(计划内缩写名按对账台账修正,santanghu取哈希版);全量437绿后commit 60cbd73f8 | ontostudio/backend/scripts/eia_schema_mining/{batch24.json,parse_docx.py}, out/fulltexts/ | done | ~6k |
+| 08:38 | Session end: 114 writes across 37 files (ModelerPage.tsx, 2026-09-28-eia-ontology-v2-design.md, 2026-09-28-eia-ontology-v2-subproject1.md, test_kernel_rules_two_seg.py, rules.py) | 71 reads | ~148111 tok |
+| 08:43 | Edited ontostudio/backend/scripts/eia_schema_mining/batch24.json | inline fix | ~21 |
+| 08:43 | Edited docs/superpowers/plans/2026-09-29-eia-batch-ingest-subproject2.md | E402() → EIA_PREDICATE_ROLES() | ~78 |
+| 08:44 | Edited docs/superpowers/plans/2026-09-29-eia-batch-ingest-subproject2.md | "EIA_PREDICATE_ROLES" → "_EIA_PREDICATE_ROLES" | ~109 |
+| 08:44 | Edited docs/superpowers/plans/2026-09-29-eia-batch-ingest-subproject2.md | 2→5 lines | ~101 |
+| 08:44 | Edited docs/superpowers/plans/2026-09-29-eia-batch-ingest-subproject2.md | 2→4 lines | ~88 |
+| 08:45 | 子项目2-Task1评审: 437测试全绿; batch24=24-2核对+22份fulltext核验通过; 修_note拼写(huojitu)已commit b1af4b789; 计划文件修Task2导入名(改走EiaExtraction.predicate_roles)+Task3守卫定案(精确判等禁LIKE前缀,yimin⊂yimin3500) | ontostudio/backend/scripts/eia_schema_mining/batch24.json, docs/superpowers/plans/2026-09-29-eia-batch-ingest-subproject2.md | pass+2处计划修正 | ~40k |
+| 08:48 | Session end: 119 writes across 37 files (ModelerPage.tsx, 2026-09-28-eia-ontology-v2-design.md, 2026-09-28-eia-ontology-v2-subproject1.md, test_kernel_rules_two_seg.py, rules.py) | 89 reads | ~193323 tok |
+| 08:51 | Session end: 119 writes across 37 files (ModelerPage.tsx, 2026-09-28-eia-ontology-v2-design.md, 2026-09-28-eia-ontology-v2-subproject1.md, test_kernel_rules_two_seg.py, rules.py) | 89 reads | ~194043 tok |
+| 09-28 09:45 | origin push 7笔(aab38879a→d50c35bb2) 九页原型移植+registry缩编+测试修复 | main-dev-fork | 推送成功 | ~1k |
+| 08:51 | Session end: 119 writes across 37 files (ModelerPage.tsx, 2026-09-28-eia-ontology-v2-design.md, 2026-09-28-eia-ontology-v2-subproject1.md, test_kernel_rules_two_seg.py, rules.py) | 89 reads | ~194043 tok |
+| 08:54 | Session end: 119 writes across 37 files (ModelerPage.tsx, 2026-09-28-eia-ontology-v2-design.md, 2026-09-28-eia-ontology-v2-subproject1.md, test_kernel_rules_two_seg.py, rules.py) | 90 reads | ~194043 tok |
+| 08:54 | Created ontostudio/backend/tests/test_convert_candidates.py | — | ~1246 |
+| 08:55 | Created ontostudio/backend/scripts/eia_schema_mining/convert_candidates.py | — | ~1293 |
+| 08:55 | Edited ontostudio/backend/scripts/eia_schema_mining/convert_candidates.py | 3→2 lines | ~6 |
+| 08:59 | 子项目2 Task2: convert_candidates.py TDD 落地(5测绿+全量442绿, commit 572f4a41a);计划勘误3处(parents[2]/located_in测试数据/消解后角色复检) | ontostudio/backend/scripts/eia_schema_mining/convert_candidates.py, ontostudio/backend/tests/test_convert_candidates.py | 442 passed | ~6k |
+| 09:00 | Created ontostudio/frontend/src/pages/IngestPage.tsx | — | ~3259 |
+| 09:03 | Edited ontostudio/frontend/src/pages/IngestPage.tsx | 8→8 lines | ~103 |
+| 09:03 | Edited ontostudio/frontend/src/pages/IngestPage.tsx | CSS: id | ~62 |
+| 09:07 | Session end: 125 writes across 40 files (ModelerPage.tsx, 2026-09-28-eia-ontology-v2-design.md, 2026-09-28-eia-ontology-v2-subproject1.md, test_kernel_rules_two_seg.py, rules.py) | 93 reads | ~202547 tok |
+| 09:07 | Edited ontostudio/backend/scripts/eia_schema_mining/convert_candidates.py | 3→3 lines | ~63 |
+| 09:07 | Edited ontostudio/backend/scripts/eia_schema_mining/convert_candidates.py | inline fix | ~17 |
+| 09:07 | Edited ontostudio/backend/tests/test_convert_candidates.py | 2→2 lines | ~45 |
+| 10:30 | 子项目2 Task2 评审: E731 noqa + 谓词计数勘误(16v1/35非14/33) commit f94a5e7a2; 442绿; Task3未实施,计划精确判等守卫已核正确 | ontostudio/backend/scripts/eia_schema_mining/convert_candidates.py, tests/test_convert_candidates.py | done | ~30k |
+| 09-28 09:50 | 抽取导入审计升级提交 207c0b7bb+push(置信度转真/引文转真/口径统一) | main-dev-fork | 推送成功 | ~1k |
+| 09:20 | Created ontostudio/backend/scripts/eia_schema_mining/batch_ingest.py | — | ~4266 |
+| 09:20 | Edited ontostudio/backend/scripts/eia_schema_mining/batch_ingest.py | 5→5 lines | ~86 |
+| 09:23 | Edited ontostudio/backend/scripts/eia_schema_mining/batch_ingest.py | inline fix | ~41 |
+| 09:24 | Edited ontostudio/backend/scripts/eia_schema_mining/batch_ingest.py | modified _candidates_path() | ~102 |
+
+## Session: 2026-09-29 09:28
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 09:36 | Edited ontostudio/backend/scripts/eia_schema_mining/batch_ingest.py | modified phase_extract() | ~80 |
+| 09:36 | Edited ontostudio/backend/scripts/eia_schema_mining/batch_ingest.py | inline fix | ~29 |
+| 09:37 | Edited ontostudio/backend/scripts/eia_schema_mining/batch_ingest.py | inline fix | ~17 |
+| 09:38 | Session end: 3 writes across 1 files (batch_ingest.py) | 27 reads | ~92633 tok |
+| 09:42 | Session end: 3 writes across 1 files (batch_ingest.py) | 30 reads | ~94768 tok |
+| 09:47 | Session end: 3 writes across 1 files (batch_ingest.py) | 31 reads | ~95194 tok |
+| 09:47 | Session end: 3 writes across 1 files (batch_ingest.py) | 31 reads | ~95194 tok |
+| 09:52 | Session end: 3 writes across 1 files (batch_ingest.py) | 35 reads | ~101864 tok |
+| 09:56 | Edited C:/Users/admin/.claude/projects/D--eai-eai-flow-main/memory/ontostudio-review-loop-slice.md | inline fix | ~22 |
+| 09:56 | Edited C:/Users/admin/.claude/projects/D--eai-eai-flow-main/memory/ontostudio-review-loop-slice.md | inline fix | ~60 |
+| 09:56 | Created C:/Users/admin/.claude/projects/D--eai-eai-flow-main/memory/ontostudio-ingest-page-audit-2026-09-29.md | — | ~351 |
+| 09:58 | 抽取导入页六agent审计(5维+skeptic): 4真1瑕疵1静态; eia活库0行(Task4/5未跑); 任务API=唯一解锁点; 闭环切片确认已提交 | IngestPage.tsx, actions/, batch_ingest.py | 报告已交付用户; 记忆已更新 | ~730k |
+| 09:59 | Session end: 6 writes across 3 files (batch_ingest.py, ontostudio-review-loop-slice.md, ontostudio-ingest-page-audit-2026-09-29.md) | 37 reads | ~104847 tok |
+| 09:59 | Edited ontostudio/backend/tests/test_doc_graph_schemas.py | modified test_role_tables_uniform_pair_tuple_shape() | ~1377 |
+| 09:59 | Edited ontostudio/backend/tests/test_doc_graph_schemas.py | 5→3 lines | ~45 |
+| 09:59 | Session end: 7 writes across 4 files (batch_ingest.py, ontostudio-review-loop-slice.md, ontostudio-ingest-page-audit-2026-09-29.md, test_doc_graph_schemas.py) | 37 reads | ~106224 tok |
+| 10:00 | Edited ontostudio/backend/tests/test_doc_graph_schemas.py | 7→7 lines | ~124 |
+| 10:00 | Edited ontostudio/backend/tests/test_convert_candidates.py | 6→8 lines | ~103 |
+| 10:00 | Edited ontostudio/backend/tests/test_convert_candidates.py | modified test_all_pending_confidence() | ~867 |
+| 10:01 | Edited ontostudio/backend/tests/test_convert_candidates.py | added 1 import(s) | ~21 |
+| 10:02 | Edited ontostudio/backend/app/doc_graph/schemas.py | 3→8 lines | ~71 |
+| 10:03 | Edited ontostudio/backend/app/doc_graph/schemas.py | expanded (+34 lines) | ~1299 |
+| 10:03 | Edited ontostudio/backend/app/doc_graph/schemas.py | 4→4 lines | ~86 |
+| 10:03 | Edited ontostudio/backend/app/doc_graph/schemas.py | 3→3 lines | ~64 |
+| 10:03 | Edited ontostudio/backend/app/doc_graph/schemas.py | modified EiaExtraction() | ~63 |
+| 10:03 | Edited ontostudio/backend/app/doc_graph/schemas.py | 2→2 lines | ~54 |
+| 10:03 | Edited ontostudio/backend/app/doc_graph/schemas.py | 5→7 lines | ~121 |
+| 10:03 | Edited ontostudio/backend/scripts/eia_schema_mining/convert_candidates.py | 3→3 lines | ~43 |
+| 10:03 | Edited ontostudio/backend/scripts/eia_schema_mining/convert_candidates.py | added 1 condition(s) | ~48 |
+| 10:03 | Edited ontostudio/backend/scripts/eia_schema_mining/convert_candidates.py | 3→5 lines | ~98 |
+| 10:15 | 谓词角色表多对改造落地: 17新对+3谓词入契约, 468绿, kept 95→210/1564(13.4%) | schemas.py/convert_candidates.py/两测试 | done | ~45k |
+| 10:14 | Session end: 21 writes across 7 files (batch_ingest.py, ontostudio-review-loop-slice.md, ontostudio-ingest-page-audit-2026-09-29.md, test_doc_graph_schemas.py, test_convert_candidates.py) | 37 reads | ~109286 tok |
+| 10:18 | Edited ontostudio/backend/tests/test_doc_graph_schemas.py | modified test_multi_pair_illegal_pair_still_rejected() | ~155 |
+| 10:18 | Edited ontostudio/backend/tests/test_doc_graph_schemas.py | modified test_registry_new_predicates_in_literal_and_domain() | ~971 |
+| 10:19 | Edited ontostudio/backend/app/doc_graph/schemas.py | expanded (+23 lines) | ~767 |
+| 10:19 | Edited ontostudio/backend/app/doc_graph/schemas.py | expanded (+17 lines) | ~508 |
+| 10:40 | R2 谓词角色对全量补齐: +22对+4语义拒收固化测试, 494绿, kept 210→371/1564(23.7%) | schemas.py/test_doc_graph_schemas.py | done | ~30k |
+| 10:24 | Session end: 25 writes across 7 files (batch_ingest.py, ontostudio-review-loop-slice.md, ontostudio-ingest-page-audit-2026-09-29.md, test_doc_graph_schemas.py, test_convert_candidates.py) | 37 reads | ~113010 tok |
+| 10:42 | Edited ontostudio/backend/scripts/eia_schema_mining/llm_extract.py | modified extract_chunk() | ~420 |
+| 10:42 | Edited ontostudio/backend/scripts/eia_schema_mining/llm_extract.py | 1→2 lines | ~24 |
+| 10:44 | Session end: 27 writes across 8 files (batch_ingest.py, ontostudio-review-loop-slice.md, ontostudio-ingest-page-audit-2026-09-29.md, test_doc_graph_schemas.py, test_convert_candidates.py) | 37 reads | ~113454 tok |
+| 10:50 | Session end: 27 writes across 8 files (batch_ingest.py, ontostudio-review-loop-slice.md, ontostudio-ingest-page-audit-2026-09-29.md, test_doc_graph_schemas.py, test_convert_candidates.py) | 37 reads | ~113454 tok |
+| 10:56 | Edited ontostudio/frontend/src/pages/IngestPage.tsx | inline fix | ~17 |
+| 10:56 | Edited ontostudio/frontend/src/pages/IngestPage.tsx | inline fix | ~28 |
+| 10:56 | Edited ontostudio/frontend/src/pages/IngestPage.tsx | 3→3 lines | ~69 |
+| 10:56 | Edited ontostudio/frontend/src/pages/IngestPage.tsx | inline fix | ~20 |
+| 10:56 | Edited ontostudio/backend/app/doc_graph/service.py | modified list_pending_review() | ~318 |
+| 10:56 | Edited ontostudio/frontend/src/api/ontology-graph-api.ts | 8→8 lines | ~94 |
+| 10:22 | 第1步小件落地: yaml归档+文案4处订正+红点计数转真 | IngestPage.tsx, ontology-graph-api.ts, service.py, eia_v1_backup.yaml | 两笔提交 e98a7be1c/06696d94d; ruff+3测+typecheck 全绿; 容器待步2重建生效 | ~30k |
+| 10:59 | Session end: 33 writes across 11 files (batch_ingest.py, ontostudio-review-loop-slice.md, ontostudio-ingest-page-audit-2026-09-29.md, test_doc_graph_schemas.py, test_convert_candidates.py) | 38 reads | ~114000 tok |
+| 11:56 | Session end: 33 writes across 11 files (batch_ingest.py, ontostudio-review-loop-slice.md, ontostudio-ingest-page-audit-2026-09-29.md, test_doc_graph_schemas.py, test_convert_candidates.py) | 38 reads | ~114000 tok |
+| 18:26 | Edited ontostudio/backend/scripts/eia_schema_mining/llm_extract.py | modified except() | ~99 |
+| 18:26 | Edited ontostudio/backend/scripts/eia_schema_mining/llm_extract.py | modified existing_spans() | ~156 |
+| 18:26 | Edited ontostudio/backend/scripts/eia_schema_mining/llm_extract.py | modified job() | ~478 |
+| 18:28 | Session end: 36 writes across 11 files (batch_ingest.py, ontostudio-review-loop-slice.md, ontostudio-ingest-page-audit-2026-09-29.md, test_doc_graph_schemas.py, test_convert_candidates.py) | 38 reads | ~114733 tok |
+| 19:11 | Session end: 36 writes across 11 files (batch_ingest.py, ontostudio-review-loop-slice.md, ontostudio-ingest-page-audit-2026-09-29.md, test_doc_graph_schemas.py, test_convert_candidates.py) | 38 reads | ~114733 tok |
+| 19:21 | Session end: 36 writes across 11 files (batch_ingest.py, ontostudio-review-loop-slice.md, ontostudio-ingest-page-audit-2026-09-29.md, test_doc_graph_schemas.py, test_convert_candidates.py) | 39 reads | ~114733 tok |
+| 19:32 | Edited ontostudio/backend/scripts/eia_schema_mining/llm_extract.py | 7→8 lines | ~112 |
+| 19:33 | Session end: 37 writes across 11 files (batch_ingest.py, ontostudio-review-loop-slice.md, ontostudio-ingest-page-audit-2026-09-29.md, test_doc_graph_schemas.py, test_convert_candidates.py) | 39 reads | ~114845 tok |
+| 19:43 | Session end: 37 writes across 11 files (batch_ingest.py, ontostudio-review-loop-slice.md, ontostudio-ingest-page-audit-2026-09-29.md, test_doc_graph_schemas.py, test_convert_candidates.py) | 39 reads | ~114845 tok |
+| 19:44 | Session end: 37 writes across 11 files (batch_ingest.py, ontostudio-review-loop-slice.md, ontostudio-ingest-page-audit-2026-09-29.md, test_doc_graph_schemas.py, test_convert_candidates.py) | 39 reads | ~114845 tok |
+| 20:12 | Session end: 37 writes across 11 files (batch_ingest.py, ontostudio-review-loop-slice.md, ontostudio-ingest-page-audit-2026-09-29.md, test_doc_graph_schemas.py, test_convert_candidates.py) | 39 reads | ~114845 tok |
+| 21:03 | Session end: 37 writes across 11 files (batch_ingest.py, ontostudio-review-loop-slice.md, ontostudio-ingest-page-audit-2026-09-29.md, test_doc_graph_schemas.py, test_convert_candidates.py) | 39 reads | ~114845 tok |
+| 21:12 | Edited ontostudio/backend/app/ontology/registry/doc_graph.yaml | modified CUSTOM() | ~96 |
+| 21:12 | Edited ontostudio/backend/app/ontology/registry/doc_graph.yaml | 2→3 lines | ~26 |
+| 21:15 | Session end: 39 writes across 12 files (batch_ingest.py, ontostudio-review-loop-slice.md, ontostudio-ingest-page-audit-2026-09-29.md, test_doc_graph_schemas.py, test_convert_candidates.py) | 39 reads | ~114967 tok |
+| 21:17 | Session end: 39 writes across 12 files (batch_ingest.py, ontostudio-review-loop-slice.md, ontostudio-ingest-page-audit-2026-09-29.md, test_doc_graph_schemas.py, test_convert_candidates.py) | 40 reads | ~114967 tok |
+| 21:18 | Created ontostudio/backend/_probe_after_shape.py | — | ~528 |
+| 21:19 | Edited ontostudio/backend/tests/test_actions_executor.py | added 1 import(s) | ~30 |
+| 21:19 | Edited ontostudio/backend/tests/test_actions_executor.py | 6→11 lines | ~191 |
+| 21:19 | Edited ontostudio/backend/tests/test_actions_executor.py | modified test_projection_failure_does_not_rollback() | ~71 |
+| 21:19 | Edited ontostudio/backend/tests/test_actions_executor.py | 2→4 lines | ~72 |
+| 21:20 | Edited ontostudio/backend/tests/test_actions_executor.py | 2→3 lines | ~47 |
+| 21:20 | Edited ontostudio/backend/tests/test_actions_e2e.py | added 1 import(s) | ~16 |
+| 21:20 | Edited ontostudio/backend/tests/test_actions_e2e.py | 3→5 lines | ~94 |
+| 21:20 | Edited ontostudio/backend/tests/test_actions_e2e.py | 1→3 lines | ~68 |
+| 21:20 | Edited ontostudio/backend/tests/test_actions_mcp.py | 1→6 lines | ~90 |
+| 21:22 | confirm置信升格测试适配:6条失败断言升级为正向断言confidence postcondition,494全绿 | tests/test_actions_{executor,e2e,mcp}.py | committed e72cba0ca | ~6k |
+| 21:32 | Session end: 49 writes across 16 files (batch_ingest.py, ontostudio-review-loop-slice.md, ontostudio-ingest-page-audit-2026-09-29.md, test_doc_graph_schemas.py, test_convert_candidates.py) | 40 reads | ~125369 tok |
+| 21:39 | 子项目2 Task4/5 完成:9939候选→3317实体/1985关系/5050提及全pending入图;容器陈旧根因定位+镜像重建;confirm置信升格集成缺口修复(aa73845b7);CQ对真实图首战出发现 | ontostudio/backend/* | ⛔GATE抽检待用户 | ~400k |
+| 21:40 | Session end: 49 writes across 16 files (batch_ingest.py, ontostudio-review-loop-slice.md, ontostudio-ingest-page-audit-2026-09-29.md, test_doc_graph_schemas.py, test_convert_candidates.py) | 40 reads | ~125369 tok |
+| 2026-09-29 22:07 | 浏览器抽查(:3000登录→:3010):消解页2903待审,UI确认入图→DB active+0.700全通;推理后端8规则链物化(2治理+20沉陷);校验SHACL0+国标全✓;2个UI瑕疵记录(列表不自动刷新/规则清单硬编码4条) | ontostudio UI | 抽查完成 | ~60k |
+| 22:07 | Session end: 49 writes across 16 files (batch_ingest.py, ontostudio-review-loop-slice.md, ontostudio-ingest-page-audit-2026-09-29.md, test_doc_graph_schemas.py, test_convert_candidates.py) | 40 reads | ~125369 tok |
+| 22:09 | Session end: 49 writes across 16 files (batch_ingest.py, ontostudio-review-loop-slice.md, ontostudio-ingest-page-audit-2026-09-29.md, test_doc_graph_schemas.py, test_convert_candidates.py) | 40 reads | ~125369 tok |
+| 22:10 | Session end: 49 writes across 16 files (batch_ingest.py, ontostudio-review-loop-slice.md, ontostudio-ingest-page-audit-2026-09-29.md, test_doc_graph_schemas.py, test_convert_candidates.py) | 40 reads | ~125369 tok |
+| 22:12 | Session end: 49 writes across 16 files (batch_ingest.py, ontostudio-review-loop-slice.md, ontostudio-ingest-page-audit-2026-09-29.md, test_doc_graph_schemas.py, test_convert_candidates.py) | 42 reads | ~125372 tok |
+| 22:31 | Edited ontostudio/frontend/src/components/ResolutionPanel.tsx | CSS: color | ~275 |
+| 22:31 | Edited ontostudio/frontend/src/components/ResolutionPanel.tsx | inline fix | ~26 |
+| 22:32 | Edited ontostudio/frontend/src/pages/ReasoningPage.tsx | added optional chaining | ~556 |
+| 22:32 | Edited ontostudio/frontend/src/pages/ReasoningPage.tsx | modified ruleRows() | ~73 |
+| 22:32 | Edited ontostudio/frontend/src/pages/ReasoningPage.tsx | 1→4 lines | ~58 |
+| 22:32 | Edited ontostudio/frontend/src/pages/ReasoningPage.tsx | expanded (+8 lines) | ~343 |
+| 22:33 | Edited ontostudio/frontend/src/pages/EntitiesPage.tsx | 10→14 lines | ~170 |
+| 22:33 | Edited ontostudio/frontend/src/pages/EntitiesPage.tsx | "canonical_name" → "canonicalName" | ~16 |
+| 22:33 | Edited ontostudio/frontend/src/pages/EntitiesPage.tsx | "norm_name" → "normName" | ~15 |
+| 22:33 | Edited ontostudio/frontend/src/components/ResolutionPanel.tsx | reduced (-8 lines) | ~443 |
+| 22:39 | ontostudio前端三修：人审在途进度行(真根因=invoke同步投影34s非缺invalidate)+推理规则表响应驱动8条+实体库camelCase列名 | ontostudio/frontend/{ResolutionPanel,ReasoningPage,EntitiesPage}.tsx | 45c29332e 已提交 typecheck绿+浏览器实测 | ~40k |
+| 22:41 | Session end: 59 writes across 19 files (batch_ingest.py, ontostudio-review-loop-slice.md, ontostudio-ingest-page-audit-2026-09-29.md, test_doc_graph_schemas.py, test_convert_candidates.py) | 48 reads | ~136950 tok |
+| 2026-09-29 22:44 | 前端三修复验全通(45c29332e→镜像重建):实体名真名/推理页8规则数据驱动/消解在途进度行+自动离场;真根因=单次确认34s同步投影(TODOS批量摊销) | ontostudio/frontend | UI收口完成 | ~30k |
+| 22:45 | Session end: 59 writes across 19 files (batch_ingest.py, ontostudio-review-loop-slice.md, ontostudio-ingest-page-audit-2026-09-29.md, test_doc_graph_schemas.py, test_convert_candidates.py) | 48 reads | ~136950 tok |
+| 22:50 | Session end: 59 writes across 19 files (batch_ingest.py, ontostudio-review-loop-slice.md, ontostudio-ingest-page-audit-2026-09-29.md, test_doc_graph_schemas.py, test_convert_candidates.py) | 48 reads | ~136950 tok |
+| 22:55 | Session end: 59 writes across 19 files (batch_ingest.py, ontostudio-review-loop-slice.md, ontostudio-ingest-page-audit-2026-09-29.md, test_doc_graph_schemas.py, test_convert_candidates.py) | 48 reads | ~136950 tok |
+| 22:57 | Session end: 59 writes across 19 files (batch_ingest.py, ontostudio-review-loop-slice.md, ontostudio-ingest-page-audit-2026-09-29.md, test_doc_graph_schemas.py, test_convert_candidates.py) | 55 reads | ~141117 tok |
+| 23:01 | Edited ontostudio/frontend/src/components/OntologyPage.tsx | added optional chaining | ~308 |
+| 23:01 | Edited ontostudio/frontend/src/components/OntologyPage.tsx | added 2 condition(s) | ~172 |
+| 23:01 | Edited ontostudio/frontend/src/components/OntologyPage.tsx | 7→9 lines | ~142 |
+| 23:01 | Edited ontostudio/frontend/src/components/OntologyPage.tsx | 4→5 lines | ~47 |
+| 23:02 | Edited ontostudio/frontend/src/components/ResolutionPanel.tsx | expanded (+7 lines) | ~133 |
+| 23:02 | Edited ontostudio/frontend/src/components/ResolutionPanel.tsx | modified ResolutionPanel() | ~33 |
+| 23:02 | Edited ontostudio/frontend/src/components/ResolutionPanel.tsx | added 1 condition(s) | ~197 |
+| 23:02 | Edited ontostudio/frontend/src/components/ResolutionPanel.tsx | 9→13 lines | ~174 |
+| 23:02 | Edited ontostudio/frontend/src/components/ResolutionPanel.tsx | 7→12 lines | ~181 |
+| 23:04 | ontostudio 前端两处搜索框修复：A 消解页 searchQuery 透传+canonical_name 客户端过滤；B 回车定位首候选+canonicalName 三字段匹配 | ontostudio/frontend/src/components/{OntologyPage,ResolutionPanel}.tsx | f0444b050 已提交, typecheck 绿 | ~9k |
+| 23:05 | Session end: 68 writes across 20 files (batch_ingest.py, ontostudio-review-loop-slice.md, ontostudio-ingest-page-audit-2026-09-29.md, test_doc_graph_schemas.py, test_convert_candidates.py) | 59 reads | ~146114 tok |
+| 23:08 | Session end: 68 writes across 20 files (batch_ingest.py, ontostudio-review-loop-slice.md, ontostudio-ingest-page-audit-2026-09-29.md, test_doc_graph_schemas.py, test_convert_candidates.py) | 59 reads | ~146114 tok |
+| 23:13 | Edited ontostudio/backend/app/ontology/graph_views.py | modified CUSTOM() | ~118 |
+| 23:13 | Edited ontostudio/backend/app/ontology/graph_views.py | modified nodes_page() | ~181 |
+| 23:14 | Edited ontostudio/backend/app/ontology/graph_views.py | modified edges_page() | ~298 |
+| 23:14 | Edited ontostudio/backend/app/ontology/routers.py | modified _include_mentions() | ~409 |
+| 23:15 | Edited ontostudio/backend/tests/test_ontology_graph_views.py | modified test_cursor_huge_offset_rejected() | ~1687 |
+| 23:16 | Edited ontostudio/backend/tests/test_ontology_graph_views.py | modified _mentions_flood_reg() | ~324 |
+| 23:16 | Edited ontostudio/backend/tests/test_ontology_rest.py | modified test_graph_edges_projection_excludes_stub() | ~612 |
+| 23:17 | Edited ontostudio/backend/tests/test_ontology_graph_views.py | modified _mentions_flood_reg() | ~134 |
+| 23:17 | Edited ontostudio/backend/tests/test_ontology_graph_views.py | modified test_nodes_page_mentions_flood_do_not_squeeze_entities() | ~470 |
+| 23:18 | Edited ontostudio/backend/tests/test_ontology_graph_views.py | modified CUSTOM() | ~182 |
+| 23:18 | Edited ontostudio/backend/tests/test_ontology_rest.py | modified test_graph_nodes_mentions_excluded_by_default_and_opt_in() | ~493 |
+| 23:20 | Edited ontostudio/backend/tests/test_ontology_rest.py | modified test_graph_edges_mentions_excluded_by_default_and_opt_in() | ~375 |
+| 23:22 | ontostudio 图谱投影排除 mention 节点(默认排除+include=mentions opt-in),499 pass,commit 669195a44 | ontostudio/backend/app/ontology/graph_views.py,routers.py | done | ~6k |
+| 23:24 | Session end: 80 writes across 24 files (batch_ingest.py, ontostudio-review-loop-slice.md, ontostudio-ingest-page-audit-2026-09-29.md, test_doc_graph_schemas.py, test_convert_candidates.py) | 62 reads | ~159933 tok |
+| 2026-09-29 23:27 | 搜索框两修复验全通(f0444b050+669195a44):消解页客户端过滤6/2899;图谱mention淹没根治(投影默认排除,窗口500全实体,候选点选→居中+DetailPanel);遗留=500窗口外实体检索(投影序doc_graph在前) | ontostudio/backend+frontend | 完成 | ~35k |
+| 23:27 | Session end: 80 writes across 24 files (batch_ingest.py, ontostudio-review-loop-slice.md, ontostudio-ingest-page-audit-2026-09-29.md, test_doc_graph_schemas.py, test_convert_candidates.py) | 62 reads | ~159933 tok |
+| 23:30 | Session end: 80 writes across 24 files (batch_ingest.py, ontostudio-review-loop-slice.md, ontostudio-ingest-page-audit-2026-09-29.md, test_doc_graph_schemas.py, test_convert_candidates.py) | 62 reads | ~159933 tok |
+| 23:41 | Edited ontostudio/backend/app/ontology/actions/projection.py | modified CUSTOM() | ~149 |
+| 23:41 | Edited ontostudio/backend/app/ontology/actions/projection.py | modified project_rows() | ~536 |
+| 23:42 | Edited ontostudio/backend/app/ontology/actions/executor.py | modified invoke_action_core() | ~1183 |
+| 23:43 | Edited ontostudio/backend/app/ontology/actions/executor.py | modified _write_row_txn() | ~885 |
+| 23:43 | Edited ontostudio/backend/app/ontology/actions/executor.py | modified _write_row_txn() | ~587 |
+| 23:43 | Edited ontostudio/backend/app/ontology/actions/executor.py | 15→17 lines | ~145 |
+| 23:44 | Edited ontostudio/backend/app/ontology/actions/executor.py | modified invoke_action_batch_core() | ~1684 |
+| 23:44 | Edited ontostudio/backend/app/ontology/actions/executor.py | 2→2 lines | ~29 |
+| 23:44 | Edited ontostudio/backend/app/ontology/routers.py | 2→2 lines | ~39 |
+| 23:45 | Edited ontostudio/backend/app/ontology/routers.py | modified _include_mentions() | ~690 |
+| 23:45 | Edited ontostudio/backend/app/ontology/routers.py | modified _no_duplicate_pks() | ~1072 |
+| 23:46 | Edited ontostudio/backend/app/ontology/graph_views.py | modified searchable_api_names() | ~1048 |
+| 23:46 | Edited ontostudio/backend/app/ontology/graph_views.py | modified edges_page() | ~176 |
+| 23:46 | Edited ontostudio/backend/app/ontology/graph_views.py | 6→6 lines | ~85 |
+| 23:48 | Edited ontostudio/backend/app/ontology/graph_views.py | modified _link_rows() | ~657 |
+| 23:48 | Edited ontostudio/backend/app/ontology/graph_views.py | 4→4 lines | ~110 |
+| 23:48 | Edited ontostudio/backend/app/ontology/graph_views.py | inline fix | ~38 |
+| 23:48 | Edited ontostudio/backend/app/ontology/graph_views.py | modified _cross_connector_link_rows() | ~233 |
+| 23:50 | Created ontostudio/backend/tests/test_actions_batch.py | — | ~2606 |
+| 23:50 | Edited ontostudio/backend/tests/test_actions_batch.py | modified _identity_project() | ~75 |
+| 23:50 | Edited ontostudio/backend/tests/test_actions_batch.py | 4→4 lines | ~54 |
+| 23:51 | Edited ontostudio/backend/tests/test_actions_rest.py | added 1 condition(s) | ~2366 |
+| 23:52 | Edited ontostudio/backend/tests/test_actions_rest.py | 5→5 lines | ~94 |
+| 23:53 | Edited ontostudio/backend/tests/test_actions_rest.py | 6→7 lines | ~133 |
+| 23:53 | Edited ontostudio/backend/tests/test_ontology_graph_views.py | modified __init__() | ~275 |
+| 23:53 | Edited ontostudio/backend/tests/test_ontology_graph_views.py | modified _edge_obj() | ~231 |
+| 23:54 | Edited ontostudio/backend/tests/test_ontology_graph_views.py | modified _domain_reg() | ~1396 |
+| 23:54 | Edited ontostudio/backend/tests/test_actions_rest.py | modified refresh() | ~50 |
+| 23:54 | Edited ontostudio/backend/tests/test_actions_rest.py | modified refresh() | ~28 |
+| 23:54 | Edited ontostudio/backend/tests/test_actions_rest.py | modified refresh() | ~35 |
+| 23:57 | Edited ontostudio/backend/app/ontology/graph_views.py | modified _link_rows() | ~100 |
+| 23:57 | Edited ontostudio/backend/tests/test_actions_rest.py | 7→5 lines | ~46 |
+| 23:58 | Edited ontostudio/frontend/src/api/actions-api.ts | modified invokeReviewEntity() | ~465 |
+| 23:59 | Edited ontostudio/frontend/src/components/ResolutionPanel.tsx | 6→7 lines | ~47 |
+| 23:59 | Edited ontostudio/frontend/src/components/ResolutionPanel.tsx | modified ResolutionPanel() | ~250 |
+| 23:59 | Edited ontostudio/frontend/src/components/ResolutionPanel.tsx | added 1 condition(s) | ~131 |
+| 00:00 | Edited ontostudio/frontend/src/components/ResolutionPanel.tsx | added optional chaining | ~741 |
+| 00:00 | Edited ontostudio/frontend/src/components/ResolutionPanel.tsx | added 1 condition(s) | ~190 |
+| 00:00 | Edited ontostudio/frontend/src/components/ResolutionPanel.tsx | CSS: accentColor | ~423 |
+| 00:00 | Edited ontostudio/frontend/src/components/ResolutionPanel.tsx | CSS: accentColor | ~508 |
+| 00:00 | Edited ontostudio/frontend/src/components/ResolutionPanel.tsx | CSS: hover, borderColor | ~550 |
+| 00:01 | Edited ontostudio/frontend/src/components/ResolutionPanel.tsx | CSS: disabled, disabled | ~494 |
+| 00:01 | Edited ontostudio/frontend/src/components/ResolutionPanel.tsx | expanded (+16 lines) | ~444 |
+| 00:01 | Edited ontostudio/frontend/src/api/ontology-graph-api.ts | modified fetchNodes() | ~357 |
+| 00:01 | Edited ontostudio/frontend/src/explorerDataSource.ts | modified makeExplorerFetchers() | ~333 |
+| 00:02 | Edited ontostudio/frontend/src/explorer/useLoadGraph.ts | modified useLoadGraph() | ~199 |
+| 00:02 | Edited ontostudio/frontend/src/components/OntologyGraphCanvas.tsx | modified CUSTOM() | ~88 |
+| 00:02 | Edited ontostudio/frontend/src/components/OntologyGraphCanvas.tsx | CSS: domain | ~273 |
+| 00:02 | Edited ontostudio/frontend/src/components/OntologyGraphCanvas.tsx | modified CUSTOM() | ~87 |
+| 00:02 | Edited ontostudio/frontend/src/components/OntologyGraphCanvas.tsx | modified if() | ~218 |
+| 00:03 | Edited ontostudio/frontend/src/explorer/useLoadGraph.ts | modified CUSTOM() | ~126 |
+| 00:03 | Edited ontostudio/frontend/src/components/ResolutionPanel.tsx | reduced (-10 lines) | ~68 |
+| 00:04 | Edited ontostudio/frontend/src/components/ResolutionPanel.tsx | CSS: prev | ~175 |
+| 00:07 | ontostudio 人审提效包: invoke_batch 批量确认(投影摊销 O(N)->O(1))+graph domain= 域过滤+前端多选/服务端取数 | ontostudio/backend/app/ontology/{actions/executor.py,actions/projection.py,routers.py,graph_views.py}+tests+frontend/src | 520绿+typecheck绿, commit 8764ddd12 | ~9k |
+| 00:09 | Session end: 133 writes across 32 files (batch_ingest.py, ontostudio-review-loop-slice.md, ontostudio-ingest-page-audit-2026-09-29.md, test_doc_graph_schemas.py, test_convert_candidates.py) | 64 reads | ~191534 tok |
+| 2026-09-30 00:13 | 人审提效包复验全通(8764ddd12→双镜像重建):批量10条确认30s(单次refresh,吞吐11倍),DB落地22active/2499pending,图谱domain=eia服务端过滤出真eia名 | ontostudio/* | 提效包收口 | ~40k |
+| 00:13 | Session end: 133 writes across 32 files (batch_ingest.py, ontostudio-review-loop-slice.md, ontostudio-ingest-page-audit-2026-09-29.md, test_doc_graph_schemas.py, test_convert_candidates.py) | 64 reads | ~191534 tok |
+| 07:01 | Session end: 133 writes across 32 files (batch_ingest.py, ontostudio-review-loop-slice.md, ontostudio-ingest-page-audit-2026-09-29.md, test_doc_graph_schemas.py, test_convert_candidates.py) | 64 reads | ~191534 tok |
+| 07:02 | Session end: 133 writes across 32 files (batch_ingest.py, ontostudio-review-loop-slice.md, ontostudio-ingest-page-audit-2026-09-29.md, test_doc_graph_schemas.py, test_convert_candidates.py) | 64 reads | ~191534 tok |
+| 07:10 | Created ontostudio/backend/scripts/eia_purge_test_fixtures.py | — | ~2127 |
+| 07:11 | Edited ontostudio/backend/tests/conftest.py | modified _jwt_test_secret() | ~358 |
+| 07:11 | Edited ontostudio/backend/tests/test_doc_graph_ingest.py | expanded (+6 lines) | ~128 |
+| 07:11 | Edited ontostudio/backend/tests/test_doc_graph_resolution_rest.py | expanded (+6 lines) | ~128 |
+| 07:11 | Edited ontostudio/backend/tests/test_reasoning_evaluate.py | expanded (+7 lines) | ~116 |
+| 07:17 | ontostudio 测试夹具污染根治: 清除脚本实删 doc_graph 1336 行(eia 2521 红线未动)+conftest integration 门禁默认 skip(ONTOSTUDIO_TEST_ALLOW_REAL_DB=1 放行)+3 探针文件并入许可; 新基线 470 pass+50 skip, 旧 520 pass | ontostudio/backend/scripts/eia_purge_test_fixtures.py, tests/conftest.py, tests/test_doc_graph_ingest.py, tests/test_doc_graph_resolution_rest.py, tests/test_reasoning_evaluate.py | 完成未提交 | ~40k |
+| 2026-09-30 07:18 | 测试污染根治(4fdc7d2b4,用户批准):1336夹具行清零(doc_graph域),DB仅剩eia真数据2521行;integration测试默认skip(env门禁ONTOSTUDIO_TEST_ALLOW_REAL_DB),新基线470+50skip;浏览器终验实体库全真名 | ontostudio/backend | 收口 | ~30k |
+| 07:19 | Session end: 138 writes across 37 files (batch_ingest.py, ontostudio-review-loop-slice.md, ontostudio-ingest-page-audit-2026-09-29.md, test_doc_graph_schemas.py, test_convert_candidates.py) | 69 reads | ~198480 tok |
+| 08:51 | Session end: 138 writes across 37 files (batch_ingest.py, ontostudio-review-loop-slice.md, ontostudio-ingest-page-audit-2026-09-29.md, test_doc_graph_schemas.py, test_convert_candidates.py) | 69 reads | ~198480 tok |
+| 09:04 | Edited ontostudio/backend/app/ontology/graph_views.py | modified CUSTOM() | ~119 |
+| 09:04 | Edited ontostudio/backend/app/ontology/graph_views.py | modified edges_page() | ~352 |
+| 09:04 | Edited ontostudio/backend/app/ontology/graph_views.py | modified _ordered_links() | ~412 |
+| 09:05 | Edited ontostudio/backend/app/ontology/graph_views.py | modified _predicate_property() | ~1662 |
+| 09:05 | Edited ontostudio/backend/app/ontology/routers.py | modified graph_edges() | ~307 |
+| 09:06 | Edited ontostudio/backend/tests/test_ontology_graph_views.py | modified test_edges_page_domain_fails_closed_on_cross_connector() | ~2002 |
+| 09:09 | Edited ontostudio/frontend/src/api/ontology-graph-api.ts | modified CUSTOM() | ~86 |
+| 09:09 | Edited ontostudio/frontend/src/api/ontology-graph-api.ts | modified fetchEdges() | ~245 |
+| 09:09 | Edited ontostudio/frontend/src/explorerDataSource.ts | modified CUSTOM() | ~187 |
+| 09:09 | Edited ontostudio/frontend/src/explorerDataSource.ts | modified toExplorerEdge() | ~127 |
+| 09:10 | Edited ontostudio/frontend/src/explorerDataSource.ts | modified while() | ~55 |
+| 09:15 | 任务完成: 图谱画布关系折叠 flat 模式落地——edges_page mode=flat(实体—谓词—实体折叠边, _ordered_links 提取共用, mention 组无谓词列天然静默, 域守卫加有域列端点)+routers 透传+3 契约测试; 前端 fetchEdges mode=flat+relation_pk 透传 properties, label=谓词英文值(注册表无值级中文标注) | ontostudio/backend/app/ontology/{graph_views,routers}.py tests/test_ontology_graph_views.py ontostudio/frontend/src/{explorerDataSource.ts,api/ontology-graph-api.ts} | 473 passed/50 skipped+ruff 过+typecheck 绿, 未提交(调用方 commit) | ~6200 |
+| 09:15 | Edited ontostudio/frontend/src/explorerDataSource.ts | added 1 import(s) | ~68 |
+| 09:15 | Edited ontostudio/frontend/src/explorerDataSource.ts | added error handling | ~265 |
+| 09:16 | Edited ontostudio/frontend/src/explorerDataSource.ts | 3→4 lines | ~50 |
+| 09:16 | Edited ontostudio/frontend/src/explorerDataSource.ts | added 1 condition(s) | ~117 |
+| 09:16 | Edited ontostudio/frontend/src/explorerDataSource.ts | 2→2 lines | ~38 |
+| 09:16 | Edited ontostudio/frontend/src/explorerDataSource.ts | modified CUSTOM() | ~55 |
+| 09:19 | Session end: 155 writes across 37 files (batch_ingest.py, ontostudio-review-loop-slice.md, ontostudio-ingest-page-audit-2026-09-29.md, test_doc_graph_schemas.py, test_convert_candidates.py) | 69 reads | ~208622 tok |
+| 09:24 | Session end: 155 writes across 37 files (batch_ingest.py, ontostudio-review-loop-slice.md, ontostudio-ingest-page-audit-2026-09-29.md, test_doc_graph_schemas.py, test_convert_candidates.py) | 69 reads | ~208622 tok |
+| 2026-09-30 09:26 | 画布关系连线收口(27e8a86bd+9a244ad84):backend镜像陈旧再翻车(flat不生效)→重建;边从3970悬挂降到1909实体间flat边;选中节点邻域高亮+DetailPanel全通;边标签中文映射自eia.yaml标注块;合成滚轮无法驱动sigma相机(用户真实滚轮可) | ontostudio/* | 完成 | ~50k |
+| 09:26 | Session end: 155 writes across 37 files (batch_ingest.py, ontostudio-review-loop-slice.md, ontostudio-ingest-page-audit-2026-09-29.md, test_doc_graph_schemas.py, test_convert_candidates.py) | 69 reads | ~208622 tok |
+| 10:45 | Session end: 155 writes across 37 files (batch_ingest.py, ontostudio-review-loop-slice.md, ontostudio-ingest-page-audit-2026-09-29.md, test_doc_graph_schemas.py, test_convert_candidates.py) | 69 reads | ~208622 tok |
+| 10:50 | Session end: 155 writes across 37 files (batch_ingest.py, ontostudio-review-loop-slice.md, ontostudio-ingest-page-audit-2026-09-29.md, test_doc_graph_schemas.py, test_convert_candidates.py) | 69 reads | ~208622 tok |
+| 10:55 | Session end: 155 writes across 37 files (batch_ingest.py, ontostudio-review-loop-slice.md, ontostudio-ingest-page-audit-2026-09-29.md, test_doc_graph_schemas.py, test_convert_candidates.py) | 71 reads | ~208622 tok |
+| 10:57 | Session end: 155 writes across 37 files (batch_ingest.py, ontostudio-review-loop-slice.md, ontostudio-ingest-page-audit-2026-09-29.md, test_doc_graph_schemas.py, test_convert_candidates.py) | 73 reads | ~216070 tok |
+| 11:08 | Edited ontostudio/frontend/src/explorer/graphTheme.ts | modified CUSTOM() | ~172 |
+| 11:09 | Edited ontostudio/frontend/src/explorer/graphTheme.ts | modified CUSTOM() | ~250 |
+| 11:09 | Edited ontostudio/frontend/src/explorer/graphTheme.ts | modified CUSTOM() | ~177 |
+| 11:17 | Session end: 158 writes across 38 files (batch_ingest.py, ontostudio-review-loop-slice.md, ontostudio-ingest-page-audit-2026-09-29.md, test_doc_graph_schemas.py, test_convert_candidates.py) | 79 reads | ~216669 tok |
+| 11:17 | Edited ontostudio/frontend/src/explorer/GraphCanvas.tsx | modified CUSTOM() | ~264 |
+| 11:22 | Edited ontostudio/frontend/src/explorer/graphTheme.ts | modified CUSTOM() | ~169 |
+| 11:25 | Edited ontostudio/frontend/src/explorer/graphTheme.ts | modified CUSTOM() | ~196 |
+| 11:32 | Edited ontostudio/frontend/src/explorer/graphTheme.ts | modified CUSTOM() | ~357 |
+| 11:32 | Edited ontostudio/frontend/src/explorer/graphTheme.ts | modified CUSTOM() | ~130 |
+| 20:00 | ontostudio 图谱画布连线不渲染根治:四重门控(优先级阈值/抽样/withAlpha覆盖+浅色底标定/focus擦除+亚像素minSize)清除,visible 0→1908,commit 3e5763e77 | ontostudio/frontend/src/explorer/graphTheme.ts,GraphCanvas.tsx | 截图实证:修复前 0 连线,修复后满屏连线,typecheck 绿 | ~90k |
+| 11:41 | Session end: 163 writes across 39 files (batch_ingest.py, ontostudio-review-loop-slice.md, ontostudio-ingest-page-audit-2026-09-29.md, test_doc_graph_schemas.py, test_convert_candidates.py) | 86 reads | ~217785 tok |
+| 11:46 | Session end: 163 writes across 39 files (batch_ingest.py, ontostudio-review-loop-slice.md, ontostudio-ingest-page-audit-2026-09-29.md, test_doc_graph_schemas.py, test_convert_candidates.py) | 86 reads | ~217785 tok |
+| 2026-09-30 11:49 | 画布边视觉调档(46e4b4365+301d2e54a):默认structureEdgeAlpha 0.45→0.22消hairball,选中邻边neighborAlpha 0.85/非邻接0.1;浏览器复验默认态干净+选中节点金亮邻域强调;修复全程=flat折叠+四重门控+色值+调档四层 | ontostudio/frontend | 收口 | ~30k |
+| 11:49 | Session end: 163 writes across 39 files (batch_ingest.py, ontostudio-review-loop-slice.md, ontostudio-ingest-page-audit-2026-09-29.md, test_doc_graph_schemas.py, test_convert_candidates.py) | 86 reads | ~217785 tok |
+| 11:59 | Session end: 163 writes across 39 files (batch_ingest.py, ontostudio-review-loop-slice.md, ontostudio-ingest-page-audit-2026-09-29.md, test_doc_graph_schemas.py, test_convert_candidates.py) | 86 reads | ~217785 tok |
+| 12:02 | Session end: 163 writes across 39 files (batch_ingest.py, ontostudio-review-loop-slice.md, ontostudio-ingest-page-audit-2026-09-29.md, test_doc_graph_schemas.py, test_convert_candidates.py) | 86 reads | ~217785 tok |
+| 12:09 | Session end: 163 writes across 39 files (batch_ingest.py, ontostudio-review-loop-slice.md, ontostudio-ingest-page-audit-2026-09-29.md, test_doc_graph_schemas.py, test_convert_candidates.py) | 86 reads | ~217785 tok |
+| 12:21 | Session end: 163 writes across 39 files (batch_ingest.py, ontostudio-review-loop-slice.md, ontostudio-ingest-page-audit-2026-09-29.md, test_doc_graph_schemas.py, test_convert_candidates.py) | 86 reads | ~217785 tok |
+| 12:23 | Session end: 163 writes across 39 files (batch_ingest.py, ontostudio-review-loop-slice.md, ontostudio-ingest-page-audit-2026-09-29.md, test_doc_graph_schemas.py, test_convert_candidates.py) | 86 reads | ~217785 tok |
+| 12:31 | Session end: 163 writes across 39 files (batch_ingest.py, ontostudio-review-loop-slice.md, ontostudio-ingest-page-audit-2026-09-29.md, test_doc_graph_schemas.py, test_convert_candidates.py) | 86 reads | ~217785 tok |
+| 12:42 | Session end: 163 writes across 39 files (batch_ingest.py, ontostudio-review-loop-slice.md, ontostudio-ingest-page-audit-2026-09-29.md, test_doc_graph_schemas.py, test_convert_candidates.py) | 86 reads | ~217785 tok |
+| 2026-09-30 12:45 | 画布连线战役收口:全链六层根因(mention淹没/双轨悬挂/palette淡/reducer四门控/focused藏线/边宽0.42px)+调档两轮,最终 :3010 ratio0.04 实测连线网全面可见+中文标签1908;用户侧注意=:3012是host vite dev需刷新或改用:3010 | ontostudio/frontend | 收口 | ~40k |
+| 12:45 | Session end: 163 writes across 39 files (batch_ingest.py, ontostudio-review-loop-slice.md, ontostudio-ingest-page-audit-2026-09-29.md, test_doc_graph_schemas.py, test_convert_candidates.py) | 86 reads | ~217785 tok |
+| 12:52 | Session end: 163 writes across 39 files (batch_ingest.py, ontostudio-review-loop-slice.md, ontostudio-ingest-page-audit-2026-09-29.md, test_doc_graph_schemas.py, test_convert_candidates.py) | 86 reads | ~217785 tok |
+| 12:58 | Session end: 163 writes across 39 files (batch_ingest.py, ontostudio-review-loop-slice.md, ontostudio-ingest-page-audit-2026-09-29.md, test_doc_graph_schemas.py, test_convert_candidates.py) | 86 reads | ~217785 tok |
+| 13:12 | Session end: 163 writes across 39 files (batch_ingest.py, ontostudio-review-loop-slice.md, ontostudio-ingest-page-audit-2026-09-29.md, test_doc_graph_schemas.py, test_convert_candidates.py) | 86 reads | ~217785 tok |
+| 13:13 | Session end: 163 writes across 39 files (batch_ingest.py, ontostudio-review-loop-slice.md, ontostudio-ingest-page-audit-2026-09-29.md, test_doc_graph_schemas.py, test_convert_candidates.py) | 86 reads | ~217785 tok |
+| 13:32 | Session end: 163 writes across 39 files (batch_ingest.py, ontostudio-review-loop-slice.md, ontostudio-ingest-page-audit-2026-09-29.md, test_doc_graph_schemas.py, test_convert_candidates.py) | 86 reads | ~217785 tok |
+| 13:39 | Session end: 163 writes across 39 files (batch_ingest.py, ontostudio-review-loop-slice.md, ontostudio-ingest-page-audit-2026-09-29.md, test_doc_graph_schemas.py, test_convert_candidates.py) | 86 reads | ~217785 tok |
+| 13:44 | Session end: 163 writes across 39 files (batch_ingest.py, ontostudio-review-loop-slice.md, ontostudio-ingest-page-audit-2026-09-29.md, test_doc_graph_schemas.py, test_convert_candidates.py) | 86 reads | ~217785 tok |
+| 14:10 | Edited ontostudio/frontend/src/explorer/graphSceneState.ts | added 1 condition(s) | ~189 |
+| 14:10 | Edited ontostudio/frontend/src/explorer/graphSceneState.ts | modified CUSTOM() | ~194 |
+| 14:10 | Edited ontostudio/frontend/src/explorer/graphTheme.ts | modified CUSTOM() | ~150 |
+| 14:11 | Edited ontostudio/frontend/src/explorer/graphTheme.ts | modified CUSTOM() | ~123 |
+| 14:11 | Edited ontostudio/frontend/src/explorer/graphTheme.ts | modified CUSTOM() | ~170 |
+| 22:30 | 邻接边高亮落地:推翻未写入假设(链路完好,探针DPR+堆叠picking误差);真凶=localContextAlpha拦截+0.6px钳制,0.32/0.6→0.9/1.22 | ontostudio/frontend/src/explorer/graphSceneState.ts,graphTheme.ts | 点击矸石亮线辐射截图,c1b0c1b1a,typecheck 绿 | ~80k |
+| 14:21 | Session end: 168 writes across 40 files (batch_ingest.py, ontostudio-review-loop-slice.md, ontostudio-ingest-page-audit-2026-09-29.md, test_doc_graph_schemas.py, test_convert_candidates.py) | 91 reads | ~281518 tok |
+| 18:23 | Session end: 168 writes across 40 files (batch_ingest.py, ontostudio-review-loop-slice.md, ontostudio-ingest-page-audit-2026-09-29.md, test_doc_graph_schemas.py, test_convert_candidates.py) | 91 reads | ~281518 tok |
+| 2026-09-30 18:31 | 画布连线六层根因全修复收口(投影×2/palette/reducer门控/focused/边宽0.42px→1.22px+邻接muted→local-context),:3010 放大截图连线网+中文标签验证通过;矸石枢纽51线辐射确认;开始子项目3 | ontostudio/frontend | 画布战役收官 | ~100k |
+| 18:32 | Session end: 168 writes across 40 files (batch_ingest.py, ontostudio-review-loop-slice.md, ontostudio-ingest-page-audit-2026-09-29.md, test_doc_graph_schemas.py, test_convert_candidates.py) | 91 reads | ~281518 tok |
+| 18:46 | Created docs/superpowers/specs/2026-09-30-eia-rules-mcp-design.md | — | ~734 |
+| 2026-09-30 18:47 | 子项目3开工:12条煤炭校验规则全量(用户定案含空转)+执行端点+MCP4工具,spec落docs/superpowers/specs/2026-09-30-eia-rules-mcp-design.md,执行代理已派 | ontostudio/backend | 执行中 | ~15k |
+| 18:47 | Session end: 169 writes across 41 files (batch_ingest.py, ontostudio-review-loop-slice.md, ontostudio-ingest-page-audit-2026-09-29.md, test_doc_graph_schemas.py, test_convert_candidates.py) | 92 reads | ~282992 tok |
+| 18:58 | Created ontostudio/backend/app/ontology/rules_registry/coal_eia_rules.yaml | — | ~3158 |
+| 18:59 | Created ontostudio/backend/app/ontology/rules_executor.py | — | ~1604 |
+| 18:59 | Edited ontostudio/backend/app/main.py | added 1 import(s) | ~57 |
+| 18:59 | Edited ontostudio/backend/app/main.py | 2→3 lines | ~33 |
+| 19:00 | Edited ontostudio/backend/app/ontology/mcp.py | expanded (+37 lines) | ~576 |
+| 19:01 | Edited ontostudio/backend/app/ontology/mcp.py | modified _kernel_store() | ~2206 |
+| 19:01 | Edited ontostudio/backend/app/ontology/mcp.py | 3→7 lines | ~81 |
+| 19:02 | Edited ontostudio/backend/app/ontology/mcp.py | 11→10 lines | ~150 |
+| 19:02 | Edited ontostudio/backend/app/ontology/mcp.py | modified _local() | ~327 |
+| 19:02 | Edited ontostudio/backend/app/ontology/mcp.py | 1→2 lines | ~53 |
+| 19:02 | Edited ontostudio/backend/app/ontology/mcp.py | expanded (+6 lines) | ~178 |
+| 19:03 | Edited ontostudio/backend/app/ontology/mcp.py | modified fromkeys() | ~20 |
+| 19:05 | Created ontostudio/backend/tests/test_eia_rules.py | — | ~4016 |
+| 19:05 | Edited ontostudio/backend/tests/test_eia_rules.py | 7→7 lines | ~122 |
+| 19:05 | Edited ontostudio/backend/tests/test_eia_rules.py | modified _edge() | ~47 |
+| 19:05 | Edited ontostudio/backend/tests/test_eia_rules.py | _populate_kernel() → _populate_store() | ~509 |
+| 19:05 | Edited ontostudio/backend/tests/test_eia_rules.py | modified test_constructed_data_fires_three_named_rules() | ~78 |
+| 19:05 | Edited ontostudio/backend/tests/test_eia_rules.py | _populate_kernel() → _populate_store() | ~97 |
+| 19:06 | Edited ontostudio/backend/tests/test_eia_rules.py | _populate_kernel_limit_case() → _populate_store_limit_case() | ~248 |
+| 19:06 | Edited ontostudio/backend/tests/test_eia_rules.py | 3→4 lines | ~100 |
+| 19:06 | Edited ontostudio/backend/tests/test_eia_rules.py | modified _populate_store_limit_case() | ~106 |
+| 19:07 | Created ontostudio/backend/tests/test_eia_rules_mcp.py | — | ~2133 |
+| 19:08 | Created ontostudio/backend/scripts/eia_rules_baseline.py | — | ~911 |
+| 19:08 | Edited ontostudio/backend/scripts/eia_rules_baseline.py | 9→9 lines | ~118 |
+| 19:08 | Edited ontostudio/backend/scripts/eia_rules_baseline.py | added 1 import(s) | ~46 |
+| 19:10 | Edited ontostudio/backend/tests/test_ontology_mcp.py | expanded (+6 lines) | ~117 |
+| 19:17 | Session end: 195 writes across 49 files (batch_ingest.py, ontostudio-review-loop-slice.md, ontostudio-ingest-page-audit-2026-09-29.md, test_doc_graph_schemas.py, test_convert_candidates.py) | 96 reads | ~304101 tok |
+| 19:19 | Session end: 195 writes across 49 files (batch_ingest.py, ontostudio-review-loop-slice.md, ontostudio-ingest-page-audit-2026-09-29.md, test_doc_graph_schemas.py, test_convert_candidates.py) | 96 reads | ~304101 tok |
+| 19:47 | Session end: 195 writes across 49 files (batch_ingest.py, ontostudio-review-loop-slice.md, ontostudio-ingest-page-audit-2026-09-29.md, test_doc_graph_schemas.py, test_convert_candidates.py) | 96 reads | ~304101 tok |
+| 19:50 | Session end: 195 writes across 49 files (batch_ingest.py, ontostudio-review-loop-slice.md, ontostudio-ingest-page-audit-2026-09-29.md, test_doc_graph_schemas.py, test_convert_candidates.py) | 96 reads | ~304101 tok |
+| 19:56 | Session end: 195 writes across 49 files (batch_ingest.py, ontostudio-review-loop-slice.md, ontostudio-ingest-page-audit-2026-09-29.md, test_doc_graph_schemas.py, test_convert_candidates.py) | 96 reads | ~304101 tok |
+| 20:02 | Session end: 195 writes across 49 files (batch_ingest.py, ontostudio-review-loop-slice.md, ontostudio-ingest-page-audit-2026-09-29.md, test_doc_graph_schemas.py, test_convert_candidates.py) | 96 reads | ~304101 tok |
+| 20:10 | Session end: 195 writes across 49 files (batch_ingest.py, ontostudio-review-loop-slice.md, ontostudio-ingest-page-audit-2026-09-29.md, test_doc_graph_schemas.py, test_convert_candidates.py) | 96 reads | ~304101 tok |
+| 20:12 | Created docs/superpowers/specs/2026-09-30-coal-eia-mcp-integration-design.md | — | ~822 |
+| 2026-09-30 20:13 | 子项目4 spec 定稿:coal-eia-report接本体MCP(T1打标/T2 query_analogy新建/T3 check_consistency双模式/T4 SKILL.md三处变更/T5端到端),docs/superpowers/specs/2026-09-30-coal-eia-mcp-integration-design.md | 待用户审阅 | ~12k |
+| 20:13 | Session end: 196 writes across 50 files (batch_ingest.py, ontostudio-review-loop-slice.md, ontostudio-ingest-page-audit-2026-09-29.md, test_doc_graph_schemas.py, test_convert_candidates.py) | 96 reads | ~304981 tok |
+| 20:23 | Session end: 196 writes across 50 files (batch_ingest.py, ontostudio-review-loop-slice.md, ontostudio-ingest-page-audit-2026-09-29.md, test_doc_graph_schemas.py, test_convert_candidates.py) | 96 reads | ~304981 tok |
+| 20:28 | Session end: 196 writes across 50 files (batch_ingest.py, ontostudio-review-loop-slice.md, ontostudio-ingest-page-audit-2026-09-29.md, test_doc_graph_schemas.py, test_convert_candidates.py) | 103 reads | ~320662 tok |
+| 20:34 | Created ontostudio/backend/scripts/eia_quality_sample.py | — | ~3640 |
+| 20:35 | Created ontostudio/backend/scripts/eia_scope_tag.py | — | ~3443 |
+| 20:36 | Edited ontostudio/backend/app/ontology/mcp.py | 18→19 lines | ~251 |
+| 20:36 | Edited ontostudio/backend/app/ontology/mcp.py | expanded (+13 lines) | ~201 |
+| 20:36 | Edited ontostudio/backend/app/ontology/mcp.py | added 1 condition(s) | ~1473 |
+| 20:37 | Edited ontostudio/backend/app/ontology/registry/eia.yaml | inline fix | ~144 |
+| 20:37 | Edited ontostudio/backend/app/ontology/registry/eia.yaml | inline fix | ~228 |
+| 20:37 | Edited ontostudio/backend/app/ontology/registry/eia.yaml | 2→6 lines | ~190 |
+| 20:37 | Edited ontostudio/backend/app/ontology/rules_registry/coal_eia_rules.yaml | expanded (+11 lines) | ~208 |
+| 20:38 | Edited ontostudio/backend/app/ontology/mcp.py | modified _scope_filter_sparql() | ~116 |
+| 20:39 | Created ontostudio/backend/tests/test_eia_quality_sample.py | — | ~2157 |
+| 20:40 | Created ontostudio/backend/tests/test_eia_scope_tag.py | — | ~2173 |
+| 20:40 | Edited ontostudio/backend/tests/test_eia_scope_tag.py | modified __init__() | ~553 |
+| 20:41 | Edited ontostudio/backend/tests/test_eia_scope_tag.py | 3→2 lines | ~54 |
+| 20:41 | Edited ontostudio/backend/tests/test_eia_rules_mcp.py | modified test_rule_violations_filter_by_severity() | ~1254 |
+| 20:41 | Edited ontostudio/backend/tests/test_eia_rules_mcp.py | test_query_entity_scope_project_empty_on_untagged_graph() → test_query_entity_scope_project_only_explicit_rows() | ~144 |
+| 20:41 | Edited ontostudio/backend/tests/test_eia_rules_mcp.py | 5→4 lines | ~83 |
+| 20:43 | Edited ontostudio/backend/scripts/eia_scope_tag.py | modified _plan() | ~242 |
+| 20:44 | Edited ontostudio/backend/scripts/eia_quality_sample.py | modified primary_source() | ~100 |
+| 20:44 | Edited ontostudio/backend/scripts/eia_quality_sample.py | reduced (-6 lines) | ~354 |
+| 20:44 | Edited ontostudio/backend/tests/test_eia_quality_sample.py | modified test_source_report_majority_and_unknown() | ~528 |
+| 20:45 | Edited ontostudio/backend/tests/test_eia_scope_tag.py | modified connect_fake() | ~677 |
+| 20:45 | Edited ontostudio/backend/tests/test_eia_scope_tag.py | modified test_report_only_distribution() | ~106 |
+| 20:46 | Edited ontostudio/backend/tests/test_eia_rules_mcp.py | modified _populate_scopes() | ~292 |
+| 20:46 | Edited ontostudio/backend/tests/test_eia_scope_tag.py | 1→5 lines | ~67 |
+| 20:52 | Edited ontostudio/backend/app/ontology/mcp.py | modified _iri_bindings() | ~81 |
+| 20:52 | Edited ontostudio/backend/app/ontology/rules_registry/coal_eia_rules.yaml | 3→5 lines | ~82 |
+| 20:53 | Edited ontostudio/backend/app/ontology/mcp.py | 5→6 lines | ~112 |
+| 20:53 | Edited ontostudio/backend/app/ontology/mcp.py | 4→6 lines | ~89 |
+| 20:53 | Edited ontostudio/backend/tests/test_eia_rules_mcp.py | 5→8 lines | ~146 |
+| 20:53 | Edited ontostudio/backend/tests/test_eia_rules_mcp.py | modified test_check_consistency_scope_keeps_unattributable_rows() | ~246 |
+| 20:53 | Edited ontostudio/backend/tests/test_eia_rules_mcp.py | 3→3 lines | ~54 |
+| 20:55 | Edited ontostudio/backend/app/ontology/mcp.py | 4→4 lines | ~82 |
+| 21:10 | ontostudio 子项目 3.5: EIA 双库归属打标脚本(scope/source_report/distillable,dry-run默认)+质量抽检清单生成(102条,seed42)+MCP query_entity/check_consistency scope 参数+domain_pattern 挂载点; 真库 dry-run 2521实/1985关/523可蒸馏; --apply 按设计暂停待判定 | ontostudio/backend/scripts/eia_quality_sample.py eia_scope_tag.py app/ontology/mcp.py registry/eia.yaml tests/test_eia_* | 524 passed 50 skipped | ~60k |
+| 21:06 | Session end: 229 writes across 55 files (batch_ingest.py, ontostudio-review-loop-slice.md, ontostudio-ingest-page-audit-2026-09-29.md, test_doc_graph_schemas.py, test_convert_candidates.py) | 105 reads | ~340232 tok |
+| 2026-09-30 21:17 | 子项目4执行代理开工:query_analogy工具(第15个)+SKILL.md三处(红线3合规引用/本体知识查询节/一致性门语义层)+端到端;3.5打标地基已就绪 | ontostudio/backend+skills | 执行中 | ~10k |
+| 21:18 | Session end: 229 writes across 55 files (batch_ingest.py, ontostudio-review-loop-slice.md, ontostudio-ingest-page-audit-2026-09-29.md, test_doc_graph_schemas.py, test_convert_candidates.py) | 107 reads | ~343180 tok |
+| 21:25 | Edited ontostudio/backend/app/ontology/mcp.py | expanded (+13 lines) | ~344 |
+| 21:25 | Edited ontostudio/backend/app/ontology/mcp.py | modified _scopes_for() | ~517 |
+| 21:25 | Edited ontostudio/backend/app/ontology/mcp.py | inline fix | ~19 |
+| 21:25 | Edited ontostudio/backend/app/ontology/mcp.py | modified _get_rule_violations() | ~1310 |
+| 21:26 | Edited ontostudio/backend/app/ontology/mcp.py | inline fix | ~17 |
+| 21:26 | Edited ontostudio/backend/app/ontology/mcp.py | 5→6 lines | ~69 |
+| 21:26 | Edited ontostudio/backend/tests/test_ontology_mcp.py | 7→10 lines | ~98 |
+| 21:26 | Created ontostudio/backend/tests/test_eia_analogy_mcp.py | — | ~1799 |
+| 21:26 | Edited ontostudio/backend/tests/test_eia_analogy_mcp.py | 3→3 lines | ~46 |
+| 21:27 | Edited skills/public/coal-eia-report/SKILL.md | inline fix | ~71 |
+| 21:27 | Edited skills/public/coal-eia-report/SKILL.md | expanded (+7 lines) | ~220 |
+| 21:28 | Edited skills/public/coal-eia-report/SKILL.md | inline fix | ~160 |
+| 21:28 | Edited skills/public/coal-eia-report/SKILL.md | inline fix | ~138 |
+| 21:29 | Created ontostudio/backend/scripts/eia_analogy_e2e.py | — | ~1558 |
+| 21:29 | Edited ontostudio/backend/scripts/eia_analogy_e2e.py | 3→3 lines | ~38 |
+| 21:31 | Edited ontostudio/backend/scripts/eia_analogy_e2e.py | modified in() | ~317 |
+| 21:32 | Edited ontostudio/backend/scripts/eia_analogy_e2e.py | 3→6 lines | ~96 |
+| 21:32 | Edited ontostudio/backend/scripts/eia_analogy_e2e.py | "E2E 全部断言通过（query_analogy " → "E2E 全部断言通过（query_analogy " | ~30 |
+| 21:33 | Edited ontostudio/backend/app/ontology/mcp.py | 2→2 lines | ~69 |
+| 21:34 | Edited ontostudio/backend/app/ontology/mcp.py | 2→2 lines | ~57 |
+| 21:34 | Edited ontostudio/backend/app/ontology/mcp.py | 2→2 lines | ~52 |
+| 21:36 | 子项目4三件套: query_analogy MCP 15th工具+SKILL.md本体接入三处+E2E真图验证(scope=all=480复现基线,691系spec陈旧数字) | ontostudio/backend/app/ontology/mcp.py + tests/test_eia_analogy_mcp.py + scripts/eia_analogy_e2e.py + skills/public/coal-eia-report/SKILL.md | 提交0a04fcfd2, pytest 532+50绿 | ~35k |
+| 21:38 | Session end: 250 writes across 58 files (batch_ingest.py, ontostudio-review-loop-slice.md, ontostudio-ingest-page-audit-2026-09-29.md, test_doc_graph_schemas.py, test_convert_candidates.py) | 108 reads | ~351571 tok |
+| 21:39 | Session end: 250 writes across 58 files (batch_ingest.py, ontostudio-review-loop-slice.md, ontostudio-ingest-page-audit-2026-09-29.md, test_doc_graph_schemas.py, test_convert_candidates.py) | 108 reads | ~351571 tok |
+| 21:58 | Session end: 250 writes across 58 files (batch_ingest.py, ontostudio-review-loop-slice.md, ontostudio-ingest-page-audit-2026-09-29.md, test_doc_graph_schemas.py, test_convert_candidates.py) | 109 reads | ~353240 tok |
+| 22:01 | Session end: 250 writes across 58 files (batch_ingest.py, ontostudio-review-loop-slice.md, ontostudio-ingest-page-audit-2026-09-29.md, test_doc_graph_schemas.py, test_convert_candidates.py) | 109 reads | ~357736 tok |
+| 22:03 | Session end: 250 writes across 58 files (batch_ingest.py, ontostudio-review-loop-slice.md, ontostudio-ingest-page-audit-2026-09-29.md, test_doc_graph_schemas.py, test_convert_candidates.py) | 109 reads | ~357736 tok |
+| 22:06 | Created ontostudio/backend/scripts/eia_pattern_mine.py | — | ~3346 |
+| 22:08 | Edited ontostudio/backend/scripts/eia_pattern_mine.py | modified len() | ~191 |
+| 22:09 | Edited ontostudio/backend/scripts/eia_pattern_mine.py | modified len() | ~409 |
+| 22:09 | Session end: 252 writes across 59 files (batch_ingest.py, ontostudio-review-loop-slice.md, ontostudio-ingest-page-audit-2026-09-29.md, test_doc_graph_schemas.py, test_convert_candidates.py) | 109 reads | ~361273 tok |
+| 22:09 | Edited ontostudio/backend/scripts/eia_pattern_mine.py | modified _aggregate() | ~711 |
+| 22:10 | Edited ontostudio/backend/scripts/eia_pattern_mine.py | modified _mine() | ~594 |
+| 22:10 | Edited ontostudio/backend/scripts/eia_pattern_mine.py | 4→7 lines | ~128 |
+| 22:10 | Edited ontostudio/backend/scripts/eia_pattern_mine.py | inline fix | ~44 |
+| 22:10 | Edited ontostudio/backend/scripts/eia_pattern_mine.py | defaultdict() → setdefault() | ~87 |
+| 2026-09-30 22:11 | 人审提效完成:启发式预审2397/102分档→用户批A→分批确认(invoke_batch合规审计);事故=续跑重建批次清单查询漏排suspect致102条误确认→定点SQL恢复101+1天然 pending,终态active2419/pending102与契约一致;kernel重载完成。教训:重建查询必须显式排除契约排除集 | scripts/eia_prereview_out | 收口 | ~50k |
+| 22:11 | Session end: 257 writes across 59 files (batch_ingest.py, ontostudio-review-loop-slice.md, ontostudio-ingest-page-audit-2026-09-29.md, test_doc_graph_schemas.py, test_convert_candidates.py) | 109 reads | ~362837 tok |
+| 22:12 | Created ontostudio/backend/scripts/eia_pattern_ingest.py | — | ~2538 |
+| 22:12 | Edited ontostudio/backend/scripts/eia_pattern_ingest.py | expanded (+11 lines) | ~494 |
+| 22:12 | Edited ontostudio/backend/scripts/eia_pattern_ingest.py | added 1 import(s) | ~39 |
+| 22:13 | Edited ontostudio/backend/app/ontology/mcp.py | 13→13 lines | ~227 |
+| 22:14 | Edited ontostudio/backend/app/ontology/mcp.py | _scope_filter_sparql() → BOUND() | ~1060 |
+| 22:14 | Edited ontostudio/backend/app/doc_graph/schemas.py | 7→11 lines | ~164 |
+| 22:14 | Edited ontostudio/backend/app/doc_graph/ingest.py | modified _tz_aware() | ~253 |
+| 22:14 | Edited ontostudio/backend/app/doc_graph/ingest.py | inline fix | ~34 |
+| 22:15 | Edited ontostudio/backend/tests/test_eia_analogy_mcp.py | 8→8 lines | ~98 |
+| 22:15 | Edited ontostudio/backend/tests/test_eia_analogy_mcp.py | expanded (+8 lines) | ~368 |
+| 22:15 | Edited ontostudio/backend/tests/test_eia_analogy_mcp.py | modified test_sample_hit_with_source_report_and_adjacency() | ~761 |
+| 22:16 | Edited ontostudio/backend/tests/test_eia_rules_mcp.py | modified test_query_entity_scope_project_only_explicit_rows() | ~554 |
+| 22:17 | Edited ontostudio/backend/tests/test_eia_analogy_mcp.py | 5→6 lines | ~102 |
+| 22:17 | Edited ontostudio/backend/tests/test_eia_analogy_mcp.py | 3→3 lines | ~51 |
+| 22:18 | Edited ontostudio/backend/scripts/eia_pattern_mine.py | "| 类型 | 配对数 | 入图候选（support" → "| 类型 | 配对数 | 入图候选（support" | ~16 |
+| 22:19 | Edited ontostudio/backend/app/ontology/mcp.py | 4→5 lines | ~110 |
+| 21:30 | 子项目5: B库规律挖掘脚本(三类组合,support=配对级边溯源报告数) | ontostudio/backend/scripts/eia_pattern_mine.py | 治理325/标准7/处置280对, 候选318/2/202 | ~4k |
+| 21:40 | 子项目5: domain_pattern入图(522节点+1044 analogous_to边,幂等) | ontostudio/backend/scripts/eia_pattern_ingest.py | apply落地,重跑0新建 | ~3k |
+| 21:55 | 子项目5: query_analogy扩domain_common+C库project_id机制+测试6条 | app/ontology/mcp.py, app/doc_graph/{schemas,ingest}.py | 538 passed 50 skipped, 真图MCP验证过 | ~4k |
+| 22:23 | Session end: 273 writes across 61 files (batch_ingest.py, ontostudio-review-loop-slice.md, ontostudio-ingest-page-audit-2026-09-29.md, test_doc_graph_schemas.py, test_convert_candidates.py) | 109 reads | ~369706 tok |
+| 22:25 | Session end: 273 writes across 61 files (batch_ingest.py, ontostudio-review-loop-slice.md, ontostudio-ingest-page-audit-2026-09-29.md, test_doc_graph_schemas.py, test_convert_candidates.py) | 109 reads | ~369706 tok |
+| 22:40 | Session end: 273 writes across 61 files (batch_ingest.py, ontostudio-review-loop-slice.md, ontostudio-ingest-page-audit-2026-09-29.md, test_doc_graph_schemas.py, test_convert_candidates.py) | 109 reads | ~369706 tok |
+| 2026-09-30 22:42 | B库蒸馏深化开工:受控词表归并(变体归一)+门槛降2扩量+头部pattern LLM精炼(refined_desc)+人审清单,代理执行中 | ontostudio/backend | 执行中 | ~8k |
+| 22:42 | Session end: 273 writes across 61 files (batch_ingest.py, ontostudio-review-loop-slice.md, ontostudio-ingest-page-audit-2026-09-29.md, test_doc_graph_schemas.py, test_convert_candidates.py) | 109 reads | ~369706 tok |
+| 22:52 | Edited ontostudio/backend/scripts/eia_schema_mining/controlled_vocab.yaml | 1→2 lines | ~36 |
+| 22:52 | Edited ontostudio/backend/scripts/eia_schema_mining/controlled_vocab.yaml | 4→3 lines | ~24 |
+| 22:53 | Edited ontostudio/backend/scripts/eia_schema_mining/controlled_vocab.yaml | 1→2 lines | ~26 |
+| 22:55 | Created ontostudio/backend/scripts/eia_pattern_mine.py | — | ~5693 |
+| 22:55 | Edited ontostudio/backend/scripts/eia_pattern_mine.py | inline fix | ~15 |
+| 22:57 | Created ontostudio/backend/scripts/eia_pattern_compare.py | — | ~2287 |
+| 22:57 | Edited ontostudio/backend/scripts/eia_pattern_compare.py | expanded (+8 lines) | ~180 |
+| 22:58 | Edited ontostudio/backend/scripts/eia_pattern_compare.py | 6→5 lines | ~60 |
+| 22:58 | Edited ontostudio/backend/scripts/eia_pattern_compare.py | "吸收变体对按类型分布：{dict(sorted(f" → "规范家族按类型分布：{dict(sorted(fa" | ~16 |
+| 22:58 | Edited ontostudio/backend/scripts/eia_pattern_compare.py | inline fix | ~35 |
+| 22:59 | Created ontostudio/backend/scripts/eia_pattern_ingest.py | — | ~4090 |
+| 23:00 | Edited ontostudio/backend/scripts/eia_pattern_ingest.py | 7→8 lines | ~170 |
+| 23:03 | Edited ontostudio/backend/scripts/eia_pattern_ingest.py | modified in() | ~702 |
+| 23:03 | Edited ontostudio/backend/scripts/eia_pattern_ingest.py | modified transaction() | ~109 |
+| 23:04 | Edited ontostudio/backend/scripts/eia_pattern_ingest.py | 2→6 lines | ~88 |
+| 23:04 | Edited ontostudio/backend/scripts/eia_pattern_ingest.py | 2→2 lines | ~43 |
+| 23:04 | Edited ontostudio/backend/scripts/eia_pattern_ingest.py | expanded (+17 lines) | ~663 |
+| 23:04 | Edited ontostudio/backend/scripts/eia_pattern_ingest.py | inline fix | ~31 |
+| 23:04 | Edited ontostudio/backend/scripts/eia_pattern_ingest.py | modified or() | ~558 |
+| 23:06 | Created ontostudio/backend/scripts/eia_pattern_refine.py | — | ~1797 |
+| 23:11 | Edited ontostudio/backend/scripts/eia_pattern_mine.py | modified load_normalizer() | ~898 |
+| 23:11 | Edited ontostudio/backend/scripts/eia_pattern_mine.py | modified expand_paths() | ~217 |
+| 23:12 | Edited ontostudio/backend/scripts/eia_pattern_compare.py | 1→2 lines | ~37 |
+| 23:12 | Edited ontostudio/backend/scripts/eia_pattern_compare.py | modified items() | ~215 |
+| 23:12 | Edited ontostudio/backend/scripts/eia_pattern_compare.py | modified items() | ~134 |
+| 23:14 | Edited ontostudio/backend/scripts/eia_pattern_refine.py | modified emit_facts() | ~140 |
+| 23:14 | Edited ontostudio/backend/scripts/eia_pattern_refine.py | modified main() | ~208 |
+| 23:18 | Created ontostudio/backend/scripts/eia_pattern_mine_out/refined_desc.json | — | ~3669 |
+| 23:19 | Edited ontostudio/backend/scripts/eia_pattern_ingest.py | modified _load_refined() | ~157 |
+| 23:20 | Edited ontostudio/backend/scripts/eia_pattern_refine.py | modified items() | ~81 |
+| 23:20 | Edited ontostudio/backend/scripts/eia_pattern_compare.py | 6→7 lines | ~226 |
+| 23:21 | Created ontostudio/backend/tests/test_eia_pattern_mine.py | — | ~2124 |
+| 23:22 | Edited ontostudio/backend/scripts/eia_pattern_compare.py | 6→7 lines | ~152 |
+| 23:23 | Edited ontostudio/backend/scripts/eia_pattern_compare.py | 1→2 lines | ~83 |
+| 23:23 | Edited ontostudio/backend/scripts/eia_pattern_compare.py | 1→2 lines | ~61 |
+| 23:23 | Edited ontostudio/backend/scripts/eia_pattern_compare.py | 1→2 lines | ~47 |
+| 23:24 | Edited ontostudio/backend/scripts/eia_pattern_ingest.py | modified _clip() | ~94 |
+| 23:25 | Edited ontostudio/backend/tests/test_eia_pattern_mine.py | modified test_aggregate_ghost_iri_not_in_variants() | ~170 |
+| 2026-09-30 23:5x | B库domain_pattern归并深化: 词表位置作用域归一+复合名全分解+变体连边重挖(522→479, 吸收223聚133族), 117条头部LLM精炼入图(refined=true), 人审清单落盘; 修bug-3412(_clip列宽); 551绿ruff过; 提交710a52cdb未push | scripts/eia_pattern_{mine,ingest,compare,refine}.py + controlled_vocab.yaml + mine_out/* + tests/test_eia_pattern_mine.py | 完成 | ~90k |
+| 2026-09-30 23:30 | B库蒸馏深化完成:受控词表归并(612→533对,223变体吸收成133族,悬浮物聚合20→22)+门槛降2扩量+479规范pattern幂等入图+117头部精炼(refined_desc数据锚定+领域通识不越界);kernel重载:MCP/query_analogy可查,graph/nodes属性投影形状为显示细节遗留;人审清单117行refined_review.md | ontostudio/backend/scripts | 收口 | ~60k |
+| 23:30 | Session end: 311 writes across 66 files (batch_ingest.py, ontostudio-review-loop-slice.md, ontostudio-ingest-page-audit-2026-09-29.md, test_doc_graph_schemas.py, test_convert_candidates.py) | 115 reads | ~406666 tok |
+| 07:15 | Edited ontostudio/backend/scripts/eia_schema_mining/controlled_vocab.yaml | 4→7 lines | ~101 |
+| 07:16 | Edited ontostudio/backend/scripts/eia_schema_mining/controlled_vocab.yaml | 2→4 lines | ~54 |
+| 07:18 | Edited ontostudio/backend/tests/test_eia_pattern_mine.py | modified test_compound_full_split_and_partial_kept() | ~247 |
+| 2026-10-01 00:3x | 「继续」三批: 词表+生化需氧量(BOD/BOD5)/动植物油/伊敏设施归并; 复合名全分解13→47, bod/bod5归并, 479→431条(伊敏12异写吸收); 修概念误插pollution表(锚点歧义静默不生效); 精炼115与头部双射; 551绿; 提交660091636未push | controlled_vocab.yaml + refined_desc.json + tests | 完成 | ~40k |
+| 2026-10-01 07:25 | B库归并三批:domain_pattern 479→431(BOD归并/复合名47全分解/伊敏12异写收编),refined 115,幂等不动点,551绿;残差边界案例留人审;治理18-band近重复留可选 | ontostudio/backend/scripts | 收敛 | ~30k |
+| 07:25 | Session end: 314 writes across 66 files (batch_ingest.py, ontostudio-review-loop-slice.md, ontostudio-ingest-page-audit-2026-09-29.md, test_doc_graph_schemas.py, test_convert_candidates.py) | 115 reads | ~407068 tok |
+| 2026-10-01 07:31 | 画布显示打磨开工:domain_pattern节点标签(pattern_desc可读化)+DetailPanel结构化渲染+投影形状探查,代理执行中 | ontostudio/frontend | 执行中 | ~8k |
+| 07:31 | Session end: 314 writes across 66 files (batch_ingest.py, ontostudio-review-loop-slice.md, ontostudio-ingest-page-audit-2026-09-29.md, test_doc_graph_schemas.py, test_convert_candidates.py) | 115 reads | ~407068 tok |
+| 07:39 | Edited ontostudio/frontend/src/explorerDataSource.ts | added error handling | ~863 |
+| 07:39 | Edited ontostudio/frontend/src/explorerDataSource.ts | modified getPredicateLabels() | ~105 |
+| 07:39 | Edited ontostudio/frontend/src/explorerDataSource.ts | added optional chaining | ~296 |
+| 07:40 | Edited ontostudio/frontend/src/components/DetailPanel.tsx | expanded (+7 lines) | ~100 |
+| 07:40 | Edited ontostudio/frontend/src/components/DetailPanel.tsx | added 2 condition(s) | ~2088 |
+| 07:40 | Edited ontostudio/frontend/src/components/DetailPanel.tsx | modified CUSTOM() | ~564 |
+| 07:44 | Edited ontostudio/frontend/src/explorerDataSource.ts | inline fix | ~21 |
+| 07:44 | Edited ontostudio/frontend/src/components/DetailPanel.tsx | inline fix | ~27 |
+| 07:47 | Edited ontostudio/frontend/src/explorerDataSource.ts | added nullish coalescing | ~18 |
+| 07:47 | Edited ontostudio/frontend/src/components/DetailPanel.tsx | inline fix | ~19 |
+| 00:45 | domain_pattern 画布可读化: 标签合成+DetailPanel 结构化卡片; 投影探查 attrs=已解析对象; 提交 15cb3a6ae | ontostudio/frontend/src/{explorerDataSource.ts,components/DetailPanel.tsx} | typecheck 绿+:3011 前后截图对照 | ~9k |
+| 07:53 | Session end: 324 writes across 67 files (batch_ingest.py, ontostudio-review-loop-slice.md, ontostudio-ingest-page-audit-2026-09-29.md, test_doc_graph_schemas.py, test_convert_candidates.py) | 118 reads | ~416061 tok |
+| 07:55 | Session end: 324 writes across 67 files (batch_ingest.py, ontostudio-review-loop-slice.md, ontostudio-ingest-page-audit-2026-09-29.md, test_doc_graph_schemas.py, test_convert_candidates.py) | 118 reads | ~416061 tok |
+| 08:22 | Session end: 324 writes across 67 files (batch_ingest.py, ontostudio-review-loop-slice.md, ontostudio-ingest-page-audit-2026-09-29.md, test_doc_graph_schemas.py, test_convert_candidates.py) | 118 reads | ~416061 tok |
+| 2026-10-01 08:31 | 终审执行+事故完整恢复:80确认/19驳回/3存疑pending;终态active2930(2499sample+431pattern)/rejected19/pending3;发现invoke_batch双重处理缺陷(99pks×2ops=198结果,跨调用pk缓冲污染)→平台级bug已记录待修;42+3条错位全部定点SQL恢复 | scripts/eia_prereview_out | 收口 | ~40k |
+| 08:32 | Session end: 324 writes across 67 files (batch_ingest.py, ontostudio-review-loop-slice.md, ontostudio-ingest-page-audit-2026-09-29.md, test_doc_graph_schemas.py, test_convert_candidates.py) | 118 reads | ~416061 tok |
+| 2026-10-01 09:23 | 子项目4真实项目实测完成:邵寨井田矿井水小节全链演练(query_analogy 8矿井类比→叙述小节带溯源与analog_mine标注→check_consistency 407);隔离断言成立(样例矿名仅在来源标注);图谱事实与源报告round-trip一致(反渗透/超滤链抽取自lingtai原文) | scripts/eia_drill_out | 子项目4收官 | ~30k |
+| 09:23 | Session end: 324 writes across 67 files (batch_ingest.py, ontostudio-review-loop-slice.md, ontostudio-ingest-page-audit-2026-09-29.md, test_doc_graph_schemas.py, test_convert_candidates.py) | 118 reads | ~416061 tok |
+| 2026-10-01 09:38 | 全部代码推送完成:main-dev-fork 40 commits(本体v2+入图+画布+规则+MCP+双库+人审+实测)同步远端,rev-list 双向 0 差异 | git | 推送完成 | ~5k |
+| 09:39 | Session end: 324 writes across 67 files (batch_ingest.py, ontostudio-review-loop-slice.md, ontostudio-ingest-page-audit-2026-09-29.md, test_doc_graph_schemas.py, test_convert_candidates.py) | 118 reads | ~416061 tok |
+| 09:46 | Session end: 324 writes across 67 files (batch_ingest.py, ontostudio-review-loop-slice.md, ontostudio-ingest-page-audit-2026-09-29.md, test_doc_graph_schemas.py, test_convert_candidates.py) | 118 reads | ~416061 tok |
+| 2026-10-01 09:51 | ONTOSTUDIO_INTERNAL_AUTH_TOKEN 生产加固完成:openssl rand-hex32 64字符入 docker/.env 单一来源,gateway+ontostudio-backend 双侧重建注入,实测匿名401拒绝/带X-Internal-Auth token 15工具放行;EAI主系统侧 gateway env 同源解析 extensions_config 占位,coal-eia-report 技能调用链自动携带 | docker/.env | 生产加固收口 | ~10k |
+| 09:52 | Session end: 324 writes across 67 files (batch_ingest.py, ontostudio-review-loop-slice.md, ontostudio-ingest-page-audit-2026-09-29.md, test_doc_graph_schemas.py, test_convert_candidates.py) | 118 reads | ~416061 tok |
+| 10:04 | Session end: 324 writes across 67 files (batch_ingest.py, ontostudio-review-loop-slice.md, ontostudio-ingest-page-audit-2026-09-29.md, test_doc_graph_schemas.py, test_convert_candidates.py) | 118 reads | ~416061 tok |
+| 10:10 | Session end: 324 writes across 67 files (batch_ingest.py, ontostudio-review-loop-slice.md, ontostudio-ingest-page-audit-2026-09-29.md, test_doc_graph_schemas.py, test_convert_candidates.py) | 118 reads | ~416061 tok |
+| 10:14 | Session end: 324 writes across 67 files (batch_ingest.py, ontostudio-review-loop-slice.md, ontostudio-ingest-page-audit-2026-09-29.md, test_doc_graph_schemas.py, test_convert_candidates.py) | 118 reads | ~416061 tok |
+
+## Session: 2026-10-01 10:16
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 10:17 | Created docs/superpowers/specs/2026-09-30-c-ingest-pipeline-design.md | — | ~882 |
+| 2026-10-01 10:17 | 子项目4完整版spec定稿:C库沉淀管线(声明式映射表首批4要素10-12族)+gate1图上齐套+get_writing_context按节+SKILL.md第四处,docs/superpowers/specs/2026-09-30-c-ingest-pipeline-design.md | 待用户审阅 | ~10k |
+| 10:17 | Session end: 1 writes across 1 files (2026-09-30-c-ingest-pipeline-design.md) | 0 reads | ~945 tok |
+| 10:35 | Created docs/superpowers/plans/2026-09-30-c-ingest-pipeline-plan.md | — | ~396 |
+| 10:36 | Session end: 2 writes across 2 files (2026-09-30-c-ingest-pipeline-design.md, 2026-09-30-c-ingest-pipeline-plan.md) | 1 reads | ~1369 tok |
+| 2026-10-01 10:36 | C库沉淀管线+写前注入执行代理开工(T1映射表/T2映射器/T3 MCP2工具/T4 writing_context按节/T5 SKILL.md/T6验收),实施计划 docs/superpowers/plans/2026-09-30-c-ingest-pipeline-plan.md | ontostudio/backend+skills | 执行中 | ~10k |
+| 10:36 | Session end: 2 writes across 2 files (2026-09-30-c-ingest-pipeline-design.md, 2026-09-30-c-ingest-pipeline-plan.md) | 3 reads | ~2567 tok |
+| 10:44 | Edited ontostudio/frontend/src/components/OntologyCanvas.tsx | CSS: EAI-CUSTOM | ~40 |
+| 10:45 | Edited docs/designs/ui-style-spec.md | expanded (+16 lines) | ~278 |
+| 10:45 | Edited ontostudio/frontend/src/index.css | 3→6 lines | ~72 |
+| 10:46 | Created ontostudio/backend/app/ontology/c_ingest/mapping_eia_planning.yaml | — | ~2557 |
+| 10:46 | Edited ontostudio/backend/app/ontology/c_ingest/mapping_eia_planning.yaml | 10→5 lines | ~42 |
+| 10:40 | OntoStudio 全站字号阶梯归位（14/13/12 三档，299 处批量替换+画布豁免）+ ui-style-spec §9 定稿 | ontostudio/frontend/src, docs/designs/ui-style-spec.md | 镜像重建中，待截图走查 | ~30k |
+| 10:49 | Created ontostudio/backend/app/ontology/c_ingest/pipeline.py | — | ~6725 |
+| 10:50 | Created ontostudio/backend/app/ontology/c_ingest/pipeline.py | — | ~5797 |
+| 10:50 | Edited ontostudio/backend/app/ontology/c_ingest/pipeline.py | 3→4 lines | ~33 |
+| 10:51 | Edited ontostudio/backend/app/ontology/c_ingest/pipeline.py | modified _reload_graph() | ~110 |
+| 10:52 | Created ontostudio/backend/app/ontology/c_ingest/__init__.py | — | ~52 |
+| 10:52 | Created ontostudio/backend/app/ontology/c_ingest/chapter_topics.yaml | — | ~467 |
+| 10:52 | Edited ontostudio/backend/app/ontology/mcp.py | expanded (+8 lines) | ~190 |
+| 10:52 | Session end: 13 writes across 9 files (2026-09-30-c-ingest-pipeline-design.md, 2026-09-30-c-ingest-pipeline-plan.md, OntologyCanvas.tsx, ui-style-spec.md, index.css) | 19 reads | ~44485 tok |
+| 10:53 | Edited ontostudio/backend/app/ontology/mcp.py | expanded (+26 lines) | ~386 |
+| 10:53 | Edited ontostudio/backend/app/ontology/mcp.py | modified _get_writing_context() | ~2630 |
+| 10:54 | Edited ontostudio/backend/app/ontology/mcp.py | added 3 import(s) | ~44 |
+| 10:54 | Edited ontostudio/backend/app/ontology/mcp.py | 13→17 lines | ~249 |
+| 10:54 | Edited ontostudio/backend/app/ontology/mcp.py | modified _ingest_project_forms() | ~327 |
+| 10:54 | Edited ontostudio/backend/app/ontology/mcp.py | 3→5 lines | ~61 |
+| 10:55 | Edited ontostudio/backend/tests/test_ontology_mcp.py | 4→8 lines | ~92 |
+| 10:56 | Edited ontostudio/backend/tests/test_eia_rules_mcp.py | modified CUSTOM() | ~120 |
+| 10:56 | Edited ontostudio/backend/tests/test_eia_rules_mcp.py | modified test_writing_context_requires_entity_name() | ~68 |
+| 10:58 | Created ontostudio/backend/tests/test_c_ingest_pipeline.py | — | ~6699 |
+| 10:58 | Edited ontostudio/backend/app/ontology/c_ingest/pipeline.py | 4→5 lines | ~73 |
+| 10:59 | Edited ontostudio/backend/app/ontology/c_ingest/mapping_eia_planning.yaml | 5→5 lines | ~112 |
+| 10:59 | Edited ontostudio/backend/app/ontology/c_ingest/mapping_eia_planning.yaml | 17→17 lines | ~471 |
+| 11:00 | Edited ontostudio/backend/app/ontology/c_ingest/pipeline.py | modified StageSpec() | ~88 |
+| 11:01 | Edited ontostudio/backend/app/ontology/c_ingest/pipeline.py | 2→3 lines | ~48 |
+| 11:03 | Edited ontostudio/backend/app/ontology/mcp.py | 6→6 lines | ~105 |
+| 11:03 | Edited ontostudio/backend/app/ontology/c_ingest/pipeline.py | 2→5 lines | ~54 |
+| 11:03 | Edited ontostudio/backend/app/ontology/c_ingest/pipeline.py | 5→3 lines | ~71 |
+| 11:04 | Edited ontostudio/backend/tests/test_c_ingest_pipeline.py | 2→2 lines | ~35 |
+| 11:04 | Edited ontostudio/backend/tests/test_c_ingest_pipeline.py | 4→4 lines | ~80 |
+| 11:04 | Edited ontostudio/backend/tests/test_c_ingest_pipeline.py | 3→3 lines | ~67 |
+| 11:05 | Edited ontostudio/backend/tests/test_c_ingest_pipeline.py | inline fix | ~20 |
+| 11:05 | Edited ontostudio/backend/app/ontology/mcp.py | 5→5 lines | ~166 |
+| 11:06 | Edited ontostudio/backend/tests/test_c_ingest_pipeline.py | 5→5 lines | ~92 |
+| 11:06 | Edited ontostudio/backend/app/ontology/mcp.py | 3→5 lines | ~95 |
+| 11:07 | Edited ontostudio/backend/app/ontology/c_ingest/pipeline.py | modified build_cross() | ~207 |
+| 11:07 | Edited ontostudio/backend/app/ontology/c_ingest/pipeline.py | modified _project_family_stats() | ~248 |
+| 11:07 | Edited ontostudio/backend/app/ontology/c_ingest/pipeline.py | modified check_project_coverage() | ~424 |
+| 11:08 | Edited ontostudio/backend/app/ontology/c_ingest/pipeline.py | 3→3 lines | ~51 |
+| 11:08 | Edited ontostudio/backend/tests/test_c_ingest_pipeline.py | 8→8 lines | ~171 |
+| 11:08 | Edited ontostudio/backend/tests/test_c_ingest_pipeline.py | 4→5 lines | ~95 |
+| 11:11 | Edited ontostudio/backend/tests/test_c_ingest_pipeline.py | modified test_coverage_reports_missing_family() | ~523 |
+| 11:11 | Edited ontostudio/backend/tests/test_c_ingest_pipeline.py | 3→4 lines | ~82 |
+| 11:11 | Edited ontostudio/backend/tests/test_c_ingest_pipeline.py | 2 → 1 | ~30 |
+| 11:11 | Edited ontostudio/backend/app/ontology/c_ingest/pipeline.py | modified CUSTOM() | ~149 |
+| 11:12 | Edited ontostudio/backend/tests/test_c_ingest_pipeline.py | 3→5 lines | ~105 |
+| 11:14 | Edited ontostudio/backend/app/ontology/mcp.py | 1→3 lines | ~68 |
+| 11:15 | Edited ontostudio/backend/app/ontology/mcp.py | 4→4 lines | ~98 |
+| 11:16 | Edited ontostudio/backend/app/ontology/mcp.py | modified _get_rule_violations() | ~58 |
+| 11:17 | Edited skills/public/coal-eia-report/SKILL.md | inline fix | ~35 |
+| 11:17 | Edited skills/public/coal-eia-report/SKILL.md | 1→3 lines | ~270 |
+| 15:40 | 子项目4 C库沉淀管线+写前注入落地: 11族映射表+pipeline纯函数+MCP 2工具(ingest_project_forms/check_project_coverage)+get_writing_context chapter模式+SKILL.md四时序 | ontostudio/backend/app/ontology/c_ingest/{__init__,pipeline,mapping_eia_planning.yaml,chapter_topics.yaml}+mcp.py+3测试文件+SKILL.md | 572 passed 50 skipped全绿; commit 2bb7d7b84 | ~90k |
+| 11:22 | Session end: 54 writes across 14 files (2026-09-30-c-ingest-pipeline-design.md, 2026-09-30-c-ingest-pipeline-plan.md, OntologyCanvas.tsx, ui-style-spec.md, index.css) | 22 reads | ~72809 tok |
+| 11:26 | Session end: 54 writes across 14 files (2026-09-30-c-ingest-pipeline-design.md, 2026-09-30-c-ingest-pipeline-plan.md, OntologyCanvas.tsx, ui-style-spec.md, index.css) | 27 reads | ~72809 tok |
+| 11:30 | Session end: 54 writes across 14 files (2026-09-30-c-ingest-pipeline-design.md, 2026-09-30-c-ingest-pipeline-plan.md, OntologyCanvas.tsx, ui-style-spec.md, index.css) | 34 reads | ~75920 tok |
+| 11:32 | Session end: 54 writes across 14 files (2026-09-30-c-ingest-pipeline-design.md, 2026-09-30-c-ingest-pipeline-plan.md, OntologyCanvas.tsx, ui-style-spec.md, index.css) | 35 reads | ~80835 tok |
+| 11:32 | Session end: 54 writes across 14 files (2026-09-30-c-ingest-pipeline-design.md, 2026-09-30-c-ingest-pipeline-plan.md, OntologyCanvas.tsx, ui-style-spec.md, index.css) | 35 reads | ~80835 tok |
+| 2026-10-01 11:34 | B库二批扩充开工:敏感点防护规律+监测覆盖规律两类挖掘入图(复用批1归一/支撑口径),refined_b2头部精炼,代理执行中 | ontostudio/backend/scripts | 执行中 | ~8k |
+| 11:34 | Session end: 54 writes across 14 files (2026-09-30-c-ingest-pipeline-design.md, 2026-09-30-c-ingest-pipeline-plan.md, OntologyCanvas.tsx, ui-style-spec.md, index.css) | 35 reads | ~80835 tok |
+| 11:36 | Created docs/designs/2026-10-01-ontostudio-ux-governance.md | — | ~1164 |
+| 11:36 | /office-hours 全面审计 OntoStudio 9页(截图走查+英文普查+完整性对账);关键判定:英文问题=开发者词汇渗入非未翻译(JSX仅5处英文文本);硬断头=抽取任务队列静态示例;用户选方案B(文案包+任务API);设计文档 docs/designs/2026-10-01-ontostudio-ux-governance.md | ontostudio/*, docs/designs/ | 评审子代理进行中 | ~60k |
+| 11:37 | Session end: 55 writes across 15 files (2026-09-30-c-ingest-pipeline-design.md, 2026-09-30-c-ingest-pipeline-plan.md, OntologyCanvas.tsx, ui-style-spec.md, index.css) | 41 reads | ~97981 tok |
+| 11:41 | Edited docs/designs/2026-10-01-ontostudio-ux-governance.md | 6→8 lines | ~263 |
+| 11:41 | Edited docs/designs/2026-10-01-ontostudio-ux-governance.md | inline fix | ~20 |
+| 11:41 | Edited docs/designs/2026-10-01-ontostudio-ux-governance.md | 3→3 lines | ~61 |
+| 11:41 | Edited docs/designs/2026-10-01-ontostudio-ux-governance.md | "~/.claude" → ".wolf/tmp/ontostudio-audi" | ~23 |
+| 11:42 | Session end: 59 writes across 15 files (2026-09-30-c-ingest-pipeline-design.md, 2026-09-30-c-ingest-pipeline-plan.md, OntologyCanvas.tsx, ui-style-spec.md, index.css) | 42 reads | ~98519 tok |
+| 11:43 | Edited ontostudio/backend/scripts/eia_pattern_mine.py | expanded (+10 lines) | ~226 |
+| 11:43 | Edited ontostudio/backend/scripts/eia_pattern_mine.py | 2→7 lines | ~117 |
+| 11:44 | Edited ontostudio/backend/scripts/eia_pattern_mine.py | modified _classify_by_keywords() | ~670 |
+| 11:44 | Edited ontostudio/backend/scripts/eia_pattern_mine.py | modified _edge_reports() | ~956 |
+| 11:44 | Edited ontostudio/backend/scripts/eia_pattern_mine.py | expanded (+13 lines) | ~278 |
+| 11:46 | Edited docs/designs/2026-10-01-ontostudio-ux-governance.md | 3→5 lines | ~280 |
+| 11:46 | Edited docs/designs/2026-10-01-ontostudio-ux-governance.md | inline fix | ~22 |
+| 11:46 | Edited docs/designs/2026-10-01-ontostudio-ux-governance.md | inline fix | ~23 |
+| 11:46 | Edited docs/designs/2026-10-01-ontostudio-ux-governance.md | inline fix | ~30 |
+| 11:46 | Session end: 68 writes across 16 files (2026-09-30-c-ingest-pipeline-design.md, 2026-09-30-c-ingest-pipeline-plan.md, OntologyCanvas.tsx, ui-style-spec.md, index.css) | 44 reads | ~107338 tok |
+| 11:48 | Edited ontostudio/backend/scripts/eia_pattern_ingest.py | 1→3 lines | ~63 |
+| 11:48 | Edited ontostudio/backend/scripts/eia_pattern_ingest.py | modified _load_candidates() | ~186 |
+| 11:48 | Edited ontostudio/backend/scripts/eia_pattern_ingest.py | 5→7 lines | ~144 |
+| 11:48 | Edited ontostudio/backend/scripts/eia_pattern_refine.py | modified _display() | ~342 |
+| 11:48 | Edited ontostudio/backend/scripts/eia_pattern_refine.py | 2→2 lines | ~69 |
+| 11:48 | Edited ontostudio/backend/scripts/eia_pattern_refine.py | modified emit_review() | ~501 |
+| 11:49 | Edited ontostudio/backend/scripts/eia_pattern_refine.py | modified main() | ~490 |
+| 11:52 | Edited ontostudio/backend/tests/test_eia_pattern_mine.py | 7→10 lines | ~148 |
+| 11:52 | Edited ontostudio/backend/tests/test_eia_pattern_mine.py | modified test_sensitive_point_classification_priority() | ~1520 |
+| 11:52 | Edited ontostudio/backend/tests/test_eia_pattern_mine.py | modified test_clip_appends_pattern_id_on_overflow() | ~584 |
+| 11:53 | Edited ontostudio/backend/tests/test_eia_pattern_mine.py | 3→3 lines | ~49 |
+| 11:53 | Edited ontostudio/backend/tests/test_eia_pattern_mine.py | modified test_load_refined_skips_meta_and_requires_desc() | ~62 |
+| 11:53 | Edited ontostudio/backend/tests/test_eia_pattern_mine.py | inline fix | ~30 |
+| 11:54 | Edited ontostudio/backend/tests/test_eia_pattern_mine.py | "无名场地X" → "综合办公楼" | ~11 |
+| 12:05 | B库domain_pattern批次2:挖掘扩展两类(敏感点防护/监测覆盖,关键词归组表)+ingest --types过滤+11条精炼入图,431→446节点/1159边/126 refined,幂等0新增,提交e37128dfb | ontostudio/backend/scripts/eia_pattern_{mine,ingest,refine}.py+tests+mine_out/*_b2* | 579 passed 50 skipped,ruff过,旧431分型原样 | ~45000 |
+| 12:11 | Session end: 82 writes across 19 files (2026-09-30-c-ingest-pipeline-design.md, 2026-09-30-c-ingest-pipeline-plan.md, OntologyCanvas.tsx, ui-style-spec.md, index.css) | 44 reads | ~113576 tok |
+| 12:16 | Edited docs/designs/2026-10-01-ontostudio-ux-governance.md | inline fix | ~14 |
+| 12:10 | 设计文档 3 轮对抗评审 9/10 PASS→用户 APPROVED；关键发现:抽取器在 gateway eia_samples 跨服务(已记 cerebrum);交接 /plan-eng-review | docs/designs/2026-10-01-ontostudio-ux-governance.md | handoff accepted | ~15k |
+| 12:19 | Session end: 83 writes across 19 files (2026-09-30-c-ingest-pipeline-design.md, 2026-09-30-c-ingest-pipeline-plan.md, OntologyCanvas.tsx, ui-style-spec.md, index.css) | 44 reads | ~113591 tok |
+| 13:49 | Session end: 83 writes across 19 files (2026-09-30-c-ingest-pipeline-design.md, 2026-09-30-c-ingest-pipeline-plan.md, OntologyCanvas.tsx, ui-style-spec.md, index.css) | 48 reads | ~115707 tok |
+| 14:08 | Edited docs/designs/2026-10-01-ontostudio-ux-governance.md | 10→11 lines | ~499 |
+| 14:08 | Edited docs/designs/2026-10-01-ontostudio-ux-governance.md | inline fix | ~39 |
+| 14:09 | Edited docs/designs/2026-10-01-ontostudio-ux-governance.md | inline fix | ~14 |
+| 14:15 | /plan-eng-review 全流程: 6 内部发现(全 AUQ 裁决)+外部声音 8 发现(Codex 无额度→Claude 子代)→B2 改道 outline_json 产物消费(10A/11A/12A/13A);14 发现 0 未决 0 critical;评审报告入计划文件;TODOS+3条;commit docs+TODOS | docs/designs/2026-10-01-ontostudio-ux-governance.md, TODOS.md | ENG CLEARED | ~70k |
+| 14:15 | Created ontostudio/backend/app/doc_graph/ingest_tasks.py | — | ~5279 |
+| 14:15 | Edited ontostudio/backend/app/doc_graph/ingest_tasks.py | 28→30 lines | ~272 |
+| 14:15 | Edited ontostudio/backend/app/doc_graph/ingest_tasks.py | "sqlalchemy" → "sqlite" | ~29 |
+| 14:15 | Edited ontostudio/backend/app/doc_graph/ingest_tasks.py | 3→8 lines | ~82 |
+| 14:16 | Edited ontostudio/backend/app/doc_graph/ingest_tasks.py | 12→7 lines | ~73 |
+| 14:17 | Created ontostudio/backend/tests/test_ingest_tasks_rest.py | — | ~2916 |
+| 14:23 | Edited ontostudio/frontend/src/components/OntologyPage.tsx | 2→2 lines | ~22 |
+| 14:23 | Edited ontostudio/frontend/src/components/OntologyPage.tsx | 6→6 lines | ~92 |
+| 14:23 | Edited ontostudio/frontend/src/pages/EntitiesPage.tsx | modified CUSTOM() | ~38 |
+| 14:24 | Edited ontostudio/frontend/src/pages/ExportPage.tsx | 1→2 lines | ~33 |
+| 14:24 | Edited ontostudio/frontend/src/pages/ExportPage.tsx | "flex items-center gap-1.5" → "flex items-center gap-1.5" | ~55 |
+| 14:24 | Created ontostudio/frontend/src/lib/terms.ts | — | ~193 |
+| 14:24 | Edited ontostudio/frontend/src/pages/EntitiesPage.tsx | modified CUSTOM() | ~82 |
+| 14:24 | Edited ontostudio/frontend/src/pages/EntitiesPage.tsx | added 1 import(s) | ~39 |
+| 14:25 | Edited ontostudio/frontend/src/pages/ExportPage.tsx | 5→4 lines | ~28 |
+| 14:28 | Edited ontostudio/backend/app/doc_graph/ingest_tasks.py | 2→3 lines | ~107 |
+| 14:29 | Edited ontostudio/backend/tests/test_ingest_tasks_rest.py | 3→4 lines | ~109 |
+| 14:30 | Edited ontostudio/backend/tests/test_ingest_tasks_rest.py | expanded (+8 lines) | ~277 |
+| 14:31 | Edited ontostudio/backend/app/doc_graph/ingest_tasks.py | 4→8 lines | ~91 |
+| 14:31 | Edited ontostudio/backend/app/doc_graph/ingest_tasks.py | modified build_payload_from_outline() | ~167 |
+| 14:31 | Edited ontostudio/backend/app/doc_graph/ingest_tasks.py | 11→11 lines | ~117 |
+| 14:32 | Edited ontostudio/backend/tests/test_ingest_tasks_rest.py | 13→16 lines | ~231 |
+| 14:32 | Edited ontostudio/backend/tests/test_ingest_tasks_rest.py | 17→17 lines | ~320 |
+| 14:33 | Edited ontostudio/backend/tests/test_ingest_tasks_rest.py | expanded (+6 lines) | ~163 |
+| 14:34 | Edited ontostudio/backend/tests/test_ingest_tasks_rest.py | expanded (+11 lines) | ~326 |
+| 14:45 | B1 文案包+B2 任务API 实现: 13文件+818行 commit 2ec765fe7; 7/7 测试绿(真库integration); 三轮调试修 force_review 锚点空转(bug-4002)+integration 自然键焊生产(bug-4003, 已修复 attrs 污染)+jsonb参数/Row映射/时钟序; 生产数据损伤评估: 2行 attrs 污染已净, balasu 244 完好零悬空 | ontostudio/backend, ontostudio/frontend | 容器重建中 | ~90k |
+| 14:44 | Session end: 111 writes across 25 files (2026-09-30-c-ingest-pipeline-design.md, 2026-09-30-c-ingest-pipeline-plan.md, OntologyCanvas.tsx, ui-style-spec.md, index.css) | 62 reads | ~195467 tok |
+| 15:26 | Created ontostudio/frontend/src/api/ingest-tasks-api.ts | — | ~802 |
+| 15:27 | Edited ontostudio/frontend/src/pages/IngestPage.tsx | reduced (-11 lines) | ~307 |
+| 15:27 | Edited ontostudio/frontend/src/pages/IngestPage.tsx | added optional chaining | ~524 |
+| 15:27 | Edited ontostudio/frontend/src/pages/IngestPage.tsx | 12→12 lines | ~110 |
+| 15:27 | Edited ontostudio/frontend/src/pages/IngestPage.tsx | "真数据区块：置信度分布（graph_entity " → "抽取任务队列（实时轮询）、置信度分布与证据链引文。" | ~31 |
+| 15:27 | Edited ontostudio/frontend/src/pages/IngestPage.tsx | CSS: hover | ~110 |
+| 15:28 | Edited ontostudio/frontend/src/pages/IngestPage.tsx | added optional chaining | ~2224 |
+| 15:28 | Edited ontostudio/frontend/src/pages/IngestPage.tsx | 3→3 lines | ~63 |
+| 15:29 | Edited ontostudio/frontend/src/pages/DashboardPage.tsx | added optional chaining | ~522 |
+| 15:29 | Edited ontostudio/frontend/src/pages/DashboardPage.tsx | added optional chaining | ~216 |
+| 15:29 | Edited ontostudio/frontend/src/pages/DashboardPage.tsx | added 1 import(s) | ~39 |
+| 15:10 | T6 前端接线落地: IngestPage 队列接真(2s轮询+阶段枚举+新建表单+中止/移除)+新增 GET /samples 端点+仪表盘卡转真(30s); commit e1201c047 push 成功(0/0 同步); 双容器重建; 部署验证 401 门/health/bundle 特征全过 | ontostudio/backend, ontostudio/frontend | DONE | ~35k |
+| 15:32 | Session end: 122 writes across 28 files (2026-09-30-c-ingest-pipeline-design.md, 2026-09-30-c-ingest-pipeline-plan.md, OntologyCanvas.tsx, ui-style-spec.md, index.css) | 62 reads | ~200415 tok |
+| 15:56 | Created ontostudio/backend/scripts/e2e_ingest_drill.py | — | ~1785 |
+| 15:57 | Edited ontostudio/backend/scripts/e2e_ingest_drill.py | 1→2 lines | ~51 |
+| 15:59 | Created backend/scripts/backfill_kf_ontology.py | — | ~741 |
+| 16:00 | Edited backend/scripts/backfill_kf_ontology.py | modified main() | ~148 |
+| 16:02 | Edited ontostudio/backend/scripts/e2e_ingest_drill.py | expanded (+9 lines) | ~194 |
+| 16:03 | Edited ontostudio/backend/app/doc_graph/ingest.py | added 1 condition(s) | ~263 |
+| 16:03 | Edited ontostudio/backend/app/doc_graph/ingest.py | 19→23 lines | ~411 |
+| 16:08 | Edited ontostudio/frontend/src/pages/IngestPage.tsx | added optional chaining | ~199 |
+| 15:45 | 三遗留项收官: T8 E2E 演练 PASS(五间房227实体 pending Δ227 跨重跑稳定)+回填器(25份样例 ontology 192-267实体)+force_review 下沉 ingest_extraction(force_pending 参数,后置UPDATE补丁废弃);视图漂移结案=DOM采集伪影(隐藏常驻视图标题混入,截图复测零漂移);送审待复核→查看待审队列+tooltip;commit c14a0a64a push 0/0 | ontostudio | DONE | ~80k |
+| 16:10 | Session end: 130 writes across 31 files (2026-09-30-c-ingest-pipeline-design.md, 2026-09-30-c-ingest-pipeline-plan.md, OntologyCanvas.tsx, ui-style-spec.md, index.css) | 64 reads | ~204207 tok |
+| 17:28 | Created docs/designs/2026-10-01-ontostudio-ux-governance-v2.md | — | ~830 |
+| 16:05 | /office-hours 复审轮: B1 子代理429早夭致5项漏做浮出(Dashboard/Entities副标题+badge+DemoTag×2+四态表未折叠)+消解审核230>200上限30条不可见(P1)+队列无时间列;新UI真数据渲染验证通过(队列/直方图/引文溯源);用户选B(文案收尾+可达性);v2设计文档落 docs/designs/…-v2.md 评审中 | ontostudio, docs/designs | 评审进行中 | ~40k |
+| 17:29 | Session end: 131 writes across 32 files (2026-09-30-c-ingest-pipeline-design.md, 2026-09-30-c-ingest-pipeline-plan.md, OntologyCanvas.tsx, ui-style-spec.md, index.css) | 67 reads | ~205875 tok |
+| 17:34 | Edited ontostudio/backend/app/doc_graph/service.py | modified list_pending_review() | ~347 |
+| 17:35 | Edited ontostudio/backend/app/doc_graph/service.py | 4→8 lines | ~132 |
+| 17:38 | Edited ontostudio/frontend/src/components/ResolutionPanel.tsx | expanded (+6 lines) | ~216 |
+| 17:38 | Edited ontostudio/frontend/src/components/ResolutionPanel.tsx | 5→6 lines | ~36 |
+| 17:45 | Edited ontostudio/backend/app/doc_graph/routers.py | modified resolution_pending() | ~107 |
+| 17:49 | Edited ontostudio/frontend/src/components/ResolutionPanel.tsx | reduced (-6 lines) | ~100 |
+| 17:49 | Edited ontostudio/frontend/src/components/ResolutionPanel.tsx | 6→5 lines | ~28 |
+| 17:53 | Edited ontostudio/frontend/src/api/ontology-graph-api.ts | "}${RESOLUTION_BASE}/pendi" → "${RESOLUTION_BASE}/pendin" | ~18 |
+| 17:00 | v2 收官: B1 六处收尾+队列时间列+引文空态+pending 服务端 search/offset(真库验证 定向1/offset30)+翻页器;途中抓出并修 代码生成脚本模板串损坏(pending 恒404,%7D 日志铁证)+routers 静默失配漏传;四态表按用户裁定还原不折叠;commits 756c1b5d9/903473340/8271735e5/bba4a7d5d 全推 0/0;终验 搜索五间房 1/1 直达 | ontostudio | DONE | ~85k |
+| 17:56 | Session end: 139 writes across 36 files (2026-09-30-c-ingest-pipeline-design.md, 2026-09-30-c-ingest-pipeline-plan.md, OntologyCanvas.tsx, ui-style-spec.md, index.css) | 73 reads | ~208992 tok |
+| 18:27 | Edited ontostudio/frontend/src/pages/DashboardPage.tsx | CSS: ms | ~205 |
+| 18:27 | Edited ontostudio/frontend/src/pages/DashboardPage.tsx | 5→6 lines | ~34 |
+| 18:27 | Edited ontostudio/frontend/src/pages/DashboardPage.tsx | refetch() → formatDuration() | ~400 |
+| 18:27 | Edited ontostudio/frontend/src/pages/DashboardPage.tsx | modified Tile() | ~129 |
+| 18:27 | Edited ontostudio/frontend/src/pages/DashboardPage.tsx | added nullish coalescing | ~206 |
+| 18:28 | Edited ontostudio/frontend/src/pages/DashboardPage.tsx | 4→6 lines | ~91 |
+| 18:28 | Edited ontostudio/frontend/src/pages/DashboardPage.tsx | expanded (+6 lines) | ~269 |
+| 18:28 | Edited ontostudio/frontend/src/pages/DashboardPage.tsx | CSS: message, message | ~520 |
+| 18:28 | Edited ontostudio/frontend/src/pages/DashboardPage.tsx | added 1 import(s) | ~42 |
+| 18:28 | Edited ontostudio/frontend/src/pages/DashboardPage.tsx | modified slice() | ~122 |
+| 18:29 | Edited ontostudio/frontend/src/pages/DashboardPage.tsx | CSS: hover, graph | ~711 |
+| 18:29 | Edited ontostudio/frontend/src/pages/DashboardPage.tsx | 3→2 lines | ~21 |
+| 18:29 | Edited ontostudio/frontend/src/pages/DashboardPage.tsx | CSS: 5 | ~50 |
+| 18:29 | Edited ontostudio/frontend/src/pages/DashboardPage.tsx | reduced (-19 lines) | ~220 |
+| 18:30 | Edited ontostudio/frontend/src/pages/DashboardPage.tsx | 3→4 lines | ~52 |
+| 17:40 | /plan-ceo-review 工作台总览三轴审计(文案/完备/硬编码):14 findings(F1-F7/G1-G6/H1-H3)全修——治理链假数据卡接真(rule_counts 同源)+推理直跑改跳转+装载确认+失败可见+动态页脚+别名;commit push;逐页系列第 1 页完成 | ontostudio/frontend | DONE | ~50k |
+| 18:36 | Session end: 154 writes across 36 files (2026-09-30-c-ingest-pipeline-design.md, 2026-09-30-c-ingest-pipeline-plan.md, OntologyCanvas.tsx, ui-style-spec.md, index.css) | 75 reads | ~212453 tok |
+| 18:42 | Session end: 154 writes across 36 files (2026-09-30-c-ingest-pipeline-design.md, 2026-09-30-c-ingest-pipeline-plan.md, OntologyCanvas.tsx, ui-style-spec.md, index.css) | 75 reads | ~212453 tok |
+| 18:48 | Session end: 154 writes across 36 files (2026-09-30-c-ingest-pipeline-design.md, 2026-09-30-c-ingest-pipeline-plan.md, OntologyCanvas.tsx, ui-style-spec.md, index.css) | 75 reads | ~212453 tok |
+| 18:59 | Session end: 154 writes across 36 files (2026-09-30-c-ingest-pipeline-design.md, 2026-09-30-c-ingest-pipeline-plan.md, OntologyCanvas.tsx, ui-style-spec.md, index.css) | 76 reads | ~212453 tok |
+| 19:24 | Session end: 154 writes across 36 files (2026-09-30-c-ingest-pipeline-design.md, 2026-09-30-c-ingest-pipeline-plan.md, OntologyCanvas.tsx, ui-style-spec.md, index.css) | 77 reads | ~212453 tok |
+| 19:34 | Edited ontostudio/frontend/src/pages/DashboardPage.tsx | expanded (+15 lines) | ~265 |
+| 19:34 | Edited ontostudio/frontend/src/pages/DashboardPage.tsx | added optional chaining | ~1866 |
+| 19:38 | Edited ontostudio/frontend/src/pages/DashboardPage.tsx | 6→6 lines | ~129 |
+| 18:00 | 总览页增量添加 V4 两组件(待办主轴四卡+管线健康五站,用户裁定放弃三版重设计改增量);加载态假报正常一行修;commit push 0/0 | ontostudio/frontend | DONE | ~30k |
+| 19:39 | Session end: 157 writes across 36 files (2026-09-30-c-ingest-pipeline-design.md, 2026-09-30-c-ingest-pipeline-plan.md, OntologyCanvas.tsx, ui-style-spec.md, index.css) | 79 reads | ~214713 tok |
+| 19:42 | Edited ontostudio/frontend/src/pages/DashboardPage.tsx | reduced (-10 lines) | ~323 |
+| 19:43 | Edited ontostudio/frontend/src/pages/DashboardPage.tsx | 3→2 lines | ~7 |
+| 19:45 | Session end: 159 writes across 36 files (2026-09-30-c-ingest-pipeline-design.md, 2026-09-30-c-ingest-pipeline-plan.md, OntologyCanvas.tsx, ui-style-spec.md, index.css) | 80 reads | ~215043 tok |
+| 18:20 | 总览网格合并: 待审主卡 row-span-2 左列,右上失败/进行中/系统状态,右下三瓦片上移,管线健康全宽下移;脚本锚点修一层 band 收口后通过;commit push 0/0 | ontostudio/frontend | DONE | ~15k |
+| 19:55 | Session end: 159 writes across 36 files (2026-09-30-c-ingest-pipeline-design.md, 2026-09-30-c-ingest-pipeline-plan.md, OntologyCanvas.tsx, ui-style-spec.md, index.css) | 81 reads | ~215043 tok |
+| 20:11 | Edited ontostudio/frontend/src/pages/DashboardPage.tsx | 10→15 lines | ~264 |
+| 20:11 | Edited ontostudio/frontend/src/pages/DashboardPage.tsx | expanded (+7 lines) | ~248 |
+| 20:11 | Edited ontostudio/frontend/src/pages/DashboardPage.tsx | expanded (+7 lines) | ~331 |
+| 20:12 | Edited ontostudio/frontend/src/pages/DashboardPage.tsx | CSS: background | ~291 |
+| 20:12 | Edited ontostudio/frontend/src/pages/DashboardPage.tsx | CSS: background | ~263 |
+| 20:12 | Edited ontostudio/frontend/src/pages/DashboardPage.tsx | CSS: cursor, background | ~332 |
+| 18:40 | 六卡 B 式紧凑双行落地(标签左数右,110→58px),四变体横评原型 .wolf/tmp/cards-4variants.html;commit push 0/0 | ontostudio/frontend | DONE | ~25k |
+| 20:16 | Session end: 165 writes across 36 files (2026-09-30-c-ingest-pipeline-design.md, 2026-09-30-c-ingest-pipeline-plan.md, OntologyCanvas.tsx, ui-style-spec.md, index.css) | 83 reads | ~216772 tok |
+| 20:18 | Edited ontostudio/frontend/src/pages/DashboardPage.tsx | 16→21 lines | ~119 |
+| 20:18 | Edited ontostudio/frontend/src/pages/DashboardPage.tsx | modified formatDuration() | ~142 |
+| 20:18 | Edited ontostudio/frontend/src/pages/DashboardPage.tsx | 7→9 lines | ~164 |
+| 20:19 | Edited ontostudio/frontend/src/pages/DashboardPage.tsx | 7→9 lines | ~171 |
+| 20:19 | Edited ontostudio/frontend/src/pages/DashboardPage.tsx | expanded (+8 lines) | ~270 |
+| 20:19 | Edited ontostudio/frontend/src/pages/DashboardPage.tsx | 9→11 lines | ~154 |
+| 20:19 | Edited ontostudio/frontend/src/pages/DashboardPage.tsx | 7→9 lines | ~121 |
+| 20:19 | Edited ontostudio/frontend/src/pages/DashboardPage.tsx | 9→11 lines | ~157 |
+| 18:55 | 六卡圆点→语义图标徽章(28px 软底 chip+状态切换图标);commit push 0/0 | ontostudio/frontend | DONE | ~15k |
+| 20:21 | Session end: 173 writes across 36 files (2026-09-30-c-ingest-pipeline-design.md, 2026-09-30-c-ingest-pipeline-plan.md, OntologyCanvas.tsx, ui-style-spec.md, index.css) | 84 reads | ~218070 tok |
+| 20:49 | Edited ontostudio/frontend/src/pages/DashboardPage.tsx | 3→3 lines | ~38 |
+| 20:51 | Edited ontostudio/frontend/src/pages/DashboardPage.tsx | 18→17 lines | ~66 |
+| 20:51 | Edited ontostudio/frontend/src/pages/DashboardPage.tsx | 3→6 lines | ~76 |
+| 20:51 | Edited ontostudio/frontend/src/pages/DashboardPage.tsx | 3→6 lines | ~88 |
+| 20:51 | Edited ontostudio/frontend/src/pages/DashboardPage.tsx | 9→6 lines | ~118 |
+| 19:10 | 待办三卡图标换概念款(AlertTriangle/RefreshCw/Activity,状态由颜色表达图标恒定);commit push 0/0 | ontostudio/frontend | DONE | ~10k |
+| 20:55 | Session end: 178 writes across 36 files (2026-09-30-c-ingest-pipeline-design.md, 2026-09-30-c-ingest-pipeline-plan.md, OntologyCanvas.tsx, ui-style-spec.md, index.css) | 86 reads | ~218456 tok |
+| 20:57 | Edited ontostudio/frontend/src/pages/DashboardPage.tsx | 6→3 lines | ~42 |
+| 19:20 | 失败任务徽章常驻红字浅红底(标识色随卡不随状态,与实体蓝/关系紫对齐);用户裁定;commit push 0/0 | ontostudio/frontend | DONE | ~5k |
+| 20:58 | Session end: 179 writes across 36 files (2026-09-30-c-ingest-pipeline-design.md, 2026-09-30-c-ingest-pipeline-plan.md, OntologyCanvas.tsx, ui-style-spec.md, index.css) | 86 reads | ~218498 tok |
+| 21:31 | Edited ontostudio/frontend/src/index.css | modified CUSTOM() | ~139 |
+| 21:31 | Edited ontostudio/frontend/src/index.css | modified CUSTOM() | ~142 |
+| 21:35 | Session end: 181 writes across 36 files (2026-09-30-c-ingest-pipeline-design.md, 2026-09-30-c-ingest-pipeline-plan.md, OntologyCanvas.tsx, ui-style-spec.md, index.css) | 87 reads | ~218779 tok |
+| 21:39 | Edited ontostudio/frontend/src/pages/DashboardPage.tsx | 4→4 lines | ~76 |
+| 21:39 | Edited ontostudio/frontend/src/pages/DashboardPage.tsx | 4→4 lines | ~75 |
+| 21:40 | Session end: 183 writes across 36 files (2026-09-30-c-ingest-pipeline-design.md, 2026-09-30-c-ingest-pipeline-plan.md, OntologyCanvas.tsx, ui-style-spec.md, index.css) | 87 reads | ~218930 tok |
+| 19:40 | 管线健康改轨道节点式(A 变体)落地: 轨道+圆环节点+蓝线填充动态;旧五卡网格含数组残渣两次切割清除(CRLF 换行+数组边界);bundle 验证含轨道代码;commit push 0/0 | ontostudio/frontend | DONE | ~20k |
+| 22:01 | Session end: 183 writes across 36 files (2026-09-30-c-ingest-pipeline-design.md, 2026-09-30-c-ingest-pipeline-plan.md, OntologyCanvas.tsx, ui-style-spec.md, index.css) | 89 reads | ~218930 tok |
+| 19:55 | 管线轨道节点改语义图标(五站与侧栏同语言)+站位列心对齐(10/30/50/70/90%);commit push 0/0 | ontostudio/frontend | DONE | ~10k |
+| 22:09 | Session end: 183 writes across 36 files (2026-09-30-c-ingest-pipeline-design.md, 2026-09-30-c-ingest-pipeline-plan.md, OntologyCanvas.tsx, ui-style-spec.md, index.css) | 90 reads | ~218930 tok |
+| 19:35 | 管线轨道配色三修: 节点不透明白底/五站标识色(蓝琥珀紫青绿)/四段渐变衔接节点色;pipeFillPct 移除;commit push 0/0 | ontostudio/frontend | DONE | ~10k |
+| 22:19 | Session end: 183 writes across 36 files (2026-09-30-c-ingest-pipeline-design.md, 2026-09-30-c-ingest-pipeline-plan.md, OntologyCanvas.tsx, ui-style-spec.md, index.css) | 91 reads | ~218930 tok |
+| 22:20 | Edited ontostudio/frontend/src/pages/DashboardPage.tsx | CSS: color | ~214 |
+| 19:45 | 管线图例文字随站标识色(琥珀效果推广全站,副注保持灰);commit push 0/0 | ontostudio/frontend | DONE | ~5k |
+| 22:22 | Session end: 184 writes across 36 files (2026-09-30-c-ingest-pipeline-design.md, 2026-09-30-c-ingest-pipeline-plan.md, OntologyCanvas.tsx, ui-style-spec.md, index.css) | 91 reads | ~219144 tok |
+| 22:24 | Edited ontostudio/frontend/src/pages/DashboardPage.tsx | inline fix | ~33 |
+| 22:25 | Session end: 185 writes across 36 files (2026-09-30-c-ingest-pipeline-design.md, 2026-09-30-c-ingest-pipeline-plan.md, OntologyCanvas.tsx, ui-style-spec.md, index.css) | 91 reads | ~219177 tok |
+| 20:15 | 图谱浏览页 B 方案落地: 详情字段中文化(FIELD_LABELS 映射)+FitView→适配视图(vendored 1词)+社区着色默认开(localStorage 记忆)+轻引导条+域下拉中文别名;:2026 验证全过;commit push 0/0 | ontostudio/frontend | DONE | ~35k |
+| 22:39 | Session end: 185 writes across 36 files (2026-09-30-c-ingest-pipeline-design.md, 2026-09-30-c-ingest-pipeline-plan.md, OntologyCanvas.tsx, ui-style-spec.md, index.css) | 93 reads | ~219177 tok |
+| 23:16 | Edited ontostudio/frontend/src/components/DetailPanel.tsx | expanded (+13 lines) | ~104 |
+| 23:19 | Edited ontostudio/frontend/src/components/DetailPanel.tsx | CSS: distillable | ~50 |
+| 23:19 | Edited ontostudio/frontend/src/components/DetailPanel.tsx | expanded (+6 lines) | ~90 |
+| 23:25 | Edited ontostudio/frontend/src/components/DetailPanel.tsx | CSS: HH, mm, n | ~242 |
+| 23:25 | Edited ontostudio/frontend/src/components/DetailPanel.tsx | modified formatDateTime() | ~87 |
+| 23:26 | Edited ontostudio/frontend/src/components/DetailPanel.tsx | modified formatDateTime() | ~100 |
+| 20:30 | 详情面板 attrs 中文键值行+字段分层(技术信息折叠)+时间本地格式化+可蒸馏/布尔是否;commit push 0/0 | ontostudio/frontend | DONE | ~15k |
+| 23:31 | Session end: 191 writes across 37 files (2026-09-30-c-ingest-pipeline-design.md, 2026-09-30-c-ingest-pipeline-plan.md, OntologyCanvas.tsx, ui-style-spec.md, index.css) | 95 reads | ~219850 tok |
+| 20:40 | 关联链接语义化: 关系行=对侧实体名(图内解析)+谓词中文+可点聚焦;引文行=quote原文;组头链型中文;DetailPanel 增 onFocusNode;端到端验证 锅炉房实体 全过;commit push 0/0 | ontostudio/frontend | DONE | ~25k |
+| 23:44 | Session end: 191 writes across 37 files (2026-09-30-c-ingest-pipeline-design.md, 2026-09-30-c-ingest-pipeline-plan.md, OntologyCanvas.tsx, ui-style-spec.md, index.css) | 95 reads | ~219850 tok |
+| 00:04 | Edited ontostudio/frontend/src/components/DetailPanel.tsx | 4→4 lines | ~62 |
+| 21:00 | 图谱关系节点语义卡落地: UUID标题+subjectId/objectId裸行 → 主体→谓词中文→客体句子式+可点定位+attrs中文键值+技术折叠;useEntityName hook(图内label优先/图外按需GET);fetchObjectDetail api;commit push 0/0 | ontostudio/frontend | DONE | ~20k |
+| 00:25 | Session end: 192 writes across 37 files (2026-09-30-c-ingest-pipeline-design.md, 2026-09-30-c-ingest-pipeline-plan.md, OntologyCanvas.tsx, ui-style-spec.md, index.css) | 95 reads | ~219912 tok |
+| 00:32 | Edited ontostudio/frontend/src/components/DetailPanel.tsx | expanded (+11 lines) | ~128 |
+| 00:32 | Edited ontostudio/frontend/src/components/DetailPanel.tsx | 1→6 lines | ~95 |
+| 00:34 | Edited ontostudio/frontend/src/components/DetailPanel.tsx | CSS: mined_by | ~22 |
+| 21:20 | attrs 键名映射补齐(mined_by=开采/pattern系列等13键)+dt注解防重复(无映射键单显);commit push 0/0 | ontostudio/frontend | DONE | ~8k |
+| 00:36 | Session end: 195 writes across 37 files (2026-09-30-c-ingest-pipeline-design.md, 2026-09-30-c-ingest-pipeline-plan.md, OntologyCanvas.tsx, ui-style-spec.md, index.css) | 95 reads | ~220157 tok |
+
+## Session: 2026-10-02 12:48
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-10-02 12:49
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 12:56 | Edited ontostudio/frontend/src/pages/EntitiesPage.tsx | 9→9 lines | ~88 |
+| 12:56 | Edited ontostudio/frontend/src/pages/EntitiesPage.tsx | 3→6 lines | ~72 |
+| 12:56 | Edited ontostudio/frontend/src/pages/EntitiesPage.tsx | inline fix | ~11 |
+| 12:56 | Edited ontostudio/frontend/src/pages/EntitiesPage.tsx | CSS: nodeId | ~294 |
+| 12:56 | Edited ontostudio/frontend/src/pages/EntitiesPage.tsx | added nullish coalescing | ~78 |
+| 12:57 | Edited ontostudio/frontend/src/pages/EntitiesPage.tsx | modified if() | ~110 |
+| 21:30 | 实体库页三轴收尾: 状态中文化四值/查看合并 no-op 修复(setSelectedId(nodeId))/API标签降噪/规范名列名;无头 profile 401 为登录态缺失非回归;commit push 0/0 | ontostudio/frontend | DONE | ~15k |
+| 13:08 | Session end: 6 writes across 1 files (EntitiesPage.tsx) | 2 reads | ~7417 tok |
+| 13:21 | Edited ontostudio/frontend/src/components/ResolutionPanel.tsx | inline fix | ~8 |
+| 21:45 | 消解审核页文案治理: etype中文芯片(eia标注API)/状态行中文/横幅文件名降噪/每卡解释压短;真数据230条验证通过;commit push 0/0 | ontostudio/frontend | DONE | ~10k |
+| 13:24 | Session end: 7 writes across 2 files (EntitiesPage.tsx, ResolutionPanel.tsx) | 5 reads | ~7425 tok |
+| 13:28 | Session end: 7 writes across 2 files (EntitiesPage.tsx, ResolutionPanel.tsx) | 5 reads | ~7425 tok |
+| 13:35 | Edited ontostudio/frontend/src/components/ResolutionPanel.tsx | expanded (+10 lines) | ~393 |
+| 13:37 | Edited ontostudio/frontend/src/components/ResolutionPanel.tsx | 24→26 lines | ~427 |
+| 21:50 | 消解审核补批量驳回: batchMutation decision 参数化+驳回选中按钮;部署验证按钮渲染;未真实提交避免动用户数据;commit push 0/0 | ontostudio/frontend | DONE | ~15k |
+| 13:42 | Session end: 9 writes across 2 files (EntitiesPage.tsx, ResolutionPanel.tsx) | 6 reads | ~8245 tok |
+| 13:47 | Session end: 9 writes across 2 files (EntitiesPage.tsx, ResolutionPanel.tsx) | 6 reads | ~8245 tok |
+| 13:54 | Edited ontostudio/frontend/src/pages/ModelerPage.tsx | CSS: parents | ~198 |
+| 13:54 | Edited ontostudio/frontend/src/pages/ModelerPage.tsx | removed 52 lines | ~7 |
+| 13:55 | Edited ontostudio/frontend/src/pages/ModelerPage.tsx | 8→8 lines | ~114 |
+| 21:50 | 建模器页三轴审计: 全站质量最佳页(中文+术语对照范本);修 M1 删类联动清理子类parents+M2 死组件清理;TSC0;commit push 0/0 | ontostudio/frontend | DONE | ~10k |
+| 13:56 | Session end: 12 writes across 3 files (EntitiesPage.tsx, ResolutionPanel.tsx, ModelerPage.tsx) | 7 reads | ~20745 tok |
+| 14:11 | Session end: 12 writes across 3 files (EntitiesPage.tsx, ResolutionPanel.tsx, ModelerPage.tsx) | 8 reads | ~20745 tok |
+| 22:00 | 建模器右栏控件落地: 父类V1 Combobox(修冻结bug)+etypes可编辑芯片墙+输入;TSC0;commit push 0/0 | ontostudio/frontend | DONE | ~15k |
+| 14:24 | Session end: 12 writes across 3 files (EntitiesPage.tsx, ResolutionPanel.tsx, ModelerPage.tsx) | 8 reads | ~20745 tok |
+| 22:10 | 父类下拉补关闭路径: 选中候选收起+外点mousedown收起(随open挂卸);TSC0;commit push 0/0 | ontostudio/frontend | DONE | ~5k |
+| 14:34 | Session end: 12 writes across 3 files (EntitiesPage.tsx, ResolutionPanel.tsx, ModelerPage.tsx) | 8 reads | ~20745 tok |
+| 15:33 | Edited ontostudio/frontend/src/pages/ModelerPage.tsx | inline fix | ~19 |
+| 15:36 | Edited ontostudio/frontend/src/pages/ModelerPage.tsx | 23→23 lines | ~228 |
+| 15:37 | Edited ontostudio/frontend/src/pages/ModelerPage.tsx | modified TBoxCanvas() | ~46 |
+| 22:20 | 画布草稿预览边落地: draftEdges 解析草稿subClassOf透传TBoxCanvas,合并服务端边+仅草稿边(虚线琥珀);四次修复链(模板串被bash吃/解构漏/闭合误删);commit push 0/0 | ontostudio/frontend | DONE | ~15k |
+| 15:39 | Session end: 15 writes across 3 files (EntitiesPage.tsx, ResolutionPanel.tsx, ModelerPage.tsx) | 8 reads | ~21038 tok |
+| 22:30 | 画布草稿预览边自测通过: 检索选Pollutant→combobox筛选Report→Enter加父→绿横幅+芯片LogicNode/Report实时+未保存徽标;刷新弃草稿无污染 | ontostudio/frontend | VERIFIED | ~0 |
+| 15:46 | Session end: 15 writes across 3 files (EntitiesPage.tsx, ResolutionPanel.tsx, ModelerPage.tsx) | 9 reads | ~21038 tok |
+| 16:00 | Edited ontostudio/frontend/src/pages/ModelerPage.tsx | modified return() | ~176 |
+| 16:01 | Edited ontostudio/frontend/src/pages/ModelerPage.tsx | added 3 condition(s) | ~338 |
+| 16:06 | Session end: 17 writes across 3 files (EntitiesPage.tsx, ResolutionPanel.tsx, ModelerPage.tsx) | 13 reads | ~21552 tok |
+| 16:11 | Session end: 17 writes across 3 files (EntitiesPage.tsx, ResolutionPanel.tsx, ModelerPage.tsx) | 13 reads | ~21552 tok |
+
+## Session: 2026-10-02 16:43
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 16:56 | Edited ontostudio/frontend/src/pages/DashboardPage.tsx | 3→2 lines | ~21 |
+| 16:56 | Edited ontostudio/frontend/src/pages/DashboardPage.tsx | 5→10 lines | ~126 |
+| 16:56 | Edited ontostudio/frontend/src/pages/DashboardPage.tsx | inline fix | ~73 |
+| 16:56 | Edited ontostudio/frontend/src/pages/DashboardPage.tsx | inline fix | ~26 |
+| 16:56 | Edited ontostudio/frontend/src/pages/DashboardPage.tsx | inline fix | ~31 |
+| 16:56 | Edited ontostudio/frontend/src/pages/DashboardPage.tsx | inline fix | ~32 |
+| 16:56 | Edited ontostudio/frontend/src/pages/DashboardPage.tsx | 3→3 lines | ~42 |
+| 16:56 | Edited ontostudio/frontend/src/pages/DashboardPage.tsx | 3→3 lines | ~35 |
+| 16:56 | Edited ontostudio/frontend/src/pages/DashboardPage.tsx | 3→3 lines | ~40 |
+| 16:57 | Edited ontostudio/frontend/src/pages/DashboardPage.tsx | 4→4 lines | ~64 |
+| 16:57 | Edited ontostudio/frontend/src/pages/DashboardPage.tsx | 14→16 lines | ~215 |
+| 16:57 | Edited ontostudio/frontend/src/pages/DashboardPage.tsx | added nullish coalescing | ~99 |
+| 16:58 | Edited ontostudio/frontend/src/layout/AppShell.tsx | CSS: modeler | ~107 |
+| 16:58 | Edited ontostudio/frontend/src/layout/AppShell.tsx | CSS: modeler, modeler, modeler | ~130 |
+| 16:58 | Edited ontostudio/frontend/src/layout/AppShell.tsx | inline fix | ~25 |
+| 16:58 | Edited ontostudio/frontend/src/pages/ModelerPage.tsx | added nullish coalescing | ~54 |
+| 16:59 | Edited ontostudio/frontend/src/layout/AppShell.tsx | added nullish coalescing | ~22 |
+| 17:01 | 总览页CEO审核9发现+F1-F9修复落地(文案纠错/删Tile死代码84行/域行深链modeler:domain/系统状态口径统一) | DashboardPage/AppShell/ModelerPage | tsc通过 | ~6k |
+| 17:20 | Edited ontostudio/frontend/src/explorerDataSource.ts | added 1 condition(s) | ~182 |
+| 17:20 | Edited ontostudio/frontend/src/pages/ModelerPage.tsx | added 1 import(s) | ~44 |
+| 17:20 | Edited ontostudio/frontend/src/pages/ModelerPage.tsx | added nullish coalescing | ~290 |
+| 17:20 | Edited ontostudio/frontend/src/pages/ModelerPage.tsx | 12→14 lines | ~180 |
+| 17:20 | Edited ontostudio/frontend/src/pages/ModelerPage.tsx | 2→1 lines | ~22 |
+| 17:21 | Edited ontostudio/frontend/src/pages/ModelerPage.tsx | 1→2 lines | ~37 |
+| 17:21 | Edited ontostudio/frontend/src/pages/ModelerPage.tsx | inline fix | ~19 |
+| 17:21 | Edited ontostudio/frontend/src/pages/ModelerPage.tsx | CSS: predicateCounts | ~214 |
+| 17:21 | Edited ontostudio/frontend/src/pages/ModelerPage.tsx | added optional chaining | ~627 |
+| 17:22 | Edited ontostudio/frontend/src/components/OntologyPage.tsx | inline fix | ~31 |
+| 17:22 | Edited ontostudio/frontend/src/components/OntologyPage.tsx | added 1 import(s) | ~32 |
+| 17:22 | Edited ontostudio/frontend/src/components/OntologyPage.tsx | added optional chaining | ~143 |
+| 17:22 | Edited ontostudio/frontend/src/components/OntologyPage.tsx | added nullish coalescing | ~95 |
+| 17:22 | Edited ontostudio/frontend/src/components/ResolutionPanel.tsx | added nullish coalescing | ~82 |
+| 17:22 | Edited ontostudio/frontend/src/components/ResolutionPanel.tsx | added 1 import(s) | ~54 |
+| 17:23 | Edited ontostudio/frontend/src/components/OntologyPage.tsx | added 1 import(s) | ~41 |
+| 17:23 | Edited ontostudio/frontend/src/explorerDataSource.ts | added nullish coalescing | ~34 |
+| 17:25 | CEO审核第二轮:建模器谓词区P1+A1补齐+G1域筛动态化+R1消解卡域标注,提交8298b0daf | ModelerPage/OntologyPage/ResolutionPanel/explorerDataSource | tsc过已提交 | ~9k |
+| 17:29 | Edited ontostudio/frontend/src/pages/ReasoningPage.tsx | CSS: hour12 | ~89 |
+| 17:29 | Edited ontostudio/frontend/src/pages/ReasoningPage.tsx | expanded (+9 lines) | ~97 |
+| 17:29 | Edited ontostudio/frontend/src/pages/ReasoningPage.tsx | 1→4 lines | ~59 |
+| 17:29 | Edited ontostudio/frontend/src/pages/IngestPage.tsx | "抽取任务队列（实时轮询）、置信度分布与证据链引文。" → "抽取任务队列（实时轮询）、置信度分布与证据链引文。" | ~26 |
+| 17:29 | Edited ontostudio/frontend/src/pages/IngestPage.tsx | added 1 condition(s) | ~90 |
+| 17:29 | Edited ontostudio/frontend/src/pages/IngestPage.tsx | 3→4 lines | ~80 |
+| 17:29 | Edited ontostudio/frontend/src/pages/ExportPage.tsx | added 1 condition(s) | ~100 |
+| 17:29 | Edited ontostudio/frontend/src/pages/ExportPage.tsx | inline fix | ~16 |
+| 17:30 | Edited ontostudio/frontend/src/pages/IngestPage.tsx | inline fix | ~19 |
+| 17:46 | Edited ontostudio/frontend/src/pages/ModelerPage.tsx | modified TBoxCanvas() | ~217 |
+| 17:46 | Edited ontostudio/frontend/src/pages/ModelerPage.tsx | 2→3 lines | ~60 |
+| 17:47 | Edited ontostudio/frontend/src/pages/ModelerPage.tsx | expanded (+38 lines) | ~580 |
+| 17:47 | Edited ontostudio/frontend/src/pages/ModelerPage.tsx | removed 42 lines | ~89 |
+| 17:47 | Edited ontostudio/frontend/src/pages/ModelerPage.tsx | 4→8 lines | ~141 |
+| 17:47 | Edited ontostudio/frontend/src/pages/ModelerPage.tsx | expanded (+9 lines) | ~282 |
+| 17:48 | Edited ontostudio/frontend/src/pages/ModelerPage.tsx | expanded (+8 lines) | ~328 |
+| 17:48 | Edited ontostudio/frontend/src/pages/ModelerPage.tsx | inline fix | ~23 |
+| 17:48 | Edited ontostudio/frontend/src/pages/ModelerPage.tsx | 1→3 lines | ~46 |
+| 17:48 | Edited ontostudio/frontend/src/pages/ModelerPage.tsx | added optional chaining | ~728 |
+| 17:56 | 用户纠正落地:谓词/公理拆独立Panel+画布缩放工具栏+编辑面板最大化,重建镜像并浏览器全链路验证 | ModelerPage | 3b54725aa | ~8k |
+| 17:57 | Session end: 53 writes across 9 files (DashboardPage.tsx, AppShell.tsx, ModelerPage.tsx, explorerDataSource.ts, OntologyPage.tsx) | 11 reads | ~69057 tok |
+| 18:00 | Edited ontostudio/frontend/src/pages/ModelerPage.tsx | 5→7 lines | ~44 |
+| 18:00 | Edited ontostudio/frontend/src/pages/ModelerPage.tsx | 3→4 lines | ~76 |
+| 18:00 | Edited ontostudio/frontend/src/pages/ModelerPage.tsx | 5→5 lines | ~72 |
+| 18:03 | 画布竖拖灵敏度修复(dy除数误用容器宽→STAGE_H),合成指针实测50%→70% | ModelerPage | 已提交 | ~3k |
+| 18:03 | Session end: 56 writes across 9 files (DashboardPage.tsx, AppShell.tsx, ModelerPage.tsx, explorerDataSource.ts, OntologyPage.tsx) | 11 reads | ~69249 tok |
+| 18:05 | Edited ontostudio/frontend/src/pages/ModelerPage.tsx | added 1 condition(s) | ~147 |
+| 18:05 | Edited ontostudio/frontend/src/pages/ModelerPage.tsx | 4→4 lines | ~76 |
+| 18:05 | Edited ontostudio/frontend/src/pages/ModelerPage.tsx | 5→5 lines | ~71 |
+| 18:09 | 最大化画布死区修复(stage 高 ResizeObserver 跟随容器),实测节点拖至94%触底 | ModelerPage | 已提交 | ~3k |
+| 18:09 | Session end: 59 writes across 9 files (DashboardPage.tsx, AppShell.tsx, ModelerPage.tsx, explorerDataSource.ts, OntologyPage.tsx) | 11 reads | ~69543 tok |
+| 18:13 | Edited ontostudio/frontend/src/pages/ModelerPage.tsx | 13→18 lines | ~194 |
+| 18:14 | Edited ontostudio/frontend/src/pages/ModelerPage.tsx | added 1 condition(s) | ~388 |
+| 18:15 | Edited ontostudio/frontend/src/pages/ModelerPage.tsx | CSS: onRebase, k, dragged | ~169 |
+| 18:15 | Edited ontostudio/frontend/src/pages/ModelerPage.tsx | CSS: name, pos | ~108 |
+| 18:15 | Edited ontostudio/frontend/src/pages/ModelerPage.tsx | CSS: x, y | ~277 |
+| 18:19 | Edited ontostudio/frontend/src/pages/ModelerPage.tsx | CSS: startX, startY | ~164 |
+| 18:24 | Edited ontostudio/frontend/src/pages/ModelerPage.tsx | CSS: map | ~347 |
+| 18:24 | Edited ontostudio/frontend/src/pages/ModelerPage.tsx | modified if() | ~548 |
+| 18:24 | Edited ontostudio/frontend/src/pages/ModelerPage.tsx | removed 9 lines | ~19 |
+| 18:28 | Edited ontostudio/frontend/src/pages/ModelerPage.tsx | 3→4 lines | ~65 |
+| 18:32 | Edited ontostudio/frontend/src/pages/ModelerPage.tsx | CSS: nodePx | ~447 |
+| 18:34 | Edited ontostudio/frontend/src/pages/ModelerPage.tsx | 4→4 lines | ~64 |
+| 18:34 | Edited ontostudio/frontend/src/pages/ModelerPage.tsx | 3→3 lines | ~36 |
+| 18:34 | Edited ontostudio/frontend/src/pages/ModelerPage.tsx | 5→5 lines | ~53 |
+| 18:34 | Edited ontostudio/frontend/src/pages/ModelerPage.tsx | 5→5 lines | ~48 |
+| 18:38 | Edited ontostudio/frontend/src/pages/ModelerPage.tsx | modified if() | ~137 |
+| 18:39 | Edited ontostudio/frontend/src/pages/ModelerPage.tsx | expanded (+9 lines) | ~316 |
+| 18:40 | Edited ontostudio/frontend/src/pages/ModelerPage.tsx | 7→6 lines | ~40 |
+| 18:44 | Edited ontostudio/frontend/src/pages/ModelerPage.tsx | CSS: overflowAnchor | ~40 |
+| 18:45 | Edited ontostudio/frontend/src/pages/ModelerPage.tsx | 10→11 lines | ~115 |
+| 18:48 | Edited ontostudio/frontend/src/pages/ModelerPage.tsx | added optional chaining | ~124 |
+| 18:48 | Edited ontostudio/frontend/src/pages/ModelerPage.tsx | 3→3 lines | ~22 |
+| 18:48 | Edited ontostudio/frontend/src/pages/ModelerPage.tsx | 4→4 lines | ~30 |
+| 18:54 | 画布下拖三连修(底部生长+scrollIntoView跟随+最大化flex高度)+左栏「域文件」标题栏,日志法破338悬案 | ModelerPage | 已提交 | ~12k |
+| 18:54 | Session end: 82 writes across 9 files (DashboardPage.tsx, AppShell.tsx, ModelerPage.tsx, explorerDataSource.ts, OntologyPage.tsx) | 11 reads | ~75480 tok |
+| 18:59 | Edited ontostudio/frontend/src/pages/ReasoningPage.tsx | added 1 import(s) | ~44 |
+| 18:59 | Edited ontostudio/frontend/src/pages/ReasoningPage.tsx | 10→8 lines | ~124 |
+| 18:59 | Edited ontostudio/frontend/src/pages/ReasoningPage.tsx | modified ruleRows() | ~142 |
+| 18:59 | Edited ontostudio/frontend/src/pages/ReasoningPage.tsx | added optional chaining | ~108 |
+| 18:59 | Edited ontostudio/frontend/src/pages/ReasoningPage.tsx | added optional chaining | ~467 |
+| 19:00 | Edited ontostudio/frontend/src/pages/ReasoningPage.tsx | 2→2 lines | ~27 |
+| 19:04 | 推理页深审:删dry谎言按钮+规则行下钻预览落地 | ReasoningPage | 已提交 | ~5k |
+| 19:04 | Session end: 88 writes across 9 files (DashboardPage.tsx, AppShell.tsx, ModelerPage.tsx, explorerDataSource.ts, OntologyPage.tsx) | 11 reads | ~76392 tok |
+| 19:16 | Created docs/designs/2026-10-02-reasoning-whitebox-plan.md | — | ~854 |
+| 19:17 | Session end: 89 writes across 10 files (DashboardPage.tsx, AppShell.tsx, ModelerPage.tsx, explorerDataSource.ts, OntologyPage.tsx) | 11 reads | ~77307 tok |
+| 19:23 | Edited ontostudio/backend/app/ontology/kernel/store.py | modified query() | ~220 |
+| 19:23 | Created ontostudio/backend/app/ontology/kernel/cq.py | — | ~536 |
+| 19:23 | Created ontostudio/backend/app/ontology/kernel/cq.yaml | — | ~276 |
+| 19:23 | Edited ontostudio/backend/app/ontology/kernel/service.py | added 1 import(s) | ~40 |
+| 19:24 | Edited ontostudio/backend/app/ontology/kernel/service.py | modified run_cqs() | ~52 |
+| 19:24 | Edited ontostudio/backend/app/ontology/formal.py | modified formal_infer() | ~148 |
+| 19:24 | Edited ontostudio/frontend/src/api/formal-api.ts | modified runFormalInfer() | ~168 |
+| 19:24 | Edited ontostudio/frontend/src/pages/ReasoningPage.tsx | 3→3 lines | ~43 |
+| 19:24 | Edited ontostudio/frontend/src/pages/ReasoningPage.tsx | reduced (-7 lines) | ~98 |
+| 19:24 | Edited ontostudio/frontend/src/pages/ReasoningPage.tsx | added optional chaining | ~191 |
+| 19:25 | Edited ontostudio/frontend/src/pages/ReasoningPage.tsx | CSS: hover, disabled | ~757 |
+| 19:31 | Edited ontostudio/backend/app/ontology/kernel/store.py | modified ask() | ~101 |
+| 19:45 | Edited ontostudio/backend/app/ontology/kernel/store.py | modified ask() | ~102 |
+| 19:49 | CQ验收自动化F5落地(后端cq.py+cq.yaml+ask()+/cq/run,前端面板接真);内核探针路径教训=ONTOSTUDIO_KERNEL_PATH是/data/kernel非/data | ReasoningPage/kernel | 43bf1ea31 | ~14k |
+| 19:49 | Session end: 102 writes across 16 files (DashboardPage.tsx, AppShell.tsx, ModelerPage.tsx, explorerDataSource.ts, OntologyPage.tsx) | 14 reads | ~80039 tok |
+| 19:54 | Edited ontostudio/backend/app/ontology/kernel/service.py | modified run_cqs() | ~260 |
+| 19:54 | Edited ontostudio/backend/app/ontology/formal.py | modified formal_cq_run() | ~434 |
+| 19:54 | Edited ontostudio/frontend/src/api/formal-api.ts | modified runCqs() | ~250 |
+| 19:55 | Edited ontostudio/frontend/src/pages/ReasoningPage.tsx | 1→6 lines | ~31 |
+| 19:55 | Edited ontostudio/frontend/src/pages/ReasoningPage.tsx | modified ReasoningPage() | ~92 |
+| 19:56 | Edited ontostudio/frontend/src/pages/ReasoningPage.tsx | added optional chaining | ~234 |
+| 19:56 | Edited ontostudio/frontend/src/pages/ReasoningPage.tsx | CSS: focus | ~338 |
+| 19:56 | Edited ontostudio/frontend/src/pages/ReasoningPage.tsx | removed 9 lines | ~7 |
+| 19:56 | Edited ontostudio/frontend/src/pages/ReasoningPage.tsx | CSS: iri | ~56 |
+| 19:56 | Edited ontostudio/frontend/src/pages/ReasoningPage.tsx | CSS: hover | ~1228 |
+| 19:56 | Edited ontostudio/frontend/src/pages/ReasoningPage.tsx | CSS: hover | ~230 |
+| 20:00 | 白盒化一期F1+F2+F7落地(规则源码API/派生下钻/门限输入),浏览器全验 | ReasoningPage/formal.py/service.py | 已提交 | ~8k |
+| 20:01 | Session end: 113 writes across 16 files (DashboardPage.tsx, AppShell.tsx, ModelerPage.tsx, explorerDataSource.ts, OntologyPage.tsx) | 14 reads | ~83199 tok |
+| 20:09 | Edited ontostudio/backend/app/ontology/kernel/rules.py | 4→7 lines | ~67 |
+| 20:09 | Edited ontostudio/backend/app/ontology/kernel/rules.py | 4→5 lines | ~78 |
+| 20:09 | Edited ontostudio/backend/app/ontology/kernel/rules.py | 6→7 lines | ~102 |
+| 20:09 | Edited ontostudio/backend/app/ontology/kernel/rules.yaml | 3→7 lines | ~79 |
+| 20:10 | Edited ontostudio/backend/app/ontology/kernel/service.py | 11→14 lines | ~163 |
+| 20:10 | Edited ontostudio/backend/app/ontology/kernel/service.py | modified refresh() | ~170 |
+| 20:10 | Edited ontostudio/backend/app/ontology/kernel/service.py | modified rule_derivations() | ~1398 |
+| 20:10 | Edited ontostudio/backend/app/ontology/formal.py | modified formal_rule_derivations() | ~342 |
+| 20:11 | Edited ontostudio/backend/app/ontology/kernel/service.py | added 1 import(s) | ~30 |
+| 20:11 | Edited ontostudio/backend/app/ontology/kernel/service.py | 2→2 lines | ~33 |
+| 20:11 | Edited ontostudio/frontend/src/api/formal-api.ts | modified fetchRuleDerivations() | ~249 |
+| 20:11 | Edited ontostudio/frontend/src/pages/ReasoningPage.tsx | 6→8 lines | ~42 |
+| 20:11 | Edited ontostudio/frontend/src/pages/ReasoningPage.tsx | expanded (+7 lines) | ~181 |
+| 20:12 | Edited ontostudio/frontend/src/pages/ReasoningPage.tsx | CSS: hover, hover | ~1194 |
+| 20:12 | Edited ontostudio/frontend/src/pages/ReasoningPage.tsx | 5→6 lines | ~83 |
+| 20:18 | 白盒化二期F3溯源落地(DeriveRule.trace+rule_trace三解释器+前端溯源块),真实链treated_by∘governed_by验证 | rules.py/service.py/ReasoningPage | 已提交 | ~10k |
+| 20:18 | Session end: 128 writes across 18 files (DashboardPage.tsx, AppShell.tsx, ModelerPage.tsx, explorerDataSource.ts, OntologyPage.tsx) | 14 reads | ~87410 tok |
+| 20:24 | Edited ontostudio/backend/app/ontology/kernel/infer.py | modified compute_entailment() | ~392 |
+| 20:25 | Edited ontostudio/backend/app/ontology/kernel/service.py | modified refresh() | ~197 |
+| 20:25 | Edited ontostudio/backend/app/ontology/kernel/service.py | modified rule_explain_miss() | ~881 |
+| 20:25 | Edited ontostudio/backend/app/ontology/formal.py | modified formal_infer() | ~104 |
+| 20:25 | Edited ontostudio/backend/app/ontology/formal.py | modified formal_rule_trace() | ~346 |
+| 20:25 | Edited ontostudio/frontend/src/api/formal-api.ts | modified runFormalInfer() | ~66 |
+| 20:26 | Edited ontostudio/frontend/src/api/formal-api.ts | modified fetchRuleTrace() | ~256 |
+| 20:26 | Edited ontostudio/frontend/src/pages/ReasoningPage.tsx | 8→10 lines | ~55 |
+| 20:26 | Edited ontostudio/frontend/src/pages/ReasoningPage.tsx | expanded (+21 lines) | ~366 |
+| 20:27 | Edited ontostudio/frontend/src/pages/ReasoningPage.tsx | CSS: disabled | ~199 |
+| 20:27 | Edited ontostudio/frontend/src/pages/ReasoningPage.tsx | added optional chaining | ~510 |
+| 20:27 | Edited ontostudio/frontend/src/pages/ReasoningPage.tsx | added nullish coalescing | ~979 |
+| 20:37 | 白盒化三期F4反事实+F6dry落地,双向验证+零落盘确认 | infer.py/service.py/ReasoningPage | 已提交 | ~9k |
+| 20:37 | Session end: 140 writes across 19 files (DashboardPage.tsx, AppShell.tsx, ModelerPage.tsx, explorerDataSource.ts, OntologyPage.tsx) | 15 reads | ~91761 tok |
+| 20:40 | Edited ontostudio/backend/app/ontology/kernel/service.py | added 3 import(s) | ~52 |
+| 20:40 | Edited ontostudio/backend/app/ontology/kernel/service.py | modified __init__() | ~58 |
+| 20:40 | Edited ontostudio/backend/app/ontology/kernel/service.py | modified refresh() | ~242 |
+| 20:41 | Edited ontostudio/backend/app/ontology/kernel/service.py | modified rule_sources() | ~1202 |
+| 20:41 | Edited ontostudio/backend/app/ontology/formal.py | modified formal_rules() | ~70 |
+| 20:41 | Edited ontostudio/backend/app/ontology/formal.py | modified formal_rule_explain_miss() | ~413 |
+| 20:42 | Edited ontostudio/frontend/src/api/formal-api.ts | modified fetchFormalRules() | ~304 |
+| 20:42 | Edited ontostudio/frontend/src/pages/ReasoningPage.tsx | 13→15 lines | ~101 |
+| 20:43 | Edited ontostudio/frontend/src/pages/ReasoningPage.tsx | added optional chaining | ~316 |
+| 20:43 | Edited ontostudio/frontend/src/pages/ReasoningPage.tsx | 11→6 lines | ~84 |
+| 20:43 | Edited ontostudio/frontend/src/pages/ReasoningPage.tsx | modified ReasoningPage() | ~60 |
+| 20:43 | Edited ontostudio/frontend/src/pages/ReasoningPage.tsx | expanded (+17 lines) | ~186 |
+| 20:43 | Edited ontostudio/frontend/src/pages/ReasoningPage.tsx | expanded (+12 lines) | ~227 |
+| 20:43 | Edited ontostudio/frontend/src/pages/ReasoningPage.tsx | expanded (+16 lines) | ~298 |
+| 20:44 | Edited ontostudio/frontend/src/pages/ReasoningPage.tsx | added optional chaining | ~1020 |
+| 20:53 | 白盒化四期F8启停(overlay设计)+F9历史落地,启停即时生效+历史diff自洽 | service.py/ReasoningPage | 已提交 | ~10k |
+| 20:53 | Session end: 155 writes across 19 files (DashboardPage.tsx, AppShell.tsx, ModelerPage.tsx, explorerDataSource.ts, OntologyPage.tsx) | 16 reads | ~96394 tok |
+| 20:59 | Edited docs/designs/2026-10-02-reasoning-whitebox-plan.md | expanded (+48 lines) | ~467 |
+| 21:00 | Session end: 156 writes across 19 files (DashboardPage.tsx, AppShell.tsx, ModelerPage.tsx, explorerDataSource.ts, OntologyPage.tsx) | 16 reads | ~96895 tok |
+| 21:02 | Session end: 156 writes across 19 files (DashboardPage.tsx, AppShell.tsx, ModelerPage.tsx, explorerDataSource.ts, OntologyPage.tsx) | 16 reads | ~96895 tok |
+| 21:10 | Session end: 156 writes across 19 files (DashboardPage.tsx, AppShell.tsx, ModelerPage.tsx, explorerDataSource.ts, OntologyPage.tsx) | 16 reads | ~96895 tok |
+| 21:51 | Edited ontostudio/frontend/src/pages/ValidationPage.tsx | expanded (+25 lines) | ~741 |
+| 21:51 | Edited ontostudio/frontend/src/pages/ValidationPage.tsx | 6→6 lines | ~104 |
+| 21:52 | Edited ontostudio/frontend/src/pages/ReasoningPage.tsx | CSS: queryKey | ~155 |
+| 21:52 | Edited ontostudio/frontend/src/pages/DashboardPage.tsx | CSS: queryKey | ~109 |
+| 21:52 | Edited ontostudio/frontend/src/pages/DashboardPage.tsx | inline fix | ~26 |
+| 21:52 | Edited ontostudio/frontend/src/pages/IngestPage.tsx | CSS: queryKey | ~97 |
+| 21:52 | Edited ontostudio/frontend/src/pages/ExportPage.tsx | inline fix | ~23 |
+| 21:53 | Edited ontostudio/frontend/src/pages/ExportPage.tsx | CSS: queryKey | ~124 |
+| 21:57 | 校验中心深审:detail诊断接真+空态+schema层说明+chip中文+装载/推理后validate缓存联动(4入口) | ValidationPage+3装载页 | 已提交 | ~6k |
+| 21:57 | Session end: 164 writes across 20 files (DashboardPage.tsx, AppShell.tsx, ModelerPage.tsx, explorerDataSource.ts, OntologyPage.tsx) | 16 reads | ~98274 tok |
+| 22:01 | Edited ontostudio/backend/app/ontology/kernel/service.py | added 1 condition(s) | ~640 |
+| 22:01 | Edited ontostudio/backend/app/ontology/formal.py | modified formal_history() | ~171 |
+| 22:02 | Edited ontostudio/frontend/src/api/formal-api.ts | modified fetchInferHistory() | ~139 |
+| 22:02 | Edited ontostudio/frontend/src/pages/ValidationPage.tsx | added nullish coalescing | ~233 |
+| 22:02 | Edited ontostudio/frontend/src/pages/ValidationPage.tsx | CSS: enabled | ~127 |
+| 22:02 | Edited ontostudio/frontend/src/pages/ValidationPage.tsx | expanded (+14 lines) | ~295 |
+| 22:02 | Edited ontostudio/frontend/src/pages/ValidationPage.tsx | CSS: entities, hover | ~238 |
+| 22:03 | Edited ontostudio/frontend/src/pages/ValidationPage.tsx | added optional chaining | ~700 |
+| 22:03 | Edited ontostudio/frontend/src/layout/AppShell.tsx | expanded (+7 lines) | ~176 |
+| 22:03 | Edited ontostudio/frontend/src/layout/AppShell.tsx | inline fix | ~26 |
+| 22:03 | Edited ontostudio/frontend/src/pages/EntitiesPage.tsx | inline fix | ~22 |
+| 22:03 | Edited ontostudio/frontend/src/pages/EntitiesPage.tsx | CSS: entities, graph_entity | ~50 |
+| 22:04 | Edited ontostudio/frontend/src/pages/ValidationPage.tsx | added optional chaining | ~51 |
+| 22:08 | 校验中心后续:校验历史(F9同构)+违规下钻实体库(entities:uuid深链) | service.py/ValidationPage/AppShell/EntitiesPage | 已提交 | ~6k |
+| 22:08 | Session end: 177 writes across 21 files (DashboardPage.tsx, AppShell.tsx, ModelerPage.tsx, explorerDataSource.ts, OntologyPage.tsx) | 16 reads | ~101142 tok |
+| 22:09 | Session end: 177 writes across 21 files (DashboardPage.tsx, AppShell.tsx, ModelerPage.tsx, explorerDataSource.ts, OntologyPage.tsx) | 16 reads | ~101142 tok |
+
+## Session: 2026-10-03 15:32
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-10-03 15:42
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 15:59 | Edited ontostudio/backend/app/ontology/kernel/service.py | 8→9 lines | ~129 |
+| 15:59 | Edited ontostudio/backend/app/ontology/kernel/service.py | modified infer_last() | ~340 |
+| 15:59 | Edited ontostudio/backend/app/ontology/formal.py | modified formal_infer_last() | ~72 |
+| 15:59 | Edited ontostudio/frontend/src/api/formal-api.ts | added nullish coalescing | ~264 |
+| 15:59 | Edited ontostudio/frontend/src/pages/ReasoningPage.tsx | 12→13 lines | ~71 |
+| 15:59 | Edited ontostudio/frontend/src/pages/ReasoningPage.tsx | 5→7 lines | ~61 |
+| 16:00 | Edited ontostudio/frontend/src/pages/ReasoningPage.tsx | CSS: mutationFn, onSuccess, queryKey | ~128 |
+| 16:00 | Edited ontostudio/frontend/src/pages/ReasoningPage.tsx | 12→7 lines | ~100 |
+| 16:00 | Edited ontostudio/frontend/src/pages/ReasoningPage.tsx | 2→7 lines | ~91 |
+| 16:00 | Edited ontostudio/frontend/src/pages/ReasoningPage.tsx | added optional chaining | ~88 |
+| 16:00 | Edited ontostudio/frontend/src/pages/DashboardPage.tsx | 1→2 lines | ~10 |
+| 16:00 | Edited ontostudio/frontend/src/pages/DashboardPage.tsx | inline fix | ~8 |
+| 16:46 | Edited ontostudio/frontend/src/api/formal-api.ts | 9→10 lines | ~95 |
+| 16:53 | 推理页初始化改读路径(用户定案): GET /infer-last+mutation重算, 挂载零POST验证 | service.py/ReasoningPage | 已提交 | ~7k |
+| 16:53 | Session end: 13 writes across 5 files (service.py, formal.py, formal-api.ts, ReasoningPage.tsx, DashboardPage.tsx) | 1 reads | ~1457 tok |
+| 17:05 | Edited ontostudio/backend/app/ontology/kernel/service.py | modified _labels_for() | ~380 |
+| 17:05 | Edited ontostudio/backend/app/ontology/kernel/service.py | modified enumerate() | ~181 |
+| 17:05 | Edited ontostudio/backend/app/ontology/registry/doc_graph.yaml | 1→2 lines | ~145 |
+| 17:05 | Edited ontostudio/frontend/src/api/formal-api.ts | modified fetchRuleDerivations() | ~119 |
+| 17:05 | Edited ontostudio/frontend/src/api/formal-api.ts | modified fetchRuleTrace() | ~157 |
+| 17:05 | Edited ontostudio/frontend/src/api/formal-api.ts | 13→15 lines | ~120 |
+| 17:06 | Edited ontostudio/backend/app/ontology/kernel/service.py | 10→12 lines | ~133 |
+| 17:06 | Edited ontostudio/backend/app/ontology/kernel/service.py | modified enumerate() | ~199 |
+| 17:06 | Edited ontostudio/backend/app/ontology/kernel/service.py | 18→20 lines | ~230 |
+| 17:07 | Edited ontostudio/frontend/src/pages/ReasoningPage.tsx | added 1 import(s) | ~44 |
+| 17:07 | Edited ontostudio/frontend/src/pages/ReasoningPage.tsx | added nullish coalescing | ~277 |
+| 17:07 | Edited ontostudio/frontend/src/pages/ReasoningPage.tsx | added optional chaining | ~307 |
+| 17:07 | Edited ontostudio/frontend/src/pages/ReasoningPage.tsx | added optional chaining | ~264 |
+| 17:08 | Edited ontostudio/frontend/src/pages/ReasoningPage.tsx | added nullish coalescing | ~452 |
+| 17:14 | Edited ontostudio/backend/app/ontology/formal.py | modified formal_entity_labels() | ~382 |
+| 17:14 | Edited ontostudio/frontend/src/api/formal-api.ts | modified fetchRuleDerivations() | ~174 |
+| 17:15 | Edited ontostudio/frontend/src/pages/ReasoningPage.tsx | 13→14 lines | ~77 |
+| 17:15 | Edited ontostudio/frontend/src/pages/ReasoningPage.tsx | CSS: list, s, o | ~372 |
+| 17:16 | Edited ontostudio/frontend/src/pages/ReasoningPage.tsx | added optional chaining | ~117 |
+| 17:16 | Edited ontostudio/frontend/src/pages/ReasoningPage.tsx | added nullish coalescing | ~173 |
+| 17:16 | Edited ontostudio/frontend/src/pages/ReasoningPage.tsx | added nullish coalescing | ~147 |
+| 17:16 | Edited ontostudio/frontend/src/pages/ReasoningPage.tsx | CSS: iri | ~313 |
+| 17:17 | Edited ontostudio/frontend/src/pages/ReasoningPage.tsx | CSS: iri | ~260 |
+| 17:17 | Edited ontostudio/frontend/src/pages/ReasoningPage.tsx | expanded (+10 lines) | ~210 |
+| 17:28 | 下钻可读性中文化:entity-labels端点(dg_entities批查)+谓词标注补派生谓词+三级回退渲染;06c44dcb数据缺名如实回退 | service.py/ReasoningPage/registry | 已提交 | ~9k |
+| 17:28 | Session end: 37 writes across 6 files (service.py, formal.py, formal-api.ts, ReasoningPage.tsx, DashboardPage.tsx) | 2 reads | ~18063 tok |
+| 19:17 | Edited ontostudio/frontend/src/pages/ReasoningPage.tsx | 5→5 lines | ~94 |
+| 19:20 | Session end: 38 writes across 6 files (service.py, formal.py, formal-api.ts, ReasoningPage.tsx, DashboardPage.tsx) | 2 reads | ~18157 tok |
+| 19:32 | Edited ontostudio/frontend/src/pages/ReasoningPage.tsx | inline fix | ~18 |
+| 19:32 | Edited ontostudio/frontend/src/pages/ReasoningPage.tsx | 5→9 lines | ~162 |
+| 19:36 | Session end: 40 writes across 6 files (service.py, formal.py, formal-api.ts, ReasoningPage.tsx, DashboardPage.tsx) | 4 reads | ~18337 tok |
+| 19:40 | Edited ontostudio/frontend/src/pages/ReasoningPage.tsx | 4→3 lines | ~23 |
+| 19:42 | Edited ontostudio/frontend/src/pages/ReasoningPage.tsx | 9→12 lines | ~72 |
+| 19:45 | Session end: 42 writes across 6 files (service.py, formal.py, formal-api.ts, ReasoningPage.tsx, DashboardPage.tsx) | 5 reads | ~18432 tok |
+| 19:51 | Session end: 42 writes across 6 files (service.py, formal.py, formal-api.ts, ReasoningPage.tsx, DashboardPage.tsx) | 5 reads | ~18432 tok |
+| 22:39 | Edited ontostudio/backend/app/ontology/kernel/service.py | modified orphans() | ~580 |
+| 22:39 | Edited ontostudio/backend/app/ontology/formal.py | modified formal_orphans() | ~170 |
+| 22:40 | Edited ontostudio/frontend/src/api/formal-api.ts | modified fetchValidateHistory() | ~186 |
+| 22:40 | Edited ontostudio/frontend/src/pages/ValidationPage.tsx | expanded (+6 lines) | ~104 |
+| 22:40 | Edited ontostudio/frontend/src/pages/ValidationPage.tsx | expanded (+9 lines) | ~152 |
+| 22:40 | Edited ontostudio/frontend/src/pages/ValidationPage.tsx | CSS: e, hover, disabled | ~906 |
+| 22:41 | Edited ontostudio/frontend/src/pages/ValidationPage.tsx | CSS: hover | ~180 |
+| 22:44 | Edited ontostudio/backend/app/ontology/kernel/service.py | search() → match() | ~274 |
+| 22:56 | Edited ontostudio/backend/app/ontology/kernel/service.py | 2→7 lines | ~96 |
+| 23:04 | 内核孤儿治理落地: 扫描1123孤儿+清除13024三元组+重算验证(下钻全中文); SPARQL DISTINCT 替代 quads 迭代 | service.py/ValidationPage | 已提交 | ~10k |
+| 23:05 | Session end: 51 writes across 7 files (service.py, formal.py, formal-api.ts, ReasoningPage.tsx, DashboardPage.tsx) | 7 reads | ~21080 tok |
+| 23:12 | Session end: 51 writes across 7 files (service.py, formal.py, formal-api.ts, ReasoningPage.tsx, DashboardPage.tsx) | 7 reads | ~21080 tok |
+| 00:11 | Edited ontostudio/backend/app/ontology/kernel/cq.yaml | 5→7 lines | ~85 |
+| 00:15 | qualified_bidder 停用(overlay)+投标CQ注释保留, CQ面板1P/2F全真实 | cq.yaml | 已提交 | ~4k |
+| 00:16 | Session end: 52 writes across 8 files (service.py, formal.py, formal-api.ts, ReasoningPage.tsx, DashboardPage.tsx) | 8 reads | ~21165 tok |
+| 00:43 | Session end: 52 writes across 8 files (service.py, formal.py, formal-api.ts, ReasoningPage.tsx, DashboardPage.tsx) | 8 reads | ~21165 tok |
+| 01:32 | Edited ontostudio/backend/app/ontology/kernel/service.py | modified export() | ~1505 |
+| 01:32 | Edited ontostudio/backend/app/ontology/formal.py | modified formal_export() | ~789 |
+| 01:33 | Edited ontostudio/frontend/src/api/formal-api.ts | modified fetchValidateHistory() | ~288 |
+| 01:34 | Edited ontostudio/frontend/src/pages/ExportPage.tsx | modified ExportPage() | ~312 |
+| 01:35 | Edited ontostudio/frontend/src/pages/ExportPage.tsx | 5→5 lines | ~41 |
+| 01:35 | Edited ontostudio/frontend/src/pages/ExportPage.tsx | expanded (+17 lines) | ~343 |
+| 01:35 | Edited ontostudio/frontend/src/pages/ExportPage.tsx | CSS: queryFn, onError, e | ~411 |
+| 01:35 | Edited ontostudio/frontend/src/pages/ExportPage.tsx | added optional chaining | ~1230 |
+| 01:36 | Edited ontostudio/frontend/src/pages/ExportPage.tsx | added 1 import(s) | ~26 |
+| 01:38 | Edited ontostudio/frontend/src/pages/ExportPage.tsx | CSS: v, file | ~30 |
+| 01:53 | 导出页D8/D9: TriG快照(14.2MB保图结构)+恢复roundtrip验证+含派生可选档 | ExportPage/service.py/formal.py | 已提交 | ~11k |
+| 01:53 | Session end: 62 writes across 9 files (service.py, formal.py, formal-api.ts, ReasoningPage.tsx, DashboardPage.tsx) | 12 reads | ~26140 tok |
+| 01:54 | Session end: 62 writes across 9 files (service.py, formal.py, formal-api.ts, ReasoningPage.tsx, DashboardPage.tsx) | 12 reads | ~26140 tok |
+| 08:52 | Edited ontostudio/frontend/src/api/formal-api.ts | "/formal/export?format=jso" → "${BASE}/export?format=jso" | ~20 |
+| 08:57 | JSON-LD导出404修复: authFetch url 缺 /ontology 前缀(S2移植遗留) | formal-api.ts | 已提交 | ~3k |
+| 08:58 | Session end: 63 writes across 9 files (service.py, formal.py, formal-api.ts, ReasoningPage.tsx, DashboardPage.tsx) | 14 reads | ~26160 tok |
+| 09:03 | Edited ontostudio/backend/app/ontology/kernel/service.py | modified validate() | ~712 |
+| 09:03 | Edited ontostudio/backend/app/ontology/formal.py | modified formal_validate_last() | ~80 |
+| 09:03 | Edited ontostudio/frontend/src/api/formal-api.ts | modified fetchFormalValidate() | ~159 |
+| 09:03 | Edited ontostudio/frontend/src/pages/ValidationPage.tsx | 13→14 lines | ~119 |
+| 09:04 | Edited ontostudio/frontend/src/pages/ValidationPage.tsx | added optional chaining | ~216 |
+| 09:04 | Edited ontostudio/frontend/src/pages/ValidationPage.tsx | expanded (+6 lines) | ~66 |
+| 09:05 | Edited ontostudio/frontend/src/pages/ValidationPage.tsx | refetch() → mutate() | ~390 |
+| 09:05 | Edited ontostudio/frontend/src/pages/ValidationPage.tsx | 5→9 lines | ~142 |
+| 09:05 | Edited ontostudio/frontend/src/pages/ValidationPage.tsx | expanded (+6 lines) | ~169 |
+| 09:15 | 校验中心初始化改读路径(用户定案): validate-last 历史行存完整 result+前端mutation重算, 真数据SHACL违规首现 | service.py/ValidationPage | 已提交 | ~8k |
+| 09:15 | Session end: 72 writes across 9 files (service.py, formal.py, formal-api.ts, ReasoningPage.tsx, DashboardPage.tsx) | 16 reads | ~28213 tok |
+| 09:18 | Edited ontostudio/frontend/src/pages/ValidationPage.tsx | CSS: length | ~202 |
+| 09:18 | Edited ontostudio/frontend/src/pages/ValidationPage.tsx | inline fix | ~18 |
+| 09:19 | Edited ontostudio/frontend/src/pages/ValidationPage.tsx | 2→2 lines | ~30 |
+| 09:19 | Edited ontostudio/frontend/src/pages/ValidationPage.tsx | expanded (+59 lines) | ~820 |
+| 09:26 | Session end: 76 writes across 9 files (service.py, formal.py, formal-api.ts, ReasoningPage.tsx, DashboardPage.tsx) | 18 reads | ~29283 tok |
+| 10:57 | Edited ontostudio/backend/app/ontology/kernel/service.py | modified orphan_mentions() | ~354 |
+| 10:58 | Edited ontostudio/backend/app/ontology/formal.py | modified formal_orphan_mentions() | ~151 |
+| 11:03 | Edited ontostudio/frontend/src/pages/ValidationPage.tsx | expanded (+9 lines) | ~149 |
+| 11:03 | Edited ontostudio/frontend/src/pages/ValidationPage.tsx | 8→10 lines | ~59 |
+| 11:03 | Edited ontostudio/frontend/src/api/formal-api.ts | modified purgeOrphans() | ~186 |
+| 11:04 | Edited ontostudio/frontend/src/pages/ValidationPage.tsx | added 1 condition(s) | ~764 |
+| 11:05 | Edited ontostudio/frontend/src/pages/ValidationPage.tsx | 2→2 lines | ~41 |
+| 11:09 | SHACL 2494 违规根因修复: 零边mention治理(xone→or+orphan-mentions端点+UI面板), 清除后归零验证 | validate.py/service.py/ValidationPage | 已提交 | ~9k |
+| 11:09 | Session end: 83 writes across 9 files (service.py, formal.py, formal-api.ts, ReasoningPage.tsx, DashboardPage.tsx) | 27 reads | ~30987 tok |
+| 13:47 | Session end: 83 writes across 9 files (service.py, formal.py, formal-api.ts, ReasoningPage.tsx, DashboardPage.tsx) | 28 reads | ~30987 tok |
+
+## Session: 2026-10-04 23:51
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 23:58 | 查询:52份环评语料提取转换产物落点 | D盘样例文件+backend/.deer-flow/samples/+.wolf/tmp/eia-samples | 已定位 | ~2k |
+
+## Session: 2026-10-05 09:22
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-10-05 09:22
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 09:28 | Edited ontostudio/frontend/src/pages/IngestPage.tsx | 20→15 lines | ~182 |
+| 09:30 | 删除抽取导入页顶部历史考叏述评(用户定案): 批次名硬编码+重复+考古 | IngestPage | 已提交 | ~3k |
+| 09:30 | Session end: 1 writes across 1 files (IngestPage.tsx) | 0 reads | ~182 tok |
+| 09:34 | Session end: 1 writes across 1 files (IngestPage.tsx) | 0 reads | ~182 tok |
+| 09:59 | 抽取管线多域化入册 TODOS(converter分发/kf_samples域列/下拉标注), 与消费端四步清单互补 | TODOS.md | 已提交 | ~3k |
+| 10:00 | Session end: 1 writes across 1 files (IngestPage.tsx) | 0 reads | ~182 tok |
+| 10:02 | Edited ontostudio/frontend/src/pages/IngestPage.tsx | expanded (+7 lines) | ~76 |
+| 10:02 | Edited ontostudio/frontend/src/pages/IngestPage.tsx | 15→15 lines | ~222 |
+| 10:07 | Edited ontostudio/frontend/src/pages/IngestPage.tsx | 7→6 lines | ~57 |
+| 10:07 | Edited ontostudio/frontend/src/pages/IngestPage.tsx | added 1 condition(s) | ~190 |
+| 10:07 | Edited ontostudio/frontend/src/pages/IngestPage.tsx | added nullish coalescing | ~205 |
+| 10:13 | 证据链引文人话化(样例标题/抽取任务短id)+样例下拉shadcn化 | IngestPage | 已提交 | ~5k |
+| 10:13 | Session end: 6 writes across 1 files (IngestPage.tsx) | 0 reads | ~932 tok |
+| 10:19 | Edited ontostudio/frontend/src/pages/DashboardPage.tsx | expanded (+6 lines) | ~171 |
+| 10:23 | 总览校验状态卡国标显性化(GB/T 48000.3—2026全称+部分条款限定+tooltip口径) | DashboardPage | 已提交 | ~3k |
+| 10:23 | Session end: 7 writes across 2 files (IngestPage.tsx, DashboardPage.tsx) | 0 reads | ~1103 tok |
+| 10:39 | Created docs/designs/2026-10-05-ontostudio-capability-matrix.md | — | ~617 |
+| 10:40 | OntoStudio 功能完备性三层梳理入册: 矩阵文档+盲区开单(B1角色授权/B2审计/B3-B5增强池) | docs/designs+TODOS | 已提交 | ~6k |
+| 10:40 | Session end: 8 writes across 3 files (IngestPage.tsx, DashboardPage.tsx, 2026-10-05-ontostudio-capability-matrix.md) | 0 reads | ~1764 tok |
+| 10:43 | 推送 10 提交(52855be16..445ca2c30): D8/D9快照+校验中心读路径/分页/下钻+SHACL 2494根因治理+可读性+矩阵入册 | 已同步 0/0 | ~2k |
+| 10:44 | Session end: 8 writes across 3 files (IngestPage.tsx, DashboardPage.tsx, 2026-10-05-ontostudio-capability-matrix.md) | 0 reads | ~1764 tok |
+| 10:54 | Edited ontostudio/frontend/src/api/ingest-tasks-api.ts | 7→9 lines | ~93 |
+| 10:54 | Edited ontostudio/frontend/src/pages/IngestPage.tsx | 8→8 lines | ~119 |
+| 10:55 | Edited ontostudio/frontend/src/pages/IngestPage.tsx | expanded (+8 lines) | ~253 |
+| 11:02 | G6抽取进度落地: progress_cb+独立连接写stats.progress+UI进度列, 零DDL零事务变更 | ingest.py/ingest_tasks.py/IngestPage | 已提交 | ~7k |
+| 11:02 | Session end: 11 writes across 4 files (IngestPage.tsx, DashboardPage.tsx, 2026-10-05-ontostudio-capability-matrix.md, ingest-tasks-api.ts) | 1 reads | ~2229 tok |
+| 11:22 | 推送 2 提交(445ca2c30..78cc8347a): SHACL分页+2494根因治理+G6进度+shadcn下拉+证据链人话化+矩阵入册 | 已同步 0/0 | ~2k |
+| 11:23 | Session end: 11 writes across 4 files (IngestPage.tsx, DashboardPage.tsx, 2026-10-05-ontostudio-capability-matrix.md, ingest-tasks-api.ts) | 1 reads | ~2229 tok |
+| 11:25 | Edited ontostudio/backend/app/ontology/kernel/service.py | modified prune_snapshots() | ~243 |
+| 11:26 | Edited ontostudio/backend/app/ontology/kernel/service.py | inline fix | ~15 |
+| 11:26 | Created ontostudio/backend/app/ontology/kernel/snapshot_scheduler.py | — | ~408 |
+| 11:27 | Edited ontostudio/frontend/src/pages/ExportPage.tsx | "TriG 全图（含派生）落盘内核卷 · 恢复前自动" → "TriG 全图（含派生）· 每日 06:00 自动" | ~21 |
+| 11:31 | Created ontostudio/backend/app/ontology/kernel/snapshot_scheduler.py | — | ~470 |
+| 11:34 | G1每日快照调度落地: 每小时自醒+业务日06:00补快照+30天滚动清理, 容器实测当日自动落盘 | snapshot_scheduler.py/main.py | 已提交 | ~6k |
+| 11:35 | Session end: 16 writes across 7 files (IngestPage.tsx, DashboardPage.tsx, 2026-10-05-ontostudio-capability-matrix.md, ingest-tasks-api.ts, service.py) | 1 reads | ~3386 tok |
+| 11:42 | 推送 1 提交(78cc8347a..976492a93): G1每日快照调度+30天滚动清理 | 已同步 0/0 | ~2k |
+| 11:42 | Session end: 16 writes across 7 files (IngestPage.tsx, DashboardPage.tsx, 2026-10-05-ontostudio-capability-matrix.md, ingest-tasks-api.ts, service.py) | 1 reads | ~3386 tok |
+| 11:58 | Edited ontostudio/backend/app/auth.py | expanded (+11 lines) | ~192 |
+| 12:00 | Edited ontostudio/frontend/src/lib/permissions.ts | 14→16 lines | ~136 |
+| 12:00 | Edited ontostudio/frontend/src/lib/permissions.ts | added 2 condition(s) | ~449 |
+| 12:02 | Edited ontostudio/frontend/src/components/ResolutionPanel.tsx | CSS: ontology, ontology, ontology | ~347 |
+| 12:03 | Edited ontostudio/frontend/src/lib/permissions.ts | 11→11 lines | ~131 |
+| 12:05 | B1权限点接入OntoStudio侧①: 五档权限点+15路由分档+前端can()钩子+消解按钮禁用/横幅人话化 | auth.py/路由×3/permissions.ts/ResolutionPanel | 已提交 | ~8k |
+| 12:06 | Session end: 21 writes across 10 files (IngestPage.tsx, DashboardPage.tsx, 2026-10-05-ontostudio-capability-matrix.md, ingest-tasks-api.ts, service.py) | 1 reads | ~4641 tok |
+| 12:11 | 推送 1 提交(976492a93..a440ff47c): B1权限点接入五档+路由分档+前端can()钩子 | 已同步 0/0 | ~2k |
+| 12:12 | Session end: 21 writes across 10 files (IngestPage.tsx, DashboardPage.tsx, 2026-10-05-ontostudio-capability-matrix.md, ingest-tasks-api.ts, service.py) | 1 reads | ~4641 tok |
+| 13:45 | Created C:/Users/admin/.claude/projects/D--eai-eai-flow-main/memory/ontostudio-quality-marathon-2026-10-04.md | — | ~361 |
+| 13:45 | 马拉松汇总: 2026-10-04/05 OntoStudio 28提交(九页深审+白盒化四期+治理归零+B1①+矩阵), 全部推送 0/0; 详见 开发日志.md 2026-10-04/05 节与持久 memory ontostudio-quality-marathon-2026-10-04 | 全局 | 完成 |
+| 13:46 | Session end: 22 writes across 11 files (IngestPage.tsx, DashboardPage.tsx, 2026-10-05-ontostudio-capability-matrix.md, ingest-tasks-api.ts, service.py) | 1 reads | ~5028 tok |
+| 14:04 | Session end: 22 writes across 11 files (IngestPage.tsx, DashboardPage.tsx, 2026-10-05-ontostudio-capability-matrix.md, ingest-tasks-api.ts, service.py) | 1 reads | ~5028 tok |
+| 16:10 | Edited ontostudio/backend/app/doc_graph/ingest_tasks.py | inline fix | ~23 |
+| 16:10 | Edited ontostudio/backend/app/doc_graph/ingest_tasks.py | modified prefetch_source_file() | ~326 |
+| 16:11 | Edited ontostudio/backend/app/doc_graph/ingest_tasks.py | 2→1 lines | ~12 |
+| 16:12 | Edited ontostudio/backend/app/doc_graph/ingest_tasks.py | added 1 import(s) | ~38 |
+| 16:13 | Edited ontostudio/backend/app/doc_graph/ingest_tasks.py | modified _find_src_copy() | ~138 |
+| 16:14 | Edited ontostudio/backend/app/doc_graph/ingest_tasks.py | expanded (+9 lines) | ~406 |
+| 16:15 | Edited ontostudio/backend/app/doc_graph/ingest_tasks.py | expanded (+11 lines) | ~177 |
+| 16:15 | Edited ontostudio/backend/app/doc_graph/ingest_tasks.py | added 1 import(s) | ~18 |
+| 16:15 | Edited ontostudio/backend/app/doc_graph/ingest_tasks.py | expanded (+24 lines) | ~366 |
+| 16:33 | Edited ontostudio/backend/app/doc_graph/ingest_tasks.py | 6→7 lines | ~93 |
+| 16:36 | G3直连抽取落地(预取模式+引擎移植+双通道任务流), 真实监测章节任务端到端完成(completed_empty=规则抽取0命中诚实结果) | gateway端点/text_extract/ingest_tasks | 已提交 | ~10k |
+| 16:36 | Session end: 32 writes across 12 files (IngestPage.tsx, DashboardPage.tsx, 2026-10-05-ontostudio-capability-matrix.md, ingest-tasks-api.ts, service.py) | 4 reads | ~6625 tok |
+| 16:42 | 推送 3 提交(a440ff47c..757922f04): G3直连抽取+开发日志马拉松纪要+按域校验补录 | 已同步 0/0 | ~2k |
+| 16:42 | Session end: 32 writes across 12 files (IngestPage.tsx, DashboardPage.tsx, 2026-10-05-ontostudio-capability-matrix.md, ingest-tasks-api.ts, service.py) | 4 reads | ~6625 tok |
+| 16:45 | Edited ontostudio/backend/app/doc_graph/ingest_tasks.py | modified list_samples() | ~322 |
+| 16:45 | Edited ontostudio/frontend/src/api/ingest-tasks-api.ts | 7→9 lines | ~54 |
+| 16:45 | Edited ontostudio/frontend/src/pages/IngestPage.tsx | 7→9 lines | ~132 |
+| 16:45 | Edited ontostudio/frontend/src/pages/IngestPage.tsx | "抽取任务队列（实时轮询）、置信度分布与证据链引文。" → "抽取任务队列（实时轮询）、置信度分布与证据链引文。" | ~30 |
+| 16:56 | 抽取导入页同步G3双通道: samples放宽+模式下拉标注+页头描述, 浏览器验证直连样例出现 | ingest_tasks.py/IngestPage | 已提交 | ~4k |
+| 16:57 | Session end: 36 writes across 12 files (IngestPage.tsx, DashboardPage.tsx, 2026-10-05-ontostudio-capability-matrix.md, ingest-tasks-api.ts, service.py) | 4 reads | ~7163 tok |
+| 17:10 | Edited ontostudio/backend/app/doc_graph/ingest_tasks.py | modified CreateTaskBody() | ~74 |
+| 17:11 | Edited ontostudio/backend/app/doc_graph/ingest_tasks.py | modified _upload_extract_and_register() | ~837 |
+| 17:12 | Created docs/designs/2026-10-05-upload-extract-flow.md | — | ~381 |
+| 17:13 | Session end: 39 writes across 13 files (IngestPage.tsx, DashboardPage.tsx, 2026-10-05-ontostudio-capability-matrix.md, ingest-tasks-api.ts, service.py) | 4 reads | ~8482 tok |
+
+## Session: 2026-10-05 17:20
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 17:31 | /qa 知识库↔RAGFlow不对应根因: 单向注册制+5孤儿KB(静默降级无relink)+页外dataset(bid/geo/law/tag)+名称漂移; 端口实为9380/9381非9081 | .gstack/qa-reports/qa-report-knowledge-ragflow-mapping-2026-10-05.md | 查证完成未修 | ~25k |
+| 17:31 | /qa 知识库↔RAGFlow不对应根因: 单向注册制+5孤儿KB(静默降级无relink)+页外dataset(bid/geo/law/tag)+名称漂移; 端口实为9380/9381非9081 | .gstack/qa-reports/qa-report-knowledge-ragflow-mapping-2026-10-05.md | 查证完成未修 | ~25k |
+| 18:47 | Edited backend/app/extensions/knowledge/service.py | modified resolve_local_doc_path() | ~147 |
+| 18:47 | Edited backend/app/extensions/knowledge/service.py | modified relink_ragflow() | ~1448 |
+| 18:47 | Edited backend/app/extensions/knowledge/routers.py | modified link_knowledge_base_ragflow() | ~457 |
+| 18:48 | Created backend/tests/test_kb_relink_ragflow.py | — | ~2037 |
+| 18:48 | Edited backend/tests/test_kb_relink_ragflow.py | modified _orphan_kb() | ~73 |
+| 18:51 | Session end: 5 writes across 3 files (service.py, routers.py, test_kb_relink_ragflow.py) | 7 reads | ~4162 tok |
+| 19:00 | Edited backend/app/extensions/knowledge/service.py | modified CUSTOM() | ~253 |
+| 19:01 | Edited backend/tests/test_kb_relink_ragflow.py | modified test_relink_maps_eai_report_chunk_method_to_ragflow_manual() | ~384 |
+| 19:01 | Session end: 7 writes across 3 files (service.py, routers.py, test_kb_relink_ragflow.py) | 7 reads | ~4799 tok |
+| 19:04 | Edited backend/app/extensions/knowledge/service.py | modified relink_ragflow() | ~221 |
+| 19:04 | Edited backend/app/extensions/knowledge/service.py | 1→3 lines | ~47 |
+| 19:04 | Edited backend/app/extensions/knowledge/routers.py | modified link_knowledge_base_ragflow() | ~94 |
+| 19:04 | Edited backend/app/extensions/knowledge/routers.py | 1→3 lines | ~45 |
+| 19:04 | Edited backend/tests/test_kb_relink_ragflow.py | modified test_relink_embedding_override_wins_and_persists() | ~218 |
+| 19:06 | Edited backend/app/extensions/knowledge/service.py | 3→4 lines | ~73 |
+| 19:07 | Edited backend/app/extensions/knowledge/service.py | modified is_available() | ~994 |
+| 19:07 | Edited backend/tests/test_kb_relink_ragflow.py | modified test_relink_already_linked_never_recreates_dataset() | ~340 |
+| 19:08 | Edited backend/app/extensions/knowledge/service.py | 18→18 lines | ~265 |
+| 19:09 | Session end: 16 writes across 3 files (service.py, routers.py, test_kb_relink_ragflow.py) | 7 reads | ~7096 tok |
+| 19:12 | /qa 执行推荐A: link-ragflow 补链端点落地(提交b8fa93f51,10测试绿); 途中发现并修 chunk_method report→manual 映射缺口+embedding失效覆盖+already_linked文档回填; 8/8KB链接0孤儿,9文档重传,掘进陈旧file_path修DB | backend/app/extensions/knowledge/{service,routers}.py tests/test_kb_relink_ragflow.py | 完成 | ~80k |
+| 19:13 | Session end: 16 writes across 3 files (service.py, routers.py, test_kb_relink_ragflow.py) | 7 reads | ~7096 tok |
+| 19:34 | Session end: 16 writes across 3 files (service.py, routers.py, test_kb_relink_ragflow.py) | 7 reads | ~7096 tok |
+| 21:27 | Session end: 16 writes across 3 files (service.py, routers.py, test_kb_relink_ragflow.py) | 7 reads | ~7096 tok |
+| 22:04 | Session end: 16 writes across 3 files (service.py, routers.py, test_kb_relink_ragflow.py) | 7 reads | ~7096 tok |
+| 22:06 | Edited ontostudio/backend/app/doc_graph/ingest_tasks.py | inline fix | ~26 |
+| 22:09 | Edited ontostudio/backend/app/doc_graph/ingest_tasks.py | inline fix | ~28 |
+| 22:13 | G3双通道UI同步: 下拉29项(28产物+1直连标注), shadcn Select验证 | ingest_tasks.py/IngestPage | 已提交 | ~4k |
+| 22:14 | Session end: 18 writes across 4 files (service.py, routers.py, test_kb_relink_ragflow.py, ingest_tasks.py) | 7 reads | ~7150 tok |
+| 22:21 | Session end: 18 writes across 4 files (service.py, routers.py, test_kb_relink_ragflow.py, ingest_tasks.py) | 7 reads | ~7150 tok |
+| 22:27 | Edited ontostudio/frontend/src/pages/IngestPage.tsx | added optional chaining | ~1009 |
+| 22:28 | Edited ontostudio/frontend/src/pages/IngestPage.tsx | added 1 condition(s) | ~294 |
+| 22:41 | G3上传一体流完整实施+端到端验证(上传→kf_samples→规则抽取→dg_*), 修导入路径bug | ingest_tasks.py/text_extract/IngestPage | 已提交 | ~8k |
+| 22:41 | Session end: 20 writes across 5 files (service.py, routers.py, test_kb_relink_ragflow.py, ingest_tasks.py, IngestPage.tsx) | 13 reads | ~16851 tok |
+| 22:57 | 新建表单双通道模式切换UI（参照KF卡片式二选一） | IngestPage | 已提交 | ~3k |
+| 22:58 | Session end: 20 writes across 5 files (service.py, routers.py, test_kb_relink_ragflow.py, ingest_tasks.py, IngestPage.tsx) | 16 reads | ~16851 tok |
+| 23:04 | Edited ontostudio/frontend/src/pages/IngestPage.tsx | expanded (+18 lines) | ~579 |
+| 23:08 | 新建表单回归简洁设计（用户反馈） | IngestPage | 已提交 | ~3k |
+| 23:13 | Session end: 21 writes across 5 files (service.py, routers.py, test_kb_relink_ragflow.py, ingest_tasks.py, IngestPage.tsx) | 20 reads | ~17430 tok |
+| 23:22 | Edited ontostudio/frontend/src/pages/IngestPage.tsx | added optional chaining | ~190 |
+| 23:37 | Edited ontostudio/frontend/src/pages/IngestPage.tsx | 31→32 lines | ~544 |
+| 23:40 | Session end: 23 writes across 5 files (service.py, routers.py, test_kb_relink_ragflow.py, ingest_tasks.py, IngestPage.tsx) | 30 reads | ~18164 tok |
+
+## Session: 2026-10-05 23:48
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 23:52 | Edited ontostudio/frontend/src/pages/IngestPage.tsx | 2→2 lines | ~45 |
+| 23:52 | Edited ontostudio/frontend/src/pages/IngestPage.tsx | 3→4 lines | ~66 |
+| 23:52 | Edited ontostudio/frontend/src/pages/IngestPage.tsx | added optional chaining | ~177 |
+| 23:53 | Edited ontostudio/frontend/src/pages/IngestPage.tsx | 47→44 lines | ~654 |
+| $(date +%H:%M) | 抽取导入页上传组件对齐知识工厂拖拽区（即时上传取代暂存+按钮） | ontostudio/frontend/src/pages/IngestPage.tsx | tsc --noEmit pass | ~8k |
+| 23:54 | Session end: 4 writes across 1 files (IngestPage.tsx) | 2 reads | ~8082 tok |
+| 00:02 | Edited ontostudio/frontend/src/pages/IngestPage.tsx | expanded (+18 lines) | ~2358 |
+| 00:02 | Edited ontostudio/frontend/src/pages/IngestPage.tsx | inline fix | ~27 |
+| $(date +%H:%M) | 新建抽取任务内联Panel改弹出对话框(结构对齐kf ExtractionTaskModal,无新依赖) | ontostudio/frontend/src/pages/IngestPage.tsx | tsc --noEmit pass | ~6k |
+| 00:03 | Session end: 6 writes across 1 files (IngestPage.tsx) | 2 reads | ~10535 tok |
+| 00:09 | Edited ontostudio/frontend/src/pages/IngestPage.tsx | 4→5 lines | ~87 |
+| 00:10 | Edited ontostudio/frontend/src/pages/IngestPage.tsx | added nullish coalescing | ~155 |
+| 00:10 | Edited ontostudio/frontend/src/pages/IngestPage.tsx | removed 12 lines | ~21 |
+| 00:10 | Edited ontostudio/frontend/src/pages/IngestPage.tsx | CSS: hover | ~282 |
+| 00:10 | Edited ontostudio/frontend/src/pages/IngestPage.tsx | 3→1 lines | ~27 |
+| 00:10 | Edited ontostudio/frontend/src/pages/IngestPage.tsx | CSS: sampleId, disabled, disabled | ~424 |
+| $(date +%H:%M) | 创建并排队移至对话框底部作通用主按钮(双模式共用),上传改暂存+显式提交 | ontostudio/frontend/src/pages/IngestPage.tsx | tsc --noEmit pass | ~5k |
+| 00:11 | Session end: 12 writes across 1 files (IngestPage.tsx) | 2 reads | ~11531 tok |
+| 00:15 | Session end: 12 writes across 1 files (IngestPage.tsx) | 2 reads | ~11531 tok |
+| 00:24 | Session end: 12 writes across 1 files (IngestPage.tsx) | 3 reads | ~11531 tok |
+| 00:25 | Edited TODOS.md | reduced (-9 lines) | ~128 |
+| 00:25 | Edited TODOS.md | removed 10 lines | ~13 |
+| 00:26 | Edited ontostudio/frontend/src/pages/IngestPage.tsx | inline fix | ~23 |
+| $(date +%H:%M) | 任务表查证:#3直连抽取实已完成(G3);TODOS清账3条+头注释修正,提交3d82c9bfe | TODOS.md, IngestPage.tsx | committed | ~10k |
+| 00:26 | Session end: 15 writes across 2 files (IngestPage.tsx, TODOS.md) | 3 reads | ~11705 tok |
+| 00:35 | Session end: 15 writes across 2 files (IngestPage.tsx, TODOS.md) | 5 reads | ~23952 tok |
+| 00:39 | Created skills/public/ontology-graph-query/SKILL.md | — | ~573 |
+| 00:39 | Edited extensions_config.json | 4→7 lines | ~40 |
+| $(date +%H:%M) | ontology-graph-query 读侧skill落地+config注册,读写分层(写=doc-graph-extract) | skills/public/ontology-graph-query/SKILL.md, extensions_config.json | committed 57ca887f7 | ~9k |
+| 00:40 | Session end: 17 writes across 4 files (IngestPage.tsx, TODOS.md, SKILL.md, extensions_config.json) | 7 reads | ~24606 tok |
+| $(date +%H:%M) | Agent查图谱E2E实测通过:bind-mount免cp;runs/wait+recursion_limit=250;query_entity命中308条sensitive_point | thread 85b3c342 | verified | ~15k |
+| 00:54 | Session end: 17 writes across 4 files (IngestPage.tsx, TODOS.md, SKILL.md, extensions_config.json) | 13 reads | ~24606 tok |

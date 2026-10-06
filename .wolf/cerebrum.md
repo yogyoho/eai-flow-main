@@ -1,6 +1,8 @@
 # Cerebrum
 
-> OpenWolf's learning memory. Updated automatically as the AI learns from interactions.
+> 
+- [2026-10-01] ontostudio /graph/nodes 投影三事实（domain_pattern 打磨实测）：(1) **没有 etype 过滤参数**（只有 cursor/limit/include/domain）——规律行是 dg_entities 的 etype **列值**，画布节点 type=graph_entity（双透镜去重 graph_entity 胜 eia_entity），识别靠 properties.etype==='domain_pattern'；(2) **properties.attrs 已是解析后的 JSON 对象**（asyncpg jsonb 有解析，旧"字符串字面量"注释已过时），pattern_type/subject_name/object_name/support_count/source_reports(、串)/pattern_desc/refined_desc 全嵌套其中，顶层读恒 undefined；(3) label=唯一 searchable 列 canonicalName（ingest 对 pattern 行 canonical=norm 同值）。前端改标签的挂点=explorerDataSource.toExplorerNode 的 content（useLoadGraph hydration label←content），画布/检索/详情三处同源生效，零 vendored 改动。
+OpenWolf's learning memory. Updated automatically as the AI learns from interactions.
 > Do not edit manually unless correcting an error.
 > Last updated: 2026-07-27
 
@@ -23,6 +25,14 @@
 - [2026-08-21] geological-report 用户交互铁律：数据收集必须用 ask_clarification fields 渲染中文填写表单（label=中文名+单位），绝不向用户展示/索要 JSON 或英文键名；面向用户术语一律"数据项"不说"字段"；缺项清单译成中文按类别分组呈现。适用于所有面向非 IT 用户的技能。
 
 ## Key Learnings
+- graph_views 投影排序按链接引用数降序（mention 4 > 实体/关系各 3）——凡新增以高频链接指向/发出的对象类型都会自动浮到 limit 窗口头部；大行数溯源类类型进图前先想 /graph/nodes 淹没问题（bug-1790745600028 已加 _MENTION_TYPES 默认排除 + include=mentions opt-in）。
+- [2026-09-29] ontostudio 后端两套 API 命名契约并存：/ontology/objects*（engine 透出）用 registry **api_name（camelCase**：canonicalName/normName/createdAt），/doc-graph/resolution*（doc_graph REST）用 **snake_case**（canonical_name）。前端写列映射先查目标端点是哪一族，实体库列名写错族=整列 —（bug-20260929a）。
+- [2026-09-29] ontostudio /ontology/actions/invoke 是同步投影：行提交 + kernel.refresh() 全局重推理，实测单次约 34s（eng-review 预期秒级已过时）。任何「点了没反应」类反馈先量 POST 时长再怪前端；perf 杠杆在 refresh() 逐动作全量重推理（bug-20260929c）。
+- (2026-09-29) ontostudio 后端 objects 分页 MAX_LIMIT=200 是 engine 硬上限: 前端把 limit 调大静默无效, 全量统计只有游标翻页或 aggregate filters 两条路; cursor 路径不回 total.
+- (2026-09-29) ontostudio-frontend 镜像从工作区构建, 镜像时间戳可早于其后提交却含新代码——勿以镜像时间戳推断部署版本, 以容器内 bundle 串为准.
+
+- **环评谓词双真源分裂（2026-09-29, 子项目2 Task2 实测）:** registry `app/ontology/registry/eia.yaml` 的 predicate enum（llm_extract prompt 真源）含 `located_in/precedes/pollutes/complies_with/regulated_by`，但 `app/doc_graph/schemas.py` `_EIA_PREDICATE_ROLES`（校验真源）33 谓词**不含它们**——LLM 合法产出的这些行 convert/ingest 必被 role_dropped。v1 etype（mine/activity/mine_district）同理全灭；v2 枚举里的 `engineering_site` 不出现在任何谓词角色里=凡带此 etype 的行必丢。子项目1 四报告 1564 候选实测 role_dropped 1285（located_in 167+complies_with 84 为无角色谓词，其余多为角色对失配）。Task4/5 产量预期要按此校准；根治须 registry↔schemas 对齐（另一任务，勿在转换器里私自放行）。
+- **环评样例 digest 自报 report_type（2026-09-28）:** `.wolf/tmp/eia-samples/*-outline.md` 头部有「场景判定」行带英文 token (planning_eia/project_eia/post_assessment，22/25 份)；文件名是拼音 slug，按文件名关键词归类全落 unknown。digest_stats.py 用 token优先→stem→首行→前12行 四级归类（25份=14规划/9项目/2后评价）。另：计划骨架的行级正则 `^...$` 忘 re.MULTILINE 是坑——`^`/`$` 不加 M 只锚全文首尾，finditer 恒空（bug-4968）。
 - **ontostudio 容器无 bind-mount, 镜像烘焙 `COPY app ./app`——改代码后 `restart` 带不进去, 必须 `build` + `up -d`**（2026-09-24 实测）：Task 10 验收前容器已陈旧 41 小时, 里面**连 `app/ontology/actions/` 目录都不存在**、`/openapi.json` 只有 21 条路由无 `actions/invoke`。而计划 Step 3 写的是 `restart`——**根本无效**。判据: 验收/联调前先 `docker exec ontostudio-backend ls app/ontology/actions/` 确认代码在不在容器里。对比: gateway 是 bind-mount(改代码 restart 即生效), ontostudio 不是——两者行为不同, 别互相套用。
 - **文档与行为的漂移，是唯一没有任何自动防线的一类缺陷**（2026-09-23 Task 7 质量观察）：注释写错（没有测试看注释）、日志/文案归因错（有测试但**断言选错**，例如断"非空+含60s"对"把5s说成60s"完全无感）、docstring 里的数字错（**只有重测能证伪**）——这三类 grep 都抓不到，因为 grep 只查"文档提到了某个常量"，查不出"文档描述的行为已经不是代码的行为"。**可用的对策**：凡注释里出现**具体数值或行为断言**，其来源必须是一条**可执行的断言**或一次**带条件的实测记录**（写清机器/路径/取法），否则就会在下一个人手里再错一遍。
 - **拼错的枚举值会静默丢弃数据，而基准会照常给出"成功"的数字**（2026-09-23 实测）：benchmark 的 relations 用 `locatedIn`，registry enum 是 `located_in` → 关系全被静默丢掉 → 100 实体只产出 163 三元组（正常 6-7/实体）→ 算出的"0.8ms/三元组"**分母全错**，且**没有任何报错**。**凡做基准，先断言"产出的数据量符合预期量级"**——否则测的是一个你不知道有多小的东西。
@@ -340,6 +350,7 @@
 - **markitdown 对部分中文 PDF 产出退化单行文本 (2026-09-10, bank_compile T7 真实语料验收):** 江西师大招标 PDF(68页) 经 markitdown 转出 41082 字符**单行无换行无标题**——直接切片得 0 章+段长分布退化为单点(floor=median=全长, 深度基线被毒化)。判据: 转出后先验行数/标题数。可靠结构信号是页断 \x0c+页码(re.sub(r'\x0c\d{1,3}\s*','
 '))与「第N章…(整行短)」题式——行文交叉引用(第二章"技术指标"，如有…)嵌长段内不会被 ^…$ 短行匹配误升格。预处理属维护侧临时步骤, 不进技能。
 - **仓库级技能产物落盘会"激活"技能脚本测试的隐式依赖 (2026-09-10, T7 回归):** references/depth_targets.json 此前不存在=build_output 深度门静默跳过, 测试在此前提下写; 基线一落盘, 门带表格行进 lint 报告, 按全文表格解析的测试 helper(_lint_flagged_values)立刻多吃一行空串值。教训: 技能脚本测试 helper 解析报告必须按节头(
+- [2026-09-28] eia 语料 fulltext 命名: 3 份 `{slug}-fulltext.txt` + 1 份无前缀 `fulltext.txt`（高头窑矿区总体规划修编环评→slug gaotaoyao, 规划环评体裁）; 挖掘脚本统一做无前缀兜底解析（table_extract 内联/llm_extract.resolve_fulltext）。
 ## )截断自锁, 不依赖"后继节不存在"; 新增仓库级产物=变更了所有读该目录测试的运行环境。
 - **Windows GBK 控制台 code-review-graph post-commit hook 对中文 commit message 崩溃 (2026-09-10):** hook 读 git 子进程输出未显式 UTF-8 → UnicodeDecodeError(线程内, 不影响提交本身); bug-3241 记录。中文 commit 照写, 忽略该噪音(或平台侧修 hook 编码)。
 
@@ -348,7 +359,8 @@
 - [2026-09-14] FastAPI `response_model` 会静默剥离 service 返回值里未声明的字段——「加了返回键但忘了改 Pydantic schema」不报错、不进日志，前端拿到 undefined 只能靠 `??` 回退（bug-4954 四因链之一起）。改 list_* 返回值时必须同步改 schemas.py 的 Response 模型。
 - [2026-09-14] docmgr「我的文档」视图 = `/personal-outputs` 直读文件系统视图（DocumentManagement.tsx L505-507 注释明言取代旧文件夹树），folders/tree 与 /documents API 正常不代表「我的文档」正常；排障先分清用户看的是哪条数据链。分页切片在可见性过滤之前的 service 都有「空候选占页」风险（ToolOutputBudgetMiddleware 会往 outputs/.tool-results/ 写隐藏项使空目录成候选）。
 
-## Do-Not-Repeat
+## Key Learnings placeholder-marker
+
 - **2026-09-22 · `.wolf/buglog.json` 顶层是 `{bugs:[...]}` 不是裸数组**：读后必须 `j.bugs` 再写回，写回必须 `JSON.stringify({bugs:arr},null,2)`。本仓已有同类事故（bug-2181），当天又差点复现——脚本报 `arr.map is not a function` 就是这个。同理：`git show HEAD:.wolf/buglog.json` 可先验形状，不要假设。
 - **2026-09-22 · 别把「部分覆盖」渲染成标准全名**：`ValidationPage` 曾以「GB/T 48000.3—2026 符合性 5/5」呈现只含 4 个条款族的套件。分母不完整时，标题不得用标准全名——改口径 + 显式列出未覆盖面，比补分母更快且不误导。同类：任何"符合性 N/N"都要先问 N 的分母是谁。
 - **2026-09-22 · 别把"没有推理机"当成"没有公理"**：国标 GB/T 48000.3 §5.3/§8.2 要的是"用 W3C 语言表示 + 标准序列化格式存储交换 + SHACL 校验 + 公理形式化表达"，**不需要 DL 推理机**。本项目 methodology.md 一度把 RDF/OWL/SHACL 全判"不采纳"（理由是与闭世界语义冲突），但代码实际在做 Turtle 往返 + SHACL——文档低估了自己。正确口径：RDF/Turtle 作序列化交换层、SHACL 作校验层，真相源保持闭世界。
@@ -2018,6 +2030,8 @@ P3 item ① 裁决：**双工况 N=3 校核暂不默认开**，维持 SKILL 现�
 
 ## User Preferences (2026-09-11 — ontology 扩展会话)
 
+- **表单提交流程=显式两步，统一主按钮在底部**（2026-10-06 用户纠正）：IngestPage 上传拖拽区我曾做成"选中即传"，用户纠正为——文件先暂存，主按钮（创建并排队）统一放对话框底部（取消右侧），两种模式共用，点击才执行。**偏好显式提交而非即时副作用**；带表单的对话框主按钮一律底部右侧。
+
 - **本体相关新模块一律放本体模块目录下**（如 `backend/app/extensions/ontology/doc_graph/` 子包），不做平级独立目录——便于未来 AI 检索/查询/修改代码时一个入口找全本体语义层资产（用户原话："模块如果属于本体模块，就移动本体模块目录下"）。表前缀等物理隔离仍可用（dg_* 表），逻辑归属以目录为准。
 
 - [2026-09-12] **nginx upstream stale-IP**: nginx 仅在配置加载时解析一次 upstream 域名;容器组重启后 gateway 换 IP 即全站 connection refused(容器 running 掩盖问题,gateway 本身 healthy)。处置=`docker exec deer-flow-nginx nginx -s reload`。长效=gateway 固定 IP 或 nginx `resolver 127.0.0.11 valid=10s`+variable upstream。与 bug-3019(进程楔死)不同根因,先从 nginx 容器内 wget health 再定位。
@@ -2344,3 +2358,180 @@ P3 item ① 裁决：**双工况 N=3 校核暂不默认开**，维持 SKILL 现�
 - **superpowers-chrome use_browser 的滚动后截图有合成伪影**：对 sticky+backdrop-blur 页面，scroll 后视口截图出现顶部白带/nav 画在半屏（eval 实测 scrollY=504 且 nav.getBoundingClientRect().top=0 完全正常）。**判定 sticky/滚动布局问题以 getBoundingClientRect 几何为准，不要信该工具滚动后的视口截图**；全页截图(fullpage)不受影响可用。
 - **强制暗色调试（eval 加 .dark 类）须先移除根上的 `light` 类**：本站主题系统会在 documentElement 同时挂 light/dark 语义类，只加 dark 不删 light 时 token 不翻转（bodyBg 仍白）；`classList.remove('light'); add('dark')` 后立即生效。
 - webpack dev 对新路由首次冷编译可被 dev server 以 500 短暂拒绝（66s 后回包、日志只有 Compiling 无错误行），重试即 200 自愈——新路由验证首个 500 先重试再排查（bug-4967，与 bug-2230 慢 FS 同族）。
+- **superpowers-chrome use_browser 的 eval 返回值显示 [object Object] 时，结果在 session 目录的 .md capture 文件里**（每次 eval 落 0NN-eval.md）：DOM 全文快照可直接当取证源（如 workband 卡片清单），比反复换 return 写法省事。另：滚动后视口截图白带伪影已二次复现（landing-v2 workband 验证），sticky+blur 页面一律用 DOM capture + getBoundingClientRect 取证。
+- **landing 页证据分层（评审代理抓出的 P1-2 失实）**：mockup/装饰层的小字也含领域词（"矿井消防/给排水"），说"全页无行业语境词"会被打回——诊断陈述要区分**首屏文案层**与**装饰层**，结论跟着最小可反驳单元走。
+- **dev server 被并发流量占用时**（本会话实测：另一浏览器会话在编 /contract-price/clusters 2.8min），新路由请求会排队到 30-60s，use_browser navigate 的 30s 硬顶会超时但页面实际能出——curl 预热后重试 navigate，或直接读 navigate 失败后的 DOM capture。
+- **use_browser eval 通道会中途失效**（症状：所有 eval 返回 [object Object]、改 title/加 class 均无效果、Current URL: unknown）——页面绑定丢了；`kill_chrome` 重启后恢复。暗色调试正规姿势：本站是 next-themes，`localStorage.setItem('theme','dark')` + reload 让应用自己挂 .dark（勿手动 add class）。
+- **Tailwind 4 token 衍生装饰色的合法写法**（不违反 ui-style-spec 禁 hex/rgba 规则）：点阵 `bg-[radial-gradient(color-mix(in_oklab,var(--color-primary)_16%,transparent)_1px,transparent_1px)]` + mask-image 渐隐；任意透明度用 `/[0.08]` 形式。landing-v2 背景三层（渐变打底/点阵/光晕）即此配方。
+| 2026-09-27 | ontostudio REST 实弹测试外部路径= /api/ontostudio/api/extensions/*（nginx 剥 /api/ontostudio 前缀，勿打 /ontostudio/api/*——那是前端静态路由会 405）；gateway login/local 对 CLAUDE.md 凭据 401（本地 provider 疑似禁用/凭据漂移），实弹验证走容器内检查(openapi/grep)或用户浏览器会话；JWT 密钥不落工具输出 |
+| 09-27 10:06 | postgres-ext 容器真名=eai-flow-postgres-ext（CLAUDE.md 的 eai-docker-postgres-ext-1 已漂移） |
+| 2026-09-27 | 主系统本体模块剥离查证：代码实体已净（extensions/ontology 前后端均不存在），活桥接=auth /scope端点/MCP×2/permissions.yaml/extract_ontology喂食器/nginx /api/ontostudio路由——删桥接即断独立服务；ontostudio REST 外部前缀=/api/ontostudio（nginx剥前缀），/ontostudio/* 是前端静态路由 |
+
+## [2026-09-28] Decision Log (环评本体重设计 brainstorming 启动)
+- 用户纠偏：现有 eia.yaml 建模（月儿湾单报告+outline digest 驱动）只作参考，新本体模型必须从 50 份样例报告系统性重新提取设计。消费通道设计退居模型重建之后。
+- 质量目标定案：A 逻辑链自洽为主、B 阈值/条款准确性为辅；C 结构深度不作为本体职责（归 stage JSON/章树）。
+
+## [2026-09-28] Decision Log (环评本体 v2 spec 复查修订)
+- 用户定案：v1 实例数据（月儿湾 1041 行+relations+mentions，domain='eia'）**清除**而非 legacy 保留——完全重构，子项目 2 按 v2 重新抽取。语料报告文件不动。
+- 用户复查第一轮参考资料后补强：CQ 验收集（10-15 条 SPARQL，schema 够用性判据）为初稿遗漏项；provenance 补 extraction_method/extracted_at；逆关系默认不建按需 inverseOf；n-ary 用扁平属性替代。
+
+## [2026-09-28] Decision Log (环评本体 v2 spec 第二轮参考复查)
+- 用户逐轮复查参考资料已成固定模式（第一轮十层→第二轮 W1-W4），每轮产出对照表并补强 spec。
+- 第二轮补强：conflicts_with 关系（显式冲突建模，初稿遗漏）；value_origin 枚举（数值来源显式，防数字幻觉）；accounting_method/accounting_basis 属性（源强核算方法）。
+- 显式裁定归技能侧不进本体的：W1 写作任务本体（=D9/D11/D12 已覆盖）、槽位清单（=stage JSON）、ExemplarText（=samples_bank D7）、DataGap（=写作回路运行态）、mustConfirm 生成侧（=子3/4）；本体侧等价物=人审闭环+confidence。
+
+## [2026-09-28] Decision Log (技能冻结约束)
+- 用户定案：现有 skills/public/coal-eia-report/ **冻结不改**；后续以新版本并行升级重构（目录共存）。环评本体子项目 1-4 均不得触碰现有技能文件；子项目 3 消费契约与子项目 4 验证须以"不依赖修改现有技能"为前提（验证走独立轻量 harness 或新版本技能）。与 [[new-module-over-modify]] 原则一致。
+
+## [2026-09-28] Decision Log (环评本体 v2 spec 第三轮参考复查——煤炭特化)
+- 第三轮补强 4 缺口：fault 断层类（A 组）、impact_result 增 water_conducting_zone 枚举（覆岩破坏=沉陷/地下水共享单一节点，煤炭最典型跨章节不一致源）、pollution_process_concept 产污环节词表（C 组）、表格抽取清单补沉陷预测表。
+- 新增 T3 候选：conforms_to（规划符合性）、project 建成时间属性（GB 21522-2024 分档生效裁决键——仅 report_base_date 不足）、openpit_mining（语料提名达门槛则纳入，与技能 D1 openpit 二期解耦）、RoofManagement/DevelopmentMode 以 mining_method 属性承载不单建类。
+- 煤炭 12 条校验规则定为子项目 3 规则草案底稿；法规种子清单（HJ 619/463、GB 20426/21522-2024 等）记为子2/3 入库 seed（人工核实）。
+- 用户模式确认：三轮参考逐轮复查，每轮挖缺口修 spec。类数演进 18→19（L1 新增），词表 2→3。
+- [2026-09-28] asyncpg 不认 SQLAlchemy 的 postgresql+asyncpg:// scheme（连接层只吃 postgresql://）；ontostudio DSN 真相源=EXTENSIONS_DB_HOST/PORT/USER/PASSWORD/NAME 五元组（app/config.py DatabaseConfig.from_env()，sync_url 即 asyncpg 形态）——计划文档写单值 ONTOSTUDIO_PG_DSN 占位属臆造。另: dg_merges.candidate_id/canonical_id 外键指 dg_entities.id 且无 ON DELETE 级联，删 eia 实体前必须先清 merges，否则 --apply 撞 ForeignKeyViolation（purge 脚本已加该步）。
+- [2026-09-28] pyoxigraph SPARQL（bug-3403 家族加深）：全库存于 named graph、默认图恒空——裸三元组/OPTIONAL 写在 GRAPH 块外即查空图（变量不绑定、!BOUND 守卫恒真、过滤整体失效且不报错）。OPTIONAL 必须放进对应 GRAPH 块内继承图上下文。CQ-03.rq 仍有此隐患（执行器只验可执行未暴露），Task 11 人工核时修。
+
+## [2026-09-28] Key Learnings (eia v2 子项目1 执行会话——workflow 15代理全绿)
+- **DSN 真相源**：ontostudio 无 ONTOSTUDIO_PG_DSN；实际=EXTENSIONS_DB_HOST/PORT/USER/PASSWORD/NAME 五元组（app/config.py DatabaseConfig.from_env()），且 asyncpg 不认 postgresql+asyncpg:// 须归一 postgresql://。
+- **SPARQL 前缀铁律（bug-3410）**：`eia:predicate/xxx` 前缀缩写非法（PN_LOCAL 不许裸 /）——.rq 必须声明专用前缀 `pred:`/`attr:`；写 SPARQL 先干跑 pyoxigraph 解析。
+- **OPTIONAL 必须进 GRAPH 块（bug-4969，bug-3403 家族）**：pyoxigraph 全库存于 named graph，GRAPH 外的 OPTIONAL 匹配空默认图静默失效。
+- **tmp manifest 冒烟**：草案 link_types 引用 graph_mention → 最小 manifest 必须同载 doc_graph.yaml（"只留本域条目"方向是错的）。
+- **Literal 不变式**：test_literal_and_domain_tables_consistent 要求 _ETYPE/_PREDICATE Literal = 两域域表并集——扩域表必须同步扩 Literal，进而触发 registry 超集不变式；过渡期把 eia_v2_draft.yaml 并入校验基准（定型后自动收窄）是计划遗漏的最小完整解。
+- **digest 四级 report_type 归类**：文件名是拼音 slug 关键词全失效；digest 头部自带场景 token 22/25 直接采信最可靠（14规划/9项目/2后评价）。
+- 语料事实：25 份 outline digest（非35）；fulltext txt 仅4份；parse.json 无行级表格数据。
+
+## [2026-09-28] Key Learnings (LLM 因果链抽取 v1/v2 对比——prompt 枚举决定论)
+- **prompt 不嵌枚举 = 模型自造谓词/类型**：v1 只嵌同义词表 → 谓词枚举命中仅 52.6%（emits/impacts/has_measure 自造）；v2 从 eia_v2_draft.yaml 动态抽枚举嵌 prompt → **95.3%**（Top12 全部在枚举内），类型 76.1%→99.6%。枚举唯一真源=草案 yaml，正则 name: etype/predicate 行抓 enum:[...]。
+- **候选量 310→1564（5 倍）**：枚举不仅提质还提召回——模型有明确词表时敢抽。
+- **引用压缩是 agnes 长文顽疾**：逐字约束只把幻觉率 20.0%→15.3%；gaotaoyao 规划环评最重（丢"达拉特旗"式压缩）。防幻觉核验三件套：空白归一+省略号拆片断+全角转半角；few-shot 回声（照抄示例）单独计幻觉。
+- **断言自查教训**：covered_by_standard 是派生谓词不在声明枚举（37=18v1+19新），拿它验枚举解析必假失败。
+
+## [2026-09-28] API 测试通道 (ontostudio formal 端点实测验证)
+- **登录配方**：主站 POST /api/v1/auth/login/local（x-www-form-urlencoded: username+password，CSRF 豁免）→ Set-Cookie access_token → ontostudio 端点带 `Authorization: Bearer <tok>` + `-b cookie` **双凭证**（v2 权限委托=原样 Cookie 反查 gateway /api/permissions/me，只带 Bearer 会 403 system:access）。JWT secret 来自 gateway，ontostudio 无独立 login 端点。
+- **GATE3 完成**：eia.yaml v2 定型落 registry（44ff6b3b7）；v1 清除实测 1041 实体+1131 mentions+15 relations 删净（dry-run 前后对账）；空态 load=460 实体(doc_graph)+SHACL conforms+国标五项 pass；export Turtle 正常。
+- purge 真相源 EXTENSIONS_DB_* 五元组在 docker/.env 的 POSTGRES_EXT_* 键下（名字不同值同源）。
+
+## [2026-09-29] User Preference (本体中文标注硬规则)
+- **用户规则：本体模型所有英文必须有对应中文**。落地=eia.yaml 两个枚举行上方"# etype中文标注:/# 谓词中文标注:"机器可解析注释块（值=中文 对），load_enums 同源读取拼进抽取 prompt；etype_classes.label/definition 全中文；org/place/mine 三个 v1 遗留 etype 已补类条目。新增枚举时必须同步加标注，否则 load_enums 裸输出（抽取质量归因先查标注覆盖）。
+
+## [2026-09-29] Key Learnings (子项目2 Task3 批量编排器)
+
+- ontostudio extensions 库（EXTENSIONS_DB_* 默认 localhost:5432/agentflow）**host 可直连**——batch_ingest 守卫查询 asyncpg 从宿主机连成功（返回真实计数非连接失败）。主仓 CLAUDE.md "DB 不能从 host 连" 指的是 deer-flow 主库容器场景，不适用于 ontostudio extensions 库。
+- scripts/ 非包：跨脚本目录 import（eia_schema_mining → eia_purge_v1.resolve_dsn）需 `sys.path.insert(0, str(SCRIPT_DIR.parent))`；脚本自身目录天然在 sys.path[0]（`import parse_docx` 直接可用）。
+- 编排器 CWD 无关手法：路径全锚定 SCRIPT_DIR；调 parse_docx.main() 这类用相对路径的既有脚本时 `contextlib.chdir(SCRIPT_DIR)` 包裹（py3.11+，venv 3.12 可用）。
+- batch_ingest.py convert 相默认回退链：batch_candidates.jsonl（Task4 产物）→ llm_candidates.jsonl（子项目1 四报告候选），dry-run 不等批量抽取即可验。
+
+## [2026-09-29] Key Learnings (谓词角色表多对改造 session)
+
+- ontostudio 谓词角色表(schemas.py _EIA_PREDICATE_ROLES/_PREDICATE_ROLES)值类型 = tuple[tuple[str,str],...], 校验是成员判定——加角色对只需改表+行尾支持数注记, 单对谓词包单元素元组。
+- schemas 不变式测试锁死: _PREDICATE Literal 恰等于两域 domain_predicates 并集(test_literal_and_domain_tables_consistent)→新谓词必须 Literal+域表同步进, 缺一即红。
+- registry 37 谓词中 located_in/complies_with/regulated_by 已入契约(数据≥5); pollutes(最大组合4条)/precedes(1条)按门槛两处均不入, converter 继续丢弃是有意行为。
+- 环评候选 kept 率天花板三层: 幻觉过滤(180)→谓词漂移(A类88, registry外词如 uses/sells_to)→非域etype(B类331, activity/standard/logic_node 需 registry 扩容)→域内未入选(C类741)。40% 目标需 C 类 21 对后续批(约+190条)。
+- EIA 候选引文语义判定样本: "矿井位于矿区"嵌套成立(mine⊂mining_district); "样方调查登记表 位置:井田内"算 located_in; "场地规定阈值"是语义错位(specifies_threshold 主体只能是标准)。
+
+## [2026-09-29] Key Learnings (谓词角色表 R2 全量补齐 session)
+
+- R2 解除范围限制后契约饱和: 既有谓词 ≥5 支持域内对全量入表(22 对), 残余 role_dropped 984 = 谓词漂移88 + 非域etype331 + 阈值下长尾565(361组合, 最高x4)——再提 kept 只能靠 registry etype 扩容或抽取枚举纪律。
+- 引文语义抽查判据定型: 主宾倒置拒(如"Na+标准限值≤200"→(pollutant,specifies_threshold,threshold)x29 是限值归属非规定; "章节引用法律"抽成(法律,cites_clause,章节)x11); 表结构自指噪声拒(如"环境噪声受噪声监测"x7); 主语宽松指代+方向正确收(如"矿方设施清单"→(mine,treated_by,treatment_measure)x12)。
+- specifies_threshold 只收"规定方"主语: (emission_standard, planning_scheme) 可, (pollutant, engineering_site) 是达标方/被规定对象不可。
+- 加对前先 grep 测试里用作"非法反例"的对——R2 把 (waste_stream,treated_by,treatment_measure)x20 入表后原反例测试红了, 换 (pollutant,treatment_measure)。
+
+## [2026-09-29] Key Learnings (子项目2 执行——容器陈旧三连+集成缺口)
+- **🔴 ontostudio 代码烘焙进镜像**：改 .py/.yaml 后必须 `cd docker && docker compose -p eai-docker -f docker-compose-dev.yaml build ontostudio-backend` 单文件构建+`--force-recreate`；**三层 overlay 合并会吞掉 build 段**（extensions.yaml 同名服务覆盖）→ build 假成功；restart/普通 up 不换镜像。验证手段：`docker exec ontostudio-backend grep -c <新代码标记> <文件>`。
+- **"热重载生效"验证必须带新内容特征**：v1 也能过 validate/load 空态检查——空验证假阳性浪费了整轮排查。
+- **confirm↔推理门集成缺口**：推理门只认 confidence≥0.7，confirm 原本只翻 status——确认数据永远不推理。修复=doc_graph.yaml confirm postconditions 加 {field: confidence, set: 0.7}（pending 按构造必<0.7，无降级风险）。
+- **LLM 批跑三层自愈**：超时+TransportError 全族（DNS/网络抖动）+429/≥500（含 Cloudflare 520 系）指数退避；span 级断点续跑（existing_spans 覆盖判定+追加模式）——三次事故零数据损失。重试跳过的 chunk span 不落盘，补漏靠同脚本重跑。
+- **CQ 首战发现**（9939 候选→3317 实体/1985 关系全 pending）：CQ-04 矸石未闭合 93、CQ-05 无监测排放口 7、CQ-09 无防护敏感点 273——零 CQ 多因 pending 置信门，人审后逐步点亮。
+- 容器内验证配方：host curl 直连 :8005 + cookie+Bearer 双凭证（formal）；DB 直查容器名是 eai-flow-postgres-ext（非 eai-docker-postgres-ext-1）。
+
+- [2026-09-29] ontostudio invoke_batch 批量确认选型: 单条 invoke 保留同步投影（写/投影已解耦、degraded 自愈、四态 UI 契约), 批量提效走新端点全批一次装载+一次 refresh——行级事务+逐行审计+失败行隔离(404/409/500 只落该行); 无可投影行时跳过投影 projected 恒 True。/graph/nodes|edges 的 domain= 只裁声明了 filterable domain 属性的类型（dg_entities）, dg_relations/dg_mentions 物理无 domain 列不裁剪=脚手架; 边投影对有域列端加 "别名.domain=:gd" 守卫, 跨 connector 回退域激活时 fail-closed 到空。前端 useLoadGraph 域入 queryKey 必须 gcTime:0——queryFn 结果只是统计, 实体写在单例 store 每次整体覆写, 复用旧域缓存条目会撕裂。
+
+## Key Learnings (2026-09-30)
+
+- [2026-09-30] **ontostudio 测试写库门禁**: tests/conftest.py 的 autouse fixture `_gate_real_db_tests` 让 integration 标记默认 skip, 必须 `ONTOSTUDIO_TEST_ALLOW_REAL_DB=1` 才跑真库集成/e2e。原因: 宿主机 5432 恒可达(eai-flow-postgres-ext 发布端口), `_ext_url()` 缺省解析直连真库, 一轮全量 pytest 实测写 +82 行夹具(积累到 1254)。新真库测试只要标 integration 就自动被门禁罩住, 无需各自写 skip。
+- [2026-09-30] **分层语义**: 门禁管"许不许可"(conftest.real_db_allowed), 探针管"库可不可达"(_URL/_DB_READY)——两层正交叠加; 既有"空库/断连 skip"逻辑全部兼容未动。
+- [2026-09-30] ontostudio tests/ 无 __init__.py, pytest prepend 模式下测试文件可直接 `from conftest import ...`(conftest 目录在 sys.path)。
+- [2026-09-30] ontostudio 图谱关系折叠 flat 模式设计要点: 关系双轨(一等对象+图投影)不动, 只在 edges_page 加 mode=flat 把关系行折成实体间连线; 折叠组=同源类型恰两条 FK 链接+类型声明 predicate 属性(mention 组无谓词列天然静默, include_mentions 在 flat 无增量); 端点方向随源类型属性声明序(subject_id 先声明=主体), 不硬编码列名; 域守卫加"有 filterable domain 列的端点"(dg_entities 双端, 与 default 两轨边各守实体端等价); 端点 pk 从实体表 JOIN 取(悬挂 FK 天然丢弃)而非直接取关系行 FK 值(对 target_column 非 pk 场景稳健); 注册表端点(/registry,/object-types)不吐谓词值级中文标注, 前端 label 回退英文谓词值。
+
+## [2026-09-30] Key Learnings (ontostudio 画布"只有点没有线"——六层根因链全记录)
+**症状**：图谱画布只有节点圆点，关系连线完全不渲染。**六层独立根因叠加，全部修复后才可见**：
+1. 投影层：5050 条 mention 淹没 500 节点窗口（graph/nodes 投影默认排除 mention 修复）
+2. 投影层：关系双轨节点悬挂边不可见 → edges mode=flat 折叠为 实体→实体 带谓词连线
+3. 主题层：palette edgeStructure 透明度 0.055-0.08（白底不可见）
+4. **sigma reducer 四重门控**（最大头）：edgePriorityThreshold 0.82 vs 度数比实际 0.16-0.34 全灭 + backgroundSampleRate 0.16 抽样再丢 72-84% + resolveEdgeLodAlpha withAlpha 替换式覆盖 palette 修复 + hideMuted hover 擦除
+5. focused 上下文：点选节点后 hideMuted:true 藏全部连线、邻接线仅 0.06-0.1
+6. **边宽管线（最终真凶）**：size 钳制上限 0.88px + weight 1 → 实际 0.42px×0.30α=数学不可见
+**诊断方法论**（可复用）：edgeDataCache 直接读渲染真相（颜色/size/hidden 的最终值）——数据层验证六遍不如读一次渲染缓存；分类函数 classifyFullGraphEdge:1455 邻接边误归 muted 是"点选后连线消失"的真凶（返回 local-context 映射 neighbor 态修复）。
+**部署律**：ontostudio 前端代码烘焙进镜像——改完必须 `cd docker && docker compose -p eai-docker -f docker-compose-dev.yaml build ontostudio-frontend` + force-recreate，restart 无效。
+
+## [2026-09-30] Key Learnings (ontostudio 子项目3 EIA 规则集 session)
+
+- sigma 图字面量全为纯字符串（vocab.lit = ox.Literal(str(value))）：SPARQL 数值比较必须 `xsd:decimal(?x)` 转型，直接 `>` 比较是字符串序。
+- pyoxigraph SPARQL 陷阱：`STRSTARTS(STR(?p), <iri>)` 非法——STRSTARTS 收字符串不是 IRI；`;` 续写后只能跟 verb-object，`CONTAINS(...)` 过滤必须用 ` FILTER(...)` 句点分隔。
+- NOT EXISTS 内可引用外层绑定变量（SPARQL 1.1 替换语义），pyoxigraph 支持——VALUES×NOT EXISTS 做「逐缺失项」违规粒度可行（rule_subsidence_params 模式）。
+- MCP 工具清单契约：tests/test_ontology_mcp.py EXPECTED_TOOLS 是**人工签字清单**，加工具必须同步扩它（本次 +4 EIA 工具）。
+- REST/MCP 测试打桩 kernel：monkeypatch `app.ontology.kernel.service._kernel` = KernelService()（内存图）+ pop ONTOSTUDIO_KERNEL_PATH，零容器零真库。
+- 真实图基线通道：宿主机 asyncpg 直连 localhost:5432（agentflow/agentflow123）→ KernelService().load_from_sql + refresh()，与生产同路径；dg_relations 无 domain 列（词表继承主体实体），asyncpg 占位符是 $1 不是 %s。
+- 基线数字（2026-09-30, 2521 实例/1985 关系）：gangue 93 / sensitive 273 / emission_monitoring 7（三 CQ 蓝本全复现）+ planning_compliance 58（58 井田全缺 complies_with）+ entity_naming 49 重名；空转 7 条归因：选煤厂 0 实例、涌水量/efficiency/gas_grade/commission_date/介质枚举未抽取、GB 8978 不在图（20426 在）、94 个 impact_result 全缺 result_type。
+## [2026-09-30] Key Learnings + Do-Not-Repeat (ontostudio 子项目 3.5 scope 语义)
+
+- **SPARQL 过滤+OPTIONAL 陷阱**: scope 缺省过滤的 FILTER 必须放在 OPTIONAL 组**外**（`OPTIONAL {?e <p> ?sc} FILTER(!BOUND(?sc) || ?sc="x")`）。放组内时"不满足"的解被 OPTIONAL 弃掉、外层行以 unbound 存活 → 过滤形同虚设。
+- **gangue 闭合规则 HAVING 0==0 不触发**: 全空矸石流（零产生源+零去向）`COUNT(src)=COUNT(dst)=0` 过不了 HAVING 不等式——造测试违规数据必须"有产生源无去向"。
+- **规则违规行后置过滤 fail-visible**: 无 IRI 绑定的行（rule_entity_naming 按归一名 GROUP BY）不可归属任何 scope 库——任何视角都必须保留，过滤不得静默隐藏无法归因的违规。
+- **dg_mentions.document_id 双前缀**: 批量管线 `eia-batch:<slug>`、样例注册表 `eia-sample:<slug>`——slug 反解两前缀都剥, 异形值保留原值不丢信息; 真库 2521 实体提及 100%% eia-batch（22 份文档）, unknown=0。
+- **attr 全量入图**: kernel loader upsert_entity 把 dg_* attrs JSONB 逐 key 写成 `attr/<key>` 谓词——Postgres 打标后 kernel 重载（POST /formal/load）MCP 才可见; add_relation 不带 attrs, 关系 scope 只在 DB 层。
+
+- (2026-09-30, 子项目4) kernel 图内**关系 attrs 不存在**：loader 只装载关系五元组（reified rel/<uuid> 节点+edge_subject/predicate/object+confidence/valid*），dg_relations.attrs 的 scope/source_report 在图内查不到——边级溯源只能靠对端实体 attrs，实体级 source_report 才是真源。类比通道(query_analogy)出参设计已按此落地。
+- (2026-09-30, 子项目4) spec 里的「691 违规」是陈旧数字：仓库已提交基线(scripts/eia_rules_baseline_out)=480（gangue 93/sensitive 273/emission 7/planning 58/naming 49），scope=all 精确复现 480。check_consistency 三视角实际=sample 407（violation_count 真总数但 violations 列表截 200，过滤后计数只在截断集成立——子项目3.5已文档化）/project 49（全是无 IRI 绑定的 rule_entity_naming 行，fail-visible 保留，可归属违规=0=C库空）/all 480。验收对数字先跑 baseline_report.json 再信 spec 文本。
+
+## [2026-09-30] Key Learnings (ontostudio 子项目 5 B库蒸馏+C库机制)
+
+- **kernel 图内 rdf:type 是 PascalCase 类 IRI**（eia#TreatmentMeasure），直接取局部名与 snake_case etype 比较全量失配——必须经 `etype_class_map(registry, domain)` 反转成 类名→etype 映射（scripts/eia_pattern_mine.py 首跑 0 配对的根因）。
+- **support 语义分层**：端点实体各自 mention 覆盖率的并集会虚高（两实体各在 22 份报告出现 ≠ 配对共现 22 份）；配对级支持度必须按**路径各边自身的 relation mention.document_id** 聚合（mentionOfRelation→documentId）。dg_relations 无唯一约束，图内同 (s,p,o) 多份 rel 节点，路径枚举先 SELECT DISTINCT 去重边。
+- **B 库 pattern 边谓词选型**：37 既有谓词无一能语义成立地连 (领域实体, ?, domain_pattern)——采 `analogous_to` 双侧「实例→模式」方向（实体类比于蒸馏模式），偏离任务字面 pattern→object 形状已记录；角色表（抽取契约）不加 pattern 对（EiaExtraction etype 枚举 fail-closed 产不出 domain_pattern，加了对也是死配置）。
+- **query_analogy 语义扩宽**（子项目5）：恒定 scope=sample → sample+domain_common（写作取材=样例+领域规律同通道）；C 库 project 仍排除。出参 source_report 回退 attrs.source_reports「、」串；_IDENTITY_ATTRS 加 source_reports 防重复。
+- **C 库 project_id 自然键碰撞语义**：dg_entities 幂等键 (domain,etype,norm_name)——项目工作本实体与 sample 实体同键时 attrs||合并会把共享行翻成 project 归属。预期语义=项目引用既有共性实体；项目私有副本须前缀命名。机制层不做隐式改名（ingest.project_scoped_attrs docstring 已记）。
+- **ruff format 既有债务**：app/ontology/mcp.py HEAD 就不过 format --check（旧行 365/392/545/567）——改该文件时只需保证自己新增行 format-clean，别顺手全文件 format（会放大无关 diff）。
+
+## [2026-09-30] Key Learnings + Do-Not-Repeat (ontostudio B库 pattern 归并深化, 子项目5)
+
+- **B 库蒸馏 support 归并语义 = 报告集并集, 不是算术累加**（2026-09-30）：变体合并时把各路径的 mention 溯源报告集 union（悬浮→X 与 悬浮物→X 同 20 份报告, 合并后仍 20; 算术和 40 会虚破「跨报告共现」定义——support=配对级去重报告数是 B 库 domain_common 的语义根基）。降门槛扩量靠 min-support 3→2, 不靠虚高 support。
+- **受控词表归一的正确作用域是「模式位置」不是 etype**（2026-09-30）：治理主语→pollutant 表、治理宾语→measure 表、处置宾语→disposal∪measure 表。按 etype 作用域会在同名跨表处打架（「矸石井下充填」既是 measure 概念名又是 disposal 井下充填别名, treatment_measure 两表都覆盖, first-wins 挡归并）。位置作用域天然无冲突。
+- **复合名（「、」连接）归一规则**：仅当**每段**都命中词表才全分解展开（笛卡尔到配对聚合, support 报告集并集去重）; 任一段词表外整体保留。bod/bod5/动植物油/筑路基 不在词表 → 「cod、bod5、ss、石油类」等复合实体保持原名, 是已记录的抽取层残差。
+- **变体连边（subject_variants/object_variants）**：挖掘侧把变体（名+实际 etype）记入条目, ingest 逐变体按 (domain,etype,norm_name) 自然键查端点连 analogous_to——规范名实体与变体实例都指向同一 pattern; 同名跨 etype 实体靠 per-variant etype 精确命中（旧版多数 etype 会连错/漏连）。
+- **prune 的不动点设计**：`--apply --prune` 收敛=删 pattern_id 不在新候选集的节点（先删边）+ 删 pattern 节点上不可由本轮候选推导的 domain_common analogous_to 边（旧版多数 etype 连边残留）。验证幂等 = 重跑 0 新建/0 新边/prune 0; 用 patterns.json 完整推导期望边集与 DB 做差是最可靠的边层对账法。
+- **asyncpg 默认把 jsonb 回成 str**（无 codec 时）——Python 侧读 attrs 要 json.loads; `dict(record['attrs'])` 会报 "dictionary update sequence element #0"。
+- **Do-Not-Repeat: python heredoc 批量 s.replace 带空串替换**——old 匹配不到时静默跳过、匹配到时可能删行（本次误删 compare 报告的合计行）; 长文本替换一律用 Edit 工具精确锚点+事后 grep/read 验证。
+- **Do-Not-Repeat: patterns.json 的 subject_variants 是「、」join 的 attrs 投影**——变体名本身可能含「、」（复合实体名）, 解析 attrs 字符串会错拆; 边连边真源在 patterns.json 的结构化列表, 不在 attrs。
+- B 库残差清单（明确不动, 留抽取层/人审）: waste_stream 项目专名碎片、排土场/排矸场/周转场堆存族（堆存≠处置）、填沟造地/黄土掩埋/不出井/合理处置/无害化处置率100%、伊敏污水处理厂同名异写、复合名未全分解者、生活垃圾中转站与焚烧发电具名公司。见 merge_compare.md §5。
+- **Do-Not-Repeat: controlled_vocab.yaml 两表有同名概念组**（2026-10-01, bug-3413）:「生活污水处理站/矿井水处理站/煤泥水系统」在 measure 与 pollution_process 两表各出现一次——用它们做 Edit 锚点会把新行插错表，且位置作用域下静默不生效（无任何位置引用 pollution 表）。插行锚点必须含表头行，或插后立即断言各表 concepts 计数。
+- **精炼描述与 pattern_id 强耦合**：词表改名（bod→生化需氧量）会让已精炼条目变孤儿、新规范条目无精炼——词表任何增补后必须跑「头部切档 ∩ refined_ids」差集核对（0 缺 0 孤），孤儿删、新增条目补写精炼后再 --refined --apply。
+- [2026-10-01] OntoStudio 字号阶梯定稿（ui-style-spec.md §9）：主内容 14(text-sm)/次要 13(text-[13px])/辅助 12(text-xs) 三档，全站禁 ≤11px 字面量（豁免 Sigma chip/图表刻度/边标签）。与 2026-08-06「表单 label 调小至 11px」偏好**并存不矛盾**——那是主系统输出扩展表单 label 场景，本次是 OntoStudio 数据浏览主内容场景，勿互相"修复"。ontostudio-frontend 与 backend 同为镜像烘焙无 bind-mount，改前端代码须 `-f docker-compose-dev.yaml build ontostudio-frontend && up -d`，restart 无效；headless 走查用 superpowers-chrome（hash 导航同文档不触发 load 会超时，用 click XPath 切页）。
+
+## Key Learnings (2026-10-01 — 子项目 4 C 库沉淀管线)
+- **pyoxigraph SPARQL 属性列表 `;` 后不能直接跟 OPTIONAL**（`?e a ?c ; <p> ?o ; OPTIONAL{...}` 报 "error at 1:1: expected [_]"）——`;` 后必须是谓词宾语对，OPTIONAL/FILTER 前必须句点收尾。复合模式写法：`?e a ?c ; <p1> ?o1 ; <p2> ?o2 . OPTIONAL {...} FILTER(...)`。
+- **`store.query("")` 空字符串不短路**——条件构造 SPARQL 时 `query(x if cond else "")` 会抛 SyntaxError；空集分支必须整段跳过。
+- **pydantic 模型与 yaml 双手写 schema 必错位一次**（本次 ItemSpec 缺 name/CrossRelationSpec 缺 match_equals/嵌套 vs 扁平三连）——yaml 声明表先用 python 试 load 再写测试，模型 extra="forbid" 会把错位变成 ValidationError 而非静默，但一行行对齐比测试驱动快。
+- **C 库自然键碰撞语义（机制层已声明）**：dg_entities 幂等键 (domain,etype,norm_name) 全局共享，跨项目同名实体 attrs|| 合并翻转 project_id 归属（doc_graph/ingest.py ⚠️ 注明）。单项目工作区不触发；多项目测试须用异名实体。coverage 族归属用 attrs.source 前缀（stage_json:<stage>:<族>#<字段>）判定而非 etype 交——waste_stream 等类型跨族共享会误判。
+- **kernel 图 attr 值全是字符串化 RDF literal**——build 层 pydantic attrs 数字 45.6，装载读回变 '45.6'；断言一律 str() 对齐。
+- **ruff 0.16.8 对既有文件的 format --check 与落库版本有行为差**（切片空格/引号偏好）——HEAD 的 mcp.py 本来就不过；改文件只格式化自己新增的行，别全文件重排卷 churn（同 2026-09-18 cpa 教训）。
+- **cross_relations 的 match_field 语义 = 过滤对端**（如锅炉 complies_with 标准，element=大气 是标准 triplets 的属性不是锅炉的）——映射器设计时先画清方向再定过滤端。
+
+## 2026-10-01 B2 批次追加（domain_pattern 敏感点防护/监测覆盖）
+
+**Key Learnings**
+- **并发 re-scope 会静默改写挖掘基线**：今日有会话把 29 个泛名实体（矸石 waste_stream、12 个 treatment_measure 等）attrs.scope sample→project，「矸石→综合利用 sup=17」等 38 条处置头部配对直接消失（域收窄非边删除）。教训：重挖 patterns.json 与 git 基线 diff 不为零时，先查 dg_entities 当日 updated_at 分布与 scope 分布，再怀疑代码；批次增量入图用 --types 限定可让旧节点零触碰。
+- **B2 类型归组模式**：单点名一报告一换的实体（敏感点/源）按关键词表归组成 canonical subject、实例名入 subject_variants 走变体连边——support 口径（配对级去重报告数）不变，图内 pattern 节点主语变成可比的「类型」。归组表=顺序 first-match，优先级语义要显式测（基本农田保护区→基本农田先于保护区）。
+- **ingest --types 过滤**：patterns.json 全量重挖后做批次增量入图的标准手法——只写新 pattern_type，旧节点连 attrs 刷新都不做（mined_at 冻结=批次快照语义）。
+
+**Do-Not-Repeat**
+- [2026-10-01] 测试夹具实体名勿含被测关键词：造名「无名场地X」含「场地」被 MONITOR_SOURCE_TYPES 正确归类，断言预期失败——夹具名先对照归组表关键词排查。
+- [2026-10-01] 精炼描述禁用「同上批次」回指——desc 入图 attrs 后必须自包含（来源报告显式列出）。
+- [2026-10-01] ontostudio 抽取链路跨服务边界（office-hours 评审发现）：`ingest_extraction`（ontostudio/backend/app/doc_graph/ingest.py）**只做持久化**，入参要求预构建 ExtractionPayload（schemas.py min_length=1）；「文档→payload」正则抽取器在 **gateway 服务** backend/app/extensions/eia_samples/extract_ontology.py（纯 stdlib re 自包含），ontostudio-backend **不能 import gateway app.extensions.***。任何「ontostudio 任务化抽取」设计必须先裁决中间链路：移植模块（已裁决）/退化登记 payload 引用/跨服务 HTTP（否决）。
+- [2026-10-01] 真库 integration 测试三铁律（ontostudio 当日三轮实测）：①**夹具实体名必须唯一前缀**（ITCOD-{uuid}式）——通用名（COD）经 dg_entities 自然键 (domain,etype,norm_name) 合并会把测试行焊进生产数据，attrs|| 还会把测试标记写上生产行；②清理必须 Python 侧先捕获 mention 链 ID 再按 FK 序删（mention→relation→entity），SQL 窗口启发式在残留库上不可靠，且 psql 多语句单 -c 是单事务、中段 FK 错整体回滚（tail 截断会漏看哪些语句真失败了）；③后台任务语义陷阱：重跑会用新 tag 重写 attrs.ingest_task——跨 run 断言只能在触发该 run 前做。另：ORM mapped_column 的 default= 不作用于裸 SQL INSERT（须 server_default=func.now()）；asyncpg 传 jsonb 参数必须 json.dumps 字符串不能 dict。
+- [2026-10-01] ontostudio ingest_tasks 落地形态（B2 v1 产物消费路径）：sample_id → kf_samples.outline_json.ontology → converter（mention 合成 document_id="kf-sample:{id}"+越域行防御过滤）→ ingest_extraction。force_review=attrs.ingest_task 锚点+created_at>started_at 窗口（守 promote-only：自然键合并进既有 active 行不降级）。串行=模块级 asyncio.Lock；converter CPU 段 asyncio.to_thread（async BackgroundTasks 在事件循环跑 CPU 密集=全站冻结）；启动清扫须在 ensure_tables 同一 try 内且 42P01 no-op。
+- [2026-10-01] ontostudio B2 闭环两处语义坑（E2E 演练实测）：①**force_review 不能用后置 UPDATE 实现**——重跑第二次时 ingest 的 promote-only 提升路径（pending+conf≥0.7→active）会把上轮 pending 批量转正（215→3 实测），created_at 窗口守卫挡不住；终裁=force_pending 下沉为 ingest_extraction 显式参数（新行直接 pending/冲突行覆盖提升），后置补丁废弃。②**存量 kf_samples 的 outline 全无 ontology key**（旧版流水线产物）——(b') 产物消费路径对存量不成立，须先跑 backfill_kf_ontology.py（gateway 容器，read_source_text→extract_ontology→jsonb 合并，实测 25 份回填 192-267 实体/份）。③DOM headings 采集把常驻挂载的隐藏视图（graph/resolve）标题一并计入——「页面漂移」类目击先查截图视觉真值，DOM 报告会撒谎。
+- [2026-10-01] **代码生成脚本的两种静默损坏（ontostudio v2 实测，当日两撞）**：①bash 内嵌 node -e 里用 \${"\""} 手法转义模板串→产出 \`${"}"\}` 塌缩为字面 `}` 拼进 URL（/api/extensions}/…、?}limit=）——**语法合法 TSC 不报、纯语义损坏**，症状是诡异 404；②string.replace() 无匹配静默 no-op——脚本必须逐 patch 报 OK/MISS，改完必须 grep 产物特征字面量验证（如 \`${RESOLUTION_BASE}/pending?${qs\`）。根治姿势=Write 脚本文件再 node 执行 + 产物特征断言。
+- [2026-10-01] **用户裁定：ResolutionPanel「操作反馈四态」表不折叠**（v1 判断「契约文档是操作者噪音」被推翻——该表对审核者是点确认前的行为参考，重度使用者要它常驻展开）。后续勿再提议折叠/外移此表。
+- [2026-10-01] resolution/pending 端点契约（v2 后）：GET /api/extensions/doc-graph/resolution/pending?etype&limit(≤200)&search(canonical_name ILIKE 子串,%/_剥除)&offset → {entities[], count=真实总数(同过滤 COUNT)}。前端 ResolutionPanel 已接：searchQuery 走服务端、pageIndex 翻页器、count 直显。
+- [2026-10-01] **ontostudio index.css 令牌清单封闭性（bug-4006 教训）**：该应用语义令牌只有 §1 清单（background/…/warning/success/destructive/muted 等），**没有** --amber/--green/--red 及其 *-soft 变体——2026-10-01 已正式补入（:root 亮 + .dark 暗，见 index.css「总览卡徽章软底令牌」块：blue/purple/cyan/amber/green/red + *-soft + ink-3）。**原型 HTML 的自定义令牌搬进组件前必须 grep index.css 核对定义**——var() 无解析时背景透明/颜色继承，TSC 与构建零报错，症状是运行时静默「灰白 chip」。同日三撞（activities 令牌/routers 透传/本条），凡 replace/搬运会话收尾必须做产物特征断言。
