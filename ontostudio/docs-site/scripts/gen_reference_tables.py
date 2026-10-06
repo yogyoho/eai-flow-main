@@ -47,7 +47,8 @@ def extract_conformance_rows() -> list[tuple[str, str, str, str]]:
 
 
 def _cell(text: str) -> str:
-    return text.replace("|", "\\|").replace("\n", " ")
+    # VitePress 把 md 编译为 Vue 模板——裸 <xxx> 会被当元素解析（如 IRI 规约里的 <uuid>）
+    return text.replace("|", "\\|").replace("\n", " ").replace("<", "&lt;").replace(">", "&gt;")
 
 
 def mcp_table() -> str:
