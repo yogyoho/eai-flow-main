@@ -207,7 +207,8 @@ export function AppShell() {
               <span className="grid h-8 w-8 flex-none place-items-center overflow-hidden rounded-lg p-1">
                 <img src={eaiLogo} alt="EAI" className="h-full w-full object-contain" />
               </span>
-              <div className="min-w-0">
+              {/* 禁换行+裁剪：宽度过渡 200ms 内容器被压缩，若允许换行文字会 2→4 行再回弹（上下抖动） */}
+              <div className="min-w-0 overflow-hidden whitespace-nowrap">
                 <b className="block text-[15px] leading-tight font-black tracking-wide">
                   OntoStudio
                 </b>
