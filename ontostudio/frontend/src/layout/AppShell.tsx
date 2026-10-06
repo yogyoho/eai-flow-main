@@ -200,11 +200,9 @@ export function AppShell() {
         >
           {!collapsed ? (
             <>
-              <img
-                src={eaiLogo}
-                alt="EAI"
-                className="h-9 w-8 flex-none object-contain"
-              />
+              <span className="bg-primary grid h-8 w-8 flex-none place-items-center overflow-hidden rounded-lg p-1">
+                <img src={eaiLogo} alt="EAI" className="h-full w-full object-contain" />
+              </span>
               <div className="min-w-0">
                 <b className="block text-[15px] leading-tight font-black tracking-wide">
                   OntoStudio
