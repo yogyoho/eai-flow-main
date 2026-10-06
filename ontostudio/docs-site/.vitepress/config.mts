@@ -6,7 +6,7 @@ export default defineConfig({
   title: "OntoStudio 文档中心",
   description: "本体系统操作指南 · 概念详解 · MCP/国标参考 · 业务本体设计",
   base: "/ontostudio/docs/",
-  ignoreDeadLinks: true, // 期3 内容齐后改 false（docs 升级 spec §7）
+  ignoreDeadLinks: false, // 内容已齐备——死链即构建失败（质量门禁，2026-10-06 升级开启）
   themeConfig: {
     siteTitle: "OntoStudio 文档中心",
     nav: [

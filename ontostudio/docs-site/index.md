@@ -4,29 +4,33 @@ layout: home
 hero:
   name: OntoStudio 文档中心
   text: 本体系统知识库
-  tagline: 术语解释 · 业务本体设计 · 功能操作指南 —— 与本体 registry 同源、随版本演进
+  tagline: 功能操作 · 概念详解 · MCP/国标参考 · 业务本体设计 —— 与本体 registry 同源、随版本演进
   actions:
     - theme: brand
+      text: 端到端数据流
+      link: /guide/data-flow
+    - theme: alt
       text: 功能操作指南
       link: /guide/
     - theme: alt
-      text: 术语解释
-      link: /glossary/
-    - theme: alt
-      text: 业务本体设计
-      link: /design/eia-model
+      text: 概念详解
+      link: /concepts/
 
 features:
-  - title: 术语解释
-    details: 按域组织的本体术语表——实体类型、谓词、状态机与公理的含义，与 registry 声明同名同义。
-    link: /glossary/
-    icon: 📖
-  - title: 业务本体设计
-    details: 域模型设计说明——治理合规链、影响链、属性链推导（prp-spo2）与双透镜投影机制。
-    link: /design/eia-model
-    icon: 🏗️
-  - title: 功能操作
-    details: 九大模块操作指南——工作台总览、实体库、消解审核、本体建模器、推理工作台、校验中心、抽取导入、导出互操作。
+  - title: 🧭 业务操作
+    details: 我是系统使用者——四组九模块怎么用、任务队列怎么读、审阅闭环怎么过。从模块地图或端到端数据流开始。
     link: /guide/
     icon: 🧭
+  - title: 📚 概念学习
+    details: 我想弄懂内部机制——SHACL、owlrl 闭包、CONSTRUCT 派生、TriG 快照这些晦涩概念，类比先行逐个讲透。
+    link: /concepts/
+    icon: 📚
+  - title: ✅ 国标评审
+    details: 我要核对符合性证据——GB/T 48000.3—2026 五项校验（C1-C5）条款对照、诚实边界与已知局限。
+    link: /reference/gbt-48000
+    icon: ✅
+  - title: 🔌 开发集成
+    details: 我要把图谱接进 Agent——MCP 双服务配置、21 工具契约总表、ontology-graph-query / doc-graph-extract 技能、实测路径。
+    link: /reference/agent-integration
+    icon: 🔌
 ---
