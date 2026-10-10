@@ -12,6 +12,7 @@ from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock, patch
 
+import os
 import pytest
 
 from app.channels.base import Channel
@@ -7526,7 +7527,15 @@ class TestDiscordChannel:
             "x" * 1990 + "\n\n" + "y" * 30,
             "x" * 2000 + "\n\n\n" + "y" * 30,
             "x" * 2000 + "\n" + "y" * 2000,
+        # EAI-CUSTOM (bug-3444): 该参数 UTF-8 编码 >32k, Windows teardown 把参数值
+        # 落进环境变量时超 32767 上限(os:720 ValueError); Linux 上游 CI 不受影响。
+        # EAI-CUSTOM (bug-3444): 该参数 UTF-8 编码 >32k, pytest teardown 会把含完整
+        # 参数 ID 的 PYTEST_CURRENT_TEST 写进环境变量, Windows 32767 上限直接 ValueError
+        # (skipif 也躲不过——ID 照写)。显式短 id 让测试全平台照常运行且 ID 有界。
+        pytest.param(
             ("第一段\n\n" + "句" * 1990 + "\n\n最后一段") * 3,
+            id="cjk-block-x3",
+        ),
             "x" * 4500,
         ],
     )
