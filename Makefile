@@ -21,6 +21,8 @@ else
     RUN_SHELL_SCRIPT = $(BASH)
 endif
 
+# What `make clean` deletes; shared by its help line and deletion notice.
+RUNTIME_DATA_CONTENTS = database, users, threads, uploads, memory, secrets
 help:
 	@echo "DeerFlow Development Commands:"
 	@echo "  make setup           - Interactive setup wizard (recommended for new users)"
@@ -44,7 +46,7 @@ help:
 	@echo "  make start           - Start all services in production mode (optimized, no hot-reloading)"
 	@echo "  make start-daemon    - Start prod services in background (daemon mode)"
 	@echo "  make stop            - Stop all running services"
-	@echo "  make clean           - Clean up processes and temporary files"
+	@echo "  make clean           - Stop local services and DELETE local runtime data (backend/.deer-flow: $(RUNTIME_DATA_CONTENTS)) and logs"
 	@echo ""
 	@echo "Docker Production Commands:"
 	@echo "  make up              - Build and start production Docker services (localhost:4026)"
@@ -172,9 +174,12 @@ start-daemon:
 stop:
 	@$(RUN_SHELL_SCRIPT) ./scripts/serve.sh --stop
 
-# Clean up
-clean: stop
-	@echo "Cleaning up..."
+# Clean up: deletes local runtime data, not just temporary files. The guard
+# runs before stop, which would otherwise stop a running stack's sandboxes.
+clean:
+	@$(RUN_SHELL_SCRIPT) ./scripts/check-data-not-in-use.sh
+	@$(MAKE) --no-print-directory stop
+	@echo "Deleting local runtime data in backend/.deer-flow ($(RUNTIME_DATA_CONTENTS)) and logs/*.log..."
 	@-rm -rf backend/.deer-flow 2>/dev/null || true
 	@-rm -rf backend/.langgraph_api 2>/dev/null || true
 	@-rm -rf logs/*.log 2>/dev/null || true

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import os
 import re
+import shutil
 import subprocess
 import tomllib
 import zipfile
@@ -16,6 +17,12 @@ pytestmark = pytest.mark.skip(reason="upstream extension dependency sync diverge
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 BACKEND_ROOT = REPO_ROOT / "backend"
+
+_MAKE_ON_PATH = shutil.which("make") is not None
+_skip_without_make = pytest.mark.skipif(
+    not _MAKE_ON_PATH,
+    reason="these contract tests dry-run the root Makefile through 'make -n'; GNU make is not installed on this host",
+)
 
 
 def _make_recipe(path: Path, target: str) -> str:
@@ -205,6 +212,7 @@ def test_root_extension_shortcuts_are_cross_platform_and_keep_trust_confirmation
     assert "--yes" not in _make_recipe(makefile, "extension-upgrade")
 
 
+@_skip_without_make
 def test_root_extension_shortcuts_reject_ambient_environment_arguments() -> None:
     environment = os.environ.copy()
 
@@ -236,6 +244,7 @@ def test_root_extension_shortcuts_reject_ambient_environment_arguments() -> None
         ("extension-remove", "NAME", "--name-env __deerflow_extension_name__"),
     ],
 )
+@_skip_without_make
 def test_root_extension_shortcuts_keep_command_line_arguments_out_of_the_shell_recipe(
     target: str,
     variable: str,
@@ -269,6 +278,7 @@ def test_root_extension_shortcuts_keep_command_line_arguments_out_of_the_shell_r
         ("extension-remove", "NAME", "--name-env __deerflow_extension_name__"),
     ],
 )
+@_skip_without_make
 def test_root_extension_shortcuts_keep_values_out_of_the_cmd_recipe_on_windows(
     target: str,
     variable: str,

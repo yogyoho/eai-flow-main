@@ -34,6 +34,16 @@ from app.gateway.checkpoint_lineage import (
     checkpoint_messages,
     find_checkpoint_before_message,
     find_checkpoint_before_message_chronologically,
+    # EAI-CUSTOM (upstream-sync 2026-10): upstream #5988 reworked duration-only
+    # checkpoint classification (no Postgres-dropped marker) and moved the
+    # stamp helpers behind explicit history/version arguments. EAI adopts the
+    # shared lineage helpers — the local inline copies from the previous sync
+    # are superseded by the new signatures.
+    history_parent_index,
+    is_duration_only_checkpoint,
+    parent_from_history_index,
+    resolve_history_versions,
+    resolve_stamp_candidate_versions,
 )
 from app.gateway.context_usage import build_context_usage
 from app.gateway.conversation_reader import (
@@ -47,23 +57,33 @@ from app.gateway.internal_auth import INTERNAL_SYSTEM_ROLE, get_trusted_internal
 from app.gateway.pagination import trim_run_message_page
 from app.gateway.run_models import RunCreateRequest
 
-# EAI-CUSTOM (upstream-sync 2026-08-26, adapted 2026-09 merge): keep the
+# EAI-CUSTOM (upstream-sync 2026-08-26, adapted 2026-09/10 merges): keep the
 # checkpoint state-accessor path — never an inline checkpointer read. An old EAI
 # recovery commit (a5ec93888) had dropped the accessor in favor of an inline
 # checkpointer read; upstream (and test_thread_regenerate_prepare) expect the
 # accessor path, which honors checkpoint-mode/DeltaChannel state materialization.
 # Upstream's #5224 off-loop assembly made the factory async
 # (abuild_checkpoint_state_accessor); EAI adopts the async accessor path.
-from app.gateway.services import abuild_checkpoint_state_accessor, build_thread_checkpoint_state_accessor, sse_consumer, start_run, wait_for_run_completion
+from app.gateway.services import (
+    abuild_checkpoint_state_accessor,
+    build_thread_checkpoint_state_accessor,
+    serialize_wait_run_status,
+    sse_consumer,
+    start_run,
+    wait_for_run_completion,
+)
+from app.gateway.sse_headers import sse_response_headers
 from app.gateway.utils import sanitize_log_param
 from deerflow.agents.human_input import read_human_input_response
 from deerflow.agents.middlewares.dynamic_context_middleware import strip_injected_user_message_id_suffix
 from deerflow.authz.sandbox_authz import safe_app_config_async
 from deerflow.config.paths import get_paths, make_safe_user_id
 from deerflow.runtime import CancelOutcome, ConflictError, RunRecord, RunStatus, ThreadOperationKind, serialize_channel_values_for_api
+from deerflow.runtime.goal import is_active_goal
 from deerflow.runtime.runs.store.base import format_run_cursor_created_at, normalize_run_created_at_iso
 from deerflow.runtime.secret_context import redact_config_secrets, redact_metadata_secrets
 from deerflow.runtime.user_context import get_effective_user_id
+from deerflow.utils.llm_text import strip_leading_think_blocks
 from deerflow.utils.messages import ORIGINAL_USER_CONTENT_KEY, get_original_user_content_text, message_to_text
 from deerflow.workspace_changes import get_workspace_changes_response
 
@@ -78,6 +98,7 @@ _artifact_archive_slots = asyncio.Semaphore(4)
 _MISSING_REGENERATE_BASE_DETAIL = "Could not find an addressable checkpoint before the target user message"
 _UNSAFE_REGENERATE_LINEAGE_DETAIL = "Could not safely resolve the checkpoint before the target user message"
 THREAD_MESSAGE_LEGACY_SCAN_BATCH = 201
+_LEGACY_IDEMPOTENCY_REQUEST_KEY = "idempotency_request"
 
 
 IdempotencyKeyHeader = Annotated[
@@ -134,10 +155,12 @@ async def _refresh_store_backed_run(run_mgr: Any, record: Any) -> Any:
     return record
 
 
-def _is_duration_only_checkpoint(checkpoint_tuple: Any) -> bool:
-    metadata = getattr(checkpoint_tuple, "metadata", None)
-    writes = metadata.get("writes") if isinstance(metadata, dict) else None
-    return isinstance(writes, dict) and "runtime_run_duration" in writes
+def _is_duration_only_checkpoint(checkpoint_tuple: Any, history_index: dict[tuple[str, str], Any], versions=None, parent_versions=None) -> bool:
+    # EAI-CUSTOM (upstream-sync 2026-10): upstream #5988 classifies duration-only
+    # checkpoints without the Postgres-dropped marker, requiring the parent/
+    # versions context resolved by the caller (see _find_base_checkpoint_before_human).
+    # The previous EAI inline ``metadata.writes`` check is superseded.
+    return is_duration_only_checkpoint(checkpoint_tuple, parent=parent_from_history_index(checkpoint_tuple, history_index), versions=versions, parent_versions=parent_versions)
 
 
 def compute_run_durations(runs) -> dict[str, int]:
@@ -363,10 +386,19 @@ async def _raise_lease_valid_elsewhere(
 
 def _record_to_response(record: RunRecord) -> RunResponse:
     # EAI-CUSTOM: redact secrets in metadata/config before returning to clients
-    # (security fix ported from upstream bytedance/main, 2026-08-15 sync).
-    kwargs = record.kwargs
-    if kwargs and isinstance(kwargs.get("config"), dict):
-        kwargs = {**kwargs, "config": redact_config_secrets(kwargs["config"])}
+    # (security fix ported from upstream bytedance/main, 2026-08-15 sync); the
+    # dict copy also keeps the legacy-key pop below off the stored record, and
+    # the isinstance guard tolerates non-dict config payloads.
+    kwargs = dict(record.kwargs or {})
+    legacy_idempotency_request = kwargs.pop(_LEGACY_IDEMPOTENCY_REQUEST_KEY, None)
+    if isinstance(legacy_idempotency_request, dict) and legacy_idempotency_request.get("kind") == "resume":
+        # Readers may outlive rows written by the pre-0034 rolling-upgrade
+        # fence. Keep its private digest and synthetic input out of every
+        # public run response; new writers use the dedicated ORM column.
+        kwargs["input"] = None
+    if isinstance(kwargs.get("config"), dict):
+        kwargs["config"] = redact_config_secrets(kwargs["config"])
+
     return RunResponse(
         run_id=record.run_id,
         thread_id=record.thread_id,
@@ -570,8 +602,7 @@ def _has_title(values: dict[str, Any]) -> bool:
 
 
 def _has_active_goal(snapshot: Any) -> bool:
-    goal = _checkpoint_values(snapshot).get("goal")
-    return isinstance(goal, dict) and goal.get("status") == "active"
+    return is_active_goal(_checkpoint_values(snapshot).get("goal"))
 
 
 def _latest_editable_turn(messages: list[Any], human_message_id: str) -> tuple[int, Any, int, Any, list[str]]:
@@ -607,10 +638,11 @@ def _run_last_ai_matches_message(record: RunRecord, message: Any) -> bool:
     last_ai_message = (record.last_ai_message or "").strip()
     if not last_ai_message:
         return False
-    target_text = _message_text(message).strip()
+    target_text = _message_text(message)
     if not target_text:
         return False
-    return last_ai_message == target_text[: len(last_ai_message)]
+    # Match both historical raw summaries and newer visible-answer summaries.
+    return any(last_ai_message == text[: len(last_ai_message)] for text in (target_text.strip(), strip_leading_think_blocks(target_text)))
 
 
 async def _find_target_run_id(
@@ -620,8 +652,9 @@ async def _find_target_run_id(
     source_human: Any,
     request: Request,
 ) -> str:
+    user_id = await _run_scope_user_id(request, thread_id)
     event_store = get_run_event_store(request)
-    rows = await event_store.list_messages(thread_id, limit=REGENERATE_HISTORY_SCAN_LIMIT)
+    rows = await event_store.list_messages(thread_id, limit=REGENERATE_HISTORY_SCAN_LIMIT, user_id=user_id)
     for row in reversed(rows):
         if row.get("event_type") not in {"ai_message", "llm.ai.response"}:
             continue
@@ -635,7 +668,6 @@ async def _find_target_run_id(
         return source_run_id
 
     run_mgr = get_run_manager(request)
-    user_id = await _run_scope_user_id(request, thread_id)
     records = await run_mgr.list_by_thread(thread_id, user_id=user_id, limit=10)
     fallback_record = next(
         (record for record in records if record.status == RunStatus.success and _run_last_ai_matches_message(record, target_message)),
@@ -708,12 +740,19 @@ async def _find_base_checkpoint_before_human(
             raise HTTPException(status_code=409, detail=_UNSAFE_REGENERATE_LINEAGE_DETAIL) from exc
     try:
         raw_checkpoints = await accessor.ahistory(base_config, limit=REGENERATE_HISTORY_RAW_SCAN_LIMIT)
-        checkpoints = [item for item in raw_checkpoints if not _is_duration_only_checkpoint(item)]
+        history_index = history_parent_index(raw_checkpoints)
+        version_cache: dict[tuple[str, str, str], Any] = {}
+        checkpoints = []
+        for item in raw_checkpoints:
+            parent = parent_from_history_index(item, history_index)
+            versions, parent_versions = await resolve_stamp_candidate_versions(accessor, item, parent, version_cache)
+            if not _is_duration_only_checkpoint(item, history_index, versions=versions, parent_versions=parent_versions):
+                checkpoints.append(item)
     except Exception as exc:
         logger.exception("Failed to list checkpoints for regenerate thread %s", thread_id)
         raise HTTPException(status_code=500, detail="Failed to inspect checkpoint history") from exc
 
-    previous_checkpoint, target_found = find_checkpoint_before_message_chronologically(raw_checkpoints, human_message_id)
+    previous_checkpoint, target_found = find_checkpoint_before_message_chronologically(raw_checkpoints, human_message_id, history_versions=await resolve_history_versions(accessor, raw_checkpoints, cache=version_cache))
     if target_found:
         if previous_checkpoint is None:
             raise HTTPException(
@@ -1049,15 +1088,10 @@ async def stream_run(
             emit_gap_on_missing_stream=record.idempotency_reused,
         ),
         media_type="text/event-stream",
-        headers={
-            "Cache-Control": "no-cache",
-            "Connection": "keep-alive",
-            "X-Accel-Buffering": "no",
-            # LangGraph Platform includes run metadata in this header.
-            # The SDK uses a greedy regex to extract the run id from this path,
-            # so it must point at the canonical run resource without extra suffixes.
-            "Content-Location": f"/api/threads/{thread_id}/runs/{record.run_id}",
-        },
+        # LangGraph Platform includes run metadata in Content-Location.
+        # The SDK uses a greedy regex to extract the run id from this path,
+        # so it must point at the canonical run resource without extra suffixes.
+        headers=sse_response_headers(content_location=f"/api/threads/{thread_id}/runs/{record.run_id}"),
     )
 
 
@@ -1093,12 +1127,19 @@ async def wait_run(
     # serializing whatever checkpoint happens to exist.
     if getattr(record, "store_only", False) and not getattr(bridge, "supports_cross_process", False):
         record = await _refresh_store_backed_run(run_mgr, record)
-        return {"status": record.status.value, "error": record.error}
+        return serialize_wait_run_status(record)
 
     if record.task is not None or getattr(record, "store_only", False):
         completed = await wait_for_run_completion(bridge, record, request, run_mgr)
     else:
         completed = True
+
+    if completed:
+        record = await _refresh_store_backed_run(run_mgr, record)
+        if record.status == RunStatus.error:
+            # A failure before the first checkpoint leaves an earlier answer at
+            # the thread head. Return this run's error, never that old state.
+            return serialize_wait_run_status(record)
 
     # Idempotent reuse is not bound to a run-specific checkpoint id. The latest
     # thread head may be a later run, so do not claim it as this run's result.
@@ -1121,9 +1162,7 @@ async def wait_run(
         except Exception:
             logger.exception("Failed to fetch final state for run %s", record.run_id)
 
-    if completed:
-        record = await _refresh_store_backed_run(run_mgr, record)
-    return {"status": record.status.value, "error": record.error}
+    return serialize_wait_run_status(record)
 
 
 def _parse_run_page_created_at(value: str) -> str:
@@ -1198,10 +1237,12 @@ async def _require_run_visible_to_scope(run_id: str, thread_id: str, request: Re
     """Gate run-scoped sub-resource reads and writes (events, messages, join,
     stream, cancel, artifact archive).
 
-    These routes query or mutate by ``(thread_id, run_id)`` without a
-    per-user filter of their own. For trusted internal callers on threads
-    without established ownership, that let an internal caller acting for
-    owner A read or cancel owner B's run by id (#5448 review P1 follow-up).
+    These routes query or mutate by ``(thread_id, run_id)``; events and
+    messages add only the ``_run_scope_user_id`` data filter, which matches
+    row stamps rather than gating the run itself. For trusted internal
+    callers on threads without established ownership, a missing gate let an
+    internal caller acting for owner A read or cancel owner B's run by id
+    (#5448 review P1 follow-up).
     The run's own stamp must therefore match the acting owner's raw value (or
     the legacy ``"default"`` stamp); every other caller and every
     established-ownership thread keeps its existing semantics.
@@ -1302,8 +1343,8 @@ async def cancel_run(
     - wait=false: Return immediately with 202
 
     In multi-worker deployments, a cancel landing on a non-owning worker
-    can take over the run when the owner's lease has expired.  When the
-    lease is still valid a 409 + ``Retry-After`` header is returned.
+    durably notifies the owner when its lease is live, or takes over and
+    terminalizes the run when that lease has expired.
     """
     await _require_run_visible_to_scope(run_id, thread_id, request)
     run_mgr = get_run_manager(request)
@@ -1313,15 +1354,30 @@ async def cancel_run(
 
     outcome = await run_mgr.cancel(run_id, action=action)
 
-    # Success paths — the run was either cancelled locally or taken over
-    # from a dead worker.
-    if outcome in (CancelOutcome.cancelled, CancelOutcome.taken_over):
+    # Success paths — the run was cancelled locally, durably requested from
+    # a live owner, or taken over from a dead worker.
+    if outcome in (
+        CancelOutcome.cancelled,
+        CancelOutcome.requested,
+        CancelOutcome.taken_over,
+    ):
         if wait and record.task is not None:
             try:
                 await record.task
             except asyncio.CancelledError:
                 pass
             return Response(status_code=204)
+        if wait and outcome == CancelOutcome.requested:
+            bridge = get_stream_bridge(request)
+            if record.store_only and bridge.supports_cross_process:
+                completed = await wait_for_run_completion(
+                    bridge,
+                    record,
+                    request,
+                    run_mgr,
+                )
+                if completed:
+                    return Response(status_code=204)
         return Response(status_code=202)
 
     if outcome == CancelOutcome.lease_valid_elsewhere:
@@ -1349,11 +1405,7 @@ async def join_run(thread_id: str, run_id: str, request: Request) -> StreamingRe
         # policy must not fire because an observer closed their connection.
         sse_consumer(bridge, record, request, run_mgr, apply_on_disconnect=False),
         media_type="text/event-stream",
-        headers={
-            "Cache-Control": "no-cache",
-            "Connection": "keep-alive",
-            "X-Accel-Buffering": "no",
-        },
+        headers=sse_response_headers(),
     )
 
 
@@ -1413,16 +1465,29 @@ async def _stream_existing_run(
             # the client doesn't hang on an SSE subscription this worker can
             # never serve.
             return Response(status_code=202)
-        if outcome != CancelOutcome.cancelled:
+        if outcome not in (CancelOutcome.cancelled, CancelOutcome.requested):
             if outcome == CancelOutcome.lease_valid_elsewhere:
                 await _raise_lease_valid_elsewhere(run_id, run_mgr, record)
             raise HTTPException(status_code=409, detail=_cancel_conflict_detail(run_id, record))
+        if outcome == CancelOutcome.requested and record.store_only and not bridge.supports_cross_process:
+            # The request is durable, but this bridge cannot observe the
+            # owner's stream. Returning 202 is safer than hanging forever on
+            # a process-local subscription.
+            return Response(status_code=202)
         if wait and record.task is not None:
             try:
                 await record.task
             except (asyncio.CancelledError, Exception):
                 pass
             return Response(status_code=204)
+        if wait and outcome == CancelOutcome.requested:
+            completed = await wait_for_run_completion(
+                bridge,
+                record,
+                request,
+                run_mgr,
+            )
+            return Response(status_code=204 if completed else 202)
 
     return StreamingResponse(
         # Both methods of this handler are join surfaces: a POST carrying an
@@ -1432,11 +1497,7 @@ async def _stream_existing_run(
         # must not fire because a joiner closed their connection.
         sse_consumer(bridge, record, request, run_mgr, apply_on_disconnect=False),
         media_type="text/event-stream",
-        headers={
-            "Cache-Control": "no-cache",
-            "Connection": "keep-alive",
-            "X-Accel-Buffering": "no",
-        },
+        headers=sse_response_headers(),
     )
 
 
@@ -1548,14 +1609,11 @@ async def list_thread_messages(
     run_durations = compute_run_durations(runs)
 
     if run_durations:
-        for msg in messages:
-            content = msg.get("content", {})
-            if isinstance(content, dict) and content.get("type") == "ai":
-                rid = msg.get("run_id")
-                if rid and rid in run_durations:
-                    if "additional_kwargs" not in content:
-                        content["additional_kwargs"] = {}
-                    content["additional_kwargs"]["turn_duration"] = run_durations[rid]
+        # EAI-CUSTOM (upstream-sync 2026-10): back on the shared last-AI-only
+        # stamper — the earlier EAI inline loop restamped every AI row (#4152)
+        # and missed the middleware-caller skip; the shared helper now also
+        # handles both message shapes (event-store rows and flat serialized).
+        stamp_turn_duration_on_last_ai(messages, run_durations)
 
     return messages
 
@@ -1682,6 +1740,7 @@ async def list_run_messages(
     Response: { data: [...], has_more: bool }
     """
     await _require_run_visible_to_scope(run_id, thread_id, request)
+    user_id = await _run_scope_user_id(request, thread_id)
     event_store = get_run_event_store(request)
     rows = await event_store.list_messages_by_run(
         thread_id,
@@ -1689,6 +1748,7 @@ async def list_run_messages(
         limit=limit + 1,
         before_seq=before_seq,
         after_seq=after_seq,
+        user_id=user_id,
     )
     data, has_more = trim_run_message_page(rows, limit=limit, after_seq=after_seq)
 
@@ -1697,16 +1757,10 @@ async def list_run_messages(
         record = await run_mgr.get(run_id)
         if record:
             durations = compute_run_durations([record])
-            duration = durations.get(run_id)
-            if duration is not None:
-                for msg in reversed(data):
-                    content = msg.get("content")
-                    metadata = msg.get("metadata", {})
-                    is_middleware = str(metadata.get("caller", "")).startswith("middleware:")
-                    if isinstance(content, dict) and content.get("type") == "ai" and not is_middleware:
-                        if "additional_kwargs" not in content:
-                            content["additional_kwargs"] = {}
-                        content["additional_kwargs"]["turn_duration"] = duration
+            if durations:
+                # EAI-CUSTOM (upstream-sync 2026-10): shared last-AI-only stamper
+                # (middleware-caller rows skipped; both message shapes handled).
+                stamp_turn_duration_on_last_ai(data, durations)
 
     return {"data": data, "has_more": has_more}
 
@@ -1770,7 +1824,11 @@ def _presented_files_from_delivery(events: list[dict]) -> list[str]:
 
 
 async def _archive_presented_paths(thread_id: str, run_id: str, request: Request) -> list[str]:
-    run = await get_run_store(request).get(run_id)
+    # EAI-CUSTOM: plain ``str`` thread_id per the EAI signature convention; the
+    # data-identity scoping (user_id-resolved store/event reads) is upstream
+    # #6282 and is required by the scoped list_events call below.
+    user_id = await _run_scope_user_id(request, thread_id)
+    run = await get_run_store(request).get(run_id, user_id=user_id)
     if run is None or run.get("thread_id") != thread_id or run.get("operation_kind", "run") != "run":
         raise HTTPException(status_code=404, detail=f"Run {run_id} not found")
     if run.get("status") in {RunStatus.pending.value, RunStatus.running.value}:
@@ -1781,6 +1839,7 @@ async def _archive_presented_paths(thread_id: str, run_id: str, request: Request
         run_id,
         event_types=["run.delivery"],
         limit=2,
+        user_id=user_id,
     )
     return _presented_files_from_delivery(events)
 
@@ -1877,17 +1936,30 @@ async def list_run_events(
     task's persisted steps without the run-wide ``limit`` truncating the tail (#3779).
     """
     await _require_run_visible_to_scope(run_id, thread_id, request)
+    user_id = await _run_scope_user_id(request, thread_id)
     event_store = get_run_event_store(request)
     types = event_types.split(",") if event_types else None
-    events = await event_store.list_events(thread_id, run_id, event_types=types, task_id=task_id, limit=limit, after_seq=after_seq)
+    events = await event_store.list_events(
+        thread_id,
+        run_id,
+        event_types=types,
+        task_id=task_id,
+        limit=limit,
+        after_seq=after_seq,
+        user_id=user_id,
+    )
     # EAI-CUSTOM: redact secrets from persisted event metadata (security fix
-    # ported from upstream bytedance/main, 2026-08-15 sync).
-    redacted = []
-    for ev in events:
-        if isinstance(ev, dict) and ev.get("metadata") is not None:
-            ev = {**ev, "metadata": redact_metadata_secrets(ev["metadata"])}
-        redacted.append(ev)
-    return redacted
+    # ported from upstream bytedance/main, 2026-08-15 sync) — fused with the
+    # upstream #6282 per-run data-identity scoping above.
+    return [
+        {
+            **event,
+            "metadata": redact_metadata_secrets(event.get("metadata")),
+        }
+        if isinstance(event, dict) and "metadata" in event
+        else event
+        for event in events
+    ]
 
 
 @router.get("/{thread_id}/runs/{run_id}/workspace-changes")
@@ -1901,6 +1973,7 @@ async def get_run_workspace_changes(
 ) -> dict:
     """Return workspace/output file changes recorded for one run."""
     await _require_run_visible_to_scope(run_id, thread_id, request)
+    user_id = await _run_scope_user_id(request, thread_id)
     event_store = get_run_event_store(request)
     return await get_workspace_changes_response(
         event_store,
@@ -1908,6 +1981,7 @@ async def get_run_workspace_changes(
         run_id,
         include_files=include_files,
         include_diff=include_diff,
+        user_id=user_id,
     )
 
 

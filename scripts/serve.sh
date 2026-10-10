@@ -72,8 +72,8 @@ _pick_python() {
     local candidate
     for candidate in python3 python py; do
         # Probe through `env` as well: the frontend is launched as
-        # `env PORT=3000 "$DEERFLOW_PNPM_PYTHON" ...` (FRONTEND_CMD below), and on
-        # Windows/Git Bash the Microsoft Store python aliases under WindowsApps
+        # `env BETTER_AUTH_SECRET=... pnpm run preview ...` (FRONTEND_CMD below), and
+        # on Windows/Git Bash the Microsoft Store python aliases under WindowsApps
         # are skipped by Bash's own PATH lookup yet still resolved (and fail to
         # exec) inside /usr/bin/env. A bare "$candidate" probe passes while the
         # real launch dies with: env: 'python3': No such file or directory
@@ -283,6 +283,13 @@ if [ "$ACTION" != "stop" ] && ! $DEV_MODE && $SKIP_FRONTEND_BUILD; then
     fi
 fi
 
+# Resolve the nginx config before any stop_all too: an invalid BIND_HOST must
+# not tear down a running stack. Gateway and frontend always bind loopback;
+# nginx is the only entry point, as in the Docker stack.
+if [ "$ACTION" != "stop" ]; then
+    NGINX_CONF="$(bash "$REPO_ROOT/scripts/nginx-local-conf.sh")" || exit 1
+fi
+
 # ── Action routing ───────────────────────────────────────────────────────────
 
 if [ "$ACTION" = "stop" ]; then
@@ -310,13 +317,25 @@ fi
 
 # Frontend command
 if $DEV_MODE; then
-    FRONTEND_CMD="pnpm run dev"
+    # EAI-CUSTOM: plain `pnpm run dev` (EAI dropped upstream's pnpm.py /
+    # DEERFLOW_PNPM_PYTHON runner machinery); frontend/scripts/dev.mjs pins the
+    # webpack bundler and already binds 127.0.0.1 by default on win32. The
+    # explicit --hostname here is upstream #6587 (loopback-only local stack),
+    # forwarded by dev.mjs as a passthrough.
+    FRONTEND_CMD="pnpm run dev --hostname 127.0.0.1"
+    if $SKIP_FRONTEND_BUILD; then
+        echo "  Note: --skip-frontend-build is ignored in dev mode (next dev does not build)."
+    fi
 else
     if ! PYTHON_BIN="$(_pick_python)"; then
         echo "Python is required to generate BETTER_AUTH_SECRET."
         exit 1
     fi
-    FRONTEND_CMD="env BETTER_AUTH_SECRET=$($PYTHON_BIN -c 'import secrets; print(secrets.token_hex(16))') pnpm run preview"
+    # EAI: secret via _pick_python (#5181 env-probe fix); upstream #6587 adds
+    # --hostname 127.0.0.1 so `next start` (via run preview) binds loopback.
+    # EAI keeps `run preview` (always rebuilds) over upstream's
+    # --skip-frontend-build `run start` fast path.
+    FRONTEND_CMD="env BETTER_AUTH_SECRET=$($PYTHON_BIN -c 'import secrets; print(secrets.token_hex(16))') pnpm run preview --hostname 127.0.0.1"
 fi
 
 # Extra flags for uvicorn
@@ -452,8 +471,11 @@ mkdir -p logs
 mkdir -p temp/client_body_temp temp/proxy_temp temp/fastcgi_temp temp/uwsgi_temp temp/scgi_temp
 
 # 1. Gateway API
+# --host 127.0.0.1: upstream #6587 loopback-only local stack (nginx is the
+# sole entry point). Timeout 60 is EAI's Windows cold-start allowance
+# (upstream uses 30).
 run_service "Gateway" \
-    "cd backend && PYTHONPATH=. uv run --no-sync uvicorn app.gateway.app:app --host 0.0.0.0 --port 8001 $GATEWAY_EXTRA_FLAGS > ../logs/gateway.log 2>&1" \
+    "cd backend && PYTHONPATH=. uv run --no-sync uvicorn app.gateway.app:app --host 127.0.0.1 --port 8001 $GATEWAY_EXTRA_FLAGS > ../logs/gateway.log 2>&1" \
     8001 60
 
 # 2. Frontend
@@ -463,7 +485,7 @@ run_service "Frontend" \
 
 # 3. Nginx
 run_service "Nginx" \
-    "nginx -g 'daemon off;' -c '$REPO_ROOT/docker/nginx/nginx.local.conf' -p '$REPO_ROOT' > logs/nginx.log 2>&1" \
+    "nginx -g 'daemon off;' -c '$NGINX_CONF' -p '$REPO_ROOT' > logs/nginx.log 2>&1" \
     2026 10
 
 # ── Ready ────────────────────────────────────────────────────────────────────
@@ -474,6 +496,10 @@ echo "  ✓ DeerFlow is running!  [$MODE_LABEL]"
 echo "=========================================="
 echo ""
 echo "  🌐 http://localhost:2026"
+if [ "${BIND_HOST:-127.0.0.1}" != "127.0.0.1" ]; then
+    echo "  ⚠ Nginx also accepts connections on BIND_HOST=$BIND_HOST."
+    echo "    Complete first-run setup at /setup before other machines can reach it."
+fi
 echo ""
 echo "  Routing: Frontend → Nginx → Gateway"
 echo "  API:     /api/langgraph/*  →  Gateway agent runtime"

@@ -21,7 +21,7 @@ from app.channels.message_bus import (
 )
 from app.channels.service import ChannelService
 from app.channels.slack import SlackChannel
-from app.channels.store import ChannelStore
+from app.channels.store import JsonChannelStore
 
 pytestmark = pytest.mark.skip(reason="upstream new backpressure internals not in EAI channels (EAI-CUSTOM skip 2026-08-15)")
 
@@ -121,7 +121,7 @@ async def test_fixed_worker_pool_bounds_handler_and_queue_tasks(tmp_path: Path) 
     bus = MessageBus(inbound_queue_maxsize=3)
     manager = ChannelManager(
         bus=bus,
-        store=ChannelStore(path=tmp_path / "store.json"),
+        store=JsonChannelStore(path=tmp_path / "store.json"),
         max_concurrency=2,
     )
     release_handlers = asyncio.Event()
@@ -166,7 +166,7 @@ async def test_stop_gracefully_drains_every_accepted_message_before_cancelling_w
     bus = MessageBus(inbound_queue_maxsize=2)
     manager = ChannelManager(
         bus=bus,
-        store=ChannelStore(path=tmp_path / "store.json"),
+        store=JsonChannelStore(path=tmp_path / "store.json"),
         max_concurrency=1,
         shutdown_grace_period_seconds=0.5,
     )
@@ -212,7 +212,7 @@ async def test_stop_cancels_after_grace_drops_queue_and_releases_dedupe(tmp_path
     bus = MessageBus(inbound_queue_maxsize=2)
     manager = ChannelManager(
         bus=bus,
-        store=ChannelStore(path=tmp_path / "store.json"),
+        store=JsonChannelStore(path=tmp_path / "store.json"),
         max_concurrency=1,
         shutdown_grace_period_seconds=0,
     )
@@ -259,7 +259,7 @@ async def test_successful_stop_waits_for_cancel_resistant_workers_and_watchers(t
     bus = MessageBus(inbound_queue_maxsize=1)
     manager = ChannelManager(
         bus=bus,
-        store=ChannelStore(path=tmp_path / "store.json"),
+        store=JsonChannelStore(path=tmp_path / "store.json"),
         max_concurrency=1,
         shutdown_grace_period_seconds=0.01,
     )
@@ -319,7 +319,7 @@ async def test_outer_shutdown_cancellation_does_not_start_an_unbounded_second_jo
     bus = MessageBus(inbound_queue_maxsize=1)
     manager = ChannelManager(
         bus=bus,
-        store=ChannelStore(path=tmp_path / "store.json"),
+        store=JsonChannelStore(path=tmp_path / "store.json"),
         max_concurrency=1,
         shutdown_grace_period_seconds=60,
     )

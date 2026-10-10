@@ -1,5 +1,6 @@
 "use client";
 
+import { useQueryClient } from "@tanstack/react-query";
 import {
   CheckCircle2Icon,
   CopyIcon,
@@ -26,6 +27,7 @@ import { Input } from "@/components/ui/input";
 import { useAuth } from "@/core/auth/AuthProvider";
 import { useI18n } from "@/core/i18n/hooks";
 import {
+  cacheLarkMutationStatus,
   LarkIntegrationRequestError,
   type LarkAuthStartRequest,
   type LarkAuthStartResponse,
@@ -124,6 +126,7 @@ export function LarkPluginSettings() {
 
 function LarkIntegrationCard() {
   const { t } = useI18n();
+  const queryClient = useQueryClient();
   const { user } = useAuth();
   const isAdmin = user?.system_role === "admin";
   const { data, isLoading, error, refetch, isFetching } =
@@ -258,7 +261,10 @@ function LarkIntegrationCard() {
         generation: pendingFlow.generation,
       },
       {
-        onSuccess: () => {
+        onSuccess: (result) => {
+          // Upstream #5994: cache the mutation status so the readiness card
+          // stays consistent (merge-preserving, unlike a raw setQueryData).
+          void cacheLarkMutationStatus(queryClient, result.status);
           toast.success(t.settings.integrations.lark.connectionReady);
           setPendingFlow(null);
           startUserAuth(browserWindowRef.current);
@@ -370,6 +376,9 @@ function LarkIntegrationCard() {
           if (automatic && attemptId !== authAttemptIdRef.current) {
             return;
           }
+          // Upstream #5994: cache the mutation status so the readiness card
+          // stays consistent (merge-preserving, unlike a raw setQueryData).
+          void cacheLarkMutationStatus(queryClient, result.status);
           if (result.success) {
             clearAuthRetryTimer();
             toast.success(result.message, toastOptions);

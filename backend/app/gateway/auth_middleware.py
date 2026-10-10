@@ -9,6 +9,7 @@ owner filtering works automatically via the sentinel pattern.
 Fine-grained permission checks remain in authz.py decorators.
 """
 
+import logging
 from collections.abc import Callable
 
 from fastapi import HTTPException, Request, Response
@@ -30,6 +31,8 @@ from app.gateway.internal_auth import INTERNAL_AUTH_HEADER_NAME, get_internal_us
 from app.gateway.request_path import get_request_route_path
 from deerflow.config.paths import make_safe_user_id
 from deerflow.runtime.user_context import reset_current_user, set_current_user
+
+logger = logging.getLogger(__name__)
 
 # Paths that never require authentication.
 _PUBLIC_PATH_PREFIXES: tuple[str, ...] = (
@@ -124,9 +127,43 @@ class AuthMiddleware(BaseHTTPMiddleware):
             # forged value can never traverse out of the per-user path root.
             from app.gateway.internal_auth import INTERNAL_OWNER_USER_ID_HEADER_NAME
 
-            raw_owner = request.headers.get(INTERNAL_OWNER_USER_ID_HEADER_NAME) or None
-            owner = make_safe_user_id(raw_owner) if raw_owner else None
+            owner_user_id = request.headers.get(INTERNAL_OWNER_USER_ID_HEADER_NAME)
+            if owner_user_id:
+                owner_user_id = owner_user_id.strip()
+            # EAI-CUSTOM (bug-3052): the sanitized id is the storage-bucket
+            # identity for the synthetic internal user, while the raw header
+            # value below remains the users-row account key for suspension.
+            owner = make_safe_user_id(owner_user_id) if owner_user_id else None
             internal_user = get_internal_user(owner_user_id=owner)
+            if owner_user_id and not is_auth_disabled():
+                # The internal principal is synthesized from trusted headers
+                # without a users-row lookup, so suspension has no other chance
+                # to bite on this surface (#3462 gap 3): enforce it here, the
+                # one gate every owner-bound internal HTTP call (IM channel
+                # dispatch above all) passes through. Auth-disabled mode is
+                # exempt — its owner header carries the synthetic
+                # auth-disabled identity and no suspendable account exists.
+                # Owner ids without a users row stay allowed (a nonexistent
+                # account cannot be suspended), and a store that cannot be
+                # read cannot hold a suspension verdict either; run admission
+                # re-asserts the check when the row is readable.
+                from app.gateway.deps import get_local_provider
+
+                try:
+                    owner_account = await get_local_provider().get_user(owner_user_id)
+                except Exception:
+                    logger.warning("Internal-owner suspension check skipped: users lookup failed", exc_info=True)
+                    owner_account = None
+                if owner_account is not None and getattr(owner_account, "disabled", False):
+                    return JSONResponse(
+                        status_code=401,
+                        content={
+                            "detail": AuthErrorResponse(
+                                code=AuthErrorCode.ACCOUNT_DISABLED,
+                                message="Account disabled",
+                            ).model_dump()
+                        },
+                    )
 
         auth_source = AUTH_SOURCE_SESSION
         access_token = request.cookies.get("access_token")

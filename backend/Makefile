@@ -7,7 +7,7 @@ install:
 
 dev:
 	mkdir -p "$(DEER_FLOW_HOME)" "$(BACKEND_SANDBOX_HOME)"
-	PYTHONPATH=. PYTHONIOENCODING=utf-8 PYTHONUTF8=1 DEER_FLOW_HOME="$(DEER_FLOW_HOME)" uv run --locked uvicorn app.gateway.app:app --host 0.0.0.0 --port 8001 \
+	PYTHONPATH=. PYTHONIOENCODING=utf-8 PYTHONUTF8=1 DEER_FLOW_HOME="$(DEER_FLOW_HOME)" uv run --locked uvicorn app.gateway.app:app --host 127.0.0.1 --port 8001 \
 		--reload \
 		--reload-include='*.yaml' \
 		--reload-include='.env' \
@@ -17,13 +17,25 @@ dev:
 		--reload-exclude="$(DEER_FLOW_HOME)"
 
 gateway:
-	PYTHONPATH=. PYTHONIOENCODING=utf-8 PYTHONUTF8=1 uv run --locked uvicorn app.gateway.app:app --host 0.0.0.0 --port 8001
+	PYTHONPATH=. PYTHONIOENCODING=utf-8 PYTHONUTF8=1 uv run --locked uvicorn app.gateway.app:app --host 127.0.0.1 --port 8001
 
+<<<<<<< HEAD
 # EAI-CUSTOM (geo-batch-cli P4): 空 DEER_FLOW_*/OPENAI_API_KEY 前缀 = 屏蔽仓库根 .env（容器部署
 # env 文件）经模块级 load_dotenv(override=False) 毒入 host 测试进程；与 tests/conftest.py
 # 中和块双保险。VAR= 空值经 sh 前缀赋值传给 uv，override=False 视空串为已存在键即不再覆盖。
 test:
 	PYTHONPATH=. PYTHONIOENCODING=utf-8 PYTHONUTF8=1 DEER_FLOW_DEV_MODE= DEER_FLOW_HOME= DEER_FLOW_CONFIG_PATH= DEER_FLOW_EXTENSIONS_CONFIG_PATH= DEER_FLOW_DOCKER_SOCKET= DEER_FLOW_REPO_ROOT= DEER_FLOW_HOST_BASE_DIR= DEER_FLOW_HOST_SKILLS_PATH= OPENAI_API_KEY= uv run pytest -m "not live" --ignore=tests/blocking_io tests/ -v
+=======
+# Run all four duration-balanced shards locally; wait for every shard on failure.
+TEST_JOBS ?= 4
+TEST_SHARD_TARGETS := test-shard-1 test-shard-2 test-shard-3 test-shard-4
+.PHONY: test test-shard $(TEST_SHARD_TARGETS)
+test:
+	$(MAKE) --no-print-directory -k -j$(TEST_JOBS) $(TEST_SHARD_TARGETS)
+
+$(TEST_SHARD_TARGETS):
+	$(MAKE) --no-print-directory test-shard SPLITS=4 GROUP=$(patsubst test-shard-%,%,$@)
+>>>>>>> bytedance/main
 
 test-live:
 	DEER_FLOW_RUN_LIVE_TESTS=1 PYTHONPATH=. PYTHONIOENCODING=utf-8 PYTHONUTF8=1 uv run pytest -m live tests/ -v -s
@@ -38,7 +50,7 @@ test-blocking-io:
 # so concurrent CI jobs cannot race writes on it. Refresh it with
 # `make test-shard-durations` after a meaningful change to the test set.
 # `make test-shard SPLITS=4 GROUP=2` runs shard 2 of 4; a bare `make test-shard`
-# runs the whole (non-live) suite as a single split, matching `make test`.
+# runs the whole offline suite as a single split; `make test` runs all four shards.
 SPLITS ?= 1
 GROUP ?= 1
 DURATIONS_FILE ?= .test_durations

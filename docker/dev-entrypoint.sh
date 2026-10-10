@@ -12,8 +12,8 @@
 #   3. `uv sync --all-packages` so workspace member extras (deerflow-harness's
 #      postgres extra in particular) are installed — see PR #2584.
 #   4. Self-heal: if the first sync fails, recreate .venv and retry once.
-#   5. Hand off to uvicorn with reload, replacing this shell so uvicorn becomes
-#      PID 1 inside the container.
+#   5. Hand off to uvicorn with a bounded graceful shutdown (upstream #6347),
+#      replacing this shell so uvicorn becomes PID 1 inside the container.
 #
 # Anchored at /bin/sh (not bash) since alpine-based base images may not ship
 # bash. Uses POSIX-only constructs throughout.
@@ -115,6 +115,13 @@ fi
 # previously caused the .deer-flow/skills_view reload death-loop (see excludes
 # below, kept for reference if reload is ever re-enabled).
 # Upgrade path: uvicorn --reload --reload-exclude='/app/backend/.deer-flow'
-#   --reload-exclude='/app/backend/.venv' --reload-include='*.yaml .env'
+#   --reload-exclude='/app/backend/.venv' --reload-include='*.yaml'
+#   --reload-include='.env'
+# Upstream (#6347): --timeout-graceful-shutdown bounds how long open SSE
+# connections may delay lifespan shutdown (memory flush, run drain) after
+# SIGTERM; the compose service's stop_grace_period (90s) covers this bound
+# plus the lifespan's worst-case drain work (~61s). Independent of --reload,
+# so it is kept under the no-reload decision above.
 PYTHONPATH=. exec uv run --no-sync uvicorn app.gateway.app:app \
-    --host 0.0.0.0 --port 8001
+    --host 0.0.0.0 --port 8001 \
+    --timeout-graceful-shutdown 10
