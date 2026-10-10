@@ -15,7 +15,7 @@
 # ============================================================================
 # Bump this number when the config schema changes.
 # Run `make config-upgrade` to merge new fields into your local config.yaml.
-config_version: 46
+config_version: 49
 
 # ============================================================================
 # Logging
@@ -2298,6 +2298,8 @@ scheduler:
 #   max_concurrent_polls: 8      # Maximum status calls started by one worker per scan
   queue_timeout_seconds: 3600
   recursion_limit: 1000
+  tool_enabled: false
+  max_concurrent_runs_per_user: 2
 mcp_tasks:
   enabled: false
   poll_interval_seconds: 5
@@ -2923,6 +2925,11 @@ projects:
 # content_filter, Anthropic refusal, and Gemini SAFETY/BLOCKLIST/
 # PROHIBITED_CONTENT/SPII/RECITATION.
 
+  summaries_enabled: false
+  summary_max_bytes: 256
+  summary_concurrency: 2
+  summary_queue_size: 32
+  summary_timeout_seconds: 60
 task_continuity:
   enabled: false
   max_batches: 32
@@ -2972,4 +2979,106 @@ task_continuity:
 # Skills Configuration
 # ============================================================================
 # Configure skills directory for specialized agent workflows
+
+tool_artifacts:
+  enabled: true
+  # Maximum artifact entries retained per thread (a sliding window: the
+  # oldest entries are evicted when the cap is exceeded).
+  max_entries: 100
+  # Conservatively scan free-text tool results for sandbox paths / remote file URLs.
+  detect_refs_in_text: true
+  # Project available artifact handles into the model request as durable context.
+  inject_model_context: true
+  # Resolve artifact handles found in tool arguments to real references before execution.
+  resolve_handles_in_args: true
+
+# ============================================================================
+# Suggestions Configuration
+# ============================================================================
+# Configure whether the agent automatically generates follow-up question
+# suggestions at the end of each response.
+
+pii_redaction:
+  enabled: false
+  # redact_email: true
+  # redact_api_key: true
+  # redact_credit_card: true
+  # redact_phone: true
+  # redact_national_id: true
+  # Required when enabled: true (non-empty, at least 16 characters) — the
+  # deployment-scoped HMAC secret for the placeholder digests. Tokens are
+  # linkable only within this deployment and cannot be re-derived offline
+  # without it. Enabling redaction without a valid secret fails config
+  # validation: an unkeyed digest would be a publicly computable, globally
+  # linkable fingerprint of the raw values (guessable for phone numbers).
+  # token_secret: change-me-to-a-long-random-string
+
+# ============================================================================
+# Tool Progress State Machine Configuration (RFC #3177)
+# ============================================================================
+# Detects tool stagnation and repetition at the (thread, tool) level.
+# Tracks consecutive "no-new-info" calls (error, partial_success, near-duplicate success).
+# Three transition paths (determined by deerflow_tool_meta.recoverable_by_model):
+#   recoverable=true  (no_results, not_found, permission): ACTIVE → WARNED (terminal; hint re-injected each call)
+#   recoverable=false (rate_limited, transient):           ACTIVE → WARNED → BLOCKED after warn_escalation_count more
+#   recoverable=false + action=stop (auth, config):        ACTIVE → BLOCKED immediately
+# Requires ToolErrorHandlingMiddleware to be active (always on).
+
+# tool_progress:
+#   enabled: false
+#   stagnation_threshold: 3        # Consecutive problems before WARNED
+#   warn_escalation_count: 2       # More problems after WARNED before BLOCKED
+#   inject_assessment: true
+#   jaccard_similarity_threshold: 0.8  # Word-set similarity threshold for near-duplicate detection
+#   min_word_count_for_similarity: 10  # Min unique words to apply Jaccard check
+#   max_tracked_threads: 100
+#   exempt_tools:
+#     - ask_clarification
+#     - write_todos
+#     - present_files
+#     - task
+
+# ============================================================================
+# Read-Before-Write File Gate (issue #3857)
+# ============================================================================
+# Blocks write_file (append / overwrite of an existing file) and str_replace
+# unless the agent has read the file's current version first; any write
+# invalidates earlier reads, forcing a re-read between consecutive edits.
+# Deterministic guardrail against blind duplicate appends in long tasks.
+
+blob_storage:
+  enabled: false               # master switch (inert until the producer follow-ups land)
+  backend: local_fs            # folder name under storage/backends/, or a dotted import path
+  # Backend-private config (dict), passed verbatim to the backend; each backend
+  # self-interprets it. local_fs reads `root` -- empty defaults to
+  # {runtime_home}/blobs; point it at a shared volume (NFS / EFS / a
+  # ReadWriteMany PVC) for multi-instance deployments:
+  #
+  # backend_config:
+  #   root: /mnt/shared/deerflow-blobs
+  backend_config: {}
+deployment:
+  multi_instance: false
+
+# ============================================================================
+# Run Ownership Configuration
+# ============================================================================
+# Controls cross-process run ownership for multi-worker deployments.
+# When GATEWAY_WORKERS > 1, each worker claims runs with a lease; the heartbeat
+# renews leases, and reconciliation recovers orphaned runs from crashed workers.
+#
+# CLOCK-SYNC REQUIREMENT (multi-worker only): reconciliation compares another
+# worker's UTC lease timestamp against this worker's datetime.now(UTC). Worker
+# clocks MUST be synced (NTP / chrony / systemd-timesyncd — default on K8s and
+# cloud VMs) within a few seconds. grace_seconds is the skew budget; worst case
+# (owning worker's heartbeat just about to fire), a peer whose clock is more
+# than grace_seconds ahead can mis-reclaim a still-live run as an orphan. Raise
+# grace_seconds if your environment cannot keep clocks within a few seconds;
+# the trade-off is longer recovery latency for genuinely dead workers
+# (lease_seconds + grace_seconds from last heartbeat to reclaim).
+#
+# The owning worker itself does NOT use grace_seconds as extra execution time.
+# If renewal cannot be confirmed before lease_seconds expires, it cancels the
+# local run and suppresses durable finalization; grace_seconds only delays when
+# a peer may reclaim the expired row.
 
