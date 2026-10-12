@@ -1,17 +1,17 @@
 # =============================================================================
 # EAI-Flow 生产离线部署配置（deploy/offline/config.yaml）
 # =============================================================================
-# 生成方式：以开发环境根目录 config.yaml（v40）为基线整体复制，仅做以下离线定制
-# （2026-09-05 重生成；上一版 v34 于 2026-09-04）：
+# 生成方式：以开发环境根目录 config.yaml（v49）为基线整体复制，仅做以下离线定制
+# （2026-10-12 重生成；上一版 v40 于 2026-09-06）：
 #   1. 剔除 dev-only 模型 gemma-4（base_url 指向开发内网 LAN 地址，客户环境不可达）
-#   2. models 段后保留「内网 LLM 模板」注释块（完全离线客户取消注释启用）
-#   3. 文件尾追加 offline-only 的 ui 段
-#   4. models 列表头部预置 3 个客户内网模型（GPUStack @ 10.180.42.192:83，
-#      2026-09-06 客户提供；首个 gemma-4-31b 即默认模型。api_key 走
-#      $INTERNAL_LLM_API_KEY 环境引用，真实值仅存于 deploy.conf 与包内 .env）
-#   5. 本横幅
-# 其余内容与 dev 保持一致。memory 使用 deermem + token_counting: char
-# （离线无法下载 tiktoken BPE 数据，char 计数不依赖网络）。
+#   2. models 段头部预置 3 个客户内网模型（GPUStack；首个 = 默认对话模型，
+#      api_key 走 $INTERNAL_LLM_API_KEY 环境引用，真实值仅在 deploy.conf/包内 .env）
+#   3. models 段后保留「内网 LLM 模板」注释块
+#   4. 文件尾追加 offline-only 的 ui 段
+#   5. run_ownership.heartbeat_enabled=true（离线 .env GATEWAY_WORKERS=4 启动门强制，
+#      dev 单 worker 为 false——勿被 root 值覆盖）
+#   6. 本横幅
+# 其余内容与 dev 保持一致。memory 使用 deermem + token_counting: char（离线无 tiktoken BPE）。
 # ⚠️ 升级 dev config.yaml 后须手动同步本模板并重跑打包（delta 不会携带本文件）。
 # =============================================================================
 
@@ -32,7 +32,7 @@
 # ============================================================================
 # Bump this number when the config schema changes.
 # Run `make config-upgrade` to merge new fields into your local config.yaml.
-config_version: 40
+config_version: 49
 
 # ============================================================================
 # Logging
@@ -140,7 +140,8 @@ max_recursion_limit: 1000
 #                                      # (optional; omit → hits billed at miss price)
 
 models:
-# ── 客户内网模型（GPUStack；首个 = 默认模型）─────────────────────────────
+# ── 客户内网模型（GPUStack；首个 = 默认对话模型。2026-09-15 实测可用清单见下，
+#    ⚠️ gemma-4-31b-it 已从 GPUStack 删除——部署前按 GPUStack 实际改名或删除本段对应项）──
 - name: gemma-4-31b
   display_name: Gemma-4-31B
   use: langchain_openai:ChatOpenAI
@@ -1236,6 +1237,9 @@ tool_output:
 # Configure whether the agent automatically generates follow-up question
 # suggestions at the end of each response.
 
+  elide_superseded_writes: true
+  superseded_write_min_chars: 2000
+  keep_recent_writes: 1
 suggestions:
   enabled: true
   max_suggestions: 3
@@ -1338,6 +1342,8 @@ read_before_write:
 # content_filter, Anthropic refusal, and Gemini SAFETY/BLOCKLIST/
 # PROHIBITED_CONTENT/SPII/RECITATION.
 
+  elide_blocked_payloads: true
+  elide_min_chars: 2000
 safety_finish_reason:
   enabled: true
   # Leave `detectors` unset to use the built-in detector set. Set to a
@@ -2088,7 +2094,7 @@ agents_api:
 # ============================================================================
 # Allow the agent to autonomously create and improve skills in skills/custom/.
 skill_evolution:
-  enabled: false # Set to true to allow agent-managed writes under skills/custom
+  enabled: true # Set to true to allow agent-managed writes under skills/custom [EAI-CUSTOM] self-improving P0 prerequisite (design: docs/designs/self-improving-loop-port.md) — ledger = per-user custom skill maintained via skill_manage
   moderation_model_name:      # Model for LLM-based security scanning (null = use default model)
   security_fail_closed: true # Moderation model unavailable: true blocks all writes; false allows non-executable content with a warning (executable is always blocked)
 
@@ -2342,6 +2348,8 @@ scheduler:
 #   max_concurrent_polls: 8      # Maximum status calls started by one worker per scan
   queue_timeout_seconds: 3600
   recursion_limit: 1000
+  tool_enabled: false
+  max_concurrent_runs_per_user: 2
 mcp_tasks:
   enabled: false
   poll_interval_seconds: 5
@@ -2380,10 +2388,7 @@ run_ownership:
                               # Heartbeat renews every lease_seconds / 3.
   grace_seconds: 10           # Extra seconds past expiry before reclaiming an orphaned run.
                               # Also the cross-worker clock-skew budget — see note above.
-  # EAI-CUSTOM (2026-09-06, 离线 .env GATEWAY_WORKERS=4): 多 worker 启动门强制要求
-  # heartbeat_enabled=true，否则滚动更新时 Worker B 会把 Worker A 的在跑 run 当孤儿杀掉
-  # （bug-3017 同族门）。单 worker 部署开启亦无害。
-  heartbeat_enabled: true
+  heartbeat_enabled: true    # Set to true for GATEWAY_WORKERS > 1
 
 # ============================================================================
 # Stream Bridge Configuration
@@ -2929,6 +2934,58 @@ verification:
   receipts_render_mode: "delegation_only"
   judge_enabled: false
   judge_model_name:
+recursion_limit: 100
+knowledge_base:
+  enabled: false
+  # Custom-agent chat only. Keeps the selector hidden unless the effective
+  # knowledge_search provider is the bundled RAGFlow tool.
+  scope_selection_enabled: false
+
+# ============================================================================
+# Tool Groups Configuration
+# ============================================================================
+# Define groups of tools for organization and access control
+
+projects:
+  # Hard UTF-8 byte cap for project instructions (range: 256-262144). Multi-
+  # byte characters count as their UTF-8 byte length, not as characters.
+  instructions_max_bytes: 8192
+  # Maximum shelf entries rendered into the <documents> index per run
+  # (range: 1-500).
+  shelf_index_max_entries: 50
+  # UTF-8 byte cap for the rendered <documents> index, counting IDs, escaped
+  # names, wrappers, separators and the overflow note (range: 512-65536).
+  # Usually binds before the entry cap for CJK document names.
+  shelf_index_max_bytes: 4096
+  # Days a trashed project document stays recoverable before the retention
+  # sweep may purge it permanently (range: 1-3650).
+  trash_retention_days: 30
+
+# ============================================================================
+# Provider Safety Termination Configuration
+# ============================================================================
+# Intercept AIMessages where the provider stopped generation for safety reasons
+# (e.g. OpenAI finish_reason='content_filter', Anthropic stop_reason='refusal',
+# Gemini finish_reason='SAFETY') while still returning tool_calls. The
+# tool_calls in such responses are typically truncated/unreliable and must
+# not be executed. See issue #3028 for the full failure mode.
+#
+# Detectors are loaded by class path via reflection (same pattern as
+# guardrails / models / tools). The built-in set covers OpenAI-compatible
+# content_filter, Anthropic refusal, and Gemini SAFETY/BLOCKLIST/
+# PROHIBITED_CONTENT/SPII/RECITATION.
+
+  summaries_enabled: false
+  summary_max_bytes: 256
+  summary_concurrency: 2
+  summary_queue_size: 32
+  summary_timeout_seconds: 60
+task_continuity:
+  enabled: false
+  max_batches: 32
+  max_records_per_batch: 256
+  max_record_chars: 16000
+
 
 # ============================================================================
 # ACP Agents Configuration
@@ -2972,6 +3029,108 @@ verification:
 # Skills Configuration
 # ============================================================================
 # Configure skills directory for specialized agent workflows
+
+tool_artifacts:
+  enabled: true
+  # Maximum artifact entries retained per thread (a sliding window: the
+  # oldest entries are evicted when the cap is exceeded).
+  max_entries: 100
+  # Conservatively scan free-text tool results for sandbox paths / remote file URLs.
+  detect_refs_in_text: true
+  # Project available artifact handles into the model request as durable context.
+  inject_model_context: true
+  # Resolve artifact handles found in tool arguments to real references before execution.
+  resolve_handles_in_args: true
+
+# ============================================================================
+# Suggestions Configuration
+# ============================================================================
+# Configure whether the agent automatically generates follow-up question
+# suggestions at the end of each response.
+
+pii_redaction:
+  enabled: false
+  # redact_email: true
+  # redact_api_key: true
+  # redact_credit_card: true
+  # redact_phone: true
+  # redact_national_id: true
+  # Required when enabled: true (non-empty, at least 16 characters) — the
+  # deployment-scoped HMAC secret for the placeholder digests. Tokens are
+  # linkable only within this deployment and cannot be re-derived offline
+  # without it. Enabling redaction without a valid secret fails config
+  # validation: an unkeyed digest would be a publicly computable, globally
+  # linkable fingerprint of the raw values (guessable for phone numbers).
+  # token_secret: change-me-to-a-long-random-string
+
+# ============================================================================
+# Tool Progress State Machine Configuration (RFC #3177)
+# ============================================================================
+# Detects tool stagnation and repetition at the (thread, tool) level.
+# Tracks consecutive "no-new-info" calls (error, partial_success, near-duplicate success).
+# Three transition paths (determined by deerflow_tool_meta.recoverable_by_model):
+#   recoverable=true  (no_results, not_found, permission): ACTIVE → WARNED (terminal; hint re-injected each call)
+#   recoverable=false (rate_limited, transient):           ACTIVE → WARNED → BLOCKED after warn_escalation_count more
+#   recoverable=false + action=stop (auth, config):        ACTIVE → BLOCKED immediately
+# Requires ToolErrorHandlingMiddleware to be active (always on).
+
+# tool_progress:
+#   enabled: false
+#   stagnation_threshold: 3        # Consecutive problems before WARNED
+#   warn_escalation_count: 2       # More problems after WARNED before BLOCKED
+#   inject_assessment: true
+#   jaccard_similarity_threshold: 0.8  # Word-set similarity threshold for near-duplicate detection
+#   min_word_count_for_similarity: 10  # Min unique words to apply Jaccard check
+#   max_tracked_threads: 100
+#   exempt_tools:
+#     - ask_clarification
+#     - write_todos
+#     - present_files
+#     - task
+
+# ============================================================================
+# Read-Before-Write File Gate (issue #3857)
+# ============================================================================
+# Blocks write_file (append / overwrite of an existing file) and str_replace
+# unless the agent has read the file's current version first; any write
+# invalidates earlier reads, forcing a re-read between consecutive edits.
+# Deterministic guardrail against blind duplicate appends in long tasks.
+
+blob_storage:
+  enabled: false               # master switch (inert until the producer follow-ups land)
+  backend: local_fs            # folder name under storage/backends/, or a dotted import path
+  # Backend-private config (dict), passed verbatim to the backend; each backend
+  # self-interprets it. local_fs reads `root` -- empty defaults to
+  # {runtime_home}/blobs; point it at a shared volume (NFS / EFS / a
+  # ReadWriteMany PVC) for multi-instance deployments:
+  #
+  # backend_config:
+  #   root: /mnt/shared/deerflow-blobs
+  backend_config: {}
+deployment:
+  multi_instance: false
+
+# ============================================================================
+# Run Ownership Configuration
+# ============================================================================
+# Controls cross-process run ownership for multi-worker deployments.
+# When GATEWAY_WORKERS > 1, each worker claims runs with a lease; the heartbeat
+# renews leases, and reconciliation recovers orphaned runs from crashed workers.
+#
+# CLOCK-SYNC REQUIREMENT (multi-worker only): reconciliation compares another
+# worker's UTC lease timestamp against this worker's datetime.now(UTC). Worker
+# clocks MUST be synced (NTP / chrony / systemd-timesyncd — default on K8s and
+# cloud VMs) within a few seconds. grace_seconds is the skew budget; worst case
+# (owning worker's heartbeat just about to fire), a peer whose clock is more
+# than grace_seconds ahead can mis-reclaim a still-live run as an orphan. Raise
+# grace_seconds if your environment cannot keep clocks within a few seconds;
+# the trade-off is longer recovery latency for genuinely dead workers
+# (lease_seconds + grace_seconds from last heartbeat to reclaim).
+#
+# The owning worker itself does NOT use grace_seconds as extra execution time.
+# If renewal cannot be confirmed before lease_seconds expires, it cancels the
+# local run and suppresses durable finalization; grace_seconds only delays when
+# a peer may reclaim the expired row.
 
 # ============================================================================
 # UI (offline-only)

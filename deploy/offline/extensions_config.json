@@ -159,6 +159,21 @@
       "oauth": null,
       "description": "Document graph builder: ingest LLM-extracted bid entities/relations/mentions, review and merge entities. Write-side complement to the read-only ontology server (doc_graph domain). (S1 Task 2: stdio->streamable-http 独立服务 ontostudio:8005; X-Internal-Auth 共享头经 $ONTOSTUDIO_INTERNAL_AUTH_TOKEN 注入，未设置=内网匿名开放)"
     },
+    "translation": {
+      "enabled": true,
+      "type": "stdio",
+      "command": "/app/backend/.venv/bin/python",
+      "args": ["-m", "app.extensions.translation.mcp"],
+      "cwd": "/app/backend",
+      "description": "翻译任务工具(translate_document 入队/translation_status 状态含机检明细)。KB 须已开 translation_enabled;人工复核走管理 API 不经 MCP。",
+      "env": {
+        "TLT_QUERY_DB_URL": "postgresql+asyncpg://agentflow:agentflow123@postgres-ext:5432/agentflow"
+      },
+      "headers": {},
+      "oauth": null,
+      "tool_name_prefix": false,
+      "url": null
+    },
     "knowledge-factory": {
       "enabled": true,
       "type": "http",
@@ -307,6 +322,9 @@
       "enabled": true
     },
     "geological-report": {
+      "enabled": true
+    },
+    "ontology-graph-query": {
       "enabled": true
     },
     "markdown-to-docx": {
