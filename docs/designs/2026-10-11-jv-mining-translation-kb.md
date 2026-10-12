@@ -264,7 +264,37 @@ Stop: MAX_ITERATIONS
 
 ## Engineering Review Records（plan-eng-review 2026-10-11）
 
-评审目标：本设计文档（APPROVED v6/R6）。报告文件=本文件；终局 `## GSTACK REVIEW REPORT` 于评审完成时追加至文末。
+评审目标：本设计文档（APPROVED v6/R6）。报告文件=本文件；终局 `## 管线架构定调（2026-10-12，D22 用户决策）
+
+**格式解析借 pdf2zh/BabelDOC 版式能力，翻译质量层完整自研——互补而非二选一**：
+
+```
+PDF（电子版）──▶ BabelDOC 版式解析（DocLayout-YOLO：段落/标题/表格/公式区/图片区，阅读序重建）
+                  │ 产出版式感知 block 树（替代 fitz 流式提取）
+                  ▼
+自研 worker 翻译管线（五层质量机制全保留）
+  数字占位符保护 → 术语库注入 → LLM 翻译 → 三轴机检 → 定向重试 → 复核队列
+                  │
+                  ▼
+      Markdown 交付物（稳定路径 + RAGFlow 双份索引，预览双屏对照）
+```
+
+- **决策依据**：翻译质量的核心保障层（数字/术语/完整性/可复核）是本系统护城河；pdf2zh 的
+  质量保障层数为 0（逐页 fire-and-forget：数字无保护、术语无强制、错误直接进成品）——
+  渲染强 ≠ 翻译质量高，解析/渲染借其版式模型，质量层不让渡。
+- **实施项（T10）**：pip babeldoc 引入 gateway 依赖；PDF 解析器升级为 IL→block 树映射
+  （标题层级/段落/表格/公式区域=占位符不译/图片区域=占位符）；fitz 保留回退；
+  版式模型（ONNX，~200MB）进离线打包清单（HF_ENDPOINT 镜像下载）。
+- **交付物形态**：维持 Markdown；版式级 PDF 交付物二期再议（需 pdf2zh 完整渲染器，
+  质量层会让渡，与「质量优先」冲突，等客户真实要求出现再评估）。
+- **扫描件**：仍走 eai-flow-ocr 链路（管线 A 不变）。
+- **多租户核查结论（同日）**：本系统不支持多租户（无 tenant 模型，单组织 RBAC/ABAC +
+  RAGFlow 单 api_key），单组织内网部署为既定架构。
+- **RAGFlow 版本格局（同日查证）**：最新 1.0.0-rc1（Go 重写，0.27.2 为升级强制前置，
+  迁移不可逆）；1.0 原生 claim/evidence 层级编译与前提 4 的 PageIndex 路线合并裁决，
+  触发器=1.0 stable；T6 开发与版本解耦。
+
+## GSTACK REVIEW REPORT` 于评审完成时追加至文末。
 
 ### Scope record（B 门答复后）
 - feature answers: 无裁剪提案，特性清单保留（一期 8 构件）
