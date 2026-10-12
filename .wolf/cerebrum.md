@@ -2535,3 +2535,16 @@ P3 item ① 裁决：**双工况 N=3 校核暂不默认开**，维持 SKILL 现�
 - [2026-10-01] **用户裁定：ResolutionPanel「操作反馈四态」表不折叠**（v1 判断「契约文档是操作者噪音」被推翻——该表对审核者是点确认前的行为参考，重度使用者要它常驻展开）。后续勿再提议折叠/外移此表。
 - [2026-10-01] resolution/pending 端点契约（v2 后）：GET /api/extensions/doc-graph/resolution/pending?etype&limit(≤200)&search(canonical_name ILIKE 子串,%/_剥除)&offset → {entities[], count=真实总数(同过滤 COUNT)}。前端 ResolutionPanel 已接：searchQuery 走服务端、pageIndex 翻页器、count 直显。
 - [2026-10-01] **ontostudio index.css 令牌清单封闭性（bug-4006 教训）**：该应用语义令牌只有 §1 清单（background/…/warning/success/destructive/muted 等），**没有** --amber/--green/--red 及其 *-soft 变体——2026-10-01 已正式补入（:root 亮 + .dark 暗，见 index.css「总览卡徽章软底令牌」块：blue/purple/cyan/amber/green/red + *-soft + ink-3）。**原型 HTML 的自定义令牌搬进组件前必须 grep index.css 核对定义**——var() 无解析时背景透明/颜色继承，TSC 与构建零报错，症状是运行时静默「灰白 chip」。同日三撞（activities 令牌/routers 透传/本条），凡 replace/搬运会话收尾必须做产物特征断言。
+
+## 2026-10-11 合资铁矿翻译入库设计（office-hours 会话）
+
+**Key Learnings**
+- **检索与翻译解耦 + 双份索引**（本日设计决策）：原文即刻入库（bge-m3 多语 embedding 支持中文跨语检索），格式保留中文版异步生产、译毕追加入库；法文 fr→zh 是 bge-m3 最弱语对，由双份索引对冲；检索链路质量闸门（hit@k 夹具 + OCR 质量指标）与翻译模型选型同入样例验证关卡。
+- **文档管线分流按内容语义而非文件格式**（盲评挑战成立）：扫描财报若按 .pdf 路由会进翻译管线、恰好撞「表格打碎后入库 RAG 质量崩」已知失败模式；叙事 xlsx 反向同理。判据本身=样例验证头号待决问题，一期只建打标 stub（narrative/tabular/mixed）不预设规则。
+- **PageIndex 选型结论**（2026-10 调研）：无向量层级目录树+LLM 推理导航；FinanceBench 98.7% vs 向量 RAG 50-65%，优势场景=长财务文档精确问答；生产化证据稀少、检索时 LLM 导航慢且贵。本项目定位=单 KB 可选挂载 MCP 检索工具（条款级溯源痛点出现时增量接入），不替代 RAGFlow 底座。
+- codex exec 本机网络重连超时（exit 124 零输出）→ 降级同提示词子代理盲评质量足够（抓出路由键错误）。
+
+**Do-Not-Repeat**
+- [2026-10-11] 设计文档处理管线「按文件格式分流」前先问内容语义——格式只是代理指标，扫描 PDF 财报与叙事 xlsx 两类错分都能撞已知失败模式。
+- [2026-10-11] 用户的翻译工程方法论清单（合资铁矿设计会话补充，视作用户偏好基线）：glossary+TM/MTPE 定稿流、黄金集三指标（忠实度权重最高+术语一致率+可读性盲评 MQM 式）、工程指标（延迟/百万字符成本/格式保留率/超长首尾一致性）、A/B 双跑看错误类型分布而非总分、英中法中分开打分、六条实践（接入网关/一主一备/overlap 分块/结构化 JSON 含不确定标记/回译自检/人机分工 SOP）、资产先行（术语 300-500 条+黄金句对 50-100+不译清单从真实语料抽）。已整体吸收进 docs/designs/2026-10-11-jv-mining-translation-kb.md v4。后续翻译类设计直接引用此基线，勿重新发明评估法。
+- [2026-10-11] RAGFlow 版本格局（查证）：0.27.x 之后无 0.28/0.29——0.27.2(2026-09-10 安全+Agentic RAG 重构) 直接跳 1.0.0-rc1(2026-09-29 Go 重写:Redis→NATS/Kvrocks/废弃 API 清零/不可逆迁移,0.27.2 为强制前置)。对 EAI 关键:①1.0 原生 claim/evidence 进 tree/pageindex 编译管线(条款级溯源可由 RAGFlow 原生承载,PageIndex 外接路线届时合并裁决)②Go 重写=EAI 认证集成+bug-3101 移植补丁需重做③本系统确认无多租户(单组织 RBAC/ABAC,RAGFlow 单 api_key)。升级触发=1.0 stable;T6 开发与版本解耦。

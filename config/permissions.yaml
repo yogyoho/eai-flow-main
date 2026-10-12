@@ -93,6 +93,13 @@ modules:
           - { id: "kb:update", display_name: "编辑知识库" }
           - { id: "kb:delete", display_name: "删除知识库" }
           - { id: "kb:upload", display_name: "上传文档" }
+          # EAI-CUSTOM (translation 一期): 翻译任务 API 权限点（owner 过滤在 routers 层）
+          - { id: "translation:read", display_name: "查看翻译任务" }
+          - { id: "translation:transition", display_name: "流转翻译任务" }
+      # EAI-CUSTOM (translation 资产库页): 页面可见性权限点（layout canPage 过滤页签）
+      - id: "translation:page:assets"
+        display_name: "文档资产库"
+        operations: []
     data_scopes:
       - { id: "knowledge_owner",  display_name: "仅自己的知识库", rule_template: { owner_id: "$identity.user_id" } }
       - { id: "knowledge_public", display_name: "所有公开知识库", rule_template: { access_type: "public" } }
@@ -391,6 +398,8 @@ roles:
       - kb:create
       # EAI-CUSTOM: U2 button-level can() gates upload/delete/edit on these; dept_head manages KB content
       - kb:upload
+      - translation:read
+      - translation:transition
       - kb:update
       - kb:delete
       - doc:read

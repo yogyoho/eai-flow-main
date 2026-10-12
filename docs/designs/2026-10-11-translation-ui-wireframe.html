@@ -1,0 +1,501 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>翻译工作台 · 低保真线框（IA 版 v1）</title>
+<style>
+/* ── 低保真线框规范：纯灰阶 · 8px 密度节律 · 字阶 12/14/16/18/24/32 ── */
+:root{
+  --ink-1:#111; --ink-2:#555; --ink-3:#888; --ink-4:#bbb;
+  --line-1:#999; --line-2:#ccc; --line-3:#e5e5e5;
+  --fill-1:#f7f7f7; --fill-2:#efefef; --fill-3:#fff;
+  --r:6px; --r-lg:10px;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font:14px/1.5 -apple-system,"Segoe UI","Microsoft YaHei",sans-serif;color:var(--ink-1);background:var(--fill-2);padding:0 0 48px}
+h1,h2,h3{font-weight:600}
+button{font:inherit;cursor:pointer}
+
+/* 原型外壳（评审工具条，非产品 UI） */
+.proto-bar{position:sticky;top:0;z-index:50;background:#1d1d1d;color:#eee;padding:10px 20px;display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.proto-bar b{font-size:14px;margin-right:8px}
+.proto-bar .tag{font-size:12px;color:#aaa;margin-right:auto}
+.proto-tab{background:transparent;border:1px solid #666;color:#ddd;border-radius:6px;padding:4px 12px;font-size:12px}
+.proto-tab.on{background:#eee;color:#111;border-color:#eee}
+.proto-note-toggle{margin-left:auto}
+
+/* IA 标注（可开关） */
+.anno{display:flex;gap:6px;align-items:flex-start;font-size:12px;color:var(--ink-3);border:1px dashed var(--line-1);border-radius:var(--r);padding:4px 8px;margin-top:6px;background:var(--fill-1)}
+.anno::before{content:"IA";font-size:10px;font-weight:700;border:1px solid var(--ink-3);border-radius:3px;padding:0 3px;margin-top:1px}
+body.hide-anno .anno{display:none}
+
+/* 应用框架 */
+.app{display:flex;min-height:calc(100vh - 52px);background:var(--fill-3)}
+.side{width:212px;flex:0 0 auto;border-right:1px solid var(--line-2);background:var(--fill-1);padding:16px 10px;display:flex;flex-direction:column;gap:2px}
+.side .logo{font-size:16px;font-weight:600;padding:6px 10px 14px;letter-spacing:.5px}
+.side .grp{font-size:12px;color:var(--ink-3);padding:10px 10px 4px}
+.nav{display:flex;align-items:center;gap:8px;padding:8px 10px;border-radius:var(--r);font-size:14px;color:var(--ink-2);border:1px solid transparent;width:100%;text-align:left;background:none}
+.nav .ic{width:16px;height:16px;border:1.5px solid currentColor;border-radius:3px;flex:0 0 auto}
+.nav.on{background:var(--fill-3);border-color:var(--line-2);color:var(--ink-1);font-weight:600}
+.nav .n{margin-left:auto;font-size:12px;border:1px solid var(--line-2);border-radius:10px;padding:0 6px;color:var(--ink-3)}
+.side .foot{margin-top:auto;font-size:12px;color:var(--ink-3);padding:10px}
+
+.main{flex:1;min-width:0;display:flex;flex-direction:column}
+.topbar{height:48px;border-bottom:1px solid var(--line-2);display:flex;align-items:center;gap:10px;padding:0 24px;background:var(--fill-3)}
+.topbar .crumb{font-size:12px;color:var(--ink-3)}
+.topbar h2{font-size:18px}
+.topbar .sp{flex:1}
+.ptab{background:none;border:none;border-bottom:2px solid transparent;padding:0 12px;font-size:14px;color:var(--ink-2);height:100%}.ptab.on{color:var(--ink-1);border-bottom-color:var(--ink-1);font-weight:600}.ptab:hover{color:var(--ink-1)}.ptab .n{font-size:12px;color:var(--ink-3)}
+.chip{border:1px solid var(--line-2);border-radius:999px;padding:2px 10px;font-size:12px;color:var(--ink-2);background:var(--fill-1)}
+.btn{border:1px solid var(--line-1);border-radius:var(--r);padding:6px 14px;font-size:14px;background:var(--fill-3);color:var(--ink-1)}
+.btn.dark{background:var(--ink-1);color:#fff;border-color:var(--ink-1)}
+.btn.sm{padding:3px 10px;font-size:12px}
+.btn[disabled]{color:var(--ink-4);border-color:var(--line-2);background:var(--fill-1)}
+.content{padding:24px;display:flex;flex-direction:column;gap:16px}
+
+/* 通用构件 */
+.view{display:none}.view.on{display:block}
+.card{border:1px solid var(--line-2);border-radius:var(--r-lg);background:var(--fill-3);padding:16px}
+.card h3{font-size:16px;margin-bottom:12px}
+.cap{font-size:12px;color:var(--ink-3)}
+.row{display:flex;gap:16px;flex-wrap:wrap}
+.grow{flex:1;min-width:0}
+.grid5{display:grid;grid-template-columns:repeat(5,1fr);gap:12px}
+.grid2{display:grid;grid-template-columns:2fr 1fr;gap:16px}
+
+/* 指标卡 */
+.metric{border:1px solid var(--line-2);border-radius:var(--r-lg);padding:14px 16px;background:var(--fill-3)}
+.metric .k{font-size:24px;font-weight:600}
+.metric .t{font-size:12px;color:var(--ink-3);margin-top:2px}
+.metric.alert{border:2px solid var(--ink-1)}
+.metric .sub{font-size:12px;color:var(--ink-2);margin-top:6px}
+
+/* 状态分布条 */
+.dist{display:flex;flex-direction:column;gap:8px}
+.dist .line{display:grid;grid-template-columns:90px 1fr 70px;gap:10px;align-items:center;font-size:12px;color:var(--ink-2)}
+.bar{height:14px;background:var(--fill-2);border:1px solid var(--line-3);border-radius:3px;position:relative}
+.bar i{position:absolute;inset:0 auto 0 0;background:repeating-linear-gradient(45deg,#bbb 0 4px,#ddd 4px 8px);border-radius:2px}
+.bar.dark i{background:#888}
+
+/* 表格 */
+.tblwrap{border:1px solid var(--line-2);border-radius:var(--r-lg);overflow:hidden}
+table{width:100%;border-collapse:collapse;font-size:14px}
+th{font-size:12px;font-weight:600;color:var(--ink-3);text-align:left;padding:8px 12px;border-bottom:1px solid var(--line-2);background:var(--fill-1)}
+td{padding:9px 12px;border-bottom:1px solid var(--line-3)}
+tr:last-child td{border-bottom:none}
+tr.hl td{background:var(--fill-1)}
+.doc{display:flex;align-items:center;gap:8px}
+.doc .ic{width:14px;height:14px;border:1px solid var(--ink-3);border-radius:2px;flex:0 0 auto}
+
+/* 徽章（纯灰阶：文字+边框轻重区分） */
+.b{display:inline-block;border-radius:999px;padding:1px 9px;font-size:12px;border:1px solid var(--line-2);color:var(--ink-2);background:var(--fill-1)}
+.b.ok{border-color:var(--ink-1);color:var(--ink-1);font-weight:600}
+.b.warn{border:1.5px solid var(--ink-1);color:var(--ink-1);font-weight:600;background:var(--fill-2)}
+.b.err{border:1.5px solid var(--ink-1);background:var(--ink-1);color:#fff}
+.b.dim{color:var(--ink-4);border-style:dashed;text-decoration:line-through}
+.b.run{border-style:dashed;color:var(--ink-1)}
+.langb{display:inline-block;border:1px solid var(--line-2);border-radius:999px;padding:1px 8px;font-size:12px;color:var(--ink-2)}
+.langb i{font-style:normal;color:var(--ink-1)}
+
+/* 筛选行 */
+.filters{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+.sel{border:1px solid var(--line-2);border-radius:var(--r);padding:5px 10px;font-size:14px;color:var(--ink-2);background:var(--fill-3)}
+.inp{border:1px solid var(--line-2);border-radius:var(--r);padding:5px 10px;font-size:14px;width:220px;color:var(--ink-3)}
+
+/* 抽屉 */
+.taskwrap{display:grid;grid-template-columns:1fr 400px;gap:0;border:1px solid var(--line-2);border-radius:var(--r-lg);overflow:hidden}
+.taskwrap .tblside{min-width:0}
+.drawer{border-left:1px solid var(--line-1);background:var(--fill-3);display:flex;flex-direction:column;max-height:640px}
+.drawer .dh{padding:14px 16px;border-bottom:1px solid var(--line-2);display:flex;justify-content:space-between;align-items:flex-start;gap:8px}
+.drawer .db{padding:14px 16px;overflow:auto;display:flex;flex-direction:column;gap:14px}
+.drawer .df{margin-top:auto;padding:12px 16px;border-top:1px solid var(--line-2);display:flex;gap:8px;justify-content:flex-end}
+.sec-t{font-size:12px;font-weight:600;color:var(--ink-3);letter-spacing:.5px}
+.kv{display:grid;grid-template-columns:88px 1fr;gap:4px 10px;font-size:14px}
+.kv .k{color:var(--ink-3);font-size:12px;padding-top:1px}
+.gate{border:1px solid var(--line-2);border-radius:var(--r);padding:10px 12px;font-size:12px}
+.gate.fail{border:1.5px solid var(--ink-1)}
+.gate .gt{display:flex;justify-content:space-between;font-weight:600;font-size:12px}
+.gate ul{margin:6px 0 0 16px;color:var(--ink-2)}
+
+/* 复核工作台 */
+.revwrap{display:grid;grid-template-columns:230px 1fr;border:1px solid var(--line-2);border-radius:var(--r-lg);overflow:hidden;min-height:520px}
+.queue{border-right:1px solid var(--line-2);background:var(--fill-1);padding:10px;display:flex;flex-direction:column;gap:8px}
+.ql{font-size:12px;font-weight:600;color:var(--ink-3);letter-spacing:.5px;padding:2px 4px}
+.qi{border:1px solid var(--line-2);border-radius:var(--r);padding:8px 10px;background:var(--fill-3);font-size:12px}
+.qi.on{border:2px solid var(--ink-1);font-weight:600}
+.qi .qn{font-weight:600;font-size:13px}
+.revmain{display:flex;flex-direction:column;min-width:0}
+.revhead{padding:12px 16px;border-bottom:1px solid var(--line-2);display:flex;gap:10px;align-items:center}
+.revcols{display:grid;grid-template-columns:1fr 1fr;flex:1;min-height:340px}
+.revcol{padding:14px 16px;border-right:1px solid var(--line-2);font-size:14px;display:flex;flex-direction:column;gap:10px}
+.revcol:last-child{border-right:none}
+.revcol .cl{font-size:12px;color:var(--ink-3);font-weight:600}
+.blk{border:1px solid var(--line-3);border-radius:var(--r);padding:10px 12px}
+.blk.hd{font-weight:600;background:var(--fill-1)}
+.tok{border:1.5px solid var(--ink-1);border-radius:3px;padding:0 3px;font-weight:600;background:repeating-linear-gradient(45deg,#eee 0 3px,#f8f8f8 3px 6px)}
+.tok.bad{border-style:dashed;background:#ddd;text-decoration:line-through}
+.miss{border:1.5px dashed var(--ink-1);border-radius:3px;padding:0 6px;color:var(--ink-2);font-size:12px}
+.term{border-bottom:2px solid var(--ink-1);background:var(--fill-2)}
+.unc{background:var(--fill-2);border-bottom:1.5px dashed var(--ink-3)}
+.revdetails{border-top:1px solid var(--line-2);padding:12px 16px;display:flex;flex-direction:column;gap:8px;background:var(--fill-1)}
+.revact{border-top:1px solid var(--line-1);padding:12px 16px;display:flex;gap:10px;justify-content:flex-end;background:var(--fill-3)}
+
+/* 开关（线框版） */
+.tgl{display:inline-flex;width:34px;height:18px;border:1.5px solid var(--ink-1);border-radius:999px;position:relative;vertical-align:middle}
+.tgl i{position:absolute;top:1px;left:2px;width:12px;height:12px;border-radius:50%;background:var(--ink-1)}
+.tgl.off{border-color:var(--line-1)}.tgl.off i{left:auto;right:2px;background:var(--line-1)}
+.tgl[disabled]{opacity:.4}
+
+/* 应用中心 */
+.appgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
+.appcard{border:1px solid var(--line-2);border-radius:var(--r-lg);padding:16px;min-height:150px;background:var(--fill-3);display:flex;flex-direction:column;gap:8px}
+.appcard.focus{border:2px solid var(--ink-1)}
+.appcard .aic{width:36px;height:36px;border:1.5px solid var(--ink-1);border-radius:8px;display:flex;align-items:center;justify-content:center;font-weight:700}
+.appcard .nm{font-size:16px;font-weight:600}
+.appcard .ds{font-size:12px;color:var(--ink-3);flex:1}
+.ph{color:var(--ink-4);border:1px dashed var(--line-2);border-radius:var(--r);padding:10px;font-size:12px;text-align:center}
+
+.legend{background:var(--fill-1);border:1px dashed var(--line-1);border-radius:var(--r-lg);padding:10px 14px;font-size:12px;color:var(--ink-2);display:flex;gap:18px;flex-wrap:wrap;align-items:center}
+@media (max-width:1100px){.grid5{grid-template-columns:repeat(2,1fr)}.grid2,.taskwrap,.revwrap,.revcols{grid-template-columns:1fr}.drawer{border-left:none;border-top:1px solid var(--line-1)}}
+</style>
+</head>
+<body>
+
+<div class="proto-bar">
+  <b>翻译工作台 · 低保真线框</b><span class="tag">IA 版 v1 · 纯灰阶 · 2026-10-11 · 密度 8/10 · 字阶 12/14/16/18/24/32</span>
+  <button class="proto-tab on" data-v="v-appcenter" onclick="go('v-appcenter',this)">应用中心入口</button>
+  <button class="proto-tab" data-v="v-overview" onclick="go('v-overview',this)">文档资产库</button>
+  <button class="proto-tab" data-v="v-tasks" onclick="go('v-tasks',this)">任务管理</button>
+  <button class="proto-tab" data-v="v-review" onclick="go('v-review',this)">复核工作台</button>
+  <button class="proto-tab" data-v="v-glossary" onclick="go('v-glossary',this)">术语库</button>
+  <button class="proto-tab" data-v="v-settings" onclick="go('v-settings',this)">设置</button>
+  <button class="proto-tab proto-note-toggle" onclick="document.body.classList.toggle('hide-anno')">IA 标注 开/关</button>
+</div>
+
+<div class="app" style="padding-left:0">
+  <!-- 应用框架侧导航（除「应用中心入口」外的 5 个视图共用） -->
+
+  <main class="main">
+    <div class="topbar">
+      <span class="crumb">应用中心</span>
+      <h2 style="margin-right:6px">文档翻译工作台</h2>
+      <nav id="apptabs" style="display:flex;gap:2px;height:100%;align-items:stretch">
+        <button class="ptab on" data-v="v-overview" onclick="go('v-overview')">文档资产库</button>
+        <button class="ptab" data-v="v-tasks" onclick="go('v-tasks')">任务管理</button>
+        <button class="ptab" data-v="v-review" onclick="go('v-review')">复核工作台 <span class="n">3</span></button>
+        <button class="ptab" data-v="v-glossary" onclick="go('v-glossary')">术语库</button>
+        <button class="ptab" data-v="v-settings" onclick="go('v-settings')">设置</button>
+      </nav>
+      <span class="sp"></span>
+      <span class="chip">EN 96 · FR 60</span>
+      <span class="chip">模型 Qwen2.5-72B</span>
+      <span class="chip">用户 ▾</span>
+    </div>
+
+    <!-- ═══════════ v-appcenter 应用中心入口 ═══════════ -->
+    <section class="view on content" id="v-appcenter">
+      <div class="anno">入口形态：应用中心 app_definitions 注册（app_id=translation / icon=languages / path=/translation），无 translation:read 权限者不渲染本卡。</div>
+      <div class="appgrid">
+        <div class="appcard"><div class="aic">价</div><div class="nm">合同价格分析</div><div class="ds">分项价格提取与聚类</div><div class="ph">既有应用（占位）</div></div>
+        <div class="appcard"><div class="aic">备</div><div class="nm">备件分析</div><div class="ds">备件价格查询分析</div><div class="ph">既有应用（占位）</div></div>
+        <div class="appcard focus">
+          <div class="aic">译</div><div class="nm">文档翻译工作台</div>
+          <div class="ds">EN/FR 文档翻译入库：任务管理、机检复核、术语库</div>
+          <button class="btn dark" onclick="go('v-overview')">打开 →</button>
+        </div>
+      </div>
+      <div class="legend">点击「打开 →」进入工作台主体 · 红线框=本设计新增入口</div>
+    </section>
+
+    <!-- ═══════════ v-overview 总览 ═══════════ -->
+    <section class="view content" id="v-overview">
+      <div class="anno">资产库=资源管理器双栏：每侧=目录树+文件列表；右树=左树只读镜像；拖动中间分隔条改宽度(25-75%)；列表横向滚动(overflow-x)；变更只发生在左侧。三档宽度按钮=预设 50/50、左全宽、右全宽。</div>
+      <div class="filters" style="border:1px solid var(--line-2);border-radius:var(--r-lg);padding:8px 12px;background:var(--fill-3)">
+        <span class="inp" style="width:260px">搜索 文件名 / sha 🔍</span>
+        <span style="flex:1"></span>
+        <span class="cap">宽度:</span>
+        <button class="btn sm" onclick="setWidth(50)">50/50</button>
+        <button class="btn sm" onclick="setWidth(72)">左全宽</button>
+        <button class="btn sm" onclick="setWidth(28)">右全宽</button>
+      </div>
+      <div id="splitwrap" style="display:flex;gap:0;min-height:460px;border:1px solid var(--line-2);border-radius:var(--r-lg);overflow:hidden">
+        <div id="paneL" style="width:50%;min-width:0;display:flex;flex-direction:column;border-right:none">
+          <div style="display:flex;gap:8px;padding:8px 12px;border-bottom:1px solid var(--line-3);flex-wrap:wrap">
+            <b style="font-size:14px">原文区</b><span class="cap">EN/FR</span>
+            <span style="flex:1"></span>
+            <button class="btn sm">上传文件</button><button class="btn sm">上传文件夹</button><button class="btn sm">＋文件夹</button>
+            <button class="btn sm dark" onclick="alert('线框：勾选的未翻译/失败文件逐个入队')">▶ 翻译(2)</button>
+            <button class="btn sm">🗑</button>
+          </div>
+          <div style="display:flex;flex:1;min-height:0">
+            <div style="width:150px;border-right:1px solid var(--line-3);padding:8px;font-size:14px;flex:0 0 auto">
+              <div class="cap" style="margin-bottom:4px">目录树</div>
+              <div>▼ 📁 合同</div>
+              <div style="padding-left:14px;background:var(--fill-2);border-radius:4px">▸ 📁 2025</div>
+              <div>▸ 📁 补充协议</div>
+              <div>▼ 📁 财报</div>
+              <div>▸ 📁 制度</div>
+            </div>
+            <div style="flex:1;min-width:0;overflow-x:auto">
+              <div class="cap" style="padding:6px 10px;border-bottom:1px solid var(--line-3)">路径: 合同 &gt;</div>
+              <table style="min-width:560px">
+                <tr><th></th><th>文件名</th><th>状态</th><th>类型</th><th>大小</th><th>修改时间</th><th>操作 ▾</th></tr>
+                <tr><td>☐</td><td><div class="doc"><span class="ic"></span>contract-fr.pdf</div></td><td><span class="b warn">⚠ 待复核</span></td><td>PDF</td><td>2.1 MB</td><td>10-11 17:35</td><td><button class="btn sm">⋯</button></td></tr>
+                <tr><td>☐</td><td><div class="doc"><span class="ic"></span>supply.docx</div></td><td><span class="b">○ 未翻译</span></td><td>DOCX</td><td>890 KB</td><td>10-11 15:02</td><td><button class="btn sm">⋯</button></td></tr>
+                <tr><td>☐</td><td><div class="doc"><span class="ic"></span>invoice-093.pdf</div></td><td><span class="b err">失败</span></td><td>PDF</td><td>640 KB</td><td>10-11 16:55</td><td><button class="btn sm">⋯</button></td></tr>
+                <tr><td>☐</td><td><div class="doc"><span class="ic"></span>annex-3.pdf</div></td><td><span class="b">○ 未翻译</span></td><td>PDF</td><td>1.4 MB</td><td>10-10 11:20</td><td><button class="btn sm">⋯</button></td></tr>
+              </table>
+            </div>
+          </div>
+        </div>
+        <div id="splitter" style="width:6px;cursor:col-resize;background:var(--fill-2);border-left:1px solid var(--line-3);border-right:1px solid var(--line-3);flex:0 0 auto"></div>
+        <div id="paneR" style="flex:1;min-width:0;display:flex;flex-direction:column">
+          <div style="display:flex;gap:8px;align-items:center;padding:8px 12px;border-bottom:1px solid var(--line-3)">
+            <b style="font-size:14px">译文区</b><span class="cap">ZH · 左侧只读镜像</span>
+            <span style="flex:1"></span>
+            <span class="cap">译本随管线产出 · 无独立上传</span>
+          </div>
+          <div style="display:flex;flex:1;min-height:0">
+            <div style="width:150px;border-right:1px solid var(--line-3);padding:8px;font-size:14px;flex:0 0 auto;color:var(--ink-3)">
+              <div class="cap" style="margin-bottom:4px">目录树（镜像）</div>
+              <div>▼ 📁 合同</div>
+              <div style="padding-left:14px">▸ 📁 2025</div>
+              <div>▸ 📁 补充协议</div>
+              <div>▼ 📁 财报</div>
+              <div>▸ 📁 制度</div>
+              <div class="cap" style="margin-top:8px">只读 · 变更在左侧</div>
+            </div>
+            <div style="flex:1;min-width:0;overflow-x:auto">
+              <div class="cap" style="padding:6px 10px;border-bottom:1px solid var(--line-3)">路径: 合同 &gt;</div>
+              <table style="min-width:520px">
+                <tr><th>文件名</th><th>状态</th><th>类型</th><th>大小</th><th>创建时间</th><th>操作 ▾</th></tr>
+                <tr><td><div class="doc"><span class="ic"></span>contract-fr.zh.md</div></td><td><span class="b warn">⚠ 待复核 →</span></td><td>MD</td><td>182 KB</td><td>10-11 17:40</td><td><button class="btn sm">⋯</button></td></tr>
+                <tr><td><div class="doc"><span class="ic"></span>supply.zh.md</div></td><td><span class="b run">◌ 翻译中 45%</span></td><td class="cap">—</td><td class="cap">—</td><td class="cap">—</td><td><button class="btn sm" disabled>⋯</button></td></tr>
+                <tr><td class="cap" style="color:var(--ink-4)">invoice-093.zh（原文失败，无译本）</td><td class="cap">—</td><td class="cap">—</td><td class="cap">—</td><td class="cap">—</td><td></td></tr>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div style="border:1px solid var(--line-2);border-radius:var(--r);padding:8px 14px;font-size:14px;display:flex;gap:18px;flex-wrap:wrap;background:var(--fill-1)">
+        <span>共 <b>156</b> 对</span><span>已交付 <b>97</b></span><span>翻译中 <b>22</b></span>
+        <span><b>3</b> <a href="#" onclick="go('v-review');return false" style="color:inherit">待复核 →</a></span>
+        <span>EN 96 · FR 60</span>
+        <span class="cap" style="margin-left:auto">拖动中间分隔条调整宽度 · 列表可横向滚动</span>
+      </div>
+      <script>
+      (function(){
+        var sw=document.getElementById('splitwrap'),sp=document.getElementById('splitter'),L=document.getElementById('paneL');
+        if(!sp)return;var drag=false;
+        sp.addEventListener('mousedown',function(){drag=true;document.body.style.cursor='col-resize';});
+        window.addEventListener('mouseup',function(){drag=false;document.body.style.cursor='';});
+        window.addEventListener('mousemove',function(e){
+          if(!drag)return;var r=sw.getBoundingClientRect();
+          var pct=Math.min(75,Math.max(25,(e.clientX-r.left)/r.width*100));
+          L.style.width=pct+'%';
+        });
+      })();
+      function setWidth(p){document.getElementById('paneL').style.width=p+'%';}
+      </script>
+    </section>
+
+    <!-- ═══════════ v-tasks 任务管理（含详情抽屉打开态） ═══════════ -->
+    <section class="view content" id="v-tasks">
+      <div class="anno">信息架构：筛选行（状态多选/KB/语言/质量档/sha 搜索）→ 表格 → 行点击右侧详情抽屉（480px）；表格容器 overflow-x-auto（移动横向滚动）。</div>
+      <div class="taskwrap">
+        <div class="tblside">
+          <div class="filters" style="padding:12px 16px;border-bottom:1px solid var(--line-3)">
+            <span class="sel">状态: 全部 ▾</span><span class="sel">知识库: 全部 ▾</span>
+            <span class="sel">语言 ▾</span><span class="sel">质量档 ▾</span>
+            <span class="inp">sha 前缀 / 文件名 🔍</span>
+            <span class="cap" style="margin-left:auto">共 156 条</span>
+          </div>
+          <div class="tblwrap" style="border:none;border-radius:0">
+            <table>
+              <tr><th>文档名</th><th>知识库</th><th>语言</th><th>状态</th><th>进度</th><th>更新时间</th></tr>
+              <tr class="hl"><td><div class="doc"><span class="ic"></span>contract-fr.pdf</div></td><td>铁矿知识库</td><td><span class="langb">FR→ZH</span></td><td><span class="b warn">⚠ 待复核</span></td><td>70%</td><td>10-11 17:40</td></tr>
+              <tr><td><div class="doc"><span class="ic"></span>annual-report.docx</div></td><td>铁矿知识库</td><td><span class="langb">EN→ZH</span></td><td><span class="b ok">✅ 已交付</span></td><td>100%</td><td>10-11 18:02</td></tr>
+              <tr><td><div class="doc"><span class="ic"></span>balance-q3.xlsx</div></td><td>财务知识库</td><td><span class="langb">EN→ZH</span></td><td><span class="b run">◌ 翻译中</span></td><td>45%</td><td>10-11 17:22</td></tr>
+              <tr><td><div class="doc"><span class="ic"></span>supply-terms.docx</div></td><td>铁矿知识库</td><td><span class="langb">EN→ZH</span></td><td><span class="b run">◌ 翻译中</span></td><td>30%</td><td>10-11 17:20</td></tr>
+              <tr><td><div class="doc"><span class="ic"></span>invoice-093.pdf</div></td><td>财务知识库</td><td><span class="langb">EN→ZH</span></td><td><span class="b err">失败</span></td><td>—</td><td>10-11 16:55</td></tr>
+              <tr><td><div class="doc"><span class="ic"></span>proces-verbal.pdf</div></td><td>铁矿知识库</td><td><span class="langb">FR→ZH</span></td><td><span class="b run">⟳ 重试中</span></td><td>60%</td><td>10-11 16:40</td></tr>
+              <tr><td><div class="doc"><span class="ic"></span>old-contract.pdf</div></td><td>铁矿知识库</td><td><span class="langb">FR→ZH</span></td><td><span class="b dim">已替代</span></td><td>—</td><td>10-10 09:12</td></tr>
+            </table>
+          </div>
+          <div style="padding:10px;text-align:center"><button class="btn sm">加载更多</button></div>
+        </div>
+
+        <aside class="drawer">
+          <div class="dh">
+            <div>
+              <div style="font-weight:600;font-size:16px">contract-fr.pdf</div>
+              <div style="margin-top:4px"><span class="b warn">⚠ 待复核</span> <span class="langb"><i>FR→ZH</i></span> <span class="b">人工校对版</span></div>
+            </div>
+            <button class="btn sm" onclick="alert('线框：关闭抽屉')">✕</button>
+          </div>
+          <div class="db">
+            <div>
+              <div class="sec-t">溯源</div>
+              <div class="kv" style="margin-top:6px">
+                <span class="k">来源文件</span><span>/uploads/contract-fr.pdf</span>
+                <span class="k">SHA-256</span><span>3a6c7b7d0e39…</span>
+                <span class="k">内容类型</span><span>叙述文本 · 任务版本 v1</span>
+                <span class="k">更新时间</span><span>10-11 17:40</span>
+              </div>
+            </div>
+            <div>
+              <div class="sec-t">三轴机检</div>
+              <div style="display:flex;flex-direction:column;gap:8px;margin-top:6px">
+                <div class="gate fail"><div class="gt"><span>数字准确性</span><span>❌ 2 处不一致</span></div>
+                  <ul><li>译中缺失：500</li><li>译中多出：32024</li></ul></div>
+                <div class="gate fail"><div class="gt"><span>术语检查</span><span>❌ 1 项</span></div>
+                  <ul><li>指定译法「铁精矿」未使用（concentré de fer，术语库要求）</li></ul></div>
+                <div class="gate"><div class="gt"><span>格式完整性</span><span>✅ 通过</span></div></div>
+              </div>
+            </div>
+            <div>
+              <div class="sec-t">不确定段（LLM 标记 2 处）</div>
+              <div style="font-size:14px;margin-top:6px">🟡 b0007 "délai de grâce" · 🟡 b0012 "mise en demeure"</div>
+            </div>
+            <div>
+              <div class="sec-t">交付物</div>
+              <div style="display:flex;justify-content:space-between;align-items:center;margin-top:6px;font-size:14px">
+                <span>📄 contract-fr.zh.3a6c7b7d.md</span><button class="btn sm">下载</button>
+              </div>
+              <div class="cap" style="margin-top:6px">RAGFlow 文档 d8e80fcec552… · 原件已索引 ✓</div>
+            </div>
+          </div>
+          <div class="df">
+            <button class="btn dark" onclick="go('v-review')">进入复核 →</button>
+          </div>
+        </aside>
+      </div>
+      <div class="anno">操作按状态/权限显隐：failed→[重跑]；pending/running→[取消]；exceeded→主按钮[进入复核]。delivered 无操作。</div>
+    </section>
+
+    <!-- ═══════════ v-review 复核工作台 ═══════════ -->
+    <section class="view content" id="v-review">
+      <div class="anno">核心页：左列 exceeded 队列（时间序，J/K 切换 v1 后置）；右侧源/译逐块对照——⟦#N⟧ 数字令牌渲染为源数字并框选（斜纹填充）；数值违例=虚线删除框；术语违例=粗下划线；不确定段=灰底虚线下划线。</div>
+      <div class="revwrap">
+        <div class="queue">
+          <div class="ql">EXCEEDED 队列 · 3</div>
+          <div class="qi on"><div class="qn">contract-fr.pdf</div><div style="color:var(--ink-3)">17:40 · FR→ZH</div></div>
+          <div class="qi"><div class="qn">annual-report.docx</div><div style="color:var(--ink-3)">18:02 · EN→ZH</div></div>
+          <div class="qi"><div class="qn">proces-verbal.pdf</div><div style="color:var(--ink-3)">16:40 · FR→ZH</div></div>
+          <div class="cap" style="margin-top:auto">今日已裁 5 · J/K 切换(二期)</div>
+        </div>
+        <div class="revmain">
+          <div class="revhead">
+            <b>contract-fr.pdf</b>
+            <span class="langb"><i>FR→ZH</i></span><span class="b">人工校对版</span>
+            <span class="cap">耗时 4m12s · sha 3a6c7b7d…</span>
+          </div>
+          <div class="revcols">
+            <div class="revcol">
+              <span class="cl">源文（FR）</span>
+              <div class="blk hd">Article 12 — Garanties</div>
+              <div class="blk">Le vendeur garantit un tonnage de <span class="tok">42 000</span> de <span class="term">concentré de fer</span> conforme aux specs :<br>— teneur en fer ≥ <span class="tok">63,5</span><br>— humidité ≤ <span class="tok">8</span></div>
+              <div class="blk">Pénalité de retard : <span class="tok">(1 234,56)</span> EUR / semaine.</div>
+              <div class="blk">Article 13 — Résiliation … <span class="unc">500 EUR</span> …</div>
+            </div>
+            <div class="revcol">
+              <span class="cl">译文（ZH）</span>
+              <div class="blk hd">第 12 条 — 保证</div>
+              <div class="blk">卖方保证 <span class="tok">42 000</span> 吨<span class="term">铁精矿</span>符合下述规格：<br>— 含铁量 ≥ <span class="tok">63,5</span><br>— 水分 ≤ <span class="tok">8</span></div>
+              <div class="blk">延迟罚则：每周 <span class="tok">(1 234,56)</span> EUR。</div>
+              <div class="blk">第 13 条 — 解除 … <span class="miss">【译中缺失 500】</span> …</div>
+            </div>
+          </div>
+          <div class="revdetails">
+            <div style="display:flex;gap:16px;flex-wrap:wrap;font-size:12px">
+              <span>数字准确性 <b>❌ 缺 500 · 多 32024</b></span>
+              <span>术语 <b>❌ 指定译法「铁精矿」未使用</b></span>
+              <span>格式完整性 <b>✅ 21/21 段落对齐</b></span>
+              <span>不确定段 🟡 b0007 · b0012</span>
+            </div>
+          </div>
+          <div class="revact">
+            <button class="btn dark">✅ 通过并交付</button>
+            <button class="btn">✏ 批注</button>
+            <button class="btn">⛔ 驳回归档</button>
+          </div>
+        </div>
+      </div>
+      <div class="legend">图例：▓斜纹框=数字令牌（源/译一致） · 虚线删除框=数值违例 · 粗下划线=术语焦点 · 灰底虚线=LLM 不确定段 · 【】=译中缺失占位标注</div>
+      <div class="anno">裁决：通过→transition{indexed}(review_approved→双份索引更新→delivered)；驳回→{archived}+批注写入 error_detail.notes。v1 无内联编辑（MTPE 编辑器=二期 OQ8）。仅 translation:transition 权限可见按钮，否则顶部「只读」角标。</div>
+      <div class="legend">空队列态：左列「队列已清空」+ 右侧空态插画位 + [去任务管理查看已交付 →]</div>
+    </section>
+
+    <!-- ═══════════ v-glossary 术语库 ═══════════ -->
+    <section class="view content" id="v-glossary">
+      <div class="anno">机制生效点提示条常驻（worker 注入 + 机检术语轴）；导入=yaml 粘贴原子替换（与 glossary.py 同 schema），内容=样例闸产出 ≥100 条。</div>
+      <div class="card">
+        <div style="display:flex;gap:10px;align-items:center;margin-bottom:12px">
+          <h3 style="margin:0">术语库</h3>
+          <span class="cap">128 条 · 指定译法 96 · 保留原文 32</span>
+          <span class="sp" style="flex:1"></span>
+          <button class="btn">导入 yaml</button>
+          <button class="btn dark">＋ 新增术语</button>
+        </div>
+        <div class="cap" style="border:1px dashed var(--line-1);border-radius:var(--r);padding:6px 10px;margin-bottom:12px">
+          生效机制：翻译时自动使用「指定译法」；标记「保留原文」的词不做翻译。每次交付前自动核对术语是否落实。
+        </div>
+        <div class="tblwrap"><table>
+          <tr><th>源词</th><th>动作</th><th>目标译法</th><th>备注</th><th>更新时间</th></tr>
+          <tr><td>iron ore concentrate</td><td><span class="b ok">指定译法</span></td><td>铁精矿</td><td>高频·产品</td><td>10-11 14:00</td></tr>
+          <tr><td>tonnage</td><td><span class="b ok">指定译法</span></td><td>吨位</td><td></td><td>10-11 14:00</td></tr>
+          <tr><td>concentré de fer</td><td><span class="b ok">指定译法</span></td><td>铁精矿</td><td>FR 对应</td><td>10-11 14:00</td></tr>
+          <tr><td>ArcelorMittal</td><td><span class="b">保留原文</span></td><td class="cap">— 不翻译</td><td>不译清单</td><td>10-11 14:00</td></tr>
+          <tr><td>ISO 9001</td><td><span class="b">保留原文</span></td><td class="cap">— 不翻译</td><td>标准号</td><td>10-11 14:00</td></tr>
+        </table></div>
+        <div style="padding:10px;text-align:center"><button class="btn sm">加载更多</button></div>
+      </div>
+      <div class="anno">编辑抽屉字段联动：force→必填译法；forbid/keep→隐藏译法。空态：「术语库为空——机制已生效但无注入内容，样例验收闸产出后粘贴导入。」</div>
+    </section>
+
+    <!-- ═══════════ v-settings 设置 ═══════════ -->
+    <section class="view content" id="v-settings">
+      <div class="card">
+        <h3>知识库翻译开关</h3>
+        <div class="tblwrap"><table>
+          <tr><th>知识库</th><th>文档数</th><th>RAGFlow</th><th>翻译开关</th><th>待处理</th></tr>
+          <tr><td>铁矿知识库</td><td>89</td><td>已关联 ✓</td><td><span class="tgl"><i></i></span></td><td>6</td></tr>
+          <tr><td>财务知识库</td><td>41</td><td>已关联 ✓</td><td><span class="tgl"><i></i></span></td><td>2</td></tr>
+          <tr><td>制度文档库</td><td>23</td><td>已关联 ✓</td><td><span class="tgl off"><i></i></span></td><td>—</td></tr>
+          <tr><td>市场情报库</td><td>12</td><td class="cap">未关联</td><td><span class="tgl off" disabled><i></i></span> <span class="cap">需先关联 RAGFlow</span></td><td>—</td></tr>
+        </table></div>
+        <div class="anno">开关=PUT /knowledge-bases/{id} {translation_enabled}（本期后端缺口①：schema 补字段）。未关联 RAGFlow → disabled+tooltip。</div>
+      </div>
+      <div class="card">
+        <h3>运行参数（只读）</h3>
+        <div class="kv" style="grid-template-columns:140px 1fr">
+          <span class="k">翻译模型</span><span>Qwen2.5-72B（管理员在配置文件中更换）</span>
+          <span class="k">并发/轮询</span><span>2 槽位 · 5s 轮询 · 基础设施重试 ≤3</span>
+        </div>
+      </div>
+      <div class="card">
+        <h3>质量标准</h3>
+        <div class="kv" style="grid-template-columns:140px 1fr">
+          <span class="k">中文检索准确率</span><span>目标 80%（完成验收测试后确定）</span>
+          <span class="k">数字准确性</span><span>译文与原文逐字核对 · 100% 一致（硬性标准）</span>
+          <span class="k">术语与格式</span><span class="cap">标准待验收测试后与客户确认</span>
+        </div>
+      </div>
+    </section>
+  </main>
+</div>
+
+<script>
+function go(id, btn){
+  document.querySelectorAll('.view').forEach(v=>v.classList.toggle('on', v.id===id));
+  document.querySelectorAll('.proto-tab').forEach(t=>t.classList.toggle('on', t.dataset.v===id));
+  document.querySelectorAll('.ptab').forEach(t=>t.classList.toggle('on', t.dataset.v===id));
+  const titles={'v-appcenter':'应用中心','v-overview':'文档资产库','v-tasks':'任务管理','v-review':'复核工作台','v-glossary':'术语库','v-settings':'设置'};
+  document.getElementById('page-title').textContent=titles[id]||'';
+  window.scrollTo(0,0);
+  if(btn){btn.classList.add('on');}
+}
+</script>
+</body>
+</html>

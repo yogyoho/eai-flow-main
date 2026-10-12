@@ -163,6 +163,9 @@ class KnowledgeBase(Base):
     retrieval_config: Mapped[dict | None] = mapped_column(JSON, nullable=True, default=None)
     language: Mapped[str] = mapped_column(String(20), default="Chinese")
     status: Mapped[str] = mapped_column(String(20), default="active")
+    # EAI-CUSTOM (translation 一期, 设计 docs/designs/2026-10-11-jv-mining-translation-kb.md 构件4):
+    # KB 级翻译开关——默认关，保证既有 KB 上传链零行为变化（eng-review D17 回归契约）
+    translation_enabled: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default="false")
     created_at: Mapped[datetime] = mapped_column(DateTime, default=func.now(), nullable=False)
 
     # Relationships

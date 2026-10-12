@@ -1,0 +1,184 @@
+"""RAGFlow index bridge + MinIO deliverable (EAI-CUSTOM, T6).
+
+契约（设计构件 1/3 + R6/R7）——index_translation 成功返回 = delivered 分界事件：
+  1) 中文 Markdown 交付物写 MinIO 双语桶（复用 knowledge StorageProvider，R7/C-1）
+  2) 中文版上传 RAGFlow dataset（chunk_method 一律经
+     ``DocumentService._CHUNK_METHOD_TO_PARSER`` 映射——SC-1/learning
+     kb-chunk-method-dual-enum），带 (task_id, source sha, lang) 元数据血统；
+     chunk 级溯源由 chunk→document→meta→原件链承载（v1 文档级，样例闸后细化）
+  3) FR 双份索引 = 原文在 knowledge 上传链已入库 + 本桥追加中文版（前提 3）
+  4) 幂等：按 tlt_task_id 元数据去重，重跑不重复建文档
+"""
+
+import logging
+from datetime import UTC, datetime
+from pathlib import Path
+
+from app.extensions.database import get_session_factory
+from app.extensions.knowledge.client import RAGFlowClient
+from app.extensions.knowledge.service import DocumentService
+from app.extensions.knowledge.storage import get_storage_provider
+from app.extensions.models import KnowledgeBase
+from app.extensions.translation.models import TranslationTask
+
+logger = logging.getLogger(__name__)
+
+
+def _zh_filename(task: TranslationTask) -> str:
+    stem = Path(task.source_uri or "document").stem or "document"
+    return f"{stem}.zh.{task.doc_sha[:8]}.md"
+
+
+def _block_to_md(block: dict) -> str:
+    btype = block.get("type")
+    text = (block.get("text") or "").strip()
+    if not text:
+        return ""
+    if btype == "table":
+        cells = (block.get("meta") or {}).get("cells")
+        if cells and isinstance(cells, list) and cells[0]:
+            header = "| " + " | ".join(str(c) for c in cells[0]) + " |"
+            sep = "|" + "---|" * len(cells[0])
+            rows = ["| " + " | ".join(str(c) for c in r) + " |" for r in cells[1:]]
+            return "\n".join([header, sep, *rows])
+        return text
+    if btype == "heading":
+        return f"## {text}"
+    return text
+
+
+def build_markdown(task: TranslationTask, zh_blocks: list[dict]) -> str:
+    """zh blocks → 中文 Markdown 交付物（头部携带溯源块）。"""
+    header = "\n".join(
+        [
+            "<!-- tlt:translated-document",
+            f"task_id: {task.id}",
+            f"source_sha256: {task.doc_sha}",
+            f"source_lang: {task.source_lang}",
+            f"quality_tier: {task.quality_tier}",
+            f"generated_at: {datetime.now(UTC).isoformat()}",
+            "source: 见同知识库原始上传文档（sha256 对应） -->",
+            "",
+            f"# {Path(task.source_uri or 'document').stem}（中文译本）",
+            "",
+        ]
+    )
+    body = "\n\n".join(md for md in (_block_to_md(b) for b in zh_blocks) if md)
+    return header + "\n" + body + "\n"
+
+
+def _lineage_meta(task: TranslationTask) -> dict:
+    return {
+        "tlt_task_id": str(task.id),
+        "tlt_source_sha256": task.doc_sha,
+        "tlt_source_lang": task.source_lang,
+        "tlt_quality_tier": task.quality_tier,
+    }
+
+
+async def _find_existing_zh_doc(client: RAGFlowClient, dataset_id: str, task_id: str) -> str | None:
+    """按 tlt_task_id 元数据精确去重（worker 退避重跑不重复建文档）。"""
+    result = await client.list_documents(
+        dataset_id,
+        metadata_condition={
+            "logic": "and",
+            "conditions": [{"name": "tlt_task_id", "comparison_operator": "=", "value": task_id}],
+        },
+    )
+    docs = (result.get("data") or {}).get("docs") or (result.get("data") or [])
+    if isinstance(docs, list) and docs:
+        first = docs[0]
+        return first.get("id") if isinstance(first, dict) else None
+    return None
+
+
+async def _set_deliverable(task_id: str, deliverable_uri: str, ragflow_doc_id: str) -> None:
+    factory = get_session_factory()
+    from sqlalchemy import update
+
+    async with factory() as db:
+        await db.execute(
+            update(TranslationTask)
+            .where(TranslationTask.id == task_id)
+            .values(deliverable_uri=deliverable_uri, ragflow_zh_doc_id=ragflow_doc_id)
+        )
+        await db.commit()
+
+
+async def index_translation(
+    task: TranslationTask,
+    zh_blocks: list[dict],
+    source_blocks: list,
+    *,
+    client: RAGFlowClient | None = None,
+    storage=None,
+) -> None:
+    """机检全绿后调用：MinIO 交付 + RAGFlow 中文版入库（双份索引的 zh 侧）。
+
+    任何异常向上抛 → worker 落 failed/退避重试（幂等：重跑按 task_id 元数据去重）。
+    client/storage 可注入（测试 fake）。
+    """
+    factory = get_session_factory()
+    async with factory() as db:
+        kb = await db.get(KnowledgeBase, task.kb_id)
+        if kb is None:
+            raise RuntimeError(f"kb vanished: {task.kb_id}")
+        if not kb.ragflow_dataset_id:
+            raise RuntimeError("kb has no ragflow_dataset_id — 中文版无处索引（先在知识库模块完成 RAGFlow 关联）")
+        owner_id, kb_id_str, dataset_id, chunk_method = (
+            str(kb.owner_id),
+            str(kb.id),
+            kb.ragflow_dataset_id,
+            kb.chunk_method or "",
+        )
+
+    markdown = build_markdown(task, zh_blocks)
+    zh_name = _zh_filename(task)
+    task_id_str = str(task.id)
+
+    # 交付物直写稳定路径（base_path 下，随库持久）；MinIO 部署时再由 provider 拷入桶。
+    # 修复记录：曾用 mkstemp 临时路径当 uri，/tmp 清理后交付物 404（T6 验收发现）。
+    from app.extensions.config import get_extensions_config
+
+    stable_dir = (
+        Path(get_extensions_config().storage.base_path)
+        / "translation"
+        / "deliverables"
+        / task_id_str
+    )
+    stable_dir.mkdir(parents=True, exist_ok=True)
+    stable_path = stable_dir / zh_name
+    stable_path.write_text(markdown, encoding="utf-8")
+
+    storage = storage or get_storage_provider()
+    stored = await storage.upload_local_file(
+        str(stable_path),
+        owner_id=owner_id,
+        kb_id=kb_id_str,
+        filename=zh_name,
+        content_type="text/markdown; charset=utf-8",
+    )
+    logger.info("tlt deliverable stored: %s", stored.uri)
+
+    client = client or RAGFlowClient()
+    # SC-1: parser 配置一律经映射表（禁止裸传内部枚举）
+    parser_id = DocumentService._CHUNK_METHOD_TO_PARSER.get(chunk_method, "naive")
+    doc_id = await _find_existing_zh_doc(client, dataset_id, task_id_str)
+    if doc_id is None:
+        rf_result = await client.upload_document(
+            dataset_id,
+            str(stable_path),
+            file_name=zh_name,
+            parser_id=parser_id or None,
+        )
+        doc_id = (rf_result.get("data") or {}).get("id")
+        if not doc_id:
+            raise RuntimeError(f"ragflow upload returned no document id: {str(rf_result)[:200]}")
+    else:
+        logger.info("tlt zh doc already indexed for task %s: %s (idempotent rerun)", task_id_str, doc_id)
+
+    await client.update_document_metadata(dataset_id, doc_id, _lineage_meta(task))
+    await client.parse_document(dataset_id, doc_id)
+    await _set_deliverable(task_id_str, stored.uri, doc_id)
+    logger.info("tlt task %s: zh doc %s indexed in dataset %s (parser=%s)", task_id_str, doc_id, dataset_id, parser_id)
+

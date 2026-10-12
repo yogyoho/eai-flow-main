@@ -1,0 +1,3 @@
+{"_readme": "检索评测夹具模板（T7，样例闸前预建）。复制为 retrieval_fixtures.jsonl 并填真实条目后，pytest tests/eval/test_retrieval_fixture.py 即跑 hit@k 评测。字段：question=中文提问；kb_id=目标知识库 id；expect_doc=期望命中的文档名（RAGFlow 文档名，含扩展名）；expect_page=期望页码（可 null）。样例验收闸当日：先手写 8 条 smoke 跑通，再扩到 20 条（设计构件 5）。"}
+{"question": "EXAMPLE-2024年铁精矿产量是多少？", "kb_id": "00000000-0000-0000-0000-000000000000", "expect_doc": "annual-report-2025.docx", "expect_page": 3}
+{"question": "EXAMPLE-合同中违约条款在第几条？", "kb_id": "00000000-0000-0000-0000-000000000000", "expect_doc": "contract-supply-fr.pdf", "expect_page": null}

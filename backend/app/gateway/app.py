@@ -52,6 +52,7 @@ from app.extensions.settings.routers import router as settings_router
 # EAI-CUSTOM: spare_parts(备品备件价格分析)——导入包即把 csp_ 表注册到 Base.metadata
 # (init_db create_all 建表);router 供管理层 API 挂载(/api/extensions/spare-parts/*)。
 from app.extensions.spare_parts import router as spare_parts_router  # noqa: F401
+from app.extensions.translation import router as translation_router  # EAI-CUSTOM (translation 一期)
 from app.extensions.user.routers import router as user_router
 from app.extensions.web_scraper import web_scraper_router
 from app.extensions.workflow import router as workflow_router
@@ -788,6 +789,16 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
             except Exception:
                 logger.exception("Failed to start summary generation workers")
 
+            # EAI-CUSTOM (translation 一期 T4): 翻译 worker——D18 gateway 内嵌, D16 2 槽;
+            # boot recovery(running→pending)在 start_translation_worker 内完成
+            try:
+                from app.extensions.translation.worker import start_translation_worker
+
+                app.state.translation_worker_task = await start_translation_worker()
+                logger.info("Translation worker started")
+            except Exception:
+                logger.exception("Failed to start translation worker")
+
             # Enqueue side of the scheduled-run notification outbox (issue #4254).
             # It only needs the durable table, so it is wired with the scheduler;
             # the delivery worker starts after the channel service, further down.
@@ -937,6 +948,16 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
                     app.state.subagent_batches_available = True
 
             yield
+
+            # EAI-CUSTOM (translation 一期 T4): 停翻译 worker（先于长钩子）
+            _tlt_runner = getattr(app.state, "translation_worker_task", None)
+            if _tlt_runner is not None and not _tlt_runner.done():
+                try:
+                    from app.extensions.translation.worker import stop_translation_worker
+
+                    await stop_translation_worker(_tlt_runner)
+                except Exception:
+                    logger.exception("Failed to stop translation worker")
 
             await _shutdown_startup_trash_sweep(app)
             try:
@@ -1492,6 +1513,9 @@ This gateway provides runtime endpoints for agent runs plus custom endpoints for
 
     # Contract price analysis management API (/api/extensions/contract-price/*)
     app.include_router(contract_price_router)
+
+    # Translation task API (/api/extensions/translation/*)  [EAI-CUSTOM: 翻译一期 T2, 设计 docs/designs/2026-10-11-jv-mining-translation-kb.md]
+    app.include_router(translation_router)
 
     # Geo sample bank management API (/api/extensions/geo-samples/*)  [EAI-CUSTOM]
     app.include_router(geo_samples_router)

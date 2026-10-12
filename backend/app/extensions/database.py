@@ -935,6 +935,13 @@ async def migrate_db() -> None:
         # EAI-CUSTOM: 每-KB 检索配置 (top_k/similarity_threshold/vector_similarity_weight)
         # create_all 不 ALTER 已有表，须在此幂等加列（与 report_projects.description 同机制）
         await conn.execute(text("ALTER TABLE knowledge_bases ADD COLUMN IF NOT EXISTS retrieval_config JSON"))
+        # EAI-CUSTOM (translation 一期): KB 级翻译开关——模型列已声明,既有库幂等补列(D17: 默认 false 老库零行为变化)
+        await conn.execute(text("ALTER TABLE knowledge_bases ADD COLUMN IF NOT EXISTS translation_enabled BOOLEAN NOT NULL DEFAULT false"))
+        # EAI-CUSTOM (translation T6): 交付物物证列(create_all 不 ALTER 已有表,幂等补列)
+        await conn.execute(text("ALTER TABLE tlt_translation_tasks ADD COLUMN IF NOT EXISTS deliverable_uri VARCHAR(512)"))
+        await conn.execute(text("ALTER TABLE tlt_translation_tasks ADD COLUMN IF NOT EXISTS ragflow_zh_doc_id VARCHAR(100)"))
+        # EAI-CUSTOM (translation 资产库): 文件夹归属列(幂等补列;tlt_folders 表由 create_all 承接)
+        await conn.execute(text("ALTER TABLE tlt_translation_tasks ADD COLUMN IF NOT EXISTS folder_id UUID REFERENCES tlt_folders(id)"))
         # EAI-CUSTOM: 分工策略(ADR 2026-08-10) — 章节进度区块在「人工修改确认」态按此渲染分工叠加层
         await conn.execute(text("ALTER TABLE report_projects ADD COLUMN IF NOT EXISTS assignment_strategy VARCHAR(20) NOT NULL DEFAULT 'by_chapter'"))
 

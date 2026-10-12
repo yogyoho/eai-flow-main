@@ -43110,6 +43110,1020 @@
       ],
       "occurrences": 1,
       "last_seen": "2026-10-06"
+    },
+    {
+      "id": "bug-1790745600308",
+      "timestamp": "2026-10-06T01:40:52.569Z",
+      "error_message": "Significant refactor of ",
+      "file": "ontostudio/docs-site/.vitepress/config.mts",
+      "root_cause": "2 lines replaced/restructured",
+      "fix": "Rewrote 14→59 lines (2 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "mts"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-10-06T01:40:52.569Z"
+    },
+    {
+      "id": "bug-1790745600309",
+      "timestamp": "2026-10-06T01:42:07.687Z",
+      "error_message": "Significant refactor of ",
+      "file": "ontostudio/docs-site/scripts/gen_reference_tables.py",
+      "root_cause": "2 lines replaced/restructured",
+      "fix": "Rewrote 7→14 lines (2 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-10-06T01:42:07.687Z"
+    },
+    {
+      "id": "bug-1790745600310",
+      "timestamp": "2026-10-06T01:42:28.057Z",
+      "error_message": "Incorrect value in code",
+      "file": "ontostudio/docs-site/scripts/gen_reference_tables.py",
+      "root_cause": "Had \"ontology tools {len(onto)} != 16\"",
+      "fix": "Changed to \"ontology tools {len(onto)} != 17\"",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-10-06T01:42:28.057Z"
+    },
+    {
+      "id": "bug-1790745600311",
+      "timestamp": "2026-10-06T01:44:30.127Z",
+      "error_message": "Incorrect value in code",
+      "file": "ontostudio/docs-site/reference/agent-integration.md",
+      "root_cause": "Had `http://ontostudio/doc-graph`",
+      "fix": "Changed to `http://ontostudio:8005/mcp/doc-graph`",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "md"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-10-06T01:44:30.127Z"
+    },
+    {
+      "id": "bug-1790745600312",
+      "timestamp": "2026-10-06T01:45:41.897Z",
+      "error_message": "Wrong return value",
+      "file": "ontostudio/docs-site/scripts/gen_reference_tables.py",
+      "root_cause": "Was returning: text.replace(\"|\", \"\\\\|\").replace(\"\\n\", \" \")",
+      "fix": "Now returns: text.replace(\"|\", \"\\\\|\").replace(\"\\n\", \" \").replac",
+      "tags": [
+        "auto-detected",
+        "return-value",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-10-06T01:45:41.897Z"
+    },
+    {
+      "id": "bug-1790745600313",
+      "timestamp": "2026-10-06T01:56:35.221Z",
+      "error_message": "Significant refactor of ",
+      "file": "ontostudio/docs-site/design/doc-graph.md",
+      "root_cause": "2 lines replaced/restructured",
+      "fix": "Rewrote 5→13 lines (2 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "md"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-10-06T01:56:35.221Z"
+    },
+    {
+      "id": "bug-1790745600314",
+      "timestamp": "2026-10-06T01:57:10.663Z",
+      "error_message": "Significant refactor of ",
+      "file": "ontostudio/docs-site/glossary/index.md",
+      "root_cause": "9 lines replaced/restructured",
+      "fix": "Rewrote 21→28 lines (9 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "md"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-10-06T01:57:10.663Z"
+    },
+    {
+      "id": "bug-1790745600315",
+      "timestamp": "2026-10-06T02:03:14.423Z",
+      "error_message": "Incorrect value in code",
+      "file": "ontostudio/docs-site/Dockerfile",
+      "root_cause": "Had 'server {\\n  listen 3011;\\n  root /usr/share/nginx",
+      "fix": "Changed to 'server {\\n  listen 3011;\\n  root /usr/share/nginx",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "unknown"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-10-06T02:03:14.423Z"
+    },
+    {
+      "id": "bug-1790745600316",
+      "timestamp": "2026-10-06T11:39:22.337Z",
+      "error_message": "Incorrect value in code",
+      "file": "ontostudio/frontend/src/layout/AppShell.tsx",
+      "root_cause": "Had \"@/components/OntologyPage\"",
+      "fix": "Changed to \"@/assets/eai-logo.svg\"",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-10-06T11:39:22.337Z"
+    },
+    {
+      "id": "bug-1790745600317",
+      "timestamp": "2026-10-06T11:45:10.977Z",
+      "error_message": "Significant refactor of ",
+      "file": "ontostudio/frontend/src/layout/AppShell.tsx",
+      "root_cause": "5 lines replaced/restructured",
+      "fix": "Rewrote 5→3 lines (5 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-10-06T11:45:10.977Z"
+    },
+    {
+      "id": "bug-1790745600318",
+      "timestamp": "2026-10-06T12:01:37.466Z",
+      "error_message": "Wrong return value",
+      "file": "ontostudio/frontend/src/lib/permissions.ts",
+      "root_cause": "Was returning: { canPage, can, isLoading, pageId: PAGE_ID };",
+      "fix": "Now returns: { canPage, can, isLoading, pageId: PAGE_ID, me };",
+      "tags": [
+        "auto-detected",
+        "return-value",
+        "ts"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-10-06T12:01:37.467Z"
+    },
+    {
+      "id": "bug-1790745600319",
+      "timestamp": "2026-10-06T12:01:58.513Z",
+      "error_message": "Significant refactor of ",
+      "file": "ontostudio/frontend/src/layout/AppShell.tsx",
+      "root_cause": "4 lines replaced/restructured",
+      "fix": "Rewrote 16→22 lines (4 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-10-06T12:01:58.513Z"
+    },
+    {
+      "id": "bug-1790745600320",
+      "timestamp": "2026-10-06T13:42:36.245Z",
+      "error_message": "Null/undefined access in ",
+      "file": "ontostudio/frontend/src/lib/api.ts",
+      "root_cause": "Property access on potentially null/undefined value",
+      "fix": "Added null safety (optional chaining or null check)",
+      "tags": [
+        "auto-detected",
+        "null-safety",
+        "ts"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-10-06T13:42:36.245Z"
+    },
+    {
+      "id": "bug-1790745600321",
+      "timestamp": "2026-10-06T13:48:45.205Z",
+      "error_message": "Null/undefined access in ",
+      "file": "ontostudio/frontend/src/pages/ModelerPage.tsx",
+      "root_cause": "Property access on potentially null/undefined value",
+      "fix": "Added null safety (optional chaining or null check)",
+      "tags": [
+        "auto-detected",
+        "null-safety",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-10-06T13:48:45.205Z"
+    },
+    {
+      "id": "bug-1790745600322",
+      "timestamp": "2026-10-06T14:34:38.443Z",
+      "error_message": "Null/undefined access in ",
+      "file": "ontostudio/frontend/src/pages/ModelerPage.tsx",
+      "root_cause": "Property access on potentially null/undefined value",
+      "fix": "Added null safety (optional chaining or null check)",
+      "tags": [
+        "auto-detected",
+        "null-safety",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-10-06T14:34:38.443Z"
+    },
+    {
+      "id": "bug-1790745600323",
+      "timestamp": "2026-10-06T14:46:10.837Z",
+      "error_message": "CSS fix: tag",
+      "file": "ontostudio/frontend/src/pages/ModelerPage.tsx",
+      "root_cause": "tag: \"TBox · 业务域词汇\", desc: \"环评域 etype/谓词/公理/类标签声明\" → \"TBox · 营销域词汇\", desc: \"营销域 etype/谓词/公理/类标签声明（天玛智控定制 v1）\"",
+      "fix": "Changed tag: \"TBox · 业务域词汇\", desc: \"环评域 etype/谓词/公理/类标签声明\" → \"TBox · 营销域词汇\", desc: \"营销域 etype/谓词/公理/类标签声明（天玛智控定制 v1）\"",
+      "tags": [
+        "auto-detected",
+        "style-fix",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-10-06T14:46:10.837Z"
+    },
+    {
+      "id": "bug-1790745600324",
+      "timestamp": "2026-10-06T16:34:04.588Z",
+      "error_message": "Significant refactor of ",
+      "file": "docs/designs/2026-10-07-tianma-marketing-ontology-modeling-plan.md",
+      "root_cause": "3 lines replaced/restructured",
+      "fix": "Rewrote 18→29 lines (3 removed) | Also: | 第 1–2 周 | 术语词典第一版评审（工作面/矿井/集团三级定义、示范面定义、失标码表确认）；; | 第 3–6 周 | MarketExtraction 分发器 + CRM/ERP ETL 映射（",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "md"
+      ],
+      "related_bugs": [],
+      "occurrences": 2,
+      "last_seen": "2026-10-06T16:36:52.996Z"
+    },
+    {
+      "id": "bug-1790745600325",
+      "timestamp": "2026-10-06T16:36:16.941Z",
+      "error_message": "Wrong reference: same_as should be content_asset",
+      "file": "docs/designs/2026-10-07-tianma-marketing-ontology-modeling-plan.md",
+      "root_cause": "Used \"same_as\" instead of \"content_asset\"",
+      "fix": "Changed same_as → content_asset",
+      "tags": [
+        "auto-detected",
+        "wrong-reference",
+        "md"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-10-06T16:36:16.941Z"
+    },
+    {
+      "id": "bug-1790745600326",
+      "timestamp": "2026-10-10T10:22:29.728Z",
+      "error_message": "Significant refactor of ",
+      "file": "backend/app/gateway/routers/thread_runs.py",
+      "root_cause": "3 lines replaced/restructured",
+      "fix": "Rewrote 9→11 lines (3 removed) | Also: <<<<<<< HEAD; events = await event_store.list_events(thread_id, ",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 2,
+      "last_seen": "2026-10-10T10:26:09.526Z"
+    },
+    {
+      "id": "bug-1790745600327",
+      "timestamp": "2026-10-10T10:29:26.274Z",
+      "error_message": "Missing await",
+      "file": "backend/app/gateway/app.py",
+      "root_cause": "Async call without await — returned Promise instead of value",
+      "fix": "Added await to async call | Also: # Delivery side of the scheduled-run notification outbox (is; # It starts here rather than next to the scheduler: the sche",
+      "tags": [
+        "auto-detected",
+        "async-fix",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 2,
+      "last_seen": "2026-10-10T10:30:22.901Z"
+    },
+    {
+      "id": "bug-1790745600328",
+      "timestamp": "2026-10-10T10:32:20.500Z",
+      "error_message": "Significant refactor of ",
+      "file": "backend/app/gateway/app.py",
+      "root_cause": "5 lines replaced/restructured",
+      "fix": "Rewrote 7→3 lines (5 removed) | Also: if getattr(app.state, \"subagent_batch_service\", No; app.state.subagent_batches_available = False",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 2,
+      "last_seen": "2026-10-10T10:32:39.701Z"
+    },
+    {
+      "id": "bug-1790745600329",
+      "timestamp": "2026-10-10T10:32:29.064Z",
+      "error_message": "Significant refactor of ",
+      "file": "backend/app/gateway/routers/thread_runs.py",
+      "root_cause": "5 lines replaced/restructured",
+      "fix": "Rewrote 22→37 lines (5 removed) | Also: duration = durations.get(run_id); if duration is not None:",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 2,
+      "last_seen": "2026-10-10T10:35:07.161Z"
+    },
+    {
+      "id": "bug-1790745600330",
+      "timestamp": "2026-10-10T10:39:41.572Z",
+      "error_message": "Significant refactor of ",
+      "file": "backend/tests/test_artifacts_router.py",
+      "root_cause": "3 lines replaced/restructured",
+      "fix": "Rewrote 6→3 lines (3 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-10-10T10:39:41.572Z"
+    },
+    {
+      "id": "bug-1790745600331",
+      "timestamp": "2026-10-10T10:39:44.505Z",
+      "error_message": "Significant refactor of ",
+      "file": "backend/tests/test_wait_disconnect_handling.py",
+      "root_cause": "4 lines replaced/restructured",
+      "fix": "Rewrote 11→5 lines (4 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-10-10T10:39:44.505Z"
+    },
+    {
+      "id": "bug-1790745600332",
+      "timestamp": "2026-10-10T10:40:20.829Z",
+      "error_message": "Significant refactor of ",
+      "file": "backend/app/gateway/services.py",
+      "root_cause": "16 lines replaced/restructured",
+      "fix": "Rewrote 24→6 lines (16 removed) | Also: # EAI's early create_or_reject persists the same t; # (upstream constructs it inside its late-admissio | Also: <<<<<<< HEAD; # EAI-CUSTOM (upstream-sync 2026-09-26): this is u | Also: # EAI-CUSTOM (upstream-sync 2026-09-11, updated 20; # upstream #5258/#5399/#5579 ported into EAI's ear | Also: <<<<<<< HEAD; =======",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 6,
+      "last_seen": "2026-10-10T10:50:36.243Z"
+    },
+    {
+      "id": "bug-1790745600333",
+      "timestamp": "2026-10-10T10:41:38.180Z",
+      "error_message": "Function not marked async",
+      "file": "backend/app/gateway/services.py",
+      "root_cause": "Function uses await but wasn't declared async",
+      "fix": "Added async modifier",
+      "tags": [
+        "auto-detected",
+        "async-fix",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-10-10T10:41:38.180Z"
+    },
+    {
+      "id": "bug-1790745600334",
+      "timestamp": "2026-10-10T10:50:16.036Z",
+      "error_message": "Wrong reference: AUTHUSTED_PROXIES should be AUTH_TRUSTED_PROXIES",
+      "file": "docker/docker-compose-dev.yaml",
+      "root_cause": "Used \"AUTHUSTED_PROXIES\" instead of \"AUTH_TRUSTED_PROXIES\"",
+      "fix": "Changed AUTHUSTED_PROXIES → AUTH_TRUSTED_PROXIES",
+      "tags": [
+        "auto-detected",
+        "wrong-reference",
+        "yaml"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-10-10T10:50:16.036Z"
+    },
+    {
+      "id": "bug-1790745600335",
+      "timestamp": "2026-10-10T10:55:44.890Z",
+      "error_message": "Significant refactor of ",
+      "file": "frontend/src/components/workspace/artifacts/artifact-file-detail.tsx",
+      "root_cause": "4 lines replaced/restructured",
+      "fix": "Rewrote 28→16 lines (4 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-10-10T10:55:44.890Z"
+    },
+    {
+      "id": "bug-1790745600336",
+      "timestamp": "2026-10-10T10:56:50.182Z",
+      "error_message": "Significant refactor of ",
+      "file": "backend/app/gateway/services.py",
+      "root_cause": "15 lines replaced/restructured",
+      "fix": "Rewrote 27→11 lines (15 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-10-10T10:56:50.182Z"
+    },
+    {
+      "id": "bug-1790745600337",
+      "timestamp": "2026-10-10T10:57:28.419Z",
+      "error_message": "Missing await",
+      "file": "backend/app/gateway/services.py",
+      "root_cause": "Async call without await — returned Promise instead of value",
+      "fix": "Added await to async call",
+      "tags": [
+        "auto-detected",
+        "async-fix",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-10-10T10:57:28.419Z"
+    },
+    {
+      "id": "bug-1790745600338",
+      "timestamp": "2026-10-10T10:59:19.782Z",
+      "error_message": "CSS fix: mutate",
+      "file": "frontend/src/components/workspace/capabilities/mcp-plugin-manager.tsx",
+      "root_cause": "mutate: enableMCPServer → enableMCPServer, isPending",
+      "fix": "Changed mutate: enableMCPServer → enableMCPServer, isPending",
+      "tags": [
+        "auto-detected",
+        "style-fix",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-10-10T10:59:19.782Z"
+    },
+    {
+      "id": "bug-1790745600339",
+      "timestamp": "2026-10-10T11:04:50.909Z",
+      "error_message": "Significant refactor of ",
+      "file": "frontend/src/components/workspace/capabilities/lark-plugin-settings.tsx",
+      "root_cause": "4 lines replaced/restructured",
+      "fix": "Rewrote 7→3 lines (4 removed) | Also: <<<<<<< HEAD; =======",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 2,
+      "last_seen": "2026-10-10T11:07:18.201Z"
+    },
+    {
+      "id": "bug-1790745600340",
+      "timestamp": "2026-10-10T11:08:50.335Z",
+      "error_message": "Significant refactor of ",
+      "file": "frontend/src/core/i18n/locales/en-US.ts",
+      "root_cause": "5 lines replaced/restructured",
+      "fix": "Rewrote 7→3 lines (5 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "ts"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-10-10T11:08:50.335Z"
+    },
+    {
+      "id": "bug-1790745600341",
+      "timestamp": "2026-10-10T11:11:01.460Z",
+      "error_message": "Significant refactor of ",
+      "file": "frontend/src/core/i18n/locales/zh-CN.ts",
+      "root_cause": "5 lines replaced/restructured",
+      "fix": "Rewrote 9→5 lines (5 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "ts"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-10-10T11:11:01.460Z"
+    },
+    {
+      "id": "bug-3444",
+      "timestamp": "2026-10-10",
+      "error_message": "test_channels Discord split_text 超长参数(约6千汉字,UTF-8≈54KB)在 Windows teardown 报 ValueError: environment variable longer than 32767 —— pytest 自身把含完整参数 ID 的 PYTEST_CURRENT_TEST 写进 os.environ",
+      "file": "backend/tests/test_channels.py",
+      "root_cause": "pytest _update_current_test_var 机制 + Windows 32767 环境变量上限; skipif 也无效(ID 照写)",
+      "fix": "给该参数显式短 id='cjk-block-x3'——测试全平台照常运行, ID 有界; Linux 上游 CI 本不受影响",
+      "tags": [
+        "windows",
+        "pytest",
+        "env-var-limit",
+        "parametrize"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-10-10"
+    },
+    {
+      "id": "bug-3445",
+      "timestamp": "2026-09-26",
+      "error_message": ":3000 宿主拓扑登录后跳 landing-new 但未登录, /api/v1/auth/me 报 CORS; :2026 一切正常",
+      "file": "frontend/.env.local",
+      "root_cause": ".env.local 的 SSR gateway 指到 127.0.0.1:2026; 网关/代理层按 Host 规范化 301 → localhost:2026(跨源), 浏览器跟随重定向时 Cookie 不跨源 + 无 ACAO → /me 401 + CORS 报错; :2026 直用无此链",
+      "fix": ".env.local 改 DEER_FLOW_INTERNAL_GATEWAY_BASE_URL=http://localhost:2026(实测 200 路径), 重启宿主 pnpm dev 生效; 教训: SSR/代理的内部 gateway URL 必须用规范化 Host(localhost), 勿用 127.0.0.1",
+      "tags": [
+        "dual-topology",
+        "3000",
+        "cors",
+        "host-canonicalization",
+        "cookie"
+      ],
+      "related_bugs": [
+        "bug-3020",
+        "bug-3443"
+      ],
+      "occurrences": 1,
+      "last_seen": "2026-09-26"
+    },
+    {
+      "id": "bug-1790745600342",
+      "timestamp": "2026-10-11T04:43:28.351Z",
+      "error_message": "Wrong reference: config should be OQ5",
+      "file": "C:/Users/admin/.gstack/projects/yogyoho-eai-flow-main/admin-main-dev-fork-design-20261011-121127.md",
+      "root_cause": "Used \"config\" instead of \"OQ5\"",
+      "fix": "Changed config → OQ5",
+      "tags": [
+        "auto-detected",
+        "wrong-reference",
+        "md"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-10-11T04:43:28.351Z"
+    },
+    {
+      "id": "bug-1790745600343",
+      "timestamp": "2026-10-11T05:48:57.017Z",
+      "error_message": "Significant refactor of ",
+      "file": "docs/designs/2026-10-11-jv-mining-translation-kb.md",
+      "root_cause": "3 lines replaced/restructured",
+      "fix": "Rewrote 4→4 lines (3 removed) | Also: State: pending; Actual answer: unanswered",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "md"
+      ],
+      "related_bugs": [],
+      "occurrences": 3,
+      "last_seen": "2026-10-11T05:54:26.354Z"
+    },
+    {
+      "id": "bug-1790745600344",
+      "timestamp": "2026-10-11T06:51:13.087Z",
+      "error_message": "Incorrect value in code",
+      "file": "backend/app/extensions/translation/models.py",
+      "root_cause": "Had \"delivered\"",
+      "fix": "Changed to \"archived\"",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 2,
+      "last_seen": "2026-10-11T06:51:18.340Z"
+    },
+    {
+      "id": "bug-1790745600345",
+      "timestamp": "2026-10-11T06:51:23.186Z",
+      "error_message": "Significant refactor of ",
+      "file": "backend/tests/test_translation_models.py",
+      "root_cause": "6 lines replaced/restructured",
+      "fix": "Rewrote 14→20 lines (6 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-10-11T06:51:23.186Z"
+    },
+    {
+      "id": "bug-1790745600346",
+      "timestamp": "2026-10-11T07:27:50.764Z",
+      "error_message": "Function not marked async",
+      "file": "backend/tests/test_knowledge_upload_hook.py",
+      "root_cause": "Function uses await but wasn't declared async",
+      "fix": "Added async modifier",
+      "tags": [
+        "auto-detected",
+        "async-fix",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-10-11T07:27:50.764Z"
+    },
+    {
+      "id": "bug-1790745600347",
+      "timestamp": "2026-10-11T07:45:26.945Z",
+      "error_message": "Significant refactor of ",
+      "file": "backend/tests/test_knowledge_upload_hook.py",
+      "root_cause": "4 lines replaced/restructured",
+      "fix": "Rewrote 7→4 lines (4 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-10-11T07:45:26.945Z"
+    },
+    {
+      "id": "bug-1790745600348",
+      "timestamp": "2026-10-11T07:48:09.227Z",
+      "error_message": "Missing await",
+      "file": "backend/app/extensions/translation/enqueue.py",
+      "root_cause": "Async call without await — returned Promise instead of value",
+      "fix": "Added await to async call",
+      "tags": [
+        "auto-detected",
+        "async-fix",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-10-11T07:48:09.227Z"
+    },
+    {
+      "id": "bug-1790745600349",
+      "timestamp": "2026-10-11T08:07:04.707Z",
+      "error_message": "Missing await",
+      "file": "backend/app/gateway/app.py",
+      "root_cause": "Async call without await — returned Promise instead of value",
+      "fix": "Added await to async call",
+      "tags": [
+        "auto-detected",
+        "async-fix",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-10-11T08:07:04.707Z"
+    },
+    {
+      "id": "bug-1790745600350",
+      "timestamp": "2026-10-11T08:11:52.413Z",
+      "error_message": "Wrong return value",
+      "file": "backend/app/extensions/translation/checks.py",
+      "root_cause": "Was returning: re.sub(r\"\\((\\s*[\\d.,'  ]+\\s*)\\)\", r\"-\\1\", text)",
+      "fix": "Now returns: re.sub(r\"\\((\\s*[\\d.,'  ]+\\s*)\\)\", _NEG_MARK + r\"\\1",
+      "tags": [
+        "auto-detected",
+        "return-value",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-10-11T08:11:52.413Z"
+    },
+    {
+      "id": "bug-1790745600351",
+      "timestamp": "2026-10-11T08:12:14.280Z",
+      "error_message": "Significant refactor of ",
+      "file": "backend/tests/test_translation_worker.py",
+      "root_cause": "3 lines replaced/restructured",
+      "fix": "Rewrote 9→15 lines (3 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-10-11T08:12:14.280Z"
+    },
+    {
+      "id": "bug-1790745600352",
+      "timestamp": "2026-10-11T08:13:31.852Z",
+      "error_message": "Significant refactor of ",
+      "file": "backend/tests/test_translation_checks.py",
+      "root_cause": "2 lines replaced/restructured",
+      "fix": "Rewrote 5→10 lines (2 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-10-11T08:13:31.852Z"
+    },
+    {
+      "id": "bug-1790745600353",
+      "timestamp": "2026-10-11T08:36:17.896Z",
+      "error_message": "Wrong operator: == should be !=",
+      "file": "backend/app/extensions/translation/mcp.py",
+      "root_cause": "Used \"==\" instead of \"!=\"",
+      "fix": "Changed operator == → !=",
+      "tags": [
+        "auto-detected",
+        "operator-fix",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-10-11T08:36:17.896Z"
+    },
+    {
+      "id": "bug-1790745600354",
+      "timestamp": "2026-10-11T09:30:48.169Z",
+      "error_message": "Significant refactor of ",
+      "file": "backend/app/extensions/translation/checks.py",
+      "root_cause": "2 lines replaced/restructured",
+      "fix": "Rewrote 11→15 lines (2 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-10-11T09:30:48.169Z"
+    },
+    {
+      "id": "bug-1790745600355",
+      "timestamp": "2026-10-11T14:46:10.988Z",
+      "error_message": "Wrong reference: config should be span",
+      "file": "docs/designs/2026-10-11-translation-ui-wireframe.html",
+      "root_cause": "Used \"config\" instead of \"span\"",
+      "fix": "Changed config → span",
+      "tags": [
+        "auto-detected",
+        "wrong-reference",
+        "html"
+      ],
+      "related_bugs": [],
+      "occurrences": 2,
+      "last_seen": "2026-10-11T14:47:01.104Z"
+    },
+    {
+      "id": "bug-1790745600356",
+      "timestamp": "2026-10-11T15:49:42.513Z",
+      "error_message": "Significant refactor of ",
+      "file": "backend/app/extensions/translation/routers.py",
+      "root_cause": "3 lines replaced/restructured",
+      "fix": "Rewrote 13→24 lines (3 removed) | Also: limit: int = Query(default=50, le=200),; stmt = (",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 2,
+      "last_seen": "2026-10-11T15:51:01.083Z"
+    },
+    {
+      "id": "bug-1790745600357",
+      "timestamp": "2026-10-11T15:55:33.293Z",
+      "error_message": "Incorrect value in code",
+      "file": "backend/tlt_api_smoke.py",
+      "root_cause": "Had \"email\"",
+      "fix": "Changed to \"username\"",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-10-11T15:55:33.293Z"
+    },
+    {
+      "id": "bug-1790745600358",
+      "timestamp": "2026-10-11T16:05:33.575Z",
+      "error_message": "Missing guard clause",
+      "file": "frontend/src/extensions/translation/api.ts",
+      "root_cause": "No early return/throw for edge case: !resp.ok",
+      "fix": "Added guard clause: if (!resp.ok)",
+      "tags": [
+        "auto-detected",
+        "guard-clause",
+        "ts"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-10-11T16:05:33.575Z"
+    },
+    {
+      "id": "bug-1790745600359",
+      "timestamp": "2026-10-11T16:18:28.214Z",
+      "error_message": "Missing error handling in unknown",
+      "file": "frontend/src/extensions/translation/components/AssetLibrary.tsx",
+      "root_cause": "Code path had no error handling — exceptions would propagate uncaught",
+      "fix": "Added try/catch block",
+      "tags": [
+        "auto-detected",
+        "error-handling",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-10-11T16:18:28.214Z"
+    },
+    {
+      "id": "bug-1790745600360",
+      "timestamp": "2026-10-11T16:44:44.420Z",
+      "error_message": "Incorrect value in code",
+      "file": "frontend/src/app/translation/layout.tsx",
+      "root_cause": "Had \"资产库\"",
+      "fix": "Changed to \"文档资产库\"",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-10-11T16:44:44.420Z"
+    },
+    {
+      "id": "bug-1790745600361",
+      "timestamp": "2026-10-11T16:54:43.616Z",
+      "error_message": "Missing import: ./metadata",
+      "file": "frontend/src/app/translation/layout.tsx",
+      "root_cause": "Module(s) not imported: ./metadata",
+      "fix": "Added import(s) for ./metadata",
+      "tags": [
+        "auto-detected",
+        "missing-import",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-10-11T16:54:43.616Z"
+    },
+    {
+      "id": "bug-1790745600362",
+      "timestamp": "2026-10-12T01:13:29.688Z",
+      "error_message": "Incorrect value in code",
+      "file": "frontend/src/app/translation/layout.tsx",
+      "root_cause": "Had \"translation:read\"",
+      "fix": "Changed to \"translation:page:assets\"",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-10-12T01:13:29.688Z"
+    },
+    {
+      "id": "bug-1790745600363",
+      "timestamp": "2026-10-12T01:43:58.150Z",
+      "error_message": "Significant refactor of ",
+      "file": "frontend/src/extensions/translation/components/AssetLibrary.tsx",
+      "root_cause": "12 lines replaced/restructured",
+      "fix": "Rewrote 23→12 lines (12 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-10-12T01:43:58.150Z"
+    },
+    {
+      "id": "bug-1790745600364",
+      "timestamp": "2026-10-12T02:20:11.466Z",
+      "error_message": "Significant refactor of ",
+      "file": "frontend/src/extensions/translation/components/UploadDialog.tsx",
+      "root_cause": "4 lines replaced/restructured",
+      "fix": "Rewrote 14→10 lines (4 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-10-12T02:20:11.466Z"
+    },
+    {
+      "id": "bug-1790745600365",
+      "timestamp": "2026-10-12T02:21:39.557Z",
+      "error_message": "CSS fix: files, null",
+      "file": "frontend/src/extensions/translation/components/AssetLibrary.tsx",
+      "root_cause": "files: FileList | null) => { → File[], autoTranslate: boolean) => {; null: fid, fs) → lFolder",
+      "fix": "Changed files: FileList | null) => { → File[], autoTranslate: boolean) => {; null: fid, fs) → lFolder",
+      "tags": [
+        "auto-detected",
+        "style-fix",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-10-12T02:21:39.557Z"
+    },
+    {
+      "id": "bug-1790745600366",
+      "timestamp": "2026-10-12T02:22:24.921Z",
+      "error_message": "Significant refactor of ",
+      "file": "frontend/src/extensions/translation/components/AssetLibrary.tsx",
+      "root_cause": "4 lines replaced/restructured",
+      "fix": "Rewrote 8→5 lines (4 removed) | Also: <input ref={uploadInput} type=\"file\" multiple hidd; <input",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 2,
+      "last_seen": "2026-10-12T02:23:09.312Z"
+    },
+    {
+      "id": "bug-1790745600367",
+      "timestamp": "2026-10-12T03:21:38.918Z",
+      "error_message": "Type error",
+      "file": "frontend/src/extensions/translation/components/AssetLibrary.tsx",
+      "root_cause": "Missing or incorrect type annotation",
+      "fix": "Added type assertion/annotation",
+      "tags": [
+        "auto-detected",
+        "type-fix",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-10-12T03:21:38.918Z"
+    },
+    {
+      "id": "bug-1790745600368",
+      "timestamp": "2026-10-12T03:52:35.904Z",
+      "error_message": "Significant refactor of ",
+      "file": "frontend/src/extensions/translation/components/AssetLibrary.tsx",
+      "root_cause": "11 lines replaced/restructured",
+      "fix": "Rewrote 17→4 lines (11 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-10-12T03:52:35.904Z"
     }
   ]
 }

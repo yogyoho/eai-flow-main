@@ -1,7 +1,7 @@
 # anatomy.md
 
-> Auto-maintained by OpenWolf. Last scanned: 2026-10-05T16:39:29.082Z
-> Files: 280 tracked | Anatomy hits: 0 | Misses: 0
+> Auto-maintained by OpenWolf. Last scanned: 2026-10-12T04:58:56.153Z
+> Files: 393 tracked | Anatomy hits: 0 | Misses: 0
 
 ## ../../00 工作目录/02 项目策划/马宁/应急指挥/bid-run/
 
@@ -27,6 +27,10 @@
 ## ../../tmp/fire-extract-experiment/workspace/
 
 
+## ../../tmp/merge-deps/
+
+- `resolve.py` — Resolve the 6 conflict hunks in backend/app/gateway/deps.py (semantic fusion). (~2507 tok)
+
 ## ../_mutwt/backend/app/extensions/auth/
 
 
@@ -38,9 +42,14 @@
 
 ## ./
 
-- `extensions_config.json` (~2935 tok)
-- `Makefile` — DeerFlow - Unified Development Environment (~2915 tok)
-- `TODOS.md` — TODOS (~3247 tok)
+- `.tlt_cb.py` — Declares s (~682 tok)
+- `.tlt_endpoints.py` — ── 资产库：文件夹 CRUD（虚拟分类树，物理文件不动）───────────────────── (~2242 tok)
+- `.tlt_lists.py` — One-off splice: collapse list columns into filename+description rows (T asset library). (~1851 tok)
+- `.tlt_splice.py` — One-off splice: cleanup translation-ui.md stale overview + replace wireframe v-overview. Delete afte (~2489 tok)
+- `AGENTS.md` — AGENTS.md (~4038 tok)
+- `extensions_config.json` (~3094 tok)
+- `Makefile` — DeerFlow - Unified Development Environment (~3055 tok)
+- `TODOS.md` — TODOS (~3391 tok)
 
 ## .agent/skills/smoke-test/
 
@@ -316,11 +325,13 @@
 ## C:/Users/admin/.claude/projects/D--eai-eai-flow-main/memory/
 
 - `a5-cleanup-plan.md` (~211 tok)
+- `iron-ore-jv-translation-kb-design.md` (~290 tok)
 - `ontostudio-ingest-page-audit-2026-09-29.md` (~357 tok)
 - `ontostudio-quality-marathon-2026-10-04.md` (~367 tok)
 - `ontostudio-review-loop-slice.md` (~400 tok)
 - `upstream-sync-2026-09-19.md` (~516 tok)
 - `upstream-sync-2026-09-26.md` (~428 tok)
+- `upstream-sync-2026-10-10.md` (~452 tok)
 
 ## C:/Users/admin/.gstack/
 
@@ -335,10 +346,18 @@
 ## C:/Users/admin/.gstack/projects/yogyoho-eai-flow-main/
 
 - `admin-main-dev-fork-design-20260926-131630-ontostudio-review-loop.md` — Design: OntoStudio 人审闭环打通（最小闭环） (~1961 tok)
+- `admin-main-dev-fork-design-20261011-121127.md` — Design: 合资铁矿 EN/FR 文档翻译入库与知识资产化（一期：三闸门最小闭环） (~3550 tok)
 - `admin-main-dev-fork-eng-review-test-plan-20260926-ontostudio-review-loop.md` — Test Plan (~432 tok)
+
+## C:/Users/admin/.gstack/projects/yogyoho-eai-flow-main/admin-main-dev-fork-design-20261011-121127.md.review.wysTrj/
+
+- `round-1.json` (~2542 tok)
+- `round-2.json` (~3046 tok)
+- `round-3.json` (~1934 tok)
 
 ## C:/Users/admin/AppData/Local/Temp/
 
+- `gstack-plan-prompt.m4sn5AIF` (~654 tok)
 
 ## C:/Users/admin/AppData/Local/Temp/bidpipe/
 
@@ -420,6 +439,15 @@
 
 ## backend/
 
+- `tlt_api_smoke.py` — Live API smoke for asset library (temp): login → folder CRUD → upload → stored→pending → delete. (~1138 tok)
+- `tlt_appcenter_seed.py` — Seed the App Center entry for the translation workbench (idempotent, temp). (~316 tok)
+- `tlt_cleanup.py` — Cleanup smoke-test residue from the asset library (temp). (~449 tok)
+- `tlt_demo_seed.py` — Seed demo documents into the asset library via real API (temp). (~834 tok)
+- `tlt_dl_probe.py` — Probe the source-download endpoint with a real stored PDF task (temp). (~336 tok)
+- `tlt_dl_verify.py` — Verify source/deliverable/preview endpoints + openapi registration (temp). (~442 tok)
+- `tlt_fix_kb.py` — Fix: ensure the translation KB has a RAGFlow dataset, then re-enqueue the failed demo task. (~729 tok)
+- `tlt_live_check.py` — Live FULL-chain E2E (temp): real dataset + worker + LLM + gates + MinIO + RAGFlow index → delivered. (~878 tok)
+- `tlt_seed_folders.py` — Seed demo folder tree for the asset library (idempotent, temp). (~378 tok)
 
 ## backend/.deer-flow/
 
@@ -618,16 +646,18 @@
 
 ## backend/app/channels/
 
-- `manager.py` — ChannelManager — consumes inbound messages and dispatches them to the DeerFlow agent via LangGraph S (~22676 tok)
+- `manager.py` — ChannelManager — consumes inbound messages and dispatches them to the DeerFlow agent via LangGraph S (~32743 tok)
 
 ## backend/app/extensions/
 
+- `database.py` — Database connection and session management for extensions module. (~26533 tok)
 
 ## backend/app/extensions/app_center/
 
 
 ## backend/app/extensions/auth/
 
+- `permission_routers.py` — Permission API endpoints — registry, current user permissions, role config. (~2402 tok)
 
 ## backend/app/extensions/bid_materials/
 
@@ -662,7 +692,7 @@
 
 ## backend/app/extensions/knowledge/
 
-- `routers.py` — Knowledge base routers for extensions module. (~9706 tok)
+- `routers.py` — Knowledge base routers for extensions module. (~9874 tok)
 - `service.py` — Knowledge base and document management service. (~9419 tok)
 
 ## backend/app/extensions/knowledge_factory/
@@ -700,6 +730,7 @@
 
 ## backend/app/extensions/models/
 
+- `__init__.py` — SQLAlchemy data models for extensions module. (~13355 tok)
 
 ## backend/app/extensions/ontology/
 
@@ -743,6 +774,21 @@
 ## backend/app/extensions/spare_parts/
 
 
+## backend/app/extensions/translation/
+
+- `__init__.py` — Translation extension (EAI-CUSTOM). (~232 tok)
+- `checks.py` — Machine gates for the translation pipeline (EAI-CUSTOM, T4). (~1783 tok)
+- `enqueue.py` — Translation task enqueue (EAI-CUSTOM, T1). (~785 tok)
+- `glossary.py` — Translation glossary loader (EAI-CUSTOM, T4 — 机制先行，内容=样例闸产出). (~720 tok)
+- `langdetect.py` — Lightweight language detection for the translation pipeline (EAI-CUSTOM). (~407 tok)
+- `mcp.py` — Translation MCP server (EAI-CUSTOM, T5) — agent-side task tools. (~2298 tok)
+- `models.py` — SQLAlchemy models for the translation extension ``tlt_`` tables (EAI-CUSTOM). (~1637 tok)
+- `parsers.py` — Document parsers: EN/FR office formats → block trees (EAI-CUSTOM, T3). (~2480 tok)
+- `ragflow_bridge.py` — RAGFlow index bridge + MinIO deliverable (EAI-CUSTOM, T6). (~1949 tok)
+- `routers.py` — Translation task API (EAI-CUSTOM) — /api/extensions/translation. (~4435 tok)
+- `translator.py` — LLM translation glue (EAI-CUSTOM, T4). (~1030 tok)
+- `worker.py` — Translation worker (EAI-CUSTOM, T4). (~3766 tok)
+
 ## backend/app/extensions/user/
 
 
@@ -772,13 +818,16 @@
 
 ## backend/app/gateway/
 
-- `app.py` (~18080 tok)
-- `services.py` — Run lifecycle service layer. (~33971 tok)
+- `app.py` (~21618 tok)
+- `auth_middleware.py` — Global authentication middleware — fail-closed safety net. (~3596 tok)
+- `deps.py` — Centralized accessors for singleton objects stored on ``app.state``. (~14629 tok)
+- `services.py` — Run lifecycle service layer. (~39874 tok)
 
 ## backend/app/gateway/routers/
 
 - `artifacts.py` — Pydantic: ArtifactUpdateRequest (~8580 tok)
-- `channel_connections.py` — Browser-facing APIs for user-owned IM channel bindings. (~10802 tok)
+- `channel_connections.py` — Browser-facing APIs for user-owned IM channel bindings. (~11340 tok)
+- `thread_runs.py` — Runs endpoints — create, stream, wait, cancel. (~25168 tok)
 
 ## backend/app/scheduler/
 
@@ -884,6 +933,8 @@
 ## backend/scripts/
 
 - `backfill_kf_ontology.py` — 回填 kf_samples.outline_json.ontology——B2 (b') 产物消费路径的存量使能器. (~762 tok)
+- `translation_golden_eval.py` — Golden-set translation quality eval (EAI-CUSTOM, T7). (~792 tok)
+- `translation_golden_set_template.jsonl` (~278 tok)
 
 ## backend/scripts/bid_seed_samples.py
 
@@ -891,13 +942,33 @@
 ## backend/scripts/eia_seed_samples.py
 
 
+## backend/scripts/（translation）
+
+
 ## backend/tests/
 
+- `test_artifacts_router.py` — _MountedSandboxProvider: test_get_artifact_reads_utf8_text_file_on_windows_locale, reject_artifact_r (~17937 tok)
 - `test_kb_relink_ragflow.py` — Regression tests for bug-3307. (~2796 tok)
+- `test_knowledge_upload_hook.py` — D17 regression contract tests: knowledge upload hook → translation enqueue (T1). (~1147 tok)
 - `test_mcp_client_config.py` — Core behavior tests for MCP client server config building. (~3015 tok)
+- `test_nginx_langgraph_body_size.py` — Regression coverage for issue #3952: long chat prompts through nginx's (~2409 tok)
+- `test_permissions_me_endpoint.py` — /api/permissions/me 端点 HTTP 测试（修复前 0 覆盖）。 (~852 tok)
+- `test_translation_bridge.py` — RAGFlow bridge tests (T6) — fake client/storage, no real RAGFlow needed. (~2158 tok)
+- `test_translation_checks.py` — Machine-gate unit tests (pure functions, T4). (~1211 tok)
+- `test_translation_langdetect.py` — Language detection unit tests (pure). (~302 tok)
+- `test_translation_mcp.py` — Translation MCP server tests (T5) — handler-level, in-container DB. (~994 tok)
+- `test_translation_models.py` — Translation extension S1 unit tests (pure state machine / defaults, no DB). (~900 tok)
+- `test_translation_parsers.py` — Parser unit tests — synthetic docs built in-test, no external fixtures. (~1282 tok)
+- `test_translation_worker.py` — Worker tests (T4): state machine edges with injected fake translator/indexer. (~2302 tok)
+- `test_wait_disconnect_handling.py` — Regression tests for issues #3265 and #3932. (~7419 tok)
 
 ## backend/tests/e2e/bid/
 
+
+## backend/tests/eval/
+
+- `retrieval_fixtures.example.jsonl` (~150 tok)
+- `test_retrieval_fixture.py` — Retrieval hit@k evaluation fixture (EAI-CUSTOM, T7 — 样例闸预建件). (~1101 tok)
 
 ## backend/tests/fixtures/bid_proposal/
 
@@ -911,8 +982,12 @@
 ## backend/tests/test_collab_baseline_sync.py
 
 
+## backend/tests/（translation 相关 9 文件）
+
+
 ## config/
 
+- `permissions.yaml` — permissions.yaml — 三级权限模型：导航 → 页面 → 操作 (~5413 tok)
 
 ## deploy/offline/
 
@@ -928,6 +1003,9 @@
 
 ## docker/
 
+- `dev-entrypoint.sh` — '. uvicorn's FileFilter does `Path(pattern).is_dir()` — a literal (~1662 tok)
+- `docker-compose-dev.yaml` — DeerFlow Development Environment (~7528 tok)
+- `docker-compose.yaml` — DeerFlow Production Environment (~3533 tok)
 
 ## docker/nginx/
 
@@ -946,8 +1024,16 @@
 - `2026-10-02-reasoning-whitebox-plan.md` — 推理工作台 · 未实现功能梳理与技术方案（白盒化分期） (~1216 tok)
 - `2026-10-05-ontostudio-capability-matrix.md` — OntoStudio 功能完备性梳理——三层能力矩阵与缺口清单 (~579 tok)
 - `2026-10-05-upload-extract-flow.md` — OntoStudio 文件上传直连抽取——一体化流(G3 后续, D16 方案 A) (~357 tok)
+- `2026-10-06-ontostudio-vs-palantir-ontology-completeness.md` — OntoStudio 对照 Palantir 操作本体框架的完备性评估 (~963 tok)
+- `2026-10-07-tianma-marketing-ontology-modeling-plan.md` — 天玛智控市场营销域本体建模详细方案 (~2894 tok)
+- `2026-10-11-jv-mining-translation-kb.md` — Design: 合资铁矿 EN/FR 文档翻译入库与知识资产化（一期：三闸门最小闭环） (~8366 tok)
+- `2026-10-11-translation-ui-wireframe.html` — 翻译工作台 · 低保真线框（IA 版 v1） (~7704 tok)
+- `2026-10-11-translation-ui.md` — Design: 翻译工作台 UI（应用中心入口 + 子页面） (~1614 tok)
 - `ontostudio-frontend-redesign-20260926.html` — OntoStudio 页面重构原型 · EAI 对齐版 (~16663 tok)
 - `ui-style-spec.md` — UI 样式规范（基准：deer-flow 对话页） (~1915 tok)
+
+## docs/designs/2026-10-11-jv-mining-translation-kb.md
+
 
 ## docs/diagrams/
 
@@ -961,6 +1047,7 @@
 - `2026-09-28-eia-ontology-v2-subproject1.md` — 环评本体模型 v2（子项目 1）实施计划 (~10619 tok)
 - `2026-09-29-eia-batch-ingest-subproject2.md` — 环评实例批量抽取入图（子项目 2）实施计划 (~3983 tok)
 - `2026-09-30-c-ingest-pipeline-plan.md` — C 库沉淀管线实施计划（子项目 4 完整版） (~371 tok)
+- `2026-10-06-ontostudio-docs-center-upgrade.md` — OntoStudio 文档中心全面升级 实施计划 (~6002 tok)
 
 ## docs/superpowers/plans/2026-09-13-coal-mine-tunneling-regulation-v2.md
 
@@ -974,6 +1061,7 @@
 - `2026-09-30-c-ingest-pipeline-design.md` — 子项目 4 完整版：C 库沉淀管线 + 写前注入接入 设计（缺口①③④ 闭环） (~827 tok)
 - `2026-09-30-coal-eia-mcp-integration-design.md` — 子项目 4：coal-eia-report 技能接本体 MCP（接口 3 类比通道 + 接口 4 语义校验层）设计 (~770 tok)
 - `2026-09-30-eia-rules-mcp-design.md` — 子项目 3：EIA 校验规则集 + MCP 消费通道 设计 (~688 tok)
+- `2026-10-06-ontostudio-docs-center-upgrade-design.md` — OntoStudio 文档中心全面升级设计 (~1220 tok)
 
 ## docs/superpowers/specs/2026-09-13-coal-mine-tunneling-regulation-v2-design.md
 
@@ -1162,6 +1250,12 @@
 ## frontend/src/app/test-editor/
 
 
+## frontend/src/app/translation/
+
+- `layout.tsx` — navItems (~730 tok)
+- `metadata.ts` — Declares Metadata (~70 tok)
+- `page.tsx` — TranslationAssetPage (~50 tok)
+
 ## frontend/src/app/workflow-admin/
 
 - `page.tsx` — REPORT_TYPE_FILTERS (~4724 tok)
@@ -1230,22 +1324,27 @@
 
 ## frontend/src/components/workspace/artifacts/
 
+- `artifact-file-detail.tsx` — WRITE_FILE_PREVIEW_REFRESH_INTERVAL_MS (~7822 tok)
 
 ## frontend/src/components/workspace/capabilities/
 
+- `lark-plugin-settings.tsx` — LARK_AUTH_DOMAINS (~8706 tok)
+- `mcp-plugin-manager.tsx` — MCPPluginManager — renders modal (~4318 tok)
 
 ## frontend/src/components/workspace/channels/
 
 
 ## frontend/src/components/workspace/chats/
 
+- `chat-page.tsx` — ChatPage (~8635 tok)
 
 ## frontend/src/components/workspace/citations/
 
 
 ## frontend/src/components/workspace/messages/
 
-- `message-list.tsx` — EMPTY_TOKEN_DEBUG_STEPS (~14515 tok)
+- `message-list-item.tsx` — Edit would be allowed but for an active goal: show the pencil locked. (~7420 tok)
+- `message-list.tsx` — Edit would be allowed but for an active goal: show the pencil locked. (~16193 tok)
 
 ## frontend/src/components/workspace/projects/
 
@@ -1282,8 +1381,8 @@
 
 ## frontend/src/core/i18n/locales/
 
-- `en-US.ts` — Exports enUS (~23212 tok)
-- `zh-CN.ts` — Exports zhCN (~15636 tok)
+- `en-US.ts` — Exports enUS (~29092 tok)
+- `zh-CN.ts` — Exports zhCN (~19640 tok)
 
 ## frontend/src/core/mcp/
 
@@ -1556,6 +1655,18 @@
 - `StatCard.tsx` — colorClasses (~456 tok)
 - `TracebackDrawer.tsx` — CspDocument.id; null closes the drawer. (~2895 tok)
 
+## frontend/src/extensions/translation/
+
+- `api.ts` — API client for the translation workbench. (~874 tok)
+- `types.ts` — Types for the translation workbench (EAI-CUSTOM). (~325 tok)
+
+## frontend/src/extensions/translation/components/
+
+- `AssetLibrary.tsx` — 状态 → 用户语徽章（文案红线映射表）。 (~9899 tok)
+- `FileIcon.tsx` — 仿 Windows 文件类型徽章：彩色圆角方块 + 白色类型字母（对齐文档空间文件图标风格）。 (~397 tok)
+- `FolderIcons.tsx` — Windows 资源管理器风格文件夹图标（复刻自 docmgr 文档空间目录树，EAI-CUSTOM）。 (~447 tok)
+- `UploadDialog.tsx` — 资产库上传对话框（结构复刻 contract-price 上传合同对话框，EAI-CUSTOM）。 (~2189 tok)
+
 ## frontend/src/extensions/types/
 
 
@@ -1749,8 +1860,10 @@
 
 ## ontostudio/backend/app/ontology/registry/
 
+- `_manifest.yaml` — Ontology 注册表清单（市场/分析数据域 Phase 1a） (~77 tok)
 - `doc_graph.yaml` — 文档图谱域（doc_graph 构建侧产物——非结构化文档抽取的实体/关系/证据） (~2009 tok)
 - `eia.yaml` — 环评域（eia）v2 定型版——三层 schema 扩展（26 作品环评样例事实源，2026-09-28 用户 GATE2/3 定型： (~3889 tok)
+- `market.yaml` — 营销域（market）v1——天玛智控营销本体定制（方法论: 外部《Palantir 本体实操指南》+ 天玛智控营销域本体模型设计指南） (~2283 tok)
 
 ## ontostudio/backend/app/ontology/rules_registry/
 
@@ -1849,30 +1962,62 @@
 
 - `.dockerignore` (~13 tok)
 - `.gitignore` — Git ignore rules (~13 tok)
-- `changelog.md` — 更新记录 (~88 tok)
-- `Dockerfile` — Docker container definition (~207 tok)
-- `index.md` (~169 tok)
+- `changelog.md` — 更新记录 (~473 tok)
+- `Dockerfile` — Docker container definition (~210 tok)
+- `index.md` (~220 tok)
 - `package.json` — Node.js package manifest (~74 tok)
 - `README.md` — Project documentation (~180 tok)
 
 ## ontostudio/docs-site/.vitepress/
 
-- `config.mts` — 部署于 nginx /ontostudio/docs/ 子路径（独立静态容器 ontostudio-docs:3011） (~499 tok)
+- `config.mts` — 部署于 nginx /ontostudio/docs/ 子路径（独立静态容器 ontostudio-docs:3011） (~1012 tok)
+
+## ontostudio/docs-site/concepts/
+
+- `foundations.md` — 本体地基：三元组与 RDFS/OWL (~341 tok)
+- `index.md` — 概念详解 · 阅读顺序 (~197 tok)
+- `owlrl.md` — owlrl 闭包 (~275 tok)
+- `shacl.md` — SHACL (~305 tok)
+- `sparql-construct.md` — SPARQL 与 CONSTRUCT 派生 (~320 tok)
+- `trig-snapshots.md` — TriG 快照 (~265 tok)
+- `turtle-jsonld.md` — Turtle 与 JSON-LD 1.1 (~299 tok)
 
 ## ontostudio/docs-site/design/
 
-- `doc-graph.md` — doc_graph 骨架设计 (~294 tok)
-- `eia-model.md` — eia 域模型设计 (~490 tok)
+- `doc-graph.md` — doc_graph 骨架设计 (~388 tok)
+- `eia-model.md` — eia 域模型设计 (~646 tok)
 
 ## ontostudio/docs-site/glossary/
 
 - `doc-graph.md` — doc_graph 域术语（文档图谱骨架） (~339 tok)
 - `eia.md` — eia 域术语（环评） (~422 tok)
-- `index.md` — 术语总览 (~207 tok)
+- `index.md` — 术语总览 (~421 tok)
 
 ## ontostudio/docs-site/guide/
 
-- `index.md` — 功能操作指南 (~321 tok)
+- `01-dashboard.md` — 01 工作台总览 (~185 tok)
+- `02-graph.md` — 02 图谱浏览 (~196 tok)
+- `03-entities.md` — 03 实体库 (~180 tok)
+- `04-resolve.md` — 04 消解审核 (~155 tok)
+- `05-modeler.md` — 05 本体建模器 (~225 tok)
+- `06-reasoning.md` — 06 推理工作台 (~233 tok)
+- `07-validation.md` — 07 校验中心 (~232 tok)
+- `08-ingest.md` — 08 抽取导入 (~201 tok)
+- `09-export.md` — 09 导出互操作 (~225 tok)
+- `data-flow.md` — 端到端数据流 (~388 tok)
+- `index.md` — 功能操作 · 模块地图 (~225 tok)
+- `review-loop.md` — 审阅闭环 (~308 tok)
+
+## ontostudio/docs-site/reference/
+
+- `agent-integration.md` — Agent 集成指南 (~601 tok)
+- `gbt-48000-fulltext.md` — GB/T 48000.3—2026 全文阅读 (~688 tok)
+- `gbt-48000.md` — GB/T 48000.3—2026 符合性校验（C1-C5） (~427 tok)
+- `mcp-tools.md` — MCP 工具总表 (~212 tok)
+
+## ontostudio/docs-site/scripts/
+
+- `gen_reference_tables.py` — 从后端源码生成文档中心两张易漂移表（MCP 工具总表 / 国标 C1-C5 对照表）。 (~1234 tok)
 
 ## ontostudio/frontend/
 
@@ -1910,11 +2055,12 @@
 
 ## ontostudio/frontend/src/layout/
 
-- `AppShell.tsx` — OntoStudio 应用外壳（EAI-CUSTOM）：侧栏导航 + hash 路由（零新依赖）。 (~3322 tok)
+- `AppShell.tsx` — OntoStudio 应用外壳（EAI-CUSTOM）：侧栏导航 + hash 路由（零新依赖）。 (~3522 tok)
 
 ## ontostudio/frontend/src/lib/
 
-- `permissions.ts` — 本地权限门 (S2 Task 1, EAI-CUSTOM). (~972 tok)
+- `api.ts` — OntoStudio 独立前端 API Client (S2 Task 1, EAI-CUSTOM). (~952 tok)
+- `permissions.ts` — 本地权限门 (S2 Task 1, EAI-CUSTOM). (~1182 tok)
 - `terms.ts` — 术语中文别名表（EAI-CUSTOM 2026-10-01 B1 文案包，设计 docs/designs/2026-10-01-ontostudio-ux-governance.md §B1.5）。 (~193 tok)
 
 ## ontostudio/frontend/src/pages/
@@ -1923,7 +2069,7 @@
 - `EntitiesPage.tsx` — 03 实体库（EAI-CUSTOM, 2026-09-27 原型还原版）——完全对照 (~6798 tok)
 - `ExportPage.tsx` — 09 导出互操作（EAI-CUSTOM，2026-09-27 原型重构；2026-10-03 D8 快照/回导落地）—— (~3741 tok)
 - `IngestPage.tsx` — 08 抽取导入（EAI-CUSTOM, 2026-09-28 审计升级；2026-10-01 T6 队列接真）——真数据区块： (~7980 tok)
-- `ModelerPage.tsx` — 05 本体建模器（EAI-CUSTOM, 2026-09-27 原型还原 + 批次 2 画布交互转正）。 (~16204 tok)
+- `ModelerPage.tsx` — 05 本体建模器（EAI-CUSTOM, 2026-09-27 原型还原 + 批次 2 画布交互转正）。 (~16972 tok)
 - `ReasoningPage.tsx` — 06 推理工作台（EAI-CUSTOM，2026-09-27 原型重构）：infer 真数据（闭包统计 + 规则表） (~11597 tok)
 - `shared.tsx` — 骨架页共用件（EAI-CUSTOM）：页头（菜单图标 + 条款号 + 标题 + 描述 + 动作区）与基础芯片。 (~1040 tok)
 - `ValidationPage.tsx` — 07 校验中心（EAI-CUSTOM, 2026-09-27 原型移植）——完全对照 (~7594 tok)
@@ -1931,7 +2077,7 @@
 ## scripts/
 
 - `docker.sh` — Declares for (~5664 tok)
-- `serve.sh` — serve.sh — Unified DeerFlow service launcher (~4556 tok)
+- `serve.sh` — serve.sh — Unified DeerFlow service launcher (~4954 tok)
 
 ## scripts/tests/
 
@@ -2237,6 +2383,15 @@
 
 ## 已删除
 
+
+## 文档中心（ontostudio/docs-site, 2026-10-06 全面升级）
+
+- `config.mts` — 导航七项/sidebar 五区;ignoreDeadLinks=false(死链=构建失败门禁). (~500 tok)
+- `Dockerfile` — 两段构建(pnpm build→nginx:3011);try_files 补 $uri.html 回退(目录式 URL 直链修复). (~200 tok)
+- `reference/agent-integration.md` — Agent 集成:MCP 双服务配置/X-Internal-Auth/双技能/runs 实测路径(recursion_limit=250 坑). (~600 tok)
+- `reference/gbt-48000.md` — 国标 C1-C5 详解+诚实边界(形式化空/跨域死链/按域未接)+生成对照表. (~700 tok)
+- `reference/mcp-tools.md` — MCP 22 工具契约总表(手写调用纪律+生成区间). (~600 tok)
+- `scripts/gen_reference_tables.py` — 生成器:ast 解析后端 _TOOLS_SPEC(17+5)/conformance.py 生成 MCP 工具表+国标 C1-C5 对照表,只写 md 的 GENERATED 区间;--selftest 自检;_cell 做 HTML 转义(裸 <uuid> 会炸 Vue 编译). (~800 tok)
 
 ## 部署面
 

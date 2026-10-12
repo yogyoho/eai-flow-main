@@ -1,13 +1,14 @@
 """Knowledge base routers for extensions module."""
 
 import asyncio
+import hashlib
 import json
 import logging
 from pathlib import Path
 from uuid import UUID
 
 import aiofiles
-from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, UploadFile, status
+from fastapi import APIRouter, BackgroundTasks, Depends, File, Form, HTTPException, Query, UploadFile, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.extensions.auth.admin import is_superadmin
@@ -407,6 +408,7 @@ async def delete_kb_grant(
 
 @router.post("/{kb_id}/documents", response_model=DocumentResponse, status_code=status.HTTP_201_CREATED)
 async def upload_document(
+    background_tasks: BackgroundTasks,
     kb_id: UUID,
     file: UploadFile = File(...),
     chunk_config: str | None = Form(None),
@@ -457,6 +459,20 @@ async def upload_document(
         if file_path.exists():
             file_path.unlink()
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+
+    # EAI-CUSTOM (translation 一期 T1): KB 翻译开关开启时后台解析+入队（eng-review D17:
+    # 开关关 = 零新行为，不入队无任务行；should_enqueue 是守卫函数可单测）
+    from app.extensions.translation.enqueue import enqueue_translation_task, should_enqueue
+
+    if should_enqueue(kb):
+        background_tasks.add_task(
+            enqueue_translation_task,
+            kb_id=kb.id,
+            document_id=doc.id,
+            doc_sha=hashlib.sha256(content).hexdigest(),
+            source_uri=str(file_path),
+            file_path=str(file_path),
+        )
     return DocumentService.to_response(doc)
 
 

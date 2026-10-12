@@ -1,5 +1,14 @@
 # TODOS
 
+## TODO: translation 二期触发器清单（五项独立扳机）
+
+- **What:** 一期（三闸门最小闭环，docs/designs/2026-10-11-jv-mining-translation-kb.md APPROVED）落地后，五项二期的触发条件：①Excel 结构化抽取管线=样例裁明内容语义分流判据后；②TM 记忆库=reviewed 档运行 1-2 个月后（种子=届时启动的 MTPE 痕迹采集+被替换草稿句对）；③一主一备路由=主模型稳定运行后；④docmgr 挂接=server 建文档 API 验证可行后；⑤周/月报能力=一期 EN+FR 签字后。
+- **Why:** 五项各有明确前置条件，提前建=重蹈「零样例硬建」；不记=条件成熟时无人想起。触发即重开对应构件 mini-design。
+- **Pros:** 扳机驱动互不阻塞；不失忆。
+- **Cons:** TODO 面板多一条；触发判断靠人。
+- **Context:** 设计 OQ1-OQ9 段 + eng-review D15-D18 决议（2026-10-11）；模式参照 self-improving TODO。
+- **Depends on / blocked by:** 一期样例验收闸通过（客户样例到手+双引擎盲测+阈值裁定）。
+
 ## TODO: self-improving 自进化循环 P2 升级路径（三条件触发项）
 
 - **What:** P1（extensions/learnings）验收且价值验证后可做的三项升级：① 独立 poller 容器做实时 sweep（替代 lazy catch-up，参照 dcs_qa cron-poll 模式）；② 人工 triage UI（届时才需 gateway app.py 一行 include_router + /api/extensions/learnings 路由）；③ 零触碰约束解除后（如上游大版本重排后），把 pending 计数注入系统提示（prompt.py，OV5 的 C 选项，约束内最优解的升级路径）。
