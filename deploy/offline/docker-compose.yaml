@@ -112,6 +112,9 @@ services:
       - DEER_FLOW_SANDBOX_HOST=host.docker.internal
       # RAGFlow & Temporal 内部服务地址（使用 Docker 服务名而非容器名，避免耦合）
       - RAGFLOW_BASE_URL=http://ragflow:9380
+      # EAI-CUSTOM (2026-10-13): 多 worker 流桥——GATEWAY_WORKERS>1 启动门强制
+      # stream_bridge.type=redis（config.yaml 已切 redis），此 URL 指向本栈 redis 服务
+      - DEER_FLOW_STREAM_BRIDGE_REDIS_URL=redis://redis:6379/0
       # EAI-CUSTOM (2026-09-06): RAGFlow API Key 必须透传——RAGFlowConfig.from_env() 读此变量，
       # 缺失则知识库/法规库/geo 切片的 RAGFlow 同步全部静默跳过（.env 回填后需 force-recreate gateway）
       - RAGFLOW_API_KEY=${RAGFLOW_API_KEY:-}
@@ -139,6 +142,8 @@ services:
     # gateway 冷启动即连 postgres-ext（含自动 CREATE DATABASE deerflow），不等它起来会
     # 撞连接拒绝。healthcheck 见 docker/docker-compose.extensions.yaml（pg_isready）。
     depends_on:
+      redis:
+        condition: service_healthy
       postgres-ext:
         condition: service_healthy
     healthcheck:

@@ -221,6 +221,23 @@ services:
           - cad
     restart: unless-stopped
 
+  # ── Redis Stream Bridge（EAI-CUSTOM 2026-10-13: GATEWAY_WORKERS>1 启动门强制
+  #    stream_bridge.type=redis——多 worker 下 memory 桥的 SSE/重连只在本机生效）──────
+  redis:
+    image: redis:7-alpine
+    container_name: prod-eai-flow-redis
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    networks:
+      - prod-eai-flow-net
+    restart: unless-stopped
+
   # ── Browserless（无头 Chrome，供 web_fetch/web_capture 渲染 JS 网页）──────
   # EAI-CUSTOM: 可选服务，默认注释。理由：(1) 离线部署中 web_fetch/web_capture
   # 主要用于抓内网页面（外网页面无外网抓不到）；(2) offline-export 是 local-only，
@@ -241,6 +258,7 @@ services:
   #   restart: unless-stopped
 
 volumes:
+  redis-data:
   prod-postgres-ext-data:
   # EAI-CUSTOM (P0-3): OntoStudio 内核图（pyoxigraph 目录），重建容器不归零。
   prod-ontostudio-kernel:

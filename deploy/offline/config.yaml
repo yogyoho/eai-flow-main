@@ -2407,7 +2407,8 @@ run_ownership:
 # gap 事件 + 不误杀 run), 这里再放大窗口降低触发频率。1024 ≈ 每活跃 run 十几 MB
 # 引用驻留, dev 环境可接受。RESTART REQUIRED (bridge 在 startup 构造一次)。
 stream_bridge:
-  type: memory
+  # EAI-CUSTOM (2026-10-13): GATEWAY_WORKERS=4 启动门强制 redis 流桥（多进程 SSE/重连）
+  type: redis
   queue_maxsize: 1024
 #
 # stream_bridge:
