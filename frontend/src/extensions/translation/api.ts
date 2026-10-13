@@ -60,6 +60,12 @@ export async function listTasks(opts: {
   return authFetch<TltTaskPage>(`${API_BASE}/tasks?${p.toString()}`);
 }
 
+/** 复核工作台队列：exceeded 任务列表。 */
+export async function listReviewQueue(): Promise<TltTask[]> {
+  const d = await listTasks({ state: "exceeded", page_size: 200 });
+  return d.items;
+}
+
 /** 通用状态流转（重跑/取消/复核裁决等，后端校验状态机边）。 */
 
 /** 知识库下拉选项（复用 knowledge 模块列表接口，data-scope 已过滤可见范围）。 */

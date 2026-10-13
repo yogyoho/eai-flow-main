@@ -463,9 +463,10 @@ class ScrapDraft(Base):
         nullable=False,
         index=True,
     )
+    # EAI-CUSTOM (bug-1791807358242): ondelete CASCADE——delete_kb 不清理本表,缺省 NO ACTION 会让删 KB 撞 FK 500
     knowledge_base_id: Mapped[uuid.UUID | None] = mapped_column(
         UUID(as_uuid=True),
-        ForeignKey("knowledge_bases.id"),
+        ForeignKey("knowledge_bases.id", ondelete="CASCADE"),
         nullable=True,
     )
     document_id: Mapped[str | None] = mapped_column(String(100), nullable=True)
