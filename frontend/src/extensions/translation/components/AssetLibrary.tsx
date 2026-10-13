@@ -47,8 +47,8 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
 import { artifactMarkdownPlugins } from "@/components/workspace/artifacts/markdown-preview-plugins";
-import { cn } from "@/lib/utils";
 import { SafeStreamdown } from "@/core/streamdown/components";
+import { cn } from "@/lib/utils";
 
 import {
   createFolder,

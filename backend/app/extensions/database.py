@@ -942,6 +942,15 @@ async def migrate_db() -> None:
         await conn.execute(text("ALTER TABLE tlt_translation_tasks ADD COLUMN IF NOT EXISTS ragflow_zh_doc_id VARCHAR(100)"))
         # EAI-CUSTOM (translation 资产库): 文件夹归属列(幂等补列;tlt_folders 表由 create_all 承接)
         await conn.execute(text("ALTER TABLE tlt_translation_tasks ADD COLUMN IF NOT EXISTS folder_id UUID REFERENCES tlt_folders(id)"))
+        # EAI-CUSTOM (bug-1791807358242): KB 子表 FK 改 ON DELETE CASCADE——delete_kb 只清 documents,
+        # 缺省 NO ACTION 的扩展子表(tlt_translation_tasks/scrap_drafts)会让删 KB 撞 FK IntegrityError 500。
+        # 幂等重建约束(同 report_projects_workflow_id_fkey 先例)。约束名按建表来源:
+        # tlt 由 create_all 建(列 kb_id → *_kb_id_fkey),scrap_drafts 由本文件裸 SQL 建(列 knowledge_base_id → *_knowledge_base_id_fkey)
+        await conn.execute(text("ALTER TABLE tlt_translation_tasks DROP CONSTRAINT IF EXISTS tlt_translation_tasks_kb_id_fkey"))
+        await conn.execute(text("ALTER TABLE tlt_translation_tasks DROP CONSTRAINT IF EXISTS tlt_translation_tasks_knowledge_base_id_fkey"))
+        await conn.execute(text("ALTER TABLE tlt_translation_tasks ADD CONSTRAINT tlt_translation_tasks_kb_id_fkey FOREIGN KEY (kb_id) REFERENCES knowledge_bases(id) ON DELETE CASCADE"))
+        await conn.execute(text("ALTER TABLE scrap_drafts DROP CONSTRAINT IF EXISTS scrap_drafts_knowledge_base_id_fkey"))
+        await conn.execute(text("ALTER TABLE scrap_drafts ADD CONSTRAINT scrap_drafts_knowledge_base_id_fkey FOREIGN KEY (knowledge_base_id) REFERENCES knowledge_bases(id) ON DELETE CASCADE"))
         # EAI-CUSTOM: 分工策略(ADR 2026-08-10) — 章节进度区块在「人工修改确认」态按此渲染分工叠加层
         await conn.execute(text("ALTER TABLE report_projects ADD COLUMN IF NOT EXISTS assignment_strategy VARCHAR(20) NOT NULL DEFAULT 'by_chapter'"))
 

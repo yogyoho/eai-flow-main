@@ -1,5 +1,6 @@
 "use client";
 
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   Ban,
   Eye,
@@ -9,10 +10,11 @@ import {
   Play,
   RefreshCw,
   Search,
+  ShieldAlert,
   Trash2,
+  X,
 } from "lucide-react";
-import { useMemo, useState } from "react";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { type ReactNode, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -30,14 +32,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import {
-  Sheet,
-  SheetContent,
-  SheetDescription,
-  SheetFooter,
-  SheetHeader,
-  SheetTitle,
-} from "@/components/ui/sheet";
 import { cn } from "@/lib/utils";
 
 import {
@@ -48,6 +42,7 @@ import {
   translateTask,
 } from "../api";
 import type { TltTask } from "../types";
+
 import { FileIcon } from "./FileIcon";
 import { StateBadge } from "./StateBadge";
 
@@ -79,6 +74,7 @@ export function TaskManagementView() {
   const invalidate = () => {
     void qc.invalidateQueries({ queryKey: ["tlt-tasks"] });
   };
+
   const [page, setPage] = useState(1);
   const [stateFilter, setStateFilter] = useState("all");
   const [kbFilter, setKbFilter] = useState("all");
@@ -86,7 +82,8 @@ export function TaskManagementView() {
   const [tierFilter, setTierFilter] = useState("all");
   const [q, setQ] = useState("");
   const [checked, setChecked] = useState<Set<string>>(new Set());
-  const [detail, setDetail] = useState<TltTask | null>(null);
+  const [detailId, setDetailId] = useState<string | null>(null);
+  const [paneOpen, setPaneOpen] = useState(false);
   const [notice, setNotice] = useState<{ kind: "ok" | "err"; text: string } | null>(null);
 
   const flash = (kind: "ok" | "err", text: string) => {
@@ -115,12 +112,6 @@ export function TaskManagementView() {
     staleTime: 5 * 60_000,
   });
 
-  const kbNameById = useMemo(() => {
-    const m = new Map<string, string>();
-    for (const k of kbOptionsQ.data ?? []) m.set(k.id, k.name);
-    return m;
-  }, [kbOptionsQ.data]);
-
   const tasks = tasksQ.data?.items ?? [];
   const total = tasksQ.data?.total ?? 0;
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
@@ -128,8 +119,17 @@ export function TaskManagementView() {
     (t) => checked.has(t.id) && (t.state === "stored" || t.state === "failed"),
   );
 
-  // 详情抽屉随轮询数据同步状态（保持打开、内容常新）
-  const liveDetail = detail ? (tasks.find((t) => t.id === detail.id) ?? detail) : null;
+  // 行级缓存：分页翻走后详情栏仍能展示最后已知数据
+  const lastSeen = new Map<string, TltTask>();
+  for (const t of tasks) lastSeen.set(t.id, t);
+  if (detailId && !lastSeen.has(detailId)) {
+    // 当前页找不到（翻页/筛选切换）时保留最后快照
+    // detail 直接取快照，无需额外状态
+  }
+
+  const detail = detailId
+    ? (tasks.find((t) => t.id === detailId) ?? null)
+    : null;
 
   const doTranslateChecked = async () => {
     if (!translatable.length) return;
@@ -160,15 +160,23 @@ export function TaskManagementView() {
       const s = new Set(checked);
       s.delete(t.id);
       setChecked(s);
-      if (detail?.id === t.id) setDetail(null);
+      if (detailId === t.id) {
+        setDetailId(null);
+        setPaneOpen(false);
+      }
       flash("ok", "已移出资产库（可恢复）");
     } catch (e) {
       flash("err", `删除失败：${e instanceof Error ? e.message : String(e)}`);
     }
   };
 
+  const openDetail = (t: TltTask) => {
+    setDetailId(t.id);
+    setPaneOpen(true);
+  };
+
   const opsFor = (t: TltTask) => {
-    const ops: { label: string; icon: React.ReactNode; run: () => void }[] = [];
+    const ops: { label: string; icon: ReactNode; run: () => void }[] = [];
     if (t.state === "stored" || t.state === "failed") {
       ops.push({
         label: t.state === "failed" ? "重跑翻译" : "翻译",
@@ -186,20 +194,24 @@ export function TaskManagementView() {
       ops.push({
         label: "预览译本",
         icon: <Eye className="mr-2 h-4 w-4" />,
-        run: () => setDetail(t),
+        run: () => openDetail(t),
       });
     }
     if (["pending", "running", "check_failed", "retrying"].includes(t.state)) {
       ops.push({
         label: "取消任务",
         icon: <Ban className="mr-2 h-4 w-4" />,
-        run: () => void doTransition(t, "cancelled", "任务已取消"),
+        run: () =>
+          void doTransition(t, "cancelled", "任务已取消").catch((e) =>
+            flash("err", String(e)),
+          ),
       });
     }
     ops.push({
       label: "移出资产库",
       icon: <Trash2 className="mr-2 h-4 w-4" />,
-      run: () => void doDelete(t),
+      run: () =>
+        void doDelete(t).catch((e) => flash("err", String(e))),
     });
     return ops;
   };
@@ -246,7 +258,7 @@ export function TaskManagementView() {
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">全部状态</SelectItem>
-            {[
+            {([
               ["stored", "未翻译"],
               ["pending", "排队中"],
               ["running", "翻译中"],
@@ -256,8 +268,8 @@ export function TaskManagementView() {
               ["indexed", "入库中"],
               ["delivered", "已交付"],
               ["failed", "失败"],
-            ].map(([v, label]) => (
-              <SelectItem key={v} value={String(v)}>{label}</SelectItem>
+            ] as const).map(([v, label]) => (
+              <SelectItem key={v} value={v}>{label}</SelectItem>
             ))}
           </SelectContent>
         </Select>
@@ -316,129 +328,145 @@ export function TaskManagementView() {
         </Button>
       </div>
 
-      {/* 表格 */}
-      <div className="min-h-0 flex-1 overflow-auto rounded-lg border">
-        {tasksQ.isLoading ? (
-          <div className="flex items-center gap-2 p-4 text-sm text-muted-foreground">
-            <Loader2 className="h-4 w-4 animate-spin" /> 加载中…
-          </div>
-        ) : tasks.length === 0 ? (
-          <div className="p-8 text-center text-sm text-muted-foreground">
-            没有符合条件的任务。在资产库上传 EN/FR 文档后开始翻译。
-          </div>
-        ) : (
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b bg-muted/50 text-left text-xs text-muted-foreground">
-                <th className="w-8 px-2 py-2">
-                  <Checkbox
-                    checked={tasks.every((t) => checked.has(t.id)) && tasks.length > 0}
-                    onCheckedChange={(v) =>
-                      setChecked(v ? new Set(tasks.map((t) => t.id)) : new Set())
-                    }
-                    className="h-3.5 w-3.5 rounded-[4px] border-muted-foreground/40 shadow-none transition-all hover:border-primary data-[state=checked]:border-primary data-[state=checked]:bg-primary"
-                  />
-                </th>
-                <th className="px-2 py-2">文件名</th>
-                <th className="px-2 py-2">知识库</th>
-                <th className="px-2 py-2">语言</th>
-                <th className="px-2 py-2">状态</th>
-                <th className="px-2 py-2">进度</th>
-                <th className="px-2 py-2">更新时间</th>
-                <th className="w-10 px-2 py-2" />
-              </tr>
-            </thead>
-            <tbody>
-              {tasks.map((t) => (
-                <tr
-                  key={t.id}
-                  className="cursor-pointer border-b last:border-b-0 hover:bg-muted/50"
-                  onClick={() => setDetail(t)}
-                >
-                  <td className="px-2 py-2" onClick={(e) => e.stopPropagation()}>
-                    <Checkbox
-                      checked={checked.has(t.id)}
-                      onCheckedChange={(v) => {
-                        const s = new Set(checked);
-                        if (v) {
-                          s.add(t.id);
-                        } else {
-                          s.delete(t.id);
+      {/* master-detail：左表格 + 右详情区（点行展开，X 收起） */}
+      <div className="flex min-h-0 flex-1 gap-3">
+        {/* 左：表格 + 分页 */}
+        <div className="flex min-w-0 flex-1 flex-col gap-3">
+          <div className="min-h-0 flex-1 overflow-auto rounded-lg border">
+            {tasksQ.isLoading ? (
+              <div className="flex items-center gap-2 p-4 text-sm text-muted-foreground">
+                <Loader2 className="h-4 w-4 animate-spin" /> 加载中…
+              </div>
+            ) : tasks.length === 0 ? (
+              <div className="p-8 text-center text-sm text-muted-foreground">
+                没有符合条件的任务。在资产库上传 EN/FR 文档后开始翻译。
+              </div>
+            ) : (
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b bg-muted/50 text-left text-xs text-muted-foreground">
+                    <th className="w-8 px-2 py-2">
+                      <Checkbox
+                        checked={tasks.every((t) => checked.has(t.id)) && tasks.length > 0}
+                        onCheckedChange={(v) =>
+                          setChecked(v ? new Set(tasks.map((t) => t.id)) : new Set())
                         }
-                        setChecked(s);
-                      }}
-                      className="h-3.5 w-3.5 rounded-[4px] border-muted-foreground/40 shadow-none transition-all hover:border-primary data-[state=checked]:border-primary data-[state=checked]:bg-primary"
-                    />
-                  </td>
-                  <td className="max-w-64 truncate px-2 py-2">
-                    <span className="flex items-center gap-2">
-                      <FileIcon name={t.file_name} />
-                      <span className="truncate font-medium">{t.file_name}</span>
-                    </span>
-                  </td>
-                  <td className="px-2 py-2 text-muted-foreground">{t.kb_name ?? "—"}</td>
-                  <td className="px-2 py-2 uppercase text-muted-foreground">{t.source_lang}</td>
-                  <td className="px-2 py-2"><StateBadge state={t.state} progress={t.progress} /></td>
-                  <td className="px-2 py-2 tabular-nums">{t.progress}%</td>
-                  <td className="px-2 py-2 text-muted-foreground">{fmtTime(t.updated_at)}</td>
-                  <td className="px-2 py-2 text-right">
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="sm" className="h-7 w-7 p-0" onClick={(e) => e.stopPropagation()}>
-                          <MoreHorizontal className="h-4 w-4" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        {opsFor(t).map((op) => (
-                          <DropdownMenuItem key={op.label} onClick={op.run}>
-                            {op.icon} {op.label}
-                          </DropdownMenuItem>
-                        ))}
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        )}
-      </div>
+                        className="h-3.5 w-3.5 rounded-[4px] border-muted-foreground/40 shadow-none transition-all hover:border-primary data-[state=checked]:border-primary data-[state=checked]:bg-primary"
+                      />
+                    </th>
+                    <th className="px-2 py-2">文件名</th>
+                    <th className="px-2 py-2">知识库</th>
+                    <th className="px-2 py-2">语言</th>
+                    <th className="px-2 py-2">状态</th>
+                    <th className="px-2 py-2">进度</th>
+                    <th className="px-2 py-2">更新时间</th>
+                    <th className="w-10 px-2 py-2" />
+                  </tr>
+                </thead>
+                <tbody>
+                  {tasks.map((t) => (
+                    <tr
+                      key={t.id}
+                      className={cn(
+                        "cursor-pointer border-b last:border-b-0 transition-colors hover:bg-muted/50",
+                        detailId === t.id && "bg-accent/60",
+                      )}
+                      onClick={() => openDetail(t)}
+                    >
+                      <td className="px-2 py-2" onClick={(e) => e.stopPropagation()}>
+                        <Checkbox
+                          checked={checked.has(t.id)}
+                          onCheckedChange={(v) => {
+                            const s = new Set(checked);
+                            if (v) {
+                              s.add(t.id);
+                            } else {
+                              s.delete(t.id);
+                            }
+                            setChecked(s);
+                          }}
+                          className="h-3.5 w-3.5 rounded-[4px] border-muted-foreground/40 shadow-none transition-all hover:border-primary data-[state=checked]:border-primary data-[state=checked]:bg-primary"
+                        />
+                      </td>
+                      <td className="max-w-64 truncate px-2 py-2">
+                        <span className="flex items-center gap-2">
+                          <FileIcon name={t.file_name} />
+                          <span className="truncate font-medium">{t.file_name}</span>
+                        </span>
+                      </td>
+                      <td className="px-2 py-2 text-muted-foreground">{t.kb_name ?? "—"}</td>
+                      <td className="px-2 py-2 uppercase text-muted-foreground">{t.source_lang}</td>
+                      <td className="px-2 py-2"><StateBadge state={t.state} progress={t.progress} /></td>
+                      <td className="px-2 py-2 tabular-nums">{t.progress}%</td>
+                      <td className="px-2 py-2 text-muted-foreground">{fmtTime(t.updated_at)}</td>
+                      <td className="px-2 py-2 text-right">
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="sm" className="h-7 w-7 p-0" onClick={(e) => e.stopPropagation()}>
+                              <MoreHorizontal className="h-4 w-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            {opsFor(t).map((op) => (
+                              <DropdownMenuItem key={op.label} onClick={op.run}>
+                                {op.icon} {op.label}
+                              </DropdownMenuItem>
+                            ))}
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+          </div>
 
-      {/* 分页 */}
-      <div className="flex items-center justify-center gap-3 text-sm">
-        <Button variant="outline" size="sm" disabled={page <= 1} onClick={() => setPage((p) => p - 1)}>
-          上一页
-        </Button>
-        <span className="text-muted-foreground">
-          {page} / {totalPages} · 共 {total} 条
-        </span>
-        <Button variant="outline" size="sm" disabled={page >= totalPages} onClick={() => setPage((p) => p + 1)}>
-          下一页
-        </Button>
-      </div>
+          {/* 分页 */}
+          <div className="flex items-center justify-center gap-3 text-sm">
+            <Button variant="outline" size="sm" disabled={page <= 1} onClick={() => setPage((p) => p - 1)}>
+              上一页
+            </Button>
+            <span className="text-muted-foreground">
+              {page} / {totalPages} · 共 {total} 条
+            </span>
+            <Button variant="outline" size="sm" disabled={page >= totalPages} onClick={() => setPage((p) => p + 1)}>
+              下一页
+            </Button>
+          </div>
+        </div>
 
-      {/* 详情抽屉 */}
-      <Sheet open={!!detail} onOpenChange={(v) => !v && setDetail(null)}>
-        <SheetContent className="w-[480px] overflow-y-auto sm:max-w-[480px]">
-          <SheetHeader>
-            <SheetTitle className="flex items-center gap-2">
-              <FileIcon name={detail?.file_name ?? ""} />
-              {detail?.file_name}
-            </SheetTitle>
-            <SheetDescription>
-              {detail && (
-                <span className="flex items-center gap-2">
+        {/* 右：详情区（点行展开；X 收起；收起时不占位） */}
+        {paneOpen && detail && (
+          <aside className="flex w-[420px] shrink-0 flex-col overflow-hidden rounded-lg border bg-card shadow-sm">
+            {/* 详情头 */}
+            <div className="flex items-start gap-2.5 border-b px-4 py-3">
+              <FileIcon name={detail.file_name} className="mt-0.5" />
+              <div className="min-w-0 flex-1">
+                <div className="truncate text-sm font-semibold">{detail.file_name}</div>
+                <div className="mt-0.5 flex items-center gap-1.5">
                   <StateBadge state={detail.state} progress={detail.progress} />
-                  <span>{detail.quality_tier === "reviewed" ? "人工校对版" : "标准版"}</span>
-                </span>
-              )}
-            </SheetDescription>
-          </SheetHeader>
-          {detail && (
-            <div className="flex flex-col gap-4 px-4 pb-6">
-              <div>
-                <div className="mb-1.5 text-xs font-semibold text-muted-foreground">溯源</div>
-                <div className="grid grid-cols-[88px_1fr] gap-x-2 gap-y-1 text-sm">
+                  <span className="text-xs text-muted-foreground">
+                    {detail.quality_tier === "reviewed" ? "人工校对版" : "标准版"} · v{detail.task_version}
+                  </span>
+                </div>
+              </div>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-7 w-7 p-0"
+                onClick={() => setPaneOpen(false)}
+              >
+                <X className="h-4 w-4" />
+              </Button>
+            </div>
+
+            {/* 详情体 */}
+            <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto px-4 py-3">
+              {/* 溯源 */}
+              <section>
+                <div className="mb-1.5 text-xs font-semibold tracking-wide text-muted-foreground">溯源</div>
+                <div className="grid grid-cols-[80px_1fr] gap-x-2 gap-y-1 text-sm">
                   <span className="text-xs text-muted-foreground">来源文件</span>
                   <span className="truncate">{detail.source_uri ?? "—"}</span>
                   <span className="text-xs text-muted-foreground">SHA-256</span>
@@ -448,21 +476,28 @@ export function TaskManagementView() {
                   <span className="text-xs text-muted-foreground">内容语义</span>
                   <span>{detail.content_tag ?? "—"}</span>
                   <span className="text-xs text-muted-foreground">知识库</span>
-                  <span>{kbNameById.get(detail.kb_id) ?? "—"}</span>
+                  <span className="truncate">{detail.kb_name ?? "—"}</span>
+                  <span className="text-xs text-muted-foreground">大小</span>
+                  <span>{fmtSize(detail.size_bytes)}</span>
                 </div>
-              </div>
+              </section>
 
-              <div>
-                <div className="mb-1.5 text-xs font-semibold text-muted-foreground">三轴机检</div>
+              {/* 三轴机检 */}
+              <section>
+                <div className="mb-1.5 text-xs font-semibold tracking-wide text-muted-foreground">三轴机检</div>
                 {detail.gate_failures ? (
                   <div className="flex flex-col gap-2">
                     {Object.entries(detail.gate_failures).map(([axis, violations]) => (
-                      <div key={axis} className="rounded-md border border-destructive/30 bg-destructive/5 p-2.5 text-xs">
-                        <div className="font-medium text-destructive">
+                      <div
+                        key={axis}
+                        className="rounded-md border border-destructive/30 bg-destructive/5 p-2.5 text-xs"
+                      >
+                        <div className="flex items-center gap-1.5 font-medium text-destructive">
+                          <ShieldAlert className="h-3.5 w-3.5" />
                           {GATE_LABELS[axis] ?? axis} ❌
                         </div>
                         <ul className="mt-1 list-inside list-disc text-muted-foreground">
-                          {(violations as string[]).slice(0, 6).map((v, i) => (
+                          {(violations).slice(0, 6).map((v, i) => (
                             <li key={i}>{v}</li>
                           ))}
                         </ul>
@@ -470,17 +505,40 @@ export function TaskManagementView() {
                     ))}
                   </div>
                 ) : (
-                  <div className="rounded-md border border-success/30 bg-success/5 p-2.5 text-xs text-success">
+                  <div className="flex items-center gap-1.5 rounded-md border border-success/30 bg-success/5 p-2.5 text-xs text-success">
                     ✅ 三轴机检全部通过（数字准确性 / 术语一致性 / 格式完整性）
                   </div>
                 )}
-              </div>
+              </section>
 
-              <div>
-                <div className="mb-1.5 text-xs font-semibold text-muted-foreground">交付物</div>
+              {/* 不确定段 */}
+              {detail.uncertainty && detail.uncertainty.length > 0 && (
+                <section>
+                  <div className="mb-1.5 text-xs font-semibold tracking-wide text-muted-foreground">
+                    不确定段（LLM 标记）
+                  </div>
+                  <ul className="flex flex-col gap-1 text-xs text-muted-foreground">
+                    {detail.uncertainty.map((u, i) => (
+                      <li key={i} className="truncate">
+                        {u.block}
+                        {u.spans?.length ? ` — ${u.spans.join(" · ")}` : ""}
+                      </li>
+                    ))}
+                  </ul>
+                </section>
+              )}
+
+              {/* 交付物 */}
+              <section>
+                <div className="mb-1.5 text-xs font-semibold tracking-wide text-muted-foreground">交付物</div>
                 {detail.deliverable_uri ? (
-                  <div className="flex items-center justify-between gap-2 text-sm">
-                    <span className="truncate">📄 {detail.file_name.replace(/\.[^.]+$/, "")}.zh.md</span>
+                  <div className="flex items-center justify-between gap-2 rounded-md border px-3 py-2 text-sm">
+                    <span className="flex min-w-0 items-center gap-2">
+                      <FileIcon name={`${detail.file_name.replace(/\.[^.]+$/, "")}.md`} />
+                      <span className="truncate">
+                        {detail.file_name.replace(/\.[^.]+$/, "")}.zh.md
+                      </span>
+                    </span>
                     <Button variant="outline" size="sm" asChild>
                       <a href={`/api/extensions/translation/tasks/${detail.id}/deliverable`}>下载</a>
                     </Button>
@@ -488,28 +546,51 @@ export function TaskManagementView() {
                 ) : (
                   <div className="text-sm text-muted-foreground">—（翻译交付后生成）</div>
                 )}
-              </div>
+              </section>
 
-              <div>
-                <div className="mb-1.5 text-xs font-semibold text-muted-foreground">RAGFlow</div>
+              {/* RAGFlow */}
+              <section>
+                <div className="mb-1.5 text-xs font-semibold tracking-wide text-muted-foreground">RAGFlow</div>
                 <div className="font-mono text-xs">{detail.ragflow_zh_doc_id ?? "—"}</div>
-              </div>
+              </section>
 
               <div className="text-xs text-muted-foreground">
-                任务版本 v{detail.task_version} · 重试 {detail.retry_count}/3 · 更新 {fmtTime(detail.updated_at)}
-              </div>
-
-              <div className="flex flex-wrap gap-2 border-t pt-3">
-                {opsFor(detail).map((op) => (
-                  <Button key={op.label} variant="outline" size="sm" onClick={op.run}>
-                    {op.icon} {op.label}
-                  </Button>
-                ))}
+                任务版本 v{detail.task_version} · 重试 {detail.retry_count}/3 · 更新{" "}
+                {fmtTime(detail.updated_at)}
               </div>
             </div>
-          )}
-        </SheetContent>
-      </Sheet>
+
+            {/* 操作栏 */}
+            <div className="flex flex-wrap gap-2 border-t px-4 py-3">
+              {["stored", "failed"].includes(detail.state) && (
+                <Button
+                  size="sm"
+                  onClick={() => void doTransition(detail, "pending", "已加入翻译队列")}
+                >
+                  <Play className="mr-1 h-3.5 w-3.5" /> 翻译
+                </Button>
+              )}
+              {["pending", "running", "check_failed", "retrying"].includes(detail.state) && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => void doTransition(detail, "cancelled", "任务已取消")}
+                >
+                  <Ban className="mr-1 h-3.5 w-3.5" /> 取消任务
+                </Button>
+              )}
+              <Button
+                variant="outline"
+                size="sm"
+                className="text-destructive hover:text-destructive"
+                onClick={() => void doDelete(detail)}
+              >
+                <Trash2 className="mr-1 h-3.5 w-3.5" /> 移出资产库
+              </Button>
+            </div>
+          </aside>
+        )}
+      </div>
     </div>
   );
 }

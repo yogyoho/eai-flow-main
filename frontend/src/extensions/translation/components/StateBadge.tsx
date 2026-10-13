@@ -3,7 +3,6 @@
 import {
   Archive,
   Ban,
-  ChevronDown,
   CircleCheck,
   CircleDashed,
   CircleX,

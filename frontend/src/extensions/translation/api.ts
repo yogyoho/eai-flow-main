@@ -61,12 +61,6 @@ export async function listTasks(opts: {
 }
 
 /** 通用状态流转（重跑/取消/复核裁决等，后端校验状态机边）。 */
-export async function transitionTask(taskId: string, target: string): Promise<TltTask> {
-  return authFetch<TltTask>(`${API_BASE}/tasks/${taskId}/transition`, {
-    method: "POST",
-    body: JSON.stringify({ target }),
-  });
-}
 
 /** 知识库下拉选项（复用 knowledge 模块列表接口，data-scope 已过滤可见范围）。 */
 export async function listKbOptions(): Promise<{ id: string; name: string }[]> {
@@ -84,6 +78,14 @@ export async function uploadAssets(folderId: string | null, files: File[]): Prom
     fd,
   );
   return d.items;
+}
+
+/** 通用状态流转（重跑/取消/复核裁决等，后端校验状态机边）。 */
+export async function transitionTask(taskId: string, target: string): Promise<TltTask> {
+  return authFetch<TltTask>(`${API_BASE}/tasks/${taskId}/transition`, {
+    method: "POST",
+    body: JSON.stringify({ target }),
+  });
 }
 
 /** 「翻译」动作：stored/failed → pending 入队。 */
