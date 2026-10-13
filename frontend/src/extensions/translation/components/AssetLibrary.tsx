@@ -28,7 +28,6 @@ import {
   Upload,
 } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
-import ReactMarkdown from "react-markdown";
 
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -47,7 +46,9 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
+import { artifactMarkdownPlugins } from "@/components/workspace/artifacts/markdown-preview-plugins";
 import { cn } from "@/lib/utils";
+import { SafeStreamdown } from "@/core/streamdown/components";
 
 import {
   createFolder,
@@ -64,6 +65,7 @@ import type { TltFolder, TltTask } from "../types";
 
 import { FileIcon } from "./FileIcon";
 import { WindowsFolder, WindowsFolderOpen } from "./FolderIcons";
+import { SourcePreview } from "./SourcePreview";
 import { UploadDialog } from "./UploadDialog";
 
 const PAGE_SIZE = 50;
@@ -287,20 +289,29 @@ export function AssetLibrary() {
   // ── 动作 ──
   /** 上传对话框回调：存原件建 stored 任务；勾选自动翻译时逐个入队 pending。 */
   const handleUpload = async (files: File[], autoTranslate: boolean) => {
-    const folderId = lFolder === "root" ? null : lFolder;
-    const res = await uploadAssets(folderId, files);
-    if (autoTranslate) {
-      for (const item of res) {
-        if (!item.reused) await translateTask(item.task_id);
+    try {
+      const folderId = lFolder === "root" ? null : lFolder;
+      const res = await uploadAssets(folderId, files);
+      if (autoTranslate) {
+        for (const item of res) {
+          if (!item.reused) await translateTask(item.task_id);
+        }
       }
+      invalidate();
+      const created = res.filter((r) => !r.reused).length;
+      flash(
+        "ok",
+        `已上传 ${res.length} 个文件（新建翻译任务 ${created} 个${autoTranslate && created ? "，已入队" : ""}）`,
+      );
+      return { total: files.length, failed: [] as File[] };
+    } catch (e) {
+      // 服务端错误上抛给对话框显示（不再未处理崩溃）；全部文件留在选择列表可重试
+      return {
+        total: files.length,
+        failed: files,
+        message: e instanceof Error ? e.message : String(e),
+      };
     }
-    invalidate();
-    const created = res.filter((r) => !r.reused).length;
-    flash(
-      "ok",
-      `已上传 ${res.length} 个文件（新建翻译任务 ${created} 个${autoTranslate && created ? "，已入队" : ""}）`,
-    );
-    return { total: files.length, failed: [] as File[] };
   };
 
   const doTranslateChecked = async () => {
@@ -906,7 +917,7 @@ export function AssetLibrary() {
 
       {/* 译本预览：双屏对照（左原文 / 右中文译本） */}
       <Dialog open={!!previewTask} onOpenChange={(v) => !v && setPreviewTask(null)}>
-        <DialogContent className="max-w-5xl">
+        <DialogContent className="max-w-none" style={{ width: "90vw", height: "90vh", maxWidth: "90vw" }}>
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2 text-base">
               <FileIcon name={previewTask?.file_name ?? ""} />
@@ -914,40 +925,34 @@ export function AssetLibrary() {
             </DialogTitle>
             <DialogDescription>左侧原文 · 右侧中文译本（Markdown 渲染）</DialogDescription>
           </DialogHeader>
-          <div className="grid max-h-[62vh] grid-cols-2 overflow-hidden rounded-md border">
-            <div className="flex flex-col border-r">
+          <div className="grid h-[calc(90vh-11rem)] min-h-0 grid-cols-2 overflow-hidden rounded-md border">
+            <div className="flex min-h-0 flex-col border-r">
               <div className="border-b bg-muted/50 px-3 py-1.5 text-xs font-medium text-muted-foreground">
                 原文（{(previewTask?.file_name ?? "").split(".").pop()?.toUpperCase()}）
               </div>
-              <div className="h-[52vh] overflow-auto bg-muted/20">
-                {(previewTask?.file_name ?? "").toLowerCase().endsWith(".pdf") ? (
-                  <iframe
-                    title="原文预览"
-                    src={`/api/extensions/translation/tasks/${previewTask?.id}/source?inline=1`}
-                    className="h-full w-full"
+              <div className="min-h-0 flex-1 overflow-auto bg-muted/20">
+                {previewTask && (
+                  <SourcePreview
+                    taskId={previewTask.id}
+                    fileName={previewTask.file_name}
                   />
-                ) : (
-                  <div className="flex h-full flex-col items-center justify-center gap-2 p-6 text-center text-sm text-muted-foreground">
-                    <p>该格式暂不支持内嵌预览。</p>
-                    <Button variant="outline" size="sm" asChild>
-                      <a href={`/api/extensions/translation/tasks/${previewTask?.id}/source`}>下载原件查看</a>
-                    </Button>
-                  </div>
                 )}
               </div>
             </div>
-            <div className="flex flex-col">
+            <div className="flex min-h-0 flex-col">
               <div className="border-b bg-muted/50 px-3 py-1.5 text-xs font-medium text-muted-foreground">
                 中文译本
               </div>
-              <div className="h-[52vh] overflow-auto p-4">
+              <div className="min-h-0 flex-1 overflow-auto p-4">
                 {previewLoading ? (
                   <div className="flex items-center gap-2 text-sm text-muted-foreground">
                     <Loader2 className="h-4 w-4 animate-spin" /> 加载中…
                   </div>
                 ) : previewMd ? (
-                  <div className="prose prose-sm dark:prose-invert max-w-none">
-                    <ReactMarkdown>{previewMd}</ReactMarkdown>
+                  <div className="size-full overflow-auto px-4 py-3">
+                    <SafeStreamdown className="min-w-0" {...artifactMarkdownPlugins}>
+                      {previewMd}
+                    </SafeStreamdown>
                   </div>
                 ) : (
                   <p className="text-sm text-muted-foreground">暂无内容</p>

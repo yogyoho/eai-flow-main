@@ -72,9 +72,7 @@ class TltFolder(Base):
     __tablename__ = "tlt_folders"
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    parent_id: Mapped[uuid.UUID | None] = mapped_column(
-        UUID(as_uuid=True), ForeignKey("tlt_folders.id"), nullable=True
-    )
+    parent_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("tlt_folders.id"), nullable=True)
     name: Mapped[str] = mapped_column(String(255), nullable=False)
     created_at: Mapped[object] = mapped_column(DateTime, nullable=False, default=func.now())
 
@@ -97,12 +95,10 @@ class TranslationTask(Base):
     )
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    kb_id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), ForeignKey("knowledge_bases.id"), nullable=False
-    )
-    document_id: Mapped[uuid.UUID | None] = mapped_column(
-        UUID(as_uuid=True), ForeignKey("documents.id"), nullable=True
-    )
+    # EAI-CUSTOM (bug-1791807358242): ondelete CASCADE——delete_kb 不清理本表,
+    # NO ACTION 缺省会让删 KB 撞 FK IntegrityError 500(tlt-bridge-* 事故)
+    kb_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("knowledge_bases.id", ondelete="CASCADE"), nullable=False)
+    document_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("documents.id"), nullable=True)
     doc_sha: Mapped[str] = mapped_column(String(64), nullable=False)
     source_uri: Mapped[str | None] = mapped_column(String(500), nullable=True)
     source_lang: Mapped[str] = mapped_column(String(10), nullable=False, default="en")  # en/fr/zh/mixed
@@ -120,13 +116,9 @@ class TranslationTask(Base):
     deliverable_uri: Mapped[str | None] = mapped_column(String(512), nullable=True)
     ragflow_zh_doc_id: Mapped[str | None] = mapped_column(String(100), nullable=True)
     # 资产库文件夹归属（NULL=根；T7 资产库页）
-    folder_id: Mapped[uuid.UUID | None] = mapped_column(
-        UUID(as_uuid=True), ForeignKey("tlt_folders.id"), nullable=True
-    )
+    folder_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("tlt_folders.id"), nullable=True)
     created_at: Mapped[object] = mapped_column(DateTime, nullable=False, default=func.now())
-    updated_at: Mapped[object] = mapped_column(
-        DateTime, nullable=False, default=func.now(), onupdate=func.now()
-    )
+    updated_at: Mapped[object] = mapped_column(DateTime, nullable=False, default=func.now(), onupdate=func.now())
 
     def __repr__(self) -> str:
         return f"<TranslationTask(id={self.id}, sha={self.doc_sha[:8]}, state={self.state})>"

@@ -2,7 +2,7 @@
 
 // EAI-CUSTOM (translation 一期): 必须走 ShellLayout —— 它提供 QueryClientProvider/PermissionProvider,
 // AssetLibrary 里的 TanStack hooks 与权限过滤都依赖这些 Provider（同 geo-samples/contract-price 布局）。
-import { Languages } from "lucide-react";
+import { FileText, Languages } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { type ReactNode } from "react";
@@ -17,6 +17,7 @@ import Metadata from "./metadata";
 // 任务管理/复核/术语库/设置 页面尚未实现（设计文档 §2），暂以禁用态占位。
 const navItems = [
   { href: "/translation", label: "文档资产库", icon: Languages, exact: true, pageId: "translation:page:assets" },
+  { href: "/translation/tasks", label: "任务管理", icon: FileText, exact: false, pageId: "translation:page:assets" },
 ];
 
 function TranslationLayoutContent({ children }: { children: ReactNode }) {

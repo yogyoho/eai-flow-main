@@ -28,7 +28,7 @@ export function UploadDialog({
   onUpload: (
     files: File[],
     autoTranslate: boolean,
-  ) => Promise<{ total: number; failed: File[] }>;
+  ) => Promise<{ total: number; failed: File[]; message?: string }>;
   uploading: boolean;
 }) {
   const [selected, setSelected] = useState<File[]>([]);
@@ -66,15 +66,22 @@ export function UploadDialog({
   const startUpload = async () => {
     if (selected.length === 0 || uploading) return;
     setUploadError(null);
-    const { failed } = await onUpload(selected, autoTranslate);
-    if (failed.length === 0) {
-      setSelected([]);
-      setAutoTranslate(false);
-      onOpenChange(false);
-    } else {
-      const failedKeys = new Set(failed.map((f) => `${f.name}-${f.size}`));
-      setSelected((prev) => prev.filter((f) => failedKeys.has(`${f.name}-${f.size}`)));
-      setUploadError(`${failed.length} 个文件上传失败，已保留在选择列表，可直接重试或移除。`);
+    try {
+      const { failed, message } = await onUpload(selected, autoTranslate);
+      if (failed.length === 0) {
+        setSelected([]);
+        setAutoTranslate(false);
+        onOpenChange(false);
+      } else {
+        const failedKeys = new Set(failed.map((f) => `${f.name}-${f.size}`));
+        setSelected((prev) => prev.filter((f) => failedKeys.has(`${f.name}-${f.size}`)));
+        setUploadError(
+          (message ? `${message} — ` : "") +
+            `${failed.length} 个文件上传失败，已保留在选择列表，可直接重试或移除。`,
+        );
+      }
+    } catch (e) {
+      setUploadError(`上传失败: ${e instanceof Error ? e.message : String(e)}`);
     }
   };
 

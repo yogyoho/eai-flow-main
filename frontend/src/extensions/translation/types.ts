@@ -43,6 +43,10 @@ export interface TltTask {
   file_name: string;
   size_bytes: number | null;
   created_at: string | null;
+  updated_at: string | null;
+  source_uri: string | null;
+  kb_name: string | null;
+  uncertainty: { block: string; spans: string[] }[] | null;
 }
 
 export interface TltTaskPage {

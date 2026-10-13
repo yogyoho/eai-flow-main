@@ -61,9 +61,13 @@ class TaskOut(BaseModel):
     file_name: str
     size_bytes: int | None
     created_at: str | None
+    updated_at: str | None
+    source_uri: str | None
+    kb_name: str | None
+    uncertainty: dict | None
 
     @classmethod
-    def from_row(cls, t: TranslationTask) -> "TaskOut":
+    def from_row(cls, t: TranslationTask, kb_name: str | None = None) -> "TaskOut":
         size = None
         try:
             if t.source_uri and not t.source_uri.startswith(("s3://", "http")):
@@ -91,6 +95,10 @@ class TaskOut(BaseModel):
             file_name=Path(t.source_uri or "").name or "(未命名)",
             size_bytes=size,
             created_at=t.created_at.isoformat() if t.created_at else None,
+            updated_at=t.updated_at.isoformat() if t.updated_at else None,
+            source_uri=t.source_uri,
+            kb_name=kb_name,
+            uncertainty=t.uncertainty,
         )
 
 
@@ -136,26 +144,28 @@ async def list_tasks(
         conds.append(TranslationTask.state.notin_(["archived", "cancelled", "superseded"]))
     if kb_id is not None:
         conds.append(TranslationTask.kb_id == kb_id)
-    if state is not None:
-        conds.append(TranslationTask.state == state)
     if folder_id == "root":
         conds.append(TranslationTask.folder_id.is_(None))
     elif folder_id:
         conds.append(TranslationTask.folder_id == UUID(folder_id))
     if q:
         conds.append(or_(TranslationTask.source_uri.ilike(f"%{q}%"), TranslationTask.doc_sha.ilike(f"{q}%")))
-    if not is_admin:
-        conds.append(KnowledgeBase.owner_id == current_user.id)
 
-    base = select(TranslationTask).join(KnowledgeBase, TranslationTask.kb_id == KnowledgeBase.id).where(*conds)
+    base = (
+        select(TranslationTask, KnowledgeBase.name)
+        .join(KnowledgeBase, TranslationTask.kb_id == KnowledgeBase.id)
+        .where(*conds)
+    )
+    if not is_admin:
+        base = base.where(KnowledgeBase.owner_id == current_user.id)
     total = (await db.execute(select(func.count()).select_from(base.subquery()))).scalar() or 0
     rows = (
         await db.execute(
             base.order_by(TranslationTask.created_at.desc()).offset((page - 1) * page_size).limit(page_size)
         )
-    ).scalars()
+    ).all()
     return {
-        "items": [TaskOut.from_row(t).model_dump(mode="json") for t in rows],
+        "items": [TaskOut.from_row(t, kb_name=name).model_dump(mode="json") for t, name in rows],
         "total": total,
         "page": page,
         "page_size": page_size,
@@ -365,9 +375,27 @@ async def upload_assets(
     upload_dir.mkdir(parents=True, exist_ok=True)
 
     results = []
+    # 魔数校验（EAI-CUSTOM）：拒绝改名/导出坏的伪文件（如 is_pdf=False 的假 PDF，
+    # 上传侧早失败优于 babeldoc/worker 阶段诡异报错）。txt/md 纯文本跳过。
+    _MAGIC = {
+        ".pdf": b"%PDF-",
+        ".docx": b"PK\x03\x04",
+        ".doc": b"\xd0\xcf\x11\xe0",
+        ".xlsx": b"PK\x03\x04",
+        ".xlsm": b"PK\x03\x04",
+        ".pptx": b"PK\x03\x04",
+        ".ppt": b"\xd0\xcf\x11\xe0",
+    }
     for f in files:
         content = await f.read()
         name = Path(f.filename or "file").name or "file"
+        expect_magic = _MAGIC.get(Path(name).suffix.lower())
+        if expect_magic and not content.startswith(expect_magic):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"文件内容与扩展名不符（{Path(name).suffix} 非有效文件头）：{name}。"
+                "请确认导出/保存格式正确后重新上传。",
+            )
         dest = upload_dir / name
         i = 1
         while dest.exists():
