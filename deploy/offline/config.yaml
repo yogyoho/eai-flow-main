@@ -2477,10 +2477,10 @@ channel_connections:
   #   enabled: false
 
   wechat:
-    enabled: true
+    enabled: false
 
   wecom:
-    enabled: true
+    enabled: false
 
   # buzz:
   #   enabled: false
@@ -2534,9 +2534,10 @@ channels:
   #   allowed_users: []               # empty = allow all
   #   rich_messages: false             # Bot API 10.1 Rich Messages for final Markdown responses
 
+  # EAI-CUSTOM (2026-10-13): 离线内网默认关闭 IM 通道（不用微信机器人时避免
+  # 对外 QR 轮询刷错误日志）；需要时改 true 并按 channels/wechat.py 走 QR 绑定
   wechat:
-    # EAI-CUSTOM: 个人微信走 QR 引导登录（bot_token 留空）
-    enabled: true
+    enabled: false
     # EAI-CUSTOM: 内网无这些环境变量；$VAR 引用会让 config 加载硬失败。留空走 QR 引导登录。
     bot_token: ""
     ilink_bot_id: ""
@@ -2570,7 +2571,8 @@ channels:
 
   wecom:
     # EAI-CUSTOM: 企业微信智能机器人（凭据为空=未接入，配置保留便于启用）
-    enabled: true
+    # EAI-CUSTOM (2026-10-13): 离线内网默认关闭（凭据为空未接入；需要时改 true）
+    enabled: false
     # EAI-CUSTOM: 内网无 WECOM 凭据环境变量；$VAR 引用会让 config 加载硬失败，留空。
     bot_id: ""
     bot_secret: ""
