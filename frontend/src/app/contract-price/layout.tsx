@@ -6,6 +6,7 @@ import {
   Boxes,
   ListChecks,
   History,
+  FolderOpen,
   Settings,
 } from "lucide-react";
 import Link from "next/link";
@@ -23,6 +24,8 @@ const navItems = [
   { href: "/contract-price/items", label: "分项校验", icon: ListChecks, pageId: "cpa:page:items" },
   { href: "/contract-price/clusters", label: "分组审核", icon: Boxes, pageId: "cpa:page:clusters" },
   { href: "/contract-price/tasks", label: "任务中心", icon: History, pageId: "cpa:page:tasks" },
+  // EAI-CUSTOM: cpa v3 合同文件库（spec 2026-10-14 §1.5）
+  { href: "/contract-price/library", label: "合同文件库", icon: FolderOpen, pageId: "cpa:page:library" },
   { href: "/contract-price/settings", label: "配置", icon: Settings, pageId: "cpa:page:settings" },
 ];
 

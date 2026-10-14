@@ -150,6 +150,10 @@ modules:
       - id: "cpa:page:settings"
         display_name: "配置"
         operations: []
+      # EAI-CUSTOM: cpa v3 合同文件库（spec 2026-10-14 §1.5）
+      - id: "cpa:page:library"
+        display_name: "合同文件库"
+        operations: []
     data_scopes:
       - { id: "cpa_all", display_name: "全部合同数据", rule_template: {} }
       - { id: "cpa_dept", display_name: "本部门合同", rule_template: { dept_id IN: "$identity.dept_ids" } }
