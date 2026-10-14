@@ -19,13 +19,14 @@ dev:
 gateway:
 	PYTHONPATH=. PYTHONIOENCODING=utf-8 PYTHONUTF8=1 uv run --locked uvicorn app.gateway.app:app --host 127.0.0.1 --port 8001
 
-<<<<<<< HEAD
 # EAI-CUSTOM (geo-batch-cli P4): 空 DEER_FLOW_*/OPENAI_API_KEY 前缀 = 屏蔽仓库根 .env（容器部署
 # env 文件）经模块级 load_dotenv(override=False) 毒入 host 测试进程；与 tests/conftest.py
 # 中和块双保险。VAR= 空值经 sh 前缀赋值传给 uv，override=False 视空串为已存在键即不再覆盖。
-test:
+# 2026-10-14: 上游分片版 test（fan-out）与本地直跑版并存——本目标改名 test-local，
+# `test` 名让给上游分片入口（CI 直调 test-shard，不受影响）。
+test-local:
 	PYTHONPATH=. PYTHONIOENCODING=utf-8 PYTHONUTF8=1 DEER_FLOW_DEV_MODE= DEER_FLOW_HOME= DEER_FLOW_CONFIG_PATH= DEER_FLOW_EXTENSIONS_CONFIG_PATH= DEER_FLOW_DOCKER_SOCKET= DEER_FLOW_REPO_ROOT= DEER_FLOW_HOST_BASE_DIR= DEER_FLOW_HOST_SKILLS_PATH= OPENAI_API_KEY= uv run pytest -m "not live" --ignore=tests/blocking_io tests/ -v
-=======
+
 # Run all four duration-balanced shards locally; wait for every shard on failure.
 TEST_JOBS ?= 4
 TEST_SHARD_TARGETS := test-shard-1 test-shard-2 test-shard-3 test-shard-4
@@ -35,7 +36,6 @@ test:
 
 $(TEST_SHARD_TARGETS):
 	$(MAKE) --no-print-directory test-shard SPLITS=4 GROUP=$(patsubst test-shard-%,%,$@)
->>>>>>> bytedance/main
 
 test-live:
 	DEER_FLOW_RUN_LIVE_TESTS=1 PYTHONPATH=. PYTHONIOENCODING=utf-8 PYTHONUTF8=1 uv run pytest -m live tests/ -v -s
