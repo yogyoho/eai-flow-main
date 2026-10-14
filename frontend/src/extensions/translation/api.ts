@@ -118,3 +118,20 @@ export async function fetchDeliverablePreview(taskId: string): Promise<string> {
   // 剥离 tlt 元数据注释头（<!-- tlt:translated-document ... -->），仅展示正文
   return text.replace(/^<!--\s*tlt:translated-document[\s\S]*?-->\s*/, "");
 }
+
+/** 检索知识库状态（B3）：unbound=未初始化 / dangling=关联失效 / ready=就绪。 */
+export interface AssetKbStatus {
+  state: "unbound" | "dangling" | "ready";
+  kb_name?: string;
+  dataset_id?: string | null;
+  source_count?: number;
+  zh_count?: number;
+}
+
+export async function getAssetKbStatus(): Promise<AssetKbStatus> {
+  return authFetch<AssetKbStatus>(`${API_BASE}/asset-kb/status`);
+}
+
+export async function initializeAssetKb(): Promise<AssetKbStatus> {
+  return authFetch<AssetKbStatus>(`${API_BASE}/asset-kb/initialize`, { method: "POST" });
+}

@@ -1,10 +1,13 @@
 "use client";
 
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Loader2 } from "lucide-react";
+import { useState } from "react";
 
 import { authFetch } from "@/extensions/api/client";
 import { cn } from "@/lib/utils";
+
+import { getAssetKbStatus, initializeAssetKb, type AssetKbStatus } from "../api";
 
 interface KbRow {
   id: string;
@@ -30,11 +33,83 @@ export function SettingsView() {
 
   const kbs = kbQ.data ?? [];
 
+  const queryClient = useQueryClient();
+  const kbStatusQ = useQuery({
+    queryKey: ["tlt-asset-kb-status"],
+    queryFn: getAssetKbStatus,
+    refetchInterval: 30_000,
+  });
+  const [initializing, setInitializing] = useState(false);
+  const [initError, setInitError] = useState<string | null>(null);
+  const st: AssetKbStatus | undefined = kbStatusQ.data;
+
+  const doInitialize = async () => {
+    setInitializing(true);
+    setInitError(null);
+    try {
+      await initializeAssetKb();
+      await queryClient.invalidateQueries({ queryKey: ["tlt-asset-kb-status"] });
+      await queryClient.invalidateQueries({ queryKey: ["tlt-settings-kbs"] });
+    } catch (e) {
+      setInitError(e instanceof Error ? e.message : String(e));
+    } finally {
+      setInitializing(false);
+    }
+  };
+
   return (
     <div className="flex h-full flex-col gap-3 p-4">
       <div className="flex items-center gap-3">
         <h1 className="text-xl font-semibold">设置</h1>
         <span className="text-sm text-muted-foreground">知识库翻译开关与运行参数</span>
+      </div>
+
+      {/* 检索知识库（B3） */}
+      <div className="rounded-lg border">
+        <div className="flex items-center justify-between border-b px-3 py-2">
+          <span className="text-xs font-medium text-muted-foreground">检索知识库</span>
+          {st && (
+            <span className="text-xs">
+              {st.state === "ready" && <span className="text-emerald-600">● 已就绪</span>}
+              {st.state === "unbound" && <span className="text-muted-foreground">○ 未初始化</span>}
+              {st.state === "dangling" && <span className="text-destructive">⚠ 关联失效</span>}
+            </span>
+          )}
+        </div>
+        <div className="flex items-center justify-between gap-2 p-3 text-sm">
+          <div className="min-w-0">
+            {kbStatusQ.isLoading ? (
+              <span className="flex items-center gap-2 text-muted-foreground">
+                <Loader2 className="h-4 w-4 animate-spin" /> 加载中…
+              </span>
+            ) : kbStatusQ.isError ? (
+              <span className="text-destructive">
+                状态加载失败：{kbStatusQ.error?.message ?? "未知错误"}（需超级管理员）
+              </span>
+            ) : st?.state === "ready" ? (
+              <span className="truncate">
+                库名：{st.kb_name} · 已索引：原文 {st.source_count} 篇 · 中文译本 {st.zh_count} 篇
+              </span>
+            ) : (
+              <span className="text-muted-foreground">
+                {st?.state === "dangling"
+                  ? `关联失效（${st.kb_name}），修复后将重建 dataset（旧库内已索文档需回填）`
+                  : "尚未初始化——创建检索知识库后，原文与中文译本将自动入库供 RAG 检索"}
+              </span>
+            )}
+            {initError && <div className="mt-1 text-xs text-destructive">{initError}</div>}
+          </div>
+          {st && st.state !== "ready" && (
+            <button
+              onClick={doInitialize}
+              disabled={initializing}
+              className="shrink-0 rounded-md bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
+            >
+              {initializing ? <Loader2 className="mr-1 inline h-3 w-3 animate-spin" /> : null}
+              {st.state === "dangling" ? "修复关联" : "初始化"}
+            </button>
+          )}
+        </div>
       </div>
 
       {/* 知识库翻译开关 */}
