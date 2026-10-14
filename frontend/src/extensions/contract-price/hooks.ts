@@ -6,7 +6,7 @@
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
-import { contractPriceApi, libraryApi } from "./api";
+import { contractPriceApi, libraryApi, termsApi } from "./api";
 
 const KEYS = {
   dashboard: ["cpa", "dashboard"] as const,
@@ -20,6 +20,8 @@ const KEYS = {
   libraryFolders: ["cpa", "library-folders"] as const,
   libraryFiles: (folderId: string | null) =>
     ["cpa", "library-files", folderId] as const,
+  // EAI-CUSTOM: cpa v3 货物分类术语
+  terms: ["cpa", "terms"] as const,
 };
 
 export function useDashboard() {
@@ -430,4 +432,33 @@ export function useLibraryMutations() {
     moveFile,
     deleteFile,
   };
+}
+
+// EAI-CUSTOM: cpa v3 货物分类术语 hooks
+export function useTerms() {
+  return useQuery({ queryKey: KEYS.terms, queryFn: termsApi.list });
+}
+
+export function useTermsMutations() {
+  const qc = useQueryClient();
+  const invalidate = () => {
+    void qc.invalidateQueries({ queryKey: ["cpa", "terms"] });
+  };
+  const createTerm = useMutation({
+    mutationFn: (p: { canonical: string; aliases: string[] }) =>
+      termsApi.create(p.canonical, p.aliases),
+    onSuccess: invalidate,
+  });
+  const updateTerm = useMutation({
+    mutationFn: (p: {
+      id: string;
+      patch: { canonical?: string; aliases?: string[]; enabled?: boolean };
+    }) => termsApi.update(p.id, p.patch),
+    onSuccess: invalidate,
+  });
+  const deleteTerm = useMutation({
+    mutationFn: (id: string) => termsApi.remove(id),
+    onSuccess: invalidate,
+  });
+  return { createTerm, updateTerm, deleteTerm };
 }

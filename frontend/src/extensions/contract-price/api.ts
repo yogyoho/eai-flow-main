@@ -20,6 +20,7 @@ import type {
   CpaLibraryFolder,
   CpaLibraryUploadItem,
   CpaRun,
+  CpaTerm,
   EvolutionCandidate,
   Page,
   PipelineRunResponse,
@@ -378,4 +379,29 @@ export const libraryApi = {
       items: CpaItem[];
       total: number;
     }>(`${API_BASE}/library/files/${id}/items`),
+};
+
+// EAI-CUSTOM: cpa v3 货物分类术语（spec 2026-10-14 §2.4）
+export const termsApi = {
+  list: () => authFetch<{ items: CpaTerm[] }>(`${API_BASE}/terms`),
+
+  create: (canonical: string, aliases: string[]) =>
+    authFetch<CpaTerm>(`${API_BASE}/terms`, {
+      method: "POST",
+      body: JSON.stringify({ canonical, aliases }),
+    }),
+
+  update: (
+    id: string,
+    patch: { canonical?: string; aliases?: string[]; enabled?: boolean },
+  ) =>
+    authFetch<CpaTerm>(`${API_BASE}/terms/${id}`, {
+      method: "PATCH",
+      body: JSON.stringify(patch),
+    }),
+
+  remove: (id: string) =>
+    authFetch<{ ok: boolean }>(`${API_BASE}/terms/${id}`, {
+      method: "DELETE",
+    }),
 };

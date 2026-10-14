@@ -237,3 +237,14 @@ export interface CpaLibraryAnalyze {
   document_id?: string | null;
   message: string;
 }
+
+// EAI-CUSTOM: cpa v3 货物分类术语（spec 2026-10-14 §2.4）
+export interface CpaTerm {
+  id: string;
+  canonical: string;
+  aliases: string[];
+  enabled: boolean;
+  source: "manual" | "auto_merge";
+  alias_count: number;
+  item_count: number;
+}
