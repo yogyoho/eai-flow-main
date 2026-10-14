@@ -36,7 +36,9 @@ def scan_changed(store: ContractStore, cached_meta: dict, force_key: str | None 
         key = obj.object_name
         if getattr(obj, "is_dir", False) or not key.lower().endswith(_ACCEPTED):
             continue
-        if key.startswith("previews/"):
+        # EAI-CUSTOM (cpa v3 文件库, spec 2026-10-14 §1.2): library/ 是管理端
+        # 合同文件库档案区,只有「加入解析」拷出的对象才进管线。
+        if key.startswith(("previews/", "library/")):
             continue
         if force_key is not None and key != force_key:
             continue
