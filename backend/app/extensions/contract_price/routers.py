@@ -252,7 +252,8 @@ async def analyze_library_file(
     _: CurrentUser = Depends(require_permission("system:access")),
 ):
     """显式加入解析，语义对齐 documents/upload：
-    ① 同内容已解析 → already（直接看清单）;② 同名不同内容已存在 → 409 防统计污染;
+    ① 同内容已解析 → already（直接看清单）;failed/needs_review 不短路、重新排队重试;
+    ② 同名不同内容已存在 → 409 防统计污染;
     ③ MinIO 服务端拷 library/... → 扫描区根 + 建 pending 行，下一轮解析自动拾取。"""
     lf = await crud.get_library_file(db, file_id)
     if lf is None:
@@ -266,11 +267,14 @@ async def analyze_library_file(
                 document_id=doc.id,
                 message=f"该内容已有解析任务进行中（{doc.file_name}），请稍候刷新",
             )
-        return LibraryAnalyzeOut(
-            status="already",
-            document_id=doc.id,
-            message=f"该内容已解析过（{doc.file_name}），可直接查看清单",
-        )
+        if doc.parse_status == "parsed":
+            return LibraryAnalyzeOut(
+                status="already",
+                document_id=doc.id,
+                message=f"该内容已解析过（{doc.file_name}），可直接查看清单",
+            )
+        # failed / needs_review → 不被 "already" 短路，落到下面重新排队
+        # （create_pending_document 按 storage_uri upsert 复用同名行——正是重试语义）
     conflict = await crud.find_document_by_storage_key(db, lf.file_name)
     if conflict is not None and conflict.file_hash != lf.file_hash:
         raise HTTPException(

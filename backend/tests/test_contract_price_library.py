@@ -326,6 +326,27 @@ def test_analyze_pending_doc_reports_in_progress(monkeypatch):
     assert called == []  # 进行中 → 不重复拷贝入队
 
 
+@pytest.mark.parametrize("status", ["failed", "needs_review"])
+def test_analyze_failed_doc_requeues(monkeypatch, status):
+    """质量审查跨层#5: find_parsed_document_by_hash 不过滤状态——failed/needs_review
+    不得被「已解析过」短路，应重新排队（copy_object + create_pending_document 按
+    storage_uri upsert 复用同名行＝重试语义）。"""
+    lf = _lf()
+    doc = SimpleNamespace(id=uuid4(), file_name="原件.pdf", parse_status=status, file_hash=lf.file_hash)
+    monkeypatch.setattr(cpa_crud, "get_library_file", _async_returning(lf))
+    monkeypatch.setattr(cpa_crud, "find_parsed_document_by_hash", _async_returning(doc))
+    monkeypatch.setattr(cpa_crud, "find_document_by_storage_key", _async_returning(None))
+    copied = {}
+    monkeypatch.setattr(cpa_storage, "copy_object", lambda src, dst: copied.update(src=src, dst=dst))
+    pending = {}
+    monkeypatch.setattr(cpa_crud, "create_pending_document", _async_capture(pending))
+
+    out = asyncio.run(analyze_library_file(lf.id, db=_DB(), _=None))
+    assert out.status == "queued", status
+    assert copied == {"src": lf.storage_key, "dst": lf.file_name}, status
+    assert pending["kwargs"]["file_hash"] == lf.file_hash, status
+
+
 def test_list_files_bad_folder_id_422():
     with pytest.raises(HTTPException) as ei:
         asyncio.run(list_library_files_endpoint(folder_id="not-a-uuid", db=_DB(), _=None))
