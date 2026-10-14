@@ -26,6 +26,7 @@ import {
   Upload,
   Zap,
 } from "lucide-react";
+import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
 
 import { Button } from "@/components/ui/button";
@@ -136,6 +137,7 @@ function fmtSize(n: number): string {
 }
 
 export function LibraryView() {
+  const router = useRouter();
   const foldersQ = useLibraryFolders();
   const folders = useMemo(() => foldersQ.data?.items ?? [], [foldersQ.data]);
   const tree = useMemo(() => buildFolderTree(folders), [folders]);
@@ -168,14 +170,34 @@ export function LibraryView() {
     enabled: !!itemsFor,
   });
 
+  // flash 定时器句柄: 新通知先清旧定时器（防堆叠提前熄灭），卸载兜底清理
+  const flashTimerRef = useRef<number | null>(null);
   const flash = (kind: "ok" | "err", text: string) => {
+    if (flashTimerRef.current !== null)
+      window.clearTimeout(flashTimerRef.current);
     setNotice({ kind, text });
-    window.setTimeout(() => setNotice(null), 3500);
+    flashTimerRef.current = window.setTimeout(() => setNotice(null), 3500);
   };
 
   useEffect(() => {
     folderInputRef.current?.setAttribute("webkitdirectory", "");
   }, []);
+
+  useEffect(
+    () => () => {
+      if (flashTimerRef.current !== null)
+        window.clearTimeout(flashTimerRef.current);
+    },
+    [],
+  );
+
+  // Esc 关闭分项清单抽屉（镜像 TracebackDrawer 的 window keydown 写法）
+  useEffect(() => {
+    if (!itemsFor) return;
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && setItemsFor(null);
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [itemsFor]);
 
   const files = (filesQ.data?.items ?? []).filter((f) =>
     q ? f.file_name.toLowerCase().includes(q.toLowerCase()) : true,
@@ -271,19 +293,24 @@ export function LibraryView() {
           <div
             role="treeitem"
             aria-selected={selected}
+            aria-expanded={hasChildren ? isOpen : undefined}
             tabIndex={0}
             className={cn(
-              "group relative flex h-6 w-full cursor-pointer items-center gap-1 rounded-md pr-1 text-xs transition-colors outline-none select-none",
+              "group focus-visible:ring-ring/50 relative flex h-6 w-full cursor-pointer items-center gap-1 rounded-md pr-1 text-xs transition-colors outline-none select-none focus-visible:ring-2",
               selected
                 ? "bg-accent text-accent-foreground font-medium"
                 : "text-foreground/90 hover:bg-muted/70",
             )}
             style={{ paddingLeft: depth * 12 + 4 }}
-            onClick={() => setSel(n.id)}
+            onClick={() => {
+              setSel(n.id);
+              if (hasChildren) toggleExpand(n.id);
+            }}
             onKeyDown={(e) => {
               if (e.key === "Enter" || e.key === " ") {
                 e.preventDefault();
                 setSel(n.id);
+                if (hasChildren) toggleExpand(n.id);
               }
             }}
           >
@@ -294,6 +321,7 @@ export function LibraryView() {
                   isOpen && "rotate-90",
                 )}
                 onClick={(e) => {
+                  // 仅展开/收起，不改变选中——键盘路径走行的 Enter/Space（同触发行点击+展开）
                   e.stopPropagation();
                   toggleExpand(n.id);
                 }}
@@ -362,7 +390,7 @@ export function LibraryView() {
         <Button
           variant="outline"
           size="sm"
-          onClick={() => window.location.assign("/contract-price/tasks")}
+          onClick={() => router.push("/contract-price/tasks")}
         >
           解析队列 <ArrowRight className="ml-1 h-3.5 w-3.5" />
         </Button>
@@ -408,7 +436,7 @@ export function LibraryView() {
           </span>
           <span className="flex-1" />
           <Input
-            placeholder="搜索 文件名 / hash"
+            placeholder="搜索文件名"
             className="h-8 w-44"
             value={q}
             onChange={(e) => setQ(e.target.value)}
@@ -472,14 +500,21 @@ export function LibraryView() {
             <div
               role="treeitem"
               aria-selected={sel === ROOT_ID}
+              aria-expanded
               tabIndex={0}
               className={cn(
-                "group flex h-6 w-full cursor-pointer items-center gap-1 rounded-md px-1 text-xs outline-none select-none",
+                "group focus-visible:ring-ring/50 flex h-6 w-full cursor-pointer items-center gap-1 rounded-md px-1 text-xs outline-none select-none focus-visible:ring-2",
                 sel === ROOT_ID
                   ? "bg-accent text-accent-foreground font-medium"
                   : "text-foreground/90 hover:bg-muted/70",
               )}
               onClick={() => setSel(ROOT_ID)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" || e.key === " ") {
+                  e.preventDefault();
+                  setSel(ROOT_ID);
+                }
+              }}
             >
               <ChevronRight className="text-muted-foreground h-3 w-3 shrink-0 rotate-90" />
               <span>文件库</span>
@@ -493,7 +528,11 @@ export function LibraryView() {
                 />
               </span>
             </div>
-            {foldersQ.isLoading ? (
+            {foldersQ.isError ? (
+              <p className="text-destructive px-1 py-1">
+                文件夹加载失败：{String(foldersQ.error)}
+              </p>
+            ) : foldersQ.isLoading ? (
               <div className="text-muted-foreground flex items-center gap-2 py-1">
                 <Loader2 className="h-3.5 w-3.5 animate-spin" /> 加载中…
               </div>
@@ -502,13 +541,19 @@ export function LibraryView() {
             )}
           </nav>
           <div className="min-w-0 flex-1 overflow-auto">
-            {filesQ.isLoading ? (
+            {filesQ.isError ? (
+              <p className="text-destructive p-4 text-sm">
+                文件加载失败：{String(filesQ.error)}
+              </p>
+            ) : filesQ.isLoading ? (
               <div className="text-muted-foreground flex items-center gap-2 p-4 text-sm">
                 <Loader2 className="h-4 w-4 animate-spin" /> 加载中…
               </div>
             ) : files.length === 0 ? (
               <div className="text-muted-foreground p-8 text-center text-sm">
-                此文件夹还没有合同文件。上传后归档于此；需要解析时勾选文件点「加入解析」。
+                {q && (filesQ.data?.items.length ?? 0) > 0
+                  ? `没有匹配「${q}」的文件`
+                  : "此文件夹还没有合同文件。上传后归档于此；需要解析时勾选文件点「加入解析」。"}
               </div>
             ) : (
               <table className="w-full text-sm">
@@ -703,18 +748,23 @@ export function LibraryView() {
             </button>
           ) : (
             <div className="max-h-56 space-y-1.5 overflow-auto">
-              {staged.map((f, i) => (
-                <div
-                  key={i}
-                  className="flex items-center gap-2 rounded-md border px-2 py-1.5 text-sm"
-                >
-                  <FileBadge name={f.name} />
-                  <span className="min-w-0 flex-1 truncate">{f.name}</span>
-                  <span className="text-muted-foreground text-xs">
-                    {fmtSize(f.size)}
-                  </span>
-                </div>
-              ))}
+              {staged.map((f) => {
+                const rel =
+                  (f as File & { webkitRelativePath?: string })
+                    .webkitRelativePath || f.name;
+                return (
+                  <div
+                    key={rel}
+                    className="flex items-center gap-2 rounded-md border px-2 py-1.5 text-sm"
+                  >
+                    <FileBadge name={f.name} />
+                    <span className="min-w-0 flex-1 truncate">{rel}</span>
+                    <span className="text-muted-foreground text-xs">
+                      {fmtSize(f.size)}
+                    </span>
+                  </div>
+                );
+              })}
             </div>
           )}
           <p className="text-muted-foreground text-xs">
@@ -811,13 +861,14 @@ export function LibraryView() {
       {itemsFor && (
         <div
           className="fixed inset-0 z-50 flex justify-end bg-black/45"
+          role="dialog"
+          aria-modal="true"
+          aria-label="分项清单"
           onClick={() => setItemsFor(null)}
         >
           <aside
             className="bg-card flex h-full w-full max-w-xl flex-col border-l shadow-lg"
             onClick={(e) => e.stopPropagation()}
-            role="dialog"
-            aria-label="分项清单"
           >
             <div className="flex items-center gap-2 border-b px-4 py-3">
               <h3 className="min-w-0 flex-1 truncate text-base font-semibold">
@@ -879,9 +930,7 @@ export function LibraryView() {
               <Button variant="outline" onClick={() => setItemsFor(null)}>
                 关闭
               </Button>
-              <Button
-                onClick={() => window.location.assign("/contract-price/items")}
-              >
+              <Button onClick={() => router.push("/contract-price/items")}>
                 去分项校验 <ArrowRight className="ml-1 h-3.5 w-3.5" />
               </Button>
             </div>
