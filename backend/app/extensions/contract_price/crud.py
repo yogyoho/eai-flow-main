@@ -22,6 +22,8 @@ from app.extensions.contract_price.models import (
     CpaCluster,
     CpaDocument,
     CpaItem,
+    CpaLibraryFile,
+    CpaLibraryFolder,
     CpaRunHistory,
 )
 from app.extensions.contract_price.schemas import LLM_KEY_MASK, ConfigOut
@@ -523,6 +525,8 @@ async def list_items(
     validation_status: str | None = None,
     skip: int = 0,
     limit: int = 50,
+    *,
+    document_id: UUID | None = None,
 ) -> tuple[list[CpaItem], int]:
     stmt = select(CpaItem)
     if goods_name:
@@ -537,6 +541,8 @@ async def list_items(
         stmt = stmt.where(CpaItem.is_outlier.is_(True))
     if validation_status:
         stmt = stmt.where(CpaItem.validation_status == validation_status)
+    if document_id:
+        stmt = stmt.where(CpaItem.document_id == document_id)
     total = await session.scalar(select(func.count()).select_from(stmt.subquery())) or 0
     stmt = stmt.order_by(CpaItem.created_at.desc()).offset(skip).limit(limit)
     result = await session.execute(stmt)
@@ -1156,3 +1162,166 @@ def resolve_llm_key_mask(cfg: ConfigOut) -> ConfigOut:
     except Exception:  # noqa: BLE001 — 配置不可读时掩码还原降级为清除,不阻塞保存
         stored = None
     return cfg.model_copy(update={"llm_key": stored})
+
+
+# --- 合同文件库 (EAI-CUSTOM cpa v3, spec 2026-10-14 §1.3) -------------------
+
+
+async def list_library_folders(session: AsyncSession) -> list[CpaLibraryFolder]:
+    rows = await session.execute(select(CpaLibraryFolder).order_by(CpaLibraryFolder.name))
+    return list(rows.scalars())
+
+
+async def create_library_folder(session: AsyncSession, name: str, parent_id: UUID | None) -> CpaLibraryFolder:
+    if parent_id is not None and await session.get(CpaLibraryFolder, parent_id) is None:
+        raise ValueError("父文件夹不存在")
+    # 同级同名去重（质量审查 Task 1 建议）: 否则面包屑 pathOf 会有歧义
+    dup_cond = (CpaLibraryFolder.name == name) & (CpaLibraryFolder.parent_id == parent_id if parent_id else CpaLibraryFolder.parent_id.is_(None))
+    if (await session.execute(select(CpaLibraryFolder).where(dup_cond))).scalars().first() is not None:
+        raise ValueError("同级已存在同名文件夹")
+    row = CpaLibraryFolder(name=name, parent_id=parent_id)
+    session.add(row)
+    await session.commit()
+    await session.refresh(row)
+    return row
+
+
+async def update_library_folder(session: AsyncSession, folder_id: UUID, fields: dict) -> CpaLibraryFolder | None:
+    row = await session.get(CpaLibraryFolder, folder_id)
+    if row is None:
+        return None
+    new_parent = fields.get("parent_id")
+    if new_parent is not None:
+        if new_parent == folder_id:
+            raise ValueError("不能把文件夹移动到自己下面")
+        if await session.get(CpaLibraryFolder, new_parent) is None:
+            raise ValueError("目标父文件夹不存在")
+    for k, v in fields.items():
+        setattr(row, k, v)
+    await session.commit()
+    await session.refresh(row)
+    return row
+
+
+async def delete_library_folder(session: AsyncSession, folder_id: UUID) -> bool:
+    """删除空文件夹;非空（有子文件夹或文件）返回 False，路由层转 409。"""
+    kids = await session.scalar(select(func.count()).select_from(CpaLibraryFolder).where(CpaLibraryFolder.parent_id == folder_id))
+    files = await session.scalar(select(func.count()).select_from(CpaLibraryFile).where(CpaLibraryFile.folder_id == folder_id))
+    row = await session.get(CpaLibraryFolder, folder_id)
+    if row is None or kids or files:
+        return False
+    await session.delete(row)
+    await session.commit()
+    return True
+
+
+async def list_library_files(session: AsyncSession, folder_id: UUID | None) -> list[dict]:
+    """某文件夹的文件行（folder_id=None → 根）。附解析状态：按 file_hash 匹配 cpa_documents。"""
+    stmt = select(CpaLibraryFile).order_by(CpaLibraryFile.uploaded_at.desc())
+    if folder_id is not None:
+        stmt = stmt.where(CpaLibraryFile.folder_id == folder_id)
+    else:
+        stmt = stmt.where(CpaLibraryFile.folder_id.is_(None))
+    rows = list((await session.execute(stmt)).scalars())
+    if not rows:
+        return []
+    hashes = {r.file_hash for r in rows}
+    docs = (await session.execute(select(CpaDocument).where(CpaDocument.file_hash.in_(hashes)))).scalars()
+    by_hash = {d.file_hash: d for d in docs}
+    return [
+        {
+            "id": r.id,
+            "folder_id": r.folder_id,
+            "file_name": r.file_name,
+            "file_size": r.file_size,
+            "file_type": r.file_type,
+            "uploaded_at": r.uploaded_at,
+            "parse_status": by_hash[r.file_hash].parse_status if r.file_hash in by_hash else "unparsed",
+            "document_id": by_hash[r.file_hash].id if r.file_hash in by_hash else None,
+        }
+        for r in rows
+    ]
+
+
+async def get_library_file(session: AsyncSession, file_id: UUID) -> CpaLibraryFile | None:
+    return await session.get(CpaLibraryFile, file_id)
+
+
+async def find_library_duplicate(session: AsyncSession, folder_id: UUID | None, file_hash: str) -> CpaLibraryFile | None:
+    stmt = select(CpaLibraryFile).where(CpaLibraryFile.file_hash == file_hash)
+    stmt = stmt.where(CpaLibraryFile.folder_id == folder_id) if folder_id else stmt.where(CpaLibraryFile.folder_id.is_(None))
+    return (await session.execute(stmt)).scalars().first()
+
+
+async def create_library_file(
+    session: AsyncSession,
+    *,
+    folder_id: UUID | None,
+    file_name: str,
+    storage_key: str,
+    file_hash: str,
+    file_size: int,
+    file_type: str,
+) -> CpaLibraryFile:
+    row = CpaLibraryFile(
+        folder_id=folder_id,
+        file_name=file_name,
+        storage_key=storage_key,
+        file_hash=file_hash,
+        file_size=file_size,
+        file_type=file_type,
+    )
+    session.add(row)
+    await session.commit()
+    await session.refresh(row)
+    return row
+
+
+async def move_library_file(session: AsyncSession, file_id: UUID, folder_id: UUID | None) -> CpaLibraryFile | None:
+    row = await session.get(CpaLibraryFile, file_id)
+    if row is None:
+        return None
+    if folder_id is not None and await session.get(CpaLibraryFolder, folder_id) is None:
+        raise ValueError("目标文件夹不存在")
+    row.folder_id = folder_id
+    await session.commit()
+    await session.refresh(row)
+    return row
+
+
+async def delete_library_file(session: AsyncSession, file_id: UUID) -> str | None:
+    """删记录并返回应清理的 storage_key（键含 folder+hash+name，无跨行共享）。None=不存在。"""
+    row = await session.get(CpaLibraryFile, file_id)
+    if row is None:
+        return None
+    key = row.storage_key
+    await session.delete(row)
+    await session.commit()
+    return key
+
+
+async def find_parsed_document_by_hash(session: AsyncSession, file_hash: str) -> CpaDocument | None:
+    return (await session.execute(select(CpaDocument).where(CpaDocument.file_hash == file_hash))).scalars().first()
+
+
+async def ensure_folder_path(session: AsyncSession, root_id: UUID | None, segments: list[str]) -> UUID | None:
+    """沿相对路径逐级建文件夹（幂等），返回叶 folder_id（segments 空则原样返回 root_id）。
+
+    文件夹上传（webkitdirectory）按 webkitRelativePath 落位用（spec §1.2）。
+    """
+    cur = root_id
+    for seg in segments:
+        cond = CpaLibraryFolder.name == seg
+        cond = cond & (CpaLibraryFolder.parent_id == cur) if cur else cond & CpaLibraryFolder.parent_id.is_(None)
+        row = (await session.execute(select(CpaLibraryFolder).where(cond))).scalars().first()
+        if row is None:
+            row = await create_library_folder(session, seg, cur)
+        cur = row.id
+    return cur
+
+
+async def find_document_by_storage_key(session: AsyncSession, key: str) -> CpaDocument | None:
+    """按 storage 键反查已解析文档。URI 前缀 ``s3://cpa-contracts/`` 硬编码与
+    storage.BUCKET 同源（保持字面量以避免 crud→storage 的 minio 依赖链）。"""
+    uri = f"s3://cpa-contracts/{key}"
+    return (await session.execute(select(CpaDocument).where(CpaDocument.storage_uri == uri))).scalars().first()
