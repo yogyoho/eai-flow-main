@@ -634,7 +634,8 @@ export function AssetLibrary() {
       )}
 
       {/* 路径面包屑（左侧主导航；点击层级=左右同步前往） */}
-      <div className="flex items-center gap-1 px-3 py-1.5 text-sm">
+      <div className="flex items-center gap-2 px-3 py-1.5 text-sm">
+        <span className="shrink-0 rounded-md bg-muted px-2 py-0.5 text-xs text-muted-foreground">文件路径：</span>
         <Crumbs
           folderId={lFolder}
           onPick={(id) => {
