@@ -206,3 +206,34 @@ export interface EvolutionCandidate {
   first_seen_at: string;
   last_seen_at: string;
 }
+
+// EAI-CUSTOM: cpa v3 合同文件库（spec 2026-10-14 §1.3）
+export interface CpaLibraryFolder {
+  id: string;
+  parent_id: string | null;
+  name: string;
+}
+
+export interface CpaLibraryFile {
+  id: string;
+  folder_id: string | null;
+  file_name: string;
+  file_size: number;
+  file_type: string;
+  uploaded_at: string;
+  parse_status: string; // unparsed / pending / parsing / parsed / failed / needs_review
+  document_id: string | null;
+}
+
+export interface CpaLibraryUploadItem {
+  file_name: string;
+  file_id?: string;
+  reused: boolean;
+  error?: string;
+}
+
+export interface CpaLibraryAnalyze {
+  status: "queued" | "already";
+  document_id?: string | null;
+  message: string;
+}

@@ -6,7 +6,7 @@
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
-import { contractPriceApi } from "./api";
+import { contractPriceApi, libraryApi } from "./api";
 
 const KEYS = {
   dashboard: ["cpa", "dashboard"] as const,
@@ -16,6 +16,10 @@ const KEYS = {
   items: (p: Record<string, unknown>) => ["cpa", "items", p] as const,
   runs: (p: Record<string, unknown>) => ["cpa", "runs", p] as const,
   config: ["cpa", "config"] as const,
+  // EAI-CUSTOM: cpa v3 合同文件库
+  libraryFolders: ["cpa", "library-folders"] as const,
+  libraryFiles: (folderId: string | null) =>
+    ["cpa", "library-files", folderId] as const,
 };
 
 export function useDashboard() {
@@ -359,4 +363,71 @@ export function useRunCluster() {
       void qc.invalidateQueries({ queryKey: ["cpa"] });
     },
   });
+}
+
+// EAI-CUSTOM: cpa v3 合同文件库 hooks
+export function useLibraryFolders() {
+  return useQuery({
+    queryKey: KEYS.libraryFolders,
+    queryFn: libraryApi.listFolders,
+  });
+}
+
+export function useLibraryFiles(folderId: string | null) {
+  return useQuery({
+    queryKey: KEYS.libraryFiles(folderId),
+    queryFn: () => libraryApi.listFiles(folderId),
+  });
+}
+
+export function useLibraryMutations() {
+  const qc = useQueryClient();
+  const invalidate = () => {
+    void qc.invalidateQueries({ queryKey: ["cpa", "library-folders"] });
+    void qc.invalidateQueries({ queryKey: ["cpa", "library-files"] });
+    void qc.invalidateQueries({ queryKey: ["cpa", "documents"] }); // 加入解析影响解析列表
+  };
+  const createFolder = useMutation({
+    mutationFn: (p: { name: string; parentId: string | null }) =>
+      libraryApi.createFolder(p.name, p.parentId),
+    onSuccess: invalidate,
+  });
+  const updateFolder = useMutation({
+    mutationFn: (p: {
+      id: string;
+      patch: { name?: string; parent_id?: string | null };
+    }) => libraryApi.updateFolder(p.id, p.patch),
+    onSuccess: invalidate,
+  });
+  const deleteFolder = useMutation({
+    mutationFn: (id: string) => libraryApi.deleteFolder(id),
+    onSuccess: invalidate,
+  });
+  const uploadFiles = useMutation({
+    mutationFn: (p: { folderId: string | null; files: File[] }) =>
+      libraryApi.uploadFiles(p.folderId, p.files),
+    onSuccess: invalidate,
+  });
+  const analyzeFile = useMutation({
+    mutationFn: (id: string) => libraryApi.analyzeFile(id),
+    onSuccess: invalidate,
+  });
+  const moveFile = useMutation({
+    mutationFn: (p: { id: string; folderId: string | null }) =>
+      libraryApi.moveFile(p.id, p.folderId),
+    onSuccess: invalidate,
+  });
+  const deleteFile = useMutation({
+    mutationFn: (id: string) => libraryApi.deleteFile(id),
+    onSuccess: invalidate,
+  });
+  return {
+    createFolder,
+    updateFolder,
+    deleteFolder,
+    uploadFiles,
+    analyzeFile,
+    moveFile,
+    deleteFile,
+  };
 }

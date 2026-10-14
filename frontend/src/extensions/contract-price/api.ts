@@ -15,6 +15,10 @@ import type {
   CpaDashboard,
   CpaDocument,
   CpaItem,
+  CpaLibraryAnalyze,
+  CpaLibraryFile,
+  CpaLibraryFolder,
+  CpaLibraryUploadItem,
   CpaRun,
   EvolutionCandidate,
   Page,
@@ -295,4 +299,83 @@ export const contractPriceApi = {
 
   pipelineStatus: (run_id: string) =>
     authFetch<PipelineStatus>(`${API_BASE}/pipeline/runs/${run_id}/status`),
+};
+
+// EAI-CUSTOM: cpa v3 合同文件库（spec 2026-10-14 §1.2/§1.3）
+export const libraryApi = {
+  listFolders: () =>
+    authFetch<{ items: CpaLibraryFolder[] }>(`${API_BASE}/library/folders`),
+
+  createFolder: (name: string, parentId: string | null) =>
+    authFetch<CpaLibraryFolder>(`${API_BASE}/library/folders`, {
+      method: "POST",
+      body: JSON.stringify({ name, parent_id: parentId }),
+    }),
+
+  updateFolder: (
+    id: string,
+    patch: { name?: string; parent_id?: string | null },
+  ) =>
+    authFetch<CpaLibraryFolder>(`${API_BASE}/library/folders/${id}`, {
+      method: "PATCH",
+      body: JSON.stringify(patch),
+    }),
+
+  deleteFolder: (id: string) =>
+    authFetch<{ ok: boolean }>(`${API_BASE}/library/folders/${id}`, {
+      method: "DELETE",
+    }),
+
+  // folder_id 仅在非空时拼接——空串会被 FastAPI 422。
+  listFiles: (folderId: string | null) =>
+    authFetch<{ items: CpaLibraryFile[] }>(
+      `${API_BASE}/library/files${folderId ? `?folder_id=${folderId}` : ""}`,
+    ),
+
+  uploadFiles: (folderId: string | null, files: File[]) => {
+    const fd = new FormData();
+    if (folderId) fd.set("folder_id", folderId);
+    // webkitdirectory 上传带 webkitRelativePath——原样传给后端逐级建子文件夹（spec §1.2）
+    fd.set(
+      "paths",
+      JSON.stringify(
+        files.map(
+          (f) =>
+            (f as File & { webkitRelativePath?: string }).webkitRelativePath ??
+            "",
+        ),
+      ),
+    );
+    for (const f of files) fd.append("files", f);
+    return authFormFetch<{ items: CpaLibraryUploadItem[] }>(
+      `${API_BASE}/library/files/upload`,
+      fd,
+    );
+  },
+
+  analyzeFile: (id: string) =>
+    authFetch<CpaLibraryAnalyze>(`${API_BASE}/library/files/${id}/analyze`, {
+      method: "POST",
+    }),
+
+  moveFile: (id: string, folderId: string | null) =>
+    authFetch<CpaLibraryFile>(`${API_BASE}/library/files/${id}`, {
+      method: "PATCH",
+      body: JSON.stringify({ folder_id: folderId }),
+    }),
+
+  deleteFile: (id: string) =>
+    authFetch<{ ok: boolean }>(`${API_BASE}/library/files/${id}`, {
+      method: "DELETE",
+    }),
+
+  /** 浏览器直接 GET（PDF 内嵌预览 / docx 下载），走完整路径。 */
+  fileContentUrl: (id: string) => `${FULL_BASE}/library/files/${id}/content`,
+
+  fileItems: (id: string) =>
+    authFetch<{
+      document: { id: string; file_name: string; parse_status: string };
+      items: CpaItem[];
+      total: number;
+    }>(`${API_BASE}/library/files/${id}/items`),
 };
