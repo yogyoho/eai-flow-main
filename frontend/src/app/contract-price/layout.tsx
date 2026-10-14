@@ -8,6 +8,7 @@ import {
   History,
   FolderOpen,
   Settings,
+  Tags,
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -26,6 +27,8 @@ const navItems = [
   { href: "/contract-price/tasks", label: "任务中心", icon: History, pageId: "cpa:page:tasks" },
   // EAI-CUSTOM: cpa v3 合同文件库（spec 2026-10-14 §1.5）
   { href: "/contract-price/library", label: "合同文件库", icon: FolderOpen, pageId: "cpa:page:library" },
+  // EAI-CUSTOM: cpa v3 货物分类术语（spec 2026-10-14 §2.4）
+  { href: "/contract-price/terms", label: "货物分类术语", icon: Tags, pageId: "cpa:page:terms" },
   { href: "/contract-price/settings", label: "配置", icon: Settings, pageId: "cpa:page:settings" },
 ];
 
