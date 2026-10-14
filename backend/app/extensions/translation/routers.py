@@ -33,7 +33,7 @@ from app.extensions.translation.models import (
     TranslationTask,
     validate_transition,
 )
-from app.extensions.translation.ragflow_bridge import _dataset_exists, ensure_dataset, index_original
+from app.extensions.translation.ragflow_bridge import _dataset_exists, _doc_exists, ensure_dataset, index_original, reindex_deliverable
 
 logger = logging.getLogger(__name__)
 
@@ -685,3 +685,58 @@ async def asset_kb_initialize(
         await ensure_dataset(kb, client=client)
         await db.commit()
     return await asset_kb_status(current_user=current_user, db=db)
+
+
+@router.post("/backfill-sources")
+async def backfill_sources(
+    current_user=Depends(require_permission("translation:transition")),
+    db: AsyncSession = Depends(get_db),
+) -> dict:
+    """B2 一次性回填（superadmin）：原文 doc_id 缺失的任务补录原文；delivered 译本悬空的补回新 dataset。手动触发，无调度。"""
+    await _require_superadmin(db, current_user)
+    client = RAGFlowClient()
+    results = []
+    tasks = (
+        await db.execute(
+            select(TranslationTask).where(
+                TranslationTask.ragflow_source_doc_id.is_(None),
+                TranslationTask.state.notin_(list(TERMINAL_STATES)),
+            )
+        )
+    ).scalars().all()
+    for t in tasks:
+        if not t.source_uri or t.source_uri.startswith(("s3://", "http")) or not Path(t.source_uri).exists():
+            results.append({"task_id": str(t.id), "action": "error", "detail": "source file missing"})
+            continue
+        kb = await db.get(KnowledgeBase, t.kb_id)
+        if kb is None:
+            results.append({"task_id": str(t.id), "action": "error", "detail": "kb vanished"})
+            continue
+        try:
+            doc_id = await index_original(t, Path(t.source_uri), kb=kb, client=client)
+            t.ragflow_source_doc_id = doc_id
+            results.append({"task_id": str(t.id), "action": "source_indexed" if doc_id else "source_skipped"})
+        except Exception as exc:
+            results.append({"task_id": str(t.id), "action": "error", "detail": str(exc)[:200]})
+    delivered = (
+        await db.execute(
+            select(TranslationTask).where(
+                TranslationTask.state == "delivered", TranslationTask.ragflow_zh_doc_id.is_not(None)
+            )
+        )
+    ).scalars().all()
+    for t in delivered:
+        kb = await db.get(KnowledgeBase, t.kb_id)
+        if kb is None or not kb.ragflow_dataset_id:
+            continue
+        try:
+            if await _doc_exists(client, kb.ragflow_dataset_id, t.ragflow_zh_doc_id):
+                continue
+            new_id = await reindex_deliverable(t, kb=kb, client=client)
+            if new_id:
+                t.ragflow_zh_doc_id = new_id
+                results.append({"task_id": str(t.id), "action": "zh_reindexed"})
+        except Exception as exc:
+            results.append({"task_id": str(t.id), "action": "error", "detail": str(exc)[:200]})
+    await db.commit()
+    return {"results": results, "total": len(results)}

@@ -144,6 +144,46 @@ async def index_original(
     return doc_id
 
 
+async def _doc_exists(client: RAGFlowClient, dataset_id: str, doc_id: str) -> bool:
+    """探活单个文档（B2 delivered 译本悬空判定用）。
+
+    注意：不能照抄 _dataset_exists 的 code 判定——RAGFlowClient.get_document 内部已
+    吞掉 HTTPStatusError（缺失文档返回 ``{"data": {}}``，无 code 键），按 code 判会把
+    缺失误报为存在；以 data.id 为准。HTTPStatusError 分支仅作客户端实现变动的兜底。
+    """
+    try:
+        result = await client.get_document(dataset_id, doc_id)
+    except httpx.HTTPStatusError as exc:
+        if exc.response.status_code == 404:
+            return False
+        raise
+    data = result.get("data")
+    return isinstance(data, dict) and bool(data.get("id"))
+
+
+async def reindex_deliverable(task: TranslationTask, *, kb: KnowledgeBase, client: RAGFlowClient | None = None) -> str | None:
+    """C1 重建后历史译本补录：已落盘交付物重传新 dataset（tlt_task_id 幂等）。返回 doc_id 或 None（文件缺失）。"""
+    client = client or RAGFlowClient()
+    from app.extensions.config import get_extensions_config
+
+    stable = Path(get_extensions_config().storage.base_path) / "translation" / "deliverables" / str(task.id) / _zh_filename(task)
+    if not stable.exists():
+        logger.warning("tlt reindex: deliverable missing for task %s (%s)", task.id, stable)
+        return None
+    dataset_id = await ensure_dataset(kb, client=client)
+    existing = await _find_existing_zh_doc(client, dataset_id, str(task.id))
+    if existing:
+        return existing
+    parser_id = DocumentService._CHUNK_METHOD_TO_PARSER.get(kb.chunk_method or "", "naive")
+    rf = await client.upload_document(dataset_id, str(stable), file_name=_zh_filename(task), parser_id=parser_id or None)
+    doc_id = (rf.get("data") or {}).get("id")
+    if not doc_id:
+        raise RuntimeError(f"ragflow upload returned no document id: {str(rf)[:200]}")
+    await client.update_document_metadata(dataset_id, doc_id, _lineage_meta(task))
+    await client.parse_document(dataset_id, doc_id)
+    return doc_id
+
+
 async def _find_doc_by_meta(client: RAGFlowClient, dataset_id: str, meta_name: str, meta_value: str) -> str | None:
     """按单个元数据键精确查重，返回 doc_id 或 None。"""
     result = await client.list_documents(

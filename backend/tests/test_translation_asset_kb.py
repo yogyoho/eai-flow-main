@@ -7,10 +7,12 @@ import pytest
 import pytest_asyncio
 from sqlalchemy import delete, select, text
 from sqlalchemy import update as sql_update
+from test_translation_upload_originals import _FakeUploadClient  # 复用 B1 上传测试的 upload fake（get_dataset/list_documents/upload_document/update_document_metadata）
 
 import app.extensions.translation.routers as routers
 from app.extensions.database import get_session_factory, init_engine
 from app.extensions.models import KnowledgeBase, User
+from app.extensions.translation.models import TranslationTask
 
 
 @pytest_asyncio.fixture(loop_scope="session", scope="session")
@@ -117,6 +119,36 @@ async def test_asset_kb_initialize_dangling_repairs(_engine, monkeypatch):
             await db.refresh(kb)
             assert kb.ragflow_dataset_id.startswith("ds-init-")  # 自愈回写落库
         finally:
+            await db.execute(sql_update(KnowledgeBase).where(KnowledgeBase.id == kb.id).values(translation_enabled=False))
+            await db.execute(delete(KnowledgeBase).where(KnowledgeBase.id == kb.id))
+            await db.commit()
+
+
+@pytest.mark.asyncio(loop_scope="session")
+async def test_backfill_indexes_missing_source(_engine, monkeypatch, tmp_path):
+    """B2：ragflow_source_doc_id 为 NULL 的任务回填后落列。"""
+    from app.extensions.translation.routers import backfill_sources
+
+    monkeypatch.setattr(routers, "RAGFlowClient", _FakeUploadClient)
+    async with get_session_factory()() as db:
+        owner = (await db.execute(select(User.id).limit(1))).scalar()
+        kb = KnowledgeBase(name=f"kb-bf-{uuid.uuid4().hex[:6]}", owner_id=owner, kb_type="ragflow",
+                           ragflow_dataset_id="ds-bf", translation_enabled=True)
+        db.add(kb)
+        await db.commit()
+        src = tmp_path / "bf.docx"
+        src.write_bytes(b"PK\x03\x04stub")
+        task = TranslationTask(kb_id=kb.id, doc_sha="c" * 64, source_uri=str(src), source_lang="en", state="stored")
+        db.add(task)
+        await db.commit()
+        try:
+            r1 = await backfill_sources(current_user=SimpleNamespace(id=owner), db=db)
+            mine = [r for r in r1["results"] if r["task_id"] == str(task.id)]
+            assert mine and mine[0]["action"] in ("source_indexed", "source_skipped")
+            await db.refresh(task)
+            assert task.ragflow_source_doc_id is not None
+        finally:
+            await db.execute(delete(TranslationTask).where(TranslationTask.id == task.id))
             await db.execute(sql_update(KnowledgeBase).where(KnowledgeBase.id == kb.id).values(translation_enabled=False))
             await db.execute(delete(KnowledgeBase).where(KnowledgeBase.id == kb.id))
             await db.commit()
