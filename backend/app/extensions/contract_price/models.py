@@ -17,6 +17,7 @@ import uuid
 from datetime import UTC, date, datetime
 
 from sqlalchemy import (
+    BigInteger,
     Boolean,
     DateTime,
     ForeignKey,
@@ -157,6 +158,6 @@ class CpaLibraryFile(Base):
     file_name: Mapped[str] = mapped_column(String(300), nullable=False)
     storage_key: Mapped[str] = mapped_column(String(512), nullable=False, unique=True)
     file_hash: Mapped[str] = mapped_column(String(128), nullable=False, index=True)  # SHA-256
-    file_size: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    file_size: Mapped[int] = mapped_column(BigInteger, nullable=False, default=0)
     file_type: Mapped[str] = mapped_column(String(20), nullable=False, default="pdf")
     uploaded_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
