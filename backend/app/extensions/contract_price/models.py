@@ -161,3 +161,18 @@ class CpaLibraryFile(Base):
     file_size: Mapped[int] = mapped_column(BigInteger, nullable=False, default=0)
     file_type: Mapped[str] = mapped_column(String(20), nullable=False, default="pdf")
     uploaded_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
+# EAI-CUSTOM (cpa v3 术语, spec 2026-10-14 §2.2): 货物分类术语表——canonical+aliases
+# 以 pin 语义强制聚类同簇。仅后端持有: skill 管线 cluster 相位用裸 SQL 读列
+# (scripts/cli.py),不走 ORM,故 skill 侧 models.py 不镜像、parity 白名单不涉及。
+class CpaTerms(Base):
+    __tablename__ = "cpa_terms"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    canonical: Mapped[str] = mapped_column(String(300), nullable=False)
+    aliases: Mapped[list] = mapped_column(JSONB, nullable=False, default=list)
+    enabled: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    source: Mapped[str] = mapped_column(String(20), nullable=False, default="manual")  # manual | auto_merge
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=utc_now)
