@@ -14,6 +14,8 @@ import logging
 from datetime import UTC, datetime
 from pathlib import Path
 
+import httpx
+
 from app.extensions.database import get_session_factory
 from app.extensions.knowledge.client import RAGFlowClient
 from app.extensions.knowledge.service import DocumentService
@@ -76,6 +78,45 @@ def _lineage_meta(task: TranslationTask) -> dict:
     }
 
 
+async def _dataset_exists(client: RAGFlowClient, dataset_id: str) -> bool:
+    """探活：兼容 RAGFlow 两种应答（HTTP 404 / HTTP 200 + body code!=0）。"""
+    try:
+        result = await client.get_dataset(dataset_id)
+    except httpx.HTTPStatusError as exc:
+        if exc.response.status_code == 404:
+            return False
+        raise
+    return result.get("code") in (None, 0)
+
+
+async def ensure_dataset(kb: KnowledgeBase, *, client: RAGFlowClient | None = None) -> str:
+    """返回就绪的 dataset_id；悬空/缺失则重建并回写 kb（**调用方负责 commit**）。
+
+    C1 自愈单点：worker 索引（index_translation）、上传链（upload_assets）、
+    设置页修复（asset-kb/initialize）三处共用，禁止另写第二份重建逻辑。
+    """
+    client = client or RAGFlowClient()
+    if kb.ragflow_dataset_id and await _dataset_exists(client, kb.ragflow_dataset_id):
+        return kb.ragflow_dataset_id
+    embed = kb.embedding_model
+    if not embed:
+        available = await client.list_available_embedding_models()
+        embed = available[0] if available else None
+    rf = await client.create_dataset(
+        name=kb.name,
+        description=kb.description or "",
+        embedding_model=embed,
+        chunk_method=kb.chunk_method,
+        parser_config=kb.parser_config,
+    )
+    dataset_id = (rf.get("data") or {}).get("id")
+    if not dataset_id:
+        raise RuntimeError(f"ragflow create_dataset returned no id: {str(rf)[:200]}")
+    logger.warning("tlt dataset self-heal: kb %s old=%s -> new=%s", kb.id, kb.ragflow_dataset_id, dataset_id)
+    kb.ragflow_dataset_id = dataset_id
+    return dataset_id
+
+
 async def _find_existing_zh_doc(client: RAGFlowClient, dataset_id: str, task_id: str) -> str | None:
     """按 tlt_task_id 元数据精确去重（worker 退避重跑不重复建文档）。"""
     result = await client.list_documents(
@@ -97,11 +138,7 @@ async def _set_deliverable(task_id: str, deliverable_uri: str, ragflow_doc_id: s
     from sqlalchemy import update
 
     async with factory() as db:
-        await db.execute(
-            update(TranslationTask)
-            .where(TranslationTask.id == task_id)
-            .values(deliverable_uri=deliverable_uri, ragflow_zh_doc_id=ragflow_doc_id)
-        )
+        await db.execute(update(TranslationTask).where(TranslationTask.id == task_id).values(deliverable_uri=deliverable_uri, ragflow_zh_doc_id=ragflow_doc_id))
         await db.commit()
 
 
@@ -118,19 +155,15 @@ async def index_translation(
     任何异常向上抛 → worker 落 failed/退避重试（幂等：重跑按 task_id 元数据去重）。
     client/storage 可注入（测试 fake）。
     """
+    client = client or RAGFlowClient()
     factory = get_session_factory()
     async with factory() as db:
         kb = await db.get(KnowledgeBase, task.kb_id)
         if kb is None:
             raise RuntimeError(f"kb vanished: {task.kb_id}")
-        if not kb.ragflow_dataset_id:
-            raise RuntimeError("kb has no ragflow_dataset_id — 中文版无处索引（先在知识库模块完成 RAGFlow 关联）")
-        owner_id, kb_id_str, dataset_id, chunk_method = (
-            str(kb.owner_id),
-            str(kb.id),
-            kb.ragflow_dataset_id,
-            kb.chunk_method or "",
-        )
+        dataset_id = await ensure_dataset(kb, client=client)  # C1: 悬空自动重建并回写
+        await db.commit()
+        owner_id, kb_id_str, chunk_method = str(kb.owner_id), str(kb.id), kb.chunk_method or ""
 
     markdown = build_markdown(task, zh_blocks)
     zh_name = _zh_filename(task)
@@ -140,12 +173,7 @@ async def index_translation(
     # 修复记录：曾用 mkstemp 临时路径当 uri，/tmp 清理后交付物 404（T6 验收发现）。
     from app.extensions.config import get_extensions_config
 
-    stable_dir = (
-        Path(get_extensions_config().storage.base_path)
-        / "translation"
-        / "deliverables"
-        / task_id_str
-    )
+    stable_dir = Path(get_extensions_config().storage.base_path) / "translation" / "deliverables" / task_id_str
     stable_dir.mkdir(parents=True, exist_ok=True)
     stable_path = stable_dir / zh_name
     stable_path.write_text(markdown, encoding="utf-8")
@@ -160,7 +188,6 @@ async def index_translation(
     )
     logger.info("tlt deliverable stored: %s", stored.uri)
 
-    client = client or RAGFlowClient()
     # SC-1: parser 配置一律经映射表（禁止裸传内部枚举）
     parser_id = DocumentService._CHUNK_METHOD_TO_PARSER.get(chunk_method, "naive")
     doc_id = await _find_existing_zh_doc(client, dataset_id, task_id_str)
@@ -181,4 +208,3 @@ async def index_translation(
     await client.parse_document(dataset_id, doc_id)
     await _set_deliverable(task_id_str, stored.uri, doc_id)
     logger.info("tlt task %s: zh doc %s indexed in dataset %s (parser=%s)", task_id_str, doc_id, dataset_id, parser_id)
-

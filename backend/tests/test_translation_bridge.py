@@ -73,6 +73,9 @@ class FakeClient:
             return {"data": {"docs": [{"id": self.existing}]}}
         return {"data": {"docs": []}}
 
+    async def get_dataset(self, dataset_id: str) -> dict:
+        return {"code": 0, "data": {"id": dataset_id}}
+
     async def upload_document(self, dataset_id, file_path, file_name=None, parser_id=None, parser_config=None):
         self.uploads.append({"file_name": file_name, "parser_id": parser_id})
         return {"data": {"id": "rf-doc-123"}}
@@ -91,6 +94,25 @@ class FakeStorage:
     async def upload_local_file(self, local_path, owner_id, kb_id, filename, content_type=None):
         self.uploads.append({"filename": filename, "owner_id": owner_id, "kb_id": kb_id})
         return SimpleNamespace(uri=f"s3://tlt-bucket/{filename}", bucket="tlt-bucket", key=filename)
+
+
+class _HealingFakeClient(FakeClient):
+    """dataset 缺失场景的 fake：探活返回不存在，create 返回新 id。"""
+
+    def __init__(self, new_dataset_id: str = "ds-healed"):
+        super().__init__()
+        self._new_dataset_id = new_dataset_id
+        self.created_with: dict | None = None
+
+    async def get_dataset(self, dataset_id: str) -> dict:
+        return {"code": 102, "message": "Can't find the dataset"}
+
+    async def list_available_embedding_models(self) -> list[str]:
+        return ["bge-m3"]
+
+    async def create_dataset(self, **kw) -> dict:
+        self.created_with = kw
+        return {"data": {"id": self._new_dataset_id}}
 
 
 @pytest.mark.asyncio(loop_scope="session")
@@ -177,11 +199,17 @@ async def test_index_translation_idempotent_rerun(_engine, tmp_path):
 
 
 @pytest.mark.asyncio(loop_scope="session")
-async def test_index_translation_requires_dataset(_engine, tmp_path):
-    """KB 无 ragflow_dataset_id → 明确报错（worker 落 failed，不静默假交付）。"""
+async def test_index_translation_self_heals_missing_dataset(_engine, tmp_path):
+    """C1: KB 无 ragflow_dataset_id → ensure_dataset 自动重建并回写落库（原硬报错已废除）。"""
     async with get_session_factory()() as db:
         owner = (await db.execute(select(User.id).limit(1))).scalar()
-        kb = KnowledgeBase(name=f"tlt-bridge-{uuid.uuid4().hex[:8]}", owner_id=owner, kb_type="ragflow")
+        kb = KnowledgeBase(
+            name=f"tlt-bridge-{uuid.uuid4().hex[:8]}",
+            owner_id=owner,
+            kb_type="ragflow",
+            embedding_model="bge-m3",
+            chunk_method="naive",
+        )
         db.add(kb)
         await db.commit()
         await db.refresh(kb)
@@ -191,8 +219,11 @@ async def test_index_translation_requires_dataset(_engine, tmp_path):
         await db.refresh(task)
         kb_id = kb.id
         try:
-            with pytest.raises(RuntimeError, match="ragflow_dataset_id"):
-                await index_translation(task, [], [], client=FakeClient(), storage=FakeStorage())
+            client = _HealingFakeClient(new_dataset_id="ds-healed")
+            await index_translation(task, [{"id": "b0001", "type": "paragraph", "text": "x", "meta": {}}], [], client=client, storage=FakeStorage())
+            assert client.created_with["name"] == kb.name
+            await db.refresh(kb)
+            assert kb.ragflow_dataset_id == "ds-healed"  # 回写落库
         finally:
             await _cleanup(db, kb_id)
 
@@ -201,3 +232,74 @@ async def _cleanup(db, kb_id):
     await db.execute(delete(TranslationTask).where(TranslationTask.kb_id == kb_id))
     await db.execute(delete(KnowledgeBase).where(KnowledgeBase.id == kb_id))
     await db.commit()
+
+
+class _FakeClientForEnsure:
+    """ensure_dataset 的最小 fake：可控 dataset 是否存在/创建结果。"""
+
+    def __init__(self, exists: bool, new_id: str = "new-ds-1"):
+        self._exists = exists
+        self._new_id = new_id
+        self.created_with: dict | None = None
+
+    async def get_dataset(self, dataset_id: str) -> dict:
+        if not self._exists:
+            return {"code": 102, "message": "Can't find the dataset"}
+        return {"code": 0, "data": {"id": dataset_id}}
+
+    async def list_available_embedding_models(self) -> list[str]:
+        return ["bge-m3"]
+
+    async def create_dataset(self, **kw) -> dict:
+        self.created_with = kw
+        return {"data": {"id": self._new_id}}
+
+
+class TestDatasetEnsure:
+    def _kb(self, dataset_id: str | None) -> KnowledgeBase:
+        return KnowledgeBase(
+            name="tlt-ensure-kb",
+            owner_id=uuid.uuid4(),
+            kb_type="ragflow",
+            embedding_model="bge-m3",
+            chunk_method="naive",
+            ragflow_dataset_id=dataset_id,
+        )
+
+    @pytest.mark.asyncio
+    async def test_ready_dataset_passthrough(self):
+        from app.extensions.translation.ragflow_bridge import ensure_dataset
+
+        client = _FakeClientForEnsure(exists=True)
+        kb = self._kb("ds-live")
+        assert await ensure_dataset(kb, client=client) == "ds-live"
+        assert client.created_with is None  # 未触发重建
+
+    @pytest.mark.asyncio
+    async def test_dangling_dataset_rebuilt_and_written_back(self):
+        from app.extensions.translation.ragflow_bridge import ensure_dataset
+
+        client = _FakeClientForEnsure(exists=False, new_id="ds-new")
+        kb = self._kb("ds-dead")
+        assert await ensure_dataset(kb, client=client) == "ds-new"
+        assert kb.ragflow_dataset_id == "ds-new"  # 回写
+        assert client.created_with["name"] == "tlt-ensure-kb"
+        assert client.created_with["embedding_model"] == "bge-m3"
+
+    @pytest.mark.asyncio
+    async def test_missing_dataset_id_creates_one(self):
+        from app.extensions.translation.ragflow_bridge import ensure_dataset
+
+        client = _FakeClientForEnsure(exists=False, new_id="ds-fresh")
+        kb = self._kb(None)
+        assert await ensure_dataset(kb, client=client) == "ds-fresh"
+
+    @pytest.mark.asyncio
+    async def test_embed_model_autoselected_when_kb_has_none(self):
+        from app.extensions.translation.ragflow_bridge import ensure_dataset
+
+        client = _FakeClientForEnsure(exists=False, new_id="ds-auto")
+        kb = self._kb("ds-dead")
+        kb.embedding_model = None
+        await ensure_dataset(kb, client=client)
+        assert client.created_with["embedding_model"] == "bge-m3"
