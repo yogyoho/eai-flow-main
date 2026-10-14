@@ -303,3 +303,65 @@ class TestDatasetEnsure:
         kb.embedding_model = None
         await ensure_dataset(kb, client=client)
         assert client.created_with["embedding_model"] == "bge-m3"
+
+
+class _FakeClientForOriginal:
+    """index_original 的最小 fake。"""
+
+    def __init__(self, existing_docs: list[dict] | None = None):
+        self._existing = existing_docs or []
+        self.uploaded: list[tuple[str, str]] = []
+        self.metadatas: list[dict] = []
+
+    async def list_documents(self, dataset_id: str, metadata_condition: dict | None = None, **kw) -> dict:
+        name = metadata_condition["conditions"][0]["value"]
+        docs = [d for d in self._existing if d.get("tlt_source_sha256") == name]
+        return {"data": {"docs": [{"id": d["id"]} for d in docs]}}
+
+    async def upload_document(self, dataset_id: str, file_path: str, file_name: str = None, parser_id: str = None, **kw) -> dict:
+        self.uploaded.append((file_name, parser_id or ""))
+        return {"data": {"id": f"doc-{len(self.uploaded)}"}}
+
+    async def update_document_metadata(self, dataset_id: str, doc_id: str, metadata: dict) -> dict:
+        self.metadatas.append(metadata)
+        return {}
+
+    async def get_dataset(self, dataset_id: str) -> dict:
+        return {"code": 0, "data": {"id": dataset_id}}
+
+
+class TestIndexOriginal:
+    def _task(self) -> TranslationTask:
+        return TranslationTask(
+            kb_id=uuid.uuid4(),
+            doc_sha="b" * 64,
+            source_uri="/data/report.docx",
+            source_lang="mixed",
+            state="stored",
+        )
+
+    @pytest.mark.asyncio
+    async def test_uploads_original_with_sha_metadata(self, tmp_path):
+        from app.extensions.translation.ragflow_bridge import index_original
+
+        dest = tmp_path / "report.docx"
+        dest.write_bytes(b"PK\x03\x04stub")
+        client = _FakeClientForOriginal()
+        kb = KnowledgeBase(id=uuid.uuid4(), name="kb", owner_id=uuid.uuid4(), kb_type="ragflow", embedding_model="bge-m3", chunk_method="naive", ragflow_dataset_id="ds-1")
+        task = self._task()
+        doc_id = await index_original(task, dest, kb=kb, client=client)
+        assert doc_id == "doc-1"
+        assert client.uploaded[0][0] == "report.docx"
+        assert client.metadatas[0] == {"tlt_source_sha256": "b" * 64, "tlt_source_lang": "mixed"}
+
+    @pytest.mark.asyncio
+    async def test_sha_idempotent_skip(self, tmp_path):
+        from app.extensions.translation.ragflow_bridge import index_original
+
+        dest = tmp_path / "report.docx"
+        dest.write_bytes(b"PK\x03\x04stub")
+        client = _FakeClientForOriginal(existing_docs=[{"id": "doc-exists", "tlt_source_sha256": "b" * 64}])
+        kb = KnowledgeBase(id=uuid.uuid4(), name="kb", owner_id=uuid.uuid4(), kb_type="ragflow", embedding_model="bge-m3", chunk_method="naive", ragflow_dataset_id="ds-1")
+        doc_id = await index_original(self._task(), dest, kb=kb, client=client)
+        assert doc_id == "doc-exists"
+        assert client.uploaded == []  # 未重复上传

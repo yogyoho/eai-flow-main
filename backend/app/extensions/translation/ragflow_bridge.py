@@ -117,13 +117,40 @@ async def ensure_dataset(kb: KnowledgeBase, *, client: RAGFlowClient | None = No
     return dataset_id
 
 
-async def _find_existing_zh_doc(client: RAGFlowClient, dataset_id: str, task_id: str) -> str | None:
-    """按 tlt_task_id 元数据精确去重（worker 退避重跑不重复建文档）。"""
+async def index_original(
+    task: TranslationTask,
+    dest: Path,
+    *,
+    kb: KnowledgeBase,
+    client: RAGFlowClient | None = None,
+) -> str | None:
+    """原文直传 RAGFlow（B1，tlt_source_sha256 幂等）。
+
+    返回 doc_id（已存在则返回既有 id）；RAGFlow 侧异常向上抛——**降级是调用方职责**
+    （upload_assets/backfill 捕获后 warning 继续，翻译链路不依赖 RAGFlow 原文）。
+    """
+    client = client or RAGFlowClient()
+    dataset_id = await ensure_dataset(kb, client=client)
+    existing = await _find_doc_by_meta(client, dataset_id, "tlt_source_sha256", task.doc_sha)
+    if existing:
+        return existing
+    parser_id = DocumentService._CHUNK_METHOD_TO_PARSER.get(kb.chunk_method or "", "naive")
+    rf = await client.upload_document(dataset_id, str(dest), file_name=dest.name, parser_id=parser_id or None)
+    doc_id = (rf.get("data") or {}).get("id")
+    if not doc_id:
+        raise RuntimeError(f"ragflow upload returned no document id: {str(rf)[:200]}")
+    await client.update_document_metadata(dataset_id, doc_id, {"tlt_source_sha256": task.doc_sha, "tlt_source_lang": task.source_lang})
+    logger.info("tlt original indexed: task %s sha=%s -> doc %s (dataset %s)", task.id, task.doc_sha[:8], doc_id, dataset_id)
+    return doc_id
+
+
+async def _find_doc_by_meta(client: RAGFlowClient, dataset_id: str, meta_name: str, meta_value: str) -> str | None:
+    """按单个元数据键精确查重，返回 doc_id 或 None。"""
     result = await client.list_documents(
         dataset_id,
         metadata_condition={
             "logic": "and",
-            "conditions": [{"name": "tlt_task_id", "comparison_operator": "=", "value": task_id}],
+            "conditions": [{"name": meta_name, "comparison_operator": "=", "value": meta_value}],
         },
     )
     docs = (result.get("data") or {}).get("docs") or (result.get("data") or [])
@@ -131,6 +158,11 @@ async def _find_existing_zh_doc(client: RAGFlowClient, dataset_id: str, task_id:
         first = docs[0]
         return first.get("id") if isinstance(first, dict) else None
     return None
+
+
+async def _find_existing_zh_doc(client: RAGFlowClient, dataset_id: str, task_id: str) -> str | None:
+    """按 tlt_task_id 元数据精确去重（worker 退避重跑不重复建文档）。"""
+    return await _find_doc_by_meta(client, dataset_id, "tlt_task_id", task_id)
 
 
 async def _set_deliverable(task_id: str, deliverable_uri: str, ragflow_doc_id: str) -> None:
