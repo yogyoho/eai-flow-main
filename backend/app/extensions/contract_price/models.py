@@ -131,3 +131,32 @@ class CpaRunHistory(Base):
     error: Mapped[str | None] = mapped_column(Text)
     started_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     finished_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+
+# EAI-CUSTOM (cpa v3 文件库, spec 2026-10-14 §1.2): 合同档案库虚拟文件夹树 + 文件行。
+# 仅管理端消费——skill 管线不读这两张表（管线只扫 MinIO library/ 之外的扫描区），
+# 因此 skill 侧 models.py 不做镜像，parity 测试的 _TABLES 白名单也不受影响。
+class CpaLibraryFolder(Base):
+    """合同文件库文件夹（自由树；物理文件在 MinIO cpa-contracts 桶 library/ 前缀）。"""
+
+    __tablename__ = "cpa_library_folders"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    parent_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("cpa_library_folders.id"), nullable=True)
+    name: Mapped[str] = mapped_column(String(255), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
+class CpaLibraryFile(Base):
+    """合同文件库文件行。folder_id=None 表示虚拟根「文件库」下的文件。"""
+
+    __tablename__ = "cpa_library_files"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    folder_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("cpa_library_folders.id"), nullable=True, index=True)
+    file_name: Mapped[str] = mapped_column(String(300), nullable=False)
+    storage_key: Mapped[str] = mapped_column(String(512), nullable=False, unique=True)
+    file_hash: Mapped[str] = mapped_column(String(128), nullable=False, index=True)  # SHA-256
+    file_size: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    file_type: Mapped[str] = mapped_column(String(20), nullable=False, default="pdf")
+    uploaded_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
