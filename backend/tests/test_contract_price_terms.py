@@ -30,7 +30,7 @@ def test_union_aliases_dedupes_normalized():
     assert out == ["锚杆Φ22", "树脂锚杆", "玻璃钢锚杆"]  # 归一化重复与空名剔除,新名追加
 
 
-def test_capture_creates_auto_merge_term(monkeypatch):
+def test_capture_creates_auto_merge_term():
     added = {}
     committed = []
 
@@ -63,7 +63,7 @@ def test_capture_creates_auto_merge_term(monkeypatch):
     assert len(committed) == 1
 
 
-def test_capture_merges_into_existing_term_keeps_source(monkeypatch):
+def test_capture_merges_into_existing_term_keeps_source():
     existing = SimpleNamespace(id=uuid4(), canonical="锚杆", aliases=["旧别名"], enabled=False, source="manual")
 
     class _First:
@@ -88,3 +88,64 @@ def test_capture_merges_into_existing_term_keeps_source(monkeypatch):
     asyncio.run(cpa_crud._capture_merge_pin(_Session(), SimpleNamespace(id=uuid4()), "锚杆"))
     assert existing.aliases == ["旧别名", "锚杆Φ22"]  # 只并别名
     assert existing.source == "manual" and existing.enabled is False  # 不降级不改启停
+
+
+def test_capture_noop_when_aliases_already_covered():
+    committed = []
+    existing = SimpleNamespace(id=uuid4(), canonical="锚杆", aliases=["锚杆Φ22", "树脂锚杆"], enabled=True, source="auto_merge")
+
+    class _First:
+        def scalars(self):
+            return SimpleNamespace(all=lambda: ["锚杆Φ22"])  # 新别名已被既有术语覆盖
+
+    class _Second:
+        def scalars(self):
+            return SimpleNamespace(all=lambda: [existing])
+
+    class _Session:
+        def __init__(self):
+            self.calls = 0
+
+        async def execute(self, stmt):
+            self.calls += 1
+            return _First() if self.calls == 1 else _Second()
+
+        async def commit(self):
+            committed.append(1)
+
+    asyncio.run(cpa_crud._capture_merge_pin(_Session(), SimpleNamespace(id=uuid4()), "锚杆"))
+    assert committed == []  # 无变化不 commit（commit-only-on-change）
+    assert existing.aliases == ["锚杆Φ22", "树脂锚杆"]  # aliases 不变
+
+
+def test_capture_swallows_commit_failure_and_rolls_back():
+    rolled_back = []
+
+    class _Names:
+        def scalars(self):
+            return SimpleNamespace(all=lambda: ["锚杆Φ22"])
+
+    class _Terms:
+        def scalars(self):
+            return SimpleNamespace(all=lambda: [])
+
+    class _Session:
+        def __init__(self):
+            self.calls = 0
+
+        async def execute(self, stmt):
+            self.calls += 1
+            return _Names() if self.calls == 1 else _Terms()
+
+        def add(self, row):
+            pass
+
+        async def commit(self):
+            raise RuntimeError("flush failed")
+
+        async def rollback(self):
+            rolled_back.append(1)
+
+    # 不上抛——捕获失败只记日志,不影响合并主流程
+    asyncio.run(cpa_crud._capture_merge_pin(_Session(), SimpleNamespace(id=uuid4()), "锚杆"))
+    assert rolled_back == [1]  # 失败路径回滚,不留 PendingRollback 态

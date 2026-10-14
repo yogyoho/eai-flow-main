@@ -453,6 +453,10 @@ async def _capture_merge_pin(session: AsyncSession, cluster: CpaCluster, represe
             )
             await session.commit()
     except Exception:  # noqa: BLE001 — 术语捕获失败不影响合并主流程
+        # I1: commit flush 失败（如 canonical 超 300 字符 → DataError）会把会话留在
+        # PendingRollbackError 态,merge_clusters 正常返回后下一个操作 500。rollback 只
+        # 丢弃 capture 自己的事务——merge 本体已在上方先行提交,安全。
+        await session.rollback()
         import logging
 
         logging.getLogger(__name__).warning("merge term capture failed for %s", representative_name, exc_info=True)
@@ -1354,7 +1358,7 @@ def normalize_term(name: str) -> str:
 
 
 def union_aliases(old: list, new_names: set) -> list:
-    """既有别名 ∪ 新别名（归一化去重后按原序返回;新名保序追加）。纯函数。"""
+    """既有别名 ∪ 新别名（归一化去重后按原序返回;新名按字典序追加）。纯函数。"""
     seen = {normalize_term(a) for a in (old or []) if normalize_term(a)}
     out = [a for a in (old or []) if normalize_term(a)]
     for n in sorted(new_names):
