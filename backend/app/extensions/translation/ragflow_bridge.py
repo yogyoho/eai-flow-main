@@ -140,6 +140,7 @@ async def index_original(
     if not doc_id:
         raise RuntimeError(f"ragflow upload returned no document id: {str(rf)[:200]}")
     await client.update_document_metadata(dataset_id, doc_id, {"tlt_source_sha256": task.doc_sha, "tlt_source_lang": task.source_lang})
+    await client.parse_document(dataset_id, doc_id)  # C-1: RAGFlow 不自动 chunk，缺此调用原文永不被检索
     logger.info("tlt original indexed: task %s sha=%s -> doc %s (dataset %s)", task.id, task.doc_sha[:8], doc_id, dataset_id)
     return doc_id
 

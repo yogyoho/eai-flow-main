@@ -44,9 +44,7 @@ async def test_translation_enabled_exclusive(_engine):
             kb_b = KnowledgeBase(name=f"kb-mut-b-{uuid.uuid4().hex[:6]}", owner_id=owner, kb_type="ragflow")
             db.add(kb_b)
             await db.commit()
-            await KnowledgeBaseService.update_kb(
-                db, kb_b, KnowledgeBaseUpdate(translation_enabled=True)
-            )
+            await KnowledgeBaseService.update_kb(db, kb_b, KnowledgeBaseUpdate(translation_enabled=True))
             await db.refresh(kb_a)
             assert kb_b.translation_enabled is True
             assert kb_a.translation_enabled is False  # 互斥生效
@@ -86,8 +84,7 @@ async def test_asset_kb_status_three_states(_engine, monkeypatch):
         await db.commit()
         assert (await asset_kb_status(current_user=user, db=db))["state"] == "unbound"
         # dangling：库开着但 dataset 没了
-        kb = KnowledgeBase(name=f"kb-st-{uuid.uuid4().hex[:6]}", owner_id=owner, kb_type="ragflow",
-                           ragflow_dataset_id="ds-gone", translation_enabled=True)
+        kb = KnowledgeBase(name=f"kb-st-{uuid.uuid4().hex[:6]}", owner_id=owner, kb_type="ragflow", ragflow_dataset_id="ds-gone", translation_enabled=True)
         db.add(kb)
         await db.commit()
         _StatusClient.exists = False
@@ -98,6 +95,7 @@ async def test_asset_kb_status_three_states(_engine, monkeypatch):
         st = await asset_kb_status(current_user=user, db=db)
         assert st["state"] == "ready" and st["source_count"] == 0 and st["zh_count"] == 0
         await db.execute(sql_update(KnowledgeBase).where(KnowledgeBase.id == kb.id).values(translation_enabled=False))
+        await db.execute(delete(KnowledgeBase).where(KnowledgeBase.id == kb.id))  # I-2: 不留 kb-st-* 残行
         await db.commit()
 
 
@@ -109,8 +107,7 @@ async def test_asset_kb_initialize_dangling_repairs(_engine, monkeypatch):
     _StatusClient.exists = False
     async with get_session_factory()() as db:
         owner = (await db.execute(select(User.id).limit(1))).scalar()
-        kb = KnowledgeBase(name=f"kb-init-{uuid.uuid4().hex[:6]}", owner_id=owner, kb_type="ragflow",
-                           ragflow_dataset_id="ds-gone", translation_enabled=True)
+        kb = KnowledgeBase(name=f"kb-init-{uuid.uuid4().hex[:6]}", owner_id=owner, kb_type="ragflow", ragflow_dataset_id="ds-gone", translation_enabled=True)
         db.add(kb)
         await db.commit()
         try:
@@ -132,8 +129,7 @@ async def test_backfill_indexes_missing_source(_engine, monkeypatch, tmp_path):
     monkeypatch.setattr(routers, "RAGFlowClient", _FakeUploadClient)
     async with get_session_factory()() as db:
         owner = (await db.execute(select(User.id).limit(1))).scalar()
-        kb = KnowledgeBase(name=f"kb-bf-{uuid.uuid4().hex[:6]}", owner_id=owner, kb_type="ragflow",
-                           ragflow_dataset_id="ds-bf", translation_enabled=True)
+        kb = KnowledgeBase(name=f"kb-bf-{uuid.uuid4().hex[:6]}", owner_id=owner, kb_type="ragflow", ragflow_dataset_id="ds-bf", translation_enabled=True)
         db.add(kb)
         await db.commit()
         src = tmp_path / "bf.docx"
@@ -148,6 +144,8 @@ async def test_backfill_indexes_missing_source(_engine, monkeypatch, tmp_path):
             await db.refresh(task)
             assert task.ragflow_source_doc_id is not None
         finally:
+            # I-1: 端点全表扫描会把 fake id 写到真实残行上——finally 精确回滚（该 id 仅 fake 会产生）
+            await db.execute(text("UPDATE tlt_translation_tasks SET ragflow_source_doc_id=NULL WHERE ragflow_source_doc_id='doc-original-1'"))
             await db.execute(delete(TranslationTask).where(TranslationTask.id == task.id))
             await db.execute(sql_update(KnowledgeBase).where(KnowledgeBase.id == kb.id).values(translation_enabled=False))
             await db.execute(delete(KnowledgeBase).where(KnowledgeBase.id == kb.id))

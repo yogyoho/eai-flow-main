@@ -52,6 +52,9 @@ class _FakeUploadClient:
     async def update_document_metadata(self, dataset_id: str, doc_id: str, metadata: dict) -> dict:
         return {}
 
+    async def parse_document(self, dataset_id: str, doc_id: str) -> dict:
+        return {}
+
 
 @pytest.mark.asyncio(loop_scope="session")
 async def test_upload_indexes_original_and_fails_open(_engine, monkeypatch):

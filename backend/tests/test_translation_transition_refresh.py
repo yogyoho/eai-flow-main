@@ -56,9 +56,7 @@ async def test_transition_failed_to_pending_returns_serialized_task(_engine, mon
         await db.commit()
         task_id, kb_id = task.id, kb.id
         try:
-            resp = await transition_task(
-                task_id, TransitionRequest(target="pending"), SimpleNamespace(id=owner), db
-            )
+            resp = await transition_task(task_id, TransitionRequest(target="pending"), SimpleNamespace(id=owner), db)
             assert resp["state"] == "pending"
             # 修复点：服务端 onupdate 过期属性经 refresh 重载，序列化出非空时间戳
             assert resp["updated_at"] is not None

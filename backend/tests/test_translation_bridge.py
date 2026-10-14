@@ -326,6 +326,11 @@ class _FakeClientForOriginal:
         self.metadatas.append(metadata)
         return {}
 
+    async def parse_document(self, dataset_id: str, doc_id: str) -> dict:
+        self.parsed: list[str] = getattr(self, "parsed", [])
+        self.parsed.append(doc_id)
+        return {}
+
     async def get_dataset(self, dataset_id: str) -> dict:
         return {"code": 0, "data": {"id": dataset_id}}
 
@@ -353,6 +358,7 @@ class TestIndexOriginal:
         assert doc_id == "doc-1"
         assert client.uploaded[0][0] == "report.docx"
         assert client.metadatas[0] == {"tlt_source_sha256": "b" * 64, "tlt_source_lang": "mixed"}
+        assert client.parsed == ["doc-1"]  # C-1: 原文必须触发 parse，否则永不被检索
 
     @pytest.mark.asyncio
     async def test_sha_idempotent_skip(self, tmp_path):
