@@ -119,17 +119,19 @@ async def delete_library_folder_endpoint(
         raise HTTPException(status_code=409, detail="文件夹非空（含子文件夹或文件），请先移走内容")
 
 
-@router.get("/library/files", response_model=list[LibraryFileOut])
+@router.get("/library/files")
 async def list_library_files_endpoint(
     folder_id: str | None = Query(None, description="空/root=根;否则文件夹 UUID"),
     db: AsyncSession = Depends(get_db),
     _: CurrentUser = Depends(require_permission("system:access")),
 ):
+    # EAI-CUSTOM (bug-3306): 返回 {"items":[...]}——与 /library/folders 端点形状一致。
+    # 曾返回裸数组而前端按 {items} 解析 → LibraryView 全列表静默空 + 统计行 TypeError。
     try:
         fid = None if folder_id in (None, "", "root") else UUID(folder_id)
     except ValueError:
         raise HTTPException(status_code=422, detail="folder_id 需为 UUID")
-    return await crud.list_library_files(db, fid)
+    return {"items": await crud.list_library_files(db, fid)}
 
 
 @router.post("/library/files/upload")

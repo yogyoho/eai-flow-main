@@ -357,3 +357,14 @@ def test_upload_bad_folder_id_422():
     with pytest.raises(HTTPException) as ei:
         asyncio.run(upload_library_files(folder_id="nope", files=[], db=_DB(), _=None))
     assert ei.value.status_code == 422
+
+
+def test_list_files_wraps_items(monkeypatch):
+    """bug-3306 回归: 端点必须返回 {"items":[...]}（与 /library/folders 形状一致）。
+    曾返回裸数组而前端按 {items} 解析 → LibraryView 静默空列表 + 统计行 TypeError。"""
+    from app.extensions.contract_price.routers import list_library_files_endpoint
+
+    monkeypatch.setattr(cpa_crud, "list_library_files", _async_returning([_lf()]))
+    out = asyncio.run(list_library_files_endpoint(folder_id=None, db=_DB(), _=None))
+    assert set(out.keys()) == {"items"}
+    assert len(out["items"]) == 1
