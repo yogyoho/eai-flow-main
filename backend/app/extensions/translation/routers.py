@@ -23,6 +23,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.extensions.auth.admin import is_superadmin
 from app.extensions.auth.middleware import require_permission
 from app.extensions.database import get_db
+from app.extensions.knowledge.client import RAGFlowClient
 from app.extensions.models import KnowledgeBase
 from app.extensions.translation.models import (
     STATES,
@@ -31,6 +32,7 @@ from app.extensions.translation.models import (
     TranslationTask,
     validate_transition,
 )
+from app.extensions.translation.ragflow_bridge import ensure_dataset, index_original
 
 logger = logging.getLogger(__name__)
 
@@ -376,6 +378,16 @@ async def upload_assets(
     if folder_id is not None and await db.get(TltFolder, folder_id) is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="目标文件夹不存在")
 
+    # B1: dataset 就绪探活 + 悬空自愈；RAGFlow 不可用不阻断上传（D2 失败开放）
+    rf_client = RAGFlowClient()
+    dataset_ready = True
+    try:
+        await ensure_dataset(kb, client=rf_client)
+        await db.commit()  # ensure_dataset 可能自愈回写 kb.ragflow_dataset_id
+    except Exception:
+        dataset_ready = False
+        logger.warning("tlt upload: ragflow unavailable, originals not indexed this batch", exc_info=True)
+
     from app.extensions.config import get_extensions_config
 
     upload_dir = Path(get_extensions_config().storage.base_path) / "translation" / uuid.uuid4().hex[:8]
@@ -433,6 +445,11 @@ async def upload_assets(
             state="stored",
             folder_id=folder_id,
         )
+        if dataset_ready:
+            try:
+                task.ragflow_source_doc_id = await index_original(task, dest, kb=kb, client=rf_client)
+            except Exception:
+                logger.warning("tlt upload: original index failed for %s (fail-open)", name, exc_info=True)
         db.add(task)
         await db.flush()
         results.append({"task_id": str(task.id), "file": name, "reused": False})
