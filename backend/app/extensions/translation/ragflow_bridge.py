@@ -6,7 +6,7 @@
      ``DocumentService._CHUNK_METHOD_TO_PARSER`` 映射——SC-1/learning
      kb-chunk-method-dual-enum），带 (task_id, source sha, lang) 元数据血统；
      chunk 级溯源由 chunk→document→meta→原件链承载（v1 文档级，样例闸后细化）
-  3) FR 双份索引 = 原文在 knowledge 上传链已入库 + 本桥追加中文版（前提 3）
+  3) FR 双份索引 = 原文经 index_original 入库（B1）+ 本桥追加中文版（前提 3）
   4) 幂等：按 tlt_task_id 元数据去重，重跑不重复建文档
 """
 

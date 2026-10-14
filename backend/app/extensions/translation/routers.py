@@ -58,6 +58,7 @@ class TaskOut(BaseModel):
     folder_id: UUID | None
     deliverable_uri: str | None
     ragflow_zh_doc_id: str | None
+    ragflow_source_doc_id: str | None
     file_name: str
     size_bytes: int | None
     created_at: str | None
@@ -92,6 +93,7 @@ class TaskOut(BaseModel):
             folder_id=t.folder_id,
             deliverable_uri=t.deliverable_uri,
             ragflow_zh_doc_id=t.ragflow_zh_doc_id,
+            ragflow_source_doc_id=t.ragflow_source_doc_id,
             file_name=Path(t.source_uri or "").name or "(未命名)",
             size_bytes=size,
             created_at=t.created_at.isoformat() if t.created_at else None,

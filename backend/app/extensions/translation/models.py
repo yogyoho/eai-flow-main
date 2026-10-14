@@ -115,6 +115,7 @@ class TranslationTask(Base):
     # T6 交付物（delivered 分界事件的物证：MinIO uri + RAGFlow 中文版文档 id）
     deliverable_uri: Mapped[str | None] = mapped_column(String(512), nullable=True)
     ragflow_zh_doc_id: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    ragflow_source_doc_id: Mapped[str | None] = mapped_column(String(100), nullable=True)  # B1 原文入库 doc id（R3-3 删除级联钩子）
     # 资产库文件夹归属（NULL=根；T7 资产库页）
     folder_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("tlt_folders.id"), nullable=True)
     created_at: Mapped[object] = mapped_column(DateTime, nullable=False, default=func.now())

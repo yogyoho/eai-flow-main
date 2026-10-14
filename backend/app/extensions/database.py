@@ -940,6 +940,8 @@ async def migrate_db() -> None:
         # EAI-CUSTOM (translation T6): 交付物物证列(create_all 不 ALTER 已有表,幂等补列)
         await conn.execute(text("ALTER TABLE tlt_translation_tasks ADD COLUMN IF NOT EXISTS deliverable_uri VARCHAR(512)"))
         await conn.execute(text("ALTER TABLE tlt_translation_tasks ADD COLUMN IF NOT EXISTS ragflow_zh_doc_id VARCHAR(100)"))
+        # EAI-CUSTOM (tlt): 原文入库 doc id（create_all 不改已存在表，必须显式 ALTER）
+        await conn.execute(text("ALTER TABLE tlt_translation_tasks ADD COLUMN IF NOT EXISTS ragflow_source_doc_id VARCHAR(100)"))
         # EAI-CUSTOM (translation 资产库): 文件夹归属列(幂等补列;tlt_folders 表由 create_all 承接)
         await conn.execute(text("ALTER TABLE tlt_translation_tasks ADD COLUMN IF NOT EXISTS folder_id UUID REFERENCES tlt_folders(id)"))
         # EAI-CUSTOM (bug-1791807358242): KB 子表 FK 改 ON DELETE CASCADE——delete_kb 只清 documents,
