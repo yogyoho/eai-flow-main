@@ -108,6 +108,58 @@ def _load_merge_pins() -> list[dict]:
         return []
 
 
+def _merge_pins(terms: list[dict], legacy: list[dict]) -> list[dict]:
+    """术语 ∪ 旧先验（EAI-CUSTOM cpa v3 §2.3）。归一化去空白比对全部名
+    （canonical+aliases）;撞车的 legacy 条目丢弃——术语表是更权威的人工版本。
+    纯函数;归一化口径与引擎 _apply_merge_pins 一致。"""
+    import re
+
+    def norm_set(pin: dict) -> set:
+        return {
+            re.sub(r"\s+", "", str(n or ""))
+            for n in [pin.get("name"), *(pin.get("aliases") or [])]
+        } - {""}
+
+    out = [dict(t) for t in (terms or []) if isinstance(t, dict)]
+    covered: set = set()
+    for t in out:
+        covered |= norm_set(t)
+    for p in legacy or []:
+        if not isinstance(p, dict):
+            continue
+        if norm_set(p) & covered:
+            continue
+        covered |= norm_set(p)
+        out.append(dict(p))
+    return out
+
+
+async def _load_terms_pins() -> list[dict]:
+    """读启用术语为 pins（裸 SQL——cpa_terms 仅后端建 ORM,skill 侧不镜像）。
+
+    无参自开 session（调用点在 async with 块外,NEEDS_CONTEXT 裁定 2026-10-14）;
+    读取失败 → []（与 _load_merge_pins「退化纯算法」语义一致）。"""
+    from sqlalchemy import text
+
+    from scripts.db import async_session
+
+    try:
+        async with async_session() as session:
+            rows = (
+                await session.execute(
+                    text("SELECT canonical, aliases FROM cpa_terms WHERE enabled = TRUE")
+                )
+            ).all()
+        return [
+            {"name": r.canonical, "aliases": list(r.aliases or [])}
+            for r in rows
+            if str(r.canonical or "").strip()
+        ]
+    except Exception:  # noqa: BLE001 — 术语读取失败退化为纯算法聚类
+        logger.warning("load terms pins failed; clustering degrades to pure algorithm", exc_info=True)
+        return []
+
+
 async def _extract_project_fields_with_fallback(
     file_bytes: bytes | None,
     key: str,
@@ -2781,7 +2833,7 @@ async def run_cluster(trigger: str = "manual") -> int:
                 min_samples=cfg.cluster_min_samples,
                 use_spec=cfg.cluster_by_spec,
                 use_category=cfg.cluster_by_category,
-                merge_pins=_load_merge_pins(),
+                merge_pins=_merge_pins(await _load_terms_pins(), _load_merge_pins()),
             )
             groups = _build_groups_db(result, db_items)
     except Exception as exc:
