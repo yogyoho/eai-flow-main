@@ -25,6 +25,7 @@ from app.extensions.auth.middleware import require_permission
 from app.extensions.database import get_db
 from app.extensions.knowledge.client import RAGFlowClient
 from app.extensions.models import KnowledgeBase
+from app.extensions.schemas import KnowledgeBaseCreate, KnowledgeBaseUpdate
 from app.extensions.translation.models import (
     STATES,
     TERMINAL_STATES,
@@ -32,7 +33,7 @@ from app.extensions.translation.models import (
     TranslationTask,
     validate_transition,
 )
-from app.extensions.translation.ragflow_bridge import ensure_dataset, index_original
+from app.extensions.translation.ragflow_bridge import _dataset_exists, ensure_dataset, index_original
 
 logger = logging.getLogger(__name__)
 
@@ -600,3 +601,87 @@ async def put_glossary_entries(
     _write_glossary_yaml(_glossary_yaml_path(), body.entries)
     entries = _read_glossary_entries(_glossary_yaml_path())
     return {"entries": [e.model_dump() for e in entries], "count": len(entries)}
+
+
+# ── 检索知识库（B3）：状态探测与初始化/修复 ───────────────────────────
+
+
+async def _require_superadmin(db: AsyncSession, current_user) -> None:
+    if not await is_superadmin(db, current_user.id):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="仅超级管理员可管理检索知识库")
+
+
+async def _asset_kb(db: AsyncSession) -> KnowledgeBase | None:
+    return (
+        await db.execute(
+            select(KnowledgeBase)
+            .where(KnowledgeBase.translation_enabled.is_(True))
+            .order_by(KnowledgeBase.created_at.asc())
+            .limit(1)
+        )
+    ).scalar()
+
+
+@router.get("/asset-kb/status")
+async def asset_kb_status(
+    current_user=Depends(require_permission("translation:read")),
+    db: AsyncSession = Depends(get_db),
+) -> dict:
+    """检索知识库状态：unbound（未初始化）/ dangling（关联失效）/ ready（就绪+计数）。
+
+    计数从任务表聚合（DB 口径），探测仅一次 get_dataset，零其他 RAGFlow 调用。
+    """
+    await _require_superadmin(db, current_user)
+    kb = await _asset_kb(db)
+    if kb is None:
+        return {"state": "unbound"}
+    if not kb.ragflow_dataset_id or not await _dataset_exists(RAGFlowClient(), kb.ragflow_dataset_id):
+        return {"state": "dangling", "kb_name": kb.name, "dataset_id": kb.ragflow_dataset_id}
+    source_count = (
+        await db.execute(
+            select(func.count())
+            .select_from(TranslationTask)
+            .where(TranslationTask.kb_id == kb.id, TranslationTask.ragflow_source_doc_id.is_not(None))
+        )
+    ).scalar() or 0
+    zh_count = (
+        await db.execute(
+            select(func.count())
+            .select_from(TranslationTask)
+            .where(
+                TranslationTask.kb_id == kb.id,
+                TranslationTask.state == "delivered",
+                TranslationTask.ragflow_zh_doc_id.is_not(None),
+            )
+        )
+    ).scalar() or 0
+    return {
+        "state": "ready",
+        "kb_name": kb.name,
+        "dataset_id": kb.ragflow_dataset_id,
+        "source_count": source_count,
+        "zh_count": zh_count,
+    }
+
+
+@router.post("/asset-kb/initialize")
+async def asset_kb_initialize(
+    current_user=Depends(require_permission("translation:transition")),
+    db: AsyncSession = Depends(get_db),
+) -> dict:
+    """初始化/修复（状态驱动同一入口）：unbound→建库绑 dataset；dangling→ensure_dataset 重建；ready→幂等 no-op。"""
+    await _require_superadmin(db, current_user)
+    client = RAGFlowClient()
+    kb = await _asset_kb(db)
+    if kb is None:
+        from app.extensions.knowledge.service import KnowledgeBaseService
+
+        kb = await KnowledgeBaseService.create_kb(
+            db, current_user.id, KnowledgeBaseCreate(name="翻译资产库", description="翻译工作台检索知识库（自动创建）")
+        )
+        await KnowledgeBaseService.update_kb(db, kb, KnowledgeBaseUpdate(translation_enabled=True))
+        await db.commit()
+    else:
+        await ensure_dataset(kb, client=client)
+        await db.commit()
+    return await asset_kb_status(current_user=current_user, db=db)
