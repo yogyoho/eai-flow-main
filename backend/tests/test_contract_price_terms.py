@@ -230,7 +230,9 @@ def test_list_terms_with_item_counts(monkeypatch):
 
 def test_update_term_enabled_only(monkeypatch):
     t = _term()
+    monkeypatch.setattr(cpa_crud, "get_term", _async_ret(t))
     monkeypatch.setattr(cpa_crud, "update_term", _async_ret(t))
+    monkeypatch.setattr(cpa_crud, "list_terms", _async_ret([t]))  # 撞车循环只见自身行,按 id 跳过
     out = asyncio.run(update_term_endpoint(t.id, _Body({"enabled": False}), db=_Db(), _=None))
     assert out.id == t.id  # 形状有值即可,禁用不触碰 canonical（端点返回 TermOut 模型,M1 同款属性访问）
 
@@ -240,3 +242,45 @@ def test_delete_term_missing_404(monkeypatch):
     with pytest.raises(HTTPException) as ei:
         asyncio.run(delete_term_endpoint(uuid4(), db=_Db(), _=None))
     assert ei.value.status_code == 404
+
+
+def test_update_term_collision_with_other_409(monkeypatch):
+    t = _term()
+    other = _term(id=uuid4(), canonical="U型卡", aliases=[])
+    calls = []
+
+    async def _no_update(*a, **kw):
+        calls.append(1)
+        return t
+
+    monkeypatch.setattr(cpa_crud, "get_term", _async_ret(t))
+    monkeypatch.setattr(cpa_crud, "update_term", _no_update)
+    monkeypatch.setattr(cpa_crud, "list_terms", _async_ret([t, other]))
+    with pytest.raises(HTTPException) as ei:
+        asyncio.run(update_term_endpoint(t.id, _Body({"canonical": "U型卡"}), db=_Db(), _=None))
+    assert ei.value.status_code == 409
+    assert calls == []  # 撞车即拒,全部校验通过后才落库
+
+
+def test_create_term_self_alias_conflict_422(monkeypatch):
+    monkeypatch.setattr(cpa_crud, "list_terms", _async_ret([]))
+    body = SimpleNamespace(canonical="锚杆", aliases=["锚  杆"])  # 归一化与 canonical 相同
+    with pytest.raises(HTTPException) as ei:
+        asyncio.run(create_term_endpoint(body, db=_Db(), _=None))
+    assert ei.value.status_code == 422  # 请求内自撞,先于对其它术语 409
+
+
+def test_create_term_dedupes_aliases(monkeypatch):
+    created = {}
+
+    async def _fake_create(db, canonical, aliases, source="manual"):
+        created["aliases"] = aliases
+        return SimpleNamespace(id=uuid4(), canonical=canonical, aliases=aliases, enabled=True, source=source)
+
+    monkeypatch.setattr(cpa_crud, "list_terms", _async_ret([]))
+    monkeypatch.setattr(cpa_crud, "create_term", _fake_create)
+    # 注: normalize_term 只去空白不改大小写（与引擎逐字同款），"X" 与 "x" 是不同键——
+    # 用 "X"/" x " 不构成归一化撞车;去重用例须选归一化同键的 ["X", " X "]。
+    out = asyncio.run(create_term_endpoint(SimpleNamespace(canonical="吊环", aliases=["X", " X "]), db=_Db(), _=None))
+    assert out.alias_count == 1  # 归一化去重后 alias_count 不虚高
+    assert created["aliases"] == ["X"]

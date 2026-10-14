@@ -372,6 +372,18 @@ async def create_term_endpoint(
     if not canonical:
         raise HTTPException(status_code=422, detail="规范名不能为空")
     aliases = [a.strip() for a in (body.aliases or []) if a.strip()]
+    # 归一化去重（保序;alias_count 不虚高）
+    seen: set = set()
+    deduped: list = []
+    for a in aliases:
+        k = crud.normalize_term(a)
+        if k and k not in seen:
+            seen.add(k)
+            deduped.append(a)
+    aliases = deduped
+    # 请求内自撞: 规范名 ∈ 自身归一化别名集 → 422（先自撞,再对其它术语 409）
+    if crud.normalize_term(canonical) in seen:
+        raise HTTPException(status_code=422, detail="规范名与自身别名冲突")
     # 归一化撞车防护: 与既有术语 canonical/别名冲突 → 409（同 M1 同级同名语义）
     # 评审注: list_terms 并发合并竞态下可能返回重复 canonical 行——任一行撞即 409,
     # 语义不变;去重属显示层职责,此处不处理。
@@ -399,10 +411,42 @@ async def update_term_endpoint(
     fields = body.model_dump(exclude_unset=True)
     if "canonical" in fields and not (fields["canonical"] or "").strip():
         raise HTTPException(status_code=422, detail="规范名不能为空")
-    if "aliases" in fields and fields["aliases"] is not None:
-        fields["aliases"] = [a.strip() for a in fields["aliases"] if a and a.strip()]
-    row = await crud.update_term(db, term_id, fields)
+    if "aliases" in fields:
+        # 显式 null 按 [] 处理并清洗
+        fields["aliases"] = [a.strip() for a in (fields["aliases"] or []) if a and a.strip()]
+    row = await crud.get_term(db, term_id)
     if row is None:
+        raise HTTPException(status_code=404, detail="术语不存在")
+    # 生效值 = 显式传入 ∪ 既有行（exclude_unset;PATCH 语义下无部分覆盖漏洞）
+    eff_canonical = (fields.get("canonical") or row.canonical).strip()
+    eff_aliases = fields.get("aliases", row.aliases or [])
+    # 自洽: 规范名 ∈ 自身归一化别名集 → 422（否则可绕过 POST 防护）
+    if crud.normalize_term(eff_canonical) in {crud.normalize_term(a) for a in eff_aliases}:
+        raise HTTPException(status_code=422, detail="规范名与自身别名冲突")
+    # 归一化去重（保序;alias_count 不虚高）——显式传入时回写
+    seen: set = set()
+    deduped: list = []
+    for a in eff_aliases:
+        k = crud.normalize_term(a)
+        if k and k not in seen:
+            seen.add(k)
+            deduped.append(a.strip())
+    if "aliases" in fields:
+        fields["aliases"] = deduped
+    if "canonical" in fields:
+        fields["canonical"] = eff_canonical
+    # 对其它术语撞车（排除自身 id）→ 409,同 POST 文案;任一行撞即 409（并发合并竞态下
+    # list_terms 可能返回重复 canonical 行,语义不变）
+    for t in await crud.list_terms(db):
+        if t.id == term_id:
+            continue
+        other_names = {crud.normalize_term(n) for n in [t.canonical, *(t.aliases or [])]}
+        if crud.normalize_term(eff_canonical) in other_names or (
+            other_names & {crud.normalize_term(a) for a in deduped}
+        ):
+            raise HTTPException(status_code=409, detail=f"与既有术语「{t.canonical}」名称冲突")
+    row = await crud.update_term(db, term_id, fields)
+    if row is None:  # get 与 update 之间的并发删除竞态兜底
         raise HTTPException(status_code=404, detail="术语不存在")
     return TermOut(
         id=row.id, canonical=row.canonical, aliases=row.aliases or [],

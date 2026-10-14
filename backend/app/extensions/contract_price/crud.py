@@ -1374,6 +1374,10 @@ async def list_terms(session: AsyncSession) -> list[CpaTerms]:
     return list(rows.scalars())
 
 
+async def get_term(session: AsyncSession, term_id: UUID) -> CpaTerms | None:
+    return await session.get(CpaTerms, term_id)
+
+
 async def term_item_count_map(session: AsyncSession) -> dict:
     """归一化 goods_name → 分项行数（全库 group by 一次,Python 侧按术语名集匹配）。"""
     rows = await session.execute(select(CpaItem.goods_name, func.count()).group_by(CpaItem.goods_name))
