@@ -95,7 +95,9 @@ async def update_library_folder(
     db: AsyncSession = Depends(get_db),
     _: CurrentUser = Depends(require_permission("system:access")),
 ):
-    fields = body.model_dump(exclude_none=True)
+    fields = body.model_dump(exclude_unset=True)  # 显式 "parent_id": null（移回根）必须保留，exclude_none 会静默丢弃
+    if "name" in fields and not (fields["name"] or "").strip():
+        raise HTTPException(status_code=422, detail="文件夹名不能为空")
     try:
         row = await crud.update_library_folder(db, folder_id, fields)
     except ValueError as exc:
@@ -156,9 +158,17 @@ async def upload_library_files(
         if not data:
             out.append({"file_name": name, "reused": False, "error": "空文件"})
             continue
-        # 相对路径 → 目标文件夹（逐级幂等建目录；根目录传 "" 时目标仍为 fid）
+        # 相对路径 → 目标文件夹（逐级幂等建目录；根目录传 "" 时目标仍为 fid）。
+        # 先校验段合法性（质量审查 Task 5）: 空段/./.. /超长 → per-item error;>32 段拒绝。
         target = fid
-        segments = [s for s in str(rel or "").replace("\\", "/").split("/") if s][:-1]
+        segments = [seg.strip() for seg in str(rel or "").replace("\\", "/").split("/")[:-1]]
+        bad = next((seg for seg in segments if not seg or seg in (".", "..") or len(seg) > 255), None)
+        if bad is not None:
+            out.append({"file_name": name, "reused": False, "error": f"路径段非法: {bad}"})
+            continue
+        if len(segments) > 32:
+            out.append({"file_name": name, "reused": False, "error": "子目录层级过深（>32 段）"})
+            continue
         if segments:
             target = await crud.ensure_folder_path(db, fid, segments)
         digest = hashlib.sha256(data).hexdigest()

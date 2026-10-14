@@ -6,6 +6,7 @@ monkeypatch crud/storage（镜像 test_contract_price_document_file.py 的模式
 """
 
 import asyncio
+import json
 from types import SimpleNamespace
 from uuid import uuid4
 
@@ -225,3 +226,83 @@ def _raising(exc):
         raise exc
 
     return _fn
+
+
+# ---- 质量审查 Task 5 必须项: 环防护 crud 层直测 + upload 路径段校验 ----
+
+
+class _FakeFolderSession:
+    """crud.update_library_folder 直调桩: get 按预置 id→行 返回;commit/refresh no-op。"""
+
+    def __init__(self, rows):
+        self._rows = rows
+
+    async def get(self, model, obj_id):
+        return self._rows.get(obj_id)
+
+    async def commit(self):
+        pass
+
+    async def refresh(self, row):
+        pass
+
+
+def _folder(fid, parent_id=None):
+    return SimpleNamespace(id=fid, parent_id=parent_id, name="旧名")
+
+
+def test_crud_update_folder_cycle_guard_direct_hit():
+    """① new_parent 祖先链命中 folder_id → ValueError。"""
+    fid, mid, top = uuid4(), uuid4(), uuid4()
+    session = _FakeFolderSession({fid: _folder(fid), mid: _folder(mid, fid), top: _folder(top, mid)})
+    with pytest.raises(ValueError, match="不能把文件夹移动到自己的子文件夹下"):
+        asyncio.run(cpa_crud.update_library_folder(session, fid, {"parent_id": top}))
+
+
+def test_crud_update_folder_chain_to_root_updates_normally():
+    """② 链正常到根（parent_id=None）→ 正常更新不抛错。"""
+    fid, target = uuid4(), uuid4()
+    row = _folder(fid, target)
+    session = _FakeFolderSession({fid: row, target: _folder(target)})  # target.parent_id=None → 链到根
+    out = asyncio.run(cpa_crud.update_library_folder(session, fid, {"parent_id": target, "name": "新名"}))
+    assert out.parent_id == target and out.name == "新名"
+
+
+def test_crud_update_folder_over_64_depth_raises():
+    """③ >64 层链（永不触根）→ ValueError('文件夹层级异常')。"""
+    fid = uuid4()
+    rows = {fid: _folder(fid)}
+    cur = uuid4()
+    head = cur
+    for _ in range(70):
+        nxt = uuid4()
+        rows[cur] = _folder(cur, nxt)
+        cur = nxt
+    session = _FakeFolderSession(rows)
+    with pytest.raises(ValueError, match="文件夹层级异常"):
+        asyncio.run(cpa_crud.update_library_folder(session, fid, {"parent_id": head}))
+
+
+def test_upload_rejects_bad_path_segment():
+    class _F:
+        filename = "a.pdf"
+        content_type = "application/pdf"
+
+        async def read(self):
+            return b"%PDF"
+
+    out = asyncio.run(upload_library_files(folder_id="", paths='["x/../a.pdf"]', files=[_F()], db=_DB(), _=None))
+    assert out["items"][0]["error"] == "路径段非法: .."
+
+
+def test_upload_rejects_over_32_segments():
+    class _F:
+        filename = "a.pdf"
+        content_type = "application/pdf"
+
+        async def read(self):
+            return b"%PDF"
+
+    deep = "/".join(f"d{i}" for i in range(33)) + "/a.pdf"
+    out = asyncio.run(upload_library_files(folder_id="", paths=json.dumps([deep]), files=[_F()], db=_DB(), _=None))
+    assert out["items"][0]["error"] == "子目录层级过深（>32 段）"
