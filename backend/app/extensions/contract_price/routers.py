@@ -11,6 +11,7 @@ Mounted into the Gateway under ``/api/extensions/contract-price``. Endpoints:
   Functional area 5 (config)   : GET/PUT /config
   Functional area 6 (dashboard): GET /dashboard
   Library (cpa v3)             : /library/folders*, /library/files* — 合同文件库 (EAI-CUSTOM)
+  Terms (cpa v3)               : GET/POST /terms, PATCH/DELETE /terms/{id} — 货物分类术语 (EAI-CUSTOM)
   Pipeline trigger             : POST /pipeline/run, GET /pipeline/runs/{id}/status
 """
 
@@ -55,6 +56,9 @@ from app.extensions.contract_price.schemas import (
     PipelineRunRequest,
     PipelineRunResponse,
     RunOut,
+    TermCreate,
+    TermOut,
+    TermUpdate,
 )
 from app.extensions.database import get_db
 from app.extensions.schemas import CurrentUser
@@ -331,6 +335,90 @@ async def delete_library_file_endpoint(
     if key is None:
         raise HTTPException(status_code=404, detail="文件不存在")
     await asyncio.to_thread(storage.delete_object, key)  # best-effort，静默容忍缺失
+
+
+# --- 货物分类术语 (EAI-CUSTOM cpa v3, spec 2026-10-14 §2.4) ------------------
+
+
+@router.get("/terms")
+async def list_terms_endpoint(
+    db: AsyncSession = Depends(get_db),
+    _: CurrentUser = Depends(require_permission("system:access")),
+):
+    """术语列表 + 已关联分项计数（canonical∪别名 归一化求和;空库为 0）。"""
+    terms = await crud.list_terms(db)
+    counts = await crud.term_item_count_map(db)
+    items = []
+    for t in terms:
+        names = [t.canonical, *(t.aliases or [])]
+        items.append(
+            TermOut(
+                id=t.id, canonical=t.canonical, aliases=t.aliases or [],
+                enabled=t.enabled, source=t.source,
+                alias_count=len(t.aliases or []),
+                item_count=sum(counts.get(crud.normalize_term(n), 0) for n in names),
+            ).model_dump()
+        )
+    return {"items": items}
+
+
+@router.post("/terms", response_model=TermOut)
+async def create_term_endpoint(
+    body: TermCreate,
+    db: AsyncSession = Depends(get_db),
+    _: CurrentUser = Depends(require_permission("system:access")),
+):
+    canonical = (body.canonical or "").strip()
+    if not canonical:
+        raise HTTPException(status_code=422, detail="规范名不能为空")
+    aliases = [a.strip() for a in (body.aliases or []) if a.strip()]
+    # 归一化撞车防护: 与既有术语 canonical/别名冲突 → 409（同 M1 同级同名语义）
+    # 评审注: list_terms 并发合并竞态下可能返回重复 canonical 行——任一行撞即 409,
+    # 语义不变;去重属显示层职责,此处不处理。
+    for t in await crud.list_terms(db):
+        existing_names = {crud.normalize_term(n) for n in [t.canonical, *(t.aliases or [])]}
+        if crud.normalize_term(canonical) in existing_names or (
+            existing_names & {crud.normalize_term(a) for a in aliases}
+        ):
+            raise HTTPException(status_code=409, detail=f"与既有术语「{t.canonical}」名称冲突")
+    row = await crud.create_term(db, canonical, aliases)
+    return TermOut(
+        id=row.id, canonical=row.canonical, aliases=row.aliases or [],
+        enabled=row.enabled, source=row.source,
+        alias_count=len(row.aliases or []), item_count=0,
+    )
+
+
+@router.patch("/terms/{term_id}", response_model=TermOut)
+async def update_term_endpoint(
+    term_id: UUID,
+    body: TermUpdate,
+    db: AsyncSession = Depends(get_db),
+    _: CurrentUser = Depends(require_permission("system:access")),
+):
+    fields = body.model_dump(exclude_unset=True)
+    if "canonical" in fields and not (fields["canonical"] or "").strip():
+        raise HTTPException(status_code=422, detail="规范名不能为空")
+    if "aliases" in fields and fields["aliases"] is not None:
+        fields["aliases"] = [a.strip() for a in fields["aliases"] if a and a.strip()]
+    row = await crud.update_term(db, term_id, fields)
+    if row is None:
+        raise HTTPException(status_code=404, detail="术语不存在")
+    return TermOut(
+        id=row.id, canonical=row.canonical, aliases=row.aliases or [],
+        enabled=row.enabled, source=row.source,
+        alias_count=len(row.aliases or []), item_count=0,
+    )
+
+
+@router.delete("/terms/{term_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_term_endpoint(
+    term_id: UUID,
+    db: AsyncSession = Depends(get_db),
+    _: CurrentUser = Depends(require_permission("system:access")),
+):
+    if not await crud.delete_term(db, term_id):
+        raise HTTPException(status_code=404, detail="术语不存在")
 
 
 # --- Functional area 1: documents ------------------------------------------

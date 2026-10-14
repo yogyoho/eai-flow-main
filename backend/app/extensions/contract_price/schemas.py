@@ -285,3 +285,27 @@ class LibraryAnalyzeOut(BaseModel):
     status: str  # queued | already
     document_id: UUID | None = None
     message: str
+
+
+# --- 货物分类术语 (EAI-CUSTOM cpa v3, spec 2026-10-14 §2.4) ------------------
+
+
+class TermOut(BaseModel):
+    id: UUID
+    canonical: str
+    aliases: list[str] = []
+    enabled: bool
+    source: str
+    alias_count: int = 0
+    item_count: int = 0
+
+
+class TermCreate(BaseModel):
+    canonical: str
+    aliases: list[str] = []
+
+
+class TermUpdate(BaseModel):
+    canonical: str | None = None
+    aliases: list[str] | None = None
+    enabled: bool | None = None

@@ -8,8 +8,17 @@ import asyncio
 from types import SimpleNamespace
 from uuid import uuid4
 
+import pytest
+from fastapi import HTTPException
+
 import app.extensions.contract_price  # noqa: F401 — 导入即注册模型
 from app.extensions.contract_price import crud as cpa_crud
+from app.extensions.contract_price.routers import (
+    create_term_endpoint,
+    delete_term_endpoint,
+    list_terms_endpoint,
+    update_term_endpoint,
+)
 
 
 def test_terms_table_registered_on_shared_base():
@@ -149,3 +158,85 @@ def test_capture_swallows_commit_failure_and_rolls_back():
     # 不上抛——捕获失败只记日志,不影响合并主流程
     asyncio.run(cpa_crud._capture_merge_pin(_Session(), SimpleNamespace(id=uuid4()), "锚杆"))
     assert rolled_back == [1]  # 失败路径回滚,不留 PendingRollback 态
+
+
+# ---- Task 4: 路由编排测试 ----
+
+
+class _Body:
+    def __init__(self, fields):
+        self._f = fields
+
+    def model_dump(self, **_kw):
+        return dict(self._f)
+
+
+class _ListResult:
+    def __init__(self, rows):
+        self._rows = rows
+
+    def scalars(self):
+        return SimpleNamespace(all=lambda: self._rows)
+
+
+class _Db:
+    """最小桩: get 按预置;execute 按 calls 序出队。"""
+
+    def __init__(self, rows=None, get_map=None):
+        self._rows = rows or []
+        self._get = get_map or {}
+        self.calls = 0
+
+    async def execute(self, stmt):
+        self.calls += 1
+        return _ListResult(self._rows)
+
+    async def get(self, model, obj_id):
+        return self._get.get(obj_id)
+
+
+def _term(**kw):
+    base = dict(
+        id=uuid4(), canonical="锚杆", aliases=["锚杆Φ22"], enabled=True, source="manual",
+        created_at=None, updated_at=None,
+    )
+    base.update(kw)
+    return SimpleNamespace(**base)
+
+
+def _async_ret(v):
+    async def _fn(*a, **kw):
+        return v
+    return _fn
+
+
+def test_create_term_duplicate_canonical_409(monkeypatch):
+    monkeypatch.setattr(cpa_crud, "list_terms", _async_ret([_term()]))
+    body = SimpleNamespace(canonical="锚  杆", aliases=[])  # 端点走属性访问(pydantic),桩用 SimpleNamespace
+    with pytest.raises(HTTPException) as ei:
+        asyncio.run(create_term_endpoint(body, db=_Db(), _=None))
+    assert ei.value.status_code == 409  # 归一化撞既有 canonical
+
+
+def test_list_terms_with_item_counts(monkeypatch):
+    monkeypatch.setattr(cpa_crud, "list_terms", _async_ret([_term(), _term(id=uuid4(), canonical="U型卡", aliases=["卡缆"])]))
+    monkeypatch.setattr(cpa_crud, "term_item_count_map", _async_ret({"锚杆": 100, "锚杆Φ22": 42, "U型卡": 11}))
+    out = asyncio.run(list_terms_endpoint(db=_Db(), _=None))
+    by_name = {t["canonical"]: t for t in out["items"]}
+    assert by_name["锚杆"]["item_count"] == 142  # canonical + 全部别名归一化求和
+    assert by_name["锚杆"]["alias_count"] == 1
+    assert by_name["U型卡"]["item_count"] == 11
+
+
+def test_update_term_enabled_only(monkeypatch):
+    t = _term()
+    monkeypatch.setattr(cpa_crud, "update_term", _async_ret(t))
+    out = asyncio.run(update_term_endpoint(t.id, _Body({"enabled": False}), db=_Db(), _=None))
+    assert out.id == t.id  # 形状有值即可,禁用不触碰 canonical（端点返回 TermOut 模型,M1 同款属性访问）
+
+
+def test_delete_term_missing_404(monkeypatch):
+    monkeypatch.setattr(cpa_crud, "delete_term", _async_ret(False))
+    with pytest.raises(HTTPException) as ei:
+        asyncio.run(delete_term_endpoint(uuid4(), db=_Db(), _=None))
+    assert ei.value.status_code == 404
