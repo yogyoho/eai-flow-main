@@ -2,7 +2,7 @@
 
 // EAI-CUSTOM (translation 一期): 必须走 ShellLayout —— 它提供 QueryClientProvider/PermissionProvider,
 // AssetLibrary 里的 TanStack hooks 与权限过滤都依赖这些 Provider（同 geo-samples/contract-price 布局）。
-import { BookMarked, ClipboardCheck, FileText, Languages, Settings } from "lucide-react";
+import { BookMarked, ClipboardCheck, FolderOpen, Languages, ListChecks, Settings } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { type ReactNode } from "react";
@@ -15,8 +15,8 @@ import Metadata from "./metadata";
 
 // 子路由映射到子页面权限点（/api/permissions/me 的 pages），供 canPage 过滤；
 const navItems = [
-  { href: "/translation", label: "文档资产库", icon: Languages, exact: true, pageId: "translation:page:assets" },
-  { href: "/translation/tasks", label: "任务管理", icon: FileText, exact: false, pageId: "translation:page:assets" },
+  { href: "/translation", label: "文档资产库", icon: FolderOpen, exact: true, pageId: "translation:page:assets" },
+  { href: "/translation/tasks", label: "任务管理", icon: ListChecks, exact: false, pageId: "translation:page:assets" },
   { href: "/translation/review", label: "复核工作台", icon: ClipboardCheck, exact: false, pageId: "translation:page:assets" },
   { href: "/translation/glossary", label: "术语库", icon: BookMarked, exact: false, pageId: "translation:page:assets" },
   { href: "/translation/settings", label: "设置", icon: Settings, exact: false, pageId: "translation:page:assets" },
