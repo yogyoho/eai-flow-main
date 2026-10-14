@@ -4,7 +4,10 @@
  */
 import { describe, expect, test } from "@rstest/core";
 
-import { buildFolderTree, pathOf } from "@/extensions/contract-price/components/library-tree";
+import {
+  buildFolderTree,
+  pathOf,
+} from "@/extensions/contract-price/components/library-tree";
 
 const FOLDERS = [
   { id: "b", parent_id: null, name: "2026 年合同" },
@@ -37,5 +40,22 @@ describe("pathOf", () => {
 
   test("root 直接返回单节", () => {
     expect(pathOf(FOLDERS, "root")).toEqual([{ id: "root", name: "文件库" }]);
+  });
+
+  test("深度帽截断: 70 层 parent 链不挂死, 丢弃 chain 返回 [虚拟根] 单节", () => {
+    const chain = Array.from({ length: 70 }, (_, i) => ({
+      id: `f${i}`,
+      parent_id: i === 0 ? null : `f${i - 1}`,
+      name: `层${i}`,
+    }));
+    expect(pathOf(chain, "f69")).toEqual([{ id: "root", name: "文件库" }]);
+  });
+
+  test("成环 parent 链同样截断为 [虚拟根] 单节", () => {
+    const cycle = [
+      { id: "x", parent_id: "y", name: "X" },
+      { id: "y", parent_id: "x", name: "Y" },
+    ];
+    expect(pathOf(cycle, "x")).toEqual([{ id: "root", name: "文件库" }]);
   });
 });
