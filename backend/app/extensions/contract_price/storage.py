@@ -78,3 +78,27 @@ def delete_object(key: str) -> None:
     except Exception:
         # best-effort; a missing object must not abort a document delete
         pass
+
+
+# EAI-CUSTOM (cpa v3 文件库, spec 2026-10-14 §1.2): 文件库档案区前缀。
+# 管线 scanner 跳过该前缀;只有「加入解析」拷出的对象才进扫描区。
+LIBRARY_PREFIX = "library/"
+
+
+def library_key(folder_id: str, file_hash: str, file_name: str) -> str:
+    """库内对象键 library/{folder}/{hash16}_{name}。
+
+    同文件夹同内容天然同键（幂等覆盖）;跨文件夹各自成对象,删除互不影响。
+    文件名中的路径分隔符替换掉,防止借文件名伪造子路径。
+    """
+    safe = (file_name or "file").replace("/", "_").replace("\\", "_")
+    return f"{LIBRARY_PREFIX}{folder_id}/{file_hash[:16]}_{safe}"
+
+
+def copy_object(src_key: str, dst_key: str) -> str:
+    """MinIO 服务端拷贝（加入解析: library/... → 扫描区根），返回 s3:// uri。"""
+    from minio.commonconfig import CopySource
+
+    mc = _client()
+    mc.copy_object(BUCKET, dst_key, CopySource(BUCKET, src_key))
+    return f"s3://{BUCKET}/{dst_key}"
