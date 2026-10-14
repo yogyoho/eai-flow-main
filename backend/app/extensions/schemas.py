@@ -419,6 +419,8 @@ class KnowledgeBaseUpdate(BaseModel):
     chunk_method: str | None = None
     parser_config: dict | None = None
     language: str | None = None
+    # EAI-CUSTOM (translation 一期): KB 级翻译开关（资产库设置页/上传钩子共用）
+    translation_enabled: bool | None = None
 
     @field_validator("kb_type")
     @classmethod
