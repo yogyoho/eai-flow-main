@@ -25,6 +25,7 @@ from app.extensions.contract_price.models import (
     CpaLibraryFile,
     CpaLibraryFolder,
     CpaRunHistory,
+    CpaTerms,
 )
 from app.extensions.contract_price.schemas import LLM_KEY_MASK, ConfigOut
 
@@ -425,37 +426,36 @@ async def merge_clusters(
     return new_cluster
 
 
-async def _capture_merge_pin(
-    session: AsyncSession, cluster: CpaCluster, representative_name: str
-) -> None:
-    """手动合并自动落合并先验(config.json merge_pins): 重聚类后由引擎重放,
-    人工调整不再被替换式重建抹掉。同 name 幂等扩充 aliases;失败只记日志
-    (先验写入不影响合并主流程);撤销 = 编辑 config.json 删除该条目。"""
+async def _capture_merge_pin(session: AsyncSession, cluster: CpaCluster, representative_name: str) -> None:
+    """手动合并自动落术语（EAI-CUSTOM cpa v3 §2.3: 写 cpa_terms,不再写 config.json
+    merge_pins——术语表人工可管理;旧 config 条目由 CLI 过渡期兼容读取）。
+    命中既有 canonical（归一化比对）只并 aliases,不改其 source/enabled;
+    未命中新建 source=auto_merge。失败只记日志（不影响合并主流程）。"""
     try:
-        names = (
-            await session.execute(
-                select(CpaItem.goods_name)
-                .where(CpaItem.cluster_id == cluster.id)
-                .distinct()
-            )
-        ).scalars().all()
-        aliases = {n for n in names if n and n != representative_name}
-        cfg = load_config()
-        existing = {p.get("name"): p for p in cfg.merge_pins if isinstance(p, dict)}
-        if representative_name in existing:
-            old = set(existing[representative_name].get("aliases") or [])
-            existing[representative_name]["aliases"] = sorted(old | aliases)
+        names = (await session.execute(select(CpaItem.goods_name).where(CpaItem.cluster_id == cluster.id).distinct())).scalars().all()
+        new_aliases = {n for n in names if n and n != representative_name}
+        terms = (await session.execute(select(CpaTerms))).scalars().all()
+        want = normalize_term(representative_name)
+        existing = next((t for t in terms if normalize_term(t.canonical) == want), None)
+        if existing is not None:
+            merged = union_aliases(existing.aliases or [], new_aliases)
+            if merged != list(existing.aliases or []):
+                existing.aliases = merged
+                await session.commit()
         else:
-            cfg.merge_pins.append(
-                {"name": representative_name, "aliases": sorted(aliases)}
+            session.add(
+                CpaTerms(
+                    canonical=representative_name,
+                    aliases=sorted(new_aliases),
+                    enabled=True,
+                    source="auto_merge",
+                )
             )
-        save_config(cfg)
-    except Exception:  # noqa: BLE001 — 先验捕获失败不影响合并主流程
+            await session.commit()
+    except Exception:  # noqa: BLE001 — 术语捕获失败不影响合并主流程
         import logging
 
-        logging.getLogger(__name__).warning(
-            "merge pin capture failed for %s", representative_name, exc_info=True
-        )
+        logging.getLogger(__name__).warning("merge term capture failed for %s", representative_name, exc_info=True)
 
 
 async def move_item(session: AsyncSession, item_id: UUID, target_cluster_id: UUID) -> CpaItem | None:
@@ -1340,3 +1340,70 @@ async def find_document_by_storage_key(session: AsyncSession, key: str) -> CpaDo
     storage.BUCKET 同源（保持字面量以避免 crud→storage 的 minio 依赖链）。"""
     uri = f"s3://cpa-contracts/{key}"
     return (await session.execute(select(CpaDocument).where(CpaDocument.storage_uri == uri))).scalars().first()
+
+
+# --- 货物分类术语 (EAI-CUSTOM cpa v3, spec 2026-10-14 §2) --------------------
+
+
+def normalize_term(name: str) -> str:
+    """名称归一化——与引擎 _apply_merge_pins 逐字同款（re.sub 去空白）。
+    改动此处必须同步 skills/.../clustering/engine.py。"""
+    import re as _re
+
+    return _re.sub(r"\s+", "", str(name or ""))
+
+
+def union_aliases(old: list, new_names: set) -> list:
+    """既有别名 ∪ 新别名（归一化去重后按原序返回;新名保序追加）。纯函数。"""
+    seen = {normalize_term(a) for a in (old or []) if normalize_term(a)}
+    out = [a for a in (old or []) if normalize_term(a)]
+    for n in sorted(new_names):
+        k = normalize_term(n)
+        if k and k not in seen:
+            seen.add(k)
+            out.append(n)
+    return out
+
+
+async def list_terms(session: AsyncSession) -> list[CpaTerms]:
+    rows = await session.execute(select(CpaTerms).order_by(CpaTerms.canonical))
+    return list(rows.scalars())
+
+
+async def term_item_count_map(session: AsyncSession) -> dict:
+    """归一化 goods_name → 分项行数（全库 group by 一次,Python 侧按术语名集匹配）。"""
+    rows = await session.execute(select(CpaItem.goods_name, func.count()).group_by(CpaItem.goods_name))
+    out: dict = {}
+    for name, cnt in rows:
+        k = normalize_term(name)
+        if k:
+            out[k] = out.get(k, 0) + int(cnt)
+    return out
+
+
+async def create_term(session: AsyncSession, canonical: str, aliases: list, source: str = "manual") -> CpaTerms:
+    row = CpaTerms(canonical=canonical, aliases=list(aliases or []), enabled=True, source=source)
+    session.add(row)
+    await session.commit()
+    await session.refresh(row)
+    return row
+
+
+async def update_term(session: AsyncSession, term_id: UUID, fields: dict) -> CpaTerms | None:
+    row = await session.get(CpaTerms, term_id)
+    if row is None:
+        return None
+    for k, v in fields.items():
+        setattr(row, k, v)
+    await session.commit()
+    await session.refresh(row)
+    return row
+
+
+async def delete_term(session: AsyncSession, term_id: UUID) -> bool:
+    row = await session.get(CpaTerms, term_id)
+    if row is None:
+        return False
+    await session.delete(row)
+    await session.commit()
+    return True
