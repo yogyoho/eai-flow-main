@@ -19,7 +19,7 @@ def scan_changed(store: ContractStore, cached_meta: dict, force_key: str | None 
     """Return [{key, size, hash}] for new/changed contract objects.
 
     ``cached_meta`` is {storage_key: {"hash": file_hash, "size": int|None}}.
-    Objects under previews/ are derivatives and skipped.
+    Objects under previews/ or library/ are skipped.
 
     Size pre-filter (avoids re-downloading the whole bucket every scan): if the
     object's current size matches the cached size, the content is treated as

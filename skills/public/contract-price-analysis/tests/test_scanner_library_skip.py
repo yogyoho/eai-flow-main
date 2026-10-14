@@ -21,7 +21,7 @@ class FakeStore:
 
 
 def test_scanner_skips_library_and_previews_prefixes():
-    store = FakeStore(["合同A.pdf", "library/f1/合同B.pdf", "previews/docid/page-1.png"])
+    store = FakeStore(["合同A.pdf", "library/f1/合同B.pdf", "previews/docid/report.pdf"])
     changed = scan_changed(store, {})
     assert [c["key"] for c in changed] == ["合同A.pdf"]
 
