@@ -1192,8 +1192,9 @@ async def update_library_folder(session: AsyncSession, folder_id: UUID, fields: 
         return None
     new_parent = fields.get("parent_id")
     if new_parent is not None:
-        # 环防护（质量审查 Task 4）: 沿 new_parent 祖先链走——若途中遇到 folder_id,
-        # 说明目标是自身的后代,移动会造出 parent_id 环,前端树遍历会挂死。
+        # EAI-CUSTOM (cpa v3 文件库, spec 2026-10-14 §1.3, 质量审查 Task 4): 环防护——
+        # 沿 new_parent 祖先链走,若途中遇到 folder_id,说明目标是自身的后代,
+        # 移动会造出 parent_id 环,前端树遍历会挂死。
         cur, depth = new_parent, 0
         while cur is not None and depth < 64:
             if cur == folder_id:
@@ -1235,10 +1236,12 @@ async def list_library_files(session: AsyncSession, folder_id: UUID | None) -> l
     if not rows:
         return []
     hashes = {r.file_hash for r in rows}
+    # EAI-CUSTOM (cpa v3 文件库, spec 2026-10-14 §1.3, 质量审查 Task 4): 同 hash 多行时
+    # 按 created_at desc 遍历 + setdefault——首个(最新)解析者胜,列表状态确定性。
     docs = (await session.execute(select(CpaDocument).where(CpaDocument.file_hash.in_(hashes)).order_by(CpaDocument.created_at.desc()))).scalars()
     by_hash: dict = {}
     for d in docs:
-        by_hash.setdefault(d.file_hash, d)  # 同 hash 多行时最新解析者胜（确定性）
+        by_hash.setdefault(d.file_hash, d)
     return [
         {
             "id": r.id,
@@ -1312,6 +1315,7 @@ async def delete_library_file(session: AsyncSession, file_id: UUID) -> str | Non
 
 
 async def find_parsed_document_by_hash(session: AsyncSession, file_hash: str) -> CpaDocument | None:
+    # EAI-CUSTOM (cpa v3 文件库, 质量审查 Task 4): 同 hash 多文档时 created_at desc 取最新,保证确定性
     return (await session.execute(select(CpaDocument).where(CpaDocument.file_hash == file_hash).order_by(CpaDocument.created_at.desc()))).scalars().first()
 
 

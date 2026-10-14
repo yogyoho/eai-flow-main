@@ -20,6 +20,7 @@ from app.extensions.contract_price.routers import (
     analyze_library_file,
     delete_library_folder_endpoint,
     library_file_content,
+    list_library_files_endpoint,
     update_library_folder,
     upload_library_files,
 )
@@ -306,3 +307,32 @@ def test_upload_rejects_over_32_segments():
     deep = "/".join(f"d{i}" for i in range(33)) + "/a.pdf"
     out = asyncio.run(upload_library_files(folder_id="", paths=json.dumps([deep]), files=[_F()], db=_DB(), _=None))
     assert out["items"][0]["error"] == "子目录层级过深（>32 段）"
+
+
+# ---- 质量审查 Task 5 清理项: analyze 进行中文案 + folder_id UUID 422 ----
+
+
+def test_analyze_pending_doc_reports_in_progress(monkeypatch):
+    """parse_status pending/parsing → 「已有解析任务进行中」而非误报「已解析过」。"""
+    lf = _lf()
+    doc = SimpleNamespace(id=uuid4(), file_name="原件.pdf", parse_status="parsing", file_hash=lf.file_hash)
+    monkeypatch.setattr(cpa_crud, "get_library_file", _async_returning(lf))
+    monkeypatch.setattr(cpa_crud, "find_parsed_document_by_hash", _async_returning(doc))
+    called = []
+    monkeypatch.setattr(cpa_storage, "copy_object", lambda *a: called.append(a))
+
+    out = asyncio.run(analyze_library_file(lf.id, db=_DB(), _=None))
+    assert out.status == "already" and "解析任务进行中" in out.message
+    assert called == []  # 进行中 → 不重复拷贝入队
+
+
+def test_list_files_bad_folder_id_422():
+    with pytest.raises(HTTPException) as ei:
+        asyncio.run(list_library_files_endpoint(folder_id="not-a-uuid", db=_DB(), _=None))
+    assert ei.value.status_code == 422
+
+
+def test_upload_bad_folder_id_422():
+    with pytest.raises(HTTPException) as ei:
+        asyncio.run(upload_library_files(folder_id="nope", files=[], db=_DB(), _=None))
+    assert ei.value.status_code == 422

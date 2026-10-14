@@ -16,6 +16,7 @@ Mounted into the Gateway under ``/api/extensions/contract-price``. Endpoints:
 
 import asyncio
 import hashlib
+import json
 import logging
 import os
 import urllib.parse
@@ -45,6 +46,7 @@ from app.extensions.contract_price.schemas import (
     ItemOut,
     ItemUpdate,
     LibraryAnalyzeOut,
+    LibraryFileMove,
     LibraryFileOut,
     LibraryFolderIn,
     LibraryFolderOut,
@@ -123,7 +125,10 @@ async def list_library_files_endpoint(
     db: AsyncSession = Depends(get_db),
     _: CurrentUser = Depends(require_permission("system:access")),
 ):
-    fid = None if folder_id in (None, "", "root") else UUID(folder_id)
+    try:
+        fid = None if folder_id in (None, "", "root") else UUID(folder_id)
+    except ValueError:
+        raise HTTPException(status_code=422, detail="folder_id 需为 UUID")
     return await crud.list_library_files(db, fid)
 
 
@@ -137,13 +142,14 @@ async def upload_library_files(
 ):
     """多文件上传（含 webkitdirectory）。同文件夹同内容 → reused 复用不重复入库。
     paths 提供相对路径段（如 "设备采购/附表"）时自动逐级建子文件夹（幂等）。"""
-    import json as _json
-
-    fid: UUID | None = UUID(folder_id) if folder_id and folder_id != "root" else None
+    try:
+        fid: UUID | None = UUID(folder_id) if folder_id and folder_id != "root" else None
+    except ValueError:
+        raise HTTPException(status_code=422, detail="folder_id 需为 UUID")
     if fid is not None and await db.get(CpaLibraryFolder, fid) is None:
         raise HTTPException(status_code=404, detail="目标文件夹不存在")
     try:
-        rel_paths = _json.loads(paths)
+        rel_paths = json.loads(paths)
         if not isinstance(rel_paths, list) or len(rel_paths) != len(files):
             rel_paths = [""] * len(files)
     except (TypeError, ValueError):  # TypeError: 直调（测试）时 paths 是 FastAPI Form 默认对象而非 str
@@ -253,6 +259,13 @@ async def analyze_library_file(
         raise HTTPException(status_code=404, detail="文件不存在")
     doc = await crud.find_parsed_document_by_hash(db, lf.file_hash)
     if doc is not None:
+        if doc.parse_status in ("pending", "parsing"):
+            # 同内容已有任务在队列/解析中——不重复拷贝入队，也不误报"已解析过"
+            return LibraryAnalyzeOut(
+                status="already",
+                document_id=doc.id,
+                message=f"该内容已有解析任务进行中（{doc.file_name}），请稍候刷新",
+            )
         return LibraryAnalyzeOut(
             status="already",
             document_id=doc.id,
@@ -279,12 +292,12 @@ async def analyze_library_file(
 @router.patch("/library/files/{file_id}", response_model=LibraryFileOut)
 async def move_library_file_endpoint(
     file_id: UUID,
-    body: dict,  # {"folder_id": UUID | None}
+    body: LibraryFileMove,
     db: AsyncSession = Depends(get_db),
     _: CurrentUser = Depends(require_permission("system:access")),
 ):
     try:
-        row = await crud.move_library_file(db, file_id, body.get("folder_id"))
+        row = await crud.move_library_file(db, file_id, body.folder_id)
     except ValueError as exc:
         raise HTTPException(status_code=404, detail=str(exc))
     if row is None:

@@ -277,6 +277,10 @@ class LibraryUploadItem(BaseModel):
     error: str | None = None
 
 
+class LibraryFileMove(BaseModel):
+    folder_id: UUID | None = None
+
+
 class LibraryAnalyzeOut(BaseModel):
     status: str  # queued | already
     document_id: UUID | None = None
