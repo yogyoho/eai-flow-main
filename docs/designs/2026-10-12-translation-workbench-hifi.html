@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>文档翻译工作台</title>
+<style>
+:root{--bg:#fafafa;--card:#fff;--bd:#e5e7eb;--bdl:#d1d5db;--fg:#111827;--fg2:#6b7280;--fg3:#9ca3af;--acc:#2563eb;--acc-bg:#eff6ff;--acc-b:#93c5fd;--ok:#16a34a;--ok-bg:#f0fdf4;--err:#dc2626;--err-bg:#fef2f2;--warn:#d97706;--warn-bg:#fffbeb;--info:#2563eb;--info-bg:#eff6ff;--mut:#f9fafb;--r:8px;--rl:12px;--ss:0 1px 2px rgba(0,0,0,.05)}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font:14px/1.6 -apple-system,"Segoe UI","Microsoft YaHei","PingFang SC",sans-serif;color:var(--fg);background:var(--bg)}
+button{font:inherit;cursor:pointer;border:none;background:none;color:inherit}
+a{color:var(--acc);text-decoration:none}
+
+.shell{display:flex;height:100vh;overflow:hidden}
+.snav{width:200px;flex-shrink:0;background:#1e293b;color:#94a3b8;display:flex;flex-direction:column;padding:12px 8px}
+.snav .br{display:flex;align-items:center;gap:8px;padding:8px 12px 20px;color:#f1f5f9;font-weight:700;font-size:15px}
+.ni{display:flex;align-items:center;gap:10px;padding:8px 12px;border-radius:var(--r);font-size:14px;transition:all .15s;cursor:pointer;width:100%}
+.ni:hover{color:#e2e8f0;background:rgba(255,255,255,.06)}
+.ni.on{color:#f8fafc;background:rgba(255,255,255,.1);font-weight:500}
+.ni svg{width:16px;height:16px;flex-shrink:0}
+.ni .n{margin-left:auto;background:#d97706;color:#fff;font-size:10px;padding:1px 6px;border-radius:99px;font-weight:600}
+.nsep{height:1px;background:rgba(255,255,255,.08);margin:10px 8px}
+.ngr{font-size:11px;color:#64748b;padding:8px 12px 4px}
+.smain{flex:1;display:flex;flex-direction:column;min-width:0;background:var(--bg)}
+.stop{height:48px;flex-shrink:0;border-bottom:1px solid var(--bd);display:flex;align-items:center;gap:4px;padding:0 20px;background:var(--card)}
+.tb{padding:6px 14px;font-size:14px;color:var(--fg2);border-bottom:2px solid transparent;cursor:pointer}
+.tb.on{color:var(--acc);border-bottom-color:var(--acc);font-weight:500}
+.tb .n{background:var(--acc);color:#fff;font-size:10px;padding:1px 6px;border-radius:99px;font-weight:600;margin-left:2px}
+.tb .nw{background:var(--warn);color:#fff;font-size:10px;padding:1px 6px;border-radius:99px;font-weight:600;margin-left:2px}
+.sp{flex:1}
+.bgb{background:var(--info-bg);color:var(--info);font-size:12px;padding:2px 8px;border-radius:99px}
+.bgm{background:var(--mut);color:var(--fg2);font-size:12px;padding:2px 8px;border-radius:99px}
+.cont{flex:1;overflow:auto;padding:16px 20px}
+.vw{display:none}.vw.on{display:block}
+
+.card{background:var(--card);border:1px solid var(--bd);border-radius:var(--rl);box-shadow:0 1px 2px rgba(0,0,0,.05)}
+.btn{display:inline-flex;align-items:center;gap:6px;padding:6px 14px;border-radius:var(--r);font-size:14px;font-weight:500;border:1px solid var(--bdl);background:var(--card);color:var(--fg);transition:all .15s}
+.btn:hover{background:var(--mut)}
+.btn.pri{background:var(--acc);color:#fff;border-color:var(--acc)}
+.btn.pri:hover{background:#1d4ed8}
+.btn.sm{padding:4px 10px;font-size:13px}
+.btn.ghost{border-color:transparent}
+.btn.ghost:hover{background:var(--mut)}
+.btn:disabled{opacity:.5}
+.btn svg{width:14px;height:14px}
+.inp{border:1px solid var(--bdl);border-radius:var(--r);padding:6px 12px;font-size:14px;background:var(--card);color:var(--fg);outline:none;transition:border .15s}
+.inp:focus{border-color:var(--acc);box-shadow:0 0 0 2px var(--acc-b)}
+.sel{border:1px solid var(--bdl);border-radius:var(--r);padding:6px 12px;font-size:14px;background:var(--card);color:var(--fg)}
+.cap{font-size:12px;color:var(--fg3,#9ca3af)}
+.sp{flex:1}
+.sec-l{font-size:11px;font-weight:600;letter-spacing:.5px;color:var(--fg3);text-transform:uppercase;margin-bottom:8px}
+.tbf{width:100%;border-collapse:collapse;font-size:14px}
+.tbf th{padding:8px 12px;border-bottom:1px solid var(--bd);background:var(--mut);text-align:left;font-size:12px;font-weight:500;color:var(--fg2)}
+.tbf td{padding:10px 12px;border-bottom:1px solid var(--mut2,#f3f4f6)}
+.tbf tr:hover td{background:var(--mut)}
+.tbf tr.sel-row td{background:var(--acc-bg)}
+.fn{display:flex;align-items:center;gap:8px;min-width:0}
+.fn span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:500}
+.ft{width:28px;height:28px;flex-shrink:0;border-radius:6px;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:11px;color:#fff}
+.tnum{text-align:right;font-variant-numeric:tabular-nums}
+.metrics{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px;margin-bottom:16px}
+.metric{background:var(--card);border:1px solid var(--bd);border-radius:var(--rl);padding:16px;box-shadow:var(--ss)}
+.metric .n{font-size:28px;font-weight:700;line-height:1.2}
+.metric .l{font-size:12px;color:var(--fg3);margin-top:2px}
+.metric.attn{border-color:var(--warn-bg);background:var(--warn-bg)}
+.metric.attn .n{color:var(--warn)}
+.st{display:inline-flex;align-items:center;gap:5px;padding:2px 8px;border-radius:99px;font-size:12px;font-weight:500;white-space:nowrap}
+.st svg{width:12px;height:12px}
+.st.ok{background:var(--ok-bg);color:var(--ok)}
+.st.err{background:var(--err-bg);color:var(--err)}
+.st.warn{background:var(--warn-bg);color:var(--warn)}
+.st.info{background:var(--info-bg);color:var(--info)}
+.st.mut{background:var(--mut);color:var(--fg2)}
+.st.run svg{animation:spin 1.2s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.lang{display:inline-block;border:1px solid var(--bd);border-radius:99px;padding:1px 8px;font-size:12px;color:var(--fg2)}
+.pbar{height:6px;background:var(--mut);border-radius:3px;overflow:hidden;width:60px;display:inline-block;vertical-align:middle}
+.pbar i{display:block;height:100%;border-radius:3px}
+.pbar.b i{background:var(--acc)}.pbar.g i{background:var(--ok)}.pbar.w i{background:var(--warn)}
+.tgl{display:inline-flex;width:36px;height:20px;border-radius:99px;position:relative;cursor:pointer;transition:background .2s;background:var(--bdl)}
+.tgl.on{background:var(--acc)}
+.tgl i{position:absolute;top:2px;left:2px;width:16px;height:16px;border-radius:50%;background:#fff;box-shadow:var(--ss);transition:transform .2s}
+.tgl.on i{transform:translateX(16px)}
+.tgl.dis{background:var(--mut2);cursor:not-allowed;opacity:.5}
+.toolbar{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.search-w{position:relative;width:220px}
+.search-w svg{position:absolute;left:10px;top:50%;transform:translateY(-50%);width:14px;height:14px;color:var(--fg3)}
+.search-w input{border:1px solid var(--bdl);border-radius:var(--r);padding:6px 12px 6px 32px;font-size:14px;background:var(--card);color:var(--fg);outline:none;width:100%}
+.search-w input:focus{border-color:var(--acc);box-shadow:0 0 0 2px var(--acc-b)}
+.ops-m{position:absolute;right:0;top:100%;z-index:10;min-width:160px;background:var(--card);border:1px solid var(--bd);border-radius:var(--r);box-shadow:0 4px 12px rgba(0,0,0,.1);padding:4px;display:none}
+.ops-b{position:relative}
+.ops-b:hover .ops-m{display:block}
+.ops-i{display:flex;align-items:center;gap:8px;padding:6px 10px;font-size:13px;border-radius:4px;cursor:pointer;width:100%;text-align:left;border:none;background:none;color:var(--fg)}
+.ops-i:hover{background:var(--mut)}
+.ops-i svg{width:14px;height:14px;flex-shrink:0}
+.ops-i.dg{color:var(--err)}
+.flash{padding:8px 14px;border-radius:var(--r);font-size:14px}
+.flash.ok{background:var(--ok-bg);color:var(--ok);border:1px solid var(--ok-b)}
+.sec-label{font-size:11px;font-weight:600;letter-spacing:.5px;color:var(--fg3);text-transform:uppercase;margin-bottom:8px}
+.pbar{height:6px;background:var(--mut);border-radius:3px;overflow:hidden;width:60px;display:inline-block;vertical-align:middle}
+.pbar i{display:block;height:100%;border-radius:3px}
+.pbar.b i{background:var(--acc)}.pbar.g i{background:var(--ok)}.pbar.w i{background:var(--warn)}
+.dual-c{display:grid;grid-template-columns:1fr 1fr;gap:0;min-height:200px}
+.dual-p{padding:12px 16px;overflow-y:auto}
+.dual-p:first-child{border-right:1px solid var(--bd)}
+.dual-p .rl{font-size:11px;font-weight:600;color:var(--fg3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px}
+.para{border:1px solid var(--mut2);border-radius:var(--r);padding:10px 12px;margin-bottom:8px;font-size:13px;line-height:1.7}
+.num-tok{background:var(--info-bg);border:1px solid var(--info-b);border-radius:3px;padding:0 4px;font-weight:600;font-variant-numeric:tabular-nums}
+.num-bad{background:var(--err-bg);border:1.5px dashed var(--err);border-radius:3px;padding:0 4px;text-decoration:line-through;color:var(--err)}
+.missing{border:1.5px dashed var(--err);border-radius:3px;padding:0 6px;color:var(--err);font-size:12px}
+.term-hl{border-bottom:2px solid var(--warn);background:var(--warn-bg)}
+.tgl{display:inline-flex;width:36px;height:20px;border-radius:99px;position:relative;cursor:pointer;transition:background .2s;background:var(--acc)}
+.tgl.off{background:var(--bdl)}
+.tgl i{position:absolute;top:2px;left:2px;width:16px;height:16px;border-radius:50%;background:#fff;box-shadow:var(--ss);transition:transform .2s}
+.tgl.on i{transform:translateX(16px)}
+.tgl.dis{background:var(--mut2);cursor:not-allowed;opacity:.5}
+</style>
+</head>
+<body>
+
+<div class="shell">
+  <nav class="snav">
+    <div class="br"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="20" height="20"><path d="M5 8l6 6M4 14l7-7-4-4 12 12-4 4 7-7"/></svg>文档翻译工作台</div>
+    <div class="nsep"></div>
+    <div class="ngr">工作区</div>
+    <div class="ni on" data-t="assets" onclick="go('assets',this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 7v10c0 1.1.9 2 2 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"/></svg>文档资产库</div>
+    <div class="ni" data-t="tasks" onclick="go('tasks',this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg>任务管理</div>
+    <div class="ni" data-t="review" onclick="go('review',this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 12h6m-6 4h6M9 8h6M7 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 4v-4z"/></svg>复核工作台<span class="n">3</span></div>
+    <div class="ni" data-t="glossary" onclick="go('glossary',this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 016.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 014 19.5v-15A2.5 2.5 0 016.5 2z"/></svg>术语库</div>
+    <div class="nsep"></div>
+    <div class="ni" data-t="settings" onclick="go('settings',this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-2 2 2 2 0 01-2-2v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83 0 2 2 0 010-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 01-2-2 2 2 0 012-2h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 010-2.83 2 2 0 012.83 0l.06.06a1.65 1.65 0 001.82.33H9a1.65 1.65 0 001-1.51V3a2 2 0 012-2 2 2 0 012 2v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 0 2 2 0 010 2.83l-.06.06a1.65 1.65 0 00-.33 1.82V9a1.65 1.65 0 001.51 1H21a2 2 0 012 2 2 2 0 01-2 2h-.09a1.65 1.65 0 00-1.51 1z"/></svg>设置</div>
+  </nav>
+
+  <div class="smain">
+    <div class="stop">
+      <span class="tb on" data-t="assets" onclick="go('assets',this)">文档资产库</span>
+      <span class="tb" data-t="tasks" onclick="go('tasks',this)">任务管理 <span class="n">42</span></span>
+      <span class="tb" data-t="review" onclick="go('review',this)">复核工作台 <span class="nw">3</span></span>
+      <span class="tb" data-t="glossary" onclick="go('glossary',this)">术语库</span>
+      <span class="tb" data-t="settings" onclick="go('settings',this)">设置</span>
+      <span class="sp"></span>
+      <span class="bgb">EN 96 · FR 60</span>
+      <span class="bgm">Qwen2.5-72B</span>
+    </div>
+    <div class="cont" id="main">
+      <div style="text-align:center;padding:80px;color:var(--fg3)">加载中…</div>
+    </div>
+  </div>
+</div>
+
+<script>
+var _V = {};
+
+_V.assets = `
+<div class="metrics">
+  <div class="metric"><div class="n">156</div><div class="l">累计入库</div></div>
+  <div class="metric"><div class="n" style="color:var(--info)">12</div><div class="l">翻译中</div></div>
+  <div class="metric attn"><div class="n" style="color:var(--warn)">3</div><div class="l">待复核</div></div>
+  <div class="metric"><div class="n" style="color:var(--ok)">12</div><div class="l">今日交付</div></div>
+  <div class="metric"><div class="n" style="color:var(--err)">1</div><div class="l">失败</div></div>
+</div>
+
+<div class="card" style="padding:16px;margin-bottom:16px">
+  <div class="sec-label">状态分布</div>
+  <div style="display:flex;height:10px;border-radius:5px;overflow:hidden;gap:2px">
+    <div style="width:62%;background:var(--ok);border-radius:5px" title="已交付 97"></div>
+    <div style="width:14%;background:var(--info)" title="翻译中 22"></div>
+    <div style="width:9%;background:var(--warn)" title="待复核 14"></div>
+    <div style="width:8%;background:var(--mut2)" title="未翻译 12"></div>
+    <div style="width:7%;background:var(--err)" title="失败 1"></div>
+  </div>
+  <div style="display:flex;gap:16px;margin-top:8px;font-size:12px;color:var(--fg2)">
+    <span><span style="display:inline-block;width:8px;height:8px;border-radius:2px;background:var(--ok);margin-right:4px"></span>已交付 97</span>
+    <span><span style="display:inline-block;width:8px;height:8px;border-radius:2px;background:var(--info);margin-right:4px"></span>翻译中 22</span>
+    <span><span style="display:inline-block;width:8px;height:8px;border-radius:2px;background:var(--warn);margin-right:4px"></span>待复核 14</span>
+    <span><span style="display:inline-block;width:8px;height:8px;border-radius:2px;background:var(--mut2);margin-right:4px"></span>其他 23</span>
+  </div>
+</div>
+
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+  <div class="card" style="padding:16px">
+    <div class="sec-label">最近任务</div>
+    <table class="tbf">
+      <tr><td><div class="fn"><div class="ft W">W</div><span>Supply Agreement Q3.docx</span></div></td><td><span class="lang">EN→ZH</span></td><td><span class="st ok">✓ 已交付</span></td></tr>
+      <tr><td><div class="fn"><div class="ft A">A</div><span>contract-fr.pdf</span></div></td><td><span class="lang">FR→ZH</span></td><td><span class="st warn">⚠ 待复核</span></td></tr>
+      <tr><td><div class="fn"><div class="ft X">X</div><span>balance-q3.xlsx</span></div></td><td><span class="lang">EN→ZH</span></td><td><span class="st info">◌ 翻译中</span></td></tr>
+    </table>
+  </div>
+  <div class="card" style="padding:16px">
+    <div class="sec-label">检索链路闸</div>
+    <div style="font-size:28px;font-weight:700">85%</div>
+    <div class="cap">hit@5 · 20/20 测试问题 · 09-28 评测</div>
+    <div style="margin-top:12px"><div class="pbar g"><i style="width:85%"></i></div></div>
+    <div class="cap" style="margin-top:8px">阈值 80% · <span style="color:var(--ok);font-weight:500">达标 ✓</span></div>
+  </div>
+</div>`;
+
+document.getElementById('main').innerHTML = views.a || '';
+</script>
+
+<script>
+var _V = {};
+
+_V.assets = `
+<div class="metrics">
+  <div class="metric"><div class="n">156</div><div class="l">累计入库</div></div>
+  <div class="metric"><div class="n" style="color:var(--info)">12</div><div class="l">翻译中</div></div>
+  <div class="metric attn"><div class="n" style="color:var(--warn)">3</div><div class="l">待复核</div></div>
+  <div class="metric"><div class="n" style="color:var(--ok)">12</div><div class="l">今日交付</div></div>
+  <div class="metric"><div class="n" style="color:var(--err)">1</div><div class="l">失败</div></div>
+</div>
+
+<div class="card" style="padding:16px;margin-bottom:16px">
+  <div class="sec-label">状态分布</div>
+  <div style="display:flex;height:10px;border-radius:5px;overflow:hidden;gap:2px">
+    <div style="width:62%;background:var(--ok);border-radius:5px" title="已交付 97"></div>
+    <div style="width:14%;background:var(--info)" title="翻译中 22"></div>
+    <div style="width:9%;background:var(--warn)" title="待复核 14"></div>
+    <div style="width:8%;background:var(--mut2)" title="未翻译 12"></div>
+    <div style="width:7%;background:var(--err)" title="失败 1"></div>
+  </div>
+  <div style="display:flex;gap:16px;margin-top:8px;font-size:12px;color:var(--fg2)">
+    <span><span style="display:inline-block;width:8px;height:8px;border-radius:2px;background:var(--ok);margin-right:4px"></span>已交付 97</span>
+    <span><span style="display:inline-block;width:8px;height:8px;border-radius:2px;background:var(--info);margin-right:4px"></span>翻译中 22</span>
+    <span><span style="display:inline-block;width:8px;height:8px;border-radius:2px;background:var(--warn);margin-right:4px"></span>待复核 14</span>
+    <span><span style="display:inline-block;width:8px;height:8px;border-radius:2px;background:var(--mut2);margin-right:4px"></span>其他 23</span>
+  </div>
+</div>
+
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+  <div class="card" style="padding:16px">
+    <div class="sec-label">最近任务</div>
+    <table class="tbf">
+      <tr><td><div class="fn"><div class="ft W">W</div><span>Supply Agreement Q3.docx</span></div></td><td><span class="lang">EN→ZH</span></td><td><span class="st ok">✓ 已交付</span></td></tr>
+      <tr><td><div class="fn"><div class="ft A">A</div><span>contract-fr.pdf</span></div></td><td><span class="lang">FR→ZH</span></td><td><span class="st warn">⚠ 待复核</span></td></tr>
+      <tr><td><div class="fn"><div class="ft X">X</div><span>balance-q3.xlsx</span></div></td><td><span class="lang">EN→ZH</span></td><td><span class="st info">◌ 翻译中</span></td></tr>
+    </table>
+  </div>
+  <div class="card" style="padding:16px">
+    <div class="sec-label">检索链路闸</div>
+    <div style="font-size:28px;font-weight:700">85%</div>
+    <div class="cap">hit@5 · 20/20 测试问题 · 09-28 评测</div>
+    <div style="margin-top:12px"><div class="pbar g"><i style="width:85%"></i></div></div>
+    <div class="cap" style="margin-top:8px">阈值 80% · <span style="color:var(--ok);font-weight:500">达标 ✓</span></div>
+  </div>
+</div>`;
+
+document.getElementById('main').innerHTML = views.a || '';
+</script>
+</body>
+</html>

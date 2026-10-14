@@ -1,7 +1,7 @@
 "use client";
 
-import { Loader2 } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
+import { Loader2 } from "lucide-react";
 
 import { authFetch } from "@/extensions/api/client";
 import { cn } from "@/lib/utils";

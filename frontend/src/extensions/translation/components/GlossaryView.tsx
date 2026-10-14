@@ -63,7 +63,7 @@ export function GlossaryView() {
         method: "PUT",
         body: JSON.stringify({ entries: items }),
       });
-      qc.invalidateQueries({ queryKey: ["tlt-glossary"] });
+      void qc.invalidateQueries({ queryKey: ["tlt-glossary"] });
       flash("ok", "术语已保存");
     } catch (e) {
       flash("err", `保存失败：${e instanceof Error ? e.message : String(e)}`);
@@ -77,7 +77,7 @@ export function GlossaryView() {
         method: "PUT",
         body: JSON.stringify({ entries: items }),
       });
-      qc.invalidateQueries({ queryKey: ["tlt-glossary"] });
+      void qc.invalidateQueries({ queryKey: ["tlt-glossary"] });
       flash("ok", "术语已删除");
     } catch (e) {
       flash("err", `删除失败：${e instanceof Error ? e.message : String(e)}`);

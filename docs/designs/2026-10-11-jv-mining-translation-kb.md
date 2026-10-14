@@ -282,9 +282,13 @@ PDF（电子版）──▶ BabelDOC 版式解析（DocLayout-YOLO：段落/标�
 - **决策依据**：翻译质量的核心保障层（数字/术语/完整性/可复核）是本系统护城河；pdf2zh 的
   质量保障层数为 0（逐页 fire-and-forget：数字无保护、术语无强制、错误直接进成品）——
   渲染强 ≠ 翻译质量高，解析/渲染借其版式模型，质量层不让渡。
-- **实施项（T10）**：pip babeldoc 引入 gateway 依赖；PDF 解析器升级为 IL→block 树映射
-  （标题层级/段落/表格/公式区域=占位符不译/图片区域=占位符）；fitz 保留回退；
-  版式模型（ONNX，~200MB）进离线打包清单（HF_ENDPOINT 镜像下载）。
+- **实施项（T10）实测受阻（2026-10-12）**：babeldoc 0.6.4/0.5.24 的 parse-only API
+  均只产出**字符级原始 IL**（PdfCharacter×N、0 段落）——段落组装器深耦合其翻译流程
+  （midend il_translator 需挂 TranslationConfig），无公开解析 API；且其内容解释器对真实
+  文件抛 UnsupportedOperatorError。**回退 fitz 主解析维持**；babeldoc 依赖已从 pyproject
+  移除（venv 一并清理）。观察项：babeldoc 后续版本公开 parse API 或文档化 midend 组装
+  入口时重启此路线；另记 bitstring 5.x 移除 BitStream 与 babeldoc 全版本导入链冲突
+  （传递约束陷阱）。
 - **交付物形态**：维持 Markdown；版式级 PDF 交付物二期再议（需 pdf2zh 完整渲染器，
   质量层会让渡，与「质量优先」冲突，等客户真实要求出现再评估）。
 - **扫描件**：仍走 eai-flow-ocr 链路（管线 A 不变）。
