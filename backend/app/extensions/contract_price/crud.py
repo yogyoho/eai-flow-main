@@ -1192,10 +1192,19 @@ async def update_library_folder(session: AsyncSession, folder_id: UUID, fields: 
         return None
     new_parent = fields.get("parent_id")
     if new_parent is not None:
-        if new_parent == folder_id:
-            raise ValueError("不能把文件夹移动到自己下面")
-        if await session.get(CpaLibraryFolder, new_parent) is None:
-            raise ValueError("目标父文件夹不存在")
+        # 环防护（质量审查 Task 4）: 沿 new_parent 祖先链走——若途中遇到 folder_id,
+        # 说明目标是自身的后代,移动会造出 parent_id 环,前端树遍历会挂死。
+        cur, depth = new_parent, 0
+        while cur is not None and depth < 64:
+            if cur == folder_id:
+                raise ValueError("不能把文件夹移动到自己的子文件夹下")
+            parent = await session.get(CpaLibraryFolder, cur)
+            if parent is None:
+                raise ValueError("目标父文件夹不存在")
+            cur = parent.parent_id
+            depth += 1
+        if cur is not None:
+            raise ValueError("文件夹层级异常")
     for k, v in fields.items():
         setattr(row, k, v)
     await session.commit()
@@ -1226,8 +1235,10 @@ async def list_library_files(session: AsyncSession, folder_id: UUID | None) -> l
     if not rows:
         return []
     hashes = {r.file_hash for r in rows}
-    docs = (await session.execute(select(CpaDocument).where(CpaDocument.file_hash.in_(hashes)))).scalars()
-    by_hash = {d.file_hash: d for d in docs}
+    docs = (await session.execute(select(CpaDocument).where(CpaDocument.file_hash.in_(hashes)).order_by(CpaDocument.created_at.desc()))).scalars()
+    by_hash: dict = {}
+    for d in docs:
+        by_hash.setdefault(d.file_hash, d)  # 同 hash 多行时最新解析者胜（确定性）
     return [
         {
             "id": r.id,
@@ -1301,7 +1312,7 @@ async def delete_library_file(session: AsyncSession, file_id: UUID) -> str | Non
 
 
 async def find_parsed_document_by_hash(session: AsyncSession, file_hash: str) -> CpaDocument | None:
-    return (await session.execute(select(CpaDocument).where(CpaDocument.file_hash == file_hash))).scalars().first()
+    return (await session.execute(select(CpaDocument).where(CpaDocument.file_hash == file_hash).order_by(CpaDocument.created_at.desc()))).scalars().first()
 
 
 async def ensure_folder_path(session: AsyncSession, root_id: UUID | None, segments: list[str]) -> UUID | None:

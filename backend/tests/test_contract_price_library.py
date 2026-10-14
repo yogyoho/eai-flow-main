@@ -5,8 +5,23 @@ monkeypatch crud/storage（镜像 test_contract_price_document_file.py 的模式
 不需要真实 DB / MinIO。
 """
 
+import asyncio
+from types import SimpleNamespace
+from uuid import uuid4
+
+import pytest
+from fastapi import HTTPException
+
 import app.extensions.contract_price  # noqa: F401 — 导入即注册模型
+from app.extensions.contract_price import crud as cpa_crud
 from app.extensions.contract_price import storage as cpa_storage
+from app.extensions.contract_price.routers import (
+    analyze_library_file,
+    delete_library_folder_endpoint,
+    library_file_content,
+    update_library_folder,
+    upload_library_files,
+)
 
 
 def test_library_tables_registered_on_shared_base():
@@ -53,3 +68,160 @@ def test_copy_object_uses_server_side_copy(monkeypatch):
         "src_key": "library/f1/abc_合同.pdf",
     }
     assert uri == "s3://cpa-contracts/合同B.pdf"
+
+
+# ---- Task 5: 路由编排测试（asyncio.run 直调 + monkeypatch crud/storage）----
+
+
+class _Body:
+    """PATCH body 桩: model_dump(**kw) 返回预置 fields。"""
+
+    def __init__(self, fields):
+        self._f = fields
+
+    def model_dump(self, **_kw):
+        return dict(self._f)
+
+
+def _lf(**kw):
+    base = dict(
+        id=uuid4(),
+        folder_id=None,
+        file_name="合同B.pdf",
+        storage_key="library/f1/abc_合同B.pdf",
+        file_hash="h" * 64,
+        file_size=100,
+        file_type="pdf",
+    )
+    base.update(kw)
+    return SimpleNamespace(**base)
+
+
+class _DB:
+    async def get(self, model, obj_id):
+        return None
+
+
+def test_analyze_already_parsed_short_circuits(monkeypatch):
+    lf = _lf()
+    doc = SimpleNamespace(id=uuid4(), file_name="原件.pdf", parse_status="parsed", file_hash=lf.file_hash)
+    monkeypatch.setattr(cpa_crud, "get_library_file", _async_returning(lf))
+    monkeypatch.setattr(cpa_crud, "find_parsed_document_by_hash", _async_returning(doc))
+    called = []
+    monkeypatch.setattr(cpa_storage, "copy_object", lambda *a: called.append(a))
+
+    out = asyncio.run(analyze_library_file(lf.id, db=_DB(), _=None))
+    assert out.status == "already" and out.document_id == doc.id
+    assert called == []  # 已解析 → 不拷贝
+
+
+def test_analyze_name_conflict_diff_content_409(monkeypatch):
+    lf = _lf()
+    monkeypatch.setattr(cpa_crud, "get_library_file", _async_returning(lf))
+    monkeypatch.setattr(cpa_crud, "find_parsed_document_by_hash", _async_returning(None))
+    monkeypatch.setattr(
+        cpa_crud,
+        "find_document_by_storage_key",
+        _async_returning(SimpleNamespace(file_name="合同B.pdf", file_hash="x" * 64)),
+    )
+
+    with pytest.raises(HTTPException) as ei:
+        asyncio.run(analyze_library_file(lf.id, db=_DB(), _=None))
+    assert ei.value.status_code == 409
+
+
+def test_analyze_queued_copies_to_scan_area(monkeypatch):
+    lf = _lf()
+    monkeypatch.setattr(cpa_crud, "get_library_file", _async_returning(lf))
+    monkeypatch.setattr(cpa_crud, "find_parsed_document_by_hash", _async_returning(None))
+    monkeypatch.setattr(cpa_crud, "find_document_by_storage_key", _async_returning(None))
+    copied = {}
+    monkeypatch.setattr(cpa_storage, "copy_object", lambda src, dst: copied.update(src=src, dst=dst))
+    pending = {}
+    monkeypatch.setattr(cpa_crud, "create_pending_document", _async_capture(pending))
+
+    out = asyncio.run(analyze_library_file(lf.id, db=_DB(), _=None))
+    assert out.status == "queued"
+    assert copied == {"src": lf.storage_key, "dst": lf.file_name}
+    assert pending["kwargs"]["file_hash"] == lf.file_hash
+
+
+def test_upload_reuses_same_folder_same_hash(monkeypatch):
+    dup = SimpleNamespace(id=uuid4())
+    monkeypatch.setattr(cpa_crud, "find_library_duplicate", _async_returning(dup))
+
+    class _F:
+        filename = "a.pdf"
+        content_type = "application/pdf"
+
+        async def read(self):
+            return b"%PDF"
+
+    out = asyncio.run(upload_library_files(folder_id="", files=[_F()], db=_DB(), _=None))
+    assert out["items"][0]["reused"] is True and out["items"][0]["file_id"] == dup.id
+
+
+def test_upload_rejects_non_pdf_docx():
+    class _F:
+        filename = "a.txt"
+        content_type = "text/plain"
+
+        async def read(self):
+            return b"x"
+
+    out = asyncio.run(upload_library_files(folder_id="", files=[_F()], db=_DB(), _=None))
+    assert "仅接受" in out["items"][0]["error"]
+
+
+def test_folder_delete_nonempty_409(monkeypatch):
+    monkeypatch.setattr(cpa_crud, "delete_library_folder", _async_returning(False))
+    with pytest.raises(HTTPException) as ei:
+        asyncio.run(delete_library_folder_endpoint(uuid4(), db=_DB(), _=None))
+    assert ei.value.status_code == 409
+
+
+def test_folder_update_cycle_guard_422(monkeypatch):
+    """环防护: 移到自身后代下 → crud ValueError → 路由 422。"""
+    monkeypatch.setattr(
+        cpa_crud,
+        "update_library_folder",
+        _raising(ValueError("不能把文件夹移动到自己的子文件夹下")),
+    )
+    with pytest.raises(HTTPException) as ei:
+        asyncio.run(update_library_folder(uuid4(), _Body({"parent_id": str(uuid4())}), db=_DB(), _=None))
+    assert ei.value.status_code == 422
+
+
+def test_content_inline_for_pdf(monkeypatch):
+    lf = _lf()
+    monkeypatch.setattr(cpa_storage, "get_object", lambda k: b"%PDF-1.7")
+
+    class _GetDB:
+        async def get(self, model, obj_id):
+            return lf
+
+    resp = asyncio.run(library_file_content(lf.id, db=_GetDB(), _=None))
+    assert resp.headers["content-disposition"].startswith("inline;")
+    assert "filename*=UTF-8''" in resp.headers["content-disposition"]
+
+
+def _async_returning(value):
+    async def _fn(*a, **kw):
+        return value
+
+    return _fn
+
+
+def _async_capture(sink):
+    async def _fn(*a, **kw):
+        sink["kwargs"] = kw
+        return SimpleNamespace(id=uuid4())
+
+    return _fn
+
+
+def _raising(exc):
+    async def _fn(*a, **kw):
+        raise exc
+
+    return _fn

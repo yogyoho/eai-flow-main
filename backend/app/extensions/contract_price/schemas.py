@@ -238,3 +238,46 @@ class Page[T](BaseModel):
     total: int
     skip: int
     limit: int
+
+
+# --- 合同文件库 (EAI-CUSTOM cpa v3, spec 2026-10-14 §1.3) -------------------
+
+
+class LibraryFolderOut(ORMBase):
+    id: UUID
+    parent_id: UUID | None = None
+    name: str
+
+
+class LibraryFolderIn(BaseModel):
+    name: str
+    parent_id: UUID | None = None
+
+
+class LibraryFolderUpdate(BaseModel):
+    name: str | None = None
+    parent_id: UUID | None = None
+
+
+class LibraryFileOut(ORMBase):
+    id: UUID
+    folder_id: UUID | None = None
+    file_name: str
+    file_size: int
+    file_type: str
+    uploaded_at: datetime
+    parse_status: str  # unparsed / pending / parsing / parsed / failed / needs_review
+    document_id: UUID | None = None
+
+
+class LibraryUploadItem(BaseModel):
+    file_name: str
+    file_id: UUID | None = None
+    reused: bool = False
+    error: str | None = None
+
+
+class LibraryAnalyzeOut(BaseModel):
+    status: str  # queued | already
+    document_id: UUID | None = None
+    message: str

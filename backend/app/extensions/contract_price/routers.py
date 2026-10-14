@@ -10,6 +10,7 @@ Mounted into the Gateway under ``/api/extensions/contract-price``. Endpoints:
   Functional area 4 (tasks)    : GET /runs, GET /runs/{id}/excel
   Functional area 5 (config)   : GET/PUT /config
   Functional area 6 (dashboard): GET /dashboard
+  Library (cpa v3)             : /library/folders*, /library/files* — 合同文件库 (EAI-CUSTOM)
   Pipeline trigger             : POST /pipeline/run, GET /pipeline/runs/{id}/status
 """
 
@@ -20,13 +21,13 @@ import os
 import urllib.parse
 from uuid import UUID
 
-from fastapi import APIRouter, BackgroundTasks, Depends, File, HTTPException, Query, UploadFile, status
+from fastapi import APIRouter, BackgroundTasks, Depends, File, Form, HTTPException, Query, UploadFile, status
 from fastapi.responses import FileResponse, Response
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.extensions.auth.middleware import require_permission
 from app.extensions.contract_price import crud, evolution, service, storage
-from app.extensions.contract_price.models import CpaDocument, CpaItem
+from app.extensions.contract_price.models import CpaDocument, CpaItem, CpaLibraryFolder
 from app.extensions.contract_price.schemas import (
     BatchDeleteRequest,
     ClusterConfirm,
@@ -43,6 +44,11 @@ from app.extensions.contract_price.schemas import (
     ItemMove,
     ItemOut,
     ItemUpdate,
+    LibraryAnalyzeOut,
+    LibraryFileOut,
+    LibraryFolderIn,
+    LibraryFolderOut,
+    LibraryFolderUpdate,
     Page,
     PipelineRunRequest,
     PipelineRunResponse,
@@ -54,6 +60,248 @@ from app.extensions.schemas import CurrentUser
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/extensions/contract-price", tags=["Contract Price Analysis"])
+
+
+# --- 合同文件库 (EAI-CUSTOM cpa v3, spec 2026-10-14 §1.3) --------------------
+
+
+@router.get("/library/folders")
+async def list_library_folders(
+    db: AsyncSession = Depends(get_db),
+    _: CurrentUser = Depends(require_permission("system:access")),
+):
+    return {"items": await crud.list_library_folders(db)}
+
+
+@router.post("/library/folders", response_model=LibraryFolderOut)
+async def create_library_folder(
+    body: LibraryFolderIn,
+    db: AsyncSession = Depends(get_db),
+    _: CurrentUser = Depends(require_permission("system:access")),
+):
+    if not body.name.strip():
+        raise HTTPException(status_code=422, detail="文件夹名不能为空")
+    try:
+        return await crud.create_library_folder(db, body.name.strip(), body.parent_id)
+    except ValueError as exc:
+        # 父文件夹不存在 / 同级同名——都是客户端可修正的冲突
+        raise HTTPException(status_code=409, detail=str(exc))
+
+
+@router.patch("/library/folders/{folder_id}", response_model=LibraryFolderOut)
+async def update_library_folder(
+    folder_id: UUID,
+    body: LibraryFolderUpdate,
+    db: AsyncSession = Depends(get_db),
+    _: CurrentUser = Depends(require_permission("system:access")),
+):
+    fields = body.model_dump(exclude_none=True)
+    try:
+        row = await crud.update_library_folder(db, folder_id, fields)
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc))
+    if row is None:
+        raise HTTPException(status_code=404, detail="文件夹不存在")
+    return row
+
+
+@router.delete("/library/folders/{folder_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_library_folder_endpoint(
+    folder_id: UUID,
+    db: AsyncSession = Depends(get_db),
+    _: CurrentUser = Depends(require_permission("system:access")),
+):
+    if not await crud.delete_library_folder(db, folder_id):
+        raise HTTPException(status_code=409, detail="文件夹非空（含子文件夹或文件），请先移走内容")
+
+
+@router.get("/library/files", response_model=list[LibraryFileOut])
+async def list_library_files_endpoint(
+    folder_id: str | None = Query(None, description="空/root=根;否则文件夹 UUID"),
+    db: AsyncSession = Depends(get_db),
+    _: CurrentUser = Depends(require_permission("system:access")),
+):
+    fid = None if folder_id in (None, "", "root") else UUID(folder_id)
+    return await crud.list_library_files(db, fid)
+
+
+@router.post("/library/files/upload")
+async def upload_library_files(
+    folder_id: str = Form(""),
+    paths: str = Form("[]"),  # 与 files 等长的相对路径 JSON 数组（webkitdirectory 用；""=不建子树）
+    files: list[UploadFile] = File(...),
+    db: AsyncSession = Depends(get_db),
+    _: CurrentUser = Depends(require_permission("system:access")),
+):
+    """多文件上传（含 webkitdirectory）。同文件夹同内容 → reused 复用不重复入库。
+    paths 提供相对路径段（如 "设备采购/附表"）时自动逐级建子文件夹（幂等）。"""
+    import json as _json
+
+    fid: UUID | None = UUID(folder_id) if folder_id and folder_id != "root" else None
+    if fid is not None and await db.get(CpaLibraryFolder, fid) is None:
+        raise HTTPException(status_code=404, detail="目标文件夹不存在")
+    try:
+        rel_paths = _json.loads(paths)
+        if not isinstance(rel_paths, list) or len(rel_paths) != len(files):
+            rel_paths = [""] * len(files)
+    except (TypeError, ValueError):  # TypeError: 直调（测试）时 paths 是 FastAPI Form 默认对象而非 str
+        rel_paths = [""] * len(files)
+    out: list[dict] = []
+    for f, rel in zip(files, rel_paths):
+        name = f.filename or ""
+        if not name.lower().endswith((".pdf", ".docx")):
+            out.append({"file_name": name, "reused": False, "error": "仅接受 .pdf / .docx"})
+            continue
+        data = await f.read()
+        if not data:
+            out.append({"file_name": name, "reused": False, "error": "空文件"})
+            continue
+        # 相对路径 → 目标文件夹（逐级幂等建目录；根目录传 "" 时目标仍为 fid）
+        target = fid
+        segments = [s for s in str(rel or "").replace("\\", "/").split("/") if s][:-1]
+        if segments:
+            target = await crud.ensure_folder_path(db, fid, segments)
+        digest = hashlib.sha256(data).hexdigest()
+        dup = await crud.find_library_duplicate(db, target, digest)
+        if dup is not None:
+            out.append({"file_name": name, "file_id": dup.id, "reused": True})
+            continue
+        ext = os.path.splitext(name)[1].lstrip(".").lower() or "pdf"
+        key = storage.library_key(str(target) if target else "root", digest, name)
+        await asyncio.to_thread(storage.upload_bytes, key, data, f.content_type or "application/octet-stream")
+        row = await crud.create_library_file(
+            db,
+            folder_id=target,
+            file_name=name,
+            storage_key=key,
+            file_hash=digest,
+            file_size=len(data),
+            file_type=ext,
+        )
+        out.append({"file_name": name, "file_id": row.id, "reused": False})
+    return {"items": out}
+
+
+@router.get("/library/files/{file_id}/content")
+async def library_file_content(
+    file_id: UUID,
+    db: AsyncSession = Depends(get_db),
+    _: CurrentUser = Depends(require_permission("system:access")),
+):
+    """PDF inline 内嵌预览;docx 附件下载（浏览器不渲染 docx）。"""
+    lf = await crud.get_library_file(db, file_id)
+    if lf is None:
+        raise HTTPException(status_code=404, detail="文件不存在")
+    try:
+        data = await asyncio.to_thread(storage.get_object, lf.storage_key)
+    except Exception:
+        raise HTTPException(status_code=404, detail="文件对象不存在")
+    is_pdf = (lf.file_type or "").lower() == "pdf"
+    media = "application/pdf" if is_pdf else "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+    quoted = urllib.parse.quote(lf.file_name or "file")
+    return Response(
+        content=data,
+        media_type=media,
+        headers={"Content-Disposition": (f"{'inline' if is_pdf else 'attachment'}; filename=\"library.{lf.file_type or 'bin'}\"; filename*=UTF-8''{quoted}")},
+    )
+
+
+@router.get("/library/files/{file_id}/items")
+async def library_file_items(
+    file_id: UUID,
+    skip: int = Query(0, ge=0),
+    limit: int = Query(200, ge=1, le=500),
+    db: AsyncSession = Depends(get_db),
+    _: CurrentUser = Depends(require_permission("system:access")),
+):
+    """该文件（按 file_hash 匹配）解析出的分项清单——只读查阅。"""
+    lf = await crud.get_library_file(db, file_id)
+    if lf is None:
+        raise HTTPException(status_code=404, detail="文件不存在")
+    doc = await crud.find_parsed_document_by_hash(db, lf.file_hash)
+    if doc is None:
+        raise HTTPException(status_code=404, detail="该文件尚未解析（先「加入解析」）")
+    items, total = await crud.list_items(db, skip=skip, limit=limit, document_id=doc.id)
+    return {
+        "document": {"id": doc.id, "file_name": doc.file_name, "parse_status": doc.parse_status},
+        "items": [ItemOut.model_validate(i).model_dump() for i in items],
+        "total": total,
+    }
+
+
+@router.post("/library/files/{file_id}/analyze", response_model=LibraryAnalyzeOut)
+async def analyze_library_file(
+    file_id: UUID,
+    db: AsyncSession = Depends(get_db),
+    _: CurrentUser = Depends(require_permission("system:access")),
+):
+    """显式加入解析，语义对齐 documents/upload：
+    ① 同内容已解析 → already（直接看清单）;② 同名不同内容已存在 → 409 防统计污染;
+    ③ MinIO 服务端拷 library/... → 扫描区根 + 建 pending 行，下一轮解析自动拾取。"""
+    lf = await crud.get_library_file(db, file_id)
+    if lf is None:
+        raise HTTPException(status_code=404, detail="文件不存在")
+    doc = await crud.find_parsed_document_by_hash(db, lf.file_hash)
+    if doc is not None:
+        return LibraryAnalyzeOut(
+            status="already",
+            document_id=doc.id,
+            message=f"该内容已解析过（{doc.file_name}），可直接查看清单",
+        )
+    conflict = await crud.find_document_by_storage_key(db, lf.file_name)
+    if conflict is not None and conflict.file_hash != lf.file_hash:
+        raise HTTPException(
+            status_code=409,
+            detail=f"扫描区已存在同名但内容不同的合同「{conflict.file_name}」，请先在合同解析页处理或重命名后重试",
+        )
+    await asyncio.to_thread(storage.copy_object, lf.storage_key, lf.file_name)
+    await crud.create_pending_document(
+        db,
+        storage_uri=f"s3://{storage.BUCKET}/{lf.file_name}",
+        file_name=lf.file_name,
+        file_hash=lf.file_hash,
+        file_type=lf.file_type or "pdf",
+        size=lf.file_size,
+    )
+    return LibraryAnalyzeOut(status="queued", message="已加入解析队列，下一轮解析自动拾取")
+
+
+@router.patch("/library/files/{file_id}", response_model=LibraryFileOut)
+async def move_library_file_endpoint(
+    file_id: UUID,
+    body: dict,  # {"folder_id": UUID | None}
+    db: AsyncSession = Depends(get_db),
+    _: CurrentUser = Depends(require_permission("system:access")),
+):
+    try:
+        row = await crud.move_library_file(db, file_id, body.get("folder_id"))
+    except ValueError as exc:
+        raise HTTPException(status_code=404, detail=str(exc))
+    if row is None:
+        raise HTTPException(status_code=404, detail="文件不存在")
+    # parse_status 占位 "unparsed"——move 后前端整体 refetch，真实值由列表接口给出
+    return LibraryFileOut(
+        id=row.id,
+        folder_id=row.folder_id,
+        file_name=row.file_name,
+        file_size=row.file_size,
+        file_type=row.file_type,
+        uploaded_at=row.uploaded_at,
+        parse_status="unparsed",
+        document_id=None,
+    )
+
+
+@router.delete("/library/files/{file_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_library_file_endpoint(
+    file_id: UUID,
+    db: AsyncSession = Depends(get_db),
+    _: CurrentUser = Depends(require_permission("system:access")),
+):
+    key = await crud.delete_library_file(db, file_id)
+    if key is None:
+        raise HTTPException(status_code=404, detail="文件不存在")
+    await asyncio.to_thread(storage.delete_object, key)  # best-effort，静默容忍缺失
 
 
 # --- Functional area 1: documents ------------------------------------------
