@@ -8,10 +8,12 @@ MCP 工具（translate_document/translation_status）与 worker 在 T4/T5 接入
 import hashlib
 import logging
 import os
+import tempfile
 import uuid
 from pathlib import Path
 from uuid import UUID
 
+import yaml
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, UploadFile, status
 from fastapi.responses import FileResponse
 from pydantic import BaseModel
@@ -65,7 +67,7 @@ class TaskOut(BaseModel):
     updated_at: str | None
     source_uri: str | None
     kb_name: str | None
-    uncertainty: dict | None
+    uncertainty: list | None  # worker 写 list[{block,...}]，mcp.py 按 list 迭代（曾误标 dict → pydantic 500）
 
     @classmethod
     def from_row(cls, t: TranslationTask, kb_name: str | None = None) -> "TaskOut":
@@ -217,6 +219,9 @@ async def transition_task(
         detail.setdefault("notes", []).append({"from": prev_state, "target": req.target, "note": req.note})
         task.error_detail = detail
     await db.commit()
+    # updated_at 由 onupdate=func.now() 服务端生成，flush 后属性已过期；
+    # AsyncSession 下直接读会 MissingGreenlet（同 create_folder 的 refresh 手法）
+    await db.refresh(task)
     logger.info("tlt task %s transitioned %s -> %s by %s", task.id, prev_state, req.target, current_user.id)
     return TaskOut.from_row(task).model_dump(mode="json")
 
@@ -506,3 +511,75 @@ async def preview_deliverable(
     if not p.exists():
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="交付物文件已不存在")
     return FileResponse(p, media_type="text/markdown; charset=utf-8")
+
+
+# ── 术语库 CRUD（yaml 原子读写，参照 roles_custom overlay 模式）─────────
+
+
+class GlossaryEntryOut(BaseModel):
+    source: str
+    action: str  # force | forbid | keep
+    target: str | None = None
+
+
+class GlossaryPutBody(BaseModel):
+    entries: list[GlossaryEntryOut]
+
+
+def _glossary_yaml_path() -> Path:
+    env = os.environ.get("EAI_TRANSLATION_GLOSSARY")
+    if env:
+        return Path(env)
+    return Path("config/translation_glossary.yaml")
+
+
+def _read_glossary_entries(path: Path) -> list[GlossaryEntryOut]:
+    if not path.exists():
+        return []
+    data = yaml.safe_load(path.read_text(encoding="utf-8")) or {}
+    out = []
+    for t in data.get("terms") or []:
+        src = str(t.get("source", "")).strip()
+        action = str(t.get("action", "force")).strip().lower()
+        target = str(t.get("target", "")).strip() or None
+        if src:
+            out.append(GlossaryEntryOut(source=src, action=action, target=target))
+    return out
+
+
+def _write_glossary_yaml(path: Path, entries: list[GlossaryEntryOut]) -> None:
+    lines = ["terms:"]
+    for e in entries:
+        lines.append(f"  - source: {e.source}")
+        lines.append(f"    action: {e.action}")
+        if e.target:
+            lines.append(f"    target: {e.target}")
+    path.parent.mkdir(parents=True, exist_ok=True)
+    fd, tmp = tempfile.mkstemp(suffix=".yaml", dir=str(path.parent), prefix=".glossary-")
+    os.close(fd)
+    try:
+        Path(tmp).write_text("\n".join(lines) + "\n", encoding="utf-8")
+        os.replace(tmp, path)
+    except Exception:
+        if os.path.exists(tmp):
+            os.unlink(tmp)
+        raise
+
+
+@router.get("/glossary")
+async def get_glossary_entries(
+    _current_user=Depends(require_permission("translation:read")),
+) -> dict:
+    path = _glossary_yaml_path()
+    entries = _read_glossary_entries(path)
+    return {"entries": [e.model_dump() for e in entries], "count": len(entries)}
+
+
+@router.put("/glossary")
+async def put_glossary_entries(
+    body: GlossaryPutBody,
+    _current_user=Depends(require_permission("translation:transition")),
+) -> dict:
+    _write_glossary_yaml(_glossary_yaml_path(), body.entries)
+    entries = _read_glossary_entries(_glossary_yaml_path())
+    return {"entries": [e.model_dump() for e in entries], "count": len(entries)}

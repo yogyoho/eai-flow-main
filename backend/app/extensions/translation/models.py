@@ -109,7 +109,7 @@ class TranslationTask(Base):
     retry_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     task_version: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
     gate_failures: Mapped[dict | None] = mapped_column(JSONB, nullable=True)  # 逐轴失败明细
-    uncertainty: Mapped[dict | None] = mapped_column(JSONB, nullable=True)  # LLM 不确定标记段
+    uncertainty: Mapped[list | None] = mapped_column(JSONB, nullable=True)  # LLM 不确定标记段（list[{block,...}]，勿用 dict）
     error_detail: Mapped[dict | None] = mapped_column(JSONB, nullable=True)  # 基础设施错误详情
     superseded_by: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), nullable=True)
     # T6 交付物（delivered 分界事件的物证：MinIO uri + RAGFlow 中文版文档 id）
