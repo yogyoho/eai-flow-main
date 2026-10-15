@@ -37,6 +37,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import {
   Popover,
   PopoverContent,
@@ -49,17 +50,19 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { contractPriceApi } from "@/extensions/contract-price/api";
+import { contractPriceApi, libraryApi } from "@/extensions/contract-price/api";
 import {
   ContractSourceDialog,
   type ContractSourceDoc,
 } from "@/extensions/contract-price/components/ContractSourceDialog";
+import { pathOf } from "@/extensions/contract-price/components/library-tree";
 import { PageHeader } from "@/extensions/contract-price/components/PageHeader";
 import type { SeedDraft } from "@/extensions/contract-price/components/SeedEditorDrawer";
 import { UnmatchedTablesDrawer } from "@/extensions/contract-price/components/UnmatchedTablesDrawer";
 import {
   useConfig,
   useDocuments,
+  useLibraryFolders,
   useReparseDocument,
   useRunCluster,
   useRunPipeline,
@@ -175,6 +178,9 @@ function UploadDialog({
   onOpenChange,
   onUpload,
   uploading,
+  folders,
+  folderId,
+  onFolderChange,
 }: {
   open: boolean;
   onOpenChange: (v: boolean) => void;
@@ -182,8 +188,12 @@ function UploadDialog({
   onUpload: (
     files: File[],
     autoParse: boolean,
-  ) => Promise<{ total: number; failed: File[] }>;
+  ) => Promise<{ total: number; failed: File[]; firstError: string | null }>;
   uploading: boolean;
+  /** cpa v3 上传源头统一: 文件落文件库(可选目录),与合同文件库同一份。 */
+  folders: { id: string; label: string }[];
+  folderId: string | null;
+  onFolderChange: (id: string | null) => void;
 }) {
   const [selected, setSelected] = useState<File[]>([]);
   const [dragOver, setDragOver] = useState(false);
@@ -212,7 +222,7 @@ function UploadDialog({
   const startUpload = async () => {
     if (selected.length === 0 || uploading) return;
     setUploadError(null);
-    const { failed } = await onUpload(selected, autoParse);
+    const { failed, firstError } = await onUpload(selected, autoParse);
     if (failed.length === 0) {
       setSelected([]);
       setAutoParse(false);
@@ -223,7 +233,7 @@ function UploadDialog({
         prev.filter((f) => failedKeys.has(`${f.name}-${f.size}`)),
       );
       setUploadError(
-        `${failed.length} 个文件上传失败,已保留在选择列表,可直接重试或移除。`,
+        `${failed.length} 个文件上传失败${firstError ? `（${firstError}）` : ""},已保留在选择列表,可直接重试或移除。`,
       );
     }
   };
@@ -244,9 +254,31 @@ function UploadDialog({
         <DialogHeader>
           <DialogTitle>上传合同</DialogTitle>
           <DialogDescription>
-            支持批量选择 PDF/DOCX 文件或整个文件夹。
+            支持批量选择 PDF/DOCX 文件或整个文件夹。文件统一存入合同文件库，两个
+            tab 共享同一份；此处上传后按需解析。
           </DialogDescription>
         </DialogHeader>
+
+        {/* 上传目标文件夹(源头统一:文件库树里可直接找到) */}
+        <div className="space-y-1.5">
+          <Label className="text-sm font-medium">上传到文件夹</Label>
+          <Select
+            value={folderId ?? "__root__"}
+            onValueChange={(v) => onFolderChange(v === "__root__" ? null : v)}
+          >
+            <SelectTrigger className="w-full">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="__root__">文件库（根目录）</SelectItem>
+              {folders.map((f) => (
+                <SelectItem key={f.id} value={f.id}>
+                  {f.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
 
         {/* Drag-drop zone */}
         <div
@@ -574,6 +606,17 @@ export function ContractsView() {
   };
   const [showClusterConfirm, setShowClusterConfirm] = useState(false);
   const [showUploadDialog, setShowUploadDialog] = useState(false);
+  // cpa v3 上传源头统一: 上传落文件库(可选目录),与合同文件库同一份。
+  const [uploadFolderId, setUploadFolderId] = useState<string | null>(null);
+  const foldersQ = useLibraryFolders();
+  const folders = foldersQ.data?.items ?? [];
+  const uploadFolderOptions = folders.map((f) => ({
+    id: f.id,
+    label: pathOf(folders, f.id)
+      .slice(1)
+      .map((s) => s.name)
+      .join(" / "),
+  }));
   // 已保存规则的未匹配表键(文件名:页:表序);PUT 成功才标记,抽屉的
   // "已保存规则"标记与重解析门槛都由此驱动(单一事实源)。
   const [savedKeys, setSavedKeys] = useState<Set<string>>(new Set());
@@ -594,45 +637,90 @@ export function ContractsView() {
   const handleFiles = async (
     files: FileList | File[],
     autoParse = false,
-  ): Promise<{ total: number; failed: File[] }> => {
+  ): Promise<{ total: number; failed: File[]; firstError: string | null }> => {
     // Filter to .pdf/.docx (webkitdirectory grabs ALL files in a folder).
     const list = Array.from(files).filter(
       (f) =>
         f.name.toLowerCase().endsWith(".pdf") ||
         f.name.toLowerCase().endsWith(".docx"),
     );
-    if (!list.length) return { total: 0, failed: [] };
+    if (!list.length) return { total: 0, failed: [], firstError: null };
     setBatch({ total: list.length, done: 0, failed: 0 });
-    // Concurrent upload pool (6 at a time) — sequential is too slow for 100+ files.
+    const folderLabel =
+      uploadFolderId === null
+        ? "文件库（根目录）"
+        : (uploadFolderOptions.find((f) => f.id === uploadFolderId)?.label ??
+          uploadFolderId);
+    // 上传源头统一(cpa v3): 走文件库上传通道(同文件夹同 hash 幂等复用)→ 逐个
+    // 「加入解析」(hash 命中=已解析短路;新文件 MinIO 拷到扫描区根+建 pending 行)。
+    // 管线拾取逻辑零改动;文件库 tab 立即可见同一份文件。
     const POOL = 6;
     let done = 0;
     let failed = 0;
+    let parseQueued = 0;
+    let alreadyParsed = 0;
     const failedFiles: File[] = [];
+    const failReasons: string[] = [];
+    const byName = new Map(list.map((f) => [f.name, f]));
     for (let i = 0; i < list.length; i += POOL) {
-      await Promise.allSettled(
-        list.slice(i, i + POOL).map(async (f) => {
-          try {
-            await contractPriceApi.uploadDocument(f);
-          } catch {
+      const chunk = list.slice(i, i + POOL);
+      try {
+        const res = await libraryApi.uploadFiles(uploadFolderId, chunk);
+        for (const item of res.items) {
+          const f = byName.get(item.file_name) ?? chunk[0];
+          done += 1;
+          if (item.error || !item.file_id) {
             failed += 1;
             failedFiles.push(f);
+            if (item.error)
+              failReasons.push(`${item.file_name}：${item.error}`);
+            setBatch({ total: list.length, done, failed });
+            continue;
           }
-          done += 1;
+          try {
+            const a = await libraryApi.analyzeFile(item.file_id);
+            if (a.status === "queued") parseQueued += 1;
+            else alreadyParsed += 1;
+          } catch (e) {
+            // 同名不同内容 409 等解析登记失败 → 计失败,文件保留重试
+            failed += 1;
+            failedFiles.push(f);
+            failReasons.push(
+              `${item.file_name}：加入解析失败 ${e instanceof Error ? e.message : String(e)}`,
+            );
+          }
           setBatch({ total: list.length, done, failed });
-        }),
-      );
+        }
+      } catch (e) {
+        for (const f of chunk) {
+          failed += 1;
+          failedFiles.push(f);
+          done += 1;
+        }
+        failReasons.push(
+          `上传请求失败 ${e instanceof Error ? e.message : String(e)}`,
+        );
+        setBatch({ total: list.length, done, failed });
+      }
     }
     void qc.invalidateQueries({ queryKey: ["cpa"] });
-    if (autoParse && failed < list.length) {
+    if (autoParse && parseQueued > 0) {
       runPipeline.mutate({ trigger: "manual" });
     }
     if (failed > 0) {
-      // 对话框外的全局失败反馈(页头按钮只有计数,这里补失败说明)
       setNotice(
-        `上传完成 ${list.length - failed}/${list.length},${failed} 个失败,可重开「上传合同」重试。`,
+        `已入文件库「${folderLabel}」：成功 ${list.length - failed}（入解析队列 ${parseQueued}，已是解析状态 ${alreadyParsed}），失败 ${failed} 个可重试。${failReasons[0] ? ` 首个原因：${failReasons[0]}` : ""}`,
+      );
+    } else {
+      setNotice(
+        `已上传 ${list.length} 个文件到文件库「${folderLabel}」（入解析队列 ${parseQueued}，已是解析状态 ${alreadyParsed}），可在「合同文件库」查看。`,
       );
     }
-    return { total: list.length, failed: failedFiles };
+    return {
+      total: list.length,
+      failed: failedFiles,
+      firstError: failReasons[0] ?? null,
+    };
   };
 
   // 列表分页(纯前端接线:后端 Page{total},skip/limit 透传)
@@ -1169,6 +1257,9 @@ export function ContractsView() {
         onOpenChange={setShowUploadDialog}
         uploading={!!batch && batch.done < batch.total}
         onUpload={(files, autoParse) => handleFiles(files, autoParse)}
+        folders={uploadFolderOptions}
+        folderId={uploadFolderId}
+        onFolderChange={setUploadFolderId}
       />
 
       <UnmatchedTablesDrawer
