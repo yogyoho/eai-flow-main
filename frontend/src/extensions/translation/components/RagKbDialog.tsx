@@ -86,34 +86,14 @@ export function RagKbDialog({
     if (!open) return;
     setError(null);
     if (editing) {
-      const pc = editing.parser_config ?? {};
+      // v1.0：parser_config 已是 pipeline 形状（GeneralChunker/Parser/...），
+      // naive 字段回显会显示假默认值——编辑模式不回填、不提交分块子表单
       setName(editing.name);
       setDescription(editing.description ?? "");
       setLanguage(editing.language === "English" ? "English" : "Chinese");
       setPermission(editing.permission === "me" ? "me" : "team");
       setEmbedding(editing.embedding_model ?? "");
       setChunkMethod(editing.chunk_method ?? "naive");
-      setChunkTokenNum(Number(pc.chunk_token_num ?? 512));
-      setDelimiter(typeof pc.delimiter === "string" ? pc.delimiter : "\n");
-      setLayoutRecognize(
-        typeof pc.layout_recognize === "string"
-          ? pc.layout_recognize
-          : "DeepDOC",
-      );
-      setHtml4excel(pc.html4excel === true);
-      setUseRaptor(
-        (pc.raptor as Record<string, unknown> | undefined)?.use_raptor === true,
-      );
-      setUseGraphrag(
-        (pc.graphrag as Record<string, unknown> | undefined)?.use_graphrag ===
-          true,
-      );
-      setUseParentChild(
-        (pc.parent_child as Record<string, unknown> | undefined)
-          ?.use_parent_child === true,
-      );
-      setTableContextSize(Number(pc.table_context_size ?? 0));
-      setImageContextSize(Number(pc.image_context_size ?? 0));
       setPagerank(Number(editing.pagerank ?? 0));
     } else {
       setName("");
@@ -141,6 +121,16 @@ export function RagKbDialog({
   }, [open, editing, embedding, modelsQ.data]);
 
   const buildPayload = (): RagKbPayload => {
+    if (editing) {
+      // v1.0 编辑模式：分块/向量由 pipeline 管理，只提交基础+检索字段
+      // （parser_config/chunk_method/embedding_model 不发送，防默认值覆盖线上配置）
+      return {
+        description: description || null,
+        language,
+        permission,
+        pagerank,
+      };
+    }
     const pc: Record<string, unknown> = {
       chunk_token_num: chunkTokenNum,
       delimiter,
@@ -267,7 +257,12 @@ export function RagKbDialog({
             <p className="text-muted-foreground text-xs font-medium">
               向量模型
             </p>
-            {modelsQ.isLoading ? (
+            {editing ? (
+              <p className="text-muted-foreground text-xs">
+                当前：{editing.embedding_model ?? "（自动）"}——v1.0
+                建库后不支持更换向量模型
+              </p>
+            ) : modelsQ.isLoading ? (
               <span className="text-muted-foreground flex items-center gap-2">
                 <Loader2 className="h-4 w-4 animate-spin" /> 加载模型列表…
               </span>
@@ -295,72 +290,73 @@ export function RagKbDialog({
             <p className="text-muted-foreground text-xs font-medium">
               分块配置
             </p>
-            <div className="grid grid-cols-[110px_1fr] items-center gap-2">
-              <span>chunk method</span>
-              <Select
-                value={chunkMethod}
-                onValueChange={setChunkMethod}
-                disabled={!!editing}
-              >
-                <SelectTrigger size="sm" className="w-full">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {CHUNK_METHODS.map((m) => (
-                    <SelectItem key={m} value={m}>
-                      {m}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              {editing && (
-                <span className="text-xs text-muted-foreground">
-                  v1.0 不支持建库后修改分块方法
-                </span>
-              )}
-              <span>chunk_token_num</span>
-              {numInput(chunkTokenNum, setChunkTokenNum, 1)}
-              <span>delimiter</span>
-              <Input
-                className="h-8 w-28"
-                value={delimiter}
-                onChange={(e) => setDelimiter(e.target.value)}
-              />
-              <span>table_context</span>
-              {numInput(tableContextSize, setTableContextSize)}
-              <span>image_context</span>
-              {numInput(imageContextSize, setImageContextSize)}
-              {chunkMethod === "naive" && (
-                <>
-                  <span>layout_recognize</span>
-                  <Select
-                    value={layoutRecognize}
-                    onValueChange={setLayoutRecognize}
-                  >
+            {editing ? (
+              <p className="text-muted-foreground text-xs">
+                分块方法：{editing.chunk_method ?? "—"}——v1.0
+                建库后不支持修改分块配置，精细调优请到 RAGFlow 平台。
+              </p>
+            ) : (
+              <>
+                <div className="grid grid-cols-[110px_1fr] items-center gap-2">
+                  <span>chunk method</span>
+                  <Select value={chunkMethod} onValueChange={setChunkMethod}>
                     <SelectTrigger size="sm" className="w-full">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="DeepDOC">DeepDOC</SelectItem>
-                      <SelectItem value="Naive">Naive</SelectItem>
-                      <SelectItem value="Vision">Vision</SelectItem>
+                      {CHUNK_METHODS.map((m) => (
+                        <SelectItem key={m} value={m}>
+                          {m}
+                        </SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
-                  <span>html4excel</span>
-                  {toggle(html4excel, setHtml4excel, "Excel 转 HTML 解析")}
-                </>
-              )}
-            </div>
-            <div className="flex flex-wrap gap-4 pt-1">
-              {toggle(useRaptor, setUseRaptor, "RAPTOR 层级摘要")}
-              {toggle(useGraphrag, setUseGraphrag, "GraphRAG 知识图谱")}
-              {chunkMethod === "naive" &&
-                toggle(useParentChild, setUseParentChild, "父子分块")}
-            </div>
-            <p className="text-muted-foreground text-xs">
-              高级子参（聚类阈值/prompt 等）沿用 RAGFlow
-              部署默认；需要精细调优时到 RAGFlow 平台。
-            </p>
+                  <span>chunk_token_num</span>
+                  {numInput(chunkTokenNum, setChunkTokenNum, 1)}
+                  <span>delimiter</span>
+                  <Input
+                    className="h-8 w-28"
+                    value={delimiter}
+                    onChange={(e) => setDelimiter(e.target.value)}
+                  />
+                  <span>table_context</span>
+                  {numInput(tableContextSize, setTableContextSize)}
+                  <span>image_context</span>
+                  {numInput(imageContextSize, setImageContextSize)}
+                  {chunkMethod === "naive" && (
+                    <>
+                      <span>layout_recognize</span>
+                      <Select
+                        value={layoutRecognize}
+                        onValueChange={setLayoutRecognize}
+                      >
+                        <SelectTrigger size="sm" className="w-full">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="DeepDOC">DeepDOC</SelectItem>
+                          <SelectItem value="Naive">Naive</SelectItem>
+                          <SelectItem value="Vision">Vision</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <span>html4excel</span>
+                      {toggle(html4excel, setHtml4excel, "Excel 转 HTML 解析")}
+                    </>
+                  )}
+                </div>
+                <div className="flex flex-wrap gap-4 pt-1">
+                  {toggle(useRaptor, setUseRaptor, "RAPTOR 层级摘要")}
+                  {toggle(useGraphrag, setUseGraphrag, "GraphRAG 知识图谱")}
+                  {chunkMethod === "naive" &&
+                    toggle(useParentChild, setUseParentChild, "父子分块")}
+                </div>
+                <p className="text-muted-foreground text-xs">
+                  当前部署版（RAGFlow 1.0.0）分块参数由 pipeline
+                  默认值接管，此处配置可能不生效；精细调优请到 RAGFlow
+                  平台或等待 pipeline 配置接入。
+                </p>
+              </>
+            )}
           </div>
 
           {/* 检索 */}

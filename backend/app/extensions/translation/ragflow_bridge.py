@@ -92,8 +92,8 @@ async def _dataset_exists(client: RAGFlowClient, dataset_id: str) -> bool:
 async def ensure_dataset(kb: KnowledgeBase, *, client: RAGFlowClient | None = None) -> str:
     """返回就绪的 dataset_id；悬空/缺失则重建并回写 kb（**调用方负责 commit**）。
 
-    C1 自愈单点：worker 索引（index_translation）、上传链（upload_assets）、
-    设置页修复（rag-kbs 配置编辑）三处共用，禁止另写第二份重建逻辑。
+    C1 自愈单点：worker 索引（index_translation）与上传链（upload_assets）共用，
+    禁止另写第二份重建逻辑（rag-kbs 配置编辑对未关联库 409，不走本函数）。
     """
     client = client or RAGFlowClient()
     if kb.ragflow_dataset_id and await _dataset_exists(client, kb.ragflow_dataset_id):
@@ -102,11 +102,13 @@ async def ensure_dataset(kb: KnowledgeBase, *, client: RAGFlowClient | None = No
     if not embed:
         available = await client.list_available_embedding_models()
         embed = available[0] if available else None
+    # EAI 内部枚举→RAGFlow parser 映射（同 bug-3307 relink 手法；"report"→"manual" 等）
+    ragflow_chunk = _CHUNK_METHOD_TO_PARSER.get(kb.chunk_method or "", None) or kb.chunk_method
     rf = await client.create_dataset(
         name=kb.name,
         description=kb.description or "",
         embedding_model=embed,
-        chunk_method=kb.chunk_method,
+        chunk_method=ragflow_chunk,
         parser_config=kb.parser_config,
     )
     dataset_id = (rf.get("data") or {}).get("id")
