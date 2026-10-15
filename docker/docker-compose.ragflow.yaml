@@ -17,10 +17,12 @@ services:
   ragflow:
     image: ${RAGFLOW_IMAGE:-infiniflow/ragflow:v0.27.1}
     container_name: eai-flow-ragflow
-    # Default entrypoint (no --disable-* flags): starts nginx + API + task executors.
-    # v0.27.x: --init-model-provider-tables is REQUIRED — without it the model-provider
-    # table creation/seed migration is silently skipped (upstream compose sets the same).
-    command: ["--enable-adminserver", "--init-model-provider-tables"]
+    # Default entrypoint (no --disable-* flags): starts nginx + API + admin +
+    # syncer + ingestor, after running Go DB migrations once up front.
+    # --init-model-provider-tables must NOT be passed on the dev (main-branch)
+    # image: its meaning changed to "run migrations and exit", so the container
+    # would exit right after migrating. Re-add it ONLY for the v0.27.x image.
+    command: ["--enable-adminserver"]
     environment:
       # Must match service_conf.yaml.template variable names:
       #   MYSQL_DBNAME (NOT MYSQL_DATABASE)
@@ -36,6 +38,20 @@ services:
       - ELASTIC_PASSWORD=${ELASTIC_PASSWORD:-ragflow123}
       - REDIS_HOST=ragflow-redis
       - REDIS_PASSWORD=${REDIS_PASSWORD:-ragflow123}
+      # Go backend (main branch) reads its cache/queue section from KVROCKS_HOST
+      # (service_conf.yaml.template: ${KVROCKS_HOST:-kvrocks}); redis:7 speaks the
+      # same RESP protocol, so point it at the existing redis container.
+      - KVROCKS_HOST=ragflow-redis
+      # Go backend ingestion pipeline uses NATS JetStream (no embedded server):
+      # every server mode dials nats://${NATS_HOST}:${NATS_PORT}, served by the
+      # ragflow-nats service below. Not needed by the v0.27.x image.
+      - NATS_HOST=ragflow-nats
+      - NATS_PORT=4222
+      # pisuan-custom begin — EAI SSO trust root (local feature); the exchange
+      # endpoint only registers when this is set, so the v0.27.x image is
+      # unaffected if you roll back.
+      - EAI_SSO_SHARED_SECRET=${EAI_SSO_SHARED_SECRET:?set EAI_SSO_SHARED_SECRET in .env}
+      # pisuan-custom end
       - MINIO_HOST=ragflow-minio
       - MINIO_USER=${MINIO_ACCESS_KEY:-minioadmin}
       - MINIO_PASSWORD=${MINIO_SECRET_KEY:-minioadmin}
@@ -62,6 +78,27 @@ services:
         condition: service_healthy
       ragflow-minio:
         condition: service_healthy
+      ragflow-nats:
+        condition: service_healthy
+    networks:
+      - eai-flow-net
+    restart: unless-stopped
+
+  # ── NATS (Go ingestion message queue, JetStream) ────────────────────────
+  # Required by the main-branch Go backend only; the v0.27.x image ignores it
+  # (its task queue was Redis-based). Mirrors upstream docker-compose-base.yml.
+  # Ports stay internal to eai-flow-net — nothing outside the stack dials NATS.
+  ragflow-nats:
+    image: nats:2.14.2
+    container_name: eai-flow-ragflow-nats
+    command: -js -sd /data --http_port 8222
+    volumes:
+      - ragflow-nats-data:/data
+    healthcheck:
+      test: ["CMD", "nats-server", "--health-check"]
+      interval: 10s
+      timeout: 10s
+      retries: 30
     networks:
       - eai-flow-net
     restart: unless-stopped
@@ -166,6 +203,7 @@ volumes:
   ragflow-mysql-data:
   ragflow-redis-data:
   ragflow-minio-data:
+  ragflow-nats-data:
 
 networks:
   eai-flow-net:
