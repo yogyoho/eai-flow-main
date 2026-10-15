@@ -123,7 +123,7 @@ class RAGFlowConfig(BaseModel):
     @classmethod
     def from_env(cls) -> "RAGFlowConfig":
         return cls(
-            base_url=os.getenv("RAGFLOW_BASE_URL", "http://localhost:9380"),
+            base_url=os.getenv("RAGFLOW_BASE_URL", "http://localhost:9380").rstrip("/"),  # EAI-CUSTOM: 防尾斜杠拼出 //api/...
             api_key=os.getenv("RAGFLOW_API_KEY", ""),
             timeout=int(os.getenv("RAGFLOW_TIMEOUT", "30")),
             sso_secret=os.getenv("EAI_SSO_SHARED_SECRET", ""),

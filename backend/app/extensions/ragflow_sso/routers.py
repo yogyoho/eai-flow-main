@@ -1,12 +1,12 @@
 """EAI-CUSTOM: RAGFlow SSO endpoints — 免登跳转 + per-user token — 本地定制,非上游."""
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.responses import RedirectResponse
 
 from app.extensions.auth.middleware import get_current_user
 from app.extensions.config import get_extensions_config
 from app.extensions.database import get_db
-from app.extensions.ragflow_sso.service import exchange_mode_web, get_client_for_user
+from app.extensions.ragflow_sso.service import exchange_mode_web, get_or_issue_api_token
 from app.extensions.schemas import CurrentUser
 
 router = APIRouter(prefix="/ragflow-sso", tags=["RAGFlow SSO"])
@@ -27,7 +27,16 @@ async def ragflow_sso_token(
     db=Depends(get_db),
     current_user: CurrentUser = Depends(get_current_user),
 ):
-    """Per-user RAGFlow API token(缓存命中直读;首次调用经 mode=api 交换签发;
-    SSO 未配置/交换失败回退共享 key —— spec §5 回退契约)。"""
-    client = await get_client_for_user(db, current_user)
-    return {"api_token": client.api_key}
+    """Per-user RAGFlow API token(缓存;首次调用经交换签发)。
+
+    只返回 per-user token——共享 key 永不经由此端点外发(否则任何登录用户
+    可取回共享 key,绕过 per-user 审计与数据集可见性,spec §5/§6)。
+    """
+    try:
+        api_token = await get_or_issue_api_token(db, current_user)
+    except RuntimeError:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="RAGFlow SSO unavailable",
+        ) from None
+    return {"api_token": api_token}

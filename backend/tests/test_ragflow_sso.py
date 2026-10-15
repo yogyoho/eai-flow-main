@@ -403,16 +403,16 @@ async def test_login_redirects_with_auth_param(_fresh_config, monkeypatch, sso_d
 
 @pytest.mark.anyio
 async def test_token_endpoint_returns_cached_token(_fresh_config, monkeypatch, sso_db):
-    """/token 返回 CLIENT 的**已解析** api_key——本测钉缓存命中路径（RagflowCredential
-    已落库,直接回读）；首签/回退路径由 service 层测试覆盖（get_or_issue_api_token_* /
-    get_client_for_user_*）。SSO secret 必须在场——否则 get_client_for_user 在查库前
-    就走共享 key 回退,测不到缓存。"""
+    """/token 返回 per-user token——本测钉缓存命中路径（RagflowCredential 已落库,
+    直接回读,不发 HTTP）；首签路径由 service 层 get_or_issue_api_token_* 覆盖。
+    端点只走 get_or_issue_api_token（失败即 503）,共享 key 永不外发——由
+    test_token_endpoint_never_returns_shared_key / _exchange_failure_503 钉住。"""
     from httpx import ASGITransport, AsyncClient
 
     from app.extensions.ragflow_sso.models import RagflowCredential
     from app.extensions.schemas import CurrentUser
 
-    monkeypatch.setenv("EAI_SSO_SHARED_SECRET", SECRET)
+    monkeypatch.setenv("EAI_SSO_SHARED_SECRET", SECRET)  # 配置态（缓存命中其实不发 mint）
     monkeypatch.delenv("RAGFLOW_API_KEY", raising=False)
     # EAI-CUSTOM: 走库的 user id 必须含 a-f 十六进制字母——SQLite NUMERIC 亲和性陷阱（见上文）
     uid = uuid.UUID("aaa88888-8888-4888-8888-a8888888eeee")
@@ -425,3 +425,86 @@ async def test_token_endpoint_returns_cached_token(_fresh_config, monkeypatch, s
         resp = await client.post(TOKEN_URL)
     assert resp.status_code == 200
     assert resp.json() == {"api_token": "cached-token"}
+
+
+@pytest.mark.anyio
+async def test_token_endpoint_never_returns_shared_key(_fresh_config, monkeypatch, sso_db):
+    """SSO 未配置（无共享 secret）→ 503 "RAGFlow SSO unavailable"。
+
+    安全边界:共享 key 绝不经由此端点外发——否则任何登录用户可取回共享 key,
+    绕过 per-user 审计与数据集可见性（spec §5/§6）。get_client_for_user 的
+    共享 key 回退只存在于 KB 操作路径,不进 /token。"""
+    from httpx import ASGITransport, AsyncClient
+
+    from app.extensions.schemas import CurrentUser
+
+    monkeypatch.delenv("EAI_SSO_SHARED_SECRET", raising=False)
+    monkeypatch.delenv("RAGFLOW_API_KEY", raising=False)
+
+    user = CurrentUser(
+        id=uuid.UUID("bbb99999-9999-4999-8999-b9999999eeee"),
+        username="ops",
+        email="ops@eai-flow.com",
+        status="active",
+    )
+    app = _sso_app(user=user, db=sso_db)
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        resp = await client.post(TOKEN_URL)
+    assert resp.status_code == 503
+    assert resp.json()["detail"] == "RAGFlow SSO unavailable"
+
+
+@pytest.mark.anyio
+async def test_token_endpoint_exchange_failure_503(_fresh_config, monkeypatch, sso_db):
+    """SSO 已配置但 RAGFlow 交换失败（401）→ 503——端点不降级到共享 key。"""
+    from unittest.mock import AsyncMock
+
+    import httpx
+    from httpx import ASGITransport, AsyncClient
+
+    from app.extensions.ragflow_sso import service
+    from app.extensions.schemas import CurrentUser
+
+    monkeypatch.setenv("EAI_SSO_SHARED_SECRET", SECRET)
+    monkeypatch.delenv("RAGFLOW_API_KEY", raising=False)
+
+    async def fake_request(method, url, **kwargs):
+        return httpx.Response(401, json={"code": 401, "message": "invalid token"}, request=httpx.Request("POST", url))
+
+    monkeypatch.setattr(service, "_exchange_request", AsyncMock(side_effect=fake_request))
+    user = CurrentUser(
+        id=uuid.UUID("ccc00000-0000-4000-8000-c0000000eeee"),
+        username="ops",
+        email="ops@eai-flow.com",
+        status="active",
+    )
+    app = _sso_app(user=user, db=sso_db)
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        resp = await client.post(TOKEN_URL)
+    assert resp.status_code == 503
+    assert resp.json()["detail"] == "RAGFlow SSO unavailable"
+
+
+@pytest.mark.anyio
+async def test_login_exchange_failure_500(_fresh_config, monkeypatch, sso_db):
+    """/login 交换失败 → 未捕获 RuntimeError → HTTP 500（失败 UX 显式钉住:
+    不伪 302、不静默回退）。ASGITransport raise_app_exceptions=False 使未处理
+    异常呈 500 响应而非冒泡进测试。"""
+    from unittest.mock import AsyncMock
+
+    from httpx import ASGITransport, AsyncClient
+
+    from app.extensions.ragflow_sso import routers
+    from app.extensions.schemas import CurrentUser
+
+    monkeypatch.setattr(routers, "exchange_mode_web", AsyncMock(side_effect=RuntimeError("RAGFlow SSO exchange failed")))
+    user = CurrentUser(
+        id=uuid.UUID("ddd12345-1234-4123-8123-d1234567eeee"),
+        username="admin",
+        email="admin@eai-flow.com",
+        status="active",
+    )
+    app = _sso_app(user=user, db=sso_db)
+    async with AsyncClient(transport=ASGITransport(app=app, raise_app_exceptions=False), base_url="http://test") as client:
+        resp = await client.get(LOGIN_URL)
+    assert resp.status_code == 500
