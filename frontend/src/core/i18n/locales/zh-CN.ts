@@ -1724,7 +1724,7 @@ export const zhCN: Translations = {
       saveFailed: "保存失败，请重试",
       retrieval: {
         title: "检索配置",
-        description: "配置默认模型、快速模型、嵌入模型与重排器。",
+        description: "配置默认模型、快速模型与嵌入模型。",
         defaultModel: "默认模型",
         fastModel: "快速模型",
         embedModel: "嵌入模型",

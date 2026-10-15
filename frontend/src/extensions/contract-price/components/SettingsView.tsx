@@ -4,7 +4,8 @@
  *  移除: 解析模式(v2 已废弃单一 OCR 路径)与货物表名关键字(被 seed 库取代)。
  *  dirty 跟踪 + 保存 clamp + toast 自动消隐。 */
 
-import { PackageSearch, Save,Settings } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
+import { PackageSearch, Save, Settings } from "lucide-react";
 import { useEffect, useState } from "react";
 
 import { Button } from "@/components/ui/button";
@@ -16,11 +17,38 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { fetch } from "@/core/api/fetcher";
 import { EvolutionCandidatesCard } from "@/extensions/contract-price/components/EvolutionCandidatesCard";
 import { PageHeader } from "@/extensions/contract-price/components/PageHeader";
 import { SeedRulesCard } from "@/extensions/contract-price/components/SeedRulesCard";
 import { useConfig, useUpdateConfig } from "@/extensions/contract-price/hooks";
 import type { CpaConfig } from "@/extensions/contract-price/types";
+
+/** 系统级 OCR 服务注册表(/settings 基础配置维护,api_key 已掩码——此处只消费服务名)。 */
+function useOcrServiceNames() {
+  return useQuery({
+    queryKey: ["cpa", "ocr-service-names"],
+    queryFn: async () => {
+      const res = await fetch("/api/extensions/ocr/services", {
+        credentials: "include",
+      });
+      if (!res.ok) return [] as string[];
+      const data = await res.json();
+      return ((data?.services ?? []) as { name: string }[])
+        .map((s) => s.name)
+        .filter(Boolean);
+    },
+    staleTime: 60_000,
+  });
+}
 
 const clamp = (v: number, lo: number, hi: number) =>
   Math.min(hi, Math.max(lo, v));
@@ -28,6 +56,7 @@ const clamp = (v: number, lo: number, hi: number) =>
 export function SettingsView() {
   const { data, isLoading } = useConfig();
   const updateConfig = useUpdateConfig();
+  const { data: ocrServiceNames } = useOcrServiceNames();
   const [form, setForm] = useState<CpaConfig | null>(null);
   const [dirty, setDirty] = useState(false);
   const [showAdvanced, setShowAdvanced] = useState(false);
@@ -93,6 +122,46 @@ export function SettingsView() {
         onChange={(s) => set("table_seeds", s)}
         saving={updateConfig.isPending}
       />
+
+      {/* OCR 提取引擎(cpa v3 M3 spec §3.3): 服务注册表在 /settings 基础配置维护。 */}
+      <Card>
+        <CardHeader>
+          <CardTitle>OCR 提取引擎</CardTitle>
+          <CardDescription>
+            仅影响之后的解析与强制重 OCR，历史文档不受影响。服务在 系统设置 →
+            基础配置 →「OCR 服务」注册。
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="max-w-md space-y-1.5">
+          <Label htmlFor="ocr_provider">OCR 前端</Label>
+          <Select
+            value={form.ocr_provider ?? "builtin"}
+            onValueChange={(v) =>
+              set("ocr_provider", v === "builtin" ? null : v)
+            }
+          >
+            <SelectTrigger id="ocr_provider" className="w-full">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="builtin">
+                内建 eai-flow-ocr（RapidOCR）
+              </SelectItem>
+              {(ocrServiceNames ?? []).map((n) => (
+                <SelectItem key={n} value={n}>
+                  {n}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          {form.ocr_provider && form.ocr_provider !== "builtin" && (
+            <p className="text-muted-foreground text-xs">
+              已选外部服务「{form.ocr_provider}
+              」。若该服务不可用，解析自动回退内建引擎并记录告警。
+            </p>
+          )}
+        </CardContent>
+      </Card>
 
       {/* 货物分组规则(2026-09-23): 聚类维度开关——名称恒开,规格/分类可切换,
           下次「聚类分析」生效。 */}
@@ -215,7 +284,11 @@ export function SettingsView() {
             放弃修改
           </Button>
         )}
-        {dirty && <span className="text-sm text-amber-600 dark:text-amber-400">有未保存修改</span>}
+        {dirty && (
+          <span className="text-sm text-amber-600 dark:text-amber-400">
+            有未保存修改
+          </span>
+        )}
         {updateConfig.isSuccess && !dirty && (
           <span className="text-success text-sm">已保存</span>
         )}

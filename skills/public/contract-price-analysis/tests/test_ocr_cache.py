@@ -49,7 +49,7 @@ def test_process_one_doc_cache_hit_skips_ocr(monkeypatch):
 
     calls = {"ocr": 0}
 
-    async def fake_parse(file_bytes, filename, url):
+    async def fake_parse(file_bytes, filename, url, backend="builtin", openai_cfg=None):
         calls["ocr"] += 1
         return [_tbl()], {1: "text"}, []
 

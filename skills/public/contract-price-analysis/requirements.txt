@@ -4,3 +4,4 @@ numpy>=1.26
 xlsxwriter>=3.2
 sqlalchemy[asyncio]>=2.0
 asyncpg>=0.29
+pymupdf>=1.24

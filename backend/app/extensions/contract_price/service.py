@@ -7,6 +7,7 @@ this extension reads back. The run is recorded in ``cpa_run_history``.
 """
 
 import asyncio
+import json
 import logging
 import os
 import sys
@@ -42,6 +43,57 @@ def _env_value(v: str | None) -> str:
     if v.startswith("$"):
         return os.environ.get(v[1:], "").strip()
     return v
+
+
+# EAI-CUSTOM (cpa v3 M3 spec §3.3): OCR 服务注册表写在 system_config KV
+# (settings 扩展管理),key 掩码哨兵与 settings/routers.py 保持同一值。
+_OCR_KEY_MASK = "********"
+
+
+async def _resolve_ocr_args(
+    session: AsyncSession, ocr_provider_override: str | None = None
+) -> list[str]:
+    """选中外部 OCR 服务 → --ocr-* argv;内建/失效 → [](行为与今天逐字节一致)。
+
+    优先级: 显式 override(单文档重解析,spec §3.4) > cpa config.json
+    ocr_provider > 内建。服务不在注册表 / api_key 为掩码 / 要素不全 →
+    回退内建 + warning(六重保证之 1「默认零变化」与 6「失败隔离」)。
+    """
+    try:
+        provider = (ocr_provider_override or crud.load_config().ocr_provider or "").strip()
+    except Exception:  # noqa: BLE001 — 配置不可读时绝不阻塞管线触发
+        return []
+    if not provider or provider == "builtin":
+        return []
+    try:
+        from app.extensions.settings.service import SystemConfigService
+
+        data = await SystemConfigService.get_all(session)
+        raw = (data or {}).get("ocr_services") or ""
+        services = json.loads(raw) if raw else []
+        entry = next(
+            (s for s in services if isinstance(s, dict) and s.get("name") == provider),
+            None,
+        )
+    except Exception as exc:  # noqa: BLE001 — 注册表不可读等同回退内建
+        logger.warning("OCR registry unreadable, fallback to builtin: %s", exc)
+        return []
+    if not entry:
+        logger.warning("OCR provider %r not in registry, fallback to builtin", provider)
+        return []
+    base_url = str(entry.get("base_url") or "").strip()
+    api_key = str(entry.get("api_key") or "").strip()
+    model = str(entry.get("model") or "").strip()
+    if not base_url or not model or api_key == _OCR_KEY_MASK:
+        logger.warning("OCR provider %r incomplete/masked key, fallback to builtin", provider)
+        return []
+    return [
+        "--ocr-provider", provider,
+        "--ocr-backend", "openai-vision",
+        "--ocr-base-url", base_url,
+        "--ocr-key", api_key,
+        "--ocr-model", model,
+    ]
 
 
 def _platform_llm_fallback() -> list[tuple[str, str]]:
@@ -105,6 +157,7 @@ async def run_pipeline_subprocess(
     phase: str = "parse",
     force_key: str | None = None,
     re_ocr: bool = False,
+    ocr_provider: str | None = None,
 ) -> None:
     """Run the skill CLI as a subprocess and record the outcome.
 
@@ -116,6 +169,9 @@ async def run_pipeline_subprocess(
     bypassing the SHA-256 hash cache. doc_id is preserved via storage_uri upsert.
 
     ``re_ocr``: re_ocr=True 强制重 OCR(绕过 MinIO OCR 缓存);默认读缓存仅重跑分类+提取。
+
+    ``ocr_provider``: cpa v3 M3(spec §3.4)——单文档重解析的引擎覆盖;None = 取
+    cpa config.json ocr_provider。
     """
     cmd = [
         sys.executable,  # same interpreter (venv) as the gateway process
@@ -135,6 +191,8 @@ async def run_pipeline_subprocess(
     # P2 LLM 兜底(spec §3): gateway 配置了三元组才注入;超时 30s 与验收门
     # 0.90 由技能侧 llm_fallback 默认值保证,不可达 → 整表 needs_review 不阻塞。
     cmd += _resolve_llm_args()
+    # M3 OCR 前端(spec §3.3/§3.4): 未选外部服务时返回 [] — argv 与引入前一致。
+    cmd += await _resolve_ocr_args(session, ocr_provider)
     env = dict(os.environ)
     env["PYTHONPATH"] = str(_SKILL_DIR) + os.pathsep + env.get("PYTHONPATH", "")
     # EAI-CUSTOM (2026-09-23 货物分组规则): 聚类维度开关随 env 下发(CLI 侧

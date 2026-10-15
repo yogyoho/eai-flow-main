@@ -1073,6 +1073,24 @@ def _build_llm_cfg(base_url, key, model):
     return {"base_url": base_url, "api_key": key, "model": model}
 
 
+def _build_ocr_cfg(args):
+    """M3(spec §3.3/§3.4): --ocr-* → ocr_cfg dict;builtin/要素不全 → None
+    (缓存分键、parse_document 分派、parse_mode 全部回到引入前行为)。"""
+    provider = (getattr(args, "ocr_provider", None) or "").strip()
+    if args.ocr_backend != "openai-vision" or not provider:
+        return None
+    if not (args.ocr_base_url and args.ocr_model):
+        logger.warning("--ocr-backend openai-vision 需 --ocr-base-url/--ocr-model,回退内建")
+        return None
+    return {
+        "provider": provider,
+        "backend": "openai-vision",
+        "base_url": args.ocr_base_url,
+        "api_key": args.ocr_key or "",
+        "model": args.ocr_model,
+    }
+
+
 def _merge_llm_meta(meta, table, got, trigger, prev_rows=0, replace=False):
     """try_llm_fallback 采纳结果的 meta 并入(计数修正 + parse_meta.llm_roles 留痕)。
 
@@ -2552,6 +2570,7 @@ async def _process_one_doc(
     total_docs: int,
     re_ocr: bool = False,
     llm_cfg: dict | None = None,
+    ocr_cfg: dict | None = None,
 ) -> None:
     """Parse one changed contract under the concurrency semaphore.
 
@@ -2570,7 +2589,12 @@ async def _process_one_doc(
                 "processing": sorted(state["processing"]), "phase": "parse",
             })
         try:
-            cache_key = f"ocr/{ch['hash']}.json"  # 内容寻址:同内容同键,免失效
+            # M3(spec §3.4): 外部 provider 缓存分键 ocr/x-<provider>/ — 与内建
+            # ocr/{sha}.json 互不污染;切回内建秒级命中历史缓存(六重保证之 2)。
+            provider = (ocr_cfg or {}).get("provider")
+            cache_key = (
+                f"ocr/x-{provider}/{ch['hash']}.json" if provider else f"ocr/{ch['hash']}.json"
+            )  # 内容寻址:同内容同键,免失效
             cached = None if re_ocr else await asyncio.to_thread(store.get_ocr_cache, cache_key)
             file_bytes = None  # 命中路径无原文件;兜底需要时才经 store 惰性下载
             if cached is not None:
@@ -2581,7 +2605,13 @@ async def _process_one_doc(
                 # don't stall the event loop during download.
                 # Task 8 元数据末页兜底需 file_bytes 时必须在此分支惰性获取(命中路径无此变量)
                 file_bytes = await asyncio.to_thread(store.get, key)
-                tables, page_texts, orient_fixed = await parse_document(file_bytes, key, cfg.ocr_service_url)
+                tables, page_texts, orient_fixed = await parse_document(
+                    file_bytes,
+                    key,
+                    cfg.ocr_service_url,
+                    backend=(ocr_cfg or {}).get("backend", "builtin"),
+                    openai_cfg=ocr_cfg,
+                )
                 # 缓存写入是机会性的: MinIO 写失败绝不能让已成功提取的文档被标 failed。
                 try:
                     await asyncio.to_thread(
@@ -2590,6 +2620,10 @@ async def _process_one_doc(
                 except Exception as exc:
                     logger.warning("OCR cache write failed %s: %s", cache_key, exc)
             items, meta = _extract_from_tables(tables, doc_uri, seeds, page_texts=page_texts, llm_cfg=llm_cfg)
+            # M3 审计(spec §3.4): parse_meta 记 ocr_provider/ocr_model。
+            if provider:
+                meta["ocr_provider"] = provider
+                meta["ocr_model"] = (ocr_cfg or {}).get("model", "")
             # 方向归一化页号透传(设计 §3): 溯源提示这些页的预览/坐标来自纠偏后图像。
             meta["orientation_fixed_pages"] = orient_fixed or []
             # 元数据提取 + 末页兜底: 命中路径 file_bytes=None,兜底真的需要发起时
@@ -2629,7 +2663,8 @@ async def _process_one_doc(
                 "hash": ch["hash"],
                 "type": os.path.splitext(key)[1].lstrip(".").lower() or "pdf",
                 "quick_fp": f"{key}|{ch['size']}",
-                "parse_mode": "ocr",
+                # M3(spec §3.4): 外部 provider → parse_mode=ocr_llm + meta 审计字段
+                "parse_mode": "ocr_llm" if provider else "ocr",
                 # 严格 seed-only 三态(设计 §1.2): 0表=no_tables(不算失败);
                 # 有表全未命中/首页字段缺失=needs_review;否则 parsed。
                 "parse_status": (
@@ -2694,6 +2729,7 @@ async def run_parse(
     force_key: str | None = None,
     re_ocr: bool = False,
     llm_cfg: dict | None = None,
+    ocr_cfg: dict | None = None,
 ) -> int:
     """Phase 1: scan → OCR → classify → validate → persist docs + items.
 
@@ -2742,7 +2778,7 @@ async def run_parse(
         await asyncio.gather(
             *(
                 _process_one_doc(
-                    ch, store, cfg, seeds, sem, state, run_id, total_docs, re_ocr=re_ocr, llm_cfg=llm_cfg
+                    ch, store, cfg, seeds, sem, state, run_id, total_docs, re_ocr=re_ocr, llm_cfg=llm_cfg, ocr_cfg=ocr_cfg
                 )
                 for ch in changed
             )
@@ -2985,6 +3021,12 @@ def main():
     parser.add_argument("--llm-base-url", default=None, help="LLM 兜底 OpenAI 兼容 base_url(缺省=层关闭)")
     parser.add_argument("--llm-key", default=None, help="LLM 兜底 API key")
     parser.add_argument("--llm-model", default=None, help="LLM 兜底模型名")
+    # M3 OCR 前端(spec §3.3/§3.4): 未传 ocr-provider/缺省 builtin = 管线行为与引入前一致。
+    parser.add_argument("--ocr-provider", default=None, help="OCR 服务名(缓存分键 ocr/x-<provider>/ 与 parse_meta 审计)")
+    parser.add_argument("--ocr-backend", choices=["builtin", "openai-vision"], default="builtin", help="OCR 前端")
+    parser.add_argument("--ocr-base-url", default=None, help="openai-vision 服务 base_url")
+    parser.add_argument("--ocr-key", default=None, help="openai-vision API key")
+    parser.add_argument("--ocr-model", default=None, help="openai-vision 模型名")
     args = parser.parse_args()
     if args.phase == "upload":
         if not args.dir:
@@ -2999,6 +3041,7 @@ def main():
                 force_key=args.force_key,
                 re_ocr=args.re_ocr,
                 llm_cfg=_build_llm_cfg(args.llm_base_url, args.llm_key, args.llm_model),
+                ocr_cfg=_build_ocr_cfg(args),
             )
         )
         print(f"Done. Parsed {n} document(s).")

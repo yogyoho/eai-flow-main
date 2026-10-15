@@ -654,6 +654,7 @@ async def reparse_document(
     doc_id: UUID,
     background: BackgroundTasks,
     re_ocr: bool = False,
+    ocr_provider: str | None = None,
     db: AsyncSession = Depends(get_db),
     current_user: CurrentUser = Depends(require_permission("system:access")),  # EAI-CUSTOM: Add permission check
 ):
@@ -665,6 +666,8 @@ async def reparse_document(
     items are replaced (doc_id unchanged).
 
     re_ocr=true 强制重 OCR;默认读 OCR 缓存仅重跑分类+提取(秒级)。
+    ocr_provider (cpa v3 M3 spec §3.4): 单文档引擎覆盖——本次解析临时使用指定
+    服务(None = 取模块配置);缓存按 provider 分键,互不污染。
     """
     await crud.cleanup_stale_runs(db)
     if await crud.has_running_run(db, "parse"):
@@ -681,9 +684,9 @@ async def reparse_document(
         db,
         trigger_type="manual",
         status="running",
-        scope={"mode": "table", "phase": "parse", "started_by": current_user.username, "reparse": key, "re_ocr": re_ocr},
+        scope={"mode": "table", "phase": "parse", "started_by": current_user.username, "reparse": key, "re_ocr": re_ocr, "ocr_provider": ocr_provider},
     )
-    background.add_task(service.run_pipeline_subprocess, db, run.id, "table", "manual", "parse", key, re_ocr)
+    background.add_task(service.run_pipeline_subprocess, db, run.id, "table", "manual", "parse", key, re_ocr, ocr_provider)
     return PipelineRunResponse(run_id=run.id, status="running", message=f"reparse started: {key}")
 
 

@@ -1830,7 +1830,7 @@ export const enUS: Translations = {
       saveFailed: "Save failed, please try again",
       retrieval: {
         title: "Retrieval",
-        description: "Configure default, fast, embedding models and reranker.",
+        description: "Configure default, fast and embedding models.",
         defaultModel: "Default model",
         fastModel: "Fast model",
         embedModel: "Embedding model",

@@ -20,6 +20,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
   Select,
@@ -44,11 +45,18 @@ interface SystemConfig {
   default_model?: string;
   fast_model?: string;
   embed_model?: string;
-  reranker?: string;
   enable_content_guard?: boolean;
   enable_content_guard_llm?: boolean;
   content_guard_llm_model?: string;
   theme?: string;
+  ocr_services?: string;
+}
+
+interface OcrServiceEntry {
+  name: string;
+  base_url: string;
+  api_key: string;
+  model: string;
 }
 
 interface ModelChoice {
@@ -86,8 +94,14 @@ export function BasicSettings() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [embedModelChoices, setEmbedModelChoices] = useState<ModelChoice[]>([]);
-  const [rerankerChoices, setRerankerChoices] = useState<string[]>([]);
   const [chatModelGroups, setChatModelGroups] = useState<ChatModelGroup[]>([]);
+  // EAI-CUSTOM (cpa v3 M3): OCR 服务注册表(掩码回显,写走专用 admin 端点)
+  const [ocrServices, setOcrServices] = useState<OcrServiceEntry[]>([]);
+  const [ocrDirty, setOcrDirty] = useState(false);
+  const [ocrSaving, setOcrSaving] = useState(false);
+  const [ocrStatus, setOcrStatus] = useState<
+    Record<string, { ok: boolean; message: string } | "validating">
+  >({});
   const [modelStatuses, setModelStatuses] = useState<
     Record<string, ModelStatus>
   >({});
@@ -129,6 +143,7 @@ export function BasicSettings() {
   useEffect(() => {
     void loadConfig();
     void loadModelChoices();
+    void loadOcrServices();
     setHostname(window.location.hostname);
   }, []);
 
@@ -156,11 +171,85 @@ export function BasicSettings() {
       if (response.ok) {
         const data = await response.json();
         setEmbedModelChoices(data.embed_models ?? []);
-        setRerankerChoices(data.rerankers ?? []);
         setChatModelGroups(data.chat_models ?? []);
       }
     } catch (error) {
       console.error("Failed to load model choices:", error);
+    }
+  };
+
+  const loadOcrServices = async () => {
+    try {
+      const response = await fetch("/api/extensions/ocr/services", {
+        credentials: "include",
+      });
+      if (response.ok) {
+        const data = await response.json();
+        setOcrServices(data.services ?? []);
+        setOcrDirty(false);
+      }
+    } catch (error) {
+      console.error("Failed to load OCR services:", error);
+    }
+  };
+
+  const setOcrService = (idx: number, patch: Partial<OcrServiceEntry>) => {
+    setOcrServices((list) =>
+      list.map((s, i) => (i === idx ? { ...s, ...patch } : s)),
+    );
+    setOcrDirty(true);
+  };
+
+  const saveOcrServices = async () => {
+    setOcrSaving(true);
+    try {
+      const response = await fetch("/api/extensions/ocr/services", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ services: ocrServices }),
+        credentials: "include",
+      });
+      const data = await response.json().catch(() => null);
+      if (response.ok) {
+        setOcrServices(data?.services ?? ocrServices);
+        setOcrDirty(false);
+        toast.success("OCR 服务已保存");
+      } else {
+        toast.error(data?.detail ?? "OCR 服务保存失败");
+      }
+    } catch {
+      toast.error("OCR 服务保存失败");
+    } finally {
+      setOcrSaving(false);
+    }
+  };
+
+  const validateOcrService = async (entry: OcrServiceEntry) => {
+    setOcrStatus((s) => ({ ...s, [entry.name]: "validating" }));
+    try {
+      const response = await fetch("/api/extensions/ocr/validate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(entry),
+        credentials: "include",
+      });
+      const data = await response.json().catch(() => null);
+      if (response.ok && data) {
+        setOcrStatus((s) => ({
+          ...s,
+          [entry.name]: { ok: !!data.ok, message: data.message ?? "" },
+        }));
+      } else {
+        setOcrStatus((s) => ({
+          ...s,
+          [entry.name]: { ok: false, message: data?.detail ?? "校验请求失败" },
+        }));
+      }
+    } catch {
+      setOcrStatus((s) => ({
+        ...s,
+        [entry.name]: { ok: false, message: "校验请求失败：网络错误" },
+      }));
     }
   };
 
@@ -325,28 +414,136 @@ export function BasicSettings() {
                 </SelectContent>
               </Select>
             </div>
-            <div className="w-full space-y-2">
-              <Label htmlFor="reranker">
-                {t.settings.basic.retrieval.reranker}
-              </Label>
-              <Select
-                value={config.reranker ?? ""}
-                onValueChange={(value) => handleChange("reranker", value)}
-              >
-                <SelectTrigger className="w-full">
-                  <SelectValue
-                    placeholder={t.settings.basic.retrieval.placeholder}
-                  />
-                </SelectTrigger>
-                <SelectContent>
-                  {rerankerChoices.map((name) => (
-                    <SelectItem key={name} value={name}>
-                      {name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* OCR 服务注册表（cpa v3 M3） */}
+      <Card>
+        <CardHeader>
+          <CardTitle>OCR 服务</CardTitle>
+          <CardDescription>
+            注册专业 OCR 服务（OpenAI 兼容 vision 协议，如 PaddleOCR-VL /
+            dots.ocr / Qwen-VL）。合同价格分析可在其配置页选择解析引擎。
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {ocrServices.length === 0 && (
+            <p className="text-muted-foreground text-sm">
+              尚未注册 OCR 服务。未注册时合同解析使用内建 eai-flow-ocr 引擎。
+            </p>
+          )}
+          {ocrServices.map((s, i) => {
+            const st = ocrStatus[s.name];
+            return (
+              <div key={`ocr-${i}`} className="space-y-2 rounded-lg border p-3">
+                <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
+                  <div className="space-y-1">
+                    <Label>服务名称</Label>
+                    <Input
+                      value={s.name}
+                      placeholder="例如：paddleocr-vl"
+                      onChange={(e) =>
+                        setOcrService(i, { name: e.target.value })
+                      }
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <Label>Base URL</Label>
+                    <Input
+                      value={s.base_url}
+                      placeholder="例如：http://192.168.2.38:8111/v1"
+                      onChange={(e) =>
+                        setOcrService(i, { base_url: e.target.value })
+                      }
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <Label>API Key（留空 = 无鉴权）</Label>
+                    <Input
+                      value={s.api_key}
+                      placeholder="******** 表示保持已存值"
+                      onChange={(e) =>
+                        setOcrService(i, { api_key: e.target.value })
+                      }
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <Label>模型名</Label>
+                    <Input
+                      value={s.model}
+                      placeholder="例如：paddleocr-vl-1.6"
+                      onChange={(e) =>
+                        setOcrService(i, { model: e.target.value })
+                      }
+                    />
+                  </div>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-muted-foreground text-xs">
+                    {st === "validating"
+                      ? "校验中…"
+                      : st
+                        ? st.ok
+                          ? `✓ ${st.message}`
+                          : `✗ ${st.message}`
+                        : undefined}
+                  </span>
+                  <div className="flex items-center gap-2">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      disabled={st === "validating"}
+                      onClick={() => void validateOcrService(s)}
+                    >
+                      测试连接
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      className="text-destructive hover:text-destructive"
+                      onClick={() => {
+                        setOcrServices((list) =>
+                          list.filter((_, j) => j !== i),
+                        );
+                        setOcrDirty(true);
+                      }}
+                    >
+                      删除
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+          <div className="flex items-center gap-3">
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() =>
+                setOcrServices((list) => [
+                  ...list,
+                  { name: "", base_url: "", api_key: "", model: "" },
+                ])
+              }
+            >
+              + 添加服务
+            </Button>
+            <Button
+              size="sm"
+              onClick={saveOcrServices}
+              disabled={ocrSaving || !ocrDirty}
+            >
+              {ocrSaving ? (
+                <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" />
+              ) : null}
+              保存 OCR 服务
+            </Button>
+            {ocrDirty && (
+              <span className="text-sm text-amber-600 dark:text-amber-400">
+                有未保存修改
+              </span>
+            )}
           </div>
         </CardContent>
       </Card>
@@ -484,7 +681,8 @@ export function BasicSettings() {
           <div className="grid grid-cols-2 gap-4">
             {/* EAI-CUSTOM: 遗留服务链接（neo4j/milvus/apiDocs 等部署中不存在）用环境开关隐藏，
                 生产离线包设 NEXT_PUBLIC_SHOW_LEGACY_SERVICE_LINKS=false；dev 缺省 true 保持原样 */}
-            {(process.env.NEXT_PUBLIC_SHOW_LEGACY_SERVICE_LINKS ?? "true") === "true" && (
+            {(process.env.NEXT_PUBLIC_SHOW_LEGACY_SERVICE_LINKS ?? "true") ===
+              "true" && (
               <>
                 <ServiceLinkCard
                   title={t.settings.basic.services.docCenter}

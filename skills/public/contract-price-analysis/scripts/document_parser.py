@@ -61,20 +61,39 @@ def _norm_tokens(raw_tokens, page_w, page_h) -> list:
     return out
 
 
-async def parse_document(file_bytes: bytes, filename: str, ocr_service_url: str, last_pages: int = 0) -> tuple:
-    """Call eai-flow-ocr POST /ocr, return (list[TableExtract], page_texts, orientation_fixed).
+async def parse_document(
+    file_bytes: bytes,
+    filename: str,
+    ocr_service_url: str,
+    last_pages: int = 0,
+    backend: str = "builtin",
+    openai_cfg: dict | None = None,
+) -> tuple:
+    """Call the OCR frontend, return (list[TableExtract], page_texts, orientation_fixed).
 
-    page_texts is {page_no: full_page_text} for the first few pages only (the OCR
-    service gates full-page text to the cover/front pages). Used downstream to
-    regex-extract project-level fields (name/location) that never appear in tables.
+    M3 (spec §3.4): backend 分派——
+      - "builtin"(缺省): httpx 调 eai-flow-ocr,路径与引入前逐字节一致;
+      - "openai-vision": pymupdf 光栅化 → OpenAI 兼容 vision chat → HTML 表格
+        → 同一 TableExtract 契约(cell bbox=None,页码保留,溯源 UI 降级为仅页图)。
+    openai_cfg = {base_url, api_key, model}(provider 名只用于缓存分键/审计,由 cli 处理)。
 
-    orientation_fixed 是被 OCR 服务页级方向归一化纠偏的页号列表(1-based;parse_meta
-    透传,溯源时可提示该页预览/坐标来自纠偏后图像)。
+    page_texts is {page_no: full_page_text} (builtin 仅前几页;openai-vision 取
+    PDF 原生文本层,扫描件通常为空)。orientation_fixed 仅 builtin 产生。
 
-    last_pages > 0 时仅 OCR 末 N 页(元数据兜底用;Task 8 前服务端忽略该字段)。
+    last_pages > 0 时仅 OCR 末 N 页。
 
     Large PDFs take minutes (per-page layout+table+ocr), so the timeout is long.
     """
+    if backend == "openai-vision":
+        cfg = openai_cfg or {}
+        return await parse_document_openai_vision(
+            file_bytes,
+            filename,
+            base_url=str(cfg.get("base_url") or ""),
+            api_key=str(cfg.get("api_key") or ""),
+            model=str(cfg.get("model") or ""),
+            last_pages=last_pages,
+        )
     url = ocr_service_url.rstrip("/") + "/ocr"
     # 137-page scanned contracts take ~14-16 min of OCR; 900s was too tight
     # (cold-start after a rebuild pushed one run to 15.6min → ReadTimeout with
@@ -160,6 +179,142 @@ def to_cache(tables: list[TableExtract], page_texts: dict[int, str], orientation
             for t in tables
         ],
     }
+
+
+# ── M3 openai-vision 前端(spec §3.4)──────────────────────────────────────
+
+_VISION_PROMPT = (
+    "你是表格抽取引擎。识别图片中的所有表格,以 HTML <table> 输出:每行一个 <tr>,"
+    "每个单元格一个 <td>(含表头行)。要求:"
+    "1) 只输出 <table>…</table>,不要解释、不要 markdown 代码块;"
+    "2) 合并单元格拆成逐行逐格填充(空格留空);"
+    "3) 保留数字与单位原样;4) 图片中没有表格时输出空字符串。"
+)
+
+
+def html_tables_to_rows(html: str) -> list[list[list[str]]]:
+    """HTML 表格 → list[rows[list[cell text]]](stdlib HTMLParser,容错)。"""
+    from html.parser import HTMLParser
+
+    class _T(HTMLParser):
+        def __init__(self) -> None:
+            super().__init__(convert_charrefs=True)
+            self.tables: list[list[list[str]]] = []
+            self._table_depth = 0
+            self._rows: list[list[str]] = []
+            self._row: list[str] | None = None
+            self._cell: list[str] | None = None
+
+        def handle_starttag(self, tag, attrs):
+            if tag == "table":
+                self._table_depth += 1
+            elif self._table_depth and tag == "tr":
+                self._row = []
+            elif self._table_depth and tag in ("td", "th"):
+                self._cell = []
+
+        def handle_endtag(self, tag):
+            if tag == "table":
+                if self._table_depth:
+                    self._table_depth -= 1
+                    # 提交本级收集的行(嵌套表按深度分隔,内层先入 tables)
+                    if self._rows:
+                        self.tables.append(self._rows)
+                    self._rows = []
+                    self._row = None
+            elif tag == "tr" and self._row is not None:
+                self._rows.append(self._row)
+                self._row = None
+            elif tag in ("td", "th") and self._cell is not None:
+                if self._row is None:
+                    self._row = []
+                self._row.append("".join(self._cell).strip())
+                self._cell = None
+
+        def handle_data(self, data):
+            if self._cell is not None:
+                self._cell.append(data)
+
+    p = _T()
+    p.feed(html or "")
+    return [rows for rows in p.tables if rows]
+
+
+async def parse_document_openai_vision(
+    file_bytes: bytes,
+    filename: str,
+    base_url: str,
+    api_key: str = "",
+    model: str = "",
+    last_pages: int = 0,
+) -> tuple:
+    """pymupdf 光栅化每页 PNG → OpenAI 兼容 vision chat(completions)→ HTML 表格
+    → 同一 TableExtract 契约。cell bbox=None → cell_bboxes/tokens 恒空、bbox
+    取零框,溯源 UI 现成降级(``hasBox = !!bbox && bbox.length === 4``)。
+    page_texts 取 PDF 原生文本层(扫描件为空,项目字段正则自然跳过)。"""
+    import base64
+
+    import fitz  # pymupdf
+
+    base = (base_url or "").strip().rstrip("/")
+    if not base or not (model or "").strip():
+        raise ValueError("openai-vision OCR requires base_url and model")
+    headers = {"Content-Type": "application/json"}
+    if (api_key or "").strip():
+        headers["Authorization"] = f"Bearer {api_key.strip()}"
+
+    pdf = fitz.open(stream=file_bytes, filetype="pdf")
+    pages: list[tuple[int, str, str]] = []
+    start = max(0, pdf.page_count - last_pages) if last_pages else 0
+    for pno in range(start, pdf.page_count):
+        pix = pdf[pno].get_pixmap(dpi=150)
+        png = base64.b64encode(pix.tobytes("png")).decode()
+        pages.append((pno + 1, png, pdf[pno].get_text() or ""))
+    pdf.close()
+
+    tables: list[TableExtract] = []
+    page_texts: dict[int, str] = {}
+    async with httpx.AsyncClient(timeout=600.0) as client:
+        for page_no, png_b64, ptext in pages:
+            if ptext:
+                page_texts[page_no] = ptext
+            resp = await client.post(
+                f"{base}/chat/completions",
+                headers=headers,
+                json={
+                    "model": model,
+                    "max_tokens": 8000,
+                    "temperature": 0,
+                    "messages": [
+                        {
+                            "role": "user",
+                            "content": [
+                                {
+                                    "type": "image_url",
+                                    "image_url": {"url": f"data:image/png;base64,{png_b64}"},
+                                },
+                                {"type": "text", "text": _VISION_PROMPT},
+                            ],
+                        }
+                    ],
+                },
+            )
+            resp.raise_for_status()
+            content = ((resp.json().get("choices") or [{}])[0].get("message") or {}).get("content") or ""
+            for ti, rows in enumerate(html_tables_to_rows(content)):
+                tables.append(
+                    TableExtract(
+                        page_no=page_no,
+                        table_idx=ti,
+                        bbox=[0, 0, 0, 0],
+                        rows=rows,
+                        cell_bboxes=[[list(0 for _ in range(4)) for _ in row] for row in rows],
+                        page_preview_b64=png_b64,
+                        mean_confidence=0.0,
+                        tokens=[],
+                    )
+                )
+    return tables, page_texts, []
 
 
 def from_cache(data: dict) -> tuple:

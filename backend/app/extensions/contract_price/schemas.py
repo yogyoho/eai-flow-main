@@ -154,6 +154,10 @@ class ConfigOut(BaseModel):
     llm_base_url: str | None = None
     llm_key: str | None = None
     llm_model: str | None = None
+    # EAI-CUSTOM (cpa v3 M3 spec §3.3): OCR 提取引擎选择——None/""/"builtin" =
+    # 内建 eai-flow-ocr(现状);其它值 = system_config ocr_services 中的服务名。
+    # service._resolve_ocr_args 解析注入子进程 argv,失效回退内建。
+    ocr_provider: str | None = None
 
 
 # EAI-CUSTOM (review fix 2026-09-20): llm_key 为 write-only 字段——GET /config 的

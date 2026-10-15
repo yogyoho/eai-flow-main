@@ -397,5 +397,6 @@
   ],
   "llm_base_url": null,
   "llm_key": null,
-  "llm_model": null
+  "llm_model": null,
+  "ocr_provider": "paddleocr-vl"
 }

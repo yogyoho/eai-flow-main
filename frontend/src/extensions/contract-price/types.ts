@@ -153,6 +153,8 @@ export interface CpaConfig {
   schedule_cron: string | null;
   price_table_keywords: string[];
   table_seeds: TableSeed[];
+  /** cpa v3 M3: OCR 提取引擎——null/""/"builtin" = 内建 eai-flow-ocr;其它 = ocr_services 服务名 */
+  ocr_provider?: string | null;
 }
 
 /** 未匹配表详情(来自 parse_meta.unmatched_tables)。 */
