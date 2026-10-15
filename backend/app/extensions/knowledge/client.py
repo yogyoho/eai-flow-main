@@ -62,7 +62,7 @@ class RAGFlowClient:
 
         raise last_error
 
-    async def create_dataset(self, name: str, description: str = "", embedding_model: str | None = None, chunk_method: str | None = None, parser_config: dict | None = None) -> dict:
+    async def create_dataset(self, name: str, description: str = "", embedding_model: str | None = None, chunk_method: str | None = None, parser_config: dict | None = None, permission: str | None = None) -> dict:
         """Create a new dataset in RAGFlow with optional chunking configuration."""
         payload = {"name": name, "description": description}
         if embedding_model:
@@ -71,6 +71,8 @@ class RAGFlowClient:
             payload["chunk_method"] = chunk_method
         if parser_config:
             payload["parser_config"] = parser_config
+        if permission:
+            payload["permission"] = permission
 
         async with httpx.AsyncClient(timeout=self.timeout * 20) as client:
             response = await client.post(
@@ -112,17 +114,39 @@ class RAGFlowClient:
             response.raise_for_status()
             return response.json()
 
-    async def update_dataset(self, dataset_id: str, name: str = None, description: str = None, chunk_method: str = None, parser_config: dict = None) -> dict:
-        """Update dataset info."""
-        payload = {}
+    async def update_dataset(
+        self,
+        dataset_id: str,
+        name: str | None = None,
+        description: str | None = None,
+        chunk_method: str | None = None,
+        parser_config: dict | None = None,
+        permission: str | None = None,
+        language: str | None = None,
+        pagerank: int | None = None,
+    ) -> dict:
+        """Update dataset info（多 RAG 知识库配置编辑通道）。
+
+        部署版 REST（UpdateDatasetReq）接受：name/avatar/description/embedding_model/
+        permission/chunk_method/parser_config/language/pagerank；similarity_threshold /
+        vector_similarity_weight 不支持设置（extra="forbid"）。
+        """
+        payload: dict = {}
+        # name 沿用真值判断：REST 对 name 有 min_length=1，空串会被 400
         if name:
             payload["name"] = name
-        if description:
+        if description is not None:
             payload["description"] = description
         if chunk_method:
             payload["chunk_method"] = chunk_method
-        if parser_config:
+        if parser_config is not None:
             payload["parser_config"] = parser_config
+        if permission:
+            payload["permission"] = permission
+        if language:
+            payload["language"] = language
+        if pagerank is not None:
+            payload["pagerank"] = pagerank
 
         async with httpx.AsyncClient(timeout=self.timeout) as client:
             response = await client.put(
