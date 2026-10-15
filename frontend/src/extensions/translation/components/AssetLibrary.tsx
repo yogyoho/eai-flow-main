@@ -30,6 +30,7 @@ import {
 } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 
+import { FileTypeIcon } from "@/components/file-type-icons";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
@@ -65,7 +66,6 @@ import {
 } from "../api";
 import type { TltFolder, TltTask } from "../types";
 
-import { FileIcon } from "./FileIcon";
 import { WindowsFolder, WindowsFolderOpen } from "./FolderIcons";
 import { SourcePreview } from "./SourcePreview";
 import { UploadDialog } from "./UploadDialog";
@@ -497,9 +497,9 @@ export function AssetLibrary() {
               <span className="w-3 shrink-0" />
             )}
             {isOpen ? (
-              <WindowsFolderOpen className="h-3.5 w-3.5 shrink-0 drop-shadow-sm" />
+              <WindowsFolderOpen className="h-4 w-4 shrink-0 drop-shadow-sm" />
             ) : (
-              <WindowsFolder className="h-3.5 w-3.5 shrink-0 drop-shadow-sm" />
+              <WindowsFolder className="h-4 w-4 shrink-0 drop-shadow-sm" />
             )}
             <span className="truncate">{n.name}</span>
             {side === "L" && (
@@ -881,7 +881,10 @@ export function AssetLibrary() {
                         </td>
                         <td className="min-w-0 px-2 py-2">
                           <div className="flex items-center gap-2.5">
-                            <FileIcon name={t.file_name} />
+                            <FileTypeIcon
+                              name={t.file_name}
+                              className="h-5 w-5 shrink-0"
+                            />
                             <div className="min-w-0">
                               <div className="truncate text-sm">
                                 {t.file_name}
@@ -1032,7 +1035,10 @@ export function AssetLibrary() {
                               {inFlight ? (
                                 <FilePlus2 className="text-muted-foreground h-4 w-4 shrink-0" />
                               ) : (
-                                <FileIcon name={`${t.file_name}.md`} />
+                                <FileTypeIcon
+                                  name={`${t.file_name}.md`}
+                                  className="h-5 w-5 shrink-0"
+                                />
                               )}
                               <div className="min-w-0">
                                 <div className="truncate text-sm">
@@ -1130,7 +1136,10 @@ export function AssetLibrary() {
         >
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2 text-base">
-              <FileIcon name={previewTask?.file_name ?? ""} />
+              <FileTypeIcon
+                name={previewTask?.file_name ?? ""}
+                className="h-5 w-5 shrink-0"
+              />
               {previewTask?.file_name} · 对照预览
             </DialogTitle>
             <DialogDescription>

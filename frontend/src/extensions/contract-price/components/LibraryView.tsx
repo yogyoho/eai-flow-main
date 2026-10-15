@@ -32,6 +32,7 @@ import {
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
 
+import { FileTypeIcon, FolderIcon } from "@/components/file-type-icons";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -48,12 +49,12 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
+// 树节点保留开/合两态的旧文件夹图标（file-icon 集的 folder.svg 无开启态）
 import {
   WindowsFolder,
   WindowsFolderOpen,
 } from "@/extensions/translation/components/FolderIcons";
 import { cn } from "@/lib/utils";
-// 树节点保留开/合两态的旧文件夹图标（file-icon 集的 folder.svg 无开启态）
 
 import { libraryApi } from "../api";
 import {
@@ -63,7 +64,6 @@ import {
 } from "../hooks";
 import type { CpaLibraryFile } from "../types";
 
-import { FileTypeIcon, FolderIcon } from "./FileTypeIcons";
 import {
   buildFolderTree,
   pathOf,
@@ -355,7 +355,7 @@ export function LibraryView() {
             ) : (
               <span className="w-3 shrink-0" />
             )}
-            {hasChildren && isOpen ? (
+            {isOpen ? (
               <WindowsFolderOpen className="h-4 w-4 shrink-0 drop-shadow-sm" />
             ) : (
               <WindowsFolder className="h-4 w-4 shrink-0 drop-shadow-sm" />
@@ -377,31 +377,39 @@ export function LibraryView() {
                   >
                     <FolderPlus className="mr-2 h-4 w-4" /> 添加子文件夹
                   </DropdownMenuItem>
-                  <DropdownMenuItem
-                    onClick={() =>
-                      setFolderDlg({ mode: "rename", id: n.id, value: n.name })
-                    }
-                  >
-                    <Pencil className="mr-2 h-4 w-4" /> 重命名
-                  </DropdownMenuItem>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem
-                    className="text-destructive"
-                    onClick={async () => {
-                      try {
-                        await muts.deleteFolder.mutateAsync(n.id);
-                        if (sel === n.id) setSel(ROOT_ID);
-                        flash("ok", "文件夹已删除");
-                      } catch (e) {
-                        flash(
-                          "err",
-                          `删除失败：${e instanceof Error ? e.message : String(e)}`,
-                        );
-                      }
-                    }}
-                  >
-                    <Trash2 className="mr-2 h-4 w-4" /> 删除
-                  </DropdownMenuItem>
+                  {n.id !== ROOT_ID && (
+                    <>
+                      <DropdownMenuItem
+                        onClick={() =>
+                          setFolderDlg({
+                            mode: "rename",
+                            id: n.id,
+                            value: n.name,
+                          })
+                        }
+                      >
+                        <Pencil className="mr-2 h-4 w-4" /> 重命名
+                      </DropdownMenuItem>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem
+                        className="text-destructive"
+                        onClick={async () => {
+                          try {
+                            await muts.deleteFolder.mutateAsync(n.id);
+                            if (sel === n.id) setSel(ROOT_ID);
+                            flash("ok", "文件夹已删除");
+                          } catch (e) {
+                            flash(
+                              "err",
+                              `删除失败：${e instanceof Error ? e.message : String(e)}`,
+                            );
+                          }
+                        }}
+                      >
+                        <Trash2 className="mr-2 h-4 w-4" /> 删除
+                      </DropdownMenuItem>
+                    </>
+                  )}
                 </DropdownMenuContent>
               </DropdownMenu>
             </span>
@@ -535,39 +543,7 @@ export function LibraryView() {
             className="bg-muted/20 shrink-0 overflow-auto p-1 text-xs"
             style={{ width: treeW }}
           >
-            {/* 虚拟根「文件库」 */}
-            <div
-              role="treeitem"
-              aria-selected={sel === ROOT_ID}
-              aria-expanded
-              tabIndex={0}
-              className={cn(
-                "group focus-visible:ring-ring/50 flex h-6 w-full cursor-pointer items-center gap-1 rounded-md px-1 text-xs outline-none select-none focus-visible:ring-2",
-                sel === ROOT_ID
-                  ? "bg-accent text-accent-foreground font-medium"
-                  : "text-foreground/90 hover:bg-muted/70",
-              )}
-              onClick={() => setSel(ROOT_ID)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter" || e.key === " ") {
-                  e.preventDefault();
-                  setSel(ROOT_ID);
-                }
-              }}
-            >
-              <ChevronRight className="text-muted-foreground h-3 w-3 shrink-0 rotate-90" />
-              <WindowsFolderOpen className="h-4 w-4 shrink-0 drop-shadow-sm" />
-              <span>文件库</span>
-              <span className="ml-auto opacity-0 transition-opacity group-hover:opacity-100">
-                <FolderPlus
-                  className="h-3.5 w-3.5 cursor-pointer"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setFolderDlg({ mode: "create", value: "" });
-                  }}
-                />
-              </span>
-            </div>
+            {/* 虚拟根「文件库」并入统一 renderTree（资产库同款：可收起/展开、图标随 isOpen 切换） */}
             {foldersQ.isError ? (
               <p className="text-destructive px-1 py-1">
                 文件夹加载失败：{String(foldersQ.error)}
@@ -577,7 +553,17 @@ export function LibraryView() {
                 <Loader2 className="h-3.5 w-3.5 animate-spin" /> 加载中…
               </div>
             ) : (
-              renderTree(tree, 1)
+              renderTree(
+                [
+                  {
+                    id: ROOT_ID,
+                    name: "文件库",
+                    parent_id: null,
+                    children: tree,
+                  },
+                ],
+                0,
+              )
             )}
           </nav>
           {/* 树/列表分隔条（可左右拖拽；手柄样式对齐对话页 ResizableHandle withHandle） */}
