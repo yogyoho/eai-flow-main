@@ -12,6 +12,9 @@ from sqlalchemy.orm import joinedload
 from app.extensions.config import get_extensions_config
 from app.extensions.database import AsyncSession
 from app.extensions.models import Document, KnowledgeBase, UserDepartment
+
+# EAI-CUSTOM (SSO Plan 2): 终端用户请求路径的 RAGFlow 客户端按 per-user token 解析
+from app.extensions.ragflow_sso.service import get_client_for_user
 from app.extensions.schemas import (
     DocumentResponse,
     DocumentStatus,
@@ -110,6 +113,25 @@ def resolve_local_doc_path(base_path: str, file_path: str) -> Path | None:
     return None
 
 
+async def resolve_ragflow_client(db: AsyncSession, user) -> RAGFlowClient | None:
+    """EAI-CUSTOM (SSO Plan 2): 终端用户请求路径的 RAGFlow 客户端解析。
+
+    user 给定 → per-user token 客户端(缓存/交换,失败共享 key 兜底,见
+    ragflow_sso.service.get_client_for_user);user 为 None(后台任务/无终端用户
+    上下文)→ 沿用共享 key 工厂(两个 Service 的 _get_ragflow_client 实现相同,
+    统一经 KnowledgeBaseService 入口,保留既有 monkeypatch 语义)。
+    共享 key 与 SSO secret 均未配置 → None,保留工厂"未配置→跳过"语义。
+    注意: user 给定且交换失败时 get_client_for_user 会 rollback 会话,请在
+    会话有未落库写入之前调用(见 update_kb 的先解析后改属性)。
+    """
+    if user is None:
+        return KnowledgeBaseService._get_ragflow_client()
+    config = get_extensions_config()
+    if not config.ragflow.api_key and not config.ragflow.sso_secret:
+        return None
+    return await get_client_for_user(db, user)
+
+
 class KnowledgeBaseService:
     """Knowledge base service with RAGFlow integration."""
 
@@ -183,7 +205,7 @@ class KnowledgeBaseService:
         return list(kbs), total
 
     @staticmethod
-    async def create_kb(db: AsyncSession, owner_id: UUID, data: KnowledgeBaseCreate) -> KnowledgeBase:
+    async def create_kb(db: AsyncSession, owner_id: UUID, data: KnowledgeBaseCreate, user=None) -> KnowledgeBase:
         # EAI-CUSTOM (bug-1134): 部门可见知识库若未显式指定 allowed_depts，兜底填入 owner
         # 的全部部门（user_departments）。否则 datascope 规则 `allowed_depts OVERLAP
         # $identity.dept_ids` 命中 NULL（PG: NULL && array → NULL，假），知识库管理页创建的
@@ -208,7 +230,8 @@ class KnowledgeBaseService:
             language=data.language,
         )
 
-        rf_client = KnowledgeBaseService._get_ragflow_client()
+        # EAI-CUSTOM (SSO Plan 2): 终端用户建库 → per-user 客户端(共享 key 兜底);无用户路径沿用共享 key 工厂
+        rf_client = await resolve_ragflow_client(db, user)
         if rf_client:
             try:
                 if await rf_client.is_available():
@@ -248,7 +271,10 @@ class KnowledgeBaseService:
         return kb
 
     @staticmethod
-    async def update_kb(db: AsyncSession, kb: KnowledgeBase, data: KnowledgeBaseUpdate) -> KnowledgeBase:
+    async def update_kb(db: AsyncSession, kb: KnowledgeBase, data: KnowledgeBaseUpdate, user=None) -> KnowledgeBase:
+        # EAI-CUSTOM (SSO Plan 2): per-user 客户端在写 kb 属性前解析 —— get_client_for_user
+        # 失败回退会 rollback 会话,先解析避免回滚掉本次变更;无用户路径沿用共享 key 工厂
+        rf_client = await resolve_ragflow_client(db, user)
         if data.name is not None:
             kb.name = data.name
         if data.description is not None:
@@ -278,7 +304,6 @@ class KnowledgeBaseService:
             kb.allowed_depts = [row[0] for row in dept_rows.all()]
 
         if kb.ragflow_dataset_id:
-            rf_client = KnowledgeBaseService._get_ragflow_client()
             if rf_client:
                 try:
                     await rf_client.update_dataset(
@@ -306,7 +331,7 @@ class KnowledgeBaseService:
         return KnowledgeBaseService.to_response(kb)
 
     @staticmethod
-    async def delete_kb(db: AsyncSession, kb: KnowledgeBase) -> None:
+    async def delete_kb(db: AsyncSession, kb: KnowledgeBase, user=None) -> None:
         config = get_extensions_config()
         if config.storage.type.lower() == "local" or config.storage.retain_local_copy:
             kb_path = Path(config.storage.base_path) / str(kb.owner_id) / "knowledge" / str(kb.id)
@@ -314,7 +339,8 @@ class KnowledgeBaseService:
                 shutil.rmtree(kb_path)
 
         if kb.ragflow_dataset_id:
-            rf_client = KnowledgeBaseService._get_ragflow_client()
+            # EAI-CUSTOM (SSO Plan 2): 终端用户删库 → per-user 客户端(共享 key 兜底);无用户路径沿用共享 key 工厂
+            rf_client = await resolve_ragflow_client(db, user)
             if rf_client:
                 try:
                     await rf_client.delete_dataset(kb.ragflow_dataset_id)
@@ -327,12 +353,13 @@ class KnowledgeBaseService:
         await db.commit()
 
     @staticmethod
-    async def sync_kb_status(kb: KnowledgeBase) -> dict:
+    async def sync_kb_status(db: AsyncSession, kb: KnowledgeBase, user=None) -> dict:
         """Sync knowledge base status from RAGFlow."""
         if not kb.ragflow_dataset_id:
             return {"status": "not_synced", "message": "Not synced to RAGFlow"}
 
-        rf_client = KnowledgeBaseService._get_ragflow_client()
+        # EAI-CUSTOM (SSO Plan 2): 终端用户轮询 → per-user 客户端(共享 key 兜底);无用户路径沿用共享 key 工厂
+        rf_client = await resolve_ragflow_client(db, user)
         if not rf_client:
             return {"status": "error", "message": "RAGFlow not configured"}
 
@@ -355,6 +382,7 @@ class KnowledgeBaseService:
         *,
         include_documents: bool = True,
         embedding_model_override: str | None = None,
+        user=None,
     ) -> dict:
         """EAI-CUSTOM (bug-3307): 为孤儿 KB(ragflow_dataset_id IS NULL)补建 RAGFlow dataset 并回写 id。
 
@@ -379,7 +407,8 @@ class KnowledgeBaseService:
                 "documents_skipped": 0,
             }
         else:
-            rf_client = KnowledgeBaseService._get_ragflow_client()
+            # EAI-CUSTOM (SSO Plan 2): 修复通道按终端用户身份补链(per-user token,共享 key 兜底);无用户路径沿用共享 key 工厂
+            rf_client = await resolve_ragflow_client(db, user)
             if not rf_client:
                 return {"status": "error", "message": "RAGFlow not configured"}
             try:
@@ -435,7 +464,8 @@ class KnowledgeBaseService:
 
         # 文档回填(already_linked 重跑时同样执行): 只处理缺 ragflow_document_id 的文档,
         # 逐文档幂等 —— 上传过的不再动。
-        rf_client = rf_client if not already_linked else KnowledgeBaseService._get_ragflow_client()
+        # EAI-CUSTOM (SSO Plan 2): 已链接库回填文档同样按终端用户身份取客户端(无用户路径沿用共享 key 工厂)
+        rf_client = rf_client if not already_linked else await resolve_ragflow_client(db, user)
         if rf_client is None:
             logger.warning(f"Relink '{kb.name}': doc backfill skipped, RAGFlow not configured")
             return result
@@ -634,6 +664,7 @@ class DocumentService:
         auto_parse: bool = True,
         content_type: str | None = None,
         chunk_config: dict | None = None,
+        user=None,
     ) -> Document:
         """Create a document and optionally upload to RAGFlow."""
         file_ext = Path(file_name).suffix.lower().lstrip(".")
@@ -647,7 +678,8 @@ class DocumentService:
         )
 
         if kb.ragflow_dataset_id:
-            rf_client = DocumentService._get_ragflow_client()
+            # EAI-CUSTOM (SSO Plan 2): 终端用户上传 → per-user 客户端(共享 key 兜底);无用户路径(如后台导入)沿用共享 key 工厂
+            rf_client = await resolve_ragflow_client(db, user)
             if rf_client:
                 try:
                     parser_id, parser_config = DocumentService._build_parser_config(chunk_config)
@@ -709,11 +741,12 @@ class DocumentService:
         return doc
 
     @staticmethod
-    async def delete_doc(db: AsyncSession, doc: Document) -> None:
+    async def delete_doc(db: AsyncSession, doc: Document, user=None) -> None:
         if doc.ragflow_document_id:
             kb = await KnowledgeBaseService.get_kb_by_id(db, doc.knowledge_base_id)
             if kb and kb.ragflow_dataset_id:
-                rf_client = DocumentService._get_ragflow_client()
+                # EAI-CUSTOM (SSO Plan 2): 终端用户删文档 → per-user 客户端(共享 key 兜底);无用户路径沿用共享 key 工厂
+                rf_client = await resolve_ragflow_client(db, user)
                 if rf_client:
                     try:
                         await rf_client.delete_document(kb.ragflow_dataset_id, doc.ragflow_document_id)
@@ -740,12 +773,13 @@ class DocumentService:
         await db.commit()
 
     @staticmethod
-    async def sync_doc_status(doc: Document, kb: KnowledgeBase) -> dict:
+    async def sync_doc_status(db: AsyncSession, doc: Document, kb: KnowledgeBase, user=None) -> dict:
         """Sync document status from RAGFlow."""
         if not doc.ragflow_document_id or not kb.ragflow_dataset_id:
             return {"status": doc.status, "message": "Not synced to RAGFlow"}
 
-        rf_client = DocumentService._get_ragflow_client()
+        # EAI-CUSTOM (SSO Plan 2): 终端用户轮询 → per-user 客户端(共享 key 兜底);无用户路径沿用共享 key 工厂
+        rf_client = await resolve_ragflow_client(db, user)
         if not rf_client:
             return {"status": doc.status, "message": "RAGFlow not configured"}
 

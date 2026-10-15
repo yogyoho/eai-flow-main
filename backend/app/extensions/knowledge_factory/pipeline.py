@@ -735,6 +735,7 @@ class ExtractionPipeline:
                     continue
 
                 logger.info(f"[Task {ctx.get('_task_id', 'unknown')}] 调用 RAGFlow API 获取 chunks: dataset={rf_dataset_id}, doc={rf_doc_id}")
+                # EAI-CUSTOM: 后台任务无终端用户上下文,沿用共享 key(SSO per-user 为 Plan 2 v1 范围外)
                 rf = RAGFlowClient()
                 chunks = await _fetch_all_chunks(rf, rf_dataset_id, rf_doc_id)
                 logger.info(f"[Task {ctx.get('_task_id', 'unknown')}] RAGFlow 返回 {len(chunks)} 个 chunks for doc {doc_name}")

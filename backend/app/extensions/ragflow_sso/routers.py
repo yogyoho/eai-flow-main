@@ -1,5 +1,7 @@
 """EAI-CUSTOM: RAGFlow SSO endpoints — 免登跳转 + per-user token — 本地定制,非上游."""
 
+import logging
+
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.responses import RedirectResponse
 
@@ -10,6 +12,8 @@ from app.extensions.ragflow_sso.service import exchange_mode_web, get_or_issue_a
 from app.extensions.schemas import CurrentUser
 
 router = APIRouter(prefix="/ragflow-sso", tags=["RAGFlow SSO"])
+
+logger = logging.getLogger(__name__)
 
 
 @router.get("/login")
@@ -35,6 +39,8 @@ async def ragflow_sso_token(
     try:
         api_token = await get_or_issue_api_token(db, current_user)
     except RuntimeError:
+        # EAI-CUSTOM (SSO Plan 2): 交换失败曾只回 503 无服务端日志,排障无迹——补 warning
+        logger.warning("ragflow sso exchange failed for user %s", current_user.id)
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail="RAGFlow SSO unavailable",

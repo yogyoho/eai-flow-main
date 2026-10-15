@@ -17,14 +17,17 @@ from app.extensions.auth.identity import AttributeSet
 from app.extensions.auth.middleware import current_identity, require_permission, with_data_scope
 from app.extensions.config import get_extensions_config
 from app.extensions.database import get_db
-from app.extensions.knowledge.client import RAGFlowClient
 from app.extensions.knowledge.service import (
     DocumentService,
     KnowledgeBaseService,
     build_metadata_condition,
     filter_doc_ids,
+    resolve_ragflow_client,
 )
 from app.extensions.models import KnowledgeBase, KnowledgeBaseGrant
+
+# EAI-CUSTOM (SSO Plan 2): 用户可达端点的 RAGFlow 客户端按登录用户 per-user token 解析
+from app.extensions.ragflow_sso.service import get_client_for_user
 from app.extensions.schemas import (
     CurrentUser,
     DocumentListResponse,
@@ -51,6 +54,7 @@ router = APIRouter(prefix="/api/extensions/knowledge-bases", tags=["Knowledge Ba
 
 @router.get("/ragflow/embedding-models")
 async def list_ragflow_embedding_models(
+    db: AsyncSession = Depends(get_db),
     current_user: CurrentUser = Depends(require_permission("kb:create")),
 ):
     """List available embedding models from RAGFlow."""
@@ -58,7 +62,8 @@ async def list_ragflow_embedding_models(
     if not config.ragflow.api_key:
         return {"models": [], "error": "RAGFlow not configured"}
     try:
-        rf_client = RAGFlowClient()
+        # EAI-CUSTOM (SSO Plan 2): per-user token 客户端(共享 key 兜底)
+        rf_client = await get_client_for_user(db, current_user)
         models = await rf_client.list_available_embedding_models()
         return {"models": models}
     except Exception as e:
@@ -164,7 +169,8 @@ async def create_knowledge_base(
     db: AsyncSession = Depends(get_db),
     current_user: CurrentUser = Depends(require_permission("kb:create")),
 ):
-    kb = await KnowledgeBaseService.create_kb(db, current_user.id, data)
+    # EAI-CUSTOM (SSO Plan 2): 建库同步按终端用户 per-user token 执行
+    kb = await KnowledgeBaseService.create_kb(db, current_user.id, data, user=current_user)
     return KnowledgeBaseService.to_response(kb)
 
 
@@ -201,7 +207,8 @@ async def update_knowledge_base(
     has_write = await has_kb_grant(db, kb.id, identity, "write")
     if kb.owner_id != current_user.id and not is_admin and not has_write:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not authorized")
-    kb = await KnowledgeBaseService.update_kb(db, kb, data)
+    # EAI-CUSTOM (SSO Plan 2): 更新同步按终端用户 per-user token 执行
+    kb = await KnowledgeBaseService.update_kb(db, kb, data, user=current_user)
     return KnowledgeBaseService.to_response(kb)
 
 
@@ -253,9 +260,8 @@ async def link_knowledge_base_ragflow(
     if kb.owner_id != current_user.id and not is_admin and not has_write:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not authorized")
 
-    result = await KnowledgeBaseService.relink_ragflow(
-        db, kb, include_documents=include_documents, embedding_model_override=embedding_model
-    )
+    # EAI-CUSTOM (SSO Plan 2): 补链按终端用户 per-user token 执行
+    result = await KnowledgeBaseService.relink_ragflow(db, kb, include_documents=include_documents, embedding_model_override=embedding_model, user=current_user)
     if result["status"] == "error":
         raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=result["message"])
     return result
@@ -279,7 +285,8 @@ async def delete_knowledge_base(
     has_write = await has_kb_grant(db, kb.id, identity, "write")
     if kb.owner_id != current_user.id and not is_admin and not has_write:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not authorized")
-    await KnowledgeBaseService.delete_kb(db, kb)
+    # EAI-CUSTOM (SSO Plan 2): 删库同步按终端用户 per-user token 执行
+    await KnowledgeBaseService.delete_kb(db, kb, user=current_user)
     return MessageResponse(message="Knowledge base deleted successfully")
 
 
@@ -453,6 +460,7 @@ async def upload_document(
             file.size,
             content_type=file.content_type,
             chunk_config=chunk_cfg,
+            user=current_user,
         )
     except ValueError as e:
         # File type validation error — clean up uploaded file and return 400
@@ -513,11 +521,12 @@ async def list_documents(
     if processing_docs:
         kb = await KnowledgeBaseService.get_kb_by_id(db, kb_id)
         if kb and kb.ragflow_dataset_id:
-            rf_client = DocumentService._get_ragflow_client()
+            # EAI-CUSTOM (SSO Plan 2): 轮询门改经 per-user 解析(SSO-only 配置不再被共享 key 门挡住)
+            rf_client = await resolve_ragflow_client(db, current_user)
             if rf_client:
                 for doc in processing_docs:
                     try:
-                        status_info = await DocumentService.sync_doc_status(doc, kb)
+                        status_info = await DocumentService.sync_doc_status(db, doc, kb, user=current_user)
                         rf_status = status_info.get("status")
                         if rf_status and rf_status != doc.status:
                             doc.status = to_doc_status(rf_status)
@@ -550,7 +559,8 @@ async def delete_document(
     doc = await DocumentService.get_doc_by_id(db, doc_id)
     if not doc or doc.knowledge_base_id != kb.id:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Document not found")
-    await DocumentService.delete_doc(db, doc)
+    # EAI-CUSTOM (SSO Plan 2): 删文档按终端用户 per-user token 执行
+    await DocumentService.delete_doc(db, doc, user=current_user)
     return MessageResponse(message="Document deleted successfully")
 
 
@@ -590,7 +600,8 @@ async def list_document_chunks(
     if not config.ragflow.api_key:
         raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="RAGFlow not configured")
     try:
-        rf_client = RAGFlowClient()
+        # EAI-CUSTOM (SSO Plan 2): per-user token 客户端(共享 key 兜底)
+        rf_client = await get_client_for_user(db, current_user)
         result = await rf_client.list_chunks(
             dataset_id=kb.ragflow_dataset_id,
             document_id=ragflow_document_id,
@@ -628,7 +639,8 @@ async def chat_with_knowledge_base(
         raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="RAGFlow not configured")
 
     try:
-        rf_client = RAGFlowClient()
+        # EAI-CUSTOM (SSO Plan 2): per-user token 客户端(共享 key 兜底)
+        rf_client = await get_client_for_user(db, current_user)
         params = KnowledgeBaseService.resolve_chat_params(request.top_k, request.similarity_threshold, request.vector_similarity_weight, kb.retrieval_config)
 
         condition = None
@@ -721,7 +733,8 @@ async def federated_search(
         if not kb.ragflow_dataset_id:
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Knowledge base not synced to RAGFlow")
 
-    rf_client = RAGFlowClient()
+    # EAI-CUSTOM (SSO Plan 2): per-user token 客户端(共享 key 兜底)
+    rf_client = await get_client_for_user(db, current_user)
 
     condition = None
     try:
@@ -813,5 +826,6 @@ async def get_knowledge_base_status(
     if kb is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Knowledge base not found")
 
-    status_info = await KnowledgeBaseService.sync_kb_status(kb)
+    # EAI-CUSTOM (SSO Plan 2): 状态轮询按终端用户 per-user token 执行
+    status_info = await KnowledgeBaseService.sync_kb_status(db, kb, user=current_user)
     return status_info
