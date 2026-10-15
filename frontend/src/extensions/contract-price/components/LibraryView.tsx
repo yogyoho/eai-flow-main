@@ -48,7 +48,12 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
+import {
+  WindowsFolder,
+  WindowsFolderOpen,
+} from "@/extensions/translation/components/FolderIcons";
 import { cn } from "@/lib/utils";
+// 树节点保留开/合两态的旧文件夹图标（file-icon 集的 folder.svg 无开启态）
 
 import { libraryApi } from "../api";
 import {
@@ -350,7 +355,11 @@ export function LibraryView() {
             ) : (
               <span className="w-3 shrink-0" />
             )}
-            <FolderIcon className="h-3.5 w-3.5 shrink-0 drop-shadow-sm" />
+            {hasChildren && isOpen ? (
+              <WindowsFolderOpen className="h-4 w-4 shrink-0 drop-shadow-sm" />
+            ) : (
+              <WindowsFolder className="h-4 w-4 shrink-0 drop-shadow-sm" />
+            )}
             <span className="truncate">{n.name}</span>
             <span className="ml-auto opacity-0 transition-opacity group-hover:opacity-100">
               <DropdownMenu>
@@ -547,7 +556,7 @@ export function LibraryView() {
               }}
             >
               <ChevronRight className="text-muted-foreground h-3 w-3 shrink-0 rotate-90" />
-              <FolderIcon className="h-3.5 w-3.5 shrink-0 drop-shadow-sm" />
+              <WindowsFolderOpen className="h-4 w-4 shrink-0 drop-shadow-sm" />
               <span>文件库</span>
               <span className="ml-auto opacity-0 transition-opacity group-hover:opacity-100">
                 <FolderPlus
