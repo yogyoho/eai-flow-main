@@ -56,6 +56,7 @@ import {
   deleteTask,
   fetchDeliverablePreview,
   listFolders,
+  listRagKbs,
   listTasks,
   patchFolder,
   translateTask,
@@ -235,10 +236,41 @@ export function AssetLibrary() {
   const splitRef = useRef<HTMLDivElement>(null);
   const dragging = useRef(false);
 
+  // ── RAG 库选择（上传目标 + 列表筛选）──
+  const ragKbsQ = useQuery({ queryKey: ["tlt-rag-kbs"], queryFn: listRagKbs });
+  const ragKbs = useMemo(() => ragKbsQ.data ?? [], [ragKbsQ.data]);
+  // 记忆上次目标库；无记忆则用设置页默认库（SSR 守卫同 SettingsView）
+  const [uploadKbId, setUploadKbId] = useState<string>(() => {
+    if (typeof window === "undefined") return "";
+    const last = window.localStorage.getItem("tlt_last_kb_id");
+    if (last) return last;
+    return window.localStorage.getItem("tlt_default_kb_id") ?? "";
+  });
+  const [kbFilter, setKbFilter] = useState<string>("all");
+
+  // 回落：选项加载后选中值已不在库列表 → 默认库 → 唯一库 → ""（"" 时后端 400 引导，不静默进错库）
+  useEffect(() => {
+    if (ragKbsQ.isLoading || ragKbs.length === 0) return;
+    if (ragKbs.some((k) => k.id === uploadKbId)) return;
+    const only = ragKbs.length === 1 ? ragKbs[0] : undefined;
+    const fallback =
+      ragKbs.find((k) => k.id === window.localStorage.getItem("tlt_default_kb_id"))?.id ??
+      only?.id ??
+      "";
+    setUploadKbId(fallback);
+  }, [ragKbsQ.isLoading, ragKbs, uploadKbId]);
+
   const foldersQ = useQuery({ queryKey: ["tlt-folders"], queryFn: listFolders });
   const tasksL = useQuery({
-    queryKey: ["tlt-tasks", "L", lFolder, lPage, q],
-    queryFn: () => listTasks({ folder_id: lFolder, page: lPage, page_size: PAGE_SIZE, q: q || undefined }),
+    queryKey: ["tlt-tasks", "L", lFolder, lPage, q, kbFilter],
+    queryFn: () =>
+      listTasks({
+        folder_id: lFolder,
+        page: lPage,
+        page_size: PAGE_SIZE,
+        q: q || undefined,
+        ...(kbFilter !== "all" ? { kb_id: kbFilter } : {}),
+      }),
     refetchInterval: POLL_MS,
   });
   const tasksR = useQuery({
@@ -291,7 +323,9 @@ export function AssetLibrary() {
   const handleUpload = async (files: File[], autoTranslate: boolean) => {
     try {
       const folderId = lFolder === "root" ? null : lFolder;
-      const res = await uploadAssets(folderId, files);
+      const res = await uploadAssets(folderId, files, uploadKbId || null);
+      // 请求级成功才记忆本次目标库（失败路径不写，保留上一次成功值）
+      if (uploadKbId) window.localStorage.setItem("tlt_last_kb_id", uploadKbId);
       if (autoTranslate) {
         for (const item of res) {
           if (!item.reused) await translateTask(item.task_id);
@@ -635,7 +669,7 @@ export function AssetLibrary() {
 
       {/* 路径面包屑（左侧主导航；点击层级=左右同步前往） */}
       <div className="flex items-center gap-2 px-3 py-1.5 text-sm">
-        <span className="shrink-0 rounded-sm bg-sky-100 px-2 py-0.5 text-xs text-sky-700">文件路径：</span>
+        <span className="shrink-0 rounded-md bg-muted px-2 py-0.5 text-xs text-muted-foreground">文件路径：</span>
         <Crumbs
           folderId={lFolder}
           onPick={(id) => {
@@ -666,6 +700,19 @@ export function AssetLibrary() {
                 setLPage(1);
               }}
             />
+            <select
+              className="h-8 rounded-md border bg-background px-2 text-sm"
+              value={kbFilter}
+              onChange={(e) => {
+                setKbFilter(e.target.value);
+                setLPage(1);
+              }}
+            >
+              <option value="all">全部库</option>
+              {ragKbs.map((k) => (
+                <option key={k.id} value={k.id}>{k.name}</option>
+              ))}
+            </select>
             <Button variant="outline" size="sm" onClick={() => setUploadOpen(true)}>
               <Upload className="mr-1 h-3.5 w-3.5" /> 上传
             </Button>
@@ -914,6 +961,9 @@ export function AssetLibrary() {
         onOpenChange={setUploadOpen}
         onUpload={handleUpload}
         uploading={tasksL.isFetching}
+        kbOptions={ragKbs.map((k) => ({ id: k.id, name: k.name }))}
+        kbId={uploadKbId}
+        onKbChange={setUploadKbId}
       />
 
       {/* 译本预览：双屏对照（左原文 / 右中文译本） */}

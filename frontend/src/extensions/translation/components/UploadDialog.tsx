@@ -22,6 +22,9 @@ export function UploadDialog({
   onOpenChange,
   onUpload,
   uploading,
+  kbId,
+  kbOptions,
+  onKbChange,
 }: {
   open: boolean;
   onOpenChange: (v: boolean) => void;
@@ -30,6 +33,9 @@ export function UploadDialog({
     autoTranslate: boolean,
   ) => Promise<{ total: number; failed: File[]; message?: string }>;
   uploading: boolean;
+  kbId: string;
+  kbOptions: { id: string; name: string }[];
+  onKbChange: (id: string) => void;
 }) {
   const [selected, setSelected] = useState<File[]>([]);
   const [dragOver, setDragOver] = useState(false);
@@ -125,6 +131,24 @@ export function UploadDialog({
           <FileUp className="h-10 w-10 text-muted-foreground" />
           <p className="text-sm font-medium text-foreground">拖拽文档到此处</p>
           <p className="text-xs text-muted-foreground">或点击选择文件 · 支持多选</p>
+        </div>
+
+        {/* 目标 RAG 知识库 */}
+        <div className="grid grid-cols-[110px_1fr] items-center gap-2 text-sm">
+          <span className="text-xs text-muted-foreground">目标知识库</span>
+          {kbOptions.length === 0 ? (
+            <span className="text-xs text-destructive">无可用库——请先在设置页「RAG知识库配置」创建</span>
+          ) : (
+            <select
+              className="h-8 rounded-md border bg-background px-2"
+              value={kbId}
+              onChange={(e) => onKbChange(e.target.value)}
+            >
+              {kbOptions.map((k) => (
+                <option key={k.id} value={k.id}>{k.name}</option>
+              ))}
+            </select>
+          )}
         </div>
 
         {/* Auto-translate toggle */}

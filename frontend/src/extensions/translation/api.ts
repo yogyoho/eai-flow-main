@@ -84,13 +84,15 @@ export async function listKbOptions(): Promise<{ id: string; name: string }[]> {
   return (d.knowledge_bases ?? []).map((x) => ({ id: x.id, name: x.name }));
 }
 
-/** 资产库上传：多文件 + 目标文件夹；返回逐文件结果（reused=幂等复用）。 */
+/** 资产库上传：多文件 + 目标文件夹 + 目标 RAG 库；返回逐文件结果（reused=幂等复用）。 */
 export async function uploadAssets(
   folderId: string | null,
   files: File[],
+  kbId?: string | null,
 ): Promise<TltUploadResult[]> {
   const fd = new FormData();
   if (folderId) fd.set("folder_id", folderId);
+  if (kbId) fd.set("kb_id", kbId);
   for (const f of files) fd.append("files", f, f.name);
   const d = await authFormFetch<{ items: TltUploadResult[]; count: number }>(
     `${API_BASE}/upload`,
