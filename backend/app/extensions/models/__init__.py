@@ -10,6 +10,9 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.extensions.database import Base
 
+# EAI-CUSTOM: RAGFlow SSO — 导入即把 ragflow_credentials 注册进 Base.metadata(init_db create_all 建表)。
+from app.extensions.ragflow_sso.models import RagflowCredential  # noqa: F401
+
 from .role_permission import DEFAULT_ROLE_PERMISSIONS, ProjectRole, RolePermission  # noqa: F401
 
 

@@ -117,6 +117,8 @@ class RAGFlowConfig(BaseModel):
     base_url: str = Field(default="http://localhost:9380", description="RAGFlow API base URL")
     api_key: str = Field(default="", description="RAGFlow API key")
     timeout: int = Field(default=30, description="Request timeout in seconds")
+    # EAI-CUSTOM: RAGFlow SSO 交换信任根(RAGFlow 侧同值),空 = SSO 未启用,回退共享 api_key。
+    sso_secret: str = Field(default="", description="EAI_SSO_SHARED_SECRET for RAGFlow SSO exchange")
 
     @classmethod
     def from_env(cls) -> "RAGFlowConfig":
@@ -124,6 +126,7 @@ class RAGFlowConfig(BaseModel):
             base_url=os.getenv("RAGFLOW_BASE_URL", "http://localhost:9380"),
             api_key=os.getenv("RAGFLOW_API_KEY", ""),
             timeout=int(os.getenv("RAGFLOW_TIMEOUT", "30")),
+            sso_secret=os.getenv("EAI_SSO_SHARED_SECRET", ""),
         )
 
 
