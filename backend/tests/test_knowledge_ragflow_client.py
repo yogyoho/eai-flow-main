@@ -240,6 +240,62 @@ async def test_list_documents_passes_metadata_condition(install_transport):
     assert params["orderby"] == "create_time" and params["desc"] == "true"
 
 
+@pytest.mark.asyncio
+async def test_list_documents_translates_exact_condition_to_v1_metadata_param(install_transport):
+    """RAGFlow 1.0.0: metadata_condition 只校验不过滤；全 "=" 条件须翻译为 metadata 参数。"""
+
+    def handler(request):
+        return httpx.Response(200, json={"code": 0, "data": {"total": 0, "docs": []}})
+
+    captured = install_transport(handler)
+    cond = {"logic": "and", "conditions": [{"name": "sector", "comparison_operator": "=", "value": "环境评价"}]}
+    await RAGFlowClient().list_documents("ds1", metadata_condition=cond)
+
+    params = dict(captured.requests[0].url.params)
+    assert "metadata_condition" in params  # 旧参数保留（1.0.0 仅校验）
+    import json as _json
+
+    assert _json.loads(params["metadata"]) == {"sector": "环境评价"}
+
+
+@pytest.mark.asyncio
+async def test_list_documents_tlt_dedup_condition_translated(install_transport):
+    """tlt 上传去重的精确形态（单 "=" 条件）必须翻译——否则 1.0.0 返回全量文档产生假幂等。"""
+
+    def handler(request):
+        return httpx.Response(200, json={"code": 0, "data": {"total": 0, "docs": []}})
+
+    captured = install_transport(handler)
+    cond = {"logic": "and", "conditions": [{"name": "tlt_task_id", "comparison_operator": "=", "value": "task-uuid"}]}
+    await RAGFlowClient().list_documents("ds1", metadata_condition=cond)
+
+    import json as _json
+
+    assert _json.loads(dict(captured.requests[0].url.params)["metadata"]) == {"tlt_task_id": "task-uuid"}
+
+
+@pytest.mark.asyncio
+async def test_list_documents_non_exact_condition_not_translated(install_transport):
+    """contains/区间/or 条件 1.0.0 无法表达：不发 metadata 参数，退回旧行为（不过滤）。"""
+
+    def handler(request):
+        return httpx.Response(200, json={"code": 0, "data": {"total": 0, "docs": []}})
+
+    captured = install_transport(handler)
+    cond = {
+        "logic": "and",
+        "conditions": [
+            {"name": "sector", "comparison_operator": "=", "value": "环境评价"},
+            {"name": "keywords", "comparison_operator": "contains", "value": "规划环评"},
+        ],
+    }
+    await RAGFlowClient().list_documents("ds1", metadata_condition=cond)
+
+    params = dict(captured.requests[0].url.params)
+    assert "metadata" not in params
+    assert "metadata_condition" in params
+
+
 def test_to_doc_status_maps_ragflow_run_values():
     assert to_doc_status("UNSTART") == "pending"
     assert to_doc_status("RUNNING") == "processing"

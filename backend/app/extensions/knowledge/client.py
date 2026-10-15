@@ -289,12 +289,25 @@ class RAGFlowClient:
     ) -> dict:
         """List documents in a dataset (``page_size`` capped at 100 upstream).
 
-        metadata_condition: RAGFlow 元数据过滤(v0.27.x 文档列表端点实测生效),
+        metadata_condition: RAGFlow 元数据过滤(0.27.x 语义)。
+        RAGFlow 1.0.0（Go 服务端）对该参数只做 JSON 校验、**不参与过滤**——真过滤
+        走 ``metadata`` 查询参数（键 → 单值/值列表：键内 OR、键间 AND，均为精确
+        匹配）。本方法自动把可无损表达的 "=" 条件翻译为 ``metadata`` 参数；无法
+        表达的条件集（contains/区间/or）退回旧行为（被服务端忽略=不过滤）并告警。
         结构 {"logic": "and", "conditions": [{"name", "comparison_operator", "value"}]}。
         """
         params: dict = {"page": page, "page_size": min(size, 100)}
         if metadata_condition:
             params["metadata_condition"] = json.dumps(metadata_condition, ensure_ascii=False)
+            v1_metadata = self._metadata_condition_to_v1_param(metadata_condition)
+            if v1_metadata:
+                params["metadata"] = json.dumps(v1_metadata, ensure_ascii=False)
+            else:
+                logger.warning(
+                    "list_documents: metadata_condition not expressible under RAGFlow 1.0.0 "
+                    "metadata filter (only exact-match AND supported); server will NOT filter: %s",
+                    metadata_condition,
+                )
         if orderby:
             params["orderby"] = orderby
         if desc is not None:
@@ -307,6 +320,35 @@ class RAGFlowClient:
             )
             response.raise_for_status()
             return response.json()
+
+    @staticmethod
+    def _metadata_condition_to_v1_param(metadata_condition: dict) -> dict[str, str] | None:
+        """metadata_condition（0.27 语义）→ 1.0.0 ``metadata`` 精确匹配参数。
+
+        仅当条件集可无损表达时返回翻译结果：logic=and、全部条件 comparison_operator
+        为 "="、键唯一、值为字符串（1.0.0 的 metadata 过滤键内 OR / 键间 AND，
+        恰好等价于该形态）。其余形态（contains/≥≤/or/非字符串值）返回 None，
+        由调用方退回旧行为并告警。EAI-CUSTOM（ragflow-1.0.0 适配）。
+        """
+        if not isinstance(metadata_condition, dict):
+            return None
+        conditions = metadata_condition.get("conditions")
+        if not isinstance(conditions, list) or not conditions:
+            return None
+        if str(metadata_condition.get("logic") or "and").lower() != "and":
+            return None
+        translated: dict[str, str] = {}
+        for cond in conditions:
+            if not isinstance(cond, dict) or cond.get("comparison_operator") != "=":
+                return None
+            name = cond.get("name")
+            value = cond.get("value")
+            if not isinstance(name, str) or not name:
+                return None
+            if not isinstance(value, str) or name in translated:
+                return None
+            translated[name] = value
+        return translated
 
     async def delete_document(self, dataset_id: str, document_id: str) -> None:
         """Delete a document."""
