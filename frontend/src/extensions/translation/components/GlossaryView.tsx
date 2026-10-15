@@ -3,6 +3,7 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Loader2, Plus, Trash2 } from "lucide-react";
 import { useState } from "react";
+import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -38,12 +39,10 @@ export function GlossaryView() {
   const qc = useQueryClient();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<GlossaryEntry | null>(null);
-  const [notice, setNotice] = useState<{ kind: "ok" | "err"; text: string } | null>(null);
 
-  const flash = (kind: "ok" | "err", text: string) => {
-    setNotice({ kind, text });
-    window.setTimeout(() => setNotice(null), 3500);
-  };
+  // flash: sonner 右下角 toast(对齐知识工厂),不再内嵌通知条——列表不位移。
+  const flash = (kind: "ok" | "err", text: string) =>
+    kind === "ok" ? toast.success(text) : toast.error(text);
 
   const glossaryQ = useQuery({
     queryKey: ["tlt-glossary"],
@@ -58,7 +57,12 @@ export function GlossaryView() {
   const saveEntry = async (entry: GlossaryEntry) => {
     try {
       // 全量 PUT（术语量 ≤ 几百条无性能压力）
-      const items = [...(glossaryQ.data?.entries ?? []).filter((x) => x.source !== entry.source), entry];
+      const items = [
+        ...(glossaryQ.data?.entries ?? []).filter(
+          (x) => x.source !== entry.source,
+        ),
+        entry,
+      ];
       await authFetch("/translation/glossary", {
         method: "PUT",
         body: JSON.stringify({ entries: items }),
@@ -72,7 +76,9 @@ export function GlossaryView() {
 
   const removeEntry = async (source: string) => {
     try {
-      const items = (glossaryQ.data?.entries ?? []).filter((x) => x.source !== source);
+      const items = (glossaryQ.data?.entries ?? []).filter(
+        (x) => x.source !== source,
+      );
       await authFetch("/translation/glossary", {
         method: "PUT",
         body: JSON.stringify({ entries: items }),
@@ -88,44 +94,36 @@ export function GlossaryView() {
     <div className="flex h-full flex-col gap-3 p-4">
       <div className="flex items-center gap-3">
         <h1 className="text-xl font-semibold">术语库</h1>
-        <span className="text-sm text-muted-foreground">
+        <span className="text-muted-foreground text-sm">
           翻译时自动注入 · 机检术语轴核验
         </span>
         <span className="flex-1" />
-        <span className="rounded-full border px-2.5 py-0.5 text-xs text-muted-foreground">
+        <span className="text-muted-foreground rounded-full border px-2.5 py-0.5 text-xs">
           {entries.length} 条
         </span>
-        <Button size="sm" onClick={() => setEditing({ source: "", action: "force", target: "" })}>
+        <Button
+          size="sm"
+          onClick={() =>
+            setEditing({ source: "", action: "force", target: "" })
+          }
+        >
           <Plus className="mr-1 h-3.5 w-3.5" /> 新增术语
         </Button>
       </div>
 
-      {notice && (
-        <div
-          className={cn(
-            "rounded-md border px-3 py-2 text-sm",
-            notice.kind === "ok"
-              ? "border-success/30 bg-success/10 text-success"
-              : "border-destructive/30 bg-destructive/10 text-destructive",
-          )}
-        >
-          {notice.text}
-        </div>
-      )}
-
       <div className="min-h-0 flex-1 overflow-auto rounded-lg border">
         {glossaryQ.isLoading ? (
-          <div className="flex items-center gap-2 p-4 text-sm text-muted-foreground">
+          <div className="text-muted-foreground flex items-center gap-2 p-4 text-sm">
             <Loader2 className="h-4 w-4 animate-spin" /> 加载中…
           </div>
         ) : entries.length === 0 ? (
-          <div className="p-8 text-center text-sm text-muted-foreground">
+          <div className="text-muted-foreground p-8 text-center text-sm">
             术语库为空——机制已生效但无注入内容。样例验收闸产出后在此维护。
           </div>
         ) : (
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b bg-muted/50 text-left text-xs text-muted-foreground">
+              <tr className="bg-muted/50 text-muted-foreground border-b text-left text-xs">
                 <th className="px-3 py-2">源词</th>
                 <th className="px-3 py-2">动作</th>
                 <th className="px-3 py-2">目标译法</th>
@@ -134,7 +132,10 @@ export function GlossaryView() {
             </thead>
             <tbody>
               {entries.map((e) => (
-                <tr key={e.source} className="border-b last:border-b-0 hover:bg-muted/50">
+                <tr
+                  key={e.source}
+                  className="hover:bg-muted/50 border-b last:border-b-0"
+                >
                   <td className="px-3 py-2 font-medium">{e.source}</td>
                   <td className="px-3 py-2">
                     <span
@@ -153,7 +154,7 @@ export function GlossaryView() {
                     <Button
                       variant="ghost"
                       size="sm"
-                      className="h-7 w-7 p-0 text-destructive hover:text-destructive"
+                      className="text-destructive hover:text-destructive h-7 w-7 p-0"
                       onClick={() => void removeEntry(e.source)}
                     >
                       <Trash2 className="h-3.5 w-3.5" />
@@ -175,19 +176,29 @@ export function GlossaryView() {
           {editing && (
             <div className="flex flex-col gap-3 py-2">
               <div>
-                <label className="mb-1 block text-xs font-medium text-muted-foreground">源词 *</label>
+                <label className="text-muted-foreground mb-1 block text-xs font-medium">
+                  源词 *
+                </label>
                 <Input
                   value={editing.source}
-                  onChange={(e) => setEditing({ ...editing, source: e.target.value })}
+                  onChange={(e) =>
+                    setEditing({ ...editing, source: e.target.value })
+                  }
                   placeholder="iron ore concentrate"
                 />
               </div>
               <div>
-                <label className="mb-1 block text-xs font-medium text-muted-foreground">动作</label>
+                <label className="text-muted-foreground mb-1 block text-xs font-medium">
+                  动作
+                </label>
                 <Select
                   value={editing.action}
                   onValueChange={(v) =>
-                    setEditing({ ...editing, action: v, target: v === "force" ? editing.target : "" })
+                    setEditing({
+                      ...editing,
+                      action: v,
+                      target: v === "force" ? editing.target : "",
+                    })
                   }
                 >
                   <SelectTrigger>
@@ -201,12 +212,14 @@ export function GlossaryView() {
               </div>
               {editing.action === "force" && (
                 <div>
-                  <label className="mb-1 block text-xs font-medium text-muted-foreground">
+                  <label className="text-muted-foreground mb-1 block text-xs font-medium">
                     目标译法 *
                   </label>
                   <Input
                     value={editing.target ?? ""}
-                    onChange={(e) => setEditing({ ...editing, target: e.target.value })}
+                    onChange={(e) =>
+                      setEditing({ ...editing, target: e.target.value })
+                    }
                     placeholder="铁精矿"
                   />
                 </div>

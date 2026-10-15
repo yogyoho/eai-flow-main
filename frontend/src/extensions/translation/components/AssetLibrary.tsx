@@ -29,6 +29,7 @@ import {
   Upload,
 } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
+import { toast } from "sonner";
 
 import { FileTypeIcon } from "@/components/file-type-icons";
 import { Button } from "@/components/ui/button";
@@ -235,10 +236,6 @@ export function AssetLibrary() {
     document.body.style.cursor = "col-resize";
   };
   const [expanded, setExpanded] = useState<Set<string>>(new Set(["root"]));
-  const [notice, setNotice] = useState<{
-    kind: "ok" | "err";
-    text: string;
-  } | null>(null);
   const [previewTask, setPreviewTask] = useState<TltTask | null>(null);
   const [previewMd, setPreviewMd] = useState<string | null>(null);
   const [previewLoading, setPreviewLoading] = useState(false);
@@ -315,10 +312,9 @@ export function AssetLibrary() {
     (t) => checked.has(t.id) && (t.state === "stored" || t.state === "failed"),
   );
 
-  const flash = (kind: "ok" | "err", text: string) => {
-    setNotice({ kind, text });
-    window.setTimeout(() => setNotice(null), 3500);
-  };
+  // flash: sonner 右下角 toast(对齐知识工厂),不再内嵌通知条——列表不位移。
+  const flash = (kind: "ok" | "err", text: string) =>
+    kind === "ok" ? toast.success(text) : toast.error(text);
 
   // ── 分隔条拖拽（监听挂 window：仅客户端，useEffect 内）──
   const onSplitDown = () => {
@@ -713,19 +709,6 @@ export function AssetLibrary() {
           </Button>
         )}
       </div>
-
-      {notice && (
-        <div
-          className={cn(
-            "rounded-md border px-3 py-2 text-sm",
-            notice.kind === "ok"
-              ? "border-success/30 bg-success/10 text-success"
-              : "border-destructive/30 bg-destructive/10 text-destructive",
-          )}
-        >
-          {notice.text}
-        </div>
-      )}
 
       {/* 路径面包屑（左侧主导航；点击层级=左右同步前往） */}
       <div className="flex items-center gap-2 px-3 py-1.5 text-sm">

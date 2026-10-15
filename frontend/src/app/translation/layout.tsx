@@ -2,11 +2,19 @@
 
 // EAI-CUSTOM (translation 一期): 必须走 ShellLayout —— 它提供 QueryClientProvider/PermissionProvider,
 // AssetLibrary 里的 TanStack hooks 与权限过滤都依赖这些 Provider（同 geo-samples/contract-price 布局）。
-import { BookMarked, ClipboardCheck, FolderOpen, Languages, ListChecks, Settings } from "lucide-react";
+import {
+  BookMarked,
+  ClipboardCheck,
+  FolderOpen,
+  Languages,
+  ListChecks,
+  Settings,
+} from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { type ReactNode } from "react";
 
+import { Toaster } from "@/components/ui/sonner";
 import { usePermission } from "@/core/permissions";
 import { ShellLayout } from "@/extensions/shell";
 import { cn } from "@/lib/utils";
@@ -15,11 +23,41 @@ import Metadata from "./metadata";
 
 // 子路由映射到子页面权限点（/api/permissions/me 的 pages），供 canPage 过滤；
 const navItems = [
-  { href: "/translation", label: "文档资产库", icon: FolderOpen, exact: true, pageId: "translation:page:assets" },
-  { href: "/translation/tasks", label: "任务管理", icon: ListChecks, exact: false, pageId: "translation:page:assets" },
-  { href: "/translation/review", label: "复核工作台", icon: ClipboardCheck, exact: false, pageId: "translation:page:assets" },
-  { href: "/translation/glossary", label: "术语库", icon: BookMarked, exact: false, pageId: "translation:page:assets" },
-  { href: "/translation/settings", label: "设置", icon: Settings, exact: false, pageId: "translation:page:assets" },
+  {
+    href: "/translation",
+    label: "文档资产库",
+    icon: FolderOpen,
+    exact: true,
+    pageId: "translation:page:assets",
+  },
+  {
+    href: "/translation/tasks",
+    label: "任务管理",
+    icon: ListChecks,
+    exact: false,
+    pageId: "translation:page:assets",
+  },
+  {
+    href: "/translation/review",
+    label: "复核工作台",
+    icon: ClipboardCheck,
+    exact: false,
+    pageId: "translation:page:assets",
+  },
+  {
+    href: "/translation/glossary",
+    label: "术语库",
+    icon: BookMarked,
+    exact: false,
+    pageId: "translation:page:assets",
+  },
+  {
+    href: "/translation/settings",
+    label: "设置",
+    icon: Settings,
+    exact: false,
+    pageId: "translation:page:assets",
+  },
 ];
 
 function TranslationLayoutContent({ children }: { children: ReactNode }) {
@@ -31,10 +69,10 @@ function TranslationLayoutContent({ children }: { children: ReactNode }) {
     : navItems.filter((n) => canPage(n.pageId));
 
   return (
-    <div className="flex h-full flex-col bg-background">
+    <div className="bg-background flex h-full flex-col">
       <Metadata />
-      <header className="flex h-16 shrink-0 items-center border-b border-border bg-background px-6">
-        <span className="mr-8 flex items-center gap-2 text-lg font-bold tracking-tight text-foreground">
+      <header className="border-border bg-background flex h-16 shrink-0 items-center border-b px-6">
+        <span className="text-foreground mr-8 flex items-center gap-2 text-lg font-bold tracking-tight">
           <Languages className="h-5 w-5" />
           文档翻译工作台
         </span>
@@ -51,7 +89,7 @@ function TranslationLayoutContent({ children }: { children: ReactNode }) {
                   "flex h-full items-center gap-1.5 border-b-2 px-1",
                   isActive
                     ? "border-primary text-foreground"
-                    : "border-transparent hover:text-foreground",
+                    : "hover:text-foreground border-transparent",
                 )}
               >
                 <Icon className="h-4 w-4" />
@@ -62,11 +100,17 @@ function TranslationLayoutContent({ children }: { children: ReactNode }) {
         </nav>
       </header>
       <div className="min-h-0 flex-1">{children}</div>
+      {/* 操作反馈 toast（sonner,右下角)——对齐知识工厂,替代各 tab 内嵌通知条 */}
+      <Toaster />
     </div>
   );
 }
 
-export default function TranslationLayout({ children }: { children: ReactNode }) {
+export default function TranslationLayout({
+  children,
+}: {
+  children: ReactNode;
+}) {
   return (
     <ShellLayout>
       <TranslationLayoutContent>{children}</TranslationLayoutContent>
