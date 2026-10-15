@@ -24,8 +24,7 @@ from app.extensions.auth.admin import is_superadmin
 from app.extensions.auth.middleware import require_permission
 from app.extensions.database import get_db
 from app.extensions.knowledge.client import RAGFlowClient
-from app.extensions.models import KnowledgeBase
-from app.extensions.schemas import KnowledgeBaseCreate, KnowledgeBaseUpdate
+from app.extensions.models import Document, KnowledgeBase
 from app.extensions.translation.models import (
     STATES,
     TERMINAL_STATES,
@@ -33,7 +32,7 @@ from app.extensions.translation.models import (
     TranslationTask,
     validate_transition,
 )
-from app.extensions.translation.ragflow_bridge import _dataset_exists, _doc_exists, ensure_dataset, index_original, reindex_deliverable
+from app.extensions.translation.ragflow_bridge import _doc_exists, ensure_dataset, index_original, reindex_deliverable
 
 logger = logging.getLogger(__name__)
 
@@ -612,7 +611,7 @@ async def put_glossary_entries(
     return {"entries": [e.model_dump() for e in entries], "count": len(entries)}
 
 
-# ── 检索知识库（B3）：状态探测与初始化/修复 ───────────────────────────
+# ── RAG 知识库配置（多库）：建/列/改/启停 ─────────────────────────────
 
 
 async def _require_superadmin(db: AsyncSession, current_user) -> None:
@@ -620,80 +619,197 @@ async def _require_superadmin(db: AsyncSession, current_user) -> None:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="仅超级管理员可管理检索知识库")
 
 
-async def _asset_kb(db: AsyncSession) -> KnowledgeBase | None:
-    return (
-        await db.execute(
-            select(KnowledgeBase)
-            .where(KnowledgeBase.translation_enabled.is_(True))
-            .order_by(KnowledgeBase.created_at.asc())
-            .limit(1)
-        )
-    ).scalar()
+class RagKbCreate(BaseModel):
+    name: str
+    description: str | None = None
+    language: str | None = None  # Chinese | English（create 不收，create 后 update 落地）
+    permission: str | None = None  # me | team
+    embedding_model: str | None = None
+    chunk_method: str | None = None
+    parser_config: dict | None = None
+    pagerank: int | None = None
 
 
-@router.get("/asset-kb/status")
-async def asset_kb_status(
+class RagKbUpdate(BaseModel):
+    description: str | None = None
+    language: str | None = None
+    permission: str | None = None
+    embedding_model: str | None = None
+    chunk_method: str | None = None
+    parser_config: dict | None = None
+    pagerank: int | None = None
+
+
+class RagKbEnabled(BaseModel):
+    enabled: bool
+
+
+@router.get("/rag-kbs/embedding-models")
+async def list_embedding_models(
     current_user=Depends(require_permission("translation:read")),
     db: AsyncSession = Depends(get_db),
 ) -> dict:
-    """检索知识库状态：unbound（未初始化）/ dangling（关联失效）/ ready（就绪+计数）。
-
-    计数从任务表聚合（DB 口径），探测仅一次 get_dataset，零其他 RAGFlow 调用。
-    """
     await _require_superadmin(db, current_user)
-    kb = await _asset_kb(db)
-    if kb is None:
-        return {"state": "unbound"}
-    if not kb.ragflow_dataset_id or not await _dataset_exists(RAGFlowClient(), kb.ragflow_dataset_id):
-        return {"state": "dangling", "kb_name": kb.name, "dataset_id": kb.ragflow_dataset_id}
-    source_count = (
-        await db.execute(
-            select(func.count())
-            .select_from(TranslationTask)
-            .where(TranslationTask.kb_id == kb.id, TranslationTask.ragflow_source_doc_id.is_not(None))
-        )
-    ).scalar() or 0
-    zh_count = (
-        await db.execute(
-            select(func.count())
-            .select_from(TranslationTask)
-            .where(
-                TranslationTask.kb_id == kb.id,
-                TranslationTask.state == "delivered",
-                TranslationTask.ragflow_zh_doc_id.is_not(None),
+    models = await RAGFlowClient().list_available_embedding_models()
+    return {"items": models}
+
+
+@router.get("/rag-kbs")
+async def list_rag_kbs(
+    current_user=Depends(require_permission("translation:read")),
+    db: AsyncSession = Depends(get_db),
+) -> dict:
+    """翻译体系内 KB 清单：PG 摘要 + RAGFlow 配置回读 + 文档/待处理聚合。"""
+    await _require_superadmin(db, current_user)
+    rows = (await db.execute(select(KnowledgeBase).where(KnowledgeBase.translation_enabled.is_(True)).order_by(KnowledgeBase.created_at.asc()))).scalars().all()
+    client = RAGFlowClient()
+    items = []
+    for kb in rows:
+        item = {
+            "id": str(kb.id),
+            "name": kb.name,
+            "description": kb.description,
+            "language": kb.language,
+            "chunk_method": kb.chunk_method,
+            "embedding_model": kb.embedding_model,
+            "permission": None,
+            "parser_config": None,
+            "pagerank": None,
+            "ragflow_linked": bool(kb.ragflow_dataset_id),
+            "ragflow_dataset_id": kb.ragflow_dataset_id,
+        }
+        if kb.ragflow_dataset_id:
+            try:
+                ds = (await client.get_dataset(kb.ragflow_dataset_id)).get("data") or {}
+                item.update(
+                    {
+                        "language": ds.get("language") or kb.language,
+                        "chunk_method": ds.get("chunk_method") or ds.get("parser_id") or kb.chunk_method,
+                        "embedding_model": ds.get("embedding_model") or kb.embedding_model,
+                        "permission": ds.get("permission"),
+                        "parser_config": ds.get("parser_config"),
+                        "pagerank": ds.get("pagerank"),
+                    }
+                )
+            except Exception:
+                logger.warning("rag-kb detail fetch failed for kb %s", kb.id, exc_info=True)
+        item["doc_count"] = (await db.execute(select(func.count()).select_from(Document).where(Document.knowledge_base_id == kb.id))).scalar() or 0
+        item["pending_count"] = (
+            await db.execute(
+                select(func.count())
+                .select_from(TranslationTask)
+                .where(
+                    TranslationTask.kb_id == kb.id,
+                    TranslationTask.state.notin_(list(TERMINAL_STATES)),
+                )
             )
-        )
-    ).scalar() or 0
-    return {
-        "state": "ready",
-        "kb_name": kb.name,
-        "dataset_id": kb.ragflow_dataset_id,
-        "source_count": source_count,
-        "zh_count": zh_count,
-    }
+        ).scalar() or 0
+        items.append(item)
+    return {"items": items, "total": len(items)}
 
 
-@router.post("/asset-kb/initialize")
-async def asset_kb_initialize(
+@router.post("/rag-kbs", status_code=status.HTTP_201_CREATED)
+async def create_rag_kb(
+    body: RagKbCreate,
     current_user=Depends(require_permission("translation:transition")),
     db: AsyncSession = Depends(get_db),
 ) -> dict:
-    """初始化/修复（状态驱动同一入口）：unbound→建库绑 dataset；dangling→ensure_dataset 重建；ready→幂等 no-op。"""
+    """建库全参数：RAGFlow create（permission/chunk_method/parser_config）→ update 补 language/pagerank → PG 行 translation_enabled=true。"""
     await _require_superadmin(db, current_user)
     client = RAGFlowClient()
-    kb = await _asset_kb(db)
-    if kb is None:
-        from app.extensions.knowledge.service import KnowledgeBaseService
+    embed = body.embedding_model
+    if not embed:
+        available = await client.list_available_embedding_models()
+        if not available:
+            raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail="RAGFlow 无可用 embedding 模型")
+        embed = available[0]
+    rf = await client.create_dataset(
+        name=body.name,
+        description=body.description or "",
+        embedding_model=embed,
+        chunk_method=body.chunk_method,
+        parser_config=body.parser_config,
+        permission=body.permission,
+    )
+    dataset_id = (rf.get("data") or {}).get("id")
+    if not dataset_id:
+        raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=f"RAGFlow create_dataset 未返回 id: {str(rf)[:200]}")
+    follow_up = {}
+    if body.language:
+        follow_up["language"] = body.language
+    if body.pagerank is not None:
+        follow_up["pagerank"] = body.pagerank
+    if follow_up:
+        try:
+            await client.update_dataset(dataset_id, **follow_up)
+        except Exception:
+            logger.warning("rag-kb %s: create 后 update 补参失败（language/pagerank）", dataset_id, exc_info=True)
+    kb = KnowledgeBase(
+        name=body.name,
+        description=body.description,
+        owner_id=current_user.id,
+        kb_type="ragflow",
+        embedding_model=embed,
+        chunk_method=body.chunk_method,
+        language=body.language or "Chinese",
+        ragflow_dataset_id=dataset_id,
+        translation_enabled=True,
+    )
+    db.add(kb)
+    await db.commit()
+    await db.refresh(kb)
+    return {"id": str(kb.id), "ragflow_dataset_id": dataset_id}
 
-        kb = await KnowledgeBaseService.create_kb(
-            db, current_user.id, KnowledgeBaseCreate(name="翻译资产库", description="翻译工作台检索知识库（自动创建）")
-        )
-        await KnowledgeBaseService.update_kb(db, kb, KnowledgeBaseUpdate(translation_enabled=True))
+
+@router.put("/rag-kbs/{kb_id}")
+async def update_rag_kb(
+    kb_id: UUID,
+    body: RagKbUpdate,
+    current_user=Depends(require_permission("translation:transition")),
+    db: AsyncSession = Depends(get_db),
+) -> dict:
+    """改配置（编辑对话框保存通道）：update_dataset 全字段 + PG chunk_method 摘要同步。"""
+    await _require_superadmin(db, current_user)
+    kb = await db.get(KnowledgeBase, kb_id)
+    if kb is None or not kb.translation_enabled:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="知识库不存在或未加入翻译体系")
+    if not kb.ragflow_dataset_id:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="该库未关联 RAGFlow，无可编辑配置")
+    kwargs = {
+        k: v
+        for k, v in {
+            "description": body.description,
+            "chunk_method": body.chunk_method,
+            "parser_config": body.parser_config,
+            "permission": body.permission,
+            "language": body.language,
+            "pagerank": body.pagerank,
+        }.items()
+        if v is not None
+    }
+    await RAGFlowClient().update_dataset(kb.ragflow_dataset_id, **kwargs)
+    if body.chunk_method:
+        kb.chunk_method = body.chunk_method
+        db.add(kb)
         await db.commit()
-    else:
-        await ensure_dataset(kb, client=client)
-        await db.commit()
-    return await asset_kb_status(current_user=current_user, db=db)
+    return {"ok": True}
+
+
+@router.put("/rag-kbs/{kb_id}/enabled")
+async def set_rag_kb_enabled(
+    kb_id: UUID,
+    body: RagKbEnabled,
+    current_user=Depends(require_permission("translation:transition")),
+    db: AsyncSession = Depends(get_db),
+) -> dict:
+    """加/移出翻译体系（多库无互斥）。"""
+    await _require_superadmin(db, current_user)
+    kb = await db.get(KnowledgeBase, kb_id)
+    if kb is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="知识库不存在")
+    kb.translation_enabled = body.enabled
+    await db.commit()
+    return {"ok": True, "enabled": kb.translation_enabled}
 
 
 @router.post("/backfill-sources")

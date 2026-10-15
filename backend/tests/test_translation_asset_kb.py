@@ -1,4 +1,4 @@
-"""tlt 检索知识库/原文入库 IO 回归（B1/B2/B3/C2）——容器真库跑。"""
+"""tlt 检索知识库/原文入库 IO 回归（B1/B2/C2 + rag-kbs 多库配置）——容器真库跑。"""
 
 import uuid
 from types import SimpleNamespace
@@ -53,71 +53,114 @@ async def test_translation_enabled_coexists(_engine):
             await db.commit()
 
 
-class _StatusClient:
-    """dataset 探活 fake：exists 可切换。"""
+class _RagKbClient:
+    """rag-kbs 端点 fake：create/get_dataset/update 全 capture。"""
 
-    exists = True
-
-    async def get_dataset(self, dataset_id: str) -> dict:
-        if not self.exists:
-            return {"code": 102, "message": "gone"}
-        return {"code": 0, "data": {"id": dataset_id}}
-
-    async def list_available_embedding_models(self) -> list[str]:
-        return ["bge-m3"]
+    created: dict | None = None
+    updated: dict | None = None
+    dataset: dict = {"parser_id": "laws", "language": "Chinese", "permission": "team", "parser_config": {"chunk_token_num": 256}, "pagerank": 3, "embedding_model": "bge-m3"}
 
     async def create_dataset(self, **kw) -> dict:
-        type(self).exists = True  # 建完即存在（对齐真实 RAGFlow）：initialize 修复后 re-probe 才可能 ready
-        return {"data": {"id": f"ds-init-{uuid.uuid4().hex[:6]}"}}
+        type(self).created = kw
+        return {"data": {"id": f"ds-new-{uuid.uuid4().hex[:6]}"}}
+
+    async def update_dataset(self, dataset_id: str, **kw) -> dict:
+        type(self).updated = {"dataset_id": dataset_id, **kw}
+        return {"code": 0}
+
+    async def get_dataset(self, dataset_id: str) -> dict:
+        return {"code": 0, "data": dict(type(self).dataset, id=dataset_id)}
+
+    async def list_available_embedding_models(self) -> list[str]:
+        return ["bge-m3", "bge-large"]
 
 
 @pytest.mark.asyncio(loop_scope="session")
-async def test_asset_kb_status_three_states(_engine, monkeypatch):
-    from app.extensions.translation.routers import asset_kb_status
+async def test_create_rag_kb_full_params(_engine, monkeypatch):
+    """POST /rag-kbs：RAGFlow create 收全参（不含 language）；language/pagerank 走 create 后 update。"""
+    from app.extensions.translation.routers import create_rag_kb
 
-    monkeypatch.setattr(routers, "RAGFlowClient", _StatusClient)
+    monkeypatch.setattr(routers, "RAGFlowClient", _RagKbClient)
     async with get_session_factory()() as db:
         owner = (await db.execute(select(User.id).limit(1))).scalar()
-        user = SimpleNamespace(id=owner)
-        # unbound：无 translation_enabled 库
-        await db.execute(sql_update(KnowledgeBase).values(translation_enabled=False))
-        await db.commit()
-        assert (await asset_kb_status(current_user=user, db=db))["state"] == "unbound"
-        # dangling：库开着但 dataset 没了
-        kb = KnowledgeBase(name=f"kb-st-{uuid.uuid4().hex[:6]}", owner_id=owner, kb_type="ragflow", ragflow_dataset_id="ds-gone", translation_enabled=True)
-        db.add(kb)
-        await db.commit()
-        _StatusClient.exists = False
-        st = await asset_kb_status(current_user=user, db=db)
-        assert st["state"] == "dangling" and st["kb_name"] == kb.name
-        # ready：dataset 探活通过 + 计数
-        _StatusClient.exists = True
-        st = await asset_kb_status(current_user=user, db=db)
-        assert st["state"] == "ready" and st["source_count"] == 0 and st["zh_count"] == 0
-        await db.execute(sql_update(KnowledgeBase).where(KnowledgeBase.id == kb.id).values(translation_enabled=False))
-        await db.execute(delete(KnowledgeBase).where(KnowledgeBase.id == kb.id))  # I-2: 不留 kb-st-* 残行
-        await db.commit()
+        body = routers.RagKbCreate(
+            name=f"新建矿压库-{uuid.uuid4().hex[:4]}",
+            description="test",
+            language="Chinese",
+            permission="team",
+            embedding_model="bge-m3",
+            chunk_method="laws",
+            parser_config={"chunk_token_num": 256},
+            pagerank=3,
+        )
+        try:
+            resp = await create_rag_kb(body, SimpleNamespace(id=owner), db=db)
+            assert resp["ragflow_dataset_id"].startswith("ds-new-")
+            assert _RagKbClient.created["permission"] == "team"
+            assert _RagKbClient.created["chunk_method"] == "laws"
+            assert "language" not in _RagKbClient.created  # create 不收 language
+            assert _RagKbClient.updated["language"] == "Chinese"
+            assert _RagKbClient.updated["pagerank"] == 3
+            kb = await db.get(KnowledgeBase, uuid.UUID(resp["id"]))
+            assert kb.translation_enabled is True and kb.chunk_method == "laws"
+        finally:
+            await db.execute(delete(KnowledgeBase).where(KnowledgeBase.id == uuid.UUID(resp["id"])))
+            await db.commit()
 
 
 @pytest.mark.asyncio(loop_scope="session")
-async def test_asset_kb_initialize_dangling_repairs(_engine, monkeypatch):
-    from app.extensions.translation.routers import asset_kb_initialize
+async def test_list_rag_kbs_aggregates(_engine, monkeypatch):
+    """GET /rag-kbs：enabled 库 + RAGFlow 配置回读 + doc/pending 聚合。"""
+    from app.extensions.translation.routers import list_rag_kbs
 
-    monkeypatch.setattr(routers, "RAGFlowClient", _StatusClient)
-    _StatusClient.exists = False
+    monkeypatch.setattr(routers, "RAGFlowClient", _RagKbClient)
     async with get_session_factory()() as db:
         owner = (await db.execute(select(User.id).limit(1))).scalar()
-        kb = KnowledgeBase(name=f"kb-init-{uuid.uuid4().hex[:6]}", owner_id=owner, kb_type="ragflow", ragflow_dataset_id="ds-gone", translation_enabled=True)
+        kb = KnowledgeBase(name=f"kb-lst-{uuid.uuid4().hex[:6]}", owner_id=owner, kb_type="ragflow", ragflow_dataset_id="ds-live", translation_enabled=True)
         db.add(kb)
+        await db.flush()
+        db.add(TranslationTask(kb_id=kb.id, doc_sha="1" * 64, source_uri="/data/x.docx", source_lang="en", state="pending"))
+        db.add(TranslationTask(kb_id=kb.id, doc_sha="2" * 64, source_uri="/data/y.docx", source_lang="en", state="delivered"))
         await db.commit()
         try:
-            st = await asset_kb_initialize(current_user=SimpleNamespace(id=owner), db=db)
-            assert st["state"] == "ready"
-            await db.refresh(kb)
-            assert kb.ragflow_dataset_id.startswith("ds-init-")  # 自愈回写落库
+            resp = await list_rag_kbs(current_user=SimpleNamespace(id=owner), db=db)
+            mine = [i for i in resp["items"] if i["id"] == str(kb.id)]
+            assert mine, "enabled 库必须在列"
+            row = mine[0]
+            assert row["ragflow_linked"] is True
+            assert row["pending_count"] >= 1
+            assert row["parser_config"] == {"chunk_token_num": 256}  # RAGFlow 回读
+            assert row["permission"] == "team"
         finally:
+            await db.execute(delete(TranslationTask).where(TranslationTask.kb_id == kb.id))
             await db.execute(sql_update(KnowledgeBase).where(KnowledgeBase.id == kb.id).values(translation_enabled=False))
-            await db.execute(delete(KnowledgeBase).where(KnowledgeBase.id == kb.id))
+            await db.commit()
+
+
+@pytest.mark.asyncio(loop_scope="session")
+async def test_update_and_enable_rag_kb(_engine, monkeypatch):
+    """PUT 配置走 update_dataset；enabled 开关无互斥（两库共存）。"""
+    from app.extensions.translation.routers import set_rag_kb_enabled, update_rag_kb
+
+    monkeypatch.setattr(routers, "RAGFlowClient", _RagKbClient)
+    async with get_session_factory()() as db:
+        owner = (await db.execute(select(User.id).limit(1))).scalar()
+        kb1 = KnowledgeBase(name=f"kb-up1-{uuid.uuid4().hex[:6]}", owner_id=owner, kb_type="ragflow", ragflow_dataset_id="ds-up1", translation_enabled=True)
+        kb2 = KnowledgeBase(name=f"kb-up2-{uuid.uuid4().hex[:6]}", owner_id=owner, kb_type="ragflow", ragflow_dataset_id="ds-up2", translation_enabled=False)
+        db.add_all([kb1, kb2])
+        await db.commit()
+        try:
+            await update_rag_kb(kb1.id, routers.RagKbUpdate(chunk_method="book", pagerank=5), SimpleNamespace(id=owner), db=db)
+            assert _RagKbClient.updated["dataset_id"] == "ds-up1"
+            assert _RagKbClient.updated["chunk_method"] == "book"
+            await db.refresh(kb1)
+            assert kb1.chunk_method == "book"  # PG 摘要同步
+            await set_rag_kb_enabled(kb2.id, routers.RagKbEnabled(enabled=True), SimpleNamespace(id=owner), db=db)
+            await db.refresh(kb1)
+            await db.refresh(kb2)
+            assert kb1.translation_enabled is True and kb2.translation_enabled is True  # 无互斥
+        finally:
+            await db.execute(delete(KnowledgeBase).where(KnowledgeBase.id.in_([kb1.id, kb2.id])))
             await db.commit()
 
 
