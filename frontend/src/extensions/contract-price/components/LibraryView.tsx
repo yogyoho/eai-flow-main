@@ -390,6 +390,30 @@ export function LibraryView() {
       <PageHeader
         title="合同文件库"
         icon={<FolderOpen className="h-6 w-6" />}
+        extra={
+          <>
+            {/* 文件路径 chip + 面包屑（样式对齐翻译资产库） */}
+            <span className="bg-muted text-muted-foreground shrink-0 rounded-md px-2 py-0.5 text-xs">
+              文件路径：
+            </span>
+            <div className="text-muted-foreground flex items-center gap-0.5 text-xs">
+              {crumbs.map((seg, i) => (
+                <span key={seg.id} className="flex items-center gap-0.5">
+                  {i > 0 && <span className="px-0.5">/</span>}
+                  <button
+                    className={cn(
+                      "hover:bg-muted hover:text-foreground rounded px-1 py-0.5 transition-colors",
+                      i === crumbs.length - 1 && "text-foreground font-medium",
+                    )}
+                    onClick={() => setSel(seg.id)}
+                  >
+                    {seg.name}
+                  </button>
+                </span>
+              ))}
+            </div>
+          </>
+        }
         actions={
           <Button
             variant="outline"
@@ -413,24 +437,6 @@ export function LibraryView() {
           {notice.text}
         </div>
       )}
-
-      {/* 面包屑 */}
-      <div className="flex items-center gap-0.5 px-1 py-1 text-sm">
-        {crumbs.map((seg, i) => (
-          <span key={seg.id} className="flex items-center gap-0.5">
-            {i > 0 && <span className="text-muted-foreground px-0.5">/</span>}
-            <button
-              className={cn(
-                "hover:bg-muted hover:text-foreground rounded px-1 py-0.5 transition-colors",
-                i === crumbs.length - 1 && "text-foreground font-medium",
-              )}
-              onClick={() => setSel(seg.id)}
-            >
-              {seg.name}
-            </button>
-          </span>
-        ))}
-      </div>
 
       {/* 主容器：pane 头 + 树 + 列表 */}
       <div className="flex min-h-[460px] flex-1 flex-col overflow-hidden rounded-lg border">
