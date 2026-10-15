@@ -96,7 +96,9 @@ export function RagKbDialog({
       setChunkTokenNum(Number(pc.chunk_token_num ?? 512));
       setDelimiter(typeof pc.delimiter === "string" ? pc.delimiter : "\n");
       setLayoutRecognize(
-        typeof pc.layout_recognize === "string" ? pc.layout_recognize : "DeepDOC",
+        typeof pc.layout_recognize === "string"
+          ? pc.layout_recognize
+          : "DeepDOC",
       );
       setHtml4excel(pc.html4excel === true);
       setUseRaptor(
@@ -134,7 +136,8 @@ export function RagKbDialog({
 
   // embedding 默认首个可用（新建时）
   useEffect(() => {
-    if (open && !editing && !embedding && modelsQ.data?.length) setEmbedding(modelsQ.data[0] ?? "");
+    if (open && !editing && !embedding && modelsQ.data?.length)
+      setEmbedding(modelsQ.data[0] ?? "");
   }, [open, editing, embedding, modelsQ.data]);
 
   const buildPayload = (): RagKbPayload => {

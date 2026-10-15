@@ -25,8 +25,11 @@ export function SettingsView() {
   const allKbsQ = useQuery({
     queryKey: ["tlt-settings-kbs"],
     queryFn: async (): Promise<AllKbRow[]> => {
-      const d = await authFetch<{ items: AllKbRow[] }>("/knowledge-bases");
-      return d.items ?? [];
+      // 响应键是 knowledge_bases（KnowledgeBaseListResponse），非 items
+      const d = await authFetch<{ knowledge_bases?: AllKbRow[] }>(
+        "/knowledge-bases",
+      );
+      return d.knowledge_bases ?? [];
     },
   });
 

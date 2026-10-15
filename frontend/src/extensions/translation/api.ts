@@ -77,10 +77,11 @@ export async function listReviewQueue(): Promise<TltTask[]> {
 
 /** 知识库下拉选项（复用 knowledge 模块列表接口，data-scope 已过滤可见范围）。 */
 export async function listKbOptions(): Promise<{ id: string; name: string }[]> {
-  const d = await authFetch<{ items: { id: string; name: string }[] }>(
-    "/knowledge-bases",
-  );
-  return d.items.map((x) => ({ id: x.id, name: x.name }));
+  // 响应键是 knowledge_bases（KnowledgeBaseListResponse），非 items
+  const d = await authFetch<{
+    knowledge_bases?: { id: string; name: string }[];
+  }>("/knowledge-bases");
+  return (d.knowledge_bases ?? []).map((x) => ({ id: x.id, name: x.name }));
 }
 
 /** 资产库上传：多文件 + 目标文件夹；返回逐文件结果（reused=幂等复用）。 */
