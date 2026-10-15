@@ -17,6 +17,7 @@ import {
   Download,
   Eye,
   FolderInput,
+  FolderOpen,
   FolderPlus,
   ListChecks,
   Loader2,
@@ -61,6 +62,7 @@ import {
   ROOT_ID,
   type FolderNode,
 } from "./library-tree";
+import { PageHeader } from "./PageHeader";
 
 const FILE_TYPES: Record<string, { bg: string; letter: string }> = {
   pdf: { bg: "#B30B00", letter: "A" },
@@ -385,16 +387,19 @@ export function LibraryView() {
   return (
     <div className="flex h-full flex-col gap-3 px-4 pt-3 pb-4">
       {/* 顶栏 */}
-      <div className="flex items-center gap-3">
-        <span className="flex-1" />
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => router.push("/contract-price/tasks")}
-        >
-          解析队列 <ArrowRight className="ml-1 h-3.5 w-3.5" />
-        </Button>
-      </div>
+      <PageHeader
+        title="合同文件库"
+        icon={<FolderOpen className="h-6 w-6" />}
+        actions={
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => router.push("/contract-price/tasks")}
+          >
+            解析队列 <ArrowRight className="ml-1 h-3.5 w-3.5" />
+          </Button>
+        }
+      />
 
       {notice && (
         <div
