@@ -254,16 +254,44 @@ export function LibraryView() {
         folderId: sel === ROOT_ID ? null : sel,
         files: staged,
       });
+      // 上传源头统一(cpa v3): 入库后自动登记到合同解析(加入解析=MinIO 拷贝到
+      // 扫描区根+建 pending 行)——两 tab 共享同一份;实际解析仍由「开始解析」/
+      // 「加入解析」显式触发。
+      let queued = 0;
+      let already = 0;
+      const regFails: string[] = [];
+      for (const item of res.items) {
+        if (item.error || !item.file_id) {
+          regFails.push(`${item.file_name}：${item.error ?? "上传失败"}`);
+          continue;
+        }
+        try {
+          const a = await libraryApi.analyzeFile(item.file_id);
+          if (a.status === "queued") queued += 1;
+          else already += 1;
+        } catch (e) {
+          regFails.push(
+            `${item.file_name}：登记解析失败 ${e instanceof Error ? e.message : String(e)}`,
+          );
+        }
+      }
       const reused = res.items.filter((i) => i.reused).length;
       const failed = res.items.filter((i) => i.error);
       setStaged([]);
       setUploadOpen(false);
-      flash(
-        failed.length ? "err" : "ok",
-        failed.length
-          ? `${failed.length} 个文件失败（${failed[0]!.error}），其余已上传`
-          : `已上传 ${res.items.length} 个文件（复用已有副本 ${reused} 个）`,
-      );
+      if (regFails.length) {
+        flash("err", `${regFails[0]}（共 ${regFails.length} 条登记问题）`);
+      } else if (failed.length) {
+        flash(
+          "err",
+          `${failed.length} 个文件失败（${failed[0]!.error}），其余已上传并登记`,
+        );
+      } else {
+        flash(
+          "ok",
+          `已上传 ${res.items.length} 个文件（复用 ${reused}，新入解析队列 ${queued}，已是解析状态 ${already}），合同解析 tab 同步可见`,
+        );
+      }
     } catch (e) {
       flash("err", `上传失败：${e instanceof Error ? e.message : String(e)}`);
     }
@@ -413,7 +441,7 @@ export function LibraryView() {
         icon={<FolderOpen className="h-6 w-6" />}
         extra={
           <span className="text-muted-foreground text-sm">
-            归档库 · 上传不自动解析
+            上传即登记 · 解析需显式触发
           </span>
         }
         actions={
@@ -680,7 +708,7 @@ export function LibraryView() {
                                 target="_blank"
                                 rel="noreferrer"
                               >
-                                <Eye className="mr-2 h-4 w-4" /> 在线查阅
+                                <Eye className="mr-2 h-4 w-4" /> 文件预览
                               </a>
                             </DropdownMenuItem>
                             {f.parse_status === "parsed" && (
@@ -768,7 +796,7 @@ export function LibraryView() {
           </b>
         </span>
         <span className="text-muted-foreground text-xs">
-          上传不自动解析 · 勾选文件后点「加入解析」 · 与解析管线解耦
+          上传自动登记到合同解析 · 点「开始解析」/「加入解析」执行解析
         </span>
       </div>
 
@@ -810,7 +838,7 @@ export function LibraryView() {
             </div>
           )}
           <p className="text-muted-foreground text-xs">
-            文件夹上传按相对路径自动建子文件夹；同文件夹相同内容的文件复用已上传副本；本库上传不会自动触发解析。
+            文件夹上传按相对路径自动建子文件夹；同文件夹相同内容的文件复用已上传副本；上传后自动登记到合同解析（待解析），点「开始解析」才实际解析。
           </p>
           <DialogFooter>
             <Button variant="outline" onClick={() => setUploadOpen(false)}>
