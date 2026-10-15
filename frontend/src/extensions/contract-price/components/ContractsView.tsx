@@ -66,6 +66,7 @@ import {
   useUpdateDocument,
 } from "@/extensions/contract-price/hooks";
 import type { UnmatchedTable } from "@/extensions/contract-price/types";
+import { cn } from "@/lib/utils";
 
 /** Unified doc lifecycle stage. No confirm gate — parsed docs go straight to
  * "已解析", then cluster run advances to "已分组". `tone` is a full badge
@@ -406,6 +407,71 @@ function UploadDialog({
   );
 }
 
+/** 年/月下拉选项（模块级常量，避免每次渲染重建）。 */
+const YEAR_NOW = new Date().getFullYear();
+const YEAR_OPTIONS = Array.from({ length: YEAR_NOW + 2 - 2000 }, (_, i) => ({
+  value: String(2000 + i),
+  label: String(2000 + i),
+}));
+const MONTH_OPTIONS = Array.from({ length: 12 }, (_, i) => ({
+  value: String(i),
+  label: new Date(2024, i, 1).toLocaleString("zh-CN", { month: "long" }),
+}));
+
+/** v9 下拉 value 兼容：类型联合是 HTML props 形态（string | number | readonly string[]）。 */
+function dropdownValue(
+  v: string | number | readonly string[] | undefined,
+): string | undefined {
+  if (v == null) return undefined;
+  const s = typeof v === "object" ? v[0] : v;
+  return s == null ? undefined : String(s);
+}
+
+/** 替换 react-day-picker 原生 <select> 下拉：shadcn Select 弹层，与应用视觉一致。
+ * v9 约定 onChange 收 HTMLSelectEvent(target.value)，这里用合成事件桥接。 */
+function YearMonthDropdown({
+  value,
+  onChange,
+  options,
+  ariaLabel,
+  className,
+}: {
+  value?: string;
+  onChange?: (e: React.ChangeEvent<HTMLSelectElement>) => void;
+  options: { value: string; label: string }[];
+  ariaLabel?: string;
+  className?: string;
+}) {
+  return (
+    <Select
+      value={value}
+      onValueChange={(v) =>
+        onChange?.({
+          target: { value: v },
+        } as React.ChangeEvent<HTMLSelectElement>)
+      }
+    >
+      <SelectTrigger
+        aria-label={ariaLabel}
+        className={cn(
+          // relative z-10: rdp nav 条 absolute 横跨顶行，static 定位会被其挡住真实点击
+          "bg-background border-input relative z-10 h-8 rounded-md pr-1 pl-2 text-sm font-medium shadow-none",
+          className,
+        )}
+      >
+        <SelectValue />
+      </SelectTrigger>
+      <SelectContent className="max-h-64">
+        {options.map((o) => (
+          <SelectItem key={o.value} value={o.value} className="text-xs">
+            {o.label}
+          </SelectItem>
+        ))}
+      </SelectContent>
+    </Select>
+  );
+}
+
 /** Styled date picker field (Shadcn Calendar + Popover, not native input);
  * rendered inside the expanded 合同记录 panel. */
 function DateCell({
@@ -435,6 +501,30 @@ function DateCell({
       <PopoverContent className="w-auto p-0" align="start">
         <Calendar
           mode="single"
+          captionLayout="dropdown"
+          defaultMonth={date}
+          startMonth={new Date(2000, 0)}
+          endMonth={new Date(YEAR_NOW + 1, 11)}
+          components={{
+            MonthsDropdown: (p) => (
+              <YearMonthDropdown
+                ariaLabel="选择月份"
+                className="w-24"
+                options={MONTH_OPTIONS}
+                value={dropdownValue(p.value)}
+                onChange={p.onChange}
+              />
+            ),
+            YearsDropdown: (p) => (
+              <YearMonthDropdown
+                ariaLabel="选择年份"
+                className="w-20"
+                options={YEAR_OPTIONS}
+                value={dropdownValue(p.value)}
+                onChange={p.onChange}
+              />
+            ),
+          }}
           selected={date}
           onSelect={(d) => {
             if (d) {
@@ -644,7 +734,9 @@ export function ContractsView() {
         }
       />
 
-      {notice && <p className="text-sm text-blue-600 dark:text-blue-400">{notice}</p>}
+      {notice && (
+        <p className="text-sm text-blue-600 dark:text-blue-400">{notice}</p>
+      )}
 
       <form
         className="flex items-center gap-2"
@@ -721,7 +813,8 @@ export function ContractsView() {
                 // 引导语义(用户定案 2026-09-24): 已命中规则(有价格表提取)的合同
                 // 不再提示建规则——"N张表未识别"只服务零命中的全新版式合同;
                 // 未匹配清单仍记录在 parse_meta 供自进化捕获。
-                const needsSeedGuide = !meta?.goods_tables && unmatched.length > 0;
+                const needsSeedGuide =
+                  !meta?.goods_tables && unmatched.length > 0;
                 const stage = docStage(doc);
                 const isExpanded = expanded.has(doc.id);
                 return (
@@ -798,6 +891,35 @@ export function ContractsView() {
                           >
                             <RotateCcw className="h-3.5 w-3.5 text-blue-600 dark:text-blue-400" />
                             重新解析
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            disabled={!doc.preview_prefix}
+                            title={
+                              doc.preview_prefix
+                                ? "逐页查看原文预览(←/→ 翻页)"
+                                : "文档尚未解析,暂无页面预览"
+                            }
+                            onClick={() =>
+                              setSourceDoc({
+                                id: doc.id,
+                                file_name: doc.file_name,
+                                file_type: doc.file_type,
+                              })
+                            }
+                          >
+                            <Eye className="h-3.5 w-3.5" />
+                            查看原文
+                          </Button>
+                          <Button size="sm" variant="outline" asChild>
+                            <a
+                              href={contractPriceApi.fileUrl(doc.id)}
+                              title="下载原始 PDF/DOCX 文件"
+                            >
+                              <Download className="h-3.5 w-3.5" />
+                              下载原件
+                            </a>
                           </Button>
                           <Button
                             size="icon"
@@ -882,8 +1004,7 @@ export function ContractsView() {
                                   }
                                 >
                                   <AlertTriangle className="h-3.5 w-3.5" />
-                                  {unmatched.length} 张疑似价格表 ·
-                                  建立定位规则
+                                  {unmatched.length} 张疑似价格表 · 建立定位规则
                                 </Button>
                               )}
                             </div>
@@ -953,47 +1074,6 @@ export function ContractsView() {
                                 </DocField>
                               </div>
                             </div>
-                            <div className="space-y-2">
-                              <span className="text-muted-foreground text-xs font-semibold tracking-wide">
-                                合同原文
-                              </span>
-                              <div className="flex flex-wrap items-center gap-2">
-                                <Button
-                                  size="sm"
-                                  variant="outline"
-                                  disabled={!doc.preview_prefix}
-                                  title={
-                                    doc.preview_prefix
-                                      ? "逐页查看原文预览(←/→ 翻页)"
-                                      : "文档尚未解析,暂无页面预览"
-                                  }
-                                  onClick={() =>
-                                    setSourceDoc({
-                                      id: doc.id,
-                                      file_name: doc.file_name,
-                                      file_type: doc.file_type,
-                                    })
-                                  }
-                                >
-                                  <Eye className="h-3.5 w-3.5" />
-                                  查看原文
-                                </Button>
-                                <Button size="sm" variant="outline" asChild>
-                                  <a
-                                    href={contractPriceApi.fileUrl(doc.id)}
-                                    title="下载原始 PDF/DOCX 文件"
-                                  >
-                                    <Download className="h-3.5 w-3.5" />
-                                    下载原件
-                                  </a>
-                                </Button>
-                                {!doc.preview_prefix && (
-                                  <span className="text-muted-foreground text-xs">
-                                    解析完成后可逐页预览原文。
-                                  </span>
-                                )}
-                              </div>
-                            </div>
                           </div>
                         </td>
                       </tr>
@@ -1058,7 +1138,7 @@ export function ContractsView() {
         <DialogContent>
           <DialogHeader>
             <div className="mx-auto mb-2 flex h-12 w-12 items-center justify-center rounded-full bg-amber-100 dark:bg-amber-500/15">
-              <AlertTriangle className="text-amber-600 dark:text-amber-400 h-6 w-6" />
+              <AlertTriangle className="h-6 w-6 text-amber-600 dark:text-amber-400" />
             </div>
             <DialogTitle className="text-center">开始分组?</DialogTitle>
             <DialogDescription className="text-center">
@@ -1114,7 +1194,9 @@ export function ContractsView() {
                 }))
                 .filter((t) => savedKeys.has(t.key));
               setUnmatchedDoc(null);
-              setNotice("重解析中(读 OCR 缓存,秒级),完成后自动验证新规则效果...");
+              setNotice(
+                "重解析中(读 OCR 缓存,秒级),完成后自动验证新规则效果...",
+              );
               const listKey = {
                 keyword: applied || undefined,
                 skip: page * pageSize,
@@ -1154,7 +1236,9 @@ export function ContractsView() {
                   }
                   return;
                 }
-                setNotice("重解析超过 90 秒仍未完成,稍后刷新页面查看提取结果。");
+                setNotice(
+                  "重解析超过 90 秒仍未完成,稍后刷新页面查看提取结果。",
+                );
               };
               void runVerify();
             },
