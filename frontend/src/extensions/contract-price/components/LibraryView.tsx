@@ -578,6 +578,10 @@ export function LibraryView() {
                       />
                     </th>
                     <th className="px-2 py-2">文件名</th>
+                    <th className="w-20 px-2 py-2">状态</th>
+                    <th className="w-16 px-2 py-2">类型</th>
+                    <th className="w-20 px-2 py-2 text-right">大小</th>
+                    <th className="w-24 px-2 py-2">修改日期</th>
                     <th className="w-10 px-2 py-2" />
                   </tr>
                 </thead>
@@ -604,24 +608,20 @@ export function LibraryView() {
                       <td className="min-w-0 px-2 py-2">
                         <div className="flex items-center gap-2.5">
                           <FileBadge name={f.file_name} />
-                          <div className="min-w-0">
-                            <div className="truncate text-sm">
-                              {f.file_name}
-                            </div>
-                            <div className="text-muted-foreground flex items-center gap-1.5 truncate text-xs">
-                              <StatusBadge status={f.parse_status} />
-                              <span className="uppercase">{f.file_type}</span>
-                              <span>·</span>
-                              <span>{fmtSize(f.file_size)}</span>
-                              <span>·</span>
-                              <span>
-                                {new Date(f.uploaded_at).toLocaleDateString(
-                                  "zh-CN",
-                                )}
-                              </span>
-                            </div>
-                          </div>
+                          <div className="truncate text-sm">{f.file_name}</div>
                         </div>
+                      </td>
+                      <td className="px-2 py-2">
+                        <StatusBadge status={f.parse_status} />
+                      </td>
+                      <td className="text-muted-foreground px-2 py-2 text-xs uppercase">
+                        {f.file_type}
+                      </td>
+                      <td className="text-muted-foreground px-2 py-2 text-right text-xs tabular-nums">
+                        {fmtSize(f.file_size)}
+                      </td>
+                      <td className="text-muted-foreground px-2 py-2 text-xs">
+                        {new Date(f.uploaded_at).toLocaleDateString("zh-CN")}
                       </td>
                       <td className="w-10 px-2 py-2 text-right">
                         <DropdownMenu>
