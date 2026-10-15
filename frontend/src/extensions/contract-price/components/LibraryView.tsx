@@ -20,6 +20,7 @@ import {
   FolderOpen,
   FolderPlus,
   FolderRoot,
+  GripVerticalIcon,
   ListChecks,
   Loader2,
   MoreHorizontal,
@@ -588,11 +589,15 @@ export function LibraryView() {
               renderTree(tree, 1)
             )}
           </nav>
-          {/* 树/列表分隔条（可左右拖拽） */}
+          {/* 树/列表分隔条（可左右拖拽；手柄样式对齐对话页 ResizableHandle withHandle） */}
           <div
-            className="bg-muted/40 hover:bg-muted w-1.5 shrink-0 cursor-col-resize border-x"
+            className="bg-border relative flex w-px shrink-0 cursor-col-resize items-center justify-center after:absolute after:inset-y-0 after:left-1/2 after:w-2 after:-translate-x-1/2"
             onMouseDown={onTreeSplitDown}
-          />
+          >
+            <div className="bg-border z-10 flex h-4 w-3 items-center justify-center rounded-xs border">
+              <GripVerticalIcon className="size-2.5" />
+            </div>
+          </div>
           <div className="min-w-0 flex-1 overflow-auto">
             {filesQ.isError ? (
               <p className="text-destructive p-4 text-sm">
