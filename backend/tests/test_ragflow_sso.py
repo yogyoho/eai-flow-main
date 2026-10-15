@@ -106,7 +106,7 @@ def test_mint_ragflow_jwt_claims(_fresh_config, monkeypatch):
     assert claims["username"] == "admin"
     assert claims["role"] == "user"
     assert claims["type"] == "access"
-    assert claims["exp"] - time.time() < 700  # ~10 min TTL
+    assert 590 <= claims["exp"] - time.time() < 700  # ~10 min TTL
 
 
 def test_mint_requires_secret(_fresh_config, monkeypatch):
@@ -137,11 +137,51 @@ async def test_exchange_mode_web(_fresh_config, monkeypatch):
 
     monkeypatch.setattr(service, "_exchange_request", AsyncMock(side_effect=fake_request))
     user = SimpleNamespace(id=uuid.UUID("11111111-1111-1111-1111-111111111111"), username="admin")
-    result = await service.exchange_mode_web(db=None, user=user)
+    result = await service.exchange_mode_web(user=user)
     assert result == "sess-abc"
     assert captured["url"].endswith("/api/v1/auth/sso/exchange")
     assert captured["json"] == {"mode": "web"}
     assert captured["auth_header"].startswith("Bearer ")
+
+
+@pytest.mark.anyio
+async def test_exchange_mode_web_http_failure(_fresh_config, monkeypatch):
+    """web mode non-200 → RuntimeError."""
+    from unittest.mock import AsyncMock
+
+    import httpx
+
+    from app.extensions.ragflow_sso import service
+
+    monkeypatch.setenv("EAI_SSO_SHARED_SECRET", SECRET)
+
+    async def fake_request(method, url, **kwargs):
+        return httpx.Response(401, json={"code": 401, "message": "invalid token"}, request=httpx.Request("POST", url))
+
+    monkeypatch.setattr(service, "_exchange_request", AsyncMock(side_effect=fake_request))
+    user = SimpleNamespace(id=uuid.UUID("11111111-1111-1111-1111-111111111111"), username="admin")
+    with pytest.raises(RuntimeError, match="HTTP 401"):
+        await service.exchange_mode_web(user=user)
+
+
+@pytest.mark.anyio
+async def test_exchange_mode_web_missing_token(_fresh_config, monkeypatch):
+    """web mode 200 without access_token in data → RuntimeError (no silent empty token)."""
+    from unittest.mock import AsyncMock
+
+    import httpx
+
+    from app.extensions.ragflow_sso import service
+
+    monkeypatch.setenv("EAI_SSO_SHARED_SECRET", SECRET)
+
+    async def fake_request(method, url, **kwargs):
+        return httpx.Response(200, json={"code": 0, "data": {}}, request=httpx.Request("POST", url))
+
+    monkeypatch.setattr(service, "_exchange_request", AsyncMock(side_effect=fake_request))
+    user = SimpleNamespace(id=uuid.UUID("11111111-1111-1111-1111-111111111111"), username="admin")
+    with pytest.raises(RuntimeError, match="no access_token"):
+        await service.exchange_mode_web(user=user)
 
 
 @pytest.mark.anyio
@@ -253,3 +293,28 @@ async def test_get_client_for_user_uses_cached_token(_fresh_config, monkeypatch,
     client = await service.get_client_for_user(sso_db, user)
     assert client.api_key == "cached-token"
     assert calls["n"] == 0
+
+
+@pytest.mark.anyio
+async def test_get_client_for_user_rollback_keeps_session_usable(_fresh_config, monkeypatch, sso_db):
+    """Fallback on exchange failure rolls the session back so the caller's request
+    survives (no PendingRollbackError poisoning subsequent queries on the same session)."""
+    from unittest.mock import AsyncMock
+
+    from sqlalchemy import select
+
+    from app.extensions.knowledge.client import RAGFlowClient
+    from app.extensions.ragflow_sso import service
+
+    monkeypatch.setenv("EAI_SSO_SHARED_SECRET", SECRET)
+    monkeypatch.delenv("RAGFLOW_API_KEY", raising=False)
+
+    async def boom(db, user):
+        raise RuntimeError("exchange failed")
+
+    monkeypatch.setattr(service, "get_or_issue_api_token", AsyncMock(side_effect=boom))
+    user = SimpleNamespace(id=uuid.UUID("ddd66666-6666-4666-8666-d6666666eeee"), username="ops")
+    client = await service.get_client_for_user(sso_db, user)
+    assert isinstance(client, RAGFlowClient)
+    assert client.api_key == ""  # shared-key fallback
+    assert (await sso_db.execute(select(1))).scalar() == 1  # same session still usable
