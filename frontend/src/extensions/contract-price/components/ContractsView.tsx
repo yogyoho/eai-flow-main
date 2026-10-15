@@ -24,6 +24,7 @@ import {
   X,
 } from "lucide-react";
 import { Fragment, useEffect, useRef, useState, type ReactNode } from "react";
+import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
@@ -567,7 +568,10 @@ export function ContractsView() {
     done: number;
     failed: number;
   } | null>(null);
-  const [notice, setNotice] = useState<string | null>(null);
+  // sonner 右下角 toast(对齐知识工厂),不再内嵌通知行——列表不位移。
+  const setNotice = (msg: string | null) => {
+    if (msg) toast.info(msg);
+  };
   const [showClusterConfirm, setShowClusterConfirm] = useState(false);
   const [showUploadDialog, setShowUploadDialog] = useState(false);
   // 已保存规则的未匹配表键(文件名:页:表序);PUT 成功才标记,抽屉的
@@ -733,10 +737,6 @@ export function ContractsView() {
           </div>
         }
       />
-
-      {notice && (
-        <p className="text-sm text-blue-600 dark:text-blue-400">{notice}</p>
-      )}
 
       <form
         className="flex items-center gap-2"

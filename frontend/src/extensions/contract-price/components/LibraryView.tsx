@@ -31,6 +31,7 @@ import {
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
+import { toast } from "sonner";
 
 import { FileTypeIcon, FolderIcon } from "@/components/file-type-icons";
 import { Button } from "@/components/ui/button";
@@ -132,10 +133,6 @@ export function LibraryView() {
   const [expanded, setExpanded] = useState<Set<string>>(new Set([ROOT_ID]));
   const [q, setQ] = useState("");
   const [checked, setChecked] = useState<Set<string>>(new Set());
-  const [notice, setNotice] = useState<{
-    kind: "ok" | "err";
-    text: string;
-  } | null>(null);
   const [uploadOpen, setUploadOpen] = useState(false);
   const [staged, setStaged] = useState<File[]>([]);
   const [folderDlg, setFolderDlg] = useState<{
@@ -160,26 +157,13 @@ export function LibraryView() {
     enabled: !!itemsFor,
   });
 
-  // flash 定时器句柄: 新通知先清旧定时器（防堆叠提前熄灭），卸载兜底清理
-  const flashTimerRef = useRef<number | null>(null);
-  const flash = (kind: "ok" | "err", text: string) => {
-    if (flashTimerRef.current !== null)
-      window.clearTimeout(flashTimerRef.current);
-    setNotice({ kind, text });
-    flashTimerRef.current = window.setTimeout(() => setNotice(null), 3500);
-  };
+  // flash: sonner 右下角 toast(对齐知识工厂),不再内嵌通知条——列表不位移。
+  const flash = (kind: "ok" | "err", text: string) =>
+    kind === "ok" ? toast.success(text) : toast.error(text);
 
   useEffect(() => {
     folderInputRef.current?.setAttribute("webkitdirectory", "");
   }, []);
-
-  useEffect(
-    () => () => {
-      if (flashTimerRef.current !== null)
-        window.clearTimeout(flashTimerRef.current);
-    },
-    [],
-  );
 
   // Esc 关闭分项清单抽屉（镜像 TracebackDrawer 的 window keydown 写法）
   useEffect(() => {
@@ -442,19 +426,6 @@ export function LibraryView() {
           </Button>
         }
       />
-
-      {notice && (
-        <div
-          className={cn(
-            "rounded-md border px-3 py-2 text-sm",
-            notice.kind === "ok"
-              ? "border-success/30 bg-success/10 text-success"
-              : "border-destructive/30 bg-destructive/10 text-destructive",
-          )}
-        >
-          {notice.text}
-        </div>
-      )}
 
       {/* 主容器：pane 头 + 树 + 列表 */}
       <div className="flex min-h-[460px] flex-1 flex-col overflow-hidden rounded-lg border">

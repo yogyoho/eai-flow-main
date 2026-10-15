@@ -18,7 +18,8 @@ import {
   Trash2,
   X,
 } from "lucide-react";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -57,27 +58,9 @@ export function TermsView() {
   const [aliases, setAliases] = useState<string[]>([]);
   const [aliasDraft, setAliasDraft] = useState("");
 
-  const [notice, setNotice] = useState<{
-    kind: "ok" | "err";
-    text: string;
-  } | null>(null);
-
-  // flash 定时器句柄: 新通知先清旧定时器（防堆叠提前熄灭），卸载兜底清理（M1 习语）
-  const flashTimerRef = useRef<number | null>(null);
-  const flash = (kind: "ok" | "err", text: string) => {
-    if (flashTimerRef.current !== null)
-      window.clearTimeout(flashTimerRef.current);
-    setNotice({ kind, text });
-    flashTimerRef.current = window.setTimeout(() => setNotice(null), 3500);
-  };
-
-  useEffect(
-    () => () => {
-      if (flashTimerRef.current !== null)
-        window.clearTimeout(flashTimerRef.current);
-    },
-    [],
-  );
+  // flash: sonner 右下角 toast(对齐知识工厂),不再内嵌通知条——列表不位移。
+  const flash = (kind: "ok" | "err", text: string) =>
+    kind === "ok" ? toast.success(text) : toast.error(text);
 
   // Esc 关闭术语编辑抽屉（镜像 LibraryView 的 window keydown 写法）
   useEffect(() => {
@@ -150,19 +133,6 @@ export function TermsView() {
         description="命中同一术语（规范名或任一别名）的分项在聚类时强制归入同簇 · 修改后下次「聚类分析」生效"
         icon={<Tags className="h-6 w-6" />}
       />
-
-      {notice && (
-        <div
-          className={cn(
-            "rounded-md border px-3 py-2 text-sm",
-            notice.kind === "ok"
-              ? "border-success/30 bg-success/10 text-success"
-              : "border-destructive/30 bg-destructive/10 text-destructive",
-          )}
-        >
-          {notice.text}
-        </div>
-      )}
 
       {/* 统计小卡 ×3（ui-style-spec §6.2） */}
       <div className="grid gap-3 sm:grid-cols-3">

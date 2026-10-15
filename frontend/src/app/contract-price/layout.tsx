@@ -14,39 +14,85 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import type { ReactNode } from "react";
 
+import { Toaster } from "@/components/ui/sonner";
 import { usePermission } from "@/core/permissions";
 import { ShellLayout } from "@/extensions/shell";
 import { cn } from "@/lib/utils";
 
 // EAI-CUSTOM: 每个子路由映射到子页面权限点（/api/permissions/me 的 pages），供 canPage 过滤
 const navItems = [
-  { href: "/contract-price", label: "总览", icon: LayoutDashboard, exact: true, pageId: "cpa:page:overview" },
-  { href: "/contract-price/contracts", label: "合同解析", icon: FileText, pageId: "cpa:page:contracts" },
-  { href: "/contract-price/items", label: "分项校验", icon: ListChecks, pageId: "cpa:page:items" },
-  { href: "/contract-price/clusters", label: "分组审核", icon: Boxes, pageId: "cpa:page:clusters" },
-  { href: "/contract-price/tasks", label: "任务中心", icon: History, pageId: "cpa:page:tasks" },
+  {
+    href: "/contract-price",
+    label: "总览",
+    icon: LayoutDashboard,
+    exact: true,
+    pageId: "cpa:page:overview",
+  },
+  {
+    href: "/contract-price/contracts",
+    label: "合同解析",
+    icon: FileText,
+    pageId: "cpa:page:contracts",
+  },
+  {
+    href: "/contract-price/items",
+    label: "分项校验",
+    icon: ListChecks,
+    pageId: "cpa:page:items",
+  },
+  {
+    href: "/contract-price/clusters",
+    label: "分组审核",
+    icon: Boxes,
+    pageId: "cpa:page:clusters",
+  },
+  {
+    href: "/contract-price/tasks",
+    label: "任务中心",
+    icon: History,
+    pageId: "cpa:page:tasks",
+  },
   // EAI-CUSTOM: cpa v3 合同文件库（spec 2026-10-14 §1.5）
-  { href: "/contract-price/library", label: "合同文件库", icon: FolderOpen, pageId: "cpa:page:library" },
+  {
+    href: "/contract-price/library",
+    label: "合同文件库",
+    icon: FolderOpen,
+    pageId: "cpa:page:library",
+  },
   // EAI-CUSTOM: cpa v3 货物分类术语（spec 2026-10-14 §2.4）
-  { href: "/contract-price/terms", label: "货物分类术语", icon: Tags, pageId: "cpa:page:terms" },
-  { href: "/contract-price/settings", label: "配置", icon: Settings, pageId: "cpa:page:settings" },
+  {
+    href: "/contract-price/terms",
+    label: "货物分类术语",
+    icon: Tags,
+    pageId: "cpa:page:terms",
+  },
+  {
+    href: "/contract-price/settings",
+    label: "配置",
+    icon: Settings,
+    pageId: "cpa:page:settings",
+  },
 ];
 
 function ContractPriceLayoutContent({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const { canPage, isLoading } = usePermission();
   // EAI-CUSTOM: 权限加载中 fail-open 全显，加载完成后按 canPage(pageId) 过滤不可见子路由
-  const visibleItems = isLoading ? navItems : navItems.filter((n) => canPage(n.pageId));
+  const visibleItems = isLoading
+    ? navItems
+    : navItems.filter((n) => canPage(n.pageId));
 
   return (
-    <div className="flex h-full flex-col bg-background">
-      <header className="flex h-16 shrink-0 items-center border-b border-border bg-background px-6">
-        <span className="mr-8 text-lg font-bold tracking-tight text-foreground">
+    <div className="bg-background flex h-full flex-col">
+      <header className="border-border bg-background flex h-16 shrink-0 items-center border-b px-6">
+        <span className="text-foreground mr-8 text-lg font-bold tracking-tight">
           合同价格分析
         </span>
-        <nav className="flex h-full items-center gap-6 text-sm font-medium text-muted-foreground">
+        <nav className="text-muted-foreground flex h-full items-center gap-6 text-sm font-medium">
           {visibleItems.map(({ href, label, icon: Icon, exact }) => {
-            const isActive = exact ? pathname === href : pathname.startsWith(href);
+            const isActive = exact
+              ? pathname === href
+              : pathname.startsWith(href);
             return (
               <Link
                 key={href}
@@ -55,7 +101,7 @@ function ContractPriceLayoutContent({ children }: { children: ReactNode }) {
                   "flex h-full items-center gap-1.5 border-b-2 py-5 transition-colors",
                   isActive
                     ? "border-primary text-primary"
-                    : "border-transparent hover:text-foreground"
+                    : "hover:text-foreground border-transparent",
                 )}
               >
                 <Icon className="h-4 w-4" />
@@ -66,11 +112,17 @@ function ContractPriceLayoutContent({ children }: { children: ReactNode }) {
         </nav>
       </header>
       <div className="min-h-0 min-w-0 flex-1 overflow-auto">{children}</div>
+      {/* 操作反馈 toast（sonner,右下角)——对齐知识工厂页面,替代各 tab 内嵌通知条 */}
+      <Toaster />
     </div>
   );
 }
 
-export default function ContractPriceLayout({ children }: { children: ReactNode }) {
+export default function ContractPriceLayout({
+  children,
+}: {
+  children: ReactNode;
+}) {
   return (
     <ShellLayout>
       <ContractPriceLayoutContent>{children}</ContractPriceLayoutContent>
