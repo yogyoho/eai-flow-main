@@ -240,6 +240,13 @@ export function LibraryView() {
   const analyzed = files.filter(
     (f) => checked.has(f.id) && f.parse_status !== "parsed",
   );
+  // 当前目录的子文件夹（列表区 Windows 式导航用）
+  const currentFolderId = sel === ROOT_ID ? null : sel;
+  const subfolders = folders.filter(
+    (f) =>
+      f.parent_id === currentFolderId &&
+      (!q || f.name.toLowerCase().includes(q.toLowerCase())),
+  );
 
   const crumbs = pathOf(folders, sel);
 
@@ -250,6 +257,12 @@ export function LibraryView() {
       else n.add(id);
       return n;
     });
+
+  // 列表中进入子文件夹（树节点同步展开）
+  const enterFolder = (id: string) => {
+    setSel(id);
+    setExpanded((s) => new Set(s).add(id));
+  };
 
   const submitFolderDlg = async () => {
     if (!folderDlg?.value.trim()) return;
@@ -607,7 +620,7 @@ export function LibraryView() {
               <div className="text-muted-foreground flex items-center gap-2 p-4 text-sm">
                 <Loader2 className="h-4 w-4 animate-spin" /> 加载中…
               </div>
-            ) : files.length === 0 ? (
+            ) : files.length === 0 && subfolders.length === 0 ? (
               <div className="text-muted-foreground p-8 text-center text-sm">
                 {q && (filesQ.data?.items.length ?? 0) > 0
                   ? `没有匹配「${q}」的文件`
@@ -644,6 +657,36 @@ export function LibraryView() {
                   </tr>
                 </thead>
                 <tbody>
+                  {subfolders.map((d) => (
+                    <tr
+                      key={d.id}
+                      tabIndex={0}
+                      aria-label={`打开文件夹 ${d.name}`}
+                      className="hover:bg-muted/50 cursor-pointer border-b"
+                      onClick={() => enterFolder(d.id)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" || e.key === " ") {
+                          e.preventDefault();
+                          enterFolder(d.id);
+                        }
+                      }}
+                    >
+                      <td className="px-2 py-2" />
+                      <td className="min-w-0 px-2 py-2">
+                        <div className="flex items-center gap-2.5">
+                          <WindowsFolder className="h-5 w-5 shrink-0 drop-shadow-sm" />
+                          <div className="truncate text-sm">{d.name}</div>
+                        </div>
+                      </td>
+                      <td className="px-2 py-2" />
+                      <td className="text-muted-foreground px-2 py-2 text-xs">
+                        文件夹
+                      </td>
+                      <td className="px-2 py-2" />
+                      <td className="px-2 py-2" />
+                      <td className="w-10 px-2 py-2" />
+                    </tr>
+                  ))}
                   {files.map((f) => (
                     <tr
                       key={f.id}
