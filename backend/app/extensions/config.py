@@ -115,6 +115,9 @@ class RAGFlowConfig(BaseModel):
     """RAGFlow configuration."""
 
     base_url: str = Field(default="http://localhost:9380", description="RAGFlow API base URL")
+    # EAI-CUSTOM: 浏览器可达的 RAGFlow Web UI(SSO 免登跳转专用;base_url 是
+    # 服务间容器地址,浏览器解析不了容器名)。
+    web_url: str = Field(default="http://localhost:9381", description="Browser-reachable RAGFlow web UI for SSO redirect")
     api_key: str = Field(default="", description="RAGFlow API key")
     timeout: int = Field(default=30, description="Request timeout in seconds")
     # EAI-CUSTOM: RAGFlow SSO 交换信任根(RAGFlow 侧同值),空 = SSO 未启用,回退共享 api_key。
@@ -124,6 +127,7 @@ class RAGFlowConfig(BaseModel):
     def from_env(cls) -> "RAGFlowConfig":
         return cls(
             base_url=os.getenv("RAGFLOW_BASE_URL", "http://localhost:9380").rstrip("/"),  # EAI-CUSTOM: 防尾斜杠拼出 //api/...
+            web_url=os.getenv("RAGFLOW_WEB_URL", "http://localhost:9381").rstrip("/"),
             api_key=os.getenv("RAGFLOW_API_KEY", ""),
             timeout=int(os.getenv("RAGFLOW_TIMEOUT", "30")),
             sso_secret=os.getenv("EAI_SSO_SHARED_SECRET", ""),

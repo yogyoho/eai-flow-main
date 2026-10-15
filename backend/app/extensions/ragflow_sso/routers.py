@@ -24,7 +24,9 @@ async def ragflow_sso_login(current_user: CurrentUser = Depends(get_current_user
     Starlette 默认 307 等价）。"""
     cfg = get_extensions_config()
     access_token = await exchange_mode_web(current_user)
-    return RedirectResponse(url=f"{cfg.ragflow.base_url}/?auth={access_token}", status_code=302)
+    # EAI-CUSTOM: 跳转地址必须是浏览器可达的 Web UI(web_url),而非服务间
+    # API 地址(base_url=容器名 ragflow:9380,浏览器解析不了)。
+    return RedirectResponse(url=f"{cfg.ragflow.web_url}/?auth={access_token}", status_code=302)
 
 
 @router.post("/token")

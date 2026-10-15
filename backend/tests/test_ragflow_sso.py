@@ -383,7 +383,8 @@ async def test_login_redirects_with_auth_param(_fresh_config, monkeypatch, sso_d
     from app.extensions.ragflow_sso import routers
     from app.extensions.schemas import CurrentUser
 
-    monkeypatch.setenv("RAGFLOW_BASE_URL", "http://ragflow.test:9380")
+    monkeypatch.setenv("RAGFLOW_BASE_URL", "http://ragflow.test:9380")  # 服务间地址,不用于跳转
+    monkeypatch.setenv("RAGFLOW_WEB_URL", "http://localhost.test:9381")  # 浏览器可达 Web UI
     exchange = AsyncMock(return_value="sess-token")
     monkeypatch.setattr(routers, "exchange_mode_web", exchange)
 
@@ -397,7 +398,7 @@ async def test_login_redirects_with_auth_param(_fresh_config, monkeypatch, sso_d
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
         resp = await client.get(LOGIN_URL)  # httpx 默认不跟随重定向——Location 原样断言
     assert resp.status_code == 302
-    assert resp.headers["location"] == "http://ragflow.test:9380/?auth=sess-token"
+    assert resp.headers["location"] == "http://localhost.test:9381/?auth=sess-token"
     exchange.assert_awaited_once_with(user)
 
 
