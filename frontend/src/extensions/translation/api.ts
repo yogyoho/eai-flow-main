@@ -13,11 +13,16 @@ const API_BASE = "/translation";
 const API_BASE_FULL = "/api/extensions/translation";
 
 export async function listFolders(): Promise<TltFolder[]> {
-  const d = await authFetch<{ items: TltFolder[]; total: number }>(`${API_BASE}/folders`);
+  const d = await authFetch<{ items: TltFolder[]; total: number }>(
+    `${API_BASE}/folders`,
+  );
   return d.items;
 }
 
-export async function createFolder(name: string, parentId: string | null): Promise<TltFolder> {
+export async function createFolder(
+  name: string,
+  parentId: string | null,
+): Promise<TltFolder> {
   return authFetch<TltFolder>(`${API_BASE}/folders`, {
     method: "POST",
     body: JSON.stringify({ name, parent_id: parentId }),
@@ -35,7 +40,9 @@ export async function patchFolder(
 }
 
 export async function deleteFolder(id: string): Promise<void> {
-  await authFetch<{ ok: boolean }>(`${API_BASE}/folders/${id}`, { method: "DELETE" });
+  await authFetch<{ ok: boolean }>(`${API_BASE}/folders/${id}`, {
+    method: "DELETE",
+  });
 }
 
 export async function listTasks(opts: {
@@ -70,12 +77,17 @@ export async function listReviewQueue(): Promise<TltTask[]> {
 
 /** 知识库下拉选项（复用 knowledge 模块列表接口，data-scope 已过滤可见范围）。 */
 export async function listKbOptions(): Promise<{ id: string; name: string }[]> {
-  const d = await authFetch<{ items: { id: string; name: string }[] }>("/knowledge-bases");
+  const d = await authFetch<{ items: { id: string; name: string }[] }>(
+    "/knowledge-bases",
+  );
   return d.items.map((x) => ({ id: x.id, name: x.name }));
 }
 
 /** 资产库上传：多文件 + 目标文件夹；返回逐文件结果（reused=幂等复用）。 */
-export async function uploadAssets(folderId: string | null, files: File[]): Promise<TltUploadResult[]> {
+export async function uploadAssets(
+  folderId: string | null,
+  files: File[],
+): Promise<TltUploadResult[]> {
   const fd = new FormData();
   if (folderId) fd.set("folder_id", folderId);
   for (const f of files) fd.append("files", f, f.name);
@@ -87,7 +99,10 @@ export async function uploadAssets(folderId: string | null, files: File[]): Prom
 }
 
 /** 通用状态流转（重跑/取消/复核裁决等，后端校验状态机边）。 */
-export async function transitionTask(taskId: string, target: string): Promise<TltTask> {
+export async function transitionTask(
+  taskId: string,
+  target: string,
+): Promise<TltTask> {
   return authFetch<TltTask>(`${API_BASE}/tasks/${taskId}/transition`, {
     method: "POST",
     body: JSON.stringify({ target }),
@@ -104,34 +119,91 @@ export async function translateTask(taskId: string): Promise<TltTask> {
 
 /** 库删除：→ archived（归档可救）。 */
 export async function deleteTask(taskId: string): Promise<void> {
-  await authFetch<{ ok: boolean }>(`${API_BASE}/tasks/${taskId}`, { method: "DELETE" });
+  await authFetch<{ ok: boolean }>(`${API_BASE}/tasks/${taskId}`, {
+    method: "DELETE",
+  });
 }
 
 /** 译本预览（Markdown 文本）。tlt 元数据头仅在文件内承载溯源，展示层剥离。 */
 export async function fetchDeliverablePreview(taskId: string): Promise<string> {
   // Markdown 原文：走 credentials fetch 直取文本（authFetch 默认解析 JSON）
-  const resp = await fetch(`${API_BASE_FULL}/tasks/${taskId}/deliverable/preview`, {
-    credentials: "include",
-  });
+  const resp = await fetch(
+    `${API_BASE_FULL}/tasks/${taskId}/deliverable/preview`,
+    {
+      credentials: "include",
+    },
+  );
   if (!resp.ok) throw new Error(`预览加载失败（${resp.status}）`);
   const text = await resp.text();
   // 剥离 tlt 元数据注释头（<!-- tlt:translated-document ... -->），仅展示正文
   return text.replace(/^<!--\s*tlt:translated-document[\s\S]*?-->\s*/, "");
 }
 
-/** 检索知识库状态（B3）：unbound=未初始化 / dangling=关联失效 / ready=就绪。 */
-export interface AssetKbStatus {
-  state: "unbound" | "dangling" | "ready";
-  kb_name?: string;
-  dataset_id?: string | null;
-  source_count?: number;
-  zh_count?: number;
+/** RAG 知识库配置（多库）：配置真源在 RAGFlow，PG 只存映射摘要。 */
+export interface RagKb {
+  id: string;
+  name: string;
+  description: string | null;
+  language: string | null;
+  permission: string | null;
+  chunk_method: string | null;
+  embedding_model: string | null;
+  parser_config: Record<string, unknown> | null;
+  pagerank: number | null;
+  ragflow_linked: boolean;
+  ragflow_dataset_id: string | null;
+  doc_count: number;
+  pending_count: number;
 }
 
-export async function getAssetKbStatus(): Promise<AssetKbStatus> {
-  return authFetch<AssetKbStatus>(`${API_BASE}/asset-kb/status`);
+export async function listRagKbs(): Promise<RagKb[]> {
+  const d = await authFetch<{ items: RagKb[]; total: number }>(
+    `${API_BASE}/rag-kbs`,
+  );
+  return d.items ?? [];
 }
 
-export async function initializeAssetKb(): Promise<AssetKbStatus> {
-  return authFetch<AssetKbStatus>(`${API_BASE}/asset-kb/initialize`, { method: "POST" });
+export async function listEmbeddingModels(): Promise<string[]> {
+  const d = await authFetch<{ items: string[] }>(
+    `${API_BASE}/rag-kbs/embedding-models`,
+  );
+  return d.items ?? [];
+}
+
+export interface RagKbPayload {
+  name?: string;
+  description?: string | null;
+  language?: string | null;
+  permission?: string | null;
+  embedding_model?: string | null;
+  chunk_method?: string | null;
+  parser_config?: Record<string, unknown> | null;
+  pagerank?: number | null;
+}
+
+export async function createRagKb(body: RagKbPayload): Promise<{ id: string }> {
+  return authFetch<{ id: string }>(`${API_BASE}/rag-kbs`, {
+    method: "POST",
+    body: JSON.stringify(body),
+  });
+}
+
+export async function updateRagKb(
+  kbId: string,
+  body: RagKbPayload,
+): Promise<{ ok: boolean }> {
+  return authFetch<{ ok: boolean }>(`${API_BASE}/rag-kbs/${kbId}`, {
+    method: "PUT",
+    body: JSON.stringify(body),
+  });
+}
+
+export async function setRagKbEnabled(
+  kbId: string,
+  enabled: boolean,
+): Promise<{ ok: boolean }> {
+  return authFetch<{ ok: boolean }>(`${API_BASE}/rag-kbs/${kbId}/enabled`, {
+    method: "PUT",
+    body: JSON.stringify({ enabled }),
+  });
 }

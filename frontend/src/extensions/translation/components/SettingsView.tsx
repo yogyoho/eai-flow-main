@@ -1,59 +1,101 @@
 "use client";
 
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Loader2 } from "lucide-react";
+import { Loader2, Plus, Star } from "lucide-react";
 import { useState } from "react";
 
+import { Button } from "@/components/ui/button";
 import { authFetch } from "@/extensions/api/client";
-import { cn } from "@/lib/utils";
 
-import { getAssetKbStatus, initializeAssetKb, type AssetKbStatus } from "../api";
+import { createRagKb, listRagKbs, setRagKbEnabled, type RagKb } from "../api";
 
-interface KbRow {
+import { RagKbDialog } from "./RagKbDialog";
+
+const DEFAULT_KB_KEY = "tlt_default_kb_id";
+
+interface AllKbRow {
   id: string;
   name: string;
   translation_enabled: boolean;
-  ragflow_dataset_id: string | null;
 }
 
 export function SettingsView() {
-  const kbQ = useQuery({
+  const queryClient = useQueryClient();
+  const ragKbsQ = useQuery({ queryKey: ["tlt-rag-kbs"], queryFn: listRagKbs });
+  const allKbsQ = useQuery({
     queryKey: ["tlt-settings-kbs"],
-    queryFn: async (): Promise<KbRow[]> => {
-      const d = await authFetch<{ items: KbRow[] }>("/knowledge-bases");
-      return (d.items ?? []).map((x) => ({
-        id: x.id,
-        name: x.name,
-        translation_enabled:
-          (x as unknown as Record<string, unknown>).translation_enabled === true,
-        ragflow_dataset_id: x.ragflow_dataset_id ?? null,
-      }));
+    queryFn: async (): Promise<AllKbRow[]> => {
+      const d = await authFetch<{ items: AllKbRow[] }>("/knowledge-bases");
+      return d.items ?? [];
     },
   });
 
-  const kbs = kbQ.data ?? [];
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [editing, setEditing] = useState<RagKb | null>(null);
+  const [addingExisting, setAddingExisting] = useState(false);
+  const [busyId, setBusyId] = useState<string | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
 
-  const queryClient = useQueryClient();
-  const kbStatusQ = useQuery({
-    queryKey: ["tlt-asset-kb-status"],
-    queryFn: getAssetKbStatus,
-    refetchInterval: 30_000,
-  });
-  const [initializing, setInitializing] = useState(false);
-  const [initError, setInitError] = useState<string | null>(null);
-  const st: AssetKbStatus | undefined = kbStatusQ.data;
+  const ragKbs = ragKbsQ.data ?? [];
+  const defaultKbId =
+    typeof window !== "undefined"
+      ? window.localStorage.getItem(DEFAULT_KB_KEY)
+      : null;
+  const defaultInList = ragKbs.some((k) => k.id === defaultKbId)
+    ? defaultKbId
+    : null;
+  const addable = (allKbsQ.data ?? []).filter(
+    (k) => !k.translation_enabled && !ragKbs.some((r) => r.id === k.id),
+  );
 
-  const doInitialize = async () => {
-    setInitializing(true);
-    setInitError(null);
+  const refresh = () => {
+    void queryClient.invalidateQueries({ queryKey: ["tlt-rag-kbs"] });
+    void queryClient.invalidateQueries({ queryKey: ["tlt-settings-kbs"] });
+  };
+
+  const doAddExisting = async (kbId: string) => {
+    setBusyId(kbId);
+    setActionError(null);
     try {
-      await initializeAssetKb();
-      await queryClient.invalidateQueries({ queryKey: ["tlt-asset-kb-status"] });
-      await queryClient.invalidateQueries({ queryKey: ["tlt-settings-kbs"] });
+      await setRagKbEnabled(kbId, true);
+      refresh();
     } catch (e) {
-      setInitError(e instanceof Error ? e.message : String(e));
+      setActionError(e instanceof Error ? e.message : String(e));
     } finally {
-      setInitializing(false);
+      setBusyId(null);
+      setAddingExisting(false);
+    }
+  };
+
+  const doRemove = async (kb: RagKb) => {
+    setBusyId(kb.id);
+    setActionError(null);
+    try {
+      await setRagKbEnabled(kb.id, false);
+      if (defaultKbId === kb.id) window.localStorage.removeItem(DEFAULT_KB_KEY);
+      refresh();
+    } catch (e) {
+      setActionError(e instanceof Error ? e.message : String(e));
+    } finally {
+      setBusyId(null);
+    }
+  };
+
+  const doInitDefault = async () => {
+    setBusyId("init");
+    setActionError(null);
+    try {
+      const created = await createRagKb({
+        name: "翻译资产库",
+        description: "翻译工作台检索知识库（默认）",
+        language: "Chinese",
+      });
+      window.localStorage.setItem(DEFAULT_KB_KEY, created.id);
+      refresh();
+    } catch (e) {
+      setActionError(e instanceof Error ? e.message : String(e));
+    } finally {
+      setBusyId(null);
     }
   };
 
@@ -61,130 +103,206 @@ export function SettingsView() {
     <div className="flex h-full flex-col gap-3 p-4">
       <div className="flex items-center gap-3">
         <h1 className="text-xl font-semibold">设置</h1>
-        <span className="text-sm text-muted-foreground">知识库翻译开关与运行参数</span>
+        <span className="text-muted-foreground text-sm">
+          RAG 知识库配置与运行参数
+        </span>
       </div>
 
-      {/* 检索知识库（B3） */}
+      {/* RAG 知识库配置（多库） */}
       <div className="rounded-lg border">
         <div className="flex items-center justify-between border-b px-3 py-2">
-          <span className="text-xs font-medium text-muted-foreground">检索知识库</span>
-          {st && (
-            <span className="text-xs">
-              {st.state === "ready" && <span className="text-emerald-600">● 已就绪</span>}
-              {st.state === "unbound" && <span className="text-muted-foreground">○ 未初始化</span>}
-              {st.state === "dangling" && <span className="text-destructive">⚠ 关联失效</span>}
-            </span>
-          )}
-        </div>
-        <div className="flex items-center justify-between gap-2 p-3 text-sm">
-          <div className="min-w-0">
-            {kbStatusQ.isLoading ? (
-              <span className="flex items-center gap-2 text-muted-foreground">
-                <Loader2 className="h-4 w-4 animate-spin" /> 加载中…
-              </span>
-            ) : kbStatusQ.isError ? (
-              <span className="text-destructive">
-                状态加载失败：{kbStatusQ.error?.message ?? "未知错误"}（需超级管理员）
-              </span>
-            ) : st?.state === "ready" ? (
-              <span className="truncate">
-                库名：{st.kb_name} · 已索引：原文 {st.source_count} 篇 · 中文译本 {st.zh_count} 篇
-              </span>
-            ) : (
-              <span className="text-muted-foreground">
-                {st?.state === "dangling"
-                  ? `关联失效（${st.kb_name}），修复后将重建 dataset（旧库内已索文档需回填）`
-                  : "尚未初始化——创建检索知识库后，原文与中文译本将自动入库供 RAG 检索"}
-              </span>
+          <span className="text-muted-foreground text-xs font-medium">
+            RAG 知识库配置
+          </span>
+          <div className="flex items-center gap-2">
+            {addable.length > 0 && (
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-7"
+                onClick={() => setAddingExisting((v) => !v)}
+              >
+                添加现有库
+              </Button>
             )}
-            {initError && <div className="mt-1 text-xs text-destructive">{initError}</div>}
-          </div>
-          {st && st.state !== "ready" && (
-            <button
-              onClick={doInitialize}
-              disabled={initializing}
-              className="shrink-0 rounded-md bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
+            <Button
+              size="sm"
+              className="h-7"
+              onClick={() => {
+                setEditing(null);
+                setDialogOpen(true);
+              }}
             >
-              {initializing ? <Loader2 className="mr-1 inline h-3 w-3 animate-spin" /> : null}
-              {st.state === "dangling" ? "修复关联" : "初始化"}
-            </button>
-          )}
+              <Plus className="mr-1 h-3.5 w-3.5" /> 新建知识库
+            </Button>
+          </div>
         </div>
-      </div>
 
-      {/* 知识库翻译开关 */}
-      <div className="rounded-lg border">
-        <div className="border-b px-3 py-2 text-xs font-medium text-muted-foreground">
-          知识库翻译开关
-        </div>
-        {kbQ.isLoading ? (
-          <div className="flex items-center gap-2 p-4 text-sm text-muted-foreground">
+        {/* 添加现有库选单 */}
+        {addingExisting && (
+          <div className="bg-muted/30 border-b px-3 py-2 text-sm">
+            <span className="text-muted-foreground mr-2 text-xs">
+              选择要加入翻译体系的库：
+            </span>
+            <div className="mt-1 flex flex-wrap gap-2">
+              {addable.map((k) => (
+                <button
+                  key={k.id}
+                  disabled={busyId === k.id}
+                  onClick={() => void doAddExisting(k.id)}
+                  className="hover:bg-accent rounded-md border px-2 py-1 text-xs disabled:opacity-50"
+                >
+                  {busyId === k.id ? (
+                    <Loader2 className="mr-1 inline h-3 w-3 animate-spin" />
+                  ) : null}
+                  {k.name}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {ragKbsQ.isLoading ? (
+          <div className="text-muted-foreground flex items-center gap-2 p-4 text-sm">
             <Loader2 className="h-4 w-4 animate-spin" /> 加载中…
+          </div>
+        ) : ragKbs.length === 0 ? (
+          <div className="flex items-center justify-between gap-2 p-4 text-sm">
+            <span className="text-muted-foreground">
+              尚无翻译知识库——可初始化一个默认库（翻译资产库），或新建/添加自定义库。
+            </span>
+            <Button
+              size="sm"
+              disabled={busyId === "init"}
+              onClick={() => void doInitDefault()}
+            >
+              {busyId === "init" ? (
+                <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" />
+              ) : null}
+              初始化默认库
+            </Button>
           </div>
         ) : (
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b bg-muted/50 text-left text-xs text-muted-foreground">
+              <tr className="bg-muted/50 text-muted-foreground border-b text-left text-xs">
                 <th className="px-3 py-2">知识库</th>
+                <th className="px-3 py-2">语言</th>
+                <th className="px-3 py-2">分块·向量</th>
                 <th className="px-3 py-2">RAGFlow</th>
-                <th className="px-3 py-2 text-right">翻译开关</th>
+                <th className="px-3 py-2 text-right">文档</th>
+                <th className="px-3 py-2 text-right">待处理</th>
+                <th className="px-3 py-2 text-right">操作</th>
               </tr>
             </thead>
             <tbody>
-              {kbs.map((k) => (
-                <tr key={k.id} className="border-b last:border-b-0 hover:bg-muted/50">
-                  <td className="px-3 py-2 font-medium">{k.name}</td>
+              {ragKbs.map((k) => (
+                <tr
+                  key={k.id}
+                  className="hover:bg-muted/50 border-b last:border-b-0"
+                >
+                  <td className="px-3 py-2 font-medium">
+                    {defaultInList === k.id && (
+                      <Star className="mr-1 inline h-3.5 w-3.5 fill-amber-400 text-amber-400" />
+                    )}
+                    {k.name}
+                  </td>
+                  <td className="px-3 py-2">{k.language ?? "—"}</td>
+                  <td className="text-muted-foreground px-3 py-2 text-xs">
+                    {[k.chunk_method ?? "?", k.embedding_model ?? "?"].join(
+                      " · ",
+                    )}
+                  </td>
                   <td className="px-3 py-2">
-                    {k.ragflow_dataset_id ? "已关联" : "未关联"}
+                    {k.ragflow_linked ? (
+                      <span className="text-emerald-600">已关联 ✓</span>
+                    ) : (
+                      <span className="text-destructive">未关联</span>
+                    )}
+                  </td>
+                  <td className="px-3 py-2 text-right tabular-nums">
+                    {k.doc_count}
+                  </td>
+                  <td className="px-3 py-2 text-right tabular-nums">
+                    {k.pending_count > 0 ? k.pending_count : "—"}
                   </td>
                   <td className="px-3 py-2 text-right">
-                    <span
-                      className={cn(
-                        "inline-flex h-5 w-9 items-center rounded-full border-2 border-transparent transition-colors cursor-pointer",
-                        k.translation_enabled ? "bg-primary" : "bg-input",
-                        !k.ragflow_dataset_id && "cursor-not-allowed opacity-50",
+                    <div className="flex items-center justify-end gap-1">
+                      {defaultInList !== k.id && (
+                        <button
+                          className="text-muted-foreground hover:bg-accent hover:text-foreground rounded px-1.5 py-0.5 text-xs"
+                          onClick={() => {
+                            window.localStorage.setItem(DEFAULT_KB_KEY, k.id);
+                            refresh();
+                          }}
+                        >
+                          设为默认
+                        </button>
                       )}
-                    >
-                      <span
-                        className={cn(
-                          "block h-4 w-4 rounded-full bg-background shadow transition-transform",
-                          k.translation_enabled ? "translate-x-4" : "translate-x-0",
-                        )}
-                      />
-                    </span>
+                      <button
+                        className="text-muted-foreground hover:bg-accent hover:text-foreground rounded px-1.5 py-0.5 text-xs"
+                        onClick={() => {
+                          setEditing(k);
+                          setDialogOpen(true);
+                        }}
+                      >
+                        编辑配置
+                      </button>
+                      <button
+                        disabled={busyId === k.id}
+                        className="text-destructive hover:bg-destructive/10 rounded px-1.5 py-0.5 text-xs disabled:opacity-50"
+                        onClick={() => void doRemove(k)}
+                      >
+                        移出
+                      </button>
+                    </div>
                   </td>
                 </tr>
               ))}
             </tbody>
           </table>
         )}
+        {actionError && (
+          <div className="text-destructive px-3 py-2 text-xs">
+            {actionError}
+          </div>
+        )}
       </div>
+
+      <RagKbDialog
+        open={dialogOpen}
+        onOpenChange={setDialogOpen}
+        editing={editing}
+        onSaved={refresh}
+      />
 
       {/* 运行参数（只读） */}
       <div className="rounded-lg border">
-        <div className="border-b px-3 py-2 text-xs font-medium text-muted-foreground">
+        <div className="text-muted-foreground border-b px-3 py-2 text-xs font-medium">
           运行参数（只读）
         </div>
         <div className="grid grid-cols-[140px_1fr] gap-x-2 gap-y-1 p-3 text-sm">
-          <span className="text-xs text-muted-foreground">翻译模型</span>
+          <span className="text-muted-foreground text-xs">翻译模型</span>
           <span>本地 LLM（config.yaml models 声明）</span>
-          <span className="text-xs text-muted-foreground">并发槽位</span>
+          <span className="text-muted-foreground text-xs">并发槽位</span>
           <span>2 · 轮询 5s · 基础设施重试 ≤3</span>
         </div>
       </div>
 
       {/* 质量标准（占位） */}
       <div className="rounded-lg border">
-        <div className="border-b px-3 py-2 text-xs font-medium text-muted-foreground">
+        <div className="text-muted-foreground border-b px-3 py-2 text-xs font-medium">
           质量标准（样例验收闸产出）
         </div>
         <div className="grid grid-cols-[140px_1fr] gap-x-2 gap-y-1 p-3 text-sm">
-          <span className="text-xs text-muted-foreground">中文检索准确率</span>
+          <span className="text-muted-foreground text-xs">中文检索准确率</span>
           <span>目标 80%（完成验收测试后确定）</span>
-          <span className="text-xs text-muted-foreground">数字准确性</span>
+          <span className="text-muted-foreground text-xs">数字准确性</span>
           <span>译文与原文逐字核对 · 100% 一致（硬性标准）</span>
-          <span className="text-xs text-muted-foreground">术语与格式</span>
-          <span className="text-muted-foreground">标准待验收测试后与客户确认</span>
+          <span className="text-muted-foreground text-xs">术语与格式</span>
+          <span className="text-muted-foreground">
+            标准待验收测试后与客户确认
+          </span>
         </div>
       </div>
     </div>
