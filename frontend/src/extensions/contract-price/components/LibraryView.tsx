@@ -19,6 +19,7 @@ import {
   FolderInput,
   FolderOpen,
   FolderPlus,
+  FolderRoot,
   ListChecks,
   Loader2,
   MoreHorizontal,
@@ -46,6 +47,10 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
+import {
+  WindowsFolder,
+  WindowsFolderOpen,
+} from "@/extensions/translation/components/FolderIcons";
 import { cn } from "@/lib/utils";
 
 import { libraryApi } from "../api";
@@ -161,6 +166,10 @@ export function LibraryView() {
   } | null>(null);
   const [moveFile, setMoveFile] = useState<CpaLibraryFile | null>(null);
   const [itemsFor, setItemsFor] = useState<CpaLibraryFile | null>(null);
+  // 目录树宽度（px，分隔条可拖拽）
+  const [treeW, setTreeW] = useState(240);
+  const splitRef = useRef<HTMLDivElement>(null);
+  const treeDragging = useRef(false);
   const filesInputRef = useRef<HTMLInputElement>(null);
   const folderInputRef = useRef<HTMLInputElement>(null);
 
@@ -200,6 +209,29 @@ export function LibraryView() {
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [itemsFor]);
+
+  // ── 目录树分隔条拖拽（参照翻译资产库：window 级监听）──
+  const onTreeSplitDown = () => {
+    treeDragging.current = true;
+    document.body.style.cursor = "col-resize";
+  };
+  useEffect(() => {
+    const move = (e: MouseEvent) => {
+      if (!treeDragging.current || !splitRef.current) return;
+      const r = splitRef.current.getBoundingClientRect();
+      setTreeW(Math.min(480, Math.max(160, e.clientX - r.left)));
+    };
+    const up = () => {
+      treeDragging.current = false;
+      document.body.style.cursor = "";
+    };
+    window.addEventListener("mousemove", move);
+    window.addEventListener("mouseup", up);
+    return () => {
+      window.removeEventListener("mousemove", move);
+      window.removeEventListener("mouseup", up);
+    };
+  }, []);
 
   const files = (filesQ.data?.items ?? []).filter((f) =>
     q ? f.file_name.toLowerCase().includes(q.toLowerCase()) : true,
@@ -331,6 +363,11 @@ export function LibraryView() {
             ) : (
               <span className="w-3 shrink-0" />
             )}
+            {hasChildren && isOpen ? (
+              <WindowsFolderOpen className="h-3.5 w-3.5 shrink-0 drop-shadow-sm" />
+            ) : (
+              <WindowsFolder className="h-3.5 w-3.5 shrink-0 drop-shadow-sm" />
+            )}
             <span className="truncate">{n.name}</span>
             <span className="ml-auto opacity-0 transition-opacity group-hover:opacity-100">
               <DropdownMenu>
@@ -391,28 +428,9 @@ export function LibraryView() {
         title="合同文件库"
         icon={<FolderOpen className="h-6 w-6" />}
         extra={
-          <>
-            {/* 文件路径 chip + 面包屑（样式对齐翻译资产库） */}
-            <span className="bg-muted text-muted-foreground shrink-0 rounded-md px-2 py-0.5 text-xs">
-              文件路径：
-            </span>
-            <div className="text-muted-foreground flex items-center gap-0.5 text-xs">
-              {crumbs.map((seg, i) => (
-                <span key={seg.id} className="flex items-center gap-0.5">
-                  {i > 0 && <span className="px-0.5">/</span>}
-                  <button
-                    className={cn(
-                      "hover:bg-muted hover:text-foreground rounded px-1 py-0.5 transition-colors",
-                      i === crumbs.length - 1 && "text-foreground font-medium",
-                    )}
-                    onClick={() => setSel(seg.id)}
-                  >
-                    {seg.name}
-                  </button>
-                </span>
-              ))}
-            </div>
-          </>
+          <span className="text-muted-foreground text-sm">
+            归档库 · 上传不自动解析
+          </span>
         }
         actions={
           <Button
@@ -441,10 +459,27 @@ export function LibraryView() {
       {/* 主容器：pane 头 + 树 + 列表 */}
       <div className="flex min-h-[460px] flex-1 flex-col overflow-hidden rounded-lg border">
         <div className="flex flex-wrap items-center gap-2 border-b px-3 py-2">
-          <span className="text-sm font-medium">合同文件</span>
-          <span className="text-muted-foreground text-xs">
-            归档库 · 上传不自动解析
+          <span className="text-muted-foreground flex items-center gap-1 text-xs">
+            <FolderRoot className="h-3.5 w-3.5" />
+            <span>&nbsp;&nbsp;/</span>
           </span>
+          {/* 文件路径 chip + 面包屑（样式对齐翻译资产库） */}
+          <div className="text-muted-foreground flex items-center gap-0.5 text-xs">
+            {crumbs.map((seg, i) => (
+              <span key={seg.id} className="flex items-center gap-0.5">
+                {i > 0 && <span className="px-0.5">/</span>}
+                <button
+                  className={cn(
+                    "hover:bg-muted hover:text-foreground rounded px-1 py-0.5 transition-colors",
+                    i === crumbs.length - 1 && "text-foreground font-medium",
+                  )}
+                  onClick={() => setSel(seg.id)}
+                >
+                  {seg.name}
+                </button>
+              </span>
+            ))}
+          </div>
           <span className="flex-1" />
           <Input
             placeholder="搜索文件名"
@@ -502,10 +537,11 @@ export function LibraryView() {
             }}
           />
         </div>
-        <div className="flex min-h-0 flex-1">
+        <div ref={splitRef} className="flex min-h-0 flex-1">
           <nav
             aria-label="文件夹树"
-            className="bg-muted/20 w-44 shrink-0 overflow-auto border-r p-1 text-xs"
+            className="bg-muted/20 shrink-0 overflow-auto p-1 text-xs"
+            style={{ width: treeW }}
           >
             {/* 虚拟根「文件库」 */}
             <div
@@ -528,6 +564,7 @@ export function LibraryView() {
               }}
             >
               <ChevronRight className="text-muted-foreground h-3 w-3 shrink-0 rotate-90" />
+              <WindowsFolderOpen className="h-3.5 w-3.5 shrink-0 drop-shadow-sm" />
               <span>文件库</span>
               <span className="ml-auto opacity-0 transition-opacity group-hover:opacity-100">
                 <FolderPlus
@@ -551,6 +588,11 @@ export function LibraryView() {
               renderTree(tree, 1)
             )}
           </nav>
+          {/* 树/列表分隔条（可左右拖拽） */}
+          <div
+            className="bg-muted/40 hover:bg-muted w-1.5 shrink-0 cursor-col-resize border-x"
+            onMouseDown={onTreeSplitDown}
+          />
           <div className="min-w-0 flex-1 overflow-auto">
             {filesQ.isError ? (
               <p className="text-destructive p-4 text-sm">
