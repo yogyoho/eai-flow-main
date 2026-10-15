@@ -134,6 +134,7 @@ async def test_list_rag_kbs_aggregates(_engine, monkeypatch):
         finally:
             await db.execute(delete(TranslationTask).where(TranslationTask.kb_id == kb.id))
             await db.execute(sql_update(KnowledgeBase).where(KnowledgeBase.id == kb.id).values(translation_enabled=False))
+            await db.execute(delete(KnowledgeBase).where(KnowledgeBase.id == kb.id))  # 卫生：不留 kb-lst-* 残行
             await db.commit()
 
 

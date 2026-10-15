@@ -93,7 +93,7 @@ async def ensure_dataset(kb: KnowledgeBase, *, client: RAGFlowClient | None = No
     """返回就绪的 dataset_id；悬空/缺失则重建并回写 kb（**调用方负责 commit**）。
 
     C1 自愈单点：worker 索引（index_translation）、上传链（upload_assets）、
-    设置页修复（asset-kb/initialize）三处共用，禁止另写第二份重建逻辑。
+    设置页修复（rag-kbs 配置编辑）三处共用，禁止另写第二份重建逻辑。
     """
     client = client or RAGFlowClient()
     if kb.ragflow_dataset_id and await _dataset_exists(client, kb.ragflow_dataset_id):
