@@ -351,28 +351,37 @@ async def delete_folder(
 async def upload_assets(
     files: list[UploadFile] = File(...),
     folder_id: UUID | None = Form(None),
+    kb_id: UUID | None = Form(None),
     current_user=Depends(require_permission("kb:upload")),
     db: AsyncSession = Depends(get_db),
 ) -> dict:
     """资产库上传：存原件 + 建 stored 任务（不入队；用户在库内点「翻译」→ pending）。
 
-    资产 KB = 第一个 translation_enabled 的知识库（设计 §3.1）。
+    多 RAG 知识库：显式 kb_id 优先；缺省时恰一库自动、0/多库报错引导。
     单次 ≤100 个；更大批量走 scheduled_tasks 批量通道。
     """
     if not files:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="未选择文件")
     if len(files) > 100:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="单次最多 100 个文件；更大批量请走定时任务通道")
-    kb = (
+    # 多 RAG 知识库：显式 kb_id 优先；缺省时恰一库自动、0/多库报错引导
+    enabled_kbs = (
         await db.execute(
             select(KnowledgeBase)
             .where(KnowledgeBase.translation_enabled.is_(True))
             .order_by(KnowledgeBase.created_at.asc())
-            .limit(1)
         )
-    ).scalar()
-    if kb is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="无已开启翻译的知识库（先在设置页开启）")
+    ).scalars().all()
+    if kb_id is not None:
+        kb = await db.get(KnowledgeBase, kb_id)
+        if kb is None or not kb.translation_enabled:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="目标知识库不存在或未加入翻译体系")
+    elif len(enabled_kbs) == 1:
+        kb = enabled_kbs[0]
+    elif len(enabled_kbs) == 0:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="无翻译知识库：请先在设置页「RAG知识库配置」创建或添加")
+    else:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="存在多个翻译知识库：请选择目标知识库后重试")
     is_admin = await is_superadmin(db, current_user.id)
     if kb.owner_id != current_user.id and not is_admin:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="无资产知识库上传权限")

@@ -30,8 +30,8 @@ async def test_ragflow_source_doc_id_column_exists(_engine):
 
 
 @pytest.mark.asyncio(loop_scope="session")
-async def test_translation_enabled_exclusive(_engine):
-    """C2：置 B 为 translation_enabled 时，A 自动被关（全局至多一个）。"""
+async def test_translation_enabled_coexists(_engine):
+    """C2 拆除回归：多库可同时加入翻译体系，update_kb 互不干扰。"""
     from app.extensions.knowledge.service import KnowledgeBaseService
     from app.extensions.schemas import KnowledgeBaseUpdate
 
@@ -47,7 +47,7 @@ async def test_translation_enabled_exclusive(_engine):
             await KnowledgeBaseService.update_kb(db, kb_b, KnowledgeBaseUpdate(translation_enabled=True))
             await db.refresh(kb_a)
             assert kb_b.translation_enabled is True
-            assert kb_a.translation_enabled is False  # 互斥生效
+            assert kb_a.translation_enabled is True  # 不再互斥
         finally:
             await db.execute(delete(KnowledgeBase).where(KnowledgeBase.id.in_([kb_a.id, kb_b.id])))
             await db.commit()

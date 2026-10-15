@@ -7,7 +7,6 @@ from uuid import UUID
 
 from sqlalchemy import delete as sql_delete
 from sqlalchemy import func, or_, select
-from sqlalchemy import update as sql_update
 from sqlalchemy.orm import joinedload
 
 from app.extensions.config import get_extensions_config
@@ -237,8 +236,6 @@ class KnowledgeBaseService:
             except Exception as e:
                 logger.warning(f"Failed to sync to RAGFlow: {e}. Continuing without sync.")
 
-        if getattr(data, "translation_enabled", False):
-            await KnowledgeBaseService._exclusive_translation_enabled(db, kb.id)
         db.add(kb)
         await db.commit()
         await db.refresh(kb, attribute_names=["owner"])
@@ -249,19 +246,6 @@ class KnowledgeBaseService:
             kb_path.mkdir(parents=True, exist_ok=True)
 
         return kb
-
-    @staticmethod
-    async def _exclusive_translation_enabled(db: AsyncSession, kb_id: UUID) -> None:
-        """EAI-CUSTOM (tlt C2): 检索知识库全局至多一个——置 true 时自动关闭其余。
-
-        资产库上传落点 = 唯一 translation_enabled 库；互斥在写路径保证，
-        读路径（translation/routers.upload_assets）不再猜「第一个」。
-        """
-        await db.execute(
-            sql_update(KnowledgeBase)
-            .where(KnowledgeBase.translation_enabled.is_(True), KnowledgeBase.id != kb_id)
-            .values(translation_enabled=False)
-        )
 
     @staticmethod
     async def update_kb(db: AsyncSession, kb: KnowledgeBase, data: KnowledgeBaseUpdate) -> KnowledgeBase:
@@ -283,11 +267,9 @@ class KnowledgeBaseService:
             kb.parser_config = data.parser_config
         if data.language is not None:
             kb.language = data.language
-        # EAI-CUSTOM (translation 一期): KB 级翻译开关透传（C2: 置 true 时互斥关闭其余）
+        # EAI-CUSTOM (translation 一期): KB 级翻译开关透传（多库共存，不再互斥）
         if data.translation_enabled is not None:
             kb.translation_enabled = data.translation_enabled
-            if data.translation_enabled:
-                await KnowledgeBaseService._exclusive_translation_enabled(db, kb.id)
 
         # EAI-CUSTOM (bug-1134): 切到 dept 可见性但表单未携带 allowed_depts 时，同样兜底
         # 填入 owner 的部门，避免与 create_kb 相同的 NULL → 不可见问题。

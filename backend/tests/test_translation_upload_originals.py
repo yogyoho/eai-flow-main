@@ -1,6 +1,6 @@
 """upload_assets 原文即刻入库（B1）——失败降级不挡上传。容器真库跑。
 
-夹具残留防护：upload_assets 拣「第一个 translation_enabled KB」（created_at asc），
+夹具残留防护：upload_assets 缺省时拣「恰一 translation_enabled KB」（多库改 400 引导选择），
 任务可能落在本测试自建的 KB 之外——清理一律按夹具内容 sha（测试专用 stub，无业务碰撞）；
 red run 在 monkeypatch 处中断会漏 try/finally，故 setup 亦先清扫一轮自愈。
 """
@@ -13,7 +13,7 @@ from types import SimpleNamespace
 
 import pytest
 import pytest_asyncio
-from fastapi import UploadFile
+from fastapi import HTTPException, UploadFile
 from sqlalchemy import delete, select
 
 import app.extensions.translation.routers as routers
@@ -69,7 +69,7 @@ async def test_upload_indexes_original_and_fails_open(_engine, monkeypatch):
         await db.commit()
         try:
             f = UploadFile(filename="t1.docx", file=io.BytesIO(b"PK\x03\x04stub-content"))
-            result = await routers.upload_assets(files=[f], folder_id=None, current_user=SimpleNamespace(id=owner), db=db)
+            result = await routers.upload_assets(files=[f], folder_id=None, kb_id=None, current_user=SimpleNamespace(id=owner), db=db)
             assert result["count"] == 1
             assert result["items"][0]["reused"] is False
             task = await db.get(TranslationTask, uuid.UUID(result["items"][0]["task_id"]))
@@ -96,7 +96,7 @@ async def test_upload_survives_ragflow_outage(_engine, monkeypatch):
         await db.commit()
         try:
             f = UploadFile(filename="t2.docx", file=io.BytesIO(b"PK\x03\x04stub-content"))
-            result = await routers.upload_assets(files=[f], folder_id=None, current_user=SimpleNamespace(id=owner), db=db)
+            result = await routers.upload_assets(files=[f], folder_id=None, kb_id=None, current_user=SimpleNamespace(id=owner), db=db)
             assert result["count"] == 1  # 上传未被打断
             task = await db.get(TranslationTask, uuid.UUID(result["items"][0]["task_id"]))
             assert result["items"][0]["reused"] is False  # 同 sha 残留已在 setup 清扫
@@ -104,3 +104,51 @@ async def test_upload_survives_ragflow_outage(_engine, monkeypatch):
         finally:
             with suppress(Exception):
                 await _cleanup_stale(db)
+
+
+@pytest.mark.asyncio(loop_scope="session")
+async def test_upload_multiple_kbs_requires_choice(_engine, monkeypatch):
+    """缺省 + 多 enabled 库 → 400 引导选择（不再静默取第一个）。"""
+    async with get_session_factory()() as db:
+        owner = (await db.execute(select(User.id).limit(1))).scalar()
+        kb1 = KnowledgeBase(name=f"kb-rt1-{uuid.uuid4().hex[:6]}", owner_id=owner, kb_type="ragflow", ragflow_dataset_id="ds-x", translation_enabled=True)
+        kb2 = KnowledgeBase(name=f"kb-rt2-{uuid.uuid4().hex[:6]}", owner_id=owner, kb_type="ragflow", ragflow_dataset_id="ds-y", translation_enabled=True)
+        db.add_all([kb1, kb2])
+        await db.commit()
+        monkeypatch.setattr(routers, "RAGFlowClient", _FakeUploadClient)
+        try:
+            f = UploadFile(filename="t3.docx", file=io.BytesIO(b"PK\x03\x04stub-content"))
+            with pytest.raises(HTTPException) as ei:
+                await routers.upload_assets(files=[f], folder_id=None, kb_id=None,
+                                            current_user=SimpleNamespace(id=owner), db=db)
+            assert "选择目标知识库" in ei.value.detail
+        finally:
+            await db.execute(delete(KnowledgeBase).where(KnowledgeBase.id.in_([kb1.id, kb2.id])))
+            await db.commit()
+
+
+@pytest.mark.asyncio(loop_scope="session")
+async def test_upload_explicit_kb_id_routes(_engine, monkeypatch):
+    """显式 kb_id：非 enabled 库 400；enabled 库正常建任务。"""
+    async with get_session_factory()() as db:
+        owner = (await db.execute(select(User.id).limit(1))).scalar()
+        kb_off = KnowledgeBase(name=f"kb-rt3-{uuid.uuid4().hex[:6]}", owner_id=owner, kb_type="ragflow", ragflow_dataset_id="ds-off", translation_enabled=False)
+        kb_on = KnowledgeBase(name=f"kb-rt4-{uuid.uuid4().hex[:6]}", owner_id=owner, kb_type="ragflow", ragflow_dataset_id="ds-on", translation_enabled=True)
+        db.add_all([kb_off, kb_on])
+        await db.commit()
+        monkeypatch.setattr(routers, "RAGFlowClient", _FakeUploadClient)
+        try:
+            f1 = UploadFile(filename="t4.docx", file=io.BytesIO(b"PK\x03\x04stub-content"))
+            with pytest.raises(HTTPException) as ei:
+                await routers.upload_assets(files=[f1], folder_id=None, kb_id=kb_off.id,
+                                            current_user=SimpleNamespace(id=owner), db=db)
+            assert "未加入翻译体系" in ei.value.detail
+            f2 = UploadFile(filename="t5.docx", file=io.BytesIO(b"PK\x03\x04stub-content"))
+            result = await routers.upload_assets(files=[f2], folder_id=None, kb_id=kb_on.id,
+                                                 current_user=SimpleNamespace(id=owner), db=db)
+            task = await db.get(TranslationTask, uuid.UUID(result["items"][0]["task_id"]))
+            assert task is not None and task.ragflow_source_doc_id == "doc-original-1"
+        finally:
+            await db.execute(delete(TranslationTask).where(TranslationTask.kb_id == kb_on.id))
+            await db.execute(delete(KnowledgeBase).where(KnowledgeBase.id.in_([kb_off.id, kb_on.id])))
+            await db.commit()
