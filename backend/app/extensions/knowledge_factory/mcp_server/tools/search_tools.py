@@ -59,6 +59,7 @@ async def handle_kf_search_knowledge(arguments: dict, _run_in_db) -> list[TextCo
     except ValueError as e:
         return [TextContent(type="text", text=json.dumps({"error": str(e)}, ensure_ascii=False))]
 
+    # EAI-CUSTOM: 后台任务无终端用户上下文,沿用共享 key(SSO per-user 为 Plan 2 v1 范围外)
     client = RAGFlowClient()
     id_to_name = {ds_id: name for name, ds_id in kbs}
 
