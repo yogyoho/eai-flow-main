@@ -889,6 +889,7 @@ class ExtractionPipeline:
                 return {**doc, "chunks": fallback, "chunk_count": len(fallback), "ragflow_document_id": rf_doc_id}
             return None
 
+        # EAI-CUSTOM: 后台任务无终端用户上下文,沿用共享 key(SSO per-user 为 Plan 2 v1 范围外)
         try:
             rf = RAGFlowClient()
             chunks = await _fetch_all_chunks(rf, rf_dataset_id, rf_doc_id)
