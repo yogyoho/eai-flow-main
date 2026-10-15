@@ -318,3 +318,110 @@ async def test_get_client_for_user_rollback_keeps_session_usable(_fresh_config, 
     assert isinstance(client, RAGFlowClient)
     assert client.api_key == ""  # shared-key fallback
     assert (await sso_db.execute(select(1))).scalar() == 1  # same session still usable
+
+
+# ── routers: /ragflow-sso/login 302 + /token per-user ──
+
+LOGIN_URL = "/api/extensions/auth/ragflow-sso/login"
+TOKEN_URL = "/api/extensions/auth/ragflow-sso/token"
+
+
+def _sso_app(*, user=None, db):
+    """挂**真实 auth router** 的最小 app（ragflow-sso 子路由经 router.include_router
+    注册在 /api/extensions/auth 前缀下——测试因此同时钉住挂载路径）。
+
+    - get_db → 夹具 session（sqlite 真库语义）；
+    - user 给定时才 override get_current_user；None → 真依赖走 Gateway cookie
+      校验 → 401（守卫即被测行为）。
+    - httpx ASGITransport 而非 TestClient：async sqlite 夹具 session 不能被
+      TestClient 的 portal 线程拽进另一个事件循环（test_bid_materials.py 先例）。
+    """
+    from fastapi import FastAPI
+
+    from app.extensions.auth.middleware import get_current_user
+    from app.extensions.auth.routers import router as auth_router
+    from app.extensions.database import get_db
+
+    app = FastAPI()
+    app.include_router(auth_router)
+
+    async def _db():
+        yield db
+
+    app.dependency_overrides[get_db] = _db
+    if user is not None:
+
+        async def _user():
+            return user
+
+        app.dependency_overrides[get_current_user] = _user
+    return app
+
+
+@pytest.mark.anyio
+async def test_login_endpoint_auth_gated(sso_db):
+    """无 Gateway 会话（不 override get_current_user）→ 401。
+
+    401 而非 404 同时证明两件事：路由已注册进 auth router **且** get_current_user
+    守卫生效。/token 同验（同一依赖,一次钉住两个端点的守卫）。"""
+    from httpx import ASGITransport, AsyncClient
+
+    app = _sso_app(user=None, db=sso_db)
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        assert (await client.get(LOGIN_URL)).status_code == 401
+        assert (await client.post(TOKEN_URL)).status_code == 401
+
+
+@pytest.mark.anyio
+async def test_login_redirects_with_auth_param(_fresh_config, monkeypatch, sso_db):
+    """登录态 GET /login → 302 到 {RAGFLOW_BASE_URL}/?auth=<会话 token>
+    （上游 root loader 落地 localStorage 并去参，前端零改动——RAGFlow spec §4）。"""
+    from unittest.mock import AsyncMock
+
+    from httpx import ASGITransport, AsyncClient
+
+    from app.extensions.ragflow_sso import routers
+    from app.extensions.schemas import CurrentUser
+
+    monkeypatch.setenv("RAGFLOW_BASE_URL", "http://ragflow.test:9380")
+    exchange = AsyncMock(return_value="sess-token")
+    monkeypatch.setattr(routers, "exchange_mode_web", exchange)
+
+    user = CurrentUser(
+        id=uuid.UUID("aaa11111-1111-4111-8111-a1111111eeee"),
+        username="admin",
+        email="admin@eai-flow.com",
+        status="active",
+    )
+    app = _sso_app(user=user, db=sso_db)
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        resp = await client.get(LOGIN_URL)  # httpx 默认不跟随重定向——Location 原样断言
+    assert resp.status_code == 302
+    assert resp.headers["location"] == "http://ragflow.test:9380/?auth=sess-token"
+    exchange.assert_awaited_once_with(user)
+
+
+@pytest.mark.anyio
+async def test_token_endpoint_returns_cached_token(_fresh_config, monkeypatch, sso_db):
+    """/token 返回 CLIENT 的**已解析** api_key——本测钉缓存命中路径（RagflowCredential
+    已落库,直接回读）；首签/回退路径由 service 层测试覆盖（get_or_issue_api_token_* /
+    get_client_for_user_*）。SSO secret 必须在场——否则 get_client_for_user 在查库前
+    就走共享 key 回退,测不到缓存。"""
+    from httpx import ASGITransport, AsyncClient
+
+    from app.extensions.ragflow_sso.models import RagflowCredential
+    from app.extensions.schemas import CurrentUser
+
+    monkeypatch.setenv("EAI_SSO_SHARED_SECRET", SECRET)
+    monkeypatch.delenv("RAGFLOW_API_KEY", raising=False)
+    # EAI-CUSTOM: 走库的 user id 必须含 a-f 十六进制字母——SQLite NUMERIC 亲和性陷阱（见上文）
+    uid = uuid.UUID("aaa88888-8888-4888-8888-a8888888eeee")
+    sso_db.add(RagflowCredential(eai_user_id=uid, api_token="cached-token"))
+    await sso_db.commit()
+
+    user = CurrentUser(id=uid, username="ops", email="ops@eai-flow.com", status="active")
+    app = _sso_app(user=user, db=sso_db)
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        resp = await client.post(TOKEN_URL)
+    assert resp.status_code == 200
+    assert resp.json() == {"api_token": "cached-token"}

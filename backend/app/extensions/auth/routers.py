@@ -305,3 +305,8 @@ async def register(request: UserCreate, db: AsyncSession = Depends(get_db)):
 from app.extensions.auth.sso import sso_router  # noqa: E402
 
 router.include_router(sso_router)
+
+# EAI-CUSTOM: RAGFlow SSO（出站交换:免登跳转 + per-user token）
+from app.extensions.ragflow_sso.routers import router as ragflow_sso_router  # noqa: E402
+
+router.include_router(ragflow_sso_router)
