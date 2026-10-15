@@ -17,6 +17,7 @@ import {
 import { type ReactNode, useState } from "react";
 import { toast } from "sonner";
 
+import { FileTypeIcon } from "@/components/file-type-icons";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
@@ -44,7 +45,6 @@ import {
 } from "../api";
 import type { TltTask } from "../types";
 
-import { FileIcon } from "./FileIcon";
 import { StateBadge } from "./StateBadge";
 
 const PAGE_SIZE = 50;
@@ -434,7 +434,10 @@ export function TaskManagementView() {
                       </td>
                       <td className="max-w-64 truncate px-2 py-2">
                         <span className="flex items-center gap-2">
-                          <FileIcon name={t.file_name} />
+                          <FileTypeIcon
+                            name={t.file_name}
+                            className="h-5 w-5 shrink-0"
+                          />
                           <span className="truncate font-medium">
                             {t.file_name}
                           </span>
@@ -510,7 +513,10 @@ export function TaskManagementView() {
           <aside className="bg-card flex w-[420px] shrink-0 flex-col overflow-hidden rounded-lg border shadow-sm">
             {/* 详情头 */}
             <div className="flex items-start gap-2.5 border-b px-4 py-3">
-              <FileIcon name={detail.file_name} className="mt-0.5" />
+              <FileTypeIcon
+                name={detail.file_name}
+                className="mt-0.5 h-5 w-5 shrink-0"
+              />
               <div className="min-w-0 flex-1">
                 <div className="truncate text-sm font-semibold">
                   {detail.file_name}
@@ -622,8 +628,9 @@ export function TaskManagementView() {
                 {detail.deliverable_uri ? (
                   <div className="flex items-center justify-between gap-2 rounded-md border px-3 py-2 text-sm">
                     <span className="flex min-w-0 items-center gap-2">
-                      <FileIcon
+                      <FileTypeIcon
                         name={`${detail.file_name.replace(/\.[^.]+$/, "")}.md`}
+                        className="h-5 w-5 shrink-0"
                       />
                       <span className="truncate">
                         {detail.file_name.replace(/\.[^.]+$/, "")}.zh.md
