@@ -118,8 +118,8 @@ async def resolve_ragflow_client(db: AsyncSession, user) -> RAGFlowClient | None
 
     user 给定 → per-user token 客户端(缓存/交换,失败共享 key 兜底,见
     ragflow_sso.service.get_client_for_user);user 为 None(后台任务/无终端用户
-    上下文)→ 沿用共享 key 工厂(两个 Service 的 _get_ragflow_client 实现相同,
-    统一经 KnowledgeBaseService 入口,保留既有 monkeypatch 语义)。
+    上下文)→ 沿用共享 key 工厂 KnowledgeBaseService._get_ragflow_client
+    (保留既有 monkeypatch 语义)。
     共享 key 与 SSO secret 均未配置 → None,保留工厂"未配置→跳过"语义。
     注意: user 给定且交换失败时 get_client_for_user 会 rollback 会话,请在
     会话有未落库写入之前调用(见 update_kb 的先解析后改属性)。
@@ -562,14 +562,6 @@ class KnowledgeBaseService:
 
 class DocumentService:
     """Document service with RAGFlow integration."""
-
-    @staticmethod
-    def _get_ragflow_client() -> RAGFlowClient | None:
-        """Get RAGFlow client if configured."""
-        config = get_extensions_config()
-        if not config.ragflow.api_key:
-            return None
-        return RAGFlowClient()
 
     @staticmethod
     async def get_doc_by_id(db: AsyncSession, doc_id: UUID) -> Document | None:

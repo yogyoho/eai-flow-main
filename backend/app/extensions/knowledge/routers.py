@@ -452,6 +452,7 @@ async def upload_document(
         await f.write(content)
 
     try:
+        # EAI-CUSTOM: SSO per-user 归属
         doc = await DocumentService.create_doc(
             db,
             kb,
