@@ -66,16 +66,25 @@ async def test_create_dataset_payload_with_permission(capture_http):
         permission="team",
     )
     payload = capture_http["post"]["json"]
+    # v1.0 契约：parse_type=1 + parser_id 映射；description 不进 create（内部两步化）
+    assert payload["parse_type"] == 1
+    assert payload["parser_id"] == "laws"
+    assert "chunk_method" not in payload
+    assert "description" not in payload
     assert payload["permission"] == "team"
-    assert payload["chunk_method"] == "laws"
     assert payload["parser_config"] == {"chunk_token_num": 256}
+    # description 经 create 后 update 补
+    assert capture_http["put"]["json"] == {"description": "d"}
 
 
 @pytest.mark.asyncio
 async def test_create_dataset_permission_none_omitted(capture_http):
     client = RAGFlowClient()
     await client.create_dataset(name="kb-b")
-    assert "permission" not in capture_http["post"]["json"]
+    payload = capture_http["post"]["json"]
+    assert "permission" not in payload
+    assert payload["parse_type"] == 1  # 无 chunk_method 时 parser_id 缺省，parse_type 恒在
+    assert "parser_id" not in payload
 
 
 @pytest.mark.asyncio
@@ -83,7 +92,6 @@ async def test_update_dataset_full_kwargs(capture_http):
     client = RAGFlowClient()
     await client.update_dataset(
         "ds-1",
-        chunk_method="book",
         parser_config={"chunk_token_num": 384},
         language="Chinese",
         pagerank=0,
@@ -91,7 +99,6 @@ async def test_update_dataset_full_kwargs(capture_http):
     )
     payload = capture_http["put"]["json"]
     assert payload == {
-        "chunk_method": "book",
         "parser_config": {"chunk_token_num": 384},
         "language": "Chinese",
         "pagerank": 0,

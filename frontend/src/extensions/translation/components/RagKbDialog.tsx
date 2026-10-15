@@ -297,7 +297,11 @@ export function RagKbDialog({
             </p>
             <div className="grid grid-cols-[110px_1fr] items-center gap-2">
               <span>chunk method</span>
-              <Select value={chunkMethod} onValueChange={setChunkMethod}>
+              <Select
+                value={chunkMethod}
+                onValueChange={setChunkMethod}
+                disabled={!!editing}
+              >
                 <SelectTrigger size="sm" className="w-full">
                   <SelectValue />
                 </SelectTrigger>
@@ -309,6 +313,11 @@ export function RagKbDialog({
                   ))}
                 </SelectContent>
               </Select>
+              {editing && (
+                <span className="text-xs text-muted-foreground">
+                  v1.0 不支持建库后修改分块方法
+                </span>
+              )}
               <span>chunk_token_num</span>
               {numInput(chunkTokenNum, setChunkTokenNum, 1)}
               <span>delimiter</span>

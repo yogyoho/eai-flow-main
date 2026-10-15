@@ -97,6 +97,8 @@ async def test_create_rag_kb_full_params(_engine, monkeypatch):
             resp = await create_rag_kb(body, SimpleNamespace(id=owner), db=db)
             assert resp["ragflow_dataset_id"].startswith("ds-new-")
             assert _RagKbClient.created["permission"] == "team"
+            # routers 层透传 chunk_method（v1.0 parser_id 重映射在真 client 内部，
+            # 由 test_knowledge_client_payload 的 payload 断言覆盖）
             assert _RagKbClient.created["chunk_method"] == "laws"
             assert "language" not in _RagKbClient.created  # create 不收 language
             assert _RagKbClient.updated["language"] == "Chinese"
@@ -153,9 +155,10 @@ async def test_update_and_enable_rag_kb(_engine, monkeypatch):
         try:
             await update_rag_kb(kb1.id, routers.RagKbUpdate(chunk_method="book", pagerank=5), SimpleNamespace(id=owner), db=db)
             assert _RagKbClient.updated["dataset_id"] == "ds-up1"
-            assert _RagKbClient.updated["chunk_method"] == "book"
+            assert _RagKbClient.updated["pagerank"] == 5
+            # chunk_method 会透传到 client 层（v1.0 剔除由 client 负责），PG 摘要仍同步
             await db.refresh(kb1)
-            assert kb1.chunk_method == "book"  # PG 摘要同步
+            assert kb1.chunk_method == "book"  # PG 摘要仍同步（仅本地记录）
             await set_rag_kb_enabled(kb2.id, routers.RagKbEnabled(enabled=True), SimpleNamespace(id=owner), db=db)
             await db.refresh(kb1)
             await db.refresh(kb2)

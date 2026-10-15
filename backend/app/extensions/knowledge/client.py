@@ -63,12 +63,17 @@ class RAGFlowClient:
         raise last_error
 
     async def create_dataset(self, name: str, description: str = "", embedding_model: str | None = None, chunk_method: str | None = None, parser_config: dict | None = None, permission: str | None = None) -> dict:
-        """Create a new dataset in RAGFlow with optional chunking configuration."""
-        payload = {"name": name, "description": description}
+        """Create a new dataset（RAGFlow v1.0 契约，内部两步化——调用方零感知）。
+
+        v1.0 create 只收 name/parse_type/parser_id/permission/embedding_model/parser_config
+        （extra="forbid"）；description 不收 → create 后立即 update 补。
+        chunk_method 映射为 parser_id（parse_type=1 BuiltIn 管道）。
+        """
+        payload: dict = {"name": name, "parse_type": 1}
+        if chunk_method:
+            payload["parser_id"] = chunk_method
         if embedding_model:
             payload["embedding_model"] = embedding_model
-        if chunk_method:
-            payload["chunk_method"] = chunk_method
         if parser_config:
             payload["parser_config"] = parser_config
         if permission:
@@ -87,6 +92,12 @@ class RAGFlowClient:
                 msg = result.get("message", "Unknown RAGFlow error")
                 raise RuntimeError(f"RAGFlow create_dataset failed (code={code}): {msg}")
             dataset_id = result.get("data", {}).get("id")
+            if description and dataset_id:
+                # v1.0 create 不收 description → update 补（失败仅告警，不回滚建库）
+                try:
+                    await self.update_dataset(dataset_id, description=description)
+                except Exception:
+                    logger.warning("create_dataset: description follow-up update failed for %s", dataset_id, exc_info=True)
             logger.info(f"Created RAGFlow dataset: {name} (id={dataset_id}, chunk_method={chunk_method})")
             return result
 
@@ -127,9 +138,10 @@ class RAGFlowClient:
     ) -> dict:
         """Update dataset info（多 RAG 知识库配置编辑通道）。
 
-        部署版 REST（UpdateDatasetReq）接受：name/avatar/description/embedding_model/
-        permission/chunk_method/parser_config/language/pagerank；similarity_threshold /
-        vector_similarity_weight 不支持设置（extra="forbid"）。
+        部署版（ragflow-dev:main ≈ v1.0）update 收：name/avatar/description/
+        embedding_model/permission/language/pagerank/parser_config；chunk_method
+        不支持 post-create 修改（分块属 pipeline 概念），参数仅为签名兼容保留。
+        similarity_threshold / vector_similarity_weight 不可设（extra="forbid"）。
         """
         payload: dict = {}
         # name 沿用真值判断：REST 对 name 有 min_length=1，空串会被 400
@@ -137,8 +149,7 @@ class RAGFlowClient:
             payload["name"] = name
         if description is not None:
             payload["description"] = description
-        if chunk_method:
-            payload["chunk_method"] = chunk_method
+        # chunk_method 参数保留签名兼容但 v1.0 不入 payload：post-create 改分块=改 pipeline（非字段）
         if parser_config is not None:
             payload["parser_config"] = parser_config
         if permission:
@@ -431,7 +442,12 @@ class RAGFlowClient:
                     types = m.get("model_type") or []
                     types = types if isinstance(types, list) else [types]
                     if "embedding" in types and m.get("enable", True):
-                        models.append(f"{m.get('name') or m.get('model_name')}@{m.get('provider_name') or m.get('model_provider')}")
+                        base = m.get("name") or m.get("model_name")
+                        # v1.0 租户绑定格式 = name@instance_name@provider_name（三段）；
+                        # 旧版无 instance_name 时回落 name@provider_name 两段
+                        instance = m.get("instance_name")
+                        provider = m.get("provider_name") or m.get("model_provider")
+                        models.append(f"{base}@{instance}@{provider}" if instance else f"{base}@{provider}")
                 return models
         except Exception as e:
             logger.warning(f"Failed to list RAGFlow embedding models: {e}")
