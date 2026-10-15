@@ -28,6 +28,7 @@ import React, {
   useState,
 } from "react";
 
+import { FileTypeIcon } from "@/components/file-type-icons";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -615,11 +616,10 @@ export function KnowledgeBaseDetail({
                       </td>
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-2">
-                          <div className="bg-primary text-primary-foreground flex h-6 w-6 shrink-0 items-center justify-center rounded">
-                            <span className="text-[10px] leading-none font-bold">
-                              {doc.file_type?.toUpperCase().slice(0, 1) ?? "F"}
-                            </span>
-                          </div>
+                          <FileTypeIcon
+                            name={doc.name ?? ""}
+                            className="h-6 w-6 shrink-0 drop-shadow-sm"
+                          />
                           <div className="min-w-0">
                             <span className="text-foreground block truncate">
                               {doc.name}
