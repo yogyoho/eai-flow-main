@@ -48,10 +48,6 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
-import {
-  WindowsFolder,
-  WindowsFolderOpen,
-} from "@/extensions/translation/components/FolderIcons";
 import { cn } from "@/lib/utils";
 
 import { libraryApi } from "../api";
@@ -62,6 +58,7 @@ import {
 } from "../hooks";
 import type { CpaLibraryFile } from "../types";
 
+import { FileTypeIcon, FolderIcon } from "./FileTypeIcons";
 import {
   buildFolderTree,
   pathOf,
@@ -69,30 +66,6 @@ import {
   type FolderNode,
 } from "./library-tree";
 import { PageHeader } from "./PageHeader";
-
-const FILE_TYPES: Record<string, { bg: string; letter: string }> = {
-  pdf: { bg: "#B30B00", letter: "A" },
-  docx: { bg: "#2B579A", letter: "W" },
-  doc: { bg: "#2B579A", letter: "W" },
-};
-
-function FileBadge({ name }: { name: string }) {
-  const t = FILE_TYPES[name.split(".").pop()?.toLowerCase() ?? ""] ?? {
-    bg: "#8A8F98",
-    letter: "F",
-  };
-  return (
-    <span
-      aria-hidden
-      className="inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-[5px] shadow-sm"
-      style={{ backgroundColor: t.bg }}
-    >
-      <span className="text-[10px] leading-none font-bold text-white">
-        {t.letter}
-      </span>
-    </span>
-  );
-}
 
 function StatusBadge({ status }: { status: string }) {
   const map: Record<
@@ -377,11 +350,7 @@ export function LibraryView() {
             ) : (
               <span className="w-3 shrink-0" />
             )}
-            {hasChildren && isOpen ? (
-              <WindowsFolderOpen className="h-3.5 w-3.5 shrink-0 drop-shadow-sm" />
-            ) : (
-              <WindowsFolder className="h-3.5 w-3.5 shrink-0 drop-shadow-sm" />
-            )}
+            <FolderIcon className="h-3.5 w-3.5 shrink-0 drop-shadow-sm" />
             <span className="truncate">{n.name}</span>
             <span className="ml-auto opacity-0 transition-opacity group-hover:opacity-100">
               <DropdownMenu>
@@ -578,7 +547,7 @@ export function LibraryView() {
               }}
             >
               <ChevronRight className="text-muted-foreground h-3 w-3 shrink-0 rotate-90" />
-              <WindowsFolderOpen className="h-3.5 w-3.5 shrink-0 drop-shadow-sm" />
+              <FolderIcon className="h-3.5 w-3.5 shrink-0 drop-shadow-sm" />
               <span>文件库</span>
               <span className="ml-auto opacity-0 transition-opacity group-hover:opacity-100">
                 <FolderPlus
@@ -674,7 +643,7 @@ export function LibraryView() {
                       <td className="px-2 py-2" />
                       <td className="min-w-0 px-2 py-2">
                         <div className="flex items-center gap-2.5">
-                          <WindowsFolder className="h-5 w-5 shrink-0 drop-shadow-sm" />
+                          <FolderIcon className="h-5 w-5 shrink-0 drop-shadow-sm" />
                           <div className="truncate text-sm">{d.name}</div>
                         </div>
                       </td>
@@ -708,7 +677,10 @@ export function LibraryView() {
                       </td>
                       <td className="min-w-0 px-2 py-2">
                         <div className="flex items-center gap-2.5">
-                          <FileBadge name={f.file_name} />
+                          <FileTypeIcon
+                            name={f.file_name}
+                            className="h-5 w-5 shrink-0 drop-shadow-sm"
+                          />
                           <div className="truncate text-sm">{f.file_name}</div>
                         </div>
                       </td>
@@ -858,7 +830,10 @@ export function LibraryView() {
                     key={rel}
                     className="flex items-center gap-2 rounded-md border px-2 py-1.5 text-sm"
                   >
-                    <FileBadge name={f.name} />
+                    <FileTypeIcon
+                      name={f.name}
+                      className="h-5 w-5 shrink-0 drop-shadow-sm"
+                    />
                     <span className="min-w-0 flex-1 truncate">{rel}</span>
                     <span className="text-muted-foreground text-xs">
                       {fmtSize(f.size)}
