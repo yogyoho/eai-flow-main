@@ -70,8 +70,8 @@ class RAGFlowClient:
         chunk_method 映射为 parser_id（parse_type=1 BuiltIn 管道）。
         """
         payload: dict = {"name": name, "parse_type": 1}
-        if chunk_method:
-            payload["parser_id"] = chunk_method
+        # v1.0 BuiltIn 管道必须显式 parser_id（缺省 naive，同 0.27 语义）
+        payload["parser_id"] = chunk_method or "naive"
         if embedding_model:
             payload["embedding_model"] = embedding_model
         if parser_config:

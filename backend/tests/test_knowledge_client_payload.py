@@ -83,8 +83,9 @@ async def test_create_dataset_permission_none_omitted(capture_http):
     await client.create_dataset(name="kb-b")
     payload = capture_http["post"]["json"]
     assert "permission" not in payload
-    assert payload["parse_type"] == 1  # 无 chunk_method 时 parser_id 缺省，parse_type 恒在
-    assert "parser_id" not in payload
+    # v1.0 BuiltIn 必须显式 parser_id：缺省 naive（服务端兜底不变量）
+    assert payload["parse_type"] == 1
+    assert payload["parser_id"] == "naive"
 
 
 @pytest.mark.asyncio

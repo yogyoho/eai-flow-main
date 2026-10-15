@@ -92,6 +92,7 @@ export function SettingsView() {
         name: "翻译资产库",
         description: "翻译工作台检索知识库（默认）",
         language: "Chinese",
+        chunk_method: "naive",
       });
       window.localStorage.setItem(DEFAULT_KB_KEY, created.id);
       refresh();
