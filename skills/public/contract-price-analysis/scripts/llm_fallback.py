@@ -88,7 +88,7 @@ def _column_samples(rows, header_rows, per_col=2, max_cols=_MAX_SAMPLE_COLS):
     return samples
 
 
-def annotate_roles(header_texts, sample_cols, base_url, api_key, model, timeout=30.0):
+def annotate_roles(header_texts, sample_cols, base_url, api_key, model, timeout=60.0):
     """表头合并文本+每列≤2样本 → {列索引: ROLE_ENUM} | None。
 
     httpx.post(f"{base_url}/chat/completions", temperature=0, max_tokens=500)。
@@ -109,7 +109,7 @@ def annotate_roles(header_texts, sample_cols, base_url, api_key, model, timeout=
                 json={
                     "model": model,
                     "temperature": 0,
-                    "max_tokens": 500,
+                    "max_tokens": 4000,
                     "messages": [
                         {"role": "system", "content": _SYSTEM_PROMPT},
                         {"role": "user", "content": json.dumps(payload, ensure_ascii=False)},
@@ -172,7 +172,7 @@ def try_llm_fallback(table, seeds, doc_uri, llm_cfg, page_texts=None, cat_in=Non
             llm_cfg["base_url"],
             llm_cfg.get("api_key"),
             llm_cfg["model"],
-            timeout=float(llm_cfg.get("timeout", 30.0)),
+            timeout=float(llm_cfg.get("timeout", 60.0)),
         )
         if roles_idx is None:
             return None, None, {}
