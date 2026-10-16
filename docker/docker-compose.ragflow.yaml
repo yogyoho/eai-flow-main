@@ -51,6 +51,9 @@ services:
       # endpoint only registers when this is set, so the v0.27.x image is
       # unaffected if you roll back.
       - EAI_SSO_SHARED_SECRET=${EAI_SSO_SHARED_SECRET:?set EAI_SSO_SHARED_SECRET in .env}
+      # v1.1 shared tenants: every SSO-provisioned user joins these tenant ids
+      # as role=normal (comma-separated; empty = feature off).
+      - EAI_SSO_SHARED_TENANT_IDS=${EAI_SSO_SHARED_TENANT_IDS:-}
       # pisuan-custom end
       - MINIO_HOST=ragflow-minio
       - MINIO_USER=${MINIO_ACCESS_KEY:-minioadmin}
