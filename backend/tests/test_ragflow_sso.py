@@ -26,24 +26,39 @@ def _fresh_config(monkeypatch):
 
 @pytest.fixture
 async def sso_db(tmp_path):
-    """In-SQLite async session over the ragflow_credentials table only.
+    """In-SQLite async session over ragflow_credentials + users (+其 FK 目标表).
 
-    The users table cannot be created on SQLite (its tags column is a PG ARRAY
-    that the SQLite compiler rejects), and the service only reads
-    user.id/user.username off a namespace, so the FK target is left absent
-    (SQLite does not enforce FKs without the pragma). Importing
-    app.extensions.models registers users into the shared metadata so the FK
-    resolves; the table-subset create_all mirrors test_auth.py's
-    ``tables=[...]`` pattern.
+    users/departments/roles carry PG-only column types (ARRAY / JSONB) that the
+    SQLite DDL compiler cannot render, so a create_all over the shared metadata
+    fails outright — this is why test_user_preferences.py's plain create_all is
+    NOT mirrorable here: its UserRow belongs to deerflow.persistence Base (a
+    different registry whose users model has no PG-only types). Mechanism used:
+    clone the three tables into an isolated MetaData and swap the PG-only types
+    to JSON on the CLONE only — prod models untouched; same trick the repo
+    already applies on real models via eia_samples/models.py's
+    ``JSONB().with_variant(JSON(), "sqlite")``. SQLite does not enforce FKs
+    without the pragma, so the cloned FKs resolve for DDL and stay inert.
+    The table-subset create_all mirrors test_auth.py's ``tables=[...]`` pattern.
     """
+    from sqlalchemy import JSON, MetaData
+    from sqlalchemy.dialects.postgresql import ARRAY, JSONB
     from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 
-    import app.extensions.models  # noqa: F401  — 注册 users 表进共享 metadata 供 FK 解析（只 import，不建表）
+    from app.extensions.models import Department, Role, User
     from app.extensions.ragflow_sso.models import RagflowCredential
+
+    users_meta = MetaData()
+    tables = []
+    for source in (Department.__table__, Role.__table__, User.__table__):
+        clone = source.to_metadata(users_meta)
+        for column in clone.columns:
+            if isinstance(column.type, (ARRAY, JSONB)):
+                column.type = JSON()
+        tables.append(clone)
 
     engine = create_async_engine(f"sqlite+aiosqlite:///{tmp_path / 'ragflow_sso.db'}")
     async with engine.begin() as conn:
-        await conn.run_sync(RagflowCredential.metadata.create_all, tables=[RagflowCredential.__table__])
+        await conn.run_sync(users_meta.create_all, tables=tables + [RagflowCredential.__table__])
     factory = async_sessionmaker(engine, expire_on_commit=False)
     async with factory() as session:
         yield session
@@ -318,6 +333,51 @@ async def test_get_client_for_user_rollback_keeps_session_usable(_fresh_config, 
     assert isinstance(client, RAGFlowClient)
     assert client.api_key == ""  # shared-key fallback
     assert (await sso_db.execute(select(1))).scalar() == 1  # same session still usable
+
+
+# ── service: shared-tenant 服务身份（EAI-CUSTOM v1.1 共享租户修正案 Task 2）──
+
+
+@pytest.mark.anyio
+async def test_get_service_client_creates_identity_and_binds_token(_fresh_config, monkeypatch, sso_db):
+    """首次调用:自动建 ragflow-service 扩展用户 → 交换 → 返回绑定其 token 的客户端。"""
+    from unittest.mock import AsyncMock
+
+    import httpx
+    from sqlalchemy import select
+
+    from app.extensions.models import User
+    from app.extensions.ragflow_sso import service
+
+    monkeypatch.setenv("EAI_SSO_SHARED_SECRET", SECRET)
+    calls = {"n": 0}
+
+    async def fake_request(method, url, **kwargs):
+        calls["n"] += 1
+        return httpx.Response(200, json={"code": 0, "data": {"api_token": "ragflow-service-token"}}, request=httpx.Request("POST", url))
+
+    monkeypatch.setattr(service, "_exchange_request", AsyncMock(side_effect=fake_request))
+
+    client = await service.get_service_client(sso_db)
+    assert client.api_key == "ragflow-service-token"
+
+    row = (await sso_db.execute(select(User).where(User.username == "ragflow-service"))).scalar_one()
+    assert row.email == "ragflow-service@eai.internal"
+
+    # 第二次调用:缓存命中,零 HTTP
+    client2 = await service.get_service_client(sso_db)
+    assert client2.api_key == "ragflow-service-token"
+    assert calls["n"] == 1
+
+
+@pytest.mark.anyio
+async def test_get_service_client_requires_secret(_fresh_config, monkeypatch, sso_db):
+    """服务身份不降级:密钥未配置 → RuntimeError 向上抛(生命周期必须响亮失败)。"""
+    from app.extensions.ragflow_sso import service
+
+    monkeypatch.delenv("EAI_SSO_SHARED_SECRET", raising=False)
+    with pytest.raises(RuntimeError):
+        await service.get_service_client(sso_db)
 
 
 # ── routers: /ragflow-sso/login 302 + /token per-user ──

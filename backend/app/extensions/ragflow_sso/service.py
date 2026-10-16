@@ -1,7 +1,9 @@
-"""EAI-CUSTOM: RAGFlow SSO — JWT minting + exchange client + per-user credentials — 本地定制,非上游."""
+"""EAI-CUSTOM: RAGFlow SSO — JWT minting + exchange client + per-user credentials
++ shared-tenant 服务身份 — 本地定制,非上游."""
 
 import logging
 import time
+import uuid
 
 import httpx
 import jwt
@@ -126,3 +128,51 @@ async def get_client_for_user(db: AsyncSession, user):
             user.id,
         )
         return RAGFlowClient()
+
+
+# ── EAI-CUSTOM (v1.1 共享租户修正案 Task 2): 服务身份 ──
+# EAI 托管 KB 必须由同一个固定 RAGFlow 账号创建(全部落在同一租户、permission=team、
+# 加入租户的 SSO 用户均可用)。服务身份 = 扩展库 User 行,首用自动建;其 RAGFlow
+# 侧账号 sso-<service-user-uuid>@eai.internal 由 RAGFlow EnsureSSOUser 在交换时落库。
+SERVICE_USERNAME = "ragflow-service"
+SERVICE_EMAIL = "ragflow-service@eai.internal"
+
+
+async def _get_or_create_service_user(db: AsyncSession):
+    """服务身份首用自动建。get-or-create 与 RAGFlow 侧 EnsureSSOUser 同样存在
+    并发首建竞态——由 users.username/email 唯一约束收口(败者撞 IntegrityError
+    后重查即得胜者行;此处不展开自愈,与 get_or_issue_api_token 的先例一致)。"""
+    from app.extensions.auth.jwt import hash_password
+    from app.extensions.models import User
+
+    result = await db.execute(select(User).where(User.username == SERVICE_USERNAME))
+    user = result.scalar_one_or_none()
+    if user is not None:
+        return user
+
+    user = User(
+        username=SERVICE_USERNAME,
+        email=SERVICE_EMAIL,
+        # 不可登录:哈希的是一次性随机串(镜像 sso_provision.go 的 unusable-password
+        # 模式)——该账号仅用于铸造 mode=api 交换,永不走密码登录。
+        password_hash=hash_password(uuid.uuid4().hex),
+    )
+    db.add(user)
+    await db.commit()
+    await db.refresh(user)
+    return user
+
+
+async def get_service_client(db: AsyncSession):
+    """共享租户 KB 生命周期专用客户端:绑定服务身份的 per-user token。
+
+    不降级——SSO 未配置时 RuntimeError 直接上抛(与 get_client_for_user 的读取
+    降级不同):生命周期必须响亮失败,绝不静默落回共享 key。"""
+    cfg = get_extensions_config()
+    if not cfg.ragflow.sso_secret:
+        raise RuntimeError("EAI_SSO_SHARED_SECRET not configured")
+    service_user = await _get_or_create_service_user(db)
+    api_key = await get_or_issue_api_token(db, service_user)
+    from app.extensions.knowledge.client import RAGFlowClient
+
+    return RAGFlowClient(api_key=api_key)
