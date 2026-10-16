@@ -40,15 +40,18 @@ def _mock_db(dept_rows):
     return db
 
 
-def _stub_ragflow(monkeypatch):
-    monkeypatch.setattr(KnowledgeBaseService, "_get_ragflow_client", staticmethod(lambda: None))
+def _stub_service_client(monkeypatch):
+    """EAI-CUSTOM (SSO v1.1 §3.3): WRITE 路径解析改走服务身份(get_service_client)——
+    本文件钉的是 dept 兜底语义,RAGFlow 交互整体桩掉(is_available=False → 跳过同步)。"""
+    stub = SimpleNamespace(is_available=AsyncMock(return_value=False))
+    monkeypatch.setattr("app.extensions.knowledge.service.get_service_client", AsyncMock(return_value=stub))
 
 
 @pytest.mark.asyncio
 async def test_create_dept_kb_backfills_allowed_depts_from_owner(monkeypatch):
     """access_type='dept' + no allowed_depts → backfill owner's department ids."""
     monkeypatch.setattr("app.extensions.knowledge.service.get_extensions_config", _stub_config)
-    _stub_ragflow(monkeypatch)
+    _stub_service_client(monkeypatch)
 
     owner_id = uuid.uuid4()
     d1, d2 = uuid.uuid4(), uuid.uuid4()
@@ -65,7 +68,7 @@ async def test_create_dept_kb_backfills_allowed_depts_from_owner(monkeypatch):
 async def test_create_dept_kb_keeps_explicit_allowed_depts(monkeypatch):
     """Explicit allowed_depts must win — owner departments are NOT consulted."""
     monkeypatch.setattr("app.extensions.knowledge.service.get_extensions_config", _stub_config)
-    _stub_ragflow(monkeypatch)
+    _stub_service_client(monkeypatch)
 
     db = _mock_db([(uuid.uuid4(),)])  # would pollute if backfill ran
     explicit = [uuid.uuid4()]
@@ -79,6 +82,9 @@ async def test_create_dept_kb_keeps_explicit_allowed_depts(monkeypatch):
 @pytest.mark.asyncio
 async def test_update_kb_to_dept_backfills_when_missing(monkeypatch):
     """Switching access_type to 'dept' without allowed_depts backfills from owner."""
+    monkeypatch.setattr("app.extensions.knowledge.service.get_extensions_config", _stub_config)
+    _stub_service_client(monkeypatch)
+
     d1, d2 = uuid.uuid4(), uuid.uuid4()
     db = _mock_db([(d1,), (d2,)])
     kb = KnowledgeBase(name="x", owner_id=uuid.uuid4(), access_type="private", allowed_depts=None)

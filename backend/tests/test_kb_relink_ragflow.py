@@ -41,7 +41,8 @@ def _stub_config(monkeypatch, base_path="."):
 
 
 def _stub_client(monkeypatch, client):
-    monkeypatch.setattr(KnowledgeBaseService, "_get_ragflow_client", staticmethod(lambda: client))
+    """EAI-CUSTOM (SSO v1.1 §3.3): WRITE 路径解析走服务身份——桩 get_service_client。"""
+    monkeypatch.setattr("app.extensions.knowledge.service.get_service_client", AsyncMock(return_value=client))
 
 
 def _client(*, available=True, dataset_id="ds-new", embedding_models=("embed-x",)):
@@ -97,13 +98,18 @@ async def test_relink_already_linked_never_recreates_dataset(monkeypatch, tmp_pa
 
 
 @pytest.mark.asyncio
-async def test_relink_without_client_reports_error(monkeypatch):
-    _stub_client(monkeypatch, None)
+async def test_relink_unconfigured_sso_raises_loudly(monkeypatch):
+    """EAI-CUSTOM (SSO v1.1 §3.3): 服务身份解析失败(未配置 SSO)→ RuntimeError 响亮
+    上抛,不再走 error-dict 降级;dataset id 保持 NULL(修复通道不降级)。"""
+
+    async def _no_service(db):
+        raise RuntimeError("EAI_SSO_SHARED_SECRET not configured")
+
+    monkeypatch.setattr("app.extensions.knowledge.service.get_service_client", _no_service)
     kb = _orphan_kb()
 
-    result = await KnowledgeBaseService.relink_ragflow(_mock_db(), kb)
-
-    assert result["status"] == "error"
+    with pytest.raises(RuntimeError, match="EAI_SSO_SHARED_SECRET"):
+        await KnowledgeBaseService.relink_ragflow(_mock_db(), kb)
     assert kb.ragflow_dataset_id is None
 
 
@@ -142,6 +148,7 @@ async def test_relink_creates_dataset_and_writes_back_id(monkeypatch):
         embedding_model="embed-x",
         chunk_method=None,
         parser_config=None,
+        permission="team",  # EAI-CUSTOM: 共享租户全员可用,spec §3.3 v1.1
     )
 
 

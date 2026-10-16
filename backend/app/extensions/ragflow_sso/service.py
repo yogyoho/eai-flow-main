@@ -139,9 +139,9 @@ SERVICE_EMAIL = "ragflow-service@eai.internal"
 
 
 async def _get_or_create_service_user(db: AsyncSession):
-    """服务身份首用自动建。get-or-create 与 RAGFlow 侧 EnsureSSOUser 同样存在
-    并发首建竞态——由 users.username/email 唯一约束收口(败者撞 IntegrityError
-    后重查即得胜者行;此处不展开自愈,与 get_or_issue_api_token 的先例一致)。"""
+    """服务身份首用自动建。并发首建竞态与 get_or_issue_api_token 同解:
+    users.username/email 唯一约束兜底,败者撞 IntegrityError → 回滚 → 重查胜者行
+    (自愈返回,不向上抛)。"""
     from app.extensions.auth.jwt import hash_password
     from app.extensions.models import User
 
@@ -157,8 +157,14 @@ async def _get_or_create_service_user(db: AsyncSession):
         # 模式)——该账号仅用于铸造 mode=api 交换,永不走密码登录。
         password_hash=hash_password(uuid.uuid4().hex),
     )
-    db.add(user)
-    await db.commit()
+    try:
+        db.add(user)
+        await db.commit()
+    except IntegrityError:
+        # 并发首建竞态:唯一约束兜底,回滚后重查胜者行(同 get_or_issue_api_token 先例)
+        await db.rollback()
+        result = await db.execute(select(User).where(User.username == SERVICE_USERNAME))
+        user = result.scalar_one()
     await db.refresh(user)
     return user
 

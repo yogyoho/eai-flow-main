@@ -13,8 +13,9 @@ from app.extensions.config import get_extensions_config
 from app.extensions.database import AsyncSession
 from app.extensions.models import Document, KnowledgeBase, UserDepartment
 
-# EAI-CUSTOM (SSO Plan 2): 终端用户请求路径的 RAGFlow 客户端按 per-user token 解析
-from app.extensions.ragflow_sso.service import get_client_for_user
+# EAI-CUSTOM (SSO Plan 2): READ 路径的 RAGFlow 客户端按 per-user token 解析
+# EAI-CUSTOM (SSO v1.1 §3.3): KB 生命周期 WRITE 路径统一走服务身份客户端
+from app.extensions.ragflow_sso.service import get_client_for_user, get_service_client
 from app.extensions.schemas import (
     DocumentResponse,
     DocumentStatus,
@@ -114,18 +115,16 @@ def resolve_local_doc_path(base_path: str, file_path: str) -> Path | None:
 
 
 async def resolve_ragflow_client(db: AsyncSession, user) -> RAGFlowClient | None:
-    """EAI-CUSTOM (SSO Plan 2): 终端用户请求路径的 RAGFlow 客户端解析。
+    """EAI-CUSTOM (SSO Plan 2): READ 路径(list_documents 状态轮询门)的 per-user
+    客户端解析。
 
-    user 给定 → per-user token 客户端(缓存/交换,失败共享 key 兜底,见
-    ragflow_sso.service.get_client_for_user);user 为 None(后台任务/无终端用户
-    上下文)→ 沿用共享 key 工厂 KnowledgeBaseService._get_ragflow_client
-    (保留既有 monkeypatch 语义)。
-    共享 key 与 SSO secret 均未配置 → None,保留工厂"未配置→跳过"语义。
-    注意: user 给定且交换失败时 get_client_for_user 会 rollback 会话,请在
-    会话有未落库写入之前调用(见 update_kb 的先解析后改属性)。
+    共享 key 与 SSO secret 均未配置 → None(轮询门跳过);否则 per-user token
+    客户端(缓存/交换,失败共享 key 兜底,见 ragflow_sso.service.get_client_for_user)。
+    KB 生命周期 WRITE 路径不走本函数 —— v1.1 §3.3 起统一走服务身份
+    (get_service_client,不降级)。
+    注意: 交换失败时 get_client_for_user 会 rollback 会话,请在会话有未落库写入
+    之前调用。
     """
-    if user is None:
-        return KnowledgeBaseService._get_ragflow_client()
     config = get_extensions_config()
     if not config.ragflow.api_key and not config.ragflow.sso_secret:
         return None
@@ -134,15 +133,6 @@ async def resolve_ragflow_client(db: AsyncSession, user) -> RAGFlowClient | None
 
 class KnowledgeBaseService:
     """Knowledge base service with RAGFlow integration."""
-
-    @staticmethod
-    def _get_ragflow_client() -> RAGFlowClient | None:
-        """Get RAGFlow client if configured."""
-        config = get_extensions_config()
-        if not config.ragflow.api_key:
-            logger.warning("RAGFlow API key not configured")
-            return None
-        return RAGFlowClient()
 
     @staticmethod
     async def get_kb_by_id(db: AsyncSession, kb_id: UUID) -> KnowledgeBase | None:
@@ -205,7 +195,7 @@ class KnowledgeBaseService:
         return list(kbs), total
 
     @staticmethod
-    async def create_kb(db: AsyncSession, owner_id: UUID, data: KnowledgeBaseCreate, user=None) -> KnowledgeBase:
+    async def create_kb(db: AsyncSession, owner_id: UUID, data: KnowledgeBaseCreate) -> KnowledgeBase:
         # EAI-CUSTOM (bug-1134): 部门可见知识库若未显式指定 allowed_depts，兜底填入 owner
         # 的全部部门（user_departments）。否则 datascope 规则 `allowed_depts OVERLAP
         # $identity.dept_ids` 命中 NULL（PG: NULL && array → NULL，假），知识库管理页创建的
@@ -230,34 +220,36 @@ class KnowledgeBaseService:
             language=data.language,
         )
 
-        # EAI-CUSTOM (SSO Plan 2): 终端用户建库 → per-user 客户端(共享 key 兜底);无用户路径沿用共享 key 工厂
-        rf_client = await resolve_ragflow_client(db, user)
-        if rf_client:
-            try:
-                if await rf_client.is_available():
-                    embed_model = data.embedding_model
-                    if not embed_model and data.kb_type == "ragflow":
-                        available = await rf_client.list_available_embedding_models()
-                        if available:
-                            embed_model = available[0]
-                            kb.embedding_model = embed_model
-                            logger.info(f"Auto-selected embedding model: {embed_model}")
+        # EAI-CUSTOM (SSO v1.1 §3.3): 建库走服务身份客户端(dataset 归共享服务租户)。
+        # 解析在 try 之外——SSO 未配置时 RuntimeError 必须响亮上抛,不被下方
+        # "Continuing without sync" 吞掉(生命周期不降级);RAGFlow 不可用仍按既有语义跳过。
+        rf_client = await get_service_client(db)
+        try:
+            if await rf_client.is_available():
+                embed_model = data.embedding_model
+                if not embed_model and data.kb_type == "ragflow":
+                    available = await rf_client.list_available_embedding_models()
+                    if available:
+                        embed_model = available[0]
+                        kb.embedding_model = embed_model
+                        logger.info(f"Auto-selected embedding model: {embed_model}")
 
-                    rf_result = await rf_client.create_dataset(
-                        name=data.name,
-                        description=data.description or "",
-                        embedding_model=embed_model,
-                        chunk_method=data.chunk_method,
-                        parser_config=data.parser_config,
-                    )
-                    rf_dataset_id = rf_result.get("data", {}).get("id")
-                    if rf_dataset_id:
-                        kb.ragflow_dataset_id = rf_dataset_id
-                        logger.info(f"Created RAGFlow dataset: {rf_dataset_id}")
-                else:
-                    logger.warning("RAGFlow service unavailable, skipping sync")
-            except Exception as e:
-                logger.warning(f"Failed to sync to RAGFlow: {e}. Continuing without sync.")
+                rf_result = await rf_client.create_dataset(
+                    name=data.name,
+                    description=data.description or "",
+                    embedding_model=embed_model,
+                    chunk_method=data.chunk_method,
+                    parser_config=data.parser_config,
+                    permission="team",  # EAI-CUSTOM: 共享租户全员可用,spec §3.3 v1.1
+                )
+                rf_dataset_id = rf_result.get("data", {}).get("id")
+                if rf_dataset_id:
+                    kb.ragflow_dataset_id = rf_dataset_id
+                    logger.info(f"Created RAGFlow dataset: {rf_dataset_id}")
+            else:
+                logger.warning("RAGFlow service unavailable, skipping sync")
+        except Exception as e:
+            logger.warning(f"Failed to sync to RAGFlow: {e}. Continuing without sync.")
 
         db.add(kb)
         await db.commit()
@@ -271,10 +263,10 @@ class KnowledgeBaseService:
         return kb
 
     @staticmethod
-    async def update_kb(db: AsyncSession, kb: KnowledgeBase, data: KnowledgeBaseUpdate, user=None) -> KnowledgeBase:
-        # EAI-CUSTOM (SSO Plan 2): per-user 客户端在写 kb 属性前解析 —— get_client_for_user
-        # 失败回退会 rollback 会话,先解析避免回滚掉本次变更;无用户路径沿用共享 key 工厂
-        rf_client = await resolve_ragflow_client(db, user)
+    async def update_kb(db: AsyncSession, kb: KnowledgeBase, data: KnowledgeBaseUpdate) -> KnowledgeBase:
+        # EAI-CUSTOM (SSO v1.1 §3.3): 服务身份客户端保持"先解析后改属性"——解析失败
+        # 响亮上抛时本次变更不落库(SSO 未配置 → RuntimeError,不降级)。
+        rf_client = await get_service_client(db)
         if data.name is not None:
             kb.name = data.name
         if data.description is not None:
@@ -304,17 +296,16 @@ class KnowledgeBaseService:
             kb.allowed_depts = [row[0] for row in dept_rows.all()]
 
         if kb.ragflow_dataset_id:
-            if rf_client:
-                try:
-                    await rf_client.update_dataset(
-                        dataset_id=kb.ragflow_dataset_id,
-                        name=kb.name,
-                        description=kb.description,
-                        chunk_method=data.chunk_method if data.chunk_method else None,
-                        parser_config=data.parser_config if data.parser_config else None,
-                    )
-                except Exception as e:
-                    logger.warning(f"Failed to update RAGFlow dataset: {e}")
+            try:
+                await rf_client.update_dataset(
+                    dataset_id=kb.ragflow_dataset_id,
+                    name=kb.name,
+                    description=kb.description,
+                    chunk_method=data.chunk_method if data.chunk_method else None,
+                    parser_config=data.parser_config if data.parser_config else None,
+                )
+            except Exception as e:
+                logger.warning(f"Failed to update RAGFlow dataset: {e}")
 
         await db.commit()
         await db.refresh(kb)
@@ -331,35 +322,35 @@ class KnowledgeBaseService:
         return KnowledgeBaseService.to_response(kb)
 
     @staticmethod
-    async def delete_kb(db: AsyncSession, kb: KnowledgeBase, user=None) -> None:
+    async def delete_kb(db: AsyncSession, kb: KnowledgeBase) -> None:
         config = get_extensions_config()
+        # EAI-CUSTOM (SSO v1.1 §3.3): 服务身份客户端解析先于 rmtree —— 解析失败响亮
+        # 上抛时不得留下"文件已删、行还在"的半删状态;RAGFlow 删除失败仍按既有语义吞掉。
+        rf_client = await get_service_client(db) if kb.ragflow_dataset_id else None
         if config.storage.type.lower() == "local" or config.storage.retain_local_copy:
             kb_path = Path(config.storage.base_path) / str(kb.owner_id) / "knowledge" / str(kb.id)
             if kb_path.exists():
                 shutil.rmtree(kb_path)
 
         if kb.ragflow_dataset_id:
-            # EAI-CUSTOM (SSO Plan 2): 终端用户删库 → per-user 客户端(共享 key 兜底);无用户路径沿用共享 key 工厂
-            rf_client = await resolve_ragflow_client(db, user)
-            if rf_client:
-                try:
-                    await rf_client.delete_dataset(kb.ragflow_dataset_id)
-                    logger.info(f"Deleted RAGFlow dataset: {kb.ragflow_dataset_id}")
-                except Exception as e:
-                    logger.warning(f"Failed to delete RAGFlow dataset: {e}")
+            try:
+                await rf_client.delete_dataset(kb.ragflow_dataset_id)
+                logger.info(f"Deleted RAGFlow dataset: {kb.ragflow_dataset_id}")
+            except Exception as e:
+                logger.warning(f"Failed to delete RAGFlow dataset: {e}")
 
         await db.execute(sql_delete(Document).where(Document.knowledge_base_id == kb.id))
         await db.delete(kb)
         await db.commit()
 
     @staticmethod
-    async def sync_kb_status(db: AsyncSession, kb: KnowledgeBase, user=None) -> dict:
+    async def sync_kb_status(db: AsyncSession, kb: KnowledgeBase) -> dict:
         """Sync knowledge base status from RAGFlow."""
         if not kb.ragflow_dataset_id:
             return {"status": "not_synced", "message": "Not synced to RAGFlow"}
 
-        # EAI-CUSTOM (SSO Plan 2): 终端用户轮询 → per-user 客户端(共享 key 兜底);无用户路径沿用共享 key 工厂
-        rf_client = await resolve_ragflow_client(db, user)
+        # EAI-CUSTOM (SSO v1.1 §3.3): dataset 归服务租户所有,状态轮询按服务身份读。
+        rf_client = await get_service_client(db)
         if not rf_client:
             return {"status": "error", "message": "RAGFlow not configured"}
 
@@ -382,7 +373,6 @@ class KnowledgeBaseService:
         *,
         include_documents: bool = True,
         embedding_model_override: str | None = None,
-        user=None,
     ) -> dict:
         """EAI-CUSTOM (bug-3307): 为孤儿 KB(ragflow_dataset_id IS NULL)补建 RAGFlow dataset 并回写 id。
 
@@ -407,10 +397,9 @@ class KnowledgeBaseService:
                 "documents_skipped": 0,
             }
         else:
-            # EAI-CUSTOM (SSO Plan 2): 修复通道按终端用户身份补链(per-user token,共享 key 兜底);无用户路径沿用共享 key 工厂
-            rf_client = await resolve_ragflow_client(db, user)
-            if not rf_client:
-                return {"status": "error", "message": "RAGFlow not configured"}
+            # EAI-CUSTOM (SSO v1.1 §3.3): 修复通道走服务身份(补建的 dataset 必须落共享
+            # 服务租户);未配置 SSO 时 get_service_client 响亮上抛,不走 error-dict 降级。
+            rf_client = await get_service_client(db)
             try:
                 if not await rf_client.is_available():
                     return {"status": "error", "message": "RAGFlow service unavailable"}
@@ -441,6 +430,7 @@ class KnowledgeBaseService:
                     embedding_model=embed_model,
                     chunk_method=rf_chunk_method,
                     parser_config=kb.parser_config,
+                    permission="team",  # EAI-CUSTOM: 共享租户全员可用,spec §3.3 v1.1
                 )
             except Exception as e:
                 # 修复通道显式失败(转 503), 不留半链接状态 —— 此处尚未 commit, id 仍为 NULL
@@ -464,8 +454,8 @@ class KnowledgeBaseService:
 
         # 文档回填(already_linked 重跑时同样执行): 只处理缺 ragflow_document_id 的文档,
         # 逐文档幂等 —— 上传过的不再动。
-        # EAI-CUSTOM (SSO Plan 2): 已链接库回填文档同样按终端用户身份取客户端(无用户路径沿用共享 key 工厂)
-        rf_client = rf_client if not already_linked else await resolve_ragflow_client(db, user)
+        # EAI-CUSTOM (SSO v1.1 §3.3): 已链接库回填文档同样走服务身份(上传主体=租户 owner)
+        rf_client = rf_client if not already_linked else await get_service_client(db)
         if rf_client is None:
             logger.warning(f"Relink '{kb.name}': doc backfill skipped, RAGFlow not configured")
             return result
@@ -656,7 +646,6 @@ class DocumentService:
         auto_parse: bool = True,
         content_type: str | None = None,
         chunk_config: dict | None = None,
-        user=None,
     ) -> Document:
         """Create a document and optionally upload to RAGFlow."""
         file_ext = Path(file_name).suffix.lower().lstrip(".")
@@ -670,42 +659,42 @@ class DocumentService:
         )
 
         if kb.ragflow_dataset_id:
-            # EAI-CUSTOM (SSO Plan 2): 终端用户上传 → per-user 客户端(共享 key 兜底);无用户路径(如后台导入)沿用共享 key 工厂
-            rf_client = await resolve_ragflow_client(db, user)
-            if rf_client:
-                try:
-                    parser_id, parser_config = DocumentService._build_parser_config(chunk_config)
-                    if not parser_id:
-                        parser_id = DocumentService._CHUNK_METHOD_TO_PARSER.get(kb.chunk_method, "naive")
+            # EAI-CUSTOM (SSO v1.1 §3.3): 服务身份客户端解析在 try 之外——SSO 未配置时
+            # 响亮上抛,不被下方 "Continuing without sync" 吞掉;上传失败仍按既有语义降级落库。
+            rf_client = await get_service_client(db)
+            try:
+                parser_id, parser_config = DocumentService._build_parser_config(chunk_config)
+                if not parser_id:
+                    parser_id = DocumentService._CHUNK_METHOD_TO_PARSER.get(kb.chunk_method, "naive")
 
-                    # Validate file type against parser's supported formats
-                    DocumentService._validate_file_type(file_ext, parser_id)
+                # Validate file type against parser's supported formats
+                DocumentService._validate_file_type(file_ext, parser_id)
 
-                    rf_result = await rf_client.upload_document(
-                        dataset_id=kb.ragflow_dataset_id,
-                        file_path=file_path,
-                        file_name=file_name,
-                        parser_id=parser_id,
-                        parser_config=parser_config,
-                    )
-                    rf_doc_id = rf_result.get("data", {}).get("id")
-                    if rf_doc_id:
-                        doc.ragflow_document_id = rf_doc_id
-                        doc.status = DocumentStatus.UPLOADING.value
-                        logger.info(f"Uploaded document to RAGFlow: {rf_doc_id} (parser_id={parser_id})")
+                rf_result = await rf_client.upload_document(
+                    dataset_id=kb.ragflow_dataset_id,
+                    file_path=file_path,
+                    file_name=file_name,
+                    parser_id=parser_id,
+                    parser_config=parser_config,
+                )
+                rf_doc_id = rf_result.get("data", {}).get("id")
+                if rf_doc_id:
+                    doc.ragflow_document_id = rf_doc_id
+                    doc.status = DocumentStatus.UPLOADING.value
+                    logger.info(f"Uploaded document to RAGFlow: {rf_doc_id} (parser_id={parser_id})")
 
-                        if chunk_config and chunk_config.get("chunk_method"):
-                            kb.chunk_method = chunk_config["chunk_method"]
+                    if chunk_config and chunk_config.get("chunk_method"):
+                        kb.chunk_method = chunk_config["chunk_method"]
 
-                        if auto_parse:
-                            try:
-                                await rf_client.parse_document(kb.ragflow_dataset_id, rf_doc_id)
-                                logger.info(f"Triggered parsing for document: {rf_doc_id}")
-                            except Exception as parse_err:
-                                logger.warning(f"Failed to trigger parsing: {parse_err}")
-                except Exception as e:
-                    logger.warning(f"Failed to upload to RAGFlow: {e}. Continuing without RAGFlow sync.")
-                    doc.status = DocumentStatus.PENDING.value
+                    if auto_parse:
+                        try:
+                            await rf_client.parse_document(kb.ragflow_dataset_id, rf_doc_id)
+                            logger.info(f"Triggered parsing for document: {rf_doc_id}")
+                        except Exception as parse_err:
+                            logger.warning(f"Failed to trigger parsing: {parse_err}")
+            except Exception as e:
+                logger.warning(f"Failed to upload to RAGFlow: {e}. Continuing without RAGFlow sync.")
+                doc.status = DocumentStatus.PENDING.value
 
         config = get_extensions_config()
         storage = config.storage
@@ -733,18 +722,18 @@ class DocumentService:
         return doc
 
     @staticmethod
-    async def delete_doc(db: AsyncSession, doc: Document, user=None) -> None:
+    async def delete_doc(db: AsyncSession, doc: Document) -> None:
         if doc.ragflow_document_id:
             kb = await KnowledgeBaseService.get_kb_by_id(db, doc.knowledge_base_id)
             if kb and kb.ragflow_dataset_id:
-                # EAI-CUSTOM (SSO Plan 2): 终端用户删文档 → per-user 客户端(共享 key 兜底);无用户路径沿用共享 key 工厂
-                rf_client = await resolve_ragflow_client(db, user)
-                if rf_client:
-                    try:
-                        await rf_client.delete_document(kb.ragflow_dataset_id, doc.ragflow_document_id)
-                        logger.info(f"Deleted RAGFlow document: {doc.ragflow_document_id}")
-                    except Exception as e:
-                        logger.warning(f"Failed to delete RAGFlow document: {e}")
+                # EAI-CUSTOM (SSO v1.1 §3.3): 删文档按服务身份执行(dataset 归服务租户;
+                # 解析失败响亮上抛,此时尚未删任何文件/行)。RAGFlow 删除失败仍按既有语义吞掉。
+                rf_client = await get_service_client(db)
+                try:
+                    await rf_client.delete_document(kb.ragflow_dataset_id, doc.ragflow_document_id)
+                    logger.info(f"Deleted RAGFlow document: {doc.ragflow_document_id}")
+                except Exception as e:
+                    logger.warning(f"Failed to delete RAGFlow document: {e}")
 
         storage_provider = get_storage_provider()
         config = get_extensions_config()
@@ -765,13 +754,13 @@ class DocumentService:
         await db.commit()
 
     @staticmethod
-    async def sync_doc_status(db: AsyncSession, doc: Document, kb: KnowledgeBase, user=None) -> dict:
+    async def sync_doc_status(db: AsyncSession, doc: Document, kb: KnowledgeBase) -> dict:
         """Sync document status from RAGFlow."""
         if not doc.ragflow_document_id or not kb.ragflow_dataset_id:
             return {"status": doc.status, "message": "Not synced to RAGFlow"}
 
-        # EAI-CUSTOM (SSO Plan 2): 终端用户轮询 → per-user 客户端(共享 key 兜底);无用户路径沿用共享 key 工厂
-        rf_client = await resolve_ragflow_client(db, user)
+        # EAI-CUSTOM (SSO v1.1 §3.3): 文档归服务租户所有,状态轮询按服务身份读。
+        rf_client = await get_service_client(db)
         if not rf_client:
             return {"status": doc.status, "message": "RAGFlow not configured"}
 

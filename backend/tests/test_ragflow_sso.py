@@ -26,16 +26,17 @@ def _fresh_config(monkeypatch):
 
 @pytest.fixture
 async def sso_db(tmp_path):
-    """In-SQLite async session over ragflow_credentials + users (+其 FK 目标表).
+    """In-SQLite async session over ragflow_credentials + users/knowledge_bases
+    (+其 FK 目标表).
 
-    users/departments/roles carry PG-only column types (ARRAY / JSONB) that the
-    SQLite DDL compiler cannot render, so a create_all over the shared metadata
-    fails outright — this is why test_user_preferences.py's plain create_all is
-    NOT mirrorable here: its UserRow belongs to deerflow.persistence Base (a
-    different registry whose users model has no PG-only types). Mechanism used:
-    clone the three tables into an isolated MetaData and swap the PG-only types
-    to JSON on the CLONE only — prod models untouched; same trick the repo
-    already applies on real models via eia_samples/models.py's
+    users/departments/roles/knowledge_bases carry PG-only column types
+    (ARRAY / JSONB) that the SQLite DDL compiler cannot render, so a create_all
+    over the shared metadata fails outright — this is why test_user_preferences.py's
+    plain create_all is NOT mirrorable here: its UserRow belongs to
+    deerflow.persistence Base (a different registry whose users model has no
+    PG-only types). Mechanism used: clone the tables into an isolated MetaData
+    and swap the PG-only types to JSON on the CLONE only — prod models untouched;
+    same trick the repo already applies on real models via eia_samples/models.py's
     ``JSONB().with_variant(JSON(), "sqlite")``. SQLite does not enforce FKs
     without the pragma, so the cloned FKs resolve for DDL and stay inert.
     The table-subset create_all mirrors test_auth.py's ``tables=[...]`` pattern.
@@ -44,12 +45,12 @@ async def sso_db(tmp_path):
     from sqlalchemy.dialects.postgresql import ARRAY, JSONB
     from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 
-    from app.extensions.models import Department, Role, User
+    from app.extensions.models import Department, KnowledgeBase, Role, User
     from app.extensions.ragflow_sso.models import RagflowCredential
 
     users_meta = MetaData()
     tables = []
-    for source in (Department.__table__, Role.__table__, User.__table__):
+    for source in (Department.__table__, Role.__table__, User.__table__, KnowledgeBase.__table__):
         clone = source.to_metadata(users_meta)
         for column in clone.columns:
             if isinstance(column.type, (ARRAY, JSONB)):
@@ -340,20 +341,27 @@ async def test_get_client_for_user_rollback_keeps_session_usable(_fresh_config, 
 
 @pytest.mark.anyio
 async def test_get_service_client_creates_identity_and_binds_token(_fresh_config, monkeypatch, sso_db):
-    """首次调用:自动建 ragflow-service 扩展用户 → 交换 → 返回绑定其 token 的客户端。"""
+    """首次调用:自动建 ragflow-service 扩展用户 → 交换 → 返回绑定其 token 的客户端。
+
+    同时钉三件事:①密码不可登录(服务身份仅用于铸造交换);②铸造的交换 JWT
+    sub 即服务用户 id(归属钉死);③第二次调用缓存命中零 HTTP。"""
     from unittest.mock import AsyncMock
 
     import httpx
+    import jwt as pyjwt
     from sqlalchemy import select
 
+    from app.extensions.auth.jwt import verify_password
     from app.extensions.models import User
     from app.extensions.ragflow_sso import service
 
     monkeypatch.setenv("EAI_SSO_SHARED_SECRET", SECRET)
     calls = {"n": 0}
+    captured = {}
 
     async def fake_request(method, url, **kwargs):
         calls["n"] += 1
+        captured["auth"] = kwargs.get("headers", {}).get("Authorization", "")
         return httpx.Response(200, json={"code": 0, "data": {"api_token": "ragflow-service-token"}}, request=httpx.Request("POST", url))
 
     monkeypatch.setattr(service, "_exchange_request", AsyncMock(side_effect=fake_request))
@@ -363,6 +371,11 @@ async def test_get_service_client_creates_identity_and_binds_token(_fresh_config
 
     row = (await sso_db.execute(select(User).where(User.username == "ragflow-service"))).scalar_one()
     assert row.email == "ragflow-service@eai.internal"
+    # 服务身份不可登录:随机串哈希,任何口令都验证失败
+    assert verify_password("x", row.password_hash) is False
+    # 铸造的交换 JWT sub = 服务用户 id(归属钉死)
+    claims = pyjwt.decode(captured["auth"].removeprefix("Bearer "), SECRET, algorithms=["HS256"], audience="ragflow-sso")
+    assert claims["sub"] == str(row.id)
 
     # 第二次调用:缓存命中,零 HTTP
     client2 = await service.get_service_client(sso_db)
@@ -372,12 +385,114 @@ async def test_get_service_client_creates_identity_and_binds_token(_fresh_config
 
 @pytest.mark.anyio
 async def test_get_service_client_requires_secret(_fresh_config, monkeypatch, sso_db):
-    """服务身份不降级:密钥未配置 → RuntimeError 向上抛(生命周期必须响亮失败)。"""
+    """服务身份不降级:密钥未配置 → RuntimeError 向上抛(生命周期必须响亮失败)。
+    且不落任何 User 行——身份创建在密钥校验之后。"""
+    from sqlalchemy import func, select
+
+    from app.extensions.models import User
     from app.extensions.ragflow_sso import service
 
     monkeypatch.delenv("EAI_SSO_SHARED_SECRET", raising=False)
     with pytest.raises(RuntimeError):
         await service.get_service_client(sso_db)
+    assert (await sso_db.execute(select(func.count()).select_from(User))).scalar_one() == 0
+
+
+class _CaptureRagflowHttp:
+    """替换 httpx.AsyncClient:捕获 RAGFlow API 调用的 headers + payload(create_dataset 用)。"""
+
+    captured: dict = {}
+
+    def __init__(self, *args, **kwargs):
+        pass
+
+    async def __aenter__(self):
+        return self
+
+    async def __aexit__(self, *exc):
+        return False
+
+    async def post(self, url, headers=None, json=None):
+        type(self).captured = {"url": url, "headers": headers or {}, "json": json}
+
+        class _Resp:
+            def raise_for_status(self):
+                pass
+
+            def json(self):
+                return {"code": 0, "data": {"id": "ds-svc"}}
+
+        return _Resp()
+
+
+async def _seed_service_identity(sso_db):
+    """预置服务身份行 + 其缓存 token(get_service_client 走缓存,零交换 HTTP)。"""
+    from app.extensions.models import User
+    from app.extensions.ragflow_sso.models import RagflowCredential
+
+    svc = User(username="ragflow-service", email="ragflow-service@eai.internal", password_hash="x")
+    sso_db.add(svc)
+    await sso_db.commit()
+    await sso_db.refresh(svc)
+    sso_db.add(RagflowCredential(eai_user_id=svc.id, api_token="ragflow-service-token"))
+    await sso_db.commit()
+    return svc
+
+
+# ── service: KB 生命周期写路径走服务身份(EAI-CUSTOM v1.1 共享租户修正案 Task 3)──
+
+
+@pytest.mark.anyio
+async def test_create_kb_runs_as_service_identity_with_team_permission(_fresh_config, monkeypatch, sso_db):
+    """create_kb 的 create_dataset 由服务身份执行——Authorization 绑定服务 token,
+    payload permission=team(共享租户全员可用,spec §3.3 v1.1)。
+    db 即 sso_db:服务身份解析走真库(种子行 + 缓存 token),kb 行真落 SQLite。"""
+    from types import SimpleNamespace
+    from unittest.mock import AsyncMock
+
+    import app.extensions.knowledge.service as knowledge_service
+    from app.extensions.knowledge.client import RAGFlowClient
+    from app.extensions.knowledge.service import KnowledgeBaseService
+    from app.extensions.schemas import KnowledgeBaseCreate
+
+    monkeypatch.setenv("EAI_SSO_SHARED_SECRET", SECRET)
+    monkeypatch.delenv("RAGFLOW_API_KEY", raising=False)
+    # storage 桩:跳过建库目录;RAGFlow 探活桩:恒可用(探活本身不走被捕获的 httpx)
+    monkeypatch.setattr(knowledge_service, "get_extensions_config", lambda: SimpleNamespace(storage=SimpleNamespace(type="minio", retain_local_copy=False)))
+    monkeypatch.setattr(RAGFlowClient, "is_available", AsyncMock(return_value=True))
+    _CaptureRagflowHttp.captured = {}
+    monkeypatch.setattr("httpx.AsyncClient", _CaptureRagflowHttp)
+    await _seed_service_identity(sso_db)
+
+    kb = await KnowledgeBaseService.create_kb(sso_db, uuid.uuid4(), KnowledgeBaseCreate(name="svc-kb", kb_type="ragflow", embedding_model="bge-m3"))
+
+    post = _CaptureRagflowHttp.captured
+    assert post["url"].endswith("/api/v1/datasets")
+    assert post["json"]["permission"] == "team"
+    assert post["headers"]["Authorization"] == "Bearer ragflow-service-token"  # 服务 token,非 caller
+    assert kb.ragflow_dataset_id == "ds-svc"
+
+
+@pytest.mark.anyio
+async def test_read_seam_keeps_caller_token_alongside_service_identity(_fresh_config, monkeypatch, sso_db):
+    """READ/USE 语义(get_client_for_user)仍按 caller 解析——服务身份在库不遮蔽
+    caller 的 per-user token(写=服务身份,读=caller,边界钉死)。"""
+    from types import SimpleNamespace
+
+    from app.extensions.ragflow_sso import service
+    from app.extensions.ragflow_sso.models import RagflowCredential
+
+    monkeypatch.setenv("EAI_SSO_SHARED_SECRET", SECRET)
+    monkeypatch.delenv("RAGFLOW_API_KEY", raising=False)
+    await _seed_service_identity(sso_db)
+    # EAI-CUSTOM: 走库的 user id 必须含 a-f 十六进制字母(SQLite NUMERIC 亲和性陷阱,见上文)
+    caller_uid = uuid.UUID("eee77777-7777-4777-8777-e7777777eeee")
+    sso_db.add(RagflowCredential(eai_user_id=caller_uid, api_token="caller-token"))
+    await sso_db.commit()
+
+    client = await service.get_client_for_user(sso_db, SimpleNamespace(id=caller_uid, username="ops"))
+    assert client.api_key == "caller-token"
+    assert client.api_key != "ragflow-service-token"
 
 
 # ── routers: /ragflow-sso/login 302 + /token per-user ──

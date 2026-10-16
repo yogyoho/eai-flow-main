@@ -419,13 +419,13 @@ async def import_draft(
         raise HTTPException(status_code=400, detail="Draft already imported to knowledge base")
 
     try:
+        # EAI-CUSTOM (SSO v1.1 §3.3): 上传走服务身份(解析在 create_doc 内)
         result = await ScrapDraftService.import_to_knowledge_base(
             db=db,
             draft=draft,
             kb_id=data.knowledge_base_id,
             chunk_method=data.chunk_method,
             auto_parse=data.auto_parse,
-            user=current_user,  # EAI-CUSTOM (SSO Plan 2): 透传终端用户供 per-user token 上传
         )
         return ImportResultResponse(**result)
     except ValueError as e:

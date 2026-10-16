@@ -169,8 +169,8 @@ async def create_knowledge_base(
     db: AsyncSession = Depends(get_db),
     current_user: CurrentUser = Depends(require_permission("kb:create")),
 ):
-    # EAI-CUSTOM (SSO Plan 2): 建库同步按终端用户 per-user token 执行
-    kb = await KnowledgeBaseService.create_kb(db, current_user.id, data, user=current_user)
+    # EAI-CUSTOM (SSO v1.1 §3.3): 建库同步走服务身份(dataset 落共享服务租户)
+    kb = await KnowledgeBaseService.create_kb(db, current_user.id, data)
     return KnowledgeBaseService.to_response(kb)
 
 
@@ -207,8 +207,8 @@ async def update_knowledge_base(
     has_write = await has_kb_grant(db, kb.id, identity, "write")
     if kb.owner_id != current_user.id and not is_admin and not has_write:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not authorized")
-    # EAI-CUSTOM (SSO Plan 2): 更新同步按终端用户 per-user token 执行
-    kb = await KnowledgeBaseService.update_kb(db, kb, data, user=current_user)
+    # EAI-CUSTOM (SSO v1.1 §3.3): 更新同步走服务身份(dataset 归共享服务租户)
+    kb = await KnowledgeBaseService.update_kb(db, kb, data)
     return KnowledgeBaseService.to_response(kb)
 
 
@@ -260,8 +260,8 @@ async def link_knowledge_base_ragflow(
     if kb.owner_id != current_user.id and not is_admin and not has_write:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not authorized")
 
-    # EAI-CUSTOM (SSO Plan 2): 补链按终端用户 per-user token 执行
-    result = await KnowledgeBaseService.relink_ragflow(db, kb, include_documents=include_documents, embedding_model_override=embedding_model, user=current_user)
+    # EAI-CUSTOM (SSO v1.1 §3.3): 补链走服务身份(补建 dataset 落共享服务租户)
+    result = await KnowledgeBaseService.relink_ragflow(db, kb, include_documents=include_documents, embedding_model_override=embedding_model)
     if result["status"] == "error":
         raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=result["message"])
     return result
@@ -285,8 +285,8 @@ async def delete_knowledge_base(
     has_write = await has_kb_grant(db, kb.id, identity, "write")
     if kb.owner_id != current_user.id and not is_admin and not has_write:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not authorized")
-    # EAI-CUSTOM (SSO Plan 2): 删库同步按终端用户 per-user token 执行
-    await KnowledgeBaseService.delete_kb(db, kb, user=current_user)
+    # EAI-CUSTOM (SSO v1.1 §3.3): 删库同步走服务身份(dataset 归共享服务租户)
+    await KnowledgeBaseService.delete_kb(db, kb)
     return MessageResponse(message="Knowledge base deleted successfully")
 
 
@@ -452,7 +452,7 @@ async def upload_document(
         await f.write(content)
 
     try:
-        # EAI-CUSTOM: SSO per-user 归属
+        # EAI-CUSTOM (SSO v1.1 §3.3): 上传走服务身份(dataset 归共享服务租户)
         doc = await DocumentService.create_doc(
             db,
             kb,
@@ -461,7 +461,6 @@ async def upload_document(
             file.size,
             content_type=file.content_type,
             chunk_config=chunk_cfg,
-            user=current_user,
         )
     except ValueError as e:
         # File type validation error — clean up uploaded file and return 400
@@ -527,7 +526,7 @@ async def list_documents(
             if rf_client:
                 for doc in processing_docs:
                     try:
-                        status_info = await DocumentService.sync_doc_status(db, doc, kb, user=current_user)
+                        status_info = await DocumentService.sync_doc_status(db, doc, kb)
                         rf_status = status_info.get("status")
                         if rf_status and rf_status != doc.status:
                             doc.status = to_doc_status(rf_status)
@@ -560,8 +559,8 @@ async def delete_document(
     doc = await DocumentService.get_doc_by_id(db, doc_id)
     if not doc or doc.knowledge_base_id != kb.id:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Document not found")
-    # EAI-CUSTOM (SSO Plan 2): 删文档按终端用户 per-user token 执行
-    await DocumentService.delete_doc(db, doc, user=current_user)
+    # EAI-CUSTOM (SSO v1.1 §3.3): 删文档走服务身份(dataset 归共享服务租户)
+    await DocumentService.delete_doc(db, doc)
     return MessageResponse(message="Document deleted successfully")
 
 
@@ -827,6 +826,6 @@ async def get_knowledge_base_status(
     if kb is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Knowledge base not found")
 
-    # EAI-CUSTOM (SSO Plan 2): 状态轮询按终端用户 per-user token 执行
-    status_info = await KnowledgeBaseService.sync_kb_status(db, kb, user=current_user)
+    # EAI-CUSTOM (SSO v1.1 §3.3): 状态轮询走服务身份(dataset 归共享服务租户)
+    status_info = await KnowledgeBaseService.sync_kb_status(db, kb)
     return status_info

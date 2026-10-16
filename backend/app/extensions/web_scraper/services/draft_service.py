@@ -126,7 +126,6 @@ class ScrapDraftService:
         kb_id: UUID,
         chunk_method: str = "naive",
         auto_parse: bool = True,
-        user=None,
     ) -> dict:
         """Import draft to knowledge base."""
         kb = await KnowledgeBaseService.get_kb_by_id(db, kb_id)
@@ -153,8 +152,7 @@ class ScrapDraftService:
             file_path=str(file_path),
             file_size=len((draft.raw_content or "").encode("utf-8")),
             auto_parse=auto_parse,
-            content_type="text/markdown",
-            user=user,  # EAI-CUSTOM (SSO Plan 2): 入库上传按终端用户 per-user token 执行
+            content_type="text/markdown",  # EAI-CUSTOM (SSO v1.1 §3.3): 上传走服务身份(见 create_doc)
         )
 
         draft.status = "imported"
