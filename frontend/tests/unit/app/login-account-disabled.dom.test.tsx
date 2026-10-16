@@ -1,3 +1,9 @@
+// EAI-CUSTOM skip (2026-10-16, 上游同步): 本页为 EAI 有意替换的双模式登录页
+// (工号+密码 / 邮箱OTP / SSO 条件按钮, 中文文案, 无注册表单 —— fde74fffc/ca7505131)。
+// 这组上游 dom 测试钉的是上游单表单页契约(enUS.login.* 标签/sign-up 流程/
+// account_disabled 文案), 与 EAI 页面结构不匹配; 停用账号的拒绝文案由 extensions
+// 门面流程给出。上游若回归单表单页时再启用。
+
 import { afterEach, beforeEach, expect, test, rs } from "@rstest/core";
 import {
   cleanup,
@@ -72,7 +78,7 @@ function fillAndSubmit() {
   fireEvent.click(screen.getByRole("button", { name: enUS.login.signIn }));
 }
 
-test("an account_disabled rejection shows the localized reason", async () => {
+test.skip("an account_disabled rejection shows the localized reason", async () => {
   globalThis.fetch = rs.fn(async () =>
     jsonResponse(
       { detail: { code: "account_disabled", message: "Account disabled" } },
@@ -89,7 +95,7 @@ test("an account_disabled rejection shows the localized reason", async () => {
   ).toBeTruthy();
 });
 
-test("other rejections keep showing the backend message", async () => {
+test.skip("other rejections keep showing the backend message", async () => {
   globalThis.fetch = rs.fn(async () =>
     jsonResponse(
       {
@@ -109,7 +115,7 @@ test("other rejections keep showing the backend message", async () => {
   expect(await screen.findByText("Incorrect email or password")).toBeTruthy();
 });
 
-test("a direct /login visit with a suspended session states the reason", () => {
+test.skip("a direct /login visit with a suspended session states the reason", () => {
   render(
     <AuthDisabledContext.Provider value={true}>
       <LoginPage />
@@ -120,13 +126,13 @@ test("a direct /login visit with a suspended session states the reason", () => {
   expect(screen.getByText(enUS.login.errors.account_disabled)).toBeTruthy();
 });
 
-test("an ordinary /login visit shows no suspension note", () => {
+test.skip("an ordinary /login visit shows no suspension note", () => {
   render(<LoginPage />);
 
   expect(screen.queryByText(enUS.login.errors.account_disabled)).toBeNull();
 });
 
-test("sign-up keeps the backend message so a disabled account cannot be probed", async () => {
+test.skip("sign-up keeps the backend message so a disabled account cannot be probed", async () => {
   globalThis.fetch = rs.fn(async () =>
     jsonResponse(
       { detail: { code: "account_disabled", message: "Account disabled" } },

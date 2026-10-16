@@ -82,6 +82,7 @@ export default async function WorkspaceLayout({
           </div>
         </GatewayOfflineFallback>
       );
+      break;
     case "config_error":
       throw new Error(result.message);
     default:
