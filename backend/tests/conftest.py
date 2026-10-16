@@ -270,6 +270,7 @@ def pytest_runtest_teardown(item, nextitem):
 # 全局 extensions engine(asyncpg)绑定创建时的循环; asyncio.run 每测试换循环会让
 # 第二个测试撞 "Event loop is closed"。DB 型 learnings 测试统一用本 fixture 跑协程。
 import asyncio as _asyncio  # noqa: E402
+
 import pytest as _pytest  # noqa: E402
 
 

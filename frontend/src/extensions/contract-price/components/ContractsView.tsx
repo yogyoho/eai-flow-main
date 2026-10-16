@@ -671,7 +671,7 @@ export function ContractsView() {
           done += 1;
           if (item.error || !item.file_id) {
             failed += 1;
-            failedFiles.push(f);
+            if (f) failedFiles.push(f);
             if (item.error)
               failReasons.push(`${item.file_name}：${item.error}`);
             setBatch({ total: list.length, done, failed });
@@ -684,7 +684,7 @@ export function ContractsView() {
           } catch (e) {
             // 同名不同内容 409 等解析登记失败 → 计失败,文件保留重试
             failed += 1;
-            failedFiles.push(f);
+            if (f) failedFiles.push(f);
             failReasons.push(
               `${item.file_name}：加入解析失败 ${e instanceof Error ? e.message : String(e)}`,
             );

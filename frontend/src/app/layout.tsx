@@ -41,6 +41,7 @@ export default async function RootLayout({
       break;
     case "system_setup_required":
     case "unauthenticated":
+    case "account_disabled":
     case "gateway_unavailable":
       initialUser = null;
       break;
