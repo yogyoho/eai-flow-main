@@ -38,8 +38,9 @@ class ContractStore:
         return list(self._client.list_objects(self._bucket, recursive=True))
 
     def has_objects(self, prefix: str) -> bool:
-        """前缀下是否存在任意对象(不拉内容)。"""
-        for _ in self._client.list_objects(self._bucket, prefix=prefix, max_keys=1):
+        """前缀下是否存在任意对象(不拉内容)。minio-py list_objects 无 max_keys
+        参数(传了会 TypeError)——惰性迭代取第一个即短路。"""
+        for _ in self._client.list_objects(self._bucket, prefix=prefix, recursive=True):
             return True
         return False
 
