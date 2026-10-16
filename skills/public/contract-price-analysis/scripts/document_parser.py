@@ -9,6 +9,7 @@ goods/price tables and validates the numbers.
 
 import asyncio
 import logging
+import re
 from dataclasses import dataclass, field
 
 import httpx
@@ -183,17 +184,49 @@ def to_cache(tables: list[TableExtract], page_texts: dict[int, str], orientation
 
 # ── M3 openai-vision 前端(spec §3.4)──────────────────────────────────────
 
-_VISION_PROMPT = (
-    "你是表格抽取引擎。识别图片中的所有表格,以 HTML <table> 输出:每行一个 <tr>,"
-    "每个单元格一个 <td>(含表头行)。要求:"
-    "1) 只输出 <table>…</table>,不要解释、不要 markdown 代码块;"
-    "2) 合并单元格拆成逐行逐格填充(空格留空);"
-    "3) 保留数字与单位原样;4) 图片中没有表格时输出空字符串。"
-)
+# PaddleOCR-VL 系按元素级固定指令训练:表格识别的触发指令就是 "Table Recognition:"
+# (实测:中文自然语言/"OCR:" 会退化成纯文本平铺甚至死循环撑满 max_tokens)。
+_VISION_PROMPT = "Table Recognition:"
+
+# 模型原生输出为标记流(非 HTML):<fcel>text=有值格、<lcel>=与左格合并、
+# <ucel>=与上格合并、<ecel>=空格、<nl>=行尾。官方 paddleocr 客户端内置
+# 标记流→HTML 转换;直调 API 时由 parse_table_marker_stream 在本地重建行。
+_TABLE_MARKERS = ("<fcel>", "<lcel>", "<ecel>", "<ucel>")
+
+
+def parse_table_marker_stream(content: str) -> list[list[list[str]]]:
+    """PaddleOCR-VL 标记流 → list[tables[rows[cells]]](整个响应当一张表)。
+
+    网格语义:每个标记占一个格;<lcel>/<ucel> 为合并占位,文本只保留在
+    首格(与官方 HTML 转换的 colspan/rowspan 展开等价的行表示)。
+    无任何标记 → [](输出不是标记流,由调用方回退 HTML 分支)。"""
+    if not content or not any(m in content for m in _TABLE_MARKERS):
+        return []
+    rows: list[list[str]] = []
+    for line in content.split("<nl>"):
+        cells: list[str] = []
+        pending: list[str] | None = None  # <fcel> 后正在收集的文本
+        for part in re.split(r"(<fcel>|<lcel>|<ecel>|<ucel>)", line):
+            if part in _TABLE_MARKERS:
+                if pending is not None:
+                    cells.append("".join(pending).strip())
+                    pending = None
+                if part == "<fcel>":
+                    pending = []
+                else:  # lcel/ucel/ecel = 合并/空占位格
+                    cells.append("")
+            elif pending is not None:
+                pending.append(part)
+        if pending is not None:
+            cells.append("".join(pending).strip())
+        if cells:
+            rows.append(cells)
+    return [rows] if rows else []
 
 
 def html_tables_to_rows(html: str) -> list[list[list[str]]]:
-    """HTML 表格 → list[rows[list[cell text]]](stdlib HTMLParser,容错)。"""
+    """HTML 表格 → list[rows[list[cell text]]](stdlib HTMLParser,容错)。
+    供会遵循 HTML 输出指令的 vision 服务回退用(PaddleOCR-VL 系走标记流)。"""
     from html.parser import HTMLParser
 
     class _T(HTMLParser):
@@ -248,9 +281,10 @@ async def parse_document_openai_vision(
     model: str = "",
     last_pages: int = 0,
 ) -> tuple:
-    """pymupdf 光栅化每页 PNG → OpenAI 兼容 vision chat(completions)→ HTML 表格
-    → 同一 TableExtract 契约。cell bbox=None → cell_bboxes/tokens 恒空、bbox
-    取零框,溯源 UI 现成降级(``hasBox = !!bbox && bbox.length === 4``)。
+    """pymupdf 光栅化每页 PNG → OpenAI 兼容 vision chat(completions,指令
+    "Table Recognition:")→ 标记流/HTML → 同一 TableExtract 契约。
+    cell bbox=None → cell_bboxes/tokens 恒空、bbox 取零框,溯源 UI 现成降级
+    (``hasBox = !!bbox && bbox.length === 4``)。
     page_texts 取 PDF 原生文本层(扫描件为空,项目字段正则自然跳过)。"""
     import base64
 
@@ -301,7 +335,12 @@ async def parse_document_openai_vision(
             )
             resp.raise_for_status()
             content = ((resp.json().get("choices") or [{}])[0].get("message") or {}).get("content") or ""
-            for ti, rows in enumerate(html_tables_to_rows(content)):
+            # PaddleOCR-VL 系输出标记流;会遵循 HTML 指令的服务输出 <table>——两者都转行。
+            if any(m in content for m in _TABLE_MARKERS):
+                page_rows = parse_table_marker_stream(content)
+            else:
+                page_rows = html_tables_to_rows(content)
+            for ti, rows in enumerate(page_rows):
                 tables.append(
                     TableExtract(
                         page_no=page_no,
