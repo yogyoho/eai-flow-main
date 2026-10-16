@@ -287,3 +287,26 @@ async def test_relink_include_documents_false_never_touches_docs(monkeypatch):
     assert result["documents_uploaded"] == 0
     client.upload_document.assert_not_awaited()
     assert doc.ragflow_document_id is None
+
+
+@pytest.mark.asyncio
+async def test_delete_kb_resolution_failure_leaves_files_intact(monkeypatch, tmp_path):
+    """EAI-CUSTOM (SSO v1.1 §3.3): delete_kb 的服务身份解析先于 rmtree——解析失败
+    响亮上抛时,本地文件必须原样保留(不得留下"文件已删、行还在"的半删状态)。"""
+
+    async def _no_service(db):
+        raise RuntimeError("EAI_SSO_SHARED_SECRET not configured")
+
+    monkeypatch.setattr("app.extensions.knowledge.service.get_service_client", _no_service)
+    kb = _orphan_kb(ragflow_dataset_id="ds-existing")
+    kb_path = tmp_path / str(kb.owner_id) / "knowledge" / str(kb.id)
+    kb_path.mkdir(parents=True)
+    (kb_path / "a.docx").write_bytes(b"bytes")
+    monkeypatch.setattr(
+        "app.extensions.knowledge.service.get_extensions_config",
+        lambda: SimpleNamespace(storage=SimpleNamespace(type="local", base_path=str(tmp_path), retain_local_copy=False)),
+    )
+
+    with pytest.raises(RuntimeError, match="EAI_SSO_SHARED_SECRET"):
+        await KnowledgeBaseService.delete_kb(_mock_db(), kb)
+    assert (kb_path / "a.docx").exists()  # 解析先于 rmtree:文件原样保留

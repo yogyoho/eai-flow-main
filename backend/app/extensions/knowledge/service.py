@@ -264,9 +264,6 @@ class KnowledgeBaseService:
 
     @staticmethod
     async def update_kb(db: AsyncSession, kb: KnowledgeBase, data: KnowledgeBaseUpdate) -> KnowledgeBase:
-        # EAI-CUSTOM (SSO v1.1 §3.3): 服务身份客户端保持"先解析后改属性"——解析失败
-        # 响亮上抛时本次变更不落库(SSO 未配置 → RuntimeError,不降级)。
-        rf_client = await get_service_client(db)
         if data.name is not None:
             kb.name = data.name
         if data.description is not None:
@@ -296,6 +293,10 @@ class KnowledgeBaseService:
             kb.allowed_depts = [row[0] for row in dept_rows.all()]
 
         if kb.ragflow_dataset_id:
+            # EAI-CUSTOM (SSO v1.1 §3.3): 服务身份客户端解析 gate 在已链库路径(镜像
+            # delete_kb——本地未链库的改名/改属不要求 SSO);gate 通过时先解析后
+            # update_dataset,解析失败响亮上抛,变更不落库。
+            rf_client = await get_service_client(db)
             try:
                 await rf_client.update_dataset(
                     dataset_id=kb.ragflow_dataset_id,
@@ -350,9 +351,12 @@ class KnowledgeBaseService:
             return {"status": "not_synced", "message": "Not synced to RAGFlow"}
 
         # EAI-CUSTOM (SSO v1.1 §3.3): dataset 归服务租户所有,状态轮询按服务身份读。
-        rf_client = await get_service_client(db)
-        if not rf_client:
-            return {"status": "error", "message": "RAGFlow not configured"}
+        # 轮询面保持既有优雅降级:SSO 未配置(get_service_client RuntimeError)→
+        # error-dict,端点不 500——与生命周期写路径的响亮失败契约不同。
+        try:
+            rf_client = await get_service_client(db)
+        except RuntimeError as e:
+            return {"status": "error", "message": str(e)}
 
         try:
             rf_dataset = await rf_client.get_dataset(kb.ragflow_dataset_id)
@@ -456,9 +460,6 @@ class KnowledgeBaseService:
         # 逐文档幂等 —— 上传过的不再动。
         # EAI-CUSTOM (SSO v1.1 §3.3): 已链接库回填文档同样走服务身份(上传主体=租户 owner)
         rf_client = rf_client if not already_linked else await get_service_client(db)
-        if rf_client is None:
-            logger.warning(f"Relink '{kb.name}': doc backfill skipped, RAGFlow not configured")
-            return result
         config = get_extensions_config()
         stmt = select(Document).where(
             Document.knowledge_base_id == kb.id,
@@ -760,9 +761,8 @@ class DocumentService:
             return {"status": doc.status, "message": "Not synced to RAGFlow"}
 
         # EAI-CUSTOM (SSO v1.1 §3.3): 文档归服务租户所有,状态轮询按服务身份读。
+        # 解析 RuntimeError 由调用方处理(list_documents 轮询门逐文档吞掉;端点路径不达)。
         rf_client = await get_service_client(db)
-        if not rf_client:
-            return {"status": doc.status, "message": "RAGFlow not configured"}
 
         try:
             rf_doc = await rf_client.get_document(kb.ragflow_dataset_id, doc.ragflow_document_id)
