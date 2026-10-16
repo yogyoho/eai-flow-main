@@ -7,6 +7,7 @@ import {
   CableIcon,
   MessageCircleIcon,
   SparklesIcon,
+  UserCogIcon,
   UsersRoundIcon,
   UserIcon,
 } from "lucide-react";
@@ -20,12 +21,14 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { useAuth } from "@/core/auth/AuthProvider";
 import { useI18n } from "@/core/i18n/hooks";
 import { cn } from "@/lib/utils";
 
 // EAI-CUSTOM: 对齐上游分包纪律 —— 每个 section page 一个懒加载 chunk
-// (本次同步并入上游 #5596 的 models 共享模型管理页；EAI 追加 skills/wechat
-// 两个扩展懒加载项，共 8 个)。打开设置只下载当前激活 section 的代码。
+// (本次同步并入上游 #5596 的 models 共享模型管理页与 #6641 的 admin 用户
+// 管理页；EAI 追加 skills/wechat 两个扩展懒加载项，共 9 个)。打开设置只
+// 下载当前激活 section 的代码。
 function SettingsPageLoading() {
   return (
     <p role="status" className="text-muted-foreground py-8 text-center text-sm">
@@ -83,6 +86,13 @@ const ModelSettingsPage = dynamic(
     import("./model-settings-page").then((module) => module.ModelSettingsPage),
   { loading: SettingsPageLoading },
 );
+// upstream #6641: admin user management page; the nav entry below is
+// admin-gated and the page guards independently (incl. static demo mode).
+const UserSettingsPage = dynamic(
+  () =>
+    import("./user-settings-page").then((module) => module.UserSettingsPage),
+  { loading: SettingsPageLoading },
+);
 // EAI-CUSTOM: WeChat channel settings page
 const WechatSettingsPage = dynamic(
   () =>
@@ -94,6 +104,8 @@ const WechatSettingsPage = dynamic(
 
 export type SettingsSection =
   | "models"
+  // upstream #6641: admin user management — nav entry admin-gated below.
+  | "users"
   | "account"
   | "wechat" // EAI-CUSTOM: WeChat channel section (wechat-settings-page)
   | "appearance"
@@ -113,21 +125,30 @@ type SettingsDialogProps = React.ComponentProps<typeof Dialog> & {
 };
 
 export function SettingsDialog(props: SettingsDialogProps) {
+  // EAI-CUSTOM (c9b3af55a): entry defaults to "account" — upstream's
+  // "appearance" default was removed together with the appearance/about tabs.
   const { defaultSection = "account", ...dialogProps } = props;
   const { t } = useI18n();
+  const { user } = useAuth();
+  const isAdmin = user?.system_role === "admin";
   const [activeSection, setActiveSection] =
     useState<SettingsSection>(defaultSection);
 
   useEffect(() => {
-    // When opening the dialog, ensure the active section follows the caller's intent.
-    // This allows triggers like "About" to open the dialog directly on that page.
+    // When opening the dialog, ensure the active section follows the caller's
+    // intent. This allows triggers like a `?settings=<section>` deep link to
+    // open the dialog directly on that section.
     if (dialogProps.open) {
       setActiveSection(defaultSection);
     }
   }, [defaultSection, dialogProps.open]);
 
-  const sections = useMemo(
-    () => [
+  const sections = useMemo(() => {
+    const items: {
+      id: SettingsSection;
+      label: string;
+      icon: typeof BotIcon;
+    }[] = [
       { id: "models", label: t.settings.sections.models, icon: BotIcon },
       {
         id: "account",
@@ -169,17 +190,39 @@ export function SettingsDialog(props: SettingsDialogProps) {
         label: t.capabilities.skills,
         icon: SparklesIcon,
       },
-    ],
-    [
-      t.settings.sections.models,
-      t.settings.sections.account,
-      t.settings.sections.channels,
-      t.settings.sections.memory,
-      t.settings.sections.subagents,
-      t.settings.sections.notification,
-      t.capabilities.skills,
-    ],
-  );
+    ];
+    // upstream #6641/#6691: user management is meaningless (and confusing)
+    // for non-admins, so the entry point itself is hidden; the page still
+    // guards independently in case a stale dialog store ever activates the
+    // section.
+    if (isAdmin) {
+      items.splice(1, 0, {
+        id: "users",
+        label: t.settings.sections.users,
+        icon: UserCogIcon,
+      });
+    }
+    return items;
+  }, [
+    isAdmin,
+    t.settings.sections.models,
+    t.settings.sections.users,
+    t.settings.sections.account,
+    t.settings.sections.channels,
+    t.settings.sections.memory,
+    t.settings.sections.subagents,
+    t.settings.sections.notification,
+    t.capabilities.skills,
+  ]);
+  // upstream #6691: a `?settings=<section>` deep link (or a stale dialog
+  // store) can activate a section this user's nav does not offer — e.g. user
+  // management for a non-admin, or EAI's removed appearance/about tabs — so
+  // fall back to the first available section instead of rendering a panel
+  // with no highlighted entry. The base list above is non-empty, so the
+  // fallback itself always resolves.
+  const activeId = sections.some((section) => section.id === activeSection)
+    ? activeSection
+    : sections[0]!.id;
   return (
     <Dialog
       {...dialogProps}
@@ -199,12 +242,12 @@ export function SettingsDialog(props: SettingsDialogProps) {
           <nav className="bg-sidebar min-h-0 overflow-y-auto rounded-lg border p-2">
             <ul className="space-y-1 pr-1">
               {sections.map(({ id, label, icon: Icon }) => {
-                const active = activeSection === id;
+                const active = activeId === id;
                 return (
                   <li key={id}>
                     <button
                       type="button"
-                      onClick={() => setActiveSection(id as SettingsSection)}
+                      onClick={() => setActiveSection(id)}
                       className={cn(
                         "flex w-full items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors",
                         active
@@ -222,18 +265,19 @@ export function SettingsDialog(props: SettingsDialogProps) {
           </nav>
           <ScrollArea className="h-full min-h-0 rounded-lg border">
             <div className="space-y-8 p-6">
-              {activeSection === "models" && <ModelSettingsPage />}
-              {activeSection === "account" && <AccountSettingsPage />}
-              {activeSection === "wechat" && <WechatSettingsPage />}
-              {activeSection === "memory" && <MemorySettingsPage />}
-              {activeSection === "subagents" && <SubagentSettingsPage />}
-              {activeSection === "skills" && (
+              {activeId === "models" && <ModelSettingsPage />}
+              {activeId === "users" && <UserSettingsPage />}
+              {activeId === "account" && <AccountSettingsPage />}
+              {activeId === "wechat" && <WechatSettingsPage />}
+              {activeId === "memory" && <MemorySettingsPage />}
+              {activeId === "subagents" && <SubagentSettingsPage />}
+              {activeId === "skills" && (
                 <SkillSettingsPage
                   onClose={() => props.onOpenChange?.(false)}
                 />
               )}
-              {activeSection === "notification" && <NotificationSettingsPage />}
-              {activeSection === "channels" && <ChannelsSettingsPage />}
+              {activeId === "notification" && <NotificationSettingsPage />}
+              {activeId === "channels" && <ChannelsSettingsPage />}
             </div>
           </ScrollArea>
         </div>

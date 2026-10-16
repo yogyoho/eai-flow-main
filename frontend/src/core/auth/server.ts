@@ -5,7 +5,7 @@ import { isStaticWebsiteOnly } from "../static-mode";
 import { AUTH_DISABLED_USER, isAuthDisabledMode } from "./auth-disabled-user";
 import { getGatewayConfig } from "./gateway-config";
 import { STATIC_WEBSITE_USER } from "./static-user";
-import { type AuthResult, userSchema } from "./types";
+import { type AuthResult, parseAuthError, userSchema } from "./types";
 
 // EAI-CUSTOM: bumped 5s → 15s. The gateway periodically stalls the event loop
 // (wechat long-poll cycle, pre-existing) up to ~15s; 5s made SSR /auth/me abort
@@ -93,6 +93,16 @@ export async function getServerSideUser(): Promise<AuthResult> {
       return { tag: "authenticated", user: parsed.data };
     }
     if (res.status === 401 || res.status === 403) {
+      // A disabled account gets a distinct code so the login redirect can
+      // say why (#4063 gap 3); every other rejected session (expired,
+      // invalid, revoked) stays a plain unauthenticated bounce.
+      const code = await res
+        .json()
+        .then((data) => parseAuthError(data).code)
+        .catch(() => null);
+      if (code === "account_disabled") {
+        return { tag: "account_disabled" };
+      }
       return { tag: "unauthenticated" };
     }
     console.error(`[SSR auth] /api/v1/auth/me responded ${res.status}`);

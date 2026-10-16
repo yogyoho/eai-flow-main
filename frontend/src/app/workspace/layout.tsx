@@ -1,9 +1,12 @@
 import { redirect } from "next/navigation";
 
 import { GatewayOfflineFallback } from "@/components/workspace/gateway-offline-fallback";
+import { WorkspaceLoginRedirect } from "@/components/workspace/workspace-login-redirect";
 import { AuthProvider } from "@/core/auth/AuthProvider";
 import { getServerSideUser } from "@/core/auth/server";
-import { assertNever } from "@/core/auth/types";
+import { ACCOUNT_DISABLED_LOGIN_URL, assertNever } from "@/core/auth/types";
+import { I18nProvider } from "@/core/i18n/context";
+import { detectLocaleServer } from "@/core/i18n/server";
 
 import { WorkspaceContent } from "./workspace-content";
 
@@ -12,21 +15,32 @@ export const dynamic = "force-dynamic";
 export default async function WorkspaceLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
+  const locale = await detectLocaleServer();
   const result = await getServerSideUser();
+
+  let content: React.ReactNode;
 
   switch (result.tag) {
     case "authenticated":
-      return (
+      content = (
         <AuthProvider initialUser={result.user}>
           <WorkspaceContent>{children}</WorkspaceContent>
         </AuthProvider>
       );
+      break;
     case "needs_setup":
       redirect("/setup");
     case "system_setup_required":
       redirect("/setup");
     case "unauthenticated":
-      redirect("/login");
+      // Not redirect(): a layout cannot read the request URL, so the browser
+      // carries the page it is on into `next`.
+      content = <WorkspaceLoginRedirect />;
+      break;
+    case "account_disabled":
+      // The login page renders the disabled-account reason from the error
+      // param instead of a plain sign-in form the user cannot complete.
+      redirect(ACCOUNT_DISABLED_LOGIN_URL);
     case "gateway_unavailable":
       // EAI-CUSTOM (bug-2235): the bare static HTML here had no client probe,
       // so once the gateway recovered the error page stuck until a manual hard
@@ -35,7 +49,7 @@ export default async function WorkspaceLayout({
       // the offline fallback: its banner probes /auth/me every 10s and
       // hard-reloads on recovery; the Retry control is a plain <a> for the
       // same reason — full page load re-runs this layout.
-      return (
+      content = (
         <GatewayOfflineFallback renderBanner>
           <div className="flex h-screen flex-col items-center justify-center gap-4">
             <p className="text-muted-foreground">
@@ -73,4 +87,6 @@ export default async function WorkspaceLayout({
     default:
       assertNever(result);
   }
+
+  return <I18nProvider initialLocale={locale}>{content}</I18nProvider>;
 }

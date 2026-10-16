@@ -14,7 +14,10 @@ const read = (relativePath: string) =>
 // 2026-09-26 上游 #5596（Settings 管理共享 models）后：上游 dialog 为 8 个
 // dynamic section；EAI 融合态同样为 8 个——删 appearance/about（c9b3af55a），
 // 加 EAI skill/wechat 扩展 tab 与上游 models tab
-// (account/channels/memory/notification/models/skill/subagent/wechat)。
+// 2026-10-10 上游 #6641（admin 用户管理 users tab）后：上游为 9 个
+// dynamic section；EAI 融合态同样为 9 个——删 appearance/about，加 EAI
+// skill/wechat 扩展 tab 与上游 models/users tab
+// (account/channels/memory/notification/models/skill/subagent/user/wechat)。
 describe("interaction-only bundle boundaries", () => {
   it("does not import the settings dialog until its store is open", () => {
     const host = read(
@@ -32,11 +35,12 @@ describe("interaction-only bundle boundaries", () => {
       "src/components/workspace/settings/settings-dialog.tsx",
     );
     // EAI-CUSTOM: 上游 #5468 后 skill/tool/integrations 迁往 Capability
-    // Center；#5596 又加 models tab，上游为 8。EAI settings dialog 保留
-    // skill + wechat 扩展 tab，删 appearance/about（c9b3af55a），加上游
-    // models tab，tool 随上游迁出，故同为 8 个 dynamic section
-    // (account/channels/memory/notification/models/skill/subagent/wechat)。
-    expect(dialog.match(/dynamic\(/g)).toHaveLength(8);
+    // Center；#5596 又加 models tab；#6641 再加 admin users tab，上游为 9。
+    // EAI settings dialog 保留 skill + wechat 扩展 tab，删 appearance/about
+    // （c9b3af55a），加上游 models/users tab，tool 随上游迁出，故同为 9 个
+    // dynamic section
+    // (account/channels/memory/notification/models/skill/subagent/user/wechat)。
+    expect(dialog.match(/dynamic\(/g)).toHaveLength(9);
     expect(dialog).not.toMatch(
       /import \{ \w+SettingsPage \} from "@\/components\/workspace\/settings\//,
     );

@@ -573,6 +573,7 @@ def test_aio_deploy_socket_preflight_allows_windows_when_docker_reachable(tmp_pa
     env["DEER_FLOW_DOCKER_SOCKET"] = "/var/run/docker.sock"
     env["BETTER_AUTH_SECRET"] = "test-secret"
     env["DEER_FLOW_INTERNAL_AUTH_TOKEN"] = "test-token"
+    env["DEER_FLOW_CREDENTIALS_KEY"] = "test-credentials-key"
     env["UV_EXTRAS"] = "redis"
 
     result = subprocess.run(
@@ -598,6 +599,7 @@ def test_aio_deploy_socket_preflight_rejects_missing_socket_on_posix(tmp_path):
     env["DEER_FLOW_DOCKER_SOCKET"] = "/nonexistent/docker.sock"
     env["BETTER_AUTH_SECRET"] = "test-secret"
     env["DEER_FLOW_INTERNAL_AUTH_TOKEN"] = "test-token"
+    env["DEER_FLOW_CREDENTIALS_KEY"] = "test-credentials-key"
     env["UV_EXTRAS"] = "redis"
 
     result = subprocess.run(
@@ -633,6 +635,7 @@ def test_aio_deploy_socket_preflight_rejects_missing_custom_socket_on_windows(tm
     env["DEER_FLOW_DOCKER_SOCKET"] = "/nonexistent/docker.sock"
     env["BETTER_AUTH_SECRET"] = "test-secret"
     env["DEER_FLOW_INTERNAL_AUTH_TOKEN"] = "test-token"
+    env["DEER_FLOW_CREDENTIALS_KEY"] = "test-credentials-key"
     env["UV_EXTRAS"] = "redis"
 
     result = subprocess.run(
@@ -669,6 +672,7 @@ def test_aio_deploy_socket_preflight_rejects_windows_when_docker_unreachable(tmp
     env["DEER_FLOW_DOCKER_SOCKET"] = "/var/run/docker.sock"
     env["BETTER_AUTH_SECRET"] = "test-secret"
     env["DEER_FLOW_INTERNAL_AUTH_TOKEN"] = "test-token"
+    env["DEER_FLOW_CREDENTIALS_KEY"] = "test-credentials-key"
     env["UV_EXTRAS"] = "redis"
 
     result = subprocess.run(
@@ -705,6 +709,7 @@ def test_aio_deploy_socket_unsets_default_on_windows(tmp_path):
     env["DEER_FLOW_DOCKER_SOCKET"] = "/var/run/docker.sock"
     env["BETTER_AUTH_SECRET"] = "test-secret"
     env["DEER_FLOW_INTERNAL_AUTH_TOKEN"] = "test-token"
+    env["DEER_FLOW_CREDENTIALS_KEY"] = "test-credentials-key"
     env["UV_EXTRAS"] = "redis"
 
     result = subprocess.run(
@@ -741,6 +746,7 @@ def test_aio_deploy_socket_preserves_unset_default_on_windows(tmp_path):
     env.pop("DEER_FLOW_DOCKER_SOCKET", None)
     env["BETTER_AUTH_SECRET"] = "test-secret"
     env["DEER_FLOW_INTERNAL_AUTH_TOKEN"] = "test-token"
+    env["DEER_FLOW_CREDENTIALS_KEY"] = "test-credentials-key"
     env["UV_EXTRAS"] = "redis"
 
     result = subprocess.run(
@@ -780,6 +786,7 @@ def test_aio_deploy_socket_preserves_custom_socket_on_windows(tmp_path):
     env["DEER_FLOW_DOCKER_SOCKET"] = "/custom/docker.sock"
     env["BETTER_AUTH_SECRET"] = "test-secret"
     env["DEER_FLOW_INTERNAL_AUTH_TOKEN"] = "test-token"
+    env["DEER_FLOW_CREDENTIALS_KEY"] = "test-credentials-key"
     env["UV_EXTRAS"] = "redis"
 
     result = subprocess.run(
@@ -817,6 +824,7 @@ def test_aio_deploy_socket_reads_from_dotenv(tmp_path):
     env.pop("DEER_FLOW_DOCKER_SOCKET", None)
     env["BETTER_AUTH_SECRET"] = "test-secret"
     env["DEER_FLOW_INTERNAL_AUTH_TOKEN"] = "test-token"
+    env["DEER_FLOW_CREDENTIALS_KEY"] = "test-credentials-key"
     env["UV_EXTRAS"] = "redis"
 
     result = subprocess.run(

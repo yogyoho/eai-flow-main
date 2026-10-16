@@ -12,6 +12,7 @@ import { type Metadata } from "next";
 import { BRAND_NAME } from "@/brand";
 import { ChunkErrorHandler } from "@/components/chunk-error-handler";
 import { ThemeProvider } from "@/components/theme-provider";
+import { ArtifactDraftsProvider } from "@/core/artifacts/draft-context";
 import { AuthProvider as CoreAuthProvider } from "@/core/auth/AuthProvider";
 import { getServerSideUser } from "@/core/auth/server";
 import { assertNever, type User } from "@/core/auth/types";
@@ -54,13 +55,15 @@ export default async function RootLayout({
       <body>
         <ChunkErrorHandler />
         <ThemeProvider attribute="class" enableSystem disableTransitionOnChange>
-          <I18nProvider initialLocale={locale}>
-            <AuthProvider>
-              <CoreAuthProvider initialUser={initialUser}>
-                <LicenseShell>{children}</LicenseShell>
-              </CoreAuthProvider>
-            </AuthProvider>
-          </I18nProvider>
+          <ArtifactDraftsProvider>
+            <I18nProvider initialLocale={locale}>
+              <AuthProvider>
+                <CoreAuthProvider initialUser={initialUser}>
+                  <LicenseShell>{children}</LicenseShell>
+                </CoreAuthProvider>
+              </AuthProvider>
+            </I18nProvider>
+          </ArtifactDraftsProvider>
         </ThemeProvider>
       </body>
     </html>

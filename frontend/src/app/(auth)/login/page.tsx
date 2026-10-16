@@ -2,33 +2,74 @@
 
 // EAI-CUSTOM: dual-mode login (工号+密码 / 邮箱+验证码) → EAI auth facade.
 // Upstream deer-flow's email+password /api/v1/auth/login/local remains intact.
+// Merged from upstream (2f4f4d4b6, #4063 gap 3): SSR account_disabled verdict
+// via AuthDisabledContext, ?error= query-param copy, parseAuthError-based
+// error extraction and validated ?redirect=/?next= targets — all adapted to
+// the EAI facade endpoints and EAI brand copy kept below.
 
 import { Eye, EyeOff } from "lucide-react";
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useSearchParams } from "next/navigation";
+import { useContext, useEffect, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { AuthDisabledContext } from "@/core/auth/AuthProvider";
+import { resolveAuthNextPath } from "@/core/auth/next-path";
+import { parseAuthError } from "@/core/auth/types";
+import { useI18n } from "@/core/i18n/hooks";
 
 type LoginMode = "password" | "otp";
 
 export default function LoginPage() {
+  const { t } = useI18n();
+  const searchParams = useSearchParams();
+
   const [mode, setMode] = useState<LoginMode>("password");
   const [username, setUsername] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [code, setCode] = useState("");
   const [showPassword, setShowPassword] = useState(false);
-  const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [countdown, setCountdown] = useState(0);
   const [otpSent, setOtpSent] = useState(false);
   const [hasSsoProvider, setHasSsoProvider] = useState(false);
 
+  // Redirect target after a successful login. Two producers feed this page:
+  // EAI surfaces pass ?redirect= (landing page, extensions login hook) while
+  // the merged upstream auth plumbing passes ?next= (fetcher 401 interception,
+  // workspace login redirect, AuthProvider bounces). Both go through the same
+  // validator — only same-site relative paths survive (upstream open-redirect
+  // hardening); anything else falls back to the homepage (EAI behavior).
+  const redirectTarget = resolveAuthNextPath(
+    searchParams.get("redirect") ?? searchParams.get("next"),
+    "/",
+  );
+
+  // Extract error from query params (e.g., ?error=account_disabled from the
+  // workspace layout / fetcher bounces, ?error=sso_failed from the auth
+  // callback page).
+  const errorParam = searchParams.get("error");
+  // Direct auth-page entry with a suspended session: the (auth) layout hands
+  // the SSR account_disabled verdict down through context — the only place
+  // the reason is known before a (deliberately generic) login attempt.
+  const ssrDisabled = useContext(AuthDisabledContext);
+  const [error, setError] = useState(
+    errorParam
+      ? (t.login.errors[errorParam as keyof typeof t.login.errors] ??
+          t.login.authFailed)
+      : ssrDisabled
+        ? t.login.errors.account_disabled
+        : "",
+  );
+
   useEffect(() => {
-    const hasRedirect =
-      typeof window !== "undefined" &&
-      new URLSearchParams(window.location.search).get("redirect");
+    const params =
+      typeof window !== "undefined"
+        ? new URLSearchParams(window.location.search)
+        : null;
+    const hasRedirect = params ? (params.get("redirect") ?? params.get("next")) : null;
     if (!hasRedirect) {
       localStorage.removeItem("access_token");
       localStorage.removeItem("refresh_token");
@@ -37,24 +78,49 @@ export default function LoginPage() {
 
   useEffect(() => {
     if (countdown <= 0) return;
-    const t = setTimeout(() => setCountdown((c) => c - 1), 1000);
-    return () => clearTimeout(t);
+    const timer = setTimeout(() => setCountdown((c) => c - 1), 1000);
+    return () => clearTimeout(timer);
   }, [countdown]);
 
   useEffect(() => {
     // EAI-CUSTOM: 仅当配置了 OIDC provider 时显示 SSO 按钮（避免未启用时的死按钮 404）
     fetch("/api/v1/auth/providers", { credentials: "include" })
       .then((r) => r.json().catch(() => ({ providers: [] })))
-      .then((data) => setHasSsoProvider(Array.isArray(data?.providers) && data.providers.length > 0))
+      .then((data) =>
+        setHasSsoProvider(Array.isArray(data?.providers) && data.providers.length > 0),
+      )
       .catch(() => setHasSsoProvider(false));
   }, []);
 
   const redirectAfterLogin = () => {
-    const redirectUrl =
-      typeof window !== "undefined"
-        ? new URLSearchParams(window.location.search).get("redirect")
-        : null;
-    window.location.href = redirectUrl ?? "/";
+    window.location.href = redirectTarget;
+  };
+
+  // Shared non-OK response handling. The EAI facade answers with a plain
+  // FastAPI string detail — keep it verbatim. Structured upstream-style
+  // {code, message} payloads go through parseAuthError; account_disabled is
+  // the one code with localized user-facing copy of its own (upstream
+  // #4063 gap 3 — login-only mapping, and this page has no sign-up surface,
+  // so no probing channel is added). A non-JSON body keeps the EAI fallback.
+  const applyAuthError = (data: unknown, fallback: string) => {
+    if (data === null) {
+      setError(fallback);
+      return;
+    }
+    const detail =
+      typeof data === "object" && data !== null && "detail" in data
+        ? (data as { detail?: unknown }).detail
+        : undefined;
+    if (typeof detail === "string") {
+      setError(detail);
+      return;
+    }
+    const authError = parseAuthError(data);
+    setError(
+      authError.code === "account_disabled"
+        ? t.login.errors.account_disabled
+        : authError.message,
+    );
   };
 
   const handlePasswordLogin = async (e: React.FormEvent) => {
@@ -69,8 +135,7 @@ export default function LoginPage() {
         credentials: "include",
       });
       if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
-        setError(typeof data.detail === "string" ? data.detail : "登录失败");
+        applyAuthError(await res.json().catch(() => null), "登录失败");
         return;
       }
       redirectAfterLogin();
@@ -92,8 +157,7 @@ export default function LoginPage() {
         credentials: "include",
       });
       if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
-        setError(typeof data.detail === "string" ? data.detail : "发送失败");
+        applyAuthError(await res.json().catch(() => null), "发送失败");
         return;
       }
       setOtpSent(true);
@@ -115,8 +179,7 @@ export default function LoginPage() {
         credentials: "include",
       });
       if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
-        setError(typeof data.detail === "string" ? data.detail : "登录失败");
+        applyAuthError(await res.json().catch(() => null), "登录失败");
         return;
       }
       redirectAfterLogin();

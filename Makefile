@@ -1,6 +1,6 @@
 # DeerFlow - Unified Development Environment
 
-.PHONY: help config config-upgrade check check-agent-guidance install extension-install extension-upgrade extension-list extension-enable extension-disable extension-remove setup doctor support-bundle detect-thread-boundaries detect-blocking-io dev dev-daemon start start-daemon nginx stop up down prod-logs clean docker-init docker-start docker-stop docker-logs docker-logs-frontend docker-logs-gateway setup-sandbox rebuild-frontend check-frontend-deps
+.PHONY: help config config-upgrade check check-agent-guidance install extension-install extension-upgrade extension-list extension-enable extension-disable extension-remove setup doctor support-bundle detect-thread-boundaries detect-blocking-io dev dev-daemon dev-multi dev-multi-check dev-multi-down start start-daemon nginx stop up down prod-logs clean docker-init docker-start docker-stop docker-logs docker-logs-frontend docker-logs-gateway docker-logs-redis setup-sandbox rebuild-frontend check-frontend-deps sync-check
 
 BASH ?= bash
 # Detect uv path - prefer uv in PATH, fall back to Windows Python Scripts
@@ -31,6 +31,7 @@ help:
 	@echo "  make config          - Generate local config files (aborts if config already exists)"
 	@echo "  make config-upgrade  - Merge new fields from config.example.yaml into config.yaml"
 	@echo "  make check           - Check if all required tools are installed"
+	@echo "  make check-agent-guidance - Validate scoped AGENTS.md file and chain budgets"
 	@echo "  make detect-thread-boundaries - Inventory async/thread boundary points"
 	@echo "  make detect-blocking-io        - Inventory blocking IO that may block the backend event loop"
 	@echo "  make install         - Install all dependencies (frontend + backend + pre-commit hooks)"
@@ -45,7 +46,11 @@ help:
 	@echo "  make dev-daemon      - Start dev services in background (daemon mode)"
 	@echo "  make start           - Start all services in production mode (optimized, no hot-reloading)"
 	@echo "  make start-daemon    - Start prod services in background (daemon mode)"
+	@echo "  make nginx           - Start nginx alone in the foreground (local dev config)"
 	@echo "  make stop            - Stop all running services"
+	@echo "  make dev-multi       - Start two Gateways as a local multi-instance cluster (Postgres + Redis in Docker)"
+	@echo "  make dev-multi-check - Run the cross-instance checks against that pair"
+	@echo "  make dev-multi-down  - Stop the pair and delete its containers and data"
 	@echo "  make clean           - Stop local services and DELETE local runtime data (backend/.deer-flow: $(RUNTIME_DATA_CONTENTS)) and logs"
 	@echo ""
 	@echo "Docker Production Commands:"
@@ -62,6 +67,7 @@ help:
 	@echo "  make docker-logs     - View Docker development logs"
 	@echo "  make docker-logs-frontend - View Docker frontend logs"
 	@echo "  make docker-logs-gateway - View Docker gateway logs"
+	@echo "  make docker-logs-redis - View Docker Redis logs"
 	@echo "  make rebuild-frontend - Rebuild frontend image after dependency changes (NOT just restart)"
 	@echo "  make check-frontend-deps - Warn if host deps drifted from the frontend container"
 
@@ -95,6 +101,9 @@ config-upgrade:
 # Check required tools
 check:
 	@$(PYTHON) ./scripts/check.py
+
+check-agent-guidance:
+	@$(PYTHON) ./scripts/check_agent_guidance.py
 
 # Install all dependencies
 install:
@@ -170,9 +179,23 @@ start-daemon:
 	@$(PYTHON) ./scripts/check.py
 	@$(RUN_SHELL_SCRIPT) ./scripts/serve.sh --prod --daemon $(if $(filter 1,$(SKIP_FRONTEND_BUILD)),--skip-frontend-build)
 
+# Start nginx alone in the foreground with the local dev config
+nginx:
+	@$(RUN_SHELL_SCRIPT) ./scripts/nginx.sh
+
 # Stop all services
 stop:
 	@$(RUN_SHELL_SCRIPT) ./scripts/serve.sh --stop
+
+# Two Gateways on shared Postgres, Redis and DEER_FLOW_HOME (scripts/dev_multi_instance.sh --help)
+dev-multi:
+	@$(RUN_SHELL_SCRIPT) ./scripts/dev_multi_instance.sh up
+
+dev-multi-check:
+	@$(RUN_SHELL_SCRIPT) ./scripts/dev_multi_instance.sh check
+
+dev-multi-down:
+	@$(RUN_SHELL_SCRIPT) ./scripts/dev_multi_instance.sh down
 
 # Clean up: deletes local runtime data, not just temporary files. The guard
 # runs before stop, which would otherwise stop a running stack's sandboxes.
@@ -210,6 +233,8 @@ docker-logs-frontend:
 	@$(RUN_SHELL_SCRIPT) ./scripts/docker.sh logs --frontend
 docker-logs-gateway:
 	@$(RUN_SHELL_SCRIPT) ./scripts/docker.sh logs --gateway
+docker-logs-redis:
+	@$(RUN_SHELL_SCRIPT) ./scripts/docker.sh logs --redis
 
 # Rebuild the frontend image after dependency changes (package.json / pnpm-lock.yaml).
 # The dev container's node_modules is image-baked (NOT bind-mounted, since host=Windows
