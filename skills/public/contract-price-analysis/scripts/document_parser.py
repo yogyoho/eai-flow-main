@@ -337,18 +337,21 @@ async def parse_document_openai_vision(
             content = ((resp.json().get("choices") or [{}])[0].get("message") or {}).get("content") or ""
             # PaddleOCR-VL 系输出标记流;会遵循 HTML 指令的服务输出 <table>——两者都转行。
             if any(m in content for m in _TABLE_MARKERS):
-                page_rows = parse_table_marker_stream(content)
+                page_tables = parse_table_marker_stream(content)
             else:
-                page_rows = html_tables_to_rows(content)
+                page_tables = html_tables_to_rows(content)
             # M3 实测(钢材采购 签字版): 封面元数据(日期:/甲方:/合同编号:)只在
-            # 文字行里——marker 流的格文本拼回 page_texts,元数据正则才能扫全本
-            # (扫描件原生文本层为空,否则 page_texts 恒缺)。
-            row_text = "\n".join(c for row in page_rows for c in row if c)
+            # 文字行里——页内全部格文本(含纯文字行的单格行)拼回 page_texts,
+            # 元数据正则才能扫全本(扫描件原生文本层为空,否则 page_texts 恒缺)。
+            page_text_lines = [
+                cell for table in page_tables for row in table for cell in row if cell
+            ]
+            row_text = "\n".join(page_text_lines)
             if ptext:
                 page_texts[page_no] = ptext
             elif row_text:
                 page_texts[page_no] = row_text
-            for ti, rows in enumerate(page_rows):
+            for ti, rows in enumerate(page_tables):
                 tables.append(
                     TableExtract(
                         page_no=page_no,

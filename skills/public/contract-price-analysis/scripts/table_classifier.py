@@ -165,8 +165,13 @@ def _row_cells_by_x(text_row, bbox_row, roles_x, tol=0.06):
     return out
 
 
-def _collapse_header(rows: list, peek: int = 3) -> tuple:
+def _collapse_header(rows: list, peek: int = 6) -> tuple:
     """Collapse a multi-row merged header into one row.
+
+    peek=6 (was 3, M3 paddleocr-vl): vision 引擎（PaddleOCR-VL）会多识别出
+    连续标题行（'附件一：工程量清单'+'工程量清单'），把真表头（表头行+子表头
+    行）压到 3 行窗口外——窗口扩到 6 行容纳 标题×2+表头×2 的四行表头。
+    has_token 门控天然限定只有含角色词的行才并入合并，不会误吞纯文字行。
 
     Row kinds, scanned top-down:
       - leading TITLE/caption rows (no role token, e.g. '设备清单'; OR a single
