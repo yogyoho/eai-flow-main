@@ -678,6 +678,8 @@ def _item(**kw):
         source_page=1,
         source_table_idx=0,
         source_row_idx=0,
+        validation_status="ok",
+        edit_note=None,
     )
     base.update(kw)
     return SimpleNamespace(**base)
@@ -736,17 +738,22 @@ def test_aggregate_items_markdown_formats_table():
             tech_params={"材质": "Q235", "壁厚": "5mm"},
             source_contract_no=None,
             is_outlier=True,
+            validation_status="adjusted",
         ),
         _item(goods_name="法兰盘", spec_model="DN100 PN16", quantity=12, unit="片", unit_price=None, price_untaxed=None, tech_params={}, source_contract_no="HT-002"),
+        # 异常 + 人工编辑叠加: 品名前缀 ⚠✎;校验列 edit_note 优先于 validation_status
+        _item(goods_name="水泵", quantity=1, unit="台", unit_price=Decimal("1200"), is_outlier=True, validation_status="adjusted", edit_note="人工改价 1200"),
     ]
     md = ragflow_setup.aggregate_items_markdown("合同A.pdf", items)
     lines = md.splitlines()
     assert lines[0] == "# 合同A.pdf 货物分项表"
-    assert re.fullmatch(r"> 生成时间:\d{4}-\d{2}-\d{2} \d{2}:\d{2} UTC · 共 3 项", lines[2])
-    assert "| 品名 | 规格型号 | 数量 | 单位 | 含税单价 | 不含税单价 | 来源合同号 |" in lines
-    assert "| 镀锌钢管 | DN100 | 3 | 米 | 85.50 | — | HT-001 |" in lines
-    assert "| ⚠ 角钢 | — | 2.555 | 吨 | 4200.00 | 3716.81 | — |" in lines
-    assert "| 法兰盘 | DN100 PN16 | 12 | 片 | — | — | HT-002 |" in lines
+    assert re.fullmatch(r"> 生成时间:\d{4}-\d{2}-\d{2} \d{2}:\d{2} UTC · 共 4 项", lines[2])
+    assert "| 品名 | 规格型号 | 数量 | 单位 | 含税单价 | 不含税单价 | 来源合同号 | 校验 |" in lines
+    assert "|---|---|---|---|---|---|---|---|" in lines
+    assert "| 镀锌钢管 | DN100 | 3 | 米 | 85.50 | — | HT-001 | — |" in lines
+    assert "| ⚠ 角钢 | — | 2.555 | 吨 | 4200.00 | 3716.81 | — | adjusted |" in lines
+    assert "| 法兰盘 | DN100 PN16 | 12 | 片 | — | — | HT-002 | — |" in lines
+    assert "| ⚠✎ 水泵 | DN100 | 1 | 台 | 1200.00 | 75.00 | HT-001 | ✎ 已人工编辑 |" in lines
     # tech_params 有值才进明细段;空 dict 不进
     assert "## 技术参数明细" in lines
     assert "- **角钢**:材质:Q235、壁厚:5mm" in lines

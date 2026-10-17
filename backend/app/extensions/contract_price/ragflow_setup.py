@@ -193,23 +193,27 @@ def goods_table_filename(doc_name: str) -> str:
 
 
 def aggregate_items_markdown(doc_name: str, items: list) -> str:
-    """EAI-CUSTOM (决策 B): 聚合 cpa_items 为 Markdown 分项表。is_outlier 行前缀 ⚠;
-    数值/文本缺失以 "—" 占位（数量 ≤3 位小数去尾零,价格 2 位）;tech_params 有值的
-    行在表格后附「技术参数明细」段（空 dict/None 不入）。"""
+    """EAI-CUSTOM (决策 B): 聚合 cpa_items 为 Markdown 分项表。品名列标注人工校验
+    状态——is_outlier 前缀 ⚠、人工编辑过(edit_note 非空)前缀 ✎(可叠加 ⚠✎);行尾
+    「校验」列: edit_note 非空 → "✎ 已人工编辑"(优先),否则 validation_status 非
+    ok/空 → 原样展示,否则 "—"。数值/文本缺失以 "—" 占位（数量 ≤3 位小数去尾零,
+    价格 2 位）;tech_params 有值的行在表格后附「技术参数明细」段（空 dict/None 不入）。"""
     lines = [
         f"# {doc_name} 货物分项表",
         "",
         f"> 生成时间:{datetime.now(UTC).strftime('%Y-%m-%d %H:%M UTC')} · 共 {len(items)} 项",
         "",
-        "| 品名 | 规格型号 | 数量 | 单位 | 含税单价 | 不含税单价 | 来源合同号 |",
-        "|---|---|---|---|---|---|---|",
+        "| 品名 | 规格型号 | 数量 | 单位 | 含税单价 | 不含税单价 | 来源合同号 | 校验 |",
+        "|---|---|---|---|---|---|---|---|",
     ]
     for it in items:
-        prefix = "⚠ " if it.is_outlier else ""
+        mark = ("⚠" if it.is_outlier else "") + ("✎" if it.edit_note else "")
+        prefix = f"{mark} " if mark else ""
         qty = f"{it.quantity:.3f}".rstrip("0").rstrip(".") if it.quantity is not None else "—"
         up = f"{it.unit_price:.2f}" if it.unit_price is not None else "—"
         pu = f"{it.price_untaxed:.2f}" if it.price_untaxed is not None else "—"
-        lines.append(f"| {prefix}{it.goods_name} | {it.spec_model or '—'} | {qty} | {it.unit or '—'} | {up} | {pu} | {it.source_contract_no or '—'} |")
+        check = "✎ 已人工编辑" if it.edit_note else (str(it.validation_status) if it.validation_status not in (None, "", "ok") else "—")
+        lines.append(f"| {prefix}{it.goods_name} | {it.spec_model or '—'} | {qty} | {it.unit or '—'} | {up} | {pu} | {it.source_contract_no or '—'} | {check} |")
     detailed = [it for it in items if it.tech_params]
     if detailed:
         lines += ["", "## 技术参数明细", ""]
