@@ -158,6 +158,11 @@ class ConfigOut(BaseModel):
     # 内建 eai-flow-ocr(现状);其它值 = system_config ocr_services 中的服务名。
     # service._resolve_ocr_args 解析注入子进程 argv,失效回退内建。
     ocr_provider: str | None = None
+    # EAI-CUSTOM (合同价格分析 × RAGFlow): 共享租户固定知识库 id 与初始化时间,
+    # ragflow_setup.ensure_initialized 落盘;仅承载 GET/PUT /config 往返,不注入子进程。
+    ragflow_contract_dataset_id: str | None = None
+    ragflow_goods_dataset_id: str | None = None
+    ragflow_initialized_at: str | None = None
 
 
 # EAI-CUSTOM (review fix 2026-09-20): llm_key 为 write-only 字段——GET /config 的

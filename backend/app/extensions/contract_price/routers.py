@@ -12,6 +12,8 @@ Mounted into the Gateway under ``/api/extensions/contract-price``. Endpoints:
   Functional area 6 (dashboard): GET /dashboard
   Library (cpa v3)             : /library/folders*, /library/files* — 合同文件库 (EAI-CUSTOM)
   Terms (cpa v3)               : GET/POST /terms, PATCH/DELETE /terms/{id} — 货物分类术语 (EAI-CUSTOM)
+  RAGFlow (EAI-CUSTOM)         : POST /ragflow/init, GET /ragflow/status,
+                                 POST /library/files/{file_id}/ragflow-sync — 共享租户知识库
   Pipeline trigger             : POST /pipeline/run, GET /pipeline/runs/{id}/status
 """
 
@@ -23,12 +25,13 @@ import os
 import urllib.parse
 from uuid import UUID
 
+import httpx
 from fastapi import APIRouter, BackgroundTasks, Depends, File, Form, HTTPException, Query, UploadFile, status
 from fastapi.responses import FileResponse, Response
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.extensions.auth.middleware import require_permission
-from app.extensions.contract_price import crud, evolution, service, storage
+from app.extensions.contract_price import crud, evolution, ragflow_setup, service, storage  # EAI-CUSTOM: ragflow_setup
 from app.extensions.contract_price.models import CpaDocument, CpaItem, CpaLibraryFolder
 from app.extensions.contract_price.schemas import (
     BatchDeleteRequest,
@@ -463,6 +466,54 @@ async def delete_term_endpoint(
 ):
     if not await crud.delete_term(db, term_id):
         raise HTTPException(status_code=404, detail="术语不存在")
+
+
+# --- RAGFlow 知识库集成 (EAI-CUSTOM: 合同价格分析 × RAGFlow, 共享租户服务身份) --
+
+
+@router.post("/ragflow/init")
+async def init_contract_ragflow(
+    db: AsyncSession = Depends(get_db),
+    _: CurrentUser = Depends(require_permission("system:access")),
+):
+    """幂等初始化共享租户两个固定知识库并回读连通状态（SSO 未配置 → 响亮失败，不静默回退）。"""
+    client = await ragflow_setup.get_service_client(db)
+    initialized = await ragflow_setup.ensure_initialized(client)
+    return {"status": "ok", "initialized": initialized, "connectivity": await ragflow_setup.collect_status(client)}
+
+
+@router.get("/ragflow/status")
+async def contract_ragflow_status(
+    db: AsyncSession = Depends(get_db),
+    _: CurrentUser = Depends(require_permission("system:access")),
+):
+    """连通性探测 + 两个固定知识库状态；任何失败降级 available=False，不 500（前端状态面板直读）。"""
+    try:
+        client = await ragflow_setup.get_service_client(db)
+        return await ragflow_setup.collect_status(client)
+    except Exception as exc:  # noqa: BLE001 — SSO 未配置/网络不可达均为降级而非 500
+        return {"available": False, "datasets": [], "error": str(exc)}
+
+
+@router.post("/library/files/{file_id}/ragflow-sync")
+async def ragflow_sync_library_file(
+    file_id: UUID,
+    db: AsyncSession = Depends(get_db),
+    _: CurrentUser = Depends(require_permission("system:access")),
+):
+    """库文件 → 共享租户「合同知识库」（上传+解析）。同名文档已存在 → already_exists 不重复上传。"""
+    lf = await crud.get_library_file(db, file_id)
+    if lf is None:
+        raise HTTPException(status_code=404, detail="文件不存在")
+    try:
+        data = await asyncio.to_thread(storage.get_object, lf.storage_key)
+    except Exception:
+        raise HTTPException(status_code=404, detail="文件对象不存在")
+    try:
+        client = await ragflow_setup.get_service_client(db)
+        return await ragflow_setup.sync_file(client, filename=lf.file_name or "file", content=data)
+    except (RuntimeError, httpx.HTTPError) as exc:
+        raise HTTPException(status_code=502, detail=f"RAGFlow 同步失败: {exc}") from exc
 
 
 # --- Functional area 1: documents ------------------------------------------
