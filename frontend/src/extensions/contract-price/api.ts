@@ -335,9 +335,15 @@ export const libraryApi = {
       `${API_BASE}/library/files${folderId ? `?folder_id=${folderId}` : ""}`,
     ),
 
-  uploadFiles: (folderId: string | null, files: File[]) => {
+  uploadFiles: (
+    folderId: string | null,
+    files: File[],
+    ragflowSync = false,
+  ) => {
     const fd = new FormData();
     if (folderId) fd.set("folder_id", folderId);
+    // EAI-CUSTOM: 勾选后逐文件同步 RAGFlow「合同知识库」（后端失败隔离，不影响上传本身）
+    fd.set("ragflow_sync", String(ragflowSync));
     // webkitdirectory 上传带 webkitRelativePath——原样传给后端逐级建子文件夹（spec §1.2）
     fd.set(
       "paths",

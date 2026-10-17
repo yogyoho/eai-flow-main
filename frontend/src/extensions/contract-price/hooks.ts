@@ -408,8 +408,11 @@ export function useLibraryMutations() {
     onSuccess: invalidate,
   });
   const uploadFiles = useMutation({
-    mutationFn: (p: { folderId: string | null; files: File[] }) =>
-      libraryApi.uploadFiles(p.folderId, p.files),
+    mutationFn: (p: {
+      folderId: string | null;
+      files: File[];
+      ragflowSync?: boolean; // EAI-CUSTOM
+    }) => libraryApi.uploadFiles(p.folderId, p.files, p.ragflowSync ?? false),
     onSuccess: invalidate,
   });
   const analyzeFile = useMutation({

@@ -188,6 +188,7 @@ function UploadDialog({
   onUpload: (
     files: File[],
     autoParse: boolean,
+    ragflowSync: boolean,
   ) => Promise<{ total: number; failed: File[]; firstError: string | null }>;
   uploading: boolean;
   /** cpa v3 上传源头统一: 文件落文件库(可选目录),与合同文件库同一份。 */
@@ -198,6 +199,7 @@ function UploadDialog({
   const [selected, setSelected] = useState<File[]>([]);
   const [dragOver, setDragOver] = useState(false);
   const [autoParse, setAutoParse] = useState(false);
+  const [ragflowSync, setRagflowSync] = useState(false); // EAI-CUSTOM
   const [uploadError, setUploadError] = useState<string | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
   const folderRef = useRef<HTMLInputElement>(null);
@@ -222,10 +224,15 @@ function UploadDialog({
   const startUpload = async () => {
     if (selected.length === 0 || uploading) return;
     setUploadError(null);
-    const { failed, firstError } = await onUpload(selected, autoParse);
+    const { failed, firstError } = await onUpload(
+      selected,
+      autoParse,
+      ragflowSync,
+    );
     if (failed.length === 0) {
       setSelected([]);
       setAutoParse(false);
+      setRagflowSync(false);
       onOpenChange(false);
     } else {
       const failedKeys = new Set(failed.map((f) => `${f.name}-${f.size}`));
@@ -246,6 +253,7 @@ function UploadDialog({
         if (!v) {
           setSelected([]);
           setAutoParse(false);
+          setRagflowSync(false);
           setUploadError(null);
         }
       }}
@@ -329,6 +337,31 @@ function UploadDialog({
             {autoParse
               ? "（上传完即触发 OCR 提取）"
               : "（上传后需手动点「开始解析」）"}
+          </span>
+        </label>
+
+        {/* RAGFlow 同步开关 (EAI-CUSTOM): 上传入文件库后逐文件同步「合同知识库」并
+            触发解析;同步失败不失败上传（文件已安全落库），仅按文件警示。 */}
+        <label className="flex cursor-pointer items-center gap-2 text-sm select-none">
+          <input
+            type="checkbox"
+            checked={ragflowSync}
+            onChange={(e) => setRagflowSync(e.target.checked)}
+            className="accent-primary"
+          />
+          <span
+            className={
+              ragflowSync
+                ? "text-foreground font-medium"
+                : "text-muted-foreground"
+            }
+          >
+            同步到 RAGFlow 知识库
+          </span>
+          <span className="text-muted-foreground text-xs">
+            {ragflowSync
+              ? "（上传后同步到「合同知识库」并触发解析）"
+              : "（仅入合同文件库，不写 RAGFlow）"}
           </span>
         </label>
 
@@ -637,6 +670,7 @@ export function ContractsView() {
   const handleFiles = async (
     files: FileList | File[],
     autoParse = false,
+    ragflowSync = false, // EAI-CUSTOM
   ): Promise<{ total: number; failed: File[]; firstError: string | null }> => {
     // Filter to .pdf/.docx (webkitdirectory grabs ALL files in a folder).
     const list = Array.from(files).filter(
@@ -665,7 +699,11 @@ export function ContractsView() {
     for (let i = 0; i < list.length; i += POOL) {
       const chunk = list.slice(i, i + POOL);
       try {
-        const res = await libraryApi.uploadFiles(uploadFolderId, chunk);
+        const res = await libraryApi.uploadFiles(
+          uploadFolderId,
+          chunk,
+          ragflowSync,
+        );
         for (const item of res.items) {
           const f = byName.get(item.file_name) ?? chunk[0];
           done += 1;
@@ -676,6 +714,18 @@ export function ContractsView() {
               failReasons.push(`${item.file_name}：${item.error}`);
             setBatch({ total: list.length, done, failed });
             continue;
+          }
+          // RAGFlow 逐文件同步结果 (EAI-CUSTOM): 失败只警示——文件本身已上传成功。
+          if (item.ragflow) {
+            const rf = item.ragflow;
+            if (rf.status === "synced")
+              toast.success(`已同步到 RAGFlow 知识库：${item.file_name}`);
+            else if (rf.status === "already_exists")
+              toast.info(`RAGFlow 知识库已存在同名文档：${item.file_name}`);
+            else
+              toast.warning(
+                `RAGFlow 同步失败（文件已上传成功）：${item.file_name}${rf.message ? ` — ${rf.message}` : ""}`,
+              );
           }
           try {
             const a = await libraryApi.analyzeFile(item.file_id);
@@ -1256,7 +1306,9 @@ export function ContractsView() {
         open={showUploadDialog}
         onOpenChange={setShowUploadDialog}
         uploading={!!batch && batch.done < batch.total}
-        onUpload={(files, autoParse) => handleFiles(files, autoParse)}
+        onUpload={(files, autoParse, ragflowSync) =>
+          handleFiles(files, autoParse, ragflowSync)
+        }
         folders={uploadFolderOptions}
         folderId={uploadFolderId}
         onFolderChange={setUploadFolderId}

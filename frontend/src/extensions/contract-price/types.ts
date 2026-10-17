@@ -232,6 +232,8 @@ export interface CpaLibraryUploadItem {
   file_id?: string;
   reused: boolean;
   error?: string;
+  /** EAI-CUSTOM: 仅勾选「同步到 RAGFlow 知识库」时逐文件携带；同步失败不失败上传。 */
+  ragflow?: { status: "synced" | "already_exists" | "error"; message?: string };
 }
 
 export interface CpaLibraryAnalyze {

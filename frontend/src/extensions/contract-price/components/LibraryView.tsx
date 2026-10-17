@@ -135,6 +135,7 @@ export function LibraryView() {
   const [checked, setChecked] = useState<Set<string>>(new Set());
   const [uploadOpen, setUploadOpen] = useState(false);
   const [staged, setStaged] = useState<File[]>([]);
+  const [ragflowSync, setRagflowSync] = useState(false); // EAI-CUSTOM
   const [folderDlg, setFolderDlg] = useState<{
     mode: "create" | "rename";
     id?: string;
@@ -253,6 +254,7 @@ export function LibraryView() {
       const res = await muts.uploadFiles.mutateAsync({
         folderId: sel === ROOT_ID ? null : sel,
         files: staged,
+        ragflowSync,
       });
       // 上传源头统一(cpa v3): 入库后自动登记到合同解析(加入解析=MinIO 拷贝到
       // 扫描区根+建 pending 行)——两 tab 共享同一份;实际解析仍由「开始解析」/
@@ -264,6 +266,18 @@ export function LibraryView() {
         if (item.error || !item.file_id) {
           regFails.push(`${item.file_name}：${item.error ?? "上传失败"}`);
           continue;
+        }
+        // RAGFlow 逐文件同步结果 (EAI-CUSTOM): 失败只警示——文件本身已上传成功。
+        if (item.ragflow) {
+          const rf = item.ragflow;
+          if (rf.status === "synced")
+            toast.success(`已同步到 RAGFlow 知识库：${item.file_name}`);
+          else if (rf.status === "already_exists")
+            toast.info(`RAGFlow 知识库已存在同名文档：${item.file_name}`);
+          else
+            toast.warning(
+              `RAGFlow 同步失败（文件已上传成功）：${item.file_name}${rf.message ? ` — ${rf.message}` : ""}`,
+            );
         }
         try {
           const a = await libraryApi.analyzeFile(item.file_id);
@@ -278,6 +292,7 @@ export function LibraryView() {
       const reused = res.items.filter((i) => i.reused).length;
       const failed = res.items.filter((i) => i.error);
       setStaged([]);
+      setRagflowSync(false);
       setUploadOpen(false);
       if (regFails.length) {
         flash("err", `${regFails[0]}（共 ${regFails.length} 条登记问题）`);
@@ -801,7 +816,13 @@ export function LibraryView() {
       </div>
 
       {/* 上传确认对话框 */}
-      <Dialog open={uploadOpen} onOpenChange={setUploadOpen}>
+      <Dialog
+        open={uploadOpen}
+        onOpenChange={(v) => {
+          setUploadOpen(v);
+          if (!v) setRagflowSync(false); // EAI-CUSTOM: 关闭即还原默认（不勾选）
+        }}
+      >
         <DialogContent>
           <DialogHeader>
             <DialogTitle>上传合同文件</DialogTitle>
@@ -840,6 +861,30 @@ export function LibraryView() {
           <p className="text-muted-foreground text-xs">
             文件夹上传按相对路径自动建子文件夹；同文件夹相同内容的文件复用已上传副本；上传后自动登记到合同解析（待解析），点「开始解析」才实际解析。
           </p>
+          {/* RAGFlow 同步开关 (EAI-CUSTOM): 与合同解析 tab 上传对话框同款；同步
+              失败不失败上传（文件已安全落库），仅按文件警示。 */}
+          <label className="flex cursor-pointer items-center gap-2 text-sm select-none">
+            <input
+              type="checkbox"
+              checked={ragflowSync}
+              onChange={(e) => setRagflowSync(e.target.checked)}
+              className="accent-primary"
+            />
+            <span
+              className={
+                ragflowSync
+                  ? "text-foreground font-medium"
+                  : "text-muted-foreground"
+              }
+            >
+              同步到 RAGFlow 知识库
+            </span>
+            <span className="text-muted-foreground text-xs">
+              {ragflowSync
+                ? "（上传后同步到「合同知识库」并触发解析）"
+                : "（仅入合同文件库，不写 RAGFlow）"}
+            </span>
+          </label>
           <DialogFooter>
             <Button variant="outline" onClick={() => setUploadOpen(false)}>
               取消

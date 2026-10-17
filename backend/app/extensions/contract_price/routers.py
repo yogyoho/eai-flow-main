@@ -141,16 +141,32 @@ async def list_library_files_endpoint(
     return {"items": await crud.list_library_files(db, fid)}
 
 
+async def _ragflow_sync_result(db: AsyncSession, filename: str, content: bytes) -> dict:
+    """EAI-CUSTOM: 上传通道逐文件同步共享租户「合同知识库」（决策 A 隐式初始化;
+    同名已存在 → already_exists）。失败隔离: 任何异常（SSO 未配置/网络/建库/解析
+    触发）都不失败上传——文件此刻已安全落 MinIO+库，只在该文件条目标注 error。"""
+    try:
+        client = await ragflow_setup.get_service_client(db)
+        res = await ragflow_setup.sync_file(client, filename=filename, content=content)
+        return {"status": res["status"]}
+    except Exception as exc:  # noqa: BLE001 — 同步失败 ≠ 上传失败，条目原位带错误信息
+        logger.warning("ragflow sync(上传通道)失败: %s", filename, exc_info=True)
+        return {"status": "error", "message": str(exc)}
+
+
 @router.post("/library/files/upload")
 async def upload_library_files(
     folder_id: str = Form(""),
     paths: str = Form("[]"),  # 与 files 等长的相对路径 JSON 数组（webkitdirectory 用；""=不建子树）
+    ragflow_sync: bool = Form(False),  # EAI-CUSTOM: 勾选后每个成功入库文件顺带同步 RAGFlow
     files: list[UploadFile] = File(...),
     db: AsyncSession = Depends(get_db),
     _: CurrentUser = Depends(require_permission("system:access")),
 ):
     """多文件上传（含 webkitdirectory）。同文件夹同内容 → reused 复用不重复入库。
-    paths 提供相对路径段（如 "设备采购/附表"）时自动逐级建子文件夹（幂等）。"""
+    paths 提供相对路径段（如 "设备采购/附表"）时自动逐级建子文件夹（幂等）。
+    ragflow_sync=true (EAI-CUSTOM) 时每个成功入库文件（含 reused）顺带同步 RAGFlow
+    「合同知识库」——失败只在该条目标注，不失败上传。"""
     try:
         fid: UUID | None = UUID(folder_id) if folder_id and folder_id != "root" else None
     except ValueError:
@@ -189,7 +205,10 @@ async def upload_library_files(
         digest = hashlib.sha256(data).hexdigest()
         dup = await crud.find_library_duplicate(db, target, digest)
         if dup is not None:
-            out.append({"file_name": name, "file_id": dup.id, "reused": True})
+            entry: dict = {"file_name": name, "file_id": dup.id, "reused": True}
+            if ragflow_sync:  # EAI-CUSTOM: 复用项同样同步（sync_file 同名幂等 → already_exists）
+                entry["ragflow"] = await _ragflow_sync_result(db, name, data)
+            out.append(entry)
             continue
         ext = os.path.splitext(name)[1].lstrip(".").lower() or "pdf"
         key = storage.library_key(str(target) if target else "root", digest, name)
@@ -203,7 +222,10 @@ async def upload_library_files(
             file_size=len(data),
             file_type=ext,
         )
-        out.append({"file_name": name, "file_id": row.id, "reused": False})
+        entry = {"file_name": name, "file_id": row.id, "reused": False}
+        if ragflow_sync:  # EAI-CUSTOM: 存储成功才同步；失败不回滚、不失败上传
+            entry["ragflow"] = await _ragflow_sync_result(db, name, data)
+        out.append(entry)
     return {"items": out}
 
 

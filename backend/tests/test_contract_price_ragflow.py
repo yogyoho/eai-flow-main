@@ -24,6 +24,7 @@ from app.extensions.contract_price.routers import (
     contract_ragflow_status,
     init_contract_ragflow,
     ragflow_sync_library_file,
+    upload_library_files,
 )
 from app.extensions.knowledge.client import RAGFlowClient
 
@@ -480,3 +481,147 @@ async def test_sync_endpoint_syncs_library_file(ragflow_env, monkeypatch):
     assert out["status"] == "synced"
     assert len(state.posts("/documents")) == 1
     assert len(state.posts("/chunks")) == 1
+
+
+# ---- 库上传通道逐文件同步（ragflow_sync 表单字段, EAI-CUSTOM） -----------------
+
+
+class _UpFile:
+    """UploadFile 桩: 文件名 + 内容（镜像 test_contract_price_library.py 的 _F）。"""
+
+    def __init__(self, filename, content=b"%PDF-1.7 stub"):
+        self.filename = filename
+        self.content_type = "application/pdf"
+        self._content = content
+
+    async def read(self):
+        return self._content
+
+
+class _DbNoFolders:
+    """db.get(CpaLibraryFolder, fid) → None（folder_id="" 时本就不会走到）。"""
+
+    async def get(self, model, obj_id):
+        return None
+
+
+def _stub_library_storage(monkeypatch):
+    """无重复 + create_library_file 落行 + upload_bytes 空转（MinIO 不出网）。"""
+    created = []
+    monkeypatch.setattr(cpa_crud, "find_library_duplicate", _async_returning(None))
+
+    async def _create(db, **kw):
+        row = SimpleNamespace(id=uuid.uuid4(), **kw)
+        created.append(row)
+        return row
+
+    monkeypatch.setattr(cpa_crud, "create_library_file", _create)
+    monkeypatch.setattr(cpa_storage, "upload_bytes", lambda key, data, *a: None)
+    return created
+
+
+@pytest.mark.asyncio
+async def test_upload_ragflow_sync_syncs_each_stored_file(monkeypatch):
+    """ragflow_sync=true → 每个成功入库文件逐个 sync_file（文件名+原字节），
+    条目携带 ragflow 结果；未勾选的错误条目（非法扩展名）不触发同步。"""
+    created = _stub_library_storage(monkeypatch)
+    client = object()  # 仅验证 get_service_client → sync_file 传参链路
+    monkeypatch.setattr(ragflow_setup, "get_service_client", _async_returning(client))
+    synced = []
+
+    async def _sync(cl, filename, content):
+        synced.append((cl, filename, content))
+        return {"status": "synced", "dataset_id": "ds-1", "ragflow_document_id": "doc-1"}
+
+    monkeypatch.setattr(ragflow_setup, "sync_file", _sync)
+
+    out = await upload_library_files(
+        folder_id="",
+        files=[_UpFile("合同A.pdf"), _UpFile("合同B.docx"), _UpFile("忽略.txt")],
+        ragflow_sync=True,
+        db=_DbNoFolders(),
+        _=None,
+    )
+    assert [i["file_name"] for i in out["items"] if "ragflow" in i] == ["合同A.pdf", "合同B.docx"]
+    assert all(i["ragflow"] == {"status": "synced"} for i in out["items"] if "ragflow" in i)
+    assert [i["error"] for i in out["items"] if "error" in i] == ["仅接受 .pdf / .docx"]
+    assert [s[1] for s in synced] == ["合同A.pdf", "合同B.docx"]  # 按入库文件名逐个调用
+    assert all(s[0] is client for s in synced)
+    assert [s[2] for s in synced] == [b"%PDF-1.7 stub", b"%PDF-1.7 stub"]
+    assert len(created) == 2
+
+
+@pytest.mark.asyncio
+async def test_upload_ragflow_sync_failure_does_not_fail_upload(monkeypatch):
+    """sync_file 抛异常 → 上传照常成功（文件已落 MinIO+库），条目标注 error + message。"""
+    _stub_library_storage(monkeypatch)
+    monkeypatch.setattr(ragflow_setup, "get_service_client", _async_returning(object()))
+
+    async def _boom(cl, filename, content):
+        raise RuntimeError("EAI_SSO_SHARED_SECRET not configured")
+
+    monkeypatch.setattr(ragflow_setup, "sync_file", _boom)
+
+    out = await upload_library_files(
+        folder_id="",
+        files=[_UpFile("合同A.pdf")],
+        ragflow_sync=True,
+        db=_DbNoFolders(),
+        _=None,
+    )
+    item = out["items"][0]
+    assert item["file_id"] is not None and item["reused"] is False  # 上传本身成功
+    assert item["ragflow"]["status"] == "error"
+    assert "EAI_SSO_SHARED_SECRET" in item["ragflow"]["message"]
+
+
+@pytest.mark.asyncio
+async def test_upload_without_ragflow_sync_skips_sync(monkeypatch):
+    """默认（不勾选）→ sync_file 零调用，条目无 ragflow 键（行为与现状一致）。"""
+    _stub_library_storage(monkeypatch)
+    client_calls = []
+
+    async def _client(db):
+        client_calls.append(db)
+        return object()
+
+    async def _sync(cl, filename, content):  # pragma: no cover — 被调用即失败
+        raise AssertionError("sync_file must not be called when ragflow_sync is false")
+
+    monkeypatch.setattr(ragflow_setup, "get_service_client", _client)
+    monkeypatch.setattr(ragflow_setup, "sync_file", _sync)
+
+    out = await upload_library_files(
+        folder_id="",
+        files=[_UpFile("合同A.pdf")],
+        ragflow_sync=False,  # 直调须显式传: 缺省的 Form(False) 对象本身为真值（同 paths 直调坑）
+        db=_DbNoFolders(),
+        _=None,
+    )
+    assert client_calls == []
+    assert "ragflow" not in out["items"][0]
+    assert out["items"][0]["reused"] is False and out["items"][0]["file_id"]
+
+
+@pytest.mark.asyncio
+async def test_upload_ragflow_sync_covers_reused_items(monkeypatch):
+    """复用项（同文件夹同 hash）也逐个同步——sync_file 同名幂等 → already_exists。"""
+    dup = SimpleNamespace(id=uuid.uuid4())
+    monkeypatch.setattr(cpa_crud, "find_library_duplicate", _async_returning(dup))
+    monkeypatch.setattr(ragflow_setup, "get_service_client", _async_returning(object()))
+
+    async def _sync(cl, filename, content):
+        return {"status": "already_exists", "dataset_id": "ds-1", "ragflow_document_id": "doc-9"}
+
+    monkeypatch.setattr(ragflow_setup, "sync_file", _sync)
+
+    out = await upload_library_files(
+        folder_id="",
+        files=[_UpFile("已有合同.pdf")],
+        ragflow_sync=True,
+        db=_DbNoFolders(),
+        _=None,
+    )
+    item = out["items"][0]
+    assert item["reused"] is True and item["file_id"] == dup.id
+    assert item["ragflow"] == {"status": "already_exists"}
