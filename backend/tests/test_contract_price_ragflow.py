@@ -4,8 +4,11 @@ httpx seam 镜像 test_knowledge_client_payload.py（monkeypatch httpx.AsyncClie
 配置 seam 镜像 test_contract_price_seed_config.py（monkeypatch crud._config_path →
 tmp_path）。真实 RAGFlowClient 走全链路（wire payload 断言含 parse_type/parser_id），
 无 extensions DB、无网络；端点用直调路由函数模式（test_contract_price_library.py）。
+pytest-asyncio 每测一个新事件循环 → 模块级 _INIT_LOCK 由 autouse 夹具每测换新
+（生产为进程单循环，锁常驻）。
 """
 
+import asyncio
 import uuid
 from types import SimpleNamespace
 
@@ -62,6 +65,8 @@ class _State:
 
 
 def _dispatch(state, method, url, kwargs):
+    if not state.available:
+        raise httpx.ConnectError("connection refused")  # 不可达 = 所有路由连接错误（is_available → False）
     path = url.split(API, 1)[1]
     state.calls.append({"method": method, "path": path, "json": kwargs.get("json"), "params": dict(kwargs.get("params") or {})})
     parts = [p for p in path.split("/") if p]
@@ -69,8 +74,6 @@ def _dispatch(state, method, url, kwargs):
         return _Resp({"code": 102, "message": f"unknown route {path}"}, 404)
     if len(parts) == 1:
         if method == "GET":
-            if not state.available:
-                raise httpx.ConnectError("connection refused")
             name = (kwargs.get("params") or {}).get("name")
             data = [d for d in state.datasets.values() if not name or d["name"] == name]
             return _Resp({"code": 0, "data": data})
@@ -101,7 +104,11 @@ def _dispatch(state, method, url, kwargs):
     if len(parts) == 3 and parts[2] == "documents":
         if method == "GET":
             docs = state.documents.get(ds_id, [])
-            return _Resp({"code": 0, "data": {"docs": docs, "total": len(docs)}})
+            params = kwargs.get("params") or {}
+            page = int(params.get("page") or 1)
+            size = int(params.get("page_size") or 30)
+            start = (page - 1) * size
+            return _Resp({"code": 0, "data": {"docs": docs[start : start + size], "total": len(docs)}})
         if method == "POST":
             filename = (kwargs.get("files") or {}).get("file", ("?",))[0]
             doc = {"id": state.next_id("doc"), "name": filename, "run": "UNSTART"}
@@ -157,6 +164,15 @@ def _async_returning(value):
         return value
 
     return _fn
+
+
+@pytest.fixture(autouse=True)
+def _fresh_init_lock():
+    """asyncio.Lock 首次 acquire 即绑定事件循环（py3.12），而 pytest-asyncio 每测
+    换新循环 → 模块级锁必须每测换新，否则第二个 async 测试报
+    "bound to a different event loop"。生产网关单循环，锁常驻不受影响。"""
+    ragflow_setup._INIT_LOCK = asyncio.Lock()
+    yield
 
 
 # ---- ensure_initialized ------------------------------------------------------
@@ -223,6 +239,8 @@ async def test_collect_status_connected_reports_counts(ragflow_env):
         assert d["status"] == "connected"
         assert d["document_count"] == 3
         assert d["chunk_count"] == 42
+    assert "initialized_at" in out  # 前端「初始化于 …」footer 字段（ensure_initialized 落盘后非 None）
+    assert out["initialized_at"]
 
 
 @pytest.mark.asyncio
@@ -230,7 +248,7 @@ async def test_collect_status_unreachable_degrades_without_raising(ragflow_env):
     state, client = ragflow_env
     state.available = False
     out = await ragflow_setup.collect_status(client)
-    assert out == {"available": False, "datasets": []}
+    assert out == {"available": False, "datasets": [], "error": "ragflow unreachable"}
 
 
 @pytest.mark.asyncio
@@ -239,6 +257,7 @@ async def test_collect_status_reports_missing_when_no_datasets(ragflow_env):
     out = await ragflow_setup.collect_status(client)
     assert out["available"] is True
     assert [d["status"] for d in out["datasets"]] == ["missing", "missing"]
+    assert out["initialized_at"] is None  # 键恒在（未初始化时为 None）
 
 
 # ---- sync_file ---------------------------------------------------------------
@@ -269,6 +288,31 @@ async def test_sync_file_already_exists_skips_upload(ragflow_env):
     out = await ragflow_setup.sync_file(client, filename="合同A.pdf", content=b"%PDF-1.7")
     assert out["status"] == "already_exists"
     assert len(state.posts("/documents")) == uploads_after_first  # 零 upload
+
+
+@pytest.mark.asyncio
+async def test_sync_file_dedupes_existing_name_on_page_two(ragflow_env):
+    """150 文档（第一页 100 + 第二页 50）：重名文档在第 2 页也能查出 → already_exists
+    （钉住 _list_all_documents 翻页循环，page_size=100 上游上限）。"""
+    state, client = ragflow_env
+    ds_id = "ds-seed-150"
+    state.datasets[ds_id] = {
+        "id": ds_id,
+        "name": ragflow_setup.DATASET_CONTRACT,
+        "description": "",
+        "document_count": 150,
+        "chunk_count": 0,
+    }
+    state.documents[ds_id] = [{"id": f"doc-{i:03d}", "name": f"旧合同-{i:03d}.pdf", "run": "DONE"} for i in range(150)]
+    state.documents[ds_id][104]["name"] = "合同A.pdf"  # 索引 104 ∈ 第 2 页（100–149）
+
+    out = await ragflow_setup.sync_file(client, filename="合同A.pdf", content=b"%PDF-1.7")
+
+    assert out["status"] == "already_exists"
+    assert out["ragflow_document_id"] == "doc-104"
+    assert state.posts("/documents") == []  # 零上传
+    gets = [c for c in state.calls if c["method"] == "GET" and c["path"].endswith("/documents")]
+    assert [g["params"]["page"] for g in gets] == [1, 2]  # 真实翻页: 第一页取满 100 才取第二页
 
 
 # ---- 配置 schema 往返（ConfigOut 新增字段经 load/save 不丢） -------------------
@@ -337,13 +381,79 @@ async def test_status_endpoint_degrades_when_service_unconfigured(monkeypatch):
 
 
 @pytest.mark.asyncio
-async def test_init_endpoint_propagates_service_failure(monkeypatch):
+async def test_init_endpoint_service_failure_returns_503(monkeypatch):
+    """服务身份失败（RuntimeError，如 SSO 未配置）→ 503 + detail（非裸 500, Task2 review M4）。"""
+
     async def _raise(db):
         raise RuntimeError("EAI_SSO_SHARED_SECRET not configured")
 
     monkeypatch.setattr(ragflow_setup, "get_service_client", _raise)
-    with pytest.raises(RuntimeError):
+    with pytest.raises(HTTPException) as ei:
         await init_contract_ragflow(db=None, _=None)
+    assert ei.value.status_code == 503
+    assert "EAI_SSO_SHARED_SECRET" in ei.value.detail
+
+
+@pytest.mark.asyncio
+async def test_init_endpoint_unreachable_returns_503(ragflow_env, monkeypatch):
+    """RAGFlow 不可达（httpx 连接错误穿透 create 链路）→ /ragflow/init 503 + detail。"""
+    state, client = ragflow_env
+    state.available = False
+    monkeypatch.setattr(ragflow_setup, "get_service_client", _async_returning(client))
+    with pytest.raises(HTTPException) as ei:
+        await init_contract_ragflow(db=None, _=None)
+    assert ei.value.status_code == 503
+    assert "connection refused" in ei.value.detail
+
+
+@pytest.mark.asyncio
+async def test_sync_endpoint_502_when_service_unconfigured(monkeypatch):
+    """sync 链路 RuntimeError → 502（前端 toast 按 502 文案；与 /init 的 503 区分）。"""
+    lf = SimpleNamespace(id=uuid.uuid4(), file_name="合同A.pdf", storage_key="library/f1/abc_合同A.pdf", file_type="pdf")
+    monkeypatch.setattr(cpa_crud, "get_library_file", _async_returning(lf))
+    monkeypatch.setattr(cpa_storage, "get_object", lambda key: b"%PDF-1.7")
+
+    async def _raise(db):
+        raise RuntimeError("EAI_SSO_SHARED_SECRET not configured")
+
+    monkeypatch.setattr(ragflow_setup, "get_service_client", _raise)
+    with pytest.raises(HTTPException) as ei:
+        await ragflow_sync_library_file(file_id=lf.id, db=None, _=None)
+    assert ei.value.status_code == 502
+    assert "EAI_SSO_SHARED_SECRET" in ei.value.detail
+
+
+@pytest.mark.asyncio
+async def test_ensure_initialized_race_loser_deletes_duplicate_and_aligns(tmp_path, monkeypatch):
+    """并发首建竞态兜底: create 成功后按名复核发现另一进程的胜者 → 删本方副本、
+    对齐胜者 id（status aligned）。stub client 不走 httpx（config 隔离用 tmp_path）。"""
+    monkeypatch.setattr(cpa_crud, "_config_path", lambda: str(tmp_path / "config.json"))
+
+    class _RacingClient:
+        def __init__(self):
+            self.created = []
+            self.deleted = []
+            self._by_name = {}
+
+        async def get_dataset_by_name(self, name):
+            return self._by_name.get(name)
+
+        async def create_dataset(self, name, **_kw):
+            mine_id = f"mine-{len(self.created)}"
+            self.created.append(name)
+            if len(self.created) == 2:  # 第二个库 create 后: 另一进程的胜者同名凭空出现
+                self._by_name[name] = {"id": "winner-ds", "name": name}
+            return {"data": {"id": mine_id}}
+
+        async def delete_dataset(self, dataset_id):
+            self.deleted.append(dataset_id)
+
+    rc = _RacingClient()
+    out = await ragflow_setup.ensure_initialized(rc)
+    assert out[0] == {"name": ragflow_setup.DATASET_CONTRACT, "status": "created", "dataset_id": "mine-0"}
+    assert out[1] == {"name": ragflow_setup.DATASET_GOODS_TABLE, "status": "aligned", "dataset_id": "winner-ds"}
+    assert rc.deleted == ["mine-1"]  # 本方副本被删，胜者保留
+    assert cpa_crud.load_config().ragflow_goods_dataset_id == "winner-ds"  # 落盘的是胜者 id
 
 
 @pytest.mark.asyncio

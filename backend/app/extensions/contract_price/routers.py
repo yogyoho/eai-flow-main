@@ -476,10 +476,18 @@ async def init_contract_ragflow(
     db: AsyncSession = Depends(get_db),
     _: CurrentUser = Depends(require_permission("system:access")),
 ):
-    """幂等初始化共享租户两个固定知识库并回读连通状态（SSO 未配置 → 响亮失败，不静默回退）。"""
-    client = await ragflow_setup.get_service_client(db)
-    initialized = await ragflow_setup.ensure_initialized(client)
-    return {"status": "ok", "initialized": initialized, "connectivity": await ragflow_setup.collect_status(client)}
+    """幂等初始化共享租户两个固定知识库并回读连通状态。
+
+    服务身份失败/RAGFlow 不可达（RuntimeError、httpx）→ 503 + detail
+    （设置页「重试连接」按钮语义, EAI-CUSTOM Task2 review M4）；其余意外异常仍 500。
+    """
+    try:
+        client = await ragflow_setup.get_service_client(db)
+        initialized = await ragflow_setup.ensure_initialized(client)
+        connectivity = await ragflow_setup.collect_status(client)
+    except (RuntimeError, httpx.HTTPError) as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
+    return {"status": "ok", "initialized": initialized, "connectivity": connectivity}
 
 
 @router.get("/ragflow/status")
