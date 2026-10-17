@@ -58,7 +58,7 @@ def test_role_enum_contract():
 
 def test_annotate_roles_valid_mapping(monkeypatch):
     """合法映射 JSON(带 ```json 围栏/前后说明)→ {列索引: 角色};
-    请求契约: POST {base}/chat/completions, temperature=0, max_tokens=500, Bearer key。"""
+    请求契约: POST {base}/chat/completions, temperature=0, max_tokens=4000, Bearer key。"""
     captured = {}
 
     def fake_post(url, headers=None, json=None, timeout=None):
@@ -77,7 +77,7 @@ def test_annotate_roles_valid_mapping(monkeypatch):
     assert captured["url"] == "http://llm.test/v1/chat/completions"
     assert captured["headers"]["Authorization"] == "Bearer sk-test"
     assert captured["json"]["temperature"] == 0
-    assert captured["json"]["max_tokens"] == 500
+    assert captured["json"]["max_tokens"] == 4000
     assert captured["json"]["model"] == "m1"
 
 

@@ -941,6 +941,14 @@ def _taxed_unit_oracle(cells, stored_qty, qty_col=None, exclude_idx=None, bbox_r
         t_taxed = max((v for _, v in cand if t_ref * 1.001 < v <= t_ref * 1.14), default=t_ref)
     else:
         t_ref = t_taxed = None  # 纯加性行(无 × 结构): 仅走加性分支,不用窗口
+    # 直读自洽守卫(M3 实测 paddleocr-vl 签字版 A108): virt 闭合(u×stored≈t,
+    # 单价格/数量格/合价格三格互证)且窗口赢家恰等于 virt.u(含税单价格直读值)
+    # → 窗口把单价格当"含税合价"、除以数量产出 5190÷0.069=75217.39 伪值 →
+    # 直接采信直读自洽的 u。非此签名(窗口赢家是别的金额,如 JZGS 含税合价
+    # 117446.91、桂北税构成) → 走原 t_taxed/q0 路径零变化。
+    if stored_qty is not None and stored_qty > 0 and virt and t_taxed is not None:
+        if abs(t_taxed - virt[0][0]) <= 1e-6:
+            return round(virt[0][0], 2), stored_qty
     if stored_qty is not None and stored_qty > 0:
         if virt or any(abs(q - stored_qty) < 1e-6 for _, q, _, _, _ in triples):
             u_tax = round(t_taxed / stored_qty, 2)
@@ -2430,6 +2438,9 @@ async def _persist_one_doc(doc: dict, items: list[dict], run_id: str | None = No
             else:
                 existing.file_hash = doc["hash"]
                 existing.parse_status = doc.get("parse_status", "parsed")
+                # M3(spec §3.4): parse_mode 随解析结果更新(ocr/ocr_llm)——analyze
+                # 预建的 pending 行固定 "ocr",否则外部引擎解析后仍显示旧值。
+                existing.parse_mode = doc.get("parse_mode", existing.parse_mode)
                 existing.confirm_status = "pending"
                 existing.parse_meta = doc.get("parse_meta")
                 # preview_prefix 只在真有新前缀时覆写: OCR 缓存命中路径 from_cache 的

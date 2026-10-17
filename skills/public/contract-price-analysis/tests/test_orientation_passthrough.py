@@ -102,7 +102,7 @@ def test_cli_meta_carries_orientation_fixed(monkeypatch):
             page_preview_b64="", mean_confidence=0.93,
         )
 
-    async def fake_parse(file_bytes, filename, url, last_pages=0):
+    async def fake_parse(file_bytes, filename, url, last_pages=0, backend="builtin", openai_cfg=None):
         return [_tbl()], {1: "项目名称：某工程"}, [2, 3]
 
     captured: dict = {}
