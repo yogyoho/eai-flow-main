@@ -40,6 +40,11 @@ import {
 import { fetch } from "@/core/api/fetcher";
 import { EvolutionCandidatesCard } from "@/extensions/contract-price/components/EvolutionCandidatesCard";
 import { PageHeader } from "@/extensions/contract-price/components/PageHeader";
+import {
+  RAGFLOW_DATASETS,
+  type RagflowPhase,
+  ragflowPhase,
+} from "@/extensions/contract-price/components/ragflowPhase";
 import { SeedRulesCard } from "@/extensions/contract-price/components/SeedRulesCard";
 import {
   useConfig,
@@ -50,7 +55,6 @@ import {
 import type {
   CpaConfig,
   RagflowDatasetStatus,
-  RagflowStatusResponse,
 } from "@/extensions/contract-price/types";
 import { cn } from "@/lib/utils";
 
@@ -77,52 +81,60 @@ const clamp = (v: number, lo: number, hi: number) =>
 
 // ── RAGFlow SSO 知识库连通徽标 + 幂等初始化(页头 actions 槽) ──
 // EAI-CUSTOM: 交互态复制自用户确认原型(cpa-settings-ragflow-header.html)——
-// idle 未初始化(琥珀) / initializing 初始化中(琥珀脉冲) / ok 已连接(绿) /
-// err 不可达(红);徽标点击展开两库明细浮层,按钮按态切换 初始化/重试/重新对齐。
-
-/** 两库固定名(与后端 ragflow_setup 常量一致)。 */
-const RAGFLOW_DATASETS = ["合同知识库", "合同货物分项表格"] as const;
-
-type RagflowPhase = "idle" | "initializing" | "ok" | "err";
+// pending 查询中(中性) / idle 未初始化(琥珀) / initializing 初始化中(琥珀脉冲) /
+// ok 已连接(绿) / partial 部分连接(绿) / err 不可达(红);徽标点击展开两库明细
+// 浮层,按钮按态切换 初始化/重试/重新对齐。态推导见 ragflowPhase.ts。
 
 const BADGE_TONE: Record<RagflowPhase, string> = {
+  pending: "border-border bg-muted/40 text-muted-foreground",
   idle: "border-amber-500/30 bg-amber-500/10 text-amber-600 dark:text-amber-400",
   initializing:
     "border-amber-500/30 bg-amber-500/10 text-amber-600 dark:text-amber-400",
   ok: "border-success/30 bg-success/10 text-success",
+  partial: "border-success/30 bg-success/10 text-success",
   err: "border-destructive/30 bg-destructive/10 text-destructive",
 };
 
 const BADGE_DOT: Record<RagflowPhase, string> = {
+  pending: "bg-muted-foreground/60",
   idle: "bg-amber-500",
   initializing: "bg-amber-500 animate-pulse",
   ok: "bg-success",
+  partial: "bg-success",
   err: "bg-destructive",
 };
 
 const BADGE_TEXT: Record<RagflowPhase, string> = {
+  pending: "RAGFlow 状态…",
   idle: "RAGFlow 未初始化",
   initializing: "RAGFlow 初始化中…",
   ok: "RAGFlow 已连接",
+  partial: "RAGFlow 部分连接",
   err: "RAGFlow 不可达",
 };
 
-/** 态推导: 初始化 mutation 进行中 → initializing;任一库 connected → ok;
- *  状态响应带 error(或状态请求本身失败)→ err;其余(未创建/尚未拉到)→ idle。 */
-function ragflowPhase(
-  status: { data?: RagflowStatusResponse; isError: boolean },
-  initializing: boolean,
-): RagflowPhase {
-  if (initializing) return "initializing";
-  const data = status.data;
-  if (!data) return status.isError ? "err" : "idle";
-  if (data.available && data.datasets.some((d) => d.status === "connected"))
-    return "ok";
-  return data.error || status.isError ? "err" : "idle";
-}
+const CONN_LABEL: Record<RagflowPhase, string> = {
+  pending: "查询中",
+  idle: "—",
+  initializing: "连接中",
+  ok: "已连接",
+  partial: "部分连接",
+  err: "不可达",
+};
+
+const BUTTON_LABEL: Record<RagflowPhase, string> = {
+  pending: "初始化知识库",
+  idle: "初始化知识库",
+  initializing: "初始化中…",
+  ok: "重新对齐",
+  partial: "重新对齐",
+  err: "重试连接",
+};
 
 /** 明细行: 色点 + 右对齐 meta(已连接附带 文档/分块 计数,0 分块省略)。 */
 function ragflowRow(phase: RagflowPhase, ds?: RagflowDatasetStatus) {
+  if (phase === "pending")
+    return { dot: "bg-muted-foreground/60", meta: "查询中…" };
   if (phase === "initializing") return { dot: "bg-amber-500", meta: "创建中…" };
   if (ds?.status === "connected") {
     let meta = "已连接";
@@ -154,38 +166,28 @@ function RagflowHeaderActions() {
     }
   }, [init.isError, init.error]);
 
-  const phase = ragflowPhase(status, init.isPending);
+  // pending 是组件级关注点(状态查询进行中,断言任何状态都是谎报)
+  const phase: RagflowPhase =
+    status.isPending && !status.isError
+      ? "pending"
+      : ragflowPhase(status, init.isPending);
   const initializedAt = formatInitializedAt(status.data?.initialized_at);
   const footer =
-    phase === "idle"
-      ? "点击「初始化知识库」创建并连通"
-      : phase === "initializing"
-        ? "正在创建合同知识库与合同货物分项表格…"
-        : phase === "ok"
-          ? initializedAt
-            ? `初始化于 ${initializedAt} · 幂等:重复点击仅对齐`
-            : "幂等:重复点击仅对齐"
-          : (status.data?.error ??
-            "无法连接 RAGFlow(9380)——请确认 ragflow 容器运行中");
-  const connLabel =
-    phase === "ok"
-      ? "已连接"
-      : phase === "initializing"
-        ? "连接中"
-        : phase === "err"
-          ? "不可达"
-          : "—";
-  const buttonLabel =
-    phase === "initializing"
-      ? "初始化中…"
-      : phase === "ok"
-        ? "重新对齐"
-        : phase === "err"
-          ? "重试连接"
-          : "初始化知识库";
+    phase === "pending"
+      ? "正在获取 RAGFlow 状态…"
+      : phase === "idle"
+        ? "点击「初始化知识库」创建并连通"
+        : phase === "initializing"
+          ? "正在创建合同知识库与合同货物分项表格…"
+          : phase === "ok" || phase === "partial"
+            ? initializedAt
+              ? `初始化于 ${initializedAt} · 幂等:重复点击仅对齐`
+              : "幂等:重复点击仅对齐"
+            : (status.data?.error ??
+              "无法连接 RAGFlow(9380)——请确认 ragflow 容器运行中");
 
   return (
-    <div className="flex items-center gap-2">
+    <>
       <Popover open={detailOpen} onOpenChange={setDetailOpen}>
         <PopoverTrigger
           aria-label={`RAGFlow 连通状态：${BADGE_TEXT[phase]}`}
@@ -208,12 +210,12 @@ function RagflowHeaderActions() {
         >
           <div className="text-muted-foreground flex items-center justify-between border-b px-3.5 py-2.5 text-xs font-semibold">
             <span>RAGFlow 知识库</span>
-            <span>{connLabel}</span>
+            <span>{CONN_LABEL[phase]}</span>
           </div>
           {RAGFLOW_DATASETS.map((name) => {
             const row = ragflowRow(
               phase,
-              status.data?.datasets.find((d) => d.name === name),
+              status.data?.datasets?.find((d) => d.name === name),
             );
             return (
               <div
@@ -236,11 +238,15 @@ function RagflowHeaderActions() {
           </div>
         </PopoverContent>
       </Popover>
-      <Button size="sm" disabled={init.isPending} onClick={() => init.mutate()}>
+      <Button
+        size="sm"
+        disabled={init.isPending || phase === "pending"}
+        onClick={() => init.mutate()}
+      >
         {init.isPending && <Loader2 className="size-3 animate-spin" />}
-        {buttonLabel}
+        {BUTTON_LABEL[phase]}
       </Button>
-    </div>
+    </>
   );
 }
 
@@ -265,7 +271,7 @@ export function SettingsView() {
           description="表格定位规则与解析参数"
           icon={<PackageSearch />}
         />
-        <Card className="mt-6">
+        <Card>
           <CardContent className="p-6">
             <div className="bg-muted h-40 animate-pulse rounded" />
           </CardContent>
@@ -301,6 +307,7 @@ export function SettingsView() {
   };
 
   return (
+    // EAI-CUSTOM: follow-up —— 与兄弟视图 space-y-6 p-8 统一(扩展级统一时处理)
     <div className="space-y-4 p-6">
       <PageHeader
         title="配置"

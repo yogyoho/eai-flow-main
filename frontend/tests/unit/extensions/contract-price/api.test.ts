@@ -8,7 +8,11 @@ rs.mock("@/extensions/api/client", () => ({
 }));
 
 import { authFetch } from "@/extensions/api/client";
-import { contractPriceApi, qs } from "@/extensions/contract-price/api";
+import {
+  contractPriceApi,
+  qs,
+  ragflowApi,
+} from "@/extensions/contract-price/api";
 
 function lastCall(): [string, RequestInit] {
   const calls = rs.mocked(authFetch).mock.calls;
@@ -26,14 +30,20 @@ describe("qs", () => {
   });
 
   test("stringifies numbers and booleans", () => {
-    expect(qs({ skip: 0, limit: 20, only_outliers: true })).toBe("?skip=0&limit=20&only_outliers=true");
+    expect(qs({ skip: 0, limit: 20, only_outliers: true })).toBe(
+      "?skip=0&limit=20&only_outliers=true",
+    );
   });
 });
 
-
 describe("contractPriceApi", () => {
   test("listDocuments builds the documents URL with params", async () => {
-    rs.mocked(authFetch).mockResolvedValue({ items: [], total: 0, skip: 0, limit: 20 });
+    rs.mocked(authFetch).mockResolvedValue({
+      items: [],
+      total: 0,
+      skip: 0,
+      limit: 20,
+    });
     await contractPriceApi.listDocuments({ keyword: "柜", skip: 0, limit: 20 });
     const [url] = lastCall();
     expect(url).toContain("/contract-price/documents");
@@ -50,12 +60,18 @@ describe("contractPriceApi", () => {
   });
 
   test("runPipeline POSTs mode+trigger", async () => {
-    rs.mocked(authFetch).mockResolvedValue({ run_id: "r1", status: "running", message: "ok" });
+    rs.mocked(authFetch).mockResolvedValue({
+      run_id: "r1",
+      status: "running",
+      message: "ok",
+    });
     await contractPriceApi.runPipeline("table", "manual");
     const [url, opts] = lastCall();
     expect(url).toBe("/contract-price/pipeline/run");
     expect(opts.method).toBe("POST");
-    expect(opts.body).toEqual(JSON.stringify({ mode: "table", trigger: "manual" }));
+    expect(opts.body).toEqual(
+      JSON.stringify({ mode: "table", trigger: "manual" }),
+    );
   });
 
   test("deleteDocument uses DELETE method", async () => {
@@ -64,5 +80,27 @@ describe("contractPriceApi", () => {
     const [url, opts] = lastCall();
     expect(url).toBe("/contract-price/documents/d1");
     expect(opts.method).toBe("DELETE");
+  });
+});
+
+// EAI-CUSTOM: RAGFlow SSO 知识库连通状态/幂等初始化——钉住两个端点 URL 与方法
+describe("ragflowApi", () => {
+  test("status GETs /contract-price/ragflow/status", async () => {
+    rs.mocked(authFetch).mockResolvedValue({ available: false, datasets: [] });
+    await ragflowApi.status();
+    const [url] = lastCall();
+    expect(url).toBe("/contract-price/ragflow/status");
+  });
+
+  test("init POSTs /contract-price/ragflow/init", async () => {
+    rs.mocked(authFetch).mockResolvedValue({
+      status: "ok",
+      initialized: [],
+      connectivity: { available: true, datasets: [] },
+    });
+    await ragflowApi.init();
+    const [url, opts] = lastCall();
+    expect(url).toBe("/contract-price/ragflow/init");
+    expect(opts.method).toBe("POST");
   });
 });

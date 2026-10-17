@@ -475,7 +475,7 @@ export function useContractRagflowStatus() {
   });
 }
 
-export function useInitContractRagflow(onSuccess?: () => void) {
+export function useInitContractRagflow() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: () => ragflowApi.init(),
@@ -484,7 +484,6 @@ export function useInitContractRagflow(onSuccess?: () => void) {
       // 徽标闪回未初始化）,再 invalidate 做一次权威重查
       qc.setQueryData(KEYS.ragflowStatus, data.connectivity);
       void qc.invalidateQueries({ queryKey: KEYS.ragflowStatus });
-      onSuccess?.();
     },
   });
 }
