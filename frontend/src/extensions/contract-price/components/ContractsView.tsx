@@ -66,6 +66,7 @@ import {
   useReparseDocument,
   useRunCluster,
   useRunPipeline,
+  useSyncItemsRagflow,
   useUpdateConfig,
   useUpdateDocument,
 } from "@/extensions/contract-price/hooks";
@@ -619,6 +620,7 @@ export function ContractsView() {
   const runCluster = useRunCluster();
   const runPipeline = useRunPipeline();
   const reparse = useReparseDocument();
+  const syncItems = useSyncItemsRagflow(); // EAI-CUSTOM (决策 B): 分项表手动同步
   const { data: configData } = useConfig();
   const updateConfig = useUpdateConfig();
   const [unmatchedDoc, setUnmatchedDoc] = useState<{
@@ -1030,6 +1032,31 @@ export function ContractsView() {
                             <RotateCcw className="h-3.5 w-3.5 text-blue-600 dark:text-blue-400" />
                             重新解析
                           </Button>
+                          {/* EAI-CUSTOM (决策 B): 人工校验完成后把当前分项推成
+                              Markdown 分项表,替换式同步「合同货物分项表格」。 */}
+                          {doc.parse_status === "parsed" && (
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              title="把当前分项聚合为 Markdown 分项表,替换式同步到 RAGFlow「合同货物分项表格」"
+                              disabled={syncItems.isPending}
+                              onClick={() => {
+                                syncItems.mutate(doc.id, {
+                                  onSuccess: (res) =>
+                                    toast.success(
+                                      `已同步 ${res.items_count} 项到 RAGFlow「合同货物分项表格」${res.status === "replaced" ? "（已替换旧表）" : ""}`,
+                                    ),
+                                  onError: (e) =>
+                                    toast.error(
+                                      `同步分项表失败：${e instanceof Error ? e.message : e}`,
+                                    ),
+                                });
+                              }}
+                            >
+                              <FileText className="h-3.5 w-3.5" />
+                              {syncItems.isPending ? "同步中…" : "同步分项表"}
+                            </Button>
+                          )}
                           <Button
                             size="sm"
                             variant="outline"

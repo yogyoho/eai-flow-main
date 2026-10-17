@@ -13,7 +13,8 @@ Mounted into the Gateway under ``/api/extensions/contract-price``. Endpoints:
   Library (cpa v3)             : /library/folders*, /library/files* — 合同文件库 (EAI-CUSTOM)
   Terms (cpa v3)               : GET/POST /terms, PATCH/DELETE /terms/{id} — 货物分类术语 (EAI-CUSTOM)
   RAGFlow (EAI-CUSTOM)         : POST /ragflow/init, GET /ragflow/status,
-                                 POST /library/files/{file_id}/ragflow-sync — 共享租户知识库
+                                 POST /library/files/{file_id}/ragflow-sync,
+                                 POST /documents/{doc_id}/ragflow-sync-items — 共享租户知识库
   Pipeline trigger             : POST /pipeline/run, GET /pipeline/runs/{id}/status
 """
 
@@ -549,6 +550,26 @@ async def ragflow_sync_library_file(
         return await ragflow_setup.sync_file(client, filename=lf.file_name or "file", content=data)
     except (RuntimeError, httpx.HTTPError) as exc:
         raise HTTPException(status_code=502, detail=f"RAGFlow 同步失败: {exc}") from exc
+
+
+@router.post("/documents/{doc_id}/ragflow-sync-items")
+async def ragflow_sync_items(
+    doc_id: UUID,
+    db: AsyncSession = Depends(get_db),
+    _: CurrentUser = Depends(require_permission("system:access")),
+):
+    """把该文档当前 cpa_items 聚合为 Markdown 分项表,替换式同步「合同货物分项表格」
+    （EAI-CUSTOM 决策 B: 人工校验后的手动入库）。未解析 409 / 无分项 404 /
+    文档不存在 404 由 sync_items_table 以 HTTPException 抛出;服务身份/建库/RAGFlow
+    不可达（RuntimeError、httpx）→ 503 + detail（对齐 /ragflow/init 语义——按钮
+    场景要给出原因）;其余意外异常仍 500。"""
+    try:
+        client = await ragflow_setup.get_service_client(db)
+        return await ragflow_setup.sync_items_table(db, doc_id, client)
+    except HTTPException:
+        raise
+    except (RuntimeError, httpx.HTTPError) as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
 
 
 # --- Functional area 1: documents ------------------------------------------

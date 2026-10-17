@@ -10,7 +10,9 @@ pytest-asyncio 每测一个新事件循环 → 模块级 _INIT_LOCK 由 autouse 
 
 import asyncio
 import json
+import re
 import uuid
+from decimal import Decimal
 from types import SimpleNamespace
 
 import httpx
@@ -25,6 +27,7 @@ from app.extensions.contract_price import storage as cpa_storage
 from app.extensions.contract_price.routers import (
     contract_ragflow_status,
     init_contract_ragflow,
+    ragflow_sync_items,
     ragflow_sync_library_file,
     upload_library_files,
 )
@@ -359,6 +362,7 @@ def test_router_exposes_ragflow_area():
     assert f"{base}/ragflow/init" in paths
     assert f"{base}/ragflow/status" in paths
     assert f"{base}/library/files/{{file_id}}/ragflow-sync" in paths
+    assert f"{base}/documents/{{doc_id}}/ragflow-sync-items" in paths
 
 
 @pytest.mark.asyncio
@@ -653,3 +657,271 @@ async def test_upload_ragflow_sync_covers_reused_items(monkeypatch):
     item = out["items"][0]
     assert item["reused"] is True and item["file_id"] == dup.id
     assert item["ragflow"] == {"status": "already_exists"}
+
+
+# ---- 分项表手动同步（EAI-CUSTOM 决策 B: aggregate / ensure_goods_dataset /
+#      sync_items_table / 端点） ---------------------------------------------------
+
+
+def _item(**kw):
+    """cpa_item 行桩（aggregate/sync 只消费这些字段;Numeric 列以 Decimal 出现）。"""
+    base = dict(
+        goods_name="镀锌钢管",
+        spec_model="DN100",
+        quantity=3.0,
+        unit="米",
+        unit_price=Decimal("85.50"),
+        price_untaxed=Decimal("75.00"),
+        tech_params=None,
+        source_contract_no="HT-001",
+        is_outlier=False,
+        source_page=1,
+        source_table_idx=0,
+        source_row_idx=0,
+    )
+    base.update(kw)
+    return SimpleNamespace(**base)
+
+
+class _DbDoc:
+    """db.get(CpaDocument, doc_id) → doc（sync_items_table 的文档查询 seam,直调模式）。"""
+
+    def __init__(self, doc):
+        self._doc = doc
+
+    async def get(self, model, obj_id):
+        return self._doc
+
+
+class _DbNone:
+    async def get(self, model, obj_id):
+        return None
+
+
+def _stub_doc_items(monkeypatch, doc, items):
+    """crud.list_items → (items, n)（document_id 断言钉住查询参数）。"""
+
+    async def _list_items(session, *args, **kwargs):
+        assert kwargs.get("document_id") == doc.id
+        return list(items), len(items)
+
+    monkeypatch.setattr(cpa_crud, "list_items", _list_items)
+
+
+def _capture_upload_content(monkeypatch):
+    """包一层真实 upload_document,顺手读落盘的 markdown 内容（fake httpx 不收文件体）。"""
+    seen = {}
+    real_upload = RAGFlowClient.upload_document
+
+    async def _capture(self, dataset_id, file_path, file_name=None, **kw):
+        with open(file_path, "rb") as f:
+            seen["content"] = f.read().decode("utf-8")
+        seen["name"] = file_name
+        return await real_upload(self, dataset_id, file_path, file_name=file_name, **kw)
+
+    monkeypatch.setattr(RAGFlowClient, "upload_document", _capture)
+    return seen
+
+
+def test_aggregate_items_markdown_formats_table():
+    items = [
+        _item(goods_name="镀锌钢管", quantity=3.0, unit_price=Decimal("85.5"), price_untaxed=None, source_contract_no="HT-001"),
+        _item(
+            goods_name="角钢",
+            spec_model=None,
+            quantity=2.555,
+            unit="吨",
+            unit_price=Decimal("4200.004"),
+            price_untaxed=Decimal("3716.81"),
+            tech_params={"材质": "Q235", "壁厚": "5mm"},
+            source_contract_no=None,
+            is_outlier=True,
+        ),
+        _item(goods_name="法兰盘", spec_model="DN100 PN16", quantity=12, unit="片", unit_price=None, price_untaxed=None, tech_params={}, source_contract_no="HT-002"),
+    ]
+    md = ragflow_setup.aggregate_items_markdown("合同A.pdf", items)
+    lines = md.splitlines()
+    assert lines[0] == "# 合同A.pdf 货物分项表"
+    assert re.fullmatch(r"> 生成时间:\d{4}-\d{2}-\d{2} \d{2}:\d{2} UTC · 共 3 项", lines[2])
+    assert "| 品名 | 规格型号 | 数量 | 单位 | 含税单价 | 不含税单价 | 来源合同号 |" in lines
+    assert "| 镀锌钢管 | DN100 | 3 | 米 | 85.50 | — | HT-001 |" in lines
+    assert "| ⚠ 角钢 | — | 2.555 | 吨 | 4200.00 | 3716.81 | — |" in lines
+    assert "| 法兰盘 | DN100 PN16 | 12 | 片 | — | — | HT-002 |" in lines
+    # tech_params 有值才进明细段;空 dict 不进
+    assert "## 技术参数明细" in lines
+    assert "- **角钢**:材质:Q235、壁厚:5mm" in lines
+    assert "- **法兰盘**" not in md
+    assert md.endswith("\n")
+    # 空列表: 标题 + 计数 + 表头,无明细段
+    empty = ragflow_setup.aggregate_items_markdown("空合同.pdf", [])
+    assert "# 空合同.pdf 货物分项表" in empty
+    assert "共 0 项" in empty
+    assert "技术参数明细" not in empty
+
+
+@pytest.mark.asyncio
+async def test_ensure_goods_dataset_creates_only_goods_and_persists(ragflow_env):
+    """单库版 ensure_initialized: 只建「合同货物分项表格」（permission=team + bge-m3）,
+    goods id 落盘;contract id 不动、initialized_at 不冒领。二次调用 aligned 零 create。"""
+    state, client = ragflow_env
+    out = await ragflow_setup.ensure_goods_dataset(client)
+    assert out["name"] == ragflow_setup.DATASET_GOODS_TABLE
+    assert out["status"] == "created" and out["dataset_id"]
+    creates = state.posts("/datasets")
+    assert [c["json"]["name"] for c in creates] == [ragflow_setup.DATASET_GOODS_TABLE]
+    assert creates[0]["json"]["permission"] == "team"
+    assert creates[0]["json"]["embedding_model"] == ragflow_setup.EMBEDDING_MODEL
+    assert cpa_crud.load_config().ragflow_goods_dataset_id == out["dataset_id"]
+    assert not cpa_crud.load_config().ragflow_contract_dataset_id
+    assert cpa_crud.load_config().ragflow_initialized_at is None
+    second = await ragflow_setup.ensure_goods_dataset(client)
+    assert second == {"name": ragflow_setup.DATASET_GOODS_TABLE, "status": "aligned", "dataset_id": out["dataset_id"]}
+    assert len(state.posts("/datasets")) == 1  # 零新增 create
+
+
+@pytest.mark.asyncio
+async def test_sync_items_table_creates_uploads_and_parses(ragflow_env, monkeypatch):
+    state, client = ragflow_env
+    doc_id = uuid.uuid4()
+    doc = SimpleNamespace(id=doc_id, file_name="合同A.pdf", parse_status="parsed")
+    # 故意乱序传入（source_row_idx 2/0/1）——表格须按提取行序重排
+    items = [
+        _item(goods_name="第二行", source_row_idx=2),
+        _item(goods_name="第零行", source_row_idx=0),
+        _item(goods_name="第一行", source_row_idx=1, is_outlier=True),
+    ]
+    _stub_doc_items(monkeypatch, doc, items)
+    seen = _capture_upload_content(monkeypatch)
+
+    out = await ragflow_setup.sync_items_table(_DbDoc(doc), doc_id, client)
+
+    assert out["status"] == "created"
+    assert out["items_count"] == 3
+    assert out["ragflow_document_id"]
+    # 决策 B 隐式初始化: 只建分项库
+    creates = state.posts("/datasets")
+    assert [c["json"]["name"] for c in creates] == [ragflow_setup.DATASET_GOODS_TABLE]
+    assert creates[0]["json"]["permission"] == "team"
+    # 上传文件名固定 {文档名}-货物分项表.md,表格按行序排列且含标题
+    assert seen["name"] == "合同A.pdf-货物分项表.md"
+    body = seen["content"]
+    assert "# 合同A.pdf 货物分项表" in body
+    assert body.index("第零行") < body.index("第一行") < body.index("第二行")
+    # 上传后触发解析（嵌入）
+    parses = state.posts("/chunks")
+    assert len(parses) == 1
+    assert parses[0]["json"] == {"document_ids": [out["ragflow_document_id"]]}
+    # goods id 落盘
+    assert cpa_crud.load_config().ragflow_goods_dataset_id == out["dataset_id"]
+
+
+@pytest.mark.asyncio
+async def test_sync_items_table_replaces_existing_table_document(ragflow_env, monkeypatch):
+    """替换式: 同名分项表文档已存在 → 删旧 → 重传,status "replaced"（库已在,零 create）。"""
+    state, client = ragflow_env
+    doc_id = uuid.uuid4()
+    doc = SimpleNamespace(id=doc_id, file_name="合同A.pdf", parse_status="parsed")
+    ds_id = "ds-goods-seed"
+    state.datasets[ds_id] = {
+        "id": ds_id,
+        "name": ragflow_setup.DATASET_GOODS_TABLE,
+        "description": "",
+        "document_count": 1,
+        "chunk_count": 0,
+    }
+    state.documents[ds_id] = [{"id": "doc-old", "name": "合同A.pdf-货物分项表.md", "run": "DONE"}]
+    _stub_doc_items(monkeypatch, doc, [_item()])
+    deleted = []
+
+    async def _fake_delete(self, dataset_id, document_id):
+        deleted.append((dataset_id, document_id))
+
+    monkeypatch.setattr(RAGFlowClient, "delete_document", _fake_delete)  # delete 走 sync urllib,httpx seam 外
+
+    out = await ragflow_setup.sync_items_table(_DbDoc(doc), doc_id, client)
+
+    assert out["status"] == "replaced"
+    assert out["items_count"] == 1
+    assert deleted == [(ds_id, "doc-old")]
+    assert len(state.posts("/datasets")) == 0
+    assert len(state.posts("/documents")) == 1  # 删后重传
+    assert len(state.posts("/chunks")) == 1
+
+
+@pytest.mark.asyncio
+async def test_sync_items_table_409_when_not_parsed(monkeypatch):
+    """未解析（含 parse_status=None）→ 409「请先完成解析」,且不查分项。"""
+    doc = SimpleNamespace(id=uuid.uuid4(), file_name="合同B.pdf", parse_status="pending")
+    called = []
+
+    async def _list_items(session, *a, **kw):
+        called.append(kw)  # pragma: no cover — 409 必须先短路
+        return ([_item()], 1)
+
+    monkeypatch.setattr(cpa_crud, "list_items", _list_items)
+    with pytest.raises(HTTPException) as ei:
+        await ragflow_setup.sync_items_table(_DbDoc(doc), doc.id, client=object())
+    assert ei.value.status_code == 409
+    assert "请先完成解析" in ei.value.detail
+    assert called == []
+
+
+@pytest.mark.asyncio
+async def test_sync_items_table_404_when_no_items(monkeypatch):
+    doc = SimpleNamespace(id=uuid.uuid4(), file_name="合同C.pdf", parse_status="parsed")
+    monkeypatch.setattr(cpa_crud, "list_items", _async_returning(([], 0)))
+    with pytest.raises(HTTPException) as ei:
+        await ragflow_setup.sync_items_table(_DbDoc(doc), doc.id, client=object())
+    assert ei.value.status_code == 404
+    assert "该文档暂无分项数据" in ei.value.detail
+
+
+@pytest.mark.asyncio
+async def test_sync_items_table_404_when_doc_missing():
+    with pytest.raises(HTTPException) as ei:
+        await ragflow_setup.sync_items_table(_DbNone(), uuid.uuid4(), client=object())
+    assert ei.value.status_code == 404
+    assert "文档不存在" in ei.value.detail
+
+
+@pytest.mark.asyncio
+async def test_sync_items_endpoint_returns_result(ragflow_env, monkeypatch):
+    state, client = ragflow_env
+    doc_id = uuid.uuid4()
+    monkeypatch.setattr(ragflow_setup, "get_service_client", _async_returning(client))
+
+    async def _sync(db, did, cl):
+        assert did == doc_id and cl is client
+        return {"status": "created", "dataset_id": "ds-1", "ragflow_document_id": "doc-1", "items_count": 3}
+
+    monkeypatch.setattr(ragflow_setup, "sync_items_table", _sync)
+    out = await ragflow_sync_items(doc_id=doc_id, db=None, _=None)
+    assert out == {"status": "created", "dataset_id": "ds-1", "ragflow_document_id": "doc-1", "items_count": 3}
+
+
+@pytest.mark.asyncio
+async def test_sync_items_endpoint_runtime_error_returns_503(monkeypatch):
+    """服务身份失败（RuntimeError）→ 503 + detail（对齐 /ragflow/init 语义,按钮场景给原因）。"""
+
+    async def _raise(db):
+        raise RuntimeError("EAI_SSO_SHARED_SECRET not configured")
+
+    monkeypatch.setattr(ragflow_setup, "get_service_client", _raise)
+    with pytest.raises(HTTPException) as ei:
+        await ragflow_sync_items(doc_id=uuid.uuid4(), db=None, _=None)
+    assert ei.value.status_code == 503
+    assert "EAI_SSO_SHARED_SECRET" in ei.value.detail
+
+
+@pytest.mark.asyncio
+async def test_sync_items_endpoint_passes_through_http_exception(monkeypatch):
+    """业务 409/404 原样透传,不被 503 分支吞掉。"""
+
+    async def _sync(db, did, cl):
+        raise HTTPException(status_code=409, detail="请先完成解析")
+
+    monkeypatch.setattr(ragflow_setup, "get_service_client", _async_returning(object()))
+    monkeypatch.setattr(ragflow_setup, "sync_items_table", _sync)
+    with pytest.raises(HTTPException) as ei:
+        await ragflow_sync_items(doc_id=uuid.uuid4(), db=None, _=None)
+    assert ei.value.status_code == 409

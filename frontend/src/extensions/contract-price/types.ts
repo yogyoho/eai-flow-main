@@ -278,3 +278,13 @@ export interface RagflowInitResponse {
   /** 与 RagflowStatusResponse 同构,init 后立即反映连通状态 */
   connectivity: RagflowStatusResponse;
 }
+
+/** EAI-CUSTOM (决策 B): POST /documents/{doc_id}/ragflow-sync-items —
+ * 当前分项聚合为 Markdown 分项表,替换式同步「合同货物分项表格」。 */
+export interface RagflowSyncItemsResponse {
+  /** created = 首次上传;replaced = 同名旧表已删重传 */
+  status: "created" | "replaced";
+  dataset_id: string;
+  ragflow_document_id: string;
+  items_count: number;
+}

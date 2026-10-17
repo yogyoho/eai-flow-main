@@ -27,6 +27,7 @@ import type {
   PipelineStatus,
   RagflowInitResponse,
   RagflowStatusResponse,
+  RagflowSyncItemsResponse,
   UploadResponse,
 } from "./types";
 
@@ -425,4 +426,14 @@ export const ragflowApi = {
     authFetch<RagflowInitResponse>(`${API_BASE}/ragflow/init`, {
       method: "POST",
     }),
+
+  /** EAI-CUSTOM (决策 B): 手动同步该合同的分项表——聚合当前 cpa_items 为
+   * Markdown 分项表,替换式上传「合同货物分项表格」并触发解析。
+   * 未解析 409 / 无分项 404 / 文档不存在 404 / 服务或 RAGFlow 故障 503,
+   * detail 消息经 authFetch 透传（toast 直读 e.message）。 */
+  syncItems: (docId: string) =>
+    authFetch<RagflowSyncItemsResponse>(
+      `${API_BASE}/documents/${docId}/ragflow-sync-items`,
+      { method: "POST" },
+    ),
 };

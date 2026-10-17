@@ -490,3 +490,17 @@ export function useInitContractRagflow() {
     },
   });
 }
+
+// EAI-CUSTOM (决策 B): 分项表手动同步——替换式上传「合同货物分项表格」后
+// 重查文档列表（同步不改变行数据,重查仅为幂等兜底）与 RAGFlow 状态徽标
+// （分项库 document_count 变化）。
+export function useSyncItemsRagflow() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (docId: string) => ragflowApi.syncItems(docId),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ["cpa", "documents"] });
+      void qc.invalidateQueries({ queryKey: KEYS.ragflowStatus });
+    },
+  });
+}
