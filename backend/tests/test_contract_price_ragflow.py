@@ -9,12 +9,14 @@ pytest-asyncio 每测一个新事件循环 → 模块级 _INIT_LOCK 由 autouse 
 """
 
 import asyncio
+import json
 import uuid
 from types import SimpleNamespace
 
 import httpx
 import pytest
 from fastapi import HTTPException
+from sqlalchemy.exc import SQLAlchemyError
 
 import app.extensions.contract_price  # noqa: F401 — 导入即注册模型
 from app.extensions.contract_price import crud as cpa_crud
@@ -553,7 +555,8 @@ async def test_upload_ragflow_sync_syncs_each_stored_file(monkeypatch):
 
 @pytest.mark.asyncio
 async def test_upload_ragflow_sync_failure_does_not_fail_upload(monkeypatch):
-    """sync_file 抛异常 → 上传照常成功（文件已落 MinIO+库），条目标注 error + message。"""
+    """sync_file 抛 RuntimeError/HTTPError（安全类型, str() 仅含配置文案/状态码）
+    → 上传照常成功（文件已落 MinIO+库），条目原样透传消息。"""
     _stub_library_storage(monkeypatch)
     monkeypatch.setattr(ragflow_setup, "get_service_client", _async_returning(object()))
 
@@ -573,6 +576,31 @@ async def test_upload_ragflow_sync_failure_does_not_fail_upload(monkeypatch):
     assert item["file_id"] is not None and item["reused"] is False  # 上传本身成功
     assert item["ragflow"]["status"] == "error"
     assert "EAI_SSO_SHARED_SECRET" in item["ragflow"]["message"]
+
+
+@pytest.mark.asyncio
+async def test_upload_ragflow_sync_unknown_exception_sanitizes_message(monkeypatch):
+    """未知异常（如 SQLAlchemy 异常串可能内嵌 api_token）→ 条目只给固定文案，
+    原始异常细节不进响应（服务端日志仅记类型）。"""
+    _stub_library_storage(monkeypatch)
+    monkeypatch.setattr(ragflow_setup, "get_service_client", _async_returning(object()))
+
+    async def _leak(cl, filename, content):
+        raise SQLAlchemyError("INSERT ... api_token='ragflow-secret-token' ...")
+
+    monkeypatch.setattr(ragflow_setup, "sync_file", _leak)
+
+    out = await upload_library_files(
+        folder_id="",
+        files=[_UpFile("合同A.pdf")],
+        ragflow_sync=True,
+        db=_DbNoFolders(),
+        _=None,
+    )
+    item = out["items"][0]
+    assert item["file_id"] is not None and item["reused"] is False  # 上传本身成功
+    assert item["ragflow"] == {"status": "error", "message": "RAGFlow 同步失败"}
+    assert "ragflow-secret-token" not in json.dumps(out, default=str)  # 凭据不进响应体
 
 
 @pytest.mark.asyncio

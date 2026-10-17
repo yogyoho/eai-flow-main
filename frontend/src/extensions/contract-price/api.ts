@@ -342,7 +342,8 @@ export const libraryApi = {
   ) => {
     const fd = new FormData();
     if (folderId) fd.set("folder_id", folderId);
-    // EAI-CUSTOM: 勾选后逐文件同步 RAGFlow「合同知识库」（后端失败隔离，不影响上传本身）
+    // EAI-CUSTOM: 勾选后逐文件同步 RAGFlow「合同知识库」（后端失败隔离，不影响上传本身）。
+    // 始终显式传值：避免后端缺省歧义（"false" 会被 FastAPI 正确解析为 False）
     fd.set("ragflow_sync", String(ragflowSync));
     // webkitdirectory 上传带 webkitRelativePath——原样传给后端逐级建子文件夹（spec §1.2）
     fd.set(

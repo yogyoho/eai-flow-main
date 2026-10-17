@@ -143,15 +143,20 @@ async def list_library_files_endpoint(
 
 async def _ragflow_sync_result(db: AsyncSession, filename: str, content: bytes) -> dict:
     """EAI-CUSTOM: 上传通道逐文件同步共享租户「合同知识库」（决策 A 隐式初始化;
-    同名已存在 → already_exists）。失败隔离: 任何异常（SSO 未配置/网络/建库/解析
-    触发）都不失败上传——文件此刻已安全落 MinIO+库，只在该文件条目标注 error。"""
+    同名已存在 → already_exists）。失败隔离: 任何异常都不失败上传——文件此刻已
+    安全落 MinIO+库，只在该文件条目标注 error。消息消毒: RuntimeError/httpx 的
+    str() 仅含状态码/URL（镜像 get_client_for_user 的类型化日志先例）；其余类型
+    （如 SQLAlchemy 异常串可能内嵌 api_token）→ 固定文案, 服务端日志只记类型。"""
     try:
         client = await ragflow_setup.get_service_client(db)
         res = await ragflow_setup.sync_file(client, filename=filename, content=content)
         return {"status": res["status"]}
-    except Exception as exc:  # noqa: BLE001 — 同步失败 ≠ 上传失败，条目原位带错误信息
-        logger.warning("ragflow sync(上传通道)失败: %s", filename, exc_info=True)
+    except (RuntimeError, httpx.HTTPError) as exc:
+        logger.warning("ragflow sync failed for %s: %s", filename, exc)
         return {"status": "error", "message": str(exc)}
+    except Exception as exc:  # noqa: BLE001 — 上传必须成功,同步失败仅记录
+        logger.warning("ragflow sync failed for %s: %s", filename, type(exc).__name__)
+        return {"status": "error", "message": "RAGFlow 同步失败"}
 
 
 @router.post("/library/files/upload")
