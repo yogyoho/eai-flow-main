@@ -340,6 +340,14 @@ async def parse_document_openai_vision(
                 page_rows = parse_table_marker_stream(content)
             else:
                 page_rows = html_tables_to_rows(content)
+            # M3 实测(钢材采购 签字版): 封面元数据(日期:/甲方:/合同编号:)只在
+            # 文字行里——marker 流的格文本拼回 page_texts,元数据正则才能扫全本
+            # (扫描件原生文本层为空,否则 page_texts 恒缺)。
+            row_text = "\n".join(c for row in page_rows for c in row if c)
+            if ptext:
+                page_texts[page_no] = ptext
+            elif row_text:
+                page_texts[page_no] = row_text
             for ti, rows in enumerate(page_rows):
                 tables.append(
                     TableExtract(
@@ -374,4 +382,13 @@ def from_cache(data: dict) -> tuple:
         for t in data.get("tables", [])
     ]
     page_texts = {int(k): v for k, v in (data.get("page_texts") or {}).items()}
+    # M3 实测(钢材采购 签字版): marker 流旧缓存不存 page_texts(文字全在 rows
+    # 里,扫描件原生文本层又为空)——从行文本重建,元数据正则(合同编号/日期/
+    # 甲方…)才能扫全本;已存 page_texts 的页(原生文本层)不覆盖。
+    for t in tables:
+        if page_texts.get(t.page_no):
+            continue
+        txt = "\n".join(c for row in t.rows for c in row if c)
+        if txt:
+            page_texts[t.page_no] = txt
     return tables, page_texts, list(data.get("orientation_fixed_pages", []) or [])

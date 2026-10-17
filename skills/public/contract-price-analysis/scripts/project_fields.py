@@ -67,17 +67,23 @@ _LINE = {
 # [\s_]* separators: handwritten fills on 盖章页 OCR as '2025_年12月_2日'.
 _DATE_RE = re.compile(
     r"([12]\d{3})[\s_]*年[\s_]*(\d{1,2})[\s_]*月[\s_]*(\d{1,2})[\s_]*日"
-    r"|(\d{4})[-/](\d{1,2})[-/](\d{1,2})"
+    r"|(\d{4})[-/.](\d{1,2})[-/.](\d{1,2})"
 )
 # label + OPTIONAL separator + date captured directly — so a space separator
 # ('签署日期 2025-06-18') works without a colon, not just '签订日期：...'.
 _DATE_AFTER_LABEL = {
     lbl: re.compile(
         rf"{lbl}\s*[:：、]?\s*(\d{{4}}[\s_]*年\s*\d{{1,2}}[\s_]*月\s*\d{{1,2}}[\s_]*日"
-        rf"|\d{{4}}[-/]\d{{1,2}}[-/]\d{{1,2}})"
+        rf"|\d{{4}}[-/.]\d{{1,2}}[-/.]\d{{1,2}})"
     )
     for lbl in _DATE_LABELS
 }
+# M3 实测(钢材采购 签字版): 封面只写「日期:2021.4.26」——无 签订/签署 前缀。
+# 行首锚定(^\s*日期)防 交货/供货日期 类条款内标签误配;点分格式一并覆盖。
+_BARE_DATE_LINE = re.compile(
+    r"(?m)^\s*日期\s*[:：、]?\s*"
+    r"([12]\d{3})[.\s_/-]*(\d{1,2})[.\s_/-]*(\d{1,2})(?:\s*日)?\s*$"
+)
 # contract/project numbers: alphanumerics + dashes; contract numbers may end
 # with ONE Chinese tail segment ('ZCB-...-0353-补01' — the 补 is part of the no).
 # Capture body must END alphanumeric — a greedy '[A-Za-z0-9\-]*' would swallow
@@ -482,6 +488,13 @@ def _find_date(text: str) -> str | None:
             d = _parse_date(nxt)
             if d:
                 return d
+    # M3 实测(钢材采购 签字版): 行首裸「日期:2021.4.26」(无 签订 前缀、点分
+    # 格式)——行首锚定防 交货/供货日期 类条款内标签误配。
+    m = _BARE_DATE_LINE.search(text)
+    if m:
+        d = _parse_date(m.group(0))
+        if d:
+            return d
     return None
 
 
@@ -555,6 +568,10 @@ if __name__ == "__main__":  # ponytail self-check: regex must catch common forms
         ({"1": "项目名称：某智能装备\n制造基地项目经理部\n项目编号：01116102P2020002"},
          ("某智能装备制造基地项目经理部", None, None, None, None, "01116102P2020002")),
         ({"1": "盖章\n合同订立时间：2025_年12月_2日。"}, (None, None, None, None, "2025-12-02", None)),
+        # M3 实测(钢材采购 签字版): 行首裸「日期:2021.4.26」+ 点分格式;项目名称
+        # /所在地合同中真缺(框架采购,项目隐含在甲方名称里)。
+        ({"1": "物资采购合同\n合同编号:5G3-CHN-PZ-CLG-004-2021\n日期:2021.4.26\n地点:\n甲方:中交第三公路工程局有限公司"},
+         (None, None, "5G3-CHN-PZ-CLG-004-2021", None, "2021-04-26", None)),
     ]
     for pt, want in cases:
         got = extract_project_fields(pt)
