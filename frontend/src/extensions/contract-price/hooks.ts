@@ -6,7 +6,7 @@
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
-import { contractPriceApi, libraryApi, termsApi } from "./api";
+import { contractPriceApi, libraryApi, ragflowApi, termsApi } from "./api";
 
 const KEYS = {
   dashboard: ["cpa", "dashboard"] as const,
@@ -22,6 +22,8 @@ const KEYS = {
     ["cpa", "library-files", folderId] as const,
   // EAI-CUSTOM: cpa v3 货物分类术语
   terms: ["cpa", "terms"] as const,
+  // EAI-CUSTOM: RAGFlow SSO 知识库连通状态
+  ragflowStatus: ["cpa", "ragflow-status"] as const,
 };
 
 export function useDashboard() {
@@ -461,4 +463,28 @@ export function useTermsMutations() {
     onSuccess: invalidate,
   });
   return { createTerm, updateTerm, deleteTerm };
+}
+
+// EAI-CUSTOM: RAGFlow SSO 知识库连通状态 + 幂等初始化
+export function useContractRagflowStatus() {
+  return useQuery({
+    queryKey: KEYS.ragflowStatus,
+    queryFn: ragflowApi.status,
+    // 状态徽标只在进入设置页/主动初始化后刷新,不在窗口聚焦时打扰
+    refetchOnWindowFocus: false,
+  });
+}
+
+export function useInitContractRagflow(onSuccess?: () => void) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: () => ragflowApi.init(),
+    onSuccess: (data) => {
+      // 先用响应里的 connectivity 即时落缓存（避免 init 完成到 refetch 落地间
+      // 徽标闪回未初始化）,再 invalidate 做一次权威重查
+      qc.setQueryData(KEYS.ragflowStatus, data.connectivity);
+      void qc.invalidateQueries({ queryKey: KEYS.ragflowStatus });
+      onSuccess?.();
+    },
+  });
 }

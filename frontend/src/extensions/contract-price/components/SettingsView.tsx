@@ -5,8 +5,15 @@
  *  dirty 跟踪 + 保存 clamp + toast 自动消隐。 */
 
 import { useQuery } from "@tanstack/react-query";
-import { PackageSearch, Save, Settings } from "lucide-react";
+import {
+  ChevronDown,
+  Loader2,
+  PackageSearch,
+  Save,
+  Settings,
+} from "lucide-react";
 import { useEffect, useState } from "react";
+import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -19,6 +26,11 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import {
   Select,
   SelectContent,
   SelectItem,
@@ -29,8 +41,18 @@ import { fetch } from "@/core/api/fetcher";
 import { EvolutionCandidatesCard } from "@/extensions/contract-price/components/EvolutionCandidatesCard";
 import { PageHeader } from "@/extensions/contract-price/components/PageHeader";
 import { SeedRulesCard } from "@/extensions/contract-price/components/SeedRulesCard";
-import { useConfig, useUpdateConfig } from "@/extensions/contract-price/hooks";
-import type { CpaConfig } from "@/extensions/contract-price/types";
+import {
+  useConfig,
+  useContractRagflowStatus,
+  useInitContractRagflow,
+  useUpdateConfig,
+} from "@/extensions/contract-price/hooks";
+import type {
+  CpaConfig,
+  RagflowDatasetStatus,
+  RagflowStatusResponse,
+} from "@/extensions/contract-price/types";
+import { cn } from "@/lib/utils";
 
 /** 系统级 OCR 服务注册表(/settings 基础配置维护,api_key 已掩码——此处只消费服务名)。 */
 function useOcrServiceNames() {
@@ -53,6 +75,175 @@ function useOcrServiceNames() {
 const clamp = (v: number, lo: number, hi: number) =>
   Math.min(hi, Math.max(lo, v));
 
+// ── RAGFlow SSO 知识库连通徽标 + 幂等初始化(页头 actions 槽) ──
+// EAI-CUSTOM: 交互态复制自用户确认原型(cpa-settings-ragflow-header.html)——
+// idle 未初始化(琥珀) / initializing 初始化中(琥珀脉冲) / ok 已连接(绿) /
+// err 不可达(红);徽标点击展开两库明细浮层,按钮按态切换 初始化/重试/重新对齐。
+
+/** 两库固定名(与后端 ragflow_setup 常量一致)。 */
+const RAGFLOW_DATASETS = ["合同知识库", "合同货物分项表格"] as const;
+
+type RagflowPhase = "idle" | "initializing" | "ok" | "err";
+
+const BADGE_TONE: Record<RagflowPhase, string> = {
+  idle: "border-amber-500/30 bg-amber-500/10 text-amber-600 dark:text-amber-400",
+  initializing:
+    "border-amber-500/30 bg-amber-500/10 text-amber-600 dark:text-amber-400",
+  ok: "border-success/30 bg-success/10 text-success",
+  err: "border-destructive/30 bg-destructive/10 text-destructive",
+};
+
+const BADGE_DOT: Record<RagflowPhase, string> = {
+  idle: "bg-amber-500",
+  initializing: "bg-amber-500 animate-pulse",
+  ok: "bg-success",
+  err: "bg-destructive",
+};
+
+const BADGE_TEXT: Record<RagflowPhase, string> = {
+  idle: "RAGFlow 未初始化",
+  initializing: "RAGFlow 初始化中…",
+  ok: "RAGFlow 已连接",
+  err: "RAGFlow 不可达",
+};
+
+/** 态推导: 初始化 mutation 进行中 → initializing;任一库 connected → ok;
+ *  状态响应带 error(或状态请求本身失败)→ err;其余(未创建/尚未拉到)→ idle。 */
+function ragflowPhase(
+  status: { data?: RagflowStatusResponse; isError: boolean },
+  initializing: boolean,
+): RagflowPhase {
+  if (initializing) return "initializing";
+  const data = status.data;
+  if (!data) return status.isError ? "err" : "idle";
+  if (data.available && data.datasets.some((d) => d.status === "connected"))
+    return "ok";
+  return data.error || status.isError ? "err" : "idle";
+}
+
+/** 明细行: 色点 + 右对齐 meta(已连接附带 文档/分块 计数,0 分块省略)。 */
+function ragflowRow(phase: RagflowPhase, ds?: RagflowDatasetStatus) {
+  if (phase === "initializing") return { dot: "bg-amber-500", meta: "创建中…" };
+  if (ds?.status === "connected") {
+    let meta = "已连接";
+    if (ds.document_count !== undefined) meta += ` · ${ds.document_count} 文档`;
+    if (ds.chunk_count) meta += ` · ${ds.chunk_count} 分块`;
+    return { dot: "bg-success", meta };
+  }
+  if (phase === "err") return { dot: "bg-muted-foreground/60", meta: "未知" };
+  return { dot: "bg-muted-foreground/60", meta: "未创建" };
+}
+
+/** ISO → "YYYY-MM-DD HH:mm"(本地时区);缺失/无效返回 null。 */
+function formatInitializedAt(iso?: string | null): string | null {
+  if (!iso) return null;
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return null;
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
+function RagflowHeaderActions() {
+  const status = useContractRagflowStatus();
+  const init = useInitContractRagflow();
+  const [detailOpen, setDetailOpen] = useState(false);
+
+  useEffect(() => {
+    if (init.isError && init.error) {
+      toast.error(`RAGFlow 初始化失败：${init.error.message}`);
+    }
+  }, [init.isError, init.error]);
+
+  const phase = ragflowPhase(status, init.isPending);
+  const initializedAt = formatInitializedAt(status.data?.initialized_at);
+  const footer =
+    phase === "idle"
+      ? "点击「初始化知识库」创建并连通"
+      : phase === "initializing"
+        ? "正在创建合同知识库与合同货物分项表格…"
+        : phase === "ok"
+          ? initializedAt
+            ? `初始化于 ${initializedAt} · 幂等:重复点击仅对齐`
+            : "幂等:重复点击仅对齐"
+          : (status.data?.error ??
+            "无法连接 RAGFlow(9380)——请确认 ragflow 容器运行中");
+  const connLabel =
+    phase === "ok"
+      ? "已连接"
+      : phase === "initializing"
+        ? "连接中"
+        : phase === "err"
+          ? "不可达"
+          : "—";
+  const buttonLabel =
+    phase === "initializing"
+      ? "初始化中…"
+      : phase === "ok"
+        ? "重新对齐"
+        : phase === "err"
+          ? "重试连接"
+          : "初始化知识库";
+
+  return (
+    <div className="flex items-center gap-2">
+      <Popover open={detailOpen} onOpenChange={setDetailOpen}>
+        <PopoverTrigger
+          aria-label={`RAGFlow 连通状态：${BADGE_TEXT[phase]}`}
+          className={cn(
+            "group inline-flex cursor-pointer items-center gap-1.5 rounded-full border px-3 py-[5px] text-[12.5px] font-medium whitespace-nowrap select-none",
+            BADGE_TONE[phase],
+          )}
+        >
+          <span
+            aria-hidden
+            className={cn("size-[7px] rounded-full", BADGE_DOT[phase])}
+          />
+          {BADGE_TEXT[phase]}
+          <ChevronDown className="size-2.5 opacity-70 transition-transform group-data-[state=open]:rotate-180" />
+        </PopoverTrigger>
+        <PopoverContent
+          align="end"
+          sideOffset={8}
+          className="w-[330px] rounded-[10px] p-0"
+        >
+          <div className="text-muted-foreground flex items-center justify-between border-b px-3.5 py-2.5 text-xs font-semibold">
+            <span>RAGFlow 知识库</span>
+            <span>{connLabel}</span>
+          </div>
+          {RAGFLOW_DATASETS.map((name) => {
+            const row = ragflowRow(
+              phase,
+              status.data?.datasets.find((d) => d.name === name),
+            );
+            return (
+              <div
+                key={name}
+                className="flex items-center gap-2.5 border-b px-3.5 py-2.5 text-[13px] last:border-b-0"
+              >
+                <span
+                  aria-hidden
+                  className={cn("size-[7px] shrink-0 rounded-full", row.dot)}
+                />
+                <span className="font-medium">{name}</span>
+                <span className="text-muted-foreground ml-auto text-xs">
+                  {row.meta}
+                </span>
+              </div>
+            );
+          })}
+          <div className="text-muted-foreground bg-muted/50 px-3.5 py-2 text-[11.5px]">
+            {footer}
+          </div>
+        </PopoverContent>
+      </Popover>
+      <Button size="sm" disabled={init.isPending} onClick={() => init.mutate()}>
+        {init.isPending && <Loader2 className="size-3 animate-spin" />}
+        {buttonLabel}
+      </Button>
+    </div>
+  );
+}
+
 export function SettingsView() {
   const { data, isLoading } = useConfig();
   const updateConfig = useUpdateConfig();
@@ -68,11 +259,11 @@ export function SettingsView() {
 
   if (isLoading || !form) {
     return (
-      <div className="p-8">
+      <div className="space-y-4 p-6">
         <PageHeader
           title="配置"
           description="表格定位规则与解析参数"
-          icon={<PackageSearch className="h-4 w-4" />}
+          icon={<PackageSearch />}
         />
         <Card className="mt-6">
           <CardContent className="p-6">
@@ -110,11 +301,12 @@ export function SettingsView() {
   };
 
   return (
-    <div className="space-y-6 p-8">
+    <div className="space-y-4 p-6">
       <PageHeader
         title="配置"
         description="表格定位规则与解析参数（修改后下次解析生效）"
-        icon={<Settings className="h-6 w-6" />}
+        icon={<Settings />}
+        actions={<RagflowHeaderActions />}
       />
 
       <SeedRulesCard

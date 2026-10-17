@@ -25,6 +25,8 @@ import type {
   Page,
   PipelineRunResponse,
   PipelineStatus,
+  RagflowInitResponse,
+  RagflowStatusResponse,
   UploadResponse,
 } from "./types";
 
@@ -403,5 +405,17 @@ export const termsApi = {
   remove: (id: string) =>
     authFetch<{ ok: boolean }>(`${API_BASE}/terms/${id}`, {
       method: "DELETE",
+    }),
+};
+
+// EAI-CUSTOM: RAGFlow SSO 知识库幂等初始化 + 连通状态（两固定库，见 ragflow_setup）
+export const ragflowApi = {
+  /** 连通状态——RAGFlow 不可达时后端 degraded（available=false + error），不抛 5xx。 */
+  status: () => authFetch<RagflowStatusResponse>(`${API_BASE}/ragflow/status`),
+
+  /** 幂等初始化：两库有则对齐、无则创建，重复点击仅对齐。 */
+  init: () =>
+    authFetch<RagflowInitResponse>(`${API_BASE}/ragflow/init`, {
+      method: "POST",
     }),
 };

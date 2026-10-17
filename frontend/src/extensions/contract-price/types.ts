@@ -250,3 +250,29 @@ export interface CpaTerm {
   alias_count: number;
   item_count: number;
 }
+
+// EAI-CUSTOM: RAGFlow SSO 知识库连通状态（GET /ragflow/status;status 行只有
+// connected|missing,created|aligned 出现在 init 响应的 initialized 列表里）
+export interface RagflowDatasetStatus {
+  name: string;
+  status: "connected" | "missing" | "created" | "aligned";
+  dataset_id: string;
+  document_count?: number;
+  chunk_count?: number;
+}
+
+export interface RagflowStatusResponse {
+  available: boolean;
+  datasets: RagflowDatasetStatus[];
+  /** 不可达时的原因文本(degraded,后端不抛 5xx) */
+  error?: string;
+  /** 初始化完成时间(后端 config 落库后若随状态返回则用于 footer 展示) */
+  initialized_at?: string | null;
+}
+
+export interface RagflowInitResponse {
+  status: string;
+  initialized: { name: string; status: string; dataset_id: string }[];
+  /** 与 RagflowStatusResponse 同构,init 后立即反映连通状态 */
+  connectivity: RagflowStatusResponse;
+}
