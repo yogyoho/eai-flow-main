@@ -18,6 +18,8 @@ import { cn } from "@/lib/utils";
 import { listReviewQueue, transitionTask } from "../api";
 import type { TltTask } from "../types";
 
+import { PageHeader } from "./PageHeader";
+
 /** 机检轴的用户语标签（文案红线映射表）。 */
 const GATE_LABELS: Record<string, string> = {
   numeric: "数字准确性",
@@ -62,23 +64,71 @@ export function ReviewWorkbench() {
     toast.error(text);
   };
 
-  return (
-    <div className="flex h-full flex-col gap-3 p-4">
-      {/* 顶栏 */}
-      <div className="flex items-center gap-3">
-        <h1 className="flex items-center gap-2 text-xl font-semibold">
-          <ClipboardCheck className="h-5 w-5" /> 复核工作台
-        </h1>
-        <span className="text-muted-foreground text-sm">
-          机检未过任务的逐轴审阅与裁决
-        </span>
-        <span className="flex-1" />
-        <span className="rounded-full border border-amber-600/30 bg-amber-600/10 px-2.5 py-0.5 text-xs text-amber-600">
-          待复核 {queue.length}
-        </span>
+  /** 复核初始化骨架：左队列列表 + 右裁决详情。 */
+  const ReviewSkeleton = () => (
+    <div
+      className="flex min-h-0 flex-1 gap-3"
+      role="status"
+      aria-label="复核队列加载中"
+    >
+      <div className="bg-muted/20 w-60 shrink-0 rounded-lg border p-2">
+        <div className="bg-muted-foreground/15 mb-2 h-3 w-24 animate-pulse rounded" />
+        {Array.from({ length: 6 }, (_, i) => (
+          <div
+            key={i}
+            className="mb-1 rounded-md border border-transparent p-2"
+          >
+            <div
+              className="bg-muted-foreground/15 h-3.5 animate-pulse rounded"
+              style={{ width: 140 + (i % 3) * 16 }}
+            />
+            <div className="bg-muted-foreground/15 mt-1.5 h-3 w-24 animate-pulse rounded" />
+          </div>
+        ))}
       </div>
+      <div className="flex min-w-0 flex-1 flex-col overflow-hidden rounded-lg border">
+        <div className="flex items-center gap-2.5 border-b px-4 py-3">
+          <div className="bg-muted-foreground/15 size-5 animate-pulse rounded" />
+          <div className="flex-1 space-y-1.5">
+            <div className="bg-muted-foreground/15 h-3.5 w-64 animate-pulse rounded" />
+            <div className="bg-muted-foreground/15 h-3 w-40 animate-pulse rounded" />
+          </div>
+        </div>
+        <div className="flex-1 space-y-3 px-4 py-3">
+          <div className="bg-muted-foreground/15 h-3 w-28 animate-pulse rounded" />
+          {Array.from({ length: 2 }, (_, i) => (
+            <div
+              key={i}
+              className="border-border space-y-2 rounded-md border p-2.5"
+            >
+              <div className="bg-muted-foreground/15 h-3 w-24 animate-pulse rounded" />
+              <div className="bg-muted-foreground/15 h-3 w-full animate-pulse rounded" />
+              <div className="bg-muted-foreground/15 h-3 w-5/6 animate-pulse rounded" />
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
 
-      {queue.length === 0 ? (
+  return (
+    <div className="flex h-full flex-col gap-3 px-4 pt-3 pb-4">
+      <PageHeader
+        title="复核工作台"
+        description="机检未过任务的逐轴审阅与裁决"
+        icon={<ClipboardCheck />}
+        actions={
+          queueQ.isLoading ? undefined : (
+            <span className="rounded-full border border-amber-600/30 bg-amber-600/10 px-2.5 py-0.5 text-xs text-amber-600 tabular-nums">
+              待复核 {queue.length}
+            </span>
+          )
+        }
+      />
+
+      {queueQ.isLoading ? (
+        <ReviewSkeleton />
+      ) : queue.length === 0 ? (
         <div className="text-muted-foreground flex flex-1 flex-col items-center justify-center gap-2 rounded-lg border border-dashed p-8 text-sm">
           <ClipboardCheck className="h-10 w-10" />
           <p>队列已清空——没有待复核的任务。</p>
@@ -102,10 +152,10 @@ export function ReviewWorkbench() {
                 )}
                 onClick={() => setSelectedId(t.id)}
               >
-                <div className="truncate text-sm font-medium">
+                <div className="truncate font-mono text-[13px] font-medium">
                   {t.file_name}
                 </div>
-                <div className="text-muted-foreground mt-0.5">
+                <div className="text-muted-foreground mt-0.5 font-mono tabular-nums">
                   {fmtTime(t.updated_at)}
                 </div>
               </button>
@@ -119,14 +169,20 @@ export function ReviewWorkbench() {
                 <div className="flex items-center gap-2.5 border-b px-4 py-3">
                   <FileText className="text-muted-foreground h-5 w-5 shrink-0" />
                   <div className="min-w-0 flex-1">
-                    <div className="truncate text-sm font-semibold">
+                    <div className="truncate font-mono text-[13px] font-semibold">
                       {selected.file_name}
                     </div>
-                    <div className="text-muted-foreground mt-0.5 text-xs">
-                      {selected.source_lang?.toUpperCase()} → ZH ·{" "}
-                      {fmtTime(selected.updated_at)}
-                      {selected.retry_count > 0 &&
-                        ` · 已重试 ${selected.retry_count} 次`}
+                    <div className="text-muted-foreground mt-0.5 flex flex-wrap items-center gap-1 text-xs tabular-nums">
+                      <span className="font-mono">
+                        {selected.source_lang?.toUpperCase()} → ZH
+                      </span>
+                      <span>·</span>
+                      <span className="font-mono">
+                        {fmtTime(selected.updated_at)}
+                      </span>
+                      {selected.retry_count > 0 && (
+                        <span>· 已重试 {selected.retry_count} 次</span>
+                      )}
                     </div>
                   </div>
                   <Button variant="outline" size="sm" asChild>
@@ -155,7 +211,7 @@ export function ReviewWorkbench() {
                               <div className="text-destructive font-medium">
                                 {GATE_LABELS[axis] ?? axis}
                               </div>
-                              <ul className="text-muted-foreground mt-1 list-inside list-disc">
+                              <ul className="text-muted-foreground mt-1 list-inside list-disc font-mono">
                                 {violations.slice(0, 8).map((v, i) => (
                                   <li key={i}>{v}</li>
                                 ))}
@@ -174,10 +230,10 @@ export function ReviewWorkbench() {
                   {/* 不确定段 */}
                   {selected.uncertainty && selected.uncertainty.length > 0 && (
                     <section className="mt-3">
-                      <div className="text-muted-foreground mb-1.5 text-xs font-semibold tracking-wide">
+                      <div className="text-muted-foreground mb-1.5 text-xs font-semibold tracking-wide tabular-nums">
                         LLM 不确定段（{selected.uncertainty.length} 处）
                       </div>
-                      <ul className="text-muted-foreground flex flex-col gap-1 text-xs">
+                      <ul className="text-muted-foreground flex flex-col gap-1 font-mono text-xs">
                         {selected.uncertainty.map((u, i) => (
                           <li key={i} className="truncate">
                             {u.block}

@@ -17,8 +17,10 @@ import {
   Eye,
   FilePlus2,
   FolderPlus,
+  FolderRoot,
   GripVerticalIcon,
   History,
+  Languages,
   Loader2,
   MoreHorizontal,
   Pencil,
@@ -49,6 +51,13 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { artifactMarkdownPlugins } from "@/components/workspace/artifacts/markdown-preview-plugins";
 import { SafeStreamdown } from "@/core/streamdown/components";
 import { cn } from "@/lib/utils";
@@ -68,11 +77,24 @@ import {
 import type { TltFolder, TltTask } from "../types";
 
 import { WindowsFolder, WindowsFolderOpen } from "./FolderIcons";
+import { PageHeader } from "./PageHeader";
 import { SourcePreview } from "./SourcePreview";
 import { UploadDialog } from "./UploadDialog";
 
 const PAGE_SIZE = 50;
 const POLL_MS = 10_000;
+
+/** 目录树骨架行：缩进深度 + 条宽（对齐 cpa LibraryView 树骨架配方）。 */
+const TREE_SKELETON_ROWS = [
+  [0, 52],
+  [1, 68],
+  [2, 56],
+  [1, 76],
+  [2, 48],
+  [1, 60],
+  [2, 72],
+  [3, 44],
+] as const;
 
 type FolderId = string | null; // null = 根
 
@@ -195,7 +217,7 @@ function StateBadge({ state, progress }: { state: string; progress?: number }) {
 export function AssetLibrary() {
   // 浏览器标签页标题（client 组件不可导出 metadata，用 effect 设置）
   useEffect(() => {
-    document.title = "文档资产库 EN/FR 文档 · 中文译本对照管理";
+    document.title = "文件资料库 EN/FR 文档 · 中文译本对照管理";
   }, []);
   const qc = useQueryClient();
   const invalidate = () => {
@@ -355,12 +377,30 @@ export function AssetLibrary() {
         }
       }
       invalidate();
-      const created = res.filter((r) => !r.reused).length;
-      flash(
-        "ok",
-        `已上传 ${res.length} 个文件（新建翻译任务 ${created} 个${autoTranslate && created ? "，已入队" : ""}）`,
-      );
-      return { total: files.length, failed: [] as File[] };
+      const reused = res.filter((r) => r.reused);
+      const created = res.length - reused.length;
+      if (reused.length > 0) {
+        const createdPart =
+          created > 0
+            ? `已上传 ${res.length} 个文件：新建 ${created} 个${autoTranslate ? "，已入队" : ""}；`
+            : "";
+        toast.warning(
+          `${createdPart}${reused.length} 个文件内容重复，未新建任务：` +
+            reused
+              .map(
+                (r) =>
+                  `${r.file}${r.existing_file ? `（已有：${r.existing_file}）` : ""}`,
+              )
+              .join("；"),
+          { duration: 8000 },
+        );
+      } else {
+        flash(
+          "ok",
+          `已上传 ${res.length} 个文件（新建翻译任务 ${created} 个${autoTranslate && created ? "，已入队" : ""}）`,
+        );
+      }
+      return { total: files.length, failed: [] as File[], reused };
     } catch (e) {
       // 服务端错误上抛给对话框显示（不再未处理崩溃）；全部文件留在选择列表可重试
       return {
@@ -412,10 +452,12 @@ export function AssetLibrary() {
     if (!folderDialog) return;
     try {
       if (folderDialog.mode === "create") {
-        await createFolder(
-          folderDialog.value.trim(),
-          folderDialog.parent ?? null,
-        );
+        // 虚拟根 "root" 不是后端 UUID；建在根目录时 parent_id 必须为 null
+        const parentId =
+          folderDialog.parent === "root"
+            ? null
+            : (folderDialog.parent ?? null);
+        await createFolder(folderDialog.value.trim(), parentId);
       } else if (folderDialog.id) {
         await patchFolder(folderDialog.id, { name: folderDialog.value.trim() });
       }
@@ -597,7 +639,10 @@ export function AssetLibrary() {
   }) => {
     const chain = folderPath(folderId);
     return (
-      <div className="text-muted-foreground flex items-center gap-0.5 text-xs">
+      /* 与 cpa 合同文件库一致：根目录图标 / 文件夹 / 子文件夹 */
+      <span className="text-muted-foreground flex flex-wrap items-center gap-1 text-xs pt-1">
+        <FolderRoot className="h-3.5 w-3.5 shrink-0" aria-hidden />
+        <span className="px-0.5">/</span>
         {chain.map((seg, i) => (
           <span key={seg.id ?? "root"} className="flex items-center gap-0.5">
             {i > 0 && <span className="px-0.5">/</span>}
@@ -612,7 +657,7 @@ export function AssetLibrary() {
             </button>
           </span>
         ))}
-      </div>
+      </span>
     );
   };
 
@@ -627,7 +672,7 @@ export function AssetLibrary() {
         style={{ width: `${width}px`, maxHeight: "inherit" }}
       >
         {foldersQ.isLoading ? (
-          <SkeletonRow />
+          <TreeSkeleton />
         ) : (
           renderTree(displayTree, 0, side)
         )}
@@ -635,10 +680,70 @@ export function AssetLibrary() {
     );
   };
 
-  const SkeletonRow = () => (
-    <div className="flex items-center gap-2 py-1">
-      <Loader2 className="text-muted-foreground h-3.5 w-3.5 animate-spin" />
-      <span className="text-muted-foreground text-xs">加载中…</span>
+  /** 目录树骨架：8 行缩进脉冲条，模拟层级与目录名。 */
+  const TreeSkeleton = () => (
+    <div role="status" aria-label="文件夹加载中" className="space-y-2.5 p-2">
+      {TREE_SKELETON_ROWS.map(([depth, w], i) => (
+        <div
+          key={i}
+          aria-hidden
+          className="flex items-center gap-1.5"
+          style={{ paddingLeft: depth * 12 }}
+        >
+          <div className="bg-muted-foreground/15 size-3 shrink-0 animate-pulse rounded-sm" />
+          <div
+            className="bg-muted-foreground/15 h-3 animate-pulse rounded"
+            style={{ width: w }}
+          />
+        </div>
+      ))}
+    </div>
+  );
+
+  /** 文件列表骨架：列形对齐当前表（勾选 / 文件名+状态 / 操作）。 */
+  const TableSkeleton = ({ withCheckbox = false }: { withCheckbox?: boolean }) => (
+    <div role="status" aria-label="文件列表加载中">
+      <table className="w-full text-sm" aria-hidden>
+        <thead>
+          <tr className="bg-muted/50 text-muted-foreground border-b text-left text-xs">
+            {withCheckbox && <th className="w-8 px-2 py-2" />}
+            <th className="px-2 py-2">文件名</th>
+            <th className="w-10 px-2 py-2" />
+          </tr>
+        </thead>
+        <tbody>
+          {Array.from({ length: 8 }, (_, i) => (
+            <tr
+              key={i}
+              className="border-b border-[var(--gray-100)] last:border-b-0"
+            >
+              {withCheckbox && (
+                <td className="w-8 px-2 py-2">
+                  <div className="bg-muted-foreground/15 size-3.5 animate-pulse rounded-sm" />
+                </td>
+              )}
+              <td className="min-w-0 px-2 py-2">
+                <div className="flex items-center gap-2.5">
+                  <div className="bg-muted-foreground/15 size-5 shrink-0 animate-pulse rounded" />
+                  <div className="min-w-0 space-y-1.5">
+                    <div
+                      className="bg-muted-foreground/15 h-3.5 animate-pulse rounded"
+                      style={{ width: 140 + (i % 3) * 28 }}
+                    />
+                    <div
+                      className="bg-muted-foreground/15 h-3 animate-pulse rounded"
+                      style={{ width: 88 + (i % 4) * 18 }}
+                    />
+                  </div>
+                </div>
+              </td>
+              <td className="w-10 px-2 py-2">
+                <div className="bg-muted-foreground/15 ml-auto size-4 animate-pulse rounded" />
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
     </div>
   );
 
@@ -692,43 +797,38 @@ export function AssetLibrary() {
   );
 
   return (
-    <div className="flex h-full flex-col gap-3 px-4 pt-0 pb-4">
-      {/* 顶栏 */}
-      <div className="flex items-center gap-3">
-        {/* <h1 className="flex items-center gap-2 text-xl font-semibold">
-          <Languages className="h-5 w-5" /> 文档资产库 EN/FR 文档 · 中文译本对照管理
-        </h1> */}
-        <span className="flex-1" />
-        {reviewQ.data && reviewQ.data.total > 0 && (
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => flash("ok", "复核工作台建设中（OQ8）")}
-          >
-            待复核 {reviewQ.data.total} →
-          </Button>
-        )}
-      </div>
-
-      {/* 路径面包屑（左侧主导航；点击层级=左右同步前往） */}
-      <div className="flex items-center gap-2 px-3 py-1.5 text-sm">
-        <span className="shrink-0 rounded-sm bg-sky-100 px-2 py-0.5 text-xs text-sky-700">
-          文件路径：
-        </span>
-        <Crumbs
-          folderId={lFolder}
-          onPick={(id) => {
-            setLFolder(id);
-            setRFolder(id);
-            setLPage(1);
-          }}
-        />
-      </div>
+    <div className="flex h-full flex-col gap-3 px-4 pt-3 pb-4">
+      <PageHeader
+        title="文件资料库"
+        description={
+          <Crumbs
+            folderId={lFolder}
+            onPick={(id) => {
+              setLFolder(id);
+              setRFolder(id);
+              setLPage(1);
+            }}
+          />
+        }
+        icon={<Languages />}
+        topRight="EN/FR 文档 · 中文译本对照管理"
+        actions={
+          reviewQ.data && reviewQ.data.total > 0 ? (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => flash("ok", "复核工作台建设中（OQ8）")}
+            >
+              待复核 {reviewQ.data.total} →
+            </Button>
+          ) : undefined
+        }
+      />
 
       {/* 双栏 */}
       <div
         ref={splitRef}
-        className="flex min-h-[460px] flex-1 overflow-hidden rounded-lg border"
+        className="flex min-h-0 flex-1 overflow-hidden rounded-lg border"
       >
         {/* 左：原文区 */}
         <div
@@ -742,48 +842,63 @@ export function AssetLibrary() {
         >
           <div className="flex flex-wrap items-center gap-2 border-b px-3 py-2">
             <span className="text-sm font-medium">原文区</span>
-            <span className="text-muted-foreground text-xs">EN/FR</span>
+            <span className="text-muted-foreground font-mono text-xs">
+              EN/FR
+            </span>
             <span className="flex-1" />
             <Input
               placeholder="搜索 文件名 / sha"
               className="h-8 w-44"
+              style={{ fontSize: 13 }}
               value={q}
               onChange={(e) => {
                 setQ(e.target.value);
                 setLPage(1);
               }}
             />
-            <select
-              className="bg-background h-8 rounded-md border px-2 text-sm"
+            <Select
               value={kbFilter}
-              onChange={(e) => {
-                setKbFilter(e.target.value);
+              onValueChange={(v) => {
+                setKbFilter(v);
                 setLPage(1);
               }}
             >
-              <option value="all">全部库</option>
-              {ragKbs.map((k) => (
-                <option key={k.id} value={k.id}>
-                  {k.name}
-                </option>
-              ))}
-            </select>
+              <SelectTrigger
+                size="sm"
+                className="w-44 text-[13px]"
+                aria-label="知识库筛选"
+              >
+                <SelectValue placeholder="全部库" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all" className="text-[13px]">
+                  全部库
+                </SelectItem>
+                {ragKbs.map((k) => (
+                  <SelectItem key={k.id} value={k.id} className="text-[13px]">
+                    {k.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
             <Button
               variant="outline"
               size="sm"
+              className="text-[13px]"
               onClick={() => setUploadOpen(true)}
             >
-              <Upload className="mr-1 h-3.5 w-3.5" /> 上传
+              <Upload className="mr-1 h-3 w-3" /> 上传
             </Button>
             <Button
               size="sm"
+              className="text-[13px] tabular-nums"
               disabled={!translatable.length}
               onClick={doTranslateChecked}
             >
               {tasksL.isFetching ? (
-                <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" />
+                <Loader2 className="mr-1 h-3 w-3 animate-spin" />
               ) : (
-                <Play className="mr-1 h-3.5 w-3.5" />
+                <Play className="mr-1 h-3 w-3" />
               )}
               翻译 ({translatable.length})
             </Button>
@@ -791,16 +906,16 @@ export function AssetLibrary() {
             <Button
               variant="ghost"
               size="sm"
-              className="h-9 w-9 p-0"
+              className="h-8 w-8 p-0"
               title={collapsed === "right" ? "复原双栏" : "左全宽"}
               onClick={() =>
                 setCollapsed(collapsed === "right" ? "none" : "right")
               }
             >
               {collapsed === "right" ? (
-                <ArrowLeftToLine className="h-4 w-4" />
+                <ArrowLeftToLine className="h-3.5 w-3.5" />
               ) : (
-                <ArrowRightToLine className="h-4 w-4" />
+                <ArrowRightToLine className="h-3.5 w-3.5" />
               )}
             </Button>
           </div>
@@ -812,9 +927,7 @@ export function AssetLibrary() {
             />
             <div className="min-w-0 flex-1 overflow-auto">
               {tasksL.isLoading ? (
-                <div className="text-muted-foreground flex items-center gap-2 p-4 text-sm">
-                  <Loader2 className="h-4 w-4 animate-spin" /> 加载中…
-                </div>
+                <TableSkeleton withCheckbox />
               ) : lTasks.length === 0 ? (
                 <div className="text-muted-foreground p-8 text-center text-sm">
                   此文件夹还没有文档。上传 EN/FR 文档后开始翻译。
@@ -845,7 +958,7 @@ export function AssetLibrary() {
                     {lTasks.map((t) => (
                       <tr
                         key={t.id}
-                        className="hover:bg-muted/50 border-b last:border-b-0"
+                        className="hover:bg-muted/50 border-b border-[var(--gray-100)] last:border-b-0"
                       >
                         <td className="px-2 py-2">
                           <Checkbox
@@ -866,10 +979,10 @@ export function AssetLibrary() {
                           <div className="flex items-center gap-2.5">
                             <FileTypeIcon
                               name={t.file_name}
-                              className="h-5 w-5 shrink-0"
+                              className="h-7 w-7 shrink-0"
                             />
                             <div className="min-w-0">
-                              <div className="truncate text-sm">
+                              <div className="truncate font-mono">
                                 {t.file_name}
                               </div>
                               <div className="text-muted-foreground flex items-center gap-1.5 truncate text-xs">
@@ -877,13 +990,15 @@ export function AssetLibrary() {
                                   state={t.state}
                                   progress={t.progress}
                                 />
-                                <span className="uppercase">
+                                <span className="font-mono uppercase">
                                   {t.file_name.split(".").pop()}
                                 </span>
                                 <span>·</span>
-                                <span>{fmtSize(t.size_bytes)}</span>
+                                <span className="font-mono tabular-nums">
+                                  {fmtSize(t.size_bytes)}
+                                </span>
                                 <span>·</span>
-                                <span>
+                                <span className="font-mono tabular-nums">
                                   {fmtTime(
                                     (t as { created_at?: string }).created_at,
                                   )}
@@ -956,26 +1071,31 @@ export function AssetLibrary() {
           <div className="flex items-center gap-2 border-b px-3 py-2">
             <span className="text-sm font-medium">译文区</span>
             <span className="text-muted-foreground text-xs">
-              ZH · 左侧只读镜像
+              <span className="font-mono">ZH</span> · 左侧只读镜像
             </span>
             <span className="flex-1" />
-            <Button variant="ghost" size="sm" onClick={() => invalidate()}>
-              <RefreshCw className="h-3.5 w-3.5" />
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-8 w-8 p-0"
+              onClick={() => invalidate()}
+            >
+              <RefreshCw className="h-3 w-3" />
             </Button>
             {/* 右全宽切换：左区消失/复原 */}
             <Button
               variant="ghost"
               size="sm"
-              className="h-9 w-9 p-0"
+              className="h-8 w-8 p-0"
               title={collapsed === "left" ? "复原双栏" : "右全宽"}
               onClick={() =>
                 setCollapsed(collapsed === "left" ? "none" : "left")
               }
             >
               {collapsed === "left" ? (
-                <ArrowRightToLine className="h-4 w-4" />
+                <ArrowRightToLine className="h-3.5 w-3.5" />
               ) : (
-                <ArrowLeftToLine className="h-4 w-4" />
+                <ArrowLeftToLine className="h-3.5 w-3.5" />
               )}
             </Button>
           </div>
@@ -987,9 +1107,7 @@ export function AssetLibrary() {
             />
             <div className="min-w-0 flex-1 overflow-auto">
               {tasksR.isLoading ? (
-                <div className="text-muted-foreground flex items-center gap-2 p-4 text-sm">
-                  <Loader2 className="h-4 w-4 animate-spin" /> 加载中…
-                </div>
+                <TableSkeleton />
               ) : rTasks.length === 0 ? (
                 <div className="text-muted-foreground p-8 text-center text-sm">
                   此文件夹还没有译本。在左侧选择文档点「翻译」，译本会出现在这里。
@@ -1009,7 +1127,7 @@ export function AssetLibrary() {
                         <tr
                           key={t.id}
                           className={cn(
-                            "hover:bg-muted/50 border-b last:border-b-0",
+                            "hover:bg-muted/50 border-b border-[var(--gray-100)] last:border-b-0",
                             inFlight && "opacity-70",
                           )}
                         >
@@ -1020,11 +1138,11 @@ export function AssetLibrary() {
                               ) : (
                                 <FileTypeIcon
                                   name={`${t.file_name}.md`}
-                                  className="h-5 w-5 shrink-0"
+                                  className="h-7 w-7 shrink-0"
                                 />
                               )}
                               <div className="min-w-0">
-                                <div className="truncate text-sm">
+                                <div className="truncate font-mono">
                                   {inFlight
                                     ? `${t.file_name}.zh`
                                     : `${t.file_name}.zh.md`}
@@ -1042,9 +1160,9 @@ export function AssetLibrary() {
                                   ) : (
                                     <>
                                       <span>·</span>
-                                      <span>MD</span>
+                                      <span className="font-mono">MD</span>
                                       <span>·</span>
-                                      <span>
+                                      <span className="font-mono tabular-nums">
                                         {fmtTime(
                                           (t as { created_at?: string })
                                             .created_at,
@@ -1085,7 +1203,7 @@ export function AssetLibrary() {
       </div>
 
       {/* 统计底栏 */}
-      <div className="bg-muted/30 flex flex-wrap items-center gap-4 rounded-md border px-3 py-2 text-sm">
+      <div className="bg-muted/30 flex flex-wrap items-center gap-4 rounded-md border px-3 py-2 text-sm tabular-nums">
         <span>
           共 <b>{tasksL.data?.total ?? 0}</b>（当前文件夹）
         </span>

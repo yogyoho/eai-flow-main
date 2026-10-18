@@ -31,7 +31,13 @@ export function UploadDialog({
   onUpload: (
     files: File[],
     autoTranslate: boolean,
-  ) => Promise<{ total: number; failed: File[]; message?: string }>;
+  ) => Promise<{
+    total: number;
+    failed: File[];
+    /** 内容重复被复用的文件（后端同 KB 同 sha 幂等）。 */
+    reused?: { file: string; existing_file?: string | null }[];
+    message?: string;
+  }>;
   uploading: boolean;
   kbId: string;
   kbOptions: { id: string; name: string }[];
@@ -41,6 +47,7 @@ export function UploadDialog({
   const [dragOver, setDragOver] = useState(false);
   const [autoTranslate, setAutoTranslate] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
+  const [uploadNotice, setUploadNotice] = useState<string | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
   const folderRef = useRef<HTMLInputElement>(null);
 
@@ -72,9 +79,28 @@ export function UploadDialog({
   const startUpload = async () => {
     if (selected.length === 0 || uploading) return;
     setUploadError(null);
+    setUploadNotice(null);
     try {
-      const { failed, message } = await onUpload(selected, autoTranslate);
+      const { failed, reused = [], message } = await onUpload(
+        selected,
+        autoTranslate,
+      );
       if (failed.length === 0) {
+        if (reused.length > 0) {
+          // 内容重复：说明未新建、已有任务名，保持弹窗打开，避免“静默成功”
+          setSelected([]);
+          setAutoTranslate(false);
+          setUploadNotice(
+            `${reused.length} 个文件与知识库中已有任务内容重复，未新建任务：` +
+              reused
+                .map(
+                  (r) =>
+                    `${r.file}${r.existing_file ? `（已有：${r.existing_file}）` : ""}`,
+                )
+                .join("；"),
+          );
+          return;
+        }
         setSelected([]);
         setAutoTranslate(false);
         onOpenChange(false);
@@ -100,6 +126,7 @@ export function UploadDialog({
           setSelected([]);
           setAutoTranslate(false);
           setUploadError(null);
+          setUploadNotice(null);
         }
       }}
     >
@@ -246,6 +273,11 @@ export function UploadDialog({
           </div>
         )}
 
+        {uploadNotice && (
+          <p className="bg-info/10 text-[var(--info-900)] rounded-md px-3 py-2 text-xs">
+            {uploadNotice}
+          </p>
+        )}
         {uploadError && <p className="text-sm text-destructive">{uploadError}</p>}
 
         <DialogFooter>

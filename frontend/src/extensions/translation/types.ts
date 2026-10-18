@@ -60,4 +60,8 @@ export interface TltUploadResult {
   task_id: string;
   file: string;
   reused: boolean;
+  /** reused=true 时：已有任务的原文件名（供 UI 明确告知用户）。 */
+  existing_file?: string | null;
+  /** reused=true 时：已有任务所在文件夹（null=根）。 */
+  existing_folder_id?: string | null;
 }

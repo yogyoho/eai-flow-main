@@ -424,14 +424,8 @@ async def upload_assets(
                 detail=f"文件内容与扩展名不符（{Path(name).suffix} 非有效文件头）：{name}。"
                 "请确认导出/保存格式正确后重新上传。",
             )
-        dest = upload_dir / name
-        i = 1
-        while dest.exists():
-            dest = upload_dir / f"{Path(name).stem}-{i}{Path(name).suffix}"
-            i += 1
-        dest.write_bytes(content)
         sha = hashlib.sha256(content).hexdigest()
-        # 幂等：同 KB 同 sha 已有非终态任务 → 跳过建行
+        # 幂等：同 KB 同 sha 已有非终态任务 → 跳过建行（并跳过落盘，避免孤儿文件）
         dup = (
             await db.execute(
                 select(TranslationTask)
@@ -444,8 +438,22 @@ async def upload_assets(
             )
         ).scalar()
         if dup is not None:
-            results.append({"task_id": str(dup.id), "file": name, "reused": True})
+            results.append(
+                {
+                    "task_id": str(dup.id),
+                    "file": name,
+                    "reused": True,
+                    "existing_file": Path(dup.source_uri).name if dup.source_uri else None,
+                    "existing_folder_id": str(dup.folder_id) if dup.folder_id else None,
+                }
+            )
             continue
+        dest = upload_dir / name
+        i = 1
+        while dest.exists():
+            dest = upload_dir / f"{Path(name).stem}-{i}{Path(name).suffix}"
+            i += 1
+        dest.write_bytes(content)
         task = TranslationTask(
             kb_id=kb.id,
             doc_sha=sha,

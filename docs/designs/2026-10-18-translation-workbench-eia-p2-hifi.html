@@ -1,0 +1,628 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>文档翻译工作台 · 高保真 UI 原型</title>
+<style>
+/* ═══════════════════════════════════════════════════════════════
+   文档翻译工作台 · 高保真原型（2026-10-18）
+   结构习语取自 docs/designs/2026-10-12 eia-p2 原型：
+   页头卡点阵 / 指标格 / 密集表格 / Pill / 说明条 / 紧凑页距。
+   token 落系统语义层（primary #0746ff、暖灰阶、success/info/warning）。
+   ═══════════════════════════════════════════════════════════════ */
+:root {
+  --primary:#0746ff; --primary-600:#0640e6; --primary-700:#0536c4;
+  --primary-100:#dbe6ff; --primary-50:#eef3ff; --primary-25:#f7f9ff;
+  --gray-25:#fafbfb; --gray-50:#f5f7f7; --gray-100:#eff2f2; --gray-200:#e4e6e6; --gray-300:#d7d9d9;
+  --gray-400:#bdbfbf; --gray-500:#979999; --gray-600:#697070; --gray-700:#4c4d4d;
+  --gray-800:#323333; --gray-900:#1e1f1f; --gray-1000:#151616;
+  --success-50:#f6ffed; --success-100:#d9f7be; --success-500:#52c41a; --success-700:#389e0d; --success-800:#237804;
+  --error-50:#fff2f0; --error-100:#ffccc7; --error-500:#ff4d4f; --error-700:#cf1322;
+  --warn-50:#fffbe6; --warn-100:#ffe58f; --warn-500:#faad14; --warn-700:#d48806; --warn-800:#ad6800;
+  --info-50:#e6f7ff; --info-100:#bae7ff; --info-500:#1890ff; --info-700:#096dd9;
+  --text:var(--gray-1000); --text-2:var(--gray-600); --text-3:var(--gray-500);
+  --hairline:var(--gray-200); --card:#ffffff; --bg:var(--gray-50);
+  --mono:ui-monospace,'Cascadia Code',Consolas,'Courier New',monospace;
+  --shadow-pop:0 6px 16px rgba(0,0,0,.08),0 3px 6px -4px rgba(0,0,0,.12),0 9px 28px 8px rgba(0,0,0,.05);
+}
+.dark {
+  --primary:#7d9bff; --primary-600:#93aaff; --primary-700:#a9bcff;
+  --primary-100:#1c2b57; --primary-50:#16213d; --primary-25:#111827;
+  --gray-25:#191a1a; --gray-50:#232424; --gray-100:#1e1f1f; --gray-200:#2a2b2b; --gray-300:#323333;
+  --gray-400:#4c4d4d; --gray-500:#697070; --gray-600:#979999; --gray-700:#bdbfbf;
+  --gray-800:#d7d9d9; --gray-900:#eff2f2; --gray-1000:#f5f7f7;
+  --success-50:#162312; --success-100:#274916; --success-500:#73d13d; --success-700:#95de64; --success-800:#b7eb8f;
+  --error-50:#2c1210; --error-100:#581815; --error-500:#ff7875; --error-700:#ff9c99;
+  --warn-50:#2a2205; --warn-100:#443806; --warn-500:#f5c542; --warn-700:#ffd666; --warn-800:#ffe58f;
+  --info-50:#0c2238; --info-100:#11365a; --info-500:#69b1ff; --info-700:#91caff;
+  --text:#f5f7f7; --text-2:#bdbfbf; --text-3:#979999;
+  --hairline:#2a2b2b; --card:#1e1f1f; --bg:#151616;
+  --shadow-pop:0 6px 16px rgba(0,0,0,.5),0 9px 28px 8px rgba(0,0,0,.4);
+}
+* { margin:0; padding:0; box-sizing:border-box; }
+html,body { height:100%; }
+body {
+  font-family:-apple-system,'Segoe UI','PingFang SC','Microsoft YaHei',sans-serif;
+  background:var(--bg); color:var(--text); font-size:14px; line-height:1.6;
+  transition:background .2s,color .2s;
+}
+button { font-family:inherit; cursor:pointer; border:none; background:none; color:inherit; }
+input,select { font-family:inherit; font-size:13px; color:var(--text); }
+.num { font-variant-numeric:tabular-nums; }
+.mono { font-family:var(--mono); font-size:12px; }
+svg.ic { width:16px; height:16px; stroke:currentColor; stroke-width:2; fill:none;
+  stroke-linecap:round; stroke-linejoin:round; flex:none; }
+svg.ic.sm { width:14px; height:14px; }
+
+/* ═══ 应用顶栏（真实 Shell，非原型评审框架）═══ */
+.app { display:flex; flex-direction:column; height:100vh; }
+.topbar { height:56px; flex:none; background:var(--card); border-bottom:1px solid var(--hairline);
+  display:flex; align-items:center; gap:24px; padding:0 24px; }
+.brand { display:flex; align-items:center; gap:8px; font-size:15px; font-weight:700;
+  letter-spacing:-.01em; white-space:nowrap; }
+.brand .logo { width:28px; height:28px; border-radius:7px; background:var(--primary);
+  color:#fff; display:flex; align-items:center; justify-content:center; }
+.tabs { display:flex; align-self:stretch; gap:4px; }
+.tab { position:relative; display:flex; align-items:center; gap:6px; padding:0 12px;
+  font-size:13px; font-weight:500; color:var(--text-2); border-bottom:2px solid transparent;
+  transition:color .15s,border-color .15s; white-space:nowrap; }
+.tab:hover { color:var(--text); }
+.tab.on { color:var(--primary); border-bottom-color:var(--primary); font-weight:600; }
+.tab .tab-badge { min-width:16px; height:16px; padding:0 5px; border-radius:999px;
+  background:var(--warn-50); color:var(--warn-800); font-size:10px; font-weight:700;
+  display:inline-flex; align-items:center; justify-content:center; }
+.top-right { margin-left:auto; display:flex; align-items:center; gap:8px; }
+.env-chip { display:inline-flex; align-items:center; gap:6px; height:24px; padding:0 9px;
+  border-radius:999px; border:1px solid var(--hairline); background:var(--gray-50);
+  font-size:11px; color:var(--text-2); white-space:nowrap; }
+.env-chip .mono { font-size:11px; color:var(--text-2); }
+.icon-btn { width:30px; height:30px; border-radius:6px; display:inline-flex; align-items:center;
+  justify-content:center; color:var(--text-2); transition:background .15s,color .15s; }
+.icon-btn:hover { background:var(--gray-100); color:var(--text); }
+
+/* ═══ 页面容器 ═══ */
+.screen { flex:1; overflow-y:auto; padding:20px 24px 40px; }
+.screen-inner { max-width:1440px; margin:0 auto; display:flex; flex-direction:column; gap:12px; }
+.proto-banner { display:flex; align-items:center; gap:8px; font-size:12px; color:var(--text-3); }
+.proto-banner b { color:var(--primary); font-weight:600; }
+
+/* ═══ 页头卡 ═══ */
+.page-head { display:flex; align-items:center; gap:12px; padding:14px 18px;
+  border:1px solid var(--hairline); border-radius:8px; background:var(--card);
+  background-image:radial-gradient(circle at 1px 1px, var(--primary-100) 1px, transparent 0);
+  background-size:22px 22px; background-position:6px 6px; position:relative; overflow:hidden; }
+.page-head::after { content:''; position:absolute; inset:0;
+  background:linear-gradient(90deg, var(--card) 0%, var(--card) 55%, transparent 100%);
+  pointer-events:none; }
+.page-head > * { position:relative; z-index:1; }
+.ph-icon { width:34px; height:34px; border-radius:8px; background:var(--primary-50);
+  color:var(--primary); display:flex; align-items:center; justify-content:center; flex:none; }
+.ph-icon svg { width:18px; height:18px; }
+.page-head h2 { font-size:16px; font-weight:600; line-height:1.3; }
+.page-head .ph-sub { font-size:12px; color:var(--text-3); }
+.page-head .ph-actions { margin-left:auto; display:flex; align-items:center; gap:8px; flex:none; }
+
+/* ═══ 按钮 / 徽章 / 输入 ═══ */
+.btn { display:inline-flex; align-items:center; justify-content:center; gap:6px;
+  height:30px; padding:0 12px; border-radius:6px; font-size:13px; font-weight:500;
+  transition:all .15s; white-space:nowrap; }
+.btn-sm { height:28px; padding:0 10px; font-size:12px; }
+.btn-pri { background:var(--primary); color:#fff; }
+.btn-pri:hover { background:var(--primary-600); }
+.dark .btn-pri { color:#0a0a0a; }
+.dark .brand .logo { color:#0a0a0a; }
+.btn-sec { border:1px solid var(--hairline); background:var(--card); color:var(--text-2); }
+.btn-sec:hover { border-color:var(--primary); color:var(--primary); background:var(--primary-25); }
+.btn-ghost { color:var(--text-2); padding:0 8px; }
+.btn-ghost:hover { background:var(--gray-100); color:var(--text); }
+.btn:disabled { opacity:.5; cursor:not-allowed; }
+.btn .cnt { font-variant-numeric:tabular-nums; }
+.pill { display:inline-flex; align-items:center; gap:5px; height:20px; padding:0 8px;
+  border-radius:999px; font-size:12px; font-weight:500; white-space:nowrap; border:1px solid transparent; }
+.pill svg.ic { width:12px; height:12px; }
+.pill-main { background:var(--primary-50); color:var(--primary-700); border-color:var(--primary-100); }
+.pill-ok { background:var(--success-50); color:var(--success-800); border-color:var(--success-100); }
+.pill-warn { background:var(--warn-50); color:var(--warn-800); border-color:var(--warn-100); }
+.pill-err { background:var(--error-50); color:var(--error-700); border-color:var(--error-100); }
+.pill-gray { background:var(--gray-100); color:var(--gray-600); border-color:var(--gray-200); }
+.pill-info { background:var(--info-50); color:var(--info-700); border-color:var(--info-100); }
+.pill-outline { border-style:dashed; background:transparent; color:var(--text-3); border-color:var(--gray-300); }
+.dot { width:6px; height:6px; border-radius:50%; flex:none; }
+.dot-ok { background:var(--success-500); box-shadow:0 0 0 3px color-mix(in srgb,var(--success-500) 16%,transparent); }
+.dot-warn { background:var(--warn-500); box-shadow:0 0 0 3px color-mix(in srgb,var(--warn-500) 18%,transparent); }
+.dot-info { background:var(--info-500); box-shadow:0 0 0 3px color-mix(in srgb,var(--info-500) 16%,transparent); }
+.dot-gray { background:var(--gray-400); }
+.inp { height:30px; border:1px solid var(--hairline); border-radius:6px; padding:0 10px;
+  background:var(--card); outline:none; transition:border-color .15s,box-shadow .15s; }
+.inp:focus { border-color:var(--primary); box-shadow:0 0 0 2px var(--primary-50); }
+.inp::placeholder { color:var(--text-3); }
+select.inp { padding-right:26px; appearance:none; cursor:pointer;
+  background-image:linear-gradient(45deg,transparent 50%,var(--text-3) 50%),
+    linear-gradient(135deg,var(--text-3) 50%,transparent 50%);
+  background-position:calc(100% - 14px) 13px,calc(100% - 9px) 13px;
+  background-size:5px 5px,5px 5px; background-repeat:no-repeat; }
+.search { position:relative; }
+.search svg { position:absolute; left:9px; top:50%; transform:translateY(-50%);
+  width:14px; height:14px; color:var(--text-3); pointer-events:none; }
+.search input { height:28px; width:200px; border:1px solid var(--hairline); border-radius:6px;
+  padding:0 10px 0 30px; background:var(--card); outline:none; font-size:12px; }
+.search input:focus { border-color:var(--primary); box-shadow:0 0 0 2px var(--primary-50); }
+
+/* ═══ 指标带 ═══ */
+.metric-strip { display:grid; grid-auto-flow:column; grid-auto-columns:1fr;
+  background:var(--card); border:1px solid var(--hairline); border-radius:6px; }
+.metric-cell { padding:13px 18px; display:flex; flex-direction:column; gap:3px; position:relative; }
+.metric-cell + .metric-cell { border-left:1px solid var(--hairline); }
+.metric-label { font-size:12px; color:var(--text-3); display:flex; align-items:center; gap:6px; }
+.metric-value { font-size:22px; font-weight:700; color:var(--gray-800); line-height:1.1;
+  font-variant-numeric:tabular-nums; }
+.metric-value small { margin-left:4px; font-size:12px; font-weight:400; color:var(--text-3); }
+.metric-cell.warn .metric-value { color:var(--warn-800); }
+.metric-cell.accent::before { content:''; position:absolute; left:0; top:12px; bottom:12px;
+  width:2px; border-radius:0 2px 2px 0; background:var(--primary); }
+
+/* ═══ 卡片 / 工具栏 ═══ */
+.card { background:var(--card); border:1px solid var(--hairline); border-radius:8px; overflow:hidden; }
+.toolbar { display:flex; align-items:center; gap:8px; padding:10px 14px;
+  border-bottom:1px solid var(--hairline); flex-wrap:wrap; }
+.path-chip { display:inline-flex; align-items:center; height:20px; padding:0 8px;
+  border-radius:4px; background:var(--primary-50); color:var(--primary-700);
+  font-size:11px; font-weight:500; white-space:nowrap; }
+.crumbs { display:flex; align-items:center; gap:2px; font-size:12px; color:var(--text-3); }
+.crumbs button { padding:2px 4px; border-radius:4px; color:var(--text-2); transition:background .12s,color .12s; }
+.crumbs button:hover { background:var(--gray-100); color:var(--text); }
+.crumbs .sep { color:var(--gray-400); padding:0 1px; }
+.crumbs .cur { color:var(--text); font-weight:500; }
+.spacer { flex:1; }
+
+/* ═══ 双栏 ═══ */
+.dual { display:flex; min-height:520px; }
+.pane { display:flex; flex-direction:column; min-width:0; flex:1 1 50%; }
+.pane-hd { display:flex; align-items:center; gap:8px; height:38px; padding:0 12px;
+  background:var(--gray-50); border-bottom:1px solid var(--hairline); flex:none; }
+.pane-hd h3 { font-size:12px; font-weight:600; color:var(--text); letter-spacing:.01em; }
+.pane-hd .pane-sub { font-size:11px; color:var(--text-3); }
+.pane-hd .pane-count { font-size:11px; color:var(--text-3); font-variant-numeric:tabular-nums;
+  margin-left:auto; white-space:nowrap; }
+.pane-hd .pane-ops { display:flex; align-items:center; gap:2px; }
+.lang-chip { display:inline-flex; align-items:center; height:18px; padding:0 6px;
+  border-radius:4px; background:var(--card); border:1px solid var(--hairline);
+  font-family:var(--mono); font-size:10px; color:var(--text-2); letter-spacing:.02em; }
+.pane-body { display:flex; min-height:0; flex:1; }
+.pane + .pane { border-left:1px solid var(--hairline); }
+.pane-split { width:1px; flex:none; background:var(--hairline); position:relative; cursor:col-resize; }
+.pane-split .handle { position:absolute; top:50%; left:50%; transform:translate(-50%,-50%);
+  width:10px; height:22px; border-radius:4px; border:1px solid var(--hairline);
+  background:var(--card); display:flex; align-items:center; justify-content:center;
+  color:var(--text-3); box-shadow:0 1px 2px rgba(0,0,0,.04); }
+.tree { width:158px; flex:none; padding:6px; overflow-y:auto; background:var(--gray-25);
+  border-right:1px solid var(--hairline); font-size:12px; }
+.tree-item { position:relative; display:flex; align-items:center; gap:5px; height:26px;
+  padding:0 6px; border-radius:5px; color:var(--text-2); cursor:pointer; user-select:none;
+  transition:background .12s,color .12s; }
+.tree-item:hover { background:var(--gray-100); color:var(--text); }
+.tree-item.on { background:var(--primary-50); color:var(--primary-700); font-weight:600; }
+.tree-item .chev { width:12px; height:12px; color:var(--text-3); transition:transform .15s; flex:none; }
+.tree-item.open .chev { transform:rotate(90deg); }
+.tree-item .folder { width:15px; height:15px; flex:none; color:#f0b429; }
+.tree-item.on .folder { color:var(--primary); }
+.tree-item .nm { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.tree-item .ro { margin-left:auto; font-size:9px; color:var(--text-3); opacity:.7; }
+.tree-item.lvl1 { padding-left:18px; }
+.tree-item.lvl2 { padding-left:32px; }
+.tree-guide { position:absolute; top:0; bottom:0; width:1px; background:var(--gray-100); }
+.table-wrap { min-width:0; flex:1; overflow:auto; }
+.tbl { width:100%; border-collapse:collapse; }
+.tbl th { position:sticky; top:0; z-index:1; text-align:left; font-size:12px; font-weight:500;
+  color:var(--text-3); padding:8px 10px; border-bottom:1px solid var(--hairline);
+  background:var(--card); white-space:nowrap; }
+.tbl td { padding:7px 10px; border-bottom:1px solid var(--gray-100); font-size:13px; vertical-align:middle; }
+.tbl tbody tr { transition:background .12s; }
+.tbl tbody tr:hover { background:var(--gray-50); }
+.tbl tbody tr.sel { background:var(--primary-25); }
+.tbl tbody tr:last-child td { border-bottom:none; }
+.tbl .r { text-align:right; }
+.tbl .muted { color:var(--text-3); }
+.tbl .time { font-size:11px; color:var(--text-3); white-space:nowrap; font-variant-numeric:tabular-nums; }
+.tbl .size { font-size:11px; color:var(--text-3); white-space:nowrap; font-variant-numeric:tabular-nums; }
+.cb { width:14px; height:14px; accent-color:var(--primary); cursor:pointer; }
+.file-cell { display:flex; align-items:center; gap:8px; min-width:0; }
+.file-ic { width:26px; height:26px; border-radius:6px; display:flex; align-items:center;
+  justify-content:center; flex:none; font-size:8px; font-weight:700; letter-spacing:.02em; color:#fff; }
+.file-ic.doc { background:#2b579a; } .file-ic.pdf { background:#c0392b; }
+.file-ic.xls { background:#217346; } .file-ic.md { background:var(--gray-700); }
+.file-ic.zh { background:var(--primary); }
+.file-name { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-size:13px; color:var(--text); }
+.file-meta { display:flex; align-items:center; gap:4px; font-size:11px; color:var(--text-3);
+  overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.ops { width:26px; height:26px; border-radius:5px; display:inline-flex; align-items:center;
+  justify-content:center; color:var(--text-3); }
+.ops:hover { background:var(--gray-100); color:var(--text); }
+.meter { height:4px; border-radius:2px; background:var(--gray-100); width:54px; display:inline-block;
+  vertical-align:middle; overflow:hidden; }
+.meter i { display:block; height:100%; border-radius:2px; background:var(--primary); }
+.meter.low i { background:var(--warn-500); }
+.meter.ok i { background:var(--success-500); }
+.meter-wrap { display:inline-flex; align-items:center; gap:6px; }
+.meter-wrap .num { font-size:11px; color:var(--text-3); }
+.tbl-foot { display:flex; align-items:center; gap:10px; padding:9px 14px; font-size:12px;
+  color:var(--text-3); border-top:1px solid var(--hairline); background:var(--card); }
+.tbl-foot .spacer { flex:1; }
+.tbl-foot b { color:var(--text-2); font-weight:600; font-variant-numeric:tabular-nums; }
+.note-bar { display:flex; gap:8px; align-items:flex-start; background:var(--info-50);
+  border-radius:6px; padding:9px 12px; font-size:12px; color:var(--info-700); }
+.note-bar svg.ic { margin-top:2px; flex:none; }
+
+/* ═══ 预览弹窗 ═══ */
+.overlay { position:fixed; inset:0; background:rgba(0,0,0,.45); z-index:60;
+  display:none; align-items:center; justify-content:center; padding:4vh 3vw; }
+.overlay.open { display:flex; }
+.modal { width:1180px; max-width:100%; height:100%; max-height:860px; background:var(--card);
+  border:1px solid var(--hairline); border-radius:10px; box-shadow:var(--shadow-pop);
+  display:flex; flex-direction:column; overflow:hidden; }
+.modal-hd { display:flex; align-items:center; gap:10px; padding:12px 18px;
+  border-bottom:1px solid var(--hairline); flex:none; }
+.modal-hd .file-ic { width:30px; height:30px; font-size:9px; }
+.modal-hd h3 { font-size:15px; font-weight:600; }
+.modal-hd .sub { font-size:12px; color:var(--text-3); }
+.modal-hd .x { margin-left:auto; color:var(--text-3); width:28px; height:28px; border-radius:6px;
+  display:flex; align-items:center; justify-content:center; }
+.modal-hd .x:hover { background:var(--gray-100); color:var(--text); }
+.modal-meta { display:flex; align-items:center; gap:12px; padding:7px 18px; background:var(--gray-50);
+  border-bottom:1px solid var(--hairline); font-size:11px; color:var(--text-3); flex:none; }
+.modal-meta .mono { font-size:11px; color:var(--text-2); }
+.modal-bd { flex:1; min-height:0; display:grid; grid-template-columns:1fr 1fr; }
+.doc-pane { display:flex; flex-direction:column; min-height:0; }
+.doc-pane + .doc-pane { border-left:1px solid var(--hairline); }
+.doc-hd { display:flex; align-items:center; gap:8px; padding:8px 16px;
+  border-bottom:1px solid var(--hairline); font-size:11px; font-weight:600;
+  color:var(--text-2); background:var(--gray-50); flex:none; }
+.doc-hd .tag { margin-left:auto; font-weight:400; color:var(--text-3); }
+.doc-body { flex:1; overflow-y:auto; padding:22px 26px; font-size:13px; line-height:1.85; color:var(--text-2); }
+.doc-body h4 { font-size:13px; font-weight:600; color:var(--text); margin:0 0 8px; }
+.doc-body p { margin:0 0 12px; }
+.doc-body .clause { color:var(--text); font-weight:600; }
+.doc-body .hl { background:var(--warn-50); border-bottom:1px solid var(--warn-100); border-radius:2px; padding:0 2px; }
+.doc-body .num { color:var(--primary-700); font-weight:600; }
+.modal-ft { display:flex; align-items:center; gap:8px; padding:10px 18px;
+  border-top:1px solid var(--hairline); background:var(--gray-50); flex:none; }
+.modal-ft .foot-meta { font-size:11px; color:var(--text-3); }
+.modal-ft .spacer { flex:1; }
+</style>
+</head>
+<body>
+<div class="app">
+  <!-- ═══ 应用顶栏（真实壳层，只做上下文展示）═══ -->
+  <header class="topbar">
+    <div class="brand">
+      <span class="logo">
+        <svg class="ic" viewBox="0 0 24 24"><path d="m5 8 6 6M4 14l6-6 2-3M2 5h12M7 2h1M22 22l-5-10-5 10M14 18h6"/></svg>
+      </span>
+      文档翻译工作台
+    </div>
+    <nav class="tabs" aria-label="工作台导航">
+      <button class="tab on">文档资产库</button>
+      <button class="tab">任务管理</button>
+      <button class="tab">复核工作台 <span class="tab-badge">2</span></button>
+      <button class="tab">术语库</button>
+      <button class="tab">设置</button>
+    </nav>
+    <div class="top-right">
+      <span class="env-chip"><span class="dot dot-ok"></span>EN 96 · FR 60</span>
+      <span class="env-chip mono">Qwen2.5-72B</span>
+      <button class="icon-btn" id="darkToggle" title="切换暗色模式" aria-label="切换暗色模式">
+        <svg class="ic" viewBox="0 0 24 24"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></svg>
+      </button>
+    </div>
+  </header>
+
+  <main class="screen">
+    <div class="screen-inner">
+      <div class="proto-banner"><b>资产库</b>· 双栏镜像 · EN/FR 原文 → 中文译本 · 上传后按需翻译 · 右侧只读</div>
+
+      <!-- ═══ 页头卡 ═══ -->
+      <section class="page-head">
+        <div class="ph-icon">
+          <svg class="ic" viewBox="0 0 24 24"><path d="m5 8 6 6M4 14l6-6 2-3M2 5h12M7 2h1M22 22l-5-10-5 10M14 18h6"/></svg>
+        </div>
+        <div>
+          <h2>文档资产库</h2>
+          <div class="ph-sub">EN/FR 文档 · 中文译本对照管理 · 左侧原文可编辑，右侧译文为管线产物</div>
+        </div>
+        <div class="ph-actions">
+          <button class="btn btn-sec btn-sm">
+            <svg class="ic sm" viewBox="0 0 24 24"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+            待复核 <span class="cnt">2</span>
+          </button>
+          <button class="btn btn-sec btn-sm">
+            <svg class="ic sm" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12"/></svg>
+            上传
+          </button>
+          <button class="btn btn-pri btn-sm">
+            <svg class="ic sm" viewBox="0 0 24 24"><path d="m6 3 14 9-14 9V3z"/></svg>
+            翻译 <span class="cnt">(2)</span>
+          </button>
+        </div>
+      </section>
+
+      <!-- ═══ 指标带 ═══ -->
+      <div class="metric-strip">
+        <div class="metric-cell"><span class="metric-label">原文文档</span><span class="metric-value">156<small>份</small></span></div>
+        <div class="metric-cell"><span class="metric-label"><span class="dot dot-gray"></span>未翻译</span><span class="metric-value">12</span></div>
+        <div class="metric-cell accent"><span class="metric-label"><span class="dot dot-info"></span>翻译中</span><span class="metric-value">3</span></div>
+        <div class="metric-cell warn"><span class="metric-label"><span class="dot dot-warn"></span>待复核</span><span class="metric-value">2</span></div>
+        <div class="metric-cell"><span class="metric-label"><span class="dot dot-ok"></span>已交付</span><span class="metric-value">97<small>份</small></span></div>
+      </div>
+
+      <!-- ═══ 主容器 ═══ -->
+      <div class="card">
+        <div class="toolbar">
+          <span class="path-chip">文件路径</span>
+          <nav class="crumbs" aria-label="文件路径">
+            <button>文件库</button><span class="sep">/</span>
+            <button>合资铁矿</button><span class="sep">/</span>
+            <button class="cur">2026 Q3</button>
+          </nav>
+          <span class="spacer"></span>
+          <div class="search">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+            <input placeholder="搜索文件名 / sha" aria-label="搜索文件名或 sha">
+          </div>
+          <select class="inp" aria-label="知识库筛选">
+            <option>全部库</option><option>铁矿知识库</option><option>财务知识库</option>
+          </select>
+          <button class="btn btn-sec btn-sm">
+            <svg class="ic sm" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12"/></svg>
+            上传
+          </button>
+          <button class="btn btn-pri btn-sm">
+            <svg class="ic sm" viewBox="0 0 24 24"><path d="m6 3 14 9-14 9V3z"/></svg>
+            翻译 (2)
+          </button>
+          <button class="icon-btn" title="左全宽" aria-label="左全宽">
+            <svg class="ic" viewBox="0 0 24 24"><path d="M3 5v14M7 12h10M13 8l4 4-4 4"/></svg>
+          </button>
+        </div>
+
+        <div class="dual">
+          <!-- ── 左：原文区 ── -->
+          <div class="pane">
+            <div class="pane-hd">
+              <h3>原文区</h3><span class="lang-chip">EN/FR</span>
+              <span class="pane-sub">源文档 · 可上传</span>
+              <span class="pane-count">本夹 42 份</span>
+            </div>
+            <div class="pane-body">
+              <nav class="tree" aria-label="原文文件夹树">
+                <div class="tree-item open"><svg class="ic sm chev" viewBox="0 0 24 24"><path d="m9 18 6-6-6-6"/></svg><svg class="ic folder" viewBox="0 0 24 24"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg><span class="nm">文件库</span></div>
+                <div class="tree-item lvl1 open"><svg class="ic sm chev" viewBox="0 0 24 24"><path d="m9 18 6-6-6-6"/></svg><svg class="ic folder" viewBox="0 0 24 24"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg><span class="nm">合资铁矿</span></div>
+                <div class="tree-item lvl2 on"><svg class="ic folder" viewBox="0 0 24 24"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg><span class="nm">2026 Q3</span></div>
+                <div class="tree-item lvl2"><svg class="ic folder" viewBox="0 0 24 24"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg><span class="nm">2026 Q2</span></div>
+                <div class="tree-item lvl2"><svg class="ic folder" viewBox="0 0 24 24"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg><span class="nm">术语与模板</span></div>
+                <div class="tree-item lvl1"><svg class="ic sm chev" viewBox="0 0 24 24"><path d="m9 18 6-6-6-6"/></svg><svg class="ic folder" viewBox="0 0 24 24"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg><span class="nm">财务资料</span></div>
+                <div class="tree-item lvl1"><svg class="ic sm chev" viewBox="0 0 24 24"><path d="m9 18 6-6-6-6"/></svg><svg class="ic folder" viewBox="0 0 24 24"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2 2z"/></svg><span class="nm">设备资料</span></div>
+              </nav>
+              <div class="table-wrap">
+                <table class="tbl">
+                  <thead><tr>
+                    <th style="width:30px"><input class="cb" type="checkbox" aria-label="全选"></th>
+                    <th>文件名</th><th style="width:88px">状态</th><th class="r" style="width:58px">大小</th>
+                    <th style="width:76px">更新时间</th><th style="width:34px"></th>
+                  </tr></thead>
+                  <tbody>
+                    <tr class="sel">
+                      <td><input class="cb" type="checkbox" checked aria-label="选择 Supply Agreement Q3.docx"></td>
+                      <td><div class="file-cell"><span class="file-ic doc">DOCX</span><span class="file-name">Supply Agreement Q3.docx</span></div></td>
+                      <td><span class="pill pill-outline"><span class="dot dot-gray"></span>未翻译</span></td>
+                      <td class="r size">248 KB</td><td class="time">10-18 09:42</td>
+                      <td><button class="ops" aria-label="更多操作"><svg class="ic sm" viewBox="0 0 24 24"><circle cx="12" cy="5" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="12" cy="19" r="1"/></svg></button></td>
+                    </tr>
+                    <tr class="sel">
+                      <td><input class="cb" type="checkbox" checked aria-label="选择 合资协议附件A-FR.pdf"></td>
+                      <td><div class="file-cell"><span class="file-ic pdf">PDF</span><span class="file-name">合资协议附件A-FR.pdf</span></div></td>
+                      <td><span class="pill pill-ok"><svg class="ic" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="m8.5 12 2.5 2.5 4.5-5"/></svg>已交付</span></td>
+                      <td class="r size">1.2 MB</td><td class="time">10-17 18:03</td>
+                      <td><button class="ops" aria-label="更多操作"><svg class="ic sm" viewBox="0 0 24 24"><circle cx="12" cy="5" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="12" cy="19" r="1"/></svg></button></td>
+                    </tr>
+                    <tr>
+                      <td><input class="cb" type="checkbox" aria-label="选择 balance-q3.xlsx"></td>
+                      <td><div class="file-cell"><span class="file-ic xls">XLSX</span><span class="file-name">balance-q3.xlsx</span></div></td>
+                      <td><span class="pill pill-info"><svg class="ic" viewBox="0 0 24 24" style="animation:spin 1.2s linear infinite"><path d="M21 12a9 9 0 1 1-6.2-8.56"/></svg>翻译中 45%</span></td>
+                      <td class="r size">96 KB</td><td class="time">10-18 10:05</td>
+                      <td><button class="ops" aria-label="更多操作"><svg class="ic sm" viewBox="0 0 24 24"><circle cx="12" cy="5" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="12" cy="19" r="1"/></svg></button></td>
+                    </tr>
+                    <tr>
+                      <td><input class="cb" type="checkbox" aria-label="选择 mining-license.docx"></td>
+                      <td><div class="file-cell"><span class="file-ic doc">DOCX</span><span class="file-name">mining-license.docx</span></div></td>
+                      <td><span class="pill pill-warn"><svg class="ic" viewBox="0 0 24 24"><path d="m21.7 18-8-14a2 2 0 0 0-3.4 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.7-3Z"/><path d="M12 9v4M12 17h.01"/></svg>机检未过</span></td>
+                      <td class="r size">310 KB</td><td class="time">10-17 16:22</td>
+                      <td><button class="ops" aria-label="更多操作"><svg class="ic sm" viewBox="0 0 24 24"><circle cx="12" cy="5" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="12" cy="19" r="1"/></svg></button></td>
+                    </tr>
+                    <tr>
+                      <td><input class="cb" type="checkbox" aria-label="选择 地质报告-EN.docx"></td>
+                      <td><div class="file-cell"><span class="file-ic doc">DOCX</span><span class="file-name">地质报告-EN.docx</span></div></td>
+                      <td><span class="pill pill-warn"><svg class="ic" viewBox="0 0 24 24"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>待复核</span></td>
+                      <td class="r size">2.4 MB</td><td class="time">10-17 14:10</td>
+                      <td><button class="ops" aria-label="更多操作"><svg class="ic sm" viewBox="0 0 24 24"><circle cx="12" cy="5" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="12" cy="19" r="1"/></svg></button></td>
+                    </tr>
+                    <tr>
+                      <td><input class="cb" type="checkbox" aria-label="选择 offtake-draft.pdf"></td>
+                      <td><div class="file-cell"><span class="file-ic pdf">PDF</span><span class="file-name">offtake-draft.pdf</span></div></td>
+                      <td><span class="pill pill-ok"><svg class="ic" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="m8.5 12 2.5 2.5 4.5-5"/></svg>已交付</span></td>
+                      <td class="r size">860 KB</td><td class="time">10-16 11:32</td>
+                      <td><button class="ops" aria-label="更多操作"><svg class="ic sm" viewBox="0 0 24 24"><circle cx="12" cy="5" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="12" cy="19" r="1"/></svg></button></td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+
+          <div class="pane-split" aria-hidden="true"><span class="handle"><svg class="ic" width="8" height="14" viewBox="0 0 8 14" fill="currentColor" stroke="none"><circle cx="2" cy="3" r="1"/><circle cx="6" cy="3" r="1"/><circle cx="2" cy="7" r="1"/><circle cx="6" cy="7" r="1"/><circle cx="2" cy="11" r="1"/><circle cx="6" cy="11" r="1"/></svg></span></div>
+
+          <!-- ── 右：译文区（只读镜像）── -->
+          <div class="pane">
+            <div class="pane-hd">
+              <h3>译文区</h3><span class="lang-chip">ZH</span>
+              <span class="pane-sub">左侧只读镜像</span>
+              <span class="pane-count">已生成 97 份</span>
+              <div class="pane-ops">
+                <button class="ops" title="刷新" aria-label="刷新译文列表"><svg class="ic sm" viewBox="0 0 24 24"><path d="M21 12a9 9 0 1 1-2.64-6.36M21 3v6h-6"/></svg></button>
+                <button class="ops" title="右全宽" aria-label="右全宽"><svg class="ic sm" viewBox="0 0 24 24"><path d="M21 5v14M17 12H7M11 8l-4 4 4 4"/></svg></button>
+              </div>
+            </div>
+            <div class="pane-body">
+              <nav class="tree" aria-label="译文文件夹树（只读）">
+                <div class="tree-item open"><svg class="ic sm chev" viewBox="0 0 24 24"><path d="m9 18 6-6-6-6"/></svg><svg class="ic folder" viewBox="0 0 24 24"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg><span class="nm">文件库</span><span class="ro">只读</span></div>
+                <div class="tree-item lvl1 open"><svg class="ic sm chev" viewBox="0 0 24 24"><path d="m9 18 6-6-6-6"/></svg><svg class="ic folder" viewBox="0 0 24 24"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg><span class="nm">合资铁矿</span></div>
+                <div class="tree-item lvl2 on"><svg class="ic folder" viewBox="0 0 24 24"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg><span class="nm">2026 Q3</span></div>
+                <div class="tree-item lvl2"><svg class="ic folder" viewBox="0 0 24 24"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg><span class="nm">2026 Q2</span></div>
+                <div class="tree-item lvl2"><svg class="ic folder" viewBox="0 0 24 24"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg><span class="nm">术语与模板</span></div>
+                <div class="tree-item lvl1"><svg class="ic sm chev" viewBox="0 0 24 24"><path d="m9 18 6-6-6-6"/></svg><svg class="ic folder" viewBox="0 0 24 24"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg><span class="nm">财务资料</span></div>
+                <div class="tree-item lvl1"><svg class="ic sm chev" viewBox="0 0 24 24"><path d="m9 18 6-6-6-6"/></svg><svg class="ic folder" viewBox="0 0 24 24"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg><span class="nm">设备资料</span></div>
+              </nav>
+              <div class="table-wrap">
+                <table class="tbl">
+                  <thead><tr>
+                    <th>文件名</th><th style="width:96px">状态</th><th class="r" style="width:58px">大小</th>
+                    <th style="width:76px">生成时间</th><th style="width:34px"></th>
+                  </tr></thead>
+                  <tbody>
+                    <tr style="opacity:.62">
+                      <td><div class="file-cell"><span class="file-ic md">MD</span><span class="file-name">Supply Agreement Q3.docx.zh</span></div></td>
+                      <td><span class="pill pill-gray"><svg class="ic" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>排队中</span></td>
+                      <td class="r size">—</td><td class="time">10-18 10:01</td><td></td>
+                    </tr>
+                    <tr>
+                      <td><div class="file-cell"><span class="file-ic md">MD</span><span class="file-name">合资协议附件A-FR.pdf.zh.md</span></div></td>
+                      <td><span class="pill pill-ok"><svg class="ic" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="m8.5 12 2.5 2.5 4.5-5"/></svg>已交付</span></td>
+                      <td class="r size">1.0 MB</td><td class="time">10-17 18:20</td>
+                      <td><button class="ops" data-preview aria-label="预览译本"><svg class="ic sm" viewBox="0 0 24 24"><path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6S2 12 2 12Z"/><circle cx="12" cy="12" r="2.5"/></svg></button></td>
+                    </tr>
+                    <tr style="opacity:.72">
+                      <td><div class="file-cell"><span class="file-ic zh">ZH</span><span class="file-name">balance-q3.xlsx.zh</span></div></td>
+                      <td><span class="meter-wrap"><span class="meter"><i style="width:45%"></i></span><span class="num">45%</span></span></td>
+                      <td class="r size">生成中</td><td class="time">10-18 10:06</td><td></td>
+                    </tr>
+                    <tr>
+                      <td><div class="file-cell"><span class="file-ic md">MD</span><span class="file-name">地质报告-EN.docx.zh</span></div></td>
+                      <td><span class="pill pill-warn"><svg class="ic" viewBox="0 0 24 24"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>待复核</span></td>
+                      <td class="r size">2.1 MB</td><td class="time">10-17 14:40</td>
+                      <td><button class="btn btn-pri btn-sm" style="height:22px;padding:0 8px;font-size:11px">去复核 →</button></td>
+                    </tr>
+                    <tr>
+                      <td><div class="file-cell"><span class="file-ic md">MD</span><span class="file-name">offtake-draft.pdf.zh.md</span></div></td>
+                      <td><span class="pill pill-ok"><svg class="ic" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="m8.5 12 2.5 2.5 4.5-5"/></svg>已交付</span></td>
+                      <td class="r size">780 KB</td><td class="time">10-16 11:50</td>
+                      <td><button class="ops" data-preview aria-label="预览译本"><svg class="ic sm" viewBox="0 0 24 24"><path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6S2 12 2 12Z"/><circle cx="12" cy="12" r="2.5"/></svg></button></td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="tbl-foot">
+          <span>共 <b>156</b> 份 · 当前文件夹 <b>42</b> 份 · 每页 50</span>
+          <span class="spacer"></span>
+          <span>译文由翻译管线生成，右侧只读 · 双击行可对照预览</span>
+        </div>
+      </div>
+
+      <div class="note-bar">
+        <svg class="ic" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg>
+        <span>翻译动作只对「未翻译 / 失败」的原文生效；排队中与翻译中的任务不可重复提交。「待复核」表示机检超出阈值，需在复核工作台人工裁决后才会交付。</span>
+      </div>
+    </div>
+  </main>
+</div>
+
+<!-- ═══ 对照预览弹窗 ═══ -->
+<div class="overlay" id="previewModal">
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="previewTitle">
+    <div class="modal-hd">
+      <span class="file-ic pdf">PDF</span>
+      <div>
+        <h3 id="previewTitle">合资协议附件A-FR.pdf</h3>
+        <div class="sub">对照预览 · 左原文 / 右中文译本（Markdown 渲染）</div>
+      </div>
+      <span class="pill pill-ok" style="margin-left:4px"><svg class="ic" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="m8.5 12 2.5 2.5 4.5-5"/></svg>已交付</span>
+      <span class="pill pill-gray mono" style="height:20px">FR → ZH</span>
+      <button class="x" data-close aria-label="关闭预览"><svg class="ic" viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></svg></button>
+    </div>
+    <div class="modal-meta">
+      <span class="mono">sha 3f9c…a21e</span><span>·</span>
+      <span>源文件 1.2 MB</span><span>·</span>
+      <span>译本 1.0 MB</span><span>·</span>
+      <span>交付于 2026-10-17 18:20</span>
+      <span class="spacer" style="flex:1"></span>
+      <span class="pill pill-main">标准版</span>
+      <span class="pill pill-gray">术语命中 18 / 18</span>
+    </div>
+    <div class="modal-bd">
+      <div class="doc-pane">
+        <div class="doc-hd">原文 · FR<span class="tag">只读 · 原样展示</span></div>
+        <div class="doc-body">
+          <h4>ARTICLE 4 — ENGAGEMENTS DE LA SOCIÉTÉ</h4>
+          <p><span class="clause">4.1</span> La Société s'engage à fournir les <span class="hl">livrables techniques</span> conformément à l'annexe A, dans un délai de trente (30) jours à compter de la date de signature.</p>
+          <p><span class="clause">4.2</span> Le prix total des livrables est fixé à <span class="num">12 500 000 RMB</span>, payable en trois tranches selon l'échéancier prévu à l'article 5.</p>
+          <p><span class="clause">4.3</span> Toute modification du périmètre fera l'objet d'un avenant écrit signé par les deux Parties.</p>
+          <p><span class="clause">5.1</span> La première tranche, représentant <span class="num">30 %</span> du prix total, est due dans les quinze (15) jours suivant l'entrée en vigueur du présent accord.</p>
+        </div>
+      </div>
+      <div class="doc-pane">
+        <div class="doc-hd">中文译本 · ZH<span class="tag">Markdown · 只读</span></div>
+        <div class="doc-body">
+          <h4>第四条 — 公司义务</h4>
+          <p><span class="clause">4.1</span> 公司承诺按照附件 A 提供<span class="hl">技术交付物</span>，并自签署之日起三十（30）日内完成交付。</p>
+          <p><span class="clause">4.2</span> 交付物总价确定为 <span class="num">12,500,000 元人民币</span>，按第五条规定的付款计划分三期支付。</p>
+          <p><span class="clause">4.3</span> 任何范围变更均须由双方签署书面补充协议。</p>
+          <p><span class="clause">5.1</span> 首期款为总价的 <span class="num">30%</span>，应于本协议生效后十五（15）日内支付。</p>
+        </div>
+      </div>
+    </div>
+    <div class="modal-ft">
+      <span class="foot-meta">术语库：铁矿知识库 · 译文保留原文编号与金额格式</span>
+      <span class="spacer"></span>
+      <button class="btn btn-sec btn-sm">
+        <svg class="ic sm" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12"/></svg>
+        下载原件
+      </button>
+      <button class="btn btn-pri btn-sm">
+        <svg class="ic sm" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12"/></svg>
+        下载中文译本
+      </button>
+    </div>
+  </div>
+</div>
+
+<style>@keyframes spin { to { transform:rotate(360deg); } }</style>
+<script>
+  // 暗色切换
+  document.getElementById('darkToggle').addEventListener('click', () => {
+    document.documentElement.classList.toggle('dark');
+  });
+  // 对照预览
+  const modal = document.getElementById('previewModal');
+  document.querySelectorAll('[data-preview]').forEach((btn) => {
+    btn.addEventListener('click', () => modal.classList.add('open'));
+  });
+  document.querySelectorAll('[data-close]').forEach((btn) => {
+    btn.addEventListener('click', () => modal.classList.remove('open'));
+  });
+  modal.addEventListener('click', (e) => { if (e.target === modal) modal.classList.remove('open'); });
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') modal.classList.remove('open');
+  });
+  // 行选中态（原型演示）
+  document.querySelectorAll('.tbl tbody tr').forEach((tr) => {
+    tr.addEventListener('click', (e) => {
+      if (e.target.closest('input,button')) return;
+      tr.classList.toggle('sel');
+    });
+  });
+</script>
+</body>
+</html>

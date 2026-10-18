@@ -45,6 +45,7 @@ import {
 } from "../api";
 import type { TltTask } from "../types";
 
+import { PageHeader } from "./PageHeader";
 import { StateBadge } from "./StateBadge";
 
 const PAGE_SIZE = 50;
@@ -225,32 +226,91 @@ export function TaskManagementView() {
     return ops;
   };
 
+  /** 任务列表骨架：列形对齐真实表（勾选/文件名/知识库/语言/状态/进度/更新时间/操作）。 */
+  const TableSkeleton = () => (
+    <div role="status" aria-label="任务列表加载中">
+      <table className="w-full text-sm" aria-hidden>
+        <thead>
+          <tr className="bg-muted/50 text-muted-foreground border-b text-left text-xs">
+            <th className="w-8 px-2 py-2" />
+            <th className="px-2 py-2">文件名</th>
+            <th className="px-2 py-2">知识库</th>
+            <th className="px-2 py-2">语言</th>
+            <th className="px-2 py-2">状态</th>
+            <th className="px-2 py-2">进度</th>
+            <th className="px-2 py-2">更新时间</th>
+            <th className="w-10 px-2 py-2" />
+          </tr>
+        </thead>
+        <tbody>
+          {Array.from({ length: 8 }, (_, i) => (
+            <tr
+              key={i}
+              className="border-b border-[var(--gray-100)] last:border-b-0"
+            >
+              <td className="px-2 py-2">
+                <div className="bg-muted-foreground/15 size-3.5 animate-pulse rounded-sm" />
+              </td>
+              <td className="px-2 py-2">
+                <div className="flex items-center gap-2">
+                  <div className="bg-muted-foreground/15 size-5 shrink-0 animate-pulse rounded" />
+                  <div
+                    className="bg-muted-foreground/15 h-3.5 animate-pulse rounded"
+                    style={{ width: 140 + (i % 4) * 24 }}
+                  />
+                </div>
+              </td>
+              <td className="px-2 py-2">
+                <div
+                  className="bg-muted-foreground/15 h-3 animate-pulse rounded"
+                  style={{ width: 90 + (i % 3) * 20 }}
+                />
+              </td>
+              <td className="px-2 py-2">
+                <div className="bg-muted-foreground/15 h-3 w-12 animate-pulse rounded" />
+              </td>
+              <td className="px-2 py-2">
+                <div className="bg-muted-foreground/15 h-5 w-16 animate-pulse rounded-full" />
+              </td>
+              <td className="px-2 py-2">
+                <div className="bg-muted-foreground/15 h-3 w-10 animate-pulse rounded" />
+              </td>
+              <td className="px-2 py-2">
+                <div className="bg-muted-foreground/15 h-3 w-28 animate-pulse rounded" />
+              </td>
+              <td className="px-2 py-2">
+                <div className="bg-muted-foreground/15 ml-auto size-4 animate-pulse rounded" />
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+
   return (
-    <div className="flex h-full flex-col gap-3 p-4">
-      {/* 顶栏 */}
-      <div className="flex items-center gap-3">
-        <h1 className="flex items-center gap-2 text-xl font-semibold">
-          <FileText className="h-5 w-5" /> 任务管理
-        </h1>
-        <span className="text-muted-foreground text-sm">
-          翻译任务队列与状态跟踪
-        </span>
-        <span className="flex-1" />
-        {checked.size > 0 && (
-          <Button
-            size="sm"
-            disabled={!translatable.length}
-            onClick={doTranslateChecked}
-          >
-            {tasksQ.isFetching ? (
-              <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" />
-            ) : (
-              <Play className="mr-1 h-3.5 w-3.5" />
-            )}
-            翻译 ({translatable.length})
-          </Button>
-        )}
-      </div>
+    <div className="flex h-full flex-col gap-3 px-4 pt-3 pb-4">
+      <PageHeader
+        title="任务管理"
+        description="翻译任务队列与状态跟踪"
+        icon={<FileText />}
+        actions={
+          checked.size > 0 ? (
+            <Button
+              size="sm"
+              disabled={!translatable.length}
+              onClick={doTranslateChecked}
+            >
+              {tasksQ.isFetching ? (
+                <Loader2 className="mr-1 h-3 w-3 animate-spin" />
+              ) : (
+                <Play className="mr-1 h-3 w-3" />
+              )}
+              翻译 ({translatable.length})
+            </Button>
+          ) : undefined
+        }
+      />
 
       {/* 筛选行 */}
       <div className="flex flex-wrap items-center gap-2">
@@ -370,9 +430,7 @@ export function TaskManagementView() {
         <div className="flex min-w-0 flex-1 flex-col gap-3">
           <div className="min-h-0 flex-1 overflow-auto rounded-lg border">
             {tasksQ.isLoading ? (
-              <div className="text-muted-foreground flex items-center gap-2 p-4 text-sm">
-                <Loader2 className="h-4 w-4 animate-spin" /> 加载中…
-              </div>
+              <TableSkeleton />
             ) : tasks.length === 0 ? (
               <div className="text-muted-foreground p-8 text-center text-sm">
                 没有符合条件的任务。在资产库上传 EN/FR 文档后开始翻译。
@@ -409,7 +467,7 @@ export function TaskManagementView() {
                     <tr
                       key={t.id}
                       className={cn(
-                        "hover:bg-muted/50 cursor-pointer border-b transition-colors last:border-b-0",
+                        "hover:bg-muted/50 cursor-pointer border-b border-[var(--gray-100)] transition-colors last:border-b-0",
                         detailId === t.id && "bg-accent/60",
                       )}
                       onClick={() => openDetail(t)}
@@ -438,22 +496,31 @@ export function TaskManagementView() {
                             name={t.file_name}
                             className="h-5 w-5 shrink-0"
                           />
-                          <span className="truncate font-medium">
+                          <span className="truncate font-mono text-[13px] font-medium">
                             {t.file_name}
                           </span>
                         </span>
                       </td>
-                      <td className="text-muted-foreground px-2 py-2">
+                      <td
+                        className={cn(
+                          "text-muted-foreground px-2 py-2",
+                          t.kb_name &&
+                            /^[\x20-\x7E]*$/.test(t.kb_name) &&
+                            "font-mono",
+                        )}
+                      >
                         {t.kb_name ?? "—"}
                       </td>
-                      <td className="text-muted-foreground px-2 py-2 uppercase">
+                      <td className="text-muted-foreground px-2 py-2 font-mono uppercase">
                         {t.source_lang}
                       </td>
                       <td className="px-2 py-2">
                         <StateBadge state={t.state} progress={t.progress} />
                       </td>
-                      <td className="px-2 py-2 tabular-nums">{t.progress}%</td>
-                      <td className="text-muted-foreground px-2 py-2">
+                      <td className="px-2 py-2 font-mono tabular-nums">
+                        {t.progress}%
+                      </td>
+                      <td className="text-muted-foreground px-2 py-2 font-mono tabular-nums">
                         {fmtTime(t.updated_at)}
                       </td>
                       <td className="px-2 py-2 text-right">
@@ -484,28 +551,30 @@ export function TaskManagementView() {
             )}
           </div>
 
-          {/* 分页 */}
-          <div className="flex items-center justify-center gap-3 text-sm">
-            <Button
-              variant="outline"
-              size="sm"
-              disabled={page <= 1}
-              onClick={() => setPage((p) => p - 1)}
-            >
-              上一页
-            </Button>
-            <span className="text-muted-foreground">
-              {page} / {totalPages} · 共 {total} 条
-            </span>
-            <Button
-              variant="outline"
-              size="sm"
-              disabled={page >= totalPages}
-              onClick={() => setPage((p) => p + 1)}
-            >
-              下一页
-            </Button>
-          </div>
+          {/* 分页（初始化骨架期间不显示，避免「共 0 条」误导） */}
+          {!tasksQ.isLoading && (
+            <div className="flex items-center justify-center gap-3 text-sm">
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={page <= 1}
+                onClick={() => setPage((p) => p - 1)}
+              >
+                上一页
+              </Button>
+              <span className="text-muted-foreground tabular-nums">
+                {page} / {totalPages} · 共 {total} 条
+              </span>
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={page >= totalPages}
+                onClick={() => setPage((p) => p + 1)}
+              >
+                下一页
+              </Button>
+            </div>
+          )}
         </div>
 
         {/* 右：详情区（点行展开；X 收起；收起时不占位） */}
@@ -518,12 +587,12 @@ export function TaskManagementView() {
                 className="mt-0.5 h-5 w-5 shrink-0"
               />
               <div className="min-w-0 flex-1">
-                <div className="truncate text-sm font-semibold">
+                <div className="truncate font-mono text-[13px] font-semibold">
                   {detail.file_name}
                 </div>
                 <div className="mt-0.5 flex items-center gap-1.5">
                   <StateBadge state={detail.state} progress={detail.progress} />
-                  <span className="text-muted-foreground text-xs">
+                  <span className="text-muted-foreground text-xs tabular-nums">
                     {detail.quality_tier === "reviewed"
                       ? "人工校对版"
                       : "标准版"}{" "}
@@ -552,21 +621,44 @@ export function TaskManagementView() {
                   <span className="text-muted-foreground text-xs">
                     来源文件
                   </span>
-                  <span className="truncate">{detail.source_uri ?? "—"}</span>
+                  <span className="truncate font-mono text-xs">
+                    {detail.source_uri ?? "—"}
+                  </span>
                   <span className="text-muted-foreground text-xs">SHA-256</span>
                   <span className="truncate font-mono text-xs">
                     {detail.doc_sha}
                   </span>
                   <span className="text-muted-foreground text-xs">源语言</span>
-                  <span className="uppercase">{detail.source_lang}</span>
+                  <span className="font-mono uppercase">
+                    {detail.source_lang}
+                  </span>
                   <span className="text-muted-foreground text-xs">
                     内容语义
                   </span>
-                  <span>{detail.content_tag ?? "—"}</span>
+                  <span
+                    className={cn(
+                      detail.content_tag &&
+                        /^[\x20-\x7E]*$/.test(detail.content_tag) &&
+                        "font-mono",
+                    )}
+                  >
+                    {detail.content_tag ?? "—"}
+                  </span>
                   <span className="text-muted-foreground text-xs">知识库</span>
-                  <span className="truncate">{detail.kb_name ?? "—"}</span>
+                  <span
+                    className={cn(
+                      "truncate",
+                      detail.kb_name &&
+                        /^[\x20-\x7E]*$/.test(detail.kb_name) &&
+                        "font-mono",
+                    )}
+                  >
+                    {detail.kb_name ?? "—"}
+                  </span>
                   <span className="text-muted-foreground text-xs">大小</span>
-                  <span>{fmtSize(detail.size_bytes)}</span>
+                  <span className="font-mono tabular-nums">
+                    {fmtSize(detail.size_bytes)}
+                  </span>
                 </div>
               </section>
 
@@ -587,7 +679,7 @@ export function TaskManagementView() {
                             <ShieldAlert className="h-3.5 w-3.5" />
                             {GATE_LABELS[axis] ?? axis} ❌
                           </div>
-                          <ul className="text-muted-foreground mt-1 list-inside list-disc">
+                          <ul className="text-muted-foreground mt-1 list-inside list-disc font-mono">
                             {violations.slice(0, 6).map((v, i) => (
                               <li key={i}>{v}</li>
                             ))}
@@ -609,7 +701,7 @@ export function TaskManagementView() {
                   <div className="text-muted-foreground mb-1.5 text-xs font-semibold tracking-wide">
                     不确定段（LLM 标记）
                   </div>
-                  <ul className="text-muted-foreground flex flex-col gap-1 text-xs">
+                  <ul className="text-muted-foreground flex flex-col gap-1 font-mono text-xs">
                     {detail.uncertainty.map((u, i) => (
                       <li key={i} className="truncate">
                         {u.block}
@@ -632,7 +724,7 @@ export function TaskManagementView() {
                         name={`${detail.file_name.replace(/\.[^.]+$/, "")}.md`}
                         className="h-5 w-5 shrink-0"
                       />
-                      <span className="truncate">
+                      <span className="truncate font-mono text-[13px]">
                         {detail.file_name.replace(/\.[^.]+$/, "")}.zh.md
                       </span>
                     </span>
@@ -661,7 +753,7 @@ export function TaskManagementView() {
                 </div>
               </section>
 
-              <div className="text-muted-foreground text-xs">
+              <div className="text-muted-foreground text-xs tabular-nums">
                 任务版本 v{detail.task_version} · 重试 {detail.retry_count}/3 ·
                 更新 {fmtTime(detail.updated_at)}
               </div>

@@ -1,7 +1,7 @@
 "use client";
 
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Loader2, Plus, Trash2 } from "lucide-react";
+import { BookMarked, Plus, Trash2 } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 
@@ -23,6 +23,8 @@ import {
 } from "@/components/ui/select";
 import { authFetch } from "@/extensions/api/client";
 import { cn } from "@/lib/utils";
+
+import { PageHeader } from "./PageHeader";
 
 interface GlossaryEntry {
   source: string;
@@ -90,32 +92,77 @@ export function GlossaryView() {
     }
   };
 
+  /** 术语库初始化骨架：列形对齐真实表（源词/动作/目标译法/操作）。 */
+  const TableSkeleton = () => (
+    <div role="status" aria-label="术语列表加载中">
+      <table className="w-full text-sm" aria-hidden>
+        <thead>
+          <tr className="bg-muted/50 text-muted-foreground border-b text-left text-xs">
+            <th className="px-3 py-2">源词</th>
+            <th className="px-3 py-2">动作</th>
+            <th className="px-3 py-2">目标译法</th>
+            <th className="w-16 px-3 py-2 text-right">操作</th>
+          </tr>
+        </thead>
+        <tbody>
+          {Array.from({ length: 6 }, (_, i) => (
+            <tr
+              key={i}
+              className="border-b border-[var(--gray-100)] last:border-b-0"
+            >
+              <td className="px-3 py-2">
+                <div
+                  className="bg-muted-foreground/15 h-3.5 animate-pulse rounded"
+                  style={{ width: 100 + (i % 3) * 30 }}
+                />
+              </td>
+              <td className="px-3 py-2">
+                <div className="bg-muted-foreground/15 h-5 w-16 animate-pulse rounded-full" />
+              </td>
+              <td className="px-3 py-2">
+                <div
+                  className="bg-muted-foreground/15 h-3.5 animate-pulse rounded"
+                  style={{ width: 120 + (i % 4) * 24 }}
+                />
+              </td>
+              <td className="px-3 py-2">
+                <div className="bg-muted-foreground/15 ml-auto size-4 animate-pulse rounded" />
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+
   return (
-    <div className="flex h-full flex-col gap-3 p-4">
-      <div className="flex items-center gap-3">
-        <h1 className="text-xl font-semibold">术语库</h1>
-        <span className="text-muted-foreground text-sm">
-          翻译时自动注入 · 机检术语轴核验
-        </span>
-        <span className="flex-1" />
-        <span className="text-muted-foreground rounded-full border px-2.5 py-0.5 text-xs">
-          {entries.length} 条
-        </span>
-        <Button
-          size="sm"
-          onClick={() =>
-            setEditing({ source: "", action: "force", target: "" })
-          }
-        >
-          <Plus className="mr-1 h-3.5 w-3.5" /> 新增术语
-        </Button>
-      </div>
+    <div className="flex h-full flex-col gap-3 px-4 pt-3 pb-4">
+      <PageHeader
+        title="术语库"
+        description="翻译时自动注入 · 机检术语轴核验"
+        icon={<BookMarked />}
+        actions={
+          <>
+            {!glossaryQ.isLoading && (
+              <span className="text-muted-foreground rounded-full border px-2.5 py-0.5 text-xs tabular-nums">
+                {entries.length} 条
+              </span>
+            )}
+            <Button
+              size="sm"
+              onClick={() =>
+                setEditing({ source: "", action: "force", target: "" })
+              }
+            >
+              <Plus className="mr-1 h-3 w-3" /> 新增术语
+            </Button>
+          </>
+        }
+      />
 
       <div className="min-h-0 flex-1 overflow-auto rounded-lg border">
         {glossaryQ.isLoading ? (
-          <div className="text-muted-foreground flex items-center gap-2 p-4 text-sm">
-            <Loader2 className="h-4 w-4 animate-spin" /> 加载中…
-          </div>
+          <TableSkeleton />
         ) : entries.length === 0 ? (
           <div className="text-muted-foreground p-8 text-center text-sm">
             术语库为空——机制已生效但无注入内容。样例验收闸产出后在此维护。
@@ -134,9 +181,17 @@ export function GlossaryView() {
               {entries.map((e) => (
                 <tr
                   key={e.source}
-                  className="hover:bg-muted/50 border-b last:border-b-0"
+                  className="hover:bg-muted/50 border-b border-[var(--gray-100)] last:border-b-0"
                 >
-                  <td className="px-3 py-2 font-medium">{e.source}</td>
+                  <td
+                    className={cn(
+                      "px-3 py-2 font-medium",
+                      /^[\x20-\x7E]*$/.test(e.source) &&
+                        "font-mono text-[13px]",
+                    )}
+                  >
+                    {e.source}
+                  </td>
                   <td className="px-3 py-2">
                     <span
                       className={cn(
@@ -149,7 +204,16 @@ export function GlossaryView() {
                       {e.action === "force" ? "指定译法" : "保留原文"}
                     </span>
                   </td>
-                  <td className="px-3 py-2">{e.target ?? "—"}</td>
+                  <td
+                    className={cn(
+                      "px-3 py-2",
+                      e.target &&
+                        /^[\x20-\x7E]*$/.test(e.target) &&
+                        "font-mono text-[13px]",
+                    )}
+                  >
+                    {e.target ?? "—"}
+                  </td>
                   <td className="px-3 py-2 text-right">
                     <Button
                       variant="ghost"

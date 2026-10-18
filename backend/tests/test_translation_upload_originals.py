@@ -9,6 +9,7 @@ import hashlib
 import io
 import uuid
 from contextlib import suppress
+from pathlib import Path
 from types import SimpleNamespace
 
 import pytest
@@ -17,6 +18,7 @@ from fastapi import HTTPException, UploadFile
 from sqlalchemy import delete, select
 
 import app.extensions.translation.routers as routers
+from app.extensions.config import get_extensions_config
 from app.extensions.database import get_session_factory, init_engine
 from app.extensions.models import KnowledgeBase, User
 from app.extensions.translation.models import TranslationTask
@@ -77,6 +79,39 @@ async def test_upload_indexes_original_and_fails_open(_engine, monkeypatch):
         finally:
             with suppress(Exception):
                 await _cleanup_stale(db)
+
+
+@pytest.mark.asyncio(loop_scope="session")
+async def test_upload_duplicate_reuses_existing_without_orphan_file(_engine, monkeypatch):
+    """同 KB 同 sha 重复上传：复用现有任务、返回 existing_file，且不落盘孤儿文件。"""
+    async with get_session_factory()() as db:
+        owner = (await db.execute(select(User.id).limit(1))).scalar()
+        if owner is None:
+            pytest.skip("no users row")
+        await _cleanup_stale(db)
+        monkeypatch.setattr(routers, "RAGFlowClient", _FakeUploadClient)
+        kb = KnowledgeBase(name=f"kb-b1dup-{uuid.uuid4().hex[:8]}", owner_id=owner, kb_type="ragflow", ragflow_dataset_id="ds-b1", translation_enabled=True)
+        db.add(kb)
+        await db.commit()
+        dup_name = f"t1-dup-{uuid.uuid4().hex[:8]}.docx"
+        try:
+            f1 = UploadFile(filename="t1.docx", file=io.BytesIO(b"PK\x03\x04stub-content"))
+            r1 = await routers.upload_assets(files=[f1], folder_id=None, kb_id=kb.id, current_user=SimpleNamespace(id=owner), db=db)
+            assert r1["items"][0]["reused"] is False
+
+            f2 = UploadFile(filename=dup_name, file=io.BytesIO(b"PK\x03\x04stub-content"))
+            r2 = await routers.upload_assets(files=[f2], folder_id=None, kb_id=kb.id, current_user=SimpleNamespace(id=owner), db=db)
+            item = r2["items"][0]
+            assert item["reused"] is True
+            assert item["task_id"] == r1["items"][0]["task_id"]
+            assert item["existing_file"] == "t1.docx"
+
+            storage = Path(get_extensions_config().storage.base_path) / "translation"
+            assert not list(storage.rglob(dup_name)), "重复上传不应落盘孤儿文件"
+        finally:
+            await db.execute(delete(TranslationTask).where(TranslationTask.kb_id == kb.id))
+            await db.execute(delete(KnowledgeBase).where(KnowledgeBase.id == kb.id))
+            await db.commit()
 
 
 @pytest.mark.asyncio(loop_scope="session")

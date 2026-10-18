@@ -25,16 +25,9 @@ import Metadata from "./metadata";
 const navItems = [
   {
     href: "/translation",
-    label: "文档资产库",
+    label: "文件资料库",
     icon: FolderOpen,
     exact: true,
-    pageId: "translation:page:assets",
-  },
-  {
-    href: "/translation/tasks",
-    label: "任务管理",
-    icon: ListChecks,
-    exact: false,
     pageId: "translation:page:assets",
   },
   {
@@ -48,6 +41,13 @@ const navItems = [
     href: "/translation/glossary",
     label: "术语库",
     icon: BookMarked,
+    exact: false,
+    pageId: "translation:page:assets",
+  },
+  {
+    href: "/translation/tasks",
+    label: "任务记录",
+    icon: ListChecks,
     exact: false,
     pageId: "translation:page:assets",
   },

@@ -1,14 +1,16 @@
 "use client";
 
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Loader2, Plus, Star } from "lucide-react";
+import { Loader2, Plus, Settings, Star } from "lucide-react";
 import { useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { authFetch } from "@/extensions/api/client";
+import { cn } from "@/lib/utils";
 
 import { createRagKb, listRagKbs, setRagKbEnabled, type RagKb } from "../api";
 
+import { PageHeader } from "./PageHeader";
 import { RagKbDialog } from "./RagKbDialog";
 
 const DEFAULT_KB_KEY = "tlt_default_kb_id";
@@ -103,14 +105,68 @@ export function SettingsView() {
     }
   };
 
+  /** 知识库列表初始化骨架：列形对齐真实表。 */
+  const TableSkeleton = () => (
+    <div role="status" aria-label="知识库列表加载中">
+      <table className="w-full text-sm" aria-hidden>
+        <thead>
+          <tr className="bg-muted/50 text-muted-foreground border-b text-left text-xs">
+            <th className="px-3 py-2">知识库</th>
+            <th className="px-3 py-2">语言</th>
+            <th className="px-3 py-2">分块·向量</th>
+            <th className="px-3 py-2">RAGFlow</th>
+            <th className="px-3 py-2 text-right">文档</th>
+            <th className="px-3 py-2 text-right">待处理</th>
+            <th className="px-3 py-2 text-right">操作</th>
+          </tr>
+        </thead>
+        <tbody>
+          {Array.from({ length: 4 }, (_, i) => (
+            <tr
+              key={i}
+              className="border-b border-[var(--gray-100)] last:border-b-0"
+            >
+              <td className="px-3 py-2">
+                <div
+                  className="bg-muted-foreground/15 h-3.5 animate-pulse rounded"
+                  style={{ width: 110 + (i % 2) * 30 }}
+                />
+              </td>
+              <td className="px-3 py-2">
+                <div className="bg-muted-foreground/15 h-3 w-14 animate-pulse rounded" />
+              </td>
+              <td className="px-3 py-2">
+                <div
+                  className="bg-muted-foreground/15 h-3 animate-pulse rounded"
+                  style={{ width: 180 + (i % 3) * 20 }}
+                />
+              </td>
+              <td className="px-3 py-2">
+                <div className="bg-muted-foreground/15 h-3 w-16 animate-pulse rounded" />
+              </td>
+              <td className="px-3 py-2">
+                <div className="bg-muted-foreground/15 ml-auto h-3 w-6 animate-pulse rounded" />
+              </td>
+              <td className="px-3 py-2">
+                <div className="bg-muted-foreground/15 ml-auto h-3 w-6 animate-pulse rounded" />
+              </td>
+              <td className="px-3 py-2">
+                <div className="bg-muted-foreground/15 ml-auto h-3 w-20 animate-pulse rounded" />
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+
   return (
-    <div className="flex h-full flex-col gap-3 p-4">
-      <div className="flex items-center gap-3">
-        <h1 className="text-xl font-semibold">设置</h1>
-        <span className="text-muted-foreground text-sm">
-          RAG 知识库配置与运行参数
-        </span>
-      </div>
+    <div className="flex h-full flex-col gap-3 px-4 pt-3 pb-4">
+      <PageHeader
+        title="设置"
+        description="RAG 知识库配置与运行参数"
+        icon={<Settings />}
+      />
 
       {/* RAG 知识库配置（多库） */}
       <div className="rounded-lg border">
@@ -167,9 +223,7 @@ export function SettingsView() {
         )}
 
         {ragKbsQ.isLoading ? (
-          <div className="text-muted-foreground flex items-center gap-2 p-4 text-sm">
-            <Loader2 className="h-4 w-4 animate-spin" /> 加载中…
-          </div>
+          <TableSkeleton />
         ) : ragKbs.length === 0 ? (
           <div className="flex items-center justify-between gap-2 p-4 text-sm">
             <span className="text-muted-foreground">
@@ -203,16 +257,30 @@ export function SettingsView() {
               {ragKbs.map((k) => (
                 <tr
                   key={k.id}
-                  className="hover:bg-muted/50 border-b last:border-b-0"
+                  className="hover:bg-muted/50 border-b border-[var(--gray-100)] last:border-b-0"
                 >
-                  <td className="px-3 py-2 font-medium">
+                  <td
+                    className={cn(
+                      "px-3 py-2 font-medium",
+                      /^[\x20-\x7E]*$/.test(k.name) && "font-mono",
+                    )}
+                  >
                     {defaultInList === k.id && (
                       <Star className="mr-1 inline h-3.5 w-3.5 fill-amber-400 text-amber-400" />
                     )}
                     {k.name}
                   </td>
-                  <td className="px-3 py-2">{k.language ?? "—"}</td>
-                  <td className="text-muted-foreground px-3 py-2 text-xs">
+                  <td
+                    className={cn(
+                      "px-3 py-2",
+                      k.language &&
+                        /^[\x20-\x7E]*$/.test(k.language) &&
+                        "font-mono",
+                    )}
+                  >
+                    {k.language ?? "—"}
+                  </td>
+                  <td className="text-muted-foreground px-3 py-2 font-mono text-xs">
                     {[k.chunk_method ?? "?", k.embedding_model ?? "?"].join(
                       " · ",
                     )}
@@ -224,10 +292,10 @@ export function SettingsView() {
                       <span className="text-destructive">未关联</span>
                     )}
                   </td>
-                  <td className="px-3 py-2 text-right tabular-nums">
+                  <td className="px-3 py-2 text-right font-mono tabular-nums">
                     {k.doc_count}
                   </td>
-                  <td className="px-3 py-2 text-right tabular-nums">
+                  <td className="px-3 py-2 text-right font-mono tabular-nums">
                     {k.pending_count > 0 ? k.pending_count : "—"}
                   </td>
                   <td className="px-3 py-2 text-right">
@@ -285,9 +353,12 @@ export function SettingsView() {
         <div className="text-muted-foreground border-b px-3 py-2 text-xs font-medium">
           运行参数（只读）
         </div>
-        <div className="grid grid-cols-[140px_1fr] gap-x-2 gap-y-1 p-3 text-sm">
+        <div className="grid grid-cols-[140px_1fr] gap-x-2 gap-y-1 p-3 text-sm tabular-nums">
           <span className="text-muted-foreground text-xs">翻译模型</span>
-          <span>本地 LLM（config.yaml models 声明）</span>
+          <span>
+            本地 LLM（<span className="font-mono text-[13px]">config.yaml</span>{" "}
+            models 声明）
+          </span>
           <span className="text-muted-foreground text-xs">并发槽位</span>
           <span>2 · 轮询 5s · 基础设施重试 ≤3</span>
         </div>
@@ -298,7 +369,7 @@ export function SettingsView() {
         <div className="text-muted-foreground border-b px-3 py-2 text-xs font-medium">
           质量标准（样例验收闸产出）
         </div>
-        <div className="grid grid-cols-[140px_1fr] gap-x-2 gap-y-1 p-3 text-sm">
+        <div className="grid grid-cols-[140px_1fr] gap-x-2 gap-y-1 p-3 text-sm tabular-nums">
           <span className="text-muted-foreground text-xs">中文检索准确率</span>
           <span>目标 80%（完成验收测试后确定）</span>
           <span className="text-muted-foreground text-xs">数字准确性</span>
