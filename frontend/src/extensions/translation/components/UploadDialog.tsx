@@ -12,6 +12,13 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 /** 资产库上传对话框（结构复刻 contract-price 上传合同对话框，EAI-CUSTOM）。
 
@@ -166,15 +173,22 @@ export function UploadDialog({
           {kbOptions.length === 0 ? (
             <span className="text-xs text-destructive">无可用库——请先在设置页「RAG知识库配置」创建</span>
           ) : (
-            <select
-              className="h-8 rounded-md border bg-background px-2"
-              value={kbId}
-              onChange={(e) => onKbChange(e.target.value)}
-            >
-              {kbOptions.map((k) => (
-                <option key={k.id} value={k.id}>{k.name}</option>
-              ))}
-            </select>
+            <Select value={kbId} onValueChange={onKbChange}>
+              <SelectTrigger
+                size="sm"
+                className="w-full text-[13px]"
+                aria-label="目标知识库"
+              >
+                <SelectValue placeholder="选择知识库" />
+              </SelectTrigger>
+              <SelectContent>
+                {kbOptions.map((k) => (
+                  <SelectItem key={k.id} value={k.id} className="text-[13px]">
+                    {k.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           )}
         </div>
 
