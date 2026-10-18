@@ -115,6 +115,39 @@ async def test_upload_duplicate_reuses_existing_without_orphan_file(_engine, mon
 
 
 @pytest.mark.asyncio(loop_scope="session")
+async def test_upload_after_archive_creates_next_version(_engine, monkeypatch):
+    """归档后重传同内容：应新建 task_version=2，而不是撞唯一键 500。"""
+    async with get_session_factory()() as db:
+        owner = (await db.execute(select(User.id).limit(1))).scalar()
+        if owner is None:
+            pytest.skip("no users row")
+        await _cleanup_stale(db)
+        monkeypatch.setattr(routers, "RAGFlowClient", _FakeUploadClient)
+        kb = KnowledgeBase(name=f"kb-b1ver-{uuid.uuid4().hex[:8]}", owner_id=owner, kb_type="ragflow", ragflow_dataset_id="ds-b1", translation_enabled=True)
+        db.add(kb)
+        await db.commit()
+        try:
+            f1 = UploadFile(filename="v1.docx", file=io.BytesIO(b"PK\x03\x04stub-content"))
+            r1 = await routers.upload_assets(files=[f1], folder_id=None, kb_id=kb.id, current_user=SimpleNamespace(id=owner), db=db)
+            t1 = await db.get(TranslationTask, uuid.UUID(r1["items"][0]["task_id"]))
+            assert t1 is not None and t1.task_version == 1
+            t1.state = "archived"
+            await db.commit()
+
+            f2 = UploadFile(filename="v2.docx", file=io.BytesIO(b"PK\x03\x04stub-content"))
+            r2 = await routers.upload_assets(files=[f2], folder_id=None, kb_id=kb.id, current_user=SimpleNamespace(id=owner), db=db)
+            item = r2["items"][0]
+            assert item["reused"] is False
+            t2 = await db.get(TranslationTask, uuid.UUID(item["task_id"]))
+            assert t2 is not None and t2.id != t1.id
+            assert t2.task_version == 2
+        finally:
+            await db.execute(delete(TranslationTask).where(TranslationTask.kb_id == kb.id))
+            await db.execute(delete(KnowledgeBase).where(KnowledgeBase.id == kb.id))
+            await db.commit()
+
+
+@pytest.mark.asyncio(loop_scope="session")
 async def test_upload_survives_ragflow_outage(_engine, monkeypatch):
     """RAGFlow 全挂：任务照建，ragflow_source_doc_id 留 NULL（D2 失败不阻断）。"""
 

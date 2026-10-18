@@ -454,6 +454,16 @@ async def upload_assets(
             dest = upload_dir / f"{Path(name).stem}-{i}{Path(name).suffix}"
             i += 1
         dest.write_bytes(content)
+        # 终态历史版本仍占用 (kb, sha, version) 唯一键：同内容归档后重传需递增版本，
+        # 否则 INSERT 会撞 uq_tlt_task_kb_sha_version → 500。
+        max_version = (
+            await db.execute(
+                select(func.max(TranslationTask.task_version)).where(
+                    TranslationTask.kb_id == kb.id,
+                    TranslationTask.doc_sha == sha,
+                )
+            )
+        ).scalar()
         task = TranslationTask(
             kb_id=kb.id,
             doc_sha=sha,
@@ -461,6 +471,7 @@ async def upload_assets(
             source_lang="mixed",
             state="stored",
             folder_id=folder_id,
+            task_version=(max_version or 0) + 1,
         )
         if dataset_ready:
             try:
