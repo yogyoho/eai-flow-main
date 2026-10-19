@@ -1,0 +1,241 @@
+{
+  "schema_version": 2,
+  "diagram_type": "workflow",
+  "meta": {
+    "title": "文档翻译处理管线",
+    "locale": "zh-CN",
+    "quality_profile": "showcase"
+  },
+  "lanes": [
+    {
+      "id": "ingress",
+      "label": "接入与入库"
+    },
+    {
+      "id": "queue",
+      "label": "任务调度"
+    },
+    {
+      "id": "pipeline",
+      "label": "翻译管线"
+    },
+    {
+      "id": "exception",
+      "label": "重试与人工复核",
+      "variant": "exception"
+    }
+  ],
+  "phases": [
+    {
+      "id": "intake",
+      "label": "接入",
+      "fromCol": 0,
+      "toCol": 1
+    },
+    {
+      "id": "execute",
+      "label": "解析 · 翻译 · 机检",
+      "fromCol": 2,
+      "toCol": 4,
+      "variant": "emphasis"
+    },
+    {
+      "id": "deliver",
+      "label": "复核 / 交付",
+      "fromCol": 5,
+      "toCol": 5,
+      "variant": "dashed"
+    }
+  ],
+  "groups": [],
+  "mainPath": [
+    "upload",
+    "queue",
+    "parse",
+    "llm",
+    "gates",
+    "index"
+  ],
+  "nodes": [
+    {
+      "id": "upload",
+      "lane": "ingress",
+      "col": 0,
+      "type": "backend",
+      "label": "上传与入库",
+      "sublabel": "SHA-256 · 语言/tag · 原文索引",
+      "width": 150
+    },
+    {
+      "id": "skipped",
+      "lane": "ingress",
+      "col": 1,
+      "type": "database",
+      "label": "中文文档",
+      "sublabel": "只索引，跳过翻译",
+      "tag": "无需翻译",
+      "width": 132
+    },
+    {
+      "id": "queue",
+      "lane": "queue",
+      "col": 1,
+      "type": "messagebus",
+      "label": "任务队列",
+      "sublabel": "单条 / 批量 / 回填",
+      "width": 150
+    },
+    {
+      "id": "parse",
+      "lane": "pipeline",
+      "col": 2,
+      "type": "backend",
+      "label": "解析与保护",
+      "sublabel": "block 树 · OCR · 术语/占位符",
+      "width": 150
+    },
+    {
+      "id": "llm",
+      "lane": "pipeline",
+      "col": 3,
+      "type": "cloud",
+      "label": "LLM 翻译",
+      "sublabel": "JSON 输出 · 不确定标记",
+      "width": 132
+    },
+    {
+      "id": "gates",
+      "lane": "pipeline",
+      "col": 4,
+      "type": "security",
+      "label": "三轴机检",
+      "sublabel": "数值 / 术语 / 结构",
+      "tag": "硬闸门",
+      "width": 132
+    },
+    {
+      "id": "index",
+      "lane": "pipeline",
+      "col": 5,
+      "type": "database",
+      "label": "索引与交付",
+      "sublabel": "MinIO · RAGFlow 双份互链",
+      "width": 150
+    },
+    {
+      "id": "retry",
+      "lane": "exception",
+      "col": 4,
+      "type": "messagebus",
+      "label": "定向重试",
+      "sublabel": "失败块重生成 ≤2 次",
+      "width": 132
+    },
+    {
+      "id": "review",
+      "lane": "exception",
+      "col": 5,
+      "type": "frontend",
+      "label": "人工复核",
+      "sublabel": "通过 / 驳回 · MTPE",
+      "tag": "exceeded",
+      "width": 150
+    }
+  ],
+  "edges": [
+    {
+      "from": "upload",
+      "to": "queue",
+      "label": "建 stored 任务",
+      "variant": "emphasis"
+    },
+    {
+      "from": "queue",
+      "to": "parse",
+      "label": "领取 pending",
+      "variant": "emphasis"
+    },
+    {
+      "from": "parse",
+      "to": "llm",
+      "label": "block 文本",
+      "variant": "emphasis"
+    },
+    {
+      "from": "llm",
+      "to": "gates",
+      "label": "译文 + 不确定",
+      "route": "straight",
+      "variant": "emphasis"
+    },
+    {
+      "from": "gates",
+      "to": "index",
+      "label": "三轴通过",
+      "variant": "emphasis"
+    },
+    {
+      "from": "gates",
+      "to": "retry",
+      "label": "机检未过",
+      "variant": "security",
+      "role": "branch"
+    },
+    {
+      "from": "retry",
+      "to": "llm",
+      "label": "重生成失败块",
+      "variant": "dashed",
+      "role": "return"
+    },
+    {
+      "from": "gates",
+      "to": "review",
+      "label": "超限 / reviewed 档",
+      "variant": "security",
+      "role": "branch"
+    },
+    {
+      "from": "review",
+      "to": "index",
+      "label": "通过 · 硬轴复检",
+      "variant": "emphasis"
+    },
+    {
+      "from": "upload",
+      "to": "skipped",
+      "label": "检测为中文",
+      "variant": "dashed"
+    }
+  ],
+  "cards": [
+    {
+      "dot": "cyan",
+      "title": "三轴是硬闸门",
+      "items": [
+        "数值轴 100%：占位符回注 + 全文多重集比对",
+        "术语轴：force 指定译法 / forbid 原样保留",
+        "结构轴：block 类型与数量 parity",
+        "失败重试超限 → failed；重传/删除 → superseded/archived"
+      ]
+    },
+    {
+      "dot": "emerald",
+      "title": "双份索引",
+      "items": [
+        "原文上传即入 RAGFlow，翻译失败也能中文检索",
+        "中文版在机检/复核通过后追加索引",
+        "两份文档通过元数据互链，保留 sha 血统"
+      ]
+    },
+    {
+      "dot": "rose",
+      "title": "人工闭环",
+      "items": [
+        "exceeded 保存逐块草稿与回译诊断",
+        "reviewed 档交付前复检数值/术语",
+        "MTPE 编辑稿才是最终交付内容"
+      ]
+    }
+  ]
+}
