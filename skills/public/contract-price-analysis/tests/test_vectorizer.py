@@ -2,7 +2,7 @@
 
 import numpy as np
 
-from scripts.clustering.vectorizer import Vectorizer
+from scripts.clustering.vectorizer import Vectorizer, spec_extract
 
 
 def test_fit_transform_returns_vector():
@@ -54,3 +54,55 @@ def test_spec_token_names_only_within_text():
 
     # spec_model 在 cli._cluster_sample_text 里拼在名称后面
     assert "DN100" in spec_tokens("镀锌钢管 DN100 未分类")
+
+
+class TestSpecTokenBlindSpots:
+    """2026-10-22 盲区补全: De/SC 管径、芯/匹/联数、字母型号串必须成为规格
+    token(不同 token = Jaccard 0 = 硬分簇);常见非规格名不得误抽。"""
+
+    def test_de_diameter_tokens_differ(self):
+        a, _ = spec_extract("PVC-U塑料排水管及管件 De110")
+        b, _ = spec_extract("PVC-U塑料排水管及管件 De50")
+        assert a != b and "DE110" in a and "DE50" in b
+
+    def test_sc_conduit_tokens_differ(self):
+        a, _ = spec_extract("钢管埋地敷设SC100")
+        b, _ = spec_extract("钢管埋地敷设SC50")
+        assert a != b
+
+    def test_fiber_core_count(self):
+        a, _ = spec_extract("48芯单模光缆")
+        b, _ = spec_extract("管内2芯单模光缆")
+        assert "48芯" in a and "2芯" in b and a != b
+
+    def test_ac_horsepower(self):
+        a, _ = spec_extract("1匹分体式空调")
+        b, _ = spec_extract("5匹分体式空调")
+        assert a != b
+
+    def test_switch_gang_count(self):
+        a, _ = spec_extract("单联单控跷板暗开关")
+        b, _ = spec_extract("三联联单控跷板暗开关")
+        assert "单联" in a and "三联" in b and a != b
+
+    def test_model_gqq_family(self):
+        a, _ = spec_extract("七氟丙烷无管网灭火装置 GQQ90X2/2.5-PAVLN")
+        b, _ = spec_extract("七氟丙烷无管网灭火装置 GQQ120/2.5-PAVLN")
+        assert a != b  # 90X2 vs 120 → 不同 token
+
+    def test_model_dz_dash_family(self):
+        a, _ = spec_extract("低噪声轴流风机DZ-13-6B")
+        b, _ = spec_extract("低噪声轴流风机DZ-13-3.2D")
+        assert a != b  # 全串 DZ-13-6B vs DZ-13-3.2D
+
+    def test_no_false_positive_on_common_names(self):
+        # 非规格名不得抽出 token
+        for name in ("LED灯", "A型出口指示灯(中型)", "PVC-U塑料排水管及管件", "PP-R塑料给水管"):
+            toks, stripped = spec_extract(name)
+            assert toks == [], (name, toks)
+            assert stripped == name  # 无 token 也不得改写名称文本
+
+    def test_existing_dn_still_works(self):
+        a, _ = spec_extract("热镀锌无缝钢管 DN32")
+        b, _ = spec_extract("热镀锌无缝钢管 DN150")
+        assert a != b and a == ["DN32"]

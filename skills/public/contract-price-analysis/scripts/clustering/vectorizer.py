@@ -34,6 +34,15 @@ _SPEC_TOKEN_RES: tuple[re.Pattern, ...] = (
     re.compile(r"\d+(?:\.\d+)?\s*mm", re.IGNORECASE),                # 厚度 20mm
     re.compile(r"(?<![A-Za-z0-9])Q\d{3}[A-Za-z]?(?![A-Za-z0-9])"),   # 钢牌号 Q235/Q355B
     re.compile(r"(?<![A-Za-z0-9])[A-Z]\d{3}(?![0-9A-Za-z])"),        # 无缝管牌号 A108
+    # EAI-CUSTOM(2026-10-22 术语表甄别盲区补全): 以下 token 族来自 225→311 簇
+    # 实测仍错簇的规格形态——De/SC 管径、芯数、匹数、联数、字母型号串。
+    re.compile(r"(?<![A-Za-z0-9])De\s*\d+(?:\.\d+)?", re.IGNORECASE),   # 塑料管径 De110
+    re.compile(r"(?<![A-Za-z0-9])SC\s*\d+(?:\.\d+)?", re.IGNORECASE),   # 穿线管径 SC100
+    re.compile(r"\d+(?:\.\d+)?\s*芯"),                              # 光缆芯数 48芯
+    re.compile(r"\d+(?:\.\d+)?\s*匹"),                              # 空调匹数 3匹
+    re.compile(r"[单双三]联"),                                       # 开关联数 单联/三联
+    re.compile(r"(?<![A-Za-z0-9])[A-Z]{2,}\d+(?:[Xx×]\d+(?:\.\d+)?)?(?![0-9A-Za-z])"),  # 无杠型号 GQQ90X2/SPF01
+    re.compile(r"(?<![A-Za-z0-9])[A-Z]{2,}(?:-\d+(?:\.\d+)?){1,2}[A-Z]?(?![A-Za-z0-9])"),  # 带杠型号 DZ-13-6B
 )
 
 
