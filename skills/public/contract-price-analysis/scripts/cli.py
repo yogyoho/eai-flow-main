@@ -2259,8 +2259,12 @@ _DOC_EXEMPT_MIN_SAMPLE = 3  # 文档基线豁免的最低样本数(<3 的文档�
 _DOC_MIN_SAMPLE = 4  # 文档内 ok/corrected 样本达到此数才用文档自身 IQR 逐行改判
 
 
-def _build_groups_db(result, db_items: list) -> list:
+def _build_groups_db(result, db_items: list, use_spec: bool = False, use_category: bool = False) -> list:
     """Turn clustering output + DB items into cluster group dicts.
+
+    分组名称按启用的聚类维度组合(EAI-CUSTOM 2026-10-22 用户规则): 勾选按规格
+    细分 → 货物名+规格型号;再勾选按分类细分 → 货物名+规格型号+分类;都不勾 →
+    纯货物名。规格/分类取簇内首个非空值(∅ 行中性,不参与命名)。
 
     Price stats use ONLY ok/corrected items' unit_price; needs_review items
     still cluster by name (grouped with their goods) but their price is
@@ -2372,10 +2376,19 @@ def _build_groups_db(result, db_items: list) -> list:
         stats["outlier_count"] = n_outliers
         if notes:
             stats["baseline_notes"] = notes
+        # 分组名称 = 货物名 + (规格 | 启用规格门) + (分类 | 启用分类门);
+        # 规格曾拼进样本文本、分类曾拼进名称——现统一在此按开关组合(2026-10-22)。
+        g_name = members[0]["goods_name"]
+        if use_spec:
+            spec = next((m.get("spec_model") or "" for m in members if (m.get("spec_model") or "").strip()), "")
+            if spec:
+                g_name = f"{g_name} {spec}"
+        if use_category:
+            cat = next((m.get("category") or "" for m in members if (m.get("category") or "").strip()), "")
+            if cat:
+                g_name = f"{g_name} {cat}"
         groups.append(
-            # 代表名用纯货物名(不带分类后缀)——样本文本含分类,曾让分组标题
-            # 显示成"管内穿线铜芯导 线 照明安装工程"这类拼串。
-            {"name": members[0]["goods_name"], "category": "", "stats": stats, "items": members}  # 标签留空=未打标
+            {"name": g_name, "category": "", "stats": stats, "items": members}  # 标签留空=未打标
         )
     return groups
 
@@ -2882,7 +2895,9 @@ async def run_cluster(trigger: str = "manual") -> int:
                 use_category=cfg.cluster_by_category,
                 merge_pins=_merge_pins(await _load_terms_pins(), _load_merge_pins()),
             )
-            groups = _build_groups_db(result, db_items)
+            groups = _build_groups_db(
+                result, db_items, use_spec=cfg.cluster_by_spec, use_category=cfg.cluster_by_category
+            )
     except Exception as exc:
         error = repr(exc)
         logger.exception("Cluster phase failed")

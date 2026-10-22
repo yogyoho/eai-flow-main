@@ -93,3 +93,50 @@ class TestApplyMergePinsSpecAware:
         ]
         result = self._cluster(samples, [{"name": "热轧光圆钢筋", "aliases": ["盘圆"]}])
         assert result.labels[0] == result.labels[1] != result.labels[2]
+
+
+class TestGroupNamingByGates:
+    """2026-10-22 用户规则: 分组名称按聚类维度组合——规格门开→名+规格;
+    分类门也开→名+规格+分类;都不开→纯名。规格/分类取簇内首个非空。"""
+
+    def _group(self, use_spec, use_category, items):
+        from types import SimpleNamespace
+
+        from scripts.cli import _build_groups_db
+
+        result = SimpleNamespace(labels=[0] * len(items), representatives={})
+        rows = [
+            {
+                "goods_name": it[0],
+                "spec_model": it[1],
+                "category": it[2],
+                "unit_price": None,
+                "validation_status": "ok",
+                "document_id": None,
+                "document_name": None,
+            }
+            for it in items
+        ]
+        return _build_groups_db(result, rows, use_spec=use_spec, use_category=use_category)[0]["name"]
+
+    def test_name_only_when_gates_off(self):
+        assert self._group(False, False, [("螺纹钢", "HRB400 10mm", "建筑工程")]) == "螺纹钢"
+
+    def test_name_plus_spec(self):
+        assert self._group(True, False, [("螺纹钢", "HRB400 10mm", "建筑工程")]) == "螺纹钢 HRB400 10mm"
+
+    def test_name_plus_spec_plus_category(self):
+        assert (
+            self._group(True, True, [("螺纹钢", "HRB400 10mm", "建筑工程")])
+            == "螺纹钢 HRB400 10mm 建筑工程"
+        )
+
+    def test_spec_takes_first_nonempty_in_cluster(self):
+        # 簇内 ∅ 行中性,命名取首个非空规格
+        assert (
+            self._group(True, False, [("螺纹钢", None, None), ("螺纹钢 筋", "HRB400E 12mm", None)])
+            == "螺纹钢 HRB400E 12mm"
+        )
+
+    def test_category_only_gate(self):
+        assert self._group(False, True, [("钢材", "", "安装工程")]) == "钢材 安装工程"
