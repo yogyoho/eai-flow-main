@@ -288,3 +288,13 @@ export interface RagflowSyncItemsResponse {
   ragflow_document_id: string;
   items_count: number;
 }
+
+// EAI-CUSTOM: 易混名称区分表（2026-10-22, 术语表对偶: 近名异物→聚类分开）
+export interface CpaNameSplit {
+  id: string;
+  name_a: string;
+  name_b: string;
+  reason: string | null;
+  enabled: boolean;
+  source: "manual" | "auto_split";
+}

@@ -35,7 +35,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.extensions.auth.middleware import require_permission
 from app.extensions.contract_price import crud, evolution, ragflow_setup, service, storage  # EAI-CUSTOM: ragflow_setup
-from app.extensions.contract_price.models import CpaDocument, CpaItem, CpaLibraryFolder
+from app.extensions.contract_price.models import CpaCluster, CpaDocument, CpaItem, CpaLibraryFolder, CpaNameSplit
 from app.extensions.contract_price.schemas import (
     BatchDeleteRequest,
     ClusterConfirm,
@@ -62,6 +62,9 @@ from app.extensions.contract_price.schemas import (
     PipelineRunRequest,
     PipelineRunResponse,
     RunOut,
+    SplitCreate,
+    SplitOut,
+    SplitUpdate,
     TermCreate,
     TermOut,
     TermUpdate,
@@ -503,6 +506,69 @@ async def delete_term_endpoint(
 ):
     if not await crud.delete_term(db, term_id):
         raise HTTPException(status_code=404, detail="术语不存在")
+
+
+# --- 易混名称区分表 (EAI-CUSTOM 2026-10-22): 术语表对偶,近名异物→聚类显性分开 ---
+
+
+@router.get("/name-splits")
+async def list_name_splits_endpoint(
+    db: AsyncSession = Depends(get_db),
+    _: CurrentUser = Depends(require_permission("system:access")),
+):
+    rows = await crud.list_name_splits(db)
+    return {
+        "items": [
+            SplitOut(id=r.id, name_a=r.name_a, name_b=r.name_b, reason=r.reason, enabled=r.enabled, source=r.source)
+            for r in rows
+        ]
+    }
+
+
+@router.post("/name-splits", response_model=SplitOut)
+async def create_name_split_endpoint(
+    body: SplitCreate,
+    db: AsyncSession = Depends(get_db),
+    _: CurrentUser = Depends(require_permission("system:access")),
+):
+    try:
+        row = await crud.upsert_name_split(db, body.name_a, body.name_b, body.reason)
+    except ValueError as e:
+        raise HTTPException(status_code=422, detail=str(e))
+    return SplitOut(id=row.id, name_a=row.name_a, name_b=row.name_b, reason=row.reason, enabled=row.enabled, source=row.source)
+
+
+@router.patch("/name-splits/{split_id}", response_model=SplitOut)
+async def update_name_split_endpoint(
+    split_id: UUID,
+    body: SplitUpdate,
+    db: AsyncSession = Depends(get_db),
+    _: CurrentUser = Depends(require_permission("system:access")),
+):
+    row = await db.get(CpaNameSplit, split_id)
+    if row is None:
+        raise HTTPException(status_code=404, detail="区分规则不存在")
+    fields = body.model_dump(exclude_unset=True)
+    if "reason" in fields:
+        row.reason = (fields.pop("reason") or "").strip() or None
+    if "enabled" in fields:
+        row.enabled = fields.pop("enabled")
+    await db.commit()
+    await db.refresh(row)
+    return SplitOut(id=row.id, name_a=row.name_a, name_b=row.name_b, reason=row.reason, enabled=row.enabled, source=row.source)
+
+
+@router.delete("/name-splits/{split_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_name_split_endpoint(
+    split_id: UUID,
+    db: AsyncSession = Depends(get_db),
+    _: CurrentUser = Depends(require_permission("system:access")),
+):
+    row = await db.get(CpaNameSplit, split_id)
+    if row is None:
+        raise HTTPException(status_code=404, detail="区分规则不存在")
+    await db.delete(row)
+    await db.commit()
 
 
 # --- RAGFlow 知识库集成 (EAI-CUSTOM: 合同价格分析 × RAGFlow, 共享租户服务身份) --
@@ -997,6 +1063,22 @@ async def move_item(
     db: AsyncSession = Depends(get_db),
     _: CurrentUser = Depends(require_permission("system:access")),  # EAI-CUSTOM: Add permission check
 ):
+    # 易混名称区分自动捕获(EAI-CUSTOM 2026-10-22): 手动把货物移出簇 = 用户判定
+    # 它与源簇代表不是同物 → 沉淀区分规则(source=auto_split),与手动合并捕获
+    # 术语(auto_merge)对称;同名归一化相同则不捕获(仅整理误分)。
+    item = await db.get(CpaItem, item_id)
+    if item is None:
+        raise HTTPException(status_code=404, detail="item not found")
+    if item.cluster_id is not None and item.cluster_id != body.target_cluster_id:
+        src = await db.get(CpaCluster, item.cluster_id)
+        if src is not None and crud.normalize_term(src.representative_name) != crud.normalize_term(item.goods_name):
+            try:
+                await crud.upsert_name_split(
+                    db, item.goods_name, src.representative_name,
+                    reason=f"手动移出「{src.representative_name}」簇时自动捕获", source="auto_split",
+                )
+            except Exception:  # noqa: BLE001 — 捕获失败不阻塞移动主流程
+                pass
     item = await crud.move_item(db, item_id, body.target_cluster_id)
     if item is None:
         raise HTTPException(status_code=404, detail="item not found")

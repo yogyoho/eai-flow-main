@@ -6,7 +6,13 @@
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
-import { contractPriceApi, libraryApi, ragflowApi, termsApi } from "./api";
+import {
+  contractPriceApi,
+  libraryApi,
+  nameSplitApi,
+  ragflowApi,
+  termsApi,
+} from "./api";
 
 const KEYS = {
   dashboard: ["cpa", "dashboard"] as const,
@@ -503,4 +509,36 @@ export function useSyncItemsRagflow() {
       void qc.invalidateQueries({ queryKey: KEYS.ragflowStatus });
     },
   });
+}
+
+// EAI-CUSTOM: 易混名称区分表 hooks（2026-10-22）
+export function useNameSplits() {
+  return useQuery({
+    queryKey: ["cpa", "name-splits"],
+    queryFn: nameSplitApi.list,
+  });
+}
+
+export function useNameSplitMutations() {
+  const qc = useQueryClient();
+  const invalidate = () => {
+    void qc.invalidateQueries({ queryKey: ["cpa", "name-splits"] });
+  };
+  const createSplit = useMutation({
+    mutationFn: (p: { name_a: string; name_b: string; reason?: string }) =>
+      nameSplitApi.create(p.name_a, p.name_b, p.reason),
+    onSuccess: invalidate,
+  });
+  const updateSplit = useMutation({
+    mutationFn: (p: {
+      id: string;
+      patch: { reason?: string; enabled?: boolean };
+    }) => nameSplitApi.update(p.id, p.patch),
+    onSuccess: invalidate,
+  });
+  const deleteSplit = useMutation({
+    mutationFn: (id: string) => nameSplitApi.remove(id),
+    onSuccess: invalidate,
+  });
+  return { createSplit, updateSplit, deleteSplit };
 }

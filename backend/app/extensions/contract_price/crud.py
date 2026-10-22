@@ -24,6 +24,7 @@ from app.extensions.contract_price.models import (
     CpaItem,
     CpaLibraryFile,
     CpaLibraryFolder,
+    CpaNameSplit,
     CpaRunHistory,
     CpaTerms,
 )
@@ -1415,3 +1416,33 @@ async def delete_term(session: AsyncSession, term_id: UUID) -> bool:
     await session.delete(row)
     await session.commit()
     return True
+
+
+# --- 易混名称区分表 (EAI-CUSTOM 2026-10-22, 术语表对偶: 近名异物→分) --------
+
+
+async def list_name_splits(session: AsyncSession, only_enabled: bool = False) -> list:
+    """全量区分规则(或仅启用);直接 select,按创建序。"""
+    from sqlalchemy import select
+
+    stmt = select(CpaNameSplit).order_by(CpaNameSplit.created_at)
+    if only_enabled:
+        stmt = stmt.where(CpaNameSplit.enabled.is_(True))
+    return list((await session.execute(stmt)).scalars())
+
+
+async def upsert_name_split(session: AsyncSession, name_a: str, name_b: str, reason: str | None, source: str = "manual") -> CpaNameSplit:
+    """创建区分规则;同对(双向)已存在(不论 enabled)→ 返回既有行不重复建。"""
+    from sqlalchemy import select
+
+    na, nb = normalize_term(name_a), normalize_term(name_b)
+    if not na or not nb or na == nb:
+        raise ValueError("名称A/B 不能为空且不得相同")
+    rows = list((await session.execute(select(CpaNameSplit).order_by(CpaNameSplit.created_at))).scalars())
+    for r in rows:
+        if {normalize_term(r.name_a), normalize_term(r.name_b)} == {na, nb}:
+            return r
+    row = CpaNameSplit(name_a=name_a.strip(), name_b=name_b.strip(), reason=(reason or "").strip() or None, source=source)
+    session.add(row)
+    await session.commit()
+    return row

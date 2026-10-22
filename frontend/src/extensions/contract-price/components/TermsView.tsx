@@ -8,9 +8,8 @@
  */
 
 import {
-  CircleCheck,
+  ArrowLeftRight,
   Info,
-  Link2,
   Loader2,
   Pencil,
   Plus,
@@ -24,28 +23,38 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { StatCard } from "@/extensions/contract-price/components/StatCard";
+import { Pill } from "@/extensions/contract-price/components/ui/bits";
 import { cn } from "@/lib/utils";
 
-import { useTerms, useTermsMutations } from "../hooks";
-import type { CpaTerm } from "../types";
+import {
+  useNameSplits,
+  useNameSplitMutations,
+  useTerms,
+  useTermsMutations,
+} from "../hooks";
+import type { CpaNameSplit, CpaTerm } from "../types";
 
 import { PageHeader } from "./PageHeader";
 
 function SourceBadge({ source }: { source: CpaTerm["source"] }) {
-  return source === "manual" ? (
-    <span className="border-info/30 bg-info/10 text-info inline-flex items-center rounded border px-1.5 py-0.5 text-xs">
-      手动
-    </span>
-  ) : (
-    <span className="border-border bg-muted/40 text-muted-foreground inline-flex items-center rounded border px-1.5 py-0.5 text-xs">
-      自动合并
-    </span>
+  return (
+    <Pill tone={source === "manual" ? "info" : "gray"}>
+      {source === "manual" ? "手动" : "自动合并"}
+    </Pill>
   );
 }
 
 export function TermsView() {
   const termsQ = useTerms();
   const muts = useTermsMutations();
+  // 易混名称区分表(2026-10-22, 术语表对偶)
+  const splitsQ = useNameSplits();
+  const splitMuts = useNameSplitMutations();
+  const [splitDlg, setSplitDlg] = useState<{
+    a: string;
+    b: string;
+    reason: string;
+  } | null>(null);
 
   const all = useMemo(() => termsQ.data?.items ?? [], [termsQ.data]);
   const [q, setQ] = useState("");
@@ -131,29 +140,17 @@ export function TermsView() {
       <PageHeader
         title="货物分类术语"
         description="命中同一术语（规范名或任一别名）的分项在聚类时强制归入同簇 · 修改后下次「聚类分析」生效"
-        icon={<Tags className="h-6 w-6" />}
+        icon={<Tags />}
       />
 
-      {/* 统计小卡 ×3（ui-style-spec §6.2） */}
+      {/* 统计小卡 ×3（指标格样式，cpa UI 重构规范 §2-2） */}
       <div className="grid gap-3 sm:grid-cols-3">
-        <StatCard
-          label="术语总数"
-          value={all.length}
-          icon={Tags}
-          color="blue"
-        />
-        <StatCard
-          label="别名总数"
-          value={aliasTotal}
-          icon={Link2}
-          color="violet"
-        />
+        <StatCard label="术语总数" value={all.length} tone="accent" />
+        <StatCard label="别名总数" value={aliasTotal} />
         <StatCard
           label="启用中"
           value={enabledCount}
-          icon={CircleCheck}
           hint={disabledCount ? `${disabledCount} 条已停用` : "全部启用"}
-          color="amber"
         />
       </div>
 
@@ -416,6 +413,215 @@ export function TermsView() {
           </aside>
         </div>
       )}
+
+      {/* ── 易混名称区分表（术语表对偶: 近名异物→聚类显性分开,2026-10-22）── */}
+      <div className="space-y-2">
+        <div className="flex items-center gap-3">
+          <span className="text-foreground text-base font-semibold">
+            易混名称区分表
+          </span>
+          <span className="text-muted-foreground text-xs">
+            近名异物 → 聚类显性分开（区分优先于归并；下次「聚类分析」生效）
+          </span>
+          <span className="flex-1" />
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => setSplitDlg({ a: "", b: "", reason: "" })}
+          >
+            <Plus className="mr-1 h-3.5 w-3.5" /> 新建区分规则
+          </Button>
+        </div>
+        {splitsQ.isLoading ? (
+          <div className="text-muted-foreground flex items-center gap-2 py-4 text-sm">
+            <Loader2 className="h-4 w-4 animate-spin" /> 加载中…
+          </div>
+        ) : (splitsQ.data?.items ?? []).length === 0 ? (
+          <div className="text-muted-foreground rounded-lg border border-dashed p-4 text-sm">
+            暂无区分规则。同类货物因名称近似被错并一簇时（如「管内穿线
+            铜芯导线」与 「桥架内穿线
+            铜芯导线」），在此登记一对名称即可在下次聚类时强制分开；
+            手动把货物移出簇也会自动捕获规则。
+          </div>
+        ) : (
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="bg-muted/50 text-muted-foreground border-b text-left text-xs">
+                <th className="px-3 py-2">名称 A</th>
+                <th className="w-8 px-2 py-2" />
+                <th className="px-3 py-2">名称 B</th>
+                <th className="px-3 py-2">区分理由</th>
+                <th className="w-20 px-3 py-2">来源</th>
+                <th className="w-20 px-3 py-2">启用</th>
+                <th className="w-16 px-3 py-2" />
+              </tr>
+            </thead>
+            <tbody>
+              {(splitsQ.data?.items ?? []).map((s) => (
+                <SplitRow
+                  key={s.id}
+                  split={s}
+                  onToggle={(enabled) =>
+                    splitMuts.updateSplit.mutate(
+                      { id: s.id, patch: { enabled } },
+                      {
+                        onError: (e) =>
+                          flash(
+                            "err",
+                            `切换失败：${e instanceof Error ? e.message : String(e)}`,
+                          ),
+                      },
+                    )
+                  }
+                  onDelete={() =>
+                    splitMuts.deleteSplit.mutate(s.id, {
+                      onSuccess: () => flash("ok", "区分规则已删除"),
+                      onError: (e) =>
+                        flash(
+                          "err",
+                          `删除失败：${e instanceof Error ? e.message : String(e)}`,
+                        ),
+                    })
+                  }
+                />
+              ))}
+            </tbody>
+          </table>
+        )}
+      </div>
+
+      {/* 新建区分规则对话框 */}
+      {splitDlg && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/45 p-4"
+          role="dialog"
+          aria-modal="true"
+          aria-label="新建区分规则"
+          onClick={() => setSplitDlg(null)}
+        >
+          <div
+            className="bg-card w-full max-w-md space-y-3 rounded-lg border p-5 shadow-lg"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3 className="text-foreground text-base font-semibold">
+              新建区分规则
+            </h3>
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium">名称 A</label>
+              <Input
+                autoFocus
+                value={splitDlg.a}
+                placeholder="如：管内穿线 铜芯导线"
+                onChange={(e) =>
+                  setSplitDlg((d) => (d ? { ...d, a: e.target.value } : d))
+                }
+              />
+            </div>
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium">名称 B</label>
+              <Input
+                value={splitDlg.b}
+                placeholder="如：桥架内穿线 铜芯导线"
+                onChange={(e) =>
+                  setSplitDlg((d) => (d ? { ...d, b: e.target.value } : d))
+                }
+              />
+            </div>
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium">区分理由（可选）</label>
+              <Input
+                value={splitDlg.reason}
+                placeholder="如：敷设方式不同，单价不同"
+                onChange={(e) =>
+                  setSplitDlg((d) => (d ? { ...d, reason: e.target.value } : d))
+                }
+              />
+            </div>
+            <div className="flex justify-end gap-2 pt-1">
+              <Button variant="outline" onClick={() => setSplitDlg(null)}>
+                取消
+              </Button>
+              <Button
+                disabled={
+                  !splitDlg.a.trim() ||
+                  !splitDlg.b.trim() ||
+                  splitMuts.createSplit.isPending
+                }
+                onClick={() =>
+                  splitMuts.createSplit.mutate(
+                    {
+                      name_a: splitDlg.a.trim(),
+                      name_b: splitDlg.b.trim(),
+                      reason: splitDlg.reason.trim() || undefined,
+                    },
+                    {
+                      onSuccess: () => {
+                        setSplitDlg(null);
+                        flash("ok", "区分规则已保存，下次「聚类分析」生效");
+                      },
+                      onError: (e) =>
+                        flash(
+                          "err",
+                          `保存失败：${e instanceof Error ? e.message : String(e)}`,
+                        ),
+                    },
+                  )
+                }
+              >
+                {splitMuts.createSplit.isPending ? "保存中…" : "保存规则"}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
+  );
+}
+
+function SplitRow({
+  split,
+  onToggle,
+  onDelete,
+}: {
+  split: CpaNameSplit;
+  onToggle: (enabled: boolean) => void;
+  onDelete: () => void;
+}) {
+  return (
+    <tr className="hover:bg-muted/50 border-b last:border-b-0">
+      <td className="px-3 py-2">{split.name_a}</td>
+      <td className="text-muted-foreground px-2 py-2">
+        <ArrowLeftRight className="h-3.5 w-3.5" />
+      </td>
+      <td className="px-3 py-2">{split.name_b}</td>
+      <td className="text-muted-foreground px-3 py-2 text-xs">
+        {split.reason ?? "—"}
+      </td>
+      <td className="px-3 py-2">
+        <Pill tone={split.source === "manual" ? "info" : "gray"}>
+          {split.source === "manual" ? "手动" : "自动捕获"}
+        </Pill>
+      </td>
+      <td className="px-3 py-2">
+        <input
+          type="checkbox"
+          aria-label={`启用 ${split.name_a} 与 ${split.name_b} 的区分`}
+          className="accent-primary h-3.5 w-3.5 cursor-pointer"
+          checked={split.enabled}
+          onChange={(e) => onToggle(e.target.checked)}
+        />
+      </td>
+      <td className="px-3 py-2 text-right">
+        <Button
+          variant="ghost"
+          size="sm"
+          className="text-destructive hover:text-destructive h-7 w-7 p-0"
+          aria-label={`删除 ${split.name_a} 与 ${split.name_b} 的区分规则`}
+          onClick={onDelete}
+        >
+          <Trash2 className="h-4 w-4" />
+        </Button>
+      </td>
+    </tr>
   );
 }

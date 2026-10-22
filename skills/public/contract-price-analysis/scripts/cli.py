@@ -134,6 +134,28 @@ def _merge_pins(terms: list[dict], legacy: list[dict]) -> list[dict]:
     return out
 
 
+async def _load_name_splits() -> list[dict]:
+    """读启用区分规则为 split_rules（裸 SQL,镜像 _load_terms_pins 习语）。
+
+    表 cpa_name_splits 由后端建模创建（EAI-CUSTOM 2026-10-22 易混名称区分表）;
+    读取失败 → []（退化纯算法,不阻塞聚类）。"""
+    from sqlalchemy import text
+
+    from scripts.db import async_session
+
+    try:
+        async with async_session() as session:
+            rows = (
+                await session.execute(
+                    text("SELECT name_a, name_b FROM cpa_name_splits WHERE enabled = TRUE")
+                )
+            ).all()
+        return [{"name_a": r.name_a, "name_b": r.name_b} for r in rows if str(r.name_a or "").strip() and str(r.name_b or "").strip()]
+    except Exception:  # noqa: BLE001 — 区分规则读取失败退化为纯算法聚类
+        logger.warning("load name splits failed; clustering degrades to pure algorithm", exc_info=True)
+        return []
+
+
 async def _load_terms_pins() -> list[dict]:
     """读启用术语为 pins（裸 SQL——cpa_terms 仅后端建 ORM,skill 侧不镜像）。
 
@@ -2894,6 +2916,7 @@ async def run_cluster(trigger: str = "manual") -> int:
                 use_spec=cfg.cluster_by_spec,
                 use_category=cfg.cluster_by_category,
                 merge_pins=_merge_pins(await _load_terms_pins(), _load_merge_pins()),
+                split_rules=await _load_name_splits(),
             )
             groups = _build_groups_db(
                 result, db_items, use_spec=cfg.cluster_by_spec, use_category=cfg.cluster_by_category

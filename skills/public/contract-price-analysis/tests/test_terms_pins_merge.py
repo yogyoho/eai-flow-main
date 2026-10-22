@@ -140,3 +140,47 @@ class TestGroupNamingByGates:
 
     def test_category_only_gate(self):
         assert self._group(False, True, [("钢材", "", "安装工程")]) == "钢材 安装工程"
+
+
+class TestNameSplitRules:
+    """2026-10-22 易混名称区分表: 近名异物(管内穿线 vs 桥架内穿线——同分类
+    无规格 token,名称门拦不住)→ 距离注入斩直连 + 落簇后强制分离斩桥接链;
+    区分优先于归因(与 pin 同对命中时区分赢)。"""
+
+    SPLIT = [{"name_a": "管内穿线 铜芯导线", "name_b": "桥架内穿线 铜芯导线"}]
+
+    def _cluster(self, samples, **kw):
+        from scripts.clustering.engine import cluster_items
+
+        return cluster_items(
+            samples, eps=0.6, min_samples=1, use_spec=True, use_category=False,
+            split_rules=self.SPLIT, **kw,
+        )
+
+    def test_similar_names_separated_by_rule(self):
+        samples = [("管内穿线 铜芯导线", {}), ("管内穿线 铜芯导线", {}),
+                   ("桥架内穿线 铜芯导线", {}), ("桥架内穿线 铜芯导线", {})]
+        labels = self._cluster(samples).labels
+        assert labels[0] == labels[1] != labels[2] == labels[3]
+
+    def test_rule_without_match_is_noop(self):
+        samples = [("钢筋 HRB400 10mm", {}), ("钢筋 HRB400 12mm", {})]
+        labels = self._cluster(samples).labels
+        assert labels[0] != labels[1]  # 规则不命中 → 不干扰正常规格分离
+
+    def test_split_wins_over_pin(self):
+        # 同对既是术语(归并)又是区分规则 → 区分赢
+        samples = [("管内穿线 铜芯导线", {}), ("桥架内穿线 铜芯导线", {})]
+        pins = [{"name": "管内穿线 铜芯导线", "aliases": ["桥架内穿线 铜芯导线"]}]
+        labels = self._cluster(samples, merge_pins=pins).labels
+        assert labels[0] != labels[1]
+
+    def test_bridge_chain_separated_post_pass(self):
+        # DBSCAN 桥接: A~C~C'~B(桥名与两侧都邻居)绕过距离注入 → 落簇后强制分离
+        samples = [
+            ("管内穿线 铜芯导线", {}),
+            ("管内穿线 铜芯导线", {}),
+            ("桥架内穿线 铜芯导线", {}),
+        ]
+        labels = self._cluster(samples).labels
+        assert labels[0] == labels[1] != labels[2]

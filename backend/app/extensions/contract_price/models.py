@@ -176,3 +176,20 @@ class CpaTerms(Base):
     source: Mapped[str] = mapped_column(String(20), nullable=False, default="manual")  # manual | auto_merge
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=utc_now)
+
+
+# EAI-CUSTOM (2026-10-22 易混名称区分表): 术语表的对偶——归并管"同物异名",
+# 区分管"近名异物"(管内穿线 vs 桥架内穿线: 同类同分类无规格 token,名称门
+# 拦不住)。skill 聚类侧裸 SQL 读列后注入距离 1.0 + 落簇后强制分离,区分优先
+# 于归并。手动移出簇(items/move)自动捕获 source=auto_split。
+class CpaNameSplit(Base):
+    __tablename__ = "cpa_name_splits"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    name_a: Mapped[str] = mapped_column(String(300), nullable=False)
+    name_b: Mapped[str] = mapped_column(String(300), nullable=False)
+    reason: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    enabled: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    source: Mapped[str] = mapped_column(String(20), nullable=False, default="manual")  # manual | auto_split
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=utc_now)

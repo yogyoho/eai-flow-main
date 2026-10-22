@@ -204,6 +204,7 @@ def cluster_items(
     use_spec: bool = True,
     use_category: bool = True,
     merge_pins: list[dict] | None = None,
+    split_rules: list[dict] | None = None,
 ) -> ClusterResult:
     """Cluster ``samples`` of (goods_name, tech_params) by name-text AND spec match.
 
@@ -213,27 +214,61 @@ def cluster_items(
     AND 门限(False → 该维中性放行,退化为名称单维)——设置页"货物分组规则"
     checkbox 的管线入口;名称恒开(UI 锁定)。merge_pins 为人工合并先验
     ([{name, aliases}]),DBSCAN 后强制归并命中簇(见 _apply_merge_pins)。
-    """
+    split_rules 为易混名称区分规则([{name_a, name_b}],EAI-CUSTOM 2026-10-22):
+    命中对在距离矩阵注入 1.0(斩断 DBSCAN 直连),落簇后再强制分离(斩断桥接
+    链)——区分优先于归并(split 在 pin 之后执行,同对两表皆命中时区分赢)。"""
     if not samples:
         return ClusterResult(labels=[], representatives={})
+
+    # 双身份(全名+剥规格名)与规格集: pins/splits 共用,任一存在即计算
+    name_ids: list[set[str]] = []
+    spec_sets: list[frozenset] = []
+    if merge_pins or split_rules:
+        for name, _ in samples:
+            toks, stripped = spec_extract(name)
+            name_ids.append({re.sub(r"\s+", "", name), re.sub(r"\s+", "", stripped or name)})
+            spec_sets.append(frozenset(toks))
 
     vec = Vectorizer()  # fit 在 _pairwise_distance 内做(用剥规格后的纯名称)
     distance = _pairwise_distance(samples, vec, use_spec=use_spec, use_category=use_category)
     if distance.shape[0] == 0:
         return ClusterResult(labels=[], representatives={})
 
+    # 区分规则①距离注入: 命中对距离=1.0,斩断 DBSCAN 直连边
+    for rule in split_rules or []:
+        a_ids = {re.sub(r"\s+", "", str(rule.get("name_a") or ""))}
+        b_ids = {re.sub(r"\s+", "", str(rule.get("name_b") or ""))}
+        if not a_ids - {""} or not b_ids - {""}:
+            continue
+        a_idx = [i for i, ids in enumerate(name_ids) if ids & a_ids]
+        b_idx = [i for i, ids in enumerate(name_ids) if ids & b_ids]
+        for i in a_idx:
+            for j in b_idx:
+                if i != j:
+                    distance[i, j] = distance[j, i] = 1.0
+
     labels = _dbscan(distance, eps, min_samples).tolist()
     if merge_pins:
         # 双身份匹配: 全名(手动合并捕获的带规格 pin,如「热镀锌无缝钢管 DN32」)
         # + 剥规格名(术语表裸名,如「螺纹钢」);spec_sets 供分组并查(同名同规格
         # 才并,∅ 只并 ∅——2026-10-22 螺纹钢 26 规格错簇修复)。
-        name_ids: list[set[str]] = []
-        spec_sets: list[frozenset] = []
-        for name, _ in samples:
-            toks, stripped = spec_extract(name)
-            name_ids.append({re.sub(r"\s+", "", name), re.sub(r"\s+", "", stripped or name)})
-            spec_sets.append(frozenset(toks))
         labels = _apply_merge_pins(labels, name_ids, merge_pins, spec_sets)
+
+    # 区分规则②落簇后强制分离: 桥接链(管内穿线~共性桥名~桥架内穿线)绕过距离
+    # 注入时,同簇的 B 侧成员整体迁出到新 label——区分赢过一切归并路径。
+    for rule in split_rules or []:
+        a_ids = {re.sub(r"\s+", "", str(rule.get("name_a") or ""))}
+        b_ids = {re.sub(r"\s+", "", str(rule.get("name_b") or ""))}
+        if not a_ids - {""} or not b_ids - {""}:
+            continue
+        a_idx = [i for i, ids in enumerate(name_ids) if ids & a_ids]
+        b_idx = [i for i, ids in enumerate(name_ids) if ids & b_ids]
+        shared = {labels[i] for i in a_idx if labels[i] != -1} & {labels[j] for j in b_idx if labels[j] != -1}
+        for lb in shared:
+            next_label = max(l for l in labels if l >= 0) + 1 if any(l >= 0 for l in labels) else 0
+            for j in b_idx:
+                if labels[j] == lb:
+                    labels[j] = next_label
 
     reps: dict[int, str] = {}
     for label, (name, _) in zip(labels, samples):

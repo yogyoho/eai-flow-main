@@ -20,6 +20,7 @@ import type {
   CpaLibraryFolder,
   CpaLibraryUploadItem,
   CpaRun,
+  CpaNameSplit,
   CpaTerm,
   EvolutionCandidate,
   Page,
@@ -436,4 +437,26 @@ export const ragflowApi = {
       `${API_BASE}/documents/${docId}/ragflow-sync-items`,
       { method: "POST" },
     ),
+};
+
+// EAI-CUSTOM: 易混名称区分表（2026-10-22）
+export const nameSplitApi = {
+  list: () => authFetch<{ items: CpaNameSplit[] }>(`${API_BASE}/name-splits`),
+
+  create: (name_a: string, name_b: string, reason?: string) =>
+    authFetch<CpaNameSplit>(`${API_BASE}/name-splits`, {
+      method: "POST",
+      body: JSON.stringify({ name_a, name_b, reason }),
+    }),
+
+  update: (id: string, patch: { reason?: string; enabled?: boolean }) =>
+    authFetch<CpaNameSplit>(`${API_BASE}/name-splits/${id}`, {
+      method: "PATCH",
+      body: JSON.stringify(patch),
+    }),
+
+  remove: (id: string) =>
+    authFetch<{ ok: boolean }>(`${API_BASE}/name-splits/${id}`, {
+      method: "DELETE",
+    }),
 };

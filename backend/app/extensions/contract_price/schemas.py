@@ -318,3 +318,26 @@ class TermUpdate(BaseModel):
     canonical: str | None = None
     aliases: list[str] | None = None
     enabled: bool | None = None
+
+
+# --- 易混名称区分表 (EAI-CUSTOM 2026-10-22, 术语表对偶: 近名异物→分) --------
+
+
+class SplitOut(BaseModel):
+    id: UUID
+    name_a: str
+    name_b: str
+    reason: str | None = None
+    enabled: bool
+    source: str
+
+
+class SplitCreate(BaseModel):
+    name_a: str
+    name_b: str
+    reason: str | None = None
+
+
+class SplitUpdate(BaseModel):
+    reason: str | None = None
+    enabled: bool | None = None
