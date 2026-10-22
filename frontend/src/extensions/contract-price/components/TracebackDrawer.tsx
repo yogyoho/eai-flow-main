@@ -1,5 +1,6 @@
 "use client";
 
+import { useQuery } from "@tanstack/react-query";
 import {
   Crosshair,
   Loader2,
@@ -10,6 +11,7 @@ import {
 } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 
+import { authFetch } from "@/extensions/api/client";
 import { contractPriceApi } from "@/extensions/contract-price/api";
 
 interface Props {
@@ -19,6 +21,8 @@ interface Props {
   page: number | null;
   /** Normalized [x1, y1, x2, y2] in 0~1 vs the page; null = no highlight. */
   bbox: number[] | null;
+  /** CpaItem.id — 零框(paddleocr-vl 无坐标)时用于按需坐标恢复。 */
+  itemId: string | null;
   onClose: () => void;
 }
 
@@ -35,7 +39,7 @@ interface Props {
 const MIN_SCALE = 1;
 const MAX_SCALE = 6;
 
-export function TracebackDrawer({ docId, page, bbox, onClose }: Props) {
+export function TracebackDrawer({ docId, page, bbox, itemId, onClose }: Props) {
   const [blobUrl, setBlobUrl] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -156,9 +160,32 @@ export function TracebackDrawer({ docId, page, bbox, onClose }: Props) {
   };
   const reset = () => setView({ scale: 1, x: 0, y: 0 });
 
+  // 零框([0,0,0,0],paddleocr-vl 标记流无坐标的占位)视为无框 → 触发按需坐标恢复
+  // (hooks 须在 early return 之前)
+  const stored =
+    !!bbox &&
+    bbox.length === 4 &&
+    (bbox[2] - bbox[0] > 0.001 || bbox[3] - bbox[1] > 0.001)
+      ? bbox
+      : null;
+  const recoverQ = useQuery({
+    queryKey: ["cpa", "tracebox", docId, itemId],
+    queryFn: () =>
+      authFetch<{ bbox: number[] | null; page: number; source: string }>(
+        `/contract-price/documents/${docId}/items/${itemId}/tracebox`,
+      ),
+    enabled: stored === null && !!docId && !!itemId,
+    staleTime: Infinity,
+    retry: false,
+  });
+  const box = stored ?? recoverQ.data?.bbox ?? null;
+
   if (!docId || !page) return null;
 
-  const hasBox = !!bbox && bbox.length === 4;
+  const hasBox =
+    !!box &&
+    box.length === 4 &&
+    (box[2] - box[0] > 0.001 || box[3] - box[1] > 0.001);
   const zoomed = view.scale > MIN_SCALE;
   const atRest = view.scale === 1 && view.x === 0 && view.y === 0;
   const iconBtn =
@@ -173,11 +200,22 @@ export function TracebackDrawer({ docId, page, bbox, onClose }: Props) {
       <div className="bg-card border-border relative h-full w-full max-w-2xl overflow-auto border-l shadow-2xl">
         <div className="border-border sticky top-0 z-10 flex items-center justify-between border-b bg-[var(--db-bg-tertiary)] px-5 py-3">
           <div className="flex items-center gap-2">
-            <Crosshair className="text-rose-600 dark:text-rose-400 h-4 w-4" />
+            <Crosshair className="h-4 w-4 text-rose-600 dark:text-rose-400" />
             <h3 className="db-text-primary text-sm font-semibold">溯源比对</h3>
             <span className="font-cyber db-text-subtle text-[10px] tracking-wider">
               PAGE {page} TRACEBACK
             </span>
+            {stored === null && recoverQ.isLoading && (
+              <span className="text-muted-foreground inline-flex items-center gap-1 text-[10px]">
+                <Loader2 className="h-3 w-3 animate-spin" />
+                坐标定位中…
+              </span>
+            )}
+            {stored === null && recoverQ.isSuccess && !box && (
+              <span className="text-[10px] text-amber-600 dark:text-amber-400">
+                本页未定位到该货物
+              </span>
+            )}
           </div>
           <button
             onClick={onClose}
@@ -223,14 +261,14 @@ export function TracebackDrawer({ docId, page, bbox, onClose }: Props) {
                   className="block h-auto max-w-full"
                   draggable={false}
                 />
-                {hasBox && (
+                {hasBox && box && (
                   <div
                     className="pointer-events-none absolute rounded-[2px] border-2 border-rose-500 bg-rose-500/10 shadow-[0_0_0_2px_rgba(244,63,94,0.3)]"
                     style={{
-                      left: `${(bbox?.[0] ?? 0) * 100}%`,
-                      top: `${(bbox?.[1] ?? 0) * 100}%`,
-                      width: `${((bbox?.[2] ?? 0) - (bbox?.[0] ?? 0)) * 100}%`,
-                      height: `${((bbox?.[3] ?? 0) - (bbox?.[1] ?? 0)) * 100}%`,
+                      left: `${(box[0] ?? 0) * 100}%`,
+                      top: `${(box[1] ?? 0) * 100}%`,
+                      width: `${((box[2] ?? 0) - (box[0] ?? 0)) * 100}%`,
+                      height: `${((box[3] ?? 0) - (box[1] ?? 0)) * 100}%`,
                     }}
                   />
                 )}

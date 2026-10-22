@@ -23,7 +23,9 @@ import hashlib
 import json
 import logging
 import os
+import re
 import urllib.parse
+from datetime import datetime
 from uuid import UUID
 
 import httpx
@@ -70,6 +72,13 @@ from app.extensions.schemas import CurrentUser
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/extensions/contract-price", tags=["Contract Price Analysis"])
+
+
+def _run_label(name: str) -> str:
+    """EAI-CUSTOM: 运行记录显示名（任务中心「任务名称」列）= {名称}_{Unix时间戳秒}。
+    此前 label 从未写入、任务中心恒显示 "—"（用户反馈 2026-10-16），创建时即落名；
+    时间格式用户定案用时间戳（原为 YYYY-MM-DD HH:MM 可读时间）。"""
+    return f"{name}_{int(datetime.now().timestamp())}"
 
 
 # --- 合同文件库 (EAI-CUSTOM cpa v3, spec 2026-10-14 §1.3) --------------------
@@ -791,10 +800,102 @@ async def reparse_document(
         db,
         trigger_type="manual",
         status="running",
+        label=_run_label("重新解析任务"),
         scope={"mode": "table", "phase": "parse", "started_by": current_user.username, "reparse": key, "re_ocr": re_ocr, "ocr_provider": ocr_provider},
     )
     background.add_task(service.run_pipeline_subprocess, db, run.id, "table", "manual", "parse", key, re_ocr, ocr_provider)
     return PipelineRunResponse(run_id=run.id, status="running", message=f"reparse started: {key}")
+
+
+# --- Tracebox: 按需坐标恢复(M3 溯源降级补全) -------------------------------
+# EAI-CUSTOM(cpa v3 M3): paddleocr-vl 标记流无坐标,items.source_bbox 落零框
+# → 溯源抽屉无红框。本端点把该页渲染为单页 PDF 调内建 eai-flow-ocr(秒级)取
+# 单元格坐标,按货物名文本匹配定位(行含单价优先),页级结果缓存 MinIO trace/。
+
+
+@router.get("/documents/{doc_id}/items/{item_id}/tracebox")
+async def get_item_tracebox(
+    doc_id: UUID,
+    item_id: UUID,
+    db: AsyncSession = Depends(get_db),
+    _: CurrentUser = Depends(require_permission("system:access")),  # EAI-CUSTOM: Add permission check
+):
+    doc = await db.get(CpaDocument, doc_id)
+    item = await db.get(CpaItem, item_id)
+    if doc is None or item is None or item.document_id != doc_id:
+        raise HTTPException(status_code=404, detail="document or item not found")
+    stored = list(item.source_bbox or [])
+    if len(stored) == 4 and (stored[2] - stored[0] > 1e-3 or stored[3] - stored[1] > 1e-3):
+        return {"bbox": stored, "page": item.source_page, "source": "stored"}
+    page = item.source_page or 1
+
+    # 1) 页级 OCR 行缓存(MinIO cpa-contracts: trace/{hash}/page-{n}.json)
+    cache_key = f"trace/{doc.file_hash}/page-{page}.json"
+    rows: list | None = None
+    try:
+        rows = json.loads(storage.get_object(cache_key)).get("rows")
+    except Exception:  # noqa: BLE001 — 缓存 miss/坏 JSON 都走重取
+        rows = None
+    if rows is None:
+        pdf_key = doc.storage_uri.split("/", 3)[-1] if doc.storage_uri.count("/") >= 3 else doc.file_name
+        pdf_bytes = await asyncio.to_thread(storage.get_object, pdf_key)
+
+        def _render_single_page() -> bytes:
+            import fitz  # gateway venv 已装 pymupdf
+
+            src = fitz.open(stream=pdf_bytes, filetype="pdf")
+            out = fitz.open()
+            out.insert_pdf(src, from_page=page - 1, to_page=page - 1)
+            # tobytes() 而非 write(BytesIO): 容器版 pymupdf 的 write() 对
+            # BytesIO 走 garbage 选项路径抛 TypeError(实测)。
+            return out.tobytes()
+
+        one_pdf = await asyncio.to_thread(_render_single_page)
+        ocr_url = os.environ.get("OCR_SERVICE_URL", "http://eai-flow-ocr:8010").rstrip("/") + "/ocr"
+        async with httpx.AsyncClient(timeout=300.0) as client:
+            resp = await client.post(ocr_url, files={"file": (f"p{page}.pdf", one_pdf, "application/pdf")})
+            resp.raise_for_status()
+            data = resp.json()
+        rows = []
+        for t in ((data.get("pages") or [{}])[0].get("tables") or []):
+            for row in t.get("rows") or []:
+                cells = [
+                    [(c.get("text") or "").strip(), c.get("bbox")]
+                    for c in row
+                    if isinstance(c, dict) and (c.get("text") or "").strip() and c.get("bbox")
+                ]
+                if cells:
+                    rows.append(cells)
+        try:
+            storage.upload_bytes(cache_key, json.dumps({"rows": rows}, ensure_ascii=False).encode())
+        except Exception:  # noqa: BLE001 — 缓存写失败不阻塞返回
+            pass
+
+    # 2) 文本匹配: 货物名归一化包含;(同格多命中时)行含单价优先,再取最短格
+    def _n(s: str) -> str:
+        return re.sub(r"\s+", "", s or "")
+
+    name_n = _n(item.goods_name)
+    if not name_n:
+        return {"bbox": None, "page": page, "source": "miss"}
+    prices = set()
+    if item.unit_price is not None:
+        prices = {f"{item.unit_price:.2f}", f"{item.unit_price:.0f}", f"{item.unit_price:,}", f"{item.unit_price:,.2f}"}
+    best: tuple[tuple[int, int], list] | None = None
+    for row in rows:
+        row_n = _n("".join(t for t, _ in row))
+        if name_n not in row_n:
+            continue
+        has_price = any(p in row_n for p in prices)
+        for t, bb in row:
+            tn = _n(t)
+            if name_n in tn:
+                score = (0 if has_price else 1, len(tn))
+                if best is None or score < best[0]:
+                    best = (score, bb)
+    if best is None:
+        return {"bbox": None, "page": page, "source": "miss"}
+    return {"bbox": best[1], "page": page, "source": "recovered"}
 
 
 # --- Functional area 2: clusters -------------------------------------------
@@ -1164,6 +1265,7 @@ async def trigger_pipeline(
         db,
         trigger_type=body.trigger,
         status="running",
+        label=_run_label("合同解析任务"),
         scope={"mode": body.mode, "phase": "parse", "started_by": current_user.username},
     )
     # 立即把全部「已上传」文档置为「解析中」,前端点下按钮即可见状态切换;
@@ -1188,6 +1290,7 @@ async def trigger_cluster(
         db,
         trigger_type=body.trigger,
         status="running",
+        label=_run_label("聚类分组任务"),
         scope={"phase": "cluster", "started_by": current_user.username},
     )
     background.add_task(service.run_pipeline_subprocess, db, run.id, body.mode, body.trigger, "cluster")
