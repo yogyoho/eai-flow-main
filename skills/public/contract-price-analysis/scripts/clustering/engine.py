@@ -128,11 +128,21 @@ def _dbscan(distance: np.ndarray, eps: float, min_samples: int) -> np.ndarray:
 
 
 def _apply_merge_pins(
-    labels: list[int], name_norms: list[str], pins: list[dict]
+    labels: list[int],
+    name_ids: list[set[str]] | list[str],
+    pins: list[dict],
+    spec_sets: list[frozenset] | None = None,
 ) -> list[int]:
     """合并先验重放: 名称命中任一 pin(name/aliases, 归一化去空白)的样本所属簇
     强制并为一簇(并查集); 落单变体也吸收进组。pin 在统计/离群推导之前生效,
-    合并簇的全链路派生值自洽。误合并通过删除 config.json 的 pin 条目撤销。"""
+    合并簇的全链路派生值自洽。误合并通过删除术语/pin 条目撤销。
+
+    name_ids: 每样本的归一化名身份——str(旧语义,单名)或 set(全名+剥规格名双身份:
+    术语表裸名走剥规格身份,手动合并捕获的带规格 pin 走全名身份)。
+    spec_sets: 每样本规格 token frozenset; 提供时 pin 命中后按规格分组再并——
+    同名**同规格**才并(∅ 只并 ∅)。EAI-CUSTOM(2026-10-22): 螺纹钢 26 规格错簇
+    根因 = 剥规格匹配把不同规格的同名行全部强制并簇,击穿规格 AND 门;术语的
+    职责是并「名称变体」而非「规格家族」,规格区分永远交给规格门。"""
     parent = list(range(len(labels)))
 
     def find(x: int) -> int:
@@ -161,9 +171,22 @@ def _apply_merge_pins(
         } - {""}
         if not wanted:
             continue
-        idxs = [i for i, nm in enumerate(name_norms) if nm in wanted]
-        for i in idxs[1:]:
-            union(idxs[0], i)
+        idxs = [
+            i
+            for i, ids in enumerate(name_ids)
+            if (ids in wanted if isinstance(ids, str) else bool(ids & wanted))
+        ]
+        if spec_sets is None:
+            for i in idxs[1:]:
+                union(idxs[0], i)
+        else:
+            # 同名同规格才并(∅ 只并 ∅)——按 token 分组后组内并查
+            by_spec: dict[frozenset, list[int]] = {}
+            for i in idxs:
+                by_spec.setdefault(spec_sets[i], []).append(i)
+            for members in by_spec.values():
+                for i in members[1:]:
+                    union(members[0], i)
 
     # 根 → 代表 label(组内最小正 label; 全负则保持 -1)
     root_label: dict[int, int] = {}
@@ -201,12 +224,16 @@ def cluster_items(
 
     labels = _dbscan(distance, eps, min_samples).tolist()
     if merge_pins:
-        # pin 名与剥规格后的纯名称归一化匹配(容 OCR 拆字;剥空回退原文)
-        name_norms = [
-            re.sub(r"\s+", "", stripped or name) for name, stripped in
-            ((name, spec_extract(name)[1]) for name, _ in samples)
-        ]
-        labels = _apply_merge_pins(labels, name_norms, merge_pins)
+        # 双身份匹配: 全名(手动合并捕获的带规格 pin,如「热镀锌无缝钢管 DN32」)
+        # + 剥规格名(术语表裸名,如「螺纹钢」);spec_sets 供分组并查(同名同规格
+        # 才并,∅ 只并 ∅——2026-10-22 螺纹钢 26 规格错簇修复)。
+        name_ids: list[set[str]] = []
+        spec_sets: list[frozenset] = []
+        for name, _ in samples:
+            toks, stripped = spec_extract(name)
+            name_ids.append({re.sub(r"\s+", "", name), re.sub(r"\s+", "", stripped or name)})
+            spec_sets.append(frozenset(toks))
+        labels = _apply_merge_pins(labels, name_ids, merge_pins, spec_sets)
 
     reps: dict[int, str] = {}
     for label, (name, _) in zip(labels, samples):

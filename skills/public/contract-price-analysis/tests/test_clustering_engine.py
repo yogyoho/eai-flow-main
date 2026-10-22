@@ -139,7 +139,9 @@ def test_dimension_toggles_neutralize_gates():
 
 
 def test_merge_pins_force_union_and_absorb_noise():
-    """合并先验: pin 命中的簇强制归并,落单变体也吸收;无 pin 时维持算法结果。"""
+    """合并先验(规格感知,EAI-CUSTOM 2026-10-22): pin 并「名称变体」不并「规格
+    家族」——同名同规格才并,规格门结果不被 pin 击穿(螺纹钢 26 规格错簇修复);
+    拆字变体命中同一 pin 同规格仍归并。"""
     samples = [
         ("螺纹钢 Φ12", {}),
         ("螺纹钢 Φ12", {}),
@@ -151,7 +153,9 @@ def test_merge_pins_force_union_and_absorb_noise():
     assert without.labels[0] == without.labels[1]  # 同款对成簇
     assert without.labels[2] != without.labels[0]  # Φ25 被 spec 门限分走
     with_pins = cluster_items(samples, use_spec=True, merge_pins=pins)
-    assert with_pins.labels[0] == with_pins.labels[2]  # pin 强制归并
+    # 规格感知: pin 不再跨规格归并——Φ25 不被拉回 Φ12 簇(规格门结果保留)
+    assert with_pins.labels[0] == with_pins.labels[1]  # 同款对仍同簇
+    assert with_pins.labels[2] != with_pins.labels[0]  # 异规格不被 pin 并回
     assert with_pins.labels[3] != with_pins.labels[0]  # pin 外货物不受影响
     # 名称归一化: OCR 拆字变体命中同一 pin
     variant = cluster_items(
