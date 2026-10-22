@@ -135,7 +135,7 @@ export function TermsView() {
     : muts.createTerm.isPending;
 
   return (
-    <div className="flex h-full flex-col gap-3 px-4 pt-3 pb-4">
+    <div className="flex h-full flex-col gap-3 overflow-y-auto px-4 pt-3 pb-4">
       {/* 页头 */}
       <PageHeader
         title="货物分类术语"
