@@ -31,6 +31,7 @@ from uuid import UUID
 import httpx
 from fastapi import APIRouter, BackgroundTasks, Depends, File, Form, HTTPException, Query, UploadFile, status
 from fastapi.responses import FileResponse, Response
+from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.extensions.auth.middleware import require_permission
@@ -1083,6 +1084,51 @@ async def move_item(
     if item is None:
         raise HTTPException(status_code=404, detail="item not found")
     return {"item_id": str(item.id), "cluster_id": str(item.cluster_id)}
+
+
+class ItemMoveToNew(BaseModel):
+    """移入新建分组(EAI-CUSTOM 2026-10-22): 现有分组不够时的拆出路径。"""
+    name: str
+    category: str = ""
+
+
+@router.post("/items/{item_id}/move-to-new")
+async def move_item_to_new(
+    item_id: UUID,
+    body: ItemMoveToNew,
+    db: AsyncSession = Depends(get_db),
+    _: CurrentUser = Depends(require_permission("system:access")),  # EAI-CUSTOM: Add permission check
+):
+    """新建空分组并把该明细移入(建组+移动一体);同样走 auto_split 捕获。"""
+    name = (body.name or "").strip()
+    if not name:
+        raise HTTPException(status_code=422, detail="新分组名称不能为空")
+    item = await db.get(CpaItem, item_id)
+    if item is None:
+        raise HTTPException(status_code=404, detail="item not found")
+    if item.cluster_id is not None:
+        src = await db.get(CpaCluster, item.cluster_id)
+        if src is not None and crud.normalize_term(src.representative_name) != crud.normalize_term(item.goods_name):
+            try:
+                await crud.upsert_name_split(
+                    db, item.goods_name, src.representative_name,
+                    reason=f"手动移出「{src.representative_name}」簇时自动捕获", source="auto_split",
+                )
+            except Exception:  # noqa: BLE001 — 捕获失败不阻塞移动主流程
+                pass
+    cluster = CpaCluster(
+        category=(body.category or "").strip(),
+        representative_name=name,
+        stats={},
+        item_count=0,
+    )
+    db.add(cluster)
+    await db.commit()
+    await db.refresh(cluster)
+    item = await crud.move_item(db, item_id, cluster.id)
+    if item is None:
+        raise HTTPException(status_code=404, detail="item not found")
+    return {"item_id": str(item.id), "cluster_id": str(cluster.id)}
 
 
 # --- Functional area 3: items ----------------------------------------------

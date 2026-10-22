@@ -542,3 +542,15 @@ export function useNameSplitMutations() {
   });
   return { createSplit, updateSplit, deleteSplit };
 }
+
+// EAI-CUSTOM: 移入新建分组（2026-10-22）
+export function useMoveItemToNew() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (p: { item_id: string; name: string; category: string }) =>
+      moveItemToNew.call(p.item_id, p.name, p.category),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ["cpa"] });
+    },
+  });
+}

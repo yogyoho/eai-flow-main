@@ -460,3 +460,15 @@ export const nameSplitApi = {
       method: "DELETE",
     }),
 };
+
+// EAI-CUSTOM: 移入新建分组（2026-10-22,现有分组不够时的拆出路径）
+export const moveItemToNew = {
+  call: (item_id: string, name: string, category: string) =>
+    authFetch<{ item_id: string; cluster_id: string }>(
+      `${API_BASE}/items/${item_id}/move-to-new`,
+      {
+        method: "POST",
+        body: JSON.stringify({ name, category }),
+      },
+    ),
+};

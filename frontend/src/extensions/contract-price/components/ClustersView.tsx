@@ -1,5 +1,6 @@
 "use client";
 
+import { useQuery } from "@tanstack/react-query";
 import {
   AlertTriangle,
   Boxes,
@@ -17,19 +18,17 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { contractPriceApi } from "@/extensions/contract-price/api";
 import {
   EmptyRow,
   PageHeader,
 } from "@/extensions/contract-price/components/PageHeader";
 import { TracebackDrawer } from "@/extensions/contract-price/components/TracebackDrawer";
+import {
+  Pill,
+  type PillTone,
+} from "@/extensions/contract-price/components/ui/bits";
 import {
   Table,
   TableBody,
@@ -45,6 +44,7 @@ import {
   useConfirmCluster,
   useMergeClusters,
   useMoveItem,
+  useMoveItemToNew,
   useRejectCluster,
   useUpdateCluster,
 } from "@/extensions/contract-price/hooks";
@@ -57,10 +57,11 @@ import {
 import type { CpaCluster, CpaItem } from "@/extensions/contract-price/types";
 import { cn } from "@/lib/utils";
 
-const statusBadge: Record<string, string> = {
-  pending: "bg-warning/15 text-warning",
-  confirmed: "bg-success/15 text-success",
-  rejected: "bg-muted text-muted-foreground",
+// EAI-CUSTOM: 状态徽章统一走 Pill（cpa UI 重构规范 §2-4），tone→语义色映射
+const statusTone: Record<string, PillTone> = {
+  pending: "warn",
+  confirmed: "success",
+  rejected: "gray",
 };
 
 const statusLabel: Record<string, string> = {
@@ -195,6 +196,11 @@ export function ClustersView() {
     name: string;
   } | null>(null);
   const [moveTarget, setMoveTarget] = useState<string | null>(null);
+  // 移动对话框增强(2026-10-22): 全量分组搜索 + 新建分组模式
+  const [moveSearch, setMoveSearch] = useState("");
+  const [moveMode, setMoveMode] = useState<"existing" | "new">("existing");
+  const [newGroupName, setNewGroupName] = useState("");
+  const [newGroupCategory, setNewGroupCategory] = useState("");
   const [trace, setTrace] = useState<CpaItem | null>(null);
 
   const skip = (page - 1) * PAGE_SIZE;
@@ -210,6 +216,7 @@ export function ClustersView() {
   const updateMutation = useUpdateCluster();
   const mergeMutation = useMergeClusters();
   const moveMutation = useMoveItem();
+  const moveToNewMutation = useMoveItemToNew();
   const batchConfirmMutation = useBatchConfirmClusters();
 
   const clusters = clustersQuery.data?.items ?? [];
@@ -221,7 +228,10 @@ export function ClustersView() {
   const detailItems: CpaItem[] = detail?.items ?? [];
   const statRows = useMemo(() => detailItems.map(itemToStatRow), [detailItems]);
   const baselineDocs = useMemo(() => baselineShiftDocIds(statRows), [statRows]);
-  const baselineTooltips = useMemo(() => buildBaselineTooltips(statRows), [statRows]);
+  const baselineTooltips = useMemo(
+    () => buildBaselineTooltips(statRows),
+    [statRows],
+  );
 
   // clamp page when the tail empties after a batch confirm / reject / merge
   useEffect(() => {
@@ -304,39 +314,88 @@ export function ClustersView() {
   };
 
   const doMove = async () => {
-    if (!moveItem || !moveTarget) return;
-    await moveMutation.mutateAsync({
-      item_id: moveItem.itemId,
-      target_cluster_id: moveTarget,
-    });
+    if (!moveItem) return;
+    if (moveMode === "new") {
+      if (!newGroupName.trim()) return;
+      await moveToNewMutation.mutateAsync({
+        item_id: moveItem.itemId,
+        name: newGroupName.trim(),
+        category: newGroupCategory.trim(),
+      });
+    } else {
+      if (!moveTarget) return;
+      await moveMutation.mutateAsync({
+        item_id: moveItem.itemId,
+        target_cluster_id: moveTarget,
+      });
+    }
     setMoveItem(null);
     setMoveTarget(null);
+    setMoveSearch("");
+    setMoveMode("existing");
+    setNewGroupName("");
+    setNewGroupCategory("");
   };
 
   return (
-    <div className="space-y-6 p-8">
-      {/* 标题行：刷新钉在最右，不随长描述换行 */}
-      <div className="flex items-start justify-between gap-4">
-        <div className="min-w-0 flex-1">
-          <PageHeader
-            title="分组审核"
-            description="审核自动分组：合并同义组、移动误归类项、拒绝错误组、编辑类别。确认后统计才生效。分组为上次「聚类分析」的结果——删除或修改货物后需重新聚类刷新，此处不提供单独删除。"
-            icon={<Boxes className="h-6 w-6" />}
-          />
-        </div>
-        <Button
-          variant="outline"
-          size="sm"
-          className="shrink-0"
-          onClick={() => clustersQuery.refetch()}
-        >
-          <RefreshCw className="h-4 w-4" />
-          刷新
-        </Button>
-      </div>
+    <div className="space-y-4 p-6">
+      {/* 页头卡：刷新动作收进 PageHeader 右槽，不随长描述换行 */}
+      <PageHeader
+        title="分组审核"
+        description="审核自动分组：合并同义组、移动误归类项、拒绝错误组、编辑类别。确认后统计才生效。分组为上次「聚类分析」的结果——删除或修改货物后需重新聚类刷新，此处不提供单独删除。"
+        icon={<Boxes />}
+        actions={
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => clustersQuery.refetch()}
+          >
+            <RefreshCw className="h-4 w-4" />
+            刷新
+          </Button>
+        }
+      />
 
       {/* 控件行：搜索 + 筛选 + 批量操作 */}
       <div className="flex flex-wrap items-center gap-2">
+        {/* 与对话页-项目页 tabs（ui/tabs）同一组件，样式自动对齐 */}
+        <Tabs
+          value={filter}
+          onValueChange={(v) => {
+            setFilter(v as typeof filter);
+            setPage(1);
+            setChecked(new Set());
+            setBatchMsg(null);
+          }}
+        >
+          {/* EAI-CUSTOM: 覆写对齐 docmgr 白底凸起 segmented（bg-secondary 凹槽 + rounded-sm xs 触发器） */}
+          <TabsList className="bg-secondary h-auto rounded-md p-0.5">
+            <TabsTrigger
+              className="h-auto flex-none rounded-sm px-2.5 py-1 text-xs"
+              value="pending"
+            >
+              待审核
+            </TabsTrigger>
+            <TabsTrigger
+              className="h-auto flex-none rounded-sm px-2.5 py-1 text-xs"
+              value="confirmed"
+            >
+              已确认
+            </TabsTrigger>
+            <TabsTrigger
+              className="h-auto flex-none rounded-sm px-2.5 py-1 text-xs"
+              value="rejected"
+            >
+              已拒绝
+            </TabsTrigger>
+            <TabsTrigger
+              className="h-auto flex-none rounded-sm px-2.5 py-1 text-xs"
+              value="all"
+            >
+              全部
+            </TabsTrigger>
+          </TabsList>
+        </Tabs>
         {/* 搜索: 与分项校验"搜索货物名称"同款样式;跨页找同类候选组,勾选后走「合并选中」 */}
         <form
           className="flex items-center gap-2"
@@ -360,23 +419,6 @@ export function ClustersView() {
             搜索
           </Button>
         </form>
-        {/* 与对话页-项目页 tabs（ui/tabs）同一组件，样式自动对齐 */}
-        <Tabs
-          value={filter}
-          onValueChange={(v) => {
-            setFilter(v as typeof filter);
-            setPage(1);
-            setChecked(new Set());
-            setBatchMsg(null);
-          }}
-        >
-          <TabsList>
-            <TabsTrigger value="pending">待审核</TabsTrigger>
-            <TabsTrigger value="confirmed">已确认</TabsTrigger>
-            <TabsTrigger value="rejected">已拒绝</TabsTrigger>
-            <TabsTrigger value="all">全部</TabsTrigger>
-          </TabsList>
-        </Tabs>
         {checkedPendingCount > 0 ? (
           <Button
             size="sm"
@@ -476,14 +518,12 @@ export function ClustersView() {
                           <span>{c.item_count} 项</span>
                         </p>
                       </div>
-                      <span
-                        className={cn(
-                          "shrink-0 rounded px-1.5 py-0.5 text-xs",
-                          statusBadge[c.status],
-                        )}
+                      <Pill
+                        tone={statusTone[c.status] ?? "gray"}
+                        className="shrink-0"
                       >
                         {statusLabel[c.status] ?? c.status}
-                      </span>
+                      </Pill>
                     </button>
                   </li>
                 ))}
@@ -602,18 +642,16 @@ export function ClustersView() {
                       </Button>
                     </div>
                   ) : (
-                    <span
-                      className={cn(
-                        "shrink-0 rounded px-2 py-0.5 text-xs",
-                        statusBadge[detail.status],
-                      )}
+                    <Pill
+                      tone={statusTone[detail.status] ?? "gray"}
+                      className="shrink-0"
                     >
                       {statusLabel[detail.status] ?? detail.status}
-                    </span>
+                    </Pill>
                   )}
                 </div>
 
-                {/* Stats */}
+                {/* Stats —— 指标格样式（§2-2 缩小版：label 上 / 16px semibold 数值下） */}
                 <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
                   {(
                     [
@@ -625,10 +663,10 @@ export function ClustersView() {
                   ).map(([label, val]) => (
                     <div
                       key={label}
-                      className="border-border rounded-lg border p-3"
+                      className="border-border bg-card rounded-md border px-3 py-2"
                     >
                       <p className="text-muted-foreground text-xs">{label}</p>
-                      <p className="text-foreground text-sm font-semibold tabular-nums">
+                      <p className="text-foreground text-base font-semibold tabular-nums">
                         {val != null ? val.toLocaleString() : "—"}
                       </p>
                     </div>
@@ -660,86 +698,86 @@ export function ClustersView() {
                             ? baselineTooltips.get(item.id)
                             : undefined;
                         return (
-                        <TableRow
-                          key={item.id}
-                          className={
-                            tier === "outlier"
-                              ? "bg-destructive/10"
-                              : tier === "baseline-shift"
-                                ? "bg-amber-500/5"
-                                : ""
-                          }
-                        >
-                          <TableCell className="font-medium">
-                            {item.is_outlier ? (
-                              <span
-                                className={cn(
-                                  "inline-flex items-center gap-1",
-                                  tier === "baseline-shift" && "cursor-help",
-                                )}
-                                title={tierTip}
-                              >
-                                <AlertTriangle
+                          <TableRow
+                            key={item.id}
+                            className={
+                              tier === "outlier"
+                                ? "bg-destructive/10"
+                                : tier === "baseline-shift"
+                                  ? "bg-amber-500/5"
+                                  : ""
+                            }
+                          >
+                            <TableCell className="font-medium">
+                              {item.is_outlier ? (
+                                <span
                                   className={cn(
-                                    "h-3.5 w-3.5",
-                                    tier === "baseline-shift"
-                                      ? "text-amber-600 dark:text-amber-400"
-                                      : "text-destructive",
+                                    "inline-flex items-center gap-1",
+                                    tier === "baseline-shift" && "cursor-help",
                                   )}
-                                />
-                                {item.goods_name}
-                              </span>
-                            ) : (
-                              item.goods_name
-                            )}
-                          </TableCell>
-                          <TableCell className="text-muted-foreground">
-                            {item.spec_model ?? "—"}
-                          </TableCell>
-                          <TableCell className="text-muted-foreground text-right tabular-nums">
-                            {item.quantity != null
-                              ? `${item.quantity}${item.unit ?? ""}`
-                              : "—"}
-                          </TableCell>
-                          <TableCell className="text-right tabular-nums">
-                            {item.unit_price?.toLocaleString() ?? "—"}
-                          </TableCell>
-                          <TableCell className="text-muted-foreground px-4 py-3 font-mono text-xs">
-                            {item.source_contract_no ?? "—"}
-                          </TableCell>
-                          <TableCell className="text-right">
-                            <div className="flex items-center justify-end gap-1">
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                disabled={item.source_page == null}
-                                title={
-                                  item.source_page == null
-                                    ? "无溯源坐标"
-                                    : "溯源到原文"
-                                }
-                                onClick={() => setTrace(item)}
-                              >
-                                <Crosshair className="text-rose-600 dark:text-rose-400 h-3.5 w-3.5" />
-                                溯源
-                              </Button>
-                              <Button
-                                size="sm"
-                                variant="ghost"
-                                title="移动到其他分组"
-                                onClick={() => {
-                                  setMoveItem({
-                                    itemId: item.id,
-                                    name: item.goods_name,
-                                  });
-                                  setMoveTarget(null);
-                                }}
-                              >
-                                移动到…
-                              </Button>
-                            </div>
-                          </TableCell>
-                        </TableRow>
+                                  title={tierTip}
+                                >
+                                  <AlertTriangle
+                                    className={cn(
+                                      "h-3.5 w-3.5",
+                                      tier === "baseline-shift"
+                                        ? "text-amber-600 dark:text-amber-400"
+                                        : "text-destructive",
+                                    )}
+                                  />
+                                  {item.goods_name}
+                                </span>
+                              ) : (
+                                item.goods_name
+                              )}
+                            </TableCell>
+                            <TableCell className="text-muted-foreground">
+                              {item.spec_model ?? "—"}
+                            </TableCell>
+                            <TableCell className="text-muted-foreground text-right tabular-nums">
+                              {item.quantity != null
+                                ? `${item.quantity}${item.unit ?? ""}`
+                                : "—"}
+                            </TableCell>
+                            <TableCell className="text-right tabular-nums">
+                              {item.unit_price?.toLocaleString() ?? "—"}
+                            </TableCell>
+                            <TableCell className="text-muted-foreground font-mono text-xs">
+                              {item.source_contract_no ?? "—"}
+                            </TableCell>
+                            <TableCell className="text-right">
+                              <div className="flex items-center justify-end gap-1">
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  disabled={item.source_page == null}
+                                  title={
+                                    item.source_page == null
+                                      ? "无溯源坐标"
+                                      : "溯源到原文"
+                                  }
+                                  onClick={() => setTrace(item)}
+                                >
+                                  <Crosshair className="h-3.5 w-3.5 text-rose-600 dark:text-rose-400" />
+                                  溯源
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  title="移动到其他分组"
+                                  onClick={() => {
+                                    setMoveItem({
+                                      itemId: item.id,
+                                      name: item.goods_name,
+                                    });
+                                    setMoveTarget(null);
+                                  }}
+                                >
+                                  移动到…
+                                </Button>
+                              </div>
+                            </TableCell>
+                          </TableRow>
                         );
                       })
                     )}
@@ -819,64 +857,206 @@ export function ClustersView() {
         </div>
       ) : null}
 
-      {/* Move-to-target dialog */}
+      {/* Move-to-target dialog（2026-10-22 增强: 全量分组搜索 + 新建分组） */}
       {moveItem ? (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-          <div
-            className="absolute inset-0 bg-black/40"
-            onClick={() => setMoveItem(null)}
-          />
-          <div className="border-border bg-background relative w-full max-w-md rounded-xl border p-6 shadow-xl">
-            <h3 className="text-foreground mb-1 text-lg font-semibold">
-              移动明细到其他分组
-            </h3>
-            <p className="text-muted-foreground mb-4 truncate text-xs">
-              货物：{moveItem.name}
-            </p>
-            <label className="text-foreground mb-1 block text-sm font-medium">
-              目标分组
-            </label>
-            <Select value={moveTarget ?? ""} onValueChange={setMoveTarget}>
-              <SelectTrigger>
-                <SelectValue placeholder="选择目标分组" />
-              </SelectTrigger>
-              <SelectContent>
-                {clusters
-                  .filter((c: CpaCluster) => c.id !== selectedId)
-                  .map((c) => (
-                    <SelectItem key={c.id} value={c.id}>
-                      {c.representative_name}
-                      {c.category ? `（${c.category} · ${c.item_count}项）` : `（${c.item_count}项）`}
-                    </SelectItem>
-                  ))}
-              </SelectContent>
-            </Select>
-            <div className="mt-5 flex justify-end gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setMoveItem(null)}
-              >
-                取消
-              </Button>
-              <Button
-                size="sm"
-                onClick={doMove}
-                disabled={!moveTarget || moveMutation.isPending}
-              >
-                移动
-              </Button>
-            </div>
-          </div>
-        </div>
+        <MoveDialog
+          moveItem={moveItem}
+          selectedId={selectedId}
+          moveTarget={moveTarget}
+          setMoveTarget={setMoveTarget}
+          moveSearch={moveSearch}
+          setMoveSearch={setMoveSearch}
+          moveMode={moveMode}
+          setMoveMode={setMoveMode}
+          newGroupName={newGroupName}
+          setNewGroupName={setNewGroupName}
+          newGroupCategory={newGroupCategory}
+          setNewGroupCategory={setNewGroupCategory}
+          pending={moveMutation.isPending || moveToNewMutation.isPending}
+          onMove={doMove}
+          onClose={() => setMoveItem(null)}
+        />
       ) : null}
 
       <TracebackDrawer
         docId={trace?.document_id ?? null}
         page={trace?.source_page ?? null}
         bbox={trace?.source_bbox ?? null}
+        itemId={trace?.id ?? null}
         onClose={() => setTrace(null)}
       />
+    </div>
+  );
+}
+
+/** 移动对话框(2026-10-22): 全量分组(≤500)+客户端搜索,或新建分组模式。
+ * 旧 Select 在 300+ 簇下不可用且只列当前页;列表行点击即选中。 */
+function MoveDialog({
+  moveItem,
+  selectedId,
+  moveTarget,
+  setMoveTarget,
+  moveSearch,
+  setMoveSearch,
+  moveMode,
+  setMoveMode,
+  newGroupName,
+  setNewGroupName,
+  newGroupCategory,
+  setNewGroupCategory,
+  pending,
+  onMove,
+  onClose,
+}: {
+  moveItem: { itemId: string; name: string };
+  selectedId: string | null;
+  moveTarget: string | null;
+  setMoveTarget: (v: string | null) => void;
+  moveSearch: string;
+  setMoveSearch: (v: string) => void;
+  moveMode: "existing" | "new";
+  setMoveMode: (v: "existing" | "new") => void;
+  newGroupName: string;
+  setNewGroupName: (v: string) => void;
+  newGroupCategory: string;
+  setNewGroupCategory: (v: string) => void;
+  pending: boolean;
+  onMove: () => void;
+  onClose: () => void;
+}) {
+  // 对话框打开时一次性拉全量分组(≤500;分组数百级,一页足够)
+  const allQ = useQuery({
+    queryKey: ["cpa", "clusters", "move-dialog-all"],
+    queryFn: () => contractPriceApi.listClusters({ limit: 500 }),
+    enabled: true,
+    staleTime: 30_000,
+  });
+  const all = useMemo(() => allQ.data?.items ?? [], [allQ.data]);
+  const kw = moveSearch.trim().toLowerCase();
+  const options = useMemo(
+    () =>
+      all
+        .filter((c: CpaCluster) => c.id !== selectedId)
+        .filter((c: CpaCluster) =>
+          kw
+            ? c.representative_name.toLowerCase().includes(kw) ||
+              (c.category ?? "").toLowerCase().includes(kw)
+            : true,
+        ),
+    [all, selectedId, kw],
+  );
+  const canMove = moveMode === "new" ? !!newGroupName.trim() : !!moveTarget;
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+      <div className="absolute inset-0 bg-black/40" onClick={onClose} />
+      <div className="border-border bg-background relative w-full max-w-md rounded-xl border p-6 shadow-xl">
+        <h3 className="text-foreground mb-1 text-lg font-semibold">
+          移动明细到{moveMode === "new" ? "新分组" : "其他分组"}
+        </h3>
+        <p className="text-muted-foreground mb-4 truncate text-xs">
+          货物：{moveItem.name}
+        </p>
+        <div className="mb-3 flex gap-1">
+          <button
+            type="button"
+            className={
+              moveMode === "existing"
+                ? "bg-primary text-primary-foreground rounded-md px-3 py-1 text-xs font-medium"
+                : "text-muted-foreground hover:bg-muted rounded-md px-3 py-1 text-xs"
+            }
+            onClick={() => setMoveMode("existing")}
+          >
+            选择已有分组
+          </button>
+          <button
+            type="button"
+            className={
+              moveMode === "new"
+                ? "bg-primary text-primary-foreground rounded-md px-3 py-1 text-xs font-medium"
+                : "text-muted-foreground hover:bg-muted rounded-md px-3 py-1 text-xs"
+            }
+            onClick={() => setMoveMode("new")}
+          >
+            新建分组
+          </button>
+        </div>
+        {moveMode === "existing" ? (
+          <>
+            <Input
+              autoFocus
+              placeholder="搜索分组名 / 类别…"
+              value={moveSearch}
+              onChange={(e) => setMoveSearch(e.target.value)}
+            />
+            <div className="border-border mt-2 max-h-56 overflow-y-auto rounded-md border">
+              {allQ.isLoading ? (
+                <p className="text-muted-foreground p-3 text-xs">加载分组中…</p>
+              ) : options.length === 0 ? (
+                <p className="text-muted-foreground p-3 text-xs">
+                  没有匹配的分组。可以切换到「新建分组」。
+                </p>
+              ) : (
+                options.map((c: CpaCluster) => (
+                  <button
+                    key={c.id}
+                    type="button"
+                    className={
+                      moveTarget === c.id
+                        ? "bg-accent text-accent-foreground flex w-full items-baseline gap-2 px-3 py-2 text-left text-sm"
+                        : "hover:bg-muted/60 flex w-full items-baseline gap-2 px-3 py-2 text-left text-sm"
+                    }
+                    onClick={() => setMoveTarget(c.id)}
+                  >
+                    <span className="min-w-0 flex-1 truncate">
+                      {c.representative_name}
+                    </span>
+                    {c.category ? (
+                      <span className="text-muted-foreground shrink-0 text-xs">
+                        {c.category}
+                      </span>
+                    ) : null}
+                    <span className="text-muted-foreground shrink-0 text-xs">
+                      {c.item_count}项
+                    </span>
+                  </button>
+                ))
+              )}
+            </div>
+          </>
+        ) : (
+          <div className="space-y-3">
+            <div>
+              <label className="text-foreground mb-1 block text-sm font-medium">
+                新分组名称
+              </label>
+              <Input
+                autoFocus
+                value={newGroupName}
+                placeholder="如：桥架内穿线 铜芯导线"
+                onChange={(e) => setNewGroupName(e.target.value)}
+              />
+            </div>
+            <div>
+              <label className="text-foreground mb-1 block text-sm font-medium">
+                类别（可选）
+              </label>
+              <Input
+                value={newGroupCategory}
+                placeholder="如：电气工程"
+                onChange={(e) => setNewGroupCategory(e.target.value)}
+              />
+            </div>
+          </div>
+        )}
+        <div className="mt-5 flex justify-end gap-2">
+          <Button variant="outline" size="sm" onClick={onClose}>
+            取消
+          </Button>
+          <Button size="sm" onClick={onMove} disabled={!canMove || pending}>
+            {pending ? "移动中…" : moveMode === "new" ? "建组并移入" : "移动"}
+          </Button>
+        </div>
+      </div>
     </div>
   );
 }
