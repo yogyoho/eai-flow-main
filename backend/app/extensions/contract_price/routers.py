@@ -1042,6 +1042,39 @@ async def update_cluster(
     return cluster
 
 
+@router.delete("/clusters/{cluster_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_cluster_endpoint(
+    cluster_id: UUID,
+    db: AsyncSession = Depends(get_db),
+    _: CurrentUser = Depends(require_permission("system:access")),  # EAI-CUSTOM: Add permission check
+):
+    """删除分组(EAI-CUSTOM 2026-10-23 方案A): 成员置未分组(cluster_id=NULL,
+    货物项完整保留——它们是解析提取产物,属分项校验/统计,不随分组删除),
+    簇行删除;成员中与代表名归一化不同的货物名自动捕获 auto_split 区分规则
+    (下次聚类不会把错组重新合回;同名成员不产生规则,天然防误删滥捕)。"""
+    from sqlalchemy import select, update
+
+    cluster = await db.get(CpaCluster, cluster_id)
+    if cluster is None:
+        raise HTTPException(status_code=404, detail="cluster not found")
+    rep_norm = crud.normalize_term(cluster.representative_name)
+    items = list(
+        (await db.execute(select(CpaItem).where(CpaItem.cluster_id == cluster_id))).scalars()
+    )
+    for name in {i.goods_name for i in items}:
+        if name and crud.normalize_term(name) != rep_norm:
+            try:
+                await crud.upsert_name_split(
+                    db, name, cluster.representative_name,
+                    reason=f"删除分组「{cluster.representative_name}」时自动捕获", source="auto_split",
+                )
+            except Exception:  # noqa: BLE001 — 捕获失败不阻塞删除
+                pass
+    await db.execute(update(CpaItem).where(CpaItem.cluster_id == cluster_id).values(cluster_id=None))
+    await db.delete(cluster)
+    await db.commit()
+
+
 @router.post("/clusters/merge")
 async def merge_clusters(
     body: ClusterMerge,

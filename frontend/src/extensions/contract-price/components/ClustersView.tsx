@@ -9,14 +9,23 @@ import {
   ChevronRight,
   Crosshair,
   GitMerge,
+  MoreHorizontal,
+  Pencil,
   RefreshCw,
   Search,
+  Trash2,
   X,
 } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { contractPriceApi } from "@/extensions/contract-price/api";
@@ -45,6 +54,7 @@ import {
   useMergeClusters,
   useMoveItem,
   useMoveItemToNew,
+  useDeleteCluster,
   useRejectCluster,
   useUpdateCluster,
 } from "@/extensions/contract-price/hooks";
@@ -217,6 +227,12 @@ export function ClustersView() {
   const mergeMutation = useMergeClusters();
   const moveMutation = useMoveItem();
   const moveToNewMutation = useMoveItemToNew();
+  const deleteClusterMutation = useDeleteCluster();
+  // 分组卡片菜单(2026-10-23): 重命名 / 删除(方案A)
+  const [renameTarget, setRenameTarget] = useState<CpaCluster | null>(null);
+  const [renameName, setRenameName] = useState("");
+  const [renameCategory, setRenameCategory] = useState("");
+  const [deleteTarget, setDeleteTarget] = useState<CpaCluster | null>(null);
   const batchConfirmMutation = useBatchConfirmClusters();
 
   const clusters = clustersQuery.data?.items ?? [];
@@ -484,7 +500,7 @@ export function ClustersView() {
             ) : (
               <ul className="divide-border divide-y">
                 {clusters.map((c) => (
-                  <li key={c.id} className="flex items-center gap-2">
+                  <li key={c.id} className="group flex items-center gap-2">
                     <input
                       type="checkbox"
                       checked={checked.has(c.id)}
@@ -525,6 +541,34 @@ export function ClustersView() {
                         {statusLabel[c.status] ?? c.status}
                       </Pill>
                     </button>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <button
+                          type="button"
+                          aria-label={`分组操作：${c.representative_name}`}
+                          className="text-muted-foreground hover:bg-muted hover:text-foreground mr-1 shrink-0 rounded p-1 opacity-0 transition-opacity group-hover:opacity-100 focus-visible:opacity-100"
+                        >
+                          <MoreHorizontal className="h-4 w-4" />
+                        </button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuItem
+                          onClick={() => {
+                            setRenameTarget(c);
+                            setRenameName(c.representative_name);
+                            setRenameCategory(c.category ?? "");
+                          }}
+                        >
+                          <Pencil className="mr-2 h-4 w-4" /> 重命名
+                        </DropdownMenuItem>
+                        <DropdownMenuItem
+                          className="text-destructive"
+                          onClick={() => setDeleteTarget(c)}
+                        >
+                          <Trash2 className="mr-2 h-4 w-4" /> 删除分组
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
                   </li>
                 ))}
               </ul>
@@ -878,6 +922,130 @@ export function ClustersView() {
         />
       ) : null}
 
+      {/* Rename cluster dialog (2026-10-23) */}
+      {renameTarget ? (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div
+            className="absolute inset-0 bg-black/40"
+            onClick={() => setRenameTarget(null)}
+          />
+          <div className="border-border bg-background relative w-full max-w-sm rounded-xl border p-6 shadow-xl">
+            <h3 className="text-foreground mb-4 text-lg font-semibold">
+              重命名分组
+            </h3>
+            <div className="space-y-3">
+              <div>
+                <label className="text-foreground mb-1 block text-sm font-medium">
+                  分组名称
+                </label>
+                <Input
+                  autoFocus
+                  value={renameName}
+                  onChange={(e) => setRenameName(e.target.value)}
+                />
+              </div>
+              <div>
+                <label className="text-foreground mb-1 block text-sm font-medium">
+                  类别
+                </label>
+                <Input
+                  value={renameCategory}
+                  onChange={(e) => setRenameCategory(e.target.value)}
+                />
+              </div>
+            </div>
+            <div className="mt-5 flex justify-end gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setRenameTarget(null)}
+              >
+                取消
+              </Button>
+              <Button
+                size="sm"
+                disabled={!renameName.trim() || updateMutation.isPending}
+                onClick={() => {
+                  updateMutation.mutate(
+                    {
+                      id: renameTarget.id,
+                      body: {
+                        representative_name: renameName.trim(),
+                        category: renameCategory.trim(),
+                      },
+                    },
+                    {
+                      onSuccess: () => setRenameTarget(null),
+                      onError: (e) =>
+                        alert(
+                          `重命名失败：${e instanceof Error ? e.message : String(e)}`,
+                        ),
+                    },
+                  );
+                }}
+              >
+                保存
+              </Button>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      {/* Delete cluster dialog (2026-10-23 方案A) */}
+      {deleteTarget ? (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div
+            className="absolute inset-0 bg-black/40"
+            onClick={() => setDeleteTarget(null)}
+          />
+          <div className="border-border bg-background relative w-full max-w-sm rounded-xl border p-6 shadow-xl">
+            <h3 className="text-foreground mb-2 text-lg font-semibold">
+              删除分组
+            </h3>
+            <p className="text-muted-foreground mb-4 text-sm">
+              删除「{deleteTarget.representative_name}」后，其{" "}
+              <b>{deleteTarget.item_count}</b> 个货物项将变为
+              <b>未分组</b>
+              ——货物数据完整保留（分项校验不受影响），下次「聚类分析」会重新归组。
+              与代表名不同的成员会自动登记区分规则，防止下次聚类重新错并。
+            </p>
+            <div className="mt-5 flex justify-end gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setDeleteTarget(null)}
+              >
+                取消
+              </Button>
+              <Button
+                variant="destructive"
+                size="sm"
+                disabled={deleteClusterMutation.isPending}
+                onClick={() => {
+                  deleteClusterMutation.mutate(deleteTarget.id, {
+                    onSuccess: () => {
+                      if (selectedId === deleteTarget.id) setSelectedId(null);
+                      setChecked((s) => {
+                        const n = new Set(s);
+                        n.delete(deleteTarget.id);
+                        return n;
+                      });
+                      setDeleteTarget(null);
+                    },
+                    onError: (e) =>
+                      alert(
+                        `删除失败：${e instanceof Error ? e.message : String(e)}`,
+                      ),
+                  });
+                }}
+              >
+                {deleteClusterMutation.isPending ? "删除中…" : "删除分组"}
+              </Button>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
       <TracebackDrawer
         docId={trace?.document_id ?? null}
         page={trace?.source_page ?? null}
@@ -949,7 +1117,7 @@ function MoveDialog({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       <div className="absolute inset-0 bg-black/40" onClick={onClose} />
-      <div className="border-border bg-background relative w-full max-w-md rounded-xl border p-6 shadow-xl">
+      <div className="border-border bg-background relative w-full max-w-xl rounded-xl border p-6 shadow-xl">
         <h3 className="text-foreground mb-1 text-lg font-semibold">
           移动明细到{moveMode === "new" ? "新分组" : "其他分组"}
         </h3>

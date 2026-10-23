@@ -472,3 +472,11 @@ export const moveItemToNew = {
       },
     ),
 };
+
+// EAI-CUSTOM: 删除分组（2026-10-23 方案A——成员置未分组,货物项保留）
+export const removeClusterApi = {
+  call: (id: string) =>
+    authFetch<{ ok: boolean }>(`${API_BASE}/clusters/${id}`, {
+      method: "DELETE",
+    }),
+};

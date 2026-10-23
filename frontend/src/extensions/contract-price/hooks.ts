@@ -13,6 +13,7 @@ import {
   nameSplitApi,
   ragflowApi,
   termsApi,
+  removeClusterApi,
 } from "./api";
 
 const KEYS = {
@@ -550,6 +551,17 @@ export function useMoveItemToNew() {
   return useMutation({
     mutationFn: (p: { item_id: string; name: string; category: string }) =>
       moveItemToNew.call(p.item_id, p.name, p.category),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ["cpa"] });
+    },
+  });
+}
+
+// EAI-CUSTOM: 删除分组（2026-10-23）
+export function useDeleteCluster() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => removeClusterApi.call(id),
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: ["cpa"] });
     },
