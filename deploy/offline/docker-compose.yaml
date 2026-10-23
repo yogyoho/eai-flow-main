@@ -118,6 +118,8 @@ services:
       # EAI-CUSTOM (2026-09-06): RAGFlow API Key 必须透传——RAGFlowConfig.from_env() 读此变量，
       # 缺失则知识库/法规库/geo 切片的 RAGFlow 同步全部静默跳过（.env 回填后需 force-recreate gateway）
       - RAGFLOW_API_KEY=${RAGFLOW_API_KEY:-}
+      # EAI-CUSTOM (2026-10-24): SSO 跳转用的浏览器可达 RAGFlow 地址（.env 按站点 IP 改）
+      - RAGFLOW_WEB_URL=${RAGFLOW_WEB_URL:-http://localhost:19381}
       - TEMPORAL_URL=temporal:7233
       # EAI-CUSTOM (P0-4): OntoStudio MCP 共享 token——extensions_config.json 两条
       # ontostudio MCP 的 headers 占位 "$ONTOSTUDIO_INTERNAL_AUTH_TOKEN" 在**本进程**

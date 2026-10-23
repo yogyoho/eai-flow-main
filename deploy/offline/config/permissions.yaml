@@ -98,6 +98,17 @@ modules:
       - { id: "knowledge_public", display_name: "所有公开知识库", rule_template: { access_type: "public" } }
       - { id: "knowledge_dept",   display_name: "本部门的知识库", rule_template: { or: [ { owner_id: "$identity.user_id" }, { and: [ { access_type: "dept" }, { allowed_depts OVERLAP: "$identity.dept_ids" } ] } ] } }
 
+  # ─── 文档翻译工作台（EAI-CUSTOM 2026-10-20: 注册 nav:translation，应用中心卡片按 canNav 过滤）───
+  translation:
+    display_name: "文档翻译工作台"
+    nav_id: "nav:translation"
+    pages:
+      - id: "translation:page:assets"
+        display_name: "文档资产库"
+        operations:
+          - { id: "translation:read", display_name: "查看翻译任务" }
+          - { id: "translation:transition", display_name: "流转翻译任务" }
+
   # ─── 知识工厂（9 个 tab ↔ 9 个 page id；EAI-CUSTOM 2026-09: 样例库 tab 迁出为独立应用 coal_eia_samples）───
   knowledge_factory:
     display_name: "知识工厂"
@@ -388,6 +399,8 @@ roles:
       - nav:coal-eia-samples
       # EAI-CUSTOM (bug-3109 v4): 投标资料管理导航
       - nav:bid-materials
+      # EAI-CUSTOM (2026-10-20): 文档翻译工作台导航（该角色持有 translation:read）
+      - nav:translation
       - nav:output
       - nav:app-center
     pages: ["*"]
@@ -399,6 +412,8 @@ roles:
       - kb:create
       # EAI-CUSTOM: U2 button-level can() gates upload/delete/edit on these; dept_head manages KB content
       - kb:upload
+      - translation:read
+      - translation:transition
       - kb:update
       - kb:delete
       - doc:read
