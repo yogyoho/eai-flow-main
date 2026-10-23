@@ -609,9 +609,13 @@ export function ClustersView() {
         <Card>
           <CardContent className="space-y-4 p-6 pt-0">
             {!selectedId ? (
-              <p className="text-muted-foreground py-12 text-center text-sm">
-                ← 从左侧选择一个分组查看明细。
-              </p>
+              <div className="text-muted-foreground flex min-h-[320px] flex-col items-center justify-center gap-3 py-12 text-center">
+                <Boxes className="h-12 w-12 opacity-40" />
+                <p className="text-sm">从左侧选择一个分组查看明细</p>
+                <p className="max-w-xs text-xs leading-relaxed">
+                  可确认正确的分组、合并同义组、移动误归类的货物项，或对名称有误的分组重命名
+                </p>
+              </div>
             ) : clusterQuery.isLoading ? (
               <p className="text-muted-foreground py-12 text-center text-sm">
                 加载中…
