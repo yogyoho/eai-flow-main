@@ -186,12 +186,19 @@ pending -> active -> approved
 
 ```python
 @dataclass
+class WorkflowApprover:
+    key: str                 # role:<role> / user:<id> / 模板显式 key
+    role: str | None = None
+    user_id: str | None = None
+
+@dataclass
 class WorkflowStep:
     step_no: int
     approver_role: str
     sla_hours: int
     approver_id: str | None = None
     mode: str = "sequential"
+    approvers: list[WorkflowApprover] = field(default_factory=list)
 
 @dataclass
 class ApprovalWorkflowInput:
@@ -200,7 +207,7 @@ class ApprovalWorkflowInput:
     opportunity_id: str
     gate_code: str
     requested_by: str
-    steps: list[WorkflowStep]
+    steps: list[WorkflowStep] = field(default_factory=list)
     expires_at_epoch: float | None = None
 ```
 
@@ -218,38 +225,84 @@ mark_running
 for step in steps:
     if cancelled: finalize(cancelled)
     if expired: finalize(expired)
-    activate_step(step)
-    wait decision or cancel, timeout = min(step SLA, 剩余整体时限)
-    on timeout:
-        escalate_step
-        wait 4h or remaining
-        on timeout: finalize(expired)
-    if delegate:
-        delegate_step; 重新等待
-    if reject:  finalize(rejected)
-    if return:  finalize(returned)
-    if approve: continue
+
+    if step.mode == "sequential":
+        activate_step(step)
+    else:
+        activate_parallel_step(step)   # 创建/恢复 approval_assignments
+
+    loop:
+        wait decision / cancel, timeout = min(步骤本地截止时间, 剩余整体时限)
+        on timeout:
+            escalate_step / escalate_parallel_step
+            wait 4h or remaining
+            on timeout: finalize(expired)
+        on delegate:
+            delegate_step / delegate_parallel_assignment
+            重置步骤时钟后继续等待
+        on decision:
+            record_decision / record_parallel_decision
+            outcome = parallel_step_outcome(step.mode, 各席位状态)
+            if outcome in {approved,rejected,returned}: break
+            # parallel_any 的单个 reject、parallel_all 的部分 approve 继续等待
+
+    if outcome == rejected: finalize(rejected)
+    if outcome == returned: finalize(returned)
+    if outcome == approved: continue
 finalize(approved)
 ```
+
+并行步骤通过 `workflow.patched("parallel-approval-v1")` 进入新分支，已有顺序流程的 History 仍按原活动序列重放。
 
 ### 6.3 信号
 
 | 信号 | 参数 | 说明 |
 |---|---|---|
-| `decision` | `step_no, action, actor_id, actor_role, comment, idempotency_key, delegate_to` | 通过/驳回/退回/转办 |
+| `decision` | `step_no, assignment_key, action, actor_id, actor_role, comment, idempotency_key, delegate_to` | 通过/驳回/退回/转办 |
 | `cancel` | `actor_id, reason` | 申请人/管理员撤回 |
 
-- `decision` 按 `step_no` 去重：同一活动步骤只接受第一个决策。
+- 顺序步骤忽略 `assignment_key`；并行步骤必须携带，且只作用于对应席位。
+- 同一席位以 `assignment_key + idempotency_key` 去重；不同席位可并发决策，互不覆盖。
 - 决策 API 使用 `idempotency_key` 唯一约束，重复点击返回已有结果。
 - Signal 只是“提交意愿”；最终状态以 Activity 写投影为准。
 
 ### 6.4 SLA 与升级
 
 - 每个步骤 `sla_hours`（R4/R6 默认 24/24/48）。
-- 到 SLA：`escalate_step`，升级角色，关闭旧待办，创建升级待办，通知。
+- 顺序步骤到 SLA：`escalate_step`，升级角色，关闭旧待办，创建升级待办，通知。
+- 并行步骤共用**一个步骤 SLA 时钟**：
+  - 任一转办把步骤时钟重置为 24 小时；
+  - 升级只改仍未决定的席位，已通过/已驳回席位保持不变；
+  - 升级后步骤时钟重置为 4 小时。
 - 升级后再等待 4 小时；仍未处理则 `expired`。
 - 整体 `expires_at` 默认 7 天；任何步骤等待不得超过剩余整体时限。
-- `expired` 不自动通过，闸门保持阻断。
+- `expired` 不自动通过，闸门保持阻断；未决席位统一标记 `skipped`。
+
+### 6.4.1 会签/或签契约
+
+模板步骤：
+
+```json
+{
+  "step_no": 1,
+  "mode": "parallel_all",
+  "sla_hours": 24,
+  "approvers": [
+    {"role": "regional_manager"},
+    {"user_id": "demo-director"},
+    {"key": "finance-check", "role": "finance"}
+  ]
+}
+```
+
+- `assignment_key` 缺省生成 `role:<role>` / `user:<user_id>`；显式 `key` 原样使用，同一步内重复直接拒绝。
+- 并行步骤必须提供至少一个席位；`approver_role` 保留为展示角色，不再承担唯一裁决。
+- `approval_assignments` 持久化每个席位的 `status/decision/delegate/idempotency_key`；步骤本身只保存聚合结果。
+- `parallel_all`：全部席位 `approved` 才 `approved`；任一 `rejected/returned` 立即结束。
+- `parallel_any`：任一席位 `approved` 即 `approved`；全部 `rejected` 才 `rejected`；任一 `returned` 立即结束。
+- 转办把席位 `approver_id` 收窄为受转办人（角色席位同样收窄），不写最终 `decision`，因此不消耗该席位。
+- 取消/过期/失败/步骤提前结束时，未决席位标记 `skipped`，已决席位保留原结论。
+- 失败重试清理旧 `approval_assignments`，从创建快照恢复步骤并重新从第 1 步执行。
 
 ### 6.5 重试与超时
 
@@ -396,7 +449,7 @@ Worker:
 | P1 后端加固 | Outbox、Reconciler、过期、幂等 | 单测通过；本地 Temporal 可跑 |
 | P2 部署联调 | Temporal + Worker + API + UI | R4/R6/撞单三条链路通过 |
 | P3 灰度 | 仅新审批走 Temporal；存量审批只读 | 无 P0/P1 故障 |
-| P4 扩展 | 会签/或签、报价/合同审批模板 | 新模板验收通过 |
+| P4 扩展 | 会签/或签（已完成）、报价/合同审批模板 | 并行审批验收通过；新模板验收通过 |
 
 ### 10.2 数据迁移
 
@@ -405,8 +458,10 @@ Worker:
   - 若已有 `workflow_id`，继续由 Worker 接管；
   - 若没有，标记 `failed` 并由管理员重试，避免“假 running”。
 - 新增字段通过 Alembic（当前 `create_all` 仅用于 Sprint 0）：
-  - 本方案 DTO 变更不涉及数据库字段；
-  - 若后续增加 `sla_hours`、`mode` 到步骤表，补 migration。
+  - 并行审批新增 `approval_assignments` 表；
+  - `approval_actions` 增加可空 `assignment_key`；
+  - 当前 `init_db` 以 `CREATE TABLE IF NOT EXISTS` + `ALTER TABLE ... ADD COLUMN IF NOT EXISTS` 做**加法迁移**，可安全重复启动；
+  - 正式迁移基线仍应在 Alembic 中补齐上述两项。
 
 ### 10.3 回滚
 
@@ -426,6 +481,10 @@ Worker:
 - Outbox 退避、最大重试、失败终态。
 - Reconciler 状态映射。
 - 审批状态机纯函数（步骤激活、终态收敛）。
+- 并行聚合纯函数：`parallel_all/parallel_any` 的同意、驳回、退回、全拒、部分同意。
+- 并行契约快照往返：`WorkflowApprover`、`assignment_key`、显式/缺省席位键。
+- 并行模板校验：重复席位、非法模式、并行步骤缺 `approvers`。
+- 失败重试清理 `approval_assignments` 并从快照恢复。
 
 ### 11.2 工作流测试（时间跳跃）
 
@@ -440,6 +499,10 @@ Worker:
 - 整体 7 天过期。
 - 重复 Signal 幂等。
 - Activity 重试不产生重复待办。
+- 并行步骤：`parallel_all` 全票通过、部分同意后驳回、退回。
+- 并行步骤：`parallel_any` 单票通过、全拒、退回。
+- 并行转办不消耗席位；升级只影响活跃席位；步骤级 24h/4h 时钟。
+- 并行步骤取消/过期时未决席位 `skipped`。
 
 > 该测试需要 Temporal 测试服务器二进制；CI 可缓存，离线环境需预置。
 
@@ -450,6 +513,9 @@ Worker:
 - Worker 重启 -> Workflow 继续。
 - Temporal 完成但 DB 终态未写 -> Reconciler 补写。
 - 重复点击审批 -> 只产生一条 `approval_actions`。
+- 并行审批按 `assignment_key` 决策 -> 各席位独立待办 -> 聚合终态 -> 步骤/请求投影一致。
+- 并行转办 -> 原角色席位收窄 -> 受转办人单席决策 -> 不重复消耗。
+- 并行取消 -> 未决席位 `skipped` -> 待办全部关闭。
 
 ### 11.4 验收清单
 
@@ -457,8 +523,12 @@ Worker:
 - [x] R6 关联方审批三步通过。
 - [x] DUPLICATE 闸门审批通过（单步）。
 - [x] 取消终态正确；驳回/退回/过期由工作流测试覆盖。
-- [ ] 24h SLA 升级、4h 后再过期可模拟。
-- [ ] 整体 7 天过期不自动通过。
+- [x] `parallel_all` 会签：全票通过、部分同意后驳回、取消。
+- [x] `parallel_any` 或签：单票通过、全拒、取消。
+- [x] 并行转办不消耗席位，原处理人失去操作权。
+- [x] 并行升级只影响活跃席位，步骤时钟重置为 4h（活动直调验证）。
+- [ ] 24h SLA 升级、4h 后再过期可模拟（仍依赖时间跳跃）。
+- [ ] 整体 7 天过期不自动通过（仍依赖时间跳跃）。
 - [x] Temporal 不可用时请求不丢、页面提示明确。
 - [x] Worker 重启后流程继续。
 - [x] Reconciler 能修复“Temporal 完成、DB running”。
@@ -477,7 +547,8 @@ Worker:
 | 双写不一致 | Outbox + 幂等 Activity + Reconciler |
 | 审批模板变更影响运行中流程 | 发起时快照 `steps_json` 到 Workflow 输入；运行中不读模板 |
 | 多副本重复升级 | Temporal Timer 唯一；A02 调度器跳过 `type=approval` |
-| 会签/或签需求 | 契约保留 `mode`；下一迭代在 Workflow 内按步骤聚合决策 |
+| 会签/或签并发决策 | 每个席位独立 `assignment_key` + 幂等键；Workflow 内按步骤聚合，Activity 用唯一约束兜底 |
+| 并行席位转办/升级错乱 | 只更新活跃席位，已决席位不可变；步骤本地截止时间防止部分同意延长 SLA |
 
 ---
 
@@ -508,13 +579,17 @@ Worker:
 - [x] 指派/转办步骤按 `approver_id` 收窄可见与操作权限。
 - [x] Temporal RPC 硬超时，断连时 Outbox 正常退避。
 - [x] `/health` Temporal 连接探测。
+- [x] 会签 `parallel_all` / 或签 `parallel_any` 工作流分支与 `workflow.patched("parallel-approval-v1")`。
+- [x] `approval_assignments` 席位投影、`approval_actions.assignment_key` 加法迁移。
+- [x] 席位级决策、转办、待办、可见性与前端席位选择。
+- [x] 并行步骤共享 SLA、升级只影响活跃席位、未决席位 `skipped`。
+- [x] 失败重试清理并行席位。
 - [x] 离线单元测试。
 - [x] Compose 全链路验收（R4/R6/DUPLICATE、取消、重试、Temporal 停机恢复、Reconciler）。
 
 仍需在具备 Temporal 测试服务器的环境执行：
 
 - [ ] 时间跳跃工作流测试（依赖 Temporal 测试服务器）。
-- [ ] 会签/或签模板实现。
 
 ### 14.1 离线验证记录（2026-10-24）
 
@@ -522,19 +597,23 @@ Worker:
 
 ```powershell
 .\.venv\Scripts\python.exe -m pytest -q
-# 25 passed
+# 43 passed
 
 .\.venv\Scripts\python.exe -m ruff check app tests
 # All checks passed!
 
 .\.venv\Scripts\python.exe -m ruff format --check app tests
-# 35 files already formatted
+# 37 files already formatted
 
 .\.venv\Scripts\python.exe -m compileall -q app tests
 # compileall ok
+
+pnpm typecheck
+pnpm build
+# tsc + vite build 通过
 ```
 
-覆盖：契约快照、整体过期计算、Outbox 退避与耗尽终态、Temporal 终态映射、升级/转办/幂等冲突边界、失败重试快照恢复、RPC 硬超时。
+覆盖：契约快照（含并行 `WorkflowApprover` / `assignment_key` 往返）、并行模板校验、`parallel_all/parallel_any` 聚合、按席位隔离 Signal、失败重试清理席位、整体过期计算、Outbox 退避与耗尽终态、Temporal 终态映射、升级/转办/幂等冲突边界、RPC 硬超时。
 
 ### 14.2 Compose 联调记录（2026-10-24）
 
@@ -554,3 +633,19 @@ Docker/Temporal 可用后，通过 Nginx 入口 `http://localhost:2026/sales/api
 未执行：时间跳跃测试（当前无 Temporal 测试服务器二进制）；24h SLA 升级、4h 再过期、整体 7 天过期的真实时钟验证依赖该测试或长时间等待。
 
 > 当前机器 Docker daemon 已启动；若后续再次离线，先执行 `docker start` 或启动 Docker Desktop，再运行 11.2/11.3。
+
+### 14.3 并行审批联调记录（2026-10-24）
+
+使用本地新代码启动 `sales-backend`（`AUTH_MODE=local`）与 `sales-worker`，连接 Compose 中的 `sales` 数据库和 `eai-flow-temporal`，按 API 全链路执行；旧 Docker Worker 已先停止，避免新旧代码争抢任务队列。
+
+- `parallel_all` 全票通过：两个席位分别以 `role:regional_manager`、`role:sales_director` 同意后，步骤 `approved`、请求 `approved`，两条待办均 `resolved`。
+- `parallel_all` 驳回：大区经理已同意、销售总监驳回后，步骤和请求立即 `rejected`；已同意席位保留 `approved`，另一席位 `rejected`。
+- `parallel_any` 单票通过：大区经理先驳回时请求保持 `running`；销售总监同意后请求立即 `approved`，步骤聚合为 `approved`。
+- `parallel_any` 全拒：两个席位均驳回后步骤和请求才 `rejected`。
+- 席位移交：大区经理把 `role:regional_manager` 转办给 `demo-director` 后，该席位 `approver_id=demo-director`、`delegated_from=demo-manager`，原待办 `resolved`，新待办指派给受转办人；原处理人再决策返回 `AUTH-403-APPROVER_ROLE`；受转办人以该席位同意后请求 `approved`，另一席位置为 `skipped`。
+- 取消：并行请求取消后请求 `cancelled`，两个未决席位均 `skipped`，待办全部关闭。
+- 升级：直接调用 `escalate_parallel_step` 验证活跃席位角色升级为 `sales_director`、`escalation_level=1`、步骤 SLA 重置为 4 小时，并重建升级待办。
+- 顺序兼容：对改动前已启动的 AP20261000011 继续审批，Workflow 从既有 History 重放，两步顺序审批正常完成。
+- 迁移：`init_db` 在现有库上创建 `approval_assignments`，并为 `approval_actions` 增加 `assignment_key` 列，重复启动无副作用。
+
+未执行：时间跳跃测试；24h 自动升级、升级后 4h 过期、整体 7 天过期仍依赖 Temporal 测试服务器或真实等待。

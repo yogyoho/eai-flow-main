@@ -29,7 +29,8 @@ from app.models import (
     PilotProject,
 )
 from app.workflows.client import signal_cancel, signal_decision
-from app.workflows.contracts import ApprovalWorkflowInput, CancellationSignal, DecisionSignal, WorkflowStep
+from app.workflows.contracts import ApprovalWorkflowInput, CancellationSignal, DecisionSignal, WorkflowApprover, WorkflowStep
+from app.workflows.parallel import PARALLEL_MODES, STEP_MODES, assignment_key_for
 
 logger = logging.getLogger(__name__)
 settings = get_settings()
@@ -62,6 +63,83 @@ TEMPLATES: dict[str, dict[str, Any]] = {
 }
 
 GATE_TO_TEMPLATE = {"R4": "R4", "R6": "R6", "DUPLICATE": "DUPLICATE", "R10": "DUPLICATE"}
+
+
+def _text(value: Any) -> str:
+    return str(value or "").strip()
+
+
+def _step_has_role(step: dict[str, Any], role: str) -> bool:
+    if _text(step.get("approver_role")) == role:
+        return True
+    return any(_text(item.get("role") or item.get("approver_role")) == role for item in step.get("approvers") or [] if isinstance(item, dict))
+
+
+def _positive_int(value: Any, default: int, *, field: str) -> int:
+    try:
+        parsed = int(value if value is not None else default)
+    except (TypeError, ValueError) as exc:
+        raise bad_request(f"审批步骤 {field} 必须为整数", "SALES-400-APPROVAL_STEP") from exc
+    if parsed < 1:
+        raise bad_request(f"审批步骤 {field} 必须大于 0", "SALES-400-APPROVAL_STEP")
+    return parsed
+
+
+def normalize_template_steps(raw_steps: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Validate and normalize a template snapshot.
+
+    Sequential steps keep the existing single ``approver_role`` shape. Parallel
+    steps receive a stable ``approvers`` list whose keys are used by Signals,
+    idempotency checks and per-participant todos.
+    """
+    normalized: list[dict[str, Any]] = []
+    seen_steps: set[int] = set()
+    for index, raw in enumerate(raw_steps, start=1):
+        if not isinstance(raw, dict):
+            raise bad_request("审批步骤配置必须为对象", "SALES-400-APPROVAL_STEP")
+        step_no = _positive_int(raw.get("step_no"), index, field="step_no")
+        if step_no in seen_steps:
+            raise bad_request(f"审批步骤 {step_no} 重复", "SALES-400-APPROVAL_STEP")
+        seen_steps.add(step_no)
+        mode = _text(raw.get("mode")) or "sequential"
+        if mode not in STEP_MODES:
+            raise bad_request(f"未知审批步骤模式：{mode}", "SALES-400-APPROVAL_STEP_MODE")
+        sla_hours = _positive_int(raw.get("sla_hours"), 24, field="sla_hours")
+        if mode == "sequential":
+            role = _text(raw.get("approver_role"))
+            if not role:
+                raise bad_request(f"第 {step_no} 步缺少审批角色", "SALES-400-APPROVAL_STEP")
+            normalized.append({"step_no": step_no, "mode": mode, "approver_role": role, "approver_id": raw.get("approver_id"), "sla_hours": sla_hours, "approvers": []})
+            continue
+
+        raw_approvers = raw.get("approvers") or []
+        if not isinstance(raw_approvers, list) or not raw_approvers:
+            raise bad_request(f"第 {step_no} 步的 {mode} 模式必须配置 approvers", "SALES-400-APPROVAL_STEP")
+        approvers: list[dict[str, Any]] = []
+        seen_keys: set[str] = set()
+        for item in raw_approvers:
+            if not isinstance(item, dict):
+                raise bad_request(f"第 {step_no} 步的审批席位必须为对象", "SALES-400-APPROVAL_STEP")
+            role = _text(item.get("role") or item.get("approver_role")) or None
+            user_id = _text(item.get("user_id") or item.get("approver_id")) or None
+            if not role and not user_id:
+                raise bad_request(f"第 {step_no} 步存在空审批席位", "SALES-400-APPROVAL_STEP")
+            explicit = _text(item.get("key"))
+            key = explicit or assignment_key_for(role=role, user_id=user_id)
+            if len(key) > 128:
+                raise bad_request("审批席位 key 过长", "SALES-400-APPROVAL_STEP")
+            if key in seen_keys:
+                raise bad_request(f"第 {step_no} 步审批席位重复：{key}", "SALES-400-APPROVAL_STEP")
+            seen_keys.add(key)
+            approvers.append({"key": key, "role": role, "user_id": user_id})
+        # ``approver_role`` is the display/escalation fallback. User-only slots
+        # need a real role here so SLA escalation cannot create an unreachable
+        # pseudo-role such as "parallel".
+        primary_role = _text(raw.get("approver_role")) or next((item["role"] for item in approvers if item["role"]), "sales_director")
+        normalized.append({"step_no": step_no, "mode": mode, "approver_role": primary_role, "approver_id": None, "sla_hours": sla_hours, "approvers": approvers})
+    if not normalized:
+        raise bad_request("审批模板没有步骤", "SALES-400-APPROVAL_STEP")
+    return normalized
 
 
 async def _definition_for(db: AsyncSession, code: str) -> dict[str, Any]:
@@ -142,13 +220,14 @@ async def create_approval(
     evidence = {**(evidence or {}), **gate_evidence}
     template = TEMPLATES[template_key]
     definition = await _definition_for(db, template["code"])
-    steps: list[dict[str, Any]] = [dict(s) for s in definition["steps"]]
+    raw_steps: list[dict[str, Any]] = [dict(s) for s in definition["steps"]]
     if template_key == "DUPLICATE":
         duplicate = await db.get(OpportunityDuplicate, uuid.UUID(gate_evidence["duplicate_case_id"]))
         other = await db.get(Opportunity, duplicate.duplicate_opportunity_id) if duplicate else None
         if other and other.region_code != opportunity.region_code:
-            if not any(s["approver_role"] == "sales_director" for s in steps):
-                steps.append({"step_no": len(steps) + 1, "approver_role": "sales_director", "sla_hours": 24})
+            if not any(_step_has_role(s, "sales_director") for s in raw_steps):
+                raw_steps.append({"step_no": len(raw_steps) + 1, "approver_role": "sales_director", "sla_hours": 24})
+    steps = normalize_template_steps(raw_steps)
 
     period = utc_now().strftime("%Y%m")
     request = ApprovalRequest(
@@ -235,6 +314,11 @@ def reset_for_retry(request: ApprovalRequest, now: datetime | None = None) -> No
         step.mode = str(source.get("mode") or step.mode)
         # Restore the template assignee, dropping any runtime delegation.
         step.approver_id = source.get("approver_id")
+        # A retry is a fresh attempt. Old parallel slots (and their decisions)
+        # must not survive into the new workflow run.
+        assignments = getattr(step, "assignments", None)
+        if assignments is not None:
+            assignments.clear()
         step.status = "pending"
         step.decision = None
         step.comment = None
@@ -252,10 +336,35 @@ def _remaining_sla_hours(step: ApprovalStep) -> int:
     return max(1, int((due_at - utc_now()).total_seconds() // 3600))
 
 
+def _workflow_approvers(step: ApprovalStep, source: dict[str, Any]) -> list[WorkflowApprover]:
+    if step.mode not in PARALLEL_MODES:
+        return []
+    raw = source.get("approvers") or []
+    approvers: list[WorkflowApprover] = []
+    for item in raw:
+        if not isinstance(item, dict):
+            continue
+        role = _text(item.get("role") or item.get("approver_role")) or None
+        user_id = _text(item.get("user_id") or item.get("approver_id")) or None
+        key = _text(item.get("key"))
+        if not key:
+            if not role and not user_id:
+                continue
+            key = assignment_key_for(role=role, user_id=user_id)
+        approvers.append(WorkflowApprover(key=key, role=role, user_id=user_id))
+    if not approvers:
+        # Legacy/manual rows may lack a snapshot. Preserve a single-slot
+        # fallback so the workflow still has an executable contract.
+        key = assignment_key_for(role=step.approver_role or None, user_id=step.approver_id)
+        approvers.append(WorkflowApprover(key=key, role=step.approver_role or None, user_id=step.approver_id))
+    return approvers
+
+
 def workflow_input_for(request: ApprovalRequest) -> ApprovalWorkflowInput:
     expires_at = request.expires_at
     if expires_at is not None and expires_at.tzinfo is None:
         expires_at = expires_at.replace(tzinfo=UTC)
+    snapshot = {int(item["step_no"]): item for item in (getattr(request, "payload_json", None) or {}).get("approval_steps") or [] if isinstance(item, dict) and item.get("step_no") is not None}
     return ApprovalWorkflowInput(
         request_id=str(request.id),
         request_no=request.request_no,
@@ -269,6 +378,7 @@ def workflow_input_for(request: ApprovalRequest) -> ApprovalWorkflowInput:
                 approver_id=step.approver_id,
                 sla_hours=_remaining_sla_hours(step),
                 mode=step.mode,
+                approvers=_workflow_approvers(step, snapshot.get(step.step_no, {})),
             )
             for step in request.steps
         ],
@@ -277,7 +387,7 @@ def workflow_input_for(request: ApprovalRequest) -> ApprovalWorkflowInput:
 
 
 async def _load_request(db: AsyncSession, request_id: uuid.UUID) -> ApprovalRequest:
-    request = (await db.execute(select(ApprovalRequest).where(ApprovalRequest.id == request_id).options(selectinload(ApprovalRequest.steps)))).scalar_one_or_none()
+    request = (await db.execute(select(ApprovalRequest).where(ApprovalRequest.id == request_id).options(selectinload(ApprovalRequest.steps).selectinload(ApprovalStep.assignments)))).scalar_one_or_none()
     if request is None:
         raise not_found("审批单不存在", "SALES-404-APPROVAL")
     return request
@@ -292,6 +402,7 @@ async def approve_decision(
     comment: str | None,
     idempotency_key: str,
     delegate_to: str | None = None,
+    assignment_key: str | None = None,
 ) -> ApprovalRequest:
     request = await _load_request(db, request_id)
     duplicate = (await db.execute(select(ApprovalAction).where(ApprovalAction.idempotency_key == idempotency_key))).scalar_one_or_none()
@@ -312,14 +423,30 @@ async def approve_decision(
         raise bad_request("转办必须指定接收人", "SALES-400-DELEGATE_TARGET")
     if action not in {"approve", "reject", "return", "delegate"}:
         raise bad_request("未知审批动作", "SALES-400-ACTION")
-    if step.approver_id:
-        # An explicit assignee (template default or delegation) narrows the
-        # step to that user; role membership alone is not enough.
-        allowed = identity.is_admin or step.approver_id == identity.user_id
+
+    if step.mode in PARALLEL_MODES:
+        if not assignment_key:
+            raise bad_request("会签/或签步骤必须指定审批席位", "SALES-400-ASSIGNMENT_KEY")
+        assignment = next((item for item in step.assignments if item.assignment_key == assignment_key and item.status == "active"), None)
+        if assignment is None:
+            raise conflict("审批席位不存在或已处理", "SALES-409-ASSIGNMENT_NOT_ACTIVE")
+        if assignment.approver_id:
+            allowed = identity.is_admin or assignment.approver_id == identity.user_id
+        else:
+            allowed = identity.is_admin or identity.sales_role == assignment.approver_role or identity.role_code == assignment.approver_role
+        if not allowed:
+            raise forbidden(f"当前审批席位需要 {assignment.approver_id or assignment.approver_role} 审批", "AUTH-403-APPROVER_ROLE")
     else:
-        allowed = identity.is_admin or identity.sales_role == step.approver_role or identity.role_code == step.approver_role
-    if not allowed:
-        raise forbidden(f"当前步骤需要 {step.approver_id or step.approver_role} 审批", "AUTH-403-APPROVER_ROLE")
+        if assignment_key:
+            raise bad_request("顺序审批步骤不接受审批席位", "SALES-400-ASSIGNMENT_KEY")
+        if step.approver_id:
+            # An explicit assignee (template default or delegation) narrows the
+            # step to that user; role membership alone is not enough.
+            allowed = identity.is_admin or step.approver_id == identity.user_id
+        else:
+            allowed = identity.is_admin or identity.sales_role == step.approver_role or identity.role_code == step.approver_role
+        if not allowed:
+            raise forbidden(f"当前步骤需要 {step.approver_id or step.approver_role} 审批", "AUTH-403-APPROVER_ROLE")
 
     signal = DecisionSignal(
         step_no=step.step_no,
@@ -329,6 +456,7 @@ async def approve_decision(
         comment=comment,
         idempotency_key=idempotency_key,
         delegate_to=delegate_to,
+        assignment_key=assignment_key,
     )
     try:
         await signal_decision(str(request.id), signal)

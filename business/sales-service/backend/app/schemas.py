@@ -112,7 +112,9 @@ class ApprovalDecisionIn(BaseModel):
     action: Literal["approve", "reject", "return", "delegate"]
     comment: str | None = Field(default=None, max_length=2000)
     idempotency_key: str = Field(min_length=8, max_length=128)
-    delegate_to: str | None = None
+    delegate_to: str | None = Field(default=None, max_length=64)
+    # Required for parallel steps; omitted for sequential steps.
+    assignment_key: str | None = Field(default=None, max_length=128)
 
     @field_validator("comment")
     @classmethod

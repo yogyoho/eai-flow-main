@@ -354,6 +354,41 @@ class ApprovalStep(UUIDMixin, Base):
     idempotency_key: Mapped[str | None] = mapped_column(String(128), nullable=True)
 
     request: Mapped[ApprovalRequest] = relationship("ApprovalRequest", back_populates="steps")
+    assignments: Mapped[list[ApprovalAssignment]] = relationship(
+        "ApprovalAssignment",
+        back_populates="step",
+        cascade="all, delete-orphan",
+        lazy="selectin",
+        order_by="ApprovalAssignment.created_at",
+    )
+
+
+class ApprovalAssignment(UUIDMixin, TimestampMixin, Base):
+    """One participant slot inside a ``parallel_all`` / ``parallel_any`` step.
+
+    Sequential steps keep their single decision on ``approval_steps`` for
+    backwards compatibility. Parallel steps create one row per slot so each
+    participant has an independent todo, decision and idempotency boundary.
+    """
+
+    __tablename__ = "approval_assignments"
+    __table_args__ = (UniqueConstraint("step_id", "assignment_key", name="uq_approval_assignment_key"),)
+
+    step_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("approval_steps.id", ondelete="CASCADE"), nullable=False, index=True)
+    request_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("approval_requests.id", ondelete="CASCADE"), nullable=False, index=True)
+    step_no: Mapped[int] = mapped_column(Integer, nullable=False)
+    # ``role:<role>``, ``user:<id>`` or a template-supplied stable key.
+    assignment_key: Mapped[str] = mapped_column(String(128), nullable=False)
+    approver_role: Mapped[str | None] = mapped_column(String(64), nullable=True, index=True)
+    approver_id: Mapped[str | None] = mapped_column(String(64), nullable=True, index=True)
+    status: Mapped[str] = mapped_column(String(16), default="active", nullable=False, index=True)
+    decision: Mapped[str | None] = mapped_column(String(16), nullable=True)
+    comment: Mapped[str | None] = mapped_column(Text, nullable=True)
+    decided_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    delegated_from: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    idempotency_key: Mapped[str | None] = mapped_column(String(128), nullable=True)
+
+    step: Mapped[ApprovalStep] = relationship("ApprovalStep", back_populates="assignments")
 
 
 class ApprovalAction(UUIDMixin, Base):
@@ -361,6 +396,7 @@ class ApprovalAction(UUIDMixin, Base):
 
     request_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("approval_requests.id", ondelete="CASCADE"), nullable=False, index=True)
     step_no: Mapped[int] = mapped_column(Integer, nullable=False)
+    assignment_key: Mapped[str | None] = mapped_column(String(128), nullable=True, index=True)
     action: Mapped[str] = mapped_column(String(16), nullable=False)
     actor_id: Mapped[str] = mapped_column(String(64), nullable=False)
     actor_role: Mapped[str | None] = mapped_column(String(64), nullable=True)

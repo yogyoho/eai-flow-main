@@ -178,6 +178,16 @@ export interface Approval {
     decided_at?: string | null
     escalation_level?: number
     mode?: string
+    assignments?: Array<{
+      assignment_key: string
+      approver_role?: string | null
+      approver_id?: string | null
+      status: string
+      decision?: string | null
+      comment?: string | null
+      decided_at?: string | null
+      delegated_from?: string | null
+    }>
   }>
   opportunity?: Json | null
   actions?: Json[]

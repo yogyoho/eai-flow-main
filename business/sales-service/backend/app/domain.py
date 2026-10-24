@@ -889,6 +889,19 @@ def approval_dict(request: ApprovalRequest, opportunity: Opportunity | None = No
                 "sla_due_at": step.sla_due_at.isoformat() if step.sla_due_at else None,
                 "decided_at": step.decided_at.isoformat() if step.decided_at else None,
                 "escalation_level": step.escalation_level,
+                "assignments": [
+                    {
+                        "assignment_key": assignment.assignment_key,
+                        "approver_role": assignment.approver_role,
+                        "approver_id": assignment.approver_id,
+                        "status": assignment.status,
+                        "decision": assignment.decision,
+                        "comment": assignment.comment,
+                        "decided_at": assignment.decided_at.isoformat() if assignment.decided_at else None,
+                        "delegated_from": assignment.delegated_from,
+                    }
+                    for assignment in step.assignments
+                ],
             }
             for step in request.steps
         ],

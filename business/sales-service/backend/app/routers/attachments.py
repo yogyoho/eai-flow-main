@@ -9,11 +9,12 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
+from app.approval_access import step_visible
 from app.auth import Identity, require_opportunity_access, require_sales_permission
 from app.config import get_settings
 from app.database import get_db
 from app.errors import bad_request, forbidden, not_found, unavailable
-from app.models import ApprovalRequest, Attachment, Opportunity
+from app.models import ApprovalRequest, ApprovalStep, Attachment, Opportunity
 from app.storage import build_key, delete_bytes, ensure_bucket, get_bytes, put_bytes
 
 router = APIRouter(prefix="/attachments", tags=["attachments"])
@@ -44,12 +45,12 @@ async def _ensure_object_access(db: AsyncSession, identity: Identity, object_typ
         require_opportunity_access(identity, opportunity)
         return
     if object_type == "approval_request":
-        request = (await db.execute(select(ApprovalRequest).where(ApprovalRequest.id == object_id).options(selectinload(ApprovalRequest.steps)))).scalar_one_or_none()
+        request = (await db.execute(select(ApprovalRequest).where(ApprovalRequest.id == object_id).options(selectinload(ApprovalRequest.steps).selectinload(ApprovalStep.assignments)))).scalar_one_or_none()
         if request is None:
             raise not_found("审批单不存在", "SALES-404-APPROVAL")
         if identity.is_admin or identity.data_scope == "all" or request.requested_by == identity.user_id:
             return
-        if any(step.approver_role == identity.sales_role or step.approver_id == identity.user_id for step in request.steps):
+        if any(step_visible(identity, step) for step in request.steps):
             return
         raise forbidden("无权访问该审批附件", "SALES-403-APPROVAL_SCOPE")
     if object_type == "master_data":

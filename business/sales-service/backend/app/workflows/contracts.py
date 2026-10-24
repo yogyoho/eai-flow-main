@@ -6,15 +6,24 @@ from dataclasses import dataclass, field
 
 
 @dataclass
+class WorkflowApprover:
+    """A participant slot in a parallel approval step."""
+
+    key: str
+    role: str | None = None
+    user_id: str | None = None
+
+
+@dataclass
 class WorkflowStep:
     step_no: int
     approver_role: str
     sla_hours: int
     approver_id: str | None = None
-    # ``sequential`` is the only mode used by the QW2 templates today. The field
-    # is part of the wire contract so a future parallel/any-of step can be added
-    # without changing the workflow input shape.
     mode: str = "sequential"
+    # Populated only for ``parallel_all`` / ``parallel_any``. ``approver_role``
+    # remains the display/primary role for compatibility with the QW2 schema.
+    approvers: list[WorkflowApprover] = field(default_factory=list)
 
 
 @dataclass
@@ -39,6 +48,8 @@ class DecisionSignal:
     comment: str | None
     idempotency_key: str
     delegate_to: str | None = None
+    # Required for parallel steps; ``None`` keeps the sequential wire format.
+    assignment_key: str | None = None
 
 
 @dataclass

@@ -38,6 +38,7 @@ from app.enums import STAGE_BASE_PROBABILITY, STAGE_LABELS, STAGES
 from app.errors import conflict, forbidden, not_found, unprocessable
 from app.models import (
     ApprovalRequest,
+    ApprovalStep,
     Contact,
     Customer,
     CustomerGroup,
@@ -74,7 +75,9 @@ async def _detail(db: AsyncSession, opp: Opportunity) -> dict[str, Any]:
     probabilities = list((await db.execute(select(OpportunityProbabilityHistory).where(OpportunityProbabilityHistory.opportunity_id == opp.id).order_by(OpportunityProbabilityHistory.created_at.desc()).limit(30))).scalars())
     gates = list((await db.execute(select(OpportunityGateCheck).where(OpportunityGateCheck.opportunity_id == opp.id).order_by(OpportunityGateCheck.checked_at.desc()).limit(40))).scalars())
     duplicates = list((await db.execute(select(OpportunityDuplicate).where(or_(OpportunityDuplicate.opportunity_id == opp.id, OpportunityDuplicate.duplicate_opportunity_id == opp.id)))).scalars())
-    approvals = list((await db.execute(select(ApprovalRequest).where(ApprovalRequest.opportunity_id == opp.id).options(selectinload(ApprovalRequest.steps)).order_by(ApprovalRequest.requested_at.desc()))).scalars())
+    approvals = list(
+        (await db.execute(select(ApprovalRequest).where(ApprovalRequest.opportunity_id == opp.id).options(selectinload(ApprovalRequest.steps).selectinload(ApprovalStep.assignments)).order_by(ApprovalRequest.requested_at.desc()))).scalars()
+    )
     todos = list((await db.execute(select(Todo).where(Todo.object_type == "opportunity", Todo.object_id == opp.id).order_by(Todo.created_at.desc()).limit(20))).scalars())
     contacts = list((await db.execute(select(Contact, OpportunityContact).join(OpportunityContact, OpportunityContact.contact_id == Contact.id).where(OpportunityContact.opportunity_id == opp.id))).all())
     gate_rows = [
@@ -159,7 +162,25 @@ async def _detail(db: AsyncSession, opp: Opportunity) -> dict[str, Any]:
                     "current_step": a.current_step,
                     "requested_at": a.requested_at.isoformat() if a.requested_at else None,
                     "completed_at": a.completed_at.isoformat() if a.completed_at else None,
-                    "steps": [{"step_no": s.step_no, "approver_role": s.approver_role, "status": s.status, "sla_due_at": s.sla_due_at.isoformat() if s.sla_due_at else None} for s in a.steps],
+                    "steps": [
+                        {
+                            "step_no": s.step_no,
+                            "mode": s.mode,
+                            "approver_role": s.approver_role,
+                            "status": s.status,
+                            "sla_due_at": s.sla_due_at.isoformat() if s.sla_due_at else None,
+                            "assignments": [
+                                {
+                                    "assignment_key": item.assignment_key,
+                                    "approver_role": item.approver_role,
+                                    "approver_id": item.approver_id,
+                                    "status": item.status,
+                                }
+                                for item in s.assignments
+                            ],
+                        }
+                        for s in a.steps
+                    ],
                 }
                 for a in approvals
             ],

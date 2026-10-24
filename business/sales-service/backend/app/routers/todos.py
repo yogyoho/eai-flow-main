@@ -12,7 +12,7 @@ from app.auth import Identity, require_opportunity_access, require_sales_permiss
 from app.database import get_db
 from app.domain import add_audit, todo_dict, utc_now
 from app.errors import conflict, forbidden, not_found
-from app.models import ApprovalAction, ApprovalRequest, Opportunity, Todo, TodoEvent
+from app.models import ApprovalAction, ApprovalRequest, ApprovalStep, Opportunity, Todo, TodoEvent
 from app.schemas import TodoBatchIn, TodoUpdate
 
 router = APIRouter(prefix="/todos", tags=["todos"])
@@ -75,7 +75,7 @@ async def _todo_detail(db: AsyncSession, todo: Todo, identity: Identity) -> dict
         profile = await db.get(UserProfile, todo.assignee_id)
         data["assignee_name"] = profile.display_name if profile else todo.assignee_id
     if todo.type == "approval":
-        request = (await db.execute(select(ApprovalRequest).where(ApprovalRequest.id == todo.object_id).options(selectinload(ApprovalRequest.steps)))).scalar_one_or_none()
+        request = (await db.execute(select(ApprovalRequest).where(ApprovalRequest.id == todo.object_id).options(selectinload(ApprovalRequest.steps).selectinload(ApprovalStep.assignments)))).scalar_one_or_none()
         if request:
             actions = list((await db.execute(select(ApprovalAction).where(ApprovalAction.request_id == request.id).order_by(ApprovalAction.created_at.asc()))).scalars())
             data["approval"] = {
@@ -89,17 +89,29 @@ async def _todo_detail(db: AsyncSession, todo: Todo, identity: Identity) -> dict
                 "steps": [
                     {
                         "step_no": s.step_no,
+                        "mode": s.mode,
                         "approver_role": s.approver_role,
                         "status": s.status,
                         "decision": s.decision,
                         "comment": s.comment,
                         "sla_due_at": s.sla_due_at.isoformat() if s.sla_due_at else None,
+                        "assignments": [
+                            {
+                                "assignment_key": item.assignment_key,
+                                "approver_role": item.approver_role,
+                                "approver_id": item.approver_id,
+                                "status": item.status,
+                                "decision": item.decision,
+                            }
+                            for item in s.assignments
+                        ],
                     }
                     for s in request.steps
                 ],
                 "actions": [
                     {
                         "step_no": a.step_no,
+                        "assignment_key": a.assignment_key,
                         "action": a.action,
                         "actor_id": a.actor_id,
                         "comment": a.comment,

@@ -258,6 +258,7 @@ function ApprovalDrawer({
   const [attachments, setAttachments] = useState<Json[]>([])
   const [error, setError] = useState('')
   const [decision, setDecision] = useState<'approve' | 'reject' | 'return' | 'delegate' | null>(null)
+  const [assignmentKey, setAssignmentKey] = useState<string | null>(null)
 
   const load = useCallback(async () => {
     try {
@@ -275,13 +276,38 @@ function ApprovalDrawer({
   }, [load])
 
   const activeStep = approval?.steps.find((step) => step.status === 'active')
+  const isParallelStep = activeStep?.mode === 'parallel_all' || activeStep?.mode === 'parallel_any'
+  const myAssignments = useMemo(() => {
+    if (!activeStep || !isParallelStep || approval?.status !== 'running') return []
+    return (activeStep.assignments || []).filter(
+      (assignment) =>
+        assignment.status === 'active' &&
+        (identity.is_admin ||
+          (assignment.approver_id
+            ? assignment.approver_id === identity.user_id
+            : identity.sales_role === assignment.approver_role || identity.role_code === assignment.approver_role)),
+    )
+  }, [activeStep, approval?.status, identity.is_admin, identity.role_code, identity.sales_role, isParallelStep])
+
+  useEffect(() => {
+    if (!myAssignments.length) {
+      setAssignmentKey(null)
+      return
+    }
+    if (!assignmentKey || !myAssignments.some((assignment) => assignment.assignment_key === assignmentKey)) {
+      setAssignmentKey(myAssignments[0].assignment_key)
+    }
+  }, [assignmentKey, myAssignments])
+
   const canDecide =
     approval?.status === 'running' &&
     activeStep &&
-    (identity.is_admin ||
-      (activeStep.approver_id
-        ? activeStep.approver_id === identity.user_id
-        : identity.sales_role === activeStep.approver_role))
+    (isParallelStep
+      ? myAssignments.length > 0
+      : identity.is_admin ||
+        (activeStep.approver_id
+          ? activeStep.approver_id === identity.user_id
+          : identity.sales_role === activeStep.approver_role || identity.role_code === activeStep.approver_role))
   const canCancel = approval && ['pending_start', 'running'].includes(approval.status) && (identity.is_admin || approval.requested_by === identity.user_id)
 
   async function cancel() {
@@ -345,6 +371,20 @@ function ApprovalDrawer({
                   <RefreshCw size={15} /> 重试启动
                 </button>
               ) : null}
+              {isParallelStep && myAssignments.length > 1 ? (
+                <select
+                  className="assignment-select"
+                  value={assignmentKey || ''}
+                  onChange={(event) => setAssignmentKey(event.target.value)}
+                  aria-label="选择审批席位"
+                >
+                  {myAssignments.map((assignment) => (
+                    <option key={assignment.assignment_key} value={assignment.assignment_key}>
+                      {ROLE_LABELS[assignment.approver_role || ''] || assignment.approver_role || assignment.assignment_key}
+                    </option>
+                  ))}
+                </select>
+              ) : null}
               {canDecide ? (
                 <>
                   <button type="button" className="button ghost small" onClick={() => setDecision('return')}>退回</button>
@@ -386,7 +426,7 @@ function ApprovalDrawer({
             <div className="section-head">
               <div>
                 <h3>审批步骤</h3>
-                <p className="muted">步骤按顺序激活；SLA 超时升级 4 小时，仍未处理则过期。</p>
+                <p className="muted">步骤按顺序激活；会签需全部通过，或签任一通过；SLA 超时升级 4 小时，仍未处理则过期。</p>
               </div>
             </div>
             <div className="approval-steps">
@@ -394,10 +434,25 @@ function ApprovalDrawer({
                 <div className={`approval-step ${step.status}`} key={step.step_no}>
                   <div className="step-number">{step.step_no}</div>
                   <div className="step-main">
-                    <strong>{ROLE_LABELS[step.approver_role] || step.approver_role}</strong>
-                    <span>
-                      {step.approver_id ? `指定：${step.approver_id}` : '角色池'} · {STEP_STATUS_LABELS[step.status] || step.status}
-                    </span>
+                    <strong>
+                      {ROLE_LABELS[step.approver_role] || step.approver_role}
+                      {step.mode === 'parallel_all' ? ' · 会签' : step.mode === 'parallel_any' ? ' · 或签' : ''}
+                    </strong>
+                    {step.mode === 'parallel_all' || step.mode === 'parallel_any' ? (
+                      <div className="approval-assignments">
+                        {(step.assignments || []).map((assignment) => (
+                          <span className={`assignment-chip ${assignment.status}`} key={assignment.assignment_key}>
+                            {assignment.approver_id || ROLE_LABELS[assignment.approver_role || ''] || assignment.approver_role || assignment.assignment_key}
+                            {' · '}
+                            {STEP_STATUS_LABELS[assignment.status] || assignment.status}
+                          </span>
+                        ))}
+                      </div>
+                    ) : (
+                      <span>
+                        {step.approver_id ? `指定：${step.approver_id}` : '角色池'} · {STEP_STATUS_LABELS[step.status] || step.status}
+                      </span>
+                    )}
                     {step.comment ? <p>{step.comment}</p> : null}
                   </div>
                   <div className="step-time">
@@ -487,6 +542,7 @@ function ApprovalDrawer({
         <DecisionModal
           approval={approval}
           action={decision}
+          assignmentKey={assignmentKey}
           onClose={() => setDecision(null)}
           onDone={async () => {
             setDecision(null)
@@ -502,11 +558,13 @@ function ApprovalDrawer({
 function DecisionModal({
   approval,
   action,
+  assignmentKey,
   onClose,
   onDone,
 }: {
   approval: Approval
   action: 'approve' | 'reject' | 'return' | 'delegate'
+  assignmentKey: string | null
   onClose: () => void
   onDone: () => Promise<void>
 }) {
@@ -526,6 +584,7 @@ function DecisionModal({
         action,
         comment: comment || undefined,
         delegate_to: action === 'delegate' ? delegateTo : undefined,
+        assignment_key: assignmentKey || undefined,
         idempotency_key: idempotencyKey,
       })
       push('决策已提交 Temporal', 'success')

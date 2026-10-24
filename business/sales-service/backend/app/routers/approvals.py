@@ -4,10 +4,11 @@ import uuid
 from typing import Any
 
 from fastapi import APIRouter, Body, Depends, Query
-from sqlalchemy import and_, func, or_, select, true
+from sqlalchemy import func, or_, select, true
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
+from app.approval_access import active_step_scope_condition, step_actionable, step_visible
 from app.approval_service import approve_decision, cancel_approval, create_approval, reset_for_retry
 from app.auth import Identity, require_opportunity_access, require_sales_permission
 from app.database import get_db
@@ -24,17 +25,12 @@ def approval_scope(identity: Identity):
         return true()
     return or_(
         ApprovalRequest.requested_by == identity.user_id,
-        ApprovalRequest.steps.any(
-            and_(
-                ApprovalStep.status == "active",
-                or_(ApprovalStep.approver_role == identity.sales_role, ApprovalStep.approver_id == identity.user_id),
-            )
-        ),
+        ApprovalRequest.steps.any(active_step_scope_condition(identity)),
     )
 
 
 async def _load_request(db: AsyncSession, request_id: uuid.UUID, *, lock: bool = False) -> ApprovalRequest:
-    stmt = select(ApprovalRequest).where(ApprovalRequest.id == request_id).options(selectinload(ApprovalRequest.steps))
+    stmt = select(ApprovalRequest).where(ApprovalRequest.id == request_id).options(selectinload(ApprovalRequest.steps).selectinload(ApprovalStep.assignments))
     if lock:
         stmt = stmt.with_for_update()
     request = (await db.execute(stmt)).scalar_one_or_none()
@@ -48,7 +44,7 @@ def _can_view(identity: Identity, request: ApprovalRequest) -> bool:
         return True
     if request.requested_by == identity.user_id:
         return True
-    return any(step.approver_role == identity.sales_role or step.approver_id == identity.user_id for step in request.steps)
+    return any(step_visible(identity, step) for step in request.steps)
 
 
 async def _detail(db: AsyncSession, request: ApprovalRequest) -> dict[str, Any]:
@@ -58,6 +54,7 @@ async def _detail(db: AsyncSession, request: ApprovalRequest) -> dict[str, Any]:
     data["actions"] = [
         {
             "step_no": a.step_no,
+            "assignment_key": a.assignment_key,
             "action": a.action,
             "actor_id": a.actor_id,
             "actor_role": a.actor_role,
@@ -99,20 +96,14 @@ async def list_approvals(
         conditions.append(ApprovalRequest.gate_code == gate_code)
     if opportunity_id:
         conditions.append(ApprovalRequest.opportunity_id == opportunity_id)
-    base = select(ApprovalRequest).where(*conditions).options(selectinload(ApprovalRequest.steps))
+    base = select(ApprovalRequest).where(*conditions).options(selectinload(ApprovalRequest.steps).selectinload(ApprovalStep.assignments))
     total = int((await db.execute(select(func.count(ApprovalRequest.id)).where(*conditions))).scalar_one())
     rows = list((await db.execute(base.order_by(ApprovalRequest.requested_at.desc()).offset(skip).limit(limit))).scalars())
     if mine:
-        rows = [
-            r
-            for r in rows
-            if r.status == "running" and r.requested_by != identity.user_id and any(s.status == "active" and (identity.is_admin or s.approver_role == identity.sales_role or s.approver_id == identity.user_id) for s in r.steps)
-        ]
+        rows = [r for r in rows if r.status == "running" and r.requested_by != identity.user_id and any(step_actionable(identity, step) for step in r.steps)]
     opp_ids = {r.opportunity_id for r in rows}
     opps = {o.id: o for o in (await db.execute(select(Opportunity).where(Opportunity.id.in_(opp_ids)))).scalars()} if opp_ids else {}
-    pending_my_action = sum(
-        1 for r in rows if r.status == "running" and r.requested_by != identity.user_id and any(s.status == "active" and (identity.is_admin or s.approver_role == identity.sales_role or s.approver_id == identity.user_id) for s in r.steps)
-    )
+    pending_my_action = sum(1 for r in rows if r.status == "running" and r.requested_by != identity.user_id and any(step_actionable(identity, step) for step in r.steps))
     return {
         "items": [approval_dict(r, opps.get(r.opportunity_id)) for r in rows],
         "total": total,
@@ -127,8 +118,10 @@ async def pending_count(
     identity: Identity = Depends(require_sales_permission("sales.approval.read")),
     db: AsyncSession = Depends(get_db),
 ):
-    rows = list((await db.execute(select(ApprovalRequest).where(ApprovalRequest.status == "running", ApprovalRequest.requested_by != identity.user_id).options(selectinload(ApprovalRequest.steps)))).scalars())
-    count = sum(1 for r in rows if any(s.status == "active" and (identity.is_admin or s.approver_role == identity.sales_role or s.approver_id == identity.user_id) for s in r.steps))
+    rows = list(
+        (await db.execute(select(ApprovalRequest).where(ApprovalRequest.status == "running", ApprovalRequest.requested_by != identity.user_id).options(selectinload(ApprovalRequest.steps).selectinload(ApprovalStep.assignments)))).scalars()
+    )
+    count = sum(1 for r in rows if any(step_actionable(identity, step) for step in r.steps))
     return {"pending": count}
 
 
@@ -184,6 +177,7 @@ async def decide(
         comment=body.comment,
         idempotency_key=body.idempotency_key,
         delegate_to=body.delegate_to,
+        assignment_key=body.assignment_key,
     )
     return {"id": str(request.id), "status": request.status, "message": "决策已提交审批引擎"}
 

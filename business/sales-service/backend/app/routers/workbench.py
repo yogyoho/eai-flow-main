@@ -3,10 +3,11 @@ from __future__ import annotations
 from datetime import UTC, datetime
 
 from fastapi import APIRouter, Depends
-from sqlalchemy import and_, func, or_, select, true
+from sqlalchemy import func, or_, select, true
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
+from app.approval_access import active_step_scope_condition, step_actionable
 from app.auth import Identity, require_sales_permission, scope_condition
 from app.database import get_db
 from app.domain import funnel_stage_rows, serialize_opportunities, todo_dict, utc_now
@@ -56,19 +57,14 @@ async def workbench_summary(
     overdue = [o for o in active if o.stage_due_at and o.stage_due_at < now]
 
     todos = list((await db.execute(select(Todo).where(todo_scope(identity), Todo.status.in_(["open", "in_progress"])).order_by(Todo.severity.asc(), Todo.due_at.asc()).limit(200))).scalars())
-    approval_stmt = select(ApprovalRequest).where(ApprovalRequest.status == "running").options(selectinload(ApprovalRequest.steps))
+    approval_stmt = select(ApprovalRequest).where(ApprovalRequest.status == "running").options(selectinload(ApprovalRequest.steps).selectinload(ApprovalStep.assignments))
     if not (identity.is_admin or identity.data_scope == "all"):
         approval_stmt = approval_stmt.where(
             ApprovalRequest.requested_by != identity.user_id,
-            ApprovalRequest.steps.any(
-                and_(
-                    ApprovalStep.status == "active",
-                    or_(ApprovalStep.approver_role == identity.sales_role, ApprovalStep.approver_id == identity.user_id),
-                )
-            ),
+            ApprovalRequest.steps.any(active_step_scope_condition(identity)),
         )
     approvals = list((await db.execute(approval_stmt.order_by(ApprovalRequest.requested_at.asc()).limit(100))).scalars())
-    pending_approvals = [item for item in approvals if (identity.is_admin or identity.data_scope == "all") or any(s.status == "active" and (s.approver_role == identity.sales_role or s.approver_id == identity.user_id) for s in item.steps)]
+    pending_approvals = [item for item in approvals if (identity.is_admin or identity.data_scope == "all") or any(step_actionable(identity, step) for step in item.steps)]
 
     amount, weighted = await _weighted(opps)
     active_amount = sum(float(o.amount) for o in active)
@@ -140,9 +136,19 @@ async def workbench_summary(
                 "steps": [
                     {
                         "step_no": s.step_no,
+                        "mode": s.mode,
                         "approver_role": s.approver_role,
                         "status": s.status,
                         "sla_due_at": s.sla_due_at.isoformat() if s.sla_due_at else None,
+                        "assignments": [
+                            {
+                                "assignment_key": item.assignment_key,
+                                "approver_role": item.approver_role,
+                                "approver_id": item.approver_id,
+                                "status": item.status,
+                            }
+                            for item in s.assignments
+                        ],
                     }
                     for s in a.steps
                 ],

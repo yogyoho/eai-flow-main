@@ -7,13 +7,17 @@ import logging
 
 from app.config import get_settings
 from app.workflows.activities import (
+    activate_parallel_step,
     activate_step,
+    delegate_parallel_assignment,
     delegate_step,
+    escalate_parallel_step,
     escalate_step,
     finalize_request,
     mark_failed,
     mark_running,
     record_decision,
+    record_parallel_decision,
 )
 from app.workflows.client import get_client
 from app.workflows.dispatcher import dispatcher_loop
@@ -47,9 +51,13 @@ async def run_worker() -> None:
         activities=[
             mark_running,
             activate_step,
+            activate_parallel_step,
             escalate_step,
+            escalate_parallel_step,
             record_decision,
+            record_parallel_decision,
             delegate_step,
+            delegate_parallel_assignment,
             finalize_request,
             mark_failed,
         ],

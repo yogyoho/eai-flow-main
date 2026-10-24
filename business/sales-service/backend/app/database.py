@@ -3,6 +3,7 @@
 from collections.abc import AsyncGenerator
 from datetime import UTC, datetime
 
+from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.orm import DeclarativeBase
 
@@ -53,6 +54,11 @@ async def init_db() -> None:
 
     async with get_engine().begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
+        # ``create_all`` creates new tables but never alters an existing one.
+        # Keep this additive migration explicit so rolling deployments can add
+        # parallel-approval audit fields without a heavyweight migration tool.
+        await conn.execute(text("ALTER TABLE approval_actions ADD COLUMN IF NOT EXISTS assignment_key VARCHAR(128)"))
+        await conn.execute(text("CREATE INDEX IF NOT EXISTS ix_approval_actions_assignment_key ON approval_actions (assignment_key)"))
 
 
 async def close_db() -> None:

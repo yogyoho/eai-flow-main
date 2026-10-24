@@ -413,8 +413,9 @@ erDiagram
 | `quote_conflicts` | `id, opportunity_id, status, description, resolution, resolved_by, resolved_at` | R2 最小记录 |
 | `approval_definitions` | `id, code, name, version, mode, steps_json, is_active, effective_from, effective_to` | 审批模板，按版本冻结 |
 | `approval_requests` | `id, request_no, definition_code, definition_version, opportunity_id, gate_code, status, current_step, reason, evidence_json, payload_json, requested_by, requested_at, workflow_id, workflow_run_id, started_at, completed_at, expires_at, failure_reason, version` | 审批请求 + Temporal 句柄 |
-| `approval_steps` | `id, request_id, step_no, mode, approver_role, approver_id, status, decision, comment, sla_due_at, decided_at, escalated_at, idempotency_key` | 审批步骤投影 |
-| `approval_actions` | `id, request_id, step_no, action, actor_id, actor_role, comment, idempotency_key unique, created_at` | 审批动作幂等记录 |
+| `approval_steps` | `id, request_id, step_no, mode, approver_role, approver_id, status, decision, comment, sla_due_at, decided_at, escalated_at, escalation_level, idempotency_key` | 审批步骤投影；并行步骤共用一条步骤记录 |
+| `approval_assignments` | `id, step_id, request_id, step_no, assignment_key, approver_role, approver_id, status, decision, comment, decided_at, delegated_from, idempotency_key` | 并行步骤的席位投影；`assignment_key` 唯一 |
+| `approval_actions` | `id, request_id, step_no, assignment_key, action, actor_id, actor_role, comment, idempotency_key unique, created_at` | 审批动作幂等记录；并行步骤记录具体席位 |
 | `outbox_events` | `id, aggregate_type, aggregate_id, event_type, payload_json, status, attempts, next_retry_at, last_error, created_at, processed_at` | 可靠启动/重试工作流 |
 
 审批状态：`pending_start`、`running`、`approved`、`rejected`、`returned`、`cancelled`、`expired`、`failed`。  
@@ -701,11 +702,32 @@ eai-flow-temporal
 
 步骤模式：
 
-- `sequential`：按 step_no 顺序，一步一人/一个角色池。
-- `parallel_all`：同一步多人全部通过才通过。
-- `parallel_any`：同一步任意一人通过即通过，全部拒绝才拒绝。
+- `sequential`：按 step_no 顺序，一步一人/一个角色池，沿用 `approver_role` / `approver_id`。
+- `parallel_all`（会签）：同一步多个席位全部同意才通过；任一席位驳回/退回，步骤立即结束。
+- `parallel_any`（或签）：同一步任一席位同意即通过；全部席位驳回才驳回；任一席位退回，步骤立即结束。
 
-QW2 种子模板使用 `sequential`，引擎保留 `parallel_all/parallel_any` 能力，后续报价/合同审批直接复用。
+并行步骤使用 `approvers` 列表声明席位：
+
+```json
+{
+  "step_no": 1,
+  "mode": "parallel_all",
+  "sla_hours": 24,
+  "approvers": [
+    {"role": "regional_manager"},
+    {"user_id": "demo-director"},
+    {"key": "finance-check", "role": "finance"}
+  ]
+}
+```
+
+- 席位键 `assignment_key` 必须稳定且在同一步内唯一：缺省为 `role:<role>` 或 `user:<user_id>`，也可由模板显式提供 `key`。
+- 每个席位独立投影到 `approval_assignments`，独立待办、独立决策、独立转办；决策 API 必须携带 `assignment_key`。
+- 转办只改变席位当前处理人，不消耗席位最终结论；角色席位转办后收窄为明确用户席位，仅受转办人或管理员可操作。
+- 并行步骤共用一个步骤 SLA 时钟；任一转办会把步骤时钟重置为 24 小时，升级只影响仍未决定的席位。
+- 升级/过期/取消/失败时未决席位标记 `skipped`，绝不自动通过。
+
+QW2 种子模板仍使用 `sequential`；`parallel_all/parallel_any` 已由 Temporal 工作流与投影层实现，供后续报价/合同审批直接复用。
 
 #### 9.4.4 工作流状态与信号
 
@@ -731,9 +753,8 @@ pending_start → running → approved
 
 | 信号 | 参数 | 说明 |
 | --- | --- | --- |
-| `decision` | `step_no, action, actor_id, actor_role, comment, idempotency_key` | 审批/拒绝/退回 |
+| `decision` | `step_no, assignment_key?, action, actor_id, actor_role, comment, idempotency_key, delegate_to?` | 同意/驳回/退回/转办；并行步骤必须带席位键 |
 | `cancel` | `reason, actor_id` | 撤回 |
-| `delegate` | `step_no, to_user_id, actor_id` | 转办，QW2 可选 |
 
 查询：
 
@@ -886,7 +907,7 @@ Retry:           maximum_attempts=5, initial_interval=2s, backoff=2.0
 | GET | `/approvals` | 列表；`status=pending_my_action` 支持待我审批 |
 | GET | `/approvals/{id}` | 审批详情 + 步骤 + 动作历史 |
 | GET | `/approvals/{id}/timeline` | 审批时间线 |
-| POST | `/approvals/{id}/decisions` | `{step_no, action, comment, idempotency_key}` |
+| POST | `/approvals/{id}/decision` | `{step_no, assignment_key?, action, comment, idempotency_key, delegate_to?}` |
 | POST | `/approvals/{id}/cancel` | 撤回（申请人/管理员） |
 | POST | `/approvals/{id}/retry-start` | 管理员手动补发 outbox |
 | GET | `/approvals/pending-count` | A01 卡片计数 |
@@ -973,7 +994,7 @@ in_progress → open（退回）
 | 卡片 | 数据来源 | QW2 状态 |
 | --- | --- | --- |
 | 今日待办 | `todos` 本人/范围 | 可用 |
-| 待我审批 | `approval_steps` 当前步骤 + 角色/用户 | 可用 |
+| 待我审批 | 顺序步看 `approval_steps`；并行步看 `approval_assignments` 中当前用户的活跃席位 | 可用 |
 | 阻断项 | `todos severity=blocker` | 可用 |
 | 超期商机 | `opportunities stage_due_at < now` | 可用 |
 | 加权预测 | `opportunities` 本地 | 可用 |
@@ -1148,7 +1169,7 @@ POST /api/v1/opportunities/{id}/probability
 | GET | `/approvals` | 列表；支持 `status=pending_my_action`、`gate_code`、`opportunity_id` |
 | GET | `/approvals/{id}` | 详情 + 步骤 + 动作历史 + 工作流状态 |
 | GET | `/approvals/{id}/timeline` | 审批时间线 |
-| POST | `/approvals/{id}/decisions` | 提交决定：`step_no/action/comment/idempotency_key` |
+| POST | `/approvals/{id}/decision` | 提交决定：`step_no/assignment_key?/action/comment/idempotency_key/delegate_to?` |
 | POST | `/approvals/{id}/cancel` | 撤回（申请人/管理员） |
 | POST | `/approvals/{id}/retry-start` | 管理员手动补发 outbox |
 | GET | `/approvals/pending-count` | 待我审批计数 |
