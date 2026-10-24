@@ -325,6 +325,9 @@ for k, v in json.load(open(sys.argv[1])).get("images", {}).items():
 PY
 )
     ALL_DELTA=("${BUILT_IMAGE_NAMES[@]}" "${PUBLIC_IMAGES[@]}")
+    # EAI-CUSTOM (2026-10-24): 清空 images/ 再导——delta 与全量共用 IMAGES_DIR，
+    # 全量失败/先行运行遗留的 tar 会被 tar czf 整目录扫进增量包（现场实测增量=全量大小）
+    rm -rf "${IMAGES_DIR}"
     mkdir -p "${IMAGES_DIR}"
     CHANGED=0; UNCHANGED=0
     info "Delta 导出（基线 ${SINCE}），仅导变化镜像："
