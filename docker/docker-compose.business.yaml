@@ -147,6 +147,110 @@ services:
   #     - eai-flow-net
   #   restart: unless-stopped
 
+  # ── Sales QW2 Backend (A01 + C1 + A02 + approvals) ────────────────────
+  sales-backend:
+    build:
+      context: ../business/sales-service/backend
+      dockerfile: Dockerfile
+    container_name: eai-flow-sales-backend
+    command: python -m uvicorn app.main:app --host 0.0.0.0 --port 3004 --workers 1
+    environment:
+      - DATABASE_URL=${SALES_DATABASE_URL:-postgresql+asyncpg://${BUSINESS_DB_USER:-business}:${BUSINESS_DB_PASSWORD:-business123}@business-db:5432/sales}
+      - JWT_ALGORITHM=HS256
+      - API_PREFIX=/api/v1
+      - AUTH_MODE=eai
+      - EAI_BASE_URL=http://gateway:8001
+      - EAI_TIMEOUT_SECONDS=4
+      - PERMISSION_CACHE_TTL_SECONDS=60
+      - SALES_BOOTSTRAP_PERMISSIONS=true
+      - SALES_EMBEDDED_WORKER=false
+      - TEMPORAL_ENABLED=true
+      - TEMPORAL_URL=temporal:7233
+      - TEMPORAL_NAMESPACE=default
+      - TEMPORAL_TASK_QUEUE=sales-approval-queue
+      - TEMPORAL_RPC_TIMEOUT_SECONDS=5
+      - SCHEDULER_ENABLED=true
+      - SEED_DEMO=${SALES_SEED_DEMO:-false}
+      - MINIO_ENABLED=true
+      - MINIO_ENDPOINT=http://ragflow-minio:9000
+      - MINIO_ACCESS_KEY=${MINIO_ACCESS_KEY:-minioadmin}
+      - MINIO_SECRET_KEY=${MINIO_SECRET_KEY:-minioadmin}
+      - MINIO_BUCKET=sales-attachments
+      - MINIO_SECURE=false
+      - MAX_ATTACHMENT_BYTES=${SALES_MAX_ATTACHMENT_BYTES:-26214400}
+      - LOG_LEVEL=${LOG_LEVEL:-INFO}
+    env_file:
+      - path: ../.env
+        required: false
+    depends_on:
+      business-db:
+        condition: service_healthy
+    networks:
+      - eai-flow-net
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://127.0.0.1:3004/health', timeout=3).status == 200 else 1)"]
+      interval: 15s
+      timeout: 5s
+      retries: 6
+      start_period: 20s
+
+  # ── Sales QW2 Worker (Temporal workflows + transactional outbox) ───────
+  sales-worker:
+    build:
+      context: ../business/sales-service/backend
+      dockerfile: Dockerfile
+    container_name: eai-flow-sales-worker
+    command: python -m app.worker
+    environment:
+      - DATABASE_URL=${SALES_DATABASE_URL:-postgresql+asyncpg://${BUSINESS_DB_USER:-business}:${BUSINESS_DB_PASSWORD:-business123}@business-db:5432/sales}
+      - AUTH_MODE=eai
+      - EAI_BASE_URL=http://gateway:8001
+      - TEMPORAL_ENABLED=true
+      - TEMPORAL_URL=temporal:7233
+      - TEMPORAL_NAMESPACE=default
+      - TEMPORAL_TASK_QUEUE=sales-approval-queue
+      - TEMPORAL_RPC_TIMEOUT_SECONDS=5
+      - TEMPORAL_RECONCILE_INTERVAL_SECONDS=300
+      - TEMPORAL_RECONCILE_STALE_SECONDS=120
+      - OUTBOX_MAX_ATTEMPTS=10
+      - OUTBOX_DISPATCH_INTERVAL_SECONDS=3
+      - MINIO_ENABLED=true
+      - MINIO_ENDPOINT=http://ragflow-minio:9000
+      - MINIO_ACCESS_KEY=${MINIO_ACCESS_KEY:-minioadmin}
+      - MINIO_SECRET_KEY=${MINIO_SECRET_KEY:-minioadmin}
+      - MINIO_BUCKET=sales-attachments
+      - MINIO_SECURE=false
+      - LOG_LEVEL=${LOG_LEVEL:-INFO}
+    env_file:
+      - path: ../.env
+        required: false
+    depends_on:
+      business-db:
+        condition: service_healthy
+      sales-backend:
+        condition: service_started
+    networks:
+      - eai-flow-net
+    restart: unless-stopped
+
+  # ── Sales QW2 Frontend (Vite SPA, nginx) ───────────────────────────────
+  sales-frontend:
+    build:
+      context: ../business/sales-service/frontend
+      dockerfile: Dockerfile
+    container_name: eai-flow-sales-frontend
+    environment:
+      - NODE_ENV=production
+    networks:
+      - eai-flow-net
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:80/ | grep -q '<div id=\"root\">' || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+
 volumes:
   business-db-data:
 
