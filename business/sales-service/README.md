@@ -86,4 +86,16 @@ python -m pytest -q
 python -m ruff check app tests
 ```
 
-离线测试覆盖契约序列化、并行席位聚合、整体过期、Outbox 退避、对账状态映射；带 Temporal 测试服务器的全链路用例见 `docs/designs/2026-10-23-sales-workflow-temporal-refactor.md`。当前 43 个离线测试通过。
+离线测试覆盖契约序列化、并行席位聚合、整体过期、Outbox 退避、对账状态映射。当前 43 个离线测试通过；另有 7 个时间跳跃用例默认跳过。
+
+时间跳跃用例需要 Temporal Test Server（Docker 中的生产 Temporal 不支持时间跳跃）：
+
+```powershell
+$env:TEMPORAL_TEST_SERVER = "C:\path\to\temporal-test-server.exe"
+python -m pytest tests/test_workflow_time_skipping.py -q
+# 7 passed
+python -m pytest -q
+# 50 passed
+```
+
+覆盖顺序/并行 24h SLA 升级、升级后 4h 过期、整体 1h 优先、整体 7 天过期、并行转办后 24h 重置。测试服务器不提交到仓库；未设置 `TEMPORAL_TEST_SERVER` 且 `PATH` 中也没有时自动跳过。完整验收记录见 `docs/designs/2026-10-23-sales-workflow-temporal-refactor.md`。

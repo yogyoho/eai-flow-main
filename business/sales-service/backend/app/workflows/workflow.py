@@ -45,10 +45,10 @@ class SalesApprovalWorkflow:
                     return "expired"
                 self.current_step = step.step_no
                 if step.mode in PARALLEL_MODES and workflow.patched("parallel-approval-v1"):
-                    outcome = await self._run_parallel_step(payload, step)
+                    outcome, reason = await self._run_parallel_step(payload, step)
                     if outcome == "approved":
                         continue
-                    await self._finalize(payload.request_id, outcome, self._outcome_reason(outcome))
+                    await self._finalize(payload.request_id, outcome, reason or self._outcome_reason(outcome))
                     return outcome
 
                 decision = await self._run_sequential_step(payload, step)
@@ -139,7 +139,7 @@ class SalesApprovalWorkflow:
             decision = candidate
         return decision
 
-    async def _run_parallel_step(self, payload: ApprovalWorkflowInput, step: WorkflowStep) -> str:
+    async def _run_parallel_step(self, payload: ApprovalWorkflowInput, step: WorkflowStep) -> tuple[str, str | None]:
         await workflow.execute_activity(
             "activate_parallel_step",
             args=[payload.request_id, step],
@@ -150,15 +150,12 @@ class SalesApprovalWorkflow:
         escalation_level = 0
         while True:
             if self.cancelled:
-                await self._finalize(payload.request_id, "cancelled", self.cancel_reason or "发起人取消")
-                return "cancelled"
+                return "cancelled", self.cancel_reason
             if self._is_expired(payload):
-                await self._finalize(payload.request_id, "expired", "审批超过整体时限")
-                return "expired"
+                return "expired", "审批超过整体时限"
             if workflow.now() >= deadline:
                 if escalated:
-                    await self._finalize(payload.request_id, "expired", "审批超时且升级后仍未处理")
-                    return "expired"
+                    return "expired", "审批超时且升级后仍未处理"
                 escalation_level += 1
                 result = await workflow.execute_activity(
                     "escalate_parallel_step",
@@ -166,7 +163,7 @@ class SalesApprovalWorkflow:
                     start_to_close_timeout=_ACTIVITY_TIMEOUT,
                 )
                 if result in {"approved", "rejected", "returned", "cancelled", "expired"}:
-                    return result
+                    return result, None
                 if result != "active":
                     raise RuntimeError(f"并行审批升级失败：{result}")
                 escalated = True
@@ -175,8 +172,7 @@ class SalesApprovalWorkflow:
 
             timeout, expired_now = self._bounded_timeout(payload, deadline - workflow.now())
             if expired_now:
-                await self._finalize(payload.request_id, "expired", "审批超过整体时限")
-                return "expired"
+                return "expired", "审批超过整体时限"
             try:
                 await workflow.wait_condition(
                     lambda: self.cancelled or self._has_parallel_decision(step.step_no),
@@ -187,8 +183,7 @@ class SalesApprovalWorkflow:
                 # the post-escalation expiry.
                 continue
             if self.cancelled:
-                await self._finalize(payload.request_id, "cancelled", self.cancel_reason or "发起人取消")
-                return "cancelled"
+                return "cancelled", self.cancel_reason
 
             keys = self._parallel_decision_keys(step.step_no)
             for key in keys:
@@ -200,7 +195,7 @@ class SalesApprovalWorkflow:
                         start_to_close_timeout=_ACTIVITY_TIMEOUT,
                     )
                     if result in {"approved", "rejected", "returned", "cancelled", "expired"}:
-                        return result
+                        return result, None
                     if result != "active":
                         raise RuntimeError(f"并行审批转办失败：{result}")
                     deadline = workflow.now() + _DELEGATE_WAIT
@@ -212,7 +207,7 @@ class SalesApprovalWorkflow:
                     start_to_close_timeout=_ACTIVITY_TIMEOUT,
                 )
                 if result in {"approved", "rejected", "returned"}:
-                    return result
+                    return result, None
                 if result != "active":
                     raise RuntimeError(f"并行审批决策失败：{result}")
 

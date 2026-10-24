@@ -488,23 +488,24 @@ Worker:
 
 ### 11.2 工作流测试（时间跳跃）
 
-使用 `temporalio.testing.WorkflowEnvironment.start_time_skipping()`：
+使用 `temporalio.testing.WorkflowEnvironment.start_time_skipping()`，测试文件为
+`business/sales-service/backend/tests/test_workflow_time_skipping.py`。当前已落地 7 个用例：
 
-- 顺序通过。
-- 第一步驳回。
-- 第一步退回。
-- 取消。
-- 24h 未处理 -> 升级 -> 4h 未处理 -> expired。
-- 转办后时钟重置。
-- 整体 7 天过期。
-- 重复 Signal 幂等。
-- Activity 重试不产生重复待办。
-- 并行步骤：`parallel_all` 全票通过、部分同意后驳回、退回。
-- 并行步骤：`parallel_any` 单票通过、全拒、退回。
-- 并行转办不消耗席位；升级只影响活跃席位；步骤级 24h/4h 时钟。
-- 并行步骤取消/过期时未决席位 `skipped`。
+- 顺序/并行步骤 24h 未处理 -> 升级 -> 4h 未处理 -> expired。
+- 顺序/并行步骤整体时限先到（1h 小于步骤 SLA）-> 1h 直接 expired，不升级。
+- 顺序/并行步骤整体 7 天上限 -> 7 天 expired，不自动通过。
+- 并行转办后步骤时钟重置为 24h -> 升级 -> 4h 后 expired。
 
-> 该测试需要 Temporal 测试服务器二进制；CI 可缓存，离线环境需预置。
+```powershell
+cd business/sales-service/backend
+$env:TEMPORAL_TEST_SERVER = "C:\path\to\temporal-test-server.exe"
+.\.venv\Scripts\python.exe -m pytest tests/test_workflow_time_skipping.py -q
+# 7 passed
+```
+
+不设置 `TEMPORAL_TEST_SERVER` 且 `PATH` 中没有测试服务器时，这 7 个用例会跳过，离线套件仍保持 43 个用例。
+
+> 测试服务器二进制未提交到仓库；CI 可缓存，或从 Temporal 官方发布包获取。Docker 中的生产 Temporal 不支持时间跳跃，不能替代该测试服务器。
 
 ### 11.3 集成测试（Compose）
 
@@ -527,8 +528,8 @@ Worker:
 - [x] `parallel_any` 或签：单票通过、全拒、取消。
 - [x] 并行转办不消耗席位，原处理人失去操作权。
 - [x] 并行升级只影响活跃席位，步骤时钟重置为 4h（活动直调验证）。
-- [ ] 24h SLA 升级、4h 后再过期可模拟（仍依赖时间跳跃）。
-- [ ] 整体 7 天过期不自动通过（仍依赖时间跳跃）。
+- [x] 顺序/并行 24h SLA 升级、4h 后再过期（时间跳跃测试）。
+- [x] 整体 7 天过期不自动通过（时间跳跃测试）。
 - [x] Temporal 不可用时请求不丢、页面提示明确。
 - [x] Worker 重启后流程继续。
 - [x] Reconciler 能修复“Temporal 完成、DB running”。
@@ -585,25 +586,28 @@ Worker:
 - [x] 并行步骤共享 SLA、升级只影响活跃席位、未决席位 `skipped`。
 - [x] 失败重试清理并行席位。
 - [x] 离线单元测试。
+- [x] 时间跳跃工作流测试（顺序/并行 SLA 升级、4h 过期、7 天整体过期、并行转办重置）。
 - [x] Compose 全链路验收（R4/R6/DUPLICATE、取消、重试、Temporal 停机恢复、Reconciler）。
-
-仍需在具备 Temporal 测试服务器的环境执行：
-
-- [ ] 时间跳跃工作流测试（依赖 Temporal 测试服务器）。
 
 ### 14.1 离线验证记录（2026-10-24）
 
 在 `business/sales-service/backend` 执行：
 
 ```powershell
+# 离线（无 Temporal 测试服务器，7 个时间跳跃用例跳过）
 .\.venv\Scripts\python.exe -m pytest -q
-# 43 passed
+# 43 passed, 7 skipped
+
+# 带 Temporal 测试服务器
+$env:TEMPORAL_TEST_SERVER = "C:\path\to\temporal-test-server.exe"
+.\.venv\Scripts\python.exe -m pytest -q
+# 50 passed
 
 .\.venv\Scripts\python.exe -m ruff check app tests
 # All checks passed!
 
 .\.venv\Scripts\python.exe -m ruff format --check app tests
-# 37 files already formatted
+# 38 files already formatted
 
 .\.venv\Scripts\python.exe -m compileall -q app tests
 # compileall ok
@@ -613,7 +617,7 @@ pnpm build
 # tsc + vite build 通过
 ```
 
-覆盖：契约快照（含并行 `WorkflowApprover` / `assignment_key` 往返）、并行模板校验、`parallel_all/parallel_any` 聚合、按席位隔离 Signal、失败重试清理席位、整体过期计算、Outbox 退避与耗尽终态、Temporal 终态映射、升级/转办/幂等冲突边界、RPC 硬超时。
+覆盖：契约快照（含并行 `WorkflowApprover` / `assignment_key` 往返）、并行模板校验、`parallel_all/parallel_any` 聚合、按席位隔离 Signal、失败重试清理席位、整体过期计算、Outbox 退避与耗尽终态、Temporal 终态映射、升级/转办/幂等冲突边界、RPC 硬超时；时间跳跃覆盖顺序/并行 24h 升级、4h 后过期、1h 整体时限优先、7 天整体过期、并行转办重置 24h。
 
 ### 14.2 Compose 联调记录（2026-10-24）
 
@@ -630,9 +634,9 @@ Docker/Temporal 可用后，通过 Nginx 入口 `http://localhost:2026/sales/api
 - Reconciler：手工将已完成审批改回 `running` 且 `updated_at` 置为 10 分钟前，调用 `reconcile_once()` 后补写为 `approved`。
 - Worker 重建后从 Temporal History 继续，未丢失运行中流程。
 
-未执行：时间跳跃测试（当前无 Temporal 测试服务器二进制）；24h SLA 升级、4h 再过期、整体 7 天过期的真实时钟验证依赖该测试或长时间等待。
+时间跳跃测试见 14.4，已用 Temporal Test Server 独立执行，不依赖 Docker Temporal 的真实时钟。
 
-> 当前机器 Docker daemon 已启动；若后续再次离线，先执行 `docker start` 或启动 Docker Desktop，再运行 11.2/11.3。
+> 当前机器 Docker daemon 已启动；若后续再次离线，先执行 `docker start` 或启动 Docker Desktop，再运行 11.3。
 
 ### 14.3 并行审批联调记录（2026-10-24）
 
@@ -648,4 +652,22 @@ Docker/Temporal 可用后，通过 Nginx 入口 `http://localhost:2026/sales/api
 - 顺序兼容：对改动前已启动的 AP20261000011 继续审批，Workflow 从既有 History 重放，两步顺序审批正常完成。
 - 迁移：`init_db` 在现有库上创建 `approval_assignments`，并为 `approval_actions` 增加 `assignment_key` 列，重复启动无副作用。
 
-未执行：时间跳跃测试；24h 自动升级、升级后 4h 过期、整体 7 天过期仍依赖 Temporal 测试服务器或真实等待。
+### 14.4 时间跳跃测试记录（2026-10-24）
+
+下载与 SDK 1.34.0 匹配的官方 `temporal-test-server_1.40.0_windows_amd64`，校验 SHA-256 后通过
+`TEMPORAL_TEST_SERVER` 指定路径执行：
+
+```powershell
+$env:TEMPORAL_TEST_SERVER = "C:\...\temporal-test-server.exe"
+.\.venv\Scripts\python.exe -m pytest tests/test_workflow_time_skipping.py -q
+# 7 passed in 3.27s
+```
+
+覆盖并验证：
+
+- 并行 `parallel_all`：0h 激活 -> 24h 升级 `escalation_level=1` -> 28h `expired`。
+- 并行整体时限 1h 小于步骤 SLA 48h：1h 直接 `expired`，不调用升级。
+- 并行整体 7 天上限：7 天 `expired`，不自动通过。
+- 并行转办：2h 转办 -> 步骤时钟重置 -> 26h 升级 -> 30h `expired`。
+- 顺序步骤：24h 升级 -> 28h `expired`；1h 整体时限优先；7 天整体上限。
+- 测试使用内存活动桩，只验证 Workflow Timer/顺序/聚合，不写业务库；活动级数据库行为由离线测试和 Compose 验收覆盖。
