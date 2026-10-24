@@ -25,6 +25,7 @@ import { Link, useSearchParams } from 'react-router-dom'
 
 import { useSession } from '../App'
 import { api, qs, type Gate, type Json, type MasterOptions, type Opportunity, type Paged } from '../api'
+import { DatePicker, Select } from '../components/controls'
 import {
   Badge,
   Drawer,
@@ -200,28 +201,32 @@ export default function Opportunities() {
               placeholder="搜索商机编号、名称、客户"
             />
           </label>
-          <select value={filters.stage || ''} onChange={(event) => setFilter('stage', event.target.value)}>
-            <option value="">全部阶段</option>
-            {STAGES.map((stage) => (
-              <option key={stage.code} value={stage.code}>
-                {stage.code} · {stage.label}
-              </option>
-            ))}
-          </select>
-          <select value={filters.region_code || ''} onChange={(event) => setFilter('region_code', event.target.value)}>
-            <option value="">全部区域</option>
-            {REGIONS.map((region) => (
-              <option key={region.code} value={region.code}>
-                {region.label}
-              </option>
-            ))}
-          </select>
-          <select value={filters.sort || 'updated_desc'} onChange={(event) => setFilter('sort', event.target.value)}>
-            <option value="updated_desc">最近更新</option>
-            <option value="amount_desc">金额从高到低</option>
-            <option value="close_asc">预计关闭最近</option>
-            <option value="stage_asc">阶段从早到晚</option>
-          </select>
+          <Select
+            value={filters.stage || ''}
+            onChange={(value) => setFilter('stage', value)}
+            ariaLabel="阶段筛选"
+            options={[
+              { value: '', label: '全部阶段' },
+              ...STAGES.map((stage) => ({ value: stage.code, label: `${stage.code} · ${stage.label}` })),
+            ]}
+          />
+          <Select
+            value={filters.region_code || ''}
+            onChange={(value) => setFilter('region_code', value)}
+            ariaLabel="区域筛选"
+            options={[{ value: '', label: '全部区域' }, ...REGIONS.map((region) => ({ value: region.code, label: region.label }))]}
+          />
+          <Select
+            value={filters.sort || 'updated_desc'}
+            onChange={(value) => setFilter('sort', value)}
+            ariaLabel="排序方式"
+            options={[
+              { value: 'updated_desc', label: '最近更新' },
+              { value: 'amount_desc', label: '金额从高到低' },
+              { value: 'close_asc', label: '预计关闭最近' },
+              { value: 'stage_asc', label: '阶段从早到晚' },
+            ]}
+          />
           <button
             type="button"
             className={`toggle-chip ${filters.overdue === '1' ? 'on' : ''}`}
@@ -884,22 +889,29 @@ function TransitionModal({
           {target === 'S8' ? (
             <>
               <Field label="结果" required>
-                <select value={result} onChange={(event) => setResult(event.target.value as 'won' | 'lost')}>
-                  <option value="won">中标</option>
-                  <option value="lost">失标</option>
-                </select>
+                <Select
+                  value={result}
+                  onChange={(value) => setResult(value as 'won' | 'lost')}
+                  ariaLabel="结果"
+                  options={[
+                    { value: 'won', label: '中标' },
+                    { value: 'lost', label: '失标' },
+                  ]}
+                />
               </Field>
               {result === 'lost' ? (
                 <>
                   <Field label="失标原因" required>
-                    <select value={lostReason} onChange={(event) => setLostReason(event.target.value)}>
-                      <option value="">请选择</option>
-                      {lostReasons.map((item) => (
-                        <option value={item.code} key={item.code}>
-                          {item.code} · {item.label}
-                        </option>
-                      ))}
-                    </select>
+                    <Select
+                      value={lostReason}
+                      onChange={setLostReason}
+                      placeholder="请选择"
+                      ariaLabel="失标原因"
+                      options={[
+                        { value: '', label: '请选择' },
+                        ...lostReasons.map((item) => ({ value: item.code, label: `${item.code} · ${item.label}` })),
+                      ]}
+                    />
                   </Field>
                   <Field label="失标说明">
                     <textarea rows={3} value={lostNote} onChange={(event) => setLostNote(event.target.value)} />
@@ -918,7 +930,7 @@ function TransitionModal({
                   <input value={contractAmount} onChange={(event) => setContractAmount(event.target.value)} inputMode="decimal" />
                 </Field>
                 <Field label="生效日期">
-                  <input type="date" value={contractDate} onChange={(event) => setContractDate(event.target.value)} />
+                  <DatePicker value={contractDate} onChange={setContractDate} ariaLabel="合同生效日期" />
                 </Field>
               </div>
             </>
@@ -997,13 +1009,12 @@ function RollbackModal({
       {error ? <ErrorBanner message={error} /> : null}
       <div className="form-stack">
         <Field label="回退到" required>
-          <select value={target} onChange={(event) => setTarget(event.target.value)}>
-            {prior.map((stage) => (
-              <option key={stage.code} value={stage.code}>
-                {stage.code} · {stage.label}
-              </option>
-            ))}
-          </select>
+          <Select
+            value={target}
+            onChange={setTarget}
+            ariaLabel="回退阶段"
+            options={prior.map((stage) => ({ value: stage.code, label: `${stage.code} · ${stage.label}` }))}
+          />
         </Field>
         <Field label="原因" required>
           <textarea rows={2} value={reason} onChange={(event) => setReason(event.target.value)} />
@@ -1150,14 +1161,16 @@ function ApprovalRequestModal({
           </span>
         </div>
         <Field label="审批闸门" required>
-          <select value={gate} onChange={(event) => setGate(event.target.value)}>
-            {gates.map((code) => (
-              <option key={code} value={code}>
-                {GATE_LABELS[code] || code}
-              </option>
-            ))}
-            {!gates.length ? <option value="R4">R4 新客户例外</option> : null}
-          </select>
+          <Select
+            value={gate}
+            onChange={setGate}
+            ariaLabel="审批闸门"
+            options={
+              gates.length
+                ? gates.map((code) => ({ value: code, label: GATE_LABELS[code] || code }))
+                : [{ value: 'R4', label: 'R4 新客户例外' }]
+            }
+          />
         </Field>
         <Field label="申请说明" required>
           <textarea rows={4} value={reason} onChange={(event) => setReason(event.target.value)} placeholder="说明为什么需要破例、风险与补救措施" />
@@ -1253,52 +1266,60 @@ function CreateOpportunityModal({
           <input value={name} onChange={(event) => setName(event.target.value)} placeholder="例如：塔山煤矿 8206 智能综采新建" />
         </Field>
         <Field label="客户" required>
-          <select
+          <Select
             value={customerId}
-            onChange={(event) => {
-              setCustomerId(event.target.value)
+            onChange={(value) => {
+              setCustomerId(value)
               setMineId('')
               setWorkfaceId('')
             }}
-          >
-            <option value="">请选择客户</option>
-            {options?.customers.map((item) => (
-              <option key={item.id} value={item.id}>
-                {item.name} · {item.region_code}
-              </option>
-            ))}
-          </select>
+            placeholder="请选择客户"
+            ariaLabel="客户"
+            searchable
+            options={[
+              { value: '', label: '请选择客户' },
+              ...(options?.customers || []).map((item) => ({ value: item.id, label: `${item.name} · ${item.region_code}` })),
+            ]}
+          />
         </Field>
         <div className="form-grid">
           <Field label="矿井">
-            <select value={mineId} onChange={(event) => { setMineId(event.target.value); setWorkfaceId('') }}>
-              <option value="">不指定</option>
-              {mines.map((item) => (
-                <option key={item.id} value={item.id}>{item.name}</option>
-              ))}
-            </select>
+            <Select
+              value={mineId}
+              onChange={(value) => {
+                setMineId(value)
+                setWorkfaceId('')
+              }}
+              placeholder="不指定"
+              ariaLabel="矿井"
+              options={[{ value: '', label: '不指定' }, ...mines.map((item) => ({ value: item.id, label: item.name }))]}
+            />
           </Field>
           <Field label="工作面">
-            <select value={workfaceId} onChange={(event) => setWorkfaceId(event.target.value)}>
-              <option value="">不指定</option>
-              {workfaces.map((item) => (
-                <option key={item.id} value={item.id}>{item.name}</option>
-              ))}
-            </select>
+            <Select
+              value={workfaceId}
+              onChange={setWorkfaceId}
+              placeholder="不指定"
+              ariaLabel="工作面"
+              options={[{ value: '', label: '不指定' }, ...workfaces.map((item) => ({ value: item.id, label: item.name }))]}
+            />
           </Field>
         </div>
         <div className="form-grid">
           <Field label="产品线" required>
-            <select value={productLine} onChange={(event) => setProductLine(event.target.value)}>
-              {products.length ? products.map((item) => <option key={item}>{item}</option>) : <option>智能综采</option>}
-            </select>
+            <Select
+              value={productLine}
+              onChange={setProductLine}
+              ariaLabel="产品线"
+              options={(products.length ? products : ['智能综采']).map((item) => ({ value: item, label: item }))}
+            />
           </Field>
           <Field label="预计金额">
             <input value={amount} onChange={(event) => setAmount(event.target.value)} inputMode="decimal" />
           </Field>
         </div>
         <Field label="预计关闭日期" hint="S1→S2 必填，缺失会被阶段字段闸门拦截。">
-          <input type="date" value={closeDate} onChange={(event) => setCloseDate(event.target.value)} />
+          <DatePicker value={closeDate} onChange={setCloseDate} ariaLabel="预计关闭日期" />
         </Field>
       </div>
     </Modal>

@@ -6,9 +6,10 @@ import {
   Search,
   Upload,
 } from 'lucide-react'
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 
 import { api, qs, type Json, type MasterOptions, type Paged } from '../api'
+import { DatePicker, Select } from '../components/controls'
 import {
   Badge,
   EmptyState,
@@ -201,7 +202,7 @@ export default function MasterData() {
               <Plus size={15} /> 新增
             </button>
             <button type="button" className="button ghost small" onClick={() => setImportOpen(true)}>
-              <Upload size={15} /> CSV 导入
+              <Upload size={15} /> 数据导入
             </button>
           </div>
         </div>
@@ -377,18 +378,26 @@ function CreateMasterModal({
         {fields.map((field) => (
           <Field key={field.key} label={field.label} required={field.required}>
             {field.type === 'select' ? (
-              <select
+              <Select
                 value={values[field.key] || ''}
-                onChange={(event) => setValues((current) => ({ ...current, [field.key]: event.target.value }))}
-              >
-                <option value="">请选择</option>
-                {(optionRows[field.option || 'customers'] || []).map((item) => (
-                  <option key={item.id} value={item.id}>{item.name}</option>
-                ))}
-              </select>
+                onChange={(value) => setValues((current) => ({ ...current, [field.key]: value }))}
+                placeholder="请选择"
+                ariaLabel={field.label}
+                searchable={field.option === 'customers' || field.option === 'mines' || field.option === 'workfaces'}
+                options={[
+                  { value: '', label: '请选择' },
+                  ...(optionRows[field.option || 'customers'] || []).map((item) => ({ value: item.id, label: item.name })),
+                ]}
+              />
+            ) : field.type === 'date' ? (
+              <DatePicker
+                value={values[field.key] || ''}
+                onChange={(value) => setValues((current) => ({ ...current, [field.key]: value }))}
+                ariaLabel={field.label}
+              />
             ) : (
               <input
-                type={field.type === 'number' ? 'number' : field.type === 'date' ? 'date' : 'text'}
+                type={field.type === 'number' ? 'number' : 'text'}
                 value={values[field.key] || ''}
                 onChange={(event) => setValues((current) => ({ ...current, [field.key]: event.target.value }))}
                 placeholder={field.placeholder}
@@ -421,6 +430,49 @@ function ImportMasterModal({
   const [result, setResult] = useState<Json | null>(null)
   const [error, setError] = useState('')
   const [saving, setSaving] = useState(false)
+  const [dragging, setDragging] = useState(false)
+  const fileInputRef = useRef<HTMLInputElement>(null)
+
+  useEffect(() => {
+    if (!open) return
+    setFile(null)
+    setDryRun(false)
+    setResult(null)
+    setError('')
+    setDragging(false)
+    if (fileInputRef.current) fileInputRef.current.value = ''
+  }, [open])
+
+  function chooseFile(next: File | null) {
+    setResult(null)
+    setError('')
+    if (!next) {
+      setFile(null)
+      return
+    }
+    if (/\.xls$/i.test(next.name)) {
+      setFile(null)
+      setError('旧版 .xls 暂不支持，请另存为 .xlsx 后上传')
+      return
+    }
+    if (!/\.(csv|xlsx|xlsm)$/i.test(next.name)) {
+      setFile(null)
+      setError('仅支持 .csv、.xlsx 或 .xlsm 文件')
+      return
+    }
+    if (next.size > 10 * 1024 * 1024) {
+      setFile(null)
+      setError('文件不能超过 10MB')
+      return
+    }
+    setFile(next)
+  }
+
+  function fileSize(bytes: number) {
+    if (bytes < 1024) return `${bytes} B`
+    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`
+    return `${(bytes / 1024 / 1024).toFixed(1)} MB`
+  }
 
   async function submit() {
     if (!file) return
@@ -444,7 +496,7 @@ function ImportMasterModal({
   return (
     <Modal
       open={open}
-      title={`CSV 导入 · ${TABS.find((item) => item.key === type)?.label || type}`}
+      title={`数据导入 · ${TABS.find((item) => item.key === type)?.label || type}`}
       onClose={onClose}
       footer={
         <div className="modal-actions">
@@ -459,11 +511,69 @@ function ImportMasterModal({
       <div className="form-stack">
         <div className="rule-note">
           <FileSpreadsheet size={15} />
-          <span>UTF-8 BOM 或 GBK CSV，首行为表头。支持中文别名，例如“客户名称”“工作面名称”。</span>
+          <span>支持 Excel (.xlsx/.xlsm) 与 CSV，首行为表头。CSV 可为 UTF-8 BOM 或 GBK；支持中文别名，例如“客户名称”“工作面名称”。</span>
         </div>
-        <Field label="CSV 文件" required>
-          <input type="file" accept=".csv,text/csv" onChange={(event) => setFile(event.target.files?.[0] || null)} />
-        </Field>
+        <div className="field">
+          <span className="field-label">
+            数据文件<em>*</em>
+          </span>
+          <input
+            ref={fileInputRef}
+            type="file"
+            className="upload-input"
+            accept=".csv,.xlsx,.xlsm,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+            onChange={(event) => {
+              chooseFile(event.target.files?.[0] || null)
+              event.target.value = ''
+            }}
+          />
+          <div
+            className={`upload-dropzone ${dragging ? 'is-dragging' : ''} ${file ? 'has-file' : ''}`}
+            role="button"
+            tabIndex={0}
+            aria-label="选择或拖拽数据文件"
+            onClick={() => fileInputRef.current?.click()}
+            onKeyDown={(event) => {
+              if (event.key === 'Enter' || event.key === ' ') {
+                event.preventDefault()
+                fileInputRef.current?.click()
+              }
+            }}
+            onDragOver={(event) => {
+              event.preventDefault()
+              event.dataTransfer.dropEffect = 'copy'
+              setDragging(true)
+            }}
+            onDragLeave={(event) => {
+              if (!event.currentTarget.contains(event.relatedTarget as Node | null)) setDragging(false)
+            }}
+            onDrop={(event) => {
+              event.preventDefault()
+              setDragging(false)
+              chooseFile(event.dataTransfer.files?.[0] || null)
+            }}
+          >
+            <span className="upload-dropzone-icon">
+              <Upload size={20} />
+            </span>
+            <div className="upload-dropzone-copy">
+              <strong>{file ? file.name : '拖拽文件到此处，或点击选择'}</strong>
+              <span>{file ? `${fileSize(file.size)} · 点击更换文件` : 'Excel (.xlsx/.xlsm) 或 CSV，最大 10MB'}</span>
+            </div>
+          </div>
+          {file ? (
+            <button
+              type="button"
+              className="text-link upload-remove"
+              onClick={() => {
+                chooseFile(null)
+                if (fileInputRef.current) fileInputRef.current.value = ''
+              }}
+            >
+              移除已选文件
+            </button>
+          ) : null}
+        </div>
         <label className="check-line">
           <input type="checkbox" checked={dryRun} onChange={(event) => setDryRun(event.target.checked)} />
           <span>仅校验，不写入（仍记录导入任务）</span>
@@ -498,7 +608,7 @@ function ImportMasterModal({
             URL.revokeObjectURL(url)
           }}
         >
-          <Download size={14} /> 下载最小模板
+          <Download size={14} /> 下载 CSV 模板
         </button>
       </div>
     </Modal>

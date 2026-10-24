@@ -24,7 +24,7 @@ QW2 是销售子系统的**执行底座**，先交付三个可真实使用的页
 2. **A02 统一待办**：把规则事件、审批、仲裁、补录四类任务收口，支持优先级、SLA、超时升级、批量处理和审计。审批任务由 `eai-flow-temporal` 驱动，A02 只是审批待办的展示与入口。
 3. **A01 我的工作台**：按角色聚合今日待办、待我审批、阻断项、超期商机、加权预测和漏斗健康度，并提供下钻和规则生成的今日摘要。
 
-同时提供**最小主数据**（集团/客户/矿井/工作面/产品/联系人/示范面）的本地维护与 CSV 导入，支撑 C1 运行。
+同时提供**最小主数据**（集团/客户/矿井/工作面/产品/联系人/示范面）的本地维护与 CSV / Excel 导入（支持拖拽），支撑 C1 运行。
 
 ### 1.2 QW2 不是什么
 
@@ -470,7 +470,7 @@ UNIQUE (dedupe_key) WHERE status IN ('open','in_progress')
 | `notifications` | `id, user_id, type, title, body, link, read_at, created_at` | 站内信 |
 | `audit_events` | `id, actor_type, actor_id, action, object_type, object_id, before_json, after_json, request_id, created_at` | 不可篡改审计 |
 | `number_sequences` | `prefix, period, next_value` | 单号生成 |
-| `import_jobs` | `id, type, file_name, total, success, failed, status, created_by, created_at` | CSV 导入批次 |
+| `import_jobs` | `id, type, file_name, total, success, failed, status, created_by, created_at` | CSV / Excel 导入批次 |
 | `saved_views` | `id, user_id, page, name, filters_json, is_default` | 可选，P1 |
 
 ### 6.4 状态枚举
@@ -1154,7 +1154,7 @@ POST /api/v1/opportunities/{id}/probability
 | GET | `/master-data/products` | 产品线/型号 |
 | GET | `/master-data/contacts` | 联系人 |
 | GET | `/master-data/pilot-projects` | 示范面 |
-| POST | `/master-data/import` | CSV 导入（type + file） |
+| POST | `/master-data/import/upload` | CSV / Excel 导入（type + file，可 dry_run） |
 | GET | `/rules` | 规则列表/版本 |
 | PUT | `/rules/{code}` | 新版本 |
 | GET | `/lost-reason-codes` | 失标码表 |
@@ -1325,7 +1325,7 @@ Table
 ### 13.5 主数据 `/sales/master-data`（管理员/Steward）
 
 - Tab：集团/客户/矿井/工作面/产品/联系人/示范面。
-- 列表 + 搜索 + 导入 CSV + 失败行下载。
+- 列表 + 搜索 + 导入 CSV / Excel（拖拽或点选）+ 失败行下载。
 - 显示来源、更新时间、完整度；不提供“假实时”。
 - 导入采用“预校验→确认导入→结果”三步，失败不落库。
 

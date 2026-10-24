@@ -16,6 +16,7 @@ dependencies = [
     "greenlet>=3.1.1",
     "temporalio>=1.27.0",
     "boto3>=1.35.0",
+    "openpyxl>=3.1.5",
     "uvloop>=0.21.0; sys.platform != 'win32'",
 ]
 

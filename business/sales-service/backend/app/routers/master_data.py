@@ -3,10 +3,12 @@ from __future__ import annotations
 import csv
 import io
 import uuid
-from datetime import datetime
+from datetime import date, datetime
 from decimal import Decimal
+from pathlib import Path
 from typing import Any
 
+import openpyxl
 from fastapi import APIRouter, Depends, File, Form, Query, UploadFile
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -101,6 +103,79 @@ def _date(value: str | None):
         except ValueError:
             continue
     return None
+
+
+def _cell_text(value: Any) -> str:
+    if value is None:
+        return ""
+    if isinstance(value, datetime):
+        if not any((value.hour, value.minute, value.second, value.microsecond)):
+            return value.strftime("%Y-%m-%d")
+        return value.strftime("%Y-%m-%d %H:%M:%S")
+    if isinstance(value, date):
+        return value.strftime("%Y-%m-%d")
+    if isinstance(value, bool):
+        return "1" if value else "0"
+    if isinstance(value, float) and value.is_integer():
+        return str(int(value))
+    return str(value).strip()
+
+
+def _read_csv_rows(raw: bytes) -> list[dict[str, str]]:
+    try:
+        text = raw.decode("utf-8-sig")
+    except UnicodeDecodeError:
+        text = raw.decode("gbk", errors="replace")
+    reader = csv.DictReader(io.StringIO(text))
+    if not reader.fieldnames:
+        raise bad_request("CSV 缺少表头", "SALES-400-IMPORT_HEADER")
+    return [{key: _cell_text(value) for key, value in row.items()} for row in reader]
+
+
+def _read_xlsx_rows(raw: bytes) -> list[dict[str, str]]:
+    try:
+        workbook = openpyxl.load_workbook(io.BytesIO(raw), read_only=True, data_only=True)
+    except Exception as exc:  # noqa: BLE001
+        raise bad_request(
+            "Excel 文件无法解析，请确认是 .xlsx 或 .xlsm 格式",
+            "SALES-400-IMPORT_EXCEL",
+        ) from exc
+    try:
+        sheet = workbook.active
+        if sheet is None:
+            raise bad_request("Excel 缺少工作表", "SALES-400-IMPORT_HEADER")
+        values = sheet.iter_rows(values_only=True)
+        header_row = next(values, None)
+        headers = [_cell_text(value) for value in header_row] if header_row else []
+        if not any(headers):
+            raise bad_request("Excel 缺少表头", "SALES-400-IMPORT_HEADER")
+        rows: list[dict[str, str]] = []
+        for row_values in values:
+            row: dict[str, str] = {}
+            for index, header in enumerate(headers):
+                if header and index < len(row_values):
+                    row[header] = _cell_text(row_values[index])
+            rows.append(row)
+        return rows
+    finally:
+        workbook.close()
+
+
+def _read_import_rows(file_name: str | None, raw: bytes) -> list[dict[str, str]]:
+    suffix = Path(file_name or "").suffix.lower()
+    if suffix in {".xlsx", ".xlsm"} or (not suffix and raw.startswith(b"PK")):
+        return _read_xlsx_rows(raw)
+    if suffix == ".xls":
+        raise bad_request(
+            "旧版 .xls 暂不支持，请另存为 .xlsx 后上传",
+            "SALES-400-IMPORT_FORMAT",
+        )
+    if suffix in {"", ".csv", ".txt"}:
+        return _read_csv_rows(raw)
+    raise bad_request(
+        "仅支持 CSV 或 Excel (.xlsx/.xlsm) 文件",
+        "SALES-400-IMPORT_FORMAT",
+    )
 
 
 async def _resolve_id(db: AsyncSession, model, row: dict[str, str], id_key: str, name_key: str, name_field: str = "name"):
@@ -385,17 +460,11 @@ async def import_master_data(
     raw = await file.read()
     if len(raw) > 10 * 1024 * 1024:
         raise bad_request("文件不能超过 10MB", "SALES-400-IMPORT_SIZE")
-    try:
-        text = raw.decode("utf-8-sig")
-    except UnicodeDecodeError:
-        text = raw.decode("gbk", errors="replace")
-    reader = csv.DictReader(io.StringIO(text))
-    if not reader.fieldnames:
-        raise bad_request("CSV 缺少表头", "SALES-400-IMPORT_HEADER")
+    rows = _read_import_rows(file.filename, raw)
     success = 0
     failed = 0
     errors: list[dict[str, Any]] = []
-    for index, row in enumerate(reader, start=2):
+    for index, row in enumerate(rows, start=2):
         canonical = _canonical(row)
         if not any(canonical.values()):
             continue

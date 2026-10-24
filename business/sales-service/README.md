@@ -38,6 +38,19 @@ API 不直接启动 Workflow，也不直接扫描 Outbox。审批创建与 `outb
 
 决策 API 对并行步骤必须传 `assignment_key`；每个席位有独立待办、状态和转办记录。转办不消耗席位，角色席位转办后收窄为明确用户。取消/过期/失败时未决席位标记 `skipped`，不会自动通过。并行步骤共享一个 SLA 时钟，升级只影响仍未决定的席位。
 
+### 主数据导入
+
+销售主数据页的「数据导入」支持拖拽或点击选择文件：
+
+- Excel：`.xlsx`、`.xlsm`（首个工作表、首行为表头、公式读取缓存值）。
+- CSV：UTF-8 BOM 或 GBK，首行为表头。
+- 单个文件最大 10MB；支持中文表头别名；可先勾选“仅校验”试跑。
+- CSV 模板可直接下载；旧版 `.xls` 需另存为 `.xlsx`。
+
+### 表单控件
+
+商机漏斗与主数据新增/导入对话框中的下拉框、日期框使用统一的自定义控件，不依赖浏览器原生 `<select>` / `<input type="date">` 外观。下拉菜单通过 Portal 定位，避免被弹窗或滚动容器裁切。
+
 ## 本地启动
 
 Temporal Server、PostgreSQL、MinIO 由 Docker Compose 提供。仅启动 API 不足以处理审批，必须同时启动 Worker（或设置 `SALES_EMBEDDED_WORKER=true`）。

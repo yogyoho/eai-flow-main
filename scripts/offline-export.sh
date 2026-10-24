@@ -444,6 +444,7 @@ cp "deploy/offline/nginx/nginx.conf"     "${OUTPUT_DIR}/docker/nginx/nginx.conf"
 # EAI-CUSTOM (2026-10-24, F.10 根治): 包根目录再放一份 nginx/nginx.conf——服务器手工
 # load+up 时 compose 以 --project-directory . 解析 ./nginx/nginx.conf 正中此文件；
 # 否则 Docker 把缺失路径自动建成目录 → 挂载报 "not a directory"（现场两次踩坑）
+mkdir -p "${OUTPUT_DIR}/nginx"
 cp "deploy/offline/nginx/nginx.conf"     "${OUTPUT_DIR}/nginx/nginx.conf"
 
 # Postgres one-shot init scripts (Temporal user/db automation)
