@@ -131,6 +131,18 @@
       "tool_name_prefix": false,
       "description": "备品备件价格只读查询工具(备件单价统计/跨客户比价/异常/客户明细/总览),供对话 agent 直接调用。不触发流水线。"
     },
+    "bid-review": {
+      "enabled": true,
+      "type": "stdio",
+      "command": "/app/backend/.venv/bin/python",
+      "args": ["-m", "app.extensions.bid_review.mcp"],
+      "cwd": "/app/backend",
+      "env": {},
+      "url": null,
+      "headers": {},
+      "oauth": null,
+      "description": "投标方案审查(bid_review_start/status/issues/issue/feedback/baseline_get/rulepacks;确认门在工作台 UI,agent 不可代确认)"
+    },
     "ontology": {
       "enabled": true,
       "type": "http",
