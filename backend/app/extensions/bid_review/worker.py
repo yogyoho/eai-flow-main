@@ -19,7 +19,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.extensions.bid_review import crud
 from app.extensions.bid_review.engine.extract import ExtractFn, ExtractNotConfigured, build_baseline
-from app.extensions.bid_review.engine.rule_runner import load_rulepack, run_det_rule
+from app.extensions.bid_review.engine.rule_runner import _need_human, load_rulepack, run_det_rule
 from app.extensions.bid_review.models import BaselinePackage, ReviewTask
 from app.extensions.database import get_session_factory
 
@@ -107,7 +107,16 @@ async def _run_det_stage(db: AsyncSession, task: ReviewTask, fields: dict, owner
     written = 0
     for i, rule in enumerate(rules, start=1):
         await crud.set_status(db, task, "running", progress={"stage": "det", "pct": int(i * 100 / total), "msg": f"{rule.id}({i}/{total})"})
-        for issue in run_det_rule(rule, det_fields):
+        try:
+            issues = run_det_rule(rule, det_fields)
+        except Exception as exc:  # noqa: BLE001
+            # fix-round 评审项:逐规则异常隔离——run_det_rule 只把 KeyError 转 need_human,其余求值
+            # 意外(如 str/float 比较 TypeError、求值器强转漏网)在此降级 need_human,不把整条审查
+            # 任务经 _infra_fail 重试 3 次打 failed;crud.add_issue 的 DB 异常不在本包裹内,基础设施
+            # 失败仍走既有失败链。
+            logger.warning("bid_review task %s rule %s crashed, downgraded to need_human: %r", task.id, rule.id, exc)
+            issues = [_need_human(rule, f"规则求值异常 {exc!r}(逐规则隔离降级 need_human)")]
+        for issue in issues:
             row = await crud.add_issue(
                 db,
                 task_id=task.id,

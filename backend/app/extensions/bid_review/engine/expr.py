@@ -170,12 +170,19 @@ def fields_used(expr: str) -> set:
 
 
 def _normalize_unit(v):
-    if isinstance(v, dict):
-        val, unit = float(v.get("value", 0)), str(v.get("unit", "day")).lower()
-        if unit in ("month", "months", "月"):
-            return val * 30
-        return val  # ponytail: 工作日/日历天换算口径 v2 定
-    return float(v)
+    # fix-round(L1-014/L1-015/L3-005):*_text 命名的工期/质保字段若以原始文本回流("540日历天"),
+    # 数值强转失败必须 raise KeyError(上层 run_det_rule 转 need_human 既有通路),禁止 ValueError
+    # 逃逸——否则单字段类型偏差会让整条审查任务经 _infra_fail 重试 3 次后 failed(可用性失败)。
+    try:
+        if isinstance(v, dict):
+            val, unit = float(v.get("value", 0)), str(v.get("unit", "day")).lower()
+        else:
+            val, unit = float(v), "day"
+    except (TypeError, ValueError) as exc:
+        raise KeyError(f"normalize_unit 无法数值化 {v!r}(需 {{value,unit}} 结构或天数数值)") from exc
+    if unit in ("month", "months", "月"):
+        return val * 30
+    return val  # ponytail: 工作日/日历天换算口径 v2 定
 
 
 def _number_to_words(v):

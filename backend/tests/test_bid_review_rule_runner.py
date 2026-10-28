@@ -102,6 +102,23 @@ EXPECTED_V1_IDS = {
 }
 
 
+def test_text_typed_duration_fields_need_human_not_crash():
+    """fix-round 评审项回归门:normalize_unit 目标字段(工期/质保)以原始文本回流时,
+    run_det_rule 必须落 need_human 而非抛 ValueError(expr._normalize_unit 强转失败
+    → KeyError,复用 on_missing_input=need_human 既有通路);L1-014/L1-015(Task 18
+    新增)与 L3-005(M1 既有,先例已漏过一次)同规。"""
+    pack = load_rulepack(PACK)
+    rules = {r.id: r for r in pack.rules}
+    cases = [
+        ("L1-014", {"bid.duration_main_text": "540日历天", "tender.max_duration": 600}),
+        ("L1-015", {"bid.warranty_period": "24个月", "tender.min_warranty_period": 12}),
+        ("L3-005", {"bid.duration_main_text": "540日历天", "bid.duration_schedule": {"value": 540, "unit": "day"}, "bid.duration_commitment_letter": {"value": 540, "unit": "day"}}),
+    ]
+    for rid, fields in cases:
+        issues = run_det_rule(rules[rid], fields)
+        assert len(issues) == 1 and issues[0]["verdict"] == "need_human" and issues[0]["need_human"] is True, f"{rid} 文本型工期/质保字段应 need_human,得 {issues}"
+
+
 def test_full_pack_loads():
     """Task 18:全量规则包 1.0.0.yaml 转录门——ids>=32 且覆盖 §6.3 v1 清单;load_rulepack 逐条
     白名单校验(未知算子/函数/形态不识别即拒载,转录错误当场暴露);hyb 规则必须带 det_expr 粗筛

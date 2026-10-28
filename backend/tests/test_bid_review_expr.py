@@ -47,6 +47,16 @@ def test_unknown_field_and_func():
         eval_expr("__import__('os').system('x')", F)
 
 
+def test_normalize_unit_text_typed_value_raises_keyerror():
+    # fix-round 评审项(L1-014/L1-015/L3-005):*_text 命名的工期/质保字段若以原始文本回流,
+    # 数值强转失败必须 raise KeyError(复用 run_det_rule 既有 need_human 通路),禁止
+    # ValueError 逃逸——否则单字段类型偏差会让整条审查任务经 _infra_fail 重试后 failed。
+    with pytest.raises(KeyError):
+        eval_expr("normalize_unit(bid.duration_main_text) == 540", {"bid.duration_main_text": "540日历天"})
+    with pytest.raises(KeyError):
+        eval_expr("normalize_unit(bid.duration_main_text) == 540", {"bid.duration_main_text": {"value": "540天", "unit": "day"}})
+
+
 def test_number_to_words_conventional_forms():
     # 评审修正 A11/A11a canonical 验收:非整万总价的 conventional 大写(基线零错置会对正确投标误报 fatal L1-010)
     cases = [

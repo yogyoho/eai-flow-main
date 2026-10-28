@@ -82,6 +82,53 @@ def tmp_rulepack(monkeypatch, tmp_path):
     return p
 
 
+_CRASH_RULEPACK = """\
+conventions:
+  on_missing_input: need_human
+rules:
+  - id: T1-101
+    name: 测试类型偏差规则求值崩溃
+    layer: L1
+    type: deterministic
+    applies_to: ["*"]
+    inputs: [bid.total_price, tender.max_price]
+    check:
+      op: lte
+      left: bid.total_price
+      right: tender.max_price
+    severity: fatal
+    evidence: []
+    message_tpl: "投标总价 {bid.total_price:money} 超过最高限价 {tender.max_price:money}"
+    fix_tpl: 复核报价汇总
+    confidence_gate: 1.0
+    enabled: true
+  - id: T1-102
+    name: 测试兄弟规则照常执行
+    layer: L1
+    type: deterministic
+    applies_to: ["*"]
+    inputs: [bid.subtotal, bid.total_price]
+    check:
+      op: eq
+      left: bid.subtotal
+      right: bid.total_price
+    severity: major
+    evidence: []
+    message_tpl: "合计 {bid.subtotal:money} 与总价 {bid.total_price:money} 不一致"
+    fix_tpl: 重算合计
+    confidence_gate: 1.0
+    enabled: true
+"""
+
+
+@pytest.fixture
+def crash_rulepack(monkeypatch, tmp_path):
+    p = tmp_path / "crash.yaml"
+    p.write_text(_CRASH_RULEPACK, encoding="utf-8")
+    monkeypatch.setattr("app.extensions.bid_review.worker.RULEPACK_PATH", p)
+    return p
+
+
 @pytest.mark.asyncio
 async def test_advance_created_to_awaiting_confirm(db):
     """plan Task 9 Step 1:wait_confirm=True 停 awaiting_confirm;基线按 docs role 拆且全部未确认。"""
@@ -127,6 +174,25 @@ async def test_advance_all_null_fields_need_human_not_crash(db, tmp_rulepack):
     assert task.status == "done"
     issues = await crud.list_issues(db, task_id=t.id, owner_id="u1")
     assert issues and all(i.verdict == "need_human" for i in issues)
+
+
+@pytest.mark.asyncio
+async def test_rule_crash_isolated_to_need_human(db, crash_rulepack):
+    """fix-round 评审项:单规则求值意外(KeyError 之外,如 str 与 float 比较 TypeError)被
+    _run_det_stage 逐规则隔离降级 need_human——兄弟规则照常执行、任务照常到 done;
+    禁止单个字段类型偏差把整条审查任务经 _infra_fail 重试 3 次打 failed(可用性失败)。"""
+    t = await crud.create_task(db, owner_id="u1")
+    fields = {"bid.total_price": "一百万整", "tender.max_price": 1000000, "bid.subtotal": 999}
+
+    def _extract(d, p):
+        return {**{k: None for k in p}, **fields}
+
+    task = await advance_task(db, t.id, owner_id="u1", docs=[], extract_fn=_extract, wait_confirm=False)
+    assert task.status == "done"
+    issues = await crud.list_issues(db, task_id=t.id, owner_id="u1")
+    by_rule = {i.rule_id: i for i in issues}
+    assert by_rule["T1-101"].verdict == "need_human" and by_rule["T1-101"].need_human is True, "崩溃规则应逐规则隔离降级 need_human"
+    assert by_rule["T1-102"].verdict == "violation", "兄弟规则不受单规则崩溃影响,应照常产出 violation"
 
 
 @pytest.mark.asyncio

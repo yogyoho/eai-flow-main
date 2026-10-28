@@ -95,3 +95,22 @@ def test_prompt_skeleton_transcribed():
     prompt = build_extract_prompt(FAKE_DOCS, ["bid.total_price", "tender.max_price"])
     for needle in ("只依据", "null", "不心算", "指令", "编造", "bid.total_price", "tender.max_price", "JSON"):
         assert needle in prompt, f"prompt 骨架缺关键词: {needle}"
+
+
+def test_prompt_carries_duration_type_contract():
+    # fix-round 评审项:{value,unit}-or-number 契约从规则包 YAML 注释提升为提取 prompt 可见
+    # 类型说明——build_extract_prompt 原只给字段路径不给类型契约,字段名又带 *_text,提取器对
+    # "工期:540日历天" 大概率回流原始字符串(normalize_unit 强转失败的根源治理)。
+    prompt = build_extract_prompt(FAKE_DOCS, collect_field_paths())
+    targets = (
+        "bid.duration_main_text",
+        "bid.duration_schedule",
+        "bid.duration_commitment_letter",
+        "tender.max_duration",
+        "bid.warranty_period",
+        "tender.min_warranty_period",
+    )
+    for path in targets:
+        line = next((ln for ln in prompt.splitlines() if ln.startswith(f"- {path}")), None)
+        assert line is not None, f"{path} 不在提取 prompt 字段清单中"
+        assert "{value" in line and "禁止原文文本" in line, f"{path} 缺 {{value,unit}}-or-number 类型契约: {line}"
