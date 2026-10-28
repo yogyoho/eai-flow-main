@@ -1,0 +1,73 @@
+# DEMO-001:手工小文档底盘 + MUT-001 注入(总价超最高限价 1 元,边界例)
+# 底盘为手工构造的演示文档,非真实投标材料;真实 e2e_bid* 脱敏底盘后续导入(manifest sources 占位)。
+case_id: DEMO-001
+description: 投标总价超最高限价 1 元(刚好越限的边界例),触发 L1-009 及其级联表现
+source: demo_handcrafted
+clean: false
+
+documents:
+  # 手工底盘文档清单(evidence 锚点指向这里;页码为演示定位)
+  - doc_id: A-TENDER-NOTICE
+    name: 招标公告(含最高限价)
+  - doc_id: A-PRICE-DETAIL
+    name: 投标报价明细表
+  - doc_id: A-PRICE-SHEET
+    name: 投标报价汇总表
+  - doc_id: A-BID-LETTER
+    name: 投标函(含总价大写与金额引用)
+  - doc_id: A-COMMIT
+    name: 投标承诺函(含工期与金额引用)
+
+injections:
+  - mutator: MUT-001
+    field: bid.total_price
+    from: 5000000.0
+    to: 5000001.0
+    # 注入 1 处,预期问题 3 条(人工确认均可判定):
+    #   L1-009 fatal(primary,总价>限价)
+    #   L1-010 fatal(级联,subtotal != total_price)
+    #   L3-006 major(级联,amount_occurrences 值 != total_price)
+    expect_rule_ids: [L1-009, L1-010, L3-006]
+
+field_snapshot:
+  # 干净底盘(全 dotted 扁平键,与引擎 field_snapshot 键约定一致);
+  # inject.py 的扰动基底即本节(有 fields_clean.json 时优先读它,未来 e2e 案可落盘独立文件)。
+  # 数值全链一致:detail_rows 加总 == subtotal == total_price == 大写 == 全文金额出现值 == 限价(不越限)。
+  tender.max_price: 5000000.0
+  tender.price_includes_tax: true
+  tender.project_identity.name: 示例市政道路改造工程
+  tender.project_identity.code: DEMO-SZDL-2026-001
+  tender.boq_items:
+    - {code: "010101", name: 土方开挖, unit: m3, qty: 1200}
+    - {code: "040201", name: 路面基层, unit: m2, qty: 8500}
+    - {code: "070103", name: 排水管道, unit: m, qty: 640}
+  project.entity_whitelist.names:
+    - 示例建设集团有限公司
+    - 示例市政工程有限公司
+  bid.total_price: 5000000.0
+  bid.price_includes_tax: true
+  bid.subtotal: 5000000.0
+  bid.total_price_words: 伍佰万元整
+  bid.detail_rows:
+    - {code: "010101", item: 土方开挖, amount: 1200000.0}
+    - {code: "040201", item: 路面基层, amount: 2100000.0}
+    - {code: "070103", item: 排水管道, amount: 1700000.0}
+  bid.boq_items:
+    - {code: "010101", name: 土方开挖, unit: m3, qty: 1200, amount: 1200000.0}
+    - {code: "040201", name: 路面基层, unit: m2, qty: 8500, amount: 2100000.0}
+    - {code: "070103", name: 排水管道, unit: m, qty: 640, amount: 1700000.0}
+  bid.header_footer.project_name: 示例市政道路改造工程
+  bid.entity.license_name: 示例建设集团有限公司
+  bid.entity.name_in_bid_letter: 示例建设集团有限公司
+  bid.duration_main_text: 90日历天
+  bid.duration_schedule: 90日历天
+  bid.duration_commitment_letter: 90日历天
+  bid.amount_occurrences:
+    - {value: 5000000.0, where: 投标函}
+    - {value: 5000000.0, where: 投标承诺函}
+
+# golden_issues.jsonl 说明:
+#   message/fix 为规则 message_tpl/fix_tpl 的基准渲染(金额用裸数字两位小数;
+#   引擎 :money 的实际格式可能带千分位/货币符,对齐走 difflib 相似度 0.55 阈值,不要求逐字节一致)。
+#   dedup_key 照 det 副本口径 "{rule_id}|-|{message前40字}"。
+#   级联问题以 cascade:true 标注并 related_issues 指向 primary(同根因多表现合并纪律)。

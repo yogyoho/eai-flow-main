@@ -1,0 +1,20 @@
+# bid-review 注入集金标准包 v0(DEMO 骨架)——实施计划 Task 19
+# 目录结构照设计文档 §7(素材④4.4):manifest.yaml + cases/*/case.yaml + golden_issues.jsonl
+# 底盘 = 手工小文档;真实 e2e_bid* 产物脱敏导入后续补(见 sources 占位)
+name: bid-review-golden
+version: "0.1.0"
+rulepack: bid-review-core/1.0.0
+sources:
+  - e2e_bid_pending  # 占位:既有 backend/.deer-flow/e2e_bid* 产物脱敏导入后替换/追加真实底盘
+# 门禁阈值(fatal_recall>=0.95 / precision>=0.80 / evidence_accuracy>=0.95 / fatal 降级率<=0.02 /
+# 确定性零漂移=100% / 单条 fatal 规则召回不得为 0)由 Task 20 run_eval.py gate_check 强制,不在 manifest 重复声明。
+cases:
+  - id: DEMO-001
+    dir: cases/DEMO-001
+    mutators: [MUT-001]  # 总价超限价 1 元(边界例)→ L1-009(primary)
+    clean: false
+    # 注入 1 处但预期问题 3 条:L1-010(subtotal!=total)与 L3-006(金额出现值!=total)为 MUT-001 的级联表现,
+    # 同一根因多表现按 related_issues 合并(设计文档 §7 标注纪律);人工确认均可判定。
+    expected_issues: 3
+  # DEMO-002 干净案(no_issue_confirmed: true):Task 19 任务节 Files 范围仅含 DEMO-001 两文件,
+  # 待后续任务补落 cases/DEMO-002/(case.yaml + 空 golden_issues.jsonl + no_issue_confirmed 标记)后再登记于此。
