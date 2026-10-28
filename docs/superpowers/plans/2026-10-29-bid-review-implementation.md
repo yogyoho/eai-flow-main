@@ -23,6 +23,22 @@
 
 ---
 
+## 评审修正(2026-10-29,Task 1 质量评审落地——与本节冲突时**以本节为准**)
+
+Task 1 数据文件(a06db2cf2)质量评审发现 2 Important + 6 Minor。修正分两组:数据修正(Task 1 修复轮同日落地)与计划级修正(约束后续任务实现)。
+
+**A1(数据→Task 1 修复轮)** L1-010 `message_tpl` 的 `{calc}` 无任何求值器供给(fatal 问题会漏出裸占位符)→ 改用声明输入 `{bid.subtotal:money}`,措辞改"明细合计 X 与总价 Y 不一致"。
+**A2(数据→Task 1 修复轮)** L1-009 `inputs` 补 `tender.price_includes_tax`(precondition 使用但未声明;build_baseline 采集与可得性核对均按 inputs 走,缺它会退化永续 need_human)。
+**A3(数据→Task 1 修复轮)** issue-schema.json `rule_id` pattern `^L[134]-…$` → `^L[1-4]-…$`(与 L2 对称;v1 范围仍由 `layer` enum 把关)。
+**A4(数据→Task 1 修复轮)** YAML 补四处注释:`tolerance` 仅接受 0.00(求值器不容差);`allow_extra/allow_missing` 仅声明意图(副本求值器为严格 set_eq,改值不生效);conventions.dedup_tpl 与 local-det 实际键(`{rule_id}|-|{message前40字}`,无证据键)的差异说明;L3-001 标注编号比对 deferred(bid 侧编号字段 v2 定,`tender.project_identity.code` 当前仅提取输入)。
+**A5(Task 2 求值器)** 单遍解释器缺**函数调用分发**:`_BUILTIN` 已定义但 `_atom` 无 `(` 分支 → `sum/codes/normalize_unit/number_to_words` 全部 KeyError。修法:`_atom` 命中 `[\w.-]+` 且下一 token 为 `(` 时——吃 `(`、按逗号分隔递归求参、吃 `)`、分发 `_BUILTIN[name](*args)`;tokenizer 须产出 `,`(若现 regex 未含则补)。**同时把 Task 2 末尾"修到绿为止"注释改为:修到绿只许改求值器;references 数据是三方契约,数据缺陷按 A1-A4 处理,禁止改数据凑绿。**
+**A6(Task 2 求值器)** **var-attr 解析**:`_resolve` 平键未命中且名字含点时——按头段拆分,头段在 fields(结构级 all 的量词 var 绑定,如 `a`)则沿属性链下钻,任一段非 dict/缺键 → KeyError(上层接 need_human);`_tpl` 占位替换改走 `_resolve`。平键优先,不破坏全点平键 field_snapshot。selftest 两处加强:bad 案断言集加 `L3-006`(var-attr 回归门);新增断言——全部 issue 的 message 无残留 `{...}` 占位(A1 类缺陷的唯一门)。`_fmt` 补两格式:list → `"、".join(str)`;`{"value","unit"}` dict → `f"{value}{unit中文(day→天,month→个月)}"`(L1-011 的 `{missing}/{extra}` 与 L3-005 的工期 dict 否则会漏 Python repr)。
+**A7(Task 4 expr.py + Task 5)** 同 A6 语义落到规范实现:字段节点解析顺序 = 全点平键 fields 优先 → 头段命中 env(量词 var)则属性链下钻 → KeyError;Task 4 既有测试 `test_quantifier_all_any` 即 var-attr 回归门(若挂按 A6 修实现,不改测试)。Task 5 结构级 all 把行 dict 以 var 名并入 env 后求 cond,复用同一语义。
+**A8(Task 6 models + Task 16)** `ReviewIssue.verdict` String(12) → **String(20)**;`ReviewFeedback.action` String(12) → **String(20)**(`false_positive`=14、`severity_change`=15 均溢出;PostgreSQL 超长报错不截断)。issue-schema.json 的 `verdict` enum 只管**引擎产出阶段**;人工复核回写值(false_positive 等)仅落库,不回 schema 校验——Task 16 实现时在报告声明即可,不改 schema。
+**A9(Task 3)** workflow.md 自审模式须显式写明:det 副本产出 `evidence: []`,编排层(agent)负责按铁律 1 补齐 文档+页码+摘录 后才可向用户呈现问题——这是编排步骤的交付责任,不是求值器的。
+
+---
+
 ## M1 技能自审(零后端增量)
 
 ### Task 1: 技能目录 + det 规则子集 + issue schema
@@ -1286,14 +1302,14 @@ async def _wrap(session, fn):
 
 - [ ] **Step 2: 前端 api.ts + types.ts**——fetch 走 `@/core/api/fetcher` 共享 fetcher(先读该文件确认导出名与 CSRF 处理;同源 `/api/extensions/bid-review/*`)。types:TaskOut/IssueOut/BaselineOut(与后端 schemas 对齐)。
 
-- [ ] **Step 3: TasksView 最小版**——`useQuery` 任务列表 + mode 选择 quick/deep + 新建(POST,无文件版走 MCP/聊天;UI 版 M3 补上传)。共享基元复用 cpa 的:`@/components/PageHeader`、`@/components/StatCard`、`@/components/ui/table.tsx`、`@/components/ui/bits.tsx`(先读 cpa `DashboardView` 确认 import 路径)。
+- [ ] **Step 3: TasksView 最小版**——`useQuery` 任务列表 + mode 选择 quick/deep + 新建(POST,无文件版走 MCP/聊天;UI 版 M3 补上传)。共享基元直接 import cpa 路径(勿复制第六份拷贝):`@/extensions/contract-price/components/PageHeader`、`.../StatCard`、`.../ui/table`、`.../ui/bits`(先读 cpa `DashboardView` 确认导出名)。视觉规范:`docs/designs/2026-10-29-bid-review-ui-spec.md` §3.1(照抄,勿自创样式)。
 
-- [ ] **Step 4: 单测**(node 环境,mock fetcher):
+- [ ] **Step 4: 单测**(rstest node 环境,mock fetcher;仓库惯例=tests/unit 镜像 src,导入 `@rstest/core`,mock 用 `rs.mock`——参照 `frontend/tests/unit/components/workspace/context-usage-badge.test.ts`):
 
 ```typescript
-// 文件:frontend/src/extensions/bid-review/api.test.ts(与 api.ts 同目录;若仓库既有单测集中在他处,照既有惯例挪)
-import { describe, expect, it, vi } from "vitest";
-vi.mock("@/core/api/fetcher", () => ({ fetcher: vi.fn(async () => [{ id: "t1", status: "created", mode: "quick" }]) }));
+// 文件:frontend/tests/unit/extensions/bid-review/api.test.ts(镜像 src/extensions/bid-review/)
+import { describe, expect, it, rs } from "@rstest/core";
+rs.mock("@/core/api/fetcher", () => ({ fetcher: async () => [{ id: "t1", status: "created", mode: "quick" }] }));
 import { listTasks } from "@/extensions/bid-review/api";
 
 describe("bid-review api", () => {
@@ -1396,6 +1412,8 @@ async def test_seven_checks_schema_retry_and_evidence():
 - [ ] **Step 2-4: 实现→通过;Step 5: Commit**
 
 ### Task 17: 前端工作台(split)+ 基准确认页 + 规则库页
+
+> 视觉与交互规范:`docs/designs/2026-10-29-bid-review-ui-spec.md`——四基元(SplitPane/SegmentedToggle/GateMetricsRow/GroupCard)配方、五视图布局、状态 Pill 映射全部在该稿定死,本任务照抄实现,勿自创样式。基元落 `src/extensions/bid-review/components/primitives.tsx`。
 
 **Files:**
 - Create: `frontend/src/app/bid-review/workbench/page.tsx`、`baseline/page.tsx`、`rules/page.tsx`
