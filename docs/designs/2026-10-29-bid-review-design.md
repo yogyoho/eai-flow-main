@@ -161,7 +161,7 @@ created → parsing → extracting → awaiting_confirm ──(人工确认)→ 
 ### 4.5 确定性规则 DSL(expr.py,纯 stdlib)
 
 算子白名单:`and / or / not / lte / gte / eq / all_equal / set_eq / subset_match / imply / exists / count / sum / contains_any`;
-函数白名单:`normalize_unit(归一 日历天/月) / number_to_words(中文大写) / months_ago / codes() / every() / any()`;
+函数白名单:`normalize_unit(归一 日历天/月;素材④拼作 normalize(…, to_calendar_days),转录归一) / number_to_words(中文大写) / months_ago / codes() / every() / any() / all()(量词,与 every() 同构) / covers(授权范围包含判定) / keywords(标的名称→行业词,L1-001 经营范围覆盖用)`;量词支持 `x in list where cond` comprehension 形态;`subset_match` 的 `cmp: level_ge` 为内置比较器。
 比较容错:`tolerance`(金额 0.00,默认 0)。**表达式只求值不 eval 任意字符串**——DSL 解析为受限 AST,未知算子/函数 = 加载期报错拒载规则包。
 
 ### 4.6 语义结论七道后处理校验(verify.py,模型输出→入库之间必过)
@@ -250,11 +250,11 @@ references/:`workflow.md`(两模式编排细节)、`rules-det-subset.yaml`(自�
 
 ### 6.1 元模型(照收素材,字段定死)
 
-`id / name / layer / type(deterministic|semantic|hybrid) / applies_to / inputs(字段路径) / check(算子或语义规则卡) / severity(fatal|major|minor|info) / evidence(锚点键) / message_tpl / fix_tpl / confidence_gate / enabled`;包级 `conventions`:type 别名、severity 序、`on_missing_input: need_human`、证据匹配口径(归一化相似度 0.9、页容差 ±1)、dedup 模板。
+`id / name / layer / type(deterministic|semantic|hybrid) / applies_to / inputs(字段路径) / check(算子或语义规则卡) / severity(fatal|major|minor|info) / evidence(锚点键) / message_tpl / fix_tpl / confidence_gate / enabled`;包级 `conventions`:type 别名、severity 序、`on_missing_input: need_human`、证据匹配口径(归一化相似度 0.9、页容差 ±1)、dedup 模板(`{rule_id}|{clause_id or '-'}|{sorted(evidence_keys)}`)。
 
 ### 6.2 锚点注册表与字段字典
 
-照收素材 A-* 锚点注册表(28 锚)与 field_dictionary(tender.*/bid.*/project.* 全量路径)。**字段路径是规则↔引擎↔评测三方唯一契约**,改动须三处同步(规则包/anchors.py 字段加载/评测金标准 schema)。
+照收素材 A-* 锚点注册表(27 锚:4 tender + 23 bid)与 field_dictionary(tender.*/bid.*/project.* 全量路径)。**字段路径是规则↔引擎↔评测三方唯一契约**,改动须三处同步(规则包/anchors.py 字段加载/评测金标准 schema)。
 
 ### 6.3 v1 落地清单
 
