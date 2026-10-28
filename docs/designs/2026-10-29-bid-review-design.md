@@ -147,7 +147,7 @@ created → parsing → extracting → awaiting_confirm ──(人工确认)→ 
 
 ### 4.4 worker 管线(五阶段)
 
-1. **ingest**:tender/bid 文档经 knowledge 解析链 → 结构化文本 + 表格对象(不拍平)+ 页码锚点。解析质量指标(表格还原率、OCR 置信度)记入 task.progress,M2 验收项单独评测。
+1. **ingest**:tender/bid 文档经 knowledge 解析链 → 结构化文本 + 表格对象(不拍平)+ 页码锚点;章节识别失败兜底 = 标题正则 + 语义分段双通道。解析质量指标(表格还原率、OCR 置信度)记入 task.progress,M2 验收项单独评测。
 2. **baseline 抽取**:抽取义务清单(否决项/评分细则/格式要求/资质门槛/★▲条款)→ `clauses` JSON(同构 clauses.schema.json,实现为 skill extract 逻辑的受控副本,登记 TODOS 多副本同步约定)+ `field_snapshot`(tender.* 字段字典值)→ 任务置 `awaiting_confirm`。**基准错了后面全错,此门不可省。**
 3. **确认门**:见 4.3。
 4. **规则引擎**:
@@ -215,7 +215,7 @@ created → parsing → extracting → awaiting_confirm ──(人工确认)→ 
 | **审查工作台**(核心) | `.split` 左列问题列表(按 severity 排序,layer-card 式问题条+Pill 徽章)↔右侧原文+证据高亮(页码+摘录+表格坐标跳转);顶部 gate1-m 门条(致命/主要/次要/待人工计数);seg 切 quick/deep 与 layer 过滤;复核三连(确认/误报/改严重度) | 新 4 条+习语 4 |
 | 基准确认 | clauses 表(逐条义务+出处锚点)+全选/单选修正+确认门按钮(NoteBar 说明"基准错误将批量产生错误结论") | 习语 3/6+gate |
 | 规则库 | layer-card 按 L1/L3 分组,每规则行:id/名/类型/severity/开关(Switch)/命中·误报·采纳统计 | layer-card |
-| 报告 | 一页纸概览(指标格+否决项命中表)+问题清单+免责声明 NoteBar;md/html 导出 | 习语 1/2/6 |
+| 报告 | 一页纸概览(指标格+否决项命中表+**可提交判定提示行**:fatal=0 时提示"未检出否决项风险,建议进入人工终审"——是检查结论,不是投标决策)+问题清单+**响应偏离表导出**(L1-013 逐条 verdict 汇总:实质性条款↔响应位置↔响应程度,可提交初稿)+免责声明 NoteBar;md/html 导出 | 习语 1/2/6 |
 
 雷达图(评分覆盖度)与抽屉/弹窗尺寸(600px/560px)沿用 cpa 规范既有裁决,雷达 v2。
 
@@ -224,6 +224,7 @@ created → parsing → extracting → awaiting_confirm ──(人工确认)→ 
 - extensions JWT 双轨认证惯例;owner 隔离 contextvar 贯穿 CRUD。
 - **app-center nav 注册**:新模块必须在 `config/permissions.yaml` 注册 nav 模块(否则 superadmin 也看不到卡片,API 正常返回——已知陷阱);`roles_custom.yaml` overlay 会整体替换 base 角色 nav/permissions 列表,两者都要加。
 - 复核动作写 gateway audit log(既有惯例)。
+- 投标资料留存周期与到期归档销毁沿用 knowledge 存储策略,v2 细化专属策略;平台离线部署形态天然满足"模型不出域"(config.yaml 模型队列全可指向内网)。
 
 ## 5. 技能设计(`skills/public/bid-proposal-review/`)
 
@@ -291,7 +292,7 @@ M1 技能自审先行子集(7 条):L1-009/010/011 + L3-001/003/005/006。完整 
 - **对齐算法**:素材 5.2(score = 0.5·RuleMatch + 0.3·EvidenceOverlap + 0.2·SemanticSim,阈值 0.55 贪心一对一;一条金标准被 n 条预测命中 = 1TP+(n-1)FP)。
 - **门禁(MVP 阈值)**:`fatal_recall ≥ 0.95`(硬阻断)/`precision ≥ 0.80`/`evidence_accuracy ≥ 0.95`/`fatal 降级率 ≤ 0.02`/**确定性零漂移 = 100%**(det 规则多次运行必须逐字节一致)。
 - 不进 `make test` 默认链(评测分钟级);CI 手动触发,v2 进发布流水线。
-- v2:自然集/对抗集/Holdout 物理隔离/bootstrap 置信区间/按项目类型分层报告。
+- v2:自然集/对抗集/Holdout 物理隔离/bootstrap 置信区间/按项目类型分层报告/平均人工复核耗时与"有效问题密度"成本指标。
 
 ## 8. 里程碑
 
@@ -302,7 +303,7 @@ M1 技能自审先行子集(7 条):L1-009/010/011 + L3-001/003/005/006。完整 
 | **M3** | L1-013 语义规则+七道校验+复核三连+误报回流+工作台 split 分栏+规则库页 | 人机协同成环 |
 | **M4** | 注入集评测+门禁脚本+报告导出+免责声明 | 上线闸门 |
 
-v2(不排期,条件触发):L2 完整性层、L4 质量/承诺风险、评分点覆盖度与评分预估、差异审查(prev_task_id)、规则 CRUD 后台、双人基准确认、雷达图、模拟评标官、WebSocket 推送、评测全量体系。
+v2(不排期,条件触发):L2 完整性层、L4 质量/承诺风险、L3-011 服务承诺一致/L3-015 偏离表一致/L3-017 图表数据一致、按角色裁剪输出视图、评分点覆盖度与评分预估、差异审查(prev_task_id)、规则 CRUD 后台与企业私有规则叠加、多项目类型规则包(applies_to 模板化:工程/货物/服务/IT)、法规库与检索增强(合规条款引用建模;web_search 对 GB 条款不可靠——既有实证 6/6 不可引用,仅 discovery+人工入库)、关键结论双模型交叉验证、漏报回流(人工补录问题进规则库)、红队对抗审查(招标人/竞争对手视角)、一键整改(格式/表述类可直接替换修改稿)、投标知识库(高频扣分点反哺编写规范)、双人基准确认、雷达图、模拟评标官、与投标管理系统打通、WebSocket 推送、评测全量体系;历史胜率分析默认不做(数据量与因果不足,素材自带保留意见)。
 
 ## 9. 风险与对策
 
