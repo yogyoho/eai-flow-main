@@ -713,7 +713,7 @@ export function BasicSettings() {
             <ServiceLinkCard
               title={t.settings.basic.services.ragflow}
               description={t.settings.basic.services.ragflowDesc}
-              href={`http://${hostname}:${process.env.NEXT_PUBLIC_RAGFLOW_WEB_PORT ?? "9381"}/`}
+              href={ragflowSsoHref()}
             />
           </div>
         </CardContent>
@@ -816,6 +816,14 @@ function ThemePreviewCard({
       </div>
     </button>
   );
+}
+
+// EAI-CUSTOM (QA 2026-10-28): RAGFlow 入口走后端 SSO 免登跳转
+// (GET /api/extensions/auth/ragflow-sso/login → 302 到 Web UI 并带 ?auth=<token>),
+// 不再直链 RAGFlow 原生登录页 —— SSO 建号用户在原生页无法用密码登录。
+// 相对路径经 nginx 代理(dev :3000 由 rewrites 转发,/api/extensions 下无本地 handler 遮蔽)。
+export function ragflowSsoHref(): string {
+  return `${process.env.NEXT_PUBLIC_BACKEND_BASE_URL ?? ""}/api/extensions/auth/ragflow-sso/login`;
 }
 
 function ServiceLinkCard({
