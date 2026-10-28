@@ -6,6 +6,11 @@
   python eval_det.py selftest
 字段缺失 → need_human(不猜测不默认通过)。退出码:0 干净 / 3 有异常(need_human 或 violation)。
 副本刻意不含表达式内量词(M1 七条用不到;all/any/every/exists 见 canonical expr.py)。
+
+已知差异 vs canonical(子系统 engine/expr.py):
+- 无 validate_expr 加载期白名单校验(未支持构造运行期直接 ExprError)
+- 通配 ".attr" 为合并单 token;canonical 同源分词器带同一 eat('.') 死码,同步时须同样处理
+- number_to_words 负数入参直接 raise;token 耗尽 = ExprError(不作 None 字面量)
 """
 from __future__ import annotations
 import argparse, json, operator, re, sys
@@ -57,10 +62,14 @@ def _normalize_unit(v):
     return float(v)
 
 def _number_to_words(v):
-    # 中文大写整数(取整到元,尾缀"整");ponytail: 亿内四位分段准确,角分/兆 v2
+    # 中文大写整数(取整到元,尾缀"整");ponytail: 亿内四位分段,角分/兆 v2
+    # 质量评审修正:高位→低位装配(基线低位→高位 + 反转,使"零"错置到高位段之前,如 100001→零壹拾万壹元整)
     digits = "零壹贰叁肆伍陆柒捌玖"
     u_map = ["仟", "佰", "拾", ""]
+    units = ["", "万", "亿"]
     n = int(round(float(v)))
+    if n < 0:
+        raise ExprError(f"number_to_words 不接受负数: {v!r}")  # 基线 while n: 对负数死循环(-1//10000==-1)
     if n == 0:
         return "零元整"
     def four(x):
@@ -74,17 +83,20 @@ def _number_to_words(v):
             else:
                 zero = True
         return "".join(parts)
-    segs, out = [], []
-    while n:
-        segs.append(n % 10000); n //= 10000
-    for i, x in enumerate(segs):
+    segs = []
+    m = n
+    while m:
+        segs.append(m % 10000); m //= 10000
+    out = []
+    for idx in range(len(segs) - 1, -1, -1):  # 高位→低位
+        x = segs[idx]
         if x == 0:
             continue
         part = four(x)
-        if x < 1000 and out:
+        if out and x < 1000:  # 段间零:更高非零段已输出且本段不足千(禁止前导零)
             part = "零" + part
-        out.append(part + ["", "万", "亿"][i])
-    return "".join(reversed(out)) + "元整"
+        out.append(part + units[idx])
+    return "".join(out) + "元整"
 
 def _fmt(v, spec=""):
     if spec == "money":
@@ -97,14 +109,18 @@ def _fmt(v, spec=""):
     return str(v)
 
 def _tpl(tpl: str, fields: dict) -> str:
+    _EMPTY = "\x00"  # 哨兵:值为空的段连同其标签/分隔符整段省略(质量评审修正,修 L1-011 "漏项  ,增项 B")
     def sub(m):
         # 基线 partition(m.group(1)) 永得空 spec(":"在组外非捕获);实测修正:spec 单独捕获为 group(2)
         path, spec = m.group(1), m.group(2) or ""
         try:
-            return _fmt(_resolve(path, fields), spec)
+            v = _fmt(_resolve(path, fields), spec)
         except Exception:
             return m.group(0)
-    return re.sub(r"\{([\w.]+)(?::(\w+))?\}", sub, tpl)
+        return v if v != "" else _EMPTY
+    out = re.sub(r"\{([\w.]+)(?::(\w+))?\}", sub, tpl)
+    out = re.sub(r"[^\s,、::：]{1,6}\s*\x00\s*,?\s*", "", out)  # 标签+空段+尾随逗号一并删除
+    return out.replace(_EMPTY, "")
 
 # ---- 单遍解释器(无量词;每个构造的 token 只消费一次,故单遍正确)----
 class P:
@@ -138,6 +154,8 @@ class P:
         return v
     def _atom(self):
         tok = self.peek()
+        if tok is None:  # token 耗尽(质量评审修正):必须 raise,禁止落到 str(tok)=="None" 当字面量(缺 RHS 求值 False → 误报)
+            raise ExprError("表达式意外结束(token 耗尽)")
         if tok == "(":
             self.eat(); v = self.expr(); self.eat(")")
             return v
@@ -292,12 +310,15 @@ def selftest():
     bad = {**ok_fields, "bid.total_price": 1000001.0, "bid.subtotal": 999999.0,
            "bid.total_price_words": "壹佰万元整", "bid.boq_items": [{"code": "A"}],
            "bid.header_footer.project_name": "旧项目名",
-           "bid.duration_commitment_letter": {"value": 3, "unit": "month"}}
+           "bid.duration_commitment_letter": {"value": 3, "unit": "month"},
+           "bid.entity.name_in_bid_letter": "甲公司"}  # L3-003 假阴 tripwire(质量评审)
     all_bad = [i for r in rules for i in run_rule(r, bad)]  # 评审修正 A6c
     got = {i["rule_id"] for i in all_bad}
-    assert {"L1-009", "L1-010", "L1-011", "L3-001", "L3-005", "L3-006"} <= got, f"坏案应至少命中6条,得 {got}"
+    assert {"L1-009", "L1-010", "L1-011", "L3-001", "L3-003", "L3-005", "L3-006"} <= got, f"坏案应至少命中7条,得 {got}"
     for i in all_bad:
         assert not re.search(r"\{[\w.]+(?::\w+)?\}", i["message"]), f"残留占位符: {i['rule_id']} {i['message']}"
+    l1009 = next(i for i in all_bad if i["rule_id"] == "L1-009")
+    assert "¥1,000,001.00" in l1009["message"], f"money spec 回归: {l1009['message']}"  # _tpl spec 修复回归门(质量评审)
     need = run_rule(by_id["L1-009"], {"bid.total_price": 1.0})
     assert need[0]["verdict"] == "need_human", "缺字段必须 need_human"
     print("SELFTEST OK")
