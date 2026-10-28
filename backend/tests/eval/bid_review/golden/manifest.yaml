@@ -8,13 +8,23 @@ sources:
   - e2e_bid_pending  # 占位:既有 backend/.deer-flow/e2e_bid* 产物脱敏导入后替换/追加真实底盘
 # 门禁阈值(fatal_recall>=0.95 / precision>=0.80 / evidence_accuracy>=0.95 / fatal 降级率<=0.02 /
 # 确定性零漂移=100% / 单条 fatal 规则召回不得为 0)由 Task 20 run_eval.py gate_check 强制,不在 manifest 重复声明。
+# 证据门禁口径(Task 19 修复轮评审修正,Task 20 实现必须遵守):evidence_accuracy>=0.95 与 EvidenceOverlap
+# (权重 0.3)仅对携带证据的 sem/hyb 问题计分;det 路径 issue 恒产 evidence=[](评审修正 A9:文档+页码+摘录
+# 由编排层补齐,是编排交付责任,非求值器的),det 行不计证据门禁——否则该门禁对 det 预测按构造首跑即 0 分。
+# 待 rule_runner 回填 rule.evidence 的 doc_id 级锚点(Task 5 健壮性跟进)后,可再按 doc_id 集合+页容差(±1)
+# 把该门禁扩展到 det 行。
 cases:
   - id: DEMO-001
     dir: cases/DEMO-001
     mutators: [MUT-001]  # 总价超限价 1 元(边界例)→ L1-009(primary)
     clean: false
-    # 注入 1 处但预期问题 3 条:L1-010(subtotal!=total)与 L3-006(金额出现值!=total)为 MUT-001 的级联表现,
-    # 同一根因多表现按 related_issues 合并(设计文档 §7 标注纪律);人工确认均可判定。
-    expected_issues: 3
+    # 注入 1 处但预期问题 4 条(与引擎真实产出粒度逐条对账,亲跑规则包 bid-review-core/1.0.0 实证 4 条):
+    #   L1-009 fatal(primary,总价>限价)
+    #   L1-010 fatal(级联,subtotal != total_price;steps 形态每规则产 1 条)
+    #   L3-006 major ×2(级联,amount_occurrences 逐出现值各产 1 条:投标函/投标承诺函;两 message 因
+    #     {a.where} 不同 → dedup_key("{rule_id}|-|{message前40字}")不同 → verify/dedup 不合并)
+    # 评分口径(设计文档 §7 对齐算法,design.md:295):1 条金标准被 n 条预测命中 = 1TP+(n-1)FP——golden
+    # 必须按引擎实际产出粒度拆行,否则 DEMO-001 每次评测必背 1 个系统性 FP,侵蚀 precision>=0.80 门禁。
+    expected_issues: 4
   # DEMO-002 干净案(no_issue_confirmed: true):Task 19 任务节 Files 范围仅含 DEMO-001 两文件,
   # 待后续任务补落 cases/DEMO-002/(case.yaml + 空 golden_issues.jsonl + no_issue_confirmed 标记)后再登记于此。

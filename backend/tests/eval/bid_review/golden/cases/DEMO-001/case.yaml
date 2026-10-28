@@ -23,10 +23,10 @@ injections:
     field: bid.total_price
     from: 5000000.0
     to: 5000001.0
-    # 注入 1 处,预期问题 3 条(人工确认均可判定):
+    # 注入 1 处,预期问题 4 条(人工确认均可判定;与引擎产出粒度逐条对账,manifest.expected_issues=4):
     #   L1-009 fatal(primary,总价>限价)
     #   L1-010 fatal(级联,subtotal != total_price)
-    #   L3-006 major(级联,amount_occurrences 值 != total_price)
+    #   L3-006 major ×2(级联,amount_occurrences 逐出现值各 1 条:投标函/投标承诺函,引擎不合并)
     expect_rule_ids: [L1-009, L1-010, L3-006]
 
 field_snapshot:
@@ -59,9 +59,13 @@ field_snapshot:
   bid.header_footer.project_name: 示例市政道路改造工程
   bid.entity.license_name: 示例建设集团有限公司
   bid.entity.name_in_bid_letter: 示例建设集团有限公司
-  bid.duration_main_text: 90日历天
-  bid.duration_schedule: 90日历天
-  bid.duration_commitment_letter: 90日历天
+  # 工期字段必须走引擎契约结构 {value,unit}(expr.py _normalize_unit 仅接受该 dict 或数值);
+  # 字符串 '90日历天' 会让 L3-005 求值期 float() 抛 ValueError,而 rule_runner.run_det_rule 只捕 KeyError
+  # → 整个 det run 崩溃(非降级 need_human),Task 20 评测无法执行本案。_fmt 渲染为 '90天';
+  # 三处一致时 L3-005 不产出。run_det_rule 补捕 ValueError/TypeError→need_human 的健壮性跟进归 Task 5/9。
+  bid.duration_main_text: {value: 90, unit: day}
+  bid.duration_schedule: {value: 90, unit: day}
+  bid.duration_commitment_letter: {value: 90, unit: day}
   bid.amount_occurrences:
     - {value: 5000000.0, where: 投标函}
     - {value: 5000000.0, where: 投标承诺函}
@@ -70,4 +74,9 @@ field_snapshot:
 #   message/fix 为规则 message_tpl/fix_tpl 的基准渲染(金额用裸数字两位小数;
 #   引擎 :money 的实际格式可能带千分位/货币符,对齐走 difflib 相似度 0.55 阈值,不要求逐字节一致)。
 #   dedup_key 照 det 副本口径 "{rule_id}|-|{message前40字}"。
-#   级联问题以 cascade:true 标注并 related_issues 指向 primary(同根因多表现合并纪律)。
+#   级联问题以 cascade:true 标注并 related_issues 指向 primary;golden 行数与引擎实际产出粒度逐条对账:
+#   steps/and/set_eq 形态每规则产 1 条,op:all 逐出现值各产 1 条(两 L3-006 的 message 因 {a.where} 不同
+#   → dedup_key 不同 → 引擎不合并;评分口径 1 金标准被 n 预测命中 = 1TP+(n-1)FP,design.md:295)。
+#   L3-006 证据为逐出现值锚点:投标函出现值锚 A-BID-LETTER、承诺函出现值锚 A-COMMIT(后者与规则包声明
+#   evidence [A-PRICE-SHEET, A-COMMIT] 对齐;A-BID-LETTER 为有意取舍——规则包声明是规则级 doc 清单,golden
+#   逐出现值更细)。det 预测恒产 evidence=[](评审修正 A9),证据门禁仅计 sem/hyb(manifest 口径注)。
