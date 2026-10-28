@@ -7,6 +7,8 @@ _resume_after_confirm 后台旁路(monkeypatch;plan Task 10 Step 1 夹具方式)
 Depends(get_db) 取会话,不 override 会打到生产 extensions DB)。
 """
 
+import asyncio
+
 import httpx
 import pytest
 import pytest_asyncio
@@ -14,7 +16,7 @@ from fastapi import FastAPI
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
-from app.extensions.bid_review import crud, models
+from app.extensions.bid_review import crud, models, worker
 from app.extensions.bid_review import routers as R
 from app.extensions.database import Base, get_db
 
@@ -154,3 +156,55 @@ async def test_feedback_writes_row_and_rulepack_stats(client, db):
     assert meta.stats["L1-009"]["fp"] == 1 and meta.stats["L1-009"]["adopted"] == 1
     assert (await client.post(f"/api/extensions/bid-review/issues/{a.id}/feedback", json={"action": "bogus"})).status_code == 422
     assert (await client.post(f"/api/extensions/bid-review/issues/{a.id}/feedback", json={"action": "severity_change", "new_severity": "huge"})).status_code == 422
+
+
+# ── Task 15:确认门端点收紧 + MCP 无 confirm 断言 ─────────────────────
+
+
+@pytest.mark.asyncio
+async def test_confirm_gate_rejects_non_awaiting_confirm(client, db):
+    """Task 15:confirm 端点校验 status==awaiting_confirm——其余状态(created/done 等)
+    直接投续跑一律 409,且基线不得被翻转(确认门是唯一续跑通道,不可旁路/重复确认)。"""
+    t = await crud.create_task(db, owner_id="u1")
+    db.add(models.BaselinePackage(task_id=t.id, kind="tender", payload={"fields": {}, "materials_hash": "x"}))
+    await db.commit()
+    r = await client.post(f"/api/extensions/bid-review/tasks/{t.id}/confirm")
+    assert r.status_code == 409, "created(未到基线确认门)不得 confirm 续跑"
+    baselines = await crud.list_baselines(db, task_id=t.id, owner_id="u1")
+    assert all(not b.confirmed for b in baselines), "409 时基线不得被翻转"
+    await crud.set_status(db, t, "done")
+    assert (await client.post(f"/api/extensions/bid-review/tasks/{t.id}/confirm")).status_code == 409, "done 终态重复确认拒绝"
+
+
+@pytest.mark.asyncio
+async def test_awaiting_confirm_needs_confirm_to_run(client, db, monkeypatch):
+    """Task 15:awaiting_confirm 未 confirm 的任务——worker claim 跳过(领取集只有
+    created/extracting);唯一放行通道是 POST /confirm(触发续跑后台)。"""
+    t = await crud.create_task(db, owner_id="u1", mode="deep")
+    db.add(models.BaselinePackage(task_id=t.id, kind="tender", payload={"fields": {}, "materials_hash": "x"}))
+    await crud.set_status(db, t, "awaiting_confirm")
+    factory = async_sessionmaker(db.bind, class_=AsyncSession, expire_on_commit=False)
+    assert await worker._claim_next(factory) is None, "确认门未过的任务 claim 必须跳过"
+
+    resumed: list[tuple[str, str]] = []
+    released = asyncio.Event()
+
+    async def _spy_resume(task_id, owner_id):
+        resumed.append((task_id, owner_id))
+        released.set()
+
+    monkeypatch.setattr(R, "_resume_after_confirm", _spy_resume)
+    r = await client.post(f"/api/extensions/bid-review/tasks/{t.id}/confirm")
+    assert r.status_code == 200
+    await asyncio.wait_for(released.wait(), timeout=2)
+    assert resumed and resumed[0] == (t.id, "u1"), "confirm 必须经续跑通道把任务推向 running"
+
+
+def test_mcp_tools_expose_no_confirm_gate():
+    """Task 15 静态断言:MCP 工具键集与 handler 表均无 confirm/baseline_confirm 类工具——
+    基线确认门仅工作台 UI,agent 不可代确认(设计文档 §4.3/§4.8)。"""
+    from app.extensions.bid_review import mcp
+
+    assert len(mcp.TOOLS) == 7
+    assert all("confirm" not in name for name in mcp.TOOLS), "MCP 绝不暴露确认门"
+    assert all("confirm" not in name for name in mcp._HANDLERS), "handler 表同样不得有 confirm 类"

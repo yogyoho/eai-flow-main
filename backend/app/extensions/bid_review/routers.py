@@ -4,10 +4,12 @@
   POST /tasks                  multipart 上传 tender+bid 文档建任务(后台直推 advance)
   GET  /tasks                  任务列表(owner 过滤)
   GET  /tasks/{id}             任务详情(含 progress)
-  POST /tasks/{id}/confirm     确认门(仅 UI 用;基线全量 confirmed 并续跑 running)
+  POST /tasks/{id}/confirm     确认门(仅 UI 用;仅 awaiting_confirm 可确认,否则 409;
+                               基线全量 confirmed 并续跑 running)
   GET  /tasks/{id}/issues      任务问题列表(owner 过滤)
   GET  /issues/{id}            问题详情(owner 过滤)
-  POST /issues/{id}/feedback   复核反馈(写 ReviewFeedback + RulePackMeta.stats 回流)
+  POST /issues/{id}/feedback   复核反馈(写 ReviewFeedback + RulePackMeta.stats 回流;
+                               false_positive 走误报回流 verdict/need_human 落库 + fp_samples)
   GET  /rulepacks              规则包清单(生产规则包 + DB stats)
 
 owner 隔离:模块级 ``current_owner`` 依赖(必须模块级函数,dependency_overrides 才能打桩),
@@ -34,6 +36,7 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/extensions/bid-review", tags=["Bid Review"])
 
 RULEPACK_NAME = "bid-review-core"
+FP_SAMPLES_CAP = 20  # 误报回流候选滚动上限(Task 16:stats[rule].fp_samples ≤20,最旧先出)
 
 
 async def current_owner(user: CurrentUser = Depends(require_permission("system:access"))) -> str:
@@ -126,11 +129,14 @@ async def get_task_detail(task_id: str, db: AsyncSession = Depends(get_db), owne
 
 @router.post("/tasks/{task_id}/confirm", response_model=TaskOut)
 async def confirm_task(task_id: str, db: AsyncSession = Depends(get_db), owner_id: str = Depends(current_owner)):
-    """确认门(仅 UI 用,MCP 不暴露):基线全量翻转 confirmed;awaiting_confirm 状态则
-    续跑 running→det→done(后台 asyncio 任务,独立短会话)。"""
+    """确认门(仅 UI 用,MCP 不暴露):仅 awaiting_confirm 可确认(其余状态 409——
+    确认门是唯一续跑通道,旁路直投/重复确认一律拒,基线不翻转);基线全量翻转 confirmed
+    后续跑 running→det→done(后台 asyncio 任务,独立短会话)。"""
     task = await crud.get_task(db, task_id=task_id, owner_id=owner_id)
     if task is None:
         raise HTTPException(status_code=404, detail="任务不存在")
+    if task.status != "awaiting_confirm":
+        raise HTTPException(status_code=409, detail=f"任务不在确认门(当前 {task.status}):仅 awaiting_confirm 可确认续跑")
     for b in await crud.list_baselines(db, task_id=task_id, owner_id=owner_id):
         await crud.update_baseline(db, b, confirmed=True)
     if task.status == "awaiting_confirm":
