@@ -160,3 +160,8 @@
 - [ ] [ragflow-sso][low] /login 交换失败返回裸 HTTP 500——测试显式钉住"不伪 302、不静默回退"是刻意语义；后续可加重定向到带错误提示的中间页（qa-report ISSUE-003）
 - [ ] [ragflow-sso][low] create_kb (knowledge/service.py) 裸传 chunk_method，relink 路径却有 _CHUNK_METHOD_TO_PARSER 映射；非法值 → 静默 "Continuing without sync" 孤儿 KB——补同款映射或入参校验（qa-report ISSUE-005）
 - [ ] [ragflow-sso][note] RAGFlow 侧 /sso/exchange + EnsureSSOUser 源码在定制镜像 ragflow-dev:main，不在本仓库——itsdangerous 失败标记落库（ISSUE-006 根因）无法上游审计；EAI 侧已做 INVALID_ 防御，RAGFlow 侧修复需进定制镜像任务清单
+
+## Deferred by 单租户收敛 (2026-10-29, D2 决议 A)
+
+- [ ] [ragflow][high] 迁移 6 个 v1.1 前活 KB(投标技术/翻译资产/法规标准×2/固体矿产切片 + 未引用遗留×2)从 admin 个人租户 44f4e116 → 服务租户 7303d80e;ES 索引按租户分(ragflow_{tenant_id},44f4e11 索引 1005 篇),须连 _reindex 一起搬;完成后清理存量用户旧租户成员行(user_tenant);回归投标/翻译/法规/矿产四条业务线检索。EAI_SSO_SHARED_TENANT_IDS 已收敛,D2 决议挂账
+- [ ] [ragflow][medium] 合同识别库×2 悬空引用:knowledge_bases.ragflow_dataset_id=bcd80aa6/cb82ecce 在 RAGFlow 无对应 KB——确认是误删还是漂移,重建或清引用
