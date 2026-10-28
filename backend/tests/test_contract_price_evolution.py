@@ -6,7 +6,6 @@ from uuid import uuid4
 
 from app.extensions.contract_price import evolution
 
-
 # --- classify_error_pattern -------------------------------------------------
 
 
@@ -311,6 +310,7 @@ def test_merge_time_stats_mirror_pipeline_compute_stats():
     skill_root = str(Path(__file__).resolve().parents[2] / "skills/public/contract-price-analysis")
     sys.path.insert(0, skill_root)
     from scripts.stats import compute_stats
+
     from app.extensions.contract_price.crud import _merge_time_cluster_stats
 
     prices = [2.51, 2.07, 2.83, 2.4, 140.13, 2.75, 2.56, 12.64]
