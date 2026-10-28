@@ -19,6 +19,7 @@ CurrentUser.id 作 owner_id,全列表端点 owner 过滤。
 
 import asyncio
 import logging
+from datetime import UTC, datetime
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
 from sqlalchemy import select
@@ -145,6 +146,47 @@ async def confirm_task(task_id: str, db: AsyncSession = Depends(get_db), owner_i
     return task
 
 
+# ── 误报回流(Task 16,工作台与 MCP 共用)──────────────────────────────
+
+
+def _fp_snapshot(issue) -> dict:
+    """误报回流候选快照(脱敏):仅留规则判定面——issue_id/规则/层/严重度/截断 message
+    (≤200 字)+ 标记时间;不带 task/owner 归属与 evidence 正文(材料内容不出规则包统计;
+    issue_id 是不透明 UUID,取全量仍需 owner 过滤 API,不构成泄露面)。"""
+    return {
+        "issue_id": issue.id,
+        "rule_id": issue.rule_id,
+        "layer": issue.layer,
+        "severity": issue.severity,
+        "message": issue.message[:200],
+        "marked_at": datetime.now(UTC).isoformat(timespec="seconds"),
+    }
+
+
+async def apply_false_positive(db: AsyncSession, issue):
+    """误报回流(Task 16;工作台 feedback 端点与 MCP bid_review_feedback 共用同一实现):
+    issue 翻 ``verdict="false_positive"`` 且 ``need_human=False`` 落库(A8:人工回写值仅
+    落库,不经 issue-schema.json emission 校验);RulePackMeta.stats[rule].fp+=1;脱敏
+    快照追加进 stats[rule].fp_samples(≤FP_SAMPLES_CAP 滚动,最旧先出)。"""
+    issue.need_human = False
+    issue.verdict = "false_positive"
+    await db.commit()
+    await db.refresh(issue)
+    await crud.add_rulepack_stats(db, RULEPACK_NAME, issue.rule_id, fp=True)
+    meta = (await db.execute(select(RulePackMeta).where(RulePackMeta.name == RULEPACK_NAME))).scalar_one_or_none()
+    if meta is not None:
+        stats = dict(meta.stats or {})
+        entry = dict(stats.get(issue.rule_id) or {})
+        samples = [s for s in (entry.get("fp_samples") or []) if isinstance(s, dict)]
+        samples.append(_fp_snapshot(issue))
+        entry["fp_samples"] = samples[-FP_SAMPLES_CAP:]
+        stats[issue.rule_id] = entry
+        meta.stats = stats  # 重新赋值以标记 JSON 列 dirty
+        await db.commit()
+        await db.refresh(meta)
+    return issue
+
+
 # ── 问题端点 ──────────────────────────────────────────────────────────
 
 
@@ -166,8 +208,10 @@ async def get_issue_detail(issue_id: str, db: AsyncSession = Depends(get_db), ow
 
 @router.post("/issues/{issue_id}/feedback", response_model=IssueOut)
 async def feedback_issue(issue_id: str, body: FeedbackIn, db: AsyncSession = Depends(get_db), owner_id: str = Depends(current_owner)):
-    """复核反馈:写 ReviewFeedback + RulePackMeta.stats 回流(false_positive→fp+1、
-    confirm→adopted+1;severity_change 只落反馈行)。误报回流规则包属 Task 16,此处仅计数。"""
+    """复核反馈:写 ReviewFeedback + RulePackMeta.stats 回流。false_positive 走误报回流
+    (apply_false_positive:verdict/need_human 落库 + fp+1 + fp_samples 滚动);confirm→
+    adopted+1;severity_change 只落反馈行且允许任意合法档位——人工降级不拦(端点校验只
+    拦非法值;模型侧 fatal 降级拦截是 verify 层 normalize_severity 职责)。"""
     if body.action not in ("confirm", "false_positive", "severity_change"):
         raise HTTPException(status_code=422, detail="action 仅支持 confirm|false_positive|severity_change")
     if body.action == "severity_change" and body.new_severity not in ("fatal", "major", "minor", "info"):
@@ -179,7 +223,7 @@ async def feedback_issue(issue_id: str, body: FeedbackIn, db: AsyncSession = Dep
     if fb is None:
         raise HTTPException(status_code=404, detail="问题不存在")
     if body.action == "false_positive":
-        await crud.add_rulepack_stats(db, RULEPACK_NAME, issue.rule_id, fp=True)
+        await apply_false_positive(db, issue)
     elif body.action == "confirm":
         await crud.add_rulepack_stats(db, RULEPACK_NAME, issue.rule_id, adopted=True)
     await db.refresh(issue)

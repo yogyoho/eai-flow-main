@@ -6,7 +6,7 @@
   bid_review_status(task_id)                             状态+progress
   bid_review_issues(task_id, severity?, layer?)          问题列表(可过滤)
   bid_review_issue(issue_id)                             问题详情(含 evidence)
-  bid_review_feedback(issue_id, action, new_severity?, note?)  复核反馈(无 confirm 门语义)
+  bid_review_feedback(issue_id, action, new_severity?, note?)  复核反馈(误报回流同工作台语义)
   bid_review_baseline_get(task_id)                       基线只读(不提供 confirm)
   bid_review_rulepacks()                                 规则包清单
 
@@ -281,7 +281,11 @@ async def _handle_feedback(arguments: dict) -> list[TextContent]:
             return None
         fb = await crud.record_feedback(session, issue_id=issue_id, owner_id=MCP_OWNER, action=action, new_severity=new_severity, note=note)
         if action == "false_positive":
-            await crud.add_rulepack_stats(session, RULEPACK_NAME, issue.rule_id, fp=True)
+            # Task 16:误报回流与工作台同一语义(verdict/need_human 落库 + fp+1 +
+            # fp_samples 滚动),共用 routers.apply_false_positive(懒 import,stdio 启动轻量)。
+            from app.extensions.bid_review.routers import apply_false_positive
+
+            await apply_false_positive(session, issue)
         elif action == "confirm":
             await crud.add_rulepack_stats(session, RULEPACK_NAME, issue.rule_id, adopted=True)
         return fb
