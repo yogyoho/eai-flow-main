@@ -4,6 +4,7 @@ import time
 import uuid
 from types import SimpleNamespace
 
+import httpx
 import pytest
 
 # EAI-CUSTOM: 测试用共享密钥(≥32 字符),仅用于本地单测,非生产值.
@@ -684,3 +685,122 @@ async def test_login_exchange_failure_500(_fresh_config, monkeypatch, sso_db):
     async with AsyncClient(transport=ASGITransport(app=app, raise_app_exceptions=False), base_url="http://test") as client:
         resp = await client.get(LOGIN_URL)
     assert resp.status_code == 500
+
+
+# ── service: per-user token 401 自愈（QA 2026-10-28）──
+# Regression: ISSUE-002 — 缓存的 per-user token 在 RAGFlow 侧失效后无任何自愈
+# 路径,该用户所有 RAGFlow 调用永久 401。Found by /qa on 2026-10-28.
+# Report: .gstack/qa-reports/qa-report-ragflow-sso-2026-10-28.md
+
+
+def _http_status_error(status_code: int) -> "httpx.HTTPStatusError":
+    request = httpx.Request("GET", "http://ragflow.test/api/v1/x")
+    return httpx.HTTPStatusError(f"HTTP {status_code}", request=request, response=httpx.Response(status_code, request=request))
+
+
+class _StaleOrFreshClient:
+    """RAGFlowClient 桩:api_key=stale-token 时 401,其余成功 —— 模拟 token
+    失效后换新 token 自愈。__init__ 签名对齐 RAGFlowClient(api_key, base_url)。"""
+
+    def __init__(self, api_key=None, base_url=None):
+        self.api_key = api_key or ""
+
+    async def probe(self):
+        if self.api_key == "stale-token":
+            raise _http_status_error(401)
+        return "ok"
+
+
+@pytest.mark.anyio
+async def test_per_user_client_self_heals_on_401(_fresh_config, monkeypatch, sso_db):
+    """401 → 删缓存行 → 重新交换 → 同名方法重试一次成功。
+
+    注意:不 mock get_or_issue_api_token —— 初始调用必须走真实函数命中缓存行
+    ("stale-token"),probe 才会 401 进入自愈;mock 它会在构造期被消耗,probe
+    直接成功,自愈路径根本不执行(此即本测试首版的假绿)。只 mock
+    _exchange_request(行删除后的重交换)。非 401 不循环由
+    test_per_user_client_propagates_non_401_without_reissue 钉住。"""
+    from unittest.mock import AsyncMock
+
+    from sqlalchemy import select
+
+    from app.extensions.ragflow_sso import service
+    from app.extensions.ragflow_sso.models import RagflowCredential
+
+    monkeypatch.setenv("EAI_SSO_SHARED_SECRET", SECRET)
+    monkeypatch.delenv("RAGFLOW_API_KEY", raising=False)
+    uid = uuid.UUID("fff88888-8888-4888-8888-f8888888eeee")
+    sso_db.add(RagflowCredential(eai_user_id=uid, api_token="stale-token"))
+    await sso_db.commit()
+
+    monkeypatch.setattr("app.extensions.knowledge.client.RAGFlowClient", _StaleOrFreshClient)
+
+    async def fake_request(method, url, **kwargs):
+        return httpx.Response(200, json={"code": 0, "data": {"api_token": "ragflow-fresh"}}, request=httpx.Request("POST", url))
+
+    exchange = AsyncMock(side_effect=fake_request)
+    monkeypatch.setattr(service, "_exchange_request", exchange)
+
+    client = await service.get_client_for_user(sso_db, SimpleNamespace(id=uid, username="ops"))
+    assert await client.probe() == "ok"
+    assert exchange.await_count == 1  # 恰好一次重交换(自愈且不循环)
+    assert client._client.api_key == "ragflow-fresh"
+    sso_db.expire_all()  # expire_on_commit=False:身份映射里的旧行对象须强制失效才能读到 DB 真值
+    rows = (await sso_db.execute(select(RagflowCredential))).scalars().all()
+    assert len(rows) == 1 and rows[0].api_token == "ragflow-fresh"  # 失效行已删,新行已落库
+
+
+@pytest.mark.anyio
+@pytest.mark.parametrize(
+    ("mode", "token_key"),
+    [("web", "access_token"), ("api", "api_token")],
+)
+async def test_exchange_rejects_invalid_marker_token(_fresh_config, monkeypatch, sso_db, mode, token_key):
+    """Regression (QA 2026-10-28 现场实锤): RAGFlow itsdangerous 序列化失败会把
+    "INVALID_<md5>" 当真值落库并原样回吐 —— 两条交换路径都必须响亮拒绝,不得把
+    死 token 静默交给用户/写入缓存。"""
+    from unittest.mock import AsyncMock
+
+    import httpx
+
+    from app.extensions.ragflow_sso import service
+
+    monkeypatch.setenv("EAI_SSO_SHARED_SECRET", SECRET)
+
+    async def fake_request(method, url, **kwargs):
+        return httpx.Response(200, json={"code": 0, "data": {token_key: "INVALID_de53f37888f547fb9ce782c76bb38afb"}}, request=httpx.Request("POST", url))
+
+    monkeypatch.setattr(service, "_exchange_request", AsyncMock(side_effect=fake_request))
+    user = SimpleNamespace(id=uuid.UUID("aaa99999-9999-4999-8999-a9999999eeee"), username="ops")
+    if mode == "web":
+        with pytest.raises(RuntimeError, match="INVALID_ marker token"):
+            await service.exchange_mode_web(user=user)
+    else:
+        with pytest.raises(RuntimeError, match="INVALID_ marker token"):
+            await service.get_or_issue_api_token(sso_db, user)
+
+
+@pytest.mark.anyio
+async def test_per_user_client_propagates_non_401_without_reissue(_fresh_config, monkeypatch, sso_db):
+    """非 401(如 500)原样上抛,不触发重交换。"""
+    from unittest.mock import AsyncMock
+
+    import httpx
+
+    from app.extensions.ragflow_sso import service
+
+    class _Always500:
+        def __init__(self, api_key=None, base_url=None):
+            self.api_key = api_key or ""
+
+        async def probe(self):
+            raise _http_status_error(500)
+
+    monkeypatch.setenv("EAI_SSO_SHARED_SECRET", SECRET)
+    reissue = AsyncMock(return_value="fresh-token")
+    monkeypatch.setattr(service, "get_or_issue_api_token", reissue)
+
+    client = service.SelfHealRAGFlowClient(_Always500(), sso_db, SimpleNamespace(id=uuid.uuid4(), username="ops"))
+    with pytest.raises(httpx.HTTPStatusError):
+        await client.probe()
+    assert reissue.await_count == 0

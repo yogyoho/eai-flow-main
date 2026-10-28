@@ -15,7 +15,7 @@ from app.extensions.models import Document, KnowledgeBase, UserDepartment
 
 # EAI-CUSTOM (SSO Plan 2): READ 路径的 RAGFlow 客户端按 per-user token 解析
 # EAI-CUSTOM (SSO v1.1 §3.3): KB 生命周期 WRITE 路径统一走服务身份客户端
-from app.extensions.ragflow_sso.service import get_client_for_user, get_service_client
+from app.extensions.ragflow_sso.service import SelfHealRAGFlowClient, get_client_for_user, get_service_client
 from app.extensions.schemas import (
     DocumentResponse,
     DocumentStatus,
@@ -114,7 +114,7 @@ def resolve_local_doc_path(base_path: str, file_path: str) -> Path | None:
     return None
 
 
-async def resolve_ragflow_client(db: AsyncSession, user) -> RAGFlowClient | None:
+async def resolve_ragflow_client(db: AsyncSession, user) -> "RAGFlowClient | SelfHealRAGFlowClient | None":
     """EAI-CUSTOM (SSO Plan 2): READ 路径(list_documents 状态轮询门)的 per-user
     客户端解析。
 

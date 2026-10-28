@@ -1,18 +1,23 @@
 """EAI-CUSTOM: RAGFlow SSO — JWT minting + exchange client + per-user credentials
 + shared-tenant 服务身份 — 本地定制,非上游."""
 
+import functools
 import logging
 import time
 import uuid
+from typing import TYPE_CHECKING
 
 import httpx
 import jwt
-from sqlalchemy import select
+from sqlalchemy import delete, select
 from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.extensions.config import get_extensions_config
 from app.extensions.ragflow_sso.models import RagflowCredential
+
+if TYPE_CHECKING:
+    from app.extensions.knowledge.client import RAGFlowClient
 
 logger = logging.getLogger(__name__)
 
@@ -64,6 +69,11 @@ async def exchange_mode_web(user) -> str:
     access_token = data.get("access_token", "")
     if not access_token:
         raise RuntimeError("RAGFlow SSO exchange returned no access_token")
+    if access_token.startswith("INVALID_"):
+        # EAI-CUSTOM (QA 2026-10-28): itsdangerous 序列化失败时 RAGFlow 会把
+        # "INVALID_<md5>" 标记当真值落库/返回(现场实测 2 行历史残留,交换端点
+        # 原样回吐)。静默转发会给用户一个必 401 的死 token;响亮失败 + 指路。
+        raise RuntimeError("RAGFlow SSO exchange returned an INVALID_ marker token (RAGFlow-side user.access_token is poisoned; regenerate it: UPDATE ragflow.user SET access_token = REPLACE(UUID(),'-','')")
     return access_token
 
 
@@ -91,6 +101,9 @@ async def get_or_issue_api_token(db: AsyncSession, user) -> str:
     api_token = (resp.json().get("data") or {}).get("api_token", "")
     if not api_token:
         raise RuntimeError("RAGFlow SSO exchange returned no api_token")
+    if api_token.startswith("INVALID_"):
+        # 同 exchange_mode_web:拒绝 itsdangerous 失败标记,防死 token 静默入库缓存
+        raise RuntimeError("RAGFlow SSO exchange returned an INVALID_ marker token (RAGFlow-side user.access_token is poisoned; regenerate it: UPDATE ragflow.user SET access_token = REPLACE(UUID(),'-','')")
 
     try:
         db.add(RagflowCredential(eai_user_id=user.id, api_token=api_token))
@@ -104,10 +117,55 @@ async def get_or_issue_api_token(db: AsyncSession, user) -> str:
     return api_token
 
 
-async def get_client_for_user(db: AsyncSession, user):
+class SelfHealRAGFlowClient:
+    """EAI-CUSTOM (QA 2026-10-28): per-user 客户端 401 自愈包装。
+
+    缓存的 per-user token 在 RAGFlow 侧失效(用户行被删/租户重建/库回滚恢复)
+    时,该用户所有 RAGFlow 调用从此永久 401,此前无任何自愈路径,只能手工清
+    ragflow_credentials。包装器捕获 401 → 删缓存行 → 重新交换 → 同名方法重试
+    一次(仍 401 则原样上抛,不循环)。仅包 per-user 客户端;共享 key 回退不经
+    此路径(共享 key 401 = 配置问题,响应亮失败才是对的)。非方法属性(如
+    api_key)原样透传。"""
+
+    def __init__(self, client, db: AsyncSession, user):
+        self._client = client
+        self._db = db
+        self._user = user
+
+    async def _reissue(self) -> None:
+        from app.extensions.knowledge.client import RAGFlowClient
+
+        await self._db.execute(delete(RagflowCredential).where(RagflowCredential.eai_user_id == self._user.id))
+        await self._db.commit()
+        self._client = RAGFlowClient(api_key=await get_or_issue_api_token(self._db, self._user))
+
+    def __getattr__(self, name: str):
+        attr = getattr(self._client, name)
+        if not callable(attr):
+            return attr
+
+        @functools.wraps(attr)
+        async def _with_self_heal(*args, **kwargs):
+            try:
+                return await attr(*args, **kwargs)
+            except httpx.HTTPStatusError as exc:
+                if exc.response.status_code != 401:
+                    raise
+                logger.warning(
+                    "RAGFlow per-user token rejected (401) for user %s; re-issuing and retrying once",
+                    self._user.id,
+                )
+                await self._reissue()
+                return await getattr(self._client, name)(*args, **kwargs)
+
+        return _with_self_heal
+
+
+async def get_client_for_user(db: AsyncSession, user) -> "RAGFlowClient | SelfHealRAGFlowClient":
     """RAGFlowClient bound to the caller's per-user token; shared key fallback
     when SSO is unconfigured or exchange fails (audit degrades, service stays
-    up — spec §5 fallback contract)."""
+    up — spec §5 fallback contract). Per-user 客户端带 401 自愈包装
+    (SelfHealRAGFlowClient)。"""
     from app.extensions.knowledge.client import RAGFlowClient
 
     cfg = get_extensions_config()
@@ -115,7 +173,7 @@ async def get_client_for_user(db: AsyncSession, user):
         return RAGFlowClient()
     try:
         api_key = await get_or_issue_api_token(db, user)
-        return RAGFlowClient(api_key=api_key)
+        return SelfHealRAGFlowClient(RAGFlowClient(api_key=api_key), db, user)
     except (RuntimeError, httpx.HTTPError, SQLAlchemyError) as exc:
         # EAI-CUSTOM: 回滚是安全 no-op(无 pending 时);DB 层失败会把 session 置为
         # invalidated(PendingRollbackError 会毒化请求余下所有查询)——先回滚再降级,
