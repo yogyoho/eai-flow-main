@@ -11,6 +11,7 @@
 - 无 validate_expr 加载期白名单校验(未支持构造运行期直接 ExprError)
 - 通配 ".attr" 为合并单 token;canonical 同源分词器带同一 eat('.') 死码,同步时须同样处理
 - number_to_words 负数入参直接 raise;token 耗尽 = ExprError(不作 None 字面量)
+- number_to_words 段间零(junction)规则:高位→低位装配,补零条件 = 已有输出且(本段<1000 或 上一已输出段末位为 0 或 中间跳过全零段);canonical 同步时须按同一规则处理
 """
 from __future__ import annotations
 import argparse, json, operator, re, sys
@@ -87,15 +88,18 @@ def _number_to_words(v):
     m = n
     while m:
         segs.append(m % 10000); m //= 10000
-    out = []
+    out, prev, zero_skipped = [], None, False
     for idx in range(len(segs) - 1, -1, -1):  # 高位→低位
         x = segs[idx]
         if x == 0:
+            zero_skipped = True  # 全零段被跳过,下一非零段前须补零(复审 I1:100004567)
             continue
         part = four(x)
-        if out and x < 1000:  # 段间零:更高非零段已输出且本段不足千(禁止前导零)
+        # 段间零(复审 I1 junction 规则):已有输出且(本段<1000 或 上一输出段末位为0 或 跳过过全零段);禁止前导零
+        if out and (x < 1000 or prev % 10 == 0 or zero_skipped):
             part = "零" + part
         out.append(part + units[idx])
+        prev, zero_skipped = x, False
     return "".join(out) + "元整"
 
 def _fmt(v, spec=""):
@@ -109,18 +113,16 @@ def _fmt(v, spec=""):
     return str(v)
 
 def _tpl(tpl: str, fields: dict) -> str:
-    _EMPTY = "\x00"  # 哨兵:值为空的段连同其标签/分隔符整段省略(质量评审修正,修 L1-011 "漏项  ,增项 B")
     def sub(m):
         # 基线 partition(m.group(1)) 永得空 spec(":"在组外非捕获);实测修正:spec 单独捕获为 group(2)
+        # 复审 I2:\x00 哨兵+label 剪除实证有害(空 where 时吞金额数字),整体拆除;空串如实传递(双空格为可容忍如实渲染)
         path, spec = m.group(1), m.group(2) or ""
         try:
             v = _fmt(_resolve(path, fields), spec)
         except Exception:
             return m.group(0)
-        return v if v != "" else _EMPTY
-    out = re.sub(r"\{([\w.]+)(?::(\w+))?\}", sub, tpl)
-    out = re.sub(r"[^\s,、::：]{1,6}\s*\x00\s*,?\s*", "", out)  # 标签+空段+尾随逗号一并删除
-    return out.replace(_EMPTY, "")
+        return "" if v is None else v  # None 不渲染 "None" 字面量(复审 ride-along)
+    return re.sub(r"\{([\w.]+)(?::(\w+))?\}", sub, tpl)
 
 # ---- 单遍解释器(无量词;每个构造的 token 只消费一次,故单遍正确)----
 class P:
@@ -319,6 +321,16 @@ def selftest():
         assert not re.search(r"\{[\w.]+(?::\w+)?\}", i["message"]), f"残留占位符: {i['rule_id']} {i['message']}"
     l1009 = next(i for i in all_bad if i["rule_id"] == "L1-009")
     assert "¥1,000,001.00" in l1009["message"], f"money spec 回归: {l1009['message']}"  # _tpl spec 修复回归门(质量评审)
+    # 复审 I1:junction 零回归门——全规则集跑 1004567.0 干净案(L1-010 step3 仅在大写恰为 conventional 形态时通过)
+    jf = {**ok_fields, "tender.max_price": 2000000.0, "bid.total_price": 1004567.0,
+          "bid.subtotal": 1004567.0, "bid.detail_rows": [{"code": "A", "amount": 1004567.0}],
+          "bid.total_price_words": "壹佰万零肆仟伍佰陆拾柒元整",
+          "bid.amount_occurrences": [{"where": "承诺函", "value": 1004567.0}]}
+    j_issues = [i for r in rules for i in run_rule(r, jf)]
+    assert not j_issues, f"junction 案(1004567.0)应零问题,得 {j_issues}"
+    # 复审 I2:空 where 消息数字完整(哨兵拆除回归门)
+    msg006 = run_rule(by_id["L3-006"], {**bad, "bid.amount_occurrences": [{"where": "", "value": 900000.0}]})[0]["message"]
+    assert "¥900,000.00" in msg006 and "¥1,000,001.00" in msg006, f"L3-006 空 where 数字不完整: {msg006}"
     need = run_rule(by_id["L1-009"], {"bid.total_price": 1.0})
     assert need[0]["verdict"] == "need_human", "缺字段必须 need_human"
     print("SELFTEST OK")
