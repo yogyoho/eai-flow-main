@@ -25433,3 +25433,114 @@
 
 | Time | Action | File(s) | Outcome | ~Tokens |
 |------|--------|---------|---------|--------|
+| 23:20 | Edited frontend/src/app/settings/basic-settings.tsx | added nullish coalescing | ~151 |
+| 23:20 | Edited frontend/src/app/settings/basic-settings.tsx | 5→5 lines | ~58 |
+| 23:21 | Created frontend/tests/unit/app/settings/basic-settings.test.ts | — | ~210 |
+| 23:21 | Edited backend/app/extensions/ragflow_sso/service.py | added 1 import(s) | ~99 |
+| 23:22 | Edited backend/app/extensions/ragflow_sso/service.py | modified __init__() | ~556 |
+| 23:22 | Edited backend/app/extensions/ragflow_sso/service.py | 4→4 lines | ~61 |
+| 23:23 | Edited backend/app/extensions/knowledge/service.py | modified CUSTOM() | ~67 |
+| 23:23 | Edited backend/app/extensions/knowledge/service.py | inline fix | ~31 |
+| 23:23 | Edited backend/tests/test_ragflow_sso.py | modified test_login_exchange_failure_500() | ~1132 |
+
+## Session: 2026-10-28 23:30
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 23:32 | Edited backend/tests/test_ragflow_sso.py | modified test_per_user_client_self_heals_on_401() | ~484 |
+| 23:33 | Edited backend/tests/test_ragflow_sso.py | 2→3 lines | ~59 |
+| 23:35 | Edited backend/tests/test_ragflow_sso.py | added 1 import(s) | ~25 |
+| 23:35 | Edited backend/tests/test_ragflow_sso.py | modified _http_status_error() | ~39 |
+| 23:35 | Edited backend/tests/test_ragflow_sso.py | 5→3 lines | ~22 |
+| 23:36 | Edited backend/app/extensions/ragflow_sso/service.py | 13→17 lines | ~132 |
+| 00:00 | Edited backend/app/extensions/ragflow_sso/service.py | modified exchange_mode_web() | ~349 |
+| 00:00 | Edited backend/app/extensions/ragflow_sso/service.py | modified startswith() | ~152 |
+| 00:00 | Edited backend/tests/test_ragflow_sso.py | modified test_per_user_client_propagates_non_401_without_reissue() | ~35 |
+| 00:00 | Edited backend/tests/test_ragflow_sso.py | modified test_exchange_rejects_invalid_marker_token() | ~398 |
+| 00:02 | Edited backend/tests/test_ragflow_sso.py | inline fix | ~31 |
+| 00:09 | Created .gstack/qa-reports/qa-report-ragflow-sso-2026-10-28.md | — | ~780 |
+| 00:09 | Created yogyoho-main-dev-fork-test-outcome-2026-10-28.md | — | ~347 |
+| 00:12 | Created C:/Users/admin/AppData/Local/Temp/buglog-append.py | — | ~774 |
+| 16:20 | /qa RAGFlow SSO 集成审计收官: ISSUE-001 前端免登入口修复(95ed069a6)+ISSUE-002 per-user token 401 自愈+INVALID_ 防御(b65bc30fd)+现场毒化数据修复(ragflow MySQL 2 行 access_token=INVALID_* 重置)+活体 E2E 全通(302→token→datasets 200)+测试 27/27 绿 | ragflow_sso/service.py, knowledge/service.py, basic-settings.tsx, tests | READY | ~90k |
+| 00:15 | Session end: 14 writes across 5 files (test_ragflow_sso.py, service.py, qa-report-ragflow-sso-2026-10-28.md, yogyoho-main-dev-fork-test-outcome-2026-10-28.md, buglog-append.py) | 2 reads | ~12486 tok |
+| 00:20 | Created docs/designs/2026-10-29-bid-review-design.md | — | ~3850 |
+| 00:21 | Edited docs/designs/2026-10-29-bid-review-design.md | 12 → 13 | ~10 |
+| 2026-10-29 | 投标方案审查技能+子系统设计文档落稿提交(方案A双件套分层,92e109d74) | docs/designs/2026-10-29-bid-review-design.md | APPROVED待用户审阅 | ~4k |
+| 00:23 | Session end: 16 writes across 6 files (test_ragflow_sso.py, service.py, qa-report-ragflow-sso-2026-10-28.md, yogyoho-main-dev-fork-test-outcome-2026-10-28.md, buglog-append.py) | 2 reads | ~16620 tok |
+| 00:30 | Edited docs/designs/2026-10-29-bid-review-design.md | inline fix | ~39 |
+| 00:30 | Edited docs/designs/2026-10-29-bid-review-design.md | inline fix | ~48 |
+| 00:30 | Edited docs/designs/2026-10-29-bid-review-design.md | 1→2 lines | ~33 |
+| 00:30 | Edited docs/designs/2026-10-29-bid-review-design.md | inline fix | ~20 |
+| 00:30 | Edited docs/designs/2026-10-29-bid-review-design.md | inline fix | ~110 |
+| 00:31 | Session end: 21 writes across 6 files (test_ragflow_sso.py, service.py, qa-report-ragflow-sso-2026-10-28.md, yogyoho-main-dev-fork-test-outcome-2026-10-28.md, buglog-append.py) | 2 reads | ~16887 tok |
+| 2026-10-29 | 素材覆盖审计+补丁提交(可提交判定/偏离表导出进v1,7项补进v2路标,1f1fdab95) | docs/designs/2026-10-29-bid-review-design.md | 审计通过 | ~1k |
+| 00:32 | Session end: 21 writes across 6 files (test_ragflow_sso.py, service.py, qa-report-ragflow-sso-2026-10-28.md, yogyoho-main-dev-fork-test-outcome-2026-10-28.md, buglog-append.py) | 2 reads | ~16887 tok |
+| 00:35 | Session end: 21 writes across 6 files (test_ragflow_sso.py, service.py, qa-report-ragflow-sso-2026-10-28.md, yogyoho-main-dev-fork-test-outcome-2026-10-28.md, buglog-append.py) | 2 reads | ~16887 tok |
+| 00:39 | Edited docs/designs/2026-10-29-bid-review-design.md | 2→4 lines | ~59 |
+| 00:39 | Edited docs/designs/2026-10-29-bid-review-design.md | inline fix | ~27 |
+| 00:39 | Edited docs/designs/2026-10-29-bid-review-design.md | 1→2 lines | ~51 |
+| 00:39 | Edited docs/designs/2026-10-29-bid-review-design.md | inline fix | ~51 |
+| 2026-10-29 | 工程基线素材(规则表/架构/Prompt)覆盖审计+补丁(project_id/engine_meta/bbox/可观测/转录指令) | docs/designs/2026-10-29-bid-review-design.md | 审计通过 | ~1k |
+| 00:40 | Session end: 25 writes across 6 files (test_ragflow_sso.py, service.py, qa-report-ragflow-sso-2026-10-28.md, yogyoho-main-dev-fork-test-outcome-2026-10-28.md, buglog-append.py) | 2 reads | ~17089 tok |
+
+## Session: 2026-10-28 00:54
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 00:57 | Edited docs/designs/2026-10-29-bid-review-design.md | inline fix | ~32 |
+| 00:57 | Edited docs/designs/2026-10-29-bid-review-design.md | inline fix | ~104 |
+| 00:57 | Edited docs/designs/2026-10-29-bid-review-design.md | inline fix | ~67 |
+| 00:57 | Edited docs/designs/2026-10-29-bid-review-design.md | inline fix | ~20 |
+| 00:57 | Edited docs/designs/2026-10-29-bid-review-design.md | inline fix | ~43 |
+| 00:57 | Edited docs/designs/2026-10-29-bid-review-design.md | inline fix | ~15 |
+| 00:58 | Edited docs/superpowers/specs/2026-10-19-eai-unified-sso-design.md | expanded (+6 lines) | ~107 |
+| 00:58 | docs(bid-review): 评测素材③审计补丁 MUT扩017+fatal单条门禁+标注纪律 | docs/designs/2026-10-29-bid-review-design.md | 提交成功 | ~4k |
+| 00:58 | Session end: 7 writes across 2 files (2026-10-29-bid-review-design.md, 2026-10-19-eai-unified-sso-design.md) | 3 reads | ~4248 tok |
+| 01:00 | 单租户收敛 D2 决议 A 落地: EAI_SSO_SHARED_TENANT_IDS 收敛为单一服务租户 7303d80e(.env+ragflow 容器重建+新探针验证恰 1 共享成员行);规格补托管KB=全组织可见政策;6 活 KB 迁移+悬空引用挂账 TODOS(7c6a9e752);spec 本地改不入库 | docker/.env, spec, TODOS.md | 验证通过 | ~40k |
+| 00:59 | Session end: 7 writes across 2 files (2026-10-29-bid-review-design.md, 2026-10-19-eai-unified-sso-design.md) | 3 reads | ~4248 tok |
+| 01:02 | Edited docs/designs/2026-10-29-bid-review-design.md | "normalize_unit(归一 日历天/月) " → "normalize_unit(归一 日历天/月;素" | ~82 |
+| 01:02 | Edited docs/designs/2026-10-29-bid-review-design.md | inline fix | ~25 |
+| 01:02 | Edited docs/designs/2026-10-29-bid-review-design.md | inline fix | ~24 |
+| 01:03 | docs(bid-review): 规则包素材④审计补丁 DSL白名单+dedup模板+27锚勘误 | docs/designs/2026-10-29-bid-review-design.md | 提交成功 | ~3k |
+| 01:03 | Session end: 10 writes across 2 files (2026-10-29-bid-review-design.md, 2026-10-19-eai-unified-sso-design.md) | 3 reads | ~4530 tok |
+
+## Session: 2026-10-28 01:15
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 01:17 | Created docs/superpowers/plans/2026-10-29-bid-review-implementation.md | — | ~16070 |
+
+## Session: 2026-10-28 01:19
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 01:25 | Edited docs/superpowers/plans/2026-10-29-bid-review-implementation.md | 3→2 lines | ~23 |
+| 01:27 | Edited docs/superpowers/plans/2026-10-29-bid-review-implementation.md | modified _tokens() | ~3337 |
+| 01:27 | Edited docs/superpowers/plans/2026-10-29-bid-review-implementation.md | modified _tokens() | ~2227 |
+| 01:28 | Edited docs/superpowers/plans/2026-10-29-bid-review-implementation.md | "rules:\n- id: X-001\n  la" → "rules:\n- id: X-001\n  na" | ~75 |
+| 01:28 | Edited docs/superpowers/plans/2026-10-29-bid-review-implementation.md | "create_task/list_tasks/ge" → "create_task/list_tasks/ge" | ~66 |
+| 01:28 | Edited docs/superpowers/plans/2026-10-29-bid-review-implementation.md | modified client() | ~143 |
+| 01:28 | Edited docs/superpowers/plans/2026-10-29-bid-review-implementation.md | 2→3 lines | ~90 |
+| 01:28 | Edited docs/superpowers/plans/2026-10-29-bid-review-implementation.md | inline fix | ~51 |
+| 01:28 | Edited docs/superpowers/plans/2026-10-29-bid-review-implementation.md | "_enqueue_docs" → "async def current_owner()" | ~111 |
+| 01:29 | Edited docs/superpowers/plans/2026-10-29-bid-review-implementation.md | modified mut_001() | ~484 |
+| 01:29 | Edited docs/superpowers/plans/2026-10-29-bid-review-implementation.md | 6→6 lines | ~65 |
+| 01:29 | Edited docs/superpowers/plans/2026-10-29-bid-review-implementation.md | 12→13 lines | ~134 |
+| 01:30 | Edited docs/superpowers/plans/2026-10-29-bid-review-implementation.md | 1→2 lines | ~139 |
+| 01:31 | 投标审查实施计划落地(22任务 M1-M4,自审修正量词解释器bug) | docs/superpowers/plans/2026-10-29-bid-review-implementation.md | db0a319d4 | ~15k |
+| 01:31 | Created C:/Users/admin/.claude/projects/D--eai-eai-flow-main/memory/superpowers-plans-gitignored-f-commit.md | — | ~149 |
+| 01:32 | Session end: 14 writes across 2 files (2026-10-29-bid-review-implementation.md, superpowers-plans-gitignored-f-commit.md) | 1 reads | ~24750 tok |
+| 03:37 | Created ../../tmp/reindex-52d6e05c-body.json | — | ~157 |
+| 03:43 | Session end: 15 writes across 3 files (2026-10-29-bid-review-implementation.md, superpowers-plans-gitignored-f-commit.md, reindex-52d6e05c-body.json) | 5 reads | ~24907 tok |
+| 03:44 | Created skills/public/bid-proposal-review/references/rules-det-subset.yaml | — | ~1249 |
+| 03:44 | Created skills/public/bid-proposal-review/references/issue-schema.json | — | ~305 |
+| 03:45 | Created backend/.tmp-retrieval-q.json | — | ~38 |
+| 03:46 | Created backend/.tmp-retrieval-q.json | — | ~25 |
+| 03:47 | Session end: 19 writes across 6 files (2026-10-29-bid-review-implementation.md, superpowers-plans-gitignored-f-commit.md, reindex-52d6e05c-body.json, rules-det-subset.yaml, issue-schema.json) | 7 reads | ~28078 tok |
+| 03:47 | Created backend/.tmp-retrieval-q.json | — | ~30 |
+| 03:52 | Edited TODOS.md | 2→4 lines | ~225 |
+| 03:52 | Session end: 21 writes across 7 files (2026-10-29-bid-review-implementation.md, superpowers-plans-gitignored-f-commit.md, reindex-52d6e05c-body.json, rules-det-subset.yaml, issue-schema.json) | 9 reads | ~32396 tok |
+| 03:53 | Edited docs/superpowers/specs/2026-10-19-eai-unified-sso-design.md | 2→5 lines | ~87 |
+| 03:53 | Created backend/.tmp_buglog.py | — | ~521 |
+| 01:30 | 单租户迁移 Phase4 验证:发现 4 库 2707 chunks 在第三索引 52d6e05c,补第二轮 reindex 全通过;环评样例 mxbai embd 断裂属既有(挂账) | ragflow ES/MySQL | bug-199/200 入账 | ~8k |
+| 01:45 | Phase5 成员清理:删 7 条旧租户 normal 行(备份 usertenant-predelete),Phase6 复测 admin12/service10,Phase7 EAI 全链路(注册表9行+documents 4 doc)通过 | ragflow MySQL + gateway | 迁移闭环,收尾提交 | ~6k |

@@ -3064,6 +3064,228 @@
       ],
       "occurrences": 2,
       "last_seen": "2026-10-28"
+    },
+    {
+      "id": "bug-188",
+      "timestamp": "2026-10-28T15:20:25.649Z",
+      "error_message": "Null/undefined access in ",
+      "file": "frontend/src/app/settings/basic-settings.tsx",
+      "root_cause": "Property access on potentially null/undefined value",
+      "fix": "Added null safety (optional chaining or null check)",
+      "tags": [
+        "auto-detected",
+        "null-safety",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-10-28T15:20:25.649Z"
+    },
+    {
+      "id": "bug-189",
+      "timestamp": "2026-10-28T15:22:00.079Z",
+      "error_message": "Missing await",
+      "file": "backend/app/extensions/ragflow_sso/service.py",
+      "root_cause": "Async call without await — returned Promise instead of value",
+      "fix": "Added await to async call",
+      "tags": [
+        "auto-detected",
+        "async-fix",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-10-28T15:22:00.079Z"
+    },
+    {
+      "id": "bug-190",
+      "timestamp": "2026-10-28T15:22:23.466Z",
+      "error_message": "Wrong return value",
+      "file": "backend/app/extensions/ragflow_sso/service.py",
+      "root_cause": "Was returning: RAGFlowClient(api_key=api_key)",
+      "fix": "Now returns: SelfHealRAGFlowClient(RAGFlowClient(api_key=api_ke",
+      "tags": [
+        "auto-detected",
+        "return-value",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-10-28T15:22:23.466Z"
+    },
+    {
+      "id": "bug-191",
+      "timestamp": "2026-10-28T15:23:21.586Z",
+      "error_message": "Wrong reference: None should be SelfHealRAGFlowClient",
+      "file": "backend/app/extensions/knowledge/service.py",
+      "root_cause": "Used \"None\" instead of \"SelfHealRAGFlowClient\"",
+      "fix": "Changed None → SelfHealRAGFlowClient",
+      "tags": [
+        "auto-detected",
+        "wrong-reference",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-10-28T15:23:21.586Z"
+    },
+    {
+      "id": "bug-192",
+      "timestamp": "2026-10-28T15:32:13.386Z",
+      "error_message": "Significant refactor of ",
+      "file": "backend/tests/test_ragflow_sso.py",
+      "root_cause": "6 lines replaced/restructured",
+      "fix": "Rewrote 26→38 lines (6 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-10-28T15:32:13.386Z"
+    },
+    {
+      "id": "bug-193",
+      "timestamp": "2026-10-28T16:00:58.719Z",
+      "error_message": "Missing await",
+      "file": "backend/tests/test_ragflow_sso.py",
+      "root_cause": "Async call without await — returned Promise instead of value",
+      "fix": "Added await to async call",
+      "tags": [
+        "auto-detected",
+        "async-fix",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-10-28T16:00:58.719Z"
+    },
+    {
+      "id": "bug-194",
+      "timestamp": "2026-10-28T16:20:00.000Z",
+      "error_message": "设置页 RAGFlow 入口点击后落在 RAGFlow 原生登录页, SSO 建号用户无密码无法进入 (用户: 点击后应该免登录进入到RAGFlow)",
+      "file": "frontend/src/app/settings/basic-settings.tsx",
+      "root_cause": "入口直链 http://<host>:9381/ 原生登录页; 后端 GET /api/extensions/auth/ragflow-sso/login (302 SSO 免登) 此前零前端调用方",
+      "fix": "ragflowSsoHref() 返回 /api/extensions/auth/ragflow-sso/login (相对路径经 nginx 代理, /api/extensions 无本地 handler 遮蔽); 回归测试钉住不回退直链",
+      "tags": [
+        "ragflow",
+        "sso",
+        "settings",
+        "frontend"
+      ],
+      "related_bugs": [
+        "bug-195"
+      ],
+      "occurrences": 1,
+      "last_seen": "2026-10-28T16:20:00.000Z"
+    },
+    {
+      "id": "bug-195",
+      "timestamp": "2026-10-28T16:20:00.000Z",
+      "error_message": "SSO /login 302 携带的 token 以 \"INVALID_\" 开头, RAGFlow API 401 Invalid token",
+      "file": "backend/app/extensions/ragflow_sso/service.py",
+      "root_cause": "RAGFlow itsdangerous 序列化失败把 'INVALID_<md5>' 标记当真值写入 ragflow.user.access_token 列(老镜像时代 2 行历史残留含 ragflow-admin), 交换端点 200 原样回吐该列值",
+      "fix": "数据修复 UPDATE ragflow.user SET access_token=REPLACE(UUID(),'-','') WHERE access_token LIKE 'INVALID%'; EAI 侧 exchange_mode_web/get_or_issue_api_token 响亮拒绝 INVALID_ 前缀并指路修复 SQL; 新建探针用户证实现镜像交换路径本身健康",
+      "tags": [
+        "ragflow",
+        "sso",
+        "itsdangerous",
+        "data-poison",
+        "exchange"
+      ],
+      "related_bugs": [
+        "bug-194",
+        "bug-196"
+      ],
+      "occurrences": 1,
+      "last_seen": "2026-10-28T16:20:00.000Z"
+    },
+    {
+      "id": "bug-196",
+      "timestamp": "2026-10-28T16:20:00.000Z",
+      "error_message": "test_per_user_client_self_heals_on_401 假绿: reissue.await_count==1 通过但缓存行未删",
+      "file": "backend/tests/test_ragflow_sso.py",
+      "root_cause": "monkeypatch get_or_issue_api_token 后, mock 在 get_client_for_user 构造期被消耗(await_count==1 是构造调用), wrapper 初始 client 已持 fresh token, probe 永不 401, 自愈路径根本未执行",
+      "fix": "不 mock get_or_issue_api_token: 真实函数命中种子缓存行(stale-token) 才会 401; 只 mock _exchange_request 供重交换; 断言改为恰好一次交换+剩余一行=新 token; expire_on_commit=False 下 expire_all() 后再查",
+      "tags": [
+        "test-design",
+        "mock-construction-trap",
+        "sso",
+        "sqlalchemy"
+      ],
+      "related_bugs": [
+        "bug-195"
+      ],
+      "occurrences": 1,
+      "last_seen": "2026-10-28T16:20:00.000Z"
+    },
+    {
+      "id": "bug-197",
+      "timestamp": "2026-10-28T17:02:45.322Z",
+      "error_message": "Incorrect value in code",
+      "file": "docs/designs/2026-10-29-bid-review-design.md",
+      "root_cause": "Had `normalize_unit(归一 日历天/月) / number_to_words(中文大写) ",
+      "fix": "Changed to `normalize_unit(归一 日历天/月;素材④拼作 normalize(…, to_cal",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "md"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-10-28T17:02:45.322Z"
+    },
+    {
+      "id": "bug-198",
+      "timestamp": "2026-10-28T17:28:07.441Z",
+      "error_message": "Incorrect value in code",
+      "file": "docs/superpowers/plans/2026-10-29-bid-review-implementation.md",
+      "root_cause": "Had \"rules:\\n- id: X-001\\n  layer: L1\\n  type: determi",
+      "fix": "Changed to \"rules:\\n- id: X-001\\n  name: 坏规则\\n  layer: L1\\n  ",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "md"
+      ],
+      "related_bugs": [],
+      "occurrences": 4,
+      "last_seen": "2026-10-28T17:28:49.417Z"
+    },
+    {
+      "id": "bug-199",
+      "timestamp": "2026-10-29",
+      "error_message": "环评样例库 4ad993ec 检索必挂: code 102 failed to get embedding model: instance default lookup failed: record not found",
+      "file": "ragflow MySQL knowledgebase.embd_id (data/config issue)",
+      "root_cause": "该库 embd_id=mxbai-embed-large@Ollama, 系统模型注册表只有 bge-m3; 提问向量一步即断, 与租户/索引无关——迁移前就坏, 单租户迁移验证顺带暴露",
+      "fix": "未修, 挂账 TODOS.md: 重注册 mxbai-embed-large 或整库重嵌 bge-m3 (1597 chunks)",
+      "tags": [
+        "ragflow",
+        "embedding",
+        "model-config",
+        "migration-surfaced"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-10-29"
+    },
+    {
+      "id": "bug-200",
+      "timestamp": "2026-10-29",
+      "error_message": "KB 迁移第一轮 ES reindex 后 3 个库探针检索 0 命中 (chunks 落在第三个索引 ragflow_52d6e05c)",
+      "file": "ragflow ES ragflow_{tenant_id} indices",
+      "root_cause": "假设 chunk 只在 KB 当前 tenant_id 的索引; 实际 4 库 2707 chunks 在历史租户索引 (KB 行被搬过家, chunk 不跟迁)",
+      "fix": "全索引聚合 by kb_id 盘点分布, 补第二轮 _reindex (2707/2707 零失败) 后逐库探针检索通过",
+      "tags": [
+        "ragflow",
+        "es",
+        "migration",
+        "per-tenant-index",
+        "verification"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-10-29"
     }
   ]
 }

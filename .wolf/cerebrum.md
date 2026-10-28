@@ -2712,3 +2712,39 @@ P3 item ① 裁决：**双工况 N=3 校核暂不默认开**，维持 SKILL 现�
 - **A/B 定界法（升级/依赖变更是否引入问题）**：在 `.worktrees/<name>` 独立 worktree 里 `pnpm add next@<旧版>` 重建基线，同树对比失败集。本次证明 showcase prerender TypeError 与 task-form-dialog act() 测试失败在 16.4.0 同样失败 → committed-tree 既有，非升级引入（bug-186/bug-187）。
 - **`pnpm add` 副作用须知**：会按字母序重排 package.json 依赖键（docx-preview/pptx-preview/xlsx 三处位移，无语义）；lockfile 漂移仅 next 的传递可选依赖 `@img/sharp-*` 0.35.4→0.35.5，属正常重解析。审查 lockfile diff 时先排除这两类噪音再下结论。
 - **worktree 里跑前端构建**：`pnpm install` 完整装一遍（~7min，store 复用尚快）；构建命令 `BETTER_AUTH_SECRET=local-dev-secret pnpm build`。注意 committed tree 编译依赖未跟踪 WIP 文件 bits.tsx（contract-price restyle 未提交部分），纯 worktree 构建会 Module not found。
+
+## [2026-10-28] Key Learnings (RAGFlow SSO QA session)
+
+- RAGFlow itsdangerous 序列化失败会把 `"INVALID_<md5>"` 字符串**当真值落库**到 `ragflow.user.access_token` 列,且交换端点 200 原样回吐——死 token 伪装成成功响应。EAI 侧已在两条交换路径响亮拒绝 INVALID_ 前缀(b65bc30fd)。数据修复: `UPDATE ragflow.user SET access_token=REPLACE(UUID(),'-','') WHERE access_token LIKE 'INVALID%'`。
+- gateway 容器重启后 nginx 缓存旧 upstream IP → 502;`docker exec deer-flow-nginx nginx -s reload` 即愈(bug-3233)。gateway 冷启静默无日志可长达 75s+——轮询容器内 `python3 urllib /health`,别急着下结论。
+- Git Bash 下 `docker exec -w /path` 会被 MSYS 路径转换毁掉(Cwd must be an absolute path)——加 `MSYS_NO_PATHCONV=1`。
+- 系统 python3(3.14 Store 别名)跑脚本文件静默 exit 49 无任何输出——Python 脚本一律走 `cd backend && uv run python`。
+- 测试设计坑: 被测路径在**构造期**调用的函数不要整体 mock——mock 在构造时被消耗,断言(await_count)假绿而核心路径根本没执行(本例: mock get_or_issue_api_token → probe 永不 401)。改种真实前置状态(缓存行)+只 mock 边界 IO(_exchange_request)。
+- SQLAlchemy `async_sessionmaker(expire_on_commit=False)` 下,Core `delete()` 不清身份映射,事后 select 可能读回内存旧值——断言 DB 真值前先 `session.expire_all()`。
+
+## [2026-10-28] Do-Not-Repeat
+
+- (2026-10-28) 不要 mock 被测函数自身在构造期消费的依赖(见上 Key Learnings 测试设计坑, bug-196 假绿)。
+
+## [2026-10-29] Decision Log (单租户收敛)
+
+- **决议**: RAGFlow 共享租户收敛为单一服务租户(D2,用户选 A 浅层)。RAGFlow 原生 tenant.id==user.id(1:1);集成层托管 KB 归 ragflow-service 唯一租户(permission=team),SSO 用户 env 驱动自动加入——身份 1:1,托管知识 N:1。`EAI_SSO_SHARED_TENANT_IDS` 从 3 id 收敛为 7303d80e。
+- **政策**: 托管 KB=全组织可见,保密材料不进托管库;RAGFlow team ACL 粗粒度全有/全无,按人收权需改镜像侧(不在本仓库)。
+- **挂账**: 6 个 v1.1 前活 KB 仍在 admin 个人租户 44f4e116(ES 索引按租户分,迁移须 _reindex);存量用户旧成员资格=旧库访问通道,不可先删;合同识别库×2 悬空引用。
+- **坑**: docker-compose.business.yaml `include:` workflow.yaml,x-workflow-env 强制要求 JWT_SECRET_KEY——单独重建非 workflow 服务时须内联占位值(`JWT_SECRET_KEY=x docker compose ... up -d <svc>`),该值不落 ragflow 容器。
+
+### 2026-10-29 单租户 KB 迁移(追加)
+
+**Key Learnings**
+- RAGFlow per-tenant ES 索引跟 KB 行历史走:chunk 留在**入库时**租户的索引,KB 行搬家 chunk 不跟迁。迁移前必先 `_search` 全索引按 kb_id 聚合盘点真实分布(本次 4 库 2707 chunks 在第三个索引 52d6e05c,bug-200)。
+- RAGFlow datasets listing 可见性规则 = 自有租户全部 KB(含 me)+ 成员租户的 team KB。"探针看见 me 库"先查探针是不是那个租户的 owner(EAI admin extensions uuid f8766d55 ↔ RAGFlow 租户 44f4e116),不是泄漏。
+- 现行探针账号:6e866e6d=single-tenant-verify-1028,18441b91=probe-sso-check,8b3d5f96=eai-user-b(v1.1 冒烟),7303d80e=ragflow-service。检索命中相似度普遍贴 0.2 线(0.20~0.26),0 命中≠索引坏,先用 chunk 原文重测再下诊断。
+- 旧 era chunk(52d6e05c 索引)缺 available_int 字段,但检索不硬过滤该字段——良性差异。
+- Windows 侧 curl 认不得 MSYS /tmp 路径,Write 工具的 /tmp 也≠Git Bash /tmp;请求体一律 `cat file | curl --data-binary @-` 走 stdin。Git Bash 内联 CJK 进 curl -d 可能坏 UTF-8,CJK 请求体必须走文件管道。
+
+**Do-Not-Repeat**
+- (bug-200) ES 迁移只 reindex 当前租户索引就宣告完成——先全索引聚合盘点 chunk 分布,历史索引逐个补迁,再探针逐库检索验收。
+- 探针验证别拿 admin 身份(token f8766d55)当"普通成员"——它是旧租户 owner,视图混入自有 me 库,计数会误导。
+
+**Decision Log**
+- 2026-10-29 单租户迁移执行:用户在 AskUserQuestion 选"继续收尾"(补 ES 第二轮 reindex + 清 7 条旧租户 normal 成员行)。回滚点:/tmp/ragflow-rollback-20261029.sql(kb/doc/user_tenant)+ /tmp/usertenant-predelete-20261029.sql。ragflow 容器免重启(逐请求读库),重启留给下次维护窗口。

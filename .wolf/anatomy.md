@@ -1,7 +1,7 @@
 # anatomy.md
 
-> Auto-maintained by OpenWolf. Last scanned: 2026-10-24T06:57:12.593Z
-> Files: 21 tracked | Anatomy hits: 0 | Misses: 0
+> Auto-maintained by OpenWolf. Last scanned: 2026-10-28T19:53:48.156Z
+> Files: 41 tracked | Anatomy hits: 0 | Misses: 0
 
 ## ../../00 工作目录/02 项目策划/马宁/应急指挥/bid-run/
 
@@ -23,6 +23,7 @@
 
 ## ../../tmp/
 
+- `reindex-52d6e05c-body.json` (~157 tok)
 
 ## ../../tmp/fire-extract-experiment/workspace/
 
@@ -42,6 +43,8 @@
 ## ./
 
 - `TEMPLATE-DELTA-APPLY-20261024.md` — 模板差量包应用说明（中交三公局站 · v20261013 → v20261024 模板） (~588 tok)
+- `TODOS.md` — TODOS (~3846 tok)
+- `yogyoho-main-dev-fork-test-outcome-2026-10-28.md` — Test Outcome — RAGFlow SSO QA (2026-10-28) (~325 tok)
 
 ## .agent/skills/smoke-test/
 
@@ -84,6 +87,7 @@
 
 ## .gstack/qa-reports/
 
+- `qa-report-ragflow-sso-2026-10-28.md` — QA Report: EAI ↔ RAGFlow SSO 集成设计与实现审核 (~732 tok)
 
 ## .kiro/settings/
 
@@ -315,6 +319,7 @@
 
 ## C:/Users/admin/.claude/projects/D--eai-eai-flow-main/memory/
 
+- `superpowers-plans-gitignored-f-commit.md` (~168 tok)
 
 ## C:/Users/admin/.gstack/
 
@@ -333,6 +338,7 @@
 
 ## C:/Users/admin/AppData/Local/Temp/
 
+- `buglog-append.py` — One-shot: append bug-194/195/196 (RAGFlow SSO QA 2026-10-28) to .wolf/buglog.json. (~774 tok)
 
 ## C:/Users/admin/AppData/Local/Temp/bidpipe/
 
@@ -417,6 +423,8 @@
 
 ## backend/
 
+- `.tmp_buglog.py` (~521 tok)
+- `.tmp-retrieval-q.json` (~30 tok)
 
 ## backend/.deer-flow/
 
@@ -657,6 +665,7 @@
 
 ## backend/app/extensions/knowledge/
 
+- `service.py` — Knowledge base and document management service. (~10082 tok)
 
 ## backend/app/extensions/knowledge_factory/
 
@@ -723,6 +732,10 @@
 
 ## backend/app/extensions/project/
 
+
+## backend/app/extensions/ragflow_sso/
+
+- `service.py` — EAI-CUSTOM: RAGFlow SSO — JWT minting + exchange client + per-user credentials (~2727 tok)
 
 ## backend/app/extensions/review/
 
@@ -885,6 +898,11 @@
 
 ## backend/tests/
 
+- `test_ragflow_sso.py` — EAI-CUSTOM: RAGFlow SSO integration tests — 本地定制,非上游. (~9126 tok)
+
+## backend/tests/ (QA 2026-10-28 增补)
+
+- `test_ragflow_sso.py` — RAGFlow SSO 全套单测(27 用例): JWT mint/web·api 交换/竞态自愈/服务身份/会话可用性/401 自愈包装/INVALID_ 标记双路拒绝 (~1500 tok)
 
 ## backend/tests/e2e/bid/
 
@@ -946,6 +964,7 @@
 
 ## docs/designs/
 
+- `2026-10-29-bid-review-design.md` — 投标方案审查:技能 + 子系统设计(bid-proposal-review + bid_review) (~4047 tok)
 
 ## docs/designs/2026-10-11-jv-mining-translation-kb.md
 
@@ -958,6 +977,7 @@
 
 ## docs/superpowers/plans/
 
+- `2026-10-29-bid-review-implementation.md` — 投标方案审查(技能+子系统)实施计划 (~17234 tok)
 
 ## docs/superpowers/plans/2026-09-13-coal-mine-tunneling-regulation-v2.md
 
@@ -967,6 +987,7 @@
 
 ## docs/superpowers/specs/
 
+- `2026-10-19-eai-unified-sso-design.md` — EAI 统一 SSO / 跨系统认证集成设计方案 (~2115 tok)
 
 ## docs/superpowers/specs/2026-09-13-coal-mine-tunneling-regulation-v2-design.md
 
@@ -1138,6 +1159,7 @@
 
 ## frontend/src/app/settings/
 
+- `basic-settings.tsx` — BasicSettings (~8124 tok)
 
 ## frontend/src/app/spare-parts/
 
@@ -1552,6 +1574,11 @@
 ## frontend/tests/unit/app/knowledge/_components/
 
 
+## frontend/tests/unit/app/settings/
+
+- `basic-settings.test.ts` — Regression: ISSUE-001 — the settings-page RAGFlow entry linked the raw web UI (~210 tok)
+- `basic-settings.test.ts` — 回归钉住: RAGFlow 设置入口必须是后端 SSO login 端点、不得回退直链 :9381 (~80 tok)
+
 ## frontend/tests/unit/components/landing/
 
 
@@ -1827,6 +1854,11 @@
 
 ## skills/public/bid-proposal-overall/scripts/
 
+
+## skills/public/bid-proposal-review/references/
+
+- `issue-schema.json` (~305 tok)
+- `rules-det-subset.yaml` — bid-proposal-review 自审 det 规则子集(M1)——与子系统 rulepacks/bid-review-core 同源,副本分发 (~1249 tok)
 
 ## skills/public/bid-proposal-writing/
 
