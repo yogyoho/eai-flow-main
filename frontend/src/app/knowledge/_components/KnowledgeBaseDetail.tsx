@@ -27,6 +27,7 @@ import React, {
   useRef,
   useState,
 } from "react";
+import { toast } from "sonner";
 
 import { FileTypeIcon } from "@/components/file-type-icons";
 import { Button } from "@/components/ui/button";
@@ -57,7 +58,6 @@ import {
   isReadOnlyKnowledgeBase,
 } from "./isLawKnowledgeBase";
 import { sortSourcesByScore } from "./sources-sort";
-import { ToastContainer, useToast } from "./toast";
 import { UploadModal, formatFileSize } from "./UploadModal";
 
 function formatDate(dateString: string) {
@@ -89,8 +89,6 @@ export function KnowledgeBaseDetail({
   onBack: () => void;
   onKbUpdated?: (kb: KnowledgeBase) => void;
 }) {
-  const { toasts, show: toast, remove } = useToast();
-
   // EAI-CUSTOM: button-level permission check for upload/delete actions
   const { can, is_admin, identity } = usePermission();
   // EAI-CUSTOM: 法规标准系统库不提供直接上传,引导去知识工厂导入
@@ -237,7 +235,7 @@ export function KnowledgeBaseDetail({
 
   const handleAddGrant = async () => {
     if (!grantTargetId) {
-      toast("请选择要授权的对象", "error");
+      toast.error("请选择要授权的对象");
       return;
     }
     setGrantSaving(true);
@@ -248,11 +246,11 @@ export function KnowledgeBaseDetail({
         permission: grantPermission,
         expires_at: grantExpires ? new Date(grantExpires).toISOString() : null,
       });
-      toast("授权已添加", "success");
+      toast.success("授权已添加");
       setShowAddGrant(false);
       void loadGrants();
     } catch (e) {
-      toast((e as { message?: string })?.message ?? "添加授权失败", "error");
+      toast.error((e as { message?: string })?.message ?? "添加授权失败");
     } finally {
       setGrantSaving(false);
     }
@@ -263,9 +261,9 @@ export function KnowledgeBaseDetail({
     try {
       await kbApi.grants.remove(g.kb_id, g.id);
       setKbGrants((prev) => prev.filter((x) => x.id !== g.id));
-      toast("授权已移除", "success");
+      toast.success("授权已移除");
     } catch (e) {
-      toast((e as { message?: string })?.message ?? "移除授权失败", "error");
+      toast.error((e as { message?: string })?.message ?? "移除授权失败");
     }
   };
 
@@ -304,12 +302,12 @@ export function KnowledgeBaseDetail({
       setDocs(res.documents);
       return res.documents;
     } catch (e) {
-      toast((e as { message?: string })?.message ?? "加载文档失败", "error");
+      toast.error((e as { message?: string })?.message ?? "加载文档失败");
       return [];
     } finally {
       setDocsLoading(false);
     }
-  }, [kb.id, toast]);
+  }, [kb.id]);
 
   useEffect(() => {
     void loadDocs();
@@ -342,9 +340,9 @@ export function KnowledgeBaseDetail({
     try {
       await kbApi.deleteDoc(kb.id, docId);
       setDocs((prev) => prev.filter((d) => d.id !== docId));
-      toast("文件已删除", "success");
+      toast.success("文件已删除");
     } catch (e) {
-      toast((e as { message?: string })?.message ?? "删除失败", "error");
+      toast.error((e as { message?: string })?.message ?? "删除失败");
     }
   };
 
@@ -363,7 +361,7 @@ export function KnowledgeBaseDetail({
         sources: sortSourcesByScore(result.sources),
       });
     } catch (e) {
-      toast((e as { message?: string })?.message ?? "检索失败", "error");
+      toast.error((e as { message?: string })?.message ?? "检索失败");
     } finally {
       setChatLoading(false);
     }
@@ -379,9 +377,9 @@ export function KnowledgeBaseDetail({
       });
       onKbUpdated?.(updated);
       setConfigDirty(false);
-      toast("检索配置已保存", "success");
+      toast.success("检索配置已保存");
     } catch (e) {
-      toast((e as { message?: string })?.message ?? "保存失败", "error");
+      toast.error((e as { message?: string })?.message ?? "保存失败");
     } finally {
       setConfigSaving(false);
     }
@@ -406,7 +404,7 @@ export function KnowledgeBaseDetail({
           kb_type: editForm.kb_type,
         });
         onKbUpdated?.(updated);
-        toast("知识库信息已更新", "success");
+        toast.success("知识库信息已更新");
         setShowEditKb(false);
         return;
       }
@@ -418,9 +416,8 @@ export function KnowledgeBaseDetail({
           : identity.dept_ids
         : [];
       if (isDept && allowedDepts.length === 0) {
-        toast(
+        toast.error(
           is_admin ? "至少选择一个部门" : "你尚未加入任何部门,无法设置部门可见",
-          "error",
         );
         setEditLoading(false);
         return;
@@ -430,10 +427,10 @@ export function KnowledgeBaseDetail({
         allowed_depts: allowedDepts,
       });
       onKbUpdated?.(updated);
-      toast("知识库信息已更新", "success");
+      toast.success("知识库信息已更新");
       setShowEditKb(false);
     } catch (e) {
-      toast((e as { message?: string })?.message ?? "更新失败", "error");
+      toast.error((e as { message?: string })?.message ?? "更新失败");
     } finally {
       setEditLoading(false);
     }
@@ -468,7 +465,7 @@ export function KnowledgeBaseDetail({
                 onClick={() =>
                   navigator.clipboard
                     .writeText(kb.id)
-                    .then(() => toast("ID 已复制", "success"))
+                    .then(() => toast.success("ID 已复制"))
                 }
                 title="复制 ID"
               >
@@ -1043,7 +1040,6 @@ export function KnowledgeBaseDetail({
             chunkMethod={kb.chunk_method}
             onClose={() => setShowUpload(false)}
             onUploaded={loadDocs}
-            toast={toast}
           />
         )}
       </AnimatePresence>
@@ -1055,7 +1051,6 @@ export function KnowledgeBaseDetail({
             kbId={kb.id}
             doc={showChunksDoc}
             onClose={() => setShowChunksDoc(null)}
-            toast={toast}
           />
         )}
       </AnimatePresence>
@@ -1374,8 +1369,6 @@ export function KnowledgeBaseDetail({
           </div>
         )}
       </AnimatePresence>
-
-      <ToastContainer toasts={toasts} onRemove={remove} />
     </div>
   );
 }

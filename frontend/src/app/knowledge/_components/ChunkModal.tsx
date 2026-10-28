@@ -3,13 +3,12 @@
 import { motion } from "framer-motion";
 import { Loader2, X } from "lucide-react";
 import { useEffect, useState } from "react";
+import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import { kbApi } from "@/extensions/api";
 import { type Document } from "@/extensions/types";
 import { cn } from "@/lib/utils";
-
-type ToastType = "success" | "error" | "info";
 
 function chunkRawText(chunk: {
   content?: string;
@@ -90,12 +89,10 @@ export function ChunkModal({
   kbId,
   doc,
   onClose,
-  toast,
 }: {
   kbId: string;
   doc: Document;
   onClose: () => void;
-  toast: (msg: string, type?: ToastType) => void;
 }) {
   const [chunks, setChunks] = useState<
     Array<{ id?: string; content?: string; [k: string]: unknown }>
@@ -118,9 +115,8 @@ export function ChunkModal({
         }
       } catch (e) {
         if (!cancelled)
-          toast(
+          toast.error(
             e instanceof Error && e.message ? e.message : "加载分片失败",
-            "error",
           );
       } finally {
         if (!cancelled) setLoading(false);
@@ -129,7 +125,7 @@ export function ChunkModal({
     return () => {
       cancelled = true;
     };
-  }, [kbId, doc.id, toast]);
+  }, [kbId, doc.id]);
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">

@@ -11,7 +11,15 @@ grace-period tests instead of silently outgrowing the deployments.
 
 from __future__ import annotations
 
-from app.gateway.deps import _RUN_DRAIN_TIMEOUT_SECONDS
+# EAI-CUSTOM 2026-10-29: a5ec93888「restore pre-sync state」把 deps 的 run-drain
+# 机制连同 _RUN_DRAIN_TIMEOUT_SECONDS 一起撤了,此 helper 的模块级 import 随之
+# ImportError,拖垮 compose/helm 两个测试文件的收集(全量 pytest 被 Interrupted,
+# 一条测试都跑不了)。守卫降级: drain 预算缺席按 0 计(预算偏小,grace-period
+# 断言更严不更松);将来若重新同步 drain-on-shutdown 上游特性,恢复直引即可。
+try:
+    from app.gateway.deps import _RUN_DRAIN_TIMEOUT_SECONDS
+except ImportError:
+    _RUN_DRAIN_TIMEOUT_SECONDS = 0.0
 from deerflow.config.memory_config import MemoryConfig
 
 #: Teardown steps in ``app.gateway.app.lifespan`` that each wait up to

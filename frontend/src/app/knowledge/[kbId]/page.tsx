@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState, use, type ReactNode } from "react";
 
 import SimpleShellLayout from "@/app/extensions/shell-old/SimpleShellLayout";
+import { Toaster } from "@/components/ui/sonner";
 import { kbApi } from "@/extensions/api";
 import type { KnowledgeBase } from "@/extensions/types";
 
@@ -63,5 +64,11 @@ export default function KnowledgeBaseDetailPage({
     );
   }
 
-  return <SimpleShellLayout>{content}</SimpleShellLayout>;
+  return (
+    <SimpleShellLayout>
+      {content}
+      {/* sonner toast(右下角)——对齐知识工厂页面 */}
+      <Toaster />
+    </SimpleShellLayout>
+  );
 }

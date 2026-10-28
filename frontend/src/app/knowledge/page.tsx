@@ -19,10 +19,12 @@ import {
 } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
 import React, { Suspense, useCallback, useEffect, useState } from "react";
+import { toast } from "sonner";
 
 import SimpleShellLayout from "@/app/extensions/shell-old/SimpleShellLayout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Toaster } from "@/components/ui/sonner";
 import { Textarea } from "@/components/ui/textarea";
 // EAI-CUSTOM: button-level permission control
 import { PermissionProvider, usePermission } from "@/core/permissions";
@@ -41,7 +43,6 @@ import {
   isReadOnlyKnowledgeBase,
   readOnlyKBTitle,
 } from "./_components/isLawKnowledgeBase";
-import { ToastContainer, useToast } from "./_components/toast";
 
 // ─── helpers ────────────────────────────────────────────────────────────────
 
@@ -110,7 +111,6 @@ function KnowledgeBaseManagement({
 }) {
   // EAI-CUSTOM: button-level permission check
   const { can, is_admin, identity } = usePermission();
-  const { toasts, show: toast, remove } = useToast();
   const router = useRouter();
   const [searchQuery, setSearchQuery] = useState(initialSearch);
   const [typeFilter, setTypeFilter] = useState("all");
@@ -180,11 +180,11 @@ function KnowledgeBaseManagement({
       const res = await kbApi.list({ limit: 500 });
       setKbs(res.knowledge_bases);
     } catch (e) {
-      toast((e as { message?: string })?.message ?? "加载失败", "error");
+      toast.error((e as { message?: string })?.message ?? "加载失败");
     } finally {
       setIsLoading(false);
     }
-  }, [toast]);
+  }, []);
 
   useEffect(() => {
     void loadData();
@@ -211,9 +211,8 @@ function KnowledgeBaseManagement({
       (createForm.access_type ?? "private") === "dept" &&
       allowedDepts?.length === 0
     ) {
-      toast(
+      toast.error(
         is_admin ? "至少选择一个部门" : "你尚未加入任何部门,无法设置部门可见",
-        "error",
       );
       return;
     }
@@ -238,9 +237,9 @@ function KnowledgeBaseManagement({
         },
         language: "Chinese",
       });
-      toast("知识库创建成功", "success");
+      toast.success("知识库创建成功");
     } catch (e) {
-      toast((e as { message?: string })?.message ?? "创建失败", "error");
+      toast.error((e as { message?: string })?.message ?? "创建失败");
     }
   };
 
@@ -250,9 +249,9 @@ function KnowledgeBaseManagement({
     try {
       await kbApi.delete(id);
       setKbs((prev) => prev.filter((kb) => kb.id !== id));
-      toast("知识库已删除", "success");
+      toast.success("知识库已删除");
     } catch (e) {
-      toast((e as { message?: string })?.message ?? "删除失败", "error");
+      toast.error((e as { message?: string })?.message ?? "删除失败");
     }
   };
 
@@ -266,9 +265,9 @@ function KnowledgeBaseManagement({
           kb.id === id ? { ...kb, status: status.status } : kb,
         ),
       );
-      toast("同步状态已刷新", "success");
+      toast.success("同步状态已刷新");
     } catch (e) {
-      toast((e as { message?: string })?.message ?? "同步失败", "error");
+      toast.error((e as { message?: string })?.message ?? "同步失败");
     } finally {
       setSyncingIds((prev) => {
         const s = new Set(prev);
@@ -306,7 +305,7 @@ function KnowledgeBaseManagement({
           prev.map((kb) => (kb.id === editKb.id ? updated : kb)),
         );
         setEditKb(null);
-        toast("知识库信息已更新", "success");
+        toast.success("知识库信息已更新");
         return;
       }
       // EAI-CUSTOM: dept 提交 allowed_depts;切回私有/公开显式置 [] 清残留
@@ -317,9 +316,8 @@ function KnowledgeBaseManagement({
           : identity.dept_ids
         : [];
       if (isDept && allowedDepts.length === 0) {
-        toast(
+        toast.error(
           is_admin ? "至少选择一个部门" : "你尚未加入任何部门,无法设置部门可见",
-          "error",
         );
         setEditLoading(false);
         return;
@@ -330,9 +328,9 @@ function KnowledgeBaseManagement({
       });
       setKbs((prev) => prev.map((kb) => (kb.id === editKb.id ? updated : kb)));
       setEditKb(null);
-      toast("知识库信息已更新", "success");
+      toast.success("知识库信息已更新");
     } catch (e) {
-      toast((e as { message?: string })?.message ?? "更新失败", "error");
+      toast.error((e as { message?: string })?.message ?? "更新失败");
     } finally {
       setEditLoading(false);
     }
@@ -1124,7 +1122,7 @@ function KnowledgeBaseManagement({
         )}
       </AnimatePresence>
 
-      <ToastContainer toasts={toasts} onRemove={remove} />
+      <Toaster />
     </main>
   );
 }

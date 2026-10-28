@@ -266,6 +266,21 @@ def pytest_runtest_teardown(item, nextitem):
     _current_skill_scripts = None
 
 
+def pytest_collectstart(collector):
+    # EAI-CUSTOM 2026-10-29: 收集期与上方运行期同规则。全量按字母序收集时,
+    # 前一个 test 文件的模块级 import 链(如 bid 的 score_simulate→build_output,
+    # 或 bid-proposal-overall 的 outline_merge/state_guard→build_output)会把
+    # 错误技能的同名变体缓存进 sys.modules;轮到 test_outline_merge 收集时,
+    # 其模块级 import 直接拿到影子模块 → AttributeError → 收集中断,整场
+    # pytest 被 Interrupted(一条测试都跑不了)。文件级净化: 每个测试文件开始
+    # 收集前丢弃同名缓存,让该文件顶部自己的 sys.path 插入重新决定解析来源
+    # (与 pytest_runtest_setup 的 pop 同语义,提前到收集期;收集单线程顺序
+    # 执行,无并发持有风险)。
+    if isinstance(collector, pytest.File):
+        for name in _SKILL_SCRIPT_NAMES:
+            sys.modules.pop(name, None)
+
+
 # --- learnings P1: 跨测试共享事件循环 ---------------------------------------
 # 全局 extensions engine(asyncpg)绑定创建时的循环; asyncio.run 每测试换循环会让
 # 第二个测试撞 "Event loop is closed"。DB 型 learnings 测试统一用本 fixture 跑协程。

@@ -1,11 +1,18 @@
 """outline_merge 单测: 大纲候选校验(fail-closed)/精准替换/幂等/重签/消费端。"""
 
 import json
+import sys
 from pathlib import Path
 
 SCRIPTS_DIR = Path(__file__).resolve().parents[2] / "skills" / "public" / "bid-proposal-overall" / "scripts"
-if str(SCRIPTS_DIR) not in __import__("sys").path:
-    __import__("sys").path.insert(0, str(SCRIPTS_DIR))
+# EAI-CUSTOM 2026-10-29: 无条件置顶(原 `if not in sys.path` 守卫在全量收集时被
+# 跳过——更晚收集的 g 系测试文件把 geological-report 的技能目录顶到 sys.path
+# 前端,本文件模块级 `import outline_merge` 链内的 `import build_output` 解析到
+# geological 变体(无 ENTRY_CATEGORIES)→ AttributeError 使收集中断,整场 pytest
+# Interrupted。置顶 + 清同名缓存双保险,让本文件的导入按本技能目录解析。
+sys.path.insert(0, str(SCRIPTS_DIR))
+for _colliding in ("build_output", "extract", "state_guard", "outline_merge"):
+    sys.modules.pop(_colliding, None)
 
 import outline_merge  # noqa: E402
 import state_guard  # noqa: E402

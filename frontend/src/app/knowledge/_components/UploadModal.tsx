@@ -3,12 +3,11 @@
 import { motion } from "framer-motion";
 import { Loader2, Upload, X } from "lucide-react";
 import React, { useRef, useState } from "react";
+import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import { kbApi } from "@/extensions/api";
 import { cn } from "@/lib/utils";
-
-type ToastType = "success" | "error" | "info";
 
 export function formatFileSize(bytes: number) {
   if (bytes < 1024) return `${bytes} B`;
@@ -52,13 +51,11 @@ export function UploadModal({
   chunkMethod,
   onClose,
   onUploaded,
-  toast,
 }: {
   kbId: string;
   chunkMethod?: string;
   onClose: () => void;
   onUploaded: () => void;
-  toast: (msg: string, type?: ToastType) => void;
 }) {
   const [files, setFiles] = useState<File[]>([]);
   const [uploading, setUploading] = useState(false);
@@ -99,9 +96,8 @@ export function UploadModal({
       }
     }
     if (rejected.length > 0) {
-      toast(
+      toast.error(
         `${rejected.join("、")} 格式不受支持。${acceptInfo.label}`,
-        "error",
       );
     }
     if (accepted.length > 0) {
@@ -125,12 +121,12 @@ export function UploadModal({
         success++;
       } catch (e) {
         const reason = e instanceof Error && e.message ? e.message : "未知错误";
-        toast(`${file.name} 上传失败: ${reason}`, "error");
+        toast.error(`${file.name} 上传失败: ${reason}`);
       }
     }
     setUploading(false);
     if (success > 0) {
-      toast(`成功上传 ${success} 个文件`, "success");
+      toast.success(`成功上传 ${success} 个文件`);
       onUploaded();
       onClose();
     }
