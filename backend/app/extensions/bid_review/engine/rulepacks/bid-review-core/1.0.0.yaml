@@ -1,4 +1,11 @@
-# bid-review-core 子系统规则包 v1.0.0(canonical,M1 七条)——技能 references/rules-det-subset.yaml 为其副本分发
+# bid-review-core 子系统规则包 v1.0.0(canonical,v1 全量 32 条)——技能 references/rules-det-subset.yaml 为其 M1 七条副本分发
+# 转录口径(Task 18,2026-10-29):素材④全量规则包会话记录本仓不可达,按设计文档 §6.3 v1 清单+素材②元模型重写 check;
+# 格式基准=§6.4 L1-009;severity 依层级赋予(L1=否决项红线→fatal,L3=一致性→major;唯 L1-003 业绩达标=major,
+# 与 test_bid_review_llm_verify 夹具同值),素材②规则表可达后逐条对账。M1 七条(L1-009/010/011+L3-001/003/005/006)原样保留不回退。
+# 字段契约(§6.2):新增 inputs 均为 tender.*/bid.*/project.* dotted 路径,经 extract.collect_field_paths() 自动并入提取请求;
+# extract.FIELD_DICTIONARY 常量仍为 M1 子集,其扩充注释修订属 extract.py 归属任务(本任务文件范围仅本包+测试)。
+# A-* 锚点注册表(素材④ 27 锚)随 anchors.py 落地;本包按既有键命名习惯引用,新增键就近注释。
+# hyb 规则 check.det_expr 与 op 形态同语义:前者是粗筛标记(_hyb_det_prefilter 门)+第3道数值复核触发键,后者是可执行 det 形态。
 conventions:
   on_missing_input: need_human
   evidence_matching: {normalize: true, similarity_threshold: 0.9, page_tolerance: 1}
@@ -127,4 +134,446 @@ rules:
     message_tpl: "金额 {a.value:money}({a.where})与报价总价 {bid.total_price:money} 不一致"
     fix_tpl: "以报价汇总表为准订正正文/承诺函中的金额引用"
     confidence_gate: 1.0
+    enabled: true
+  # ── L1 det 新增(§6.3:001 执照有效/002 资质等级/005 投标有效期/006 保证金/008 授权链/012 税率口径/014 工期满足/015 质保期/016 主体一致/019 一标一价/021 声明函齐备)──
+  - id: L1-001
+    name: 执照有效且经营范围覆盖标的
+    layer: L1
+    type: deterministic
+    applies_to: ["*"]
+    inputs: [bid.entity.license_valid_until, tender.bid_deadline, bid.entity.business_scope, tender.bid_scope]
+    # ISO 日期串逐字比较(词法序==时间序);经营范围覆盖用 covers 字串包含判定(素材④ keywords 精化 v2)
+    check:
+      steps:
+        - "bid.entity.license_valid_until >= tender.bid_deadline"
+        - "covers(bid.entity.business_scope, tender.bid_scope)"
+    severity: fatal
+    evidence: [A-LICENSE, A-TENDER-NOTICE]
+    message_tpl: "营业执照有效期 {bid.entity.license_valid_until} 早于投标截止 {tender.bid_deadline},或经营范围未覆盖标的 {tender.bid_scope}"
+    fix_tpl: "核对执照有效期与经营范围;不覆盖时依法办理变更或复核投标资格"
+    confidence_gate: 1.0
+    enabled: true
+  - id: L1-002
+    name: 资质等级满足招标要求
+    layer: L1
+    type: deterministic
+    applies_to: ["*"]
+    inputs: [bid.qual_levels, tender.required_qual_level]
+    # 资质等级无序数比较器(v2 定级序),v1 用 covers 字串包含判定:要求等级串须出现在投标资质列表
+    check:
+      op: eq
+      left: "covers(bid.qual_levels, tender.required_qual_level)"
+      right: true
+    severity: fatal
+    evidence: [A-QUAL-CERT, A-TENDER-NOTICE]
+    message_tpl: "投标资质列表未覆盖招标要求等级 {tender.required_qual_level}:{bid.qual_levels}"
+    fix_tpl: "按招标资质门槛逐项核对证书等级与附表,缺级/低级须提前补救"
+    confidence_gate: 1.0
+    enabled: true
+  - id: L1-005
+    name: 投标有效期满足招标要求
+    layer: L1
+    type: deterministic
+    applies_to: ["*"]
+    inputs: [bid.validity_days, tender.required_validity_days]
+    check:
+      op: gte
+      left: bid.validity_days
+      right: tender.required_validity_days
+    severity: fatal
+    evidence: [A-BID-LETTER, A-TENDER-NOTICE]
+    message_tpl: "投标有效期 {bid.validity_days} 天低于招标要求 {tender.required_validity_days} 天"
+    fix_tpl: "投标函有效期按招标要求天数(通常 90 日历天)重新承诺"
+    confidence_gate: 1.0
+    enabled: true
+  - id: L1-006
+    name: 投标保证金金额与要求一致
+    layer: L1
+    type: deterministic
+    applies_to: ["*"]
+    inputs: [bid.deposit_amount, tender.deposit_required]
+    # 免缴场景(deposit_required=0)前置不成立=不适用
+    check:
+      op: eq
+      left: bid.deposit_amount
+      right: tender.deposit_required
+      precondition: "tender.deposit_required > 0"
+    severity: fatal
+    evidence: [A-DEPOSIT, A-TENDER-NOTICE]
+    message_tpl: "投标保证金 {bid.deposit_amount:money} 与招标要求 {tender.deposit_required:money} 不一致"
+    fix_tpl: "按招标文件载明金额缴纳并附凭证,金额/缴纳凭证一致后重传"
+    confidence_gate: 1.0
+    enabled: true
+  - id: L1-008
+    name: 法人授权链完整(授权书+签署人一致)
+    layer: L1
+    type: deterministic
+    applies_to: ["*"]
+    inputs: [bid.authorization_letter_present, bid.authorization_signatory, bid.bid_letter_signatory]
+    check:
+      steps:
+        - "bid.authorization_letter_present == True"
+        - "bid.authorization_signatory == bid.bid_letter_signatory"
+    severity: fatal
+    evidence: [A-POA, A-BID-LETTER]
+    message_tpl: "授权链不完整:授权书存在性 {bid.authorization_letter_present},授权书签用人 {bid.authorization_signatory} 与投标函签署人 {bid.bid_letter_signatory} 应一致"
+    fix_tpl: "补法定代表人授权书原件,签用人与投标函签署人逐字一致"
+    confidence_gate: 1.0
+    enabled: true
+  - id: L1-012
+    name: 税率口径与招标要求一致
+    layer: L1
+    type: deterministic
+    applies_to: ["*"]
+    inputs: [bid.tax_rate_occurrences, tender.tax_rate]
+    # occurrences 行形如 {where: 出现处, value: 税率数值}(同 L3-006 契约)
+    check:
+      op: all
+      target: "bid.tax_rate_occurrences"
+      var: r
+      cond: "r.value == tender.tax_rate"
+    severity: fatal
+    evidence: [A-PRICE-SHEET, A-TENDER-NOTICE]
+    message_tpl: "税率 {r.value}({r.where})与招标要求税率 {tender.tax_rate} 不一致"
+    fix_tpl: "报价表/明细/承诺函税率统一按招标要求口径填写"
+    confidence_gate: 1.0
+    enabled: true
+  - id: L1-014
+    name: 承诺工期满足招标最高工期
+    layer: L1
+    type: deterministic
+    applies_to: ["*"]
+    inputs: [bid.duration_main_text, tender.max_duration]
+    # 工期字段为 {value,unit} 结构或天数数值,normalize_unit 归一(月×30;日历天/工作日换算 v2)
+    check:
+      op: lte
+      left: "normalize_unit(bid.duration_main_text)"
+      right: "normalize_unit(tender.max_duration)"
+    severity: fatal
+    evidence: [A-MAIN-TEXT, A-TENDER-NOTICE]
+    message_tpl: "承诺工期 {bid.duration_main_text} 超过招标最高工期 {tender.max_duration}"
+    fix_tpl: "调整施工组织设计使承诺工期不超过招标最高工期"
+    confidence_gate: 1.0
+    enabled: true
+  - id: L1-015
+    name: 质保期满足招标最低要求
+    layer: L1
+    type: deterministic
+    applies_to: ["*"]
+    inputs: [bid.warranty_period, tender.min_warranty_period]
+    check:
+      op: gte
+      left: "normalize_unit(bid.warranty_period)"
+      right: "normalize_unit(tender.min_warranty_period)"
+    severity: fatal
+    evidence: [A-COMMIT, A-TENDER-NOTICE]
+    message_tpl: "质保期 {bid.warranty_period} 低于招标要求 {tender.min_warranty_period}"
+    fix_tpl: "质保承诺按招标最低质保期(或更长)重新声明"
+    confidence_gate: 1.0
+    enabled: true
+  - id: L1-016
+    name: 投标主体全文档一致
+    layer: L1
+    type: deterministic
+    applies_to: ["*"]
+    inputs: [bid.entity_name_occurrences, bid.entity.license_name]
+    check:
+      op: all
+      target: "bid.entity_name_occurrences"
+      var: e
+      cond: "e.value == bid.entity.license_name"
+    severity: fatal
+    evidence: [A-BID-LETTER, A-LICENSE]
+    message_tpl: "投标主体 {e.value}({e.where})与执照名 {bid.entity.license_name} 不一致"
+    fix_tpl: "全文主体名统一为营业执照全称(封面/投标函/承诺函/授权书逐处核对)"
+    confidence_gate: 1.0
+    enabled: true
+  - id: L1-019
+    name: 一标一价(无替代报价方案)
+    layer: L1
+    type: deterministic
+    applies_to: ["*"]
+    inputs: [bid.alternative_price_offers]
+    # alternative_price_offers 为替代报价描述串列表(出现即违规)
+    check:
+      op: eq
+      left: "count(bid.alternative_price_offers)"
+      right: 0
+    severity: fatal
+    evidence: [A-PRICE-SHEET, A-BID-LETTER]
+    message_tpl: "发现替代报价方案 {bid.alternative_price_offers}(一标一价要求唯一报价)"
+    fix_tpl: "删除替代报价/备选方案,只保留唯一报价"
+    confidence_gate: 1.0
+    enabled: true
+  - id: L1-021
+    name: 招标要求的声明函齐备
+    layer: L1
+    type: deterministic
+    applies_to: ["*"]
+    inputs: [tender.required_declarations, bid.declaration_letter_codes]
+    # 两侧均为声明函编码串列表;用 all-in 而非 set_eq(招标清单外自附声明函不算违规)
+    check:
+      op: all
+      target: "tender.required_declarations"
+      var: d
+      cond: "d in bid.declaration_letter_codes"
+    severity: fatal
+    evidence: [A-DECLARATION, A-TENDER-NOTICE]
+    message_tpl: "缺少招标要求的声明函:{d}"
+    fix_tpl: "按招标文件声明函清单逐项补齐并签字盖章"
+    confidence_gate: 1.0
+    enabled: true
+  # ── L1 hyb(§6.3:003 业绩达标/007 签章完整)——det 粗筛命中即坐实短路,未命中进语义管线(llm_runner._hyb_det_prefilter 契约)──
+  - id: L1-003
+    name: 业绩达标
+    layer: L1
+    type: hybrid
+    applies_to: ["*"]
+    inputs: [bid.similar_performances, tender.min_similar_performance_count]
+    # det 粗筛=类似业绩数量不足(坐实);数量够进语义管线核业绩相关性/证明有效性;bid.similar_performances 为业绩名称串列表
+    check:
+      det_expr: "count(bid.similar_performances) >= tender.min_similar_performance_count"
+      op: gte
+      left: "count(bid.similar_performances)"
+      right: tender.min_similar_performance_count
+      verdict_set: [full, partial, none, unclear]
+    severity: major
+    evidence: [A-PERF-DOCS, A-TENDER-NOTICE]
+    message_tpl: "类似业绩 {bid.similar_performances} 数量少于招标要求 {tender.min_similar_performance_count} 项"
+    fix_tpl: "补附满足数量与年限要求的类似业绩证明(中标通知书/合同/验收证明)"
+    confidence_gate: 0.75
+    enabled: true
+  - id: L1-007
+    name: 签章完整
+    layer: L1
+    type: hybrid
+    applies_to: ["*"]
+    inputs: [bid.missing_signature_pages]
+    # det 粗筛=缺失签章页清单(逐页扫描产物,坐实);空清单进语义管线核盖章规范性(鲜章/复印章/骑缝)
+    check:
+      det_expr: "count(bid.missing_signature_pages) == 0"
+      op: eq
+      left: "count(bid.missing_signature_pages)"
+      right: 0
+      verdict_set: [full, partial, none, unclear]
+    severity: fatal
+    evidence: [A-STAMP, A-BID-LETTER]
+    message_tpl: "签章缺失页:{bid.missing_signature_pages}"
+    fix_tpl: "对缺失页补盖公章/法人签字(含骑缝章),重扫后重新上传"
+    confidence_gate: 0.75
+    enabled: true
+  # ── L1 sem(§6.3:013 实质性条款逐条响应,闭环打通用)——纯语义规则无 det 表达式,steps:[] 仅为
+  # load_rulepack 形态门(op/steps 形态识别)放行;执行走 llm_runner.run_sem_rule 规则卡管线,不进 run_det_rule。
+  - id: L1-013
+    name: 实质性条款逐条响应
+    layer: L1
+    type: semantic
+    applies_to: ["*"]
+    inputs: [tender.substantive_clauses]
+    check:
+      per_clause: true
+      verdict_set: [full, partial, none, unclear]
+      steps: []
+    severity: fatal
+    evidence: [A-TENDER-NOTICE, A-BID-LETTER]
+    # message 占位符 {clause_id}/{verdict}/{reason} 由 llm_runner._render_message 供给(非 _tpl 通道)
+    message_tpl: "实质性条款 {clause_id} 响应为 {verdict}:{reason}"
+    fix_tpl: "对标注★/▲的实质性条款逐条作出现实质性响应的承诺与偏离说明"
+    confidence_gate: 0.75
+    enabled: true
+  # ── L3 det 新增(§6.3:002 招标人名称/007 人员配置/009 进度逻辑/010 数量单位/012 附件引用/013 目录对齐/014 日期逻辑/016 版本页眉/018 币种单位)──
+  - id: L3-002
+    name: 招标人名称全文档一致
+    layer: L3
+    type: deterministic
+    applies_to: ["*"]
+    inputs: [tender.tenderee_name, bid.tenderee_name_mentions]
+    # occurrences 行形如 {where: 出现处, value: 提及值}(同 L3-006 契约)
+    check:
+      op: all
+      target: "bid.tenderee_name_mentions"
+      var: t
+      cond: "t.value == tender.tenderee_name"
+    severity: major
+    evidence: [A-BID-LETTER, A-TENDER-NOTICE]
+    message_tpl: "招标人名称 {t.value}({t.where})与招标公告 {tender.tenderee_name} 不一致"
+    fix_tpl: "全文统一为招标公告载明的招标人全称"
+    confidence_gate: 1.0
+    enabled: true
+  - id: L3-007
+    name: 人员配置商务标与技术标一致
+    layer: L3
+    type: deterministic
+    applies_to: ["*"]
+    inputs: [bid.personnel_commercial, bid.personnel_technical]
+    # 人员行形如 {code: 身份证号/工号, name: 姓名};set_eq 按码比对,missing=仅技术标有/extra=仅商务标有
+    check:
+      op: set_eq
+      left: "codes(bid.personnel_commercial)"
+      right: "codes(bid.personnel_technical)"
+    severity: major
+    evidence: [A-PERSONNEL, A-TECH-PROPOSAL]
+    message_tpl: "人员名单不一致:仅技术标出现 {missing} ,仅商务标出现 {extra}"
+    fix_tpl: "两标人员名单按同一份拟投入人员表统一(姓名/身份证号/岗位)"
+    confidence_gate: 1.0
+    enabled: true
+  - id: L3-009
+    name: 进度计划起止与承诺竣工日期一致
+    layer: L3
+    type: deterministic
+    applies_to: ["*"]
+    inputs: [bid.schedule_start_date, bid.schedule_end_date, bid.commitment_completion_date]
+    # ISO 日期串逐字比较(词法序==时间序);素材④细则(里程碑链/关键节点)可达后扩充
+    check:
+      steps:
+        - "bid.schedule_start_date <= bid.schedule_end_date"
+        - "bid.schedule_end_date == bid.commitment_completion_date"
+    severity: major
+    evidence: [A-SCHEDULE, A-COMMIT]
+    message_tpl: "进度逻辑不一致:开工 {bid.schedule_start_date} / 竣工 {bid.schedule_end_date} ,承诺函竣工 {bid.commitment_completion_date}"
+    fix_tpl: "进度表起止与承诺函竣工日期按同一工期口径重排"
+    confidence_gate: 1.0
+    enabled: true
+  - id: L3-010
+    name: 清单项数量与单位逐项一致
+    layer: L3
+    type: deterministic
+    applies_to: ["*"]
+    inputs: [bid.boq_unit_checks]
+    # 行形如 {code: 清单编码, matched: 数量+单位是否一致, tender_unit, bid_unit};逐项 join 由抽取层完成,本规则只判逐行布尔
+    check:
+      op: all
+      target: "bid.boq_unit_checks"
+      var: c
+      cond: "c.matched == True"
+    severity: major
+    evidence: [A-TENDER-BOQ, A-BOQ]
+    message_tpl: "清单项 {c.code} 数量/单位不一致:招标 {c.tender_unit} / 投标 {c.bid_unit}"
+    fix_tpl: "按招标清单逐项核对数量与计量单位,填报口径与招标一致"
+    confidence_gate: 1.0
+    enabled: true
+  - id: L3-012
+    name: 正文引用附件齐备
+    layer: L3
+    type: deterministic
+    applies_to: ["*"]
+    inputs: [bid.appendix_references]
+    # 行形如 {name: 附件名, present: 是否随卷提交}
+    check:
+      op: all
+      target: "bid.appendix_references"
+      var: a
+      cond: "a.present == True"
+    severity: major
+    evidence: [A-MAIN-TEXT, A-BOQ]
+    message_tpl: "正文引用附件 {a.name} 未随卷提交"
+    fix_tpl: "补齐被引用附件或删除正文引用,确保文附件一一对应"
+    confidence_gate: 1.0
+    enabled: true
+  - id: L3-013
+    name: 目录覆盖招标要求的章节结构
+    layer: L3
+    type: deterministic
+    applies_to: ["*"]
+    inputs: [tender.required_sections, bid.toc_section_codes]
+    # 两侧均为章节编码串列表;用 all-in 而非 set_eq(投标自附章节不算违规)
+    check:
+      op: all
+      target: "tender.required_sections"
+      var: s
+      cond: "s in bid.toc_section_codes"
+    severity: major
+    evidence: [A-TOC, A-TENDER-NOTICE]
+    message_tpl: "目录缺少招标要求的章节:{s}"
+    fix_tpl: "按招标文件要求的编制目录补齐章节并更新页码"
+    confidence_gate: 1.0
+    enabled: true
+  - id: L3-014
+    name: 文件日期不晚于投标截止
+    layer: L3
+    type: deterministic
+    applies_to: ["*"]
+    inputs: [bid.bid_letter_date, bid.commitment_letter_date, tender.bid_deadline]
+    check:
+      steps:
+        - "bid.bid_letter_date <= tender.bid_deadline"
+        - "bid.commitment_letter_date <= tender.bid_deadline"
+    severity: major
+    evidence: [A-BID-LETTER, A-COMMIT]
+    message_tpl: "文件日期晚于投标截止 {tender.bid_deadline}:投标函 {bid.bid_letter_date} / 承诺函 {bid.commitment_letter_date}"
+    fix_tpl: "更正落款日期,确保全部文件日期早于投标截止时刻"
+    confidence_gate: 1.0
+    enabled: true
+  - id: L3-016
+    name: 版本标识与页眉一致
+    layer: L3
+    type: deterministic
+    applies_to: ["*"]
+    inputs: [bid.document_version, bid.version_tag_occurrences]
+    check:
+      op: all
+      target: "bid.version_tag_occurrences"
+      var: v
+      cond: "v.value == bid.document_version"
+    severity: major
+    evidence: [A-HEADER]
+    message_tpl: "版本标识 {v.value}({v.where})与文档版本 {bid.document_version} 不一致"
+    fix_tpl: "全文页眉/封面版本号统一为最终送审版本"
+    confidence_gate: 1.0
+    enabled: true
+  - id: L3-018
+    name: 币种与招标要求一致
+    layer: L3
+    type: deterministic
+    applies_to: ["*"]
+    inputs: [tender.currency, bid.currency_occurrences]
+    check:
+      op: all
+      target: "bid.currency_occurrences"
+      var: c
+      cond: "c.value == tender.currency"
+    severity: major
+    evidence: [A-PRICE-SHEET, A-TENDER-NOTICE]
+    message_tpl: "币种 {c.value}({c.where})与招标要求 {tender.currency} 不一致"
+    fix_tpl: "报价全部按招标要求币种与计量单位重述"
+    confidence_gate: 1.0
+    enabled: true
+  # ── L3 hyb(§6.3:004 旧项目残留/008 设备型号一致)──
+  - id: L3-004
+    name: 旧项目名称残留
+    layer: L3
+    type: hybrid
+    applies_to: ["*"]
+    inputs: [bid.old_project_mentions, project.entity_whitelist.names]
+    # 抽取层按历史项目名正则/NER 扫描产候选串列表;命中即坐实,零命中进语义管线核近似残留(别名/缩写)
+    check:
+      det_expr: "count(bid.old_project_mentions) == 0"
+      op: eq
+      left: "count(bid.old_project_mentions)"
+      right: 0
+      verdict_set: [full, partial, none, unclear]
+    severity: major
+    evidence: [A-MAIN-TEXT, A-COMMIT]
+    message_tpl: "残留旧项目名:{bid.old_project_mentions}(非本项目)"
+    fix_tpl: "全文检索替换旧项目名为本项目名称,含页眉/承诺函/业绩描述"
+    confidence_gate: 0.75
+    enabled: true
+  - id: L3-008
+    name: 设备型号一致
+    layer: L3
+    type: hybrid
+    applies_to: ["*"]
+    inputs: [bid.device_model_mismatches, tender.device_models, bid.device_models]
+    # 粗筛=抽取层逐型号比对产出的不一致串列表(如 "XX型号:招标A/投标B");零命中进语义管线复核易混淆型号(相近型号/尾缀差异)
+    check:
+      det_expr: "count(bid.device_model_mismatches) == 0"
+      op: eq
+      left: "count(bid.device_model_mismatches)"
+      right: 0
+      verdict_set: [full, partial, none, unclear]
+    severity: major
+    evidence: [A-TECH-PROPOSAL, A-TENDER-NOTICE]
+    message_tpl: "设备型号不一致:招标 {tender.device_models} / 投标 {bid.device_models}(明细 {bid.device_model_mismatches})"
+    fix_tpl: "按招标设备清单逐项核对型号规格,不一致处按招标要求更正"
+    confidence_gate: 0.75
     enabled: true
