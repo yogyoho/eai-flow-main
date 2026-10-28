@@ -45,3 +45,34 @@ def test_unknown_field_and_func():
         eval_expr("bid.nonexistent == 1", F)
     with pytest.raises(ExprError):
         eval_expr("__import__('os').system('x')", F)
+
+
+def test_number_to_words_conventional_forms():
+    # 评审修正 A11/A11a canonical 验收:非整万总价的 conventional 大写(基线零错置会对正确投标误报 fatal L1-010)
+    cases = [
+        (1234567.0, "壹佰贰拾叁万肆仟伍佰陆拾柒元整"),
+        (1000456.0, "壹佰万零肆佰伍拾陆元整"),
+        (100001.0, "壹拾万零壹元整"),
+        (1004567.0, "壹佰万零肆仟伍佰陆拾柒元整"),  # junction 类防盲区(A11a:上一输出段末位为 0 亦须段间零)
+    ]
+    for amount, words in cases:
+        f = {"bid.total_price": amount, "bid.total_price_words": words}
+        assert eval_expr("number_to_words(bid.total_price) == bid.total_price_words", f) is True, f"{amount} 应得 {words}"
+
+
+def test_number_to_words_negative_rejected():
+    # A11:负数入参 raise(基线 while n: 对负数死循环: -1 // 10000 == -1)
+    with pytest.raises(ExprError):
+        eval_expr("number_to_words(-1.0) == 'x'", F)
+
+
+def test_truncated_expr_raises_token_exhaustion():
+    # A11:token 耗尽(tok is None)→ ExprError,禁止 str(None) 落成 None 字面量求值(截断表达式会静默翻转判定)
+    with pytest.raises(ExprError):
+        eval_expr("bid.total_price ==", F)
+
+
+def test_wild_requires_attr_after_star():
+    # A11 收紧:[*] 后非 .attr token → ExprError(勿照抄副本容忍 parse('bid.detail_rows[*]amount'))
+    with pytest.raises(ExprError):
+        eval_expr("bid.detail_rows[*]amount == 1.0", F)

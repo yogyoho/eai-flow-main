@@ -71,6 +71,8 @@ class _P:
 
     def _atom(self):
         tok = self.peek()
+        if tok is None:  # A11:token 耗尽必须 ExprError,禁止 str(None) 落成 None 字面量求值(截断表达式会静默翻转判定)
+            raise ExprError("表达式意外结束(token 耗尽)")
         if tok == "(":
             self.eat()
             n = self.expr()
@@ -100,9 +102,11 @@ class _P:
                 self.eat("[")
                 self.eat("*")
                 self.eat("]")
-                nxt = str(self.eat())  # tokenizer 将 ".attr" 并为单 token(实测修正,同 eval_det:eat(".") 永不匹配)
-                sub = nxt[1:] if nxt.startswith(".") else nxt
-                return ("wild", s, sub)
+                nxt = self.peek()  # tokenizer 将 ".attr" 并为单 token(eat(".") 永不匹配)
+                if nxt is None or not str(nxt).startswith("."):  # A11 收紧:[*] 后非 .attr token → ExprError(勿照抄副本容忍)
+                    raise ExprError(f"[*] 后必须为 .attr,得 {nxt}")
+                self.eat()
+                return ("wild", s, str(nxt)[1:])
             return ("field", s)
         raise ExprError(f"意外 token {tok}")
 
@@ -176,9 +180,13 @@ def _normalize_unit(v):
 
 def _number_to_words(v):
     # 中文大写整数(取整到元,尾缀"整");ponytail: 亿内四位分段准确,角分/兆 v2
+    # A11 修正:高位→低位装配+段间零三条件(本段<1000 或 上一输出段末位为0 或 中间跳过过全零段),禁前导零;负数 raise(基线 while n: 对负数死循环)
     digits = "零壹贰叁肆伍陆柒捌玖"
     u_map = ["仟", "佰", "拾", ""]
+    units = ["", "万", "亿"]
     n = int(round(float(v)))
+    if n < 0:
+        raise ExprError(f"number_to_words 不接受负数: {v!r}")
     if n == 0:
         return "零元整"
 
@@ -194,18 +202,23 @@ def _number_to_words(v):
                 zero = True
         return "".join(parts)
 
-    segs, out = [], []
-    while n:
-        segs.append(n % 10000)
-        n //= 10000
-    for i, x in enumerate(segs):
+    segs = []
+    m = n
+    while m:
+        segs.append(m % 10000)
+        m //= 10000
+    out, prev, zero_skipped = [], None, False
+    for idx in range(len(segs) - 1, -1, -1):  # 高位→低位
+        x = segs[idx]
         if x == 0:
+            zero_skipped = True  # 全零段被跳过,下一非零段前须补零(100004567 → 壹亿零肆仟伍佰陆拾柒元整)
             continue
         part = four(x)
-        if x < 1000 and out:
+        if out and (x < 1000 or prev % 10 == 0 or zero_skipped):
             part = "零" + part
-        out.append(part + ["", "万", "亿"][i])
-    return "".join(reversed(out)) + "元整"
+        out.append(part + units[idx])
+        prev, zero_skipped = x, False
+    return "".join(out) + "元整"
 
 
 def _months_ago(deadline, months):
