@@ -36,6 +36,8 @@ Task 1 数据文件(a06db2cf2)质量评审发现 2 Important + 6 Minor。修正�
 **A7(Task 4 expr.py + Task 5)** 同 A6 语义落到规范实现:字段节点解析顺序 = 全点平键 fields 优先 → 头段命中 env(量词 var)则属性链下钻 → KeyError;Task 4 既有测试 `test_quantifier_all_any` 即 var-attr 回归门(若挂按 A6 修实现,不改测试)。Task 5 结构级 all 把行 dict 以 var 名并入 env 后求 cond,复用同一语义。
 **A8(Task 6 models + Task 16)** `ReviewIssue.verdict` String(12) → **String(20)**;`ReviewFeedback.action` String(12) → **String(20)**(`false_positive`=14、`severity_change`=15 均溢出;PostgreSQL 超长报错不截断)。issue-schema.json 的 `verdict` enum 只管**引擎产出阶段**;人工复核回写值(false_positive 等)仅落库,不回 schema 校验——Task 16 实现时在报告声明即可,不改 schema。
 **A9(Task 3)** workflow.md 自审模式须显式写明:det 副本产出 `evidence: []`,编排层(agent)负责按铁律 1 补齐 文档+页码+摘录 后才可向用户呈现问题——这是编排步骤的交付责任,不是求值器的。
+**A10(Task 5/18 转录源,复审附注)** 规则包转录一律以修复后的 `skills/public/bid-proposal-review/references/rules-det-subset.yaml` **文件**为源;计划内嵌的 Task 1 代码块仍是修正前内容({calc}/旧 inputs/旧 pattern),勿抄。
+**A11(Task 2 副本 + Task 4/5 canonical,Task 2 质量评审 2026-10-29 发现——底稿 `_number_to_words` 传染缺陷)** 底稿段循环低位→高位、子千段反转前补零,`零` 落在万位之前:1,234,567→`零壹佰贰拾叁万…`(前导零)、1,000,456→`零壹佰万肆佰伍拾陆元整`(应 `壹佰万零肆佰伍拾陆元整`)、100,001→`零壹拾万壹元整`(应 `壹拾万零壹元整`)——对正确投标误报 fatal L1-010,金标准恰在非缺陷区故 selftest 盲。canonical(Task 4 expr.py)必须:高位→低位装配(segs reversed,复用 four()),仅当更低相邻非零段 <1000 时输出段间零,禁止前导零;负数入参 raise(禁 `while n:` 死循环)。canonical 附带两处求值器收紧:`[*]` 后非 `.attr` token → ExprError(A6 note1 收紧,勿照抄副本容忍);token 耗尽(tok is None)→ ExprError(勿当 None 字面量求值)。selftest/测试须含非整万金额 clean 例(1234567.0 ↔ `壹佰贰拾叁万肆仟伍佰陆拾柒元整`、1000456.0 ↔ `壹佰万零肆佰伍拾陆元整`、100001.0 ↔ `壹拾万零壹元整`)防盲区。Task 2 副本同日修复轮落地,canonical 评审按本条验收。
 
 ---
 
@@ -547,7 +549,7 @@ if __name__ == "__main__":
     main()
 ```
 
-> 注:`_call` 中 `every/exists` 的 `where` 形态在 M1 子集未用到(L1-007 属 M3 hyb),实现保持骨架即可;selftest 只覆盖用到的形态。若 selftest 暴露解析 bug,修到绿为止——这是本任务的完成判据。
+> 注:M1 子集未用表达式内量词(L1-007 属 M3 hyb)。selftest 暴露解析 bug 时**只许改求值器,禁止改 references 数据凑绿**——references 是三方契约(数据缺陷按评审修正 A1-A4 处理并在报告声明)。完成判据 = selftest 绿 + 全部 issue message 无残留 `{...}` 占位。
 
 - [ ] **Step 2: 跑 selftest**
 
