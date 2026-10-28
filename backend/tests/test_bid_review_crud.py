@@ -53,6 +53,20 @@ async def test_issue_upsert_dedup(db):
 
 
 @pytest.mark.asyncio
+async def test_empty_dedup_key_never_merges(db):
+    """评审修复(Important#2):空 dedup_key 不参与查重——两条各自成行,第二条
+    完整保留自己的 rule_id/verdict/message/evidence,不发生跨问题合并黑洞
+    (旧行为:dedup_key 均为 "" 时第二条命中第一条,字段被静默丢弃只做证据并集)。"""
+    t = await crud.create_task(db, owner_id="u1")
+    a = await crud.add_issue(db, task_id=t.id, owner_id="u1", rule_id="L1-009", layer="L1", severity="fatal", verdict="violation", message="m1", fix="f1", evidence=[], dedup_key="")
+    b = await crud.add_issue(db, task_id=t.id, owner_id="u1", rule_id="L2-001", layer="L2", severity="major", verdict="need_human", message="m2", fix="f2", evidence=[{"doc_id": "d", "page": 1}], dedup_key="")
+    assert a.id != b.id
+    assert b.rule_id == "L2-001" and b.verdict == "need_human" and b.message == "m2" and len(b.evidence) == 1
+    got = await crud.list_issues(db, task_id=t.id, owner_id="u1")
+    assert len(got) == 2
+
+
+@pytest.mark.asyncio
 async def test_issue_dedup_evidence_union_skips_duplicates(db):
     """evidence 并集去重:同一条证据重复提交不重复追加。"""
     t = await crud.create_task(db, owner_id="u1")

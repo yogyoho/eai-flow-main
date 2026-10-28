@@ -67,17 +67,26 @@ async def add_issue(
     message: str,
     fix: str = "",
     evidence: list | None = None,
-    dedup_key: str = "",
+    *,
+    dedup_key: str,
     clause_id: str | None = None,
     need_human: bool = False,
     confidence: float = 1.0,
 ) -> ReviewIssue | None:
     """按 (task_id, dedup_key) 去重:已存在则 evidence 并集合并(重复条目跳过),
-    不新建行、不覆盖已有字段;task 不属于该 owner 时返回 None。"""
+    不新建行、不覆盖已有字段;task 不属于该 owner 时返回 None。
+
+    dedup_key 为必填参数且不得为空串:空/缺省值若参与查重,两条互不相关问题会
+    互相命中("")并触发合并黑洞——第二条的 rule_id/verdict 等字段被静默丢弃。
+    故 dedup_key 为空时跳过查重直接新建(评审修复 2026-10-29);正常键由
+    rule_runner 产出 ``{rule_id}|-|{message前40字}``。
+    """
     task = await get_task(session, task_id, owner_id)
     if task is None:
         return None
-    existing = (await session.execute(select(ReviewIssue).where(ReviewIssue.task_id == task_id, ReviewIssue.dedup_key == dedup_key))).scalar_one_or_none()
+    existing = None
+    if dedup_key:
+        existing = (await session.execute(select(ReviewIssue).where(ReviewIssue.task_id == task_id, ReviewIssue.dedup_key == dedup_key))).scalar_one_or_none()
     if existing is not None:
         merged = list(existing.evidence or [])
         for item in evidence or []:
