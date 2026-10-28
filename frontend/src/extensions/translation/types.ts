@@ -14,7 +14,8 @@ export type TltState =
   | "archived"
   | "failed"
   | "cancelled"
-  | "superseded";
+  | "superseded"
+  | "skipped";
 
 export interface TltFolder {
   id: string;
@@ -64,4 +65,6 @@ export interface TltUploadResult {
   existing_file?: string | null;
   /** reused=true 时：已有任务所在文件夹（null=根）。 */
   existing_folder_id?: string | null;
+  /** P1-4 重传即替换：被本次上传下线检索索引的旧任务 id。 */
+  superseded?: string[];
 }

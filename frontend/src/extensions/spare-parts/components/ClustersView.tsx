@@ -674,7 +674,7 @@ export function ClustersView() {
             className="absolute inset-0 bg-black/40"
             onClick={() => setMoveItem(null)}
           />
-          <div className="border-border bg-background relative w-full max-w-md rounded-xl border p-6 shadow-xl">
+          <div className="border-border bg-background relative w-full max-w-xl rounded-xl border p-6 shadow-xl">
             <h3 className="text-foreground mb-1 text-lg font-semibold">
               移动明细到其他分组
             </h3>

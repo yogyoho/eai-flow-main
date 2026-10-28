@@ -50,6 +50,16 @@ class Settings(BaseSettings):
     outbox_max_attempts: int = 10
     sales_embedded_worker: bool = False
 
+    # Workflow platform approval engine. When enabled, new sales approvals
+    # start a workflow-platform instance and synchronize its tasks/history into
+    # the sales read model. The sales Temporal workflow remains available for
+    # existing requests and as a rollback path.
+    workflow_platform_enabled: bool = False
+    workflow_platform_base_url: str = "http://workflow-backend:8020/api/workflow"
+    workflow_platform_internal_token: str = ""
+    workflow_platform_timeout_seconds: float = 10.0
+    workflow_platform_sync_limit: int = 30
+
     scheduler_enabled: bool = True
     scheduler_interval_seconds: int = 300
     seed_demo: bool = True

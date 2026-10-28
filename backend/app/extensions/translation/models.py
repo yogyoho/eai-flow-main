@@ -35,27 +35,29 @@ STATES: frozenset[str] = frozenset(
         "failed",
         "cancelled",
         "superseded",
+        "skipped",
     }
 )
 
 # 终态（无出边；failed 可人工重跑、delivered 保留 reviewed 重交付边→indexed，均不在终态列）
-TERMINAL_STATES: frozenset[str] = frozenset({"archived", "cancelled", "superseded"})
+TERMINAL_STATES: frozenset[str] = frozenset({"archived", "cancelled", "superseded", "skipped"})
 
 # 合法出边（R7: running→failed 覆盖 indexed→delivered 阶段的基础设施失败，幂等键=doc sha；
 # stored→pending = 资产库「翻译」动作入队；库删除(→archived)走 DELETE 端点直达，不经此表）
 TRANSITIONS: dict[str, frozenset[str]] = {
-    "stored": frozenset({"pending", "cancelled", "superseded"}),
-    "pending": frozenset({"running", "cancelled", "superseded"}),
-    "running": frozenset({"check_failed", "indexed", "failed", "cancelled", "superseded"}),
+    "stored": frozenset({"pending", "cancelled", "superseded", "skipped"}),
+    "pending": frozenset({"running", "cancelled", "superseded", "skipped"}),
+    "running": frozenset({"check_failed", "indexed", "failed", "cancelled", "superseded", "exceeded", "skipped"}),
     "check_failed": frozenset({"retrying", "exceeded", "cancelled", "superseded"}),
     "retrying": frozenset({"check_failed", "exceeded", "indexed", "cancelled", "superseded"}),
-    "exceeded": frozenset({"indexed", "archived"}),
-    "indexed": frozenset({"delivered", "failed"}),
-    "delivered": frozenset({"indexed"}),
-    "failed": frozenset({"pending"}),
+    "exceeded": frozenset({"indexed", "archived", "superseded"}),
+    "indexed": frozenset({"delivered", "failed", "superseded"}),
+    "delivered": frozenset({"indexed", "superseded"}),
+    "failed": frozenset({"pending", "superseded"}),
     "archived": frozenset(),
     "cancelled": frozenset(),
     "superseded": frozenset(),
+    "skipped": frozenset({"superseded"}),
 }
 
 
@@ -110,6 +112,15 @@ class TranslationTask(Base):
     task_version: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
     gate_failures: Mapped[dict | None] = mapped_column(JSONB, nullable=True)  # 逐轴失败明细
     uncertainty: Mapped[list | None] = mapped_column(JSONB, nullable=True)  # LLM 不确定标记段（list[{block,...}]，勿用 dict）
+    # EAI-CUSTOM (P0 复核闭环): exceeded 时保存的逐块草稿；复核通过后用它走
+    # index_translation 完成中文份索引与交付（zh_blocks 原本只存在内存里）。
+    draft_blocks: Mapped[list | None] = mapped_column(JSONB, nullable=True)
+    # EAI-CUSTOM (P1 复核对照): 源文逐块快照，供复核页左右对照（id 与 draft_blocks 对齐）。
+    draft_source_blocks: Mapped[list | None] = mapped_column(JSONB, nullable=True)
+    # EAI-CUSTOM (P2 MTPE): 首次人工编辑前的机器草稿（TM 种子）、编辑审计
+    draft_blocks_original: Mapped[list | None] = mapped_column(JSONB, nullable=True)
+    draft_edited_at: Mapped[object] = mapped_column(DateTime, nullable=True)
+    draft_edited_by: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), nullable=True)
     error_detail: Mapped[dict | None] = mapped_column(JSONB, nullable=True)  # 基础设施错误详情
     superseded_by: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), nullable=True)
     # T6 交付物（delivered 分界事件的物证：MinIO uri + RAGFlow 中文版文档 id）
@@ -123,3 +134,27 @@ class TranslationTask(Base):
 
     def __repr__(self) -> str:
         return f"<TranslationTask(id={self.id}, sha={self.doc_sha[:8]}, state={self.state})>"
+
+
+class TltBackfillJob(Base):
+    """超大回填任务（EAI-CUSTOM, P2 scheduled backfill）。
+
+    平台 scheduled_tasks 是 agent prompt 调度，不适合确定性队列；本表由 gateway 内嵌
+    的 backfill tick 消费：每次把 chunk_size 个 stored/failed 任务转 pending，直到游标耗尽。
+    """
+
+    __tablename__ = "tlt_backfill_jobs"
+    __table_args__ = (Index("ix_tlt_backfill_state", "state"),)
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    kb_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("knowledge_bases.id", ondelete="CASCADE"), nullable=True)
+    owner_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
+    task_ids: Mapped[list] = mapped_column(JSONB, nullable=False, default=list)
+    cursor: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    chunk_size: Mapped[int] = mapped_column(Integer, nullable=False, default=100)
+    state: Mapped[str] = mapped_column(String(20), nullable=False, default="active")  # active|done|cancelled
+    created_at: Mapped[object] = mapped_column(DateTime, nullable=False, default=func.now())
+    updated_at: Mapped[object] = mapped_column(DateTime, nullable=False, default=func.now(), onupdate=func.now())
+
+    def __repr__(self) -> str:
+        return f"<TltBackfillJob(id={self.id}, state={self.state}, cursor={self.cursor}/{len(self.task_ids or [])})>"

@@ -1,0 +1,1095 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>文档翻译工作台 · 术语库 · 高保真原型</title>
+<style>
+/* ═══════════════════════════════════════════════════════════════
+   文档翻译工作台 · 术语库页高保真原型（2026-10-18）
+   视觉与控件形态完全对齐 2026-10-18-translation-settings-eia-p2-hifi.html：
+   同一套 token（primary #0746ff / 暖灰 / success/info/warning）、
+   页头 / 卡片 / 表格 / 弹窗 / 按钮密度。新增：
+   语言维度列、领域标注列、行内编辑态、Excel 导入预览弹窗。
+   ═══════════════════════════════════════════════════════════════ */
+:root {
+  --primary:#0746ff; --primary-600:#0640e6; --primary-700:#0536c4;
+  --primary-100:#dbe6ff; --primary-50:#eef3ff; --primary-25:#f7f9ff;
+  --primary-300:#a9bcff; --primary-500:#4f7cff;
+  --gray-25:#fafbfb; --gray-50:#f5f7f7; --gray-100:#eff2f2; --gray-200:#e4e6e6; --gray-300:#d7d9d9;
+  --gray-400:#bdbfbf; --gray-500:#979999; --gray-600:#697070; --gray-700:#4c4d4d;
+  --gray-800:#323333; --gray-900:#1e1f1f; --gray-1000:#151616;
+  --success-50:#f6ffed; --success-100:#d9f7be; --success-500:#52c41a; --success-700:#389e0d; --success-900:#135200;
+  --error-50:#fff2f0; --error-100:#ffccc7; --error-500:#ff4d4f; --error-700:#cf1322; --error-900:#820014;
+  --warn-50:#fffbe6; --warn-100:#ffe58f; --warn-500:#faad14; --warn-700:#d48806; --warn-900:#ad6800;
+  --info-50:#e6f7ff; --info-100:#bae7ff; --info-500:#1890ff; --info-700:#096dd9; --info-900:#0050b3;
+  --text:var(--gray-1000); --text-2:var(--gray-600); --text-3:var(--gray-500);
+  --hairline:var(--gray-200); --card:#ffffff; --bg:var(--gray-50);
+  --mono:ui-monospace,'Cascadia Code',Consolas,'Courier New',monospace;
+  --shadow-pop:0 6px 16px rgba(0,0,0,.08),0 3px 6px -4px rgba(0,0,0,.12),0 9px 28px 8px rgba(0,0,0,.05);
+}
+.dark {
+  --primary:#7d9bff; --primary-600:#93aaff; --primary-700:#a9bcff;
+  --primary-100:#1c2b57; --primary-50:#16213d; --primary-25:#111827;
+  --primary-300:#2c3f6e; --primary-500:#6f8eff;
+  --gray-25:#191a1a; --gray-50:#232424; --gray-100:#1e1f1f; --gray-200:#2a2b2b; --gray-300:#323333;
+  --gray-400:#4c4d4d; --gray-500:#697070; --gray-600:#979999; --gray-700:#bdbfbf;
+  --gray-800:#d7d9d9; --gray-900:#eff2f2; --gray-1000:#f5f7f7;
+  --success-50:#162312; --success-100:#274916; --success-500:#73d13d; --success-700:#95de64; --success-900:#b7eb8f;
+  --error-50:#2c1210; --error-100:#581815; --error-500:#ff7875; --error-700:#ff9c99; --error-900:#ffa39e;
+  --warn-50:#2a2205; --warn-100:#443806; --warn-500:#f5c542; --warn-700:#ffd666; --warn-900:#ffe58f;
+  --info-50:#0c2238; --info-100:#11365a; --info-500:#69b1ff; --info-700:#91caff; --info-900:#91caff;
+  --text:#f5f7f7; --text-2:#bdbfbf; --text-3:#979999;
+  --hairline:#2a2b2b; --card:#1e1f1f; --bg:#151616;
+  --shadow-pop:0 6px 16px rgba(0,0,0,.5),0 9px 28px 8px rgba(0,0,0,.4);
+}
+* { margin:0; padding:0; box-sizing:border-box; }
+body {
+  font-family:-apple-system,'Segoe UI','PingFang SC','Microsoft YaHei',sans-serif;
+  background:var(--bg); color:var(--text); font-size:14px; line-height:1.6;
+  transition:background .2s,color .2s;
+}
+button { font-family:inherit; cursor:pointer; border:none; background:none; color:inherit; }
+input,select { font-family:inherit; }
+.num { font-variant-numeric:tabular-nums; }
+.mono { font-family:var(--mono); font-size:12px; }
+svg.ic { width:16px; height:16px; stroke:currentColor; stroke-width:2; fill:none;
+  stroke-linecap:round; stroke-linejoin:round; flex:none; }
+svg.ic.sm { width:14px; height:14px; }
+
+/* ═══ 顶栏（同设置页）═══ */
+.app { display:flex; flex-direction:column; min-height:100vh; }
+.topbar { height:56px; flex:none; background:var(--card); border-bottom:1px solid var(--hairline);
+  display:flex; align-items:center; gap:24px; padding:0 24px; }
+.brand { display:flex; align-items:center; gap:8px; font-size:15px; font-weight:700;
+  letter-spacing:-.01em; white-space:nowrap; }
+.brand .logo { width:28px; height:28px; border-radius:7px; background:var(--primary);
+  color:#fff; display:flex; align-items:center; justify-content:center; }
+.dark .brand .logo { color:#0a0a0a; }
+.tabs { display:flex; align-self:stretch; gap:4px; }
+.tab { position:relative; display:flex; align-items:center; padding:0 12px; font-size:13px;
+  font-weight:500; color:var(--text-2); border-bottom:2px solid transparent;
+  transition:color .15s,border-color .15s; white-space:nowrap; }
+.tab:hover { color:var(--text); }
+.tab.on { color:var(--primary); border-bottom-color:var(--primary); font-weight:600; }
+.top-right { margin-left:auto; display:flex; align-items:center; gap:8px; }
+.env-chip { display:inline-flex; align-items:center; gap:6px; height:24px; padding:0 9px;
+  border-radius:999px; border:1px solid var(--hairline); background:var(--gray-50);
+  font-size:11px; color:var(--text-2); white-space:nowrap; }
+.icon-btn { width:30px; height:30px; border-radius:6px; display:inline-flex; align-items:center;
+  justify-content:center; color:var(--text-2); transition:background .15s,color .15s; }
+.icon-btn:hover { background:var(--gray-100); color:var(--text); }
+
+/* ═══ 页面 ═══ */
+.screen { flex:1; padding:20px 24px 40px; }
+.screen-inner { max-width:1440px; margin:0 auto; display:flex; flex-direction:column; gap:12px; }
+.proto-banner { display:flex; align-items:center; gap:8px; font-size:12px; color:var(--text-3); }
+.proto-banner b { color:var(--primary); font-weight:600; }
+
+/* ═══ 页头（同设置页）═══ */
+.page-head { display:flex; align-items:center; gap:12px; padding:14px 18px;
+  border:1px solid var(--hairline); border-radius:8px; background:var(--card);
+  background-image:
+    linear-gradient(to right, color-mix(in srgb,var(--primary) 8%,transparent) 1px, transparent 1px),
+    linear-gradient(to bottom, color-mix(in srgb,var(--primary) 8%,transparent) 1px, transparent 1px);
+  background-size:26px 26px, 26px 26px; background-position:8px 8px, 8px 8px;
+  position:relative; overflow:hidden; }
+.page-head::after { content:''; position:absolute; inset:0;
+  background:linear-gradient(90deg,var(--card) 0%,var(--card) 55%,transparent 100%); pointer-events:none; }
+.page-head > * { position:relative; z-index:1; }
+.ph-icon { width:34px; height:34px; border-radius:8px; background:var(--primary-50);
+  color:var(--primary); display:flex; align-items:center; justify-content:center; flex:none; }
+.ph-icon svg { width:18px; height:18px; }
+.page-head h2 { font-size:16px; font-weight:600; line-height:1.3; }
+.page-head .ph-sub { font-size:12px; color:var(--text-3); }
+.page-head .ph-actions { margin-left:auto; display:flex; align-items:center; gap:8px; flex:none; }
+
+/* ═══ 按钮 / 徽章（同设置页）═══ */
+.btn { display:inline-flex; align-items:center; justify-content:center; gap:6px;
+  height:30px; padding:0 12px; border-radius:6px; font-size:13px; font-weight:500;
+  transition:all .15s; white-space:nowrap; }
+.btn-sm { height:28px; padding:0 10px; font-size:12px; }
+.btn-pri { background:var(--primary); color:#fff; }
+.btn-pri:hover { background:var(--primary-600); }
+.dark .btn-pri { color:#0a0a0a; }
+.btn-sec { border:1px solid var(--hairline); background:var(--card); color:var(--text-2); }
+.btn-sec:hover { border-color:var(--primary); color:var(--primary); background:var(--primary-25); }
+.btn:disabled { opacity:.5; cursor:not-allowed; }
+.pill { display:inline-flex; align-items:center; gap:5px; height:20px; padding:0 8px;
+  border-radius:999px; font-size:12px; font-weight:500; white-space:nowrap; border:1px solid transparent; }
+.pill-main { background:var(--primary-50); color:var(--primary-700); border-color:var(--primary-100); }
+.pill-ok { background:var(--success-50); color:var(--success-900); border-color:var(--success-100); }
+.pill-warn { background:var(--warn-50); color:var(--warn-900); border-color:var(--warn-100); }
+.pill-err { background:var(--error-50); color:var(--error-900); border-color:var(--error-100); }
+.pill-gray { background:var(--gray-100); color:var(--gray-600); border-color:var(--gray-200); }
+.pill-info { background:var(--info-50); color:var(--info-900); border-color:var(--info-100); }
+.dot { width:6px; height:6px; border-radius:50%; flex:none; }
+.dot-ok { background:var(--success-500); box-shadow:0 0 0 3px color-mix(in srgb,var(--success-500) 16%,transparent); }
+.pill .dot { width:5px; height:5px; }
+
+/* 语言徽章 */
+.lang { display:inline-flex; align-items:center; justify-content:center; min-width:40px;
+  height:20px; padding:0 7px; border-radius:5px; border:1px solid transparent;
+  font-family:var(--mono); font-size:11px; font-weight:600; letter-spacing:.03em; }
+.lang-en { background:var(--primary-50); color:var(--primary-700); border-color:var(--primary-100); }
+.lang-fr { background:var(--info-50); color:var(--info-900); border-color:var(--info-100); }
+.lang-any { background:var(--gray-100); color:var(--gray-600); border-color:var(--gray-200); }
+
+/* ═══ 卡片 ═══ */
+.card { background:var(--card); border:1px solid var(--hairline); border-radius:8px; overflow:hidden; }
+.card-hd { display:flex; align-items:center; gap:8px; padding:12px 16px;
+  border-bottom:1px solid var(--hairline); flex-wrap:wrap; }
+.card-hd h3 { font-size:14px; font-weight:600; }
+.card-hd .hd-sub { font-size:12px; color:var(--text-3); }
+.card-hd .hd-right { margin-left:auto; display:flex; align-items:center; gap:8px; }
+
+/* ═══ 工具栏 / chips（同设置页）═══ */
+.toolbar { display:flex; align-items:center; gap:8px; padding:10px 16px;
+  border-bottom:1px solid var(--hairline); flex-wrap:wrap; }
+.src-chip { display:inline-flex; align-items:center; gap:5px; height:22px; padding:0 9px;
+  border-radius:999px; font-size:12px; border:1px solid var(--hairline); background:var(--card);
+  color:var(--text-2); white-space:nowrap; transition:all .12s; }
+.src-chip b { font-size:11px; color:var(--primary-600); font-variant-numeric:tabular-nums; }
+.src-chip.hl { border-color:var(--primary-300,#a9bcff); background:var(--primary-25); color:var(--primary-700); }
+.src-chip:hover { border-color:var(--primary-300,#a9bcff); }
+.spacer { flex:1; }
+.muted { color:var(--text-3); font-size:12px; }
+
+.search-wrap { position:relative; }
+.search-wrap svg { position:absolute; left:9px; top:50%; transform:translateY(-50%); color:var(--text-3); }
+.inp { width:100%; height:30px; border:1px solid var(--gray-200); border-radius:6px;
+  padding:0 10px; background:var(--card); color:var(--text); font-size:13px; outline:none;
+  transition:border-color .15s,box-shadow .15s; }
+.inp:focus { border-color:var(--primary); box-shadow:0 0 0 2px var(--primary-50); }
+.search-wrap .inp { width:230px; padding-left:29px; font-size:12px; }
+select.inp { cursor:pointer; }
+.domain-select { width:132px; font-size:12px; color:var(--text-2); }
+
+/* ═══ 表格（同设置页）═══ */
+.table-wrap { overflow-x:auto; }
+.tbl { width:100%; border-collapse:collapse; }
+.gloss-tbl { table-layout:fixed; }
+.tbl th { text-align:left; font-size:12px; font-weight:500; color:var(--text-3);
+  padding:9px 12px; border-bottom:1px solid var(--hairline); white-space:nowrap; }
+.tbl td { padding:8px 12px; border-bottom:1px solid var(--gray-100); font-size:13px;
+  vertical-align:middle; }
+.tbl tbody tr { transition:background .12s; }
+.tbl tbody tr:hover { background:var(--gray-50); }
+.tbl tbody tr:last-child td { border-bottom:none; }
+.tbl .r { text-align:right; }
+.tbl-foot { display:flex; align-items:center; gap:10px; padding:9px 16px; font-size:12px;
+  color:var(--text-3); border-top:1px solid var(--hairline); }
+.tbl-foot .spacer { flex:1; }
+.row-ops { display:flex; align-items:center; justify-content:flex-end; gap:2px; }
+.txt-btn { padding:3px 7px; border-radius:4px; font-size:12px; color:var(--text-2);
+  transition:background .12s,color .12s; white-space:nowrap; }
+.txt-btn:hover { background:var(--gray-100); color:var(--text); }
+.txt-btn.danger { color:var(--error-700); }
+.txt-btn.danger:hover { background:var(--error-50); color:var(--error-900); }
+.source-cell { font-family:var(--mono); font-size:12.5px; font-weight:500; }
+.target-cell { font-size:13px; }
+.domain-cell { font-size:12px; color:var(--text-3); }
+.target-old { color:var(--text-3); text-decoration:line-through; margin-right:5px; }
+.edit-hint { display:block; margin-top:3px; font-size:10px; color:var(--text-3); white-space:nowrap; }
+
+/* ═══ 行内编辑 ═══ */
+.edit-only { display:none !important; }
+tr.editing .edit-only { display:inline-flex !important; }
+tr.editing .edit-hint { display:block !important; }
+tr.editing .view-only { display:none !important; }
+tr.editing { background:var(--primary-25) !important; }
+tr.editing:hover { background:var(--primary-25) !important; }
+tr.editing td { padding-top:6px; padding-bottom:6px; }
+.cell-inp { width:100%; height:28px; border:1px solid var(--gray-300); border-radius:5px;
+  background:var(--card); color:var(--text); font-size:12px; padding:0 8px; outline:none;
+  transition:border-color .15s,box-shadow .15s; min-width:0; }
+.cell-inp:focus { border-color:var(--primary); box-shadow:0 0 0 2px var(--primary-50); }
+.cell-inp.invalid { border-color:var(--error-500); box-shadow:0 0 0 2px var(--error-50); }
+.cell-mono { font-family:var(--mono); }
+.cell-inp:disabled { background:var(--gray-50); color:var(--text-3); cursor:not-allowed; }
+
+/* ═══ 说明条 / 规则卡（同设置页）═══ */
+.note-bar { display:flex; gap:8px; align-items:flex-start; background:var(--info-50);
+  border-radius:6px; padding:9px 12px; font-size:12px; color:var(--info-900); }
+.note-bar svg { margin-top:2px; flex:none; }
+.grid-2 { display:grid; grid-template-columns:1fr 1fr; gap:12px; align-items:stretch; }
+.std-list { display:flex; flex-direction:column; }
+.std-row { display:grid; grid-template-columns:132px 1fr auto; align-items:center; gap:12px;
+  padding:10px 16px; border-bottom:1px solid var(--gray-100); }
+.std-row:last-child { border-bottom:none; }
+.std-label { font-size:12px; color:var(--text-3); }
+.std-value { font-size:13px; color:var(--text-2); }
+.std-value b { color:var(--text); font-weight:600; }
+.rule-list { display:flex; flex-direction:column; }
+.rule-row { display:grid; grid-template-columns:104px 1fr; gap:12px; padding:9px 16px;
+  border-bottom:1px solid var(--gray-100); font-size:12.5px; }
+.rule-row:last-child { border-bottom:none; }
+.rule-label { color:var(--text-3); }
+.rule-value { color:var(--text-2); }
+
+/* ═══ 弹窗（同设置页）═══ */
+.overlay { position:fixed; inset:0; background:rgba(0,0,0,.45); z-index:60;
+  display:none; align-items:flex-start; justify-content:center; padding:5vh 3vw; }
+.overlay.open { display:flex; }
+.modal { width:560px; max-width:100%; background:var(--card); border:1px solid var(--hairline);
+  border-radius:10px; box-shadow:var(--shadow-pop); overflow:hidden; }
+.modal.wide { width:780px; max-width:100%; max-height:90vh; display:flex; flex-direction:column; }
+.modal.wide .modal-bd { overflow-y:auto; }
+.modal-hd { display:flex; align-items:center; gap:10px; padding:14px 20px;
+  border-bottom:1px solid var(--hairline); }
+.modal-hd h3 { font-size:15px; font-weight:600; }
+.modal-hd .x { margin-left:auto; width:28px; height:28px; border-radius:6px; color:var(--text-3);
+  display:flex; align-items:center; justify-content:center; }
+.modal-hd .x:hover { background:var(--gray-100); color:var(--text); }
+.modal-bd { padding:18px 20px; }
+.modal-ft { display:flex; align-items:center; gap:8px; padding:12px 20px;
+  border-top:1px solid var(--hairline); background:var(--gray-25); }
+.modal-ft .ft-hint { margin-right:auto; font-size:11px; color:var(--text-3); }
+.frm-row { margin-bottom:14px; }
+.frm-row:last-child { margin-bottom:0; }
+.frm-row label { display:block; font-size:12px; font-weight:500; color:var(--text-2); margin-bottom:5px; }
+.frm-row label .must { color:var(--error-500); margin-left:2px; }
+.frm-help { font-size:11px; color:var(--text-3); margin-top:4px; }
+.frm-grid { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+
+/* ═══ Excel 导入 ═══ */
+.dropzone { border:1.5px dashed var(--gray-300); border-radius:8px; background:var(--gray-25);
+  padding:16px 18px; display:flex; flex-direction:column; align-items:center; justify-content:center;
+  gap:3px; text-align:center; transition:all .15s; cursor:pointer; }
+.dropzone:hover,.dropzone.drag { border-color:var(--primary); background:var(--primary-25); }
+.dropzone .dz-icon { width:38px; height:38px; border-radius:9px; background:var(--primary-50);
+  color:var(--primary); display:flex; align-items:center; justify-content:center; margin-bottom:4px; }
+.dropzone .dz-main { font-size:13px; font-weight:500; }
+.dropzone .dz-sub { font-size:11px; color:var(--text-3); }
+.file-chip { display:flex; align-items:center; gap:9px; margin-top:10px; padding:8px 12px;
+  border:1px solid var(--hairline); border-radius:7px; background:var(--card); }
+.file-chip .fc-icon { width:30px; height:30px; border-radius:6px; background:var(--success-50);
+  color:var(--success-700); display:flex; align-items:center; justify-content:center; }
+.file-chip .fc-main { min-width:0; flex:1; }
+.file-chip .fc-name { font-family:var(--mono); font-size:12px; font-weight:600;
+  overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.file-chip .fc-meta { font-size:11px; color:var(--text-3); }
+.col-contract { display:flex; flex-wrap:wrap; align-items:center; gap:6px; margin-top:10px; }
+.col-contract .cc-label { font-size:11px; color:var(--text-3); margin-right:2px; }
+.col-chip { display:inline-flex; align-items:center; height:20px; padding:0 7px;
+  border:1px solid var(--hairline); border-radius:5px; background:var(--gray-25);
+  font-size:11px; color:var(--text-2); }
+.col-chip.opt { border-style:dashed; color:var(--text-3); }
+.import-summary { display:grid; grid-auto-flow:column; grid-auto-columns:1fr;
+  border:1px solid var(--hairline); border-radius:7px; overflow:hidden; margin-top:12px; }
+.import-summary .is-cell { padding:8px 12px; display:flex; flex-direction:column; gap:1px; }
+.import-summary .is-cell + .is-cell { border-left:1px solid var(--hairline); }
+.import-summary .is-label { font-size:11px; color:var(--text-3); }
+.import-summary .is-value { font-size:17px; font-weight:700; line-height:1.2;
+  font-variant-numeric:tabular-nums; color:var(--gray-800); }
+.import-summary .is-value.add { color:var(--primary-700); }
+.import-summary .is-value.upd { color:var(--warn-900); }
+.import-summary .is-value.err { color:var(--error-700); }
+.error-summary { margin-top:12px; padding:10px 12px; border:1px solid var(--error-100);
+  background:var(--error-50); border-radius:6px; color:var(--error-900); font-size:12px; }
+.error-summary .es-title { display:flex; align-items:center; gap:6px; font-weight:600; margin-bottom:3px; }
+.error-summary ul { margin-left:18px; }
+.error-summary li { margin-top:1px; }
+.preview-wrap { margin-top:10px; border:1px solid var(--hairline); border-radius:7px;
+  overflow-x:auto; }
+.preview-wrap .tbl th { position:sticky; top:0; background:var(--card); z-index:1; }
+.preview-wrap .tbl td { font-size:12px; padding:7px 10px; }
+.status-pill { display:inline-flex; align-items:center; gap:4px; height:19px; padding:0 7px;
+  border-radius:5px; border:1px solid transparent; font-size:11px; font-weight:500; white-space:nowrap; }
+.status-add { background:var(--primary-50); color:var(--primary-700); border-color:var(--primary-100); }
+.status-upd { background:var(--warn-50); color:var(--warn-900); border-color:var(--warn-100); }
+.status-same { background:var(--gray-100); color:var(--gray-600); border-color:var(--gray-200); }
+.status-err { background:var(--error-50); color:var(--error-900); border-color:var(--error-100); }
+.row-error td { background:var(--error-50); }
+
+/* ═══ Toast（同设置页）═══ */
+.toast { position:fixed; right:22px; bottom:22px; z-index:80; max-width:380px;
+  background:var(--card); border:1px solid var(--hairline); border-left:3px solid var(--primary);
+  border-radius:7px; box-shadow:var(--shadow-pop); padding:10px 14px; font-size:13px;
+  color:var(--text); opacity:0; transform:translateY(8px); pointer-events:none;
+  transition:opacity .18s,transform .18s; }
+.toast.show { opacity:1; transform:translateY(0); }
+.toast small { display:block; color:var(--text-3); font-size:11px; margin-top:2px; }
+.toast.ok { border-left-color:var(--success-500); }
+.toast.err { border-left-color:var(--error-500); }
+
+@media (max-width: 980px) {
+  .grid-2 { grid-template-columns:1fr; }
+  .topbar { gap:12px; padding:0 14px; }
+  .tabs { overflow-x:auto; }
+  .env-chip.opt { display:none; }
+  .screen { padding:16px; }
+}
+@media (max-width: 700px) {
+  .brand span.label { display:none; }
+  .tab { padding:0 8px; }
+  .page-head { align-items:flex-start; flex-wrap:wrap; }
+  .ph-actions { width:100%; margin-left:0; }
+  .search-wrap .inp { width:100%; }
+  .domain-select { width:100%; }
+  .modal.wide .preview-wrap { max-height:240px; }
+  .std-row { grid-template-columns:1fr auto; }
+  .std-value { grid-column:1 / -1; }
+}
+</style>
+</head>
+<body>
+<div class="app">
+  <!-- ═══ 应用顶栏 ═══ -->
+  <header class="topbar">
+    <div class="brand">
+      <span class="logo">
+        <svg class="ic" viewBox="0 0 24 24"><path d="m5 8 6 6M4 14l6-6 2-3M2 5h12M7 2h1M22 22l-5-10-5 10M14 18h6"/></svg>
+      </span>
+      <span class="label">文档翻译工作台</span>
+    </div>
+    <nav class="tabs" aria-label="工作台导航">
+      <button class="tab">文件资料库</button>
+      <button class="tab">复核工作台</button>
+      <button class="tab on">术语库</button>
+      <button class="tab">任务记录</button>
+      <button class="tab">设置</button>
+    </nav>
+    <div class="top-right">
+      <span class="env-chip opt"><span class="dot dot-ok"></span>EN/FR</span>
+      <span class="env-chip opt mono">gemma-4</span>
+      <button class="icon-btn" id="darkToggle" title="切换暗色模式" aria-label="切换暗色模式">
+        <svg class="ic" viewBox="0 0 24 24"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></svg>
+      </button>
+    </div>
+  </header>
+
+  <main class="screen">
+    <div class="screen-inner">
+      <div class="proto-banner"><b>术语库</b>· 按源语言注入与核验 · 行内编辑即时保存 · Excel 批量导入（合并）</div>
+
+      <!-- ═══ 页头 ═══ -->
+      <section class="page-head">
+        <div class="ph-icon">
+          <svg class="ic" viewBox="0 0 24 24"><path d="m19 21-7-4-7 4V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v16z"/><path d="M5 7h14"/></svg>
+        </div>
+        <div>
+          <h2>术语库</h2>
+          <div class="ph-sub">按源语言注入 · 术语轴硬校验 · 同一源词同一语言唯一目标</div>
+        </div>
+        <div class="ph-actions">
+          <span class="pill pill-gray" id="totalPill">42 条</span>
+          <button class="btn btn-sec btn-sm" id="openImport">
+            <svg class="ic sm" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12"/></svg>
+            导入 Excel
+          </button>
+          <button class="btn btn-pri btn-sm" id="openAdd">
+            <svg class="ic sm" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>
+            新增术语
+          </button>
+        </div>
+      </section>
+
+      <!-- ═══ 术语表 ═══ -->
+      <section class="card">
+        <div class="card-hd">
+          <h3>术语表</h3>
+          <span class="hd-sub">英文/法文各自成组 · ANY 用于公司名与缩写</span>
+          <div class="hd-right">
+            <span class="pill pill-ok"><span class="dot dot-ok"></span>已自动保存</span>
+          </div>
+        </div>
+
+        <div class="toolbar">
+          <button class="src-chip hl" data-lang-filter="all">全部 <b>42</b></button>
+          <button class="src-chip" data-lang-filter="en">EN <b>18</b></button>
+          <button class="src-chip" data-lang-filter="fr">FR <b>14</b></button>
+          <button class="src-chip" data-lang-filter="any">ANY <b>10</b></button>
+          <span class="search-wrap">
+            <svg class="ic sm" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+            <input class="inp" id="searchInput" type="search" placeholder="搜索源词 / 目标译法" aria-label="搜索源词或目标译法">
+          </span>
+          <select class="inp domain-select" id="domainFilter" aria-label="按业务领域筛选">
+            <option value="all">全部领域</option>
+            <option>铁矿开采</option>
+            <option>合同法务</option>
+            <option>经营财务</option>
+            <option>货物运输</option>
+          </select>
+          <span class="spacer"></span>
+          <span class="muted">版本 v3 · <span class="mono">8f3a2c</span></span>
+        </div>
+
+        <div class="table-wrap">
+          <table class="tbl gloss-tbl">
+            <thead>
+              <tr>
+                <th>源词</th>
+                <th style="width:84px">语言</th>
+                <th style="width:128px">动作</th>
+                <th>目标译法</th>
+                <th style="width:132px">领域</th>
+                <th class="r" style="width:132px">操作</th>
+              </tr>
+            </thead>
+            <tbody id="glossBody">
+              <!-- 行内编辑示范行（默认展开） -->
+              <tr class="gloss-row editing" data-lang="en" data-domain="合同法务" data-search="offtake agreement 包销协议 提货合同">
+                <td>
+                  <span class="view-only source-cell">offtake agreement</span>
+                  <input class="cell-inp cell-mono edit-only" data-field="source" value="offtake agreement" aria-label="源词">
+                </td>
+                <td>
+                  <span class="view-only"><span class="lang lang-en">EN</span></span>
+                  <select class="cell-inp edit-only" data-field="lang" aria-label="语言">
+                    <option value="en" selected>EN</option><option value="fr">FR</option><option value="any">ANY</option>
+                  </select>
+                </td>
+                <td>
+                  <span class="view-only"><span class="pill pill-main">指定译法</span></span>
+                  <select class="cell-inp edit-only" data-field="action" aria-label="动作">
+                    <option value="force" selected>指定译法</option>
+                    <option value="forbid">保留原文</option>
+                    <option value="keep">原样保留</option>
+                  </select>
+                </td>
+                <td>
+                  <span class="view-only target-cell">包销协议</span>
+                  <input class="cell-inp edit-only" data-field="target" value="包销协议" aria-label="目标译法">
+                </td>
+                <td>
+                  <span class="view-only domain-cell">合同法务</span>
+                  <input class="cell-inp edit-only" data-field="domain" value="合同法务" aria-label="业务领域（可选）">
+                </td>
+                <td class="r">
+                  <div class="row-ops view-only">
+                    <button class="txt-btn" data-edit>编辑</button>
+                    <button class="txt-btn danger" data-del>删除</button>
+                  </div>
+                  <div class="row-ops edit-only">
+                    <button class="txt-btn" data-save>保存</button>
+                    <button class="txt-btn" data-cancel>取消</button>
+                  </div>
+                  <span class="edit-hint edit-only">Enter 保存 · Esc 取消</span>
+                </td>
+              </tr>
+
+              <tr class="gloss-row" data-lang="en" data-domain="铁矿开采" data-search="iron ore concentrate 铁精矿">
+                <td><span class="view-only source-cell">iron ore concentrate</span><input class="cell-inp cell-mono edit-only" data-field="source" value="iron ore concentrate" aria-label="源词"></td>
+                <td><span class="view-only"><span class="lang lang-en">EN</span></span><select class="cell-inp edit-only" data-field="lang" aria-label="语言"><option value="en" selected>EN</option><option value="fr">FR</option><option value="any">ANY</option></select></td>
+                <td><span class="view-only"><span class="pill pill-main">指定译法</span></span><select class="cell-inp edit-only" data-field="action" aria-label="动作"><option value="force" selected>指定译法</option><option value="forbid">保留原文</option><option value="keep">原样保留</option></select></td>
+                <td><span class="view-only target-cell">铁精矿</span><input class="cell-inp edit-only" data-field="target" value="铁精矿" aria-label="目标译法"></td>
+                <td><span class="view-only domain-cell">铁矿开采</span><input class="cell-inp edit-only" data-field="domain" value="铁矿开采" aria-label="业务领域（可选）"></td>
+                <td class="r">
+                  <div class="row-ops view-only"><button class="txt-btn" data-edit>编辑</button><button class="txt-btn danger" data-del>删除</button></div>
+                  <div class="row-ops edit-only"><button class="txt-btn" data-save>保存</button><button class="txt-btn" data-cancel>取消</button></div>
+                  <span class="edit-hint edit-only">Enter 保存 · Esc 取消</span>
+                </td>
+              </tr>
+
+              <tr class="gloss-row" data-lang="fr" data-domain="铁矿开采" data-search="concentré de minerai de fer 铁精矿">
+                <td><span class="view-only source-cell">concentré de minerai de fer</span><input class="cell-inp cell-mono edit-only" data-field="source" value="concentré de minerai de fer" aria-label="源词"></td>
+                <td><span class="view-only"><span class="lang lang-fr">FR</span></span><select class="cell-inp edit-only" data-field="lang" aria-label="语言"><option value="en">EN</option><option value="fr" selected>FR</option><option value="any">ANY</option></select></td>
+                <td><span class="view-only"><span class="pill pill-main">指定译法</span></span><select class="cell-inp edit-only" data-field="action" aria-label="动作"><option value="force" selected>指定译法</option><option value="forbid">保留原文</option><option value="keep">原样保留</option></select></td>
+                <td><span class="view-only target-cell">铁精矿</span><input class="cell-inp edit-only" data-field="target" value="铁精矿" aria-label="目标译法"></td>
+                <td><span class="view-only domain-cell">铁矿开采</span><input class="cell-inp edit-only" data-field="domain" value="铁矿开采" aria-label="业务领域（可选）"></td>
+                <td class="r">
+                  <div class="row-ops view-only"><button class="txt-btn" data-edit>编辑</button><button class="txt-btn danger" data-del>删除</button></div>
+                  <div class="row-ops edit-only"><button class="txt-btn" data-save>保存</button><button class="txt-btn" data-cancel>取消</button></div>
+                  <span class="edit-hint edit-only">Enter 保存 · Esc 取消</span>
+                </td>
+              </tr>
+
+              <tr class="gloss-row" data-lang="en" data-domain="合同法务" data-search="force majeure 不可抗力">
+                <td><span class="view-only source-cell">force majeure</span><input class="cell-inp cell-mono edit-only" data-field="source" value="force majeure" aria-label="源词"></td>
+                <td><span class="view-only"><span class="lang lang-en">EN</span></span><select class="cell-inp edit-only" data-field="lang" aria-label="语言"><option value="en" selected>EN</option><option value="fr">FR</option><option value="any">ANY</option></select></td>
+                <td><span class="view-only"><span class="pill pill-main">指定译法</span></span><select class="cell-inp edit-only" data-field="action" aria-label="动作"><option value="force" selected>指定译法</option><option value="forbid">保留原文</option><option value="keep">原样保留</option></select></td>
+                <td><span class="view-only target-cell">不可抗力</span><input class="cell-inp edit-only" data-field="target" value="不可抗力" aria-label="目标译法"></td>
+                <td><span class="view-only domain-cell">合同法务</span><input class="cell-inp edit-only" data-field="domain" value="合同法务" aria-label="业务领域（可选）"></td>
+                <td class="r">
+                  <div class="row-ops view-only"><button class="txt-btn" data-edit>编辑</button><button class="txt-btn danger" data-del>删除</button></div>
+                  <div class="row-ops edit-only"><button class="txt-btn" data-save>保存</button><button class="txt-btn" data-cancel>取消</button></div>
+                  <span class="edit-hint edit-only">Enter 保存 · Esc 取消</span>
+                </td>
+              </tr>
+
+              <tr class="gloss-row" data-lang="fr" data-domain="合同法务" data-search="force majeure 不可抗力">
+                <td><span class="view-only source-cell">force majeure</span><input class="cell-inp cell-mono edit-only" data-field="source" value="force majeure" aria-label="源词"></td>
+                <td><span class="view-only"><span class="lang lang-fr">FR</span></span><select class="cell-inp edit-only" data-field="lang" aria-label="语言"><option value="en">EN</option><option value="fr" selected>FR</option><option value="any">ANY</option></select></td>
+                <td><span class="view-only"><span class="pill pill-main">指定译法</span></span><select class="cell-inp edit-only" data-field="action" aria-label="动作"><option value="force" selected>指定译法</option><option value="forbid">保留原文</option><option value="keep">原样保留</option></select></td>
+                <td><span class="view-only target-cell">不可抗力</span><input class="cell-inp edit-only" data-field="target" value="不可抗力" aria-label="目标译法"></td>
+                <td><span class="view-only domain-cell">合同法务</span><input class="cell-inp edit-only" data-field="domain" value="合同法务" aria-label="业务领域（可选）"></td>
+                <td class="r">
+                  <div class="row-ops view-only"><button class="txt-btn" data-edit>编辑</button><button class="txt-btn danger" data-del>删除</button></div>
+                  <div class="row-ops edit-only"><button class="txt-btn" data-save>保存</button><button class="txt-btn" data-cancel>取消</button></div>
+                  <span class="edit-hint edit-only">Enter 保存 · Esc 取消</span>
+                </td>
+              </tr>
+
+              <tr class="gloss-row" data-lang="any" data-domain="经营财务" data-search="ebitda">
+                <td><span class="view-only source-cell">EBITDA</span><input class="cell-inp cell-mono edit-only" data-field="source" value="EBITDA" aria-label="源词"></td>
+                <td><span class="view-only"><span class="lang lang-any">ANY</span></span><select class="cell-inp edit-only" data-field="lang" aria-label="语言"><option value="en">EN</option><option value="fr">FR</option><option value="any" selected>ANY</option></select></td>
+                <td><span class="view-only"><span class="pill pill-info">原样保留</span></span><select class="cell-inp edit-only" data-field="action" aria-label="动作"><option value="force">指定译法</option><option value="forbid">保留原文</option><option value="keep" selected>原样保留</option></select></td>
+                <td><span class="view-only target-cell muted">—</span><input class="cell-inp edit-only" data-field="target" value="" disabled aria-label="目标译法"></td>
+                <td><span class="view-only domain-cell">经营财务</span><input class="cell-inp edit-only" data-field="domain" value="经营财务" aria-label="业务领域（可选）"></td>
+                <td class="r">
+                  <div class="row-ops view-only"><button class="txt-btn" data-edit>编辑</button><button class="txt-btn danger" data-del>删除</button></div>
+                  <div class="row-ops edit-only"><button class="txt-btn" data-save>保存</button><button class="txt-btn" data-cancel>取消</button></div>
+                  <span class="edit-hint edit-only">Enter 保存 · Esc 取消</span>
+                </td>
+              </tr>
+
+              <tr class="gloss-row" data-lang="any" data-domain="" data-search="arcelormittal">
+                <td><span class="view-only source-cell">ArcelorMittal</span><input class="cell-inp cell-mono edit-only" data-field="source" value="ArcelorMittal" aria-label="源词"></td>
+                <td><span class="view-only"><span class="lang lang-any">ANY</span></span><select class="cell-inp edit-only" data-field="lang" aria-label="语言"><option value="en">EN</option><option value="fr">FR</option><option value="any" selected>ANY</option></select></td>
+                <td><span class="view-only"><span class="pill pill-gray">保留原文</span></span><select class="cell-inp edit-only" data-field="action" aria-label="动作"><option value="force">指定译法</option><option value="forbid" selected>保留原文</option><option value="keep">原样保留</option></select></td>
+                <td><span class="view-only target-cell muted">—</span><input class="cell-inp edit-only" data-field="target" value="" disabled aria-label="目标译法"></td>
+                <td><span class="view-only domain-cell">—</span><input class="cell-inp edit-only" data-field="domain" value="" aria-label="业务领域（可选）"></td>
+                <td class="r">
+                  <div class="row-ops view-only"><button class="txt-btn" data-edit>编辑</button><button class="txt-btn danger" data-del>删除</button></div>
+                  <div class="row-ops edit-only"><button class="txt-btn" data-save>保存</button><button class="txt-btn" data-cancel>取消</button></div>
+                  <span class="edit-hint edit-only">Enter 保存 · Esc 取消</span>
+                </td>
+              </tr>
+
+              <tr class="gloss-row" data-lang="en" data-domain="货物运输" data-search="freight rate 运费率">
+                <td><span class="view-only source-cell">freight rate</span><input class="cell-inp cell-mono edit-only" data-field="source" value="freight rate" aria-label="源词"></td>
+                <td><span class="view-only"><span class="lang lang-en">EN</span></span><select class="cell-inp edit-only" data-field="lang" aria-label="语言"><option value="en" selected>EN</option><option value="fr">FR</option><option value="any">ANY</option></select></td>
+                <td><span class="view-only"><span class="pill pill-main">指定译法</span></span><select class="cell-inp edit-only" data-field="action" aria-label="动作"><option value="force" selected>指定译法</option><option value="forbid">保留原文</option><option value="keep">原样保留</option></select></td>
+                <td><span class="view-only target-cell">运费率</span><input class="cell-inp edit-only" data-field="target" value="运费率" aria-label="目标译法"></td>
+                <td><span class="view-only domain-cell">货物运输</span><input class="cell-inp edit-only" data-field="domain" value="货物运输" aria-label="业务领域（可选）"></td>
+                <td class="r">
+                  <div class="row-ops view-only"><button class="txt-btn" data-edit>编辑</button><button class="txt-btn danger" data-del>删除</button></div>
+                  <div class="row-ops edit-only"><button class="txt-btn" data-save>保存</button><button class="txt-btn" data-cancel>取消</button></div>
+                  <span class="edit-hint edit-only">Enter 保存 · Esc 取消</span>
+                </td>
+              </tr>
+
+              <tr class="gloss-row" data-lang="fr" data-domain="货物运输" data-search="connaissement 提单">
+                <td><span class="view-only source-cell">connaissement</span><input class="cell-inp cell-mono edit-only" data-field="source" value="connaissement" aria-label="源词"></td>
+                <td><span class="view-only"><span class="lang lang-fr">FR</span></span><select class="cell-inp edit-only" data-field="lang" aria-label="语言"><option value="en">EN</option><option value="fr" selected>FR</option><option value="any">ANY</option></select></td>
+                <td><span class="view-only"><span class="pill pill-main">指定译法</span></span><select class="cell-inp edit-only" data-field="action" aria-label="动作"><option value="force" selected>指定译法</option><option value="forbid">保留原文</option><option value="keep">原样保留</option></select></td>
+                <td><span class="view-only target-cell">提单</span><input class="cell-inp edit-only" data-field="target" value="提单" aria-label="目标译法"></td>
+                <td><span class="view-only domain-cell">货物运输</span><input class="cell-inp edit-only" data-field="domain" value="货物运输" aria-label="业务领域（可选）"></td>
+                <td class="r">
+                  <div class="row-ops view-only"><button class="txt-btn" data-edit>编辑</button><button class="txt-btn danger" data-del>删除</button></div>
+                  <div class="row-ops edit-only"><button class="txt-btn" data-save>保存</button><button class="txt-btn" data-cancel>取消</button></div>
+                  <span class="edit-hint edit-only">Enter 保存 · Esc 取消</span>
+                </td>
+              </tr>
+
+              <tr class="gloss-row" data-lang="en" data-domain="货物运输" data-search="demurrage 滞期费">
+                <td><span class="view-only source-cell">demurrage</span><input class="cell-inp cell-mono edit-only" data-field="source" value="demurrage" aria-label="源词"></td>
+                <td><span class="view-only"><span class="lang lang-en">EN</span></span><select class="cell-inp edit-only" data-field="lang" aria-label="语言"><option value="en" selected>EN</option><option value="fr">FR</option><option value="any">ANY</option></select></td>
+                <td><span class="view-only"><span class="pill pill-main">指定译法</span></span><select class="cell-inp edit-only" data-field="action" aria-label="动作"><option value="force" selected>指定译法</option><option value="forbid">保留原文</option><option value="keep">原样保留</option></select></td>
+                <td><span class="view-only target-cell">滞期费</span><input class="cell-inp edit-only" data-field="target" value="滞期费" aria-label="目标译法"></td>
+                <td><span class="view-only domain-cell">货物运输</span><input class="cell-inp edit-only" data-field="domain" value="货物运输" aria-label="业务领域（可选）"></td>
+                <td class="r">
+                  <div class="row-ops view-only"><button class="txt-btn" data-edit>编辑</button><button class="txt-btn danger" data-del>删除</button></div>
+                  <div class="row-ops edit-only"><button class="txt-btn" data-save>保存</button><button class="txt-btn" data-cancel>取消</button></div>
+                  <span class="edit-hint edit-only">Enter 保存 · Esc 取消</span>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="tbl-foot">
+          <span>共 <b class="num" style="color:var(--text-2)">42</b> 条 · 当前筛选 <b class="num" id="visibleCount" style="color:var(--text-2)">10</b> 条</span>
+          <span class="spacer"></span>
+          <span>术语变更在下一次翻译 / 重跑时生效</span>
+        </div>
+      </section>
+
+      <!-- ═══ 动作说明 / 生效规则 ═══ -->
+      <div class="grid-2">
+        <section class="card">
+          <div class="card-hd">
+            <h3>动作说明</h3>
+            <span class="hd-sub">术语轴按同一口径硬校验</span>
+          </div>
+          <div class="std-list">
+            <div class="std-row">
+              <span class="std-label">指定译法</span>
+              <span class="std-value">译文必须出现目标译法；缺失即术语轴失败</span>
+              <span class="pill pill-main">force</span>
+            </div>
+            <div class="std-row">
+              <span class="std-label">保留原文</span>
+              <span class="std-value">不译清单：公司名 / 品牌 / 缩写保持原文</span>
+              <span class="pill pill-gray">forbid</span>
+            </div>
+            <div class="std-row">
+              <span class="std-label">原样保留</span>
+              <span class="std-value">与保留原文同效，用于强调按原文写出</span>
+              <span class="pill pill-info">keep</span>
+            </div>
+          </div>
+        </section>
+
+        <section class="card">
+          <div class="card-hd">
+            <h3>生效规则</h3>
+            <span class="hd-sub">与 worker / 机检同源</span>
+          </div>
+          <div class="rule-list">
+            <div class="rule-row"><span class="rule-label">语言维度</span><span class="rule-value">EN / FR 只作用于对应源语言任务；<b>ANY</b> 英法文都生效</span></div>
+            <div class="rule-row"><span class="rule-label">注入方式</span><span class="rule-value">每个 block 只注入命中该段文本的术语，避免全表 token 膨胀</span></div>
+            <div class="rule-row"><span class="rule-label">领域标注</span><span class="rule-value">仅用于组织与筛选，不改变翻译/检索行为；同词同语言目标全局唯一</span></div>
+            <div class="rule-row"><span class="rule-label">变更生效</span><span class="rule-value">任务开始时加载；改动对下一次翻译 / 重跑生效</span></div>
+          </div>
+        </section>
+      </div>
+
+      <div class="note-bar">
+        <svg class="ic" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg>
+        <span>术语表是硬约束，不是提示词备注：译文中未使用指定译法或改写了保留原文词，会直接进入待复核队列。批量维护请优先使用 Excel 导入（合并模式），日常修正在表格内直接编辑。</span>
+      </div>
+    </div>
+  </main>
+</div>
+
+<!-- ═══ Excel 导入预览弹窗 ═══ -->
+<div class="overlay" id="importModal" role="dialog" aria-modal="true" aria-labelledby="importTitle">
+  <div class="modal wide">
+    <div class="modal-hd">
+      <h3 id="importTitle">导入术语表</h3>
+      <span class="pill pill-main">合并导入</span>
+      <button class="x" data-close-import aria-label="关闭导入弹窗">
+        <svg class="ic" viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></svg>
+      </button>
+    </div>
+    <div class="modal-bd">
+      <div class="dropzone" id="dropzone" role="button" tabindex="0" aria-label="选择 Excel 或 CSV 文件">
+        <span class="dz-icon">
+          <svg class="ic" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12"/></svg>
+        </span>
+        <span class="dz-main">拖拽 Excel 到这里，或点击选择文件</span>
+        <span class="dz-sub">支持 .xlsx / .csv · 首行表头 · 最大 2 MB</span>
+      </div>
+
+      <div class="file-chip">
+        <span class="fc-icon">
+          <svg class="ic" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6M8 13h8M8 17h8"/></svg>
+        </span>
+        <span class="fc-main">
+          <span class="fc-name">glossary-2026Q4.xlsx</span>
+          <span class="fc-meta">18 行 · 18.4 KB · 已解析</span>
+        </span>
+        <button class="txt-btn" id="reselect">重新选择</button>
+      </div>
+
+      <div class="col-contract">
+        <span class="cc-label">列契约</span>
+        <span class="col-chip">源词</span>
+        <span class="col-chip">语言</span>
+        <span class="col-chip">动作</span>
+        <span class="col-chip">目标译法</span>
+        <span class="col-chip opt">领域（可选）</span>
+        <span class="spacer"></span>
+        <span class="muted">动作支持 指定译法 / 保留原文 / 原样保留</span>
+      </div>
+
+      <div class="error-summary" id="errorSummary" role="alert">
+        <div class="es-title">
+          <svg class="ic sm" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 8v4M12 16h.01"/></svg>
+          有 1 行未通过校验，请修正后重新上传
+        </div>
+        <ul>
+          <li>第 7 行：动作为「指定译法」但缺少目标译法</li>
+        </ul>
+      </div>
+
+      <div class="import-summary">
+        <div class="is-cell"><span class="is-label">新增</span><span class="is-value add">5</span></div>
+        <div class="is-cell"><span class="is-label">更新</span><span class="is-value upd">3</span></div>
+        <div class="is-cell"><span class="is-label">无变化</span><span class="is-value">9</span></div>
+        <div class="is-cell"><span class="is-label">错误</span><span class="is-value err" id="errorCount">1</span></div>
+        <div class="is-cell"><span class="is-label">合计</span><span class="is-value">18</span></div>
+      </div>
+
+      <div class="preview-wrap">
+        <table class="tbl">
+          <thead>
+            <tr>
+              <th style="width:48px">行</th>
+              <th style="min-width:190px">源词</th>
+              <th style="width:64px">语言</th>
+              <th style="width:100px">动作</th>
+              <th style="min-width:170px">目标译法</th>
+              <th style="width:84px">状态</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td class="muted num">2</td>
+              <td class="cell-mono">iron ore concentrate</td>
+              <td><span class="lang lang-en">EN</span></td>
+              <td>指定译法</td>
+              <td>铁精矿</td>
+              <td><span class="status-pill status-add">新增</span></td>
+            </tr>
+            <tr>
+              <td class="muted num">3</td>
+              <td class="cell-mono">offtake agreement</td>
+              <td><span class="lang lang-en">EN</span></td>
+              <td>指定译法</td>
+              <td>包销协议</td>
+              <td><span class="status-pill status-same">无变化</span></td>
+            </tr>
+            <tr>
+              <td class="muted num">4</td>
+              <td class="cell-mono">contrat d’enlèvement</td>
+              <td><span class="lang lang-fr">FR</span></td>
+              <td>指定译法</td>
+              <td><span class="target-old">提货合同</span>包销协议</td>
+              <td><span class="status-pill status-upd">更新</span></td>
+            </tr>
+            <tr>
+              <td class="muted num">5</td>
+              <td class="cell-mono">freight rate</td>
+              <td><span class="lang lang-en">EN</span></td>
+              <td>指定译法</td>
+              <td>运费率</td>
+              <td><span class="status-pill status-add">新增</span></td>
+            </tr>
+            <tr>
+              <td class="muted num">6</td>
+              <td class="cell-mono">connaissement</td>
+              <td><span class="lang lang-fr">FR</span></td>
+              <td>指定译法</td>
+              <td>提单</td>
+              <td><span class="status-pill status-same">无变化</span></td>
+            </tr>
+            <tr class="row-error" id="errorRow">
+              <td class="muted num">7</td>
+              <td class="cell-mono">force majeure</td>
+              <td><span class="lang lang-en">EN</span></td>
+              <td>指定译法</td>
+              <td><span style="color:var(--error-700)">缺少目标译法</span></td>
+              <td><span class="status-pill status-err">错误</span></td>
+            </tr>
+            <tr>
+              <td class="muted num">8</td>
+              <td class="cell-mono">EBITDA</td>
+              <td><span class="lang lang-any">ANY</span></td>
+              <td>原样保留</td>
+              <td class="muted">—</td>
+              <td><span class="status-pill status-same">无变化</span></td>
+            </tr>
+            <tr>
+              <td class="muted num">9</td>
+              <td class="cell-mono">demurrage</td>
+              <td><span class="lang lang-en">EN</span></td>
+              <td>指定译法</td>
+              <td>滞期费</td>
+              <td><span class="status-pill status-add">新增</span></td>
+            </tr>
+            <tr>
+              <td class="muted num">10</td>
+              <td class="cell-mono">surestaries</td>
+              <td><span class="lang lang-fr">FR</span></td>
+              <td>指定译法</td>
+              <td>滞期费</td>
+              <td><span class="status-pill status-add">新增</span></td>
+            </tr>
+            <tr>
+              <td class="muted num">11</td>
+              <td class="cell-mono">ArcelorMittal</td>
+              <td><span class="lang lang-any">ANY</span></td>
+              <td>保留原文</td>
+              <td class="muted">—</td>
+              <td><span class="status-pill status-same">无变化</span></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+    <div class="modal-ft">
+      <span class="ft-hint">合并模式：按（源词, 语言）upsert；文件中未出现的存量条目保留。</span>
+      <button class="txt-btn" id="demoModeBtn" title="原型演示：切换有无错误两种状态">演示无错误状态</button>
+      <button class="btn btn-sec btn-sm" data-close-import>取消</button>
+      <button class="btn btn-pri btn-sm" id="confirmImport" disabled title="存在未通过校验的行，请先修正">确认导入</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ 新增术语弹窗 ═══ -->
+<div class="overlay" id="addModal" role="dialog" aria-modal="true" aria-labelledby="addTitle">
+  <div class="modal">
+    <div class="modal-hd">
+      <h3 id="addTitle">新增术语</h3>
+      <button class="x" data-close-add aria-label="关闭新增弹窗">
+        <svg class="ic" viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></svg>
+      </button>
+    </div>
+    <div class="modal-bd">
+      <div class="frm-row">
+        <label for="addSource">源词<span class="must">*</span></label>
+        <input class="inp cell-mono" id="addSource" placeholder="例如：iron ore concentrate">
+      </div>
+      <div class="frm-grid">
+        <div class="frm-row">
+          <label for="addLang">语言</label>
+          <select class="inp" id="addLang">
+            <option value="en">EN · 英文</option>
+            <option value="fr">FR · 法文</option>
+            <option value="any">ANY · 英法通用</option>
+          </select>
+        </div>
+        <div class="frm-row">
+          <label for="addAction">动作</label>
+          <select class="inp" id="addAction">
+            <option value="force">指定译法</option>
+            <option value="forbid">保留原文</option>
+            <option value="keep">原样保留</option>
+          </select>
+        </div>
+      </div>
+      <div class="frm-row" id="addTargetRow">
+        <label for="addTarget">目标译法<span class="must">*</span></label>
+        <input class="inp" id="addTarget" placeholder="例如：铁精矿">
+      </div>
+      <div class="frm-row">
+        <label for="addDomain">领域（可选）</label>
+        <input class="inp" id="addDomain" placeholder="例如：铁矿开采" list="domainList">
+        <datalist id="domainList">
+          <option>铁矿开采</option><option>合同法务</option><option>经营财务</option><option>货物运输</option>
+        </datalist>
+        <div class="frm-help">仅用于组织与筛选，不改变术语的生效范围。</div>
+      </div>
+    </div>
+    <div class="modal-ft">
+      <span class="ft-hint">同一（源词, 语言）只允许一个目标译法</span>
+      <button class="btn btn-sec btn-sm" data-close-add>取消</button>
+      <button class="btn btn-pri btn-sm" id="addSave">保存术语</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+(() => {
+  // ── 暗色模式 ──────────────────────────────────────────────
+  const darkToggle = document.getElementById('darkToggle');
+  darkToggle.addEventListener('click', () => {
+    document.documentElement.classList.toggle('dark');
+  });
+
+  // ── Toast ────────────────────────────────────────────────
+  const toastEl = document.getElementById('toast');
+  let toastTimer = null;
+  const toast = (text, sub, kind) => {
+    toastEl.className = 'toast show' + (kind ? ' ' + kind : '');
+    toastEl.innerHTML = text + (sub ? '<small>' + sub + '</small>' : '');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => { toastEl.className = 'toast'; }, 2600);
+  };
+
+  // ── 语言 / 领域 / 搜索筛选 ────────────────────────────────
+  const rows = [...document.querySelectorAll('.gloss-row')];
+  const chips = [...document.querySelectorAll('[data-lang-filter]')];
+  const searchInput = document.getElementById('searchInput');
+  const domainFilter = document.getElementById('domainFilter');
+  const visibleCount = document.getElementById('visibleCount');
+  let langFilter = 'all';
+
+  const applyFilters = () => {
+    const q = searchInput.value.trim().toLowerCase();
+    let n = 0;
+    rows.forEach((row) => {
+      const okLang = langFilter === 'all' || row.dataset.lang === langFilter;
+      const okDomain = domainFilter.value === 'all' || row.dataset.domain === domainFilter.value;
+      const okText = !q || (row.dataset.search || '').toLowerCase().includes(q);
+      const show = okLang && okDomain && okText && row.isConnected;
+      row.style.display = show ? '' : 'none';
+      if (show) n++;
+    });
+    visibleCount.textContent = String(n);
+  };
+
+  chips.forEach((chip) => {
+    chip.addEventListener('click', () => {
+      chips.forEach((c) => c.classList.remove('hl'));
+      chip.classList.add('hl');
+      langFilter = chip.dataset.langFilter;
+      applyFilters();
+    });
+  });
+  searchInput.addEventListener('input', applyFilters);
+  domainFilter.addEventListener('change', applyFilters);
+  applyFilters();
+
+  // ── 行内编辑 ──────────────────────────────────────────────
+  const actionPill = (action) => {
+    if (action === 'force') return '<span class="pill pill-main">指定译法</span>';
+    if (action === 'keep') return '<span class="pill pill-info">原样保留</span>';
+    return '<span class="pill pill-gray">保留原文</span>';
+  };
+  const langBadge = (lang) => {
+    const label = lang === 'en' ? 'EN' : lang === 'fr' ? 'FR' : 'ANY';
+    return '<span class="lang lang-' + lang + '">' + label + '</span>';
+  };
+
+  const setEditing = (row, editing) => {
+    row.classList.toggle('editing', editing);
+    if (editing) {
+      const target = row.querySelector('[data-field="target"]');
+      const action = row.querySelector('[data-field="action"]');
+      target.disabled = action.value !== 'force';
+    }
+  };
+
+  const syncTargetState = (row) => {
+    const action = row.querySelector('[data-field="action"]');
+    const target = row.querySelector('[data-field="target"]');
+    target.disabled = action.value !== 'force';
+    if (action.value !== 'force') target.classList.remove('invalid');
+  };
+
+  const saveRow = (row) => {
+    const source = row.querySelector('[data-field="source"]');
+    const lang = row.querySelector('[data-field="lang"]');
+    const action = row.querySelector('[data-field="action"]');
+    const target = row.querySelector('[data-field="target"]');
+    const domain = row.querySelector('[data-field="domain"]');
+
+    if (source.value.trim().length === 0) {
+      source.classList.add('invalid');
+      source.focus();
+      toast('源词不能为空', '修正后再保存', 'err');
+      return;
+    }
+    if (action.value === 'force' && target.value.trim().length === 0) {
+      target.classList.add('invalid');
+      target.focus();
+      toast('指定译法缺少目标译法', '填写目标译法后再保存', 'err');
+      return;
+    }
+
+    row.dataset.lang = lang.value;
+    row.dataset.domain = domain.value.trim();
+    row.dataset.search = [source.value, target.value, domain.value].join(' ');
+
+    row.querySelector('.source-cell').textContent = source.value.trim();
+    row.querySelector('.view-only .lang').outerHTML = langBadge(lang.value);
+    row.querySelector('.view-only .pill').outerHTML = actionPill(action.value);
+    const targetView = row.querySelector('.target-cell');
+    if (action.value === 'force') {
+      targetView.textContent = target.value.trim();
+      targetView.classList.remove('muted');
+    } else {
+      targetView.textContent = '—';
+      targetView.classList.add('muted');
+    }
+    row.querySelector('.domain-cell').textContent = domain.value.trim() || '—';
+
+    row.classList.remove('editing');
+    toast('已保存', '版本 v3 → v4 · 对下一次翻译生效', 'ok');
+    applyFilters();
+  };
+
+  document.getElementById('glossBody').addEventListener('click', (e) => {
+    const row = e.target.closest('.gloss-row');
+    if (!row) return;
+    if (e.target.closest('[data-edit]')) {
+      row.querySelectorAll('.invalid').forEach((el) => el.classList.remove('invalid'));
+      setEditing(row, true);
+      row.querySelector('[data-field="source"]').focus();
+    } else if (e.target.closest('[data-save]')) {
+      saveRow(row);
+    } else if (e.target.closest('[data-cancel]')) {
+      row.querySelectorAll('.invalid').forEach((el) => el.classList.remove('invalid'));
+      setEditing(row, false);
+    } else if (e.target.closest('[data-del]')) {
+      row.remove();
+      applyFilters();
+      toast('已删除术语', '版本 v3 → v4 · 对下一次翻译生效', 'ok');
+    }
+  });
+
+  document.getElementById('glossBody').addEventListener('change', (e) => {
+    if (e.target.matches('[data-field="action"]')) {
+      syncTargetState(e.target.closest('.gloss-row'));
+    }
+  });
+
+  document.getElementById('glossBody').addEventListener('keydown', (e) => {
+    const row = e.target.closest('.gloss-row.editing');
+    if (!row) return;
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      saveRow(row);
+    } else if (e.key === 'Escape') {
+      row.querySelectorAll('.invalid').forEach((el) => el.classList.remove('invalid'));
+      setEditing(row, false);
+    }
+  });
+
+  // ── 导入弹窗 ──────────────────────────────────────────────
+  const importModal = document.getElementById('importModal');
+  const openImport = () => importModal.classList.add('open');
+  const closeImport = () => importModal.classList.remove('open');
+  document.getElementById('openImport').addEventListener('click', openImport);
+  document.querySelectorAll('[data-close-import]').forEach((el) => el.addEventListener('click', closeImport));
+  importModal.addEventListener('click', (e) => { if (e.target === importModal) closeImport(); });
+
+  const dropzone = document.getElementById('dropzone');
+  dropzone.addEventListener('click', () => toast('原型：选择文件', '真实实现会打开文件选择器', 'ok'));
+  dropzone.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); dropzone.click(); }
+  });
+  document.getElementById('reselect').addEventListener('click', () => toast('原型：重新选择文件'));
+
+  // 演示：错误态 / 无错误态切换
+  let hasErrors = true;
+  const errorSummary = document.getElementById('errorSummary');
+  const errorRow = document.getElementById('errorRow');
+  const errorCount = document.getElementById('errorCount');
+  const confirmImport = document.getElementById('confirmImport');
+  const demoModeBtn = document.getElementById('demoModeBtn');
+  demoModeBtn.addEventListener('click', () => {
+    hasErrors = !hasErrors;
+    errorSummary.style.display = hasErrors ? '' : 'none';
+    errorRow.style.display = hasErrors ? '' : 'none';
+    errorCount.textContent = hasErrors ? '1' : '0';
+    errorCount.classList.toggle('err', hasErrors);
+    confirmImport.disabled = hasErrors;
+    confirmImport.title = hasErrors ? '存在未通过校验的行，请先修正' : '';
+    demoModeBtn.textContent = hasErrors ? '演示无错误状态' : '演示错误状态';
+    toast(hasErrors ? '已切回错误状态' : '已切到无错误状态', hasErrors ? '确认导入保持禁用' : '确认导入已可用', hasErrors ? 'err' : 'ok');
+  });
+  confirmImport.addEventListener('click', () => {
+    closeImport();
+    toast('已导入 17 条术语', '新增 5 · 更新 3 · 无变化 9 · 版本 v3 → v4', 'ok');
+  });
+
+  // ── 新增术语弹窗 ──────────────────────────────────────────
+  const addModal = document.getElementById('addModal');
+  const openAdd = () => addModal.classList.add('open');
+  const closeAdd = () => addModal.classList.remove('open');
+  document.getElementById('openAdd').addEventListener('click', openAdd);
+  document.querySelectorAll('[data-close-add]').forEach((el) => el.addEventListener('click', closeAdd));
+  addModal.addEventListener('click', (e) => { if (e.target === addModal) closeAdd(); });
+
+  const addAction = document.getElementById('addAction');
+  const addTargetRow = document.getElementById('addTargetRow');
+  addAction.addEventListener('change', () => {
+    addTargetRow.style.display = addAction.value === 'force' ? '' : 'none';
+  });
+  document.getElementById('addSave').addEventListener('click', () => {
+    const source = document.getElementById('addSource');
+    const target = document.getElementById('addTarget');
+    if (!source.value.trim() || (addAction.value === 'force' && !target.value.trim())) {
+      toast('请填写必填字段', '源词与指定译法为必填', 'err');
+      return;
+    }
+    closeAdd();
+    toast('已新增术语', '版本 v3 → v4 · 对下一次翻译生效', 'ok');
+  });
+
+  // ── Esc 关闭弹窗 ──────────────────────────────────────────
+  document.addEventListener('keydown', (e) => {
+    if (e.key !== 'Escape') return;
+    if (importModal.classList.contains('open')) { closeImport(); return; }
+    if (addModal.classList.contains('open')) closeAdd();
+  });
+})();
+</script>
+</body>
+</html>

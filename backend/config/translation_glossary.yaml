@@ -1,0 +1,2176 @@
+terms:
+- source: ISO 9001
+  lang: any
+  action: forbid
+- source: annual report
+  lang: en
+  action: force
+  target: 年度报告
+  domains:
+  - 公司治理与文件类型
+  notes: 含矿石储量声明
+- source: sustainability report / ESG report
+  lang: en
+  action: force
+  target: 可持续发展报告／ESG报告
+  domains:
+  - 公司治理与文件类型
+- source: quarterly report
+  lang: en
+  action: force
+  target: 季度报告
+  domains:
+  - 公司治理与文件类型
+  notes: 铁矿公司常发布季度生产发运报告
+- source: ASX announcement
+  lang: en
+  action: force
+  target: 澳交所公告
+  domains:
+  - 公司治理与文件类型
+  notes: 上市铁矿公司常见来源
+- source: technical report
+  lang: en
+  action: force
+  target: 技术报告
+  domains:
+  - 公司治理与文件类型
+  notes: 如 NI 43-101 技术报告
+- source: feasibility study (FS)
+  lang: en
+  action: force
+  target: 可行性研究
+  domains:
+  - 公司治理与文件类型
+- source: pre-feasibility study (PFS)
+  lang: en
+  action: force
+  target: 预可行性研究
+  domains:
+  - 公司治理与文件类型
+- source: scoping study / conceptual study
+  lang: en
+  action: force
+  target: 初步研究／概念研究
+  domains:
+  - 公司治理与文件类型
+  notes: 不可与 FS 混译
+- source: bankable feasibility study (BFS)
+  lang: en
+  action: force
+  target: 可融资可行性研究
+  domains:
+  - 公司治理与文件类型
+- source: life of mine plan (LOMP)
+  lang: en
+  action: force
+  target: 矿山寿命期计划
+  domains:
+  - 公司治理与文件类型
+- source: operational review
+  lang: en
+  action: force
+  target: 运营回顾
+  domains:
+  - 公司治理与文件类型
+- source: production guidance
+  lang: en
+  action: force
+  target: 产量指引
+  domains:
+  - 公司治理与文件类型
+  notes: 年报高频词
+- source: shipments guidance
+  lang: en
+  action: force
+  target: 发运量指引
+  domains:
+  - 公司治理与文件类型
+  notes: 区别于 production
+- source: cost guidance
+  lang: en
+  action: force
+  target: 成本指引
+  domains:
+  - 公司治理与文件类型
+  notes: 通常指 C1 单位成本
+- source: board of directors
+  lang: en
+  action: force
+  target: 董事会
+  domains:
+  - 公司治理与文件类型
+- source: chairman / CEO / COO
+  lang: en
+  action: force
+  target: 董事长／首席执行官／首席运营官
+  domains:
+  - 公司治理与文件类型
+- source: joint venture (JV)
+  lang: en
+  action: force
+  target: 合营企业
+  domains:
+  - 公司治理与文件类型
+- source: unincorporated joint venture (UJV)
+  lang: en
+  action: force
+  target: 非法人合营
+  domains:
+  - 公司治理与文件类型
+  notes: 澳洲矿业常见结构
+- source: subsidiary / associate
+  lang: en
+  action: force
+  target: 子公司／联营企业
+  domains:
+  - 公司治理与文件类型
+- source: non-controlling interest
+  lang: en
+  action: force
+  target: 非控制性权益
+  domains:
+  - 公司治理与文件类型
+- source: related party transaction
+  lang: en
+  action: force
+  target: 关联方交易
+  domains:
+  - 公司治理与文件类型
+- source: mining tenement
+  lang: en
+  action: force
+  target: 矿业权／矿权地
+  domains:
+  - 矿权
+  - 许可与法律合规
+  notes: 统称，不宜译“租户”
+- source: exploration licence / permit
+  lang: en
+  action: force
+  target: 勘探许可证
+  domains:
+  - 矿权
+  - 许可与法律合规
+- source: mining lease
+  lang: en
+  action: force
+  target: 采矿租约／采矿权
+  domains:
+  - 矿权
+  - 许可与法律合规
+  notes: 澳洲常用 lease
+- source: mineral claim
+  lang: en
+  action: force
+  target: 矿权主张／探矿权区
+  domains:
+  - 矿权
+  - 许可与法律合规
+  notes: 北美用法
+- source: tenure
+  lang: en
+  action: force
+  target: 矿权保有／权属
+  domains:
+  - 矿权
+  - 许可与法律合规
+  notes: 动词 hold tenure = 持有矿权
+- source: title / land title
+  lang: en
+  action: force
+  target: 土地所有权
+  domains:
+  - 矿权
+  - 许可与法律合规
+  notes: 与矿权分开
+- source: native title
+  lang: en
+  action: force
+  target: 原住民土地权
+  domains:
+  - 矿权
+  - 许可与法律合规
+  notes: 澳洲专有概念
+- source: Indigenous Land Use Agreement (ILUA)
+  lang: en
+  action: force
+  target: 原住民土地使用协议
+  domains:
+  - 矿权
+  - 许可与法律合规
+- source: traditional owners
+  lang: en
+  action: force
+  target: 传统业主／原住民传统所有者
+  domains:
+  - 矿权
+  - 许可与法律合规
+- source: free, prior and informed consent (FPIC)
+  lang: en
+  action: force
+  target: 自由、事先和知情同意
+  domains:
+  - 矿权
+  - 许可与法律合规
+- source: cultural heritage
+  lang: en
+  action: force
+  target: 文化遗产
+  domains:
+  - 矿权
+  - 许可与法律合规
+  notes: 含遗址、圣址
+- source: heritage survey
+  lang: en
+  action: force
+  target: 文化遗产调查
+  domains:
+  - 矿权
+  - 许可与法律合规
+- source: state agreement
+  lang: en
+  action: force
+  target: 州协议
+  domains:
+  - 矿权
+  - 许可与法律合规
+  notes: 西澳大型铁矿项目特有
+- source: royalty
+  lang: en
+  action: force
+  target: 特许权使用费／权利金
+  domains:
+  - 矿权
+  - 许可与法律合规
+  notes: 政府或地主收取，勿译“版税”
+- source: ad valorem royalty
+  lang: en
+  action: force
+  target: 从价权利金
+  domains:
+  - 矿权
+  - 许可与法律合规
+  notes: 按货值计
+- source: specific royalty
+  lang: en
+  action: force
+  target: 从量权利金
+  domains:
+  - 矿权
+  - 许可与法律合规
+  notes: 按吨计
+- source: production licence
+  lang: en
+  action: force
+  target: 生产许可证
+  domains:
+  - 矿权
+  - 许可与法律合规
+- source: export licence
+  lang: en
+  action: force
+  target: 出口许可证
+  domains:
+  - 矿权
+  - 许可与法律合规
+- source: water licence / water allocation
+  lang: en
+  action: force
+  target: 取水许可证／水配额
+  domains:
+  - 矿权
+  - 许可与法律合规
+  notes: 干旱区关键许可
+- source: environmental permit / works approval
+  lang: en
+  action: force
+  target: 环保许可／施工许可
+  domains:
+  - 矿权
+  - 许可与法律合规
+- source: environmental impact statement (EIS)
+  lang: en
+  action: force
+  target: 环境影响报告书
+  domains:
+  - 矿权
+  - 许可与法律合规
+- source: environmental impact assessment (EIA)
+  lang: en
+  action: force
+  target: 环境影响评价
+  domains:
+  - 矿权
+  - 许可与法律合规
+- source: approval conditions
+  lang: en
+  action: force
+  target: 审批条件
+  domains:
+  - 矿权
+  - 许可与法律合规
+- source: compliance audit
+  lang: en
+  action: force
+  target: 合规审计
+  domains:
+  - 矿权
+  - 许可与法律合规
+- source: breach notice / enforcement order
+  lang: en
+  action: force
+  target: 违规通知／强制执行令
+  domains:
+  - 矿权
+  - 许可与法律合规
+- source: penalty / infringement notice
+  lang: en
+  action: force
+  target: 罚款／违法通知
+  domains:
+  - 矿权
+  - 许可与法律合规
+- source: indemnity
+  lang: en
+  action: force
+  target: 赔偿保证／免责补偿
+  domains:
+  - 矿权
+  - 许可与法律合规
+  notes: 合同条款
+- source: force majeure
+  lang: en
+  action: force
+  target: 不可抗力
+  domains:
+  - 矿权
+  - 许可与法律合规
+  notes: 飓风、洪水常触发
+- source: hardship clause
+  lang: en
+  action: force
+  target: 情势变更条款
+  domains:
+  - 矿权
+  - 许可与法律合规
+- source: governing law
+  lang: en
+  action: force
+  target: 适用法律
+  domains:
+  - 矿权
+  - 许可与法律合规
+- source: arbitration
+  lang: en
+  action: force
+  target: 仲裁
+  domains:
+  - 矿权
+  - 许可与法律合规
+- source: due diligence
+  lang: en
+  action: force
+  target: 尽职调查
+  domains:
+  - 矿权
+  - 许可与法律合规
+- source: data room
+  lang: en
+  action: force
+  target: 资料室／数据室
+  domains:
+  - 矿权
+  - 许可与法律合规
+  notes: 并购用
+- source: share purchase agreement (SPA)
+  lang: en
+  action: force
+  target: 股权购买协议
+  domains:
+  - 矿权
+  - 许可与法律合规
+- source: asset sale agreement
+  lang: en
+  action: force
+  target: 资产出售协议
+  domains:
+  - 矿权
+  - 许可与法律合规
+- source: offtake agreement
+  lang: en
+  action: force
+  target: 包销协议／承购协议
+  domains:
+  - 矿权
+  - 许可与法律合规
+  notes: 铁矿融资关键文件
+- source: take-or-pay
+  lang: en
+  action: force
+  target: 照付不议
+  domains:
+  - 矿权
+  - 许可与法律合规
+- source: pre-emptive right / right of first refusal
+  lang: en
+  action: force
+  target: 优先购买权
+  domains:
+  - 矿权
+  - 许可与法律合规
+- source: change of control
+  lang: en
+  action: force
+  target: 控制权变更
+  domains:
+  - 矿权
+  - 许可与法律合规
+- source: assignment
+  lang: en
+  action: force
+  target: 转让／让与
+  domains:
+  - 矿权
+  - 许可与法律合规
+- source: termination for convenience
+  lang: en
+  action: force
+  target: 无因终止
+  domains:
+  - 矿权
+  - 许可与法律合规
+- source: variation / amendment
+  lang: en
+  action: force
+  target: 变更／修订
+  domains:
+  - 矿权
+  - 许可与法律合规
+- source: representation and warranty
+  lang: en
+  action: force
+  target: 陈述与保证
+  domains:
+  - 矿权
+  - 许可与法律合规
+- source: confidentiality agreement
+  lang: en
+  action: force
+  target: 保密协议
+  domains:
+  - 矿权
+  - 许可与法律合规
+- source: anti-bribery / sanctions / AML-KYC
+  lang: en
+  action: force
+  target: 反贿赂／制裁／反洗钱与客户尽调
+  domains:
+  - 矿权
+  - 许可与法律合规
+  notes: 合规章节高频
+- source: modern slavery statement
+  lang: en
+  action: force
+  target: 现代奴役声明
+  domains:
+  - 矿权
+  - 许可与法律合规
+  notes: 澳洲/英国要求
+- source: beneficial owner
+  lang: en
+  action: force
+  target: 受益所有人
+  domains:
+  - 矿权
+  - 许可与法律合规
+- source: EPC / EPCM contract
+  lang: en
+  action: force
+  target: 工程总承包／工程管理承包合同
+  domains:
+  - 矿权
+  - 许可与法律合规
+  notes: 建设期用
+- source: tolling agreement
+  lang: en
+  action: force
+  target: 代加工协议
+  domains:
+  - 矿权
+  - 许可与法律合规
+  notes: 委托加工球团等
+- source: mineral resources
+  lang: en
+  action: force
+  target: 矿产资源
+  domains:
+  - 资源储量与地质报告（JORC / NI 43-101）
+  notes: 不可译“储量”
+- source: measured / indicated / inferred resources
+  lang: en
+  action: force
+  target: 探明／控制／推断资源量
+  domains:
+  - 资源储量与地质报告（JORC / NI 43-101）
+- source: ore reserves
+  lang: en
+  action: force
+  target: 矿石储量
+  domains:
+  - 资源储量与地质报告（JORC / NI 43-101）
+  notes: 经济可采部分
+- source: proved / probable reserves
+  lang: en
+  action: force
+  target: 证实／概略储量
+  domains:
+  - 资源储量与地质报告（JORC / NI 43-101）
+- source: cut-off grade
+  lang: en
+  action: force
+  target: 边界品位
+  domains:
+  - 资源储量与地质报告（JORC / NI 43-101）
+- source: block model
+  lang: en
+  action: force
+  target: 块体模型
+  domains:
+  - 资源储量与地质报告（JORC / NI 43-101）
+- source: drillhole database
+  lang: en
+  action: force
+  target: 钻孔数据库
+  domains:
+  - 资源储量与地质报告（JORC / NI 43-101）
+- source: core recovery
+  lang: en
+  action: force
+  target: 岩芯采取率
+  domains:
+  - 资源储量与地质报告（JORC / NI 43-101）
+- source: composite sample
+  lang: en
+  action: force
+  target: 组合样
+  domains:
+  - 资源储量与地质报告（JORC / NI 43-101）
+- source: bulk density / specific gravity
+  lang: en
+  action: force
+  target: 容重／比重
+  domains:
+  - 资源储量与地质报告（JORC / NI 43-101）
+  notes: 吨位换算关键
+- source: geostatistics / kriging
+  lang: en
+  action: force
+  target: 地质统计学／克里金法
+  domains:
+  - 资源储量与地质报告（JORC / NI 43-101）
+- source: drilling grid spacing
+  lang: en
+  action: force
+  target: 勘探网度
+  domains:
+  - 资源储量与地质报告（JORC / NI 43-101）
+- source: QA/QC (quality assurance/quality control)
+  lang: en
+  action: force
+  target: 质量保证/质量控制
+  domains:
+  - 资源储量与地质报告（JORC / NI 43-101）
+  notes: 含 duplicate, blank, standard
+- source: competent person / qualified person (QP)
+  lang: en
+  action: force
+  target: 合资格人／合格人
+  domains:
+  - 资源储量与地质报告（JORC / NI 43-101）
+  notes: JORC CP / NI 43-101 QP
+- source: modifying factors
+  lang: en
+  action: force
+  target: 修正因素
+  domains:
+  - 资源储量与地质报告（JORC / NI 43-101）
+  notes: 资源转储量的依据
+- source: mineable reserves
+  lang: en
+  action: force
+  target: 可采储量
+  domains:
+  - 资源储量与地质报告（JORC / NI 43-101）
+  notes: 考虑损失贫化后
+- source: dilution
+  lang: en
+  action: force
+  target: 贫化
+  domains:
+  - 资源储量与地质报告（JORC / NI 43-101）
+  notes: 混入废石
+- source: ore loss
+  lang: en
+  action: force
+  target: 矿石损失
+  domains:
+  - 资源储量与地质报告（JORC / NI 43-101）
+- source: strip ratio
+  lang: en
+  action: force
+  target: 剥采比
+  domains:
+  - 资源储量与地质报告（JORC / NI 43-101）
+  notes: m³/t 或 t/t
+- source: ultimate pit limit (UPL)
+  lang: en
+  action: force
+  target: 最终开采境界
+  domains:
+  - 资源储量与地质报告（JORC / NI 43-101）
+- source: pit shell optimization
+  lang: en
+  action: force
+  target: 境界优化
+  domains:
+  - 资源储量与地质报告（JORC / NI 43-101）
+- source: sensitivity analysis
+  lang: en
+  action: force
+  target: 敏感性分析
+  domains:
+  - 资源储量与地质报告（JORC / NI 43-101）
+- source: banded iron formation (BIF)
+  lang: en
+  action: force
+  target: 条带状含铁建造
+  domains:
+  - 资源储量与地质报告（JORC / NI 43-101）
+- source: hematite / magnetite / goethite / limonite
+  lang: en
+  action: force
+  target: 赤铁矿／磁铁矿／针铁矿／褐铁矿
+  domains:
+  - 资源储量与地质报告（JORC / NI 43-101）
+- source: pisolite / channel iron deposit (CID)
+  lang: en
+  action: force
+  target: 豆状矿／通道式矿床
+  domains:
+  - 资源储量与地质报告（JORC / NI 43-101）
+  notes: 澳洲皮尔巴拉特有
+- source: taconite / itabirite
+  lang: en
+  action: force
+  target: 铁燧岩／伊塔比拉岩
+  domains:
+  - 资源储量与地质报告（JORC / NI 43-101）
+  notes: 北美／巴西
+- source: direct shipping ore (DSO)
+  lang: en
+  action: force
+  target: 直运矿／天然富矿
+  domains:
+  - 资源储量与地质报告（JORC / NI 43-101）
+  notes: 不经选矿直接发运
+- source: overburden / interburden
+  lang: en
+  action: force
+  target: 覆盖层／层间夹石
+  domains:
+  - 资源储量与地质报告（JORC / NI 43-101）
+- source: wall rock / country rock
+  lang: en
+  action: force
+  target: 围岩
+  domains:
+  - 资源储量与地质报告（JORC / NI 43-101）
+- source: weathering profile / leached zone
+  lang: en
+  action: force
+  target: 风化剖面／淋滤带
+  domains:
+  - 资源储量与地质报告（JORC / NI 43-101）
+- source: open-pit mine / opencast
+  lang: en
+  action: force
+  target: 露天矿
+  domains:
+  - 露天开采作业
+- source: bench / bench height
+  lang: en
+  action: force
+  target: 台阶／台阶高度
+  domains:
+  - 露天开采作业
+- source: berm / safety bench
+  lang: en
+  action: force
+  target: 安全平台／留台
+  domains:
+  - 露天开采作业
+- source: face angle / overall slope angle
+  lang: en
+  action: force
+  target: 坡面角／整体边坡角
+  domains:
+  - 露天开采作业
+- source: slope stability
+  lang: en
+  action: force
+  target: 边坡稳定性
+  domains:
+  - 露天开采作业
+- source: ramp / haul road
+  lang: en
+  action: force
+  target: 斜坡道／运输道路
+  domains:
+  - 露天开采作业
+- source: pit bottom / pit floor
+  lang: en
+  action: force
+  target: 坑底
+  domains:
+  - 露天开采作业
+- source: working slope / non-working slope
+  lang: en
+  action: force
+  target: 工作帮／非工作帮
+  domains:
+  - 露天开采作业
+- source: drill and blast
+  lang: en
+  action: force
+  target: 穿孔爆破
+  domains:
+  - 露天开采作业
+- source: blasthole drill / DTH drill / rotary drill
+  lang: en
+  action: force
+  target: 潜孔钻机／牙轮钻机
+  domains:
+  - 露天开采作业
+- source: explosive consumption / powder factor
+  lang: en
+  action: force
+  target: 炸药单耗
+  domains:
+  - 露天开采作业
+- source: oversize / boulder
+  lang: en
+  action: force
+  target: 大块
+  domains:
+  - 露天开采作业
+- source: secondary breaking
+  lang: en
+  action: force
+  target: 二次破碎
+  domains:
+  - 露天开采作业
+- source: electric rope shovel / hydraulic excavator
+  lang: en
+  action: force
+  target: 电铲／液压铲
+  domains:
+  - 露天开采作业
+- source: front-end loader
+  lang: en
+  action: force
+  target: 前装机／轮式装载机
+  domains:
+  - 露天开采作业
+- source: haul truck / dump truck
+  lang: en
+  action: force
+  target: 矿用卡车
+  domains:
+  - 露天开采作业
+- source: dragline
+  lang: en
+  action: force
+  target: 拉铲／拖铲
+  domains:
+  - 露天开采作业
+  notes: 剥离用
+- source: fleet management / dispatch system
+  lang: en
+  action: force
+  target: 车队管理／调度系统
+  domains:
+  - 露天开采作业
+- source: tire management
+  lang: en
+  action: force
+  target: 轮胎管理
+  domains:
+  - 露天开采作业
+  notes: 重要成本项
+- source: in-pit crushing and conveying (IPCC)
+  lang: en
+  action: force
+  target: 坑内破碎与输送
+  domains:
+  - 露天开采作业
+- source: semi-mobile crusher
+  lang: en
+  action: force
+  target: 半移动式破碎机
+  domains:
+  - 露天开采作业
+- source: belt conveyor
+  lang: en
+  action: force
+  target: 带式输送机
+  domains:
+  - 露天开采作业
+- source: ROM pad / ROM stockpile
+  lang: en
+  action: force
+  target: 原矿堆场
+  domains:
+  - 露天开采作业
+  notes: run of mine = 原矿
+- source: blending / homogenisation
+  lang: en
+  action: force
+  target: 配矿／均化
+  domains:
+  - 露天开采作业
+  notes: 稳定品位的关键工序
+- source: chevron stockpiling
+  lang: en
+  action: force
+  target: 人字形堆料
+  domains:
+  - 露天开采作业
+- source: reclaim
+  lang: en
+  action: force
+  target: 取料
+  domains:
+  - 露天开采作业
+  notes: 动词
+- source: waste dump / spoil pile
+  lang: en
+  action: force
+  target: 排土场
+  domains:
+  - 露天开采作业
+- source: mine plan / short-term schedule
+  lang: en
+  action: force
+  target: 采矿计划／短期计划
+  domains:
+  - 露天开采作业
+- source: mining and stripping schedule
+  lang: en
+  action: force
+  target: 采剥计划
+  domains:
+  - 露天开采作业
+- source: mining contractor
+  lang: en
+  action: force
+  target: 采矿承包商
+  domains:
+  - 露天开采作业
+- source: owner-operated
+  lang: en
+  action: force
+  target: 自营
+  domains:
+  - 露天开采作业
+- source: throughput
+  lang: en
+  action: force
+  target: 处理量／吞吐量
+  domains:
+  - 露天开采作业
+- source: utilisation / availability
+  lang: en
+  action: force
+  target: 利用率／可用率
+  domains:
+  - 露天开采作业
+  notes: 设备指标
+- source: tonnes mined / tonnes hauled
+  lang: en
+  action: force
+  target: 采出量／运出量
+  domains:
+  - 露天开采作业
+- source: beneficiation plant / processing plant
+  lang: en
+  action: force
+  target: 选矿厂／加工厂
+  domains:
+  - 破碎筛分
+  - 选矿与球团烧结
+  notes: 铁矿多用 beneficiation
+- source: crushing and screening plant (CSP)
+  lang: en
+  action: force
+  target: 破碎筛分厂
+  domains:
+  - 破碎筛分
+  - 选矿与球团烧结
+  notes: 干法主流
+- source: primary / secondary / tertiary crushing
+  lang: en
+  action: force
+  target: 粗碎／中碎／细碎
+  domains:
+  - 破碎筛分
+  - 选矿与球团烧结
+- source: gyratory crusher / jaw crusher / cone crusher
+  lang: en
+  action: force
+  target: 旋回／颚式／圆锥破碎机
+  domains:
+  - 破碎筛分
+  - 选矿与球团烧结
+- source: high pressure grinding rolls (HPGR)
+  lang: en
+  action: force
+  target: 高压辊磨机
+  domains:
+  - 破碎筛分
+  - 选矿与球团烧结
+- source: vibrating screen / scalping screen
+  lang: en
+  action: force
+  target: 振动筛／预先筛分筛
+  domains:
+  - 破碎筛分
+  - 选矿与球团烧结
+- source: wet processing / dry processing
+  lang: en
+  action: force
+  target: 湿法加工／干法加工
+  domains:
+  - 破碎筛分
+  - 选矿与球团烧结
+  notes: 澳洲节水趋势
+- source: scrubbing / washing
+  lang: en
+  action: force
+  target: 洗矿
+  domains:
+  - 破碎筛分
+  - 选矿与球团烧结
+  notes: 去除黏土
+- source: trommel / scrubber
+  lang: en
+  action: force
+  target: 滚筒洗矿机
+  domains:
+  - 破碎筛分
+  - 选矿与球团烧结
+- source: hydrocyclone
+  lang: en
+  action: force
+  target: 水力旋流器
+  domains:
+  - 破碎筛分
+  - 选矿与球团烧结
+- source: dense medium separation (DMS)
+  lang: en
+  action: force
+  target: 重介质分选
+  domains:
+  - 破碎筛分
+  - 选矿与球团烧结
+  notes: 块矿提品位
+- source: dense medium cyclone (DMC)
+  lang: en
+  action: force
+  target: 重介质旋流器
+  domains:
+  - 破碎筛分
+  - 选矿与球团烧结
+- source: jig / spiral concentrator / shaking table
+  lang: en
+  action: force
+  target: 跳汰机／螺旋溜槽／摇床
+  domains:
+  - 破碎筛分
+  - 选矿与球团烧结
+- source: magnetic separation
+  lang: en
+  action: force
+  target: 磁选
+  domains:
+  - 破碎筛分
+  - 选矿与球团烧结
+- source: low-intensity (LIMS) / high-intensity (WHIMS)
+  lang: en
+  action: force
+  target: 弱磁选／强磁选
+  domains:
+  - 破碎筛分
+  - 选矿与球团烧结
+- source: reverse flotation / cationic reverse flotation
+  lang: en
+  action: force
+  target: 反浮选／阳离子反浮选
+  domains:
+  - 破碎筛分
+  - 选矿与球团烧结
+  notes: 浮出石英脉石
+- source: thickener / flocculation
+  lang: en
+  action: force
+  target: 浓密机／絮凝
+  domains:
+  - 破碎筛分
+  - 选矿与球团烧结
+- source: filter press / disc filter / ceramic filter
+  lang: en
+  action: force
+  target: 压滤机／圆盘过滤机／陶瓷过滤机
+  domains:
+  - 破碎筛分
+  - 选矿与球团烧结
+- source: tailings / middlings / concentrate
+  lang: en
+  action: force
+  target: 尾矿／中矿／精矿
+  domains:
+  - 破碎筛分
+  - 选矿与球团烧结
+  notes: concentrate ≠ 浓缩液
+- source: pellet feed / sinter feed / lump / fines
+  lang: en
+  action: force
+  target: 球团粉矿／烧结粉矿／块矿／粉矿
+  domains:
+  - 破碎筛分
+  - 选矿与球团烧结
+  notes: 四大产品形态
+- source: ultrafines / blue dust
+  lang: en
+  action: force
+  target: 超细粉／蓝粉
+  domains:
+  - 破碎筛分
+  - 选矿与球团烧结
+  notes: 易扬尘流失
+- source: grind size P80
+  lang: en
+  action: force
+  target: 磨矿细度P80
+  domains:
+  - 破碎筛分
+  - 选矿与球团烧结
+  notes: 80%通过粒度
+- source: liberation / grindability
+  lang: en
+  action: force
+  target: 解离度／可磨性
+  domains:
+  - 破碎筛分
+  - 选矿与球团烧结
+- source: metallurgical testwork / flowsheet
+  lang: en
+  action: force
+  target: 选冶试验／工艺流程图
+  domains:
+  - 破碎筛分
+  - 选矿与球团烧结
+- source: mass balance / water balance
+  lang: en
+  action: force
+  target: 物料平衡／水平衡
+  domains:
+  - 破碎筛分
+  - 选矿与球团烧结
+- source: recovery / yield / concentration ratio
+  lang: en
+  action: force
+  target: 回收率／产率／选矿比
+  domains:
+  - 破碎筛分
+  - 选矿与球团烧结
+  notes: yield 在冶炼段常指“收得率”
+- source: pellet plant / pelletising
+  lang: en
+  action: force
+  target: 球团厂／球团化
+  domains:
+  - 破碎筛分
+  - 选矿与球团烧结
+- source: disc pelletizer / green pellet / fired pellet
+  lang: en
+  action: force
+  target: 圆盘造球机／生球／焙烧球团
+  domains:
+  - 破碎筛分
+  - 选矿与球团烧结
+  notes: green = 未焙烧
+- source: grate-kiln / traveling grate / shaft furnace
+  lang: en
+  action: force
+  target: 链篦机-回转窑／带式焙烧机／竖炉
+  domains:
+  - 破碎筛分
+  - 选矿与球团烧结
+- source: bentonite binder
+  lang: en
+  action: force
+  target: 膨润土粘结剂
+  domains:
+  - 破碎筛分
+  - 选矿与球团烧结
+- source: compressive strength (CCS) / drop strength
+  lang: en
+  action: force
+  target: 抗压强度／落下强度
+  domains:
+  - 破碎筛分
+  - 选矿与球团烧结
+- source: sinter plant / return fines
+  lang: en
+  action: force
+  target: 烧结厂／返矿
+  domains:
+  - 破碎筛分
+  - 选矿与球团烧结
+- source: fluxed pellet / acid pellet
+  lang: en
+  action: force
+  target: 熔剂性球团／酸性球团
+  domains:
+  - 破碎筛分
+  - 选矿与球团烧结
+- source: grade / Fe content / TFe
+  lang: en
+  action: force
+  target: 品位／铁含量／全铁
+  domains:
+  - 质量检验与产品规格（贸易争议高发区）
+  notes: grade 不是“等级”
+- source: silica / alumina / phosphorus / sulfur
+  lang: en
+  action: force
+  target: 二氧化硅／氧化铝／磷／硫
+  domains:
+  - 质量检验与产品规格（贸易争议高发区）
+  notes: 杂质四项
+- source: loss on ignition (LOI)
+  lang: en
+  action: force
+  target: 烧损
+  domains:
+  - 质量检验与产品规格（贸易争议高发区）
+- source: alkalis (K₂O, Na₂O)
+  lang: en
+  action: force
+  target: 碱金属
+  domains:
+  - 质量检验与产品规格（贸易争议高发区）
+- source: size distribution / top size
+  lang: en
+  action: force
+  target: 粒度分布／上限粒度
+  domains:
+  - 质量检验与产品规格（贸易争议高发区）
+  notes: 6.3–31.5 mm 等
+- source: total moisture / surface moisture
+  lang: en
+  action: force
+  target: 全水分／表面水分
+  domains:
+  - 质量检验与产品规格（贸易争议高发区）
+- source: wet basis / dry basis
+  lang: en
+  action: force
+  target: 湿基／干基
+  domains:
+  - 质量检验与产品规格（贸易争议高发区）
+- source: tumbler index (TI) / abrasion index (AI)
+  lang: en
+  action: force
+  target: 转鼓指数／磨损指数
+  domains:
+  - 质量检验与产品规格（贸易争议高发区）
+  notes: ISO 3271
+- source: reduction degradation index (RDI)
+  lang: en
+  action: force
+  target: 低温还原粉化指数
+  domains:
+  - 质量检验与产品规格（贸易争议高发区）
+  notes: 勿与 RI 混淆
+- source: reducibility index (RI)
+  lang: en
+  action: force
+  target: 还原度指数
+  domains:
+  - 质量检验与产品规格（贸易争议高发区）
+- source: softening and melting properties
+  lang: en
+  action: force
+  target: 软熔性能
+  domains:
+  - 质量检验与产品规格（贸易争议高发区）
+- source: sampling / sample preparation
+  lang: en
+  action: force
+  target: 取样／制样
+  domains:
+  - 质量检验与产品规格（贸易争议高发区）
+  notes: ISO 3082 / 3083
+- source: increment / gross sample / laboratory sample
+  lang: en
+  action: force
+  target: 份样／大样／实验室样
+  domains:
+  - 质量检验与产品规格（贸易争议高发区）
+- source: moisture sample / umpire sample
+  lang: en
+  action: force
+  target: 水分样／仲裁样
+  domains:
+  - 质量检验与产品规格（贸易争议高发区）
+- source: certificate of quality / of weight
+  lang: en
+  action: force
+  target: 品质证书／重量证书
+  domains:
+  - 质量检验与产品规格（贸易争议高发区）
+- source: draft survey
+  lang: en
+  action: force
+  target: 水尺计重
+  domains:
+  - 质量检验与产品规格（贸易争议高发区）
+- source: inspection agency (SGS, BV, AHK, CCIC)
+  lang: en
+  action: force
+  target: 检验机构
+  domains:
+  - 质量检验与产品规格（贸易争议高发区）
+- source: rejection limit / penalty threshold
+  lang: en
+  action: force
+  target: 拒收限／扣罚界限
+  domains:
+  - 质量检验与产品规格（贸易争议高发区）
+- source: specification / typical analysis
+  lang: en
+  action: force
+  target: 规格／典型成分
+  domains:
+  - 质量检验与产品规格（贸易争议高发区）
+- source: load-out facility / rail load-out
+  lang: en
+  action: force
+  target: 装车设施／铁路装车点
+  domains:
+  - 运输：矿山—铁路—港口—海运
+- source: loop loading system
+  lang: en
+  action: force
+  target: 环形装车线
+  domains:
+  - 运输：矿山—铁路—港口—海运
+  notes: 不停车装车
+- source: wagon tippler / car dumper
+  lang: en
+  action: force
+  target: 翻车机
+  domains:
+  - 运输：矿山—铁路—港口—海运
+- source: heavy-haul railway
+  lang: en
+  action: force
+  target: 重载铁路
+  domains:
+  - 运输：矿山—铁路—港口—海运
+  notes: 轴重 30–40 t
+- source: axle load
+  lang: en
+  action: force
+  target: 轴重
+  domains:
+  - 运输：矿山—铁路—港口—海运
+- source: transfer station
+  lang: en
+  action: force
+  target: 转运站
+  domains:
+  - 运输：矿山—铁路—港口—海运
+- source: stacker / reclaimer / stacker-reclaimer
+  lang: en
+  action: force
+  target: 堆料机／取料机／堆取料机
+  domains:
+  - 运输：矿山—铁路—港口—海运
+- source: stockyard / stockpile
+  lang: en
+  action: force
+  target: 料场／堆场
+  domains:
+  - 运输：矿山—铁路—港口—海运
+- source: blending stockpile
+  lang: en
+  action: force
+  target: 均化堆
+  domains:
+  - 运输：矿山—铁路—港口—海运
+- source: shiploader / unloader
+  lang: en
+  action: force
+  target: 装船机／卸船机
+  domains:
+  - 运输：矿山—铁路—港口—海运
+- source: berth / jetty / wharf
+  lang: en
+  action: force
+  target: 泊位／码头
+  domains:
+  - 运输：矿山—铁路—港口—海运
+- source: draft / dredging
+  lang: en
+  action: force
+  target: 吃水／疏浚
+  domains:
+  - 运输：矿山—铁路—港口—海运
+  notes: 决定靠泊船型
+- source: loading rate / discharge rate
+  lang: en
+  action: force
+  target: 装载率／卸货率
+  domains:
+  - 运输：矿山—铁路—港口—海运
+  notes: t/h
+- source: chain capacity / supply chain
+  lang: en
+  action: force
+  target: 链条能力／供应链
+  domains:
+  - 运输：矿山—铁路—港口—海运
+  notes: 矿—铁—港整体
+- source: bottleneck
+  lang: en
+  action: force
+  target: 瓶颈
+  domains:
+  - 运输：矿山—铁路—港口—海运
+- source: throughput capacity
+  lang: en
+  action: force
+  target: 吞吐能力
+  domains:
+  - 运输：矿山—铁路—港口—海运
+  notes: Mtpa
+- source: Capesize / Newcastlemax / Kamsarmax
+  lang: en
+  action: force
+  target: 海岬型／纽卡斯尔型／卡姆萨尔型
+  domains:
+  - 运输：矿山—铁路—港口—海运
+  notes: 散货船型
+- source: VLOC / Valemax
+  lang: en
+  action: force
+  target: 超大型矿砂船
+  domains:
+  - 运输：矿山—铁路—港口—海运
+  notes: 约 40 万 DWT
+- source: bulk carrier / bulk vessel
+  lang: en
+  action: force
+  target: 散货船
+  domains:
+  - 运输：矿山—铁路—港口—海运
+- source: bill of lading (B/L)
+  lang: en
+  action: force
+  target: 提单
+  domains:
+  - 运输：矿山—铁路—港口—海运
+- source: notice of readiness (NOR)
+  lang: en
+  action: force
+  target: 准备就绪通知书
+  domains:
+  - 运输：矿山—铁路—港口—海运
+  notes: 起算 laytime
+- source: laytime / demurrage / despatch
+  lang: en
+  action: force
+  target: 装卸时间／滞期费／速遣费
+  domains:
+  - 运输：矿山—铁路—港口—海运
+  notes: despatch 常为 demurrage 一半
+- source: charter party
+  lang: en
+  action: force
+  target: 租船合同
+  domains:
+  - 运输：矿山—铁路—港口—海运
+- source: freight / ocean freight
+  lang: en
+  action: force
+  target: 运费／海运费
+  domains:
+  - 运输：矿山—铁路—港口—海运
+- source: Baltic Capesize Index (BCI)
+  lang: en
+  action: force
+  target: 波罗的海海岬型指数
+  domains:
+  - 运输：矿山—铁路—港口—海运
+- source: cargo afloat / port arrivals
+  lang: en
+  action: force
+  target: 在途货物／到港量
+  domains:
+  - 运输：矿山—铁路—港口—海运
+  notes: 市场数据用语
+- source: shipments / dispatches
+  lang: en
+  action: force
+  target: 发运量
+  domains:
+  - 运输：矿山—铁路—港口—海运
+  notes: 周度数据
+- source: inventory / stockpile reconciliation
+  lang: en
+  action: force
+  target: 库存／堆场盘存对账
+  domains:
+  - 运输：矿山—铁路—港口—海运
+- source: moisture deduction
+  lang: en
+  action: force
+  target: 水分扣减
+  domains:
+  - 运输：矿山—铁路—港口—海运
+  notes: 结算关键
+- source: transshipment
+  lang: en
+  action: force
+  target: 中转／过驳
+  domains:
+  - 运输：矿山—铁路—港口—海运
+- source: long-term agreement (LTA)
+  lang: en
+  action: force
+  target: 长期协议
+  domains:
+  - 销售合同与定价
+- source: spot cargo / tender
+  lang: en
+  action: force
+  target: 现货船货／招标
+  domains:
+  - 销售合同与定价
+- source: index-linked pricing
+  lang: en
+  action: force
+  target: 指数挂钩定价
+  domains:
+  - 销售合同与定价
+  notes: Platts IODEX、TSI、Argus
+- source: benchmark 62% Fe CFR China
+  lang: en
+  action: force
+  target: 62%品位基准价 CFR中国
+  domains:
+  - 销售合同与定价
+- source: pricing period / quotation period
+  lang: en
+  action: force
+  target: 计价期／作价期
+  domains:
+  - 销售合同与定价
+- source: monthly average / quarterly average
+  lang: en
+  action: force
+  target: 月均价／季均价
+  domains:
+  - 销售合同与定价
+- source: premium / discount
+  lang: en
+  action: force
+  target: 溢价／折价
+  domains:
+  - 销售合同与定价
+  notes: 块矿溢价、球团溢价
+- source: grade adjustment
+  lang: en
+  action: force
+  target: 品位调整
+  domains:
+  - 销售合同与定价
+  notes: +1% Fe 加价规则
+- source: penalty for impurities
+  lang: en
+  action: force
+  target: 杂质扣罚
+  domains:
+  - 销售合同与定价
+- source: provisional invoice / final invoice
+  lang: en
+  action: force
+  target: 临时发票／最终发票
+  domains:
+  - 销售合同与定价
+  notes: 常 90% 预付 + 尾款
+- source: price retroactivity / retroactive adjustment
+  lang: en
+  action: force
+  target: 价格追溯／追溯调整
+  domains:
+  - 销售合同与定价
+- source: price realisation
+  lang: en
+  action: force
+  target: 价格实现率
+  domains:
+  - 销售合同与定价
+  notes: 相对指数的实现水平
+- source: realised price
+  lang: en
+  action: force
+  target: 实现价格
+  domains:
+  - 销售合同与定价
+- source: FOB / CFR / CIF
+  lang: en
+  action: force
+  target: 离岸价／成本加运费／到岸价
+  domains:
+  - 销售合同与定价
+  notes: 铁矿多用 CFR
+- source: transfer of title / risk passes
+  lang: en
+  action: force
+  target: 所有权转移／风险转移
+  domains:
+  - 销售合同与定价
+- source: letter of credit (L/C)
+  lang: en
+  action: force
+  target: 信用证
+  domains:
+  - 销售合同与定价
+- source: hedging / swap / futures
+  lang: en
+  action: force
+  target: 套期保值／掉期／期货
+  domains:
+  - 销售合同与定价
+  notes: SGX、DCE
+- source: cash flow hedge / hedge accounting
+  lang: en
+  action: force
+  target: 现金流量套期／套期会计
+  domains:
+  - 销售合同与定价
+- source: mark-to-market
+  lang: en
+  action: force
+  target: 盯市估值
+  domains:
+  - 销售合同与定价
+- source: force majeure (weather, cyclone)
+  lang: en
+  action: force
+  target: 不可抗力（天气、气旋）
+  domains:
+  - 销售合同与定价
+  notes: 澳洲北部常见
+- source: revenue from contracts with customers
+  lang: en
+  action: force
+  target: 客户合同收入
+  domains:
+  - 财务
+  - 成本与会
+  notes: IFRS 15
+- source: point-in-time recognition
+  lang: en
+  action: force
+  target: 某一时点确认
+  domains:
+  - 财务
+  - 成本与会
+  notes: 控制权通常在装港或卸港转移
+- source: variable consideration
+  lang: en
+  action: force
+  target: 可变对价
+  domains:
+  - 财务
+  - 成本与会
+  notes: 品位、水分、运费的最终调整
+- source: provisional pricing adjustment
+  lang: en
+  action: force
+  target: 暂定价调整
+  domains:
+  - 财务
+  - 成本与会
+  notes: 跨期调整，审计关注点
+- source: cost of sales
+  lang: en
+  action: force
+  target: 销售成本
+  domains:
+  - 财务
+  - 成本与会
+  notes: 含生产成本、权利金、运费
+- source: C1 cash cost
+  lang: en
+  action: force
+  target: C1 现金成本
+  domains:
+  - 财务
+  - 成本与会
+  notes: 行业通用口径
+- source: unit cost (per DMT, FOB/CIF)
+  lang: en
+  action: force
+  target: 单位成本（每干吨，FOB/CIF）
+  domains:
+  - 财务
+  - 成本与会
+- source: all-in cost / sustaining capex
+  lang: en
+  action: force
+  target: 全口径成本／维持性资本支出
+  domains:
+  - 财务
+  - 成本与会
+- source: non-sustaining / growth capex
+  lang: en
+  action: force
+  target: 非维持性／增长性资本支出
+  domains:
+  - 财务
+  - 成本与会
+- source: capitalised stripping costs
+  lang: en
+  action: force
+  target: 资本化剥离成本
+  domains:
+  - 财务
+  - 成本与会
+  notes: IFRIC 20 / IAS 16
+- source: stripping activity asset
+  lang: en
+  action: force
+  target: 剥离活动资产
+  domains:
+  - 财务
+  - 成本与会
+  notes: 铁矿露天矿特有科目
+- source: depletion, depreciation and amortisation (DD&A)
+  lang: en
+  action: force
+  target: 折耗、折旧与摊销
+  domains:
+  - 财务
+  - 成本与会
+  notes: 矿产行业惯用 DD&A
+- source: units-of-production method
+  lang: en
+  action: force
+  target: 产量法
+  domains:
+  - 财务
+  - 成本与会
+  notes: 折旧方法
+- source: restoration / rehabilitation provision
+  lang: en
+  action: force
+  target: 复垦准备金
+  domains:
+  - 财务
+  - 成本与会
+  notes: IAS 37，亦称 decommissioning provision
+- source: discount rate / unwinding of discount
+  lang: en
+  action: force
+  target: 折现率／折现还原
+  domains:
+  - 财务
+  - 成本与会
+  notes: 准备金计量
+- source: impairment / impairment reversal
+  lang: en
+  action: force
+  target: 减值／减值转回
+  domains:
+  - 财务
+  - 成本与会
+  notes: CGU 层面测试
+- source: cash-generating unit (CGU)
+  lang: en
+  action: force
+  target: 现金产生单元
+  domains:
+  - 财务
+  - 成本与会
+- source: fair value less costs of disposal
+  lang: en
+  action: force
+  target: 公允价值减处置费用
+  domains:
+  - 财务
+  - 成本与会
+- source: value in use
+  lang: en
+  action: force
+  target: 使用价值
+  domains:
+  - 财务
+  - 成本与会
+- source: exploration and evaluation assets
+  lang: en
+  action: force
+  target: 勘探与评价资产
+  domains:
+  - 财务
+  - 成本与会
+  notes: IFRS 6
+- source: deferred tax
+  lang: en
+  action: force
+  target: 递延税项
+  domains:
+  - 财务
+  - 成本与会
+- source: foreign exchange translation
+  lang: en
+  action: force
+  target: 外币折算
+  domains:
+  - 财务
+  - 成本与会
+- source: EBITDA / underlying EBIT
+  lang: en
+  action: force
+  target: 息税折旧摊销前利润／核心息税前利润
+  domains:
+  - 财务
+  - 成本与会
+- source: net debt / gearing
+  lang: en
+  action: force
+  target: 净债务／杠杆率
+  domains:
+  - 财务
+  - 成本与会
+- source: earnings per share (EPS)
+  lang: en
+  action: force
+  target: 每股收益
+  domains:
+  - 财务
+  - 成本与会
+- source: dividend / franking credit / buy-back
+  lang: en
+  action: force
+  target: 股息／股息抵免／股份回购
+  domains:
+  - 财务
+  - 成本与会
+  notes: 澳洲公司特有
+- source: capital management
+  lang: en
+  action: force
+  target: 资本管理
+  domains:
+  - 财务
+  - 成本与会
+- source: joint operation / operator
+  lang: en
+  action: force
+  target: 联合经营／作业者
+  domains:
+  - 财务
+  - 成本与会
+  notes: UJV 下常见
+- source: farm-in / farm-out agreement
+  lang: en
+  action: force
+  target: 权益转入／转出协议
+  domains:
+  - 财务
+  - 成本与会
+- source: ore reserve statement
+  lang: en
+  action: force
+  target: 矿石储量声明
+  domains:
+  - 财务
+  - 成本与会
+  notes: 年报法定披露
+- source: reconciliation of reserves
+  lang: en
+  action: force
+  target: 储量变动调节表
+  domains:
+  - 财务
+  - 成本与会
+  notes: 期初—开采—新增—期末
+- source: production cost / mining cost / processing cost
+  lang: en
+  action: force
+  target: 生产成本／采矿成本／加工成本
+  domains:
+  - 财务
+  - 成本与会
+  notes: 成本分解
+- source: royalty expense
+  lang: en
+  action: force
+  target: 权利金费用
+  domains:
+  - 财务
+  - 成本与会
+- source: government royalty / private royalty
+  lang: en
+  action: force
+  target: 政府权利金／私人权利金
+  domains:
+  - 财务
+  - 成本与会
+- source: working capital / ROM inventory
+  lang: en
+  action: force
+  target: 营运资金／原矿库存
+  domains:
+  - 财务
+  - 成本与会
+  notes: 库存属在产品
+- source: contingent liability
+  lang: en
+  action: force
+  target: 或有负债
+  domains:
+  - 财务
+  - 成本与会
+  notes: 环保、诉讼、遗产索赔
+- source: going concern
+  lang: en
+  action: force
+  target: 持续经营
+  domains:
+  - 财务
+  - 成本与会
+- source: corporate income tax
+  lang: en
+  action: force
+  target: 企业所得税
+  domains:
+  - 税务
+- source: resource rent tax / minerals resource rent tax
+  lang: en
+  action: force
+  target: 资源租金税
+  domains:
+  - 税务
+  notes: 澳洲 MRRT 已废止，历史文件仍见
+- source: withholding tax
+  lang: en
+  action: force
+  target: 预提税
+  domains:
+  - 税务
+  notes: 股息、利息、权利金
+- source: transfer pricing
+  lang: en
+  action: force
+  target: 转让定价
+  domains:
+  - 税务
+  notes: 集团内销售重点关注
+- source: customs duty / import duty
+  lang: en
+  action: force
+  target: 关税／进口税
+  domains:
+  - 税务
+- source: goods and services tax (GST) / VAT
+  lang: en
+  action: force
+  target: 商品服务税／增值税
+  domains:
+  - 税务
+- source: stamp duty
+  lang: en
+  action: force
+  target: 印花税
+  domains:
+  - 税务
+  notes: 矿权转让涉及
+- source: tax consolidation
+  lang: en
+  action: force
+  target: 税务合并
+  domains:
+  - 税务
+- source: accelerated depreciation / immediate expensing
+  lang: en
+  action: force
+  target: 加速折旧／一次性扣除
+  domains:
+  - 税务
+- source: tax ruling / private ruling
+  lang: en
+  action: force
+  target: 税务裁定／私人裁定
+  domains:
+  - 税务
+- source: double tax agreement (DTA)
+  lang: en
+  action: force
+  target: 双重征税协定
+  domains:
+  - 税务
+- source: occupational health and safety (OHS)
+  lang: en
+  action: force
+  target: 职业健康与安全
+  domains:
+  - 安全
+  - 健康
+  - 环保与社区（HSE / ESG）
+- source: lost time injury frequency rate (LTIFR)
+  lang: en
+  action: force
+  target: 损工伤害频率
+  domains:
+  - 安全
+  - 健康
+  - 环保与社区（HSE / ESG）
+  notes: 年报安全核心指标
+- source: total recordable injury rate (TRIR)
+  lang: en
+  action: force
+  target: 总可记录伤害率
+  domains:
+  - 安全
+  - 健康
+  - 环保与社区（HSE / ESG）
+- source: fatality / near miss
+  lang: en
+  action: force
+  target: 死亡事故／未遂事件
+  domains:
+  - 安全
+  - 健康
+  - 环保与社区（HSE / ESG）
+- source: critical control / major hazard
+  lang: en
+  action: force
+  target: 关键控制／重大危险源
+  domains:
+  - 安全
+  - 健康
+  - 环保与社区（HSE / ESG）
+- source: lock-out tag-out (LOTO)
+  lang: en
+  action: force
+  target: 隔离上锁挂牌
+  domains:
+  - 安全
+  - 健康
+  - 环保与社区（HSE / ESG）
+- source: light vehicle interaction
+  lang: en
+  action: force
+  target: 轻型车辆交互风险
+  domains:
+  - 安全
+  - 健康
+  - 环保与社区（HSE / ESG）
+  notes: 矿区首要致死风险
+- source: rockfall / slope failure
+  lang: en
+  action: force
+  target: 落石／边坡失稳
+  domains:
+  - 安全
+  - 健康
+  - 环保与社区（HSE / ESG）
+- source: tailings storage facility (TSF)
+  lang: en
+  action: force
+  target: 尾矿储存设施
+  domains:
+  - 安全
+  - 健康
+  - 环保与社区（HSE / ESG）
+  notes: 不用 tailings dam 更规范
+- source: upstream/downstream/centreline construction
+  lang: en
+  action: force
+  target: 上游法／下游法／中线法筑坝
+  domains:
+  - 安全
+  - 健康
+  - 环保与社区（HSE / ESG）
+- source: phreatic surface / piezometer
+  lang: en
+  action: force
+  target: 浸润线／测压管
+  domains:
+  - 安全
+  - 健康
+  - 环保与社区（HSE / ESG）
+- source: dam breach / failure consequence category
+  lang: en
+  action: force
+  target: 溃坝／失效后果等级
+  domains:
+  - 安全
+  - 健康
+  - 环保与社区（HSE / ESG）
+  notes: GISTM 用语
+- source: Global Industry Standard on Tailings Management (GISTM)
+  lang: en
+  action: force
+  target: 全球尾矿管理标准
+  domains:
+  - 安全
+  - 健康
+  - 环保与社区（HSE / ESG）
+- source: acid mine drainage (AMD)
+  lang: en
+  action: force
+  target: 酸性矿山排水
+  domains:
+  - 安全
+  - 健康
+  - 环保与社区（HSE / ESG）
+- source: neutral mine drainage
+  lang: en
+  action: force
+  target: 中性矿山排水
+  domains:
+  - 安全
+  - 健康
+  - 环保与社区（HSE / ESG）
+- source: water treatment plant (WTP)
+  lang: en
+  action: force
+  target: 水处理厂
+  domains:
+  - 安全
+  - 健康
+  - 环保与社区（HSE / ESG）
+- source: dust suppression / chemical suppressant
+  lang: en
+  action: force
+  target: 抑尘／化学抑尘剂
+  domains:
+  - 安全
+  - 健康
+  - 环保与社区（HSE / ESG）
+- source: noise attenuation / vibration
+  lang: en
+  action: force
+  target: 降噪／振动
+  domains:
+  - 安全
+  - 健康
+  - 环保与社区（HSE / ESG）
+- source: biodiversity / offset
+  lang: en
+  action: force
+  target: 生物多样性／补偿措施
+  domains:
+  - 安全
+  - 健康
+  - 环保与社区（HSE / ESG）
+- source: land rehabilitation / closure plan
+  lang: en
+  action: force
+  target: 土地复垦／关闭计划
+  domains:
+  - 安全
+  - 健康
+  - 环保与社区（HSE / ESG）
+  notes: 澳用 rehabilitation
+- source: rehabilitation bond / closure bond
+  lang: en
+  action: force
+  target: 复垦保证金／闭矿保证金
+  domains:
+  - 安全
+  - 健康
+  - 环保与社区（HSE / ESG）
+- source: post-closure monitoring
+  lang: en
+  action: force
+  target: 闭矿后监测
+  domains:
+  - 安全
+  - 健康
+  - 环保与社区（HSE / ESG）
+- source: greenhouse gas / Scope 1 & 2 emissions
+  lang: en
+  action: force
+  target: 温室气体／范围一和范围二排放
+  domains:
+  - 安全
+  - 健康
+  - 环保与社区（HSE / ESG）
+- source: carbon intensity / decarbonisation
+  lang: en
+  action: force
+  target: 碳强度／脱碳
+  domains:
+  - 安全
+  - 健康
+  - 环保与社区（HSE / ESG）
+  notes: 柴油替代、电气化
+- source: stakeholder engagement
+  lang: en
+  action: force
+  target: 利益相关方参与
+  domains:
+  - 安全
+  - 健康
+  - 环保与社区（HSE / ESG）
+- source: community development agreement (CDA)
+  lang: en
+  action: force
+  target: 社区发展协议
+  domains:
+  - 安全
+  - 健康
+  - 环保与社区（HSE / ESG）
+- source: local content / local employment
+  lang: en
+  action: force
+  target: 本地化内容／本地就业
+  domains:
+  - 安全
+  - 健康
+  - 环保与社区（HSE / ESG）
+- source: grievance mechanism
+  lang: en
+  action: force
+  target: 申诉机制
+  domains:
+  - 安全
+  - 健康
+  - 环保与社区（HSE / ESG）
+- source: environmental monitoring / compliance reporting
+  lang: en
+  action: force
+  target: 环境监测／合规报告
+  domains:
+  - 安全
+  - 健康
+  - 环保与社区（HSE / ESG）

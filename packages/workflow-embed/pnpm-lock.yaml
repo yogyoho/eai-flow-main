@@ -1,0 +1,60 @@
+lockfileVersion: '9.0'
+
+settings:
+  autoInstallPeers: true
+  excludeLinksFromLockfile: false
+
+importers:
+
+  .:
+    devDependencies:
+      '@types/react':
+        specifier: ^19.0.0
+        version: 19.3.0
+      lucide-react:
+        specifier: ^0.468.0
+        version: 0.468.0(react@19.3.1)
+      react:
+        specifier: ^19.0.0
+        version: 19.3.1
+      typescript:
+        specifier: ^5.7.2
+        version: 5.9.3
+
+packages:
+
+  '@types/react@19.3.0':
+    resolution: {integrity: sha512-N0rFCuH9YoxG9/m61l9MfpJKfmLOVU0em7ipIz6TRgSSkvReLB9vL85GB+yr8Bs5leqpvg96JSwF4ZS1s4viQg==}
+
+  csstype@3.2.3:
+    resolution: {integrity: sha512-z1HGKcYy2xA8AGQfwrn0PAy+PB7X/GSj3UVJW9qKyn43xWa+gl5nXmU4qqLMRzWVLFC8KusUX8T/0kCiOYpAIQ==}
+
+  lucide-react@0.468.0:
+    resolution: {integrity: sha512-6koYRhnM2N0GGZIdXzSeiNwguv1gt/FAjZOiPl76roBi3xKEXa4WmfpxgQwTTL4KipXjefrnf3oV4IsYhi4JFA==}
+    peerDependencies:
+      react: ^16.5.1 || ^17.0.0 || ^18.0.0 || ^19.0.0-rc
+
+  react@19.3.1:
+    resolution: {integrity: sha512-QNhWdt7nrgVWWQG58QuGsAR3jv3Hbe4mb4vz7w2csnHavciZJgda1CPNaldF6eVxv90ud3jUXpKlHL69gO38yw==}
+    engines: {node: '>=0.10.0'}
+
+  typescript@5.9.3:
+    resolution: {integrity: sha512-jl1vZzPDinLr9eUt3J/t7V6FgNEw9QjvBPdysz9KfQDD41fQrC2Y4vKQdiaUpFT4bXlb1RHhLpp8wtm6M5TgSw==}
+    engines: {node: '>=14.17'}
+    hasBin: true
+
+snapshots:
+
+  '@types/react@19.3.0':
+    dependencies:
+      csstype: 3.2.3
+
+  csstype@3.2.3: {}
+
+  lucide-react@0.468.0(react@19.3.1):
+    dependencies:
+      react: 19.3.1
+
+  react@19.3.1: {}
+
+  typescript@5.9.3: {}

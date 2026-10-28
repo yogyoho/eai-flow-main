@@ -13,13 +13,63 @@ sales DB       approval_requests / approval_steps / approval_assignments / appro
 
 API 不直接启动 Workflow，也不直接扫描 Outbox。审批创建与 `outbox_events` 在同一事务提交，Worker 消费事件后启动 `SalesApprovalWorkflow`。这样 API 可以水平扩展，不会出现多个进程重复启动同一个审批。
 
+### Workflow 平台审批（EAI-CUSTOM）
+
+`WORKFLOW_PLATFORM_ENABLED=true` 时，新审批改由独立 workflow 平台编排：
+
+```text
+sales-backend → workflow-backend /instances
+              → Temporal FlowInstanceWorkflow
+              → workflow-worker 执行审批 Activity
+              → sales 同步 tasks/history 到 approval_steps/approval_actions
+```
+
+- `approval_requests.engine=workflow_platform`，并记录 `platform_instance_id`。
+- `approval_steps.platform_task_id` 关联 workflow 任务。
+- BFF 调用使用 `X-Workflow-Internal-Token` + `X-User-*`。
+- 旧审批仍保留 `sales_temporal` 链路。
+- 集成测试：`tests/integration_workflow_platform.py`，
+  用例说明：`docs/INTEGRATION_TEST_WORKFLOW_PLATFORM.md`。
+
+页面层集成（EAI-CUSTOM）：
+
+- 营销审批详情页保持业务页面不变，嵌入 `WorkflowApprovalPanel`。
+- 面板已抽取为共享包 `packages/workflow-embed`（`@eai/workflow-embed`）；
+  sales 前端只保留 BFF client 适配器，其他业务平台可直接复用该包。
+- `sales-frontend` 镜像通过 Compose 的 `additional_contexts` 注入共享包；
+  请使用 `docker compose ... build sales-frontend`，不要直接用前端目录作为构建上下文。
+- 本地开发修改共享包后，先在 `packages/workflow-embed` 执行
+  `pnpm install && pnpm build`；Docker 构建会自动重编译该包。
+- BFF 聚合接口：`GET /api/v1/approvals/{id}/workflow`，返回
+  `tasks/form/chart/history/capabilities`。
+- 通过/驳回/退回申请人由组件调用 `POST /approvals/{id}/decision`，页面不维护
+  workflow task id。
+- “退回”不是终态：workflow 平台在同一实例中回到 `start`，为申请人创建待办；
+  销售审批单状态为 `returned`，`completed_at` 为空，并保留原审批单号。
+- 仅申请人本人可通过 `POST /approvals/{id}/resubmit` 修改原因/证据后重新提交；
+  管理员不能代办。BFF 办理 `start` 任务，审批从第一步重新开始，不创建新审批单或新实例。
+- “驳回”显式指向 `end`，仍为终态。
+- 实时刷新：`GET /api/v1/approvals/stream` 与
+  `GET /api/v1/approvals/{id}/stream`（SSE）；前端使用 fetch stream 同时支持
+  bearer token 与 EAI Cookie，流不可用时自动降级为 8 秒轮询。
+- 管理员侧边栏增加“流程管理”，跳转 `/workflow`，与 sales 共用 EAI SSO。
+
+关键配置：
+
+| 变量 | 默认值 | 说明 |
+|---|---|---|
+| `WORKFLOW_PLATFORM_ENABLED` | `false` | 新审批是否走 workflow 平台 |
+| `WORKFLOW_PLATFORM_BASE_URL` | `http://workflow-backend:8020/api/workflow` | workflow API 地址 |
+| `WORKFLOW_PLATFORM_INTERNAL_TOKEN` | 空 | 与 workflow 后端共享的内部令牌 |
+| `WORKFLOW_PLATFORM_TIMEOUT_SECONDS` | `10` | 调用 workflow API 的超时 |
+
 ### 会签 / 或签
 
 `approval_steps.mode` 支持：
 
 - `sequential`：按 `step_no` 顺序，一人/一个角色池。
-- `parallel_all`：同一步所有席位同意才通过；任一驳回/退回立即结束。
-- `parallel_any`：任一席位同意即通过；全部驳回才驳回；任一退回立即结束。
+- `parallel_all`：同一步所有席位同意才通过；任一驳回立即结束；任一退回申请人则等待申请人修改后重提。
+- `parallel_any`：任一席位同意即通过；全部驳回才驳回；任一退回申请人则等待申请人修改后重提。
 
 并行模板步骤使用 `approvers`，每个席位有稳定 `assignment_key`：
 

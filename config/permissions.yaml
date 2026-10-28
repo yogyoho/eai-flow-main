@@ -93,17 +93,21 @@ modules:
           - { id: "kb:update", display_name: "编辑知识库" }
           - { id: "kb:delete", display_name: "删除知识库" }
           - { id: "kb:upload", display_name: "上传文档" }
-          # EAI-CUSTOM (translation 一期): 翻译任务 API 权限点（owner 过滤在 routers 层）
-          - { id: "translation:read", display_name: "查看翻译任务" }
-          - { id: "translation:transition", display_name: "流转翻译任务" }
-      # EAI-CUSTOM (translation 资产库页): 页面可见性权限点（layout canPage 过滤页签）
-      - id: "translation:page:assets"
-        display_name: "文档资产库"
-        operations: []
     data_scopes:
       - { id: "knowledge_owner",  display_name: "仅自己的知识库", rule_template: { owner_id: "$identity.user_id" } }
       - { id: "knowledge_public", display_name: "所有公开知识库", rule_template: { access_type: "public" } }
       - { id: "knowledge_dept",   display_name: "本部门的知识库", rule_template: { or: [ { owner_id: "$identity.user_id" }, { and: [ { access_type: "dept" }, { allowed_depts OVERLAP: "$identity.dept_ids" } ] } ] } }
+
+  # ─── 文档翻译工作台（EAI-CUSTOM 2026-10-20: 注册 nav:translation，应用中心卡片按 canNav 过滤）───
+  translation:
+    display_name: "文档翻译工作台"
+    nav_id: "nav:translation"
+    pages:
+      - id: "translation:page:assets"
+        display_name: "文档资产库"
+        operations:
+          - { id: "translation:read", display_name: "查看翻译任务" }
+          - { id: "translation:transition", display_name: "流转翻译任务" }
 
   # ─── 知识工厂（9 个 tab ↔ 9 个 page id；EAI-CUSTOM 2026-09: 样例库 tab 迁出为独立应用 coal_eia_samples）───
   knowledge_factory:
@@ -270,6 +274,60 @@ modules:
     data_scopes:
       - { id: "spq_all", display_name: "全部人员数据", rule_template: {} }
 
+  # ─── 销售 QW2（A01 工作台 + C1 商机漏斗 + A02 统一待办 + 最小主数据）───
+  # 独立 SPA 挂在 /sales/；身份、角色、部门仍由 EAI 统一管理，本模块只声明
+  # 销售侧权限点与数据范围。角色发放请走 EAI「角色管理」，不要在此复制账号。
+  sales:
+    display_name: "销售作战台"
+    nav_id: "nav:sales"
+    pages:
+      - id: "sales:page:workbench"
+        display_name: "我的工作台"
+        operations:
+          - { id: "sales.workbench.read", display_name: "查看工作台" }
+      - id: "sales:page:opportunities"
+        display_name: "商机漏斗"
+        operations:
+          - { id: "sales.opportunity.read", display_name: "查看商机" }
+          - { id: "sales.opportunity.create", display_name: "新建商机" }
+          - { id: "sales.opportunity.update", display_name: "编辑商机" }
+          - { id: "sales.opportunity.transition", display_name: "推进阶段" }
+          - { id: "sales.opportunity.rollback", display_name: "回退阶段" }
+          - { id: "sales.opportunity.probability_override", display_name: "覆盖概率" }
+          - { id: "sales.opportunity.duplicate_resolve", display_name: "处理撞单" }
+          - { id: "sales.opportunity.export", display_name: "导出商机" }
+      - id: "sales:page:todos"
+        display_name: "统一待办"
+        operations:
+          - { id: "sales.todo.read", display_name: "查看待办" }
+          - { id: "sales.todo.assign", display_name: "分派待办" }
+          - { id: "sales.todo.resolve", display_name: "处理待办" }
+          - { id: "sales.todo.batch", display_name: "批量处理待办" }
+          - { id: "sales.todo.export", display_name: "导出待办" }
+      - id: "sales:page:approvals"
+        display_name: "审批中心"
+        operations:
+          - { id: "sales.approval.read", display_name: "查看审批" }
+          - { id: "sales.approval.request", display_name: "发起审批" }
+          - { id: "sales.approval.decide", display_name: "审批决策" }
+          - { id: "sales.approval.cancel", display_name: "取消审批" }
+          - { id: "sales.approval.manage", display_name: "管理审批" }
+      - id: "sales:page:masterdata"
+        display_name: "销售主数据"
+        operations:
+          - { id: "sales.masterdata.read", display_name: "查看主数据" }
+          - { id: "sales.masterdata.import", display_name: "导入主数据" }
+      - id: "sales:page:rules"
+        display_name: "规则与审计"
+        operations:
+          - { id: "sales.rule.read", display_name: "查看规则" }
+          - { id: "sales.rule.manage", display_name: "维护规则" }
+          - { id: "sales.audit.read", display_name: "查看审计" }
+    data_scopes:
+      - { id: "sales_self", display_name: "本人商机", rule_template: { owner_id: "$identity.user_id" } }
+      - { id: "sales_region", display_name: "本大区商机", rule_template: { region_code: "$identity.region_code" } }
+      - { id: "sales_all", display_name: "全部销售数据", rule_template: {} }
+
   # ─── Ontology 统一语义层（平台原语；REST admin-gated，语义地图页面已落地(2026-09-12)；v1 面向 superadmin(system:access 门禁)，角色级 nav/page 发放待 API 权限点扩展后配置）───
   ontology:
     display_name: "语义地图"
@@ -395,6 +453,8 @@ roles:
       - nav:coal-eia-samples
       # EAI-CUSTOM (bug-3109 v4): 投标资料管理导航
       - nav:bid-materials
+      # EAI-CUSTOM (2026-10-20): 文档翻译工作台导航（该角色持有 translation:read）
+      - nav:translation
       - nav:output
       - nav:app-center
     pages: ["*"]
@@ -525,6 +585,197 @@ roles:
     # (a freshly created KB defaults to access_type="private"). Without this, the
     # owner could not list a KB they just created because only knowledge_public was granted.
     data_scopes: ["knowledge_owner", "knowledge_public", "project_member", "doc_owner", "doc_project_member"]
+
+  # ── 销售 QW2 角色 ──────────────────────────────────────────────────────
+  # 角色仍由 EAI 统一管理；这些条目只声明默认权限点与页面可见性。审批步骤取
+  # 角色代码（regional_manager / sales_director / compliance_officer），因此不要
+  # 在 EAI 中改名，否则审批会因找不到角色而启动失败。
+  sales_rep:
+    display_name: "客户经理"
+    is_system: false
+    level: 20
+    nav: [nav:dashboard, nav:sales, nav:app-center]
+    pages: [sales:page:workbench, sales:page:opportunities, sales:page:todos, sales:page:approvals, sales:page:masterdata]
+    permissions:
+      - dashboard:view
+      - system:access
+      - sales.workbench.read
+      - sales.opportunity.read
+      - sales.opportunity.create
+      - sales.opportunity.update
+      - sales.opportunity.transition
+      - sales.opportunity.rollback
+      - sales.opportunity.probability_override
+      - sales.opportunity.export
+      - sales.todo.read
+      - sales.todo.resolve
+      - sales.todo.export
+      - sales.masterdata.read
+      - sales.approval.read
+      - sales.approval.request
+      - sales.approval.cancel
+      - sales.rule.read
+    data_scopes: ["sales_self"]
+
+  regional_manager:
+    display_name: "大区经理"
+    is_system: false
+    level: 40
+    nav: [nav:dashboard, nav:sales, nav:app-center]
+    pages: [sales:page:workbench, sales:page:opportunities, sales:page:todos, sales:page:approvals, sales:page:masterdata]
+    permissions:
+      - dashboard:view
+      - system:access
+      - sales.workbench.read
+      - sales.opportunity.read
+      - sales.opportunity.create
+      - sales.opportunity.update
+      - sales.opportunity.transition
+      - sales.opportunity.rollback
+      - sales.opportunity.probability_override
+      - sales.opportunity.duplicate_resolve
+      - sales.opportunity.export
+      - sales.todo.read
+      - sales.todo.assign
+      - sales.todo.resolve
+      - sales.todo.batch
+      - sales.todo.export
+      - sales.masterdata.read
+      - sales.masterdata.import
+      - sales.approval.read
+      - sales.approval.request
+      - sales.approval.decide
+      - sales.approval.cancel
+      - sales.rule.read
+      - sales.audit.read
+    data_scopes: ["sales_region"]
+
+  sales_director:
+    display_name: "销售总监"
+    is_system: false
+    level: 60
+    nav: [nav:dashboard, nav:sales, nav:app-center]
+    pages: [sales:page:workbench, sales:page:opportunities, sales:page:todos, sales:page:approvals, sales:page:masterdata, sales:page:rules]
+    permissions:
+      - dashboard:view
+      - system:access
+      - sales.workbench.read
+      - sales.opportunity.read
+      - sales.opportunity.create
+      - sales.opportunity.update
+      - sales.opportunity.transition
+      - sales.opportunity.rollback
+      - sales.opportunity.probability_override
+      - sales.opportunity.duplicate_resolve
+      - sales.opportunity.export
+      - sales.todo.read
+      - sales.todo.assign
+      - sales.todo.resolve
+      - sales.todo.batch
+      - sales.todo.export
+      - sales.masterdata.read
+      - sales.masterdata.import
+      - sales.approval.read
+      - sales.approval.request
+      - sales.approval.decide
+      - sales.approval.cancel
+      - sales.approval.manage
+      - sales.rule.read
+      - sales.rule.manage
+      - sales.audit.read
+    data_scopes: ["sales_all"]
+
+  compliance_officer:
+    display_name: "合规官"
+    is_system: false
+    level: 50
+    nav: [nav:dashboard, nav:sales, nav:app-center]
+    pages: [sales:page:workbench, sales:page:opportunities, sales:page:approvals, sales:page:rules]
+    permissions:
+      - dashboard:view
+      - system:access
+      - sales.workbench.read
+      - sales.opportunity.read
+      - sales.todo.read
+      - sales.todo.resolve
+      - sales.approval.read
+      - sales.approval.decide
+      - sales.approval.cancel
+      - sales.rule.read
+      - sales.audit.read
+    data_scopes: ["sales_all"]
+
+  data_steward:
+    display_name: "销售数据管家"
+    is_system: false
+    level: 30
+    nav: [nav:dashboard, nav:sales, nav:app-center]
+    pages: [sales:page:workbench, sales:page:opportunities, sales:page:todos, sales:page:masterdata]
+    permissions:
+      - dashboard:view
+      - system:access
+      - sales.workbench.read
+      - sales.opportunity.read
+      - sales.todo.read
+      - sales.todo.resolve
+      - sales.masterdata.read
+      - sales.masterdata.import
+      - sales.rule.read
+      - sales.audit.read
+    data_scopes: ["sales_region"]
+
+  bid_manager:
+    display_name: "投标经理"
+    is_system: false
+    level: 20
+    nav: [nav:dashboard, nav:sales, nav:app-center]
+    pages: [sales:page:workbench, sales:page:opportunities, sales:page:todos, sales:page:masterdata]
+    permissions:
+      - dashboard:view
+      - system:access
+      - sales.workbench.read
+      - sales.opportunity.read
+      - sales.opportunity.update
+      - sales.todo.read
+      - sales.todo.resolve
+      - sales.masterdata.read
+      - sales.rule.read
+    data_scopes: ["sales_self"]
+
+  sales_admin:
+    display_name: "销售系统管理员"
+    is_system: false
+    level: 70
+    nav: [nav:dashboard, nav:sales, nav:app-center]
+    pages: ["*"]
+    permissions:
+      - dashboard:view
+      - system:access
+      - sales.workbench.read
+      - sales.opportunity.read
+      - sales.opportunity.create
+      - sales.opportunity.update
+      - sales.opportunity.transition
+      - sales.opportunity.rollback
+      - sales.opportunity.probability_override
+      - sales.opportunity.duplicate_resolve
+      - sales.opportunity.export
+      - sales.todo.read
+      - sales.todo.assign
+      - sales.todo.resolve
+      - sales.todo.batch
+      - sales.todo.export
+      - sales.masterdata.read
+      - sales.masterdata.import
+      - sales.approval.read
+      - sales.approval.request
+      - sales.approval.decide
+      - sales.approval.cancel
+      - sales.approval.manage
+      - sales.rule.read
+      - sales.rule.manage
+      - sales.audit.read
+    data_scopes: ["sales_all"]
 
 # ── 项目级角色 → 权限映射（原 role_permissions 表 / DEFAULT_ROLE_PERMISSIONS 常量）──
 project_roles:

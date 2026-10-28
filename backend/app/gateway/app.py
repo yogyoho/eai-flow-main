@@ -871,6 +871,15 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
             except Exception:
                 logger.exception("Failed to start translation worker")
 
+            # EAI-CUSTOM (P2): 超大回填调度循环（tlt_backfill_jobs → pending 分批）
+            try:
+                from app.extensions.translation.worker import start_translation_backfill
+
+                app.state.translation_backfill_task = await start_translation_backfill()
+                logger.info("Translation backfill scheduler started")
+            except Exception:
+                logger.exception("Failed to start translation backfill scheduler")
+
             # At-rest credentials cipher (DEER_FLOW_CREDENTIALS_KEY) shared by every
             # ChannelConnectionRepository this process builds; None when no enabled
             # feature stores credentials.
@@ -1042,6 +1051,15 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
                     await stop_translation_worker(_tlt_runner)
                 except Exception:
                     logger.exception("Failed to stop translation worker")
+
+            _tlt_bf = getattr(app.state, "translation_backfill_task", None)
+            if _tlt_bf is not None and not _tlt_bf.done():
+                try:
+                    from app.extensions.translation.worker import stop_translation_backfill
+
+                    await stop_translation_backfill(_tlt_bf)
+                except Exception:
+                    logger.exception("Failed to stop translation backfill scheduler")
 
             await _shutdown_startup_trash_sweep(app)
             try:

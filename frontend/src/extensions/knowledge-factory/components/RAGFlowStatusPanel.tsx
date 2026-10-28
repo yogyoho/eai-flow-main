@@ -63,7 +63,7 @@ export default function RAGFlowStatusPanel({ onClose }: RAGFlowStatusPanelProps)
               <Database className="w-5 h-5" />
             </div>
             <div>
-              <h3 className="text-lg font-semibold text-foreground">RAGFlow 知识库状态</h3>
+              <h3 className="text-lg font-semibold text-foreground">RAG 知识库状态</h3>
               <p className="text-xs text-muted-foreground mt-0.5">查看和管理法规知识库的同步状态</p>
             </div>
           </div>

@@ -11,6 +11,7 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
+from app import platform_approval
 from app.auth import Identity
 from app.config import get_settings
 from app.domain import add_audit, next_number, utc_now
@@ -187,7 +188,7 @@ async def create_approval(
     template_key = GATE_TO_TEMPLATE.get(gate_code)
     if not template_key:
         raise bad_request("QW2 仅支持 R4 / R6 / 撞单合并审批", "SALES-400-GATE")
-    if not settings.temporal_enabled:
+    if not settings.temporal_enabled and not settings.workflow_platform_enabled:
         raise unavailable()
     existing = (
         await db.execute(
@@ -237,6 +238,7 @@ async def create_approval(
         opportunity_id=opportunity.id,
         gate_code=gate_code,
         status="pending_start",
+        engine="workflow_platform" if settings.workflow_platform_enabled else "sales_temporal",
         current_step=1,
         reason=reason,
         evidence_json=evidence,
@@ -268,16 +270,35 @@ async def create_approval(
         )
     db.add(request)
     await db.flush()
-    db.add(
-        OutboxEvent(
-            aggregate_type="approval_request",
-            aggregate_id=request.id,
-            event_type="approval.start",
-            payload_json={"request_id": str(request.id)},
-            status="pending",
-            next_retry_at=utc_now(),
+    if settings.workflow_platform_enabled:
+        try:
+            platform_instance = await platform_approval.start_instance(
+                request,
+                identity,
+                steps=steps,
+            )
+            request.platform_instance_id = int(platform_instance["id"])
+            request.status = "running"
+            request.started_at = utc_now()
+            try:
+                await platform_approval.sync_request(db, request)
+            except Exception as exc:  # noqa: BLE001 - the next list/get sync will repair it
+                logger.warning("workflow platform initial sync failed for approval %s: %s", request.id, exc)
+        except Exception as exc:  # noqa: BLE001 - persist a visible failed projection
+            logger.warning("workflow platform start failed for approval %s: %s", request.id, exc)
+            request.status = "failed"
+            request.failure_reason = str(exc)[:2000]
+    else:
+        db.add(
+            OutboxEvent(
+                aggregate_type="approval_request",
+                aggregate_id=request.id,
+                event_type="approval.start",
+                payload_json={"request_id": str(request.id)},
+                status="pending",
+                next_retry_at=utc_now(),
+            )
         )
-    )
     add_audit(
         db,
         actor_id=identity.user_id,
@@ -304,6 +325,7 @@ def reset_for_retry(request: ApprovalRequest, now: datetime | None = None) -> No
     request.current_step = 1
     request.workflow_id = None
     request.workflow_run_id = None
+    request.platform_instance_id = None
     request.started_at = None
     request.completed_at = None
     request.failure_reason = None
@@ -410,6 +432,8 @@ async def approve_decision(
         if duplicate.request_id == request.id and duplicate.actor_id == identity.user_id:
             return request
         raise conflict("幂等键已被其他审批操作使用", "SALES-409-IDEMPOTENCY_KEY")
+    if request.engine == "workflow_platform":
+        await platform_approval.sync_request(db, request)
     if request.status == "pending_start":
         raise conflict("审批引擎尚未启动，请稍后重试", "SALES-409-APPROVAL_NOT_STARTED")
     if request.status != "running":
@@ -448,6 +472,32 @@ async def approve_decision(
         if not allowed:
             raise forbidden(f"当前步骤需要 {step.approver_id or step.approver_role} 审批", "AUTH-403-APPROVER_ROLE")
 
+    if request.engine == "workflow_platform":
+        if step.platform_task_id is None:
+            raise conflict("workflow 审批任务尚未同步，请稍后刷新", "SALES-409-PLATFORM_TASK_NOT_READY")
+        await platform_approval.execute_task(
+            step.platform_task_id,
+            action=action,
+            comment=comment,
+            identity=identity,
+            idempotency_key=idempotency_key,
+            delegate_to=delegate_to,
+        )
+        db.add(
+            ApprovalAction(
+                request_id=request.id,
+                step_no=step.step_no,
+                action=action,
+                actor_id=identity.user_id,
+                actor_role=identity.sales_role,
+                comment=comment,
+                idempotency_key=idempotency_key,
+            )
+        )
+        await db.flush()
+        await platform_approval.sync_request(db, request)
+        return request
+
     signal = DecisionSignal(
         step_no=step.step_no,
         action=action,
@@ -463,6 +513,99 @@ async def approve_decision(
     except Exception as exc:  # noqa: BLE001
         logger.warning("Temporal decision signal failed: %s", exc)
         raise unavailable("审批引擎暂不可用，决策未提交") from exc
+    return request
+
+
+async def resubmit_approval(
+    db: AsyncSession,
+    request_id: uuid.UUID,
+    identity: Identity,
+    *,
+    reason: str,
+    evidence: dict[str, Any],
+    comment: str | None,
+    idempotency_key: str,
+) -> ApprovalRequest:
+    """Resubmit a returned workflow-platform request in the same instance.
+
+    The applicant's start task is the workflow token for resubmission. Approving
+    it restarts routing from the first approval step without creating a new
+    sales request or a new workflow instance.
+    """
+
+    request = await _load_request(db, request_id)
+    duplicate = (await db.execute(select(ApprovalAction).where(ApprovalAction.idempotency_key == idempotency_key))).scalar_one_or_none()
+    if duplicate:
+        if duplicate.request_id == request.id and duplicate.actor_id == identity.user_id:
+            return request
+        raise conflict("幂等键已被其他审批操作使用", "SALES-409-IDEMPOTENCY_KEY")
+    if request.requested_by != identity.user_id:
+        raise forbidden("只有申请人可以修改并重新提交", "SALES-403-RESUBMIT")
+    if request.engine != "workflow_platform" or not request.platform_instance_id:
+        raise conflict("仅 workflow 平台审批支持修改后重新提交", "SALES-409-RESUBMIT_UNSUPPORTED")
+
+    await platform_approval.sync_request(db, request)
+    if request.status != "returned":
+        raise conflict("审批单当前不处于退回待修改状态", "SALES-409-NOT_RETURNED")
+    detail = await platform_approval.get_instance(request.platform_instance_id)
+    instance = detail.get("instance") or {}
+    if str(instance.get("flow_status") or "") != "9":
+        raise conflict("workflow 审批未处于退回状态", "SALES-409-NOT_RETURNED")
+    start_task = next(
+        (task for task in detail.get("tasks") or [] if str(task.get("node_code") or "") == "start"),
+        None,
+    )
+    if start_task is None:
+        raise conflict("申请人任务尚未生成，请稍后刷新", "SALES-409-RESUBMIT_TASK")
+
+    before = {
+        "reason": request.reason,
+        "evidence": request.evidence_json,
+        "status": request.status,
+    }
+    request.reason = reason
+    request.evidence_json = evidence
+    payload = dict(request.payload_json or {})
+    payload["resubmit_count"] = int(payload.get("resubmit_count") or 0) + 1
+    payload["last_resubmitted_by"] = identity.user_id
+    payload["last_resubmitted_at"] = utc_now().isoformat()
+    request.payload_json = payload
+    add_audit(
+        db,
+        actor_id=identity.user_id,
+        action="approval.resubmit",
+        object_type="approval_request",
+        object_id=str(request.id),
+        before=before,
+        after={"reason": reason, "evidence": evidence, "status": "running"},
+    )
+
+    await platform_approval.execute_task(
+        int(start_task["id"]),
+        action="approve",
+        comment=comment or "申请人修改后重新提交",
+        identity=identity,
+        idempotency_key=idempotency_key,
+        variables={
+            "reason": reason,
+            "evidence": evidence,
+            "resubmitted": True,
+            "resubmitted_by": identity.user_id,
+        },
+    )
+    db.add(
+        ApprovalAction(
+            request_id=request.id,
+            step_no=0,
+            action="resubmit",
+            actor_id=identity.user_id,
+            actor_role=identity.sales_role,
+            comment=comment or "申请人修改后重新提交",
+            idempotency_key=idempotency_key,
+        )
+    )
+    await db.flush()
+    await platform_approval.sync_request(db, request)
     return request
 
 
@@ -491,6 +634,16 @@ async def cancel_approval(
             after={"reason": reason},
         )
         await db.flush()
+        return request
+    if request.engine == "workflow_platform":
+        if not request.platform_instance_id:
+            raise conflict("workflow 实例尚未创建", "SALES-409-PLATFORM_NOT_STARTED")
+        await platform_approval.cancel_instance(
+            request.platform_instance_id,
+            reason=reason,
+            identity=identity,
+        )
+        await platform_approval.sync_request(db, request)
         return request
     try:
         await signal_cancel(str(request.id), CancellationSignal(actor_id=identity.user_id, reason=reason))

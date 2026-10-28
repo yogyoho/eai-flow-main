@@ -2,8 +2,8 @@
   "parse_mode": "list",
   "cluster_eps": 0.6,
   "cluster_min_samples": 1,
-  "cluster_by_spec": false,
-  "cluster_by_category": false,
+  "cluster_by_spec": true,
+  "cluster_by_category": true,
   "merge_pins": [],
   "scheduled_enabled": false,
   "schedule_cron": null,
@@ -398,5 +398,8 @@
   "llm_base_url": null,
   "llm_key": null,
   "llm_model": null,
-  "ocr_provider": "paddleocr-vl"
+  "ocr_provider": "paddleocr-vl",
+  "ragflow_contract_dataset_id": "5f3e4b9cc0ad11f180416ff5a2293ebb",
+  "ragflow_goods_dataset_id": "67f83f7643684ddba494a2e91478bf3e",
+  "ragflow_initialized_at": "2026-10-17T09:29:35.938407+00:00"
 }

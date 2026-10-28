@@ -308,32 +308,51 @@ async def parse_document_openai_vision(
 
     tables: list[TableExtract] = []
     page_texts: dict[int, str] = {}
+    # 页级瞬时故障重试(对齐 builtin 的 _RETRY 习语): LAN 服务 ConnectError/
+    # RemoteProtocolError/ReadTimeout 常见(服务重启/端口代理抖动),一次即败
+    # 整文档 failed 代价过高——每页最多 3 次(5/15s backoff),重试期间挂起即可恢复。
+    _VISION_RETRY_MAX = 3
+    _VISION_RETRY_BACKOFF = [5, 15]
     async with httpx.AsyncClient(timeout=600.0) as client:
         for page_no, png_b64, ptext in pages:
             if ptext:
                 page_texts[page_no] = ptext
-            resp = await client.post(
-                f"{base}/chat/completions",
-                headers=headers,
-                json={
-                    "model": model,
-                    "max_tokens": 8000,
-                    "temperature": 0,
-                    "messages": [
-                        {
-                            "role": "user",
-                            "content": [
+            resp = None
+            for attempt in range(1, _VISION_RETRY_MAX + 1):
+                try:
+                    resp = await client.post(
+                        f"{base}/chat/completions",
+                        headers=headers,
+                        json={
+                            "model": model,
+                            "max_tokens": 8000,
+                            "temperature": 0,
+                            "messages": [
                                 {
-                                    "type": "image_url",
-                                    "image_url": {"url": f"data:image/png;base64,{png_b64}"},
-                                },
-                                {"type": "text", "text": _VISION_PROMPT},
+                                    "role": "user",
+                                    "content": [
+                                        {
+                                            "type": "image_url",
+                                            "image_url": {"url": f"data:image/png;base64,{png_b64}"},
+                                        },
+                                        {"type": "text", "text": _VISION_PROMPT},
+                                    ],
+                                }
                             ],
-                        }
-                    ],
-                },
-            )
-            resp.raise_for_status()
+                        },
+                    )
+                    resp.raise_for_status()
+                    break
+                except (httpx.ConnectError, httpx.RemoteProtocolError, httpx.ReadTimeout) as exc:
+                    if attempt < _VISION_RETRY_MAX:
+                        wait = _VISION_RETRY_BACKOFF[min(attempt - 1, len(_VISION_RETRY_BACKOFF) - 1)]
+                        logger.warning(
+                            "vision call p%s attempt %d/%d failed (%s), retrying in %ss",
+                            page_no, attempt, _VISION_RETRY_MAX, exc, wait,
+                        )
+                        await asyncio.sleep(wait)
+                    else:
+                        raise
             content = ((resp.json().get("choices") or [{}])[0].get("message") or {}).get("content") or ""
             # PaddleOCR-VL 系输出标记流;会遵循 HTML 指令的服务输出 <table>——两者都转行。
             if any(m in content for m in _TABLE_MARKERS):

@@ -195,7 +195,7 @@ export function buildBaselineTooltips(rows: OutlierStatRow[]): Map<string, strin
       const docAll = clusterRows.filter((r) => r.documentId === cid);
       const devs = docAll.map(rowDeviationPct).filter((v): v is number => v != null);
       if (devs.length === 0) continue;
-      const med = medianOf(devs) as number;
+      const med = medianOf(devs)!;
       const label = docAll[0]?.contractNo || `${cid.slice(0, 8)}…`;
       overview.push(`${label} ${formatSignedPct(med)}`);
     }

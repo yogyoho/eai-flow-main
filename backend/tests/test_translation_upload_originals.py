@@ -40,7 +40,10 @@ async def _cleanup_stale(db) -> None:
 
 
 class _FakeUploadClient:
-    """dataset 就绪 + upload 成功的最小 fake。"""
+    """dataset 就绪 + upload 成功的最小 fake（记录 delete 供 supersede 断言）。"""
+
+    def __init__(self):
+        self.deleted: list[tuple[str, str]] = []
 
     async def get_dataset(self, dataset_id: str) -> dict:
         return {"code": 0, "data": {"id": dataset_id}}
@@ -57,6 +60,9 @@ class _FakeUploadClient:
     async def parse_document(self, dataset_id: str, doc_id: str) -> dict:
         return {}
 
+    async def delete_document(self, dataset_id: str, document_id: str) -> None:
+        self.deleted.append((dataset_id, document_id))
+
 
 @pytest.mark.asyncio(loop_scope="session")
 async def test_upload_indexes_original_and_fails_open(_engine, monkeypatch):
@@ -71,7 +77,7 @@ async def test_upload_indexes_original_and_fails_open(_engine, monkeypatch):
         await db.commit()
         try:
             f = UploadFile(filename="t1.docx", file=io.BytesIO(b"PK\x03\x04stub-content"))
-            result = await routers.upload_assets(files=[f], folder_id=None, kb_id=None, current_user=SimpleNamespace(id=owner), db=db)
+            result = await routers.upload_assets(files=[f], folder_id=None, kb_id=kb.id, current_user=SimpleNamespace(id=owner), db=db)
             assert result["count"] == 1
             assert result["items"][0]["reused"] is False
             task = await db.get(TranslationTask, uuid.UUID(result["items"][0]["task_id"]))
@@ -79,6 +85,79 @@ async def test_upload_indexes_original_and_fails_open(_engine, monkeypatch):
         finally:
             with suppress(Exception):
                 await _cleanup_stale(db)
+
+
+@pytest.mark.asyncio(loop_scope="session")
+async def test_upload_detects_language_and_content_tag(_engine, monkeypatch):
+    """P0-3: 资产上传即判定语言/内容 tag（worker 仍会在 OCR 后补写）。"""
+    from docx import Document
+
+    async with get_session_factory()() as db:
+        owner = (await db.execute(select(User.id).limit(1))).scalar()
+        if owner is None:
+            pytest.skip("no users row")
+        monkeypatch.setattr(routers, "RAGFlowClient", _FakeUploadClient)
+        kb = KnowledgeBase(name=f"kb-b1lang-{uuid.uuid4().hex[:8]}", owner_id=owner, kb_type="ragflow", ragflow_dataset_id="ds-b1", translation_enabled=True)
+        db.add(kb)
+        await db.commit()
+        try:
+            doc = Document()
+            doc.add_paragraph("The company shall deliver the iron ore concentrate.")
+            buffer = io.BytesIO()
+            doc.save(buffer)
+            buffer.seek(0)
+            upload = UploadFile(filename="lang-en.docx", file=buffer)
+            result = await routers.upload_assets(files=[upload], folder_id=None, kb_id=kb.id, current_user=SimpleNamespace(id=owner), db=db)
+            task = await db.get(TranslationTask, uuid.UUID(result["items"][0]["task_id"]))
+            assert task is not None
+            assert task.source_lang == "en"
+            assert task.content_tag == "narrative"
+        finally:
+            await db.execute(delete(TranslationTask).where(TranslationTask.kb_id == kb.id))
+            await db.execute(delete(KnowledgeBase).where(KnowledgeBase.id == kb.id))
+            await db.commit()
+
+
+@pytest.mark.asyncio(loop_scope="session")
+async def test_reupload_same_name_supersedes_and_offlines_old_chunks(_engine, monkeypatch):
+    """P1-4: 同名新 sha 上传 → 旧任务 superseded + 旧 RAGFlow 原文/中文份下线。"""
+    fake = _FakeUploadClient()
+    async with get_session_factory()() as db:
+        owner = (await db.execute(select(User.id).limit(1))).scalar()
+        if owner is None:
+            pytest.skip("no users row")
+        monkeypatch.setattr(routers, "RAGFlowClient", lambda: fake)
+        kb = KnowledgeBase(
+            name=f"kb-b1sup-{uuid.uuid4().hex[:8]}",
+            owner_id=owner,
+            kb_type="ragflow",
+            ragflow_dataset_id="ds-b1",
+            translation_enabled=True,
+        )
+        db.add(kb)
+        await db.commit()
+        try:
+            f1 = UploadFile(filename="rev.docx", file=io.BytesIO(b"PK\x03\x04old-version"))
+            r1 = await routers.upload_assets(files=[f1], folder_id=None, kb_id=kb.id, current_user=SimpleNamespace(id=owner), db=db)
+            old = await db.get(TranslationTask, uuid.UUID(r1["items"][0]["task_id"]))
+            old.state = "delivered"
+            old.ragflow_source_doc_id = "src-old"
+            old.ragflow_zh_doc_id = "zh-old"
+            await db.commit()
+
+            f2 = UploadFile(filename="rev.docx", file=io.BytesIO(b"PK\x03\x04new-version"))
+            r2 = await routers.upload_assets(files=[f2], folder_id=None, kb_id=kb.id, current_user=SimpleNamespace(id=owner), db=db)
+            new = await db.get(TranslationTask, uuid.UUID(r2["items"][0]["task_id"]))
+            assert r2["items"][0]["superseded"] == [str(old.id)]
+            await db.refresh(old)
+            assert old.state == "superseded"
+            assert old.superseded_by == new.id
+            assert ("ds-b1", "src-old") in fake.deleted
+            assert ("ds-b1", "zh-old") in fake.deleted
+        finally:
+            await db.execute(delete(TranslationTask).where(TranslationTask.kb_id == kb.id))
+            await db.execute(delete(KnowledgeBase).where(KnowledgeBase.id == kb.id))
+            await db.commit()
 
 
 @pytest.mark.asyncio(loop_scope="session")
@@ -164,7 +243,7 @@ async def test_upload_survives_ragflow_outage(_engine, monkeypatch):
         await db.commit()
         try:
             f = UploadFile(filename="t2.docx", file=io.BytesIO(b"PK\x03\x04stub-content"))
-            result = await routers.upload_assets(files=[f], folder_id=None, kb_id=None, current_user=SimpleNamespace(id=owner), db=db)
+            result = await routers.upload_assets(files=[f], folder_id=None, kb_id=kb.id, current_user=SimpleNamespace(id=owner), db=db)
             assert result["count"] == 1  # 上传未被打断
             task = await db.get(TranslationTask, uuid.UUID(result["items"][0]["task_id"]))
             assert result["items"][0]["reused"] is False  # 同 sha 残留已在 setup 清扫
@@ -187,8 +266,7 @@ async def test_upload_multiple_kbs_requires_choice(_engine, monkeypatch):
         try:
             f = UploadFile(filename="t3.docx", file=io.BytesIO(b"PK\x03\x04stub-content"))
             with pytest.raises(HTTPException) as ei:
-                await routers.upload_assets(files=[f], folder_id=None, kb_id=None,
-                                            current_user=SimpleNamespace(id=owner), db=db)
+                await routers.upload_assets(files=[f], folder_id=None, kb_id=None, current_user=SimpleNamespace(id=owner), db=db)
             assert "选择目标知识库" in ei.value.detail
         finally:
             await db.execute(delete(KnowledgeBase).where(KnowledgeBase.id.in_([kb1.id, kb2.id])))
@@ -208,12 +286,10 @@ async def test_upload_explicit_kb_id_routes(_engine, monkeypatch):
         try:
             f1 = UploadFile(filename="t4.docx", file=io.BytesIO(b"PK\x03\x04stub-content"))
             with pytest.raises(HTTPException) as ei:
-                await routers.upload_assets(files=[f1], folder_id=None, kb_id=kb_off.id,
-                                            current_user=SimpleNamespace(id=owner), db=db)
+                await routers.upload_assets(files=[f1], folder_id=None, kb_id=kb_off.id, current_user=SimpleNamespace(id=owner), db=db)
             assert "未加入翻译体系" in ei.value.detail
             f2 = UploadFile(filename="t5.docx", file=io.BytesIO(b"PK\x03\x04stub-content"))
-            result = await routers.upload_assets(files=[f2], folder_id=None, kb_id=kb_on.id,
-                                                 current_user=SimpleNamespace(id=owner), db=db)
+            result = await routers.upload_assets(files=[f2], folder_id=None, kb_id=kb_on.id, current_user=SimpleNamespace(id=owner), db=db)
             task = await db.get(TranslationTask, uuid.UUID(result["items"][0]["task_id"]))
             assert task is not None and task.ragflow_source_doc_id == "doc-original-1"
         finally:

@@ -423,8 +423,7 @@ export function BasicSettings() {
         <CardHeader>
           <CardTitle>OCR 服务</CardTitle>
           <CardDescription>
-            注册专业 OCR 服务（OpenAI 兼容 vision 协议，如 PaddleOCR-VL /
-            dots.ocr / Qwen-VL）。合同价格分析可在其配置页选择解析引擎。
+            注册OCR 服务（OpenAI 兼容 vision 协议，如 PaddleOCR-VL/ Qwen-VL）。
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">

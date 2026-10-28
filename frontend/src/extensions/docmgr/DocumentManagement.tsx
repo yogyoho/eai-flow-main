@@ -1043,7 +1043,7 @@ function DocumentList({
                 新建文档
               </Button>
             )}
-            <div className="bg-muted/60 flex items-center gap-0.5 rounded-md p-0.5">
+            <div className="bg-secondary flex items-center gap-0.5 rounded-md p-0.5">
               {(["all", "starred"] as const).map((mode) => (
                 <button
                   key={mode}
@@ -1071,14 +1071,14 @@ function DocumentList({
             </div>
           </div>
           <div className="flex items-center gap-3">
-            <div className="border-border bg-card flex h-[30px] items-center overflow-hidden rounded-[6px] border">
+            <div className="bg-secondary flex items-center gap-0.5 rounded-md p-0.5">
               <button
                 onClick={() => setViewMode("grid-icon")}
                 className={cn(
-                  "flex h-[30px] w-[30px] items-center justify-center transition-colors",
+                  "flex h-7 w-8 items-center justify-center rounded-sm transition-colors",
                   viewMode === "grid-icon"
-                    ? "text-foreground bg-muted"
-                    : "text-muted-foreground",
+                    ? "bg-background text-foreground shadow-sm"
+                    : "text-muted-foreground hover:text-foreground",
                 )}
                 title="图标网格"
               >
@@ -1087,10 +1087,10 @@ function DocumentList({
               <button
                 onClick={() => setViewMode("list")}
                 className={cn(
-                  "flex h-[30px] w-[30px] items-center justify-center transition-colors",
+                  "flex h-7 w-8 items-center justify-center rounded-sm transition-colors",
                   viewMode === "list"
-                    ? "text-foreground bg-muted"
-                    : "text-muted-foreground",
+                    ? "bg-background text-foreground shadow-sm"
+                    : "text-muted-foreground hover:text-foreground",
                 )}
                 title="列表"
               >

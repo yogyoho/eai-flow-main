@@ -1,23 +1,40 @@
 from __future__ import annotations
 
+import asyncio
+import json
+import logging
 import uuid
 from typing import Any
 
-from fastapi import APIRouter, Body, Depends, Query
+from fastapi import APIRouter, Body, Depends, Query, Request
+from fastapi.responses import StreamingResponse
 from sqlalchemy import func, or_, select, true
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
+from app import platform_approval
 from app.approval_access import active_step_scope_condition, step_actionable, step_visible
-from app.approval_service import approve_decision, cancel_approval, create_approval, reset_for_retry
+from app.approval_service import (
+    approve_decision,
+    cancel_approval,
+    create_approval,
+    reset_for_retry,
+    resubmit_approval,
+)
 from app.auth import Identity, require_opportunity_access, require_sales_permission
-from app.database import get_db
+from app.database import get_db, get_session_maker
 from app.domain import add_audit, approval_dict, utc_now
 from app.errors import forbidden, not_found
 from app.models import ApprovalAction, ApprovalRequest, ApprovalStep, Opportunity, OutboxEvent
-from app.schemas import ApprovalCreate, ApprovalDecisionIn
+from app.schemas import ApprovalCreate, ApprovalDecisionIn, ApprovalResubmitIn
 
 router = APIRouter(tags=["approvals"])
+logger = logging.getLogger(__name__)
+STREAM_HEADERS = {
+    "Cache-Control": "no-cache",
+    "Connection": "keep-alive",
+    "X-Accel-Buffering": "no",
+}
 
 
 def approval_scope(identity: Identity):
@@ -99,6 +116,7 @@ async def list_approvals(
     base = select(ApprovalRequest).where(*conditions).options(selectinload(ApprovalRequest.steps).selectinload(ApprovalStep.assignments))
     total = int((await db.execute(select(func.count(ApprovalRequest.id)).where(*conditions))).scalar_one())
     rows = list((await db.execute(base.order_by(ApprovalRequest.requested_at.desc()).offset(skip).limit(limit))).scalars())
+    await platform_approval.sync_requests(db, rows)
     if mine:
         rows = [r for r in rows if r.status == "running" and r.requested_by != identity.user_id and any(step_actionable(identity, step) for step in r.steps)]
     opp_ids = {r.opportunity_id for r in rows}
@@ -121,6 +139,8 @@ async def pending_count(
     rows = list(
         (await db.execute(select(ApprovalRequest).where(ApprovalRequest.status == "running", ApprovalRequest.requested_by != identity.user_id).options(selectinload(ApprovalRequest.steps).selectinload(ApprovalStep.assignments)))).scalars()
     )
+    await platform_approval.sync_requests(db, rows)
+    rows = [r for r in rows if r.status == "running"]
     count = sum(1 for r in rows if any(step_actionable(identity, step) for step in r.steps))
     return {"pending": count}
 
@@ -150,6 +170,111 @@ async def request_approval(
     return {"id": str(request.id), "request_no": request.request_no, "status": request.status}
 
 
+@router.get("/approvals/stream")
+async def stream_approvals(
+    request: Request,
+    identity: Identity = Depends(require_sales_permission("sales.approval.read")),
+):
+    """SSE stream for list/pending badges; polling remains the fallback."""
+
+    async def events():
+        last = ""
+        keepalive = 0
+        while True:
+            if await request.is_disconnected():
+                break
+            try:
+                async with get_session_maker()() as db:
+                    rows = list((await db.execute(select(ApprovalRequest).where(approval_scope(identity)).options(selectinload(ApprovalRequest.steps)))).scalars())
+                    await platform_approval.sync_requests(db, rows)
+                    await db.commit()
+                    pending = sum(1 for row in rows if row.status == "running" and row.requested_by != identity.user_id and any(step_actionable(identity, step) for step in row.steps))
+                    signature = json.dumps(
+                        {
+                            "pending": pending,
+                            "rows": sorted((str(row.id), row.status, row.current_step) for row in rows),
+                        },
+                        sort_keys=True,
+                    )
+                if signature != last:
+                    last = signature
+                    yield f"event: approvals\ndata: {json.dumps({'pending': pending})}\n\n"
+                else:
+                    keepalive += 1
+                    if keepalive % 2 == 0:
+                        yield ": keepalive\n\n"
+            except asyncio.CancelledError:
+                raise
+            except Exception:  # noqa: BLE001 - a stream must not die on one bad tick
+                logger.warning("approval list SSE tick failed", exc_info=True)
+            await asyncio.sleep(3)
+
+    return StreamingResponse(events(), media_type="text/event-stream", headers=STREAM_HEADERS)
+
+
+@router.get("/approvals/{request_id}/stream")
+async def stream_approval(
+    request_id: uuid.UUID,
+    request: Request,
+    identity: Identity = Depends(require_sales_permission("sales.approval.read")),
+):
+    """SSE stream for one approval detail; refetch is triggered on version change."""
+
+    async def events():
+        last = ""
+        keepalive = 0
+        while True:
+            if await request.is_disconnected():
+                break
+            try:
+                async with get_session_maker()() as db:
+                    approval = await _load_request(db, request_id)
+                    if not _can_view(identity, approval):
+                        yield 'event: error\ndata: {"detail":"无权查看该审批"}\n\n'
+                        break
+                    await platform_approval.sync_request(db, approval)
+                    await db.commit()
+                    action_count = int((await db.execute(select(func.count(ApprovalAction.id)).where(ApprovalAction.request_id == approval.id))).scalar_one())
+                    signature = json.dumps(
+                        {
+                            "status": approval.status,
+                            "current_step": approval.current_step,
+                            "actions": action_count,
+                        },
+                        sort_keys=True,
+                    )
+                if signature != last:
+                    last = signature
+                    yield (f"event: approval\ndata: {json.dumps({'id': str(request_id), 'status': approval.status, 'current_step': approval.current_step})}\n\n")
+                else:
+                    keepalive += 1
+                    if keepalive % 2 == 0:
+                        yield ": keepalive\n\n"
+            except asyncio.CancelledError:
+                raise
+            except Exception:  # noqa: BLE001
+                logger.warning("approval detail SSE tick failed for %s", request_id, exc_info=True)
+            await asyncio.sleep(2)
+
+    return StreamingResponse(events(), media_type="text/event-stream", headers=STREAM_HEADERS)
+
+
+@router.get("/approvals/{request_id}/workflow")
+async def get_workflow_view(
+    request_id: uuid.UUID,
+    identity: Identity = Depends(require_sales_permission("sales.approval.read")),
+    db: AsyncSession = Depends(get_db),
+):
+    request = await _load_request(db, request_id)
+    if not _can_view(identity, request):
+        raise forbidden("无权查看该审批", "SALES-403-APPROVAL_SCOPE")
+    try:
+        await platform_approval.sync_request(db, request)
+    except Exception:  # noqa: BLE001 - return the last projection with availability=false
+        logger.warning("workflow view sync failed for %s", request_id, exc_info=True)
+    return await platform_approval.workflow_view(db, request, identity)
+
+
 @router.get("/approvals/{request_id}")
 async def get_approval(
     request_id: uuid.UUID,
@@ -159,6 +284,12 @@ async def get_approval(
     request = await _load_request(db, request_id)
     if not _can_view(identity, request):
         raise forbidden("无权查看该审批", "SALES-403-APPROVAL_SCOPE")
+    try:
+        await platform_approval.sync_request(db, request)
+    except Exception:  # noqa: BLE001 - stale projection is safer than a 503 detail page
+        import logging
+
+        logging.getLogger(__name__).warning("workflow platform sync failed for %s", request.id, exc_info=True)
     return await _detail(db, request)
 
 
@@ -179,7 +310,38 @@ async def decide(
         delegate_to=body.delegate_to,
         assignment_key=body.assignment_key,
     )
+    # Commit before responding so an immediate detail/list read observes the
+    # projected step/status instead of racing the dependency teardown commit.
+    await db.commit()
     return {"id": str(request.id), "status": request.status, "message": "决策已提交审批引擎"}
+
+
+@router.post("/approvals/{request_id}/resubmit", status_code=202)
+async def resubmit(
+    request_id: uuid.UUID,
+    body: ApprovalResubmitIn,
+    identity: Identity = Depends(require_sales_permission("sales.approval.request")),
+    db: AsyncSession = Depends(get_db),
+):
+    request = await resubmit_approval(
+        db,
+        request_id,
+        identity,
+        reason=body.reason,
+        evidence=body.evidence,
+        comment=body.comment,
+        idempotency_key=body.idempotency_key,
+    )
+    # Commit before responding: the applicant's corrected reason/evidence must be
+    # visible to the immediate detail read that follows the 202 response.
+    await db.commit()
+    return {
+        "id": str(request.id),
+        "status": request.status,
+        "current_step": request.current_step,
+        "request_no": request.request_no,
+        "message": "已重新提交，审批从第一步重新开始",
+    }
 
 
 @router.post("/approvals/{request_id}/cancel", status_code=202)
@@ -195,6 +357,7 @@ async def cancel(
         identity,
         reason=str(payload.get("reason") or "发起人取消"),
     )
+    await db.commit()
     return {"id": str(request.id), "status": request.status}
 
 
@@ -207,6 +370,8 @@ async def retry_start(
     request = await _load_request(db, request_id, lock=True)
     if request.status not in {"pending_start", "failed"}:
         return {"id": str(request.id), "status": request.status, "message": "无需重试"}
+    if request.engine == "workflow_platform":
+        return {"id": str(request.id), "status": request.status, "message": "workflow 平台审批请重新发起"}
     event = (
         await db.execute(
             select(OutboxEvent).where(

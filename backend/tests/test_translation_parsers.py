@@ -129,3 +129,23 @@ class TestClassifyTag:
 
     def test_empty_is_none(self):
         assert classify_tag([]) is None
+
+
+class TestImageOcr:
+    def test_image_is_converted_to_pdf_for_ocr(self, tmp_path):
+        """P1-11: 图片先转单页 PDF，OCR 服务 Phase 0 只收 PDF。"""
+        import fitz
+
+        from app.extensions.translation.parsers import _image_to_pdf_bytes
+
+        doc = fitz.open()
+        page = doc.new_page()
+        page.insert_text((72, 72), "scan me")
+        pix = page.get_pixmap()
+        image = tmp_path / "page.png"
+        pix.save(str(image))
+        doc.close()
+
+        data = _image_to_pdf_bytes(image)
+
+        assert data.startswith(b"%PDF")

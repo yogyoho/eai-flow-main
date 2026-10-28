@@ -47,9 +47,11 @@ class TestStateMachine:
         assert validate_transition("pending", "superseded")
         assert validate_transition("retrying", "superseded")
 
-    def test_terminal_states_have_no_outgoing(self):
+    def test_terminal_states_only_allow_supersede_replacement(self):
+        # 终态不可再流转；唯一例外是重传替换（skipped 旧版本也可被 superseded）。
         for st in TERMINAL_STATES:
-            assert TRANSITIONS[st] == frozenset(), f"{st} must be terminal"
+            assert TRANSITIONS[st] <= {"superseded"}, f"{st} must be terminal"
+        assert "skipped" in TERMINAL_STATES
 
     def test_delivered_keeps_reviewed_redelivery_edge(self):
         # reviewed 档替换流: delivered → indexed（重走索引交付），故 delivered 不在终态集

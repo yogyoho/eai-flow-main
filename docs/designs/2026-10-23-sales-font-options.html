@@ -1,0 +1,898 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>总览页字体方案 · 视觉对比</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link
+    href="https://fonts.googleapis.com/css2?family=Barlow:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600;700&family=Inter:wght@400;500;600;700&family=Noto+Sans+SC:wght@400;500;600;700&display=swap"
+    rel="stylesheet"
+  />
+  <style>
+    :root {
+      --main-700: #4338ca;
+      --main-600: #4f46e5;
+      --main-500: #6366f1;
+      --main-300: #a5b4fc;
+      --main-200: #c7d2fe;
+      --main-100: #e0e7ff;
+      --main-50: #eef2ff;
+      --main-10: #fbfaff;
+      --second-600: #ea580c;
+      --second-500: #f59e0b;
+      --second-200: #fed7aa;
+      --second-100: #ffedd5;
+      --second-50: #fff7ed;
+      --success-700: #2f8f3e;
+      --success-500: #52c41a;
+      --success-50: #e9f8ec;
+      --gray-900: #18181b;
+      --gray-800: #27272a;
+      --gray-700: #3f3f46;
+      --gray-600: #52525b;
+      --gray-500: #71717a;
+      --gray-400: #a1a1aa;
+      --gray-300: #d4d4d8;
+      --gray-200: #e4e4e7;
+      --gray-150: #ececf0;
+      --gray-100: #f4f4f5;
+      --gray-50: #fafafa;
+      --white: #fff;
+      --hairline: #ececf0;
+      --mono: "IBM Plex Mono", "SFMono-Regular", "Cascadia Code", Consolas, monospace;
+      --shadow-card: 0 1px 2px rgba(24, 24, 27, 0.04);
+    }
+
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+
+    body {
+      margin: 0;
+      background: #f6f7fb;
+      color: var(--gray-900);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+      font-size: 13px;
+      line-height: 1.5;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    button { font: inherit; }
+
+    .page {
+      width: 100%;
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 44px 28px 90px;
+    }
+
+    .page-head { max-width: 900px; }
+
+    .eyebrow {
+      color: var(--second-600);
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 0.11em;
+      text-transform: uppercase;
+    }
+
+    h1 {
+      margin: 8px 0 8px;
+      font-size: 32px;
+      line-height: 1.2;
+      letter-spacing: -0.8px;
+    }
+
+    h1 span {
+      color: var(--gray-400);
+      font-weight: 500;
+    }
+
+    .page-head > p {
+      max-width: 820px;
+      margin: 0;
+      color: var(--gray-500);
+      font-size: 14px;
+      line-height: 1.75;
+    }
+
+    .load-note {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      margin-top: 14px;
+      padding: 5px 9px;
+      border: 1px solid var(--gray-200);
+      border-radius: 999px;
+      background: var(--white);
+      color: var(--gray-500);
+      font-size: 11px;
+    }
+
+    .load-note::before {
+      content: "";
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: var(--second-500);
+    }
+
+    .load-note.is-ready::before { background: var(--success-500); }
+    .load-note.is-fallback::before { background: #cf1322; }
+
+    .jump {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 20px;
+    }
+
+    .jump a {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 7px 12px;
+      border: 1px solid var(--gray-200);
+      border-radius: 999px;
+      background: var(--white);
+      color: var(--gray-600);
+      font-size: 12px;
+      text-decoration: none;
+      transition: 0.15s;
+    }
+
+    .jump a:hover {
+      border-color: var(--main-200);
+      background: var(--main-50);
+      color: var(--main-600);
+    }
+
+    .specimen {
+      max-width: 1128px;
+      margin: 42px auto 0;
+    }
+
+    .proto-head {
+      display: flex;
+      align-items: flex-start;
+      gap: 14px;
+      margin-bottom: 13px;
+    }
+
+    .proto-index {
+      flex: none;
+      padding: 6px 8px;
+      border: 1px solid var(--main-100);
+      border-radius: 7px;
+      background: var(--main-50);
+      color: var(--main-600);
+      font-family: var(--mono);
+      font-size: 11px;
+      font-weight: 700;
+      line-height: 1.2;
+    }
+
+    .proto-head h2 {
+      margin: 0 0 3px;
+      font-size: 20px;
+      letter-spacing: -0.25px;
+    }
+
+    .proto-head p {
+      margin: 0;
+      color: var(--gray-500);
+      font-size: 13px;
+      line-height: 1.65;
+    }
+
+    .proto-tags {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+      gap: 6px;
+      margin-left: auto;
+      padding-top: 2px;
+    }
+
+    .proto-tags span {
+      padding: 4px 8px;
+      border: 1px solid var(--gray-200);
+      border-radius: 999px;
+      background: var(--white);
+      color: var(--gray-500);
+      font-size: 11px;
+      white-space: nowrap;
+    }
+
+    .proto-tags .primary {
+      border-color: var(--main-200);
+      background: var(--main-50);
+      color: var(--main-600);
+      font-weight: 600;
+    }
+
+    .board {
+      overflow: hidden;
+      border: 1px solid var(--hairline);
+      border-radius: 12px;
+      background: var(--white);
+      box-shadow: var(--shadow-card);
+    }
+
+    .board-inner { padding: 16px; }
+
+    .stack-line {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 4px;
+      padding: 9px 16px;
+      border-top: 1px solid var(--hairline);
+      background: var(--gray-50);
+      color: var(--gray-400);
+      font-size: 11px;
+    }
+
+    .stack-line code {
+      color: var(--gray-600);
+      font-family: var(--mono);
+      font-size: 10.5px;
+      word-break: break-all;
+    }
+
+    .board-top {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 12px;
+      padding-bottom: 12px;
+      border-bottom: 1px solid var(--hairline);
+    }
+
+    .kicker {
+      color: var(--second-600);
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 0.03em;
+    }
+
+    .board-top h3 {
+      margin: 3px 0 0;
+      font-size: 14px;
+      font-weight: 650;
+      line-height: 1.4;
+    }
+
+    .tag {
+      padding: 4px 8px;
+      border: 1px solid var(--main-100);
+      border-radius: 999px;
+      background: var(--main-50);
+      color: var(--main-600);
+      font-size: 11px;
+      font-weight: 600;
+      white-space: nowrap;
+    }
+
+    .metric-row {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 0;
+      padding: 14px 0;
+      border-bottom: 1px solid var(--hairline);
+    }
+
+    .metric {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+      padding: 0 16px;
+      border-left: 1px solid var(--hairline);
+    }
+
+    .metric:first-child {
+      padding-left: 0;
+      border-left: 0;
+    }
+
+    .metric span {
+      color: var(--gray-400);
+      font-size: 11px;
+    }
+
+    .metric strong {
+      color: var(--gray-900);
+      font-size: 24px;
+      font-weight: 700;
+      font-variant-numeric: tabular-nums;
+      letter-spacing: -0.4px;
+      line-height: 1.2;
+      white-space: nowrap;
+    }
+
+    .metric small {
+      color: var(--gray-500);
+      font-size: 11px;
+      line-height: 1.35;
+    }
+
+    .sample-text {
+      padding: 13px 0 11px;
+      border-bottom: 1px solid var(--hairline);
+    }
+
+    .sample-text p {
+      margin: 0;
+      color: var(--gray-700);
+      font-size: 13px;
+      line-height: 1.7;
+    }
+
+    .sample-text p + p { margin-top: 5px; }
+
+    .sample-text b {
+      color: var(--gray-900);
+      font-weight: 650;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .sample-text .latin {
+      color: var(--gray-500);
+      font-size: 12px;
+      letter-spacing: 0.01em;
+    }
+
+    .table {
+      padding-top: 11px;
+      font-size: 12px;
+    }
+
+    .tr {
+      display: grid;
+      grid-template-columns: 1.7fr 0.6fr 0.95fr 0.95fr 0.85fr;
+      align-items: center;
+      gap: 12px;
+      padding: 8px 0;
+      border-bottom: 1px solid #f0f0f2;
+    }
+
+    .tr:last-child { border-bottom: 0; }
+
+    .tr.th {
+      padding: 0 0 7px;
+      color: var(--gray-400);
+      font-size: 11px;
+    }
+
+    .tr .num {
+      font-variant-numeric: tabular-nums;
+      text-align: right;
+      white-space: nowrap;
+    }
+
+    .tr.th .num { text-align: right; }
+
+    .tr code {
+      margin-right: 7px;
+      padding: 1px 4px;
+      border-radius: 4px;
+      background: var(--gray-100);
+      color: var(--gray-600);
+      font-family: var(--mono);
+      font-size: 10px;
+    }
+
+    .status {
+      justify-self: end;
+      padding: 3px 7px;
+      border: 1px solid var(--second-100);
+      border-radius: 999px;
+      background: var(--second-50);
+      color: #c2410c;
+      font-size: 11px;
+      font-weight: 600;
+      white-space: nowrap;
+    }
+
+    .status.ok {
+      border-color: #bbf7d0;
+      background: var(--success-50);
+      color: var(--success-700);
+    }
+
+    .actions {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding-top: 12px;
+    }
+
+    .actions button {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      padding: 7px 10px;
+      border: 1px solid var(--main-600);
+      border-radius: 7px;
+      background: var(--main-600);
+      color: var(--white);
+      font-size: 13px;
+      font-weight: 600;
+      line-height: 1.3;
+      cursor: pointer;
+    }
+
+    .actions button:hover { background: var(--main-700); border-color: var(--main-700); }
+
+    .actions .id {
+      color: var(--gray-400);
+      font-family: var(--mono);
+      font-size: 10.5px;
+    }
+
+    .notes {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px 24px;
+      margin-top: 10px;
+      color: var(--gray-500);
+      font-size: 12px;
+      line-height: 1.6;
+    }
+
+    .notes b { color: var(--gray-700); font-weight: 600; }
+
+    /* Font stacks under test */
+    .font-system {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+    }
+
+    .font-inter {
+      font-family: "Inter", "Noto Sans SC", "PingFang SC", "Microsoft YaHei", sans-serif;
+    }
+
+    .font-plex {
+      font-family: "IBM Plex Sans", "Noto Sans SC", "PingFang SC", "Microsoft YaHei", sans-serif;
+    }
+
+    .font-barlow {
+      font-family: "Barlow", "Inter", "Noto Sans SC", "PingFang SC", "Microsoft YaHei", sans-serif;
+    }
+
+    /* Number specimen */
+    .number-section {
+      max-width: 1128px;
+      margin: 48px auto 0;
+    }
+
+    .number-grid {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 10px;
+      padding: 14px;
+      border: 1px solid var(--hairline);
+      border-radius: 12px;
+      background: var(--white);
+      box-shadow: var(--shadow-card);
+    }
+
+    .number-card {
+      padding: 13px 14px;
+      border: 1px solid var(--hairline);
+      border-radius: 9px;
+      background: var(--gray-50);
+    }
+
+    .number-card span {
+      display: block;
+      color: var(--gray-400);
+      font-size: 11px;
+    }
+
+    .number-card strong {
+      display: block;
+      margin-top: 3px;
+      color: var(--gray-900);
+      font-size: 28px;
+      font-weight: 700;
+      font-variant-numeric: tabular-nums;
+      letter-spacing: -0.5px;
+      line-height: 1.2;
+      white-space: nowrap;
+    }
+
+    .number-card em {
+      display: block;
+      margin-top: 5px;
+      color: var(--gray-500);
+      font-size: 12px;
+      font-style: normal;
+      font-variant-numeric: tabular-nums;
+      letter-spacing: 0.01em;
+    }
+
+    .number-card .label {
+      margin-top: 7px;
+      color: var(--gray-400);
+      font-size: 11px;
+    }
+
+    .mono-sample {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      margin-top: 10px;
+      padding: 11px 14px;
+      border: 1px solid var(--hairline);
+      border-radius: 9px;
+      background: var(--white);
+      box-shadow: var(--shadow-card);
+    }
+
+    .mono-sample span {
+      flex: none;
+      color: var(--gray-400);
+      font-size: 11px;
+    }
+
+    .mono-sample code {
+      color: var(--gray-700);
+      font-family: var(--mono);
+      font-size: 12px;
+      letter-spacing: 0.02em;
+    }
+
+    .recommendation {
+      display: grid;
+      grid-template-columns: 1.2fr 1fr 1fr;
+      gap: 10px;
+      max-width: 1128px;
+      margin: 48px auto 0;
+      padding: 16px;
+      border: 1px solid var(--hairline);
+      border-radius: 12px;
+      background: var(--white);
+      box-shadow: var(--shadow-card);
+    }
+
+    .recommendation > div {
+      padding: 11px 13px;
+      border-radius: 8px;
+      background: var(--gray-50);
+    }
+
+    .recommendation span {
+      display: block;
+      color: var(--gray-400);
+      font-size: 11px;
+    }
+
+    .recommendation strong {
+      display: block;
+      margin-top: 2px;
+      font-size: 13px;
+    }
+
+    .recommendation p {
+      margin: 4px 0 0;
+      color: var(--gray-500);
+      font-size: 11px;
+      line-height: 1.55;
+    }
+
+    .footnote {
+      max-width: 1128px;
+      margin: 18px auto 0;
+      color: var(--gray-400);
+      font-size: 11px;
+      line-height: 1.7;
+    }
+
+    @media (max-width: 1120px) {
+      .page { max-width: 760px; padding: 34px 20px 70px; }
+      .specimen,
+      .number-section,
+      .recommendation,
+      .footnote { max-width: 712px; }
+      .number-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .recommendation { grid-template-columns: 1fr 1fr; }
+    }
+
+    @media (max-width: 820px) {
+      h1 { font-size: 28px; }
+      .proto-head { flex-wrap: wrap; }
+      .proto-tags { width: 100%; justify-content: flex-start; margin-left: 0; }
+      .metric-row { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px 0; }
+      .metric:nth-child(3) { padding-left: 0; border-left: 0; }
+      .tr { grid-template-columns: 1.5fr 0.6fr 0.9fr 0.9fr; }
+      .tr .status { display: none; }
+    }
+
+    @media (max-width: 720px) {
+      .page { max-width: 100%; padding: 26px 14px 56px; }
+      .specimen,
+      .number-section,
+      .recommendation,
+      .footnote { max-width: 100%; }
+      .board-inner { padding: 12px; }
+      .metric { padding: 0 10px; }
+      .metric strong { font-size: 21px; }
+      .tr { grid-template-columns: 1.5fr 0.6fr 0.9fr; gap: 8px; }
+      .tr > :nth-child(4) { display: none; }
+      .actions { flex-wrap: wrap; }
+      .number-grid { grid-template-columns: 1fr 1fr; }
+      .number-card strong { font-size: 24px; }
+      .recommendation { grid-template-columns: 1fr; }
+      .mono-sample { align-items: flex-start; flex-direction: column; gap: 5px; }
+    }
+
+    @media (max-width: 480px) {
+      .number-grid { grid-template-columns: 1fr; }
+      .metric-row { grid-template-columns: 1fr 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <main class="page">
+    <header class="page-head">
+      <div class="eyebrow">Sales Workbench · Typography</div>
+      <h1>总览页字体方案 <span>3 组视觉对比</span></h1>
+      <p>
+        同一份总览页内容，分别用系统字体、Inter + Noto Sans SC、IBM Plex Sans + Noto Sans SC 渲染。
+        重点看中文小字号、英文缩写、金额、表格数字和编号。
+      </p>
+      <div class="load-note" id="fontStatus">正在加载 Web 字体…</div>
+      <nav class="jump" aria-label="对比目录">
+        <a href="#system">01 系统默认</a>
+        <a href="#inter">02 Inter</a>
+        <a href="#plex">03 IBM Plex Sans</a>
+        <a href="#numbers">数字专项</a>
+      </nav>
+    </header>
+
+    <section class="specimen" id="system">
+      <div class="proto-head">
+        <div class="proto-index">01</div>
+        <div>
+          <h2>系统默认</h2>
+          <p>当前线上方案：Segoe UI / 苹方 / 微软雅黑，零字体依赖。</p>
+        </div>
+        <div class="proto-tags">
+          <span>零依赖</span>
+          <span>跨平台差异</span>
+        </div>
+      </div>
+      <div class="board font-system">
+        <div class="board-inner" data-sample></div>
+        <div class="stack-line">
+          <code>-apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif</code>
+        </div>
+      </div>
+      <div class="notes">
+        <span><b>优点：</b>无需字体文件，离线可用，加载最快。</span>
+        <span><b>取舍：</b>Windows 与 macOS 观感不同，雅黑在 12px 下略挤。</span>
+      </div>
+    </section>
+
+    <section class="specimen" id="inter">
+      <div class="proto-head">
+        <div class="proto-index">02</div>
+        <div>
+          <h2>Inter + Noto Sans SC</h2>
+          <p>跨平台一致，英文和数字清晰，中文小字号稳定。</p>
+        </div>
+        <div class="proto-tags">
+          <span>推荐</span>
+          <span>现代数据台</span>
+          <span>数字清晰</span>
+        </div>
+      </div>
+      <div class="board font-inter">
+        <div class="board-inner" data-sample></div>
+        <div class="stack-line">
+          <code>"Inter", "Noto Sans SC", "PingFang SC", "Microsoft YaHei", sans-serif</code>
+        </div>
+      </div>
+      <div class="notes">
+        <span><b>优点：</b>中英文气质统一，金额和表格数字更利落。</span>
+        <span><b>取舍：</b>需要自托管 Inter + Noto Sans SC 的 WOFF2 子集。</span>
+      </div>
+    </section>
+
+    <section class="specimen" id="plex">
+      <div class="proto-head">
+        <div class="proto-index">03</div>
+        <div>
+          <h2>IBM Plex Sans + Noto Sans SC</h2>
+          <p>更偏企业与工业理性，适合审批、合同和密集表格。</p>
+        </div>
+        <div class="proto-tags">
+          <span>企业理性</span>
+          <span>表格友好</span>
+        </div>
+      </div>
+      <div class="board font-plex">
+        <div class="board-inner" data-sample></div>
+        <div class="stack-line">
+          <code>"IBM Plex Sans", "Noto Sans SC", "PingFang SC", "Microsoft YaHei", sans-serif</code>
+        </div>
+      </div>
+      <div class="notes">
+        <span><b>优点：</b>数字和英文更有“系统感”，和审批流很搭。</span>
+        <span><b>取舍：</b>整体比 Inter 更硬，年轻感略弱。</span>
+      </div>
+    </section>
+
+    <section class="number-section" id="numbers">
+      <div class="proto-head">
+        <div class="proto-index">04</div>
+        <div>
+          <h2>数字专项</h2>
+          <p>同一组数字在不同字体下的效果。四组都开启 <code>tabular-nums</code>。</p>
+        </div>
+        <div class="proto-tags">
+          <span>金额</span>
+          <span>表格</span>
+          <span>指标</span>
+        </div>
+      </div>
+      <div class="number-grid">
+        <div class="number-card font-system">
+          <span>Segoe UI · 当前</span>
+          <strong>¥5,676 万</strong>
+          <em>1,234,567 · 98.6%</em>
+          <div class="label">系统默认</div>
+        </div>
+        <div class="number-card font-inter">
+          <span>Inter · 推荐</span>
+          <strong>¥5,676 万</strong>
+          <em>1,234,567 · 98.6%</em>
+          <div class="label">现代数据台</div>
+        </div>
+        <div class="number-card font-plex">
+          <span>IBM Plex Sans</span>
+          <strong>¥5,676 万</strong>
+          <em>1,234,567 · 98.6%</em>
+          <div class="label">企业理性</div>
+        </div>
+        <div class="number-card font-barlow">
+          <span>Barlow · 大数字可选</span>
+          <strong>¥5,676 万</strong>
+          <em>1,234,567 · 98.6%</em>
+          <div class="label">只用于 24px 以上指标</div>
+        </div>
+      </div>
+      <div class="mono-sample">
+        <span>编号 / 代码 · IBM Plex Mono</span>
+        <code>S1 · S4 · A01 · AP20261000001</code>
+      </div>
+      <div class="notes">
+        <span><b>建议：</b>数字统一用主 Sans 的 tabular-nums；Mono 只用于阶段码、审批号和 ID。</span>
+        <span><b>不建议：</b>用 Mono 排大金额，数字会过宽，表格会显得技术化。</span>
+      </div>
+    </section>
+
+    <section class="recommendation" aria-label="选型建议">
+      <div>
+        <span>推荐落地</span>
+        <strong>02 Inter + Noto Sans SC</strong>
+        <p>总览页最均衡：中文清楚、英文利落、数字稳定。</p>
+      </div>
+      <div>
+        <span>零依赖备选</span>
+        <strong>01 系统默认</strong>
+        <p>离线优先、暂时不想引入字体文件时继续使用。</p>
+      </div>
+      <div>
+        <span>企业感备选</span>
+        <strong>03 IBM Plex Sans</strong>
+        <p>如果整体产品更偏审批、合同、流程，可以选它。</p>
+      </div>
+    </section>
+
+    <p class="footnote">
+      注：本页通过 Google Fonts 加载字体，仅用于视觉确认；正式落地建议自托管 WOFF2 并做常用字子集。Barlow 只建议用于 24px 以上的指标大数字，不用于正文和表格。
+    </p>
+  </main>
+
+  <script>
+    const sample = `
+      <div class="board-top">
+        <div>
+          <span class="kicker">C1 · 商机漏斗</span>
+          <h3>九阶段管道</h3>
+        </div>
+        <span class="tag">阶段总览</span>
+      </div>
+
+      <div class="metric-row">
+        <div class="metric">
+          <span>今日待办</span>
+          <strong>4</strong>
+          <small>项未结</small>
+        </div>
+        <div class="metric">
+          <span>加权预测</span>
+          <strong>¥5676 万</strong>
+          <small>在管 ¥1.12 亿</small>
+        </div>
+        <div class="metric">
+          <span>阶段超期</span>
+          <strong>1</strong>
+          <small>需补充推进动作</small>
+        </div>
+        <div class="metric">
+          <span>有效胜率</span>
+          <strong>50%</strong>
+          <small>已结束商机口径</small>
+        </div>
+      </div>
+
+      <div class="sample-text">
+        <p>当前在管 <b>15</b> 个商机，含税金额 <b>¥1.12 亿</b>，加权预测 <b>¥5676 万</b>。加权值使用阶段概率与超期降权，不是承诺值。</p>
+        <p class="latin">Pipeline Overview · Weighted Forecast · Stage S4 · SLA 24h</p>
+      </div>
+
+      <div class="table">
+        <div class="tr th">
+          <span>阶段</span>
+          <span class="num">商机</span>
+          <span class="num">含税金额</span>
+          <span class="num">加权金额</span>
+          <span class="num">状态</span>
+        </div>
+        <div class="tr">
+          <span><code>S4</code>技术方案 / 示范</span>
+          <span class="num">2 个</span>
+          <span class="num">¥3600 万</span>
+          <span class="num">¥1800 万</span>
+          <span class="status">1 个超期</span>
+        </div>
+        <div class="tr">
+          <span><code>S8</code>中标 / 失标</span>
+          <span class="num">2 个</span>
+          <span class="num">¥2300 万</span>
+          <span class="num">¥1380 万</span>
+          <span class="status ok">正常</span>
+        </div>
+      </div>
+
+      <div class="actions">
+        <button type="button">查看阶段商机 →</button>
+        <span class="id">AP20261000001</span>
+      </div>
+    `
+
+    document.querySelectorAll('[data-sample]').forEach((node) => {
+      node.innerHTML = sample
+    })
+
+    const status = document.getElementById('fontStatus')
+    const checks = [
+      ['Inter', '16px Inter'],
+      ['Noto Sans SC', '16px "Noto Sans SC"'],
+      ['IBM Plex Sans', '16px "IBM Plex Sans"'],
+      ['IBM Plex Mono', '16px "IBM Plex Mono"'],
+      ['Barlow', '16px Barlow'],
+    ]
+
+    Promise.all([
+      document.fonts.ready,
+      Promise.all(checks.map(([, query]) => document.fonts.load(query, '字体 Aa 123'))),
+    ]).then(() => {
+      const missing = checks.filter(([, query]) => !document.fonts.check(query)).map(([name]) => name)
+      if (missing.length) {
+        status.textContent = `部分字体回退：${missing.join('、')}`
+        status.classList.add('is-fallback')
+      } else {
+        status.textContent = 'Web 字体已加载：Inter / Noto Sans SC / IBM Plex Sans / IBM Plex Mono / Barlow'
+        status.classList.add('is-ready')
+      }
+    }).catch(() => {
+      status.textContent = '字体加载失败，当前使用系统回退字体'
+      status.classList.add('is-fallback')
+    })
+  </script>
+</body>
+</html>

@@ -9,6 +9,7 @@ from sqlalchemy.orm import selectinload
 
 from app.approval_access import active_step_scope_condition, step_actionable
 from app.auth import Identity, require_sales_permission, scope_condition
+from app.config import get_settings
 from app.database import get_db
 from app.domain import funnel_stage_rows, serialize_opportunities, todo_dict, utc_now
 from app.enums import STAGE_LABELS
@@ -104,6 +105,7 @@ async def workbench_summary(
 
     return {
         "identity": identity.to_public(),
+        "workflow_platform_enabled": get_settings().workflow_platform_enabled,
         "data_as_of": now.isoformat(),
         "metrics": {
             "today_todos": len(today_todos),

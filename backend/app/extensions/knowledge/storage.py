@@ -3,6 +3,7 @@
 import asyncio
 import logging
 import os
+import tempfile
 from dataclasses import dataclass
 from pathlib import Path
 from urllib.parse import urlparse
@@ -54,6 +55,10 @@ class StorageProvider:
     async def delete(self, uri: str) -> None:
         raise NotImplementedError
 
+    async def download_to_temp(self, uri: str) -> Path:
+        """把远端对象落到本地临时文件并返回路径（调用方负责删除）。"""
+        raise NotImplementedError
+
 
 class LocalStorageProvider(StorageProvider):
     """Local filesystem storage (no-op for upload)."""
@@ -71,6 +76,9 @@ class LocalStorageProvider(StorageProvider):
     async def delete(self, uri: str) -> None:
         if os.path.exists(uri):
             os.unlink(uri)
+
+    async def download_to_temp(self, uri: str) -> Path:
+        return Path(uri)
 
 
 class MinioStorageProvider(StorageProvider):
@@ -127,6 +135,18 @@ class MinioStorageProvider(StorageProvider):
     async def delete(self, uri: str) -> None:
         bucket, key = _parse_s3_uri(uri)
         await asyncio.to_thread(self._client.remove_object, bucket, key)
+
+    async def download_to_temp(self, uri: str) -> Path:
+        bucket, key = _parse_s3_uri(uri)
+        fd, tmp = tempfile.mkstemp(suffix=Path(key).suffix)
+        os.close(fd)
+        try:
+            await asyncio.to_thread(self._client.fget_object, bucket, key, tmp)
+        except Exception:
+            if os.path.exists(tmp):
+                os.unlink(tmp)
+            raise
+        return Path(tmp)
 
 
 _provider: StorageProvider | None = None

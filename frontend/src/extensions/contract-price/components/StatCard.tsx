@@ -1,37 +1,46 @@
 "use client";
 
-import type { LucideIcon } from "lucide-react";
-
 import { cn } from "@/lib/utils";
 
-type StatColor = "blue" | "violet" | "amber" | "rose";
+type StatTone = "default" | "accent" | "warn";
 
 interface StatCardProps {
   label: string;
   value: string | number;
-  icon: LucideIcon;
+  /** 数值后缀小字（如「份」「条」）。 */
   hint?: string;
-  color?: StatColor;
+  /** accent = 左侧 2px 主色竖条；warn = 数值用警示橙（amber-600，warning 500 对比度不足）。 */
+  tone?: StatTone;
 }
 
-const colorClasses: Record<StatColor, string> = {
-  blue: "bg-blue-500/10 text-blue-600 dark:text-blue-400",
-  violet: "bg-violet-500/10 text-violet-600 dark:text-violet-400",
-  amber: "bg-amber-500/10 text-amber-600 dark:text-amber-400",
-  rose: "bg-rose-500/10 text-rose-600 dark:text-rose-400",
-};
-
-export function StatCard({ label, value, icon: Icon, hint, color = "blue" }: StatCardProps) {
+/**
+ * 指标格（cpa UI 重构规范 §2-2）。
+ * EAI-CUSTOM: 视觉习语取自 2026-10-12 eia-p2 原型 .metric-cell —— 无图标、
+ * label 12px muted 在上 / 数值 22px bold tabular-nums 在下；原 icon/color API 已移除。
+ */
+export function StatCard({ label, value, hint, tone = "default" }: StatCardProps) {
   return (
-    <div className="flex items-center gap-4 rounded-lg border border-border bg-card p-4 transition-all hover:border-primary/20 hover:shadow-md">
-      <div className={cn("flex h-10 w-10 shrink-0 items-center justify-center rounded-[10px]", colorClasses[color])}>
-        <Icon className="h-[18px] w-[18px]" />
-      </div>
-      <div className="min-w-0 flex-1">
-        <p className="text-xs uppercase tracking-wide text-muted-foreground/60">{label}</p>
-        <p className="font-cyber text-2xl font-extrabold tracking-tight text-foreground">{value}</p>
-        {hint ? <p className="truncate text-xs text-muted-foreground">{hint}</p> : null}
-      </div>
+    <div
+      className={cn(
+        "border-border bg-card relative flex flex-col gap-0.5 rounded-md border px-[18px] py-3",
+        tone === "accent" &&
+          "before:bg-primary before:absolute before:top-3 before:bottom-3 before:left-0 before:w-0.5 before:rounded-r-sm before:content-['']",
+      )}
+    >
+      <span className="text-muted-foreground text-xs">{label}</span>
+      <span
+        className={cn(
+          "text-foreground text-2xl leading-[1.1] font-bold tabular-nums",
+          tone === "warn" && "text-amber-600 dark:text-amber-400",
+        )}
+      >
+        {value}
+        {hint ? (
+          <small className="text-muted-foreground ml-1 text-xs font-normal">
+            {hint}
+          </small>
+        ) : null}
+      </span>
     </div>
   );
 }

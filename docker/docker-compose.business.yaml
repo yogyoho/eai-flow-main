@@ -9,6 +9,13 @@
 #   - asset-frontend:         Asset UI (port 3000 internal)
 #   - project-backend:        Project API (port 3003)
 #   - project-frontend:       Project UI (port 3000 internal)
+#
+# EAI-CUSTOM: the workflow platform (backend/worker/dispatcher/frontend) is
+# included from docker-compose.workflow.yaml so the usual business stack starts
+# it too, without requiring callers to pass another -f flag.
+
+include:
+  - docker-compose.workflow.yaml
 
 services:
   # ── Unified Business PostgreSQL ────────────────────────────────────────
@@ -152,6 +159,10 @@ services:
     build:
       context: ../business/sales-service/backend
       dockerfile: Dockerfile
+      args:
+        # Tsinghua mirror by default for fast builds in China; override with
+        # PIP_INDEX_URL=https://pypi.org/simple to build against official PyPI.
+        PIP_INDEX_URL: ${PIP_INDEX_URL:-https://pypi.tuna.tsinghua.edu.cn/simple}
     container_name: eai-flow-sales-backend
     command: python -m uvicorn app.main:app --host 0.0.0.0 --port 3004 --workers 1
     environment:
@@ -169,6 +180,10 @@ services:
       - TEMPORAL_NAMESPACE=default
       - TEMPORAL_TASK_QUEUE=sales-approval-queue
       - TEMPORAL_RPC_TIMEOUT_SECONDS=5
+      - WORKFLOW_PLATFORM_ENABLED=${WORKFLOW_PLATFORM_ENABLED:-true}
+      - WORKFLOW_PLATFORM_BASE_URL=${WORKFLOW_PLATFORM_BASE_URL:-http://workflow-backend:8020/api/workflow}
+      - WORKFLOW_PLATFORM_INTERNAL_TOKEN=${WORKFLOW_INTERNAL_TOKEN:-}
+      - WORKFLOW_PLATFORM_TIMEOUT_SECONDS=10
       - SCHEDULER_ENABLED=true
       - SEED_DEMO=${SALES_SEED_DEMO:-false}
       - MINIO_ENABLED=true
@@ -200,6 +215,8 @@ services:
     build:
       context: ../business/sales-service/backend
       dockerfile: Dockerfile
+      args:
+        PIP_INDEX_URL: ${PIP_INDEX_URL:-https://pypi.tuna.tsinghua.edu.cn/simple}
     container_name: eai-flow-sales-worker
     command: python -m app.worker
     environment:
@@ -239,6 +256,8 @@ services:
     build:
       context: ../business/sales-service/frontend
       dockerfile: Dockerfile
+      additional_contexts:
+        workflow_embed: ../packages/workflow-embed
     container_name: eai-flow-sales-frontend
     environment:
       - NODE_ENV=production

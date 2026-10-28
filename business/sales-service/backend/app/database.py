@@ -59,6 +59,12 @@ async def init_db() -> None:
         # parallel-approval audit fields without a heavyweight migration tool.
         await conn.execute(text("ALTER TABLE approval_actions ADD COLUMN IF NOT EXISTS assignment_key VARCHAR(128)"))
         await conn.execute(text("CREATE INDEX IF NOT EXISTS ix_approval_actions_assignment_key ON approval_actions (assignment_key)"))
+        # Workflow-platform bridge (additive for rolling deployments).
+        await conn.execute(text("ALTER TABLE approval_requests ADD COLUMN IF NOT EXISTS platform_instance_id BIGINT"))
+        await conn.execute(text("CREATE INDEX IF NOT EXISTS ix_approval_requests_platform_instance_id ON approval_requests (platform_instance_id)"))
+        await conn.execute(text("ALTER TABLE approval_requests ADD COLUMN IF NOT EXISTS engine VARCHAR(32) DEFAULT 'sales_temporal' NOT NULL"))
+        await conn.execute(text("ALTER TABLE approval_steps ADD COLUMN IF NOT EXISTS platform_task_id BIGINT"))
+        await conn.execute(text("CREATE INDEX IF NOT EXISTS ix_approval_steps_platform_task_id ON approval_steps (platform_task_id)"))
 
 
 async def close_db() -> None:

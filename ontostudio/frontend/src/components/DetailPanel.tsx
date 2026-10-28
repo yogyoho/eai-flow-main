@@ -27,6 +27,18 @@ const FIELD_LABELS: Record<string, string> = {
   validTo: "生效至",
   createdAt: "创建时间",
   updatedAt: "更新时间",
+  subjectId: "主体实体",
+  predicate: "谓词",
+  objectId: "客体实体",
+  entityId: "实体",
+  relationId: "关系",
+  threadId: "来源会话",
+  documentId: "来源文档",
+  docSpan: "文档定位",
+  quote: "原文引用",
+  extractedBy: "抽取者",
+  extractedAt: "抽取时间",
+  error: "抽取错误",
   thread_id: "来源会话",
   document_id: "来源文档",
 };
@@ -55,6 +67,15 @@ const ATTR_KEY_LABELS: Record<string, string> = {
 const ATTR_VALUE_LABELS: Record<string, string> = {
   sample: "样例库",
   project: "项目",
+};
+/** 枚举字段展示值（实体库与图谱详情共用，保持状态文案一致）。 */
+const FIELD_VALUE_LABELS: Record<string, Record<string, string>> = {
+  status: {
+    active: "已确认",
+    pending_review: "待审",
+    merged: "已合并",
+    rejected: "已驳回",
+  },
 };
 
 
@@ -125,10 +146,15 @@ function useEntityName(entityPk: string) {
   const fromGraph = inGraph
     ? String(graph.getNodeAttribute(nodeId, "label"))
     : "";
+  const fallback = q.isLoading
+    ? "加载中…"
+    : entityPk
+      ? "未知实体"
+      : "—";
   const name =
     fromGraph ||
     String((q.data as { canonicalName?: string } | undefined)?.canonicalName ?? "") ||
-    (entityPk ? `实体 ${entityPk.slice(0, 8)}…` : "—");
+    fallback;
   return { name, inGraph };
 }
 
@@ -154,13 +180,18 @@ function EntityNameLink({
   );
 }
 
-/** 图谱关系节点——三元组语义卡（主体 → 谓词 → 客体），替代 UUID 属性表（v4 图谱关系体验）。 */
+/** 关系节点——三元组语义卡（主体 → 谓词 → 客体），替代 UUID 属性表（v4 图谱关系体验）。
+ *  图谱/环评/营销关系共用：三域关系行同驻 dg_relations，subjectId/objectId 均可回查实体名。 */
 function RelationNodeCard({
+  apiName,
+  displayName,
   pk,
   properties,
   onFocusNode,
   predicateLabels,
 }: {
+  apiName: string;
+  displayName: string;
   pk: string;
   properties: Record<string, unknown>;
   onFocusNode?: (dialectId: string) => void;
@@ -184,12 +215,12 @@ function RelationNodeCard({
         {object.name}
       </div>
       <div className="mb-3 flex flex-wrap gap-1">
-        <span className="border-border text-muted-foreground rounded-full border px-2 py-0.5 text-xs">graph_relation</span>
-        <span className="border-border text-muted-foreground rounded-full border px-2 py-0.5 text-xs">图谱关系</span>
+        <span className="border-border text-muted-foreground rounded-full border px-2 py-0.5 text-xs">{apiName}</span>
+        <span className="border-border text-muted-foreground rounded-full border px-2 py-0.5 text-xs">{displayName}</span>
       </div>
       <hr className="my-2" />
       <h3 className="text-muted-foreground mb-1.5 text-xs font-medium tracking-widest">关系属性</h3>
-      <dl className="grid grid-cols-[96px_1fr] gap-x-2.5 gap-y-1 text-sm">
+      <dl className="grid grid-cols-[110px_1fr] gap-x-2.5 gap-y-1 text-sm">
         <dt className="text-muted-foreground break-words text-[13px]">谓词<span className="ml-1 font-mono text-[9.5px] opacity-60">predicate</span></dt>
         <dd className="text-foreground font-mono text-xs">
           {predicate}
@@ -589,9 +620,28 @@ function LinkTypeRows({ apiName, pk, linkType, opposite, onFocusNode }: LinkType
 export function DetailPanel({
   nodeId,
   onFocusNode,
+  properties: propertyOverride,
+  showHeader = true,
+  showProperties = true,
+  showPropertiesHeading = true,
+  showLinks = true,
+  showLinksHeading = true,
+  showActions = true,
+  excludeLinkTypes,
 }: {
   nodeId: string | null;
   onFocusNode?: (dialectId: string) => void;
+  /** 列表页行投影：图存储尚无该节点时也能展示属性（实体库抽屉/右侧详情栏）。 */
+  properties?: Record<string, unknown>;
+  /** 右侧常驻详情栏按卡片拆分展示：默认全量，抽屉行为不变。 */
+  showHeader?: boolean;
+  showProperties?: boolean;
+  showPropertiesHeading?: boolean;
+  showLinks?: boolean;
+  showLinksHeading?: boolean;
+  showActions?: boolean;
+  /** 从关联链接组中排除的链型：证据引文由专门的「来源证据」卡承载，避免重复请求。 */
+  excludeLinkTypes?: readonly string[];
 }) {
   const schemaQuery = useQuery({
     queryKey: ["ontology", "object-types"],
@@ -627,7 +677,7 @@ export function DetailPanel({
   const attrs = graph.hasNode(nodeId)
     ? (graph.getNodeAttributes(nodeId) as NodeAttributes)
     : null;
-  const properties = (attrs?.properties ?? {}) as Record<string, unknown>;
+  const properties = (propertyOverride ?? attrs?.properties ?? {}) as Record<string, unknown>;
   // EAI-CUSTOM(2026-10-01 domain_pattern): 规律行走结构化卡片；attrs 已被卡片消化时
   // 通用属性表剔除该列（否则整段 JSON 原样渲染不可读）。卡片渲染不出（attrs 缺失/畸形）
   // 时保持通用行为——attrs 留在表里兜底。
@@ -643,14 +693,22 @@ export function DetailPanel({
   const coreEntries = genericEntries.filter(([k, v]) => !TECH_FIELDS.has(k) && !isEmptyVal(v));
   const techEntries = genericEntries.filter(([k, v]) => TECH_FIELDS.has(k) && !isEmptyVal(v));
   const linkTypes = (schemaQuery.data?.link_types ?? []).filter(
-    (lt) => lt.enabled && (lt.source === apiName || lt.target === apiName),
+    (lt) =>
+      lt.enabled &&
+      (lt.source === apiName || lt.target === apiName) &&
+      !excludeLinkTypes?.includes(lt.name),
   );
 
   // EAI-CUSTOM(2026-10-01 v4 图谱关系节点): 三元组语义卡——UUID 标题与 subjectId/objectId
   // 裸行对操作者无意义，改为主体→谓词→客体的句子式呈现。
-  if (apiName === "graph_relation") {
+  // EAI-CUSTOM(2026-10-20): 环评/营销关系同构（同驻 dg_relations），一并走语义卡。
+  if (apiName.endsWith("_relation")) {
     return (
       <RelationNodeCard
+        apiName={apiName}
+        displayName={
+          findObjectType(schemaQuery.data, apiName)?.display_name ?? apiName
+        }
         pk={pk}
         properties={properties}
         predicateLabels={predicateLabelsQuery.data ?? new Map()}
@@ -659,33 +717,49 @@ export function DetailPanel({
     );
   }
 
+  const propertyLabel =
+    (typeof properties.canonicalName === "string" && properties.canonicalName) ||
+    (typeof properties.name === "string" && properties.name) ||
+    "";
+  const displayLabel = attrs?.label ?? (propertyLabel || pk);
+
   return (
     <div className="px-3 py-3">
-      <div className="mb-1 break-all text-sm font-semibold leading-snug text-foreground">
-        {attrs?.label ?? pk}
-      </div>
-      <div className="mb-3 flex flex-wrap gap-1">
-        <span className="border-border text-muted-foreground rounded-full border px-2 py-0.5 text-xs">
-          {apiName}
-        </span>
-        {findObjectType(schemaQuery.data, apiName) ? (
-          <span className="border-border text-muted-foreground rounded-full border px-2 py-0.5 text-xs">
-            {findObjectType(schemaQuery.data, apiName)?.display_name}
-          </span>
-        ) : null}
-        {isDomainPattern ? (
-          <span className="border-primary/40 text-primary rounded-full border px-2 py-0.5 text-xs">
-            领域模式
-          </span>
-        ) : null}
-      </div>
+      {showHeader ? (
+        <>
+          <div className="mb-1 break-all text-sm font-semibold leading-snug text-foreground">
+            {displayLabel}
+          </div>
+          <div className="mb-3 flex flex-wrap gap-1">
+            <span className="border-border text-muted-foreground rounded-full border px-2 py-0.5 text-xs">
+              {apiName}
+            </span>
+            {findObjectType(schemaQuery.data, apiName) ? (
+              <span className="border-border text-muted-foreground rounded-full border px-2 py-0.5 text-xs">
+                {findObjectType(schemaQuery.data, apiName)?.display_name}
+              </span>
+            ) : null}
+            {isDomainPattern ? (
+              <span className="border-primary/40 text-primary rounded-full border px-2 py-0.5 text-xs">
+                领域模式
+              </span>
+            ) : null}
+          </div>
+        </>
+      ) : null}
 
-      {isDomainPattern ? <DomainPatternCard properties={properties} /> : null}
-      <hr className="my-2" />
-      <h3 className="text-muted-foreground mb-1.5 text-xs font-medium tracking-widest">实体属性</h3>
-      
-      {genericEntries.length > 0 ? (
-        <dl className="grid grid-cols-[96px_1fr] gap-x-2.5 gap-y-1 text-[13px]">
+      {showProperties ? (
+        <>
+          {isDomainPattern ? <DomainPatternCard properties={properties} /> : null}
+          {showHeader ? <hr className="my-2" /> : null}
+          {showPropertiesHeading ? (
+            <h3 className="text-muted-foreground mb-1.5 text-xs font-medium tracking-widest">
+              实体属性
+            </h3>
+          ) : null}
+
+          {genericEntries.length > 0 ? (
+        <dl className="grid grid-cols-[110px_1fr] gap-x-2.5 gap-y-1 text-[13px]">
           {coreEntries.map(([key, value]) => {
             const label = FIELD_LABELS[key];
             return (
@@ -713,7 +787,8 @@ export function DetailPanel({
                     ))}
                   </span>
                 ) : (
-                  formatPropertyValue(value)
+                  (FIELD_VALUE_LABELS[key]?.[String(value)] ??
+                    formatPropertyValue(value))
                 )}
               </dd>
             </div>
@@ -731,7 +806,7 @@ export function DetailPanel({
           <summary className="text-muted-foreground cursor-pointer select-none text-[11px] hover:text-foreground">
             其他信息（ID / 时间戳 / 时效）
           </summary>
-          <dl className="mt-1.5 grid grid-cols-[96px_1fr] gap-x-2.5 gap-y-1 text-xs">
+          <dl className="mt-1.5 grid grid-cols-[110px_1fr] gap-x-2.5 gap-y-1 text-xs">
             {techEntries.map(([key, value]) => {
               const label = FIELD_LABELS[key];
               return (
@@ -751,58 +826,69 @@ export function DetailPanel({
           </dl>
         </details>
       ) : null}
-      <hr className="my-2" />
-      <h3 className="text-muted-foreground mt-4 mb-1.5 text-xs font-medium tracking-widest">
-        关联链接
-      </h3>
-      {schemaQuery.isLoading ? (
-        <div className="text-muted-foreground flex items-center gap-1.5 text-xs">
-          <Loader2 className="h-3 w-3 animate-spin" />
-          加载链接类型…
+        </>
+      ) : null}
+
+      {showLinks ? (
+        <>
+          {showProperties ? <hr className="my-2" /> : null}
+          {showLinksHeading ? (
+            <h3 className="text-muted-foreground mt-4 mb-1.5 text-xs font-medium tracking-widest">
+              关联链接
+            </h3>
+          ) : null}
+          {schemaQuery.isLoading ? (
+            <div className="text-muted-foreground flex items-center gap-1.5 text-xs">
+              <Loader2 className="h-3 w-3 animate-spin" />
+              加载链接类型…
+            </div>
+          ) : linkTypes.length === 0 ? (
+            <div className="text-muted-foreground text-xs">该对象类型未声明 enabled 链接</div>
+          ) : (
+            linkTypes.map((lt) => {
+              const oppositeName = lt.source === apiName ? lt.target : lt.source;
+              const opposite = findObjectType(schemaQuery.data, oppositeName);
+              if (!opposite) {
+                return null;
+              }
+              return (
+                <LinkTypeRows
+                  key={lt.name}
+                  apiName={apiName}
+                  pk={pk}
+                  linkType={lt}
+                  opposite={opposite}
+                  onFocusNode={onFocusNode}
+                />
+              );
+            })
+          )}
+        </>
+      ) : null}
+
+      {showActions ? (
+        <div className="border-border mt-3 flex flex-wrap items-center gap-2 border-t pt-3">
+          <span className="text-muted-foreground text-xs">快捷：</span>
+          <button
+            type="button"
+            onClick={() => {
+              window.location.hash = "resolve";
+            }}
+            className="border-border bg-card hover:bg-muted rounded-md border px-2 py-0.5 text-xs font-medium"
+          >
+            消解审核
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              window.location.hash = "modeler";
+            }}
+            className="border-border bg-card hover:bg-muted rounded-md border px-2 py-0.5 text-xs font-medium"
+          >
+            本体建模器
+          </button>
         </div>
-      ) : linkTypes.length === 0 ? (
-        <div className="text-muted-foreground text-xs">该对象类型未声明 enabled 链接</div>
-      ) : (
-        linkTypes.map((lt) => {
-          const oppositeName = lt.source === apiName ? lt.target : lt.source;
-          const opposite = findObjectType(schemaQuery.data, oppositeName);
-          if (!opposite) {
-            return null;
-          }
-          return (
-            <LinkTypeRows
-              key={lt.name}
-              apiName={apiName}
-              pk={pk}
-              linkType={lt}
-              opposite={opposite}
-              onFocusNode={onFocusNode}
-            />
-          );
-        })
-      )}
-      {/* 跨页入口（EAI-CUSTOM 2026-09-27 原型重构③） */}
-      <div className="border-border mt-3 flex flex-wrap items-center gap-2 border-t pt-3">
-        <span className="text-muted-foreground text-xs">快捷：</span>
-        <button
-          type="button"
-          onClick={() => {
-            window.location.hash = "resolve";
-          }}
-          className="border-border bg-card hover:bg-muted rounded-md border px-2 py-0.5 text-xs font-medium"
-        >
-          消解审核
-        </button>
-        <button
-          type="button"
-          onClick={() => {
-            window.location.hash = "modeler";
-          }}
-          className="border-border bg-card hover:bg-muted rounded-md border px-2 py-0.5 text-xs font-medium"
-        >
-          本体建模器
-        </button>
-      </div>
+      ) : null}
     </div>
   );
 }

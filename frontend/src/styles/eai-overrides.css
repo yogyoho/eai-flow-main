@@ -132,3 +132,15 @@
   > .bn-block-outer::before {
   content: none;
 }
+
+/* ── 中文字体对齐 eia-p2 原型（2026-10-16）──────────────────────────────────
+   EAI-CUSTOM: globals.css 的 --font-sans 只列 ui-sans-serif/system-ui，未点名
+   任何中文字体；Windows 下中文回退浏览器默认（宋体），与原型观感割裂。
+   原型栈 = -apple-system,'Segoe UI','PingFang SC','Microsoft YaHei'。
+   :root 无 layer 规则覆盖 @layer theme 内同名变量（unlayered 优先于 layered）。 */
+:root {
+  --font-sans:
+    ui-sans-serif, system-ui, -apple-system, "Segoe UI", "PingFang SC",
+    "Hiragino Sans GB", "Microsoft YaHei", "Noto Sans CJK SC", sans-serif,
+    "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
+}

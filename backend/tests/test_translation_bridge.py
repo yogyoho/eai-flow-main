@@ -14,6 +14,8 @@ from app.extensions.database import get_session_factory, init_engine
 from app.extensions.models import KnowledgeBase, User
 from app.extensions.translation.models import TranslationTask
 from app.extensions.translation.ragflow_bridge import (
+    _lineage_meta,
+    _link_source_doc,
     _zh_filename,
     build_markdown,
     index_translation,
@@ -371,3 +373,24 @@ class TestIndexOriginal:
         doc_id = await index_original(self._task(), dest, kb=kb, client=client)
         assert doc_id == "doc-exists"
         assert client.uploaded == []  # 未重复上传
+
+
+def test_lineage_meta_includes_source_doc_id():
+    task = _task_like()
+    task.ragflow_source_doc_id = "src-1"
+    assert _lineage_meta(task)["tlt_source_doc_id"] == "src-1"
+
+
+@pytest.mark.asyncio
+async def test_link_source_doc_patches_source_metadata():
+    calls: list[tuple[str, str, dict]] = []
+
+    class _Client:
+        async def update_document_metadata(self, dataset_id: str, document_id: str, metadata: dict):
+            calls.append((dataset_id, document_id, metadata))
+
+    task = _task_like()
+    task.ragflow_source_doc_id = "src-1"
+    await _link_source_doc(_Client(), "ds-1", task, "zh-1")
+
+    assert calls == [("ds-1", "src-1", {"tlt_zh_doc_id": "zh-1"})]

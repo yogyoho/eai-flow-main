@@ -22,6 +22,7 @@ import { toast } from "sonner";
 import { PageLoadingOverlay } from "@/components/ui/page-loading-overlay";
 // EAI-CUSTOM (F4): 以 /me 的 is_admin 判超管（替代 role_name 显示名）
 import { usePermission } from "@/core/permissions";
+import { FilterPills } from "@/extensions/project/components/FilterPills";
 import { REPORT_TYPE_LABELS } from "@/extensions/project/types";
 import { workflowApi } from "@/extensions/workflow/api";
 import type { WorkflowDefinitionListItem } from "@/extensions/workflow/types";
@@ -207,21 +208,11 @@ export default function AdminTemplatesPage() {
           />
         </div>
         <div className="flex items-center gap-1.5">
-          {REPORT_TYPE_FILTERS.map((f) => (
-            <button
-              key={f.value}
-              type="button"
-              onClick={() => setReportTypeFilter(f.value)}
-              className={cn(
-                "rounded-lg px-3 py-1.5 text-xs font-medium transition-colors",
-                reportTypeFilter === f.value
-                  ? "bg-primary text-white"
-                  : "bg-secondary text-muted-foreground hover:bg-muted hover:text-foreground",
-              )}
-            >
-              {f.label}
-            </button>
-          ))}
+          <FilterPills
+            onChange={setReportTypeFilter}
+            pills={REPORT_TYPE_FILTERS}
+            value={reportTypeFilter}
+          />
         </div>
       </div>
 

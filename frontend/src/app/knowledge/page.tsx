@@ -404,7 +404,7 @@ function KnowledgeBaseManagement({
                 知识库管理
               </h1>
               <p className="text-muted-foreground mt-1 text-sm">
-                管理 RAGFlow 知识库，上传文档并监控同步状态。
+                管理 RAG 知识库，上传文档并监控同步状态。
               </p>
             </div>
           </div>

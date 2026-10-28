@@ -1,12 +1,48 @@
 {
-  "mode": "report-only",
-  "executed_at": "2026-09-30T13:06:17.247703+00:00",
+  "mode": "apply",
+  "executed_at": "2026-10-01T04:15:28.532390+00:00",
+  "distillable_etypes": [
+    "treatment_measure",
+    "pollutant",
+    "standard_threshold"
+  ],
+  "ids_filter_applied": false,
   "before": {
     "entities": {
-      "sample": 2521
+      "sample": 2516,
+      "domain_common": 446,
+      "(untagged)": 5
     },
     "relations": {
-      "sample": 1985
+      "(untagged)": 1985,
+      "domain_common": 1113
+    }
+  },
+  "plan": {
+    "entities": {
+      "to_tag": 451,
+      "already": 2516,
+      "unknown_source": 446,
+      "distillable": 3
+    },
+    "relations": {
+      "to_tag": 3098,
+      "already": 0,
+      "unknown_source": 1113,
+      "distillable": 0,
+      "cross_domain": 0
+    }
+  },
+  "written": {
+    "entities": 451,
+    "relations": 3098
+  },
+  "after": {
+    "entities": {
+      "sample": 2967
+    },
+    "relations": {
+      "sample": 3098
     }
   }
 }

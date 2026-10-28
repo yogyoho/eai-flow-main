@@ -17,6 +17,9 @@ import { Link, useSearchParams } from 'react-router-dom'
 
 import { useSession } from '../App'
 import { api, qs, type Approval, type Json, type Paged } from '../api'
+import { Select, type SelectOption } from '../components/controls'
+import { WorkflowApprovalPanel } from '../components/workflow-approval-panel'
+import { useApprovalStream } from '../lib/useApprovalStream'
 import {
   Badge,
   Drawer,
@@ -31,6 +34,22 @@ import { ACTION_LABELS, APPROVAL_STATUS_LABELS, GATE_LABELS, ROLE_LABELS, STEP_S
 
 const STATUSES = ['pending_start', 'running', 'approved', 'rejected', 'returned', 'cancelled', 'expired', 'failed']
 
+const STATUS_OPTIONS: SelectOption[] = [
+  { value: '', label: '全部状态' },
+  ...STATUSES.map((status) => ({
+    value: status,
+    label: APPROVAL_STATUS_LABELS[status] || status,
+  })),
+]
+
+const GATE_OPTIONS: SelectOption[] = [
+  { value: '', label: '全部闸门' },
+  { value: 'R4', label: 'R4 新客户例外' },
+  { value: 'R6', label: 'R6 关联方审查' },
+  { value: 'DUPLICATE', label: '撞单合并' },
+  { value: 'R10', label: 'R10 撞单仲裁' },
+]
+
 export default function Approvals() {
   const { identity } = useSession()
   const { push } = useToast()
@@ -40,6 +59,7 @@ export default function Approvals() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [focus, setFocus] = useState<string | null>(params.get('focus'))
+  const [liveTick, setLiveTick] = useState(0)
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -57,6 +77,14 @@ export default function Approvals() {
   useEffect(() => {
     void load()
   }, [load])
+
+  useApprovalStream({
+    requestId: focus,
+    onUpdate: () => {
+      setLiveTick((value) => value + 1)
+      void load()
+    },
+  })
 
   useEffect(() => {
     const value = params.get('focus')
@@ -132,17 +160,18 @@ export default function Approvals() {
             <Search size={17} />
             <input value={filters.opportunity_id || ''} onChange={(event) => setFilter('opportunity_id', event.target.value)} placeholder="按商机 ID 过滤" />
           </label>
-          <select value={filters.status || ''} onChange={(event) => setFilter('status', event.target.value)}>
-            <option value="">全部状态</option>
-            {STATUSES.map((status) => <option key={status} value={status}>{APPROVAL_STATUS_LABELS[status] || status}</option>)}
-          </select>
-          <select value={filters.gate_code || ''} onChange={(event) => setFilter('gate_code', event.target.value)}>
-            <option value="">全部闸门</option>
-            <option value="R4">R4 新客户例外</option>
-            <option value="R6">R6 关联方审查</option>
-            <option value="DUPLICATE">撞单合并</option>
-            <option value="R10">R10 撞单仲裁</option>
-          </select>
+          <Select
+            value={filters.status || ''}
+            options={STATUS_OPTIONS}
+            onChange={(value) => setFilter('status', value)}
+            ariaLabel="审批状态筛选"
+          />
+          <Select
+            value={filters.gate_code || ''}
+            options={GATE_OPTIONS}
+            onChange={(value) => setFilter('gate_code', value)}
+            ariaLabel="审批闸门筛选"
+          />
           <button
             type="button"
             className={`toggle-chip ${filters.mine === '1' ? 'on' : ''}`}
@@ -196,9 +225,13 @@ export default function Approvals() {
                           <span className="cell-sub">{item.definition_code || '默认模板'}</span>
                         </td>
                         <td>
-                          <span>{item.current_step} / {item.steps.length}</span>
+                          <span>{item.status === 'returned' ? '待修改' : `${item.current_step} / ${item.steps.length}`}</span>
                           <span className="cell-sub">
-                            {activeStep ? `${ROLE_LABELS[activeStep.approver_role] || activeStep.approver_role} · ${relativeDue(activeStep.sla_due_at)}` : '已结束'}
+                            {item.status === 'returned'
+                              ? '申请人修改后从第一步重新审批'
+                              : activeStep
+                                ? `${ROLE_LABELS[activeStep.approver_role] || activeStep.approver_role} · ${relativeDue(activeStep.sla_due_at)}`
+                                : '已结束'}
                           </span>
                         </td>
                         <td>
@@ -235,6 +268,7 @@ export default function Approvals() {
       {focus ? (
         <ApprovalDrawer
           id={focus}
+          refreshToken={liveTick}
           onClose={closeApproval}
           onChanged={() => void load()}
         />
@@ -245,10 +279,12 @@ export default function Approvals() {
 
 function ApprovalDrawer({
   id,
+  refreshToken,
   onClose,
   onChanged,
 }: {
   id: string
+  refreshToken: number
   onClose: () => void
   onChanged: () => void
 }) {
@@ -258,6 +294,7 @@ function ApprovalDrawer({
   const [attachments, setAttachments] = useState<Json[]>([])
   const [error, setError] = useState('')
   const [decision, setDecision] = useState<'approve' | 'reject' | 'return' | 'delegate' | null>(null)
+  const [resubmitOpen, setResubmitOpen] = useState(false)
   const [assignmentKey, setAssignmentKey] = useState<string | null>(null)
 
   const load = useCallback(async () => {
@@ -274,6 +311,10 @@ function ApprovalDrawer({
   useEffect(() => {
     void load()
   }, [load])
+
+  useEffect(() => {
+    if (refreshToken) void load()
+  }, [load, refreshToken])
 
   const activeStep = approval?.steps.find((step) => step.status === 'active')
   const isParallelStep = activeStep?.mode === 'parallel_all' || activeStep?.mode === 'parallel_any'
@@ -309,6 +350,24 @@ function ApprovalDrawer({
           ? activeStep.approver_id === identity.user_id
           : identity.sales_role === activeStep.approver_role || identity.role_code === activeStep.approver_role))
   const canCancel = approval && ['pending_start', 'running'].includes(approval.status) && (identity.is_admin || approval.requested_by === identity.user_id)
+  const isPlatform = approval?.engine === 'workflow_platform'
+  const canResubmit =
+    approval?.status === 'returned' &&
+    approval.engine === 'workflow_platform' &&
+    approval.requested_by === identity.user_id
+  // The workflow projection may materialise the same history row as a platform
+  // action while the user-keyed action is still committing. Collapse only
+  // same-second duplicates so legitimate decisions in later cycles stay visible.
+  const actionRows = (() => {
+    const seen = new Set<string>()
+    return (approval?.actions || []).filter((action) => {
+      const second = String(action.created_at || '').slice(0, 19)
+      const key = `${action.step_no}|${action.action}|${action.actor_id}|${action.comment || ''}|${second}`
+      if (seen.has(key)) return false
+      seen.add(key)
+      return true
+    })
+  })()
 
   async function cancel() {
     if (!approval) return
@@ -361,6 +420,11 @@ function ApprovalDrawer({
           <div className="drawer-actions">
             <span className="muted">整体过期 {dateTimeText(approval.expires_at)}</span>
             <div>
+              {canResubmit ? (
+                <button type="button" className="button primary small" onClick={() => setResubmitOpen(true)}>
+                  <RefreshCw size={15} /> 修改并重新提交
+                </button>
+              ) : null}
               {canCancel ? (
                 <button type="button" className="button ghost small" onClick={() => void cancel()}>
                   <X size={15} /> 取消审批
@@ -372,29 +436,37 @@ function ApprovalDrawer({
                 </button>
               ) : null}
               {isParallelStep && myAssignments.length > 1 ? (
-                <select
-                  className="assignment-select"
+                <Select
+                  className="assignment-picker"
                   value={assignmentKey || ''}
-                  onChange={(event) => setAssignmentKey(event.target.value)}
-                  aria-label="选择审批席位"
-                >
-                  {myAssignments.map((assignment) => (
-                    <option key={assignment.assignment_key} value={assignment.assignment_key}>
-                      {ROLE_LABELS[assignment.approver_role || ''] || assignment.approver_role || assignment.assignment_key}
-                    </option>
-                  ))}
-                </select>
+                  onChange={(value) => setAssignmentKey(value)}
+                  placeholder="选择审批席位"
+                  ariaLabel="选择审批席位"
+                  options={myAssignments.map((assignment) => ({
+                    value: assignment.assignment_key,
+                    label:
+                      ROLE_LABELS[assignment.approver_role || ''] ||
+                      assignment.approver_role ||
+                      assignment.assignment_key,
+                  }))}
+                />
               ) : null}
               {canDecide ? (
                 <>
-                  <button type="button" className="button ghost small" onClick={() => setDecision('return')}>退回</button>
-                  <button type="button" className="button ghost small" onClick={() => setDecision('reject')}>驳回</button>
+                  {!isPlatform ? (
+                    <>
+                      <button type="button" className="button ghost small" onClick={() => setDecision('return')}>退回</button>
+                      <button type="button" className="button ghost small" onClick={() => setDecision('reject')}>驳回</button>
+                    </>
+                  ) : null}
                   <button type="button" className="button ghost small" onClick={() => setDecision('delegate')}>
                     <UserRoundCheck size={15} /> 转办
                   </button>
-                  <button type="button" className="button primary small" onClick={() => setDecision('approve')}>
-                    <Check size={15} /> 通过
-                  </button>
+                  {!isPlatform ? (
+                    <button type="button" className="button primary small" onClick={() => setDecision('approve')}>
+                      <Check size={15} /> 通过
+                    </button>
+                  ) : null}
                 </>
               ) : null}
             </div>
@@ -416,11 +488,40 @@ function ApprovalDrawer({
               </span>
             </div>
             <div className="detail-kpis">
-              <div><span>状态</span><strong>{APPROVAL_STATUS_LABELS[approval.status] || approval.status}</strong><small>{approval.completed_at ? '流程已完成' : `当前第 ${approval.current_step} 步`}</small></div>
+              <div>
+                <span>状态</span>
+                <strong>{APPROVAL_STATUS_LABELS[approval.status] || approval.status}</strong>
+                <small>
+                  {approval.status === 'returned'
+                    ? '待申请人修改后重新提交'
+                    : approval.completed_at
+                      ? '流程已完成'
+                      : `当前第 ${approval.current_step} 步`}
+                </small>
+              </div>
               <div><span>金额</span><strong>{money(approval.payload?.amount, true)}</strong><small>阶段 {approval.payload?.stage}</small></div>
               <div><span>整体时限</span><strong>{approval.completed_at ? '已结束' : relativeDue(approval.expires_at)}</strong><small>{approval.completed_at ? dateTimeText(approval.completed_at) : '过期不自动通过'}</small></div>
             </div>
           </section>
+
+          {approval.status === 'returned' ? (
+            <div className="note-bar warn">
+              <CircleAlert size={13} />
+              <span>
+                <b>资料不完整，审批已退回申请人。</b>
+                请修改申请原因和证据后重新提交；原审批单号、审批单和 workflow 实例均保留，重新提交后从第一步重新审批。
+              </span>
+            </div>
+          ) : null}
+
+          <WorkflowApprovalPanel
+            approvalId={approval.id}
+            refreshToken={refreshToken}
+            onChanged={() => {
+              void load()
+              onChanged()
+            }}
+          />
 
           <section className="detail-card">
             <div className="section-head">
@@ -481,9 +582,9 @@ function ApprovalDrawer({
             <section className="detail-card">
               <h3>操作记录</h3>
               <div className="mini-list">
-                {(approval.actions || []).map((action, index) => (
+                {actionRows.map((action, index) => (
                   <div className="mini-row" key={`${action.created_at}-${index}`}>
-                    <Badge tone={action.action === 'reject' ? 'red' : action.action === 'delegate' ? 'amber' : 'green'}>
+                    <Badge tone={action.action === 'reject' ? 'red' : action.action === 'delegate' || action.action === 'return' ? 'amber' : 'green'}>
                       {ACTION_LABELS[action.action] || action.action}
                     </Badge>
                     <span>{action.actor_id === identity.user_id ? '我' : action.actor_id}</span>
@@ -551,6 +652,17 @@ function ApprovalDrawer({
           }}
         />
       ) : null}
+      {approval && resubmitOpen ? (
+        <ResubmitModal
+          approval={approval}
+          onClose={() => setResubmitOpen(false)}
+          onDone={async () => {
+            setResubmitOpen(false)
+            await load()
+            onChanged()
+          }}
+        />
+      ) : null}
     </Drawer>
   )
 }
@@ -596,7 +708,7 @@ function DecisionModal({
     }
   }
 
-  const title = action === 'approve' ? '通过审批' : action === 'reject' ? '驳回审批' : action === 'return' ? '退回审批' : '转办审批'
+  const title = action === 'approve' ? '通过审批' : action === 'reject' ? '驳回审批' : action === 'return' ? '退回申请人' : '转办审批'
   const valid = action === 'approve' || (action === 'delegate' ? delegateTo.trim().length > 0 : comment.trim().length > 0)
 
   return (
@@ -616,7 +728,11 @@ function DecisionModal({
               ) : action === 'approve' ? (
                 <span>通过只解除闸门；不会自动推进商机阶段。</span>
               ) : (
-                <span>{action === 'reject' ? '驳回为终态，需要填写意见。' : '退回为终态，需要填写意见。'}</span>
+                <span>
+                  {action === 'reject'
+                    ? '驳回为终态，需要填写意见。'
+                    : '退回申请人修改：原审批单号和 workflow 实例保留，申请人重新提交后从第一步重新审批。'}
+                </span>
               )}
             </div>
             {action === 'delegate' ? (
@@ -634,6 +750,100 @@ function DecisionModal({
             <button type="button" className="button ghost" onClick={onClose}>取消</button>
             <button type="button" className={`button ${action === 'reject' ? 'danger' : 'primary'}`} onClick={() => void submit()} disabled={!valid || saving}>
               {saving ? '提交中…' : `确认${title.replace('审批', '')}`}
+            </button>
+          </div>
+        </footer>
+      </div>
+    </div>
+  )
+}
+
+function ResubmitModal({
+  approval,
+  onClose,
+  onDone,
+}: {
+  approval: Approval
+  onClose: () => void
+  onDone: () => Promise<void>
+}) {
+  const { push } = useToast()
+  const [reason, setReason] = useState(approval.reason || '')
+  const [evidenceText, setEvidenceText] = useState(() => JSON.stringify(approval.evidence || {}, null, 2))
+  const [comment, setComment] = useState('')
+  const [error, setError] = useState('')
+  const [saving, setSaving] = useState(false)
+
+  async function submit() {
+    setError('')
+    let evidence: Json
+    try {
+      const parsed = JSON.parse(evidenceText || '{}')
+      if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
+        throw new Error('evidence must be an object')
+      }
+      evidence = parsed as Json
+    } catch {
+      setError('证据必须是 JSON 对象')
+      return
+    }
+    setSaving(true)
+    try {
+      const idempotencyKey = `resubmit-${approval.id}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
+      await api.post(`/approvals/${approval.id}/resubmit`, {
+        reason: reason.trim(),
+        evidence,
+        comment: comment.trim() || undefined,
+        idempotency_key: idempotencyKey,
+      })
+      push(`审批单 ${approval.request_no} 已重新提交`, 'success')
+      await onDone()
+    } catch (err) {
+      setError(errorText(err))
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const valid = reason.trim().length >= 2
+  return (
+    <div className="nested-modal">
+      <div className="modal nested" role="dialog" aria-modal="true">
+        <header className="modal-head">
+          <h2>修改并重新提交</h2>
+          <button type="button" className="icon-button" onClick={onClose} aria-label="关闭"><X size={18} /></button>
+        </header>
+        <div className="modal-body">
+          {error ? <ErrorBanner message={error} /> : null}
+          <div className="form-stack">
+            <div className="rule-note">
+              <CircleAlert size={15} />
+              <span>
+                原审批单号 <b>{approval.request_no}</b> 和 workflow 实例保留。提交后审批从第一步重新开始，不会生成新的审批单。
+              </span>
+            </div>
+            <Field label="申请原因" required hint="请补充审批人指出的缺失资料或说明。">
+              <textarea rows={4} value={reason} onChange={(event) => setReason(event.target.value)} />
+            </Field>
+            <Field label="证据 JSON" hint="必须是 JSON 对象；可补充客户资质、例外依据等结构化信息。">
+              <textarea
+                className="code-textarea"
+                rows={8}
+                value={evidenceText}
+                onChange={(event) => setEvidenceText(event.target.value)}
+                spellCheck={false}
+              />
+            </Field>
+            <Field label="提交说明">
+              <textarea rows={3} value={comment} onChange={(event) => setComment(event.target.value)} placeholder="例如：已补充客户营业执照和例外说明" />
+            </Field>
+          </div>
+        </div>
+        <footer className="modal-foot">
+          <div className="modal-actions">
+            <button type="button" className="button ghost" onClick={onClose}>取消</button>
+            <button type="button" className="button primary" onClick={() => void submit()} disabled={!valid || saving}>
+              {saving ? '提交中…' : '确认重新提交'}
             </button>
           </div>
         </footer>

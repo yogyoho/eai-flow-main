@@ -110,10 +110,86 @@ async def test_enqueue_survives_unparseable_file(_engine, tmp_path):
         kb = await _unique_kb(db, enabled=True)
         kb_id = kb.id
         try:
-            task_id = await enqueue_translation_task(
-                kb_id=kb_id, document_id=None, doc_sha=sha, source_uri=str(bad), file_path=str(bad)
-            )
+            task_id = await enqueue_translation_task(kb_id=kb_id, document_id=None, doc_sha=sha, source_uri=str(bad), file_path=str(bad))
             task = await db.get(TranslationTask, uuid.UUID(task_id))
             assert task.source_lang == "mixed"
+        finally:
+            await _cleanup(db, kb_id)
+
+
+@pytest.mark.asyncio(loop_scope="session")
+async def test_delete_knowledge_doc_archives_translation_tasks(_engine, monkeypatch):
+    """P1-5: 知识库删文档 → 翻译任务归档、中文份下线、document_id 释放。"""
+    from app.extensions.knowledge import service as knowledge_service
+    from app.extensions.knowledge.service import DocumentService
+    from app.extensions.models import Document
+
+    class _FakeClient:
+        def __init__(self):
+            self.deleted: list[tuple[str, str]] = []
+
+        async def delete_document(self, dataset_id: str, document_id: str) -> None:
+            self.deleted.append((dataset_id, document_id))
+
+    fake = _FakeClient()
+
+    async def _fake_service_client(db):
+        return fake
+
+    monkeypatch.setattr(knowledge_service, "get_service_client", _fake_service_client)
+
+    async with get_session_factory()() as db:
+        kb = await _unique_kb(db, enabled=True)
+        kb.ragflow_dataset_id = "ds-hook"
+        doc = Document(knowledge_base_id=kb.id, name="a.docx", file_path="/tmp/not-real.docx", ragflow_document_id="doc-1")
+        db.add(doc)
+        await db.commit()
+        await db.refresh(doc)
+        task = TranslationTask(
+            kb_id=kb.id,
+            document_id=doc.id,
+            doc_sha=uuid.uuid4().hex + uuid.uuid4().hex,
+            source_uri="/tmp/not-real.docx",
+            source_lang="en",
+            state="delivered",
+            quality_tier="draft",
+            progress=0,
+            retry_count=0,
+            task_version=1,
+            ragflow_zh_doc_id="zh-1",
+        )
+        db.add(task)
+        await db.commit()
+        task_id, doc_id = task.id, doc.id
+        try:
+            await DocumentService.delete_doc(db, doc)
+            await db.refresh(task)
+            assert task.state == "archived"
+            assert task.document_id is None
+            assert ("ds-hook", "doc-1") in fake.deleted
+            assert ("ds-hook", "zh-1") in fake.deleted
+            assert await db.get(Document, doc_id) is None
+        finally:
+            await db.execute(delete(TranslationTask).where(TranslationTask.id == task_id))
+            await _cleanup(db, kb.id)
+
+
+@pytest.mark.asyncio(loop_scope="session")
+async def test_zh_document_is_not_enqueued(_engine, tmp_path):
+    """P2-14: knowledge 钩子遇到中文文档不建翻译任务。"""
+    p = _make_docx(tmp_path / "zh.docx", text="这是一份中文技术资料，不需要翻译。")
+    sha = hashlib.sha256(p.read_bytes()).hexdigest()
+    async with get_session_factory()() as db:
+        kb = await _unique_kb(db, enabled=True)
+        kb_id = kb.id
+        try:
+            task_id = await enqueue_translation_task(
+                kb_id=kb_id,
+                document_id=None,
+                doc_sha=sha,
+                source_uri=str(p),
+                file_path=str(p),
+            )
+            assert task_id is None
         finally:
             await _cleanup(db, kb_id)

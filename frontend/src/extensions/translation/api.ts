@@ -105,10 +105,96 @@ export async function uploadAssets(
 export async function transitionTask(
   taskId: string,
   target: string,
+  note?: string,
 ): Promise<TltTask> {
   return authFetch<TltTask>(`${API_BASE}/tasks/${taskId}/transition`, {
     method: "POST",
-    body: JSON.stringify({ target }),
+    body: JSON.stringify({ target, ...(note ? { note } : {}) }),
+  });
+}
+
+export interface TaskDraftBlock {
+  id: string;
+  type: string;
+  text: string;
+}
+
+export interface TaskDraft {
+  state: string;
+  source: TaskDraftBlock[];
+  translated: TaskDraftBlock[];
+  gate_failures: Record<string, string[]> | null;
+  uncertainty: { block: string; spans?: string[] }[];
+  edited_at: string | null;
+  edited_by: string | null;
+}
+
+/** 复核对照数据：源文块 + 译文草稿（exceeded 任务）。 */
+export async function getTaskDraft(taskId: string): Promise<TaskDraft> {
+  return authFetch<TaskDraft>(`${API_BASE}/tasks/${taskId}/draft`);
+}
+
+export interface DraftUpdateResult {
+  translated: TaskDraftBlock[];
+  gate_failures: Record<string, string[]>;
+  edited_at: string | null;
+}
+
+/** MTPE：保存人工编辑后的译文块（首次编辑保留机器原件）。 */
+export async function saveTaskDraft(
+  taskId: string,
+  blocks: { id: string; text: string }[],
+): Promise<DraftUpdateResult> {
+  return authFetch<DraftUpdateResult>(`${API_BASE}/tasks/${taskId}/draft`, {
+    method: "PUT",
+    body: JSON.stringify({ blocks }),
+  });
+}
+
+export interface BackfillJob {
+  id: string;
+  total: number;
+  chunk_size: number;
+  state: string;
+}
+
+/** P2 超大回填：创建后台分批入队任务。 */
+export async function createBackfillJob(body: {
+  task_ids?: string[];
+  kb_id?: string;
+  folder_id?: string;
+  states?: string[];
+  chunk_size?: number;
+}): Promise<BackfillJob> {
+  return authFetch<BackfillJob>(`${API_BASE}/backfill-jobs`, {
+    method: "POST",
+    body: JSON.stringify(body),
+  });
+}
+
+export interface TaskStats {
+  total: number;
+  by_state: Record<string, number>;
+  delivered: number;
+  running: number;
+  pending: number;
+  exceeded: number;
+  skipped: number;
+}
+
+export async function getTaskStats(kbId?: string): Promise<TaskStats> {
+  const qs = kbId ? `?kb_id=${encodeURIComponent(kbId)}` : "";
+  return authFetch<TaskStats>(`${API_BASE}/task-stats${qs}`);
+}
+
+/** 资产库拖拽移动（folderId=null 表示根）。 */
+export async function moveTaskToFolder(
+  taskId: string,
+  folderId: string | null,
+): Promise<TltTask> {
+  return authFetch<TltTask>(`${API_BASE}/tasks/${taskId}/folder`, {
+    method: "PATCH",
+    body: JSON.stringify({ folder_id: folderId }),
   });
 }
 
@@ -117,6 +203,20 @@ export async function translateTask(taskId: string): Promise<TltTask> {
   return authFetch<TltTask>(`${API_BASE}/tasks/${taskId}/transition`, {
     method: "POST",
     body: JSON.stringify({ target: "pending" }),
+  });
+}
+
+/** P1-10: 批量入队（stored/failed → pending，单次 ≤500）。 */
+export async function batchTranslateTasks(
+  taskIds: string[],
+): Promise<{
+  queued: number;
+  task_ids: string[];
+  skipped: { task_id: string; reason: string }[];
+}> {
+  return authFetch(`${API_BASE}/tasks/batch-translate`, {
+    method: "POST",
+    body: JSON.stringify({ task_ids: taskIds }),
   });
 }
 
@@ -166,6 +266,31 @@ export async function listRagKbs(): Promise<RagKb[]> {
   return d.items ?? [];
 }
 
+/** 翻译模型选择（与对话模型独立；全局设置）。 */
+export interface TranslationModelOption {
+  name: string;
+  display_name: string;
+}
+
+export interface TranslationModelSettings {
+  items: TranslationModelOption[];
+  setting: string | null;
+  effective: string | null;
+}
+
+export async function getTranslationModelSettings(): Promise<TranslationModelSettings> {
+  return authFetch<TranslationModelSettings>(`${API_BASE}/models`);
+}
+
+export async function updateTranslationModel(
+  translationModel: string | null,
+): Promise<{ setting: string | null; effective: string | null }> {
+  return authFetch(`${API_BASE}/models`, {
+    method: "PUT",
+    body: JSON.stringify({ translation_model: translationModel }),
+  });
+}
+
 export async function listEmbeddingModels(): Promise<string[]> {
   const d = await authFetch<{ items: string[] }>(
     `${API_BASE}/rag-kbs/embedding-models`,
@@ -209,4 +334,72 @@ export async function setRagKbEnabled(
     method: "PUT",
     body: JSON.stringify({ enabled }),
   });
+}
+
+// ── 术语库（语言维度 + Excel 导入，EAI-CUSTOM 2026-10-18）──────────────
+
+export type GlossaryLang = "en" | "fr" | "any";
+export type GlossaryAction = "force" | "forbid" | "keep";
+
+export interface GlossaryEntry {
+  source: string;
+  lang: GlossaryLang;
+  action: GlossaryAction;
+  target: string | null;
+  domains: string[];
+  notes: string | null;
+}
+
+export interface GlossaryResponse {
+  entries: GlossaryEntry[];
+  count: number;
+  version: string;
+}
+
+export type GlossaryImportStatus = "add" | "update" | "unchanged" | "invalid";
+
+export interface GlossaryImportRow {
+  row: number;
+  source: string;
+  lang: string;
+  action: string;
+  target: string | null;
+  domains: string[];
+  notes: string | null;
+  status: GlossaryImportStatus;
+  errors: string[];
+}
+
+export interface GlossaryImportPreview {
+  version: string;
+  rows: GlossaryImportRow[];
+  summary: Record<string, number>;
+  merged_entries: GlossaryEntry[];
+}
+
+export async function getGlossary(): Promise<GlossaryResponse> {
+  return authFetch<GlossaryResponse>(`${API_BASE}/glossary`);
+}
+
+/** 全表保存；baseVersion 不匹配时后端返回 409。 */
+export async function putGlossary(
+  entries: GlossaryEntry[],
+  baseVersion?: string,
+): Promise<GlossaryResponse> {
+  return authFetch<GlossaryResponse>(`${API_BASE}/glossary`, {
+    method: "PUT",
+    body: JSON.stringify({ entries, base_version: baseVersion }),
+  });
+}
+
+/** 上传 Excel/CSV 解析为预览（不落盘）；确认后走 putGlossary。 */
+export async function importGlossary(
+  file: File,
+): Promise<GlossaryImportPreview> {
+  const form = new FormData();
+  form.append("file", file);
+  return authFormFetch<GlossaryImportPreview>(
+    `${API_BASE}/glossary/import`,
+    form,
+  );
 }

@@ -105,12 +105,12 @@ const BADGE_DOT: Record<RagflowPhase, string> = {
 };
 
 const BADGE_TEXT: Record<RagflowPhase, string> = {
-  pending: "RAGFlow 状态…",
-  idle: "RAGFlow 未初始化",
-  initializing: "RAGFlow 初始化中…",
-  ok: "RAGFlow 已连接",
-  partial: "RAGFlow 部分连接",
-  err: "RAGFlow 不可达",
+  pending: "RAG知识库 状态…",
+  idle: "RAG知识库 未初始化",
+  initializing: "RAG知识库 初始化中…",
+  ok: "RAG知识库 已连接",
+  partial: "RAG知识库 部分连接",
+  err: "RAG知识库 不可达",
 };
 
 const CONN_LABEL: Record<RagflowPhase, string> = {
@@ -209,7 +209,7 @@ function RagflowHeaderActions() {
           className="w-[330px] rounded-[10px] p-0"
         >
           <div className="text-muted-foreground flex items-center justify-between border-b px-3.5 py-2.5 text-xs font-semibold">
-            <span>RAGFlow 知识库</span>
+            <span>RAG 知识库</span>
             <span>{CONN_LABEL[phase]}</span>
           </div>
           {RAGFLOW_DATASETS.map((name) => {

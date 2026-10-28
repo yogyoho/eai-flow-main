@@ -1,0 +1,669 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>文档翻译工作台 · 设置 · 高保真原型</title>
+<style>
+/* ═══════════════════════════════════════════════════════════════
+   文档翻译工作台 · 设置页高保真原型（2026-10-18）
+   控件与信息密度参照 docs/designs/2026-10-12-eia-p2-ui.html；
+   token 落系统语义层（primary #0746ff / 暖灰 / success/info/warning）。
+   ═══════════════════════════════════════════════════════════════ */
+:root {
+  --primary:#0746ff; --primary-600:#0640e6; --primary-700:#0536c4;
+  --primary-100:#dbe6ff; --primary-50:#eef3ff; --primary-25:#f7f9ff;
+  --primary-300:#a9bcff; --primary-500:#4f7cff;
+  --gray-25:#fafbfb; --gray-50:#f5f7f7; --gray-100:#eff2f2; --gray-200:#e4e6e6; --gray-300:#d7d9d9;
+  --gray-400:#bdbfbf; --gray-500:#979999; --gray-600:#697070; --gray-700:#4c4d4d;
+  --gray-800:#323333; --gray-900:#1e1f1f; --gray-1000:#151616;
+  --success-50:#f6ffed; --success-100:#d9f7be; --success-500:#52c41a; --success-700:#389e0d; --success-900:#135200;
+  --error-50:#fff2f0; --error-100:#ffccc7; --error-500:#ff4d4f; --error-700:#cf1322; --error-900:#820014;
+  --warn-50:#fffbe6; --warn-100:#ffe58f; --warn-500:#faad14; --warn-700:#d48806; --warn-900:#ad6800;
+  --info-50:#e6f7ff; --info-100:#bae7ff; --info-500:#1890ff; --info-700:#096dd9; --info-900:#0050b3;
+  --text:var(--gray-1000); --text-2:var(--gray-600); --text-3:var(--gray-500);
+  --hairline:var(--gray-200); --card:#ffffff; --bg:var(--gray-50);
+  --mono:ui-monospace,'Cascadia Code',Consolas,'Courier New',monospace;
+  --shadow-pop:0 6px 16px rgba(0,0,0,.08),0 3px 6px -4px rgba(0,0,0,.12),0 9px 28px 8px rgba(0,0,0,.05);
+}
+.dark {
+  --primary:#7d9bff; --primary-600:#93aaff; --primary-700:#a9bcff;
+  --primary-100:#1c2b57; --primary-50:#16213d; --primary-25:#111827;
+  --primary-300:#2c3f6e; --primary-500:#6f8eff;
+  --gray-25:#191a1a; --gray-50:#232424; --gray-100:#1e1f1f; --gray-200:#2a2b2b; --gray-300:#323333;
+  --gray-400:#4c4d4d; --gray-500:#697070; --gray-600:#979999; --gray-700:#bdbfbf;
+  --gray-800:#d7d9d9; --gray-900:#eff2f2; --gray-1000:#f5f7f7;
+  --success-50:#162312; --success-100:#274916; --success-500:#73d13d; --success-700:#95de64; --success-900:#b7eb8f;
+  --error-50:#2c1210; --error-100:#581815; --error-500:#ff7875; --error-700:#ff9c99; --error-900:#ffa39e;
+  --warn-50:#2a2205; --warn-100:#443806; --warn-500:#f5c542; --warn-700:#ffd666; --warn-900:#ffe58f;
+  --info-50:#0c2238; --info-100:#11365a; --info-500:#69b1ff; --info-700:#91caff; --info-900:#91caff;
+  --text:#f5f7f7; --text-2:#bdbfbf; --text-3:#979999;
+  --hairline:#2a2b2b; --card:#1e1f1f; --bg:#151616;
+  --shadow-pop:0 6px 16px rgba(0,0,0,.5),0 9px 28px 8px rgba(0,0,0,.4);
+}
+* { margin:0; padding:0; box-sizing:border-box; }
+body {
+  font-family:-apple-system,'Segoe UI','PingFang SC','Microsoft YaHei',sans-serif;
+  background:var(--bg); color:var(--text); font-size:14px; line-height:1.6;
+  transition:background .2s,color .2s;
+}
+button { font-family:inherit; cursor:pointer; border:none; background:none; color:inherit; }
+input,select { font-family:inherit; }
+.num { font-variant-numeric:tabular-nums; }
+.mono { font-family:var(--mono); font-size:12px; }
+svg.ic { width:16px; height:16px; stroke:currentColor; stroke-width:2; fill:none;
+  stroke-linecap:round; stroke-linejoin:round; flex:none; }
+svg.ic.sm { width:14px; height:14px; }
+
+/* ═══ 顶栏 ═══ */
+.app { display:flex; flex-direction:column; min-height:100vh; }
+.topbar { height:56px; flex:none; background:var(--card); border-bottom:1px solid var(--hairline);
+  display:flex; align-items:center; gap:24px; padding:0 24px; }
+.brand { display:flex; align-items:center; gap:8px; font-size:15px; font-weight:700;
+  letter-spacing:-.01em; white-space:nowrap; }
+.brand .logo { width:28px; height:28px; border-radius:7px; background:var(--primary);
+  color:#fff; display:flex; align-items:center; justify-content:center; }
+.dark .brand .logo { color:#0a0a0a; }
+.tabs { display:flex; align-self:stretch; gap:4px; }
+.tab { position:relative; display:flex; align-items:center; padding:0 12px; font-size:13px;
+  font-weight:500; color:var(--text-2); border-bottom:2px solid transparent;
+  transition:color .15s,border-color .15s; white-space:nowrap; }
+.tab:hover { color:var(--text); }
+.tab.on { color:var(--primary); border-bottom-color:var(--primary); font-weight:600; }
+.top-right { margin-left:auto; display:flex; align-items:center; gap:8px; }
+.env-chip { display:inline-flex; align-items:center; gap:6px; height:24px; padding:0 9px;
+  border-radius:999px; border:1px solid var(--hairline); background:var(--gray-50);
+  font-size:11px; color:var(--text-2); white-space:nowrap; }
+.env-chip .mono { font-size:11px; }
+.icon-btn { width:30px; height:30px; border-radius:6px; display:inline-flex; align-items:center;
+  justify-content:center; color:var(--text-2); transition:background .15s,color .15s; }
+.icon-btn:hover { background:var(--gray-100); color:var(--text); }
+
+/* ═══ 页面 ═══ */
+.screen { flex:1; padding:20px 24px 40px; }
+.screen-inner { max-width:1440px; margin:0 auto; display:flex; flex-direction:column; gap:12px; }
+.proto-banner { display:flex; align-items:center; gap:8px; font-size:12px; color:var(--text-3); }
+.proto-banner b { color:var(--primary); font-weight:600; }
+
+/* ═══ 页头 ═══ */
+.page-head { display:flex; align-items:center; gap:12px; padding:14px 18px;
+  border:1px solid var(--hairline); border-radius:8px; background:var(--card);
+  background-image:
+    linear-gradient(to right, color-mix(in srgb,var(--primary) 8%,transparent) 1px, transparent 1px),
+    linear-gradient(to bottom, color-mix(in srgb,var(--primary) 8%,transparent) 1px, transparent 1px);
+  background-size:26px 26px, 26px 26px; background-position:8px 8px, 8px 8px;
+  position:relative; overflow:hidden; }
+.page-head::after { content:''; position:absolute; inset:0;
+  background:linear-gradient(90deg,var(--card) 0%,var(--card) 55%,transparent 100%); pointer-events:none; }
+.page-head > * { position:relative; z-index:1; }
+.ph-icon { width:34px; height:34px; border-radius:8px; background:var(--primary-50);
+  color:var(--primary); display:flex; align-items:center; justify-content:center; flex:none; }
+.ph-icon svg { width:18px; height:18px; }
+.page-head h2 { font-size:16px; font-weight:600; line-height:1.3; }
+.page-head .ph-sub { font-size:12px; color:var(--text-3); }
+.page-head .ph-actions { margin-left:auto; display:flex; align-items:center; gap:8px; flex:none; }
+
+/* ═══ 按钮 / 徽章 ═══ */
+.btn { display:inline-flex; align-items:center; justify-content:center; gap:6px;
+  height:30px; padding:0 12px; border-radius:6px; font-size:13px; font-weight:500;
+  transition:all .15s; white-space:nowrap; }
+.btn-sm { height:28px; padding:0 10px; font-size:12px; }
+.btn-pri { background:var(--primary); color:#fff; }
+.btn-pri:hover { background:var(--primary-600); }
+.dark .btn-pri { color:#0a0a0a; }
+.btn-sec { border:1px solid var(--hairline); background:var(--card); color:var(--text-2); }
+.btn-sec:hover { border-color:var(--primary); color:var(--primary); background:var(--primary-25); }
+.btn-ghost { color:var(--text-2); }
+.btn-ghost:hover { background:var(--gray-100); color:var(--text); }
+.btn:disabled { opacity:.5; cursor:not-allowed; }
+.pill { display:inline-flex; align-items:center; gap:5px; height:20px; padding:0 8px;
+  border-radius:999px; font-size:12px; font-weight:500; white-space:nowrap; border:1px solid transparent; }
+.pill-main { background:var(--primary-50); color:var(--primary-700); border-color:var(--primary-100); }
+.pill-ok { background:var(--success-50); color:var(--success-900); border-color:var(--success-100); }
+.pill-warn { background:var(--warn-50); color:var(--warn-900); border-color:var(--warn-100); }
+.pill-err { background:var(--error-50); color:var(--error-900); border-color:var(--error-100); }
+.pill-gray { background:var(--gray-100); color:var(--gray-600); border-color:var(--gray-200); }
+.pill-info { background:var(--info-50); color:var(--info-900); border-color:var(--info-100); }
+.dot { width:6px; height:6px; border-radius:50%; flex:none; }
+.dot-ok { background:var(--success-500); box-shadow:0 0 0 3px color-mix(in srgb,var(--success-500) 16%,transparent); }
+.dot-warn { background:var(--warn-500); box-shadow:0 0 0 3px color-mix(in srgb,var(--warn-500) 18%,transparent); }
+.dot-gray { background:var(--gray-400); }
+.pill .dot { width:5px; height:5px; }
+
+/* ═══ 卡片 ═══ */
+.card { background:var(--card); border:1px solid var(--hairline); border-radius:8px; overflow:hidden; }
+.card.model-card { overflow:visible; }
+.card-hd { display:flex; align-items:center; gap:8px; padding:12px 16px;
+  border-bottom:1px solid var(--hairline); flex-wrap:wrap; }
+.card-hd h3 { font-size:14px; font-weight:600; }
+.card-hd .hd-sub { font-size:12px; color:var(--text-3); }
+.card-hd .hd-right { margin-left:auto; display:flex; align-items:center; gap:8px; }
+.card-body { padding:14px 16px; }
+
+/* ═══ 模型选择 ═══ */
+.model-row { display:flex; flex-wrap:wrap; align-items:center; gap:14px; }
+.field-label { font-size:12px; color:var(--text-3); white-space:nowrap; }
+.select-wrap { position:relative; width:320px; max-width:100%; }
+.select-btn { width:100%; height:32px; display:flex; align-items:center; gap:8px;
+  padding:0 10px; border:1px solid var(--gray-200); border-radius:6px; background:var(--card);
+  font-size:13px; color:var(--text); text-align:left; transition:border-color .15s,box-shadow .15s; }
+.select-btn:hover { border-color:var(--gray-300); }
+.select-btn:focus-visible,.select-btn.open { outline:none; border-color:var(--primary);
+  box-shadow:0 0 0 2px var(--primary-50); }
+.select-btn .value { flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.select-btn .chev { color:var(--text-3); transition:transform .15s; }
+.select-btn.open .chev { transform:rotate(180deg); }
+.select-menu { position:absolute; z-index:20; top:calc(100% + 6px); left:0; right:0;
+  background:var(--card); border:1px solid var(--hairline); border-radius:8px;
+  box-shadow:var(--shadow-pop); padding:4px; display:none; }
+.select-menu.open { display:block; }
+.menu-item { width:100%; display:flex; align-items:center; gap:8px; padding:8px 9px;
+  border-radius:5px; text-align:left; transition:background .12s; }
+.menu-item:hover { background:var(--gray-50); }
+.menu-item.on { background:var(--primary-25); }
+.menu-item .mi-main { flex:1; min-width:0; }
+.menu-item .mi-name { display:block; font-size:13px; color:var(--text); }
+.menu-item .mi-id { display:block; font-family:var(--mono); font-size:11px; color:var(--text-3); margin-top:1px; }
+.menu-item .check { color:var(--primary); opacity:0; }
+.menu-item.on .check { opacity:1; }
+.model-meta { display:flex; flex-wrap:wrap; align-items:center; gap:6px; }
+.model-hint { font-size:12px; color:var(--text-3); }
+.note-inline { display:flex; align-items:flex-start; gap:8px; margin:12px 16px 14px;
+  padding:9px 12px; border-radius:6px; background:var(--info-50); color:var(--info-900);
+  font-size:12px; line-height:1.65; }
+.note-inline svg { margin-top:2px; }
+
+/* ═══ 工具栏 / chips ═══ */
+.toolbar { display:flex; align-items:center; gap:8px; padding:10px 16px;
+  border-bottom:1px solid var(--hairline); flex-wrap:wrap; }
+.src-chip { display:inline-flex; align-items:center; gap:5px; height:22px; padding:0 9px;
+  border-radius:999px; font-size:12px; border:1px solid var(--hairline); background:var(--card);
+  color:var(--text-2); white-space:nowrap; }
+.src-chip b { font-size:11px; color:var(--primary-600); font-variant-numeric:tabular-nums; }
+.src-chip.hl { border-color:var(--primary-300,#a9bcff); background:var(--primary-25); }
+.spacer { flex:1; }
+.muted { color:var(--text-3); font-size:12px; }
+
+/* ═══ 表格 ═══ */
+.table-wrap { overflow-x:auto; }
+.tbl { width:100%; border-collapse:collapse; }
+.tbl th { text-align:left; font-size:12px; font-weight:500; color:var(--text-3);
+  padding:9px 12px; border-bottom:1px solid var(--hairline); white-space:nowrap; }
+.tbl td { padding:9px 12px; border-bottom:1px solid var(--gray-100); font-size:13px;
+  vertical-align:middle; }
+.tbl tbody tr { transition:background .12s; }
+.tbl tbody tr:hover { background:var(--gray-50); }
+.tbl tbody tr:last-child td { border-bottom:none; }
+.tbl .r { text-align:right; }
+.tbl .time { font-size:11px; color:var(--text-3); font-variant-numeric:tabular-nums; }
+.tbl-foot { display:flex; align-items:center; gap:10px; padding:9px 16px; font-size:12px;
+  color:var(--text-3); border-top:1px solid var(--hairline); }
+.tbl-foot .spacer { flex:1; }
+.kb-name { display:flex; align-items:center; gap:6px; min-width:0; }
+.kb-name .nm { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-weight:500; }
+.kb-meta { font-family:var(--mono); font-size:12px; color:var(--text-3); }
+.row-ops { display:flex; align-items:center; justify-content:flex-end; gap:2px; }
+.txt-btn { padding:3px 7px; border-radius:4px; font-size:12px; color:var(--text-2);
+  transition:background .12s,color .12s; white-space:nowrap; }
+.txt-btn:hover { background:var(--gray-100); color:var(--text); }
+.txt-btn.danger { color:var(--error-700); }
+.txt-btn.danger:hover { background:var(--error-50); color:var(--error-900); }
+.add-row td { padding:0 !important; border-bottom:none !important; }
+.add-kb { width:100%; display:flex; align-items:center; justify-content:center; gap:7px;
+  padding:10px 12px; color:var(--text-3); font-size:12px; border-top:1px dashed var(--gray-200);
+  transition:background .12s,color .12s; }
+.add-kb:hover { background:var(--primary-25); color:var(--primary); }
+.available { border-top:1px solid var(--hairline); background:var(--gray-25); padding:10px 16px; }
+.available .av-label { font-size:12px; color:var(--text-3); margin-right:8px; }
+.available .chips { display:inline-flex; flex-wrap:wrap; gap:6px; margin-top:6px; }
+.chip-add { display:inline-flex; align-items:center; gap:5px; height:24px; padding:0 9px;
+  border:1px solid var(--hairline); border-radius:999px; background:var(--card);
+  font-size:12px; color:var(--text-2); transition:all .12s; }
+.chip-add:hover { border-color:var(--primary); color:var(--primary); background:var(--primary-25); }
+.chip-add:disabled { opacity:.5; cursor:default; }
+
+/* ═══ 指标 / 标准 ═══ */
+.grid-2 { display:grid; grid-template-columns:1fr 1fr; gap:12px; align-items:stretch; }
+.metric-strip { display:grid; grid-auto-flow:column; grid-auto-columns:1fr;
+  border-top:0; }
+.metric-cell { padding:12px 16px; display:flex; flex-direction:column; gap:2px; }
+.metric-cell + .metric-cell { border-left:1px solid var(--hairline); }
+.metric-label { font-size:12px; color:var(--text-3); }
+.metric-value { font-size:20px; font-weight:700; color:var(--gray-800); line-height:1.15;
+  font-variant-numeric:tabular-nums; }
+.metric-value small { margin-left:3px; font-size:12px; font-weight:400; color:var(--text-3); }
+.std-list { display:flex; flex-direction:column; }
+.std-row { display:grid; grid-template-columns:118px 1fr auto; align-items:center; gap:12px;
+  padding:11px 16px; border-bottom:1px solid var(--gray-100); }
+.std-row:last-child { border-bottom:none; }
+.std-label { font-size:12px; color:var(--text-3); }
+.std-value { font-size:13px; color:var(--text-2); }
+.std-value b { color:var(--text); font-weight:600; }
+
+/* ═══ 说明条 ═══ */
+.note-bar { display:flex; gap:8px; align-items:flex-start; background:var(--info-50);
+  border-radius:6px; padding:9px 12px; font-size:12px; color:var(--info-900); }
+.note-bar svg { margin-top:2px; flex:none; }
+
+/* ═══ 弹窗 ═══ */
+.overlay { position:fixed; inset:0; background:rgba(0,0,0,.45); z-index:60;
+  display:none; align-items:flex-start; justify-content:center; padding:9vh 3vw; }
+.overlay.open { display:flex; }
+.modal { width:560px; max-width:100%; background:var(--card); border:1px solid var(--hairline);
+  border-radius:10px; box-shadow:var(--shadow-pop); overflow:hidden; }
+.modal-hd { display:flex; align-items:center; gap:10px; padding:14px 20px;
+  border-bottom:1px solid var(--hairline); }
+.modal-hd h3 { font-size:15px; font-weight:600; }
+.modal-hd .x { margin-left:auto; width:28px; height:28px; border-radius:6px; color:var(--text-3);
+  display:flex; align-items:center; justify-content:center; }
+.modal-hd .x:hover { background:var(--gray-100); color:var(--text); }
+.modal-bd { padding:18px 20px; }
+.frm-row { margin-bottom:14px; }
+.frm-row:last-child { margin-bottom:0; }
+.frm-row label { display:block; font-size:12px; font-weight:500; color:var(--text-2); margin-bottom:5px; }
+.frm-row label .must { color:var(--error-500); margin-left:2px; }
+.inp { width:100%; height:30px; border:1px solid var(--gray-200); border-radius:6px;
+  padding:0 10px; background:var(--card); color:var(--text); font-size:13px; outline:none;
+  transition:border-color .15s,box-shadow .15s; }
+.inp:focus { border-color:var(--primary); box-shadow:0 0 0 2px var(--primary-50); }
+select.inp { cursor:pointer; }
+.frm-help { font-size:11px; color:var(--text-3); margin-top:4px; }
+.frm-grid { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+.modal-ft { display:flex; justify-content:flex-end; gap:8px; padding:12px 20px;
+  border-top:1px solid var(--hairline); background:var(--gray-25); }
+.from-existing { display:flex; gap:8px; align-items:flex-start; background:var(--warn-50);
+  border:1px solid var(--warn-100); border-radius:6px; padding:9px 12px; font-size:12px;
+  color:var(--warn-900); margin-bottom:16px; }
+
+/* ═══ Toast ═══ */
+.toast { position:fixed; right:22px; bottom:22px; z-index:80; max-width:360px;
+  background:var(--card); border:1px solid var(--hairline); border-left:3px solid var(--primary);
+  border-radius:7px; box-shadow:var(--shadow-pop); padding:10px 14px; font-size:13px;
+  color:var(--text); opacity:0; transform:translateY(8px); pointer-events:none;
+  transition:opacity .18s,transform .18s; }
+.toast.show { opacity:1; transform:translateY(0); }
+.toast small { display:block; color:var(--text-3); font-size:11px; margin-top:2px; }
+
+@media (max-width: 980px) {
+  .grid-2 { grid-template-columns:1fr; }
+  .topbar { gap:12px; padding:0 14px; }
+  .tabs { overflow-x:auto; }
+  .env-chip.opt { display:none; }
+  .screen { padding:16px; }
+  .model-row { align-items:flex-start; }
+  .select-wrap { width:100%; }
+}
+@media (max-width: 640px) {
+  .brand span.label { display:none; }
+  .tab { padding:0 8px; }
+  .page-head { align-items:flex-start; flex-wrap:wrap; }
+  .ph-actions { width:100%; margin-left:0; }
+  .std-row { grid-template-columns:1fr auto; }
+  .std-value { grid-column:1 / -1; }
+}
+</style>
+</head>
+<body>
+<div class="app">
+  <!-- ═══ 应用顶栏 ═══ -->
+  <header class="topbar">
+    <div class="brand">
+      <span class="logo">
+        <svg class="ic" viewBox="0 0 24 24"><path d="m5 8 6 6M4 14l6-6 2-3M2 5h12M7 2h1M22 22l-5-10-5 10M14 18h6"/></svg>
+      </span>
+      <span class="label">文档翻译工作台</span>
+    </div>
+    <nav class="tabs" aria-label="工作台导航">
+      <button class="tab">文件资料库</button>
+      <button class="tab">复核工作台</button>
+      <button class="tab">术语库</button>
+      <button class="tab">任务记录</button>
+      <button class="tab on">设置</button>
+    </nav>
+    <div class="top-right">
+      <span class="env-chip opt"><span class="dot dot-ok"></span>EN/FR</span>
+      <span class="env-chip opt mono" id="envModel">gemma-4</span>
+      <button class="icon-btn" id="darkToggle" title="切换暗色模式" aria-label="切换暗色模式">
+        <svg class="ic" viewBox="0 0 24 24"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></svg>
+      </button>
+    </div>
+  </header>
+
+  <main class="screen">
+    <div class="screen-inner">
+      <div class="proto-banner"><b>设置</b>· 翻译模型与 RAG 知识库配置 · 修改即时保存 · 模型变更下一次翻译/重跑生效</div>
+
+      <!-- ═══ 页头 ═══ -->
+      <section class="page-head">
+        <div class="ph-icon">
+          <svg class="ic" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+        </div>
+        <div>
+          <h2>设置</h2>
+          <div class="ph-sub">翻译模型与 RAG 知识库配置 · 运行参数与质量标准只读</div>
+        </div>
+        <div class="ph-actions">
+          <button class="btn btn-sec btn-sm" id="refreshBtn">
+            <svg class="ic sm" viewBox="0 0 24 24"><path d="M21 12a9 9 0 1 1-2.64-6.36M21 3v6h-6"/></svg>
+            刷新配置
+          </button>
+          <span class="pill pill-ok"><span class="dot dot-ok"></span>已自动保存</span>
+        </div>
+      </section>
+
+      <!-- ═══ 翻译模型 ═══ -->
+      <section class="card model-card">
+        <div class="card-hd">
+          <h3>翻译模型</h3>
+          <span class="hd-sub">与对话模型独立 · 下一次翻译/重跑生效</span>
+          <div class="hd-right">
+            <span class="pill pill-main" id="effectivePill">当前生效 · gemma-4</span>
+          </div>
+        </div>
+        <div class="card-body">
+          <div class="model-row">
+            <span class="field-label">翻译模型</span>
+            <div class="select-wrap">
+              <button class="select-btn" id="modelSelect" aria-haspopup="listbox" aria-expanded="false">
+                <span class="value" id="modelValue">gemma-4-E4B（llama.cpp）</span>
+                <svg class="ic sm chev" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></svg>
+              </button>
+              <div class="select-menu" id="modelMenu" role="listbox" aria-label="翻译模型"></div>
+            </div>
+            <div class="model-meta">
+              <span class="pill pill-gray" id="modelKind">本地 llama.cpp</span>
+              <span class="pill pill-info">JSON 模式</span>
+            </div>
+            <span class="spacer"></span>
+            <span class="model-hint">选择后立即保存，不阻塞正在运行的任务</span>
+          </div>
+        </div>
+        <div class="note-inline">
+          <svg class="ic sm" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg>
+          <span>翻译 worker 使用此模型；对话页的模型选择不影响翻译任务。思考模型已统一使用 JSON 模式，避免推理内容混入译文。</span>
+        </div>
+      </section>
+
+      <!-- ═══ RAG 知识库 ═══ -->
+      <section class="card">
+        <div class="card-hd">
+          <h3>RAG 知识库</h3>
+          <span class="hd-sub">翻译体系内的检索库 · <b class="num">1</b> 个</span>
+          <div class="hd-right">
+            <button class="btn btn-sec btn-sm" id="addExistingBtn">
+              <svg class="ic sm" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>
+              添加现有库
+            </button>
+            <button class="btn btn-pri btn-sm" id="openKbModal">
+              <svg class="ic sm" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>
+              新建知识库
+            </button>
+          </div>
+        </div>
+        <div class="toolbar">
+          <span class="src-chip hl">已启用 <b>1</b></span>
+          <span class="src-chip">已关联 RAGFlow <b>1</b></span>
+          <span class="src-chip">待处理任务 <b>1</b></span>
+          <span class="spacer"></span>
+          <span class="muted">移出只关闭翻译接入，不删除 RAGFlow 库</span>
+        </div>
+        <div class="available" id="existingPanel" hidden>
+          <span class="av-label">选择要加入翻译体系的库：</span>
+          <div class="chips">
+            <button class="chip-add" data-add="合同知识库"><svg class="ic sm" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>合同知识库</button>
+            <button class="chip-add" data-add="消防专篇知识库"><svg class="ic sm" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>消防专篇知识库</button>
+            <button class="chip-add" data-add="煤矿作业规程知识库"><svg class="ic sm" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>煤矿作业规程知识库</button>
+          </div>
+        </div>
+        <div class="table-wrap">
+          <table class="tbl">
+            <thead>
+              <tr>
+                <th>知识库</th>
+                <th style="width:96px">语言</th>
+                <th>分块 · 向量</th>
+                <th style="width:112px">RAGFlow</th>
+                <th class="r" style="width:64px">文档</th>
+                <th class="r" style="width:80px">待处理</th>
+                <th class="r" style="width:150px">操作</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>
+                  <div class="kb-name">
+                    <span class="nm">翻译资产库</span>
+                    <span class="pill pill-main">默认</span>
+                  </div>
+                </td>
+                <td class="mono">English</td>
+                <td class="kb-meta">general · bge-m3:latest@ollama@Ollama</td>
+                <td><span class="pill pill-ok"><span class="dot dot-ok"></span>已关联</span></td>
+                <td class="r mono num">0</td>
+                <td class="r mono num" style="color:var(--warn-900)">1</td>
+                <td>
+                  <div class="row-ops">
+                    <button class="txt-btn">编辑配置</button>
+                    <button class="txt-btn danger">移出</button>
+                  </div>
+                </td>
+              </tr>
+              <tr class="add-row">
+                <td colspan="7">
+                  <button class="add-kb" id="addRowBtn">
+                    <svg class="ic sm" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>
+                    从已有知识库添加（3 个可用）
+                  </button>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="tbl-foot">
+          <span>默认库用于上传时自动选择；删除 RAGFlow dataset 会断开此接入。</span>
+          <span class="spacer"></span>
+          <span>共 <b class="num" style="color:var(--text-2)">1</b> 个库</span>
+        </div>
+      </section>
+
+      <!-- ═══ 运行参数 / 质量标准 ═══ -->
+      <div class="grid-2">
+        <section class="card">
+          <div class="card-hd">
+            <h3>运行参数</h3>
+            <span class="hd-sub">只读 · 由运行环境决定</span>
+            <div class="hd-right"><span class="pill pill-gray">只读</span></div>
+          </div>
+          <div class="metric-strip">
+            <div class="metric-cell"><span class="metric-label">并发槽位</span><span class="metric-value">2</span></div>
+            <div class="metric-cell"><span class="metric-label">轮询间隔</span><span class="metric-value">5<small>s</small></span></div>
+            <div class="metric-cell"><span class="metric-label">基础设施重试</span><span class="metric-value">≤3<small>次</small></span></div>
+          </div>
+          <div class="tbl-foot">
+            <span>由运行环境变量控制</span>
+            <span class="spacer"></span>
+            <span class="mono" style="font-size:11px">EAI_TRANSLATION_SLOTS · POLL_SECONDS · INFRA_RETRIES</span>
+          </div>
+        </section>
+
+        <section class="card">
+          <div class="card-hd">
+            <h3>质量标准</h3>
+            <span class="hd-sub">样例验收闸产出</span>
+            <div class="hd-right"><span class="pill pill-warn"><span class="dot dot-warn"></span>待客户确认</span></div>
+          </div>
+          <div class="std-list">
+            <div class="std-row">
+              <span class="std-label">中文检索准确率</span>
+              <span class="std-value">目标 <b class="num">80%</b>（完成验收测试后确定）</span>
+              <span class="pill pill-gray">待确认</span>
+            </div>
+            <div class="std-row">
+              <span class="std-label">数字准确性</span>
+              <span class="std-value">译文与原文逐字核对 · <b class="num">100%</b> 一致</span>
+              <span class="pill pill-ok">硬性标准</span>
+            </div>
+            <div class="std-row">
+              <span class="std-label">术语与格式</span>
+              <span class="std-value">标准待验收测试后与客户确认</span>
+              <span class="pill pill-gray">待确认</span>
+            </div>
+          </div>
+        </section>
+      </div>
+
+      <div class="note-bar">
+        <svg class="ic" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg>
+        <span>所有修改即时保存；翻译模型变更在下一次翻译/重跑时生效。RAG 知识库与运行参数由翻译管线读取，质量标准由样例验收流程维护。</span>
+      </div>
+    </div>
+  </main>
+</div>
+
+<!-- ═══ 新建知识库弹窗 ═══ -->
+<div class="overlay" id="kbModal" role="dialog" aria-modal="true" aria-labelledby="kbModalTitle">
+  <div class="modal">
+    <div class="modal-hd">
+      <h3 id="kbModalTitle">新建 RAG 知识库</h3>
+      <span class="pill pill-gray">RAGFlow</span>
+      <button class="x" data-close aria-label="关闭">
+        <svg class="ic" viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></svg>
+      </button>
+    </div>
+    <div class="modal-bd">
+      <div class="from-existing">
+        <svg class="ic sm" viewBox="0 0 24 24"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><path d="M12 9v4M12 17h.01"/></svg>
+        <span>新建会在 RAGFlow 创建 dataset，并自动加入翻译体系；创建后可继续编辑分块与向量参数。</span>
+      </div>
+      <div class="frm-row">
+        <label>知识库名称<span class="must">*</span></label>
+        <input class="inp" value="翻译资产库" placeholder="例如：铁矿知识库">
+        <div class="frm-help">用于工作台内识别；同名库会被拒绝。</div>
+      </div>
+      <div class="frm-row">
+        <label>描述</label>
+        <input class="inp" value="翻译工作台检索知识库（默认）" placeholder="可选">
+      </div>
+      <div class="frm-grid">
+        <div class="frm-row">
+          <label>语言</label>
+          <select class="inp"><option>Chinese</option><option>English</option></select>
+        </div>
+        <div class="frm-row">
+          <label>分块方法</label>
+          <select class="inp"><option>naive</option><option>general</option><option>manual</option></select>
+        </div>
+      </div>
+      <div class="frm-row">
+        <label>向量模型</label>
+        <input class="inp mono" value="bge-m3:latest@ollama@Ollama">
+        <div class="frm-help">需与 RAGFlow 已安装的 embedding 模型一致。</div>
+      </div>
+    </div>
+    <div class="modal-ft">
+      <button class="btn btn-sec" data-close>取消</button>
+      <button class="btn btn-pri" id="createKbBtn">创建知识库</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"><span id="toastText"></span><small id="toastSub"></small></div>
+
+<script>
+(() => {
+  // ── 暗色 ──
+  document.getElementById('darkToggle').addEventListener('click', () => {
+    document.documentElement.classList.toggle('dark');
+  });
+
+  // ── 模型选择（自定义下拉，非原生）──
+  const MODELS = [
+    { value: '__default__', name: '跟随系统默认（agnes-2.5-Flash）', id: '未设置时取 config 首项', kind: '系统默认', effective: 'agnes-2.5-Flash' },
+    { value: 'agnes-2.5-Flash', name: 'Agnes-2.5-Flash', id: 'agnes-2.5-Flash', kind: '云端 · 免费额度', effective: 'agnes-2.5-Flash' },
+    { value: 'glm-4.1v-flash', name: 'GLM-4.1v-flash（智谱官方）', id: 'glm-4.1v-thinking-flash', kind: '云端 · 思考模型', effective: 'glm-4.1v-flash' },
+    { value: 'gemma-4', name: 'gemma-4-E4B（llama.cpp）', id: 'gemma-4-E4B-it-UD-Q4_K_XL.gguf', kind: '本地 llama.cpp', effective: 'gemma-4' },
+    { value: 'deepseek-v4-flash', name: 'DeepSeek V4 Flash', id: 'deepseek-v4-flash', kind: '云端 · JSON 模式', effective: 'deepseek-v4-flash' },
+  ];
+  let current = 'gemma-4';
+  const selectBtn = document.getElementById('modelSelect');
+  const menu = document.getElementById('modelMenu');
+  const valueEl = document.getElementById('modelValue');
+  const effectivePill = document.getElementById('effectivePill');
+  const kindEl = document.getElementById('modelKind');
+  const envModel = document.getElementById('envModel');
+
+  function renderMenu() {
+    menu.innerHTML = MODELS.map((m) => `
+      <button class="menu-item${m.value === current ? ' on' : ''}" role="option" aria-selected="${m.value === current}" data-value="${m.value}">
+        <span class="mi-main"><span class="mi-name">${m.name}</span><span class="mi-id">${m.id}</span></span>
+        <svg class="ic sm check" viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></svg>
+      </button>`).join('');
+    menu.querySelectorAll('.menu-item').forEach((el) => {
+      el.addEventListener('click', () => {
+        current = el.dataset.value;
+        const m = MODELS.find((x) => x.value === current);
+        valueEl.textContent = m.name;
+        kindEl.textContent = m.kind;
+        effectivePill.textContent = `当前生效 · ${m.effective}`;
+        envModel.textContent = m.effective;
+        closeMenu();
+        showToast('翻译模型已保存', `下次翻译 / 重跑将使用 ${m.effective}`);
+      });
+    });
+  }
+  function openMenu() { renderMenu(); menu.classList.add('open'); selectBtn.classList.add('open'); selectBtn.setAttribute('aria-expanded', 'true'); }
+  function closeMenu() { menu.classList.remove('open'); selectBtn.classList.remove('open'); selectBtn.setAttribute('aria-expanded', 'false'); }
+  selectBtn.addEventListener('click', (e) => { e.stopPropagation(); menu.classList.contains('open') ? closeMenu() : openMenu(); });
+  selectBtn.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); menu.classList.contains('open') ? closeMenu() : openMenu(); } });
+  document.addEventListener('click', (e) => { if (!e.target.closest('.select-wrap')) closeMenu(); });
+  document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeMenu(); });
+  valueEl.textContent = MODELS.find((m) => m.value === current).name;
+  kindEl.textContent = MODELS.find((m) => m.value === current).kind;
+
+  // ── 已有库面板 ──
+  const existingPanel = document.getElementById('existingPanel');
+  const toggleExisting = () => { existingPanel.hidden = !existingPanel.hidden; };
+  document.getElementById('addExistingBtn').addEventListener('click', toggleExisting);
+  document.getElementById('addRowBtn').addEventListener('click', toggleExisting);
+  existingPanel.querySelectorAll('[data-add]').forEach((chip) => {
+    chip.addEventListener('click', () => {
+      chip.disabled = true;
+      chip.innerHTML = '<svg class="ic sm" viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></svg>已加入（原型）';
+      showToast('已加入翻译体系（原型）', chip.dataset.add);
+    });
+  });
+
+  // ── 新建知识库弹窗 ──
+  const modal = document.getElementById('kbModal');
+  const openModal = () => modal.classList.add('open');
+  const closeModal = () => modal.classList.remove('open');
+  document.getElementById('openKbModal').addEventListener('click', openModal);
+  modal.querySelectorAll('[data-close]').forEach((b) => b.addEventListener('click', closeModal));
+  modal.addEventListener('click', (e) => { if (e.target === modal) closeModal(); });
+  document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeModal(); });
+  document.getElementById('createKbBtn').addEventListener('click', () => {
+    closeModal();
+    showToast('知识库已创建（原型）', 'RAGFlow dataset 创建后自动加入翻译体系');
+  });
+
+  // ── 刷新 ──
+  document.getElementById('refreshBtn').addEventListener('click', () => {
+    showToast('配置已刷新', '模型、知识库与运行参数均为最新状态');
+  });
+
+  // ── Toast ──
+  let toastTimer;
+  const toastEl = document.getElementById('toast');
+  const toastText = document.getElementById('toastText');
+  const toastSub = document.getElementById('toastSub');
+  function showToast(text, sub) {
+    toastText.textContent = text;
+    toastSub.textContent = sub || '';
+    toastEl.classList.add('show');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => toastEl.classList.remove('show'), 3200);
+  }
+})();
+</script>
+</body>
+</html>

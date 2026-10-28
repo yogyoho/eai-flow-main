@@ -46,12 +46,6 @@ const navItems = [
     icon: Boxes,
     pageId: "cpa:page:clusters",
   },
-  {
-    href: "/contract-price/tasks",
-    label: "任务中心",
-    icon: History,
-    pageId: "cpa:page:tasks",
-  },
   // EAI-CUSTOM: cpa v3 合同文件库（spec 2026-10-14 §1.5）
   {
     href: "/contract-price/library",
@@ -65,6 +59,12 @@ const navItems = [
     label: "货物分类术语",
     icon: Tags,
     pageId: "cpa:page:terms",
+  },
+    {
+    href: "/contract-price/tasks",
+    label: "任务记录",
+    icon: History,
+    pageId: "cpa:page:tasks",
   },
   {
     href: "/contract-price/settings",

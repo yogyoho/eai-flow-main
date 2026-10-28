@@ -1,0 +1,367 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>新建 RAG 知识库 · 高保真对话框原型</title>
+<style>
+/* ═══════════════════════════════════════════════════════════════
+   新建 RAG 知识库 · 对话框原型（2026-10-18）
+   结构/密度参照 2026-10-15-lexicon-rename-redesign.html：
+   680px 对话框 / 16px 标题 / stacked label + help / 30px 页脚按钮。
+   label = 中文 + 英文换行；分块配置每项带说明、默认建议、placeholder。
+   ═══════════════════════════════════════════════════════════════ */
+:root {
+  --primary:#0746ff; --primary-600:#0640e6; --primary-700:#0536c4;
+  --primary-100:#dbe6ff; --primary-50:#eef3ff; --primary-25:#f7f9ff;
+  --gray-25:#fafbfb; --gray-50:#f5f7f7; --gray-100:#eff2f2; --gray-200:#e4e6e6; --gray-300:#d7d9d9;
+  --gray-400:#bdbfbf; --gray-500:#979999; --gray-600:#697070; --gray-700:#4c4d4d;
+  --gray-800:#323333; --gray-900:#1e1f1f; --gray-1000:#151616;
+  --success-50:#f6ffed; --success-100:#d9f7be; --success-500:#52c41a; --success-700:#389e0d;
+  --error-50:#fff2f0; --error-100:#ffccc7; --error-500:#ff4d4f; --error-700:#cf1322;
+  --warn-50:#fffbe6; --warn-100:#ffe58f; --warn-500:#faad14; --warn-700:#d48806; --warn-900:#ad6800;
+  --info-50:#e6f7ff; --info-100:#bae7ff; --info-500:#1890ff; --info-700:#096dd9; --info-900:#0050b3;
+  --text:var(--gray-1000); --text-2:var(--gray-600); --text-3:var(--gray-500);
+  --hairline:var(--gray-200); --card:#ffffff; --page:#f5f7f7;
+  --mono:ui-monospace,'Cascadia Code',Consolas,'Courier New',monospace;
+  --font-sans:-apple-system,BlinkMacSystemFont,'Segoe UI','PingFang SC','HarmonyOS Sans SC','Microsoft YaHei','Noto Sans SC',sans-serif;
+  --shadow-pop:0 6px 16px rgba(0,0,0,.08),0 3px 6px -4px rgba(0,0,0,.12),0 9px 28px 8px rgba(0,0,0,.05);
+}
+.dark {
+  --primary:#7d9bff; --primary-600:#93aaff; --primary-700:#a9bcff;
+  --primary-100:#1c2b57; --primary-50:#16213d; --primary-25:#111827;
+  --gray-25:#191a1a; --gray-50:#232424; --gray-100:#1e1f1f; --gray-200:#2a2b2b; --gray-300:#323333;
+  --gray-400:#4c4d4d; --gray-500:#697070; --gray-600:#979999; --gray-700:#bdbfbf;
+  --gray-800:#d7d9d9; --gray-900:#eff2f2; --gray-1000:#f5f7f7;
+  --success-50:#162312; --success-100:#274916; --success-500:#73d13d; --success-700:#95de64;
+  --error-50:#2c1210; --error-100:#581815; --error-500:#ff7875; --error-700:#ff9c99;
+  --warn-50:#2a2205; --warn-100:#443806; --warn-500:#f5c542; --warn-700:#ffd666; --warn-900:#ffe58f;
+  --info-50:#0c2238; --info-100:#11365a; --info-500:#69b1ff; --info-700:#91caff; --info-900:#91caff;
+  --text:#f5f7f7; --text-2:#bdbfbf; --text-3:#979999;
+  --hairline:#2a2b2b; --card:#1e1f1f; --page:#151616;
+  --shadow-pop:0 6px 16px rgba(0,0,0,.5),0 9px 28px 8px rgba(0,0,0,.4);
+}
+* { margin:0; padding:0; box-sizing:border-box; }
+body {
+  font-family:var(--font-sans); font-size:14px; line-height:1.6;
+  background:var(--page); color:var(--text); min-height:100vh;
+  transition:background .2s,color .2s;
+}
+body::before {
+  content:''; position:fixed; inset:0; pointer-events:none; z-index:0;
+  background-image:
+    linear-gradient(to right, color-mix(in srgb,var(--primary) 4%,transparent) 1px, transparent 1px),
+    linear-gradient(to bottom, color-mix(in srgb,var(--primary) 4%,transparent) 1px, transparent 1px);
+  background-size:26px 26px; opacity:.6;
+}
+button, input, select, textarea { font-family:inherit; }
+button { cursor:pointer; border:none; background:none; color:inherit; }
+.stage { position:relative; z-index:1; min-height:100vh; display:flex; align-items:flex-start;
+  justify-content:center; padding:40px 16px 56px; }
+.top-tools { position:fixed; top:14px; right:18px; z-index:60; display:flex; gap:8px; }
+.tool-btn { height:28px; padding:0 12px; border:1px solid var(--hairline); border-radius:999px;
+  background:var(--card); color:var(--text-2); font-size:12px; transition:all .15s; }
+.tool-btn:hover { border-color:var(--primary); color:var(--primary); background:var(--primary-25); }
+
+/* ═══ 对话框骨架（对齐 lexicon 对话框：680px / 12px 圆角）═══ */
+.dlg { width:680px; max-width:96vw; max-height:88vh; display:flex; flex-direction:column;
+  background:var(--card); border:1px solid var(--hairline); border-radius:12px;
+  box-shadow:var(--shadow-pop); overflow:hidden; }
+.dlg-hd { display:flex; align-items:flex-start; gap:8px; padding:16px 20px 12px;
+  border-bottom:1px solid var(--hairline); flex:none; }
+.dlg-hd h3 { font-size:16px; font-weight:600; line-height:1.35; }
+.dlg-hd .hd-sub { font-size:12px; color:var(--text-3); margin-top:1px; }
+.dlg-hd .en-sub { font-family:var(--mono); font-size:10px; color:var(--text-3); letter-spacing:.02em; }
+.dlg-hd .x { margin-left:auto; width:28px; height:28px; border-radius:6px; color:var(--text-3);
+  display:flex; align-items:center; justify-content:center; flex:none; }
+.dlg-hd .x:hover { background:var(--gray-100); color:var(--text); }
+.pill { display:inline-flex; align-items:center; height:20px; padding:0 8px; border-radius:999px;
+  border:1px solid transparent; font-size:12px; font-weight:500; white-space:nowrap; }
+.pill-gray { border-color:var(--hairline); background:var(--gray-100); color:var(--gray-600); }
+.pill-primary { border-color:var(--primary-100); background:var(--primary-50); color:var(--primary-700); }
+.pill-warn { border-color:var(--warn-100); background:var(--warn-50); color:var(--warn-900); }
+
+.dlg-bd { min-height:0; overflow-y:auto; padding:16px 20px 8px; }
+.sec { margin-bottom:18px; }
+.sec-hd { display:flex; align-items:center; gap:8px; margin:0 0 10px; }
+.sec-hd h4 { font-size:13px; font-weight:600; color:var(--text-2); }
+.sec-hd .en { font-family:var(--mono); font-size:10px; font-weight:400; color:var(--text-3); letter-spacing:.02em; }
+.sec-hd .badge { margin-left:auto; }
+
+.info-bar { display:flex; gap:8px; align-items:flex-start; padding:9px 12px; margin-bottom:16px;
+  border-radius:6px; background:var(--info-50); color:var(--info-900); font-size:12px; line-height:1.65; }
+.info-bar svg { margin-top:2px; flex:none; }
+.warn-bar { display:flex; gap:8px; align-items:flex-start; padding:9px 12px; margin-top:10px;
+  border-radius:6px; background:var(--warn-50); color:var(--warn-900); font-size:12px; line-height:1.65;
+  border:1px solid var(--warn-100); }
+.warn-bar svg { margin-top:2px; flex:none; }
+
+/* ═══ 表单：stacked label + 英文换行 + help + 建议默认 ═══ */
+.grid-2 { display:grid; grid-template-columns:1fr 1fr; gap:0 14px; }
+.fld { display:flex; flex-direction:column; gap:4px; margin-bottom:12px; }
+.fld > label { display:block; font-size:12px; font-weight:500; color:var(--text-2); line-height:1.35; }
+.fld > label .must { color:var(--error-500); margin-left:2px; }
+.fld > label .opt { font-weight:400; color:var(--text-3); }
+.fld > label .en { display:block; font-family:var(--mono); font-size:10px; font-weight:400;
+  color:var(--text-3); letter-spacing:.02em; margin-top:1px; }
+.inp { width:100%; height:32px; padding:0 10px; border:1px solid var(--gray-300); border-radius:6px;
+  background:var(--card); color:var(--text); font-size:13px; outline:none;
+  transition:border-color .15s,box-shadow .15s; }
+.inp::placeholder { color:var(--text-3); }
+.inp:focus { border-color:var(--primary); box-shadow:0 0 0 2px var(--primary-50); }
+select.inp { appearance:none; cursor:pointer; padding-right:26px;
+  background-image:linear-gradient(45deg,transparent 50%,var(--text-3) 50%),
+    linear-gradient(135deg,var(--text-3) 50%,transparent 50%);
+  background-position:calc(100% - 14px) 14px,calc(100% - 9px) 14px;
+  background-size:5px 5px,5px 5px; background-repeat:no-repeat; }
+textarea.inp { height:auto; padding:7px 10px; resize:vertical; line-height:1.6; }
+.help { font-size:11px; line-height:1.55; color:var(--text-3); }
+.rec { display:flex; align-items:center; gap:5px; font-size:11px; line-height:1.5; color:var(--text-2); }
+.rec .tag { display:inline-flex; align-items:center; height:16px; padding:0 5px; border-radius:4px;
+  background:var(--primary-50); color:var(--primary-700); font-size:10px; font-weight:600; }
+.rec b { font-family:var(--mono); font-size:11px; font-weight:600; color:var(--text); }
+
+/* ═══ 分块配置盒子 ═══ */
+.chunk-box { border:1px solid var(--hairline); background:var(--gray-25); border-radius:8px;
+  padding:12px 14px 2px; }
+.chunk-box .sec-hd { margin-bottom:8px; }
+.switch-row { display:flex; align-items:flex-start; gap:9px; padding:9px 0;
+  border-top:1px dashed var(--gray-200); }
+.switch-row:first-of-type { border-top:none; }
+.switch-row input[type=checkbox] { width:15px; height:15px; margin-top:2px; accent-color:var(--primary); flex:none; }
+.switch-row .sw-main { min-width:0; flex:1; }
+.switch-row .sw-title { font-size:12px; font-weight:500; color:var(--text); line-height:1.4; }
+.switch-row .sw-title .en { display:block; font-family:var(--mono); font-size:10px; font-weight:400;
+  color:var(--text-3); margin-top:1px; }
+.switch-row .help { margin-top:2px; }
+.switch-row .rec { margin-top:2px; }
+
+.dlg-ft { display:flex; justify-content:flex-end; align-items:center; gap:8px; padding:12px 20px 16px;
+  border-top:1px solid var(--hairline); background:var(--card); flex:none; }
+.dlg-ft .ft-hint { margin-right:auto; font-size:11px; color:var(--text-3); }
+.btn { height:30px; padding:0 16px; border-radius:6px; border:1px solid var(--gray-300);
+  background:var(--card); color:var(--text); font-size:13px; font-weight:500; transition:all .15s; }
+.btn:hover { border-color:var(--primary); color:var(--primary); }
+.btn.pri { border-color:var(--primary); background:var(--primary); color:#fff; }
+.btn.pri:hover { background:var(--primary-600); }
+.dark .btn.pri { color:#0a0a0a; }
+
+@media (max-width: 720px) {
+  .stage { padding:20px 12px 32px; }
+  .grid-2 { grid-template-columns:1fr; }
+  .dlg { max-height:92vh; }
+}
+</style>
+</head>
+<body>
+<div class="top-tools">
+  <button class="tool-btn" id="reopen" hidden>重新打开</button>
+  <button class="tool-btn" id="darkToggle">亮 / 暗</button>
+</div>
+
+<div class="stage" id="stage">
+  <div class="dlg" id="dialog" role="dialog" aria-modal="true" aria-labelledby="dlgTitle">
+    <div class="dlg-hd">
+      <div>
+        <h3 id="dlgTitle" style="display:flex; align-items:center; gap:8px;">
+          新建 RAG 知识库
+          <span class="pill pill-gray">RAGFlow</span>
+        </h3>
+        <div class="hd-sub">创建 dataset 后自动加入翻译体系 · 分块参数在 RAGFlow 1.0 由 pipeline 接管</div>
+        <div class="en-sub">Create RAG knowledge base · dataset + translation opt-in</div>
+      </div>
+      <button class="x" id="closeBtn" aria-label="关闭">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg>
+      </button>
+    </div>
+
+    <div class="dlg-bd">
+      <div class="info-bar">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg>
+        <span>新建会在 RAGFlow 创建 dataset 并自动加入翻译体系。建库后向量模型与分块配置不可修改；精细调优请到 RAGFlow 平台。</span>
+      </div>
+
+      <!-- A. 基础信息 -->
+      <section class="sec">
+        <div class="sec-hd"><h4>基础信息</h4><span class="en">Basics</span></div>
+        <div class="fld">
+          <label for="kb-name">名称<span class="must">*</span><span class="en">Name</span></label>
+          <input id="kb-name" class="inp" value="翻译资产库" placeholder="例如：铁矿知识库">
+          <p class="help">工作台内唯一；同名库会被拒绝。</p>
+          <p class="rec"><span class="tag">建议默认</span><b>翻译资产库</b>（默认库，上传时自动选择）</p>
+        </div>
+        <div class="fld">
+          <label for="kb-desc">描述<span class="opt">（可选）</span><span class="en">Description · Optional</span></label>
+          <input id="kb-desc" class="inp" value="翻译工作台检索知识库（默认）" placeholder="例如：合资铁矿合同与技术资料">
+          <p class="help">用于工作台内识别与知识库列表展示。</p>
+        </div>
+        <div class="grid-2">
+          <div class="fld">
+            <label for="kb-lang">语言<span class="en">Language</span></label>
+            <select id="kb-lang" class="inp">
+              <option selected>Chinese</option>
+              <option>English</option>
+            </select>
+            <p class="help">按文档主语言选择；混合语料建议 Chinese。</p>
+            <p class="rec"><span class="tag">建议默认</span><b>Chinese</b></p>
+          </div>
+          <div class="fld">
+            <label for="kb-perm">权限<span class="en">Permission</span></label>
+            <select id="kb-perm" class="inp">
+              <option selected>team（协作可见）</option>
+              <option>me（仅自己）</option>
+            </select>
+            <p class="help">控制知识库在团队内的可见范围。</p>
+            <p class="rec"><span class="tag">建议默认</span><b>team</b>（团队协作）</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- B. 向量模型 -->
+      <section class="sec">
+        <div class="sec-hd"><h4>向量模型</h4><span class="en">Embedding model</span></div>
+        <div class="fld">
+          <label for="kb-embedding">向量模型<span class="must">*</span><span class="en">Embedding model</span></label>
+          <select id="kb-embedding" class="inp">
+            <option selected>bge-m3:latest@ollama@Ollama</option>
+            <option>bge-large-zh-v1.5</option>
+            <option>（自动选择首个可用模型）</option>
+          </select>
+          <p class="help">须与 RAGFlow 已安装的 embedding 模型一致；建库后不可更换。</p>
+          <p class="rec"><span class="tag">建议默认</span><b>bge-m3:latest@ollama@Ollama</b>（中文/多语检索）</p>
+        </div>
+      </section>
+
+      <!-- C. 分块配置 -->
+      <section class="sec">
+        <div class="sec-hd"><h4>分块配置</h4><span class="en">Chunking</span><span class="pill pill-warn badge">RAGFlow 1.0 pipeline 接管</span></div>
+        <div class="chunk-box">
+          <div class="grid-2">
+            <div class="fld">
+              <label for="chunk-method">分块方法<span class="en">Chunk method</span></label>
+              <select id="chunk-method" class="inp">
+                <option selected>naive</option>
+                <option>book</option>
+                <option>laws</option>
+                <option>paper</option>
+                <option>qa</option>
+                <option>manual</option>
+                <option>table</option>
+                <option>presentation</option>
+                <option>one</option>
+              </select>
+              <p class="help">按文档形态选择解析模板；常规文档用 naive，书籍 book，法规 laws，表格 table。</p>
+              <p class="rec"><span class="tag">建议默认</span><b>naive</b>（常规文档）</p>
+            </div>
+            <div class="fld">
+              <label for="chunk-token">分块 token 数<span class="en">Chunk token size</span></label>
+              <input id="chunk-token" type="number" class="inp" value="512" placeholder="推荐 512">
+              <p class="help">单块最大 token 数；越大上下文越完整，召回粒度越粗。</p>
+              <p class="rec"><span class="tag">建议默认</span><b>512</b></p>
+            </div>
+            <div class="fld">
+              <label for="chunk-delim">分隔符<span class="opt">（可选）</span><span class="en">Delimiter · Optional</span></label>
+              <input id="chunk-delim" class="inp" value="\n" placeholder="默认 \\n（换行），可填多个字符">
+              <p class="help">按该字符切分文本；留空使用 RAGFlow 默认换行。</p>
+              <p class="rec"><span class="tag">建议默认</span><b>\n</b>（换行）</p>
+            </div>
+            <div class="fld">
+              <label for="chunk-layout">版面识别<span class="en">Layout recognition</span></label>
+              <select id="chunk-layout" class="inp">
+                <option selected>DeepDOC</option>
+                <option>Naive</option>
+                <option>Vision</option>
+              </select>
+              <p class="help">PDF 版面解析器；复杂排版用 DeepDOC，快解析用 Naive，扫描件用 Vision。</p>
+              <p class="rec"><span class="tag">建议默认</span><b>DeepDOC</b>（复杂 PDF）</p>
+            </div>
+            <div class="fld">
+              <label for="chunk-table">表格上下文<span class="en">Table context</span></label>
+              <input id="chunk-table" type="number" class="inp" value="0" placeholder="推荐 0（不额外保留）">
+              <p class="help">表格前后保留的上下文字符数，避免表头与正文割裂。</p>
+              <p class="rec"><span class="tag">建议默认</span><b>0</b>（大多数文档）</p>
+            </div>
+            <div class="fld">
+              <label for="chunk-image">图片上下文<span class="en">Image context</span></label>
+              <input id="chunk-image" type="number" class="inp" value="0" placeholder="推荐 0（不额外保留）">
+              <p class="help">图片前后保留的上下文字符数，影响图片说明与正文关联。</p>
+              <p class="rec"><span class="tag">建议默认</span><b>0</b></p>
+            </div>
+          </div>
+
+          <label class="switch-row">
+            <input type="checkbox">
+            <span class="sw-main">
+              <span class="sw-title">Excel 转 HTML<span class="en">HTML for Excel</span></span>
+              <span class="help">将 Excel 解析为 HTML 表格，保留合并单元格与样式；大表建议开启。</span>
+              <span class="rec"><span class="tag">建议默认</span><b>关闭</b>（普通文档）</span>
+            </span>
+          </label>
+          <label class="switch-row">
+            <input type="checkbox">
+            <span class="sw-main">
+              <span class="sw-title">RAPTOR 层级摘要<span class="en">RAPTOR summaries</span></span>
+              <span class="help">生成层级摘要索引，提升长文档的宏观检索；建库后不可关闭。</span>
+              <span class="rec"><span class="tag">建议默认</span><b>关闭</b>（长报告可开启）</span>
+            </span>
+          </label>
+          <label class="switch-row">
+            <input type="checkbox">
+            <span class="sw-main">
+              <span class="sw-title">GraphRAG 知识图谱<span class="en">GraphRAG</span></span>
+              <span class="help">抽取实体关系构建知识图谱；耗时与存储开销较高，按需开启。</span>
+              <span class="rec"><span class="tag">建议默认</span><b>关闭</b></span>
+            </span>
+          </label>
+          <label class="switch-row">
+            <input type="checkbox">
+            <span class="sw-main">
+              <span class="sw-title">父子分块<span class="en">Parent-child chunking</span></span>
+              <span class="help">子块检索、父块回填，兼顾召回精度与上下文完整。</span>
+              <span class="rec"><span class="tag">建议默认</span><b>关闭</b>（超长章节可开启）</span>
+            </span>
+          </label>
+        </div>
+        <div class="warn-bar">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><path d="M12 9v4M12 17h.01"/></svg>
+          <span>当前部署版 RAGFlow 1.0 的分块参数由 pipeline 默认值接管，此处配置可能不生效；建库后不可修改，精细调优请到 RAGFlow 平台。</span>
+        </div>
+      </section>
+
+      <!-- D. 检索 -->
+      <section class="sec">
+        <div class="sec-hd"><h4>检索</h4><span class="en">Retrieval</span></div>
+        <div class="fld" style="max-width:260px">
+          <label for="kb-pagerank">PageRank 权重<span class="en">PageRank weight</span></label>
+          <input id="kb-pagerank" type="number" class="inp" value="0" placeholder="推荐 0（默认权重）">
+          <p class="help">RAGFlow 检索排序权重；0 表示使用默认值，一般无需调整。</p>
+          <p class="rec"><span class="tag">建议默认</span><b>0</b></p>
+        </div>
+        <p class="help">similarity_threshold / vector_similarity_weight 由部署版 RAGFlow 接口限制，不可在此修改（默认 0.2 / 0.3）。</p>
+      </section>
+    </div>
+
+    <div class="dlg-ft">
+      <span class="ft-hint">创建后可在知识库列表中继续编辑基础信息</span>
+      <button class="btn" id="cancelBtn">取消</button>
+      <button class="btn pri" id="createBtn">创建知识库</button>
+    </div>
+  </div>
+</div>
+
+<script>
+(() => {
+  const dialog = document.getElementById('dialog');
+  const reopen = document.getElementById('reopen');
+  const close = () => { dialog.hidden = true; reopen.hidden = false; };
+  const open = () => { dialog.hidden = false; reopen.hidden = true; };
+  document.getElementById('closeBtn').addEventListener('click', close);
+  document.getElementById('cancelBtn').addEventListener('click', close);
+  document.getElementById('createBtn').addEventListener('click', close);
+  reopen.addEventListener('click', open);
+  document.getElementById('darkToggle').addEventListener('click', () => document.body.classList.toggle('dark'));
+  document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !dialog.hidden) close(); });
+})();
+</script>
+</body>
+</html>

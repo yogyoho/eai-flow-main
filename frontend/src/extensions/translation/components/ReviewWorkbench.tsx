@@ -9,13 +9,20 @@ import {
   FileText,
   Loader2,
 } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
 
-import { listReviewQueue, transitionTask } from "../api";
+import {
+  getTaskDraft,
+  listReviewQueue,
+  saveTaskDraft,
+  transitionTask,
+  type TaskDraftBlock,
+} from "../api";
 import type { TltTask } from "../types";
 
 import { PageHeader } from "./PageHeader";
@@ -27,10 +34,18 @@ const GATE_LABELS: Record<string, string> = {
   structure: "格式完整性",
 };
 
+/** 源/译数字集合对比（仅作复核视觉提示，最终以后端数值轴为准）。 */
+function numericMismatch(source: string, translated: string): boolean {
+  const nums = (s: string) => (s.match(/\d+(?:[.,]\d+)*/g) ?? []).sort().join("|");
+  const a = nums(source);
+  return a !== "" && a !== nums(translated);
+}
+
 export function ReviewWorkbench() {
   const qc = useQueryClient();
   const invalidate = () => {
     void qc.invalidateQueries({ queryKey: ["tlt-tasks"] });
+    void qc.invalidateQueries({ queryKey: ["tlt-review-queue"] });
   };
 
   const queueQ = useQuery({
@@ -39,19 +54,110 @@ export function ReviewWorkbench() {
     refetchInterval: 30_000,
   });
 
-  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [selectedId, setSelectedId] = useState<string | null>(() => {
+    if (typeof window === "undefined") return null;
+    return new URLSearchParams(window.location.search).get("task_id");
+  });
   const [busy, setBusy] = useState(false);
+  const [note, setNote] = useState("");
+  const [editing, setEditing] = useState(false);
+  const [edits, setEdits] = useState<Record<string, string>>({});
+  const [savingDraft, setSavingDraft] = useState(false);
 
   const queue = queueQ.data ?? [];
   const selected = queue.find((t) => t.id === selectedId) ?? queue[0] ?? null;
+  const selectedTaskId = selected?.id;
+
+  useEffect(() => {
+    setNote("");
+    setEditing(false);
+    setEdits({});
+  }, [selectedTaskId]);
+
+  const draftQ = useQuery({
+    queryKey: ["tlt-draft", selectedTaskId],
+    queryFn: () => getTaskDraft(selectedTaskId!),
+    enabled: Boolean(selectedTaskId),
+  });
+  const draftSource = draftQ.data?.source ?? [];
+  const draftTranslated = draftQ.data?.translated ?? [];
+  const sourceById = new Map(draftSource.map((block) => [block.id, block]));
+  const uncertainIds = new Set(
+    (draftQ.data?.uncertainty ?? []).map((item) => item.block),
+  );
+  const comparisonColumns: {
+    label: string;
+    blocks: TaskDraftBlock[];
+    side: "source" | "translated";
+  }[] = [
+    { label: "源文", blocks: draftSource, side: "source" },
+    { label: "译文", blocks: draftTranslated, side: "translated" },
+  ];
+  const backtranslation = (
+    selected?.error_detail as
+      | {
+          backtranslation?: {
+            block: string;
+            source: string;
+            back: string;
+            ratio: number;
+            drift: boolean;
+          }[];
+        }
+      | null
+      | undefined
+  )?.backtranslation;
+
+  const startEditing = () => {
+    setEdits(Object.fromEntries(draftTranslated.map((block) => [block.id, block.text])));
+    setEditing(true);
+  };
+
+  const cancelEditing = () => {
+    setEditing(false);
+    setEdits({});
+  };
+
+  const saveDraft = async () => {
+    if (!selected || draftTranslated.length === 0) return;
+    setSavingDraft(true);
+    try {
+      const result = await saveTaskDraft(
+        selected.id,
+        draftTranslated.map((block) => ({
+          id: block.id,
+          text: edits[block.id] ?? block.text,
+        })),
+      );
+      setEditing(false);
+      void qc.invalidateQueries({ queryKey: ["tlt-draft", selectedTaskId] });
+      invalidate();
+      const failureCount = Object.values(result.gate_failures ?? {}).reduce(
+        (count, items) => count + items.length,
+        0,
+      );
+      if (failureCount > 0) {
+        toast.warning(`草稿已保存，但仍有 ${failureCount} 项机检问题`);
+      } else {
+        toast.success("草稿已保存");
+      }
+    } catch (e) {
+      flash(`保存失败：${e instanceof Error ? e.message : String(e)}`);
+    } finally {
+      setSavingDraft(false);
+    }
+  };
 
   const decide = async (t: TltTask, target: "indexed" | "archived") => {
     setBusy(true);
     try {
-      await transitionTask(t.id, target);
+      await transitionTask(t.id, target, note.trim() || undefined);
+      void qc.invalidateQueries({ queryKey: ["tlt-draft"] });
       invalidate();
       setSelectedId(null);
-      flash(target === "indexed" ? "已通过并交付" : "已驳回归档");
+      setNote("");
+      if (target === "indexed") toast.success("已通过并交付");
+      else toast.success("已驳回归档");
     } catch (e) {
       flash(`操作失败：${e instanceof Error ? e.message : String(e)}`);
     } finally {
@@ -195,7 +301,133 @@ export function ReviewWorkbench() {
                 </div>
 
                 <div className="min-h-0 flex-1 overflow-y-auto px-4 py-3">
-                  {/* 机检失败明细 */}
+                  {/* 源文 / 译文逐块对照 */}
+                  <section className="mb-3">
+                    <div className="mb-1.5 flex flex-wrap items-center gap-2">
+                      <div className="text-muted-foreground text-xs font-semibold tracking-wide">
+                        源文 / 译文对照
+                      </div>
+                      {draftQ.data?.edited_at && (
+                        <span className="border-primary/20 bg-primary/10 text-primary rounded border px-1.5 py-0.5 text-[10px]">
+                          已人工编辑
+                        </span>
+                      )}
+                      <span className="flex-1" />
+                      {!editing ? (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="h-6 px-2 text-[11px]"
+                          disabled={draftTranslated.length === 0}
+                          onClick={startEditing}
+                        >
+                          编辑译文
+                        </Button>
+                      ) : (
+                        <span className="text-muted-foreground text-[11px]">
+                          人工校对中
+                        </span>
+                      )}
+                    </div>
+                    {draftQ.isLoading ? (
+                      <p className="text-muted-foreground flex items-center gap-1.5 text-xs">
+                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                        加载草稿…
+                      </p>
+                    ) : draftSource.length === 0 &&
+                      draftTranslated.length === 0 ? (
+                      <p className="text-muted-foreground text-xs">
+                        暂无草稿块（任务可能未进入复核或草稿已清空）
+                      </p>
+                    ) : (
+                      <div className="grid gap-2 xl:grid-cols-2">
+                        {comparisonColumns.map(({ label, blocks, side }) => (
+                          <div
+                            key={label}
+                            className="border-border overflow-hidden rounded-md border"
+                          >
+                            <div className="border-border text-muted-foreground border-b px-2 py-1 text-[11px] font-medium">
+                              {label}
+                            </div>
+                            <div className="max-h-72 divide-y divide-[var(--gray-100)] overflow-y-auto">
+                              {blocks.map((block) => {
+                                const uncertain = uncertainIds.has(block.id);
+                                const mismatch =
+                                  side === "translated" &&
+                                  numericMismatch(
+                                    sourceById.get(block.id)?.text ?? "",
+                                    block.text,
+                                  );
+                                return (
+                                  <div
+                                    key={`${side}-${block.id}`}
+                                    className={cn(
+                                      "px-2 py-1.5 text-xs leading-relaxed",
+                                      uncertain && "bg-[var(--warn-50)]",
+                                    )}
+                                  >
+                                    <div className="text-muted-foreground text-[10px]">
+                                      {block.type} · {block.id}
+                                    </div>
+                                    {side === "translated" && editing ? (
+                                      <Textarea
+                                        value={edits[block.id] ?? block.text}
+                                        onChange={(e) =>
+                                          setEdits((prev) => ({
+                                            ...prev,
+                                            [block.id]: e.target.value,
+                                          }))
+                                        }
+                                        rows={3}
+                                        className="mt-1 min-h-14 text-xs"
+                                      />
+                                    ) : (
+                                      <p
+                                        className={cn(
+                                          "break-words whitespace-pre-wrap",
+                                          mismatch &&
+                                            "text-[var(--error-700)] font-medium",
+                                        )}
+                                      >
+                                        {block.text}
+                                      </p>
+                                    )}
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                    {editing && (
+                      <div className="mt-2 flex flex-wrap items-center gap-2">
+                        <span className="text-muted-foreground mr-auto text-[11px]">
+                          保存后重新计算机检；reviewed 档需通过后才能交付。
+                        </span>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="h-7 text-xs"
+                          disabled={savingDraft}
+                          onClick={cancelEditing}
+                        >
+                          取消
+                        </Button>
+                        <Button
+                          size="sm"
+                          className="h-7 text-xs"
+                          disabled={savingDraft}
+                          onClick={() => void saveDraft()}
+                        >
+                          {savingDraft && (
+                            <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" />
+                          )}
+                          保存草稿
+                        </Button>
+                      </div>
+                    )}
+                  </section>
                   <section>
                     <div className="text-muted-foreground mb-1.5 text-xs font-semibold tracking-wide">
                       三轴机检失败明细
@@ -227,6 +459,45 @@ export function ReviewWorkbench() {
                     )}
                   </section>
 
+                  {/* P2-12 回译诊断：exceeded 前的定向采样结果 */}
+                  {backtranslation && backtranslation.length > 0 && (
+                    <section className="mt-3">
+                      <div className="text-muted-foreground mb-1.5 text-xs font-semibold tracking-wide">
+                        回译诊断（{backtranslation.length} 块）
+                      </div>
+                      <div className="flex flex-col gap-1.5">
+                        {backtranslation.map((item) => (
+                          <div
+                            key={item.block}
+                            className={cn(
+                              "rounded-md border px-2.5 py-2 text-xs",
+                              item.drift
+                                ? "border-[var(--error-100)] bg-[var(--error-50)]"
+                                : "border-border bg-muted/20",
+                            )}
+                          >
+                            <div className="flex items-center gap-2">
+                              <span className="font-mono text-[11px]">
+                                {item.block}
+                              </span>
+                              <span className="text-muted-foreground text-[11px]">
+                                相似度 {(item.ratio * 100).toFixed(0)}%
+                              </span>
+                              {item.drift && (
+                                <span className="text-[var(--error-700)] text-[11px] font-medium">
+                                  疑似语义偏移
+                                </span>
+                              )}
+                            </div>
+                            <p className="text-muted-foreground mt-1 line-clamp-2">
+                              回译：{item.back}
+                            </p>
+                          </div>
+                        ))}
+                      </div>
+                    </section>
+                  )}
+
                   {/* 不确定段 */}
                   {selected.uncertainty && selected.uncertainty.length > 0 && (
                     <section className="mt-3">
@@ -243,6 +514,20 @@ export function ReviewWorkbench() {
                       </ul>
                     </section>
                   )}
+                </div>
+
+                {/* 批注：随裁决写入任务 error_detail.notes */}
+                <div className="border-border border-t px-4 py-2.5">
+                  <label className="text-muted-foreground mb-1 block text-[11px] font-medium">
+                    批注（可选，随裁决留档）
+                  </label>
+                  <Textarea
+                    value={note}
+                    onChange={(e) => setNote(e.target.value)}
+                    rows={2}
+                    placeholder="例如：数字已人工核对；术语按客户确认译法调整"
+                    className="min-h-14 text-xs"
+                  />
                 </div>
 
                 {/* 裁决操作栏 */}
@@ -266,14 +551,6 @@ export function ReviewWorkbench() {
                     onClick={() => void decide(selected, "archived")}
                   >
                     <Archive className="mr-1 h-3.5 w-3.5" /> 驳回归档
-                  </Button>
-                  <span className="flex-1" />
-                  <Button variant="ghost" size="sm" asChild>
-                    <a
-                      href={`/api/extensions/translation/tasks/${selected.id}/deliverable`}
-                    >
-                      <Download className="mr-1 h-3.5 w-3.5" /> 下载当前译本
-                    </a>
                   </Button>
                 </div>
               </>

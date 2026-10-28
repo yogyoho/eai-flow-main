@@ -15,13 +15,16 @@ import {
   Database,
   Download,
   Eye,
+  FileDown,
   FilePlus2,
   FolderPlus,
   FolderRoot,
   GripVerticalIcon,
   History,
   Languages,
+  ListPlus,
   Loader2,
+  LocateFixed,
   MoreHorizontal,
   Pencil,
   Play,
@@ -29,7 +32,9 @@ import {
   ShieldAlert,
   Trash2,
   Upload,
+  type LucideIcon,
 } from "lucide-react";
+import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 
@@ -48,6 +53,10 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
@@ -58,11 +67,18 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { artifactMarkdownPlugins } from "@/components/workspace/artifacts/markdown-preview-plugins";
 import { SafeStreamdown } from "@/core/streamdown/components";
 import { cn } from "@/lib/utils";
 
 import {
+  batchTranslateTasks,
+  createBackfillJob,
   createFolder,
   deleteFolder,
   deleteTask,
@@ -70,6 +86,7 @@ import {
   listFolders,
   listRagKbs,
   listTasks,
+  moveTaskToFolder,
   patchFolder,
   translateTask,
   uploadAssets,
@@ -83,6 +100,13 @@ import { UploadDialog } from "./UploadDialog";
 
 const PAGE_SIZE = 50;
 const POLL_MS = 10_000;
+
+/**
+ * 文件名：拉丁字母/数字保持等宽（原型 .mono），中文字符落到系统中文无衬线栈
+ * （-apple-system → PingFang / HarmonyOS / 雅黑 / Noto），避免掉进 CJK 等宽宋体。
+ */
+const FILENAME_FONT =
+  "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'HarmonyOS Sans SC', 'Microsoft YaHei', 'Noto Sans SC', sans-serif";
 
 /** 目录树骨架行：缩进深度 + 条宽（对齐 cpa LibraryView 树骨架配方）。 */
 const TREE_SKELETON_ROWS = [
@@ -220,6 +244,7 @@ export function AssetLibrary() {
     document.title = "文件资料库 EN/FR 文档 · 中文译本对照管理";
   }, []);
   const qc = useQueryClient();
+  const router = useRouter();
   const invalidate = () => {
     void qc.invalidateQueries({ queryKey: ["tlt-tasks"] });
     void qc.invalidateQueries({ queryKey: ["tlt-folders"] });
@@ -231,6 +256,45 @@ export function AssetLibrary() {
   const [lPage, setLPage] = useState(1);
   const [q, setQ] = useState("");
   const [checked, setChecked] = useState<Set<string>>(new Set());
+  const [lastCheckedId, setLastCheckedId] = useState<string | null>(null);
+  const [focusId, setFocusId] = useState<string | null>(null);
+  const [backfilling, setBackfilling] = useState(false);
+  const headerRef = useRef<HTMLDivElement>(null);
+  // 0=全内联；1=回填入更多；2=+翻译；3=+上传；4=+知识库；5=收起搜索框
+  const [overflowLevel, setOverflowLevel] = useState(0);
+  const [leftActionsInline, setLeftActionsInline] = useState(false);
+  const rightHeaderRef = useRef<HTMLDivElement>(null);
+  const [rightActionsInline, setRightActionsInline] = useState(false);
+
+  useEffect(() => {
+    const el = headerRef.current;
+    if (!el) return;
+    const observer = new ResizeObserver((entries) => {
+      const width = entries[0]?.contentRect.width ?? 0;
+      setOverflowLevel(
+        width >= 760 ? 0 : width >= 680 ? 1 : width >= 600 ? 2 : width >= 520 ? 3 : width >= 440 ? 4 : 5,
+      );
+      setLeftActionsInline(width >= 560);
+    });
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
+
+  useEffect(() => {
+    const el = rightHeaderRef.current;
+    if (!el) return;
+    const observer = new ResizeObserver((entries) => {
+      const width = entries[0]?.contentRect.width ?? 0;
+      setRightActionsInline(width >= 560);
+    });
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
+  const showBackfillInline = overflowLevel < 1;
+  const showTranslateInline = overflowLevel < 2;
+  const showUploadInline = overflowLevel < 3;
+  const showKbInline = overflowLevel < 4;
+  const showSearchInline = overflowLevel < 5;
   const [paneWidth, setPaneWidth] = useState(50); // %
   const [collapsed, setCollapsed] = useState<"none" | "right" | "left">("none");
   const [lTreeW, setLTreeW] = useState(150);
@@ -372,13 +436,22 @@ export function AssetLibrary() {
       // 请求级成功才记忆本次目标库（失败路径不写，保留上一次成功值）
       if (uploadKbId) window.localStorage.setItem("tlt_last_kb_id", uploadKbId);
       if (autoTranslate) {
-        for (const item of res) {
-          if (!item.reused) await translateTask(item.task_id);
-        }
+        const ids = res.filter((item) => !item.reused).map((item) => item.task_id);
+        if (ids.length > 0) await batchTranslateTasks(ids);
       }
       invalidate();
       const reused = res.filter((r) => r.reused);
       const created = res.length - reused.length;
+      const supersededCount = res.reduce(
+        (count, item) => count + (item.superseded?.length ?? 0),
+        0,
+      );
+      if (supersededCount > 0) {
+        toast.info(
+          `已下线 ${supersededCount} 个旧版本的检索索引（交付物留档）`,
+          { duration: 6000 },
+        );
+      }
       if (reused.length > 0) {
         const createdPart =
           created > 0
@@ -414,26 +487,110 @@ export function AssetLibrary() {
   const doTranslateChecked = async () => {
     if (!translatable.length) return;
     try {
-      for (const t of translatable) await translateTask(t.id);
+      const res = await batchTranslateTasks(translatable.map((t) => t.id));
       invalidate();
       setChecked(new Set());
-      flash("ok", `已提交 ${translatable.length} 个翻译任务`);
+      flash(
+        "ok",
+        res.queued === translatable.length
+          ? `已提交 ${res.queued} 个翻译任务`
+          : `已提交 ${res.queued} 个；${res.skipped.length} 个状态已变化被跳过`,
+      );
     } catch (e) {
       flash("err", `提交失败：${e instanceof Error ? e.message : String(e)}`);
     }
   };
 
+  /** P2 超大回填：当前库/文件夹下的未翻译任务分批入队。 */
+  const startBackfill = async () => {
+    setBackfilling(true);
+    try {
+      const job = await createBackfillJob({
+        kb_id: kbFilter === "all" ? undefined : kbFilter,
+        folder_id:
+          lFolder === "root" ? "root" : (lFolder ?? undefined),
+        states: ["stored", "failed"],
+        chunk_size: 100,
+      });
+      invalidate();
+      flash(
+        "ok",
+        `已创建回填任务（${job.total} 个，每批 ${job.chunk_size} 个入队）`,
+      );
+    } catch (e) {
+      flash("err", `回填失败：${e instanceof Error ? e.message : String(e)}`);
+    } finally {
+      setBackfilling(false);
+    }
+  };
+
   const doDelete = async (t: TltTask) => {
+    if (!window.confirm(`删除「${t.file_name}」？将下线检索索引，交付物文件保留。`))
+      return;
     try {
       await deleteTask(t.id);
       invalidate();
       const s = new Set(checked);
       s.delete(t.id);
       setChecked(s);
-      flash("ok", "已移出资产库（可恢复）");
+      flash("ok", "已删除并下线检索（交付物留档）");
     } catch (e) {
       flash("err", `删除失败：${e instanceof Error ? e.message : String(e)}`);
     }
+  };
+
+  /** Shift 连选：基于当前页文件顺序（P2-16）。 */
+  const toggleChecked = (id: string, shiftKey: boolean) => {
+    setChecked((prev) => {
+      const next = new Set(prev);
+      if (shiftKey && lastCheckedId) {
+        const ids = lTasks.map((item) => item.id);
+        const a = ids.indexOf(lastCheckedId);
+        const b = ids.indexOf(id);
+        if (a >= 0 && b >= 0) {
+          const [lo, hi] = a < b ? [a, b] : [b, a];
+          const shouldCheck = !prev.has(id);
+          for (let i = lo; i <= hi; i += 1) {
+            const tid = ids[i];
+            if (!tid) continue;
+            if (shouldCheck) next.add(tid);
+            else next.delete(tid);
+          }
+          return next;
+        }
+      }
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+    setLastCheckedId(id);
+  };
+
+  const moveToFolder = async (taskId: string, folderId: FolderId) => {
+    try {
+      await moveTaskToFolder(taskId, folderId === "root" ? null : folderId);
+      invalidate();
+      flash("ok", "已移动文件");
+    } catch (e) {
+      flash("err", `移动失败：${e instanceof Error ? e.message : String(e)}`);
+    }
+  };
+
+  /** 左/右栏配对定位：切到对应文件夹并滚动到目标行。 */
+  const locatePair = (t: TltTask, from: "L" | "R") => {
+    const target = (t.folder_id ?? "root") as FolderId;
+    if (from === "L") {
+      setRFolder(target);
+    } else {
+      setLFolder(target);
+      setRFolder(target);
+      setLPage(1);
+    }
+    setFocusId(t.id);
+    const rowId = `${from === "L" ? "rtask" : "ltask"}-${t.id}`;
+    window.setTimeout(() => {
+      document.getElementById(rowId)?.scrollIntoView({ behavior: "smooth", block: "center" });
+    }, 150);
   };
 
   const openPreview = (t: TltTask) => {
@@ -522,6 +679,16 @@ export function AssetLibrary() {
                 e.preventDefault();
                 (e.currentTarget as HTMLDivElement).click();
               }
+            }}
+            onDragOver={(e) => {
+              e.preventDefault();
+              e.dataTransfer.dropEffect = "move";
+            }}
+            onDrop={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              const taskId = e.dataTransfer.getData("application/x-tlt-task");
+              if (taskId) void moveToFolder(taskId, n.id);
             }}
           >
             {hasChildren ? (
@@ -747,54 +914,163 @@ export function AssetLibrary() {
     </div>
   );
 
-  const OpsMenu = ({ t, side }: { t: TltTask; side: "L" | "R" }) => (
-    <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <Button variant="ghost" size="sm" className="h-7 w-7 p-0">
-          <MoreHorizontal className="h-4 w-4" />
-        </Button>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent align="end">
-        {side === "L" && (t.state === "stored" || t.state === "failed") && (
-          <DropdownMenuItem
-            onClick={() => {
-              void translateTask(t.id)
-                .then(() => {
-                  invalidate();
-                  flash("ok", "已加入翻译队列");
-                })
-                .catch((e) => flash("err", String(e)));
-            }}
-          >
-            <Play className="mr-2 h-4 w-4" /> 翻译
-          </DropdownMenuItem>
-        )}
-        <DropdownMenuItem asChild>
-          <a href={`/api/extensions/translation/tasks/${t.id}/source`}>
-            <Download className="mr-2 h-4 w-4" /> 下载原件
-          </a>
-        </DropdownMenuItem>
-        {side === "R" && t.state === "delivered" && (
-          <>
-            <DropdownMenuItem onClick={() => openPreview(t)}>
-              <Eye className="mr-2 h-4 w-4" /> 预览
-            </DropdownMenuItem>
-            <DropdownMenuItem asChild>
-              <a href={`/api/extensions/translation/tasks/${t.id}/deliverable`}>
-                <Download className="mr-2 h-4 w-4" /> 下载译文
+  const queueTranslate = (t: TltTask) => {
+    void translateTask(t.id)
+      .then(() => {
+        invalidate();
+        flash("ok", "已加入翻译队列");
+      })
+      .catch((e) => flash("err", String(e)));
+  };
+
+  type RowAction = {
+    key: string;
+    label: string;
+    icon: LucideIcon;
+    run?: () => void;
+    href?: string;
+    danger?: boolean;
+  };
+
+  const rowActions = (t: TltTask, side: "L" | "R"): RowAction[] => {
+    const actions: RowAction[] = [];
+    if (side === "L" && (t.state === "stored" || t.state === "failed")) {
+      actions.push({
+        key: "translate",
+        label: "翻译",
+        icon: Play,
+        run: () => queueTranslate(t),
+      });
+    }
+    actions.push({
+      key: "source",
+      label: "下载原件",
+      icon: Download,
+      href: `/api/extensions/translation/tasks/${t.id}/source`,
+    });
+    if (side === "L" && t.state === "delivered") {
+      actions.push({
+        key: "locate",
+        label: "定位译文",
+        icon: LocateFixed,
+        run: () => locatePair(t, "L"),
+      });
+    }
+    if (side === "R") {
+      actions.push({
+        key: "locate",
+        label: "定位原文",
+        icon: LocateFixed,
+        run: () => locatePair(t, "R"),
+      });
+    }
+    if (side === "R" && t.state === "delivered") {
+      actions.push({
+        key: "preview",
+        label: "预览",
+        icon: Eye,
+        run: () => openPreview(t),
+      });
+      actions.push({
+        key: "deliverable",
+        label: "下载译文",
+        icon: FileDown,
+        href: `/api/extensions/translation/tasks/${t.id}/deliverable`,
+      });
+    }
+    actions.push({
+      key: "delete",
+      label: "删除文档",
+      icon: Trash2,
+      run: () => void doDelete(t),
+      danger: true,
+    });
+    return actions;
+  };
+
+  /** 行操作：宽栏内联图标按钮，窄栏收进「···」下拉。 */
+  const RowActions = ({
+    t,
+    side,
+    inline,
+  }: {
+    t: TltTask;
+    side: "L" | "R";
+    inline: boolean;
+  }) => {
+    const actions = rowActions(t, side);
+    if (!inline) {
+      return (
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="ghost" size="sm" className="h-7 w-7 p-0">
+              <MoreHorizontal className="h-4 w-4" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            {actions.map((action) => {
+              const Icon = action.icon;
+              if (action.href) {
+                return (
+                  <DropdownMenuItem key={action.key} asChild>
+                    <a href={action.href}>
+                      <Icon className="mr-2 h-4 w-4" /> {action.label}
+                    </a>
+                  </DropdownMenuItem>
+                );
+              }
+              return (
+                <DropdownMenuItem
+                  key={action.key}
+                  className={action.danger ? "text-destructive" : undefined}
+                  onClick={action.run}
+                >
+                  <Icon className="mr-2 h-4 w-4" /> {action.label}
+                </DropdownMenuItem>
+              );
+            })}
+          </DropdownMenuContent>
+        </DropdownMenu>
+      );
+    }
+    return (
+      <div className="flex items-center justify-end gap-0.5">
+        {actions.map((action) => {
+          const Icon = action.icon;
+          const cls = cn(
+            "inline-flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground",
+            action.danger &&
+              "text-destructive hover:bg-destructive/10 hover:text-destructive",
+          );
+          if (action.href) {
+            return (
+              <a
+                key={action.key}
+                href={action.href}
+                className={cls}
+                title={action.label}
+                aria-label={action.label}
+              >
+                <Icon className="h-3.5 w-3.5" />
               </a>
-            </DropdownMenuItem>
-          </>
-        )}
-        <DropdownMenuItem
-          className="text-destructive"
-          onClick={() => doDelete(t)}
-        >
-          <Trash2 className="mr-2 h-4 w-4" /> 移出资产库
-        </DropdownMenuItem>
-      </DropdownMenuContent>
-    </DropdownMenu>
-  );
+            );
+          }
+          return (
+            <button
+              key={action.key}
+              type="button"
+              className={cls}
+              title={action.label}
+              aria-label={action.label}
+              onClick={action.run}
+            >
+              <Icon className="h-3.5 w-3.5" />
+            </button>
+          );
+        })}
+      </div>
+    );
+  };
 
   return (
     <div className="flex h-full flex-col gap-3 px-4 pt-3 pb-4">
@@ -817,7 +1093,7 @@ export function AssetLibrary() {
             <Button
               variant="outline"
               size="sm"
-              onClick={() => flash("ok", "复核工作台建设中（OQ8）")}
+              onClick={() => router.push("/translation/review")}
             >
               待复核 {reviewQ.data.total} →
             </Button>
@@ -840,73 +1116,186 @@ export function AssetLibrary() {
             collapsed === "right" ? { flex: 1 } : { width: `${paneWidth}%` }
           }
         >
-          <div className="flex flex-wrap items-center gap-2 border-b px-3 py-2">
-            <span className="text-sm font-medium">原文区</span>
-            <span className="text-muted-foreground font-mono text-xs">
+          <div
+            ref={headerRef}
+            className="flex flex-wrap items-center gap-2 border-b px-3 py-2"
+          >
+            <span className="shrink-0 text-sm font-medium">原文区</span>
+            <span className="text-muted-foreground shrink-0 font-mono text-xs">
               EN/FR
             </span>
-            <span className="flex-1" />
-            <Input
-              placeholder="搜索 文件名 / sha"
-              className="h-8 w-44"
-              style={{ fontSize: 13 }}
-              value={q}
-              onChange={(e) => {
-                setQ(e.target.value);
-                setLPage(1);
-              }}
-            />
-            <Select
-              value={kbFilter}
-              onValueChange={(v) => {
-                setKbFilter(v);
-                setLPage(1);
-              }}
-            >
-              <SelectTrigger
-                size="sm"
-                className="w-44 text-[13px]"
-                aria-label="知识库筛选"
+            <span className="min-w-2 flex-1" />
+            {showSearchInline && (
+              <Input
+                placeholder="搜索 文件名 / sha"
+                className="h-8 w-40 min-w-20 shrink text-[13px]"
+                value={q}
+                onChange={(e) => {
+                  setQ(e.target.value);
+                  setLPage(1);
+                }}
+              />
+            )}
+            {showKbInline && (
+              <Select
+                value={kbFilter}
+                onValueChange={(v) => {
+                  setKbFilter(v);
+                  setLPage(1);
+                }}
               >
-                <SelectValue placeholder="全部库" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all" className="text-[13px]">
-                  全部库
-                </SelectItem>
-                {ragKbs.map((k) => (
-                  <SelectItem key={k.id} value={k.id} className="text-[13px]">
-                    {k.name}
+                <SelectTrigger
+                  size="sm"
+                  className="w-32 shrink-0 text-[13px]"
+                  aria-label="知识库筛选"
+                >
+                  <SelectValue placeholder="全部库" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all" className="text-[13px]">
+                    全部库
                   </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <Button
-              variant="outline"
-              size="sm"
-              className="text-[13px]"
-              onClick={() => setUploadOpen(true)}
-            >
-              <Upload className="mr-1 h-3 w-3" /> 上传
-            </Button>
-            <Button
-              size="sm"
-              className="text-[13px] tabular-nums"
-              disabled={!translatable.length}
-              onClick={doTranslateChecked}
-            >
-              {tasksL.isFetching ? (
-                <Loader2 className="mr-1 h-3 w-3 animate-spin" />
-              ) : (
-                <Play className="mr-1 h-3 w-3" />
-              )}
-              翻译 ({translatable.length})
-            </Button>
-            {/* 左全宽切换：右区消失/复原（样式对齐列表头部 ghost 图标钮） */}
+                  {ragKbs.map((k) => (
+                    <SelectItem key={k.id} value={k.id} className="text-[13px]">
+                      {k.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
+            {showUploadInline && (
+              <Button
+                variant="outline"
+                size="sm"
+                className="text-[13px]"
+                onClick={() => setUploadOpen(true)}
+              >
+                <Upload className="mr-1 h-3 w-3" /> 上传
+              </Button>
+            )}
+            {showTranslateInline && (
+              <Button
+                size="sm"
+                className="text-[13px] tabular-nums"
+                disabled={!translatable.length}
+                onClick={doTranslateChecked}
+              >
+                {tasksL.isFetching ? (
+                  <Loader2 className="mr-1 h-3 w-3 animate-spin" />
+                ) : (
+                  <Play className="mr-1 h-3 w-3" />
+                )}
+                翻译 ({translatable.length})
+              </Button>
+            )}
+            {showBackfillInline && (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="text-[13px]"
+                    disabled={backfilling}
+                    onClick={() => void startBackfill()}
+                  >
+                    {backfilling ? (
+                      <Loader2 className="mr-1 h-3 w-3 animate-spin" />
+                    ) : (
+                      <ListPlus className="mr-1 h-3 w-3" />
+                    )}
+                    回填
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent side="bottom" className="max-w-72">
+                  把当前知识库/文件夹下未翻译和翻译失败的文档分批加入队列，后台按批处理；已交付文件不受影响。
+                </TooltipContent>
+              </Tooltip>
+            )}
+            {overflowLevel > 0 && (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-8 w-8 shrink-0 p-0"
+                    aria-label="更多操作"
+                  >
+                    <svg
+                      aria-hidden
+                      className="h-4 w-4"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    >
+                      <path d="M3 5h11" />
+                      <path d="M3 12h11" />
+                      <path d="M3 19h11" />
+                      <path d="M19 5v14" />
+                      <path d="m15 15 4 4 4-4" />
+                    </svg>
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent
+                  align="end"
+                  className="max-h-80 w-56 overflow-y-auto"
+                >
+                  {!showUploadInline && (
+                    <DropdownMenuItem onSelect={() => setUploadOpen(true)}>
+                      <Upload className="mr-2 h-4 w-4" /> 上传文件
+                    </DropdownMenuItem>
+                  )}
+                  {!showTranslateInline && (
+                    <DropdownMenuItem
+                      disabled={!translatable.length}
+                      onSelect={() => void doTranslateChecked()}
+                    >
+                      <Play className="mr-2 h-4 w-4" /> 翻译已勾选（
+                      {translatable.length}）
+                    </DropdownMenuItem>
+                  )}
+                  {!showBackfillInline && (
+                    <DropdownMenuItem
+                      disabled={backfilling}
+                      onSelect={() => void startBackfill()}
+                    >
+                      <ListPlus className="mr-2 h-4 w-4" /> 回填未翻译
+                    </DropdownMenuItem>
+                  )}
+                  {!showKbInline && (
+                    <>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuLabel className="text-muted-foreground text-[11px]">
+                        知识库
+                      </DropdownMenuLabel>
+                      <DropdownMenuRadioGroup
+                        value={kbFilter}
+                        onValueChange={(v) => {
+                          setKbFilter(v);
+                          setLPage(1);
+                        }}
+                      >
+                        <DropdownMenuRadioItem value="all">
+                          全部库
+                        </DropdownMenuRadioItem>
+                        {ragKbs.map((k) => (
+                          <DropdownMenuRadioItem key={k.id} value={k.id}>
+                            {k.name}
+                          </DropdownMenuRadioItem>
+                        ))}
+                      </DropdownMenuRadioGroup>
+                    </>
+                  )}
+                </DropdownMenuContent>
+              </DropdownMenu>
+            )}
+            {/* 左全宽切换：固定保留在标题区最右侧，不随窄屏收进「更多」 */}
             <Button
               variant="ghost"
               size="sm"
-              className="h-8 w-8 p-0"
+              className="h-8 w-8 shrink-0 p-0"
               title={collapsed === "right" ? "复原双栏" : "左全宽"}
               onClick={() =>
                 setCollapsed(collapsed === "right" ? "none" : "right")
@@ -951,27 +1340,38 @@ export function AssetLibrary() {
                         />
                       </th>
                       <th className="px-2 py-2">文件名</th>
-                      <th className="w-10 px-2 py-2" />
+                      <th
+                        className={cn(
+                          "px-2 py-2",
+                          leftActionsInline ? "w-32" : "w-10",
+                        )}
+                      />
                     </tr>
                   </thead>
                   <tbody>
                     {lTasks.map((t) => (
                       <tr
                         key={t.id}
-                        className="hover:bg-muted/50 border-b border-[var(--gray-100)] last:border-b-0"
+                        id={`ltask-${t.id}`}
+                        draggable
+                        onDragStart={(e) => {
+                          e.dataTransfer.setData("application/x-tlt-task", t.id);
+                          e.dataTransfer.effectAllowed = "move";
+                        }}
+                        className={cn(
+                          "hover:bg-muted/50 border-b border-[var(--gray-100)] last:border-b-0",
+                          focusId === t.id && "bg-primary/5",
+                        )}
                       >
                         <td className="px-2 py-2">
                           <Checkbox
                             checked={checked.has(t.id)}
-                            onCheckedChange={(v) => {
-                              const s = new Set(checked);
-                              if (v) {
-                                s.add(t.id);
-                              } else {
-                                s.delete(t.id);
-                              }
-                              setChecked(s);
-                            }}
+                            onChange={(e) =>
+                              toggleChecked(
+                                t.id,
+                                (e.nativeEvent as MouseEvent).shiftKey,
+                              )
+                            }
                             className="border-muted-foreground/40 hover:border-primary data-[state=checked]:border-primary data-[state=checked]:bg-primary h-3.5 w-3.5 rounded-[4px] shadow-none transition-all"
                           />
                         </td>
@@ -982,7 +1382,7 @@ export function AssetLibrary() {
                               className="h-7 w-7 shrink-0"
                             />
                             <div className="min-w-0">
-                              <div className="truncate font-mono">
+                              <div className="truncate" style={{ fontFamily: FILENAME_FONT }}>
                                 {t.file_name}
                               </div>
                               <div className="text-muted-foreground flex items-center gap-1.5 truncate text-xs">
@@ -1007,8 +1407,17 @@ export function AssetLibrary() {
                             </div>
                           </div>
                         </td>
-                        <td className="w-10 px-2 py-2 text-right">
-                          <OpsMenu t={t} side="L" />
+                        <td
+                          className={cn(
+                            "px-2 py-2 text-right",
+                            leftActionsInline ? "w-32" : "w-10",
+                          )}
+                        >
+                          <RowActions
+                            t={t}
+                            side="L"
+                            inline={leftActionsInline}
+                          />
                         </td>
                       </tr>
                     ))}
@@ -1068,7 +1477,10 @@ export function AssetLibrary() {
           )}
           style={collapsed === "left" ? { flex: 1 } : { flex: 1 }}
         >
-          <div className="flex items-center gap-2 border-b px-3 py-2">
+          <div
+            ref={rightHeaderRef}
+            className="flex items-center gap-2 border-b px-3 py-2"
+          >
             <span className="text-sm font-medium">译文区</span>
             <span className="text-muted-foreground text-xs">
               <span className="font-mono">ZH</span> · 左侧只读镜像
@@ -1117,7 +1529,12 @@ export function AssetLibrary() {
                   <thead>
                     <tr className="bg-muted/50 text-muted-foreground border-b text-left text-xs">
                       <th className="px-2 py-2">文件名</th>
-                      <th className="w-10 px-2 py-2" />
+                      <th
+                        className={cn(
+                          "px-2 py-2",
+                          rightActionsInline ? "w-40" : "w-24",
+                        )}
+                      />
                     </tr>
                   </thead>
                   <tbody>
@@ -1126,9 +1543,11 @@ export function AssetLibrary() {
                       return (
                         <tr
                           key={t.id}
+                          id={`rtask-${t.id}`}
                           className={cn(
                             "hover:bg-muted/50 border-b border-[var(--gray-100)] last:border-b-0",
                             inFlight && "opacity-70",
+                            focusId === t.id && "bg-primary/5",
                           )}
                         >
                           <td className="min-w-0 px-2 py-2">
@@ -1142,7 +1561,7 @@ export function AssetLibrary() {
                                 />
                               )}
                               <div className="min-w-0">
-                                <div className="truncate font-mono">
+                                <div className="truncate" style={{ fontFamily: FILENAME_FONT }}>
                                   {inFlight
                                     ? `${t.file_name}.zh`
                                     : `${t.file_name}.zh.md`}
@@ -1174,21 +1593,32 @@ export function AssetLibrary() {
                               </div>
                             </div>
                           </td>
-                          <td className="w-10 px-2 py-2 text-right">
+                          <td
+                            className={cn(
+                              "px-2 py-2 text-right",
+                              rightActionsInline ? "w-40" : "w-24",
+                            )}
+                          >
                             {inFlight ? (
                               t.state === "exceeded" ? (
                                 <Button
                                   variant="outline"
                                   size="sm"
                                   onClick={() =>
-                                    flash("ok", "复核工作台建设中（OQ8）")
+                                    router.push(
+                                      `/translation/review?task_id=${t.id}`,
+                                    )
                                   }
                                 >
                                   去复核 →
                                 </Button>
                               ) : null
                             ) : (
-                              <OpsMenu t={t} side="R" />
+                              <RowActions
+                                t={t}
+                                side="R"
+                                inline={rightActionsInline}
+                              />
                             )}
                           </td>
                         </tr>

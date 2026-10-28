@@ -58,6 +58,15 @@ import {
 import { pathOf } from "@/extensions/contract-price/components/library-tree";
 import { PageHeader } from "@/extensions/contract-price/components/PageHeader";
 import type { SeedDraft } from "@/extensions/contract-price/components/SeedEditorDrawer";
+import { Pill, type PillTone } from "@/extensions/contract-price/components/ui/bits";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/extensions/contract-price/components/ui/table";
 import { UnmatchedTablesDrawer } from "@/extensions/contract-price/components/UnmatchedTablesDrawer";
 import {
   useConfig,
@@ -74,54 +83,26 @@ import type { UnmatchedTable } from "@/extensions/contract-price/types";
 import { cn } from "@/lib/utils";
 
 /** Unified doc lifecycle stage. No confirm gate — parsed docs go straight to
- * "已解析", then cluster run advances to "已分组". `tone` is a full badge
- * class set (text/border/bg) for the collapsed-row status chip. */
+ * "已解析", then cluster run advances to "已分组". `tone` 走 Pill 语义色档
+ * （cpa UI 重构规范 §2-4）。 */
 function docStage(doc: { parse_status: string; confirm_status: string }): {
   label: string;
-  tone: string;
+  tone: PillTone;
   pending: boolean;
 } {
   if (doc.confirm_status === "clustered")
-    return {
-      label: "已分组",
-      tone: "text-blue-600 dark:text-blue-400 border-blue-500/30 bg-blue-500/5",
-      pending: false,
-    };
+    return { label: "已分组", tone: "primary", pending: false };
   if (doc.parse_status === "failed")
-    return {
-      label: "解析失败",
-      tone: "text-destructive border-destructive/30 bg-destructive/5",
-      pending: false,
-    };
+    return { label: "解析失败", tone: "error", pending: false };
   if (doc.parse_status === "pending")
-    return {
-      label: "已上传",
-      tone: "text-muted-foreground border-muted-foreground/30 bg-muted-foreground/5",
-      pending: false,
-    };
+    return { label: "已上传", tone: "gray", pending: false };
   if (doc.parse_status === "parsing")
-    return {
-      label: "解析中",
-      tone: "text-primary border-primary/30 bg-primary/5",
-      pending: false,
-    };
+    return { label: "解析中", tone: "info", pending: false };
   if (doc.parse_status === "no_tables")
-    return {
-      label: "无价格表",
-      tone: "text-muted-foreground border-muted-foreground/30 bg-muted-foreground/5",
-      pending: false,
-    };
+    return { label: "无价格表", tone: "gray", pending: false };
   if (doc.parse_status === "needs_review")
-    return {
-      label: "待人工核验",
-      tone: "text-amber-600 dark:text-amber-400 border-amber-500/30 bg-amber-500/5",
-      pending: false,
-    };
-  return {
-    label: "已解析",
-    tone: "text-emerald-600 dark:text-emerald-400 border-emerald-500/30 bg-emerald-500/5",
-    pending: false,
-  };
+    return { label: "待人工核验", tone: "warn", pending: false };
+  return { label: "已解析", tone: "success", pending: false };
 }
 
 function formatDate(s: string | null): string {
@@ -357,7 +338,7 @@ function UploadDialog({
                 : "text-muted-foreground"
             }
           >
-            同步到 RAGFlow 知识库
+            同步到 RAG 知识库
           </span>
           <span className="text-muted-foreground text-xs">
             {ragflowSync
@@ -721,9 +702,9 @@ export function ContractsView() {
           if (item.ragflow) {
             const rf = item.ragflow;
             if (rf.status === "synced")
-              toast.success(`已同步到 RAGFlow 知识库：${item.file_name}`);
+              toast.success(`已同步到 RAG 知识库：${item.file_name}`);
             else if (rf.status === "already_exists")
-              toast.info(`RAGFlow 知识库已存在同名文档：${item.file_name}`);
+              toast.info(`RAG 知识库已存在同名文档：${item.file_name}`);
             else
               toast.warning(
                 `RAGFlow 同步失败（文件已上传成功）：${item.file_name}${rf.message ? ` — ${rf.message}` : ""}`,
@@ -817,11 +798,11 @@ export function ContractsView() {
   };
 
   return (
-    <div className="space-y-6 p-8">
+    <div className="space-y-4 p-6">
       <PageHeader
         title="合同解析"
         description="上传合同扫描件(PDF/DOCX),存入独立 MinIO bucket。合同上传后进行合同文件解析处理,其中的图片内容将触发 OCR 提取。"
-        icon={<FileText className="h-6 w-6" />}
+        icon={<FileText />}
         actions={
           <div className="flex items-center gap-2">
             <Button
@@ -900,31 +881,31 @@ export function ContractsView() {
         </Button>
       </form>
 
-      <div className="bg-card border-border overflow-hidden rounded-lg border shadow-sm">
-        <table className="w-full border-collapse text-left">
-          <thead>
-            <tr className="border-border bg-muted/50 border-b">
-              <th className="text-muted-foreground px-6 py-3 text-xs font-semibold tracking-wider uppercase">
-                合同文件
-              </th>
-              <th className="text-muted-foreground px-6 py-3 text-right text-xs font-semibold tracking-wider uppercase">
-                操作
-              </th>
-            </tr>
-          </thead>
-          <tbody className="divide-border divide-y">
+      {/* 列表卡（对齐任务中心 §2-3：贴边平卡 + 共享表格基元 + 初始骨架） */}
+      <div className="bg-card border-border overflow-hidden rounded-lg border">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>合同文件</TableHead>
+              <TableHead className="text-right">操作</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
             {isLoading ? (
-              <tr>
-                <td
-                  colSpan={2}
-                  className="text-muted-foreground py-12 text-center"
-                >
-                  加载中…
-                </td>
-              </tr>
+              /* 初始骨架（对齐任务中心）：10 行脉冲占位，灰条 muted-foreground/15 */
+              Array.from({ length: 10 }, (_, i) => (
+                <TableRow key={i} className="hover:bg-transparent">
+                  <TableCell>
+                    <div className="bg-muted-foreground/15 h-4 w-72 animate-pulse rounded" />
+                  </TableCell>
+                  <TableCell className="text-right">
+                    <div className="bg-muted-foreground/15 ml-auto h-4 w-40 animate-pulse rounded" />
+                  </TableCell>
+                </TableRow>
+              ))
             ) : docs.length === 0 ? (
-              <tr>
-                <td
+              <TableRow className="hover:bg-transparent">
+                <TableCell
                   colSpan={2}
                   className="text-muted-foreground py-12 text-center"
                 >
@@ -938,8 +919,8 @@ export function ContractsView() {
                       暂无合同。点右上「上传合同」或总览页「立即分析」。
                     </span>
                   </div>
-                </td>
-              </tr>
+                </TableCell>
+              </TableRow>
             ) : (
               docs.map((doc) => {
                 const meta = doc.parse_meta as {
@@ -960,8 +941,8 @@ export function ContractsView() {
                 return (
                   <Fragment key={doc.id}>
                     {/* 折叠态:文件名 + 状态徽章 + 关键计数徽章 + 展开箭头 */}
-                    <tr className="hover:bg-muted/50 transition-colors">
-                      <td className="px-6 py-3">
+                    <TableRow>
+                      <TableCell>
                         <div className="flex flex-wrap items-center gap-2">
                           <button
                             type="button"
@@ -982,28 +963,24 @@ export function ContractsView() {
                           >
                             {doc.file_name}
                           </span>
-                          <span
-                            className={`inline-flex items-center rounded-md border px-1.5 py-0.5 text-xs font-medium ${stage.tone}`}
-                          >
-                            {stage.label}
-                          </span>
+                          <Pill tone={stage.tone}>{stage.label}</Pill>
                           {doc.items_needs_review > 0 && (
-                            <span
-                              className="inline-flex items-center rounded-full border border-amber-500/30 bg-amber-500/5 px-2 py-0.5 text-xs text-amber-600 dark:text-amber-400"
+                            <Pill
+                              tone="warn"
                               title="validation_status=needs_review 的分项行数 / 分项总行数"
                             >
                               ⚠ {doc.items_needs_review}/{doc.items_total}{" "}
                               待核验
-                            </span>
+                            </Pill>
                           )}
                           {needsSeedGuide && (
-                            <span className="inline-flex items-center rounded-full border border-amber-500/30 bg-amber-500/5 px-2 py-0.5 text-xs text-amber-600 dark:text-amber-400">
+                            <Pill tone="warn">
                               ⚠ {unmatched.length} 张疑似价格表
-                            </span>
+                            </Pill>
                           )}
                         </div>
-                      </td>
-                      <td className="px-6 py-3 text-right">
+                      </TableCell>
+                      <TableCell className="text-right">
                         <div className="flex items-center justify-end gap-0.5">
                           <Button
                             size="sm"
@@ -1103,12 +1080,12 @@ export function ContractsView() {
                             <Trash2 className="h-4 w-4" />
                           </Button>
                         </div>
-                      </td>
-                    </tr>
+                      </TableCell>
+                    </TableRow>
                     {/* 展开态:解析信息(附属数据行) + 合同记录表单 */}
                     {isExpanded && (
-                      <tr className="bg-muted/30 hover:bg-muted/30">
-                        <td colSpan={2} className="px-6 py-4">
+                      <TableRow className="bg-muted/30 hover:bg-muted/30">
+                        <TableCell colSpan={2} className="px-4 py-3">
                           <div className="space-y-5">
                             <div className="space-y-2">
                               <span className="text-muted-foreground text-xs font-semibold tracking-wide">
@@ -1240,18 +1217,18 @@ export function ContractsView() {
                               </div>
                             </div>
                           </div>
-                        </td>
-                      </tr>
+                        </TableCell>
+                      </TableRow>
                     )}
                   </Fragment>
                 );
               })
             )}
-          </tbody>
-        </table>
+          </TableBody>
+        </Table>
 
         {/* 分页(纯前端接线:后端 Page{total} + skip/limit;展开态按 doc id 记忆,翻页不串行) */}
-        <div className="border-border flex items-center justify-between border-t px-6 py-3">
+        <div className="border-border flex items-center justify-between border-t px-4 py-2.5">
           <span className="text-muted-foreground text-xs">共 {total} 条</span>
           <div className="flex items-center gap-3">
             <Select

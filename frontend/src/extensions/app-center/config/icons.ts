@@ -8,6 +8,7 @@ import {
   FileText,
   FolderCheck,
   Gavel,
+  Languages,
   LayoutDashboard,
   LibraryBig,
   Map,
@@ -38,6 +39,8 @@ export const ICON_MAP: Record<string, LucideIcon> = {
   users: Users,
   workflow: Workflow,
   gavel: Gavel,
+  // EAI-CUSTOM (translation 一期): 文档翻译工作台（app_definitions seed icon="languages"）
+  languages: Languages,
 };
 
 /** Fallback icon when icon_name is unknown. */

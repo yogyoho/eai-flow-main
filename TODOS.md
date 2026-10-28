@@ -149,3 +149,8 @@
 - **Cons:** shapes/data 按域切分需摸清跨域引用边界。
 - **Context:** 按钮已在 ValidationPage 校验运行面板(title「按域过滤校验为规划项」); registry formal_by_domain 已按域组织, 切分基础存在。
 - **Depends on / blocked by:** 建议排在 G4/G5 多域化之后(单域阶段收益低)。
+
+## Deferred by /qa (2026-10-12)
+
+- [ ] [deploy][high] 离线包默认模型 gemma-4-31b 已从客户 GPUStack 删除——部署前按 GPUStack 实际清单改 deploy/offline/config.yaml models 首位（qa-report ISSUE-005）；复现：新部署对话页选默认模型 404
+- [ ] [deploy][high] 导出前重建过期镜像：gateway/frontend-prod/collab（落后 09-19/09-26/10-10 三轮 merge），`UV_INDEX_URL=https://mirrors.aliyun.com/pypi/simple/` 全量 compose build（qa-report ISSUE-004；ontostudio 双镜像构建通路已实证 EXIT 0）

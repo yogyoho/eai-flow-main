@@ -63,7 +63,7 @@ export const APPROVAL_STATUS_LABELS: Record<string, string> = {
   running: '审批中',
   approved: '已通过',
   rejected: '已驳回',
-  returned: '已退回',
+  returned: '待修改重提',
   cancelled: '已取消',
   expired: '已过期',
   failed: '启动失败',
@@ -82,7 +82,8 @@ export const STEP_STATUS_LABELS: Record<string, string> = {
 export const ACTION_LABELS: Record<string, string> = {
   approve: '同意',
   reject: '驳回',
-  return: '退回',
+  return: '退回申请人',
+  resubmit: '重新提交',
   delegate: '转办',
   cancel: '取消',
   create: '发起',

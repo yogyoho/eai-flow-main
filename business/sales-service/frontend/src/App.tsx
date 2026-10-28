@@ -10,6 +10,7 @@ import {
   Menu,
   Search,
   ShieldCheck,
+  Workflow,
   X,
 } from 'lucide-react'
 import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from 'react'
@@ -281,6 +282,17 @@ function AppShell() {
                 ))}
               </div>
             ))}
+
+            {summary.workflow_platform_enabled !== false && (identity.is_admin || identity.sales_role === 'sales_admin') ? (
+              <div className="nav-group">
+                <div className="nav-label">平台管理</div>
+                <a className="nav-item" href="/workflow" target="_blank" rel="noreferrer">
+                  <Workflow size={15} />
+                  <span>流程管理</span>
+                  <ExternalLink size={11} style={{ marginLeft: 'auto' }} />
+                </a>
+              </div>
+            ) : null}
 
             <div className="nav-group">
               <div className="nav-label">后续模块</div>

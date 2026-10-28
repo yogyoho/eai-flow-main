@@ -13,6 +13,7 @@ from decimal import Decimal
 from typing import Any
 
 from sqlalchemy import (
+    BigInteger,
     Boolean,
     Date,
     DateTime,
@@ -325,6 +326,8 @@ class ApprovalRequest(UUIDMixin, TimestampMixin, Base):
     requested_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
     workflow_id: Mapped[str | None] = mapped_column(String(160), nullable=True)
     workflow_run_id: Mapped[str | None] = mapped_column(String(160), nullable=True)
+    platform_instance_id: Mapped[int | None] = mapped_column(BigInteger, nullable=True, index=True)
+    engine: Mapped[str] = mapped_column(String(32), default="sales_temporal", nullable=False)
     started_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
@@ -352,6 +355,7 @@ class ApprovalStep(UUIDMixin, Base):
     escalated_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     escalation_level: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
     idempotency_key: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    platform_task_id: Mapped[int | None] = mapped_column(BigInteger, nullable=True, index=True)
 
     request: Mapped[ApprovalRequest] = relationship("ApprovalRequest", back_populates="steps")
     assignments: Mapped[list[ApprovalAssignment]] = relationship(

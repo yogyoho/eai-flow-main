@@ -271,9 +271,9 @@ export function LibraryView() {
         if (item.ragflow) {
           const rf = item.ragflow;
           if (rf.status === "synced")
-            toast.success(`已同步到 RAGFlow 知识库：${item.file_name}`);
+            toast.success(`已同步到 RAG 知识库：${item.file_name}`);
           else if (rf.status === "already_exists")
-            toast.info(`RAGFlow 知识库已存在同名文档：${item.file_name}`);
+            toast.info(`RAG 知识库已存在同名文档：${item.file_name}`);
           else
             toast.warning(
               `RAGFlow 同步失败（文件已上传成功）：${item.file_name}${rf.message ? ` — ${rf.message}` : ""}`,
@@ -453,7 +453,7 @@ export function LibraryView() {
       {/* 顶栏 */}
       <PageHeader
         title="合同文件库"
-        icon={<FolderOpen className="h-6 w-6" />}
+        icon={<FolderOpen />}
         extra={
           <span className="text-muted-foreground text-sm">
             上传即登记 · 解析需显式触发
@@ -563,8 +563,31 @@ export function LibraryView() {
                 文件夹加载失败：{String(foldersQ.error)}
               </p>
             ) : foldersQ.isLoading ? (
-              <div className="text-muted-foreground flex items-center gap-2 py-1">
-                <Loader2 className="h-3.5 w-3.5 animate-spin" /> 加载中…
+              /* 目录树初始骨架（对齐右侧文件表骨架配方）：8 行缩进脉冲条，
+                  灰条 muted-foreground/15，缩进模拟层级、宽度交错拟真目录名 */
+              <div className="space-y-2.5 p-2">
+                {([
+                  [0, 52],
+                  [1, 68],
+                  [2, 56],
+                  [1, 76],
+                  [2, 48],
+                  [1, 60],
+                  [2, 72],
+                  [3, 44],
+                ] as const).map(([depth, w], i) => (
+                  <div
+                    key={i}
+                    className="flex items-center gap-1.5"
+                    style={{ paddingLeft: depth * 14 }}
+                  >
+                    <div className="bg-muted-foreground/15 size-3 shrink-0 animate-pulse rounded-sm" />
+                    <div
+                      className="bg-muted-foreground/15 h-3 animate-pulse rounded"
+                      style={{ width: w }}
+                    />
+                  </div>
+                ))}
               </div>
             ) : (
               renderTree(
@@ -595,9 +618,40 @@ export function LibraryView() {
                 文件加载失败：{String(filesQ.error)}
               </p>
             ) : filesQ.isLoading ? (
-              <div className="text-muted-foreground flex items-center gap-2 p-4 text-sm">
-                <Loader2 className="h-4 w-4 animate-spin" /> 加载中…
-              </div>
+              /* 初始骨架（对齐任务中心）：10 行脉冲占位，灰条 muted-foreground/15，
+                  列形对齐文件表（勾选/文件名/状态/类型/大小/日期/操作） */
+              <table className="w-full text-sm">
+                <tbody>
+                  {Array.from({ length: 10 }, (_, i) => (
+                    <tr
+                      key={i}
+                      className="border-border/70 border-b last:border-b-0"
+                    >
+                      <td className="px-2 py-2.5">
+                        <div className="bg-muted-foreground/15 size-3.5 animate-pulse rounded-sm" />
+                      </td>
+                      <td className="px-2 py-2.5">
+                        <div className="bg-muted-foreground/15 h-4 w-56 animate-pulse rounded" />
+                      </td>
+                      <td className="px-2 py-2.5">
+                        <div className="bg-muted-foreground/15 h-5 w-14 animate-pulse rounded-full" />
+                      </td>
+                      <td className="px-2 py-2.5">
+                        <div className="bg-muted-foreground/15 h-3.5 w-10 animate-pulse rounded" />
+                      </td>
+                      <td className="px-2 py-2.5">
+                        <div className="bg-muted-foreground/15 ml-auto h-3.5 w-12 animate-pulse rounded" />
+                      </td>
+                      <td className="px-2 py-2.5">
+                        <div className="bg-muted-foreground/15 h-3.5 w-16 animate-pulse rounded" />
+                      </td>
+                      <td className="px-2 py-2.5">
+                        <div className="bg-muted-foreground/15 ml-auto size-4 animate-pulse rounded" />
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             ) : files.length === 0 && subfolders.length === 0 ? (
               <div className="text-muted-foreground p-8 text-center text-sm">
                 {q && (filesQ.data?.items.length ?? 0) > 0
@@ -640,7 +694,7 @@ export function LibraryView() {
                       key={d.id}
                       tabIndex={0}
                       aria-label={`打开文件夹 ${d.name}`}
-                      className="hover:bg-muted/50 cursor-pointer border-b"
+                      className="hover:bg-muted/50 cursor-pointer border-border/70 border-b"
                       onClick={() => enterFolder(d.id)}
                       onKeyDown={(e) => {
                         if (e.key === "Enter" || e.key === " ") {
@@ -668,7 +722,7 @@ export function LibraryView() {
                   {files.map((f) => (
                     <tr
                       key={f.id}
-                      className="hover:bg-muted/50 border-b last:border-b-0"
+                      className="hover:bg-muted/50 border-border/70 border-b last:border-b-0"
                     >
                       <td className="px-2 py-2">
                         <input
@@ -877,7 +931,7 @@ export function LibraryView() {
                   : "text-muted-foreground"
               }
             >
-              同步到 RAGFlow 知识库
+              同步到 RAG 知识库
             </span>
             <span className="text-muted-foreground text-xs">
               {ragflowSync
@@ -1019,7 +1073,10 @@ export function LibraryView() {
                   </thead>
                   <tbody>
                     {(itemsQ.data?.items ?? []).map((it) => (
-                      <tr key={it.id} className="border-b last:border-b-0">
+                      <tr
+                        key={it.id}
+                        className="border-border/70 border-b last:border-b-0"
+                      >
                         <td className="px-2 py-2 font-medium">
                           {it.goods_name}
                         </td>

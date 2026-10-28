@@ -1,0 +1,275 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+/* LogicFlow paints its SVG elements with inline attributes, but its editing
+   overlay (the contenteditable used when a node/edge label is double-clicked)
+   lives outside the SVG and depends on the library stylesheet for absolute
+   positioning. Import it before our canvas overrides below. */
+@import "@logicflow/core/dist/index.css";
+
+:root {
+  --background: #f5f6fa;
+  --foreground: #101828;
+  --card: #ffffff;
+  --card-foreground: #101828;
+  --muted: #eef1f6;
+  --muted-foreground: #667085;
+  --border: #e4e7ec;
+  --input: #d6dbe4;
+  --primary: #2f6fed;
+  --primary-foreground: #ffffff;
+  --secondary: #eef1f6;
+  --secondary-foreground: #344054;
+  --accent: #f2f4f8;
+  --accent-foreground: #101828;
+  --destructive: #e5484d;
+  --ring: #2f6fed;
+  --sidebar: #ffffff;
+  --sidebar-foreground: #475467;
+  --sidebar-active: #eef3ff;
+  --chart-done: #38a169;
+  --chart-todo: #f59e0b;
+  --chart-idle: #98a2b3;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-ring: var(--ring);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-chart-done: var(--chart-done);
+  --color-chart-todo: var(--chart-todo);
+  --color-chart-idle: var(--chart-idle);
+  --font-sans:
+    -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", "PingFang SC",
+    "Hiragino Sans GB", "Microsoft YaHei", "Helvetica Neue", sans-serif;
+  --font-mono:
+    "SFMono-Regular", "JetBrains Mono", Menlo, Consolas, "Liberation Mono", monospace;
+}
+
+* {
+  border-color: var(--border);
+}
+
+html,
+body {
+  height: 100%;
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+}
+
+::selection {
+  background: rgba(47, 111, 237, 0.18);
+}
+
+/* Thin, quiet scrollbars. */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: #cbd3e1 transparent;
+}
+*::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+*::-webkit-scrollbar-thumb {
+  background: #cbd3e1;
+  border-radius: 999px;
+  border: 2px solid transparent;
+  background-clip: content-box;
+}
+*::-webkit-scrollbar-thumb:hover {
+  background: #aeb9cc;
+  background-clip: content-box;
+  border: 2px solid transparent;
+}
+
+.app-grid-bg {
+  background-image:
+    radial-gradient(circle at 1px 1px, rgba(16, 24, 40, 0.055) 1px, transparent 0),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.65), rgba(245, 246, 250, 0));
+  background-size: 22px 22px, 100% 380px;
+}
+
+.canvas-grid-bg {
+  background-color: #fbfcfe;
+  background-image: radial-gradient(circle at 1px 1px, rgba(98, 112, 137, 0.18) 1px, transparent 0);
+  background-size: 20px 20px;
+}
+
+.soft-shadow {
+  box-shadow:
+    0 1px 2px rgba(16, 24, 40, 0.04),
+    0 10px 30px -18px rgba(16, 24, 40, 0.18);
+}
+
+.text-balance {
+  text-wrap: balance;
+}
+
+/* ------------------------------------------------------------------------- */
+/* LogicFlow canvas skin                                                      */
+/* ------------------------------------------------------------------------- */
+
+.lf-designer {
+  --lf-primary: #2f6fed;
+  background: transparent;
+}
+
+/* Keep the dot grid painted by .canvas-grid-bg visible underneath. */
+.lf-designer .lf-graph {
+  background: transparent;
+}
+
+/* Inline label editor shown after double-clicking a node or edge. */
+.lf-designer .lf-text-input {
+  min-width: 88px;
+  max-width: 260px;
+  padding: 3px 8px;
+  border: 1px solid rgba(47, 111, 237, 0.55);
+  border-radius: 7px;
+  background: #ffffff;
+  box-shadow:
+    0 0 0 3px rgba(47, 111, 237, 0.12),
+    0 8px 20px -10px rgba(15, 23, 42, 0.35);
+  color: #344054;
+  caret-color: var(--primary);
+  font-family: var(--font-sans);
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 1.3;
+}
+
+.lf-designer .lf-canvas-overlay {
+  cursor: default;
+}
+
+.lf-designer .lf-node-content {
+  font-family: var(--font-sans);
+}
+
+.lf-designer .lf-node-text-auto-wrap-content {
+  line-height: 1.25;
+}
+
+/* Keep the anchor group visible while dragging: LogicFlow renders the
+   temporary connection line inside .lf-anchor. Only the anchor dots should
+   fade in/out, otherwise the preview line disappears as soon as the pointer
+   leaves the source node. */
+.lf-designer .lf-anchor circle {
+  /* Stroke color comes from each node model's getAnchorStyle() so the
+     connector rings match that node's border/status color. */
+  stroke-width: 1.5;
+  opacity: 0;
+  transition: opacity 120ms ease;
+}
+
+.lf-designer .lf-node:hover .lf-anchor circle,
+.lf-designer .lf-node.lf-node-selected .lf-anchor circle {
+  opacity: 1;
+}
+
+/* LogicFlow focuses node/edge SVG groups when they are clicked. Suppress the
+   browser's rectangular focus ring; selection is shown by the element styling
+   instead. */
+.lf-designer .lf-node,
+.lf-designer .lf-edge,
+.lf-designer .lf-node:focus,
+.lf-designer .lf-edge:focus,
+.lf-designer .lf-node:focus-visible,
+.lf-designer .lf-edge:focus-visible {
+  outline: none;
+}
+
+.lf-designer .lf-edge {
+  cursor: pointer;
+}
+
+/* Endpoint connector handles on a selected edge. They are always rendered,
+   but remain invisible and non-interactive until the edge is selected. */
+.lf-designer .lf-edge-endpoint {
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 120ms ease;
+  filter: drop-shadow(0 1px 2px rgba(15, 23, 42, 0.22));
+}
+
+.lf-designer .lf-edge.lf-edge-selected .lf-edge-endpoint {
+  opacity: 1;
+}
+
+.lf-designer .lf-edge .lf-edge-text,
+.lf-designer .lf-node .lf-node-text {
+  user-select: none;
+}
+
+.lf-designer text {
+  font-family: var(--font-sans);
+}
+
+/* Property panel form rhythm */
+.panel-section {
+  border-bottom: 1px solid var(--border);
+  padding: 18px 18px 20px;
+}
+.panel-section:last-child {
+  border-bottom: 0;
+}
+.panel-label {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted-foreground);
+}
+
+/* Runtime flow chart */
+.flow-chart-svg text {
+  font-family: var(--font-sans);
+  user-select: none;
+}
+
+.flow-chart-svg .flow-edge-done {
+  stroke: #38a169;
+}
+.flow-chart-svg .flow-edge-todo {
+  stroke: #f59e0b;
+  stroke-dasharray: 5 4;
+}
+.flow-chart-svg .flow-edge-idle {
+  stroke: #b6bfcc;
+}
+
+@keyframes dash-flow {
+  to {
+    stroke-dashoffset: -14;
+  }
+}
+.flow-chart-svg .flow-edge-todo {
+  animation: dash-flow 1.2s linear infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .flow-chart-svg .flow-edge-todo {
+    animation: none;
+  }
+}

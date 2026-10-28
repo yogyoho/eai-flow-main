@@ -76,22 +76,73 @@ class BlockTranslator:
             from deerflow.models.factory import create_chat_model
 
             name = resolve_model_name()
-            self._model = create_chat_model(name) if name else create_chat_model(
-                __import__("deerflow.config", fromlist=["get_app_config"]).get_app_config().models[0].name
-            )
+            self._model = create_chat_model(name) if name else create_chat_model(__import__("deerflow.config", fromlist=["get_app_config"]).get_app_config().models[0].name)
         return self._model
 
-    async def translate_block(self, block_id: str, text: str, source_lang: str) -> dict:
-        """返回 {translation, uncertain, low_confidence_spans}。同步 LLM 调用走 to_thread。"""
-        messages = build_messages(block_id, text, source_lang, self._glossary_prompt)
+    async def translate_block(
+        self,
+        block_id: str,
+        text: str,
+        source_lang: str,
+        glossary_prompt: str | None = None,
+    ) -> dict:
+        """返回 {translation, uncertain, low_confidence_spans}。同步 LLM 调用走 to_thread。
+
+        glossary_prompt: 本 block 命中的术语片段（worker 按 block 文本过滤后传入）；
+        缺省回退构造时的静态片段（兼容既有调用）。
+        """
+        prompt = self._glossary_prompt if glossary_prompt is None else glossary_prompt
+        messages = build_messages(block_id, text, source_lang, prompt)
         model = self._get_model()
         raw = await asyncio.to_thread(_invoke_sync, model, messages)
         return parse_translation_response(raw, block_id)
 
+    async def back_translate(self, block_id: str, text: str, target_lang: str) -> str:
+        """回译（P2-12 定向诊断）：把中文译文译回源语言，供与原文比对。
+
+        复用同一模型与 JSON 输出协议；只对复核前的失败块按需调用。
+        """
+        language = {"en": "English", "fr": "French"}.get(target_lang, "English")
+        messages = [
+            {
+                "role": "system",
+                "content": (
+                    f"You are a translation QA assistant. Translate the user's Chinese text back into {language}. "
+                    "Aim for a literal, faithful rendering; do not improve or explain.\n"
+                    "Output exactly one JSON object, no other text:\n"
+                    '{"block_id": "<return the given block id>", "translation": "<back translation>"}'
+                ),
+            },
+            {"role": "user", "content": f"block_id: {block_id}\n{text}"},
+        ]
+        raw = await asyncio.to_thread(_invoke_sync, self._get_model(), messages)
+        return str(parse_translation_response(raw, block_id).get("translation", ""))
+
 
 def _invoke_sync(model, messages: list[dict]) -> str:
-    """LangChain Runnable 同步调用（worker 的 to_thread 边界内执行）。"""
-    result = model.invoke(messages)
+    """LangChain Runnable 同步调用（worker 的 to_thread 边界内执行）。
+
+    翻译统一请求 JSON 模式：思考模型（如本地 gemma-4）会把推理过程写进
+    content，JSON 模式让服务端只返回最终 JSON。provider 不支持该参数时回退
+    到普通调用（非思考模型仍按提示词输出 JSON）。
+    """
+    try:
+        result = model.bind(response_format={"type": "json_object"}).invoke(messages)
+    except Exception as exc:
+        message = str(exc).lower()
+        if not any(
+            key in message
+            for key in (
+                "response_format",
+                "json_object",
+                "json mode",
+                "unsupported",
+                "unknown parameter",
+                "unrecognized",
+            )
+        ):
+            raise
+        result = model.invoke(messages)
     content = result.content
     if isinstance(content, list):
         content = "".join(part.get("text", "") for part in content if isinstance(part, dict))

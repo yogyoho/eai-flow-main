@@ -50,6 +50,10 @@ async def enqueue_translation_task(
         logger.exception("tlt enqueue %s: parse failed, deferring lang/tag to worker", doc_sha[:8])
 
     factory = factory or get_session_factory()
+    # P2-14: 中文文档只索引不翻译（knowledge 上传链本身已入库/索引）。
+    if lang == "zh":
+        logger.info("tlt enqueue %s: zh document, skip translation task", doc_sha[:8])
+        return None
     async with factory() as db:
         # 幂等：同 KB 同 sha 已有非终态任务 → 复用，不重复建（SHA-256 去重原则，构件1）
         existing = (

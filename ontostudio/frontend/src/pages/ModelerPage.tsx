@@ -1,17 +1,33 @@
 /**
  * 05 本体建模器（EAI-CUSTOM, 2026-09-27 原型还原 + 批次 2 画布交互转正）。
  *
- * 骨架 = 三栏（域文件列表 | 编辑器单面板 | 右栏 300px），双模式：
+ * 骨架 = 三栏（域文件列表 | 编辑器单面板 | 右栏 300px），三模式：
  * - 可视化模式：TBox 画布（真实类层次 + 实例计数 + 属性链）——节点**可拖拽移位**
  *   （视图态，registry 无布局数据不落 YAML，随域切换重置）；「＋子类」进入连线模式
  *   （点选父类完成 subClassOf 加边，写 parents 草稿）；表单父类 chips 可增删（=边编辑）；
  *   新建类实装（草稿追加 + 画布居中出现）。
+ * - 表单模式：参照原型的中栏类定义表单 + 对象属性/关系谓词只读视图；字段编辑同样落
+ *   draftText（与右栏、画布共用一条草稿管线）。
  * - YAML 源码模式：行号编辑器（结构编辑兜底，schema 校验兜底）。
  * 编辑管线：表单/画布/YAML 均落 draftText（单一草稿）→ 校验 → 保存（fingerprint 乐观
  * 并发 + registry_version 递增 + SHA 热重载）。
  */
 import { useQuery, useQueryClient, useQueries } from "@tanstack/react-query";
-import { DraftingCompass, Loader2, Maximize2, Minimize2 } from "lucide-react";
+import {
+  Box,
+  Check,
+  DraftingCompass,
+  FileCode2,
+  GitBranch,
+  Loader2,
+  Maximize2,
+  Minimize2,
+  Plus,
+  Save,
+  ShieldCheck,
+  Trash2,
+  X,
+} from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { ReactNode } from "react";
 import CodeMirror from "@uiw/react-codemirror";
@@ -29,10 +45,6 @@ import {
 import { Chip, PageHeader, Panel } from "@/pages/shared";
 import { fetchPredicateLabels } from "@/explorerDataSource";
 import { cn } from "@/lib/utils";
-import { withAlpha } from "@/explorer/graphTheme";
-
-const TONE_BLUE = "#0746ff";
-const AMBER = "#faad14";
 
 interface ClassEntry {
   name: string;
@@ -41,6 +53,103 @@ interface ClassEntry {
   parents: string[];
   hasKey: string[];
   etypes: string[];
+}
+
+type ModelerMode = "vis" | "form" | "yaml";
+
+interface FormObjectProperty {
+  name: string;
+  apiName: string;
+  type: string;
+  description: string;
+  enumValues?: string[];
+  filterable?: boolean;
+  searchable?: boolean;
+}
+
+interface FormObjectType {
+  apiName: string;
+  displayName: string;
+  properties: FormObjectProperty[];
+  etypeClassMap: Record<string, string>;
+  etypeEnum: string[];
+}
+
+function asRecord(value: unknown): Record<string, unknown> {
+  return value !== null && typeof value === "object" && !Array.isArray(value)
+    ? (value as Record<string, unknown>)
+    : {};
+}
+
+/** 在 snake_case 下划线后提供换行点（<wbr> 不写入可复制的文本）。 */
+function BreakableId({ value }: { value: string }) {
+  const parts = value.split("_");
+  return (
+    <>
+      {parts.map((part, index) => (
+        <span key={`${part}-${index}`}>
+          {index > 0 ? "_" : ""}
+          {part}
+          {index < parts.length - 1 ? <wbr /> : null}
+        </span>
+      ))}
+    </>
+  );
+}
+
+/** etype（snake_case）→ 类名（PascalCase），用于无 etype_classes 的 core_graph。 */
+function etypeToClassName(etype: string) {
+  return etype
+    .split("_")
+    .filter(Boolean)
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join("");
+}
+
+/** 从当前草稿 YAML 提取 object_types 的属性与 etype→class 映射（表单模式只读视图）。 */
+function parseObjectTypes(raw: string): FormObjectType[] {
+  try {
+    const doc = yamlLoad(raw);
+    if (!doc || typeof doc !== "object" || Array.isArray(doc)) return [];
+    const objectTypes = (doc as Record<string, unknown>).object_types;
+    if (!Array.isArray(objectTypes)) return [];
+    return objectTypes.map((item) => {
+      const ot = asRecord(item);
+      const props = Array.isArray(ot.properties) ? ot.properties : [];
+      const etypeClasses = asRecord(ot.etype_classes);
+      const etypeClassMap: Record<string, string> = {};
+      for (const [etype, mapping] of Object.entries(etypeClasses)) {
+        const cls = String(asRecord(mapping).class ?? "");
+        if (cls) etypeClassMap[etype] = cls;
+      }
+      const etypeProp = props
+        .map((p) => asRecord(p))
+        .find((p) => p.name === "etype");
+      const etypeEnum = Array.isArray(etypeProp?.enum)
+        ? etypeProp.enum.map(String)
+        : [];
+      return {
+        apiName: String(ot.api_name ?? ""),
+        displayName: String(ot.display_name ?? ""),
+        properties: props.map((p) => {
+          const pr = asRecord(p);
+          return {
+            name: String(pr.name ?? ""),
+            apiName: String(pr.api_name ?? pr.name ?? ""),
+            type: String(pr.type ?? ""),
+            description: String(pr.description ?? ""),
+            enumValues: Array.isArray(pr.enum) ? pr.enum.map(String) : undefined,
+            filterable: Boolean(pr.filterable),
+            searchable: Boolean(pr.searchable),
+          };
+        }),
+        etypeClassMap,
+        etypeEnum,
+      };
+    });
+  } catch {
+    return [];
+  }
 }
 
 function buildTree(classes: ClassEntry[]) {
@@ -86,10 +195,11 @@ export function ModelerPage({ initialFile }: { initialFile?: string }) {
   const [selectedFile, setSelectedFile] = useState(initialFile ?? "core_graph.yaml");
   const [selectedClass, setSelectedClass] = useState<string | null>(null);
   const [saveMsg, setSaveMsg] = useState<string | null>(null);
-  const [mode, setMode] = useState<"vis" | "yaml">("vis");
+  const [mode, setMode] = useState<ModelerMode>("vis");
   // 编辑面板最大化（2026-10-02 用户要求）：fixed 覆盖视口，画布随之加高
   const [maximized, setMaximized] = useState(false);
-  const [busy, setBusy] = useState(false);
+  const [busy, setBusy] = useState<"validate" | "save" | null>(null);
+  const isDark = useIsDark();
 
   const contentQuery = useQuery({
     queryKey: ["registry-content", selectedFile],
@@ -165,6 +275,60 @@ export function ModelerPage({ initialFile }: { initialFile?: string }) {
     }));
   }, [domainSummary]);
   const selected = allClasses.find((c) => c.name === selectedClass) ?? null;
+  const classTree = useMemo(() => buildTree(allClasses), [allClasses]);
+
+  const formObjectTypes = useMemo(
+    () => (mode === "form" ? parseObjectTypes(text) : []),
+    [mode, text],
+  );
+  const selectedObjectType = useMemo(() => {
+    if (!selected) return null;
+    const byClass = formObjectTypes.find((ot) =>
+      Object.values(ot.etypeClassMap).includes(selected.name),
+    );
+    if (byClass) return byClass;
+    return (
+      formObjectTypes.find((ot) =>
+        ot.etypeEnum.some(
+          (etype) =>
+            selected.etypes.includes(etype) ||
+            etypeToClassName(etype) === selected.name,
+        ),
+      ) ?? null
+    );
+  }, [formObjectTypes, selected]);
+
+  const changeMode = useCallback(
+    (next: ModelerMode) => {
+      setMode(next);
+      if (next === "form") {
+        setMaximized(false);
+        if (!selectedClass && allClasses.length > 0) {
+          setSelectedClass(allClasses[0]?.name ?? null);
+        }
+      }
+    },
+    [allClasses, selectedClass],
+  );
+
+  // 表单模式始终落在一个可选类上（切域 / 删除当前类后自动选首个类）。
+  useEffect(() => {
+    if (mode === "form" && !selected && allClasses.length > 0) {
+      setSelectedClass(allClasses[0]?.name ?? null);
+    }
+  }, [mode, selected, allClasses]);
+
+  // 窄屏下左栏在前，切到表单后把表单滚入视口，避免“点了没反应”的错觉。
+  useEffect(() => {
+    if (mode !== "form") return;
+    if (!window.matchMedia("(max-width: 900px)").matches) return;
+    const timer = window.setTimeout(() => {
+      document
+        .querySelector(".os-modeler-form-card")
+        ?.scrollIntoView({ behavior: "smooth", block: "start" });
+    }, 80);
+    return () => window.clearTimeout(timer);
+  }, [mode]);
 
   // 实例计数（按域过滤 etype 聚合）
   const etypeCountQuery = useQuery({
@@ -437,6 +601,36 @@ export function ModelerPage({ initialFile }: { initialFile?: string }) {
     [mutateDraft],
   );
 
+  const addEtypeToSelected = useCallback(
+    (et: string) => {
+      if (!selected) return;
+      mutateDraft((obj) => {
+        const classes = (obj.classes ?? {}) as Draft;
+        const entry = (classes[selected.name] ?? {}) as Draft;
+        const etypes = new Set([...((entry.etypes as string[]) ?? []), et]);
+        classes[selected.name] = { ...entry, etypes: [...etypes] };
+        obj.classes = classes;
+      });
+    },
+    [mutateDraft, selected],
+  );
+
+  const removeEtypeFromSelected = useCallback(
+    (et: string) => {
+      if (!selected) return;
+      mutateDraft((obj) => {
+        const classes = (obj.classes ?? {}) as Draft;
+        const entry = (classes[selected.name] ?? {}) as Draft;
+        classes[selected.name] = {
+          ...entry,
+          etypes: ((entry.etypes as string[]) ?? []).filter((e) => e !== et),
+        };
+        obj.classes = classes;
+      });
+    },
+    [mutateDraft, selected],
+  );
+
   const handleNodeClick = (name: string) => {
     if (connectChild) {
       addParentEdge(connectChild, name);
@@ -470,7 +664,7 @@ export function ModelerPage({ initialFile }: { initialFile?: string }) {
   );
 
   const handleSave = useCallback(async () => {
-    setBusy(true);
+    setBusy("save");
     try {
       const r = await saveRegistryContent(selectedFile, text);
       setSaveMsg(`✓ 已保存 v${r.registry_version}（SHA 热重载生效）`);
@@ -479,19 +673,19 @@ export function ModelerPage({ initialFile }: { initialFile?: string }) {
     } catch (e) {
       setSaveMsg(`✗ 保存失败: ${e instanceof Error ? e.message : String(e)}`);
     } finally {
-      setBusy(false);
+      setBusy(null);
     }
   }, [selectedFile, text, qc]);
 
   const handleValidate = useCallback(async () => {
-    setBusy(true);
+    setBusy("validate");
     try {
       const r = await validateRegistryDraft(selectedFile, text);
       setSaveMsg(r.ok ? "✓ 校验通过（schema/引用/环）" : `✗ 校验失败: ${r.errors.join("; ")}`);
     } catch (e) {
       setSaveMsg(`✗ 校验请求失败: ${e instanceof Error ? e.message : String(e)}`);
     } finally {
-      setBusy(false);
+      setBusy(null);
     }
   }, [selectedFile, text]);
 
@@ -516,262 +710,401 @@ export function ModelerPage({ initialFile }: { initialFile?: string }) {
     return classes ? (classes.length as number) : 0;
   };
 
+  const validationState = saveMsg?.startsWith("✓ 校验通过")
+    ? "ok"
+    : saveMsg?.startsWith("✗ 校验")
+      ? "err"
+      : "idle";
+
+  const classFormProps = {
+    selected,
+    namespace: domainSummary?.namespace,
+    domainClasses: allClasses.map((c) => c.name),
+    onEdit: (field: "label" | "definition", value: string) => {
+      if (selected) editClassField(selected.name, field, value);
+    },
+    onAddParent: (parent: string) => {
+      if (selected) addParentEdge(selected.name, parent);
+    },
+    onRemoveParent: (parent: string) => {
+      if (selected) removeParentEdge(selected.name, parent);
+    },
+    onAddEtype: addEtypeToSelected,
+    onRemoveEtype: removeEtypeFromSelected,
+  };
+
   return (
-    <div className="h-full overflow-x-auto overflow-y-auto">
-      <div className="min-w-[1080px] p-6">
+    <div className="os-page-scroll h-full overflow-x-hidden overflow-y-auto">
+      <div className="os-page os-modeler-page">
         <PageHeader
+          clause="05 · 建模层"
           icon={DraftingCompass}
           title="本体建模器"
-          description="可视化建模（真实类层次画布：节点可拖拽移位、＋子类连线写 subClassOf、表单父类增删=边编辑）与 YAML 源码编辑同一 registry——画布是投影，编辑落为 YAML 差异。"
+          description={`编辑域模型：类 / 属性 / 关系 / 公理，保存前必须通过校验 · ${selectedFile} · registry v${content?.registry_version ?? "—"}`}
+          actions={
+            <>
+              <div
+                className="os-seg os-modeler-mode"
+                role="group"
+                aria-label="编辑模式"
+              >
+                <button
+                  type="button"
+                  aria-pressed={mode === "vis"}
+                  className={mode === "vis" ? "on" : undefined}
+                  onClick={() => changeMode("vis")}
+                >
+                  可视化建模
+                </button>
+                <button
+                  type="button"
+                  aria-pressed={mode === "form"}
+                  className={mode === "form" ? "on" : undefined}
+                  onClick={() => changeMode("form")}
+                >
+                  表单模式
+                </button>
+                <button
+                  type="button"
+                  aria-pressed={mode === "yaml"}
+                  className={mode === "yaml" ? "on" : undefined}
+                  onClick={() => changeMode("yaml")}
+                >
+                  YAML 源码
+                </button>
+              </div>
+              <button
+                type="button"
+                onClick={handleValidate}
+                disabled={busy !== null || !text}
+                className="os-btn os-btn-secondary"
+                aria-busy={busy === "validate"}
+              >
+                {busy === "validate" ? (
+                  <Loader2 className="animate-spin" />
+                ) : (
+                  <ShieldCheck />
+                )}
+                校验
+              </button>
+              <button
+                type="button"
+                onClick={handleSave}
+                disabled={busy !== null || !text}
+                className="os-btn os-btn-primary"
+                aria-busy={busy === "save"}
+              >
+                {busy === "save" ? <Loader2 className="animate-spin" /> : <Save />}
+                保存
+              </button>
+            </>
+          }
         />
         {saveMsg ? <SaveBanner msg={saveMsg} /> : null}
         {contentQuery.isLoading ? (
-          <div className="text-muted-foreground py-16 text-center text-sm">
-            <Loader2 className="mx-auto mb-2 h-4 w-4 animate-spin" />
-            加载 registry…
+          <div className="os-modeler-skeleton-grid" aria-label="加载 registry">
+            <div className="os-card os-modeler-skeleton-side">
+              <div className="os-skeleton h-9 w-full" />
+              <div className="os-skeleton h-9 w-full" />
+              <div className="os-skeleton h-9 w-full" />
+            </div>
+            <div className="os-card os-modeler-skeleton-main">
+              <div className="os-skeleton h-10 w-2/3" />
+              <div className="os-skeleton h-[360px] w-full" />
+            </div>
+            <div className="os-card os-modeler-skeleton-rail">
+              <div className="os-skeleton h-28 w-full" />
+              <div className="os-skeleton h-28 w-full" />
+            </div>
           </div>
         ) : (
-          <div className="grid grid-cols-1 gap-3.5 xl:grid-cols-[200px_minmax(0,1fr)_300px]">
-            {/* 左栏：域文件列表（标题与全站「域」词汇一致：业务域/域筛选/域健康） */}
-            <div className="border-border bg-card flex flex-col rounded-xl border shadow-sm">
-              <div className="border-border flex items-center gap-2 border-b px-3 py-2.5">
-                <b className="text-sm font-semibold">域文件</b>
-                {!filesQuery.isLoading && files.length > 0 ? (
-                  <span className="text-muted-foreground ml-auto text-xs">{files.length} 个</span>
-                ) : null}
-              </div>
-              <div className="min-h-0 flex-1 overflow-y-auto p-1.5">
-              {filesQuery.isLoading ? (
-                <div className="text-muted-foreground p-2 text-sm">加载中…</div>
-              ) : (
-                files.map((file) => (
-                  <FileTab
-                    key={file}
-                    name={file}
-                    active={selectedFile === file}
-                    classCount={contentCountFor(file)}
-                    onClick={() => setSelectedFile(file)}
-                  />
-                ))
-              )}
-              </div>
-              <div className="border-sidebar-border text-muted-foreground border-t px-2.5 py-2 text-[10px] leading-snug">
-                两份均为 <b className="font-semibold">TBox</b>（术语层声明）；实例
-                （ABox）落 <code>dg_*</code> 表与内核图，不经 yaml。
-              </div>
-            </div>
-
-            {/* 中：编辑器面板（可最大化）+ 谓词与公理独立面板（画布下方不堆叠行——遮挡节点） */}
-            <div className="flex flex-col gap-3.5">
-            <div className={cn(
-              "border-border bg-card flex flex-col border shadow-sm",
-              maximized ? "fixed inset-4 z-50 overflow-hidden rounded-xl bg-background" : "rounded-xl",
-            )}>
-              <div className="border-border flex flex-wrap items-center gap-2 border-b px-4 py-2.5">
-                <span className="font-mono text-sm">{selectedFile}</span>
-                <div className="border-border ml-1 flex overflow-hidden rounded-lg border">
-                  <button
-                    type="button"
-                    onClick={() => setMode("vis")}
-                    className={cn(
-                      "px-2.5 py-1 text-xs font-medium",
-                      mode === "vis"
-                        ? "bg-primary/10 text-primary font-semibold"
-                        : "bg-card text-muted-foreground hover:bg-accent",
-                    )}
-                  >
-                    可视化建模
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setMode("yaml")}
-                    className={cn(
-                      "px-2.5 py-1 text-xs font-medium",
-                      mode === "yaml"
-                        ? "bg-primary/10 text-primary font-semibold"
-                        : "bg-card text-muted-foreground hover:bg-accent",
-                    )}
-                  >
-                    YAML 源码
-                  </button>
+          <div className="os-modeler-grid">
+            {/* 左栏：域文件 + 类树 */}
+            <aside className="os-modeler-side">
+              <Panel
+                title="域文件"
+                actions={
+                  !filesQuery.isLoading && files.length > 0 ? (
+                    <span className="os-pill os-pill-gray">{files.length}</span>
+                  ) : undefined
+                }
+                className="os-modeler-files"
+              >
+                <div className="os-modeler-file-list">
+                  {filesQuery.isLoading ? (
+                    <div className="os-modeler-loading-row">
+                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                      加载域文件…
+                    </div>
+                  ) : (
+                    files.map((file) => (
+                      <FileTab
+                        key={file}
+                        name={file}
+                        active={selectedFile === file}
+                        dirty={selectedFile === file && dirty}
+                        classCount={contentCountFor(file)}
+                        onClick={() => setSelectedFile(file)}
+                      />
+                    ))
+                  )}
                 </div>
-                {dirty ? (
-                  <span className="bg-warning/15 text-warning rounded-full px-2 py-0.5 text-xs font-medium">
-                    未保存
-                  </span>
-                ) : null}
-                <div className="ml-auto flex items-center gap-2">
-                  <span className="text-muted-foreground font-mono text-xs">
+                <div className="os-modeler-footnote">
+                  以上均为 <b>TBox</b>（术语层声明）；实例（ABox）落{" "}
+                  <code>dg_*</code> 表与内核图，不经 yaml。
+                </div>
+                <div className="os-modeler-tree-hd">
+                  <span>类树</span>
+                  <span>{allClasses.length} 类</span>
+                </div>
+                <div className="os-modeler-tree">
+                  {allClasses.length === 0 ? (
+                    <div className="os-modeler-empty-sm">当前域暂无类声明</div>
+                  ) : (
+                    classTree.map(({ cls, depth }) => {
+                      const count = instancesOf(cls);
+                      return (
+                        <button
+                          key={cls.name}
+                          type="button"
+                          onClick={() => setSelectedClass(cls.name)}
+                          className={cn(
+                            "os-modeler-tree-row",
+                            selectedClass === cls.name && "is-on",
+                          )}
+                          style={{ paddingLeft: `${9 + depth * 13}px` }}
+                          title={`${cls.name}${cls.label ? ` · ${cls.label}` : ""}`}
+                        >
+                          <Box className="os-modeler-tree-icon" />
+                          <span className="os-modeler-tree-main">
+                            <span className="os-modeler-tree-name">{cls.name}</span>
+                            <span className="os-modeler-tree-label">
+                              {cls.label || "—"}
+                            </span>
+                          </span>
+                          <span className="os-modeler-tree-count">
+                            {count ?? "—"}
+                          </span>
+                        </button>
+                      );
+                    })
+                  )}
+                </div>
+              </Panel>
+            </aside>
+
+            {/* 中：编辑器 / 表单 + 谓词与公理 */}
+            <div className="os-modeler-center">
+              {mode === "form" ? (
+                <FormModePanel
+                  {...classFormProps}
+                  objectType={selectedObjectType}
+                  predicates={domainPredicates}
+                  counts={countByPredicate}
+                  labels={predicateLabelsQuery.data}
+                  file={selectedFile}
+                  version={content?.registry_version}
+                  validationState={validationState}
+                  onEditYaml={() => changeMode("yaml")}
+                />
+              ) : (
+                <div
+                  className={cn(
+                    "os-card os-modeler-editor",
+                    maximized && "is-max",
+                  )}
+                >
+                <div className="os-modeler-editor-hd">
+                  <FileCode2 className="os-modeler-file-icon" />
+                  <b className="os-modeler-editor-title">{selectedFile}</b>
+                  <span className="os-modeler-editor-meta">
                     v{content?.registry_version ?? "—"} ·{" "}
                     {content?.fingerprint?.slice(0, 6) ?? "—"}
                   </span>
-                  <button
-                    type="button"
-                    onClick={handleValidate}
-                    disabled={busy || !text}
-                    className="border-border bg-card hover:bg-muted rounded-sm border px-2 py-1 text-sm font-medium disabled:opacity-50"
-                  >
-                    校验
-                  </button>
-                  <button
-                    type="button"
-                    onClick={handleSave}
-                    disabled={busy || !text}
-                    className="bg-primary text-primary-foreground hover:bg-primary/90 rounded-sm px-2 py-1 text-sm font-medium disabled:opacity-50"
-                  >
-                    {busy ? <Loader2 className="mr-1 inline h-3 w-3 animate-spin" /> : null}
-                    保存
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setMaximized((m) => !m)}
-                    title={maximized ? "还原面板" : "最大化编辑面板"}
-                    aria-label={maximized ? "还原面板" : "最大化编辑面板"}
-                    className="border-border bg-card hover:bg-muted rounded-sm border px-2 py-1 text-sm disabled:opacity-50"
-                  >
-                    {maximized ? <Minimize2 className="h-3.5 w-3.5" /> : <Maximize2 className="h-3.5 w-3.5" />}
-                  </button>
-                </div>
-              </div>
-
-              {mode === "vis" ? (
-                <div className="flex min-h-0 flex-1 flex-col">
-                  {/* 工具栏 */}
-                  <div className="border-border flex flex-wrap items-center gap-2 border-b px-3.5 py-2.5">
+                  {dirty ? (
+                    <span className="os-pill os-pill-warn">未保存</span>
+                  ) : (
+                    <span className="os-pill os-pill-gray">已同步</span>
+                  )}
+                  <div className="os-modeler-editor-actions">
                     <button
                       type="button"
-                      onClick={addClass}
-                      className="bg-primary text-primary-foreground hover:opacity-90 rounded-sm px-2.5 py-1 text-xs font-medium"
+                      onClick={() => setMaximized((m) => !m)}
+                      title={maximized ? "还原面板" : "最大化编辑面板"}
+                      aria-label={maximized ? "还原面板" : "最大化编辑面板"}
+                      className="os-modeler-icon-btn"
                     >
-                      ＋ 新建类
+                      {maximized ? <Minimize2 /> : <Maximize2 />}
                     </button>
-                    <button
-                      type="button"
-                      aria-pressed={connectChild !== null}
-                      disabled={!selectedClass}
-                      title={
-                        selectedClass
-                          ? `为 ${selectedClass} 连接父类：点击目标父类节点（Esc 取消）`
-                          : "先选中一个子类"
-                      }
-                      onClick={() => setConnectChild(selectedClass)}
+                  </div>
+                </div>
+
+                {mode === "vis" ? (
+                  <div className="os-modeler-vis">
+                    <div className="os-modeler-toolbar">
+                      <button
+                        type="button"
+                        onClick={addClass}
+                        className="os-btn os-btn-primary os-btn-sm"
+                      >
+                        <Plus />
+                        新建类
+                      </button>
+                      <button
+                        type="button"
+                        aria-pressed={connectChild !== null}
+                        disabled={!selectedClass}
+                        title={
+                          selectedClass
+                            ? `为 ${selectedClass} 连接父类：点击目标父类节点（Esc 取消）`
+                            : "先选中一个子类"
+                        }
+                        onClick={() => setConnectChild(selectedClass)}
+                        className={cn(
+                          "os-btn os-btn-secondary os-btn-sm",
+                          connectChild && "is-on",
+                        )}
+                      >
+                        <GitBranch />
+                        子类连线
+                      </button>
+                      <button
+                        type="button"
+                        disabled={!selectedClass}
+                        onClick={() => removeClass(selectedClass as string)}
+                        title="删除前先查引用（属性链/实例），确认后从草稿移除"
+                        className="os-btn os-btn-ghost is-danger os-btn-sm"
+                      >
+                        <Trash2 />
+                        删除
+                      </button>
+                      {connectChild ? (
+                        <span className="os-modeler-connect-hint">
+                          <GitBranch />
+                          连线模式：为 {connectChild} 点击父类节点（Esc 取消）
+                        </span>
+                      ) : (
+                        <span className="os-modeler-toolbar-hint">
+                          拖拽节点移位（视图态）· 连线写 subClassOf（结构数据）
+                        </span>
+                      )}
+                    </div>
+                    <TBoxCanvas
+                      classes={allClasses}
+                      positions={effectivePositions}
+                      selected={selectedClass}
+                      connectChild={connectChild}
+                      instancesOf={instancesOf}
+                      onNodeClick={handleNodeClick}
+                      onNodeMove={handleNodeMove}
+                      onRebase={(map) => setPositionOverrides(map)}
+                      draftEdges={draftEdges}
+                      heightClass={maximized ? "min-h-0 flex-1" : "h-[440px]"}
+                    />
+                  </div>
+                ) : (
+                  <div className="os-modeler-yaml">
+                    <YamlEditor
+                      text={text}
+                      isDark={isDark}
+                      height={maximized ? "calc(100vh - 105px)" : "560px"}
+                      onChange={(v) => {
+                        setDraftText(v);
+                        setSaveMsg(null);
+                      }}
+                    />
+                  </div>
+                )}
+                </div>
+              )}
+
+              {!maximized || mode === "form" ? (
+                <PredicateAxiomPanel
+                  predicates={domainPredicates}
+                  counts={countByPredicate}
+                  labels={predicateLabelsQuery.data}
+                  axioms={axioms}
+                />
+              ) : null}
+            </div>
+
+            {/* 右栏：类定义 / 校验 / 公理 */}
+            <aside className="os-modeler-rail">
+              {mode !== "form" ? <ClassDetailForm {...classFormProps} /> : null}
+
+              <Panel
+                title="校验面板"
+                subtitle="保存前必须通过"
+                actions={
+                  <span
+                    className={cn(
+                      "os-pill",
+                      validationState === "ok" && "os-pill-ok",
+                      validationState === "err" && "os-pill-err",
+                      validationState === "idle" && "os-pill-gray",
+                    )}
+                  >
+                    {validationState === "ok"
+                      ? "已通过"
+                      : validationState === "err"
+                        ? "未通过"
+                        : "待校验"}
+                  </span>
+                }
+                className="os-modeler-validation"
+              >
+                <div className="os-modeler-check-list">
+                  {[
+                    ["Schema 结构", "schema 字段与类型合法"],
+                    ["引用完整", "父类、谓词、公理目标可解析"],
+                    ["继承无环", "subClassOf 链无循环"],
+                    ["命名规范", "类标识符合 namespace 约定"],
+                  ].map(([title, desc]) => (
+                    <div
+                      key={title}
                       className={cn(
-                        "rounded-sm border px-2.5 py-1 text-xs font-medium disabled:opacity-40",
-                        connectChild
-                          ? "border-primary/50 bg-primary/10 text-primary"
-                          : "border-border bg-card text-muted-foreground",
+                        "os-modeler-check",
+                        validationState === "ok" && "is-ok",
+                        validationState === "err" && "is-err",
                       )}
                     >
-                      ＋ 子类连线
-                    </button>
-                    <button
-                      type="button"
-                      disabled={!selectedClass}
-                      onClick={() => removeClass(selectedClass as string)}
-                      title="删除前先查引用（属性链/实例），确认后从草稿移除"
-                      className="border-destructive/40 text-destructive rounded-sm border px-2.5 py-1 text-xs disabled:opacity-40"
-                    >
-                      ✕ 删除
-                    </button>
-                    {connectChild ? (
-                      <span className="bg-primary/10 text-primary animate-pulse rounded-full px-2.5 py-0.5 text-xs font-medium">
-                        连线模式：为 {connectChild} 点击父类节点（Esc 取消）
+                      <span className="os-modeler-check-ic">
+                        {validationState === "err" ? <X /> : <Check />}
                       </span>
-                    ) : (
-                      <span className="text-muted-foreground text-xs">
-                        拖拽节点移位（视图态）· 连线写 subClassOf（结构数据）
-                      </span>
-                    )}
-                  </div>
-                  <TBoxCanvas
-                    classes={allClasses}
-                    positions={effectivePositions}
-                    selected={selectedClass}
-                    connectChild={connectChild}
-                    instancesOf={instancesOf}
-                    onNodeClick={handleNodeClick}
-                    onNodeMove={handleNodeMove}
-                    onRebase={(map) => setPositionOverrides(map)}
-                    draftEdges={draftEdges}
-                    heightClass={maximized ? "min-h-0 flex-1" : "h-[440px]"}
-                  />
+                      <div>
+                        <b>{title}</b>
+                        <span>{desc}</span>
+                      </div>
+                    </div>
+                  ))}
                 </div>
-              ) : (
-                <YamlEditor
-                  text={text}
-                  onChange={(v) => {
-                    setDraftText(v);
-                    setSaveMsg(null);
-                  }}
-                />
-              )}
-            </div>
-
-            {/* 谓词与公理独立面板（2026-10-02 用户纠正：不放画布下方）；最大化时隐藏 */}
-            {!maximized ? (
-              <PredicateAxiomPanel
-                predicates={domainPredicates}
-                counts={countByPredicate}
-                labels={predicateLabelsQuery.data}
-                axioms={axioms}
-              />
-            ) : null}
-            </div>
-
-            {/* 右栏 */}
-            <div className="flex flex-col gap-3.5">
-              <ClassDetailForm
-                selected={selected}
-                domainClasses={allClasses.map((c) => c.name)}
-                onEdit={(field, value) =>
-                  selected && editClassField(selected.name, field, value)
-                }
-                onAddParent={(parent) =>
-                  selected && addParentEdge(selected.name, parent)
-                }
-                onRemoveParent={(parent) =>
-                  selected && removeParentEdge(selected.name, parent)
-                }
-                onAddEtype={(et) => {
-                  if (!selected) return;
-                  mutateDraft((obj) => {
-                    const classes = (obj.classes ?? {}) as Draft;
-                    const entry = (classes[selected.name] ?? {}) as Draft;
-                    const etypes = new Set([...((entry.etypes as string[]) ?? []), et]);
-                    classes[selected.name] = { ...entry, etypes: [...etypes] };
-                    obj.classes = classes;
-                  });
-                }}
-                onRemoveEtype={(et) => {
-                  if (!selected) return;
-                  mutateDraft((obj) => {
-                    const classes = (obj.classes ?? {}) as Draft;
-                    const entry = (classes[selected.name] ?? {}) as Draft;
-                    classes[selected.name] = {
-                      ...entry,
-                      etypes: ((entry.etypes as string[]) ?? []).filter((e) => e !== et),
-                    };
-                    obj.classes = classes;
-                  });
-                }}
-              />
-              <AxiomsPanel axioms={axioms} predicates={domainPredicates} />
-              <Panel title="校验面板" subtitle="保存前必须通过">
-                <div className="p-4 text-sm">
+                <div className="os-modeler-validation-foot">
                   <button
                     type="button"
                     onClick={handleValidate}
-                    disabled={busy || !text}
-                    className="border-border bg-card hover:bg-muted w-full rounded-md border px-2.5 py-1.5 font-medium disabled:opacity-50"
+                    disabled={busy !== null || !text}
+                    className="os-btn os-btn-secondary"
+                    aria-busy={busy === "validate"}
                   >
+                    {busy === "validate" ? (
+                      <Loader2 className="animate-spin" />
+                    ) : (
+                      <ShieldCheck />
+                    )}
                     校验当前草稿
                   </button>
-                  <p className="text-muted-foreground mt-2 text-xs">
-                    检查 schema/引用/环。结果同时显示在顶部横幅。
+                  <p>
+                    {validationState === "ok"
+                      ? "上次校验通过，可继续保存。"
+                      : validationState === "err"
+                        ? "上次校验未通过，详见顶部横幅。"
+                        : "检查 schema / 引用 / 环，结果同步显示在顶部横幅。"}
                   </p>
                 </div>
               </Panel>
-            </div>
+
+              <AxiomsPanel axioms={axioms} predicates={domainPredicates} />
+            </aside>
           </div>
         )}
       </div>
@@ -784,10 +1117,9 @@ export function ModelerPage({ initialFile }: { initialFile?: string }) {
 function SaveBanner({ msg }: { msg: string }) {
   const ok = msg.startsWith("✓");
   return (
-    <div
-      className={`${ok ? "bg-success/10 text-success" : "bg-destructive/10 text-destructive"} mb-3.5 rounded-lg border px-4 py-2.5 text-sm font-medium whitespace-pre-wrap`}
-    >
-      {msg}
+    <div className={cn("os-modeler-banner", ok ? "is-ok" : "is-err")}>
+      {ok ? <Check /> : <X />}
+      <span>{msg.replace(/^[✓✗]\s*/, "")}</span>
     </div>
   );
 }
@@ -804,11 +1136,13 @@ const FILE_ROLES: Record<string, { tag: string; desc: string }> = {
 function FileTab({
   name,
   active,
+  dirty,
   classCount,
   onClick,
 }: {
   name: string;
   active: boolean;
+  dirty?: boolean;
   classCount?: number;
   onClick: () => void;
 }) {
@@ -818,49 +1152,52 @@ function FileTab({
       type="button"
       onClick={onClick}
       title={role?.desc}
-      className={cn(
-        "mb-0.5 w-full rounded-md px-2.5 py-1.5 text-left font-mono text-sm transition-colors",
-        active
-          ? "bg-primary/10 text-primary font-semibold"
-          : "text-muted-foreground hover:bg-accent hover:text-foreground",
-      )}
+      className={cn("os-modeler-file", active && "is-on")}
     >
-      <span className="flex items-center justify-between">
-        <span className="truncate">{name}</span>
-        {classCount !== undefined ? (
-          <span className="text-muted-foreground ml-2 flex-none text-[13px]">
-            {classCount} 类
-          </span>
-        ) : null}
-      </span>
-      {role ? (
-        <span className="mt-0.5 flex">
-          <span className="rounded border border-current/20 px-1 py-px font-sans text-[10px] leading-none opacity-80">
-            {role.tag}
+      <FileCode2 className="os-modeler-file-icon" />
+      <span className="os-modeler-file-main">
+        <span className="os-modeler-file-name">{name}</span>
+        <span className="os-modeler-file-meta">
+          <span className="os-modeler-file-tag">{role?.tag ?? "TBox"}</span>
+          <span
+            className={cn(
+              "os-modeler-file-status",
+              active && dirty && "is-dirty",
+            )}
+          >
+            {active && dirty ? "编辑中" : "已保存"}
           </span>
         </span>
-      ) : null}
+      </span>
+      <span className="os-modeler-file-count">
+        {classCount !== undefined ? `${classCount} 类` : "—"}
+      </span>
     </button>
   );
 }
 
-function ClassDetailForm({
-  selected,
-  domainClasses,
-  onEdit,
-  onAddParent,
-  onRemoveParent,
-  onAddEtype,
-  onRemoveEtype,
-}: {
+interface ClassFormProps {
   selected: ClassEntry | null;
+  namespace?: string;
   domainClasses: string[];
   onEdit: (field: "label" | "definition", value: string) => void;
   onAddParent: (parent: string) => void;
   onRemoveParent: (parent: string) => void;
   onAddEtype: (et: string) => void;
   onRemoveEtype: (et: string) => void;
-}) {
+}
+
+function ClassFields({
+  selected,
+  namespace,
+  domainClasses,
+  onEdit,
+  onAddParent,
+  onRemoveParent,
+  onAddEtype,
+  onRemoveEtype,
+  className,
+}: ClassFormProps & { className?: string }) {
   // 本地 parents 狀態：初始化自 selected，操作即時更新 UI，
   // 同時通過 onAddParent/onRemoveParent 同步到草稿管線。
   // v4 修复冻结 bug：useState 初始值只在首挂生效——切换选中类必须显式同步，
@@ -919,222 +1256,374 @@ function ClassDetailForm({
       (!parentQuery || c.toLowerCase().includes(parentQuery.toLowerCase())),
   );
 
-  if (!selected) {
-    return (
-      <div className="border-border bg-card rounded-xl border shadow-sm">
-        <div className="border-border flex items-center gap-2 border-b px-4 py-3">
-          <b className="text-sm font-semibold">选中元素 · 类</b>
-        </div>
-        <div className="text-muted-foreground p-4 text-sm">
-          ← 从画布中选择一个类开始编辑
-        </div>
-      </div>
-    );
-  }
+  if (!selected) return null;
   return (
-    <div className="border-border bg-card rounded-xl border shadow-sm">
-      {/* 标题栏 */}
-      <div className="border-border flex items-center gap-2 border-b px-4 py-3">
-        <b className="text-sm font-semibold">选中元素 · {selected.name}</b>
-        <Chip tone="primary">owl:Class</Chip>
-      </div>
-      <div className="space-y-4 px-4 py-3 text-sm">
-        {/* 基础信息 */}
-        <fieldset>
-          <legend className="text-primary mb-2 text-xs font-semibold tracking-wide">◆ 基础信息</legend>
-          <div className="space-y-2.5">
-            <label className="block">
-              <span className="text-muted-foreground text-xs">名称（IRI 局部）</span>
-              <input
-                defaultValue={selected.name}
-                key={`name-${selected.name}`}
-                readOnly
-                className="border-border bg-muted text-muted-foreground mt-0.5 h-7 w-full rounded-md border px-2 font-mono text-sm"
-              />
-            </label>
-            <label className="block">
-              <span className="text-muted-foreground text-xs">显示名 label</span>
-              <input
-                defaultValue={selected.label}
-                key={`label-${selected.name}`}
-                onBlur={(e) => {
-                  if (e.target.value !== selected.label) onEdit("label", e.target.value);
-                }}
-                className="border-input focus:border-primary mt-0.5 h-7 w-full rounded-md border px-2 text-sm outline-none"
-              />
-            </label>
-            <label className="block">
-              <span className="text-muted-foreground text-xs">定义 definition</span>
-              <textarea
-                defaultValue={selected.definition}
-                key={`def-${selected.name}`}
-                onBlur={(e) => {
-                  if (e.target.value !== selected.definition) onEdit("definition", e.target.value);
-                }}
-                rows={3}
-                className="border-input focus:border-primary mt-0.5 w-full resize-y rounded-md border px-2 py-1.5 text-sm outline-none"
-              />
-            </label>
-          </div>
-        </fieldset>
-        {/* 继承关系 */}
-        <fieldset>
-          <legend className="text-primary mb-2 text-xs font-semibold tracking-wide">◆ 继承关系</legend>
-          <div>
-            <span className="text-muted-foreground text-xs">父类 parents</span>
-            <div className="relative mt-1" ref={parentBoxRef}>
-              <input
-                value={parentQuery}
-                onChange={(e) => {
-                  setParentQuery(e.target.value);
-                  setParentOpen(true);
-                }}
-                onFocus={() => setParentOpen(true)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter" && parentCandidates.length > 0) {
-                    const first = parentCandidates[0];
-                    if (first) addParentLocal(first);
-                    setParentQuery("");
-                    setParentOpen(false);
-                  }
-                  if (e.key === "Escape") setParentOpen(false);
-                }}
-                placeholder="输入筛选父类（类名）…"
-                aria-label="添加父类"
-                className="border-input focus:border-primary h-7 w-full rounded-md border px-2 text-sm outline-none"
-              />
-              {parentOpen ? (
-                <div className="border-border absolute z-10 mt-0.5 max-h-44 w-full overflow-y-auto rounded-md border bg-card shadow-md">
-                  {parentCandidates.length === 0 ? (
-                    <div className="text-muted-foreground px-2 py-1.5 text-xs">无可添加的父类（已全部选中）</div>
-                  ) : (
-                    parentCandidates.map((c) => (
-                      <button
-                        key={c}
-                        type="button"
-                        onClick={() => {
-                          addParentLocal(c);
-                          setParentQuery("");
-                          setParentOpen(false);
-                        }}
-                        className="hover:bg-primary-soft block w-full px-2.5 py-1 text-left text-xs"
-                      >
-                        {c}
-                      </button>
-                    ))
-                  )}
-                </div>
-              ) : null}
-            </div>
-            <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
-              {localParents.length === 0 ? (
-                <span className="text-muted-foreground text-xs">—（根类）</span>
-              ) : (
-                localParents.map((p) => (
-                  <span
-                    key={p}
-                    className="border-primary/25 bg-primary/5 text-primary flex items-center gap-1 rounded-full border px-2.5 py-0.5 font-mono text-xs"
-                  >
-                    {p}
-                    <button
-                      type="button"
-                      aria-label={`移除父类 ${p}`}
-                      onClick={() => removeParentLocal(p)}
-                      className="opacity-60 hover:opacity-100"
-                    >
-                      ✕
-                    </button>
-                  </span>
-                ))
-              )}
-            </div>
-          </div>
-        </fieldset>
-        {/* 类型标注 */}
-        <fieldset>
-          <legend className="text-primary mb-2 text-xs font-semibold tracking-wide">类型标注</legend>
-          <label className="block">
-            <span className="text-muted-foreground text-xs">键 hasKey</span>
+    <div className={cn("os-modeler-form", className)}>
+        <label className="os-modeler-field">
+          <span>类标识 IRI 局部</span>
+          <input
+            defaultValue={selected.name}
+            key={`name-${selected.name}`}
+            readOnly
+            className="os-modeler-input os-modeler-readonly"
+          />
+        </label>
+        <label className="os-modeler-field">
+          <span>显示名 label</span>
+          <input
+            defaultValue={selected.label}
+            key={`label-${selected.name}`}
+            onBlur={(e) => {
+              if (e.target.value !== selected.label)
+                onEdit("label", e.target.value);
+            }}
+            className="os-modeler-input"
+          />
+        </label>
+        <div className="os-modeler-field">
+          <span>父类 parents</span>
+          <div className="os-modeler-combo" ref={parentBoxRef}>
             <input
-              defaultValue={selected.hasKey.join(", ")}
-              key={`key-${selected.name}`}
-              readOnly
-              placeholder="如 name"
-              className="border-border bg-muted text-muted-foreground mt-0.5 h-7 w-full rounded-md border px-2 font-mono text-sm"
+              value={parentQuery}
+              onChange={(e) => {
+                setParentQuery(e.target.value);
+                setParentOpen(true);
+              }}
+              onFocus={() => setParentOpen(true)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && parentCandidates.length > 0) {
+                  const first = parentCandidates[0];
+                  if (first) addParentLocal(first);
+                  setParentQuery("");
+                  setParentOpen(false);
+                }
+                if (e.key === "Escape") setParentOpen(false);
+              }}
+              placeholder="输入筛选父类（类名）…"
+              aria-label="添加父类"
+              className="os-modeler-input"
             />
-          </label>
-          <div className="mt-2">
-            <span className="text-muted-foreground text-xs">实例类型 etypes</span>
-            <div className="mt-1 flex flex-wrap items-center gap-1.5">
-              {localEtypes.length === 0 ? (
-                <span className="text-muted-foreground text-xs">—</span>
-              ) : (
-                localEtypes.map((et) => (
-                  <span
-                    key={et}
-                    className="inline-flex items-center gap-1 rounded-full border border-primary/25 bg-primary/5 px-2.5 py-0.5 font-mono text-xs text-primary"
-                  >
-                    {et}
+            {parentOpen ? (
+              <div className="os-modeler-combo-list">
+                {parentCandidates.length === 0 ? (
+                  <div className="os-modeler-empty-sm">
+                    无可添加的父类（已全部选中）
+                  </div>
+                ) : (
+                  parentCandidates.map((c) => (
                     <button
+                      key={c}
                       type="button"
-                      aria-label={`移除实例类型 ${et}`}
-                      onClick={() => removeEtypeLocal(et)}
-                      className="opacity-60 hover:opacity-100"
+                      onClick={() => {
+                        addParentLocal(c);
+                        setParentQuery("");
+                        setParentOpen(false);
+                      }}
+                      className="os-modeler-combo-item"
                     >
-                      ✕
+                      {c}
                     </button>
-                  </span>
-                ))
-              )}
-              <input
-                value={etypeInput}
-                onChange={(e) => setEtypeInput(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") addEtypeLocal(etypeInput);
-                }}
-                placeholder="＋ 输入 etype 后回车"
-                aria-label="添加实例类型"
-                className="border-input focus:border-primary h-6 w-32 rounded-md border px-1.5 font-mono text-xs outline-none"
-              />
-            </div>
-            <span className="text-muted-foreground/60 mt-1 block text-xs">
-              由 registry etype_class_map 派生；Enter 添加，✕ 移除（写草稿 etypes 数组）
-            </span>
+                  ))
+                )}
+              </div>
+            ) : null}
           </div>
-        </fieldset>
-      </div>
+          <div className="os-modeler-chips">
+            {localParents.length === 0 ? (
+              <span className="os-modeler-hint">—（根类）</span>
+            ) : (
+              localParents.map((p) => (
+                <span key={p} className="os-modeler-chip">
+                  {p}
+                  <button
+                    type="button"
+                    aria-label={`移除父类 ${p}`}
+                    onClick={() => removeParentLocal(p)}
+                  >
+                    <X />
+                  </button>
+                </span>
+              ))
+            )}
+          </div>
+        </div>
+
+        <label className="os-modeler-field">
+          <span>命名空间 namespace</span>
+          <input
+            value={namespace ?? "—"}
+            readOnly
+            title={namespace ?? ""}
+            className="os-modeler-input os-modeler-readonly"
+          />
+        </label>
+
+        <label className="os-modeler-field is-wide">
+          <span>定义 definition</span>
+          <textarea
+            defaultValue={selected.definition}
+            key={`def-${selected.name}`}
+            onBlur={(e) => {
+              if (e.target.value !== selected.definition)
+                onEdit("definition", e.target.value);
+            }}
+            rows={3}
+            className="os-modeler-textarea"
+          />
+        </label>
+
+        <label className="os-modeler-field is-wide">
+          <span>键 hasKey</span>
+          <input
+            defaultValue={selected.hasKey.join(", ")}
+            key={`key-${selected.name}`}
+            readOnly
+            placeholder="如 name"
+            className="os-modeler-input os-modeler-readonly"
+          />
+        </label>
+
+        <div className="os-modeler-field is-wide">
+          <span>实例类型 etypes</span>
+          <div className="os-modeler-chips">
+            {localEtypes.length === 0 ? (
+              <span className="os-modeler-hint">—</span>
+            ) : (
+              localEtypes.map((et) => (
+                <span key={et} className="os-modeler-chip">
+                  {et}
+                  <button
+                    type="button"
+                    aria-label={`移除实例类型 ${et}`}
+                    onClick={() => removeEtypeLocal(et)}
+                  >
+                    <X />
+                  </button>
+                </span>
+              ))
+            )}
+            <input
+              value={etypeInput}
+              onChange={(e) => setEtypeInput(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") addEtypeLocal(etypeInput);
+              }}
+              placeholder="＋ 输入后回车"
+              aria-label="添加实例类型"
+              className="os-modeler-inline-input"
+            />
+          </div>
+          <span className="os-modeler-hint">
+            由 registry etype_class_map 派生；Enter 添加，✕ 移除（写草稿
+            etypes 数组）
+          </span>
+        </div>
     </div>
   );
 }
 
-function ReadonlyChips({
-  title,
-  items,
-  hint,
-}: {
-  title: string;
-  items: string[];
-  hint: string;
+function FormModePanel({
+  selected,
+  objectType,
+  predicates,
+  counts,
+  labels,
+  file,
+  version,
+  validationState,
+  onEditYaml,
+  ...classProps
+}: ClassFormProps & {
+  objectType: FormObjectType | null;
+  predicates: string[];
+  counts: Map<string, number>;
+  labels?: Map<string, string>;
+  file: string;
+  version?: number;
+  validationState: "ok" | "err" | "idle";
+  onEditYaml: () => void;
 }) {
+  const statusLabel =
+    validationState === "ok"
+      ? "已通过"
+      : validationState === "err"
+        ? "未通过"
+        : "待校验";
   return (
-    <div>
-      <span className="text-muted-foreground text-xs font-medium">{title}</span>
-      <div className="border-border mt-1 flex min-h-8 flex-wrap items-center gap-1.5 rounded-md border px-2 py-1.5">
-        {items.length === 0 ? (
-          <span className="text-muted-foreground text-xs">—</span>
-        ) : (
-          items.map((item) => (
-            <span
-              key={item}
-              className="border-primary/25 bg-primary/5 text-primary rounded-full border px-2 py-0.5 font-mono text-xs"
-            >
-              {item}
-            </span>
-          ))
-        )}
+    <div className="os-card os-modeler-form-card">
+      <div className="os-modeler-form-hd">
+        <div className="os-modeler-form-hd-icon">
+          <Box />
+        </div>
+        <div className="os-modeler-form-hd-main">
+          <div className="os-modeler-form-kicker">类定义 · {file}</div>
+          <b>{selected?.name ?? "表单模式"}</b>
+          <span>{selected?.label || "从左侧类树选择一个类开始编辑"}</span>
+        </div>
+        <div className="os-modeler-form-hd-right">
+          <span
+            className={cn(
+              "os-pill",
+              validationState === "ok" && "os-pill-ok",
+              validationState === "err" && "os-pill-err",
+              validationState === "idle" && "os-pill-gray",
+            )}
+          >
+            {statusLabel}
+          </span>
+          <span className="os-pill os-pill-gray">v{version ?? "—"}</span>
+        </div>
       </div>
-      {hint ? <span className="text-muted-foreground/70 mt-0.5 block text-xs">{hint}</span> : null}
+
+      {selected ? (
+        <>
+          <ClassFields
+            {...classProps}
+            selected={selected}
+            className="os-modeler-form-center"
+          />
+          <section className="os-modeler-form-section">
+            <div className="os-modeler-form-section-hd">
+              <b>属性与关系</b>
+              <span>
+                {objectType
+                  ? `${objectType.displayName || objectType.apiName} · ${objectType.properties.length} 个对象属性`
+                  : "域级词表（只读）"}
+              </span>
+              <button
+                type="button"
+                onClick={onEditYaml}
+                className="os-btn os-btn-ghost os-btn-sm"
+              >
+                在 YAML 中编辑
+              </button>
+            </div>
+
+            <div className="os-modeler-form-subhd">对象属性</div>
+            {objectType && objectType.properties.length > 0 ? (
+              <div className="os-modeler-form-table-wrap">
+                <table className="os-modeler-form-table is-props">
+                  <thead>
+                    <tr>
+                      <th>属性名</th>
+                      <th>标识</th>
+                      <th>类型</th>
+                      <th>约束</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {objectType.properties.map((p) => {
+                      const constraints = [
+                        p.filterable ? "可筛选" : "",
+                        p.searchable ? "可搜索" : "",
+                      ].filter(Boolean);
+                      return (
+                        <tr key={`${p.name}-${p.apiName}`}>
+                          <td className="is-main">{p.description || p.name}</td>
+                          <td className="is-mono">
+                            <BreakableId value={p.apiName} />
+                          </td>
+                          <td>
+                            <code>{p.type || "—"}</code>
+                            {p.enumValues && p.enumValues.length > 0 ? (
+                              <span className="os-modeler-form-enum">
+                                {p.enumValues.length} 枚举
+                              </span>
+                            ) : null}
+                          </td>
+                          <td className="is-muted">
+                            {constraints.length > 0
+                              ? constraints.join(" · ")
+                              : "—"}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            ) : (
+              <div className="os-modeler-form-empty">
+                当前类未匹配到对象类型属性；可在 YAML 模式查看 object_types。
+              </div>
+            )}
+
+            <div className="os-modeler-form-subhd">关系谓词（域词表）</div>
+            {predicates.length > 0 ? (
+              <div className="os-modeler-form-table-wrap">
+                <table className="os-modeler-form-table is-relations">
+                  <thead>
+                    <tr>
+                      <th>谓词</th>
+                      <th>中文</th>
+                      <th className="is-num">三元组</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {predicates.map((p) => (
+                      <tr key={p}>
+                        <td className="is-mono">
+                          <BreakableId value={p} />
+                        </td>
+                        <td>{labels?.get(p) ?? "—"}</td>
+                        <td className="is-num">
+                          {counts.get(p)?.toLocaleString() ?? "—"}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            ) : (
+              <div className="os-modeler-form-empty">
+                本域暂无关系谓词声明。
+              </div>
+            )}
+
+            <p className="os-modeler-form-note">
+              表单字段与可视化 / YAML 共用同一份草稿；对象属性来自当前类所属对象类型，
+              关系谓词为域词表，当前只读。
+            </p>
+          </section>
+        </>
+      ) : (
+        <div className="os-modeler-empty">
+          <Box />
+          <b>尚未选择类</b>
+          <span>从左侧类树选择一个类开始表单编辑。</span>
+        </div>
+      )}
     </div>
+  );
+}
+
+function ClassDetailForm({ selected, ...props }: ClassFormProps) {
+  if (!selected) {
+    return (
+      <Panel
+        title="选中元素 · 类"
+        subtitle="类定义"
+        icon={Box}
+        className="os-modeler-class-panel"
+      >
+        <div className="os-modeler-empty">
+          <Box />
+          <b>尚未选择类</b>
+          <span>从左侧类树或画布中选择一个类开始编辑。</span>
+        </div>
+      </Panel>
+    );
+  }
+  return (
+    <Panel
+      title={selected.name}
+      subtitle="类定义"
+      icon={Box}
+      actions={<Chip tone="primary">owl:Class</Chip>}
+      className="os-modeler-class-panel"
+    >
+      <ClassFields selected={selected} {...props} />
+    </Panel>
   );
 }
 
@@ -1145,45 +1634,63 @@ function AxiomsPanel({
   axioms?: RegistryAxioms;
   predicates: string[];
 }) {
+  const groups: Array<{ title: string; items: string[] }> = [
+    {
+      title: "传递 transitive",
+      items: axioms?.transitive ?? [],
+    },
+    {
+      title: "不相交 disjoint",
+      items: axioms?.disjoint ?? [],
+    },
+    {
+      title: "逆 inverse",
+      items: (axioms?.inverse ?? []).map((inv) => inv.pair.join(" ↔ ")),
+    },
+  ];
   return (
-    <Panel title="公理" subtitle="本域自动派生规则全集 · 结构只读 · 编辑走 YAML 模式">
-      <div className="space-y-3 p-4 text-sm">
-        <div>
-          <span className="text-muted-foreground text-xs font-medium">
-            属性链 property_chains
-          </span>
-          <div className="mt-1 space-y-1">
-            {(axioms?.property_chains ?? []).map((chain) => (
-              <div
-                key={chain.derived}
-                className="border-primary/20 bg-primary/5 rounded-md border px-2.5 py-1.5 font-mono text-xs"
-              >
-                {chain.chain.join(" ∘ ")} ⇒ <b>{chain.derived}</b>
-              </div>
-            ))}
+    <Panel
+      title="公理"
+      subtitle="自动派生 · 结构只读"
+      className="os-modeler-axioms-panel"
+    >
+      <div className="os-modeler-axioms">
+        <div className="os-modeler-axiom-group">
+          <h4>属性链 property_chains</h4>
+          <div className="os-modeler-axiom-list">
             {(axioms?.property_chains ?? []).length === 0 ? (
-              <span className="text-muted-foreground text-xs">—</span>
-            ) : null}
+              <span className="os-modeler-hint">—</span>
+            ) : (
+              (axioms?.property_chains ?? []).map((chain) => (
+                <span key={chain.derived} className="os-modeler-chain">
+                  {chain.chain.join(" ∘ ")}
+                  <b>⇒ {chain.derived}</b>
+                </span>
+              ))
+            )}
           </div>
         </div>
-        <div className="grid grid-cols-2 gap-3">
-          <ReadonlyChips title="传递 transitive" items={axioms?.transitive ?? []} hint="" />
-          <ReadonlyChips
-            title="不相交 disjoint"
-            items={(axioms?.disjoint ?? []).map((d) => `[${d}]`)}
-            hint=""
-          />
-        </div>
-        <div>
-          <span className="text-muted-foreground text-xs font-medium">逆 inverse</span>
-          <div className="border-border mt-1 min-h-8 rounded-md border px-2 py-1.5 font-mono text-xs">
-            {(axioms?.inverse ?? []).length === 0
-              ? "—"
-              : (axioms?.inverse ?? [])
-                  .map((inv) => inv.pair.join(" ↔ "))
-                  .join("；")}
+        {groups.map((group) => (
+          <div key={group.title} className="os-modeler-axiom-group">
+            <h4>{group.title}</h4>
+            <div className="os-modeler-axiom-list">
+              {group.items.length === 0 ? (
+                <span className="os-modeler-hint">—</span>
+              ) : (
+                group.items.map((item) => (
+                  <span key={item} className="os-modeler-axiom-chip">
+                    {item}
+                  </span>
+                ))
+              )}
+            </div>
           </div>
-        </div>
+        ))}
+        <p className="os-modeler-hint">
+          {predicates.length > 0
+            ? `本域声明 ${predicates.length} 个谓词；编辑 axioms 请切换 YAML 源码。`
+            : "本域暂无谓词声明。"}
+        </p>
       </div>
     </Panel>
   );
@@ -1192,16 +1699,20 @@ function AxiomsPanel({
 /** YAML 行号编辑器（CodeMirror 6：语法高亮 + 行号 + 自动缩进 + 括号匹配）。 */
 function YamlEditor({
   text,
+  isDark,
+  height,
   onChange,
 }: {
   text: string;
+  isDark: boolean;
+  height: string;
   onChange: (v: string) => void;
 }) {
   return (
     <CodeMirror
       value={text}
-      height="560px"
-      theme="light"
+      height={height}
+      theme={isDark ? "dark" : "light"}
       extensions={[yaml()]}
       onChange={onChange}
       basicSetup={{
@@ -1210,7 +1721,7 @@ function YamlEditor({
         highlightActiveLine: true,
         autocompletion: false,
       }}
-      style={{ fontSize: "13px", fontFamily: "var(--font-mono, monospace)" }}
+      style={{ fontSize: "12.5px", fontFamily: "var(--mono, monospace)" }}
     />
   );
 }
@@ -1411,153 +1922,145 @@ function TBoxCanvas({
   }, [classes, positions, draftEdges]);
 
   return (
-    <div className={cn("flex flex-col gap-2", heightClass)}>
+    <div className={cn("os-modeler-canvas-wrap", heightClass)}>
       <div
         ref={containerRef}
-        className="relative min-h-0 flex-1 overflow-auto"
+        className="os-modeler-canvas"
         style={{
           // overflow-anchor none：Chrome 滚动锚定会在生长重排时拽回 scrollTop，破坏视口跟随
           overflowAnchor: "none",
-          background:
-            "radial-gradient(circle at 1px 1px, var(--border) 1px, transparent 0) 0 0 / 22px 22px, #fcfdfd",
         }}
         data-testid="tbox-canvas"
       >
-        {/* 缩放工具栏（z 最高、不随缩放；stage 本体在 sizer 内等比缩放） */}
-        <div className="border-border absolute right-2 top-2 z-20 flex items-center gap-0.5 rounded-md border bg-card/95 px-1 py-0.5 shadow-sm">
-          <button
-            type="button"
-            onClick={() => setZoom((z) => Math.max(0.5, Number((z - 0.25).toFixed(2))))}
-            title="缩小"
-            aria-label="缩小画布"
-            className="text-muted-foreground hover:text-foreground hover:bg-muted rounded px-1.5 py-0.5 text-sm font-bold"
-          >
-            －
-          </button>
-          <span className="text-muted-foreground w-10 text-center font-mono text-[10px] tabular-nums">
-            {Math.round(zoom * 100)}%
-          </span>
-          <button
-            type="button"
-            onClick={() => setZoom((z) => Math.min(2.5, Number((z + 0.25).toFixed(2))))}
-            title="放大"
-            aria-label="放大画布"
-            className="text-muted-foreground hover:text-foreground hover:bg-muted rounded px-1.5 py-0.5 text-sm font-bold"
-          >
-            ＋
-          </button>
-          <button
-            type="button"
-            onClick={() => setZoom(1)}
-            title="重置缩放"
-            className="text-muted-foreground hover:text-foreground hover:bg-muted rounded px-1.5 py-0.5 text-xs font-medium"
-          >
-            重置
-          </button>
-        </div>
         {/* sizer 撑出滚动范围；stage 原尺寸经 scale(zoom) 放大，节点/边随缩放 */}
-        <div style={{ width: `${zoom * 100}%`, height: `${stageH * zoom}px` }}>
-          <div
-            className="relative origin-top-left"
-            style={{ width: `${100 / zoom}%`, height: stageH, transform: `scale(${zoom})` }}
-          >
-        <svg
-          className="pointer-events-none absolute inset-0 h-full w-full"
-          viewBox="0 0 100 100"
-          preserveAspectRatio="none"
+        <div
+          className="os-modeler-canvas-sizer"
+          style={{ width: `${zoom * 100}%`, height: `${stageH * zoom}px` }}
         >
-          {mergedEdges.map((edge) => {
-            const isPending = connectChild === edge.child;
-            return (
-              <line
-                key={edge.key}
-                x1={edge.x1}
-                y1={edge.y1}
-                x2={edge.x2}
-                y2={edge.y2}
-                stroke={isPending ? withAlpha(AMBER, 0.7) : edge.draftOnly ? withAlpha(AMBER, 0.55) : withAlpha(TONE_BLUE, 0.35)}
-                strokeWidth={1.5}
-                strokeDasharray={edge.draftOnly ? "6 4" : undefined}
-                vectorEffect="non-scaling-stroke"
-              />
-            );
-          })}
-        </svg>
-        {nodes.map(({ cls, pos }) => {
-          const pos2 = pos ?? { x: 50, y: 50 };
-          const count = instancesOf(cls);
-          const isSel = selected === cls.name;
-          const isPending = connectChild === cls.name;
-          return (
-            <div
-              key={cls.name}
-              role="button"
-              tabIndex={0}
-              onPointerDown={(e) => onNodePointerDown(e, cls.name)}
-              onPointerMove={onNodePointerMove}
-              onPointerUp={onNodePointerUp}
-              onClick={() => onNodeClick(cls.name)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter" || e.key === " ") onNodeClick(cls.name);
-              }}
-              className={cn(
-                "absolute -translate-x-1/2 -translate-y-1/2 select-none text-center transition-transform",
-                !dragRef.current && "hover:scale-105",
-                connectChild && isPending ? "ring-primary ring-2" : "",
-              )}
-              style={{
-                left: `${pos2.x}%`,
-                top: `${pos2.y}%`,
-                cursor: connectChild ? "crosshair" : "grab",
-              }}
-              data-testid={`tbox-node-${cls.name}`}
+          <div
+            className="os-modeler-canvas-stage"
+            style={{
+              width: `${100 / zoom}%`,
+              height: stageH,
+              transform: `scale(${zoom})`,
+            }}
+          >
+            <svg
+              className="os-modeler-edges"
+              viewBox="0 0 100 100"
+              preserveAspectRatio="none"
             >
-              <span
-                className={cn(
-                  "block min-w-14 rounded-[10px] border-2 px-2.5 py-1.5 text-sm font-semibold shadow-sm",
-                  isSel || isPending ? "text-white" : "text-foreground",
-                )}
-                style={{
-                  background: isPending
-                    ? withAlpha(AMBER, 0.9)
-                    : isSel
-                      ? TONE_BLUE
-                      : "#fff",
-                  borderColor: isPending
-                    ? AMBER
-                    : isSel
-                      ? TONE_BLUE
-                      : withAlpha(TONE_BLUE, 0.6),
-                }}
-              >
-                {cls.name}
-                <small
+              {mergedEdges.map((edge) => {
+                const isPending = connectChild === edge.child;
+                return (
+                  <line
+                    key={edge.key}
+                    x1={edge.x1}
+                    y1={edge.y1}
+                    x2={edge.x2}
+                    y2={edge.y2}
+                    stroke={
+                      isPending || edge.draftOnly
+                        ? "var(--warn-700)"
+                        : "var(--main-300)"
+                    }
+                    strokeOpacity={isPending ? 0.9 : edge.draftOnly ? 0.75 : 0.8}
+                    strokeWidth={1.5}
+                    strokeDasharray={edge.draftOnly ? "6 4" : undefined}
+                    vectorEffect="non-scaling-stroke"
+                  />
+                );
+              })}
+            </svg>
+            {nodes.map(({ cls, pos }) => {
+              const pos2 = pos ?? { x: 50, y: 50 };
+              const count = instancesOf(cls);
+              const isSel = selected === cls.name;
+              const isPending = connectChild === cls.name;
+              return (
+                <div
+                  key={cls.name}
+                  role="button"
+                  tabIndex={0}
+                  onPointerDown={(e) => onNodePointerDown(e, cls.name)}
+                  onPointerMove={onNodePointerMove}
+                  onPointerUp={onNodePointerUp}
+                  onClick={() => onNodeClick(cls.name)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" || e.key === " ")
+                      onNodeClick(cls.name);
+                  }}
                   className={cn(
-                    "block text-xs font-normal",
-                    isSel || isPending ? "text-white/75" : "text-muted-foreground",
+                    "os-modeler-node-wrap",
+                    connectChild && isPending && "is-pending",
                   )}
+                  style={{
+                    left: `${pos2.x}%`,
+                    top: `${pos2.y}%`,
+                    cursor: connectChild ? "crosshair" : "grab",
+                  }}
+                  title={`${cls.name}${cls.label ? ` · ${cls.label}` : ""}`}
+                  data-testid={`tbox-node-${cls.name}`}
                 >
-                  {cls.label || cls.name}
-                </small>
-              </span>
-              {(() => {
-                const c = count ?? undefined;
-                return c !== undefined ? (
-                  <span className="text-muted-foreground mt-0.5 block text-xs tabular-nums">
-                    {c} 实例
+                  <span
+                    className={cn(
+                      "os-modeler-node",
+                      isSel && "is-sel",
+                      isPending && "is-pending",
+                    )}
+                  >
+                    <span className="os-modeler-node-name">{cls.name}</span>
+                    <span className="os-modeler-node-label">
+                      {cls.label || cls.name}
+                    </span>
                   </span>
-                ) : null;
-              })()}
-            </div>
-          );
-        })}
-        {connectChild ? (
-          <div className="border-primary/40 bg-primary/10 text-primary absolute inset-x-3 top-3 z-10 rounded-md border px-3 py-1.5 text-xs font-medium">
-            连线模式：点击目标父类节点（Esc 取消）
-          </div>
-        ) : null}
+                  {count !== null ? (
+                    <span className="os-modeler-node-count">
+                      {count.toLocaleString()} 实例
+                    </span>
+                  ) : null}
+                </div>
+              );
+            })}
+            {connectChild ? (
+              <div className="os-modeler-connect-banner">
+                连线模式：点击目标父类节点（Esc 取消）
+              </div>
+            ) : null}
           </div>
         </div>
+      </div>
+      {/* 缩放工具栏（相对画布容器固定，不随 sizer 滚动） */}
+      <div className="os-modeler-zoom">
+        <button
+          type="button"
+          onClick={() =>
+            setZoom((z) => Math.max(0.5, Number((z - 0.25).toFixed(2))))
+          }
+          title="缩小"
+          aria-label="缩小画布"
+        >
+          −
+        </button>
+        <span>{Math.round(zoom * 100)}%</span>
+        <button
+          type="button"
+          onClick={() =>
+            setZoom((z) => Math.min(2.5, Number((z + 0.25).toFixed(2))))
+          }
+          title="放大"
+          aria-label="放大画布"
+        >
+          +
+        </button>
+        <button
+          type="button"
+          onClick={() => setZoom(1)}
+          title="重置缩放"
+          className="is-text"
+        >
+          重置
+        </button>
       </div>
     </div>
   );
@@ -1572,7 +2075,7 @@ function AxiomSummary({ axioms }: { axioms?: RegistryAxioms }) {
   if (axioms.inverse.length > 0) parts.push(`逆 ${axioms.inverse.length} 对`);
   if (axioms.disjoint.length > 0) parts.push(`不相交 ${axioms.disjoint.length} 组`);
   return (
-    <span className="text-muted-foreground text-xs">
+    <span className="os-modeler-hint">
       {parts.length > 0
         ? `自动派生规则：${parts.join(" · ")} → 详见右栏「公理」`
         : "本域暂无自动派生规则——如需跨关系推导，在 YAML 模式 axioms 块添加（property_chains / transitive / inverse）"}
@@ -1594,12 +2097,19 @@ function PredicateAxiomPanel({
   axioms?: RegistryAxioms;
 }) {
   return (
-    <Panel title="谓词与公理" subtitle="本域关系词汇使用情况与自动派生规则">
-      <div className="flex flex-col gap-2.5 p-4">
-        <div className="flex flex-wrap items-center gap-1.5">
-          <span className="text-muted-foreground text-xs font-medium">谓词（关系类型）：</span>
+    <Panel
+      title="谓词与公理"
+      subtitle="本域关系词汇使用情况与自动派生规则"
+      className="os-modeler-predicates"
+    >
+      <div className="os-modeler-predicate-body">
+        <div className="os-modeler-predicate-head">
+          <span>谓词（关系类型）</span>
+          <span>{predicates.length} 个</span>
+        </div>
+        <div className="os-modeler-predicate-list">
           {predicates.length === 0 ? (
-            <span className="text-muted-foreground text-xs">—</span>
+            <span className="os-modeler-hint">—</span>
           ) : (
             predicates.map((p) => {
               const label = labels?.get(p);
@@ -1607,19 +2117,17 @@ function PredicateAxiomPanel({
               return (
                 <span
                   key={p}
-                  className="border-primary/25 bg-primary/5 text-primary rounded-full border px-2 py-0.5 font-mono text-xs"
+                  className="os-modeler-predicate-chip"
                   title={`本域定义的关系类型${label ? `：${label}` : ""}${
                     count !== undefined
                       ? `；图中该谓词 ${count.toLocaleString()} 条三元组${count === 0 ? "（已定义未使用）" : ""}`
                       : ""
                   }`}
                 >
-                  {p}
-                  {label ? <span className="text-muted-foreground ml-1">{label}</span> : null}
+                  <b>{p}</b>
+                  {label ? <span>{label}</span> : null}
                   {count !== undefined ? (
-                    <span className="text-muted-foreground ml-1 tabular-nums">
-                      · {count.toLocaleString()}
-                    </span>
+                    <em>{count.toLocaleString()}</em>
                   ) : null}
                 </span>
               );
@@ -1630,4 +2138,22 @@ function PredicateAxiomPanel({
       </div>
     </Panel>
   );
+}
+
+/** CodeMirror needs an explicit theme; follow the app's class-based dark mode. */
+function useIsDark() {
+  const [dark, setDark] = useState(
+    () =>
+      typeof document !== "undefined" &&
+      document.documentElement.classList.contains("dark"),
+  );
+  useEffect(() => {
+    const root = document.documentElement;
+    const sync = () => setDark(root.classList.contains("dark"));
+    sync();
+    const observer = new MutationObserver(sync);
+    observer.observe(root, { attributes: true, attributeFilter: ["class"] });
+    return () => observer.disconnect();
+  }, []);
+  return dark;
 }

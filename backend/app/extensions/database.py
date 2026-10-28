@@ -944,6 +944,14 @@ async def migrate_db() -> None:
         await conn.execute(text("ALTER TABLE tlt_translation_tasks ADD COLUMN IF NOT EXISTS ragflow_source_doc_id VARCHAR(100)"))
         # EAI-CUSTOM (translation 资产库): 文件夹归属列(幂等补列;tlt_folders 表由 create_all 承接)
         await conn.execute(text("ALTER TABLE tlt_translation_tasks ADD COLUMN IF NOT EXISTS folder_id UUID REFERENCES tlt_folders(id)"))
+        # EAI-CUSTOM (P0 复核闭环): exceeded 草稿块，复核通过后用于索引/交付
+        await conn.execute(text("ALTER TABLE tlt_translation_tasks ADD COLUMN IF NOT EXISTS draft_blocks JSONB"))
+        # EAI-CUSTOM (P1 复核对照): 源文块快照（id 与 draft_blocks 对齐）
+        await conn.execute(text("ALTER TABLE tlt_translation_tasks ADD COLUMN IF NOT EXISTS draft_source_blocks JSONB"))
+        # EAI-CUSTOM (P2 MTPE): 机器草稿原件 + 人工编辑审计
+        await conn.execute(text("ALTER TABLE tlt_translation_tasks ADD COLUMN IF NOT EXISTS draft_blocks_original JSONB"))
+        await conn.execute(text("ALTER TABLE tlt_translation_tasks ADD COLUMN IF NOT EXISTS draft_edited_at TIMESTAMP"))
+        await conn.execute(text("ALTER TABLE tlt_translation_tasks ADD COLUMN IF NOT EXISTS draft_edited_by UUID"))
         # EAI-CUSTOM (bug-1791807358242): KB 子表 FK 改 ON DELETE CASCADE——delete_kb 只清 documents,
         # 缺省 NO ACTION 的扩展子表(tlt_translation_tasks/scrap_drafts)会让删 KB 撞 FK IntegrityError 500。
         # 幂等重建约束(同 report_projects_workflow_id_fkey 先例)。约束名按建表来源:

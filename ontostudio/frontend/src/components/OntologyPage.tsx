@@ -12,7 +12,7 @@
  * resolution REST；merge/unmerge 成功后 useReloadGraph 全量失效重载。
  */
 import { useQuery } from "@tanstack/react-query";
-import { GitMerge, Loader2, Network, Search } from "lucide-react";
+import { Loader2, Network, Search } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { fetchPendingReviewCount, fetchRegistryMeta } from "@/api/ontology-graph-api";
@@ -213,7 +213,8 @@ function OntologyWorkspace({
 
   // 直接渲染期计算：图规模数千级，每次击键一次全量扫描可接受；
   // summary 变化（图加载完成）自然随重渲染重算
-  const searchMatches = searchQuery.trim() ? searchGraphNodes(searchQuery) : [];
+  const searchMatches =
+    view !== "resolution" && searchQuery.trim() ? searchGraphNodes(searchQuery) : [];
 
   const handlePickMatch = (nodeId: string) => {
     handleSelectNode(nodeId);
@@ -246,16 +247,12 @@ function OntologyWorkspace({
 
   return (
     <div className="bg-background flex h-full flex-col">
-      {/* 顶栏（overviewOnly 模式隐藏——总览页只留概览内容区） */}
-      {!overviewOnly && (
+      {/* 顶栏（overviewOnly / 消解审核页使用各自页头，隐藏旧顶栏） */}
+      {!overviewOnly && view !== "resolution" && (
       <header className="border-border bg-card flex shrink-0 items-center gap-3 border-b px-4 py-3">
-        {view === "resolution" ? (
-          <GitMerge className="text-primary h-5 w-5 flex-none" />
-        ) : (
-          <Network className="text-primary h-5 w-5 flex-none" />
-        )}
+        <Network className="text-primary h-5 w-5 flex-none" />
         <h1 className="text-foreground text-lg font-semibold tracking-tight whitespace-nowrap">
-          {view === "resolution" ? "消解审核" : "图谱浏览"}
+          图谱浏览
         </h1>
         <div className="relative w-full max-w-[300px]">
           <Search className="text-muted-foreground pointer-events-none absolute top-1/2 left-2.5 h-3.5 w-3.5 -translate-y-1/2" />
@@ -269,9 +266,8 @@ function OntologyWorkspace({
             autoComplete="off"
             className="border-border bg-muted text-foreground placeholder:text-muted-foreground focus:border-primary h-8 w-full rounded-lg border px-8 text-sm outline-none"
           />
-          {/* 节点候选下拉仅地图视图有意义；消解视图该输入框语义 = 过滤待审列表
-           * （透传 ResolutionPanel.searchQuery），出图节点下拉反而是噪音。 */}
-          {view !== "resolution" && searchQuery.trim() ? (
+          {/* 节点候选下拉仅地图视图有意义；消解视图使用自己的队列检索框。 */}
+          {searchQuery.trim() ? (
             <div className="border-border bg-card absolute top-full left-0 z-20 mt-1 w-full overflow-hidden rounded-lg border shadow-sm">
               {searchMatches.length === 0 ? (
                 <div className="text-muted-foreground px-3 py-2 text-sm">
@@ -465,12 +461,13 @@ function OntologyWorkspace({
             mergedCount={mergedCount}
             onRefreshGraph={handleRefreshGraph}
             searchQuery={searchQuery}
+            onSearchChange={setSearchQuery}
           />
         </div>
       ) : null}
 
-      {/* 状态条（overviewOnly 模式隐藏） */}
-      {!overviewOnly && (
+      {/* 状态条（overviewOnly / 消解审核页隐藏） */}
+      {!overviewOnly && view !== "resolution" && (
       <footer className="border-border bg-card text-muted-foreground flex shrink-0 items-center gap-3.5 overflow-x-auto border-t px-3.5 py-1 text-xs whitespace-nowrap tabular-nums">
         <span title={`registry v${meta?.registry_version ?? "—"}`}>
           注册表 <b className="font-mono">v{meta?.registry_version ?? "—"}</b>

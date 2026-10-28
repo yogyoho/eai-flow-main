@@ -207,25 +207,43 @@ def _parse_text(p: Path) -> list[Block]:
     return blocks
 
 
-# ── OCR（eai-flow-ocr, POST /ocr, Phase 0 仅 .pdf）────────────────────
+# ── OCR（eai-flow-ocr, POST /ocr；PDF 直传，图片先转单页 PDF）────────────
+
+_IMAGE_EXTS = {".png", ".jpg", ".jpeg", ".bmp", ".tif", ".tiff", ".webp"}
+
+
+def _image_to_pdf_bytes(path: Path) -> bytes:
+    """图片 → 单页 PDF（OCR 服务 Phase 0 只收 PDF）。"""
+    import fitz
+
+    doc = fitz.open(str(path))
+    try:
+        return doc.convert_to_pdf()
+    finally:
+        doc.close()
 
 
 async def ocr_pdf(path: str | Path, text_pages: int = 999) -> list[Block]:
-    """扫描件 → eai-flow-ocr 全页 OCR → blocks（text_pages=999 全文语料）。
+    """扫描件/图片 → eai-flow-ocr 全页 OCR → blocks（text_pages=999 全文语料）。
 
     端点契约：mcp-server/ocr-service/server.py POST /ocr（multipart file=*.pdf）。
-    失败抛异常由调用方落 failed 状态（设计构件 3 基础设施失败枚举，R7/SC-3）。
+    图片先经 PyMuPDF 转单页 PDF 再上传。失败抛异常由调用方落 failed（R7/SC-3）。
     """
     import httpx
 
     p = Path(path)
+    if p.suffix.lower() in _IMAGE_EXTS:
+        payload = _image_to_pdf_bytes(p)
+        filename = f"{p.stem}.pdf"
+    else:
+        payload = p.read_bytes()
+        filename = p.name
     async with httpx.AsyncClient(timeout=300) as client:
-        with p.open("rb") as f:
-            resp = await client.post(
-                f"{OCR_BASE_URL}/ocr",
-                files={"file": (p.name, f, "application/pdf")},
-                data={"text_pages": str(text_pages)},
-            )
+        resp = await client.post(
+            f"{OCR_BASE_URL}/ocr",
+            files={"file": (filename, payload, "application/pdf")},
+            data={"text_pages": str(text_pages)},
+        )
     resp.raise_for_status()
     payload = resp.json()
     blocks: list[Block] = []

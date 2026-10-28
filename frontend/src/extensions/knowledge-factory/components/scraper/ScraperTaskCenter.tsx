@@ -16,6 +16,7 @@ import {
 import React, { useEffect, useState } from "react";
 
 import { scraperApi } from "@/extensions/api";
+import { FilterPills } from "@/extensions/project/components/FilterPills";
 import { cn } from "@/lib/utils";
 
 import { useScraperContext } from "./ScraperContext";
@@ -173,23 +174,12 @@ export default function ScraperTaskCenter() {
         {/* Top bar */}
         <div className="bg-card/50 flex shrink-0 items-center justify-between border-b px-5 py-3">
           <div className="flex items-center gap-1.5">
-            {STATUS_FILTERS.map((f) => (
-              <button
-                key={f.value}
-                onClick={() => {
-                  setStatusFilter(f.value);
-                  setPage(1);
-                }}
-                className={cn(
-                  "rounded-lg px-3.5 py-1.5 text-sm font-medium transition-all duration-200",
-                  statusFilter === f.value
-                    ? "bg-primary text-primary-foreground shadow-sm"
-                    : "bg-muted/60 text-muted-foreground hover:bg-muted hover:text-foreground",
-                )}
-              >
-                {f.label}
-              </button>
-            ))}
+            {/* EAI-CUSTOM: 对齐对话页-项目列表过滤组件（FilterPills，规范 §7 淡主色过滤 pill） */}
+            <FilterPills
+              onChange={setStatusFilter}
+              pills={STATUS_FILTERS}
+              value={statusFilter}
+            />
             <span className="text-muted-foreground ml-2 text-xs">
               共 {total} 条
             </span>

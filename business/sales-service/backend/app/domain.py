@@ -876,6 +876,8 @@ def approval_dict(request: ApprovalRequest, opportunity: Opportunity | None = No
         "completed_at": request.completed_at.isoformat() if request.completed_at else None,
         "expires_at": request.expires_at.isoformat() if request.expires_at else None,
         "failure_reason": request.failure_reason,
+        "engine": request.engine,
+        "platform_instance_id": request.platform_instance_id,
         "version": request.version,
         "steps": [
             {

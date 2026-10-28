@@ -724,8 +724,9 @@ class DocumentService:
 
     @staticmethod
     async def delete_doc(db: AsyncSession, doc: Document) -> None:
+        rf_client = None
+        kb = await KnowledgeBaseService.get_kb_by_id(db, doc.knowledge_base_id)
         if doc.ragflow_document_id:
-            kb = await KnowledgeBaseService.get_kb_by_id(db, doc.knowledge_base_id)
             if kb and kb.ragflow_dataset_id:
                 # EAI-CUSTOM (SSO v1.1 §3.3): 删文档按服务身份执行(dataset 归服务租户;
                 # 解析失败响亮上抛,此时尚未删任何文件/行)。RAGFlow 删除失败仍按既有语义吞掉。
@@ -735,6 +736,27 @@ class DocumentService:
                     logger.info(f"Deleted RAGFlow document: {doc.ragflow_document_id}")
                 except Exception as e:
                     logger.warning(f"Failed to delete RAGFlow document: {e}")
+
+        # EAI-CUSTOM (P1-5 / R3-3): 知识库文档删除联动翻译任务——归档任务、
+        # 下线中文份 chunk、释放 document_id 外键（否则删 Document 会撞 FK）。
+        from app.extensions.translation.models import TranslationTask
+
+        related = (await db.execute(select(TranslationTask).where(TranslationTask.document_id == doc.id))).scalars().all()
+        if related:
+            if rf_client is None and kb and kb.ragflow_dataset_id:
+                try:
+                    rf_client = await get_service_client(db)
+                except Exception as e:
+                    logger.warning(f"Translation cleanup: no RAGFlow client: {e}")
+            for task in related:
+                task.state = "archived"
+                task.document_id = None
+                if rf_client and kb and kb.ragflow_dataset_id and task.ragflow_zh_doc_id:
+                    try:
+                        await rf_client.delete_document(kb.ragflow_dataset_id, task.ragflow_zh_doc_id)
+                    except Exception as e:
+                        logger.warning(f"Failed to delete translation zh document {task.ragflow_zh_doc_id}: {e}")
+            logger.info("tlt: archived %d translation task(s) for deleted knowledge document %s", len(related), doc.id)
 
         storage_provider = get_storage_provider()
         config = get_extensions_config()

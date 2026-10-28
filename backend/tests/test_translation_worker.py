@@ -12,6 +12,7 @@ from sqlalchemy import delete, select
 
 from app.extensions.database import get_session_factory, init_engine
 from app.extensions.models import KnowledgeBase, User
+from app.extensions.translation.glossary import Glossary
 from app.extensions.translation.models import TranslationTask
 from app.extensions.translation.worker import (
     _claim_next_task,
@@ -34,13 +35,16 @@ class FakeTranslator:
         self.fail_blocks = fail_blocks or set()
         self.calls: list[str] = []
 
-    async def translate_block(self, block_id: str, text: str, source_lang: str) -> dict:
+    async def translate_block(self, block_id: str, text: str, source_lang: str, glossary_prompt: str = "") -> dict:
         self.calls.append(block_id)
         if block_id in self.fail_blocks:
             import re
 
             return {"translation": re.sub(r"⟦#\d+⟧", "", text), "uncertain": False, "low_confidence_spans": []}
         return {"translation": self.mapping.get(block_id, text), "uncertain": False, "low_confidence_spans": []}
+
+    async def back_translate(self, block_id: str, text: str, target_lang: str) -> str:
+        return self.mapping.get(block_id, text)
 
 
 async def _owner_id(db) -> uuid.UUID:
@@ -95,12 +99,37 @@ async def test_happy_path_pending_to_delivered(_engine, tmp_path):
     async with get_session_factory()() as db:
         owner = await _owner_id(db)
         kb, task = await _mk_task(db, owner, fp)
+        task.source_lang = "mixed"  # P0-3: 验证 worker 检测后回写
+        await db.commit()
         task_id = str(task.id)
         try:
             final = await run_task(task_id, translator=FakeTranslator(), index_fn=_noop_index)
             assert final == "delivered"
             await db.refresh(task)
             assert task.state == "delivered"
+            assert task.source_lang == "en"
+            assert task.content_tag == "narrative"
+        finally:
+            await _cleanup(db, kb.id)
+
+
+@pytest.mark.asyncio(loop_scope="session")
+async def test_reviewed_tier_goes_to_review_queue(_engine, tmp_path):
+    """P1-6: reviewed 档机检全绿也进人工复核（exceeded），草稿与源文快照落库。"""
+    fp = _write_docx(tmp_path)
+    async with get_session_factory()() as db:
+        owner = await _owner_id(db)
+        kb, task = await _mk_task(db, owner, fp)
+        task.quality_tier = "reviewed"
+        await db.commit()
+        task_id = str(task.id)
+        try:
+            final = await run_task(task_id, translator=FakeTranslator(), index_fn=_noop_index)
+            assert final == "exceeded"
+            await db.refresh(task)
+            assert task.state == "exceeded"
+            assert task.draft_blocks and task.draft_source_blocks
+            assert task.gate_failures is None
         finally:
             await _cleanup(db, kb.id)
 
@@ -121,6 +150,8 @@ async def test_numeric_gate_failure_goes_to_exceeded(_engine, tmp_path):
             assert task.state == "exceeded"
             assert task.gate_failures and "numeric" in task.gate_failures
             assert task.retry_count == 0  # 机检重试计数在 attempt，非 retry_count
+            # P2-12: exceeded 前有定向回译诊断
+            assert (task.error_detail or {}).get("backtranslation")
         finally:
             await _cleanup(db, kb.id)
 
@@ -208,7 +239,7 @@ async def test_terminology_gate_goes_to_exceeded(_engine, tmp_path):
             from app.extensions.translation.glossary import Glossary
 
             class RenamingTranslator(FakeTranslator):
-                async def translate_block(self, block_id, text, source_lang):
+                async def translate_block(self, block_id, text, source_lang, glossary_prompt=""):
                     # 把不译清单词改掉（术语轴违例；非数值类不重生成）
                     return {"translation": text.replace("ArcelorMittal", "安赛乐"), "uncertain": False, "low_confidence_spans": []}
 
@@ -219,5 +250,65 @@ async def test_terminology_gate_goes_to_exceeded(_engine, tmp_path):
                 glossary=Glossary(dont_translate={"ArcelorMittal"}),
             )
             assert final == "exceeded"
+            await db.refresh(task)
+            assert task.state == "exceeded"
+            # P0-1: exceeded 时必须留下逐块草稿，复核通过后才能索引/交付
+            assert task.draft_blocks
+            assert task.draft_blocks[0]["text"]
+        finally:
+            await _cleanup(db, kb.id)
+
+
+@pytest.mark.asyncio(loop_scope="session")
+async def test_terminology_failure_regenerates_failed_block(_engine, tmp_path):
+    """P2-13: 术语轴失败定位到块并重生成，第二次通过 → delivered。"""
+    fp = _write_docx(tmp_path, text="ArcelorMittal signed the contract with 42 clauses.")
+    async with get_session_factory()() as db:
+        owner = await _owner_id(db)
+        kb, task = await _mk_task(db, owner, fp)
+        task_id = str(task.id)
+
+        class FlakyTermTranslator(FakeTranslator):
+            def __init__(self):
+                super().__init__()
+                self.calls = 0
+
+            async def translate_block(self, block_id, text, source_lang, glossary_prompt=""):
+                self.calls += 1
+                if self.calls == 1:
+                    return {"translation": text.replace("ArcelorMittal", "安赛乐"), "uncertain": False, "low_confidence_spans": []}
+                return {"translation": text, "uncertain": False, "low_confidence_spans": []}
+
+        translator = FlakyTermTranslator()
+        try:
+            final = await run_task(
+                task_id,
+                translator=translator,
+                index_fn=_noop_index,
+                glossary=Glossary(dont_translate={"ArcelorMittal"}),
+            )
+            assert final == "delivered"
+            assert translator.calls == 2
+        finally:
+            await _cleanup(db, kb.id)
+
+
+@pytest.mark.asyncio(loop_scope="session")
+async def test_chinese_document_is_skipped(_engine, tmp_path):
+    """P2-14: 中文文档只索引不翻译 → skipped，不调用 translator。"""
+    fp = _write_docx(tmp_path, text="这是一份中文技术资料，不需要翻译。")
+    async with get_session_factory()() as db:
+        owner = await _owner_id(db)
+        kb, task = await _mk_task(db, owner, fp)
+        task.source_lang = "mixed"
+        await db.commit()
+        translator = FakeTranslator()
+        try:
+            final = await run_task(str(task.id), translator=translator, index_fn=_noop_index)
+            assert final == "skipped"
+            await db.refresh(task)
+            assert task.state == "skipped"
+            assert task.source_lang == "zh"
+            assert translator.calls == []
         finally:
             await _cleanup(db, kb.id)

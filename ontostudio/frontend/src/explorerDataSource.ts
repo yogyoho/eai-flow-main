@@ -148,33 +148,41 @@ function yieldToMain(): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, 0));
 }
 
-// EAI-CUSTOM(2026-09-30 谓词中文标注): eia.yaml 的 "# 谓词中文标注: xxx=中文" 注释块是
-// 唯一真源（与后端 llm_extract.load_enums 同源解析），用户规则=本体英文必有对应中文。
+// EAI-CUSTOM(2026-09-30 谓词中文标注): registry YAML 的 "# 谓词中文标注: xxx=中文"
+// 注释块是唯一真源（与后端 llm_extract.load_enums 同源解析），用户规则=本体英文必有对应中文。
 // 边标签优先中文，标注缺失/接口不可达时回退英文谓词值；模块级缓存一次。
 // EAI-CUSTOM(2026-10-01): DetailPanel 规律卡片复用（导出）——谓词/实体类型中文标注同源。
+// EAI-CUSTOM(2026-10-20): 关系库/详情栏同时消费图谱/环评/营销三域关系，合并三份 registry 标注。
+const PREDICATE_REGISTRY_FILES = ["eia.yaml", "core_graph.yaml", "market.yaml"] as const;
 let predicateLabelCache: Map<string, string> | null = null;
 export async function getPredicateLabels(): Promise<Map<string, string>> {
   if (predicateLabelCache) {
     return predicateLabelCache;
   }
   const map = new Map<string, string>();
-  try {
-    const content = await fetchRegistryContent("eia.yaml");
-    for (const m of (content.raw ?? "").matchAll(/# 谓词中文标注: (.+)/g)) {
-      const line = m[1];
-      if (!line) {
-        continue;
-      }
-      for (const pair of line.trim().split(/\s+/)) {
-        const eq = pair.indexOf("=");
-        if (eq > 0) {
-          map.set(pair.slice(0, eq), pair.slice(eq + 1));
+  await Promise.all(
+    PREDICATE_REGISTRY_FILES.map(async (file) => {
+      try {
+        const content = await fetchRegistryContent(file);
+        for (const m of (content.raw ?? "").matchAll(
+          /# 谓词中文标注[：:]\s*(.+)/g,
+        )) {
+          const line = m[1];
+          if (!line) {
+            continue;
+          }
+          for (const pair of line.trim().split(/\s+/)) {
+            const eq = pair.indexOf("=");
+            if (eq > 0) {
+              map.set(pair.slice(0, eq), pair.slice(eq + 1));
+            }
+          }
         }
+      } catch {
+        // 单份标注不可达：跳过，仍合并其余域；全部失败时回退英文谓词值
       }
-    }
-  } catch {
-    // 标注不可达：保持空表，回退英文谓词值
-  }
+    }),
+  );
   predicateLabelCache = map;
   return map;
 }

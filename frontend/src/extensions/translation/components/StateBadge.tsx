@@ -79,6 +79,11 @@ const STATE_MAP: Record<string, { label: string; cls: string; icon: React.ReactN
     cls: "text-muted-foreground",
     icon: <History className="h-3 w-3" />,
   },
+  skipped: {
+    label: "无需翻译",
+    cls: "text-muted-foreground",
+    icon: <CircleDashed className="h-3 w-3" />,
+  },
 };
 
 export function StateBadge({ state, progress }: { state: string; progress?: number }) {

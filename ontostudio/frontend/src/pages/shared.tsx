@@ -1,6 +1,6 @@
 /**
- * 骨架页共用件（EAI-CUSTOM）：页头（菜单图标 + 条款号 + 标题 + 描述 + 动作区）与基础芯片。
- * 令牌与组件惯例对齐 EAI 主系统（globals.css Yuxi 暖灰 + #0746ff 蓝）。
+ * Page shared primitives (EAI-CUSTOM): page header (icon + clause + title + description + actions)
+ * and basic chips. Tokens follow docs/designs prototype (indigo / orange / zinc).
  */
 import type { LucideIcon } from "lucide-react";
 import type { ReactNode } from "react";
@@ -8,7 +8,7 @@ import type { ReactNode } from "react";
 import { withAlpha } from "@/explorer/graphTheme";
 import { cn } from "@/lib/utils";
 
-/** 页头：菜单项图标 + 条款号 chip + 标题，下方一行描述（12px）；右侧动作区。 */
+/** Page header: dotted-grid card, icon tile, kicker, title, subtitle and right-side actions. */
 export function PageHeader({
   clause,
   icon: Icon,
@@ -23,21 +23,23 @@ export function PageHeader({
   actions?: ReactNode;
 }) {
   return (
-    <div className="mb-5 flex flex-wrap items-center gap-3">
-      {Icon ? <Icon className="text-primary h-[18px] w-[18px] flex-none" /> : null}
-      {clause ? (
-        <span className="border-primary/25 bg-primary/8 text-primary rounded-md border px-2 py-0.5 font-mono text-xs">
-          {clause}
-        </span>
+    <div className="os-page-head">
+      {Icon ? (
+        <div className="os-ph-icon">
+          <Icon />
+        </div>
       ) : null}
-      <h1 className="text-foreground text-lg font-semibold tracking-tight">{title}</h1>
-      {actions ? <div className="ml-auto flex gap-2">{actions}</div> : null}
-      <p className="text-muted-foreground mt-1 w-full text-sm">{description}</p>
+      <div className="os-ph-main">
+        {clause ? <div className="os-ph-kicker">{clause}</div> : null}
+        <h1 className="os-ph-title">{title}</h1>
+        <p className="os-ph-sub">{description}</p>
+      </div>
+      {actions ? <div className="os-ph-actions">{actions}</div> : null}
     </div>
   );
 }
 
-/** 状态芯片：语义色走 destructive/warning/primary（对齐主系统状态色惯例）。 */
+/** Status chip: semantic tone mapped to the prototype pill palette. */
 export function Chip({
   tone = "gray",
   children,
@@ -48,11 +50,11 @@ export function Chip({
   return (
     <span
       className={cn(
-        "inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-medium whitespace-nowrap",
-        tone === "gray" && "border-border text-muted-foreground border",
-        tone === "primary" && "bg-primary/10 text-primary",
-        tone === "danger" && "bg-destructive/10 text-destructive",
-        tone === "warning" && "bg-warning/15 text-warning",
+        "os-pill whitespace-nowrap",
+        tone === "gray" && "os-pill-gray",
+        tone === "primary" && "os-pill-main",
+        tone === "danger" && "os-pill-err",
+        tone === "warning" && "os-pill-warn",
       )}
     >
       {children}
@@ -60,9 +62,9 @@ export function Chip({
   );
 }
 
-/** 卡片容器：卡面 + 细边 + 可选标题行。
- *  tone（EAI-CUSTOM 2026-09-27）：传入色值时标题条带彩色圆点 + 5% 同色底——
- *  多色彩区块标识（工作台总览多色改造），不传保持原样式。 */
+/** Card container: surface + hairline + optional header row.
+ *  tone (EAI-CUSTOM 2026-09-27): colorizes the header icon; header background stays neutral
+ *  (prototype convention: color lives in the icon, not in a tinted band). */
 export function Panel({
   title,
   subtitle,
@@ -81,18 +83,10 @@ export function Panel({
   children: ReactNode;
 }) {
   return (
-    <section
-      className={cn(
-        "border-border bg-card rounded-xl border shadow-sm",
-        className,
-      )}
-    >
+    <section className={cn("os-card", className)}>
       {title ? (
-        <div
-          className="border-border flex items-center gap-2.5 border-b px-4 py-3"
-          style={tone ? { background: withAlpha(tone, 0.05) } : undefined}
-        >
-          {/* 色相由图标承担；无图标时退化为色点（用户裁决：有图标不画点） */}
+        <div className="os-card-hd">
+          {/* Color is carried by the icon; without an icon fall back to a color dot. */}
           {tone && !Icon ? (
             <span
               className="h-2.5 w-2.5 flex-none rounded-[4px]"
@@ -105,13 +99,9 @@ export function Panel({
               style={tone ? { color: tone } : undefined}
             />
           ) : null}
-          <b className="text-sm font-semibold">{title}</b>
-          {subtitle ? (
-            <span className="text-muted-foreground text-xs font-normal">
-              {subtitle}
-            </span>
-          ) : null}
-          {actions ? <div className="ml-auto">{actions}</div> : null}
+          <b>{title}</b>
+          {subtitle ? <span className="os-card-sub">{subtitle}</span> : null}
+          {actions ? <div className="os-card-right">{actions}</div> : null}
         </div>
       ) : null}
       {children}
@@ -119,7 +109,7 @@ export function Panel({
   );
 }
 
-/** 骨架占位水印：标注"示例数据"，防止占位内容被误读为真实数据。 */
+/** Skeleton watermark: marks "sample data" so placeholder content is never mistaken for real data. */
 export function DemoTag({ className }: { className?: string }) {
   return (
     <span
@@ -127,6 +117,7 @@ export function DemoTag({ className }: { className?: string }) {
         "text-muted-foreground/70 border-border/70 rounded border border-dashed px-1.5 py-px font-mono text-xs",
         className,
       )}
+      style={{ borderColor: withAlpha("#71717a", 0.35) }}
     >
       示例数据
     </span>

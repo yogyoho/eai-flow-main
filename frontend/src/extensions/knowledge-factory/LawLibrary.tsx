@@ -238,7 +238,7 @@ export default function LawLibrary() {
               <div className="text-warning flex items-start gap-2 text-sm">
                 <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
                 <span>
-                  该法规已同步到 RAGFlow 知识库，将同时删除知识库中的文档。
+                  该法规已同步到 RAG 知识库，将同时删除知识库中的文档。
                 </span>
               </div>
             )}

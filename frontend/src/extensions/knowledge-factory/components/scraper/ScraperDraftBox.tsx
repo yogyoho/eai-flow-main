@@ -14,6 +14,7 @@ import {
 import React, { useState } from "react";
 
 import { scraperApi, kbApi } from "@/extensions/api";
+import { FilterPills } from "@/extensions/project/components/FilterPills";
 import { cn } from "@/lib/utils";
 
 import { useScraperContext } from "./ScraperContext";
@@ -96,23 +97,12 @@ export default function ScraperDraftBox() {
         {/* Top bar */}
         <div className="bg-card/50 flex shrink-0 items-center justify-between border-b px-5 py-3">
           <div className="flex items-center gap-1.5">
-            {STATUS_TABS.map((t) => (
-              <button
-                key={t.value}
-                onClick={() => {
-                  setStatusFilter(t.value);
-                  setPage(1);
-                }}
-                className={cn(
-                  "rounded-lg px-3.5 py-1.5 text-sm font-medium transition-all duration-200",
-                  statusFilter === t.value
-                    ? "bg-primary text-primary-foreground shadow-sm"
-                    : "bg-muted/60 text-muted-foreground hover:bg-muted hover:text-foreground",
-                )}
-              >
-                {t.label}
-              </button>
-            ))}
+            {/* EAI-CUSTOM: 对齐项目管理页过滤组件（FilterPills，规范 §7 淡主色过滤 pill） */}
+            <FilterPills
+              onChange={setStatusFilter}
+              pills={STATUS_TABS}
+              value={statusFilter}
+            />
             <span className="text-muted-foreground ml-2 text-xs">
               共 {total} 条
             </span>

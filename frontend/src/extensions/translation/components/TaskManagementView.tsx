@@ -3,8 +3,10 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   Ban,
+  ClipboardCheck,
   Eye,
   FileText,
+  ListPlus,
   Loader2,
   MoreHorizontal,
   Play,
@@ -14,6 +16,7 @@ import {
   Trash2,
   X,
 } from "lucide-react";
+import { useRouter } from "next/navigation";
 import { type ReactNode, useState } from "react";
 import { toast } from "sonner";
 
@@ -34,10 +37,18 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 
 import {
+  batchTranslateTasks,
+  createBackfillJob,
   deleteTask,
+  getTaskStats,
   listKbOptions,
   listTasks,
   transitionTask,
@@ -75,6 +86,7 @@ function fmtTime(iso: string | null | undefined): string {
 
 export function TaskManagementView() {
   const qc = useQueryClient();
+  const router = useRouter();
   const invalidate = () => {
     void qc.invalidateQueries({ queryKey: ["tlt-tasks"] });
   };
@@ -88,6 +100,7 @@ export function TaskManagementView() {
   const [checked, setChecked] = useState<Set<string>>(new Set());
   const [detailId, setDetailId] = useState<string | null>(null);
   const [paneOpen, setPaneOpen] = useState(false);
+  const [backfilling, setBackfilling] = useState(false);
 
   // flash: sonner 右下角 toast(对齐知识工厂),不再内嵌通知条——列表不位移。
   const flash = (kind: "ok" | "err", text: string) =>
@@ -123,6 +136,13 @@ export function TaskManagementView() {
     staleTime: 5 * 60_000,
   });
 
+  const statsQ = useQuery({
+    queryKey: ["tlt-tasks", "stats", kbFilter],
+    queryFn: () => getTaskStats(kbFilter === "all" ? undefined : kbFilter),
+    refetchInterval: POLL_MS,
+  });
+  const stats = statsQ.data;
+
   const tasks = tasksQ.data?.items ?? [];
   const total = tasksQ.data?.total ?? 0;
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
@@ -145,12 +165,38 @@ export function TaskManagementView() {
   const doTranslateChecked = async () => {
     if (!translatable.length) return;
     try {
-      for (const t of translatable) await translateTask(t.id);
+      const res = await batchTranslateTasks(translatable.map((t) => t.id));
       invalidate();
       setChecked(new Set());
-      flash("ok", `已提交 ${translatable.length} 个翻译任务`);
+      flash(
+        "ok",
+        res.queued === translatable.length
+          ? `已提交 ${res.queued} 个翻译任务`
+          : `已提交 ${res.queued} 个；${res.skipped.length} 个状态已变化被跳过`,
+      );
     } catch (e) {
       flash("err", `提交失败：${e instanceof Error ? e.message : String(e)}`);
+    }
+  };
+
+  /** P2 超大回填：按当前知识库筛选创建后台分批任务。 */
+  const startBackfill = async () => {
+    setBackfilling(true);
+    try {
+      const job = await createBackfillJob({
+        kb_id: kbFilter === "all" ? undefined : kbFilter,
+        states: ["stored", "failed"],
+        chunk_size: 100,
+      });
+      invalidate();
+      flash(
+        "ok",
+        `已创建回填任务（${job.total} 个，每批 ${job.chunk_size} 个入队）`,
+      );
+    } catch (e) {
+      flash("err", `回填失败：${e instanceof Error ? e.message : String(e)}`);
+    } finally {
+      setBackfilling(false);
     }
   };
 
@@ -165,6 +211,8 @@ export function TaskManagementView() {
   };
 
   const doDelete = async (t: TltTask) => {
+    if (!window.confirm(`删除「${t.file_name}」？将下线检索索引，交付物文件保留。`))
+      return;
     try {
       await deleteTask(t.id);
       invalidate();
@@ -175,7 +223,7 @@ export function TaskManagementView() {
         setDetailId(null);
         setPaneOpen(false);
       }
-      flash("ok", "已移出资产库（可恢复）");
+      flash("ok", "已删除并下线检索（交付物留档）");
     } catch (e) {
       flash("err", `删除失败：${e instanceof Error ? e.message : String(e)}`);
     }
@@ -208,6 +256,13 @@ export function TaskManagementView() {
         run: () => openDetail(t),
       });
     }
+    if (t.state === "exceeded") {
+      ops.push({
+        label: "去复核",
+        icon: <ClipboardCheck className="mr-2 h-4 w-4" />,
+        run: () => router.push(`/translation/review?task_id=${t.id}`),
+      });
+    }
     if (["pending", "running", "check_failed", "retrying"].includes(t.state)) {
       ops.push({
         label: "取消任务",
@@ -219,7 +274,7 @@ export function TaskManagementView() {
       });
     }
     ops.push({
-      label: "移出资产库",
+      label: "删除文档",
       icon: <Trash2 className="mr-2 h-4 w-4" />,
       run: () => void doDelete(t).catch((e) => flash("err", String(e))),
     });
@@ -295,22 +350,70 @@ export function TaskManagementView() {
         description="翻译任务队列与状态跟踪"
         icon={<FileText />}
         actions={
-          checked.size > 0 ? (
-            <Button
-              size="sm"
-              disabled={!translatable.length}
-              onClick={doTranslateChecked}
-            >
-              {tasksQ.isFetching ? (
-                <Loader2 className="mr-1 h-3 w-3 animate-spin" />
-              ) : (
-                <Play className="mr-1 h-3 w-3" />
-              )}
-              翻译 ({translatable.length})
-            </Button>
-          ) : undefined
+          <>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="text-[13px]"
+                  disabled={backfilling}
+                  onClick={() => void startBackfill()}
+                >
+                  {backfilling ? (
+                    <Loader2 className="mr-1 h-3 w-3 animate-spin" />
+                  ) : (
+                    <ListPlus className="mr-1 h-3 w-3" />
+                  )}
+                  回填未翻译
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent side="bottom" className="max-w-72">
+                按当前知识库筛选，把未翻译和翻译失败的文档分批加入队列，后台按批处理；已交付文件不受影响。
+              </TooltipContent>
+            </Tooltip>
+            {checked.size > 0 && (
+              <Button
+                size="sm"
+                disabled={!translatable.length}
+                onClick={doTranslateChecked}
+              >
+                {tasksQ.isFetching ? (
+                  <Loader2 className="mr-1 h-3 w-3 animate-spin" />
+                ) : (
+                  <Play className="mr-1 h-3 w-3" />
+                )}
+                翻译 ({translatable.length})
+              </Button>
+            )}
+          </>
         }
       />
+
+      {/* P2-16 头部指标条：按状态聚合（同 owner 口径） */}
+      <div className="bg-card border-border flex flex-wrap items-center gap-x-6 gap-y-1 rounded-lg border px-4 py-2.5">
+        {(
+          [
+            ["任务总数", stats?.total ?? 0, ""],
+            ["已交付", stats?.delivered ?? 0, "text-[var(--success-700)]"],
+            ["翻译中", stats?.running ?? 0, "text-[var(--info-700)]"],
+            ["待复核", stats?.exceeded ?? 0, "text-[var(--warning-900)]"],
+            ["无需翻译", stats?.skipped ?? 0, "text-muted-foreground"],
+          ] as const
+        ).map(([label, value, tone]) => (
+          <div key={label} className="flex items-baseline gap-2">
+            <span className="text-muted-foreground text-xs">{label}</span>
+            <span
+              className={cn(
+                "text-foreground text-lg leading-none font-bold tabular-nums",
+                tone,
+              )}
+            >
+              {value}
+            </span>
+          </div>
+        ))}
+      </div>
 
       {/* 筛选行 */}
       <div className="flex flex-wrap items-center gap-2">
@@ -337,6 +440,7 @@ export function TaskManagementView() {
                 ["indexed", "入库中"],
                 ["delivered", "已交付"],
                 ["failed", "失败"],
+                ["skipped", "无需翻译"],
               ] as const
             ).map(([v, label]) => (
               <SelectItem key={v} value={v}>
@@ -790,7 +894,7 @@ export function TaskManagementView() {
                 className="text-destructive hover:text-destructive"
                 onClick={() => void doDelete(detail)}
               >
-                <Trash2 className="mr-1 h-3.5 w-3.5" /> 移出资产库
+                <Trash2 className="mr-1 h-3.5 w-3.5" /> 删除文档
               </Button>
             </div>
           </aside>

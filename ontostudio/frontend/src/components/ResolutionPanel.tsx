@@ -1,6 +1,6 @@
 /* 复制自 frontend/src/extensions/ontology/components/ResolutionPanel.tsx（S2 Task 1）——
- * 2026-09-27 按 docs/designs/ontostudio-frontend-redesign-20260926.html#resolve 完全移植：
- * 布局 = 超管横幅 + 双列（左：待确认实体卡流 / 右：相似合并建议 + 四态契约表）。
+ * 2026-10-20 按 docs/designs/ontostudio-platform.html#s-resolve 重排：
+ * 布局 = 页头 + 待审队列（300px）/ 候选对比 / 右侧反馈与质量约束（286px）。
  * 数据流原样保留：pending 升序列表、按选中实体拉相似建议、确认/驳回四态（T4）、
  * 合并/撤销（可回放）、mergedCount 由页面图快照传入。 */
 "use client";
@@ -20,12 +20,18 @@ import {
   AlertTriangle,
   Check,
   CheckCircle2,
+  ChevronLeft,
+  ChevronRight,
   GitMerge,
+  Info,
   Loader2,
   RefreshCw,
+  Search,
+  ShieldCheck,
   Undo2,
+  X,
 } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 import {
   fetchPending,
@@ -33,7 +39,7 @@ import {
   mergeEntities,
   PENDING_REVIEW_LIMIT,
   unmergeEntities,
-  type PendingPage,
+  type ResolutionSuggestion,
   type SuggestionsResult,
 } from "@/api/ontology-graph-api";
 import {
@@ -43,24 +49,11 @@ import {
   type ActionInvokeResult,
   type ReviewDecision,
 } from "@/api/actions-api";
-import {
-  ACCENT_SOFT,
-  AMBER,
-  BLUE,
-  CARD,
-  CARD_BORDER,
-  GREEN,
-  INK,
-  INK_2,
-  INK_3,
-  PAGE_BG,
-  RED,
-} from "@/components/chartTheme";
 import { fetchEiaEtypeLabels } from "@/explorerDataSource";
-import { withAlpha } from "@/explorer/graphTheme";
 import { domainAlias } from "@/lib/terms";
 import { cn } from "@/lib/utils";
 import { PERM, usePermission } from "@/lib/permissions";
+import { Chip, PageHeader, Panel } from "@/pages/shared";
 
 type ApiError = Error & { status?: number };
 
@@ -98,12 +91,14 @@ interface ResolutionPanelProps {
   /** merge/unmerge 成功后触发地图图数据重载（页面 invalidate 图全量查询）。 */
   onRefreshGraph?: () => void;
   /**
-   * 头部检索框透传（EAI-CUSTOM 2026-09-29 检索修复）：对已拉取的待审卡做
+   * 页头检索框透传（EAI-CUSTOM 2026-09-29 检索修复）：对已拉取的待审卡做
    * canonical_name 客户端过滤（resolution 通道 snake_case 契约；大小写不敏感
    * contains；空 = 全量）。后端 /resolution/pending 只有 etype/limit 无 search
    * 参数，拉取上限 PENDING_REVIEW_LIMIT 内过滤即任务口径。
    */
   searchQuery?: string;
+  /** 检索框受控回写（2026-10-20 页头重构：搜索框移入待审队列工具栏）。 */
+  onSearchChange?: (value: string) => void;
 }
 
 /** 后端错误语义 → UI 文案：404 固定提示（配自动刷新）；409 detail 直出；422 固定提示。 */
@@ -122,6 +117,96 @@ function actionLabel(action: "auto_merge" | "review"): string {
   return action === "auto_merge" ? "可直并" : "需人工";
 }
 
+/** 待审优先级：置信度越低越优先（队列按置信度升序）。 */
+function reviewSeverity(confidence: number): {
+  label: string;
+  dot: string;
+  tone: "danger" | "warning" | "gray";
+} {
+  if (confidence < 0.8) return { label: "高", dot: "is-high", tone: "danger" };
+  if (confidence < 0.9) return { label: "中", dot: "is-mid", tone: "warning" };
+  return { label: "低", dot: "is-low", tone: "gray" };
+}
+
+function CandidateCard({
+  role,
+  tone,
+  name,
+  etype,
+  domain,
+  confidence,
+  suggestion,
+  etypeLabel,
+}: {
+  role: "A" | "B";
+  tone: "primary" | "warning";
+  name: string;
+  etype: string;
+  domain?: string;
+  confidence?: number;
+  suggestion?: ResolutionSuggestion;
+  etypeLabel: string;
+}) {
+  const severity = confidence !== undefined ? reviewSeverity(confidence) : null;
+  return (
+    <div className="os-resolve-cand">
+      <div className="os-resolve-cand-hd">
+        <Chip tone={tone}>候选 {role}</Chip>
+        <b title={name}>{name}</b>
+        {suggestion ? (
+          <span className="os-resolve-sim" title="相似度">
+            {suggestion.similarity.toFixed(2)}
+          </span>
+        ) : null}
+      </div>
+      <div className="os-resolve-cand-bd">
+        <div className="os-kv">
+          <span className="os-kv-k">名称</span>
+          <span className="os-kv-v" title={name}>
+            {name}
+          </span>
+        </div>
+        <div className="os-kv">
+          <span className="os-kv-k">类型</span>
+          <span className="os-kv-v" title={etype}>
+            {etypeLabel}
+          </span>
+        </div>
+        {domain ? (
+          <div className="os-kv">
+            <span className="os-kv-k">域</span>
+            <span className="os-kv-v">{domainAlias(domain) ?? domain}</span>
+          </div>
+        ) : null}
+        {confidence !== undefined && severity ? (
+          <div className="os-kv">
+            <span className="os-kv-k">置信度</span>
+            <span className={cn("os-kv-v os-resolve-conf", severity.dot)}>
+              {confidence.toFixed(2)}
+            </span>
+          </div>
+        ) : null}
+        {suggestion ? (
+          <>
+            <div className="os-kv">
+              <span className="os-kv-k">相似度</span>
+              <span className="os-kv-v os-resolve-conf">{suggestion.similarity.toFixed(2)}</span>
+            </div>
+            <div className="os-kv">
+              <span className="os-kv-k">建议</span>
+              <span className="os-kv-v">
+                <Chip tone={suggestion.action === "auto_merge" ? "primary" : "warning"}>
+                  {actionLabel(suggestion.action)}
+                </Chip>
+              </span>
+            </div>
+          </>
+        ) : null}
+      </div>
+    </div>
+  );
+}
+
 interface SuggestionsState {
   loading: boolean;
   error: ApiError | null;
@@ -132,6 +217,7 @@ export function ResolutionPanel({
   mergedCount,
   onRefreshGraph,
   searchQuery = "",
+  onSearchChange,
 }: ResolutionPanelProps) {
   const queryClient = useQueryClient();
   const { can: canReview } = usePermission();
@@ -391,6 +477,22 @@ export function ResolutionPanel({
     );
   }, [entities, search]);
 
+  // 首屏自动选中第一条待审实体（原型：队列首行高亮 + 中间对比区直接有内容）。
+  // 只自动触发一次；用户主动收起后不再强制重选。
+  const autoSelectedRef = useRef(false);
+  useEffect(() => {
+    if (expandedId) {
+      autoSelectedRef.current = true;
+      return;
+    }
+    if (autoSelectedRef.current) return;
+    const first = visibleEntities[0];
+    if (first) {
+      autoSelectedRef.current = true;
+      setExpandedId(first.id);
+    }
+  }, [expandedId, visibleEntities]);
+
   // 列表刷新后剪枝选中集合：已离开待审列表的行不再保留勾选
   useEffect(() => {
     setSelectedPks((prev) => {
@@ -416,6 +518,31 @@ export function ResolutionPanel({
 
   const pendingTotal = pendingQuery.data?.count;
   const selectedEntity = entities.find((e) => e.id === expandedId) ?? null;
+  const selectedReview = selectedEntity
+    ? reviewStates[selectedEntity.id] ?? REVIEW_IDLE
+    : REVIEW_IDLE;
+  const suggestions = suggestionsQuery.data?.suggestions ?? [];
+  const topSuggestion = suggestions[0] ?? null;
+  const restSuggestions = suggestions.slice(1);
+  const totalPages =
+    pendingTotal && pendingTotal > 0
+      ? Math.max(1, Math.ceil(pendingTotal / PENDING_REVIEW_LIMIT))
+      : 1;
+  const lowConfidenceCount = visibleEntities.filter(
+    (entity) => entity.confidence < 0.8,
+  ).length;
+  const etypeLabelOf = (etype: string) => etypeLabels.data?.get(etype) ?? etype;
+  const candidateA = selectedEntity ? (
+    <CandidateCard
+      role="A"
+      tone="primary"
+      name={selectedEntity.canonical_name}
+      etype={selectedEntity.etype}
+      etypeLabel={etypeLabelOf(selectedEntity.etype)}
+      domain={selectedEntity.domain}
+      confidence={selectedEntity.confidence}
+    />
+  ) : null;
 
   // 批量选择派生值：可见集 = 检索过滤后的卡流（全选只作用于看得见的行）
   const selectedCount = selectedPks.size;
@@ -435,300 +562,279 @@ export function ResolutionPanel({
 
   return (
     <div className="h-full overflow-y-auto" data-testid="ontology-resolution-panel">
-      <div className="space-y-4 p-6" style={{ background: PAGE_BG, minHeight: "100%" }}>
-        {/* 超管提示横幅（原型 warnb） */}
-        {/* 权限横幅（B1：原「仅超管可审」v1 横幅退役, 授权走 EAI 策略中心 ontology:review） */}
+      <div className="os-page">
+        <PageHeader
+          clause="04 · 知识层"
+          icon={GitMerge}
+          title="消解审核"
+          description="候选实体两两比对，确认合并入图或驳回归档 · 确认后即时生效 · 驳回保留证据不删数据"
+          actions={
+            <>
+              <button
+                type="button"
+                disabled={selectedCount === 0 || batchMutation.isPending || !canReviewActions}
+                onClick={() => batchMutation.mutate({ pks: [...selectedPks], decision: "reject" })}
+                title={`批量驳回选中 ${selectedCount} 条（归档保留，不删数据）`}
+                className="os-btn os-btn-secondary"
+                data-testid="resolution-batch-reject"
+              >
+                <X />
+                批量驳回{selectedCount > 0 ? ` (${selectedCount})` : ""}
+              </button>
+              <button
+                type="button"
+                disabled={selectedCount === 0 || batchMutation.isPending || !canReviewActions}
+                onClick={() => batchMutation.mutate({ pks: [...selectedPks], decision: "confirm" })}
+                title={`批量确认选中 ${selectedCount} 条（入图并即时生效）`}
+                className="os-btn os-btn-primary"
+                data-testid="resolution-batch-confirm"
+              >
+                {batchMutation.isPending && batchDecision === "confirm" ? (
+                  <Loader2 className="animate-spin" />
+                ) : (
+                  <Check />
+                )}
+                批量确认{selectedCount > 0 ? ` (${selectedCount})` : ""}
+              </button>
+            </>
+          }
+        />
+
         {!canReviewActions ? (
-          <div
-            className="flex items-start gap-2.5 rounded-[12px] border px-3.5 py-2.5 text-sm"
-            style={{ background: withAlpha(AMBER, 0.1), border: `1px solid ${withAlpha(AMBER, 0.45)}`, color: "#874d00" }}
-            data-testid="resolution-no-review-perm"
-          >
-            <AlertTriangle className="mt-0.5 h-3.5 w-3.5 flex-none" style={{ color: AMBER }} />
+          <div className="os-resolve-banner is-warn" data-testid="resolution-no-review-perm">
+            <AlertTriangle />
             <div>
-              <b>当前账号无审核权限。</b>
-              需要权限点 <code>ontology:review</code>——请在 EAI 系统管理·策略中心授权后刷新本页。
+              <b>当前账号无审核权限。</b>需要权限点 <code>ontology:review</code>——请在 EAI
+              系统管理·策略中心授权后刷新本页。
             </div>
           </div>
         ) : (
-          <div
-            className="flex items-start gap-2.5 rounded-[12px] px-3.5 py-2.5 text-sm"
-            style={{ background: withAlpha(AMBER, 0.1), border: `1px solid ${withAlpha(AMBER, 0.45)}`, color: "#874d00" }}
-            data-testid="resolution-superadmin-banner"
-          >
-            <AlertTriangle className="mt-0.5 h-3.5 w-3.5 flex-none" style={{ color: AMBER }} />
+          <div className="os-resolve-banner is-warn" data-testid="resolution-superadmin-banner">
+            <AlertTriangle />
             <div>
-              <b>当前以 superadmin 操作。</b>
-              审阅授权已迁移 EAI 策略中心（权限点 ontology:review）。
+              <b>
+                {pendingTotal !== undefined
+                  ? `${pendingTotal} 条实体待复核`
+                  : "正在读取待复核实体"}
+              </b>
+              {pendingTotal !== undefined ? (
+                <>
+                  ，当前视图 {visibleEntities.length} 条
+                  {lowConfidenceCount > 0
+                    ? `，其中 ${lowConfidenceCount} 条低置信度（<0.80）`
+                    : ""}
+                  ；队列按置信度升序排列。
+                </>
+              ) : null}
+              <span className="os-resolve-banner-sep"> · </span>
+              当前以 superadmin 操作；审阅授权已迁移 EAI 策略中心（权限点
+              ontology:review）。
             </div>
           </div>
         )}
 
-        {/* 顶部通知（info/error） */}
         {notice ? (
           <div
-            className={cn(
-              "flex items-start gap-2.5 rounded-[12px] px-3.5 py-2.5 text-sm",
-              notice.kind === "error" ? "bg-destructive/10 text-destructive" : "bg-primary/10 text-primary",
-            )}
+            className={cn("os-resolve-banner", notice.kind === "error" ? "is-error" : "is-info")}
             data-testid="resolution-notice"
           >
-            {notice.kind === "error" ? (
-              <AlertTriangle className="mt-0.5 h-3.5 w-3.5 flex-none" />
-            ) : (
-              <CheckCircle2 className="mt-0.5 h-3.5 w-3.5 flex-none" />
-            )}
+            {notice.kind === "error" ? <AlertTriangle /> : <CheckCircle2 />}
             <span>{notice.text}</span>
           </div>
         ) : null}
 
-        {/* 双列主区 */}
-        <div className="grid grid-cols-1 items-start gap-4 xl:grid-cols-2">
-          {/* 左：待确认实体 */}
-          <div className="rounded-[14px]" style={{ background: CARD, border: `1px solid ${CARD_BORDER}` }}>
-            <div className="flex flex-wrap items-center gap-2 border-b px-4 py-3" style={{ borderColor: CARD_BORDER }}>
-              <b className="text-sm font-semibold" style={{ color: INK }}>
-                待确认实体
-              </b>
-              {pendingTotal !== undefined && pendingTotal > 0 ? (
-                <span
-                  className="rounded-full px-2 py-0.5 text-xs font-medium"
-                  style={{ background: withAlpha(AMBER, 0.15), color: "#ad6800" }}
+        <div className="os-resolve-grid">
+          <Panel
+            title="待审队列"
+            subtitle={
+              pendingTotal !== undefined
+                ? search
+                  ? `${visibleEntities.length} / ${pendingTotal} 条`
+                  : `${pendingTotal} 条`
+                : undefined
+            }
+            actions={<Chip tone="warning">低置信优先</Chip>}
+            className="os-resolve-panel os-resolve-queue"
+          >
+            <div className="os-resolve-search">
+              <Search />
+              <input
+                type="search"
+                value={searchQuery}
+                onChange={(event) => onSearchChange?.(event.target.value)}
+                placeholder="搜索候选项…"
+                aria-label="检索实体"
+                autoComplete="off"
+              />
+              {searchQuery ? (
+                <button
+                  type="button"
+                  className="os-resolve-search-clear"
+                  onClick={() => onSearchChange?.("")}
+                  aria-label="清除检索"
                 >
-                  {search
-                    ? `${visibleEntities.length} / ${pendingTotal} 条匹配`
-                    : `${pendingTotal} 条待审`}
-                </span>
+                  <X />
+                </button>
               ) : null}
-              {pendingTotal !== undefined && pendingTotal > PENDING_REVIEW_LIMIT ? (
-                /* 翻页（v2 B2/N1）：服务端 offset，每页 PENDING_REVIEW_LIMIT 条 */
-                <span className="flex items-center gap-1 text-xs">
-                  <button
-                    type="button"
-                    disabled={pageIndex === 0}
-                    onClick={() => setPageIndex((p) => Math.max(0, p - 1))}
-                    className="border-border bg-card hover:bg-muted rounded border px-1.5 py-0.5 disabled:opacity-40"
-                  >
-                    上一页
-                  </button>
-                  <span className="text-muted-foreground tabular-nums">
-                    {pageIndex + 1} / {Math.ceil(pendingTotal / PENDING_REVIEW_LIMIT)} 页
-                  </span>
-                  <button
-                    type="button"
-                    disabled={(pageIndex + 1) * PENDING_REVIEW_LIMIT >= pendingTotal}
-                    onClick={() => setPageIndex((p) => p + 1)}
-                    className="border-border bg-card hover:bg-muted rounded border px-1.5 py-0.5 disabled:opacity-40"
-                  >
-                    下一页
-                  </button>
-                </span>
-              ) : null}
-              {visibleEntities.length > 0 ? (
-                /* 全选（EAI-CUSTOM 2026-09-29 批量确认）：只作用于检索可见的行 */
-                <label
-                  className="ml-auto flex cursor-pointer items-center gap-1.5 text-xs font-medium select-none"
-                  style={{ color: INK_2 }}
-                >
-                  <input
-                    type="checkbox"
-                    checked={allVisibleSelected}
-                    onChange={toggleSelectAllVisible}
-                    className="h-3.5 w-3.5"
-                    style={{ accentColor: BLUE }}
-                    data-testid="resolution-select-all"
-                  />
-                  全选
-                </label>
-              ) : null}
-              <span className="text-muted-foreground/80 hidden font-mono text-xs sm:inline">
-                POST /actions/invoke
-              </span>
             </div>
 
             {pendingQuery.isError ? (
-              <div className="flex items-center justify-between gap-3 px-4 py-4" data-testid="resolution-pending-error">
-                <p className="text-[13px]" style={{ color: RED }}>
+              <div className="os-resolve-state is-error" data-testid="resolution-pending-error">
+                <span>
                   待复核列表加载失败：
                   {(pendingQuery.error as ApiError).message || "网络错误"}
-                </p>
+                </span>
                 <button
                   type="button"
                   onClick={() => void pendingQuery.refetch()}
-                  className="shrink-0 rounded-md px-2.5 py-1 text-sm font-medium"
-                  style={{ background: ACCENT_SOFT, color: BLUE }}
+                  className="os-btn os-btn-secondary os-btn-sm"
                 >
                   重试
                 </button>
               </div>
             ) : pendingQuery.isLoading ? (
-              <div className="text-muted-foreground flex items-center justify-center gap-2 px-4 py-10 text-sm">
-                <Loader2 className="h-4 w-4 animate-spin" />
+              <div className="os-resolve-state">
+                <Loader2 className="animate-spin" />
                 加载待审列表…
               </div>
             ) : entities.length === 0 ? (
-              <div className="text-muted-foreground px-4 py-10 text-center text-sm">
-                暂无待复核实体 ✅
+              <div className="os-resolve-state">
+                <CheckCircle2 />
+                暂无待复核实体
               </div>
             ) : visibleEntities.length === 0 ? (
-              /* 检索无命中（EAI-CUSTOM 2026-09-29）：与「暂无待审」区分开 */
-              <div className="text-muted-foreground px-4 py-10 text-center text-sm">
+              <div className="os-resolve-state">
                 未找到匹配「{searchQuery.trim()}」的待审实体
               </div>
             ) : (
-              <div className="flex max-h-[640px] flex-col gap-2.5 overflow-y-auto p-3" data-testid="resolution-pending-list">
+              <div className="os-resolve-list" data-testid="resolution-pending-list">
                 {visibleEntities.map((entity) => {
                   const review = reviewStates[entity.id] ?? REVIEW_IDLE;
                   const selected = expandedId === entity.id;
                   const checked = selectedPks.has(entity.id);
                   const failedDetail = batchFailed.get(entity.id);
+                  const severity = reviewSeverity(entity.confidence);
                   return (
                     <div
                       key={entity.id}
-                      className={cn(
-                        "rounded-[12px] border transition-colors",
-                        selected ? "bg-primary/5" : "bg-background hover:bg-muted/60",
-                      )}
-                      style={{ borderColor: selected ? withAlpha(BLUE, 0.4) : CARD_BORDER }}
+                      className={cn("os-resolve-row", selected && "is-on")}
                       data-testid="resolution-row"
+                      onClick={() => handleToggleRow(entity.id)}
                     >
-                      {/* 卡头：勾选框（批量选择，阻断冒泡避免触发行展开）+ 点选 = 加载该实体相似建议 */}
-                      <div className="flex items-start gap-2 px-3.5 pt-3">
-                        <input
-                          type="checkbox"
-                          checked={checked}
-                          onChange={() => toggleSelected(entity.id)}
+                      <input
+                        type="checkbox"
+                        checked={checked}
+                        onChange={() => toggleSelected(entity.id)}
+                        onClick={(event) => event.stopPropagation()}
+                        aria-label={`选择 ${entity.canonical_name}`}
+                        className="os-resolve-check"
+                        data-testid="resolution-row-checkbox"
+                      />
+                      <span
+                        className={cn("os-resolve-sev", severity.dot)}
+                        title={`待审优先级：${severity.label}`}
+                      />
+                      <div className="os-resolve-main">
+                        <div className="os-resolve-name">
+                          <b title={entity.canonical_name}>{entity.canonical_name}</b>
+                        </div>
+                        <div className="os-resolve-meta">
+                          <span title={entity.etype}>{etypeLabelOf(entity.etype)}</span>
+                          <span className="os-resolve-meta-sep">·</span>
+                          <span>{domainAlias(entity.domain) ?? entity.domain}</span>
+                          <span className="os-resolve-meta-sep">·</span>
+                          <span>待审</span>
+                        </div>
+
+                        {failedDetail && review.phase === "idle" ? (
+                          <div className="os-resolve-row-fail" data-testid="resolution-batch-failed">
+                            <AlertTriangle />
+                            <span title={failedDetail}>批量确认失败：{failedDetail}</span>
+                            <button
+                              type="button"
+                              onClick={(event) => {
+                                event.stopPropagation();
+                                handleReview(entity.id, "confirm");
+                              }}
+                              className="os-resolve-link-danger"
+                              data-testid="resolution-batch-retry"
+                            >
+                              重试
+                            </button>
+                          </div>
+                        ) : null}
+
+                        {review.phase === "running" ? (
+                          <div className="os-resolve-row-state is-info">
+                            <Loader2 className="animate-spin" />
+                            正在同步投影入图…
+                          </div>
+                        ) : review.phase === "done" && review.outcome ? (
+                          <div
+                            className={cn(
+                              "os-resolve-row-state",
+                              review.outcome === "ok"
+                                ? "is-ok"
+                                : review.outcome === "degraded"
+                                  ? "is-warn"
+                                  : "is-muted",
+                            )}
+                          >
+                            {review.outcome === "ok" ? <CheckCircle2 /> : null}
+                            {review.outcome === "degraded" ? <AlertTriangle /> : null}
+                            {review.outcome === "conflict" ? <RefreshCw /> : null}
+                            {review.outcome === "ok"
+                              ? review.decision === "reject"
+                                ? "已驳回归档"
+                                : "已确认入图"
+                              : review.outcome === "degraded"
+                                ? "投影降级，已提交"
+                                : "状态已变更，请刷新"}
+                          </div>
+                        ) : null}
+
+                        <div
+                          className="os-resolve-row-actions"
                           onClick={(event) => event.stopPropagation()}
-                          aria-label={`选择 ${entity.canonical_name}`}
-                          className="mt-0.5 h-3.5 w-3.5 flex-none"
-                          style={{ accentColor: BLUE }}
-                          data-testid="resolution-row-checkbox"
-                        />
-                        <button
-                          type="button"
-                          onClick={() => handleToggleRow(entity.id)}
-                          aria-pressed={selected}
-                          className="flex min-w-0 flex-1 items-center gap-2 text-left"
                         >
-                        <span className="min-w-0 flex-1 truncate text-[13.5px] font-semibold" title={entity.canonical_name}>
-                          {entity.canonical_name}
-                        </span>
+                          <button
+                            type="button"
+                            disabled={
+                              batchMutation.isPending ||
+                              !canReviewActions ||
+                              review.phase !== "idle"
+                            }
+                            onClick={() => handleReview(entity.id, "confirm")}
+                            className="os-btn os-btn-ghost os-btn-sm"
+                          >
+                            <Check />
+                            确认
+                          </button>
+                          <button
+                            type="button"
+                            disabled={
+                              batchMutation.isPending ||
+                              !canReviewActions ||
+                              review.phase !== "idle"
+                            }
+                            onClick={() => handleReview(entity.id, "reject")}
+                            className="os-btn os-btn-ghost os-btn-sm is-danger"
+                          >
+                            <X />
+                            驳回
+                          </button>
+                        </div>
+                      </div>
+                      <div className="os-resolve-conf-wrap">
                         <span
-                          className="bg-secondary text-secondary-foreground shrink-0 rounded-md px-1.5 py-0.5 text-xs"
-                          title={entity.etype}
-                        >
-                          {etypeLabels.data?.get(entity.etype) ?? entity.etype}
-                        </span>
-                        <span
-                          className="w-10 shrink-0 text-right font-mono text-xs font-semibold tabular-nums"
-                          style={{ color: entity.confidence < 0.8 ? "#ad6800" : INK_2 }}
+                          className={cn("os-resolve-conf", severity.dot)}
                           title="抽取置信度"
                         >
                           {Number(entity.confidence).toFixed(2)}
                         </span>
-                        <span
-                          className="hidden w-[4.5rem] shrink-0 font-mono text-xs sm:inline"
-                          style={{ color: INK_3 }}
-                          title={entity.id}
-                        >
-                          {entity.id.slice(0, 8)}
+                        <span title={`待审优先级：${severity.label}`}>
+                          <Chip tone={severity.tone}>{severity.label}</Chip>
                         </span>
-                        </button>
-                      </div>
-                      <div className="text-muted-foreground px-3.5 pt-1 text-xs" style={{ color: INK_3 }}>
-                        {/* R1 去硬编码（2026-10-02 CEO 审核）：域随实体数据，此前写死「环评」 */}
-                        {domainAlias(entity.domain) ?? entity.domain} · 待审
-                      </div>
-
-                      {/* 批量失败行（EAI-CUSTOM 2026-09-29）：标红 + 单条重试入口（走单条管线，
-                       * 成功后由 reviewMutation 摘标并刷新列表） */}
-                      {failedDetail && review.phase === "idle" ? (
-                        <div
-                          className="flex flex-wrap items-center gap-2 px-3.5 pb-1 text-sm"
-                          style={{ color: RED }}
-                          data-testid="resolution-batch-failed"
-                        >
-                          <AlertTriangle className="h-3.5 w-3.5 flex-none" />
-                          <span className="min-w-0 flex-1 truncate" title={failedDetail}>
-                            批量确认失败：{failedDetail}
-                          </span>
-                          <button
-                            type="button"
-                            onClick={() => handleReview(entity.id, "confirm")}
-                            className="shrink-0 rounded-md border px-2 py-0.5 text-xs font-medium transition-colors hover:bg-black/[0.03]"
-                            style={{ color: RED, borderColor: withAlpha(RED, 0.45) }}
-                            data-testid="resolution-batch-retry"
-                          >
-                            重试
-                          </button>
-                        </div>
-                      ) : null}
-
-                      {/* 动作行：确认/驳回 + 四态结果 */}
-                      <div className="flex flex-wrap items-center gap-2 px-3.5 pb-3 pt-2.5">
-                        {review.phase === "running" ? (
-                          /* 在途进度行：invoke 是同步投影（行提交 + 断言图全局 refresh，实测
-                           * 数十秒），仅按钮 spinner 会被误读为卡死/未生效而手动刷新——刷新
-                           * 若落在提交前反而看到"没生效"（EAI-CUSTOM 2026-09-29 抽查修复）。 */
-                          <span
-                            className="flex items-center gap-1.5 text-sm font-medium"
-                            style={{ color: BLUE }}
-                            data-testid="resolution-review-running"
-                          >
-                            <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                            正在同步投影入图（提交后全局刷新断言图，实测约需 10–60
-                            秒）——请勿刷新或离开本页
-                          </span>
-                        ) : review.phase === "done" && review.outcome ? (
-                          review.outcome === "ok" ? (
-                            <span className="flex items-center gap-1.5 text-sm font-medium" style={{ color: GREEN }} data-testid="resolution-review-outcome">
-                              <CheckCircle2 className="h-3.5 w-3.5" />
-                              {review.decision === "reject" ? "已驳回归档（rejected，实体与提及保留）" : "已确认入图（断言图已更新）"}
-                            </span>
-                          ) : review.outcome === "degraded" ? (
-                            <span className="flex items-center gap-1.5 text-sm" style={{ color: "#ad6800" }}>
-                              <AlertTriangle className="h-3.5 w-3.5 flex-none" style={{ color: AMBER }} />
-                              投影未生效（degraded）：已提交；管理员重跑全量装载即自动对账，数据无损失
-                            </span>
-                          ) : (
-                            <span className="flex items-center gap-1.5 text-sm" style={{ color: INK_2 }}>
-                              <RefreshCw className="h-3.5 w-3.5 flex-none" />
-                              状态已变更（可能已驳回/已合并），请刷新
-                            </span>
-                          )
-                        ) : (
-                          /* idle 态按钮（running 由上方进度行整行接管，spinner/禁用随之中置；
-                           * 批量在途时同样禁用——单条与批量并发会各做一次全局 refresh） */
-                          <>
-                            <button
-                              type="button"
-                              disabled={batchMutation.isPending || !canReviewActions}
-                              onClick={() => handleReview(entity.id, "confirm")}
-                              data-testid="resolution-confirm"
-                              className="flex items-center gap-1.5 rounded-md px-2.5 py-1 text-sm font-medium text-white transition-opacity hover:opacity-90 disabled:opacity-50"
-                              style={{ background: BLUE }}
-                            >
-                              <Check className="h-3 w-3" />
-                              确认入图
-                            </button>
-                            <button
-                              type="button"
-                              disabled={batchMutation.isPending || !canReviewActions}
-                              onClick={() => handleReview(entity.id, "reject")}
-                              data-testid="resolution-reject"
-                              className="flex items-center gap-1.5 rounded-md border px-2.5 py-1 text-sm font-medium transition-colors hover:bg-black/[0.03] disabled:opacity-50"
-                              style={{ color: RED, borderColor: withAlpha(RED, 0.45) }}
-                            >
-                              驳回
-                            </button>
-                            <span
-                              className="text-muted-foreground/80 text-xs"
-                              title="确认后实体入图并即时生效；详情见右侧「操作反馈四态」"
-                            >
-                              确认即生效
-                            </span>
-                          </>
-                        )}
                       </div>
                     </div>
                   );
@@ -736,205 +842,408 @@ export function ResolutionPanel({
               </div>
             )}
 
-            <div className="flex flex-wrap items-center justify-between gap-2 border-t px-4 py-2.5" style={{ borderColor: CARD_BORDER }}>
-              <span className="text-muted-foreground text-xs">
-                勾选后批量确认：行级写逐条提交（审计逐条留痕），全批一次投影入图
-              </span>
+            <div className="os-resolve-foot">
+              <div className="os-resolve-foot-row">
+                {visibleEntities.length > 0 ? (
+                  <label className="os-resolve-selectall">
+                    <input
+                      type="checkbox"
+                      checked={allVisibleSelected}
+                      onChange={toggleSelectAllVisible}
+                      className="os-resolve-check"
+                      data-testid="resolution-select-all"
+                    />
+                    全选本页
+                  </label>
+                ) : (
+                  <span>勾选后可批量处理</span>
+                )}
+                {selectedCount > 0 ? (
+                  <span className="os-resolve-selected-count">已选 {selectedCount}</span>
+                ) : null}
+                {totalPages > 1 ? (
+                  <div className="os-resolve-pager">
+                    <button
+                      type="button"
+                      disabled={pageIndex === 0}
+                      onClick={() => setPageIndex((p) => Math.max(0, p - 1))}
+                      aria-label="上一页"
+                      title="上一页"
+                      data-testid="resolution-prev-page"
+                    >
+                      <ChevronLeft />
+                    </button>
+                    <span>
+                      {pageIndex + 1} / {totalPages}
+                    </span>
+                    <button
+                      type="button"
+                      disabled={(pageIndex + 1) * PENDING_REVIEW_LIMIT >= (pendingTotal ?? 0)}
+                      onClick={() => setPageIndex((p) => p + 1)}
+                      aria-label="下一页"
+                      title="下一页"
+                      data-testid="resolution-next-page"
+                    >
+                      <ChevronRight />
+                    </button>
+                  </div>
+                ) : null}
+              </div>
               {batchMutation.isPending ? (
-                /* 在途进度行（EAI-CUSTOM 2026-09-29 批量确认摊销）：与单条同款防误读文案 */
-                <span
-                  className="flex items-center gap-1.5 text-sm font-medium"
-                  style={{ color: BLUE }}
-                  data-testid="resolution-batch-running"
-                >
-                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                  批量确认 {batchSize} 条，投影入图约需 10–60
-                  秒（全批仅刷新一次断言图）——请勿刷新或离开本页
-                </span>
+                <div className="os-resolve-batch-status" data-testid="resolution-batch-running">
+                  <Loader2 className="animate-spin" />
+                  批量{batchDecision === "reject" ? "驳回" : "确认"} {batchSize} 条，投影入图约需
+                  10–60 秒（全批仅刷新一次断言图）——请勿刷新或离开本页
+                </div>
               ) : (
-                <>
-                  <button
-                    type="button"
-                    disabled={selectedCount === 0 || !canReviewActions}
-                    onClick={() => batchMutation.mutate({ pks: [...selectedPks], decision: "confirm" })}
-                    title={`批量确认选中 ${selectedCount} 条（入图并即时生效）`}
-                    className="flex items-center gap-1.5 rounded-md px-2.5 py-1 text-sm font-medium text-white transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
-                    style={{ background: BLUE }}
-                    data-testid="resolution-batch-confirm"
-                  >
-                    <Check className="h-3 w-3" />
-                    确认选中 {selectedCount} 条
-                  </button>
-                  <button
-                    type="button"
-                    disabled={selectedCount === 0 || !canReviewActions}
-                    onClick={() => batchMutation.mutate({ pks: [...selectedPks], decision: "reject" })}
-                    title={`批量驳回选中 ${selectedCount} 条（归档保留，不删数据）`}
-                    className="border-border text-muted-foreground hover:border-destructive/50 hover:text-destructive disabled:cursor-not-allowed disabled:opacity-50 flex items-center gap-1.5 rounded-md border px-2.5 py-1 text-sm font-medium transition-colors"
-                    data-testid="resolution-batch-reject"
-                  >
-                    驳回选中 {selectedCount} 条
-                  </button>
-                </>
+                <div className="os-resolve-foot-note">行级写逐条留痕；全批一次投影入图</div>
               )}
             </div>
-          </div>
+          </Panel>
 
-          {/* 右列：相似合并建议 + 四态契约表 */}
-          <div className="flex flex-col gap-4">
-            <div className="rounded-[14px]" style={{ background: CARD, border: `1px solid ${CARD_BORDER}` }}>
-              <div className="flex flex-wrap items-center gap-2 border-b px-4 py-3" style={{ borderColor: CARD_BORDER }}>
-                <b className="text-sm font-semibold" style={{ color: INK }}>
-                  相似实体合并建议
-                </b>
-                {selectedEntity ? (
-                  <span className="text-muted-foreground truncate text-xs" title={selectedEntity.canonical_name}>
-                    · {selectedEntity.canonical_name}
-                  </span>
-                ) : null}
-                <span className="text-muted-foreground/80 ml-auto hidden font-mono text-xs sm:inline">
-                  GET /doc-graph/resolution/suggestions
-                </span>
-              </div>
-              <div className="flex flex-col gap-2.5 p-3" data-testid="resolution-suggestions">
-                {!expandedId ? (
-                  <div className="text-muted-foreground px-2 py-8 text-center text-sm leading-loose">
-                    ← 在左侧点选一张待审卡
-                    <br />
-                    查看它的 Top 5 相似建议
-                  </div>
-                ) : suggestionsQuery.isLoading ? (
-                  <div className="text-muted-foreground flex items-center justify-center gap-2 px-2 py-6 text-sm">
-                    <Loader2 className="h-3.5 w-3.5 animate-spin" style={{ color: INK_3 }} />
-                    计算相似建议…
-                  </div>
-                ) : suggestionsQuery.error ? (
-                  <p className="text-destructive px-2 py-4 text-sm">
-                    建议加载失败：{(suggestionsQuery.error as ApiError).message}
-                  </p>
-                ) : (suggestionsQuery.data?.suggestions ?? []).length === 0 ? (
-                  <div className="text-muted-foreground px-2 py-6 text-center text-sm">
-                    无相似建议（同类型相似度均低于阈值）
-                  </div>
-                ) : (
-                  (suggestionsQuery.data?.suggestions ?? []).map((sug) => (
-                    <div key={sug.id} className="rounded-[12px] border p-3" style={{ borderColor: CARD_BORDER }}>
-                      <div className="flex flex-wrap items-center gap-2">
-                        <span className="min-w-0 flex-1 truncate text-[13px] font-semibold" style={{ color: INK }}>
-                          {sug.canonical_name}
-                        </span>
-                        <span
-                          className="rounded-full px-2 py-0.5 text-xs font-medium"
-                          style={{
-                            background: withAlpha(sug.action === "auto_merge" ? GREEN : AMBER, 0.12),
-                            color: sug.action === "auto_merge" ? "#389e0d" : "#ad6800",
-                          }}
-                        >
-                          {actionLabel(sug.action)}
-                        </span>
-                        <span className="font-mono text-xs font-semibold tabular-nums" style={{ color: INK_2 }}>
-                          {sug.similarity.toFixed(2)}
+          <Panel
+            title="候选对比"
+            subtitle={selectedEntity ? selectedEntity.canonical_name : "选择左侧待审实体"}
+            actions={selectedEntity ? <Chip tone="primary">候选 A</Chip> : undefined}
+            className="os-resolve-panel os-resolve-compare"
+          >
+            <div className="os-resolve-compare-bd" data-testid="resolution-suggestions">
+              {!selectedEntity ? (
+                <div className="os-resolve-empty">
+                  <GitMerge />
+                  <b>从左侧选择一条待审实体</b>
+                  <span>查看同类型相似建议，确认合并入图或驳回。</span>
+                </div>
+              ) : (
+                <>
+                  {suggestionsQuery.isLoading ? (
+                    <>
+                      <div className="os-resolve-cand-grid is-single">{candidateA}</div>
+                      <div className="os-resolve-state">
+                        <Loader2 className="animate-spin" />
+                        计算相似建议…
+                      </div>
+                    </>
+                  ) : suggestionsQuery.error ? (
+                    <>
+                      <div className="os-resolve-cand-grid is-single">{candidateA}</div>
+                      <div className="os-resolve-note is-error">
+                        <AlertTriangle />
+                        <span>
+                          建议加载失败：
+                          {(suggestionsQuery.error as ApiError).message || "网络错误"}
                         </span>
                       </div>
-                      <div className="mt-2 flex flex-wrap items-center gap-2">
+                    </>
+                  ) : !topSuggestion ? (
+                    <>
+                      <div className="os-resolve-cand-grid is-single">{candidateA}</div>
+                      <div className="os-resolve-note">
+                        <Info />
+                        <span>
+                          无相似建议（同类型相似度均低于阈值）。可直接确认入图或驳回归档。
+                        </span>
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      <div className="os-resolve-cand-grid">
+                        {candidateA}
+                        <CandidateCard
+                          role="B"
+                          tone="warning"
+                          name={topSuggestion.canonical_name}
+                          etype={topSuggestion.etype}
+                          etypeLabel={etypeLabelOf(topSuggestion.etype)}
+                          suggestion={topSuggestion}
+                        />
+                      </div>
+                      <div className="os-resolve-note">
+                        <Info />
+                        <span>
+                          合并后 <b>{topSuggestion.canonical_name}</b> 作为别名并入{" "}
+                          <b>{selectedEntity.canonical_name}</b>；关系与证据保留并改挂主实体，操作写入审计日志。
+                        </span>
+                      </div>
+                      <div className="os-resolve-merge-actions">
                         <button
                           type="button"
-                          disabled={mergeMutation.isPending || !canReviewActions}
-                          onClick={() =>
-                            handleMerge(sug.id, expandedId, sug.canonical_name, selectedEntity?.canonical_name ?? "")
+                          disabled={
+                            mergeMutation.isPending ||
+                            !canReviewActions ||
+                            selectedReview.phase !== "idle"
                           }
-                          className="bg-primary text-primary-foreground hover:opacity-90 flex items-center gap-1.5 rounded-md px-2.5 py-1 text-sm font-medium disabled:opacity-50"
+                          onClick={() =>
+                            handleMerge(
+                              topSuggestion.id,
+                              selectedEntity.id,
+                              topSuggestion.canonical_name,
+                              selectedEntity.canonical_name,
+                            )
+                          }
+                          className="os-btn os-btn-primary"
                         >
-                          {mergeMutation.isPending ? <Loader2 className="h-3 w-3 animate-spin" /> : <GitMerge className="h-3 w-3" />}
-                          合并
+                          {mergeMutation.isPending ? (
+                            <Loader2 className="animate-spin" />
+                          ) : (
+                            <GitMerge />
+                          )}
+                          确认合并
                         </button>
                         <button
                           type="button"
                           onClick={() => setExpandedId(null)}
-                          className="border-border bg-card text-foreground hover:bg-muted rounded-md border px-2.5 py-1 text-sm"
+                          className="os-btn os-btn-secondary"
                         >
-                          不合并
+                          跳过
                         </button>
-                        <span className="text-muted-foreground/80 text-xs">
-                          POST /resolution/merge · undo 可回放
+                        <span className="os-resolve-api">POST /resolution/merge</span>
+                      </div>
+                    </>
+                  )}
+
+                  {restSuggestions.length > 0 ? (
+                    <>
+                      <div className="os-resolve-section-title">
+                        其他相似建议
+                        <Chip tone="gray">{restSuggestions.length}</Chip>
+                      </div>
+                      <div className="os-resolve-suggest-list">
+                        {restSuggestions.map((sug) => (
+                          <div key={sug.id} className="os-resolve-suggest">
+                            <div className="os-resolve-suggest-hd">
+                              <b title={sug.canonical_name}>{sug.canonical_name}</b>
+                              <Chip tone={sug.action === "auto_merge" ? "primary" : "warning"}>
+                                {actionLabel(sug.action)}
+                              </Chip>
+                              <span className="os-resolve-sim">{sug.similarity.toFixed(2)}</span>
+                            </div>
+                            <div className="os-resolve-suggest-meta">
+                              {etypeLabelOf(sug.etype)}
+                              <span className="os-resolve-meta-sep">·</span>
+                              相似度 {sug.similarity.toFixed(2)}
+                            </div>
+                            <div className="os-resolve-suggest-actions">
+                              <button
+                                type="button"
+                                disabled={
+                                  mergeMutation.isPending ||
+                                  !canReviewActions ||
+                                  selectedReview.phase !== "idle"
+                                }
+                                onClick={() =>
+                                  handleMerge(
+                                    sug.id,
+                                    selectedEntity.id,
+                                    sug.canonical_name,
+                                    selectedEntity.canonical_name,
+                                  )
+                                }
+                                className="os-btn os-btn-secondary os-btn-sm"
+                              >
+                                {mergeMutation.isPending ? (
+                                  <Loader2 className="animate-spin" />
+                                ) : (
+                                  <GitMerge />
+                                )}
+                                合并到 A
+                              </button>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </>
+                  ) : null}
+
+                  <div className="os-resolve-review">
+                    <div className="os-resolve-section-title">本条审核</div>
+                    {selectedReview.phase === "running" ? (
+                      <div
+                        className="os-resolve-review-state is-info"
+                        data-testid="resolution-review-running"
+                      >
+                        <Loader2 className="animate-spin" />
+                        正在同步投影入图（提交后全局刷新断言图，实测约需 10–60
+                        秒）——请勿刷新或离开本页
+                      </div>
+                    ) : selectedReview.phase === "done" && selectedReview.outcome ? (
+                      selectedReview.outcome === "ok" ? (
+                        <div
+                          className="os-resolve-review-state is-ok"
+                          data-testid="resolution-review-outcome"
+                        >
+                          <CheckCircle2 />
+                          {selectedReview.decision === "reject"
+                            ? "已驳回归档（rejected，实体与提及保留）"
+                            : "已确认入图（断言图已更新）"}
+                        </div>
+                      ) : selectedReview.outcome === "degraded" ? (
+                        <div
+                          className="os-resolve-review-state is-warn"
+                          data-testid="resolution-review-outcome"
+                        >
+                          <AlertTriangle />
+                          投影未生效（degraded）：已提交；管理员重跑全量装载即自动对账，数据无损失
+                        </div>
+                      ) : (
+                        <div
+                          className="os-resolve-review-state is-muted"
+                          data-testid="resolution-review-outcome"
+                        >
+                          <RefreshCw />
+                          状态已变更（可能已驳回/已合并），请刷新
+                        </div>
+                      )
+                    ) : (
+                      <div className="os-resolve-review-actions">
+                        <button
+                          type="button"
+                          disabled={batchMutation.isPending || !canReviewActions}
+                          onClick={() => handleReview(selectedEntity.id, "confirm")}
+                          data-testid="resolution-confirm"
+                          className="os-btn os-btn-primary"
+                        >
+                          <Check />
+                          确认入图
+                        </button>
+                        <button
+                          type="button"
+                          disabled={batchMutation.isPending || !canReviewActions}
+                          onClick={() => handleReview(selectedEntity.id, "reject")}
+                          data-testid="resolution-reject"
+                          className="os-btn os-btn-secondary is-danger"
+                        >
+                          <X />
+                          驳回
+                        </button>
+                        <span className="os-resolve-review-note">
+                          确认后实体入图并即时生效；驳回保留实体与提及。
                         </span>
                       </div>
-                    </div>
-                  ))
-                )}
+                    )}
+                  </div>
+                </>
+              )}
+            </div>
+          </Panel>
+
+          <div className="os-resolve-side">
+            <Panel title="操作反馈四态" subtitle="确认后即时回显" className="os-resolve-panel">
+              <div className="os-resolve-feedback">
+                <div className="os-resolve-feedback-row">
+                  <span className="os-resolve-dot is-ok" />
+                  <div>
+                    <b>成功</b>
+                    <span>projected:true · 行内绿勾「已入图」</span>
+                  </div>
+                </div>
+                <div className="os-resolve-feedback-row">
+                  <span className="os-resolve-dot is-warn" />
+                  <div>
+                    <b>降级</b>
+                    <span>projected:false · 黄警 + 重跑全量装载自动对账</span>
+                  </div>
+                </div>
+                <div className="os-resolve-feedback-row">
+                  <span className="os-resolve-dot is-muted" />
+                  <div>
+                    <b>冲突 409</b>
+                    <span>状态已变更 · 中性提示，不渲染为已确认</span>
+                  </div>
+                </div>
+                <div className="os-resolve-feedback-row">
+                  <span className="os-resolve-dot is-info" />
+                  <div>
+                    <b>在途</b>
+                    <span>按钮禁用 + spinner · 同步投影约 10–60 秒</span>
+                  </div>
+                </div>
               </div>
-              {/* 撤销合并横幅 */}
-              {undoable ? (
-                <div
-                  className="mx-3 mb-3 flex flex-wrap items-center gap-2 rounded-[10px] px-3 py-2.5 text-sm"
-                  style={{ background: withAlpha(GREEN, 0.08), border: `1px solid ${withAlpha(GREEN, 0.35)}` }}
-                  data-testid="resolution-undo"
-                >
-                  <Undo2 className="h-3.5 w-3.5 flex-none" style={{ color: GREEN }} />
-                  <span style={{ color: INK }}>
-                    已合并 <b>{undoable.candidateName}</b> → {undoable.canonicalName}
+            </Panel>
+
+            <Panel
+              title="合并状态"
+              subtitle="可回放"
+              icon={GitMerge}
+              className="os-resolve-panel"
+            >
+              <div className="os-resolve-merge-state">
+                <div className="os-kv">
+                  <span className="os-kv-k">已合并实体</span>
+                  <span className="os-kv-v os-resolve-conf">{mergedCount ?? "—"}</span>
+                </div>
+                <div className="os-kv">
+                  <span className="os-kv-k">最近合并</span>
+                  <span
+                    className="os-kv-v"
+                    title={
+                      undoable
+                        ? `${undoable.candidateName} → ${undoable.canonicalName}`
+                        : undefined
+                    }
+                  >
+                    {undoable ? `${undoable.candidateName} → ${undoable.canonicalName}` : "—"}
                   </span>
+                </div>
+              </div>
+              {undoable ? (
+                <div className="os-resolve-undo" data-testid="resolution-undo">
+                  <Undo2 />
+                  <div>
+                    <b>可撤销</b>
+                    <span>撤销后实体与别名关系还原</span>
+                  </div>
                   <button
                     type="button"
                     disabled={unmergeMutation.isPending}
                     onClick={() => unmergeMutation.mutate(undoable.mergeId)}
-                    className="ml-auto flex items-center gap-1 rounded-md border px-2 py-0.5 text-xs font-medium disabled:opacity-50"
-                    style={{ color: BLUE, borderColor: withAlpha(BLUE, 0.4) }}
+                    className="os-btn os-btn-secondary os-btn-sm"
                   >
-                    {unmergeMutation.isPending ? <Loader2 className="h-3 w-3 animate-spin" /> : null}
+                    {unmergeMutation.isPending ? <Loader2 className="animate-spin" /> : null}
                     撤销
                   </button>
                 </div>
-              ) : null}
-              <div className="text-muted-foreground flex items-center justify-between border-t px-4 py-2 text-xs" style={{ borderColor: CARD_BORDER }}>
-                <span>已合并实体（图快照）</span>
-                <span className="font-mono tabular-nums">{mergedCount ?? "—"}</span>
-              </div>
-            </div>
+              ) : (
+                <div className="os-resolve-empty-sm">暂无合并记录</div>
+              )}
+            </Panel>
 
-            <div className="rounded-[14px]" style={{ background: CARD, border: `1px solid ${CARD_BORDER}` }}>
-              <div className="border-b px-4 py-3" style={{ borderColor: CARD_BORDER }}>
-                <b className="text-sm font-semibold" style={{ color: INK }}>
-                  操作反馈四态（实现契约）
-                </b>
-                <span className="text-muted-foreground ml-2 text-xs font-normal">
-                  成功 / 降级 / 冲突 409 / 在途——点开查看实现契约
-                </span>
+            <Panel
+              title="质量约束"
+              subtitle="合并前置校验"
+              icon={ShieldCheck}
+              className="os-resolve-panel"
+            >
+              <div className="os-resolve-check-list">
+                <div className="os-resolve-check-item">
+                  <span className="os-resolve-check-ic is-err">
+                    <AlertTriangle />
+                  </span>
+                  <div>
+                    <b>主键唯一</b>
+                    <span>合并后 uri 必须唯一，冲突则失败</span>
+                  </div>
+                </div>
+                <div className="os-resolve-check-item">
+                  <span className="os-resolve-check-ic is-warn">
+                    <AlertTriangle />
+                  </span>
+                  <div>
+                    <b>类型相容</b>
+                    <span>仅同 etype 可合并，跨类型需人工判定</span>
+                  </div>
+                </div>
+                <div className="os-resolve-check-item">
+                  <span className="os-resolve-check-ic is-ok">
+                    <Check />
+                  </span>
+                  <div>
+                    <b>证据留存</b>
+                    <span>驳回不删数据，mention 永久保留</span>
+                  </div>
+                </div>
               </div>
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-border bg-muted/60 border-b" style={{ borderColor: CARD_BORDER }}>
-                    {["状态", "触发", "呈现"].map((h) => (
-                      <th key={h} className="text-muted-foreground px-4 py-2 text-left text-xs font-medium">
-                        {h}
-                      </th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr className="border-border/60 border-b" style={{ borderColor: CARD_BORDER }}>
-                    <td className="px-4 py-2 text-xs"><span className="mr-1.5 inline-block h-2 w-2 rounded-full" style={{ background: GREEN }} />成功</td>
-                    <td className="px-2 py-2 font-mono text-xs">projected:true</td>
-                    <td className="px-2 py-2 text-xs">绿勾 + 行内「已入图」；图浏览可立即看到</td>
-                  </tr>
-                  <tr className="border-border/60 border-b" style={{ borderColor: CARD_BORDER }}>
-                    <td className="px-4 py-2 text-xs"><span className="mr-1.5 inline-block h-2 w-2 rounded-full" style={{ background: AMBER }} />降级</td>
-                    <td className="px-2 py-2 font-mono text-xs">projected:false + errors</td>
-                    <td className="px-2 py-2 text-xs">黄警 + 明细 + 「重跑全量装载即自动对账（数据无损失）」</td>
-                  </tr>
-                  <tr className="border-border/60 border-b" style={{ borderColor: CARD_BORDER }}>
-                    <td className="px-4 py-2 text-xs"><span className="mr-1.5 inline-block h-2 w-2 rounded-full" style={{ background: INK_3 }} />冲突 409</td>
-                    <td className="px-2 py-2 font-mono text-xs">前置条件不满足</td>
-                    <td className="px-2 py-2 text-xs">中性提示「状态已变更，请刷新」（不得渲染为已确认）</td>
-                  </tr>
-                  <tr>
-                    <td className="px-4 py-2 text-xs"><span className="mr-1.5 inline-block h-2 w-2 rounded-full" style={{ background: BLUE }} />在途</td>
-                    <td className="px-2 py-2 font-mono text-xs">invoke 进行中</td>
-                    <td className="px-2 py-2 text-xs">按钮 disabled + spinner + 卡内进度行（同步投影实测数十秒）</td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
+            </Panel>
           </div>
         </div>
       </div>

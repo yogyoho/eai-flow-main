@@ -39,7 +39,11 @@ services:
   # Manages per-sandbox Pod + Service lifecycle in the host Kubernetes
   # cluster via the K8s API.
   # Backend accesses sandboxes directly via host.docker.internal:{NodePort}.
+  # EAI-CUSTOM: opt-in profile — the default LocalSandboxProvider never calls
+  # this service, and with no ~/.kube/config on the host the bind-mount becomes
+  # a directory and the container crash-loops. Start with --profile k8s.
   provisioner:
+    profiles: ["k8s"]
     build:
       context: ./provisioner
       dockerfile: Dockerfile
@@ -420,7 +424,12 @@ services:
     restart: unless-stopped
 
   # ── Keycloak（EAI SSO IdP，自托管，可 broker 企微/钉钉/飞书 + 联邦 AD/LDAP）──
+  # EAI-CUSTOM: opt-in profile — 只有启用 SSO（config.yaml auth.oidc）时才需要；
+  # 默认 KC_DB_URL 指向 postgres-ext 的 keycloak 库，该库从未创建，裸 `up -d`
+  # 会无限重启。启用前先 `CREATE DATABASE keycloak OWNER agentflow;`，
+  # 再用 --profile sso 启动。
   keycloak:
+    profiles: ["sso"]
     image: quay.io/keycloak/keycloak:26.0
     container_name: eai-flow-keycloak
     command: ["start-dev"]

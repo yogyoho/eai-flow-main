@@ -308,4 +308,250 @@ roles:
     is_system: false
     level: 10
     description: 负责章节内容编写和AI辅助写作
+
+  sales_rep:
+    display_name: 客户经理
+    is_system: false
+    level: 20
+    nav:
+    - nav:dashboard
+    - nav:sales
+    - nav:app-center
+    pages:
+    - sales:page:workbench
+    - sales:page:opportunities
+    - sales:page:todos
+    - sales:page:approvals
+    - sales:page:masterdata
+    permissions:
+    - dashboard:view
+    - system:access
+    - sales.workbench.read
+    - sales.opportunity.read
+    - sales.opportunity.create
+    - sales.opportunity.update
+    - sales.opportunity.transition
+    - sales.opportunity.rollback
+    - sales.opportunity.probability_override
+    - sales.opportunity.export
+    - sales.todo.read
+    - sales.todo.resolve
+    - sales.todo.export
+    - sales.masterdata.read
+    - sales.approval.read
+    - sales.approval.request
+    - sales.approval.cancel
+    - sales.rule.read
+    data_scopes:
+    - sales_self
+    description: null
+  regional_manager:
+    display_name: 大区经理
+    is_system: false
+    level: 40
+    nav:
+    - nav:dashboard
+    - nav:sales
+    - nav:app-center
+    pages:
+    - sales:page:workbench
+    - sales:page:opportunities
+    - sales:page:todos
+    - sales:page:approvals
+    - sales:page:masterdata
+    permissions:
+    - dashboard:view
+    - system:access
+    - sales.workbench.read
+    - sales.opportunity.read
+    - sales.opportunity.create
+    - sales.opportunity.update
+    - sales.opportunity.transition
+    - sales.opportunity.rollback
+    - sales.opportunity.probability_override
+    - sales.opportunity.duplicate_resolve
+    - sales.opportunity.export
+    - sales.todo.read
+    - sales.todo.assign
+    - sales.todo.resolve
+    - sales.todo.batch
+    - sales.todo.export
+    - sales.masterdata.read
+    - sales.masterdata.import
+    - sales.approval.read
+    - sales.approval.request
+    - sales.approval.decide
+    - sales.approval.cancel
+    - sales.rule.read
+    - sales.audit.read
+    data_scopes:
+    - sales_region
+    description: null
+  sales_director:
+    display_name: 销售总监
+    is_system: false
+    level: 60
+    nav:
+    - nav:dashboard
+    - nav:sales
+    - nav:app-center
+    pages:
+    - sales:page:workbench
+    - sales:page:opportunities
+    - sales:page:todos
+    - sales:page:approvals
+    - sales:page:masterdata
+    - sales:page:rules
+    permissions:
+    - dashboard:view
+    - system:access
+    - sales.workbench.read
+    - sales.opportunity.read
+    - sales.opportunity.create
+    - sales.opportunity.update
+    - sales.opportunity.transition
+    - sales.opportunity.rollback
+    - sales.opportunity.probability_override
+    - sales.opportunity.duplicate_resolve
+    - sales.opportunity.export
+    - sales.todo.read
+    - sales.todo.assign
+    - sales.todo.resolve
+    - sales.todo.batch
+    - sales.todo.export
+    - sales.masterdata.read
+    - sales.masterdata.import
+    - sales.approval.read
+    - sales.approval.request
+    - sales.approval.decide
+    - sales.approval.cancel
+    - sales.approval.manage
+    - sales.rule.read
+    - sales.rule.manage
+    - sales.audit.read
+    data_scopes:
+    - sales_all
+    description: null
+  compliance_officer:
+    display_name: 合规官
+    is_system: false
+    level: 50
+    nav:
+    - nav:dashboard
+    - nav:sales
+    - nav:app-center
+    pages:
+    - sales:page:workbench
+    - sales:page:opportunities
+    - sales:page:approvals
+    - sales:page:rules
+    permissions:
+    - dashboard:view
+    - system:access
+    - sales.workbench.read
+    - sales.opportunity.read
+    - sales.todo.read
+    - sales.todo.resolve
+    - sales.approval.read
+    - sales.approval.decide
+    - sales.approval.cancel
+    - sales.rule.read
+    - sales.audit.read
+    data_scopes:
+    - sales_all
+    description: null
+  data_steward:
+    display_name: 销售数据管家
+    is_system: false
+    level: 30
+    nav:
+    - nav:dashboard
+    - nav:sales
+    - nav:app-center
+    pages:
+    - sales:page:workbench
+    - sales:page:opportunities
+    - sales:page:todos
+    - sales:page:masterdata
+    permissions:
+    - dashboard:view
+    - system:access
+    - sales.workbench.read
+    - sales.opportunity.read
+    - sales.todo.read
+    - sales.todo.resolve
+    - sales.masterdata.read
+    - sales.masterdata.import
+    - sales.rule.read
+    - sales.audit.read
+    data_scopes:
+    - sales_region
+    description: null
+  bid_manager:
+    display_name: 投标经理
+    is_system: false
+    level: 20
+    nav:
+    - nav:dashboard
+    - nav:sales
+    - nav:app-center
+    pages:
+    - sales:page:workbench
+    - sales:page:opportunities
+    - sales:page:todos
+    - sales:page:masterdata
+    permissions:
+    - dashboard:view
+    - system:access
+    - sales.workbench.read
+    - sales.opportunity.read
+    - sales.opportunity.update
+    - sales.todo.read
+    - sales.todo.resolve
+    - sales.masterdata.read
+    - sales.rule.read
+    data_scopes:
+    - sales_self
+    description: null
+  sales_admin:
+    display_name: 销售系统管理员
+    is_system: false
+    level: 70
+    nav:
+    - nav:dashboard
+    - nav:sales
+    - nav:app-center
+    pages:
+    - '*'
+    permissions:
+    - dashboard:view
+    - system:access
+    - sales.workbench.read
+    - sales.opportunity.read
+    - sales.opportunity.create
+    - sales.opportunity.update
+    - sales.opportunity.transition
+    - sales.opportunity.rollback
+    - sales.opportunity.probability_override
+    - sales.opportunity.duplicate_resolve
+    - sales.opportunity.export
+    - sales.todo.read
+    - sales.todo.assign
+    - sales.todo.resolve
+    - sales.todo.batch
+    - sales.todo.export
+    - sales.masterdata.read
+    - sales.masterdata.import
+    - sales.approval.read
+    - sales.approval.request
+    - sales.approval.decide
+    - sales.approval.cancel
+    - sales.approval.manage
+    - sales.rule.read
+    - sales.rule.manage
+    - sales.audit.read
+    data_scopes:
+    - sales_all
+    description: null
+
 disabled_roles: []

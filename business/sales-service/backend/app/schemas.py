@@ -124,6 +124,13 @@ class ApprovalDecisionIn(BaseModel):
         return value
 
 
+class ApprovalResubmitIn(BaseModel):
+    reason: str = Field(min_length=2, max_length=2000)
+    evidence: dict[str, Any] = Field(default_factory=dict)
+    comment: str | None = Field(default=None, max_length=2000)
+    idempotency_key: str = Field(min_length=8, max_length=128)
+
+
 class RuleUpdate(BaseModel):
     enabled: bool | None = None
     config_json: dict[str, Any] | None = None

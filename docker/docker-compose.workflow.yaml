@@ -1,0 +1,206 @@
+# Workflow platform overlay.
+#
+# This file is included by docker-compose.business.yaml, so a normal business
+# stack starts the workflow services without an extra -f flag. It can still be
+# passed explicitly.
+#
+# Usage (the dev stack's nginx shares eai-flow-net with the business DB and
+# workflow services; the production compose file uses a separate deer-flow
+# network and needs an explicit network attachment before nginx can resolve
+# these service names):
+#   docker compose \
+#     -f docker-compose-dev.yaml \
+#     -f docker-compose.extensions.yaml \
+#     -f docker-compose.business.yaml \
+#     -f docker-compose.temporal.yaml \
+#     -f docker-compose.workflow.yaml up -d
+#
+# Services:
+#   - workflow-db-init:  create the `workflow` database if it does not exist
+#   - workflow-migrate:  alembic upgrade head (one-shot)
+#   - workflow-backend:  FastAPI API on 8020 (loopback-published for debugging)
+#   - workflow-worker:   Temporal worker on workflow-engine-queue
+#   - workflow-dispatcher: command signal + outbox delivery + reconciliation
+#   - workflow-frontend: Next.js on 3020, basePath=/workflow
+
+x-workflow-env: &workflow-env
+  WORKFLOW_DATABASE_URL: postgresql+asyncpg://${BUSINESS_DB_USER:-business}:${BUSINESS_DB_PASSWORD:-business123}@business-db:5432/workflow
+  WORKFLOW_AUTO_CREATE_SCHEMA: "0"
+  WORKFLOW_SEED_DEMO: ${WORKFLOW_SEED_DEMO:-0}
+  WORKFLOW_SEED_SALES_APPROVALS: ${WORKFLOW_SEED_SALES_APPROVALS:-1}
+  WORKFLOW_AUTH_MODE: ${WORKFLOW_AUTH_MODE:-eai}
+  WORKFLOW_INTERNAL_TOKEN: ${WORKFLOW_INTERNAL_TOKEN:-}
+  EAI_BASE_URL: ${EAI_BASE_URL:-http://gateway:8001}
+  EAI_TIMEOUT_SECONDS: "4"
+  PERMISSION_CACHE_TTL_SECONDS: "60"
+  JWT_SECRET_KEY: ${JWT_SECRET_KEY:?set JWT_SECRET_KEY in .env}
+  JWT_ALGORITHM: ${JWT_ALGORITHM:-HS256}
+  ACCESS_TOKEN_COOKIE: ${ACCESS_TOKEN_COOKIE:-access_token}
+  WORKFLOW_TENANT_ID: ${WORKFLOW_TENANT_ID:-000000}
+  WORKFLOW_CORS_ORIGINS: ${WORKFLOW_CORS_ORIGINS:-http://localhost:${PORT:-2026},http://127.0.0.1:${PORT:-2026}}
+  WORKFLOW_PUBLIC_BASE_URL: ${WORKFLOW_PUBLIC_BASE_URL:-http://localhost:${PORT:-2026}/workflow}
+  TEMPORAL_ENABLED: "true"
+  TEMPORAL_URL: ${TEMPORAL_URL:-temporal:7233}
+  TEMPORAL_NAMESPACE: ${TEMPORAL_NAMESPACE:-default}
+  TEMPORAL_TASK_QUEUE: workflow-engine-queue
+  TEMPORAL_RPC_TIMEOUT_SECONDS: "5"
+  TEMPORAL_PROBE_TIMEOUT_SECONDS: "1.5"
+  TEMPORAL_MAX_CONCURRENT_ACTIVITIES: "20"
+  TEMPORAL_MAX_CONCURRENT_WORKFLOW_TASKS: "20"
+  WORKFLOW_INSTANCE_WORKFLOW_ID_PREFIX: ${WORKFLOW_INSTANCE_WORKFLOW_ID_PREFIX:-flow-instance}
+  WORKFLOW_COMMAND_WAIT_TIMEOUT_SECONDS: ${WORKFLOW_COMMAND_WAIT_TIMEOUT_SECONDS:-5}
+  WORKFLOW_COMMAND_DISPATCH_INTERVAL_SECONDS: ${WORKFLOW_COMMAND_DISPATCH_INTERVAL_SECONDS:-2}
+  WORKFLOW_COMMAND_MAX_ATTEMPTS: ${WORKFLOW_COMMAND_MAX_ATTEMPTS:-10}
+  WORKFLOW_COMMAND_STALE_SECONDS: ${WORKFLOW_COMMAND_STALE_SECONDS:-120}
+  WORKFLOW_COMMAND_ACTIVITY_TIMEOUT_SECONDS: ${WORKFLOW_COMMAND_ACTIVITY_TIMEOUT_SECONDS:-30}
+  WORKFLOW_COMMAND_ACTIVITY_MAX_ATTEMPTS: ${WORKFLOW_COMMAND_ACTIVITY_MAX_ATTEMPTS:-10}
+  WORKFLOW_COMMAND_BACKOFF_BASE_SECONDS: ${WORKFLOW_COMMAND_BACKOFF_BASE_SECONDS:-2}
+  WORKFLOW_EVENT_WEBHOOK_URL: ${WORKFLOW_EVENT_WEBHOOK_URL:-}
+  WORKFLOW_EVENT_WEBHOOK_SECRET: ${WORKFLOW_EVENT_WEBHOOK_SECRET:-}
+  WORKFLOW_EVENT_WEBHOOK_TIMEOUT_SECONDS: ${WORKFLOW_EVENT_WEBHOOK_TIMEOUT_SECONDS:-5}
+  WORKFLOW_OUTBOX_DISPATCH_INTERVAL_SECONDS: ${WORKFLOW_OUTBOX_DISPATCH_INTERVAL_SECONDS:-3}
+  WORKFLOW_OUTBOX_MAX_ATTEMPTS: ${WORKFLOW_OUTBOX_MAX_ATTEMPTS:-10}
+  WORKFLOW_OUTBOX_STALE_SECONDS: ${WORKFLOW_OUTBOX_STALE_SECONDS:-120}
+  WORKFLOW_OUTBOX_BACKOFF_BASE_SECONDS: ${WORKFLOW_OUTBOX_BACKOFF_BASE_SECONDS:-5}
+  WORKFLOW_RECONCILE_INTERVAL_SECONDS: ${WORKFLOW_RECONCILE_INTERVAL_SECONDS:-300}
+  WORKFLOW_RECONCILE_STALE_SECONDS: ${WORKFLOW_RECONCILE_STALE_SECONDS:-120}
+  WORKFLOW_RECONCILE_BATCH_SIZE: ${WORKFLOW_RECONCILE_BATCH_SIZE:-50}
+  WORKFLOW_LOG_LEVEL: ${WORKFLOW_LOG_LEVEL:-INFO}
+
+x-workflow-backend: &workflow-backend
+  build:
+    context: ../workflow/backend
+    dockerfile: Dockerfile
+    args:
+      # Defaults to the Tsinghua mirror for fast builds in China; override with
+      # PIP_INDEX_URL=https://pypi.org/simple to build against official PyPI.
+      PIP_INDEX_URL: ${PIP_INDEX_URL:-https://pypi.tuna.tsinghua.edu.cn/simple}
+  image: eai-flow-workflow-backend:local
+
+services:
+  workflow-db-init:
+    image: postgres:16-alpine
+    container_name: eai-flow-workflow-db-init
+    environment:
+      PGHOST: business-db
+      PGUSER: ${BUSINESS_DB_USER:-business}
+      PGPASSWORD: ${BUSINESS_DB_PASSWORD:-business123}
+      PGDATABASE: postgres
+    command:
+      - sh
+      - -c
+      - |
+        until pg_isready -q; do sleep 2; done
+        if ! psql -d postgres -tAc "SELECT 1 FROM pg_database WHERE datname='workflow'" | grep -q 1; then
+          psql -d postgres -v ON_ERROR_STOP=1 -c 'CREATE DATABASE workflow'
+        fi
+    # The business DB may be owned by a different Compose project (the EAI
+    # stack). Do not model it as a dependency here; pg_isready below waits for
+    # the shared network endpoint instead of trying to recreate the container.
+    networks:
+      - eai-flow-net
+    restart: "no"
+
+  workflow-migrate:
+    <<: *workflow-backend
+    container_name: eai-flow-workflow-migrate
+    command: ["alembic", "upgrade", "head"]
+    environment:
+      WORKFLOW_DATABASE_URL: postgresql+asyncpg://${BUSINESS_DB_USER:-business}:${BUSINESS_DB_PASSWORD:-business123}@business-db:5432/workflow
+      WORKFLOW_AUTO_CREATE_SCHEMA: "0"
+    depends_on:
+      workflow-db-init:
+        condition: service_completed_successfully
+    networks:
+      - eai-flow-net
+    restart: "no"
+
+  workflow-backend:
+    <<: *workflow-backend
+    container_name: eai-flow-workflow-backend
+    environment:
+      <<: *workflow-env
+    command:
+      ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8020"]
+    ports:
+      - "${WORKFLOW_BACKEND_BIND_HOST:-127.0.0.1}:${WORKFLOW_BACKEND_PORT:-8020}:8020"
+    depends_on:
+      workflow-migrate:
+        condition: service_completed_successfully
+    networks:
+      - eai-flow-net
+    restart: unless-stopped
+    init: true
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "python",
+          "-c",
+          "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://127.0.0.1:8020/health', timeout=3).status == 200 else 1)",
+        ]
+      interval: 15s
+      timeout: 5s
+      retries: 6
+      start_period: 15s
+
+  workflow-worker:
+    <<: *workflow-backend
+    container_name: eai-flow-workflow-worker
+    environment:
+      <<: *workflow-env
+    command: ["python", "-m", "app.temporal.worker"]
+    depends_on:
+      workflow-migrate:
+        condition: service_completed_successfully
+    networks:
+      - eai-flow-net
+    restart: unless-stopped
+    init: true
+
+  workflow-dispatcher:
+    <<: *workflow-backend
+    container_name: eai-flow-workflow-dispatcher
+    environment:
+      <<: *workflow-env
+    command: ["python", "-m", "app.temporal.dispatcher"]
+    depends_on:
+      workflow-migrate:
+        condition: service_completed_successfully
+    networks:
+      - eai-flow-net
+    restart: unless-stopped
+    init: true
+
+  workflow-frontend:
+    build:
+      context: ../workflow/frontend
+      dockerfile: Dockerfile
+      args:
+        NEXT_PUBLIC_WORKFLOW_API: /workflow/api
+        NEXT_PUBLIC_BASE_PATH: /workflow
+        # npmmirror by default for fast builds in China; override with
+        # NPM_REGISTRY=https://registry.npmjs.org to use the official registry.
+        NPM_REGISTRY: ${NPM_REGISTRY:-https://registry.npmmirror.com}
+    image: eai-flow-workflow-frontend:local
+    container_name: eai-flow-workflow-frontend
+    environment:
+      - NODE_ENV=production
+      - HOSTNAME=0.0.0.0
+      - PORT=3020
+    ports:
+      - "${WORKFLOW_FRONTEND_BIND_HOST:-127.0.0.1}:${WORKFLOW_FRONTEND_PORT:-3020}:3020"
+    networks:
+      - eai-flow-net
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:3020/workflow/ >/dev/null || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 6
+      start_period: 20s
+
+networks:
+  eai-flow-net:
+    external: true
+    name: eai-docker_eai-flow-net

@@ -75,3 +75,17 @@ def test_me_deny_consistent_with_endpoint_403(monkeypatch):
 
     # 同一 policy 集下 gate 端点 403
     assert build_app(probe, db=db).get("/ping-kb").status_code == 403
+
+
+def test_me_superadmin_nav_includes_registered_app_navs(monkeypatch):
+    """Regression (2026-10-20): 应用中心卡片按 canNav(nav:<path首段>) 过滤。
+
+    nav 未在 permissions.yaml 注册模块时，超管 ``nav:["*"]`` 展开也不含该 nav
+    （permission_routers.py 只展开 list_nav_modules），卡片被前端静默过滤。
+    文档翻译工作台曾因此缺失；此测试锁住 nav 注册。
+    """
+    patch_identity(monkeypatch, fake_identity(role_code="superadmin"))
+    tc = build_app(router, user=make_user(role_name="超级管理员"), db=policy_rows_db([]))
+    data = tc.get("/api/permissions/me").json()
+    assert "nav:translation" in data["nav"], "文档翻译工作台 nav 未注册 → 应用中心卡片不可见"
+    assert "translation:read" in data["permissions"]

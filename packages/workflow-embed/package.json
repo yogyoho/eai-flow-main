@@ -1,0 +1,49 @@
+{
+  "name": "@eai/workflow-embed",
+  "version": "0.1.0",
+  "description": "Reusable read-only workflow approval panel and action surface for EAI business frontends.",
+  "packageManager": "pnpm@10.33.2",
+  "type": "module",
+  "main": "./dist/index.js",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./styles.css": "./src/styles.css"
+  },
+  "files": [
+    "dist",
+    "src/styles.css"
+  ],
+  "sideEffects": [
+    "**/*.css"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "prepublishOnly": "pnpm build"
+  },
+  "publishConfig": {
+    "access": "restricted"
+  },
+  "peerDependencies": {
+    "lucide-react": ">=0.400.0",
+    "react": ">=18.0.0"
+  },
+  "devDependencies": {
+    "@types/react": "^19.0.0",
+    "lucide-react": "^0.468.0",
+    "react": "^19.0.0",
+    "typescript": "^5.7.2"
+  },
+  "keywords": [
+    "eai",
+    "workflow",
+    "approval",
+    "react"
+  ],
+  "license": "UNLICENSED"
+}

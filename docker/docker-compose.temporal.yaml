@@ -23,6 +23,26 @@ services:
       - "7233:7233"
     restart: unless-stopped
 
+  # Temporal Web UI. Mounted behind nginx at /temporal/; the UI server needs the
+  # public path so its assets and API calls resolve under that prefix.
+  temporal-ui:
+    image: temporalio/ui:2.34.0
+    container_name: eai-flow-temporal-ui
+    depends_on:
+      - temporal
+    environment:
+      - TEMPORAL_ADDRESS=temporal:7233
+      - TEMPORAL_DEFAULT_NAMESPACE=default
+      - TEMPORAL_UI_PORT=8080
+      - TEMPORAL_UI_PUBLIC_PATH=/temporal
+      - TEMPORAL_UI_ENABLED=true
+      - TEMPORAL_CORS_ORIGINS=http://localhost:${PORT:-2026},http://127.0.0.1:${PORT:-2026}
+    ports:
+      - "${TEMPORAL_UI_BIND_HOST:-127.0.0.1}:${TEMPORAL_UI_PUBLISH_PORT:-8090}:8080"
+    networks:
+      - eai-flow-net
+    restart: unless-stopped
+
 networks:
   eai-flow-net:
     external: true

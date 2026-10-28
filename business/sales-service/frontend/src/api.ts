@@ -26,6 +26,7 @@ export interface Paged<T> {
 
 export interface WorkbenchSummary {
   identity: Identity
+  workflow_platform_enabled?: boolean
   data_as_of: string
   metrics: {
     today_todos: number
@@ -196,6 +197,12 @@ export interface Approval {
   [key: string]: any
 }
 
+export type {
+  WorkflowFormField,
+  WorkflowFormSnapshot,
+  WorkflowView,
+} from '@eai/workflow-embed'
+
 export interface MasterOptions {
   groups: Array<{ id: string; name: string; is_new_customer: boolean; region_code: string }>
   customers: Array<{ id: string; name: string; group_id?: string | null; region_code: string; related_party_status: string }>
@@ -218,7 +225,11 @@ export class ApiError extends Error {
   }
 }
 
-const API_BASE = (import.meta.env.VITE_API_BASE as string | undefined) || '/sales/api'
+export const API_BASE = (import.meta.env.VITE_API_BASE as string | undefined) || '/sales/api'
+
+export function apiUrl(path: string): string {
+  return `${API_BASE}${path}`
+}
 
 export function getToken(): string {
   return localStorage.getItem('sales_token') || sessionStorage.getItem('sales_token') || ''
@@ -227,6 +238,19 @@ export function getToken(): string {
 export function setToken(token: string): void {
   if (token) localStorage.setItem('sales_token', token)
   else localStorage.removeItem('sales_token')
+}
+
+let redirectingToLogin = false
+
+// EAI cookie mode (no local bearer token): a 401 means the shared EAI session
+// is missing or expired, so bounce to the EAI login page and return to the
+// exact deep link after signing in. Local token 联调 keeps the error card,
+// because development origins have no /login route.
+function redirectToEaiLogin(): void {
+  if (redirectingToLogin) return
+  redirectingToLogin = true
+  const target = `${window.location.pathname}${window.location.search}${window.location.hash}`
+  window.location.replace(`/login?redirect=${encodeURIComponent(target)}`)
 }
 
 async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
@@ -240,6 +264,7 @@ async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
     credentials: 'include',
   })
   if (response.status === 401) {
+    if (!getToken()) redirectToEaiLogin()
     throw new ApiError('登录状态已失效，请重新通过 EAI 门户进入。', 401, 'AUTH-401')
   }
   const contentType = response.headers.get('content-type') || ''
@@ -275,6 +300,10 @@ export const api = {
     const token = getToken()
     if (token) headers.set('Authorization', `Bearer ${token}`)
     const response = await fetch(`${API_BASE}${path}`, { headers, credentials: 'include' })
+    if (response.status === 401) {
+      if (!getToken()) redirectToEaiLogin()
+      throw new ApiError('登录状态已失效，请重新通过 EAI 门户进入。', 401, 'AUTH-401')
+    }
     if (!response.ok) throw new ApiError('附件下载失败', response.status)
     const blob = await response.blob()
     const disposition = response.headers.get('content-disposition') || ''

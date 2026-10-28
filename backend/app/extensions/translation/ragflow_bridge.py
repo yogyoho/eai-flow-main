@@ -70,12 +70,25 @@ def build_markdown(task: TranslationTask, zh_blocks: list[dict]) -> str:
 
 
 def _lineage_meta(task: TranslationTask) -> dict:
-    return {
+    meta = {
         "tlt_task_id": str(task.id),
         "tlt_source_sha256": task.doc_sha,
         "tlt_source_lang": task.source_lang,
         "tlt_quality_tier": task.quality_tier,
     }
+    if task.ragflow_source_doc_id:
+        meta["tlt_source_doc_id"] = task.ragflow_source_doc_id
+    return meta
+
+
+async def _link_source_doc(client: RAGFlowClient, dataset_id: str, task: TranslationTask, zh_doc_id: str) -> None:
+    """P2-15 互链：把中文 doc id 写回原文 doc 元数据（PATCH meta_fields 合并）。"""
+    if not task.ragflow_source_doc_id or task.ragflow_source_doc_id == zh_doc_id:
+        return
+    try:
+        await client.update_document_metadata(dataset_id, task.ragflow_source_doc_id, {"tlt_zh_doc_id": zh_doc_id})
+    except Exception:
+        logger.warning("tlt interlink: source %s <- zh %s failed", task.ragflow_source_doc_id, zh_doc_id, exc_info=True)
 
 
 async def _dataset_exists(client: RAGFlowClient, dataset_id: str) -> bool:
@@ -103,7 +116,7 @@ async def ensure_dataset(kb: KnowledgeBase, *, client: RAGFlowClient | None = No
         available = await client.list_available_embedding_models()
         embed = available[0] if available else None
     # EAI 内部枚举→RAGFlow parser 映射（同 bug-3307 relink 手法；"report"→"manual" 等）
-    ragflow_chunk = _CHUNK_METHOD_TO_PARSER.get(kb.chunk_method or "", None) or kb.chunk_method
+    ragflow_chunk = DocumentService._CHUNK_METHOD_TO_PARSER.get(kb.chunk_method or "", None) or kb.chunk_method
     rf = await client.create_dataset(
         name=kb.name,
         description=kb.description or "",
@@ -184,6 +197,7 @@ async def reindex_deliverable(task: TranslationTask, *, kb: KnowledgeBase, clien
         raise RuntimeError(f"ragflow upload returned no document id: {str(rf)[:200]}")
     await client.update_document_metadata(dataset_id, doc_id, _lineage_meta(task))
     await client.parse_document(dataset_id, doc_id)
+    await _link_source_doc(client, dataset_id, task, doc_id)
     return doc_id
 
 
@@ -281,5 +295,6 @@ async def index_translation(
 
     await client.update_document_metadata(dataset_id, doc_id, _lineage_meta(task))
     await client.parse_document(dataset_id, doc_id)
+    await _link_source_doc(client, dataset_id, task, doc_id)
     await _set_deliverable(task_id_str, stored.uri, doc_id)
     logger.info("tlt task %s: zh doc %s indexed in dataset %s (parser=%s)", task_id_str, doc_id, dataset_id, parser_id)
