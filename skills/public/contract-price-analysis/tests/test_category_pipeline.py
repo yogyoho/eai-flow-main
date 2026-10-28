@@ -17,13 +17,24 @@ def test_init_schema_alters_existing_tables():
     assert "ADD COLUMN IF NOT EXISTS category" in src
 
 
-def test_cluster_sample_appends_category():
-    """同名货物不同分类必须分簇: 样本文本 = 名称+分类(设计 §1.3)。"""
+def test_cluster_sample_excludes_category():
+    """聚类样本文本 = 名称+规格(2026-10-22 设计修订: 分类不再拼入)。
+
+    旧版把 category 拼进文本导致短货名被同分类长字符串淹没——真机 81 条
+    mega 簇(电源线↔监控模块 相似度 0.72 纯靠分类贡献)。分类区分改由
+    engine 的类目 AND 门限独立比较;本测试固化「分类不影响样本文本,
+    规格影响」的新契约(旧断言在设计变更时漏改,回归中发现)。"""
     from scripts.cli import _cluster_sample_text
 
-    assert _cluster_sample_text("现浇构件钢筋", {"category": "建筑工程"}) != \
-           _cluster_sample_text("现浇构件钢筋", {"category": "屋面"})
-    assert _cluster_sample_text("钢筋", {}) == "钢筋"
+    # 分类不进样本: 同名货物不同分类 → 样本相同(分簇交给 engine 类目门限)
+    assert _cluster_sample_text("现浇构件钢筋", None, {"category": "建筑工程"}) == \
+           _cluster_sample_text("现浇构件钢筋", None, {"category": "屋面"})
+    # 规格进样本: 同名不同规格 → 样本不同
+    assert _cluster_sample_text("钢筋", "HRB400E Φ 8mm", None) != \
+           _cluster_sample_text("钢筋", "HRB400E Φ 20mm", None)
+    # 裸名兜底 + tech_params 非 dict 容错
+    assert _cluster_sample_text("钢筋", None, None) == "钢筋"
+    assert _cluster_sample_text("钢筋", None, "junk") == "钢筋"
 
 
 def test_persist_one_doc_writes_category_kwarg():

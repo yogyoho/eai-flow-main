@@ -302,9 +302,14 @@ def test_list_candidates_tolerates_leading_space_in_details():
 
 def test_merge_time_stats_mirror_pipeline_compute_stats():
     """镜像实现必须与技能侧 compute_stats 逐键相等(管线为唯一真相源)。"""
+    # EAI-CUSTOM 2026-10-29: 技能路径从本测试文件位置解析(backend/tests → 仓库
+    # 根 → skills),替代写死的容器路径 /app/skills/...——容器内 parents[2] 同样
+    # 落到 /app,行为不变;宿主机回归不再是必然 ImportError。
     import sys
+    from pathlib import Path
 
-    sys.path.insert(0, "/app/skills/public/contract-price-analysis")
+    skill_root = str(Path(__file__).resolve().parents[2] / "skills/public/contract-price-analysis")
+    sys.path.insert(0, skill_root)
     from scripts.stats import compute_stats
     from app.extensions.contract_price.crud import _merge_time_cluster_stats
 
