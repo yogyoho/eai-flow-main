@@ -6,7 +6,9 @@
  * 均为引擎产出层取值,false_positive 等人工回写值仅落库不经 schema 校验)。
  */
 
-/** 审查任务(backend TaskOut)。status: created|running|awaiting_confirm|completed|failed;mode: quick|deep */
+/** 审查任务(backend TaskOut)。status 词汇=后端 models.py:30:created|parsing|extracting|
+ * awaiting_confirm|running|done|failed(终态成功=done,后端无 completed;Task 12 修复轮勘误);
+ * mode: quick|deep */
 export interface TaskOut {
   id: string;
   owner_id: string;

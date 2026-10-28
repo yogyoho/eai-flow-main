@@ -90,6 +90,12 @@ mono 副标(text-xs text-muted-foreground font-mono)
 | 任务 `completed` / 复核 `confirmed` | success 系 |
 | 复核 `false_positive` | muted + 删除线文本(问题条) |
 
+> **勘误(2026-10-29,Task 12 修复轮)**:上表"任务 `completed`"为笔误——landed 后端状态
+> 词汇是 `created|parsing|extracting|awaiting_confirm|running|done|failed`
+> (`bid_review/models.py:30`,worker 终态成功落 `done`),词汇表里没有 `completed`。
+> 按 landed 后端实现:任务 `done` → success"已完成"(`completed` 仅作前端兼容别名);
+> `parsing` → info"解析中"、`extracting` → info"基准提取中"(表中原缺这两态)。
+
 NoteBar 同理:基准未确认=warning 深字;可提交判定=success/destructive;免责声明=muted。
 
 ## 3. 五视图规格
@@ -102,6 +108,7 @@ NoteBar 同理:基准未确认=warning 深字;可提交判定=success/destructiv
 - 表脚:`flex items-center gap-2 px-4 py-2 text-xs text-muted-foreground`(tbl-foot 习语)
 - 状态:loading=表格骨架行;empty=`rounded-lg border border-dashed py-16`(§6.4)+ CTA 按钮;错误=表格上方 `NoteBar` destructive + 重试
 - 交互:新建=`Dialog`(模式 SegmentedToggle quick/deep + 说明文字;上传版 M3 补);行点击 → `/bid-review/tasks/{id}`
+  - **勘误(2026-10-29,Task 12 修复轮)**:新建 Dialog 自带招标/投标文件上传(必选)——POST /tasks multipart 是后端唯一文档入口,零材料任务会被后端 `_enqueue_docs` 无条件直推空跑;"上传版 M3 补"仅指工作台的补充/重传文档。
 
 ### 3.2 审查工作台(`bid:page:workbench`,/bid-review/tasks/{id})——Task 17,核心
 习语映射:新 4 条全用 + Pill/NoteBar/meter。

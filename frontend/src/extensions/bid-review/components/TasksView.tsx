@@ -4,8 +4,10 @@
  * 任务列表(bid:page:tasks,/bid-review)——Task 12 最小版。
  * 视觉规范:docs/designs/2026-10-29-bid-review-ui-spec.md §3.1(PageHeader + 4×StatCard
  * + 密集表格 + tbl-foot + 骨架/空态/错误态);共享基元直接 import cpa 路径(勿复制第六份)。
- * 新建 = Dialog(模式 SegmentedToggle §1.2 配方内联,Task 17 抽 primitives.tsx 后可替换);
- * 无文件版(文档经对话/MCP 编排),UI 上传 M3 补。
+ * 新建 = Dialog(模式 SegmentedToggle §1.2 配方内联,Task 17 抽 primitives.tsx 后可替换)
+ * + 招标/投标文件上传(POST /tasks multipart 是后端唯一文档入口,零材料任务会被后端
+ * _enqueue_docs 无条件直推空跑——Task 12 修复轮决定 (b):创建必传文件;M3 工作台
+ * 上传 = 补充/重传文档)。
  */
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -44,20 +46,29 @@ import { cn } from "@/lib/utils";
 const COLS = 7;
 
 const MODE_DESC: Record<"quick" | "deep", string> = {
-  quick:
-    "确定性规则快审(M1 子集),秒级完成;审查文档稍后在对话中上传,由 agent 编排审查。",
-  deep: "全量规则深审(含语义逐条审,耗时较长);审查文档稍后在对话中上传,由 agent 编排审查。",
+  quick: "确定性规则快审(M1 子集),上传文件后自动执行,秒级完成。",
+  deep: "全量规则深审(含语义逐条审,耗时较长);生成基线后需在工作台人工确认再续跑。",
 };
 
-/** §2 状态 Pill 映射:running=info / awaiting_confirm=warn / completed=success / failed=error / created,muted=muted。 */
+/**
+ * §2 状态 Pill 映射(词汇=后端 models.py:30:created|parsing|extracting|awaiting_confirm|
+ * running|done|failed;勘误 2026-10-29:终态成功是 done,spec 原文 completed 系笔误):
+ * done=success / failed=error / running,parsing,extracting=info / awaiting_confirm=warn /
+ * created(pending)=gray(muted 习语);completed 仅作兼容别名(后端只发 done)。
+ */
 function statusPill(status: string): { tone: PillTone; label: string } {
   switch (status) {
+    case "done":
     case "completed":
       return { tone: "success", label: "已完成" };
     case "failed":
       return { tone: "error", label: "失败" };
     case "running":
       return { tone: "info", label: "进行中" };
+    case "parsing":
+      return { tone: "info", label: "解析中" };
+    case "extracting":
+      return { tone: "info", label: "基准提取中" };
     case "awaiting_confirm":
       return { tone: "warn", label: "待确认" };
     default:
@@ -68,9 +79,10 @@ function statusPill(status: string): { tone: PillTone; label: string } {
   }
 }
 
-/** §3.1 meter:进度取 progress.pct(worker 契约);completed 恒 100。 */
+/** §3.1 meter:进度取 progress.pct(worker 契约);done 恒 100(worker done 帧 pct=100,
+ * 此处兜底;原 completed 判定不在后端词汇里,是恒死分支——Task 12 修复轮勘误)。 */
 function progressPct(t: TaskOut): number {
-  if (t.status === "completed") return 100;
+  if (t.status === "done") return 100;
   const pct = t.progress?.pct;
   return typeof pct === "number" ? Math.min(100, Math.round(pct)) : 0;
 }
@@ -87,6 +99,8 @@ export function TasksView() {
   const queryClient = useQueryClient();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [mode, setMode] = useState<"quick" | "deep">("quick");
+  const [tenderFiles, setTenderFiles] = useState<File[]>([]);
+  const [bidFiles, setBidFiles] = useState<File[]>([]);
 
   const tasksQuery = useQuery({
     queryKey: ["bid-review", "tasks"],
@@ -94,12 +108,24 @@ export function TasksView() {
   });
 
   const createMutation = useMutation({
-    mutationFn: createTask,
+    mutationFn: (input: {
+      mode: "quick" | "deep";
+      tender: File[];
+      bid: File[];
+    }) => createTask(input.mode, input),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ["bid-review", "tasks"] });
       setDialogOpen(false);
     },
   });
+
+  /** 打开新建 Dialog:清残留文件与上次错误(创建成功/取消后再开都是干净态)。 */
+  const openDialog = () => {
+    setTenderFiles([]);
+    setBidFiles([]);
+    createMutation.reset();
+    setDialogOpen(true);
+  };
 
   const tasks = tasksQuery.data ?? [];
   const runningCount = tasks.filter((t) => t.status === "running").length;
@@ -130,7 +156,7 @@ export function TasksView() {
                 />
                 刷新
               </Button>
-              <Button size="sm" onClick={() => setDialogOpen(true)}>
+              <Button size="sm" onClick={openDialog}>
                 <Plus className="h-4 w-4" />
                 新建审查任务
               </Button>
@@ -208,7 +234,7 @@ export function TasksView() {
       ) : tasks.length === 0 ? (
         <div className="border-border flex flex-col items-center justify-center gap-3 rounded-lg border border-dashed py-16">
           <p className="text-muted-foreground text-sm">暂无审查任务</p>
-          <Button size="sm" onClick={() => setDialogOpen(true)}>
+          <Button size="sm" onClick={openDialog}>
             <Plus className="h-4 w-4" />
             新建审查任务
           </Button>
@@ -294,14 +320,16 @@ export function TasksView() {
         </div>
       )}
 
-      {/* 新建 = Dialog(§3.1;模式 SegmentedToggle §1.2 配方内联,Task 17 抽 primitives 后替换) */}
+      {/* 新建 = Dialog(§3.1;模式 SegmentedToggle §1.2 配方内联,Task 17 抽 primitives 后替换;
+          文件上传为必选项——POST /tasks multipart 是后端唯一文档入口,零材料任务会被后端
+          无条件直推空跑,Task 12 修复轮决定 (b)) */}
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent className="sm:max-w-[420px]">
           <DialogHeader>
             <DialogTitle>新建审查任务</DialogTitle>
             <DialogDescription>
-              创建后请将招标文件与投标文件在对话中上传,由 agent
-              编排审查;工作台文件上传(M3)就绪后可直接上传。
+              上传招标与投标文件后创建;任务创建即自动解析并审查(quick
+              秒级完成,deep 生成基线后待工作台人工确认)。
             </DialogDescription>
           </DialogHeader>
           <div className="flex flex-col gap-2">
@@ -327,6 +355,41 @@ export function TasksView() {
             </div>
             <p className="text-muted-foreground text-xs">{MODE_DESC[mode]}</p>
           </div>
+          <div className="flex flex-col gap-2">
+            <span className="text-muted-foreground text-xs font-medium">
+              文档(招标、投标至少各一份)
+            </span>
+            <label className="flex items-center gap-2">
+              <span className="w-16 shrink-0 text-xs">招标文件</span>
+              <input
+                type="file"
+                multiple
+                onChange={(e) =>
+                  setTenderFiles(Array.from(e.target.files ?? []))
+                }
+                className="file:border-border file:bg-card file:text-foreground text-xs file:mr-2 file:rounded-md file:border file:px-2 file:py-0.5 file:text-xs"
+              />
+            </label>
+            <label className="flex items-center gap-2">
+              <span className="w-16 shrink-0 text-xs">投标文件</span>
+              <input
+                type="file"
+                multiple
+                onChange={(e) => setBidFiles(Array.from(e.target.files ?? []))}
+                className="file:border-border file:bg-card file:text-foreground text-xs file:mr-2 file:rounded-md file:border file:px-2 file:py-0.5 file:text-xs"
+              />
+            </label>
+            {tenderFiles.length + bidFiles.length > 0 ? (
+              <p className="text-muted-foreground truncate text-xs">
+                已选:
+                {[...tenderFiles, ...bidFiles].map((f) => f.name).join("、")}
+              </p>
+            ) : null}
+            <p className="text-muted-foreground text-xs">
+              v1 后端将上传文件按 UTF-8 纯文本解码(.txt/.md
+              等文本格式最适配;PDF/Word 结构化解析后续版本支持)。
+            </p>
+          </div>
           {createMutation.isError ? (
             <p className="text-destructive text-xs">
               创建失败:{createMutation.error.message}
@@ -342,8 +405,18 @@ export function TasksView() {
             </Button>
             <Button
               size="sm"
-              onClick={() => createMutation.mutate(mode)}
-              disabled={createMutation.isPending}
+              onClick={() =>
+                createMutation.mutate({
+                  mode,
+                  tender: tenderFiles,
+                  bid: bidFiles,
+                })
+              }
+              disabled={
+                createMutation.isPending ||
+                tenderFiles.length === 0 ||
+                bidFiles.length === 0
+              }
             >
               {createMutation.isPending ? "创建中…" : "创建任务"}
             </Button>
