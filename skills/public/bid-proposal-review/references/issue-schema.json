@@ -1,0 +1,31 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "BidReviewIssue",
+  "type": "object",
+  "required": ["rule_id", "layer", "severity", "verdict", "message", "evidence"],
+  "properties": {
+    "rule_id": {"type": "string", "pattern": "^L[134]-[0-9]{3}$"},
+    "layer": {"enum": ["L1", "L3"]},
+    "severity": {"enum": ["fatal", "major", "minor", "info"]},
+    "verdict": {"enum": ["violation", "need_human", "unclear"]},
+    "message": {"type": "string"},
+    "fix": {"type": "string"},
+    "evidence": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["doc_id", "page"],
+        "properties": {
+          "doc_id": {"type": "string"},
+          "page": {"type": "integer", "minimum": 1},
+          "section_path": {"type": "string"},
+          "text": {"type": "string"}
+        }
+      }
+    },
+    "dedup_key": {"type": "string"},
+    "need_human": {"type": "boolean"},
+    "source": {"enum": ["local-det", "engine"]},
+    "matched_expected": {"type": "boolean", "description": "true=核实无误报(专项检查结论)"}
+  }
+}
