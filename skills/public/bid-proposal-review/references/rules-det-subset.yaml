@@ -3,13 +3,14 @@ conventions:
   on_missing_input: need_human
   evidence_matching: {normalize: true, similarity_threshold: 0.9, page_tolerance: 1}
   dedup_tpl: "{rule_id}|{clause_id or '-'}|{sorted(evidence_keys)}"
+  # 注:local-det 副本实际 dedup_key 为 "{rule_id}|-|{message前40字}"(det 问题无证据键);evidence 版键由子系统引擎产生
 rules:
   - id: L1-009
     name: 投标总价不得超过最高限价
     layer: L1
     type: deterministic
     applies_to: ["*"]
-    inputs: [bid.total_price, tender.max_price, bid.price_includes_tax]
+    inputs: [bid.total_price, tender.max_price, bid.price_includes_tax, tender.price_includes_tax]
     check:
       op: lte
       left: bid.total_price
@@ -32,10 +33,11 @@ rules:
         - "sum(bid.detail_rows[*].amount) == bid.subtotal"
         - "bid.subtotal == bid.total_price"
         - "number_to_words(bid.total_price) == bid.total_price_words"
+      # tolerance 仅接受 0.00(精确相等);副本求值器不实现容差
       tolerance: 0.00
     severity: fatal
     evidence: [A-PRICE-DETAIL, A-PRICE-SHEET]
-    message_tpl: "报价加总不一致:明细合计 {calc} ,报价表 {bid.total_price:money} ,大写 {bid.total_price_words}"
+    message_tpl: "报价加总不一致:明细合计 {bid.subtotal:money} 与总价 {bid.total_price:money} 不一致,大写 {bid.total_price_words}"
     fix_tpl: "以明细表为准重算合价与总价,同步修正大写金额与正文引用"
     confidence_gate: 1.0
     enabled: true
@@ -49,6 +51,7 @@ rules:
       op: set_eq
       left: "codes(tender.boq_items)"
       right: "codes(bid.boq_items)"
+      # allow_extra/allow_missing 仅声明意图;副本求值器为严格 set_eq,改值不生效
       allow_extra: false
       allow_missing: false
     severity: fatal
@@ -63,6 +66,7 @@ rules:
     type: deterministic
     applies_to: ["*"]
     inputs: [tender.project_identity.name, tender.project_identity.code, bid.header_footer.project_name]
+    # 编号一致性 deferred:bid 侧编号字段字典 v2 定义;tender.project_identity.code 当前仅作提取输入
     check:
       op: and
       all:

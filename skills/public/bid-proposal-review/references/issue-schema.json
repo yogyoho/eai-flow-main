@@ -4,7 +4,7 @@
   "type": "object",
   "required": ["rule_id", "layer", "severity", "verdict", "message", "evidence"],
   "properties": {
-    "rule_id": {"type": "string", "pattern": "^L[134]-[0-9]{3}$"},
+    "rule_id": {"type": "string", "pattern": "^L[1-4]-[0-9]{3}$"},
     "layer": {"enum": ["L1", "L3"]},
     "severity": {"enum": ["fatal", "major", "minor", "info"]},
     "verdict": {"enum": ["violation", "need_human", "unclear"]},
