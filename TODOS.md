@@ -164,6 +164,6 @@
 ## Deferred by 单租户收敛 (2026-10-29, D2 决议 A)
 
 - [x] [ragflow][high] (2026-10-29 完成) 7 个 v1.1 前活 KB 已迁入服务租户 7303d80e:MySQL 行改写 + 两轮 ES _reindex(44f4e116 索引 1005 + 52d6e05c 索引 2707,后者是历史变迁遗留的第三索引,chunk 分布跨索引须全量排查) + 旧租户 normal 成员行 7 条清理。探针检索实测通过:合同 0.23/法规标准 0.202/矿产切片 0.219/翻译资产 0.255;EAI knowledge-bases 注册表 9 行引用全解析。回滚点 /tmp/ragflow-rollback-20261029.sql + /tmp/usertenant-predelete-20261029.sql
-- [ ] [ragflow][medium] 合同识别库×2 悬空引用:knowledge_bases.ragflow_dataset_id=bcd80aa6/cb82ecce 在 RAGFlow 无对应 KB——确认是误删还是漂移,重建或清引用
+- [x] [ragflow][medium] (2026-10-29 完成) 合同识别库×2 悬空引用已清:证据=全库代码/config/skill 零引用、EAI 子表(documents/grants/scrap_drafts/tlt)全 0、RAGFlow MySQL 无行;ES 尚有 667 孤儿 chunk(建库嵌入后 MySQL 行被删、delete 清理失败残留,api log 有同类 400 记录)一并 delete_by_query 清零。注册表 9→7 行,全部引用现落在真实库
 - [ ] [ragflow][medium] 环评样例库 4ad993ec 检索必挂(code 102 "instance default lookup failed"):其 embd_id=mxbai-embed-large@Ollama,系统模型注册表只有 bge-m3——迁移前即坏(切租户无关,提问向量一步就断);修法=重注册该模型或整库重嵌 bge-m3
 - [ ] [ragflow][low] BID_RAGFLOW_DATASET_ID=a0e4b4f8(bid-samples-slices)仍为旧租户 44f4e116 + permission=me(chunks 落 52d6e05c 索引,created_by ragflow-admin)——与单租户模型同类相斥,投标编译切片管线写它;需决定迁移或维持

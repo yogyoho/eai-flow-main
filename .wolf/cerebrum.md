@@ -2748,3 +2748,9 @@ P3 item ① 裁决：**双工况 N=3 校核暂不默认开**，维持 SKILL 现�
 
 **Decision Log**
 - 2026-10-29 单租户迁移执行:用户在 AskUserQuestion 选"继续收尾"(补 ES 第二轮 reindex + 清 7 条旧租户 normal 成员行)。回滚点:/tmp/ragflow-rollback-20261029.sql(kb/doc/user_tenant)+ /tmp/usertenant-predelete-20261029.sql。ragflow 容器免重启(逐请求读库),重启留给下次维护窗口。
+
+### 2026-10-29 合同识别库悬空引用清理(追加)
+
+**Key Learnings**
+- 定制镜像删 KB 时 ES 清理可能失败(api log 有 "Elasticsearch delete by query returned error 400" 同类记录)→ 留孤儿 chunk。判断 KB 真死透要同时查:RAGFlow MySQL knowledgebase + document + ES 全索引 kb_id 聚合(本次 MySQL 0 行但 ES 躺 667 chunk)。
+- EAI knowledge_bases 注册表行是否可删的判据:全库 grep ragflow_dataset_id 前缀 + documents/grants/scrap_drafts/tlt_* 子表计数。

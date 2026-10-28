@@ -25544,3 +25544,12 @@
 | 03:53 | Created backend/.tmp_buglog.py | — | ~521 |
 | 01:30 | 单租户迁移 Phase4 验证:发现 4 库 2707 chunks 在第三索引 52d6e05c,补第二轮 reindex 全通过;环评样例 mxbai embd 断裂属既有(挂账) | ragflow ES/MySQL | bug-199/200 入账 | ~8k |
 | 01:45 | Phase5 成员清理:删 7 条旧租户 normal 行(备份 usertenant-predelete),Phase6 复测 admin12/service10,Phase7 EAI 全链路(注册表9行+documents 4 doc)通过 | ragflow MySQL + gateway | 迁移闭环,收尾提交 | ~6k |
+| 03:57 | Created C:/Users/admin/.claude/projects/D--eai-eai-flow-main/memory/single-tenant-kb-migration-landed.md | — | ~349 |
+| 03:58 | Session end: 24 writes across 10 files (2026-10-29-bid-review-implementation.md, superpowers-plans-gitignored-f-commit.md, reindex-52d6e05c-body.json, rules-det-subset.yaml, issue-schema.json) | 9 reads | ~33467 tok |
+
+## Session: 2026-10-28 04:02
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 04:06 | Edited TODOS.md | 2→2 lines | ~117 |
+| 02:10 | 合同识别库×2 悬空引用清理:证无用(零引用+子表空+MySQL 无行)删注册表 2 行+ES 667 孤儿 chunk;注册表 7 行全落真实库 | extensions PG + ES | bug-201 入账,TODOS 勾销 | ~4k |

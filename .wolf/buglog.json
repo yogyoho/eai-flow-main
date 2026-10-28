@@ -3286,6 +3286,24 @@
       "related_bugs": [],
       "occurrences": 1,
       "last_seen": "2026-10-29"
+    },
+    {
+      "id": "bug-201",
+      "timestamp": "2026-10-29",
+      "error_message": "合同识别库×2 悬空引用: EAI knowledge_bases.ragflow_dataset_id=bcd80aa6/cb82ecce 在 RAGFlow 无对应 KB",
+      "file": "extensions PG knowledge_bases + ragflow ES ragflow_52d6e05c",
+      "root_cause": "2026-10-17 建库嵌入后 RAGFlow MySQL 行被删, 定制镜像 delete 路径 ES 清理失败(api log 有 Elasticsearch delete by query returned error 400 同类记录), 留 667 孤儿 chunk; EAI 注册表 2 行指向死 id",
+      "fix": "证据链确认无用(代码/config/skill 零引用, 子表全 0)后: 删 EAI 注册表 2 行 + delete_by_query 清 667 孤儿 chunk; 注册表 9→7 行全部引用落真实库",
+      "tags": [
+        "ragflow",
+        "es",
+        "orphan-chunks",
+        "dangling-ref",
+        "knowledge-module"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-10-29"
     }
   ]
 }
