@@ -50,3 +50,15 @@ def test_run_l3_006_structural_all_var_attr():
     ok = {**fields, "bid.amount_occurrences": [{"where": "承诺函", "value": 1000001.0}]}
     assert run_det_rule(rule, ok) == []
     assert run_det_rule(rule, {"bid.total_price": 1.0})[0]["verdict"] == "need_human"
+
+
+def test_run_l3_006_empty_and_none_where_no_none_literal():
+    """评审修正 A11a(2) 回归门:空串 where 按原文传递(() 形态);None where 不渲染 "None" 字面量;金额数字完整无残缺。"""
+    pack = load_rulepack(PACK)
+    rule = {r.id: r for r in pack.rules}["L3-006"]
+    for where in ("", None):
+        fields = {"bid.total_price": 1000001.0, "bid.amount_occurrences": [{"where": where, "value": 900000.0}]}
+        msg = run_det_rule(rule, fields)[0]["message"]
+        assert "¥900,000.00" in msg and "¥1,000,001.00" in msg, f"L3-006 where={where!r} 数字不完整: {msg}"
+        assert "None" not in msg, f"L3-006 where={where!r} 泄漏 None 字面量: {msg}"
+        assert not re.search(r"\{[\w.]+(?::\w+)?\}", msg), f"残留占位符: {msg}"

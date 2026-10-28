@@ -126,7 +126,10 @@ def _tpl(tpl: str, fields: dict, env: dict | None = None) -> str:
     def sub(m):
         path, spec = m.group(1), m.group(2) or ""
         try:
-            return _fmt(_resolve(path, fields, env), spec)
+            v = _resolve(path, fields, env)
+            if v is None:
+                return ""  # None 不渲染 "None" 字面量(评审修正 A11a(2),与副本 eval_det.py 同规;空串按原文传递)
+            return _fmt(v, spec)
         except Exception:
             return m.group(0)  # 解析失败保留占位(缺陷可见);测试以"无残留 {...} 占位"把关
 
