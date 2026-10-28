@@ -201,10 +201,7 @@ def dedup(existing, issue, tpl=None):
     key = issue.setdefault("dedup_key", build_dedup_key(issue, tpl))
     for prev in existing or []:
         if prev.get("dedup_key") == key:
-            seen = {
-                (e.get("doc_id"), e.get("page"), _norm(e.get("text") or ""))
-                for e in prev.get("evidence") or []
-            }
+            seen = {(e.get("doc_id"), e.get("page"), _norm(e.get("text") or "")) for e in prev.get("evidence") or []}
             for ev in issue.get("evidence") or []:
                 token = (ev.get("doc_id"), ev.get("page"), _norm(ev.get("text") or ""))
                 if token not in seen:
@@ -221,9 +218,7 @@ def normalize_severity(issue, rule):
     model_severity = issue.get("model_severity")
     issue["severity"] = rule_severity
     if model_severity and model_severity != rule_severity:
-        issue.setdefault("notes", []).append(
-            f"模型侧 severity={model_severity} 与规则定义冲突,以规则定义为准"
-        )
+        issue.setdefault("notes", []).append(f"模型侧 severity={model_severity} 与规则定义冲突,以规则定义为准")
     return issue
 
 
@@ -238,8 +233,7 @@ def run_seven_checks(issue, rule, docs_text, fields, existing=None, evaluator=No
     if evidence_misaligned:
         issue["need_human"] = True
         notes.append("证据未对齐:摘录与 doc_id+page±1 原文相似度不足")
-        logger.warning("bid_review.verify.evidence_misaligned rule_id=%s clause=%s",
-                       issue.get("rule_id"), issue.get("clause_id"))
+        logger.warning("bid_review.verify.evidence_misaligned rule_id=%s clause=%s", issue.get("rule_id"), issue.get("clause_id"))
 
     # 第3道 数值复核:以确定性结果覆盖模型结论
     det = recompute_numeric(issue, fields, evaluator)
@@ -259,14 +253,11 @@ def run_seven_checks(issue, rule, docs_text, fields, existing=None, evaluator=No
     blob = " ".join(
         filter(
             None,
-            [issue.get("message") or "", issue.get("fix") or "",
-             *[str(e.get("text") or "") for e in issue.get("evidence") or []],
-             *notes],
+            [issue.get("message") or "", issue.get("fix") or "", *[str(e.get("text") or "") for e in issue.get("evidence") or []], *notes],
         )
     )
     if not injection_guard(blob):
-        logger.error("bid_review.security.injection_discarded rule_id=%s clause=%s",
-                     issue.get("rule_id"), issue.get("clause_id"))
+        logger.error("bid_review.security.injection_discarded rule_id=%s clause=%s", issue.get("rule_id"), issue.get("clause_id"))
         return issue, "discarded"
 
     # 第5道 去重:同键合并,保留多证据
