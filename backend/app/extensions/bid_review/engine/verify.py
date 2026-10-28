@@ -139,18 +139,26 @@ def align_evidence(issue, docs_text, thr=EVIDENCE_SIM_THRESHOLD):
 
 
 def _default_numeric_evaluator():
-    """懒加载 Task 5 det 求值器基底;未落地/导入失败返回 None(不阻塞纯 sem 规则)。"""
+    """懒加载 Task 5 det 求值器基底;未落地/导入失败返回 None(不阻塞纯 sem 规则)。
+    评审修复(2026-10-29):eval_expr 返回 bool,而第3道协议只认 "violation"/"pass" 字符串——
+    直接返回 eval_expr 时 True/False 恒不在集合内,recompute_numeric 永远 None,缺省生产路径
+    上 §4.6「以确定性结果覆盖模型结论」对 sem/hyb 静默失灵。包一层 bool→verdict 映射:
+    按 run_det_rule 语义,表达式 False=判定失败=violation,True=pass。"""
     try:
         from app.extensions.bid_review.engine.rule_runner import eval_expr  # noqa: PLC0415 — 延迟依赖,Task 5 并行落地
 
-        return eval_expr
+        def _bool_to_verdict(expr, fields):
+            return "pass" if eval_expr(expr, fields) else "violation"
+
+        return _bool_to_verdict
     except Exception:  # noqa: BLE001 — 求值器缺席/签名演进一律降级
         return None
 
 
 def recompute_numeric(issue, fields, evaluator=None):
     """第3道:涉数结论用已算字段重算。返回确定性 verdict("violation"/"pass")或 None(无从重算)。
-    evaluator 可注入(测试 fake / 未来替换实现);缺省懒加载 engine.rule_runner.eval_expr,
+    evaluator 可注入(测试 fake / 未来替换实现,契约返回 "violation"/"pass" 字符串;返回 bool 时
+    按同一 run_det_rule 语义映射);缺省懒加载 engine.rule_runner.eval_expr 并包 bool→verdict 映射,
     求值器缺席或表达式求值失败时返回 None,不覆盖模型结论。"""
     expr = issue.get("numeric_expr")
     if not expr:
@@ -164,7 +172,11 @@ def recompute_numeric(issue, fields, evaluator=None):
     except Exception as exc:  # noqa: BLE001 — ExprError/字段缺失 → 不覆盖,由上层决定
         logger.info("bid_review.recompute_numeric.skipped expr=%s err=%s", expr, exc)
         return None
-    return det if det in ("violation", "pass") else None
+    if det in ("violation", "pass"):
+        return det
+    if isinstance(det, bool):  # 注入评估器返回 bool 时同一语义映射(缺省路径已在 _default_numeric_evaluator 包装)
+        return "pass" if det else "violation"
+    return None
 
 
 def gate_confidence(issue, rule):

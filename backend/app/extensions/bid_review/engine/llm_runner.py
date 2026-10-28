@@ -44,7 +44,27 @@ SCHEMA_HINT = json.dumps(
 # 模型 verdict → 引擎 issue verdict(§4.6 语义映射;full=干净条款不产问题)
 VERDICT_TO_ISSUE = {"partial": "violation", "none": "violation", "unclear": "unclear"}
 
+# check.op → 表达式比较符(仅可确定性重算的三种比较;set_eq/and/all/steps 形态不派生)
+_OP_TO_COMPARATOR = {"lte": "<=", "gte": ">=", "eq": "=="}
+
 _PLACEHOLDER_RE = re.compile(r"\{[^{}]*\}")
+
+
+def _derive_numeric_expr(check) -> str | None:
+    """从 check 形态派生第3道数值复核(verify.recompute_numeric)的触发表达式。
+    评审修复(2026-10-29):原 check.get("numeric_expr") 在设计文档/实施计划/规则包 YAML 中
+    均无该键(grep 零命中),无任何上游生产者 → 第3道在生产路径永不触发。派生序:
+    显式 numeric_expr(Task 18 若正式入契约则直接可用)→ hybrid det_expr →
+    op-left-right(lte/gte/eq)拼装;均无 → None(纯 sem 规则无从重算,不覆盖模型结论)。"""
+    if not isinstance(check, dict):
+        return None
+    for key in ("numeric_expr", "det_expr"):
+        if check.get(key):
+            return str(check[key])
+    op = check.get("op")
+    if op in _OP_TO_COMPARATOR and "left" in check and "right" in check:
+        return f"{check['left']} {_OP_TO_COMPARATOR[op]} {check['right']}"
+    return None
 
 
 def build_rule_card(rule, fields, materials) -> str:
@@ -101,7 +121,7 @@ def _verdict_to_issue(rule, entry) -> dict[str, Any]:
         "need_human": verdict == "unclear",
         "matched_expected": False,
         "source": "engine",
-        "numeric_expr": check.get("numeric_expr"),
+        "numeric_expr": _derive_numeric_expr(check),
     }
 
 

@@ -6,7 +6,7 @@ import json
 
 import pytest
 
-from app.extensions.bid_review.engine.llm_runner import _hyb_det_prefilter, build_rule_card, run_sem_rule
+from app.extensions.bid_review.engine.llm_runner import _derive_numeric_expr, _hyb_det_prefilter, build_rule_card, run_sem_rule
 from app.extensions.bid_review.engine.rule_runner import Rule
 from app.extensions.bid_review.engine.verify import (
     align_evidence,
@@ -345,3 +345,51 @@ async def test_sem_rule_accepts_rule_dataclass():
     )
     issues = await run_sem_rule(rule, fields={}, materials="…", model_fn=_fake(json.dumps(GOOD)), docs_text=DOCS)
     assert issues[0]["verdict"] == "violation" and issues[0]["rule_id"] == "L1-013", "load_rulepack 数据类直传 run_sem_rule 不得崩(入口表示归一为 dict)"
+
+
+# ── 评审修复(2026-10-29):第3道数值复核缺省路径契约断裂 ─────────
+# 修复前两处断裂:(1) _default_numeric_evaluator 懒加载的 eval_expr 返回 bool,
+# True/False 恒不在 ("violation","pass") 集合 → recompute_numeric 永远 None——缺省
+# 生产路径上第3道永不生效(既有 recompute 测试全部注入 fake evaluator,缺省路径零覆盖);
+# (2) 触发键 numeric_expr 取自 check.get("numeric_expr"),设计文档/规则包 YAML 均无该键,
+# 无任何上游生产者 → sem/hyb 的 §4.6「以确定性结果覆盖模型结论」静默失灵。
+# 修复:缺省评估器包 bool→verdict 映射(run_det_rule 语义 False=判定失败=violation);
+# _verdict_to_issue 从 check 形态(det_expr / op-left-right)自动派生 numeric_expr。
+
+
+def test_recompute_numeric_default_evaluator_bool_to_verdict():
+    """缺省路径回归(不注入 evaluator):bool→verdict 映射后第3道真实生效。"""
+    issue = _issue([], numeric_expr="bid.total_price <= tender.max_price")
+    assert recompute_numeric(issue, {"bid.total_price": 101.0, "tender.max_price": 100.0}) == "violation", "expr False=判定失败=violation(run_det_rule 语义)"
+    assert recompute_numeric(issue, {"bid.total_price": 99.0, "tender.max_price": 100.0}) == "pass", "expr True=pass"
+    assert recompute_numeric(issue, {"bid.total_price": 99.0}) is None, "字段缺失求值失败 → 不覆盖模型结论"
+
+
+def test_derive_numeric_expr_from_check_shapes():
+    assert _derive_numeric_expr({"det_expr": "bid.total_price <= tender.max_price"}) == "bid.total_price <= tender.max_price", "hyb det_expr 直接派生"
+    assert _derive_numeric_expr({"op": "lte", "left": "bid.total_price", "right": "tender.max_price"}) == "bid.total_price <= tender.max_price", "op-left-right 拼装"
+    assert _derive_numeric_expr({"op": "gte", "left": "a", "right": "b"}) == "a >= b"
+    assert _derive_numeric_expr({"numeric_expr": "x == y"}) == "x == y", "显式键优先(Task 18 若正式入契约直接可用)"
+    assert _derive_numeric_expr(RULE["check"]) is None, "纯 sem 检查形态(per_clause)无从重算"
+    assert _derive_numeric_expr({"op": "set_eq", "left": "codes(t.boq)", "right": "codes(b.boq)"}) is None, "set_eq 非 lte/gte/eq,不派生"
+
+
+@pytest.mark.asyncio
+async def test_hyb_op_left_right_recompute_confirms_violation_overrides_unclear():
+    """op-left-right 无 det_expr → 粗筛不触发(det_expr 门)→ 语义管线模型 unclear;
+    缺省数值复核求值 False → violation 覆盖模型结论并解除 need_human(§4.6)。"""
+    rule = {**HYB, "check": {"op": "lte", "left": "bid.total_price", "right": "tender.max_price", "verdict_set": ["full", "partial", "none", "unclear"]}}
+    unclear = {"verdicts": [{**GOOD["verdicts"][0], "verdict": "unclear", "confidence": 0.9}]}
+    issues = await run_sem_rule(rule, fields=HYB_FIELDS, materials="…", model_fn=_fake(json.dumps(unclear)), docs_text=DOCS)
+    assert issues[0]["numeric_expr"] == "bid.total_price <= tender.max_price", "numeric_expr 从 op-left-right 自动派生"
+    assert issues[0]["verdict"] == "violation", "确定性重算坐实违规,覆盖 unclear"
+    assert issues[0]["need_human"] is False
+
+
+@pytest.mark.asyncio
+async def test_hyb_det_expr_pass_sem_claims_violation_refuted_by_default_evaluator():
+    """生产路径端到端回归:det_expr 为真(粗筛返回 [],fail-open 进语义管线)→ 模型仍报违规 →
+    第3道走缺省 bool 评估器求值 True→pass → refuted 不产出。修复前缺省路径恒 None,误报漏出。"""
+    violation_claim = {"verdicts": [{**GOOD["verdicts"][0], "verdict": "partial", "confidence": 0.95, "reason": "报价超过限价"}]}
+    issues = await run_sem_rule(HYB, fields={"bid.total_price": 99.0, "tender.max_price": 100.0}, materials="…", model_fn=_fake(json.dumps(violation_claim)), docs_text=DOCS)
+    assert issues == [], "确定性重算未复现违规 → 推翻模型误报(§4.6)"
