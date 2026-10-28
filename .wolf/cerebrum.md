@@ -2754,3 +2754,27 @@ P3 item ① 裁决：**双工况 N=3 校核暂不默认开**，维持 SKILL 现�
 **Key Learnings**
 - 定制镜像删 KB 时 ES 清理可能失败(api log 有 "Elasticsearch delete by query returned error 400" 同类记录)→ 留孤儿 chunk。判断 KB 真死透要同时查:RAGFlow MySQL knowledgebase + document + ES 全索引 kb_id 聚合(本次 MySQL 0 行但 ES 躺 667 chunk)。
 - EAI knowledge_bases 注册表行是否可删的判据:全库 grep ragflow_dataset_id 前缀 + documents/grants/scrap_drafts/tlt_* 子表计数。
+
+## [2026-10-29] Key Learnings (cpa 生产 bug 回移植)
+
+- **PaddleOCR-VL(openai-vision)对整页纯文字只输出一个 cell——页面无换行。** 所有「值吞到行尾」类正则(`[^\n\r]+`)在首页标签抽取上会吞进后续标签(如 卖方：…),被含冒号守卫拒收。解法=值裁剪到下一已知标签+分隔符前(`_clip_at_next_label`),且只裁目标字段调用点。
+- **不要在 `_iter_same_line`/`_find` 本体裁剪值** — `_find_supplier` 复用它们,全局裁剪把 supplier 裁成 46 字污染值(生产影子验证实证)。裁剪只加在 project_name primary 路径调用点。(Do-Not-Repeat)
+- **bug/需求报告里的修复建议要对现行代码验证再动手**: BUG-C 建议改 `_DATE_RE` 拒占位符,但该正则本就要求年月日为实际数字(空操作);真泄漏是 `_find_date` 第三层 `_BARE_DATE_LINE` 全文兜底抓走证照/票据裸日期。修在正确的层。
+- **「显式未填」≠「无标签」**: 前者(占位符下划线)应诚实 NULL 并停用全文 scavenging,后者才允许兜底;盖章区手写日期是独立物证,守卫不波及 `_find_stamp_date`。
+- **crud 状态翻转条件必须与 cli 判定严格互逆并写注释锚定**(needs_review 第3条: not name and not loc ⇔ 翻转: name or loc),不越权翻转其他状态(failed/parsing/no_tables/clustered 各有其主)。
+- **生产容器可写层热修必须回移植仓里**才持久(crud.py 曾只活在 prod 容器,gateway 重建即丢)。
+
+## Do-Not-Repeat (2026-10-29 — bid-review 计划/UI 轮)
+- 前端单测框架是 rstest 不是 vitest:root CLAUDE.md "Vitest" 说法已过时;实况=frontend/AGENTS.md(@rstest/core 导入、rs.mock、tests/unit/ 镜像 src、*.dom.test.tsx 走 happy-dom)。写测试/计划一律以 frontend/AGENTS.md 为准。
+- eia-p2 原型令牌禁令(沿 cpa 裁决):原型色号不进代码;大号状态数字须 -700 深档 token(--error-700/--success-700),-500 系大字对比度不足 3:1。
+- 计划代码自审两守则:含 _BUILTIN 函数表的解释器必须有调用分发分支;message_tpl 每个占位符必须有供给方——selftest 应断言渲染消息无残留 {...}。
+- **PostgreSQL LIKE 查反斜杠必翻车**(bug-214,2026-10-29 BUG-D 排查): LIKE '%\%' / chr(92) 拼接 / 参数绑定三种写法全 0 条——LIKE 默认把 \ 当转义字符。查含 \ 的脏数据:全量捞回 Python 侧 `'\' in value` 判定,别信 LIKE 结果下「没有脏数据」的结论。
+- **VLM OCR(如 PaddleOCR-VL)会把孤立符号按数学公式序列化**(bug-213,2026-10-29): Φ→\Phi、×→\times、还裹 \( \) 定界符,相邻页形态不稳定(temperature=0 压不住)。换 prompt("OCR:")保符号丢表格结构=拆东墙补西墙;正解=保留结构型 prompt,下游 normalize(幂等,词界保护,裸 $ 不碰,\n 不压)。**挂载要含缓存重建路径**——只挂活体解析,旧缓存重解析会把已回填的脏值原样带回。
+- **skills/ 无 ruff format 门**(默认 88 列),文件既有长行风格;动 skills 文件勿跑全文件 `ruff format`(会把整文件重排,混入百行噪音+与生产机修复版对照困难),只保证自己新增区域干净。(Do-Not-Repeat)
+
+## Key Learnings (2026-10-29 — RAGFlow embd_id 三段式 / mxbai 假"模型缺注册")
+
+- RAGFlow `knowledgebase.embd_id` 是三段式 `model_name@instance_name@provider_name`(如 `bge-m3:latest@ollama@Ollama`)。写两段(缺实例段,如 `mxbai-embed-large:latest@Ollama`)不报建库错,检索时才按 instance "default" 兜底 → `instance "default" lookup failed: record not found` → retrieval code 102。症状极易误诊为"模型未注册"——先查 embd_id 格式再动模型注册表。
+- 实例名解析键 `tenant_model_instance.instance_name`(本环境 ollama 实例指 http://host.docker.internal:11434);`tenant_model`/`tenant_llm` 表为空是正常的,别拿它们判断模型有没有。
+- ollama 侧模型是否在 = `docker exec deer-flow-ollama ollama list`(或宿主 `ollama list`),与 RAGFlow 注册无关。
+- 修 embd_id = 一条 UPDATE knowledgebase SET embd_id,chunk 向量不动零重嵌,逐请求读库免重启。

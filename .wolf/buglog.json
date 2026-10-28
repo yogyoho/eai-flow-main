@@ -3304,6 +3304,255 @@
       "related_bugs": [],
       "occurrences": 1,
       "last_seen": "2026-10-29"
+    },
+    {
+      "id": "bug-202",
+      "timestamp": "2026-10-28T20:09:10.340Z",
+      "error_message": "Incorrect value in code",
+      "file": "skills/public/bid-proposal-review/references/rules-det-subset.yaml",
+      "root_cause": "Had \"报价加总不一致:明细合计 {calc} ,报价表 {bid.total_price:money} ",
+      "fix": "Changed to \"报价加总不一致:明细合计 {bid.subtotal:money} 与总价 {bid.total_",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "yaml"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-10-28T20:09:10.340Z"
+    },
+    {
+      "id": "bug-203",
+      "timestamp": "2026-10-28T20:09:35.828Z",
+      "error_message": "Wrong reference: false should be allow_missing",
+      "file": "skills/public/bid-proposal-review/references/rules-det-subset.yaml",
+      "root_cause": "Used \"false\" instead of \"allow_missing\"",
+      "fix": "Changed false → allow_missing",
+      "tags": [
+        "auto-detected",
+        "wrong-reference",
+        "yaml"
+      ],
+      "related_bugs": [],
+      "occurrences": 2,
+      "last_seen": "2026-10-28T20:09:49.694Z"
+    },
+    {
+      "id": "bug-204",
+      "timestamp": "2026-10-28T20:09:55.450Z",
+      "error_message": "Incorrect value in code",
+      "file": "skills/public/bid-proposal-review/references/issue-schema.json",
+      "root_cause": "Had \"^L[134]-[0-9]{3}$\"",
+      "fix": "Changed to \"^L[1-4]-[0-9]{3}$\"",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "json"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-10-28T20:09:55.450Z"
+    },
+    {
+      "id": "bug-205",
+      "timestamp": "2026-10-28T20:11:34.589Z",
+      "error_message": "Significant refactor of ",
+      "file": "docs/superpowers/plans/2026-10-29-bid-review-implementation.md",
+      "root_cause": "4 lines replaced/restructured",
+      "fix": "Rewrote 7→7 lines (4 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "md"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-10-28T20:11:34.589Z"
+    },
+    {
+      "id": "bug-206",
+      "timestamp": "2026-10-28T20:12:04.892Z",
+      "error_message": "Incorrect value in code",
+      "file": "docs/superpowers/plans/2026-10-29-bid-review-implementation.md",
+      "root_cause": "Had `@/components/PageHeader`",
+      "fix": "Changed to `@/extensions/contract-price/components/PageHeader",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "md"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-10-28T20:12:04.892Z"
+    },
+    {
+      "id": "bug-207",
+      "timestamp": "2026-10-29",
+      "error_message": "人工在合同面板补了项目名称后「待人工核验」chip 不消失、「同步分项表」按钮不出现(生产 木饰面、石材物资采购合同 6fdc7ca5, 28页扫描件)",
+      "file": "backend/app/extensions/contract_price/crud.py",
+      "root_cause": "update_document 只对 6 个字段 setattr 后 commit,从不重算 parse_status;前端入口与 chip 都只看 parse_status=='parsed',人工核验做完也走不出去(UI 死路)",
+      "fix": "setattr 后补判定: needs_review and (project_name or project_location) → parsed。与 cli._persist_parse 三态判定第 3 条(not name and not loc → needs_review)严格互逆;不越权翻转 failed/parsing/no_tables/clustered。已落仓 b507b40d0(生产容器可写层热修原本重建即丢)",
+      "tags": [
+        "contract-price",
+        "parse_status",
+        "needs_review",
+        "人工核验",
+        "state-machine"
+      ],
+      "related_bugs": [
+        "bug-208",
+        "bug-209"
+      ],
+      "occurrences": 1,
+      "last_seen": "2026-10-29"
+    },
+    {
+      "id": "bug-208",
+      "timestamp": "2026-10-29",
+      "error_message": "合同首页印着项目名称,解析完 cpa_documents.project_name=NULL,文档落 needs_review",
+      "file": "skills/public/contract-price-analysis/scripts/project_fields.py",
+      "root_cause": "PaddleOCR-VL 首页整页纯文字只输出一个 cell,拼行后 400 余字无换行;_LINE[lbl] 的 [^\n\r]+ 把「项目名称：」的值吞到行尾(带进「卖方：…」的冒号),_valid_name 以含冒号=未拆标签残渣拒收 → None",
+      "fix": "新增 _clip_at_next_label: 值裁剪到下一个「已知标签+分隔符」之前;仅挂 _find_name 的 primary 两处调用点。_iter_same_line 本体不得裁剪(_find_supplier 复用,全局裁剪会把 supplier 裁成 46 字污染值—生产影子验证过)。落仓 b507b40d0",
+      "tags": [
+        "contract-price",
+        "project_fields",
+        "paddleocr-vl",
+        "ocr",
+        "regex"
+      ],
+      "related_bugs": [
+        "bug-207",
+        "bug-209"
+      ],
+      "occurrences": 1,
+      "last_seen": "2026-10-29"
+    },
+    {
+      "id": "bug-209",
+      "timestamp": "2026-10-29",
+      "error_message": "签订日期误抽成 2016-09-19(附件证照/票据日期),合同编号 ZCB-HZZX2ZS-0201-2026-0210 指向 2026;首页实为「签订日期：____年____月____日」未填",
+      "file": "skills/public/contract-price-analysis/scripts/project_fields.py",
+      "root_cause": "_DATE_RE 本要求年月日为实际数字,占位符不匹配;误值来自 _find_date 第三层兜底 _BARE_DATE_LINE 全文行首扫裸「日期:2016.9.19」数字形态(该兜底为钢材 M3 用例刻意保留,不能删)",
+      "fix": "_UNFILLED_DATE_LABEL 守卫: 签订/签署(日期|时间)冒号后紧跟下划线(半/全角)=显式未填 ⇒ _find_date 直接返回 None(诚实 NULL 人工补填);盖章区 _find_stamp_date ±3 行窗口是独立物证,保留不受守卫影响。落仓 b507b40d0",
+      "tags": [
+        "contract-price",
+        "sign_date",
+        "false-positive",
+        "fallback",
+        "ocr"
+      ],
+      "related_bugs": [
+        "bug-207",
+        "bug-208"
+      ],
+      "occurrences": 1,
+      "last_seen": "2026-10-29"
+    },
+    {
+      "id": "bug-210",
+      "timestamp": "2026-10-29",
+      "error_message": "Task 1 质量评审:L1-010 message_tpl 含 {calc} 裸占位(无供给方,fatal 问题漏占位符)+L3-006 var.attr 求值器无法解析+解释器有 _BUILTIN 无调用分发(sum/codes 全 KeyError)+Task 6 verdict/action 列 String(12) 容不下 false_positive(14)/severity_change(15)",
+      "file": "skills/public/bid-proposal-review/references/rules-det-subset.yaml",
+      "root_cause": "计划期数据与求值器代码双向未验证:占位符无供给检查、解释器缺 '(' 分支、_resolve 平键查不到量词 var 头的点名、DB 列宽按最短枚举目测",
+      "fix": "数据侧 0b516be304:{calc}→{bid.subtotal:money}/L1-009 inputs 补 tender.price_includes_tax/schema rule_id ^L[1-4]/四处契约注释;计划侧评审修正块 A1-A9:Task 2 加调用分发+var-attr _resolve/_tpl+selftest 无残留占位断言+L3-006 入坏案集,Task 4/5 同语义,Task 6 列宽 String(20),Task 3 证据补齐归编排层",
+      "tags": [
+        "bid-review",
+        "rulepack",
+        "message_tpl",
+        "evaluator",
+        "var-attr",
+        "column-width"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-10-29"
+    },
+    {
+      "id": "bug-211",
+      "timestamp": "2026-10-28T20:17:41.919Z",
+      "error_message": "Incorrect value in code",
+      "file": "docs/superpowers/plans/2026-10-29-bid-review-implementation.md",
+      "root_cause": "Had `_call`",
+      "fix": "Changed to `{...}`",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "md"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-10-28T20:17:41.919Z"
+    },
+    {
+      "id": "bug-212",
+      "timestamp": "2026-10-28T20:22:37.384Z",
+      "error_message": "Significant refactor of ",
+      "file": "skills/public/bid-proposal-review/scripts/eval_det.py",
+      "root_cause": "2 lines replaced/restructured",
+      "fix": "Rewrote 4→5 lines (2 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-10-28T20:22:37.384Z"
+    },
+    {
+      "id": "bug-213",
+      "timestamp": "2026-10-29",
+      "error_message": "cpa_items.spec_model 出现 LaTeX 转义: HRB400E \\Phi 8mm / 强电线槽 \\(100 \times 100 \times 1.2\\),全库 \\Phi 20 次 \times 2 次,21 条受影响(生产 BUG-D)",
+      "file": "skills/public/contract-price-analysis/scripts/document_parser.py",
+      "root_cause": "PaddleOCR-VL 是 VLM,把单元格孤立符号(Φ/×/±)按数学公式序列化成 LaTeX,有时裹 \\( \\) 定界符;相邻页形态不稳定(temperature=0 压不住解码非确定性);中间无环节拦截,cell→TableExtract→分项抽取原样透传落库。换 'OCR:' prompt 保符号丢表格结构(0 张表,分项提取全军覆没)",
+      "fix": "normalize_latex_math 六步清洗(\text 取内部/定界符删/\\$ 去转义保 $/命令→Unicode 含 \\Philips 词界保护/^{n}→上标/压 [ \t] 不动 \n),幂等。挂载①活体两分支汇合处逐 cell;挂载②本仓加固: from_cache 重建 rows 同步归一化(防旧缓存重解析冲掉 DB 回填)。落仓 f4b6d3c00",
+      "tags": [
+        "contract-price",
+        "paddleocr-vl",
+        "latex",
+        "spec_model",
+        "ocr"
+      ],
+      "related_bugs": [
+        "bug-214"
+      ],
+      "occurrences": 1,
+      "last_seen": "2026-10-29"
+    },
+    {
+      "id": "bug-214",
+      "timestamp": "2026-10-29",
+      "error_message": "排查 BUG-D 时 SQL LIKE '%\\%' / chr(92) 拼接 / 参数绑定 '%\\%' 三种写法全返回 0 条,一度误判「没有脏数据」",
+      "file": "(排查手法,非代码缺陷)",
+      "root_cause": "PostgreSQL 的 LIKE 把 \\ 当默认转义字符,任何形态都得不到「字面反斜杠」语义",
+      "fix": "不要用 SQL LIKE 查反斜杠:全量捞回数据在 Python 侧用 '\\' in value 判定;遇到「明明看到脏数据却查不出来」先怀疑这一层",
+      "tags": [
+        "postgresql",
+        "like",
+        "排查手法",
+        "backslash"
+      ],
+      "related_bugs": [
+        "bug-213"
+      ],
+      "occurrences": 1,
+      "last_seen": "2026-10-29"
+    },
+    {
+      "id": "bug-215",
+      "timestamp": "2026-10-28T20:33:47.337Z",
+      "error_message": "Incorrect value in code",
+      "file": "TODOS.md",
+      "root_cause": "Had \"instance default lookup failed\"",
+      "fix": "Changed to `model@instance@provider`",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "md"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-10-28T20:33:47.337Z"
     }
   ]
 }

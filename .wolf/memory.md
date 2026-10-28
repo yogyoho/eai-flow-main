@@ -25575,3 +25575,23 @@
 | 04:17 | Edited docs/superpowers/plans/2026-10-29-bid-review-implementation.md | "_call" → "{...}" | ~49 |
 | 04:18 | Edited TODOS.md | inline fix | ~75 |
 | 02:40 | bid-samples-slices 处置:用户裁决模块半成品→删除;查证写入dormant(无BID_RAGFLOW_API_KEY)+检索不在注册表=零读零写;删 MySQL 2 行+ES 15 chunks+env 死钉注释 | ragflow MySQL/ES + docker/.env | TODOS 勾销 | ~4k |
+| 04:19 | Session end: 17 writes across 6 files (TODOS.md, 2026-10-29-bid-review-implementation.md, rules-det-subset.yaml, issue-schema.json, 2026-10-29-bid-review-ui-spec.md) | 5 reads | ~23774 tok |
+| 04:20 | Session end: 17 writes across 6 files (TODOS.md, 2026-10-29-bid-review-implementation.md, rules-det-subset.yaml, issue-schema.json, 2026-10-29-bid-review-ui-spec.md) | 5 reads | ~23774 tok |
+| 04:21 | Created skills/public/bid-proposal-review/scripts/eval_det.py | — | ~3901 |
+| 04:22 | Edited skills/public/bid-proposal-review/scripts/eval_det.py | 4→5 lines | ~95 |
+| 04:24 | Edited skills/public/bid-proposal-review/scripts/eval_det.py | modified _tpl() | ~105 |
+
+## Session: 2026-10-28 04:26
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 04:40 | BUG-D LaTeX 归一化回移植: normalize_latex_math 六步+活体/from_cache 双挂载+自检/pytest 26 用例;误跑全文件 reformat 已还原重做(只挂目标编辑) | document_parser.py, test_latex_normalization.py | 自检ok+pytest44+f4b6d3c00 落仓 | ~35k |
+| 12:30 | 发射 bid-review-parallel-build 工作流(4 波 14 流 21 任务,每流实现+规格评审+质量评审闭环)+预建 bid_review 包骨架 48a609d57+Task2 送规格评审 aa8afe5 | backend/app/extensions/bid_review/, docs/superpowers/plans/, skills/public/bid-proposal-review/ | 工作流 wf_7f27be1c 运行中 | ~15k |
+
+## Session: 2026-10-28 04:33
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 04:33 | Edited TODOS.md | "instance default lookup f" → "model@instance@provider" | ~104 |
+| 05:20 | 环评样例库 4ad993ec 检索修复:embd_id 补三段式实例段(非模型注册),检索 sim 0.576;TODOS 标 done+cerebrum | TODOS.md .wolf/cerebrum.md | done | ~3k |
+| 04:34 | Session end: 1 writes across 1 files (TODOS.md) | 2 reads | ~112 tok |
