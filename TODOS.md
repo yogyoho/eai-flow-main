@@ -154,3 +154,9 @@
 
 - [ ] [deploy][high] 离线包默认模型 gemma-4-31b 已从客户 GPUStack 删除——部署前按 GPUStack 实际清单改 deploy/offline/config.yaml models 首位（qa-report ISSUE-005）；复现：新部署对话页选默认模型 404
 - [ ] [deploy][high] 导出前重建过期镜像：gateway/frontend-prod/collab（落后 09-19/09-26/10-10 三轮 merge），`UV_INDEX_URL=https://mirrors.aliyun.com/pypi/simple/` 全量 compose build（qa-report ISSUE-004；ontostudio 双镜像构建通路已实证 EXIT 0）
+
+## Deferred by /qa (2026-10-28, RAGFlow SSO)
+
+- [ ] [ragflow-sso][low] /login 交换失败返回裸 HTTP 500——测试显式钉住"不伪 302、不静默回退"是刻意语义；后续可加重定向到带错误提示的中间页（qa-report ISSUE-003）
+- [ ] [ragflow-sso][low] create_kb (knowledge/service.py) 裸传 chunk_method，relink 路径却有 _CHUNK_METHOD_TO_PARSER 映射；非法值 → 静默 "Continuing without sync" 孤儿 KB——补同款映射或入参校验（qa-report ISSUE-005）
+- [ ] [ragflow-sso][note] RAGFlow 侧 /sso/exchange + EnsureSSOUser 源码在定制镜像 ragflow-dev:main，不在本仓库——itsdangerous 失败标记落库（ISSUE-006 根因）无法上游审计；EAI 侧已做 INVALID_ 防御，RAGFlow 侧修复需进定制镜像任务清单
