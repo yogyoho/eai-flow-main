@@ -166,6 +166,25 @@ modules:
       - { id: "cpa_all", display_name: "全部合同数据", rule_template: {} }
       - { id: "cpa_dept", display_name: "本部门合同", rule_template: { dept_id IN: "$identity.dept_ids" } }
 
+  # ─── 投标方案审查(应用中心;spec 2026-10-29 bid-review)───
+  bid_review:
+    display_name: "投标方案审查"
+    nav_id: "nav:bid-review"
+    pages:
+      - id: "bid:page:tasks"
+        display_name: "任务列表"
+      - id: "bid:page:workbench"
+        display_name: "审查工作台"
+        operations: []
+      - id: "bid:page:baseline"
+        display_name: "基准确认"
+        operations: []
+      - id: "bid:page:rules"
+        display_name: "规则库"
+        operations: []
+    data_scopes:
+      - { id: "bid_all", display_name: "全部审查任务", rule_template: {} }
+
   # ─── 备品备件价格分析（应用中心 → 采购管理；克隆自 contract_price，加客户维度）───
   spare_parts:
     display_name: "备品备件价格分析"
