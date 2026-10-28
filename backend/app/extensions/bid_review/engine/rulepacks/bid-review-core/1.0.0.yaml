@@ -1,0 +1,130 @@
+# bid-review-core 子系统规则包 v1.0.0(canonical,M1 七条)——技能 references/rules-det-subset.yaml 为其副本分发
+conventions:
+  on_missing_input: need_human
+  evidence_matching: {normalize: true, similarity_threshold: 0.9, page_tolerance: 1}
+  dedup_tpl: "{rule_id}|{clause_id or '-'}|{sorted(evidence_keys)}"
+  # 注:local-det 副本实际 dedup_key 为 "{rule_id}|-|{message前40字}"(det 问题无证据键);evidence 版键由子系统引擎产生
+rules:
+  - id: L1-009
+    name: 投标总价不得超过最高限价
+    layer: L1
+    type: deterministic
+    applies_to: ["*"]
+    inputs: [bid.total_price, tender.max_price, bid.price_includes_tax, tender.price_includes_tax]
+    check:
+      op: lte
+      left: bid.total_price
+      right: tender.max_price
+      precondition: "bid.price_includes_tax == tender.price_includes_tax"
+    severity: fatal
+    evidence: [A-PRICE-SHEET, A-TENDER-NOTICE]
+    message_tpl: "投标总价 {bid.total_price:money} 超过最高限价 {tender.max_price:money}"
+    fix_tpl: "复核报价汇总与含税口径;不含税报价须按招标口径换算后重填"
+    confidence_gate: 1.0
+    enabled: true
+  - id: L1-010
+    name: 报价算术一致性(明细→合价→总价→大写)
+    layer: L1
+    type: deterministic
+    applies_to: ["*"]
+    inputs: [bid.detail_rows, bid.subtotal, bid.total_price, bid.total_price_words]
+    check:
+      steps:
+        - "sum(bid.detail_rows[*].amount) == bid.subtotal"
+        - "bid.subtotal == bid.total_price"
+        - "number_to_words(bid.total_price) == bid.total_price_words"
+      # tolerance 仅接受 0.00(精确相等);求值器不实现容差
+      tolerance: 0.00
+    severity: fatal
+    evidence: [A-PRICE-DETAIL, A-PRICE-SHEET]
+    message_tpl: "报价加总不一致:明细合计 {bid.subtotal:money} 与总价 {bid.total_price:money} 不一致,大写 {bid.total_price_words}"
+    fix_tpl: "以明细表为准重算合价与总价,同步修正大写金额与正文引用"
+    confidence_gate: 1.0
+    enabled: true
+  - id: L1-011
+    name: 清单无漏项、无擅自增项
+    layer: L1
+    type: deterministic
+    applies_to: ["*"]
+    inputs: [tender.boq_items, bid.boq_items]
+    check:
+      op: set_eq
+      left: "codes(tender.boq_items)"
+      right: "codes(bid.boq_items)"
+      # allow_extra/allow_missing 仅声明意图;求值器为严格 set_eq,改值不生效
+      allow_extra: false
+      allow_missing: false
+    severity: fatal
+    evidence: [A-TENDER-BOQ, A-BOQ]
+    message_tpl: "清单不一致:漏项 {missing} ,增项 {extra}"
+    fix_tpl: "按招标清单逐项响应,删除擅自新增项或补充漏报项"
+    confidence_gate: 1.0
+    enabled: true
+  - id: L3-001
+    name: 项目名称与编号全文档一致
+    layer: L3
+    type: deterministic
+    applies_to: ["*"]
+    inputs: [tender.project_identity.name, tender.project_identity.code, bid.header_footer.project_name]
+    # 编号一致性 deferred:bid 侧编号字段字典 v2 定义;tender.project_identity.code 当前仅作提取输入
+    check:
+      op: and
+      all:
+        - "bid.header_footer.project_name == tender.project_identity.name"
+    severity: major
+    evidence: [A-HEADER, A-TENDER-NOTICE]
+    message_tpl: "页眉项目名 {bid.header_footer.project_name} 与招标项目名 {tender.project_identity.name} 不一致"
+    fix_tpl: "全文替换为招标项目名称与编号(页眉/封面/承诺函逐处核对)"
+    confidence_gate: 1.0
+    enabled: true
+  - id: L3-003
+    name: 投标人主体与执照及白名单一致
+    layer: L3
+    type: deterministic
+    applies_to: ["*"]
+    inputs: [bid.entity.license_name, bid.entity.name_in_bid_letter, project.entity_whitelist.names]
+    check:
+      op: and
+      all:
+        - "bid.entity.name_in_bid_letter == bid.entity.license_name"
+        - "bid.entity.license_name in project.entity_whitelist.names"
+    severity: major
+    evidence: [A-BID-LETTER, A-LICENSE]
+    message_tpl: "投标主体 {bid.entity.name_in_bid_letter} 与执照名 {bid.entity.license_name} 或实体白名单不一致(疑似简称/错别字)"
+    fix_tpl: "统一为营业执照全称;白名单外主体名一律改正"
+    confidence_gate: 1.0
+    enabled: true
+  - id: L3-005
+    name: 工期三处表述一致(正文/进度表/承诺函)
+    layer: L3
+    type: deterministic
+    applies_to: ["*"]
+    inputs: [bid.duration_main_text, bid.duration_schedule, bid.duration_commitment_letter]
+    check:
+      op: and
+      all:
+        - "normalize_unit(bid.duration_main_text) == normalize_unit(bid.duration_schedule)"
+        - "normalize_unit(bid.duration_main_text) == normalize_unit(bid.duration_commitment_letter)"
+    severity: major
+    evidence: [A-MAIN-TEXT, A-SCHEDULE, A-COMMIT]
+    message_tpl: "工期不一致:正文 {bid.duration_main_text} / 进度表 {bid.duration_schedule} / 承诺函 {bid.duration_commitment_letter}"
+    fix_tpl: "统一三处工期口径(注意日历天 vs 工作日换算)"
+    confidence_gate: 1.0
+    enabled: true
+  - id: L3-006
+    name: 全文金额出现值与报价总价一致
+    layer: L3
+    type: deterministic
+    applies_to: ["*"]
+    inputs: [bid.amount_occurrences, bid.total_price]
+    check:
+      op: all
+      target: "bid.amount_occurrences"
+      var: a
+      cond: "a.value == bid.total_price"
+    severity: major
+    evidence: [A-PRICE-SHEET, A-COMMIT]
+    message_tpl: "金额 {a.value:money}({a.where})与报价总价 {bid.total_price:money} 不一致"
+    fix_tpl: "以报价汇总表为准订正正文/承诺函中的金额引用"
+    confidence_gate: 1.0
+    enabled: true
