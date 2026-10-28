@@ -104,6 +104,8 @@ class ReviewTask(Base):
     progress: dict              # {stage, pct, msg}  轮询用
     error: str | None
     prev_task_id: uuid | None   # v2 差异审查
+    project_id: uuid | None     # v2 项目级关联(素材建模有;v1 仅 owner 隔离)
+    engine_meta: JSON           # {model, prompt_version, materials_hash} 语义结论溯源(素材 3.5 meta)
 
 class BaselinePackage(Base):    # 招标基准包(确认门对象)
     id: uuid; task_id: uuid
@@ -119,7 +121,7 @@ class ReviewIssue(Base):        # 核心交付物
     clause_id: str | None       # 基准条款引用
     message: str
     matched_value / expected_value: str | None
-    evidence: JSON              # [{doc_id, page, section_path, text, table_cell}]
+    evidence: JSON              # [{doc_id, page, section_path, text, table_cell}];bbox 坐标 v2(解析层具备时)
     confidence: float; need_human: bool
     fix_suggestion: str
     status: enum(pending|confirmed|false_positive|fixed)
@@ -225,6 +227,7 @@ created → parsing → extracting → awaiting_confirm ──(人工确认)→ 
 - **app-center nav 注册**:新模块必须在 `config/permissions.yaml` 注册 nav 模块(否则 superadmin 也看不到卡片,API 正常返回——已知陷阱);`roles_custom.yaml` overlay 会整体替换 base 角色 nav/permissions 列表,两者都要加。
 - 复核动作写 gateway audit log(既有惯例)。
 - 投标资料留存周期与到期归档销毁沿用 knowledge 存储策略,v2 细化专属策略;平台离线部署形态天然满足"模型不出域"(config.yaml 模型队列全可指向内网)。
+- 可观测:worker 心跳/阶段耗时进 task.progress,接 gateway 既有可观测惯例(backend/docs/OBSERVABILITY.md);规则执行零漂移由评测门禁看护。
 
 ## 5. 技能设计(`skills/public/bid-proposal-review/`)
 
@@ -319,4 +322,4 @@ v2(不排期,条件触发):L2 完整性层、L4 质量/承诺风险、L3-011 服
 
 ## 10. 素材处置
 
-五份素材(范围与四象限/规则元表与 YAML 全量/架构接口/Prompt-Schema-校验/评测全案)以本会话记录为准;落地时:6.1-6.3 元模型与 v1 清单从素材转录,4.6 七道校验、7 评测对齐算法直接照素材实现;素材中与本文冲突处(独立解析层、BaselineCenter、14 API、120+ 案评测规模)**以本文为准**。
+五份素材(范围与四象限/规则元表与 YAML 全量/架构接口/Prompt-Schema-校验/评测全案)以本会话记录为准;落地时:6.1-6.3 元模型与 v1 清单、语义规则卡 prompt 模板(素材 3.2/3.3)与输出 JSON Schema(素材 3.5)从素材转录进 engine/llm_runner.py,4.6 七道校验、7 评测对齐算法直接照素材实现;素材中与本文冲突处(独立解析层、BaselineCenter、14 API、120+ 案评测规模)**以本文为准**。
