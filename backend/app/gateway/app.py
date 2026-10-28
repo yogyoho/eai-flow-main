@@ -24,6 +24,10 @@ from app.extensions.auth.routers import router as auth_router
 # 导入包即把 bid_* 表模型注册到 Base.metadata(init_db create_all 建表);
 # router 供管理 API 挂载(/api/extensions/bid-materials/*)。
 from app.extensions.bid_materials import router as bid_materials_router
+
+# EAI-CUSTOM (bid-review Task 9): 投标方案审查子系统——五张表由包 __init__ 自注册进共享
+# Base.metadata(init_db create_all 建表);router 挂工作台 API(/api/extensions/bid-review/*)。
+from app.extensions.bid_review.routers import router as bid_review_router
 from app.extensions.contract_price import router as contract_price_router
 from app.extensions.dashboard.routers import router as dashboard_router
 from app.extensions.data_source.routers import router as data_source_router
@@ -880,6 +884,17 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
             except Exception:
                 logger.exception("Failed to start translation backfill scheduler")
 
+            # EAI-CUSTOM (bid-review Task 9): 投标审查 worker——gateway 内嵌单槽 claimer
+            # (created/extracting 领取→advance 管线;boot recovery running→extracting 在
+            # start_bid_review_worker 内完成;LLM 基准提取接线前任务显式 failed,不假交付)
+            try:
+                from app.extensions.bid_review.worker import start_bid_review_worker
+
+                app.state.bid_review_worker_task = await start_bid_review_worker()
+                logger.info("Bid review worker started")
+            except Exception:
+                logger.exception("Failed to start bid review worker")
+
             # At-rest credentials cipher (DEER_FLOW_CREDENTIALS_KEY) shared by every
             # ChannelConnectionRepository this process builds; None when no enabled
             # feature stores credentials.
@@ -1628,6 +1643,9 @@ This gateway provides runtime endpoints for agent runs plus custom endpoints for
 
     # Bid materials management API (/api/extensions/bid-materials/*)  [EAI-CUSTOM bug-3109]
     app.include_router(bid_materials_router)
+
+    # Bid review workbench API (/api/extensions/bid-review/*)  [EAI-CUSTOM bid-review Task 9]
+    app.include_router(bid_review_router)
 
     # Spare-parts price analysis management API (/api/extensions/spare-parts/*)  [EAI-CUSTOM]
     app.include_router(spare_parts_router)
