@@ -255,9 +255,12 @@ export default function ChatPage() {
     return () => clearTimeout(fallback);
   }, []);
 
-  const hasThreadMessages = thread.messages.length > 0;
+  // EAI-CUSTOM 2026-10-29: 防御性守卫,与 230 行 state.messages?.at(-1) 及 449 行
+  // todos?.length ?? 0 同类(本文件既有先例:上游裸读 messages 已知可空态)。
+  // SDK getter 理论上应兜底数组,但历史上有裸读崩溃案例,统一守卫语义。
+  const hasThreadMessages = (thread.messages?.length ?? 0) > 0;
   // A schedule_task result refreshes the header button and cards at once.
-  useScheduleToolResultRefresh(isMock ? null : threadId, thread.messages);
+  useScheduleToolResultRefresh(isMock ? null : threadId, thread.messages ?? []);
 
   useEffect(() => {
     if (
