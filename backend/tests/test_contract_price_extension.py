@@ -268,6 +268,83 @@ async def test_set_document_parse_status_missing_doc_returns_none():
     assert await crud.set_document_parse_status(session, uuid.UUID("00000000-0000-0000-0000-000000000000"), "parsing") is None
 
 
+def _needs_review_doc(**overrides):
+    from app.extensions.contract_price.models import CpaDocument
+
+    kwargs = dict(
+        storage_uri="s3://cpa-contracts/a.pdf",
+        file_name="a.pdf",
+        file_hash="h",
+        file_type="pdf",
+        parse_status="needs_review",
+    )
+    kwargs.update(overrides)
+    return CpaDocument(**kwargs)
+
+
+@pytest.mark.asyncio
+async def test_update_document_flips_needs_review_to_parsed_on_manual_fill():
+    """EAI-CUSTOM 2026-10-29 BUG-A(生产取证 木饰面合同): 人工核验闭环。
+
+    用户手补 project_name 后 parse_status 必须翻转 parsed——前端「同步分项表」
+    入口与「待人工核验」chip 都只看 parse_status,不翻转则核验做完也走不出去
+    (死路)。条件与 cli._persist_parse 文档级三态判定第 3 条严格互逆。
+    """
+    from app.extensions.contract_price import crud
+
+    doc = _needs_review_doc()
+    session = MagicMock()
+    session.get = AsyncMock(return_value=doc)
+    session.commit = AsyncMock()
+
+    returned = await crud.update_document(session, uuid.UUID("00000000-0000-0000-0000-000000000000"), {"project_name": "中交三公局黄河三角洲（二）室内装饰项目"})
+    assert returned is doc
+    assert doc.parse_status == "parsed"
+    session.commit.assert_awaited_once()
+
+
+@pytest.mark.asyncio
+async def test_update_document_flip_accepts_location_alone():
+    from app.extensions.contract_price import crud
+
+    doc = _needs_review_doc()
+    session = MagicMock()
+    session.get = AsyncMock(return_value=doc)
+    session.commit = AsyncMock()
+
+    await crud.update_document(session, uuid.UUID("00000000-0000-0000-0000-000000000000"), {"project_location": "某市"})
+    assert doc.parse_status == "parsed"
+
+
+@pytest.mark.asyncio
+async def test_update_document_no_flip_without_project_fields():
+    """只补 contract_no 等元数据、项目名/地仍空 → 维持 needs_review。"""
+    from app.extensions.contract_price import crud
+
+    doc = _needs_review_doc()
+    session = MagicMock()
+    session.get = AsyncMock(return_value=doc)
+    session.commit = AsyncMock()
+
+    await crud.update_document(session, uuid.UUID("00000000-0000-0000-0000-000000000000"), {"contract_no": "ZCB-0201-2026-0210"})
+    assert doc.parse_status == "needs_review"
+
+
+@pytest.mark.asyncio
+async def test_update_document_does_not_touch_other_statuses():
+    """failed/parsed 不由这两字段决定,不得越权改 parsed(重解析/失败态各有其主)。"""
+    from app.extensions.contract_price import crud
+
+    for status in ("failed", "parsed", "no_tables", "clustered"):
+        doc = _needs_review_doc(parse_status=status)
+        session = MagicMock()
+        session.get = AsyncMock(return_value=doc)
+        session.commit = AsyncMock()
+
+        await crud.update_document(session, uuid.UUID("00000000-0000-0000-0000-000000000000"), {"project_name": "某项目"})
+        assert doc.parse_status == status, status
+
+
 @pytest.mark.asyncio
 async def test_mark_stale_parsing_failed_flips_parsing_to_failed():
     """子进程整体失败兜底:仍卡在 parsing 的文档 → failed。"""

@@ -198,6 +198,14 @@ async def update_document(session: AsyncSession, doc_id: UUID, fields: dict[str,
     for key in ("project_name", "project_location", "project_no", "contract_no", "supplier", "sign_date"):
         if fields.get(key) is not None:
             setattr(doc, key, fields[key])
+    # EAI-CUSTOM 2026-10-29: 人工核验闭环(生产实测 bug)。前端「同步分项表」入口
+    # 与「待人工核验」chip 都只看 parse_status;用户手补 project_name/location 后
+    # 若状态不翻转,核验做完也走不出去(死路)。此条件与 cli._persist_parse 文档级
+    # 三态判定的第 3 条(not name and not loc → needs_review)严格互逆;只翻转
+    # needs_review,failed/pending/parsing/no_tables/clustered 不由这两字段决定,
+    # 不越权改 parsed。
+    if (doc.parse_status or "") == "needs_review" and (doc.project_name or doc.project_location):
+        doc.parse_status = "parsed"
     await session.commit()
     return doc
 

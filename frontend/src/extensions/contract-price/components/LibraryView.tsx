@@ -135,7 +135,7 @@ export function LibraryView() {
   const [checked, setChecked] = useState<Set<string>>(new Set());
   const [uploadOpen, setUploadOpen] = useState(false);
   const [staged, setStaged] = useState<File[]>([]);
-  const [ragflowSync, setRagflowSync] = useState(false); // EAI-CUSTOM
+  const [ragflowSync, setRagflowSync] = useState(true); // EAI-CUSTOM 默认勾选同步 RAGFlow(2026-10-29 生产反馈:漏勾需事后手工补)
   const [folderDlg, setFolderDlg] = useState<{
     mode: "create" | "rename";
     id?: string;

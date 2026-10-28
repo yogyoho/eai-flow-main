@@ -181,7 +181,7 @@ function UploadDialog({
   const [selected, setSelected] = useState<File[]>([]);
   const [dragOver, setDragOver] = useState(false);
   const [autoParse, setAutoParse] = useState(false);
-  const [ragflowSync, setRagflowSync] = useState(false); // EAI-CUSTOM
+  const [ragflowSync, setRagflowSync] = useState(true); // EAI-CUSTOM 默认勾选同步 RAGFlow(2026-10-29 生产反馈:漏勾需事后手工补)
   const [uploadError, setUploadError] = useState<string | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
   const folderRef = useRef<HTMLInputElement>(null);

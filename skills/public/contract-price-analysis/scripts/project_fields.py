@@ -84,6 +84,12 @@ _BARE_DATE_LINE = re.compile(
     r"(?m)^\s*日期\s*[:：、]?\s*"
     r"([12]\d{3})[.\s_/-]*(\d{1,2})[.\s_/-]*(\d{1,2})(?:\s*日)?\s*$"
 )
+# EAI-CUSTOM 2026-10-29 BUG-C(木饰面/石材采购合同 生产取证): 「签订日期：____年
+# ____月____日」显式未填。占位符本就不匹配 _DATE_RE(年月日须实际数字),误抽来自
+# _find_date 第三层兜底 _BARE_DATE_LINE 把附件证照/票据页的裸「日期:2016.9.19」
+# 抓走。显式未填 ⇒ 签订日期诚实置空(人工补填),不再全文 scavenging;盖章区手写
+# 日期走独立 _find_stamp_date(物证),不受此守卫影响。
+_UNFILLED_DATE_LABEL = re.compile(r"(?:合同)?[签][订定署](?:日期|时间)\s*[:：]?\s*[_＿]{2,}")
 # contract/project numbers: alphanumerics + dashes; contract numbers may end
 # with ONE Chinese tail segment ('ZCB-...-0353-补01' — the 补 is part of the no).
 # Capture body must END alphanumeric — a greedy '[A-Za-z0-9\-]*' would swallow
@@ -282,6 +288,24 @@ def _valid_name(v: str | None) -> bool:
     return True
 
 
+def _clip_at_next_label(v: str) -> str:
+    """EAI-CUSTOM 2026-10-29 BUG-B(木饰面/石材采购合同 生产取证): PaddleOCR-VL
+    首页整页纯文字只输出一个 cell,无换行 → _LINE[lbl] 的 [^\n\r]+ 把项目名值
+    吞到行尾(带着「卖方：…」等后续标签),_valid_name 以含冒号=标签残渣拒收 ⇒
+    project_name=None。把值裁剪到下一个「已知标签+分隔符」之前。
+    ⚠️ 只用于 _find_name 的 primary 路径;_iter_same_line 被 _find_supplier
+    复用,不得在 iterator 本体裁剪(生产影子验证:全局裁剪会把 supplier 裁成
+    46 字污染值)。"""
+    if not v:
+        return v
+    cut = len(v)
+    for lbl in _KNOWN_LABELS:
+        m = re.search(re.escape(lbl) + r"\s*[:：、]", v)
+        if m and m.start() < cut:
+            cut = m.start()
+    return v[:cut].strip()
+
+
 def _find_name(blob: str, tables) -> str | None:
     lines = _lines(blob)
     # 两级优先(2026-09-21 复审修正): 文档自带显式标签(项目名称/工程名称/项目全称)
@@ -291,10 +315,12 @@ def _find_name(blob: str, tables) -> str | None:
     # 压过而错取 [甲方]格部门全名。
     primary_labels = [l for l in _NAME_LABELS if l != "合同名称"]
     labeled: list[str] = []
+    # EAI-CUSTOM 2026-10-29 BUG-B: 无换行单 cell 形态,值裁剪到下一标签前
+    # (仅项目名 primary 路径,见 _clip_at_next_label docstring)。
     for val, i in _iter_same_line(lines, primary_labels):
-        labeled.append(_join_from(lines, i + 1, val))
+        labeled.append(_join_from(lines, i + 1, _clip_at_next_label(val)))
     for val, i in _iter_split_line(lines, primary_labels):
-        labeled.append(_join_from(lines, i + 1, val))
+        labeled.append(_join_from(lines, i + 1, _clip_at_next_label(val)))
     for _t, rows in _cells(tables, max_page=_NAME_CELL_MAX_PAGE):
         for val in _label_cell_values(rows, primary_labels, include_below=False):
             if _valid_name(val):
@@ -472,6 +498,10 @@ def _find_date(text: str) -> str | None:
     The split-line value must not itself be another labeled field
     (合同开始日期：… as the neighbour of an empty 签订日期： is that field's
     value, not the signing date)."""
+    # EAI-CUSTOM 2026-10-29 BUG-C: 显式未填的签订日期 ⇒ 诚实 None,跳过全部
+    # 文本兜底(_BARE_DATE_LINE 会把证照/票据页裸日期误当签订日期)。
+    if _UNFILLED_DATE_LABEL.search(text):
+        return None
     for lbl in _DATE_LABELS:
         m = _DATE_AFTER_LABEL[lbl].search(text)
         if m:
@@ -572,6 +602,18 @@ if __name__ == "__main__":  # ponytail self-check: regex must catch common forms
         # /所在地合同中真缺(框架采购,项目隐含在甲方名称里)。
         ({"1": "物资采购合同\n合同编号:5G3-CHN-PZ-CLG-004-2021\n日期:2021.4.26\n地点:\n甲方:中交第三公路工程局有限公司"},
          (None, None, "5G3-CHN-PZ-CLG-004-2021", None, "2021-04-26", None)),
+        # EAI-CUSTOM 2026-10-29 BUG-B(木饰面合同 生产取证): PaddleOCR-VL 首页
+        # 整页单 cell 无换行 → 项目名值吞进「卖方：…」整段正文被 _valid_name
+        # 拒收。裁剪到下一已知标签前应抽出真名。
+        ({"1": "项目名称：中交三公局黄河三角洲（二）室内装饰项目卖方：某建设有限公司联系电话：13800000000工程地点：某市"},
+         ("中交三公局黄河三角洲（二）室内装饰项目", "某市", None, None, None, None)),
+        # EAI-CUSTOM 2026-10-29 BUG-C: 签订日期显式未填(占位符下划线) ⇒ 文本
+        # 兜底不得从证照/票据裸日期误抽,诚实 None。
+        ({"1": "签订日期：____年____月____日\n日期:2016.9.19"},
+         (None, None, None, None, None, None)),
+        # BUG-C 反面: 未填印刷日期但盖章区有手写日期 ⇒ 盖章窗口(独立物证)仍兜住。
+        ({"1": "签订日期：____年____月____日\n甲方：某工程有限公司\n2026年9月10日"},
+         (None, None, None, None, "2026-09-10", None)),
     ]
     for pt, want in cases:
         got = extract_project_fields(pt)
