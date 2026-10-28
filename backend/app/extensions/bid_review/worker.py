@@ -2,9 +2,12 @@
 
 状态机(设计文档 §4.3):created→parsing→extracting→awaiting_confirm→running→done|failed。
 advance_task 为可注入 session/extract_fn 的单步推进函数(测试直调);routers 的
-_enqueue_docs 直推与 claimer 领取共用同一管线,created→parsing 守卫置换防双跑。
+_enqueue_docs 直推走 created 守卫置换(防与 claimer 双跑),claimer 领取后以已持有
+入口(parsing|extracting)直进同一管线。
 claimer 照 translation worker 惯例:POLL_SECONDS env、SLOTS=1、boot recovery
-(running→extracting)、基础设施异常指数退避 ≤3 → failed(_infra_fail,终态不复活)。
+(running|parsing→extracting)、基础设施异常指数退避 ≤3 → failed(_infra_fail,
+终态不复活)。fix-round(2026-10-29 评审):领取入口以领取标记态返回(parsing),
+杜绝旧实现守卫二次置换零命中导致 claimed 任务死锁 parsing 的缺陷。
 """
 
 from __future__ import annotations
@@ -147,12 +150,13 @@ async def advance_task(
     *,
     entry: str = "created",
 ) -> ReviewTask:
-    """状态机单步推进:entry(created|extracting)→parsing→extracting→基线落库→
-    wait_confirm ? awaiting_confirm : running→det→done。
+    """状态机单步推进:parsing→extracting→基线落库→wait_confirm ? awaiting_confirm :
+    running→det→done。
 
-    entry="created" 走守卫置换(失败=已被并发方领走,原样返回不双跑);
-    entry="extracting" 为 boot recovery 断点续跑入口(claimer 已持有)。异常向上抛,
-    由调用方(routers 直推包装 / claimer)走 _infra_fail 失败链。
+    entry="created"(默认,routers 直推)走 created→parsing 守卫置换,失败=已被
+    claimer 并发领走,原样返回不双跑;entry="parsing"(claimer _claim_next 领取后的
+    领取标记态)与 entry="extracting"(boot recovery 断点续跑)为已持有入口,跳过守卫
+    直接进管线。异常向上抛,由调用方(routers 直推包装 / claimer)走 _infra_fail 失败链。
     """
     task = await crud.get_task(db, task_id, owner_id)
     if task is None:
@@ -230,15 +234,16 @@ async def _read_attempts(task_id: str, factory=None) -> int:
 
 
 async def boot_recovery(factory=None) -> int:
-    """启动时把遗留 running 任务重置为 extracting(计划口径 running→extracting):
+    """启动时把遗留 running/parsing 任务重置为 extracting(计划口径 running→extracting;
+    fix-round 补 parsing——它是 claim 领取标记,进程死亡窗口会遗留,一并断点续跑):
     claimer 以 extracting 入口断点续跑(重放基线+det,基线写前清旧行保证幂等)。"""
     factory = factory or get_session_factory()
     async with factory() as db:
-        result = await db.execute(update(ReviewTask).where(ReviewTask.status == "running").values(status="extracting"))
+        result = await db.execute(update(ReviewTask).where(ReviewTask.status.in_(["running", "parsing"])).values(status="extracting"))
         await db.commit()
         n = result.rowcount or 0
         if n:
-            logger.info("bid_review boot recovery: %d running task(s) reset to extracting", n)
+            logger.info("bid_review boot recovery: %d in-flight task(s) reset to extracting", n)
         return n
 
 
@@ -246,24 +251,34 @@ async def boot_recovery(factory=None) -> int:
 
 
 async def _claim_next(factory=None) -> tuple[str, str] | None:
-    """领取一个待审任务(FOR UPDATE SKIP LOCKED 防多进程争抢,translation 先例):
-    created→parsing(完整管线入口)或 extracting(boot recovery 断点续跑入口)。
-    返回 (task_id, entry);无任务返回 None。"""
+    """领取一个待审任务(FOR UPDATE SKIP LOCKED 防多进程争抢,translation 先例;
+    锁子句按 dialect 注入,sqlite 测试方言无该语法):
+    created→parsing(领取标记,完整管线入口)或 extracting(boot recovery 断点续跑入口)。
+    返回 (task_id, entry),entry=领取后实际状态(parsing|extracting),与 advance_task
+    的已持有入口对齐——claimer 不再回传 "created",否则守卫二次置换零命中早退,
+    任务死锁 parsing(fix-round 评审缺陷)。created 条件置换校验 rowcount,零命中=已被
+    routers 直推并发领走,放弃本次领取防双跑;无任务返回 None。"""
     factory = factory or get_session_factory()
     async with factory() as db:
-        row = (await db.execute(text("SELECT id, status FROM bid_review_tasks WHERE status IN ('created','extracting') ORDER BY created_at LIMIT 1 FOR UPDATE SKIP LOCKED"))).first()
+        lock = " FOR UPDATE SKIP LOCKED" if db.bind.dialect.name == "postgresql" else ""
+        row = (await db.execute(text(f"SELECT id, status FROM bid_review_tasks WHERE status IN ('created','extracting') ORDER BY created_at LIMIT 1{lock}"))).first()
         if row is None:
             return None
         task_id, status = str(row[0]), str(row[1])
         if status == "created":
-            await db.execute(text("UPDATE bid_review_tasks SET status='parsing' WHERE id = :id AND status = 'created'"), {"id": task_id})
+            marked = await db.execute(text("UPDATE bid_review_tasks SET status='parsing' WHERE id = :id AND status = 'created'"), {"id": task_id})
+            await db.commit()
+            if not (marked.rowcount or 0):
+                return None  # 状态已被并发方移动(直推已领),本侧退出防双跑
+            return task_id, "parsing"
         await db.commit()
-        return task_id, ("created" if status == "created" else "extracting")
+        return task_id, "extracting"
 
 
 async def _run_claimed(task_id: str, entry: str) -> str:
-    """claimer 侧执行:独立短会话;docs 由 _load_docs 装载;deep 模式停确认门,
-    quick 模式直跑到 done。"""
+    """claimer 侧执行:独立短会话;docs 由 _load_docs 装载;entry 为 _claim_next 给出的
+    已持有入口(parsing=新建领取,extracting=断点续跑);deep 模式停确认门,quick 直跑
+    到 done。"""
     factory = get_session_factory()
     async with factory() as db:
         task = await _get_task_any(db, task_id)
