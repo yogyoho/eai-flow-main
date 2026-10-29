@@ -92,7 +92,13 @@ export interface DocAnchor {
 }
 
 export interface DocOperation {
-  op: "replace" | "insert_after" | "delete" | "prepend" | "append";
+  op:
+    | "replace"
+    | "replace_section" // EAI-CUSTOM (全文操作 M1): 按标题锚点整节替换（plain replace 只删单块会节体倍增）
+    | "insert_after"
+    | "delete"
+    | "prepend"
+    | "append";
   anchor?: string;
   content?: string;
 }
@@ -269,6 +275,29 @@ export function findBlockByAnchor(
     }
   }
   return best ? { blockId: best.blockId, blockIndex: best.blockIndex } : null;
+}
+
+// EAI-CUSTOM (全文操作 M1): 从标题锚点块向下扫到下一个标题块（任意级别）前，
+// 返回节内全部顶层块 id（含标题块）。非标题锚点 → null。
+// 节边界必须与后端 ai_transform.split_sections 对齐（任一 ATX 标题即开新节，
+// 无 level 归组，见 test_heading_levels_and_titles）：若按 level <= 锚点级归组，
+// 章节级 replace_section 的 content（只含本节正文）会误删其全部子节。
+export function findSectionRange(
+  doc: AnchorBlock[],
+  anchorIndex: number,
+): { blockIds: string[]; startIndex: number; endIndex: number } | null {
+  const block = doc[anchorIndex];
+  if (!block) return null;
+  const level = (block.props as Record<string, unknown> | undefined)?.level;
+  if (block.type !== "heading" || typeof level !== "number") return null;
+  let end = anchorIndex;
+  for (let i = anchorIndex + 1; i < doc.length; i++) {
+    if (doc[i]!.type === "heading") break;
+    end = i;
+  }
+  const blockIds: string[] = [];
+  for (let i = anchorIndex; i <= end; i++) blockIds.push(doc[i]!.id);
+  return { blockIds, startIndex: anchorIndex, endIndex: end };
 }
 
 export interface PersonalBlockNoteEditorRef {
@@ -680,6 +709,19 @@ const PersonalBlockNoteEditor = forwardRef<
             else if (op.op === "insert_after")
               editor.insertBlocks(parsed, match.blockId, "after");
             else editor.removeBlocks([match.blockId]);
+            break;
+          }
+          case "replace_section": {
+            if (!op.anchor) throw new Error("操作缺少 anchor: replace_section");
+            const secMatch = findBlockByAnchor(editor.document, op.anchor);
+            if (!secMatch) throw new Error(`找不到匹配的文本: "${op.anchor}"`);
+            const range = findSectionRange(
+              editor.document as unknown as AnchorBlock[],
+              secMatch.blockIndex,
+            );
+            if (!range)
+              throw new Error(`锚点不是标题块，无法按节替换: "${op.anchor}"`);
+            editor.replaceBlocks(range.blockIds, parsed);
             break;
           }
           case "prepend": {
