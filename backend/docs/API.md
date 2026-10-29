@@ -1771,7 +1771,8 @@ GET  /api/extensions/bid-review/rulepacks
 「未命中致命红线,可进入人工终审」/>0「命中致命红线 N 项,建议整改后重新审查」)、
 按 severity 四档分节,每条含规则 ID/证据(doc+page+摘录)/修复建议;need_human
 条目标注【待人工】,false_positive 误报不进正文。`format` 白名单只收 `md`(html
-导出属 M4,其余 422)。
+导出属 M4,其余 422)。服务侧状态门:仅 `done` 任务可导,其余状态 409
+(半程 issue 集算出的判定行不构成审查结论,与工作台前端 done 门同口径)。
 
 **`POST /issues/{issue_id}/feedback`** — 复核三连:`action` =
 `confirm` | `false_positive` | `severity_change`(附 `new_severity`),非法值 422;

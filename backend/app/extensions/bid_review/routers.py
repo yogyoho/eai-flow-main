@@ -334,12 +334,16 @@ async def export_task_report(
     """审查报告导出(plan Task 21):format=md 返回 markdown 文本(首行免责声明、
     可提交判定提示行、按 severity 分节、每条含规则 ID/证据/修复建议、复核耗时占位);
     format 白名单只收 md——html 导出属 M4,422 拒绝不静默降级;owner 过滤同既有端点,
-    Content-Disposition attachment 供浏览器直接下载。"""
+    Content-Disposition attachment 供浏览器直接下载。状态门(QUAL 修复):仅 done 可导,
+    半程任务 409——基于空/半程 issue 集算出的可提交判定行不得冒充审查结论流出到
+    非 UI 消费方(与 WorkbenchView 前端 done 门同口径)。"""
     if format != "md":
         raise HTTPException(status_code=422, detail="format 仅支持 md(html 导出属 M4)")
     task = await crud.get_task(db, task_id=task_id, owner_id=owner_id)
     if task is None:
         raise HTTPException(status_code=404, detail="任务不存在")
+    if task.status != "done":
+        raise HTTPException(status_code=409, detail=f"任务未完成(当前 {task.status}):仅 done 可导出报告,半程数据不构成审查结论")
     issues = await crud.list_issues(db, task_id=task_id, owner_id=owner_id)
     return Response(
         content=_render_report_md(task, issues),

@@ -332,13 +332,32 @@ async def test_report_md_submittable_hint_when_no_fatal_violation(client, db):
 
 
 @pytest.mark.asyncio
+async def test_report_gate_rejects_non_done_task(client, db):
+    """QUAL 修复(报告导出 Minor):服务侧状态门——仅 done 任务可导出报告。
+    created/running/failed 等半程任务 409:基于空/半程 issue 集算出的可提交判定行
+    (「未命中致命红线,可进入人工终审」)不得冒充审查结论流出到非 UI 消费方
+    (UI WorkbenchView 已有同款 done 门,服务端补同口径防御)。"""
+    t = await crud.create_task(db, owner_id="u1")  # 默认 created
+    r = await client.get(f"/api/extensions/bid-review/tasks/{t.id}/report")
+    assert r.status_code == 409 and "任务未完成" in r.json()["detail"], "created 半程任务不得导出报告"
+    for status in ("running", "failed"):
+        await crud.set_status(db, t, status)
+        assert (await client.get(f"/api/extensions/bid-review/tasks/{t.id}/report")).status_code == 409, f"status={status} 不得导出报告"
+    await crud.set_status(db, t, "done")
+    assert (await client.get(f"/api/extensions/bid-review/tasks/{t.id}/report")).status_code == 200
+
+
+@pytest.mark.asyncio
 async def test_report_rejects_html_format_and_other_owner(client, db):
     """format 白名单:html 导出属 M4 不做(422,禁静默降级 md);他人任务 404(owner
-    过滤同既有端点);format 缺省=md 可用。"""
+    过滤同既有端点);format 缺省=md 可用(状态门:须 done 才可导)。"""
     t = await crud.create_task(db, owner_id="u1")
     other = await crud.create_task(db, owner_id="u2")
     assert (await client.get(f"/api/extensions/bid-review/tasks/{t.id}/report", params={"format": "html"})).status_code == 422
     assert (await client.get(f"/api/extensions/bid-review/tasks/{other.id}/report")).status_code == 404
+    # 半程任务缺省 format 也先撞状态门(409),翻转 done 后缺省=md 可用
+    assert (await client.get(f"/api/extensions/bid-review/tasks/{t.id}/report")).status_code == 409
+    await crud.set_status(db, t, "done")
     assert (await client.get(f"/api/extensions/bid-review/tasks/{t.id}/report")).status_code == 200
 
 
