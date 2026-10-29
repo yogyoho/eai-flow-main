@@ -193,24 +193,34 @@ export function findBlockByAnchor(
   const trimmed = normalizeAnchorText(anchor);
   if (!trimmed) return null;
 
-  // 1. Exact match (normalized both sides)
+  // 1. Exact match（normalized）— 扫全量，>1 命中视为歧义（加固：重复标题
+  //    首中即返回会静默错配到第一个同名节；与 contains 级 null 纪律对齐）
+  let exact: { blockId: string; blockIndex: number } | null = null;
   for (let i = 0; i < doc.length; i++) {
     const block = doc[i];
     if (!block) continue;
     const fullText = normalizeAnchorText(getBlockText(block));
     if (!fullText) continue;
-    if (fullText === trimmed) return { blockId: block.id, blockIndex: i };
+    if (fullText === trimmed) {
+      if (exact) return null; // ambiguous
+      exact = { blockId: block.id, blockIndex: i };
+    }
   }
+  if (exact) return exact;
 
-  // 2. Prefix match (normalized)
+  // 2. Prefix match（normalized）— 同上加固
+  let prefix: { blockId: string; blockIndex: number } | null = null;
   for (let i = 0; i < doc.length; i++) {
     const block = doc[i];
     if (!block) continue;
     const fullText = normalizeAnchorText(getBlockText(block));
     if (!fullText) continue;
-    if (fullText.startsWith(trimmed))
-      return { blockId: block.id, blockIndex: i };
+    if (fullText.startsWith(trimmed)) {
+      if (prefix) return null; // ambiguous
+      prefix = { blockId: block.id, blockIndex: i };
+    }
   }
+  if (prefix) return prefix;
 
   // 3. Contains match (exactly one, normalized)
   let containsMatch: { blockId: string; blockIndex: number } | null = null;
