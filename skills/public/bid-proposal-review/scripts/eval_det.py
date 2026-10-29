@@ -118,10 +118,12 @@ def _tpl(tpl: str, fields: dict) -> str:
         # 复审 I2:\x00 哨兵+label 剪除实证有害(空 where 时吞金额数字),整体拆除;空串如实传递(双空格为可容忍如实渲染)
         path, spec = m.group(1), m.group(2) or ""
         try:
-            v = _fmt(_resolve(path, fields), spec)
+            v = _resolve(path, fields)
+            if v is None:
+                return ""  # None 不渲染 "None" 字面量——守卫必须在 _fmt 前(_fmt(None)→str(None)='None' 使后置守卫恒死码,s2 复审;与 rule_runner.py:130 同规)
+            return _fmt(v, spec)
         except Exception:
             return m.group(0)
-        return "" if v is None else v  # None 不渲染 "None" 字面量(复审 ride-along)
     return re.sub(r"\{([\w.]+)(?::(\w+))?\}", sub, tpl)
 
 # ---- 单遍解释器(无量词;每个构造的 token 只消费一次,故单遍正确)----
@@ -333,6 +335,8 @@ def selftest():
     assert "¥900,000.00" in msg006 and "¥1,000,001.00" in msg006, f"L3-006 空 where 数字不完整: {msg006}"
     need = run_rule(by_id["L1-009"], {"bid.total_price": 1.0})
     assert need[0]["verdict"] == "need_human", "缺字段必须 need_human"
+    # s2 复审:显式 None 值不渲染 "None" 字面量(守卫须在 _fmt 前;同 rule_runner.py:130)
+    assert _tpl("{bid.none_field}", {"bid": {"none_field": None}}) == "", "None 不得渲染为 'None' 字面量"
     print("SELFTEST OK")
 
 def main():
