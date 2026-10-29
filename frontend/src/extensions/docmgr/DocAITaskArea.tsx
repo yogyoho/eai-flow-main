@@ -470,3 +470,126 @@ export function SectionCard({
     </div>
   );
 }
+
+export function DocAITaskArea({
+  task,
+  busy,
+  undoBlocked,
+  onApplySection,
+  onApplyAll,
+  onUndoAll,
+  onRetrySection,
+  onInsertSummary,
+  onCancel,
+  onDismiss,
+}: {
+  task: DocAITaskState;
+  busy: boolean;
+  undoBlocked: boolean;
+  onApplySection: (index: number) => void;
+  onApplyAll: () => void;
+  onUndoAll: () => void;
+  onRetrySection: (index: number) => void;
+  onInsertSummary: (content: string) => void;
+  onCancel: () => void;
+  onDismiss: () => void;
+}) {
+  const appliedCount = task.sections.filter(
+    (s) => s.status === "applied",
+  ).length;
+  const readyCount = task.sections.filter((s) => s.status === "ready").length;
+  return (
+    <div className="shrink-0 space-y-2 px-3 py-2">
+      <div className="flex items-center justify-between">
+        <span className="text-foreground text-xs font-semibold">
+          全文任务{busy ? "（进行中…）" : ""}
+        </span>
+        <div className="flex items-center gap-2">
+          {busy && (
+            <button
+              type="button"
+              onClick={onCancel}
+              className="text-muted-foreground hover:text-foreground text-xs"
+            >
+              取消
+            </button>
+          )}
+          {!busy && (
+            <button
+              type="button"
+              onClick={onDismiss}
+              className="text-muted-foreground hover:text-foreground text-xs"
+            >
+              关闭
+            </button>
+          )}
+        </div>
+      </div>
+      {task.message && (
+        <div className="bg-muted/30 text-muted-foreground rounded px-2 py-1.5 text-xs">
+          {task.message}
+        </div>
+      )}
+      {undoBlocked && (
+        <div className="rounded border border-amber-200 bg-amber-50 px-2 py-1.5 text-xs text-amber-700 dark:border-amber-900/40 dark:bg-amber-950/20 dark:text-amber-400">
+          任务开始后文档已被修改，整批回滚已禁用；请用「版本历史」恢复到「AI
+          全文操作前快照」。
+        </div>
+      )}
+      {task.summary && (
+        <div className="border-border/60 rounded-lg border p-2 text-xs">
+          <div className="text-foreground mb-1 font-medium">全文摘要</div>
+          <div className="text-muted-foreground max-h-40 overflow-y-auto whitespace-pre-wrap">
+            {task.summary}
+          </div>
+          <button
+            type="button"
+            onClick={() => onInsertSummary(task.summary!)}
+            className="text-primary mt-1.5 hover:underline"
+          >
+            插入文末
+          </button>
+        </div>
+      )}
+      <div className="max-h-72 space-y-1.5 overflow-y-auto">
+        {task.sections.map((s) => (
+          <SectionCard
+            key={s.index}
+            section={s}
+            onApply={onApplySection}
+            onRetry={onRetrySection}
+          />
+        ))}
+      </div>
+      {!busy && readyCount > 0 && (
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={onApplyAll}
+            className="bg-primary text-primary-foreground rounded-md px-3 py-1.5 text-xs"
+          >
+            全部应用（{readyCount}）
+          </button>
+          {appliedCount > 0 && !undoBlocked && (
+            <button
+              type="button"
+              onClick={onUndoAll}
+              className="border-border/60 rounded-md border px-3 py-1.5 text-xs"
+            >
+              撤销整批
+            </button>
+          )}
+        </div>
+      )}
+      {!busy && appliedCount > 0 && readyCount === 0 && !undoBlocked && (
+        <button
+          type="button"
+          onClick={onUndoAll}
+          className="border-border/60 rounded-md border px-3 py-1.5 text-xs"
+        >
+          撤销整批（{appliedCount}）
+        </button>
+      )}
+    </div>
+  );
+}

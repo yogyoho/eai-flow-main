@@ -18,6 +18,7 @@ import { cn } from "@/lib/utils";
 
 import { docmgrApi } from "../api";
 
+import { DocAITaskArea, PresetChips, useDocAITask } from "./DocAITaskArea";
 import type {
   PersonalBlockNoteEditorRef,
   DocOperation,
@@ -621,6 +622,9 @@ export default function DocAIAgentPanel({
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
+  // ── 全文操作任务通道（EAI-CUSTOM M1） ─────────────────────────────
+  const docTask = useDocAITask({ editorRef, threadId, docRelPath, modelName });
+
   // ── model selector ────────────────────────────────────────────────
   useEffect(() => {
     if (!modelMenuOpen) return;
@@ -648,6 +652,26 @@ export default function DocAIAgentPanel({
     return () => document.removeEventListener("mousedown", handler);
   }, [modeMenuOpen]);
 
+  // EAI-CUSTOM (全文操作): 编辑器就绪后挂脏检查监听（编辑器异步挂载,轮询接线）
+  useEffect(() => {
+    let off: (() => void) | null = null;
+    let tries = 0;
+    const timer = setInterval(() => {
+      const ed = editorRef.current;
+      if (ed?.onDocumentChange) {
+        off = ed.onDocumentChange(docTask.markUserEdited);
+        clearInterval(timer);
+      } else if (++tries > 25) {
+        clearInterval(timer);
+      }
+    }, 200);
+    return () => {
+      clearInterval(timer);
+      off?.();
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [editorRef]);
+
   const selectedModelLabel = modelName
     ? (models.find((m) => m.name === modelName)?.display_name ?? modelName)
     : "默认模型";
@@ -657,6 +681,10 @@ export default function DocAIAgentPanel({
     const el = inputRef.current;
     if (!el) return;
     const trimmed = el.value.trim();
+    if (docTask.busy) {
+      setError("全文任务进行中，请先完成或取消再发送对话");
+      return;
+    }
     if (!trimmed || isCreating || submitting) return;
 
     const message = trimmed;
@@ -718,6 +746,7 @@ export default function DocAIAgentPanel({
     editorRef,
     threadId,
     docRelPath,
+    docTask.busy,
   ]);
 
   // ── send queued message when stream is ready ──────────────────────
@@ -952,6 +981,30 @@ export default function DocAIAgentPanel({
           <WelcomePage />
         )}
       </div>
+
+      {/* 全文操作任务通道（EAI-CUSTOM M1） */}
+      <div className="border-border shrink-0 border-t px-3 pt-2">
+        <PresetChips
+          disabled={docTask.busy || isCreating}
+          onPick={(op) => void docTask.startTask(op)}
+        />
+      </div>
+      {docTask.state && (
+        <DocAITaskArea
+          task={docTask.state}
+          busy={docTask.busy}
+          undoBlocked={docTask.undoBlocked}
+          onApplySection={docTask.applySection}
+          onApplyAll={docTask.applyAll}
+          onUndoAll={docTask.undoAll}
+          onRetrySection={docTask.retrySection}
+          onInsertSummary={(content) =>
+            docTask.insertSummary([{ op: "append", content }])
+          }
+          onCancel={docTask.cancel}
+          onDismiss={docTask.dismiss}
+        />
+      )}
 
       {/* Input area */}
       <div className="border-border shrink-0 border-t p-3">
