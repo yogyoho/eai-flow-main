@@ -35,8 +35,9 @@ describe("findSectionRange（replace_section 节边界）", () => {
     });
   });
 
-  test("低级标题不截断高级节", () => {
-    // 「一」(level 1) 的节吃到 level 2 的「二」之前
+  test("任一标题即截断（对齐后端扁平切节）", () => {
+    // 「一」(level 1) 的节吃到下一个标题（level 2 的「二」）之前——
+    // 后端 split_sections 在任一 ATX 标题开新节，replace_section 的 content 恰覆盖一个扁平节
     expect(findSectionRange(doc, 0)).toEqual({
       blockIds: ["a", "a1"],
       startIndex: 0,

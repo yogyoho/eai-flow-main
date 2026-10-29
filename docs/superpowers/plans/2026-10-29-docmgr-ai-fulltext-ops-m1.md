@@ -1085,6 +1085,8 @@ git commit -m "fix(docmgr): findBlockByAnchor exact/prefix 歧义加固——重
 
 ### Task 6: replace_section 原语 + 节边界（TDD）
 
+> **勘误（落地时修正，commit b3d3760b8）**：下方 3b 片段的 `l <= level` 归组是错的——与本题逐字测试 2 及后端 `split_sections` 扁平契约（任一 ATX 标题即开新节）均矛盾；按 level 归组会让章节级 op 横跨多个后端节、误删未改写子节。实际实现：**扫到下一个标题块（任意级别）前截断**。测试名「低级标题不截断高级节」已正名为「任一标题即截断（对齐后端扁平切节）」。
+
 **Files:**
 - Modify: `frontend/src/extensions/docmgr/PersonalBlockNoteEditor.tsx`（:94-98 DocOperation、applyOperations :650-689）
 - Create: `frontend/tests/unit/docmgr/section-range.test.ts`
