@@ -158,7 +158,14 @@ def _split_long(text: str, limit: int = SECTION_CHAR_LIMIT) -> list[str]:
             if cur:
                 chunks.append("".join(cur))
                 cur, size = [], 0
-            chunks.extend(_hard_cut(seg, limit))
+            s = seg.strip()
+            # I4: 超长原子桶（围栏/$$/折叠/表格，分支开与 _segments 严格对应；buf 桶不可能以这些开头）
+            # 句号硬切会腰斩围栏/表格原子性（多数片 ``` 计数为奇），分片输出重拼还会静默腐坏代码
+            # → 整段保留为单 chunk，交由 split_sections 的超长 piece 规则整节跳过
+            if s.startswith("```") or s.startswith("$$") or s.lower().startswith("<details") or s.startswith("|"):
+                chunks.append(seg)
+            else:
+                chunks.extend(_hard_cut(seg, limit))
             continue
         if size + len(seg) > limit and cur:
             chunks.append("".join(cur))
@@ -212,19 +219,21 @@ def split_sections(content: str) -> list[dict]:
             text = lead + text
             lead = ""
         structured = _is_structured(text)
+        # pieces 与 structured 无关地按长度再切：端点对 structured 节在消费 pieces 前已跳过，
+        # 而表/公式节同样需要原子分片能力（test_table_atomic 语义），留 pieces 才不损失信息
+        pieces = [text] if len(text) <= SECTION_CHAR_LIMIT else _split_long(text)
+        if any(len(p) > SECTION_CHAR_LIMIT for p in pieces):
+            # I4: 存在超长原子段（>4000 的围栏/$$/表格桶）无法安全逐片处理，v1 整节跳过
+            structured = True
         sections.append(
             {
                 "title": title,
                 "level": level,
                 "content": text,
                 "structured": structured,
-                # pieces 与 structured 无关地按长度再切：端点对 structured 节在消费 pieces 前已跳过，
-                # 而表/公式节同样需要原子分片能力（test_table_atomic 语义），留 pieces 才不损失信息
-                "pieces": [text] if len(text) <= SECTION_CHAR_LIMIT else _split_long(text),
+                "pieces": pieces,
             }
         )
-    if lead and sections:
-        sections[-1]["content"] += lead
     return sections
 
 
@@ -243,7 +252,7 @@ _REWRITE_PROMPT = """你是文档编辑器中的全文处理助手。下面是�
 
 **硬性约束**：
 1. 只输出处理后的这一节 markdown 正文；不要任何解释、前言、结语，也不要用 ```markdown 围栏包裹全文
-2. 保持标题层级、列表/引用结构、加粗斜体不变；代码块内容一字不改
+2. 除任务明确要求外，保持标题层级、列表/引用结构、加粗斜体不变；代码块内容一字不改
 3. 保留所有数字、单位、公式、图表引用标号不变
 4. 输出语言与原文一致
 {terminology_block}
@@ -282,6 +291,12 @@ def _norm(t: str) -> str:
     return re.sub(r"\s+", "", t)
 
 
+def _norm_lines(t: str) -> str:
+    """仅归一换行周边空白。format 的「中英文之间加空格」是纯行内空白差异，
+    _norm 的全空白归一会把它误判为无变更（I1）——format 预设改用本函数做 unchanged 判定。"""
+    return re.sub(r"\s*\n\s*", "\n", t).strip()
+
+
 def _strip_markdown_fence(text: str) -> str:
     """仅剥 ```markdown 包裹（模型无视约束时的兜底）；正文自身以代码围栏开头则不动。"""
     t = text.strip()
@@ -311,8 +326,14 @@ def _build_toc(content: str) -> str | None:
 
 
 async def _scan_terminology(model, doc: str) -> list[dict]:
-    """术语统一第一遍：全文扫变体，返回 [{canonical, variants}]；解析失败按无变体处理。"""
-    resp = await model.ainvoke(_TERMINOLOGY_SCAN_PROMPT.format(doc=doc))
+    """术语统一第一遍：全文扫变体，返回 [{canonical, variants}]；超时/异常/解析失败一律按无变体处理（调用方空表短路）。"""
+    try:
+        # I2: 唯一在首个 yield 之前执行的模型调用——无超时无兜底时 provider 挂起会变成
+        # 200 + 零事件 + 永久悬挂，必须与各节调用同规格地上 wait_for + except
+        resp = await asyncio.wait_for(model.ainvoke(_TERMINOLOGY_SCAN_PROMPT.format(doc=doc)), timeout=SUMMARY_TIMEOUT_SECONDS)
+    except Exception:
+        logger.warning("docmgr terminology scan failed, treated as no variants", exc_info=True)
+        return []
     m = re.search(r"\[[\s\S]*\]", _extract_ai_response_text(resp.content))
     if not m:
         return []
@@ -321,10 +342,14 @@ async def _scan_terminology(model, doc: str) -> list[dict]:
     except json.JSONDecodeError:
         return []
     out: list[dict] = []
+    seen: set[str] = set()
     for item in data if isinstance(data, list) else []:
         if isinstance(item, dict) and isinstance(item.get("canonical"), str) and isinstance(item.get("variants"), list):
-            variants = [v for v in item["variants"] if isinstance(v, str) and v and v != item["canonical"]]
+            if item["canonical"] in seen:
+                continue  # M4: 重复 canonical 保首组
+            variants = list(dict.fromkeys(v for v in item["variants"] if isinstance(v, str) and v and v != item["canonical"]))
             if variants:
+                seen.add(item["canonical"])
                 out.append({"canonical": item["canonical"], "variants": variants})
     return out
 
@@ -356,7 +381,7 @@ class AITransformRequest(BaseModel):
     operation: str = Field(..., description="polish | proofread | terminology | format | toc | summary")
     content: str = Field(..., min_length=1, description="面板当前全文 markdown（请求体直传）")
     model_name: str | None = Field(None, description="模型覆盖，缺省走 Settings 默认")
-    sections: list[int] | None = Field(None, description="全量切分后的节下标，部分重跑")
+    sections: list[int] | None = Field(None, description="全量切分后的节下标，部分重跑；仅改写预设有效，toc/summary 忽略此参数全量处理")
 
 
 @router.post("/ai/transform")
@@ -414,14 +439,14 @@ async def ai_transform(
                     digest.append(_extract_ai_response_text(resp.content).strip())
                 except Exception as e:
                     failed.append(i)
-                    logger.warning("docmgr summary map section %s failed: %s", i, e)
+                    logger.warning("docmgr summary map section %s failed: %s", i, e, exc_info=True)
                     yield _ndjson({"type": "section_error", "index": i, "message": "本节概括失败，已跳过"})
             if digest:
                 try:
                     resp = await asyncio.wait_for(model.ainvoke(_SUMMARY_REDUCE_PROMPT.format(digest="\n\n".join(digest))), timeout=SUMMARY_TIMEOUT_SECONDS)
                     yield _ndjson({"type": "summary", "content": _extract_ai_response_text(resp.content).strip()})
                 except Exception as e:
-                    logger.warning("docmgr summary reduce failed: %s", e)
+                    logger.warning("docmgr summary reduce failed: %s", e, exc_info=True)
                     message = "摘要整合失败，请重试"
             done = {"type": "done", "total": len(sections), "failed": failed, "skipped": skipped}
             if message:
@@ -432,7 +457,12 @@ async def ai_transform(
         # 逐节改写预设（polish / proofread / terminology / format）
         terminology_block = ""
         if request.operation == "terminology":
-            terminology_block = _terminology_block(await _scan_terminology(model, request.content))
+            table = await _scan_terminology(model, request.content)
+            if not table:
+                # I2 配套短路：空术语表逐节喂「按术语表替换」是无意义 N 次模型调用
+                yield _ndjson({"type": "done", "total": 0, "failed": [], "skipped": [], "message": "未发现术语变体，无需统一"})
+                return
+            terminology_block = _terminology_block(table)
         for i in chosen:
             sec = sections[i]
             start_ev: dict = {"type": "section_start", "index": i, "total": len(chosen), "title": sec["title"] or f"第 {i + 1} 节"}
@@ -450,10 +480,13 @@ async def ai_transform(
                 new_md = await _rewrite_section(model, request.operation, sec, terminology_block)
             except Exception as e:
                 failed.append(i)
-                logger.warning("docmgr ai_transform section %s failed: %s", i, e)
+                logger.warning("docmgr ai_transform section %s failed: %s", i, e, exc_info=True)
                 yield _ndjson({"type": "section_error", "index": i, "message": "本节处理失败，可稍后单独重试本节"})
                 continue
-            if _norm(new_md) == _norm(sec["content"]):
+            # I1: format 的交付含行内空白调整（中英文加空格），_norm 全空白归一会误判无变更；
+            # 仅 format 用 _norm_lines（保行内空白、归一折行），其余预设折行/空白忽略语义不变
+            _checker = _norm_lines if request.operation == "format" else _norm
+            if _checker(new_md) == _checker(sec["content"]):
                 yield _ndjson({"type": "ops", "index": i, "ops": []})
                 continue
             yield _ndjson({"type": "ops", "index": i, "ops": [{"op": "replace_section", "anchor": sec["title"], "content": new_md}]})

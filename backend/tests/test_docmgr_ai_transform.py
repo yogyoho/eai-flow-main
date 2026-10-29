@@ -87,6 +87,15 @@ class TestSplitSections:
             # 表行按 3 行一段的原子段整体进出 → 数量必为 3 的倍数或 0，不出孤行
             assert len(lines) % 3 == 0
 
+    def test_oversized_atomic_bucket_marks_section_skipped(self):
+        # I4: >4000 的单个代码围栏桶不可句号硬切（腰斩围栏）→ 整段单 chunk + 节标 structured（端点跳过）
+        doc = "# H\n\n```python\n" + "x = 1\n" * 1200 + "```\n"
+        secs = AT.split_sections(doc)
+        assert len(secs) == 1
+        assert secs[0]["structured"] is True
+        assert any(len(p) > AT.SECTION_CHAR_LIMIT for p in secs[0]["pieces"])
+        assert "".join(s["content"] for s in secs) == doc  # 有损不变量不受影响
+
     def test_hard_cut_lossless(self):
         seg = "这是一句话。" * 2000
         pieces = AT._hard_cut(seg, 4000)
@@ -227,7 +236,7 @@ class TestTransformEndpoint:
         events = await _events(client, {"thread_id": "t", "rel_path": "r", "operation": "toc", "content": DOC2})
         assert events[0]["type"] == "section_start"
         ops = events[1]["ops"]
-        assert ops == [{"op": "prepend", "content": ops[0]["content"]}]  # 形状
+        assert ops[0]["op"] == "prepend"  # M6a: 实质断言（原同义反复式已删）
         assert "## 目录" in ops[0]["content"] and "- 一" in ops[0]["content"] and "  - 二" in ops[0]["content"]
         assert fake.calls == 0  # 纯机械，不调模型
 
@@ -246,6 +255,32 @@ class TestTransformEndpoint:
         assert "术语审校" in fake.prompts[0]  # 第一遍全文扫描
         assert "供水系统" in fake.prompts[1]  # 第二遍携术语表
         assert events[1]["ops"][0]["op"] == "replace_section"
+
+    @pytest.mark.asyncio
+    async def test_format_whitespace_only_diff_produces_ops(self, client, monkeypatch):
+        # I1: format 交付含「中英文加空格」类纯行内空白差异，_norm 全空白归一会误判无变更
+        fake = FakeModel(["# A\n\n瓦斯涌出量 Q 为 30 m3\n"])
+        monkeypatch.setattr(AT, "create_chat_model", lambda **kw: fake)
+        events = await _events(client, {"thread_id": "t", "rel_path": "r", "operation": "format", "content": "# A\n\n瓦斯涌出量Q为30m3\n"})
+        assert events[1]["ops"] and events[1]["ops"][0]["op"] == "replace_section"
+
+    @pytest.mark.asyncio
+    async def test_terminology_scan_empty_short_circuits(self, client, monkeypatch):
+        # I2: 扫描空表 → 不逐节空转改写，直接 done（省 N 次无意义模型调用）
+        fake = FakeModel(["[]"])
+        monkeypatch.setattr(AT, "create_chat_model", lambda **kw: fake)
+        events = await _events(client, {"thread_id": "t", "rel_path": "r", "operation": "terminology", "content": DOC2})
+        assert [e["type"] for e in events] == ["done"]
+        assert "术语" in events[0]["message"] and fake.calls == 1
+
+    @pytest.mark.asyncio
+    async def test_terminology_scan_error_treated_as_no_variants(self, client, monkeypatch):
+        # I2: 扫描调用炸 → 兜底按无变体处理并短路 done，不 500 不悬挂
+        fake = FakeModel([], raise_on=1)
+        monkeypatch.setattr(AT, "create_chat_model", lambda **kw: fake)
+        events = await _events(client, {"thread_id": "t", "rel_path": "r", "operation": "terminology", "content": DOC2})
+        assert [e["type"] for e in events] == ["done"]
+        assert "术语" in events[0]["message"] and fake.calls == 1
 
     @pytest.mark.asyncio
     async def test_summary_map_reduce(self, client, monkeypatch):
