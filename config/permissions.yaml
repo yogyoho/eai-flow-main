@@ -472,6 +472,8 @@ roles:
       - nav:coal-eia-samples
       # EAI-CUSTOM (bug-3109 v4): 投标资料管理导航
       - nav:bid-materials
+      # EAI-CUSTOM (2026-10-29 bid-review): 投标方案审查导航(终审④修复:原仅 superadmin 可见)
+      - nav:bid-review
       # EAI-CUSTOM (2026-10-20): 文档翻译工作台导航（该角色持有 translation:read）
       - nav:translation
       - nav:output
@@ -525,6 +527,8 @@ roles:
       - nav:coal-eia-samples
       # EAI-CUSTOM (bug-3109 v4): 投标资料管理导航（与 overlay 同步）
       - nav:bid-materials
+      # EAI-CUSTOM (2026-10-29 bid-review): 投标方案审查导航(终审④修复:原仅 superadmin 可见)
+      - nav:bid-review
       - nav:output
       - nav:app-center
     pages: ["*"]
