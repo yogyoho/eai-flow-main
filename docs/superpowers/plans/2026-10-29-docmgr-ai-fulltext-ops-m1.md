@@ -2608,10 +2608,37 @@ git add -A && git commit -m "fix(docmgr): M1 walkthrough 修复(按实际问题�
 
 ## T0 盘点记录（Task 1 执行后回填）
 
+运行环境：gateway 容器内 `/app/backend/.deer-flow/users`，2026-10-30，脚本 `backend/scripts/docmgr_doc_scale.py`（只读）。完整输出中 LOSSLESS VIOLATION 共 147 行（147/169 文档），逐条清单见 Task 1 执行报告，此处记录汇总与根因。
+
 ```
-（待回填：docs=N total_sections=N section chars max/mean/p50/p90/p99、>4000 占比、>400k 文档数、top10）
-（阈值裁定：SECTION_CHAR_LIMIT=____ MAX_SECTIONS=____ MAX_CONTENT_CHARS=____）
+docs=169 total_sections=5287
+section chars: max=71301 mean=363 p50=140 p90=668 p99=2864
+sections >4000 chars: 23 (0%)
+docs >400k chars: 0
+  top:   337685 chars  183 sections  users/06824890.../threads/12703344.../outputs/云南省昆明市东川区某铜矿勘探-勘探-地质勘查报告.md
+  top:   218379 chars  121 sections  users/06824890.../threads/39f590cc.../outputs/新疆某新建井工煤矿建设项目-项目环评-环境影响报告.md
+  top:   216538 chars  167 sections  users/06824890.../threads/296611de.../outputs/云南省昆明市东川区某铜矿勘探-地质勘查报告.md
+  top:    92354 chars  261 sections  users/06824890.../threads/4876645f.../outputs/云南省昆明市东川区某铜矿勘探-勘探-地质勘查报告.md
+  top:    52795 chars  198 sections  users/06824890.../threads/314f000d.../outputs/某矿3218运输顺槽掘进作业规程.md
+  top:    33071 chars  171 sections  users/1ffb1664.../threads/90c9d09d.../outputs/云南省昆明市东川区某铜矿勘探-勘探-地质勘查报告.md
+  top:    30082 chars   46 sections  users/1ffb1664.../threads/5f3a42ff.../outputs/循环水装置给排水设计专篇.md
+  top:    29527 chars   45 sections  users/06824890.../threads/08b40740.../outputs/循环水装置给排水设计计算书.md
+  top:    29525 chars   45 sections  users/06824890.../threads/b7c56031.../outputs/循环水装置给排水设计计算书.md
+  top:    28080 chars   41 sections  users/06824890.../threads/b2117e88.../outputs/循环水装置给排水设计计算书.md
+doc chars（补充实测）: p50=3455 p90=19374 p99=218379 max=337685；单文档节数 max=261（4876645f 线程地质报告，92354 chars）
 ```
+
+**阈值裁定：SECTION_CHAR_LIMIT=4000（维持） MAX_SECTIONS=300（200→300 上调） MAX_CONTENT_CHARS=400_000（维持）**
+
+- `SECTION_CHAR_LIMIT=4000` 维持：section chars p99=2864 < 4000；仅 23 节（0%）超限，max=71301 由实现层超长再切/结构检测兜住。
+- `MAX_SECTIONS=300`：实测单文档节数 max=261（4876645f 线程真实地质报告，核心场景文档），维持 200 会截断真实文档；上调到 300 留余量。Task 3 实现者按 300 写常量（覆盖本计划 Task 2 代码中的初值 200）。
+- `MAX_CONTENT_CHARS=400_000` 维持：doc chars p99=218379、max=337685，>400k 文档数=0。
+
+**🔴 LOSSLESS VIOLATION（147/169 文档）——分节规则有洞，Task 3 放行前必须修**
+
+根因（已在容器内对小样本实证定位）：`split("\n")` → 按标题分桶 → `"\n".join(桶)` 的原始分组阶段，**桶边界处的 "\n" 分隔符丢失**——前一节末行与下一节标题行之间的那个 `\n`，在 `"".join(sections)` 拼接时没有补回，每个非首行标题处恰好丢 1 个 `\n`。凡含"前面还有正文"的标题的文档全部违例（147/169），属结构性规则洞而非个别脏文档。影响：spec §11-2 round-trip 无损性不成立；节数/节长分布统计本身基本不受影响（每节至多短 1 字符），上表数据仍可作校准依据。
+
+最小修复方向（Task 3 实现者参考）：分桶重建时给**每个非末尾桶**补回边界分隔符——`section_i = "\n".join(buf_i) + "\n"`（末桶不加，原文末尾有无换行由末桶自然保留），使 `"".join(secs) == content` 严格成立；空白归并步骤保持拼接语义不变。修后以本脚本复跑至 0 violation 再放行 Task 3。
 
 ## 明确不做（对齐 spec §8）
 
