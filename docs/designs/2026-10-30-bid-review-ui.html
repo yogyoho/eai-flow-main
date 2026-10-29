@@ -1,0 +1,1587 @@
+<title>投标方案审查</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<style>
+/* ═══ 设计令牌：完全沿用 eia-p2 原型（base.css 浅 / base.dark.css 暗）═══
+   布局概念：左侧 216px 原型导航 + 右侧 1180px 内容列；indigo 主色 + orange 警示 */
+:root {
+  --main-1000:#1e1b4b; --main-900:#312e81; --main-800:#3730a3; --main-700:#4338ca;
+  --main-600:#4f46e5; --main-500:#6366f1; --main-400:#818cf8; --main-300:#a5b4fc;
+  --main-200:#c7d2fe; --main-100:#e0e7ff; --main-50:#eef2ff; --main-30:#f7f7fe;
+  --main-10:#fbfaff; --main-0:#ffffff; --main-color:#4f46e5;
+  --second-700:#c2410c; --second-600:#ea580c; --second-500:#f97316;
+  --second-100:#ffedd5; --second-50:#fff7ed;
+  --gray-1000:#18181b; --gray-900:#27272a; --gray-800:#3f3f46; --gray-700:#52525b;
+  --gray-600:#71717a; --gray-500:#a1a1aa; --gray-400:#c4c4cb; --gray-300:#d4d4d8;
+  --gray-200:#e4e4e7; --gray-150:#ececee; --gray-100:#f4f4f5; --gray-50:#fafafa;
+  --gray-25:#fbfbfc; --gray-10:#fdfdfd; --gray-0:#ffffff;
+  --success-50:#e6f7e6; --success-700:#389e0d; --success-500:#52c41a;
+  --error-50:#fff2f0; --error-700:#cf1322; --error-500:#ff4d4f;
+  --warn-50:#fffbe6; --warn-700:#d48806; --warn-900:#614700;
+  --info-50:#e6f4ff; --info-700:#0958d9;
+  --text:var(--gray-900); --text-2:var(--gray-600); --text-3:var(--gray-500);
+  --hairline:var(--gray-200);
+  --mono:ui-monospace,'Cascadia Code',Consolas,'Courier New',monospace;
+  --shadow-pop:0 6px 16px rgba(0,0,0,.08),0 3px 6px -4px rgba(0,0,0,.12),0 9px 28px 8px rgba(0,0,0,.05);
+  /* 派生令牌：原 .proto-dark 组件级覆盖收敛为令牌，暗色两处同值 */
+  --nav-on-bg:var(--main-50);
+  --page-dot:var(--main-200);
+  --inp-ring:var(--main-50);
+  --btn-pri-fg:#ffffff;
+  --slot-bg:var(--main-50); --slot-fg:var(--main-700);
+  --unmapped-bg:var(--second-50); --unmapped-line:var(--second-100);
+  --chip-hl-border:var(--main-300);
+  --code-bg:#18181b; --code-fg:#e4e4e7; --tok-fn:#a5b4fc; --tok-var:#fdba74; --tok-op:#71717a; --tok-cmt:#52525b;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --main-1000:#eef2ff; --main-900:#c7d2fe; --main-800:#a5b4fc; --main-700:#a5b4fc;
+  --main-600:#818cf8; --main-500:#7279f5; --main-400:#7279f5; --main-300:#6366f1;
+  --main-200:#4338ca; --main-100:#3730a3; --main-50:#312e81; --main-30:#28245c;
+  --main-10:#07071b; --main-0:#171717; --main-color:#818cf8;
+  --second-700:#fdba74; --second-600:#fb923c; --second-500:#f97316;
+  --second-100:#431407; --second-50:#2a1206;
+  --gray-1000:#fafafa; --gray-900:#e4e4e7; --gray-800:#d4d4d8; --gray-700:#a1a1aa;
+  --gray-600:#8b8b93; --gray-500:#71717a; --gray-400:#52525b; --gray-300:#3f3f46;
+  --gray-200:#27272a; --gray-150:#232326; --gray-100:#1e1e20; --gray-50:#171717;
+  --gray-25:#121214; --gray-10:#0e0e10; --gray-0:#0a0a0a;
+  --success-50:#0d2410; --success-700:#7dd87d;
+  --error-50:#2c1210; --error-700:#ff7875;
+  --warn-50:#2a2205; --warn-700:#f5c542; --warn-900:#d4a017;
+  --info-50:#0c2238; --info-700:#69b1ff;
+  --text:#fafafa; --text-2:rgba(255,255,255,.65); --text-3:rgba(255,255,255,.45);
+  --shadow-pop:0 6px 16px rgba(0,0,0,.5),0 9px 28px 8px rgba(0,0,0,.4);
+  --nav-on-bg:var(--main-100);
+  --page-dot:var(--main-100);
+  --inp-ring:var(--main-100);
+  --btn-pri-fg:#0a0a0a;
+  --slot-bg:var(--main-100); --slot-fg:var(--main-300);
+  --unmapped-bg:var(--second-100); --unmapped-line:var(--second-600);
+  --chip-hl-border:var(--main-200);
+  color-scheme:dark;
+} }
+:root[data-theme="dark"] {
+  --main-1000:#eef2ff; --main-900:#c7d2fe; --main-800:#a5b4fc; --main-700:#a5b4fc;
+  --main-600:#818cf8; --main-500:#7279f5; --main-400:#7279f5; --main-300:#6366f1;
+  --main-200:#4338ca; --main-100:#3730a3; --main-50:#312e81; --main-30:#28245c;
+  --main-10:#07071b; --main-0:#171717; --main-color:#818cf8;
+  --second-700:#fdba74; --second-600:#fb923c; --second-500:#f97316;
+  --second-100:#431407; --second-50:#2a1206;
+  --gray-1000:#fafafa; --gray-900:#e4e4e7; --gray-800:#d4d4d8; --gray-700:#a1a1aa;
+  --gray-600:#8b8b93; --gray-500:#71717a; --gray-400:#52525b; --gray-300:#3f3f46;
+  --gray-200:#27272a; --gray-150:#232326; --gray-100:#1e1e20; --gray-50:#171717;
+  --gray-25:#121214; --gray-10:#0e0e10; --gray-0:#0a0a0a;
+  --success-50:#0d2410; --success-700:#7dd87d;
+  --error-50:#2c1210; --error-700:#ff7875;
+  --warn-50:#2a2205; --warn-700:#f5c542; --warn-900:#d4a017;
+  --info-50:#0c2238; --info-700:#69b1ff;
+  --text:#fafafa; --text-2:rgba(255,255,255,.65); --text-3:rgba(255,255,255,.45);
+  --shadow-pop:0 6px 16px rgba(0,0,0,.5),0 9px 28px 8px rgba(0,0,0,.4);
+  --nav-on-bg:var(--main-100);
+  --page-dot:var(--main-100);
+  --inp-ring:var(--main-100);
+  --btn-pri-fg:#0a0a0a;
+  --slot-bg:var(--main-100); --slot-fg:var(--main-300);
+  --unmapped-bg:var(--second-100); --unmapped-line:var(--second-600);
+  --chip-hl-border:var(--main-200);
+  color-scheme:dark;
+}
+
+* { margin:0; padding:0; box-sizing:border-box; }
+html,body { height:100%; }
+body {
+  font-family:-apple-system,'Segoe UI','PingFang SC','Microsoft YaHei',sans-serif;
+  background:var(--gray-25); color:var(--text); font-size:14px; line-height:1.6;
+  transition:background .2s,color .2s;
+}
+button { font-family:inherit; cursor:pointer; border:none; background:none; color:inherit; }
+input,select { font-family:inherit; font-size:13px; color:var(--text); }
+:focus-visible { outline:2px solid var(--main-500); outline-offset:2px; }
+@media (prefers-reduced-motion: reduce) { * { transition:none !important; } }
+.num { font-variant-numeric:tabular-nums; }
+.mono { font-family:var(--mono); font-size:12px; }
+svg.ic { width:16px; height:16px; stroke:currentColor; stroke-width:2; fill:none;
+         stroke-linecap:round; stroke-linejoin:round; flex:none; }
+
+/* ═══ chrome 框架 ═══ */
+.chrome { display:flex; height:100%; }
+.chrome-side {
+  width:216px; flex:none; background:var(--gray-0); border-right:1px solid var(--hairline);
+  display:flex; flex-direction:column; overflow-y:auto;
+}
+.chrome-brand { padding:18px 16px 12px; border-bottom:1px solid var(--hairline); }
+.chrome-brand h1 { font-size:14px; font-weight:600; letter-spacing:.5px; }
+.chrome-brand p { font-size:11px; color:var(--text-3); margin-top:2px; }
+.chrome-group { padding:12px 8px 4px; }
+.chrome-group .g-label { font-size:11px; font-weight:600; color:var(--text-3);
+  padding:0 8px 6px; display:flex; align-items:center; gap:6px; }
+.g-label .g-tag { background:var(--nav-on-bg); color:var(--main-600); border-radius:4px;
+  padding:0 5px; font-size:10px; font-weight:600; }
+.nav-item { display:flex; align-items:center; gap:8px; width:100%; text-align:left;
+  padding:7px 10px; border-radius:6px; font-size:13px; color:var(--text-2); margin-bottom:2px;
+  transition:background .15s,color .15s; }
+.nav-item:hover { background:var(--gray-50); color:var(--text); }
+.nav-item.on { background:var(--nav-on-bg); color:var(--main-600); font-weight:600; }
+.nav-cnt { margin-left:auto; font-size:11px; color:var(--text-3); font-variant-numeric:tabular-nums; }
+.nav-cnt.warn { color:var(--second-600); font-weight:600; }
+.chrome-foot { margin-top:auto; padding:12px 16px; border-top:1px solid var(--hairline); }
+.chrome-foot button { display:flex; align-items:center; gap:8px; font-size:12px;
+  color:var(--text-2); padding:6px 8px; border-radius:6px; width:100%; }
+.chrome-foot button:hover { background:var(--gray-50); color:var(--text); }
+.chrome-user { display:flex; align-items:center; gap:8px; font-size:12px; color:var(--text-3);
+  padding:6px 8px; }
+
+.chrome-main { flex:1; overflow-y:auto; min-width:0; }
+.screen { display:none; padding:20px max(24px, env(safe-area-inset-right, 0px)) 40px max(24px, env(safe-area-inset-left, 0px)); max-width:1180px; }
+.screen.on { display:block; }
+.proto-banner { display:flex; align-items:center; gap:8px; font-size:12px; color:var(--text-3);
+  margin-bottom:14px; flex-wrap:wrap; }
+.proto-banner b { color:var(--second-600); font-weight:600; }
+
+/* ═══ 页头 ═══ */
+.page-head { display:flex; align-items:center; gap:12px; padding:14px 18px; margin-bottom:12px;
+  border:1px solid var(--hairline); border-radius:8px; background:var(--gray-0);
+  background-image:radial-gradient(circle at 1px 1px, var(--page-dot) 1px, transparent 0);
+  background-size:22px 22px; background-position:6px 6px; position:relative; overflow:hidden;
+  flex-wrap:wrap; }
+.page-head::after { content:''; position:absolute; inset:0;
+  background:linear-gradient(90deg, var(--gray-0) 0%, var(--gray-0) 55%, transparent 100%); pointer-events:none; }
+.page-head > * { position:relative; z-index:1; }
+.ph-icon { width:34px; height:34px; border-radius:8px; background:var(--nav-on-bg);
+  color:var(--main-600); display:flex; align-items:center; justify-content:center; flex:none; }
+.page-head h2 { font-size:16px; font-weight:600; line-height:1.3; }
+.page-head .ph-sub { font-size:12px; color:var(--text-3); }
+.page-head .ph-actions { margin-left:auto; display:flex; gap:8px; align-items:center; flex-wrap:wrap; }
+
+/* ═══ 按钮 / 标签 / 输入 ═══ */
+.btn { display:inline-flex; align-items:center; gap:6px; height:30px; padding:0 12px;
+  border-radius:6px; font-size:13px; transition:all .15s; }
+.btn-pri { background:var(--main-color); color:var(--btn-pri-fg); }
+.btn-pri:hover { filter:brightness(1.08); }
+.btn-sec { border:1px solid var(--hairline); background:var(--gray-0); color:var(--text-2); }
+.btn-sec:hover { border-color:var(--main-400); color:var(--main-600); background:var(--main-10); }
+.btn-txt { color:var(--main-600); padding:0 6px; }
+.btn-txt:hover { background:var(--nav-on-bg); }
+.btn-sm { height:26px; padding:0 9px; font-size:12px; }
+.btn[disabled], .btn[aria-disabled="true"] { opacity:.45; cursor:not-allowed; }
+.btn-pri[disabled]:hover { filter:none; }
+.pill { display:inline-flex; align-items:center; gap:4px; height:20px; padding:0 8px;
+  border-radius:999px; font-size:12px; font-weight:500; white-space:nowrap; }
+.pill-main { background:var(--main-50); color:var(--main-600); }
+.pill-ok { background:var(--success-50); color:var(--success-700); }
+.pill-warn { background:var(--warn-50); color:var(--warn-700); }
+.pill-err { background:var(--error-50); color:var(--error-700); }
+.pill-gray { background:var(--gray-100); color:var(--gray-600); }
+.pill-orange { background:var(--second-50); color:var(--second-600); }
+.dot { width:6px; height:6px; border-radius:50%; flex:none; }
+.dot-ok { background:var(--success-500); box-shadow:0 0 0 3px color-mix(in srgb,var(--success-500) 18%,transparent); }
+.dot-warn { background:var(--second-500); box-shadow:0 0 0 3px color-mix(in srgb,var(--second-500) 18%,transparent); }
+.dot-gray { background:var(--gray-400); }
+.inp { height:30px; border:1px solid var(--gray-200); border-radius:6px; padding:0 10px;
+  background:var(--gray-0); outline:none; transition:border-color .15s; }
+.inp:focus { border-color:var(--main-500); box-shadow:0 0 0 2px var(--inp-ring); }
+.inp::placeholder { color:var(--text-3); }
+kbd.kbd { font-family:var(--mono); font-size:11px; border:1px solid var(--gray-200);
+  border-bottom-width:2px; border-radius:4px; padding:0 5px; background:var(--gray-100);
+  color:var(--text-2); }
+
+/* ═══ 卡片 / 指标带 / 表格 ═══ */
+.card { background:var(--gray-0); border:1px solid var(--hairline); border-radius:8px; }
+.card-hd { display:flex; align-items:center; gap:8px; padding:12px 16px;
+  border-bottom:1px solid var(--hairline); flex-wrap:wrap; }
+.card-hd h3 { font-size:14px; font-weight:600; }
+.card-hd .hd-sub { font-size:12px; color:var(--text-3); }
+.card-hd .hd-right { margin-left:auto; display:flex; gap:8px; align-items:center; flex-wrap:wrap; }
+.metric-strip { display:grid; grid-auto-flow:column; grid-auto-columns:1fr;
+  background:var(--gray-0); border:1px solid var(--hairline); border-radius:6px; margin-bottom:12px; }
+.metric-cell { padding:13px 18px; display:flex; flex-direction:column; gap:3px; position:relative; min-width:0; }
+.metric-cell + .metric-cell { border-left:1px solid var(--hairline); }
+.metric-label { font-size:12px; color:var(--text-3); display:flex; align-items:center; gap:6px; }
+.metric-value { font-size:22px; font-weight:700; color:var(--gray-800); line-height:1.1;
+  font-variant-numeric:tabular-nums; }
+.metric-value small { margin-left:4px; font-size:12px; font-weight:400; color:var(--text-3); }
+.metric-cell.warn .metric-value { color:var(--second-600); }
+.metric-cell.err .metric-value { color:var(--error-700); }
+.metric-cell.accent::before { content:''; position:absolute; left:0; top:12px; bottom:12px;
+  width:2px; border-radius:0 2px 2px 0; background:var(--main-500); }
+
+/* ── 补充组件（s6-s10） ── */
+.page-head .hd-sub { font-size:13px; color:var(--text-3); margin-top:2px; }
+.card-hd .hd-r { margin-left:auto; display:flex; gap:8px; align-items:center; min-width:0; }
+.m-lb { font-size:12px; color:var(--text-3); }
+.m-v { font-size:22px; font-weight:700; color:var(--gray-800); line-height:1.1; font-variant-numeric:tabular-nums; }
+.m-sub { font-size:12px; font-weight:400; color:var(--text-3); margin-left:3px; }
+.unmapped-cell { color:var(--text-3); font-style:italic; }
+tr.unmapped-row td { background:var(--unmapped-bg); }
+.rule-link { cursor:pointer; }
+.rule-link:hover { color:var(--main-600); }
+.trend { display:flex; align-items:stretch; gap:10px; height:140px; padding:6px 4px 0; }
+.t-col { flex:1; display:flex; flex-direction:column; align-items:center; gap:4px; justify-content:flex-end; min-width:0; }
+.t-bar { width:100%; max-width:44px; border-radius:6px 6px 2px 2px; background:var(--main-100); }
+.t-bar.on { background:var(--main-500); }
+.t-lb { font-size:12px; font-weight:600; color:var(--text-2); }
+.t-wk { font-size:11px; color:var(--text-3); }
+.tbl { width:100%; border-collapse:collapse; }
+.tbl th { text-align:left; font-size:12px; font-weight:500; color:var(--text-3);
+  padding:9px 12px; border-bottom:1px solid var(--hairline); white-space:nowrap; }
+.tbl td { padding:9px 12px; border-bottom:1px solid var(--gray-100); font-size:13px; vertical-align:middle; }
+.tbl tbody tr { transition:background .12s; }
+.tbl tbody tr:hover { background:var(--gray-50); }
+.tbl .r { text-align:right; }
+.meter { height:5px; border-radius:3px; background:var(--gray-100); width:64px; display:inline-block;
+  vertical-align:middle; margin-right:8px; overflow:hidden; }
+.meter i { display:block; height:100%; border-radius:3px; background:var(--main-500); }
+.meter.low i { background:var(--second-500); }
+.toolbar { display:flex; align-items:center; gap:8px; padding:10px 16px;
+  border-bottom:1px solid var(--hairline); flex-wrap:wrap; }
+.stage-chip { height:28px; padding:0 12px; border-radius:6px; border:1px solid var(--hairline);
+  background:var(--gray-0); font-size:12px; color:var(--text-2); display:inline-flex;
+  align-items:center; gap:6px; transition:all .15s; }
+.stage-chip .cnt { font-size:11px; color:var(--text-3); font-variant-numeric:tabular-nums; }
+.stage-chip:hover { border-color:var(--main-400); color:var(--main-600); }
+.stage-chip.on { background:var(--nav-on-bg); border-color:var(--main-400); color:var(--main-600); font-weight:600; }
+.stage-chip.on .cnt { color:var(--main-500); }
+.seg { display:inline-flex; border:1px solid var(--gray-200); border-radius:6px; overflow:hidden; flex-wrap:wrap; }
+.seg button { padding:5px 14px; font-size:13px; color:var(--text-2); background:var(--gray-0); }
+.seg button + button { border-left:1px solid var(--gray-200); }
+.seg button.on { background:var(--nav-on-bg); color:var(--main-600); font-weight:600; }
+.tbl-foot { display:flex; align-items:center; gap:10px; padding:9px 16px; font-size:12px;
+  color:var(--text-3); flex-wrap:wrap; }
+tr.unmapped-row td { background:var(--unmapped-bg); border-bottom:1px dashed var(--unmapped-line); }
+tr.unmapped-row:hover td { background:var(--unmapped-bg); }
+code.k { font-family:var(--mono); font-size:12px; background:var(--gray-100);
+  border-radius:4px; padding:1px 6px; color:var(--gray-700); }
+.note-bar { display:flex; gap:8px; align-items:flex-start; background:var(--info-50);
+  border-radius:6px; padding:9px 12px; font-size:12px; color:var(--info-700); margin-top:12px; }
+.note-bar svg.ic { margin-top:2px; }
+.note-bar.warnbar { background:var(--warn-50); color:var(--warn-700); }
+.note-bar.errbar { background:var(--error-50); color:var(--error-700); }
+.src-chip { display:inline-flex; align-items:center; gap:5px; height:22px; padding:0 9px;
+  border-radius:999px; font-size:12px; border:1px solid var(--hairline); background:var(--gray-0);
+  color:var(--text-2); white-space:nowrap; }
+.src-chip b { font-size:11px; color:var(--main-600); font-variant-numeric:tabular-nums; }
+.src-chip.hl { border-color:var(--chip-hl-border); background:var(--main-10); }
+.stat-strip { display:flex; gap:6px; flex-wrap:wrap; padding:2px 16px 12px; }
+.stat-strip .st { font-size:11px; font-family:var(--mono); color:var(--text-2);
+  background:var(--gray-100); border-radius:4px; padding:2px 8px; }
+.stat-strip .st.hot { background:var(--main-50); color:var(--main-600); }
+.dif-box { font-family:var(--mono); font-size:12px; line-height:1.7;
+  border:1px solid var(--hairline); border-radius:6px; overflow:hidden; margin:6px 0 14px; }
+.dif-box .dif-hd { padding:6px 12px; font-size:11px; color:var(--text-3); background:var(--gray-50);
+  border-bottom:1px solid var(--hairline); font-family:var(--mono); }
+.dif-line { padding:2px 12px; white-space:pre-wrap; color:var(--text-2); }
+.dif-add { background:var(--success-50); color:var(--success-700); }
+.dif-del { background:var(--error-50); color:var(--error-700); text-decoration:line-through;
+  text-decoration-color:color-mix(in srgb,var(--error-500) 45%,transparent); }
+
+/* ═══ 左右分栏 / 族列表 ═══ */
+.split { display:grid; grid-template-columns:264px 1fr; gap:12px; align-items:start; }
+.split-wide { display:grid; grid-template-columns:1fr 1fr; gap:12px; align-items:start; }
+.fam-list { overflow-y:auto; max-height:600px; }
+.fam-search { padding:10px 12px; border-bottom:1px solid var(--hairline); display:flex; }
+.fam-search .inp { width:100%; }
+.fam-item { display:flex; align-items:center; gap:8px; padding:8px 12px; cursor:pointer;
+  border-bottom:1px solid var(--gray-100); transition:background .12s; font-size:13px; }
+.fam-item:hover { background:var(--gray-50); }
+.fam-item.on { background:var(--nav-on-bg); box-shadow:inset 2px 0 0 var(--main-500); }
+.fam-item .fam-cnt { margin-left:auto; font-size:11px; color:var(--text-3);
+  font-variant-numeric:tabular-nums; }
+.fam-item .mini-dot { width:5px; height:5px; border-radius:50%; background:var(--second-500); flex:none; }
+
+/* ═══ 弹窗 / 抽屉 ═══ */
+.overlay { position:fixed; inset:0; background:rgba(0,0,0,.45); z-index:50;
+  display:none; align-items:flex-start; justify-content:center; padding-top:9vh;
+  padding-left:max(16px, env(safe-area-inset-left, 0px)); padding-right:max(16px, env(safe-area-inset-right, 0px)); }
+.overlay.open { display:flex; }
+.modal { width:560px; max-width:92vw; background:var(--gray-0); border-radius:8px;
+  box-shadow:var(--shadow-pop); border:1px solid var(--hairline); }
+.modal-hd { display:flex; align-items:center; padding:14px 20px; border-bottom:1px solid var(--hairline); gap:8px; }
+.modal-hd h3 { font-size:15px; font-weight:600; }
+.modal-hd .x { margin-left:auto; color:var(--text-3); padding:4px; border-radius:4px; }
+.modal-hd .x:hover { background:var(--gray-100); color:var(--text); }
+.modal-bd { padding:18px 20px; max-height:64vh; overflow-y:auto; }
+.modal-ft { display:flex; justify-content:flex-end; gap:8px; padding:12px 20px;
+  border-top:1px solid var(--hairline); background:var(--gray-25); border-radius:0 0 8px 8px; }
+.frm-row { margin-bottom:14px; }
+.frm-row label { display:block; font-size:12px; font-weight:500; color:var(--text-2); margin-bottom:5px; }
+.frm-row label .must { color:var(--error-500); margin-left:2px; }
+.frm-row .inp, .frm-row select.inp { width:100%; }
+.frm-help { font-size:12px; color:var(--text-3); margin-top:4px; }
+.drawer-wrap { position:fixed; inset:0; z-index:60; display:none; }
+.drawer-wrap.open { display:block; }
+.drawer-scrim { position:absolute; inset:0; background:rgba(0,0,0,.45); }
+.drawer { position:absolute; top:0; right:0; bottom:0; width:600px; max-width:94vw;
+  background:var(--gray-0); border-left:1px solid var(--hairline); box-shadow:var(--shadow-pop);
+  display:flex; flex-direction:column; }
+.drawer-hd { display:flex; align-items:center; gap:10px; padding:14px 18px;
+  border-bottom:1px solid var(--hairline); flex-wrap:wrap; }
+.drawer-hd h3 { font-size:15px; font-weight:600; }
+.drawer-hd .x { margin-left:auto; color:var(--text-3); padding:4px; border-radius:4px; }
+.drawer-hd .x:hover { background:var(--gray-100); color:var(--text); }
+.drawer-bd { flex:1; overflow-y:auto; padding:14px 18px; }
+.drawer-ft { padding:10px 18px; border-top:1px solid var(--hairline); font-size:12px;
+  color:var(--text-3); display:flex; align-items:center; gap:8px; }
+
+/* ═══ gate1 体检卡 ═══ */
+.gate1-card { border:1px solid var(--hairline); border-radius:8px; background:var(--gray-0);
+  margin-bottom:12px; overflow:hidden; }
+.gate1-hd { display:flex; align-items:center; gap:10px; padding:12px 16px; }
+.gate1-badge { width:30px; height:30px; border-radius:8px; background:var(--nav-on-bg);
+  color:var(--main-600); display:flex; align-items:center; justify-content:center; flex:none; }
+.gate1-hd h3 { font-size:14px; font-weight:600; }
+.gate1-hd .hd-sub { font-size:12px; color:var(--text-3); }
+.gate1-metrics { display:grid; grid-template-columns:1fr 1fr 1fr; border-top:1px solid var(--hairline); }
+.gate1-m { padding:11px 16px; display:flex; align-items:baseline; gap:8px; }
+.gate1-m + .gate1-m { border-left:1px solid var(--hairline); }
+.gate1-m .v { font-size:20px; font-weight:700; font-variant-numeric:tabular-nums; }
+.gate1-m .v.zero { color:var(--success-700); } .gate1-m .v.hot { color:var(--second-600); }
+.gate1-m .v.bad { color:var(--error-700); }
+.gate1-m .l { font-size:12px; color:var(--text-2); }
+.gate1-m .h { margin-left:auto; font-size:11px; color:var(--text-3); }
+.expr-block { background:var(--code-bg); border-radius:8px; padding:16px 18px;
+  font-family:var(--mono); font-size:13px; line-height:1.9; color:var(--code-fg);
+  overflow-x:auto; position:relative; }
+.expr-block .tok-fn { color:var(--tok-fn); } .expr-block .tok-var { color:var(--tok-var); }
+.expr-block .tok-op { color:var(--tok-op); } .expr-block .tok-cmt { color:var(--tok-cmt); font-size:12px; }
+.slot-chip { display:inline-flex; align-items:center; gap:4px; font-family:var(--mono);
+  font-size:11px; background:var(--slot-bg); color:var(--slot-fg); border-radius:4px; padding:1px 6px; }
+.expr-hd { font-size:11px; letter-spacing:.06em; color:var(--tok-cmt); margin-bottom:2px; }
+.drawer-bd .expr-block { margin-bottom:10px; }
+.q-ttl { font-size:13px; color:var(--text-2); min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.q-itm.ok { opacity:.55; }
+.q-itm.ok .q-ttl { text-decoration:line-through; text-decoration-color:var(--text-3); }
+
+/* ═══ 本原型新增组件 ═══ */
+/* 可提交判定横幅：致命>0 一律红 */
+.verdict-band { display:flex; align-items:center; gap:12px; padding:13px 18px; border-radius:8px;
+  background:var(--error-50); border:1px solid color-mix(in srgb, var(--error-500) 30%, transparent);
+  margin-bottom:12px; flex-wrap:wrap; }
+.verdict-band .vb-ic { width:34px; height:34px; border-radius:8px; background:var(--error-500);
+  color:#fff; display:flex; align-items:center; justify-content:center; flex:none; }
+.verdict-band h3 { font-size:15px; font-weight:700; color:var(--error-700); }
+.verdict-band .vb-sub { font-size:12px; color:var(--error-700); opacity:.85; }
+.verdict-band .vb-cjk { margin-left:auto; font-size:11px; color:var(--text-3); }
+.verdict-band.ok { background:var(--success-50);
+  border-color:color-mix(in srgb, var(--success-500) 30%, transparent); }
+.verdict-band.ok .vb-ic { background:var(--success-500); }
+.verdict-band.ok h3, .verdict-band.ok .vb-sub { color:var(--success-700); }
+/* 问题卡：结论 → 差异值 → 证据 → 建议+操作 四行结构 */
+.iss { border:1px solid var(--hairline); border-radius:8px; background:var(--gray-0);
+  margin-bottom:10px; overflow:hidden; }
+.iss.sel { border-color:var(--main-400); background:var(--main-10); }
+.iss.done { opacity:.72; }
+.iss-hd { display:flex; align-items:center; gap:8px; padding:10px 14px; flex-wrap:wrap; }
+.iss-rule { font-family:var(--mono); font-size:12px; color:var(--text-2); font-weight:600; }
+.iss-title { font-size:13px; font-weight:600; }
+.iss-ckw { margin-left:auto; display:flex; align-items:center; }
+.iss-ckw input { width:15px; height:15px; accent-color:var(--main-color); }
+.iss-bd { padding:0 14px 12px 14px; display:flex; flex-direction:column; gap:7px; }
+.iss-verdict { font-size:13px; line-height:1.65; }
+.iss-verdict b { font-variant-numeric:tabular-nums; }
+.v-hot { color:var(--error-700); font-weight:700; }
+.v-warn { color:var(--second-600); font-weight:700; }
+.iss-ev { display:flex; align-items:center; gap:6px; font-size:12px; color:var(--text-3); flex-wrap:wrap; }
+.iss-ft { display:flex; align-items:flex-start; gap:10px; flex-wrap:wrap; }
+.iss-fix { flex:1; min-width:220px; font-size:12px; color:var(--text-2); }
+.iss-fix b { color:var(--text); }
+.iss-acts { display:flex; gap:6px; align-items:center; flex-wrap:wrap; }
+.iss-note { font-size:12px; color:var(--warn-700); background:var(--warn-50); border-radius:6px;
+  padding:7px 12px; margin:2px 0 10px; }
+.fp-inline { border-top:1px dashed var(--hairline); padding-top:9px; font-size:12px; color:var(--text-2); }
+.fp-inline .fp-t { font-weight:600; color:var(--second-700); margin-bottom:5px; display:block; }
+.fp-inline label { margin-right:12px; display:inline-flex; gap:4px; align-items:center; cursor:pointer; }
+/* 原文摘录面板 */
+.doc-pane { border:1px solid var(--hairline); border-radius:8px; background:var(--gray-0); overflow:hidden; }
+.doc-tb { display:flex; align-items:center; gap:8px; padding:10px 14px;
+  border-bottom:1px solid var(--hairline); flex-wrap:wrap; }
+.doc-body { padding:16px 18px; font-size:13px; }
+.doc-tbl { width:100%; border-collapse:collapse; margin:6px 0; }
+.doc-tbl td, .doc-tbl th { border:1px solid var(--gray-200); padding:6px 10px; font-size:13px; }
+.doc-tbl th { background:var(--gray-50); font-weight:500; text-align:left; }
+.hl-mark { background:var(--warn-50); box-shadow:0 0 0 2px color-mix(in srgb, var(--second-500) 30%, transparent);
+  border-radius:2px; padding:0 3px; font-weight:600; }
+.hl-bad { background:var(--error-50); box-shadow:0 0 0 2px color-mix(in srgb, var(--error-500) 35%, transparent);
+  border-radius:2px; padding:0 3px; font-weight:700; }
+/* 状态步进器 */
+.stepper { display:flex; align-items:center; flex-wrap:wrap; gap:2px; margin-bottom:12px; }
+.step { display:flex; align-items:center; gap:6px; font-size:12px; color:var(--text-3); padding:4px 0; }
+.step .sn { width:18px; height:18px; border-radius:50%; border:1px solid var(--gray-300);
+  display:inline-flex; align-items:center; justify-content:center; font-size:10px;
+  font-variant-numeric:tabular-nums; flex:none; }
+.step.done .sn { background:var(--main-50); border-color:var(--main-300); color:var(--main-600); }
+.step.on .sn { background:var(--main-color); border-color:var(--main-color); color:var(--btn-pri-fg); }
+.step.on { color:var(--main-600); font-weight:600; }
+.step + .step::before { content:''; width:16px; height:1px; background:var(--gray-200); margin:0 6px; }
+/* 卡点锁定条 */
+.gate-bar { display:flex; align-items:center; gap:12px; padding:12px 16px; border:1px solid var(--hairline);
+  border-radius:8px; background:var(--gray-0); margin-top:12px; flex-wrap:wrap; }
+.gate-bar .g-info { font-size:12px; color:var(--text-3); }
+/* 批量操作条（深底，浮于列表底部） */
+.batch-bar { position:sticky; bottom:8px; display:flex; gap:10px; align-items:center;
+  padding:9px 14px; background:var(--gray-1000); color:#fafafa; border-radius:8px;
+  box-shadow:var(--shadow-pop); margin-top:10px; font-size:13px; flex-wrap:wrap; z-index:5; }
+.batch-bar .bb-sec { border:1px solid #52525b; color:#e4e4e7; background:transparent; }
+.batch-bar .bb-sec:hover { border-color:#a1a1aa; color:#fff; background:#27272a; }
+/* 模式选择卡 / 上传区 / 基准字段卡 / 复核队列 */
+.mode-card { display:flex; gap:10px; align-items:flex-start; border:1px solid var(--hairline);
+  border-radius:8px; padding:13px 14px; cursor:pointer; transition:border-color .15s, background .15s; }
+.mode-card.on { border-color:var(--main-400); background:var(--main-10); }
+.mode-card input { margin-top:3px; accent-color:var(--main-color); }
+.mode-card h4 { font-size:13px; font-weight:600; }
+.mode-card p { font-size:12px; color:var(--text-3); }
+.drop { border:1.5px dashed var(--gray-300); border-radius:8px; padding:22px 16px; text-align:center;
+  color:var(--text-3); font-size:13px; }
+.f-card { border:1px solid var(--hairline); border-radius:8px; background:var(--gray-0);
+  padding:12px 14px; margin-bottom:10px; }
+.f-card.pend { border-color:var(--second-500); }
+.f-hd { display:flex; align-items:center; gap:8px; flex-wrap:wrap; margin-bottom:6px; }
+.f-path { font-family:var(--mono); font-size:12px; font-weight:600; }
+.f-val { font-size:14px; font-weight:600; font-variant-numeric:tabular-nums; }
+.f-src { font-size:12px; color:var(--text-3); display:flex; align-items:center; gap:6px; flex-wrap:wrap; margin-top:4px; }
+.f-decide { margin-top:8px; border-top:1px dashed var(--hairline); padding-top:8px; font-size:12px;
+  display:flex; flex-direction:column; gap:4px; }
+.f-decide label { display:inline-flex; gap:6px; align-items:flex-start; cursor:pointer; }
+.f-decide input { margin-top:3px; accent-color:var(--main-color); }
+.f-ck { display:flex; align-items:center; gap:6px; margin-top:8px; font-size:12px; color:var(--text-2); cursor:pointer; }
+.f-ck input { accent-color:var(--main-color); width:14px; height:14px; }
+.q-itm { display:flex; align-items:center; gap:8px; padding:9px 12px; cursor:pointer;
+  border-bottom:1px solid var(--gray-100); font-size:13px; transition:background .12s; }
+.q-itm:hover { background:var(--gray-50); }
+.q-itm.on { background:var(--nav-on-bg); box-shadow:inset 2px 0 0 var(--main-500); }
+.q-itm .q-meta { margin-left:auto; font-size:11px; color:var(--text-3); white-space:nowrap; }
+.rv-row { display:flex; gap:14px; align-items:center; flex-wrap:wrap; margin:10px 0 4px; font-size:13px; }
+.rv-row label { display:inline-flex; gap:5px; align-items:center; cursor:pointer; }
+.rv-row input { accent-color:var(--main-color); }
+.radio-line { display:flex; gap:12px; flex-wrap:wrap; font-size:13px; margin:4px 0; }
+.radio-line label { display:inline-flex; gap:5px; align-items:center; cursor:pointer; }
+.radio-line input { accent-color:var(--main-color); }
+
+/* ── 响应式（≤900px：侧栏变顶栏；≤620px：单列折行） ── */
+@media (max-width: 900px) {
+  .chrome { flex-direction:column; height:auto; min-height:100%; }
+  .chrome-side { width:100%; height:auto; flex-direction:row; align-items:center; gap:8px; padding:10px 12px; overflow-x:auto; overflow-y:hidden; border-right:none; border-bottom:1px solid var(--gray-200); }
+  .chrome-brand { flex-shrink:0; padding:0 4px 0 0; border-bottom:none; }
+  .chrome-brand .g-sub { display:none; }
+  .chrome-group { flex-direction:row; align-items:center; gap:4px; flex-shrink:0; }
+  .chrome-side .g-label { display:none; }
+  .nav-item { white-space:nowrap; padding:7px 10px; }
+  .chrome-foot { margin:0 0 0 auto; padding:0; border-top:none; flex-shrink:0; }
+  .chrome-main { min-width:0; }
+  .split, .split-wide { grid-template-columns:1fr; }
+  .metric-strip { grid-template-columns:repeat(2, 1fr); }
+  .gate1-metrics { grid-template-columns:1fr; }
+  .fam-list { max-height:none; }
+}
+@media (max-width: 620px) {
+  .screen { padding:16px max(16px, env(safe-area-inset-right,0px)) 32px max(16px, env(safe-area-inset-left,0px)); }
+  .page-head { flex-direction:column; align-items:flex-start; gap:10px; }
+  .page-head > div:last-child { width:100%; flex-wrap:wrap; }
+  .metric-strip { grid-template-columns:1fr 1fr; }
+  .card { overflow-x:auto; }
+  .seg { flex-wrap:wrap; }
+  .batch-bar { flex-wrap:wrap; gap:8px; }
+  .iss-acts { flex-wrap:wrap; }
+}
+</style>
+
+<div class="chrome">
+  <!-- ═══════ 左侧原型导航 ═══════ -->
+  <aside class="chrome-side">
+    <div class="chrome-brand">
+      <h1>投标方案审查</h1>
+      <p>高保真原型 · 参照 eia-p2 规范</p>
+    </div>
+    <div class="chrome-group">
+      <div class="g-label">P0 审查闭环 <span class="g-tag">6 屏</span></div>
+      <button class="nav-item on" data-go="s1" data-hash="tasks"><svg class="ic" viewBox="0 0 24 24"><path d="M3 5h18M3 12h18M3 19h18"/></svg>任务工作台<span class="nav-cnt">5</span></button>
+      <button class="nav-item" data-go="s2" data-hash="create"><svg class="ic" viewBox="0 0 24 24"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></svg>新建审查任务</button>
+      <button class="nav-item" data-go="s3" data-hash="extract"><svg class="ic" viewBox="0 0 24 24"><path d="M12 2 2 7l10 5 10-5-10-5z"/><path d="m2 17 10 5 10-5"/><path d="m2 12 10 5 10-5"/></svg>解析与字段抽取</button>
+      <button class="nav-item" data-go="s4" data-hash="baseline"><svg class="ic" viewBox="0 0 24 24"><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/></svg>招标基准确认<span class="nav-cnt warn">1</span></button>
+      <button class="nav-item" data-go="s5" data-hash="results"><svg class="ic" viewBox="0 0 24 24"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><path d="M12 9v4M12 17h.01"/></svg>审查结果</button>
+      <button class="nav-item" data-go="s6" data-hash="review"><svg class="ic" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="m9 12 2 2 4-4"/></svg>人工复核工作台<span class="nav-cnt">5</span></button>
+    </div>
+    <div class="chrome-group">
+      <div class="g-label">P0 响应对照 <span class="g-tag">2 屏</span></div>
+      <button class="nav-item" data-go="s7" data-hash="deviation"><svg class="ic" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 3v18"/></svg>响应偏离表</button>
+      <button class="nav-item" data-go="s8" data-hash="diff"><svg class="ic" viewBox="0 0 24 24"><circle cx="18" cy="18" r="3"/><circle cx="6" cy="6" r="3"/><path d="M13 6h3a2 2 0 0 1 2 2v7"/><path d="M11 18H8a2 2 0 0 1-2-2V9"/></svg>版本差异</button>
+    </div>
+    <div class="chrome-group">
+      <div class="g-label">P1 规则治理 <span class="g-tag">2 屏</span></div>
+      <button class="nav-item" data-go="s9" data-hash="rules"><svg class="ic" viewBox="0 0 24 24"><path d="M3 5h10M3 12h10M3 19h10"/><path d="m16 5 2 2 4-4"/></svg>规则库</button>
+      <button class="nav-item" data-go="s10" data-hash="metrics"><svg class="ic" viewBox="0 0 24 24"><path d="M8 17v-5M12 17V7M16 17v-8"/></svg>规则效果看板</button>
+    </div>
+    <div class="chrome-foot">
+      <div class="chrome-user"><svg class="ic" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21v-1a7 7 0 0 1 16 0v1"/></svg>张工 · 商务部 · bid_manager</div>
+      <button id="darkToggle"><svg class="ic" viewBox="0 0 24 24"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></svg><span>切换暗色模式</span></button>
+    </div>
+  </aside>
+
+  <main class="chrome-main">
+
+  <!-- ═══════════ 屏 1：任务工作台 ═══════════ -->
+  <section class="screen on" id="s1">
+    <div class="proto-banner"><b>P0-1</b>· 任务列表 + 新建入口 · 状态机 created → parsing → extracting → awaiting_confirm → running → done/failed</div>
+    <div class="page-head">
+      <div class="ph-icon"><svg class="ic" viewBox="0 0 24 24"><path d="M3 5h18M3 12h18M3 19h18"/></svg></div>
+      <div><h2>任务工作台</h2><div class="ph-sub">投标方案合规红线与一致性审查 · 全部任务</div></div>
+      <div class="ph-actions">
+        <button class="btn btn-sec btn-sm"><svg class="ic" style="width:14px;height:14px" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>导出列表</button>
+        <button class="btn btn-pri btn-sm" data-go="s2"><svg class="ic" style="width:14px;height:14px" viewBox="0 0 24 24"><path d="M5 12h14M12 5v14"/></svg>新建审查任务</button>
+      </div>
+    </div>
+
+    <div class="metric-strip">
+      <div class="metric-cell warn"><span class="metric-label"><span class="dot dot-warn"></span>待基准确认</span><span class="metric-value">1</span></div>
+      <div class="metric-cell"><span class="metric-label">待人工复核</span><span class="metric-value">5</span></div>
+      <div class="metric-cell accent"><span class="metric-label">运行中</span><span class="metric-value">1</span></div>
+      <div class="metric-cell err"><span class="metric-label">致命未处理</span><span class="metric-value">3</span></div>
+      <div class="metric-cell"><span class="metric-label">本月已完成</span><span class="metric-value">12<small>个</small></span></div>
+    </div>
+
+    <div class="card">
+      <div class="toolbar">
+        <input class="inp" id="q-search" style="width:220px" placeholder="搜索任务号 / 项目名…">
+        <div class="seg">
+          <button class="on">全部</button><button>进行中</button><button>待确认</button><button>已完成</button><button>失败</button>
+        </div>
+      </div>
+      <div style="overflow-x:auto">
+      <table class="tbl">
+        <thead><tr>
+          <th>任务号</th><th>项目 / 标段</th><th>模式</th><th>状态</th>
+          <th>可提交判定</th><th class="r">致命/主要</th><th>创建人</th><th>更新时间</th><th class="r" style="padding-right:20px">操作</th>
+        </tr></thead>
+        <tbody>
+          <tr><td class="mono">TBR-2026-0314</td><td>智慧园区消防改造项目</td><td><span class="pill pill-main">深度评审</span></td>
+              <td><span class="pill pill-main"><span class="dot dot-ok"></span>审查中 · 12m</span></td>
+              <td style="color:var(--text-3)">—</td><td class="r num" style="color:var(--text-3)">—</td>
+              <td>张工</td><td class="num">10-30 09:12</td>
+              <td class="r" style="padding-right:20px"><button class="btn-txt btn-sm">查看进度</button></td></tr>
+          <tr><td class="mono">TBR-2026-0311</td><td>XX数据中心一期采购项目 · 标段一（机电设备）</td><td><span class="pill pill-main">深度评审</span></td>
+              <td><span class="pill pill-warn"><span class="dot dot-warn"></span>基准待确认 15/18</span></td>
+              <td style="color:var(--text-3)">—</td><td class="r num" style="color:var(--text-3)">—</td>
+              <td>张工</td><td class="num">10-30 08:47</td>
+              <td class="r" style="padding-right:20px"><button class="btn-txt btn-sm" data-go="s4">去基准确认</button></td></tr>
+          <tr><td class="mono">TBR-2026-0309</td><td>XX数据中心一期采购项目 · 标段一（机电设备）</td><td><span class="pill pill-main">深度评审</span></td>
+              <td><span class="pill pill-ok">已完成</span></td>
+              <td><span class="pill pill-err">不建议提交</span></td><td class="r num"><span class="v-hot">3</span> / 4</td>
+              <td>张工</td><td class="num">10-29 16:20</td>
+              <td class="r" style="padding-right:20px"><button class="btn-txt btn-sm" data-go="s5">查看结果</button></td></tr>
+          <tr><td class="mono">TBR-2026-0306</td><td>市政管网改造一期 · 第二标段</td><td><span class="pill pill-gray">快速评审</span></td>
+              <td><span class="pill pill-ok">已完成</span></td>
+              <td><span class="pill pill-ok">建议提交</span></td><td class="r num">0 / 2</td>
+              <td>李工</td><td class="num">10-28 11:05</td>
+              <td class="r" style="padding-right:20px"><button class="btn-txt btn-sm" data-go="s5">查看结果</button></td></tr>
+          <tr><td class="mono">TBR-2026-0301</td><td>冷链物流园冷库工程</td><td><span class="pill pill-main">深度评审</span></td>
+              <td><span class="pill pill-err">解析失败</span></td>
+              <td style="color:var(--text-3)">—</td><td class="r num" style="color:var(--text-3)">—</td>
+              <td>张工</td><td class="num">10-27 15:41</td>
+              <td class="r" style="padding-right:20px"><button class="btn-txt btn-sm">重试解析</button></td></tr>
+        </tbody>
+      </table>
+      </div>
+      <div class="tbl-foot">共 5 个任务 · awaiting_confirm 阶段不产生审查判定，问题数显示为 —（未进入审查 ≠ 通过）</div>
+    </div>
+
+    <div class="note-bar"><svg class="ic" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg>
+      <span>快速评审仅执行 L1 确定性规则（约 5 分钟），无需基准确认；深度评审需先通过「招标基准确认」卡点，基准未确认任务不会开始审查。</span></div>
+  </section>
+
+  <!-- ═══════════ 屏 2：新建审查任务 ═══════════ -->
+  <section class="screen" id="s2">
+    <div class="proto-banner"><b>P0-2</b>· 创建任务 + 上传投标文件 · POST /api/extensions/bid-review/reviews</div>
+    <div class="page-head">
+      <div class="ph-icon"><svg class="ic" viewBox="0 0 24 24"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></svg></div>
+      <div><h2>新建审查任务</h2><div class="ph-sub">上传投标文件 → 选择评审模式 → 引擎解析并出具带证据的问题清单</div></div>
+    </div>
+
+    <div class="card" style="margin-bottom:12px">
+      <div class="card-hd"><h3>基本信息</h3></div>
+      <div style="padding:16px; display:grid; grid-template-columns:1fr 1fr; gap:14px">
+        <div class="frm-row" style="margin:0"><label>项目 / 标段名称<span class="must">*</span></label>
+          <input class="inp" id="f-project" value="XX数据中心一期采购项目 · 标段一（机电设备）">
+          <div class="frm-help">用于任务列表展示与报告抬头</div></div>
+        <div class="frm-row" style="margin:0"><label>招标编号</label>
+          <input class="inp mono" value="TND-2026-DC-0117"></div>
+        <div class="frm-row" style="margin:0"><label>评审模式<span class="must">*</span></label>
+          <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px">
+            <label class="mode-card" id="modeQuick">
+              <input type="radio" name="mode" value="quick">
+              <span><h4>快速评审</h4><p>仅 L1 确定性规则 3 条<br>约 5 分钟 · 无卡点</p></span>
+            </label>
+            <label class="mode-card on" id="modeDeep">
+              <input type="radio" name="mode" value="deep" checked>
+              <span><h4>深度评审</h4><p>确定性 + 语义规则 21 条<br>需基准确认卡点 · 约 11 分钟</p></span>
+            </label>
+          </div>
+          <div class="frm-help" id="modeHint">深度评审创建后进入「招标基准确认」卡点，基准未确认前不开始审查。</div></div>
+        <div class="frm-row" style="margin:0"><label>规则包 / 审查模型</label>
+          <div style="display:flex; gap:10px">
+            <select class="inp" style="flex:1"><option>eng-v2.4（当前发布）</option><option>eng-v2.3</option></select>
+            <select class="inp" style="flex:1"><option>eai-bid-review-v2（默认）</option><option>按 config.yaml 首项</option></select>
+          </div></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-hd"><h3>投标文件</h3><span class="hd-sub">支持 PDF / Word / Excel / 扫描件（OCR）</span>
+        <div class="hd-right"><span class="pill pill-ok"><span class="dot dot-ok"></span>已解析 2</span><span class="pill pill-gray">待解析 1</span></div></div>
+      <div style="padding:16px">
+        <div class="drop">拖拽文件到此处，或 <button class="btn-txt btn-sm">点击上传</button>（单文件 ≤ 200MB）</div>
+        <table class="tbl" style="margin-top:12px">
+          <thead><tr><th>文件名</th><th class="r">大小</th><th class="r">页数</th><th>解析状态</th><th class="r" style="padding-right:20px">操作</th></tr></thead>
+          <tbody>
+            <tr><td>投标文件_v3终稿.pdf</td><td class="r num">42.8 MB</td><td class="r num">214</td>
+                <td><span class="pill pill-ok">已解析 · 置信 0.93</span></td>
+                <td class="r" style="padding-right:20px"><button class="btn-txt btn-sm">移除</button></td></tr>
+            <tr><td>营业执照_中原机电.pdf</td><td class="r num">1.2 MB</td><td class="r num">1</td>
+                <td><span class="pill pill-ok">已解析 · 置信 0.98</span></td>
+                <td class="r" style="padding-right:20px"><button class="btn-txt btn-sm">移除</button></td></tr>
+            <tr><td>商务偏差表.xlsx</td><td class="r num">86 KB</td><td class="r num">3</td>
+                <td><span class="pill pill-gray">待解析</span></td>
+                <td class="r" style="padding-right:20px"><button class="btn-txt btn-sm">移除</button></td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="tbl-foot" style="justify-content:flex-end; gap:8px">
+        <button class="btn btn-sec" data-go="s1">取消</button>
+        <button class="btn btn-pri" id="createBtn">创建任务</button>
+      </div>
+    </div>
+
+    <div class="note-bar"><svg class="ic" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg>
+      <span>扫描件页将由 OCR 兜底解析；解析置信度 &lt; 0.70 的页面会进入「解析与字段抽取」页提示人工核对，并可能升级为待人工事项。</span></div>
+  </section>
+  <!-- ═══════════ 屏 3：解析与字段抽取 ═══════════ -->
+  <section class="screen" id="s3">
+    <div class="proto-banner"><b>P0-2b</b>· 任务进度 + 解析质量 + 字段抽取对照 · 锚点寻址 A-PRICE-SHEET 等</div>
+    <div class="page-head">
+      <div class="ph-icon"><svg class="ic" viewBox="0 0 24 24"><path d="M12 2 2 7l10 5 10-5-10-5z"/><path d="m2 17 10 5 10-5"/><path d="m2 12 10 5 10-5"/></svg></div>
+      <div><h2>解析与字段抽取</h2><div class="ph-sub">TBR-2026-0311 · XX数据中心一期采购项目 · 深度评审 · 规则包 eng-v2.4</div></div>
+      <div class="ph-actions"><span class="pill pill-warn"><span class="dot dot-warn"></span>待基准确认</span></div>
+    </div>
+
+    <div class="stepper">
+      <span class="step done"><span class="sn">1</span>已创建</span>
+      <span class="step done"><span class="sn">2</span>文档解析</span>
+      <span class="step done"><span class="sn">3</span>字段抽取</span>
+      <span class="step on"><span class="sn">4</span>基准确认</span>
+      <span class="step"><span class="sn">5</span>审查执行</span>
+      <span class="step"><span class="sn">6</span>完成</span>
+    </div>
+
+    <div class="card" style="margin-bottom:12px">
+      <div class="card-hd"><h3>解析质量</h3><span class="hd-sub">3 个文件 · 218 页</span>
+        <div class="hd-right"><span class="pill pill-warn">低置信页 5 页</span></div></div>
+      <div style="overflow-x:auto">
+      <table class="tbl">
+        <thead><tr><th>文件</th><th class="r">页数</th><th>识别置信度</th><th>状态</th><th>说明</th></tr></thead>
+        <tbody>
+          <tr><td>投标文件_v3终稿.pdf</td><td class="r num">214</td>
+              <td><span class="meter"><i style="width:93%"></i></span><span class="num">0.93</span></td>
+              <td><span class="pill pill-ok">完成</span></td><td style="color:var(--text-3)">文本层完整</td></tr>
+          <tr><td>营业执照_中原机电.pdf</td><td class="r num">1</td>
+              <td><span class="meter"><i style="width:98%"></i></span><span class="num">0.98</span></td>
+              <td><span class="pill pill-ok">完成</span></td><td style="color:var(--text-3)">—</td></tr>
+          <tr><td>商务偏差表.xlsx</td><td class="r num">3</td>
+              <td><span class="meter"><i style="width:87%"></i></span><span class="num">0.87</span></td>
+              <td><span class="pill pill-ok">完成</span></td><td style="color:var(--text-3)">表格结构已还原</td></tr>
+          <tr><td colspan="5" style="background:var(--warn-50)"><span class="pill pill-warn">OCR 兜底</span>&nbsp; 投标文件 p.88–92（承诺函扫描页）置信 <b class="num">0.61</b> —— 已列入待人工核对项，抽取值标注「低置信」</td></tr>
+        </tbody>
+      </table>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-hd"><h3>基准字段抽取</h3><span class="hd-sub">对照 workflow.md 字段表 · 锚点定位</span>
+        <div class="hd-right"><span class="pill pill-ok">已抽取 15</span><span class="pill pill-warn">冲突 2</span><span class="pill pill-gray">缺失 1</span></div></div>
+      <div style="overflow-x:auto">
+      <table class="tbl">
+        <thead><tr><th>字段路径</th><th>锚点</th><th>抽取值</th><th>形态</th><th>状态</th></tr></thead>
+        <tbody>
+          <tr><td class="mono">tender.project_identity.name</td><td><code class="k">A-TENDER-NOTICE</code></td><td>XX数据中心一期采购项目</td><td class="mono">string</td><td><span class="pill pill-ok">已抽取</span></td></tr>
+          <tr><td class="mono">tender.project_identity.code</td><td><code class="k">A-TENDER-NOTICE</code></td><td class="mono">TND-2026-DC-0117</td><td class="mono">string</td><td><span class="pill pill-ok">已抽取</span></td></tr>
+          <tr><td class="mono">tender.max_price</td><td><code class="k">A-PRICE-SHEET</code></td><td class="num">¥1,000,000.00</td><td class="mono">money</td><td><span class="pill pill-ok">已抽取</span></td></tr>
+          <tr><td class="mono">tender.price_includes_tax</td><td><code class="k">A-PRICE-SHEET</code></td><td>是</td><td class="mono">bool</td><td><span class="pill pill-ok">已抽取</span></td></tr>
+          <tr><td class="mono">tender.boq_items</td><td><code class="k">A-TENDER-BOQ</code></td><td class="num">26 项</td><td class="mono">list</td><td><span class="pill pill-ok">已抽取</span></td></tr>
+          <tr><td class="mono">tender.duration</td><td><code class="k">A-TENDER-NOTICE</code></td><td>180 日历天 <span class="pill pill-warn" style="height:18px;font-size:11px">公告与专用条款冲突</span></td><td class="mono">string</td><td><span class="pill pill-warn">冲突</span></td></tr>
+          <tr><td class="mono">bid.total_price</td><td><code class="k">A-PRICE-SHEET</code></td><td class="num">¥1,002,300.00<span style="color:var(--text-3)">（投标函）</span> <span class="pill pill-warn" style="height:18px;font-size:11px">汇总表 1,000,000</span></td><td class="mono">money</td><td><span class="pill pill-warn">冲突</span></td></tr>
+          <tr><td class="mono">bid.price_includes_tax</td><td><code class="k">A-PRICE-SHEET</code></td><td>是</td><td class="mono">bool</td><td><span class="pill pill-ok">已抽取</span></td></tr>
+          <tr><td class="mono">bid.detail_rows</td><td><code class="k">A-PRICE-DETAIL</code></td><td class="num">18 行</td><td class="mono">list</td><td><span class="pill pill-ok">已抽取</span></td></tr>
+          <tr><td class="mono">bid.subtotal</td><td><code class="k">A-PRICE-DETAIL</code></td><td class="num">¥1,002,300.00</td><td class="mono">money</td><td><span class="pill pill-ok">已抽取</span></td></tr>
+          <tr><td class="mono">bid.total_price_words</td><td><code class="k">A-PRICE-SHEET</code></td><td>壹佰万零贰仟元整</td><td class="mono">words</td><td><span class="pill pill-ok">已抽取</span></td></tr>
+          <tr><td class="mono">bid.boq_items</td><td><code class="k">A-BOQ</code></td><td class="num">25 项<span style="color:var(--text-3)">（较招标清单少 1 项）</span></td><td class="mono">list</td><td><span class="pill pill-warn">冲突</span></td></tr>
+          <tr><td class="mono">bid.warranty_months</td><td><code class="k">A-HEADER</code></td><td style="color:var(--text-3)">未在正文定位到</td><td class="mono">number</td><td><span class="pill pill-gray">缺失</span></td></tr>
+        </tbody>
+      </table>
+      </div>
+      <div class="tbl-foot">缺失字段按 <code class="k">on_missing_input: need_human</code> 处理——不阻断审查，也不计为通过；冲突字段需在基准确认页人工裁定后生效</div>
+    </div>
+  </section>
+
+  <!-- ═══════════ 屏 4：招标基准确认（卡点）═══════════ -->
+  <section class="screen" id="s4">
+    <div class="proto-banner"><b>P0-3</b>· 卡点页 · 引擎抽取 → 逐项人工核对 → 全量确认解锁审查 · 未确认不得进入审查（不可绕过）</div>
+    <div class="page-head">
+      <div class="ph-icon"><svg class="ic" viewBox="0 0 24 24"><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/></svg></div>
+      <div><h2>招标基准确认</h2><div class="ph-sub">TBR-2026-0311 · 步骤 2/3 · 确认招标要求——未完成将不能开始审查</div></div>
+      <div class="ph-actions"><span class="pill pill-orange"><span class="dot dot-warn"></span>待确认 3 项</span></div>
+    </div>
+
+    <div class="split">
+      <!-- 左：字段族 -->
+      <div class="card fam-list">
+        <div class="fam-search"><input class="inp" placeholder="搜索字段 / 锚点…"></div>
+        <div class="fam-item on"><span class="fam-name">报价基准</span><span class="mini-dot"></span><span class="fam-cnt">5 字段</span></div>
+        <div class="fam-item"><span class="fam-name">清单基准</span><span class="mini-dot"></span><span class="fam-cnt">2 字段</span></div>
+        <div class="fam-item"><span class="fam-name">项目与主体</span><span class="fam-cnt">4 字段</span></div>
+        <div class="fam-item"><span class="fam-name">工期与质保</span><span class="mini-dot"></span><span class="fam-cnt">3 字段</span></div>
+        <div class="fam-item"><span class="fam-name">其他条款</span><span class="fam-cnt">4 字段</span></div>
+      </div>
+
+      <!-- 右：字段卡 -->
+      <div>
+        <div class="f-card">
+          <div class="f-hd"><span class="f-path">tender.max_price</span><span class="pill pill-ok">已确认</span></div>
+          <div class="f-val">¥1,000,000.00 <span style="font-weight:400;color:var(--text-3);font-size:12px">（含税口径：是）</span></div>
+          <div class="f-src">来源 tender.pdf <b>p.12</b> · <code class="k">A-PRICE-SHEET</code>
+            <button class="btn-txt btn-sm loc-btn">查看原文</button></div>
+        </div>
+
+        <div class="f-card pend">
+          <div class="f-hd"><span class="f-path">bid.total_price</span><span class="pill pill-warn">冲突待裁定</span><span class="pill pill-orange" style="height:18px;font-size:11px">卡点项</span></div>
+          <div style="font-size:13px; margin-bottom:4px">两处总价表述不一致，需裁定基准值：</div>
+          <div class="f-decide">
+            <label><input type="radio" name="d-total" checked><span><b class="num">¥1,002,300.00</b> — 投标函 p.3 <span class="slot-chip">引擎推荐</span>（与明细合计、大写金额一致）</span></label>
+            <label><input type="radio" name="d-total"><span><b class="num">¥1,000,000.00</b> — 报价汇总表总价栏 p.37（与最高限价同值，疑为抄录限价）</span></label>
+          </div>
+          <label class="f-ck"><input type="checkbox" class="ck-pend">我已核对两处原文，确认上述裁定</label>
+        </div>
+
+        <div class="f-card pend">
+          <div class="f-hd"><span class="f-path">bid.boq_items / tender.boq_items</span><span class="pill pill-warn">冲突待裁定</span><span class="pill pill-orange" style="height:18px;font-size:11px">卡点项</span></div>
+          <div style="font-size:13px; margin-bottom:4px">投标清单 25 项，招标清单 26 项——缺「柴油发电机组安装」：</div>
+          <div class="f-decide">
+            <label><input type="radio" name="d-boq" checked><span>以<b>招标清单 26 项</b>为审查基准 <span class="slot-chip">引擎推荐</span>（缺项将命中 L1-011）</span></label>
+            <label><input type="radio" name="d-boq"><span>以投标清单 25 项为基准（放弃缺项判定）</span></label>
+          </div>
+          <label class="f-ck"><input type="checkbox" class="ck-pend">我已核对清单第 14 项，确认上述裁定</label>
+        </div>
+
+        <div class="f-card pend">
+          <div class="f-hd"><span class="f-path">tender.duration</span><span class="pill pill-warn">冲突待裁定</span><span class="pill pill-orange" style="height:18px;font-size:11px">卡点项</span></div>
+          <div style="font-size:13px; margin-bottom:4px">招标文件内部两处工期不一致：</div>
+          <div class="f-decide">
+            <label><input type="radio" name="d-dur" checked><span><b>180 日历天</b> — 招标公告 p.1 <span class="slot-chip">引擎推荐</span>（公告优先于专用条款）</span></label>
+            <label><input type="radio" name="d-dur"><span><b>6 个月</b> — 专用合同条款 p.44</span></label>
+          </div>
+          <label class="f-ck"><input type="checkbox" class="ck-pend">我已核对两处条款，确认上述裁定</label>
+        </div>
+
+        <div class="f-card">
+          <div class="f-hd"><span class="f-path">tender.project_identity.name / code</span><span class="pill pill-ok">已确认</span></div>
+          <div class="f-val">XX数据中心一期采购项目 · <span class="mono" style="font-weight:400">TND-2026-DC-0117</span></div>
+          <div class="f-src">来源 tender.pdf <b>p.1</b> · <code class="k">A-TENDER-NOTICE</code>
+            <button class="btn-txt btn-sm loc-btn">查看原文</button></div>
+        </div>
+        <div class="f-card">
+          <div class="f-hd"><span class="f-path">bid.detail_rows / bid.subtotal / bid.total_price_words</span><span class="pill pill-ok">已确认</span></div>
+          <div class="f-val">18 行 · 合计 ¥1,002,300.00 · 壹佰万零贰仟元整</div>
+          <div class="f-src">来源 bid.pdf <b>p.37 / p.41</b> · <code class="k">A-PRICE-DETAIL</code> <code class="k">A-PRICE-SHEET</code>
+            <button class="btn-txt btn-sm loc-btn">查看原文</button></div>
+        </div>
+        <div class="tbl-foot">其余 10 个已抽取字段已由引擎交叉校验通过，此处折叠展示；点击左侧字段族可展开逐项核对</div>
+      </div>
+    </div>
+
+    <div class="gate-bar">
+      <div style="flex:1; min-width:200px">
+        <div style="font-size:13px; font-weight:600">基准确认进度 <span class="num" id="gateCnt">15/18</span></div>
+        <div style="font-size:12px; color:var(--text-3)">卡点：基准确认前任务停留在待确认状态，不进入审查。改错可回到本页重新裁定并再次确认。</div>
+      </div>
+      <span class="meter" style="width:120px"><i id="gateMeter" style="width:83%"></i></span>
+      <button class="btn btn-pri" id="gateBtn" disabled>确认基准包并开始审查（待确认 3 项）</button>
+    </div>
+  </section>
+
+  <!-- ═══════════ 屏 5：审查结果 ═══════════ -->
+  <section class="screen" id="s5">
+    <div class="proto-banner"><b>P0-4</b>· 风险概览 + 问题清单 · 以问题为中心 · 可提交判定首要呈现 · 未判定 ≠ 通过</div>
+    <div class="page-head">
+      <div class="ph-icon"><svg class="ic" viewBox="0 0 24 24"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><path d="M12 9v4M12 17h.01"/></svg></div>
+      <div><h2>审查结果 · TBR-2026-0309</h2><div class="ph-sub">XX数据中心一期采购项目 · 版本 v3（终稿）· 深度评审 · 规则包 eng-v2.4 · 用时 11m32s</div></div>
+      <div class="ph-actions">
+        <button class="btn btn-sec btn-sm" data-go="s8">对比 v2</button>
+        <button class="btn btn-sec btn-sm" data-go="s6">发起复核</button>
+        <button class="btn btn-pri btn-sm" id="openReport">导出报告</button>
+      </div>
+    </div>
+
+    <div class="verdict-band">
+      <span class="vb-ic"><svg class="ic" viewBox="0 0 24 24"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><path d="M12 9v4M12 17h.01"/></svg></span>
+      <div><h3>不建议提交</h3><div class="vb-sub">命中致命红线 3 项，建议整改后重新审查</div></div>
+      <span class="vb-cjk">判定口径：存在 severity=fatal 且 verdict=violation 的问题（致命 &gt; 0 一律红）</span>
+    </div>
+
+    <div class="split">
+      <!-- 左：风险概览 -->
+      <div>
+        <div class="gate1-card">
+          <div class="gate1-hd"><span class="gate1-badge"><svg class="ic" viewBox="0 0 24 24"><path d="M3 3v18h18"/><path d="m7 13 3-3 4 4 5-6"/></svg></span>
+            <div><h3>风险分布</h3><div class="hd-sub">17 项问题 · 已复核 12</div></div></div>
+          <div class="gate1-metrics" style="grid-template-columns:1fr 1fr">
+            <div class="gate1-m"><span class="v bad">3</span><span class="l">致命</span><span class="h">violation</span></div>
+            <div class="gate1-m"><span class="v hot">4</span><span class="l">主要</span><span class="h">violation</span></div>
+            <div class="gate1-m"><span class="v">8</span><span class="l">次要</span></div>
+            <div class="gate1-m"><span class="v" style="color:var(--warn-700)">2</span><span class="l">待人工</span><span class="h">need_human</span></div>
+          </div>
+        </div>
+        <div class="note-bar warnbar" style="margin:0 0 12px"><svg class="ic" viewBox="0 0 24 24"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><path d="M12 9v4M12 17h.01"/></svg>
+          <span>待人工为引擎无法判定项——<b>未判定 ≠ 通过</b>，不计入可提交判定，整改与复核时必须逐条处理。</span></div>
+        <div class="card" style="margin-bottom:12px">
+          <div class="card-hd"><h3>规则执行</h3></div>
+          <table class="tbl">
+            <tbody>
+              <tr><td>确定性规则（L1 + det）</td><td class="r num">7 / 7 执行</td><td class="r"><span class="pill pill-ok">全命中</span></td></tr>
+              <tr><td>语义规则</td><td class="r num">13 / 14 执行</td><td class="r"><span class="pill pill-warn">超时 1 → 待人工</span></td></tr>
+              <tr><td>评分覆盖度</td><td class="r"><span class="meter"><i style="width:72%"></i></span><span class="num">72%</span></td><td class="r" style="color:var(--text-3)">评分办法 26 项已覆盖 19</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="card">
+          <div class="card-hd"><h3>复核进度</h3></div>
+          <div style="padding:12px 16px; font-size:13px; display:flex; gap:14px; flex-wrap:wrap">
+            <span>已复核 <b class="num">12</b> / 17</span>
+            <span style="color:var(--text-3)">维持 <b class="num">9</b></span>
+            <span style="color:var(--text-3)">误报 <b class="num">3</b></span>
+            <span style="color:var(--text-3)">待人工 <b class="num">0</b></span>
+          </div>
+          <div class="tbl-foot">误报项不进报告正文，自动回流评测集（见规则效果看板）</div>
+        </div>
+      </div>
+
+      <!-- 右：问题清单 -->
+      <div class="card">
+        <div class="toolbar">
+          <div class="seg" id="segs">
+            <button class="on" data-f="all">全部 17</button>
+            <button data-f="fatal">致命 3</button>
+            <button data-f="major">主要 4</button>
+            <button data-f="minor">次要 8</button>
+            <button data-f="human">待人工 2</button>
+          </div>
+          <input class="inp" placeholder="搜索规则 / 关键词…" style="width:150px">
+        </div>
+        <div style="padding:12px 14px 14px">
+          <div class="iss" data-sev="fatal">
+            <div class="iss-hd"><span class="dot" style="background:var(--error-500)"></span><span class="iss-rule">L1-009</span>
+              <span class="pill pill-err">致命</span><span class="pill pill-gray" style="height:18px;font-size:11px">violation</span><span class="pill pill-gray" style="height:18px;font-size:11px">det</span>
+              <span class="iss-title">投标总价超过最高限价</span>
+              <label class="iss-ckw"><input type="checkbox" class="iss-ck" aria-label="选中该问题"></label></div>
+            <div class="iss-bd">
+              <div class="iss-verdict">投标总价 <b class="v-hot">¥1,002,300.00</b>（投标函 p.3）&gt; 最高限价 <b class="num">¥1,000,000.00</b>（tender.pdf p.12），超出 <b class="v-hot">2,300.00 元</b>（0.23%）。含税口径一致（双方均为含税），前置条件满足。</div>
+              <div class="iss-ev">证据：<span class="src-chip">bid.pdf <b>p.3</b></span><span class="src-chip">tender.pdf <b>p.12</b></span>
+                <button class="btn-txt btn-sm loc-btn">定位原文</button></div>
+              <div class="iss-ft"><span class="iss-fix"><b>建议</b> 以最高限价为上限调减总价；如属限价与清单测算冲突，先向招标方申请澄清。</span>
+                <span class="iss-acts"><button class="btn btn-sec btn-sm">维持违规</button><button class="btn btn-sec btn-sm fp-btn">误报</button><button class="btn btn-sec btn-sm">待人工</button></span></div>
+              <div class="fp-inline" hidden>
+                <span class="fp-t">标记误报需选择原因（将回流评测集）：</span>
+                <label><input type="radio" name="fp-9">规则误判</label><label><input type="radio" name="fp-9">证据错位</label><label><input type="radio" name="fp-9">口径理解不同</label><label><input type="radio" name="fp-9">基准抽取错误</label>
+                <button class="btn btn-pri btn-sm fp-submit" style="margin-left:8px">提交误报</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="iss" data-sev="fatal">
+            <div class="iss-hd"><span class="dot" style="background:var(--error-500)"></span><span class="iss-rule">L1-010</span>
+              <span class="pill pill-err">致命</span><span class="pill pill-gray" style="height:18px;font-size:11px">violation</span><span class="pill pill-gray" style="height:18px;font-size:11px">det</span>
+              <span class="iss-title">报价算术不一致（明细 → 合价 → 总价 → 大写）</span>
+              <label class="iss-ckw"><input type="checkbox" class="iss-ck" aria-label="选中该问题"></label></div>
+            <div class="iss-bd">
+              <div class="iss-verdict">明细合计 <b class="v-hot">¥1,002,300.00</b>（p.41）≠ 报价汇总表总价栏 <b class="v-hot">¥1,000,000.00</b>（p.37），差额 <b class="num">2,300.00 元</b>；大写「壹佰万零贰仟元整」与明细合计一致，与总价栏矛盾。</div>
+              <div class="iss-ev">证据：<span class="src-chip">bid.pdf <b>p.37</b></span><span class="src-chip">bid.pdf <b>p.41</b></span>
+                <button class="btn-txt btn-sm loc-btn">定位原文</button></div>
+              <div class="iss-ft"><span class="iss-fix"><b>建议</b> 以明细表为准重算合价与总价，同步修订大写金额后再行审查。</span>
+                <span class="iss-acts"><button class="btn btn-sec btn-sm">维持违规</button><button class="btn btn-sec btn-sm fp-btn">误报</button><button class="btn btn-sec btn-sm">待人工</button></span></div>
+              <div class="fp-inline" hidden>
+                <span class="fp-t">标记误报需选择原因（将回流评测集）：</span>
+                <label><input type="radio" name="fp-10">规则误判</label><label><input type="radio" name="fp-10">证据错位</label><label><input type="radio" name="fp-10">口径理解不同</label><label><input type="radio" name="fp-10">基准抽取错误</label>
+                <button class="btn btn-pri btn-sm fp-submit" style="margin-left:8px">提交误报</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="iss done" data-sev="fatal">
+            <div class="iss-hd"><span class="dot" style="background:var(--error-500)"></span><span class="iss-rule">L1-011</span>
+              <span class="pill pill-err">致命</span><span class="pill pill-gray" style="height:18px;font-size:11px">violation</span><span class="pill pill-gray" style="height:18px;font-size:11px">det</span>
+              <span class="iss-title">清单漏项：缺「柴油发电机组安装」</span>
+              <span class="iss-ckw"><span class="pill pill-ok">已复核 · 维持违规</span></span></div>
+            <div class="iss-bd">
+              <div class="iss-verdict">招标清单 <b class="num">26</b> 项 vs 投标清单 <b class="v-hot">25</b> 项，缺招标清单第 14 项「柴油发电机组安装」（兼含擅自增项 1 项，见偏离表）。</div>
+              <div class="iss-ev">证据：<span class="src-chip">tender.pdf <b>p.18</b></span><span class="src-chip">bid.pdf <b>p.52</b></span>
+                <button class="btn-txt btn-sm loc-btn">定位原文</button></div>
+              <div class="iss-ft"><span class="iss-fix"><b>建议</b> 补报该项并对清单做全量对齐后重新出具报价。</span></div>
+            </div>
+          </div>
+
+          <div class="iss done" data-sev="major">
+            <div class="iss-hd"><span class="dot" style="background:var(--second-500)"></span><span class="iss-rule">L3-001</span>
+              <span class="pill pill-orange">主要</span><span class="pill pill-gray" style="height:18px;font-size:11px">violation</span><span class="pill pill-gray" style="height:18px;font-size:11px">engine</span>
+              <span class="iss-title">项目编号前后不一致</span>
+              <span class="iss-ckw"><span class="pill pill-ok">已复核 · 维持违规</span></span></div>
+            <div class="iss-bd">
+              <div class="iss-verdict">授权函中项目编号 <b class="mono">TND-2026-DC-117</b>（p.5）≠ 招标公告 <b class="mono">TND-2026-DC-0117</b>（tender.pdf p.1），疑为漏写一位。</div>
+              <div class="iss-ev">证据：<span class="src-chip">bid.pdf <b>p.5</b></span><span class="src-chip">tender.pdf <b>p.1</b></span>
+                <button class="btn-txt btn-sm loc-btn">定位原文</button></div>
+              <div class="iss-ft"><span class="iss-fix"><b>建议</b> 修订授权函编号后换版重审。</span></div>
+            </div>
+          </div>
+
+          <div class="iss" data-sev="major">
+            <div class="iss-hd"><span class="dot" style="background:var(--second-500)"></span><span class="iss-rule">L3-003</span>
+              <span class="pill pill-orange">主要</span><span class="pill pill-gray" style="height:18px;font-size:11px">violation</span><span class="pill pill-gray" style="height:18px;font-size:11px">engine</span>
+              <span class="iss-title">投标人主体名称不一致</span>
+              <label class="iss-ckw"><input type="checkbox" class="iss-ck" aria-label="选中该问题"></label></div>
+            <div class="iss-bd">
+              <div class="iss-verdict">投标函署名「<b class="v-warn">中原机电工程集团</b>」（p.3）≠ 营业执照「<b class="num">中原机电工程集团有限公司</b>」（license p.1），缺少「有限」字样，不构成完全一致的法人名称。</div>
+              <div class="iss-ev">证据：<span class="src-chip">bid.pdf <b>p.3</b></span><span class="src-chip">license.pdf <b>p.1</b></span>
+                <button class="btn-txt btn-sm loc-btn">定位原文</button></div>
+              <div class="iss-ft"><span class="iss-fix"><b>建议</b> 全文以营业执照法人名称为准统一署名并加盖公章。</span>
+                <span class="iss-acts"><button class="btn btn-sec btn-sm">维持违规</button><button class="btn btn-sec btn-sm fp-btn">误报</button><button class="btn btn-sec btn-sm">待人工</button></span></div>
+              <div class="fp-inline" hidden>
+                <span class="fp-t">标记误报需选择原因（将回流评测集）：</span>
+                <label><input type="radio" name="fp-303">规则误判</label><label><input type="radio" name="fp-303">证据错位</label><label><input type="radio" name="fp-303">口径理解不同</label><label><input type="radio" name="fp-303">基准抽取错误</label>
+                <button class="btn btn-pri btn-sm fp-submit" style="margin-left:8px">提交误报</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="iss" data-sev="major">
+            <div class="iss-hd"><span class="dot" style="background:var(--second-500)"></span><span class="iss-rule">L3-005</span>
+              <span class="pill pill-orange">主要</span><span class="pill pill-gray" style="height:18px;font-size:11px">violation</span><span class="pill pill-gray" style="height:18px;font-size:11px">engine</span>
+              <span class="iss-title">工期三处表述不一致</span>
+              <label class="iss-ckw"><input type="checkbox" class="iss-ck" aria-label="选中该问题"></label></div>
+            <div class="iss-bd">
+              <div class="iss-verdict">技术方案正文「<b class="v-warn">180 日历天</b>」（p.7）= 进度表（p.61），但服务承诺函为「<b class="v-warn">6 个月</b>」（p.88，扫描件低置信页）。</div>
+              <div class="iss-ev">证据：<span class="src-chip">bid.pdf <b>p.7</b></span><span class="src-chip">bid.pdf <b>p.88</b></span>
+                <button class="btn-txt btn-sm loc-btn">定位原文</button></div>
+              <div class="iss-ft"><span class="iss-fix"><b>建议</b> 承诺函按「180 日历天」口径改写并重新签章（基准工期裁定值：180 日历天）。</span>
+                <span class="iss-acts"><button class="btn btn-sec btn-sm">维持违规</button><button class="btn btn-sec btn-sm fp-btn">误报</button><button class="btn btn-sec btn-sm">待人工</button></span></div>
+              <div class="fp-inline" hidden>
+                <span class="fp-t">标记误报需选择原因（将回流评测集）：</span>
+                <label><input type="radio" name="fp-305">规则误判</label><label><input type="radio" name="fp-305">证据错位</label><label><input type="radio" name="fp-305">口径理解不同</label><label><input type="radio" name="fp-305">基准抽取错误</label>
+                <button class="btn btn-pri btn-sm fp-submit" style="margin-left:8px">提交误报</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="iss done" data-sev="major">
+            <div class="iss-hd"><span class="dot" style="background:var(--second-500)"></span><span class="iss-rule">L3-012</span>
+              <span class="pill pill-orange">主要</span><span class="pill pill-gray" style="height:18px;font-size:11px">violation</span><span class="pill pill-gray" style="height:18px;font-size:11px">engine</span>
+              <span class="iss-title">质保期表述不一致</span>
+              <span class="iss-ckw"><span class="pill pill-ok">已复核 · 维持违规</span></span></div>
+            <div class="iss-bd">
+              <div class="iss-verdict">技术方案正文「<b class="v-warn">36 个月</b>」（p.45）vs 商务偏差表「<b class="v-warn">24 个月</b>」——v3 仅修订了正文，偏差表漏改。</div>
+              <div class="iss-ev">证据：<span class="src-chip">bid.pdf <b>p.45</b></span><span class="src-chip">偏差表.xlsx <b>p.2</b></span>
+                <button class="btn-txt btn-sm loc-btn">定位原文</button></div>
+              <div class="iss-ft"><span class="iss-fix"><b>建议</b> 商务偏差表同步改为「36 个月」并消除负偏离（见偏离表）。</span></div>
+            </div>
+          </div>
+
+          <div class="iss-note">以下为引擎无法判定项（need_human）——未判定 ≠ 通过，不计入可提交判定，复核时逐条处理：</div>
+
+          <div class="iss" data-sev="human">
+            <div class="iss-hd"><span class="dot" style="border:2px dashed var(--warn-700); width:8px; height:8px"></span><span class="iss-rule">L3-006</span>
+              <span class="pill pill-warn">待人工</span><span class="pill pill-gray" style="height:18px;font-size:11px">need_human</span><span class="pill pill-gray" style="height:18px;font-size:11px">engine</span>
+              <span class="iss-title">全文金额与总价勾稽存疑</span>
+              <label class="iss-ckw"><input type="checkbox" class="iss-ck" aria-label="选中该问题"></label></div>
+            <div class="iss-bd">
+              <div class="iss-verdict">p.102 出现「壹佰万元整（<b class="num">¥1,000,000.00</b>）」，上下文疑似<b>其他标段</b>文本，引擎无法确认是否构成第二处总价表述，置信度不足。</div>
+              <div class="iss-ev">证据：<span class="src-chip">bid.pdf <b>p.102</b></span><span class="src-chip">bid.pdf <b>p.37</b></span>
+                <button class="btn-txt btn-sm loc-btn">定位原文</button></div>
+              <div class="iss-ft"><span class="iss-fix"><b>建议</b> 人工核对该页；若属残留文本需删除后重新审查。</span>
+                <span class="iss-acts"><button class="btn btn-sec btn-sm">待人工</button><button class="btn btn-sec btn-sm">确认问题</button><button class="btn btn-sec btn-sm fp-btn">误报</button></span></div>
+              <div class="fp-inline" hidden>
+                <span class="fp-t">标记误报需选择原因（将回流评测集）：</span>
+                <label><input type="radio" name="fp-306">规则误判</label><label><input type="radio" name="fp-306">证据错位</label><label><input type="radio" name="fp-306">口径理解不同</label><label><input type="radio" name="fp-306">基准抽取错误</label>
+                <button class="btn btn-pri btn-sm fp-submit" style="margin-left:8px">提交误报</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="iss done" data-sev="human">
+            <div class="iss-hd"><span class="dot" style="border:2px dashed var(--warn-700); width:8px; height:8px"></span><span class="iss-rule">L3-015</span>
+              <span class="pill pill-warn">待人工</span><span class="pill pill-gray" style="height:18px;font-size:11px">need_human</span><span class="pill pill-gray" style="height:18px;font-size:11px">engine</span>
+              <span class="iss-title">评分办法响应矩阵存在空项</span>
+              <span class="iss-ckw"><span class="pill pill-warn">已复核 · 维持待人工</span></span></div>
+            <div class="iss-bd">
+              <div class="iss-verdict">评分办法 26 项中 7 项（技术方案第 3/9/12/17/20/23/25 项）在投标文件中未定位到显式响应，语义引擎超时 1 项转待人工。</div>
+              <div class="iss-ev">证据：<span class="src-chip">tender.pdf <b>p.31–35</b></span><span class="src-chip">bid.pdf <b>p.70–96</b></span>
+                <button class="btn-txt btn-sm loc-btn">定位原文</button></div>
+              <div class="iss-ft"><span class="iss-fix"><b>建议</b> 按评分办法逐项补显式响应段落，避免评审专家人工扣分。</span></div>
+            </div>
+          </div>
+
+          <div class="iss done" data-sev="minor">
+            <div class="iss-hd"><span class="dot dot-gray"></span><span class="iss-rule">L3-021</span>
+              <span class="pill pill-gray">次要</span><span class="pill pill-gray" style="height:18px;font-size:11px">violation</span>
+              <span class="iss-title">目录页码与正文不一致</span>
+              <span class="iss-ckw"><span class="pill pill-ok">已复核 · 维持违规</span></span></div>
+            <div class="iss-bd">
+              <div class="iss-verdict">目录「第 4 章 技术方案 …… 45」实际起始于 p.47，共 6 处页码漂移（格式类，汇总展示）。</div>
+              <div class="iss-ev">证据：<span class="src-chip">bid.pdf <b>p.2</b></span>
+                <button class="btn-txt btn-sm loc-btn">定位原文</button></div>
+            </div>
+          </div>
+
+          <div class="tbl-foot">次要问题共 8 项（格式 / 编排类），其余 7 项已折叠——完整清单见导出报告第三节</div>
+          <div class="batch-bar" id="batchBar" hidden>
+            <span>已选 <b class="num" id="batchCnt">0</b> 项</span>
+            <span style="flex:1"></span>
+            <button class="btn bb-sec btn-sm" id="batchOk">批量维持违规</button>
+            <button class="btn btn-pri btn-sm" id="batchFp">批量标误报</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+  <!-- ═══════════ s6 人工复核工作台 ═══════════ -->
+  <section class="screen" id="s6">
+    <div class="page-head">
+      <div>
+        <h1>人工复核工作台</h1>
+        <p class="hd-sub">任务 BR-2026-0311 · 复核队列 5 项 · 已复核 12（维持 9 / 误报 3） · 误报原因将回流评测集</p>
+      </div>
+      <div style="display:flex; gap:8px">
+        <span class="stage-chip">复核中 1/5</span>
+      </div>
+    </div>
+    <div class="split" style="grid-template-columns:minmax(0,1.15fr) minmax(0,1fr)">
+      <!-- 左：原文预览（自动定位高亮） -->
+      <div class="card">
+        <div class="card-hd"><b>原文对照</b><span class="hd-r"><span class="src-chip">bid.pdf · p.37 报价汇总表</span><span class="pill pill-gray" style="height:18px;font-size:11px">锚点 A-PRICE-SHEET</span></span></div>
+        <div class="card-bd">
+          <div class="note-bar" style="margin-bottom:8px">已按当前问题 <b class="mono">L1-010</b> 自动定位并高亮证据片段——左侧只读，点击页码可在真实系统中打开原文查看器</div>
+          <div class="doc-pane">
+            <div class="doc-ttl">报价汇总表</div>
+            <table class="doc-tbl">
+              <tr><th>项目</th><th style="text-align:right">金额（元）</th></tr>
+              <tr><td>设备购置费</td><td class="r">856,000.00</td></tr>
+              <tr><td>安装工程费</td><td class="r">121,800.00</td></tr>
+              <tr><td>其他费用</td><td class="r">24,500.00</td></tr>
+              <tr><td>明细合计</td><td class="r"><span class="hl-mark">1,002,300.00</span></td></tr>
+              <tr><td><b>投标总价</b></td><td class="r"><span class="hl-bad">1,000,000.00</span></td></tr>
+            </table>
+            <div style="font-size:13px; margin-top:6px">投标总价（大写）：人民币<span class="hl-mark">壹佰万零贰仟元整</span></div>
+          </div>
+          <div class="tbl-foot">明细合计与大写一致（1,002,300），仅总价栏为 1,000,000 —— 疑似誊抄旧版总价未更新</div>
+        </div>
+      </div>
+      <!-- 右：复核队列 + 判定 -->
+      <div style="display:flex; flex-direction:column; gap:12px; min-width:0">
+        <div class="card">
+          <div class="card-hd"><b>待复核队列</b><span class="hd-r mono" style="font-size:12px">1 / 5</span></div>
+          <div class="card-bd" style="padding:0">
+            <div class="q-itm on">
+              <span class="iss-rule">L1-010</span><span class="pill pill-err">致命</span>
+              <span class="q-ttl">报价算术不一致（明细≠总价）</span>
+            </div>
+            <div class="q-itm">
+              <span class="iss-rule">L1-009</span><span class="pill pill-err">致命</span>
+              <span class="q-ttl">投标总价超过最高限价</span>
+            </div>
+            <div class="q-itm">
+              <span class="iss-rule">L3-003</span><span class="pill pill-orange">主要</span>
+              <span class="q-ttl">投标人主体名称不一致</span>
+            </div>
+            <div class="q-itm">
+              <span class="iss-rule">L3-005</span><span class="pill pill-orange">主要</span>
+              <span class="q-ttl">工期三处表述不一致</span>
+            </div>
+            <div class="q-itm">
+              <span class="iss-rule">L3-006</span><span class="pill pill-warn">待人工</span>
+              <span class="q-ttl">全文金额与总价勾稽存疑</span>
+            </div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-hd"><b>当前判定</b><span class="hd-r"><span class="iss-rule">L1-010</span><span class="pill pill-err">致命</span></span></div>
+          <div class="card-bd">
+            <div style="font-size:13px; line-height:1.6; margin-bottom:8px">明细合计 <b class="num">¥1,002,300.00</b>（p.41）≠ 报价汇总表总价栏 <b class="num">¥1,000,000.00</b>（p.37），差额 <b class="num">2,300.00 元</b>；大写与明细合计一致。</div>
+            <table class="tbl" style="margin-bottom:10px">
+              <thead><tr><th>参与值</th><th>来源</th><th class="r">值</th></tr></thead>
+              <tbody>
+                <tr><td>明细合计</td><td><span class="src-chip">bid.pdf p.41</span></td><td class="r num">1,002,300.00</td></tr>
+                <tr><td>总价栏</td><td><span class="src-chip">bid.pdf p.37</span></td><td class="r num" style="color:var(--error-700)">1,000,000.00</td></tr>
+                <tr><td>大写金额</td><td><span class="src-chip">bid.pdf p.37</span></td><td class="r">壹佰万零贰仟元整</td></tr>
+              </tbody>
+            </table>
+            <div class="rv-row">
+              <label class="radio-line"><input type="radio" name="verdict" checked>确认问题（维持违规）</label>
+              <label class="radio-line"><input type="radio" name="verdict">误报</label>
+              <label class="radio-line"><input type="radio" name="verdict">转待人工</label>
+            </div>
+            <div class="f-ck" style="display:flex; gap:10px; align-items:center; margin:8px 0">
+              <label style="font-size:13px">严重度</label>
+              <select style="padding:6px 10px; border:1px solid var(--gray-200); border-radius:8px; font-size:13px; background:var(--card)"><option>致命</option><option>主要</option><option>次要</option><option>提示</option></select>
+              <input type="text" placeholder="备注（可选）" style="flex:1; min-width:0; padding:7px 10px; border:1px solid var(--gray-200); border-radius:8px; font-size:13px">
+            </div>
+            <div id="fpReason" class="f-ck" hidden>
+              <div style="font-size:13px; font-weight:600; margin-bottom:6px">误报原因（必填，回流评测集）</div>
+              <div class="radio-line">
+                <label><input type="radio" name="fpr" disabled>规则误判</label>
+                <label><input type="radio" name="fpr" disabled>证据错位</label>
+                <label><input type="radio" name="fpr" disabled>口径理解不同</label>
+                <label><input type="radio" name="fpr" disabled>基准抽取错误</label>
+              </div>
+              <div class="note-bar" style="margin-top:6px" id="rvWarn">请选择误报原因后提交——无原因的误报无法归因，评测集不接受</div>
+            </div>
+            <div style="display:flex; gap:8px; align-items:center; margin-top:10px">
+              <button class="btn btn-pri" id="rvSubmit">提交并下一条</button>
+              <button class="btn btn-sec btn-sm">跳过</button>
+              <span style="margin-left:auto; font-size:12px; color:var(--text-3)">快捷键 <kbd class="kbd">J</kbd>/<kbd class="kbd">K</kbd> 切换 · <kbd class="kbd">Y</kbd> 维持 · <kbd class="kbd">N</kbd> 误报</span>
+            </div>
+          </div>
+          <div class="tbl-foot" style="justify-content:space-between"><span>本任务复核进度 12 / 17</span><span>维持 9 · 误报 3 · 待复核 5</span></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══════════ s7 响应偏离表 ═══════════ -->
+  <section class="screen" id="s7">
+    <div class="page-head">
+      <div>
+        <h1>响应偏离表</h1>
+        <p class="hd-sub">任务 BR-2026-0311 · 依据基准确认包与投标文件自动生成 · 随报告导出，供评审专家参考</p>
+      </div>
+      <div style="display:flex; gap:8px">
+        <span class="stage-chip" style="background:var(--error-50); color:var(--error-700)">1 项致命偏离</span>
+        <button class="btn btn-sec btn-sm">导出偏离表</button>
+      </div>
+    </div>
+    <div class="metric-strip">
+      <div class="metric-cell"><div class="m-lb">招标清单条目</div><div class="m-v">26</div></div>
+      <div class="metric-cell"><div class="m-lb">投标响应条目</div><div class="m-v">25</div></div>
+      <div class="metric-cell err"><div class="m-lb">负偏离</div><div class="m-v">2</div></div>
+      <div class="metric-cell err"><div class="m-lb">未响应（漏项）</div><div class="m-v">1</div></div>
+      <div class="metric-cell"><div class="m-lb">擅自增项</div><div class="m-v">1</div></div>
+    </div>
+    <div class="card">
+      <div class="card-hd"><b>偏离明细</b><span class="hd-r" style="font-size:12px; color:var(--text-3)">按严重度排序</span></div>
+      <div class="card-bd" style="padding:0">
+        <table class="tbl">
+          <thead><tr><th>#</th><th>条目</th><th>招标要求</th><th>投标响应</th><th>偏离判定</th><th>证据</th></tr></thead>
+          <tbody>
+            <tr><td>1</td><td>柴油发电机组安装</td><td>清单第 14 项，须响应</td><td class="unmapped-cell">未响应</td><td><span class="pill pill-err">漏项 · 致命</span></td><td><span class="src-chip">tender.pdf p.18</span></td></tr>
+            <tr><td>2</td><td>付款节点</td><td>验收后 30 日支付 95%</td><td>验收后 60 日支付 95%</td><td><span class="pill pill-orange">负偏离 · 主要</span></td><td><span class="src-chip">bid.pdf 偏差表 p.2</span></td></tr>
+            <tr><td>3</td><td>培训次数</td><td>≥ 3 次（每方）</td><td>2 次</td><td><span class="pill pill-warn">负偏离 · 次要</span></td><td><span class="src-chip">bid.pdf 偏差表 p.2</span></td></tr>
+            <tr class="unmapped-row"><td>4</td><td>机房专用灭火系统</td><td class="unmapped-cell">（招标清单外）</td><td>自行增报 1 项</td><td><span class="pill pill-orange">擅自增项 · 主要</span></td><td><span class="src-chip">bid.pdf p.52</span></td></tr>
+            <tr><td>5</td><td>质保期</td><td>≥ 24 个月</td><td>36 个月</td><td><span class="pill pill-ok">正偏离 · 优</span></td><td><span class="src-chip">bid.pdf p.45</span></td></tr>
+            <tr><td>6</td><td>交货期</td><td>≤ 90 日历天</td><td>85 日历天</td><td><span class="pill pill-ok">正偏离 · 优</span></td><td><span class="src-chip">bid.pdf p.61</span></td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="tbl-foot">致命偏离（漏项）必须整改并重新审查后方可提交；负偏离须在商务偏差表中显式声明，隐瞒负偏离按废标风险提示（<b class="mono">L1-013</b> 规则组）</div>
+    </div>
+  </section>
+
+  <!-- ═══════════ s8 版本差异 ═══════════ -->
+  <section class="screen" id="s8">
+    <div class="page-head">
+      <div>
+        <h1>版本差异</h1>
+        <p class="hd-sub">任务 BR-2026-0311 · v2（评审稿）→ v3（终稿）· 换版重审后自动生成 · 变更影响 17 项问题中的 5 项</p>
+      </div>
+      <div style="display:flex; gap:8px">
+        <div class="seg" style="padding:3px">
+          <button class="seg-btn on" style="border:none; background:transparent; padding:6px 12px; border-radius:7px; font-size:12px; cursor:pointer">v2 → v3</button>
+          <button class="seg-btn" style="border:none; background:transparent; padding:6px 12px; border-radius:7px; font-size:12px; color:var(--text-3)">v1 → v2</button>
+        </div>
+      </div>
+    </div>
+    <div class="split-wide">
+      <div class="card">
+        <div class="card-hd"><b>关键内容差异</b><span class="hd-r" style="font-size:12px; color:var(--text-3)">6 处实质变更 · 14 处格式变更（折叠）</span></div>
+        <div class="card-bd">
+          <div style="font-size:13px; font-weight:600; margin-bottom:6px">投标总价（p.37 报价汇总表）</div>
+          <div class="dif-box"><span class="dif-del">− 1,000,000.00（v2 总价栏）</span><span class="dif-add">+ 1,002,300.00（v3 总价栏，与明细/大写对齐）</span></div>
+          <div style="font-size:13px; font-weight:600; margin:12px 0 6px">质保期（p.45 技术方案）</div>
+          <div class="dif-box"><span class="dif-del">− 质保期 24 个月</span><span class="dif-add">+ 质保期 36 个月</span></div>
+          <div style="font-size:13px; font-weight:600; margin:12px 0 6px">项目编号（p.5 授权函）</div>
+          <div class="dif-box"><span class="dif-del">− TND-2026-DC-117</span><span class="dif-add">+ TND-2026-DC-0117</span></div>
+          <div class="tbl-foot">其余 3 处实质变更（工期口径 / 署名主体 / 清单补项）见导出报告附录 B · <button class="btn-txt btn-sm" style="padding:0">展开全部差异</button></div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-hd"><b>规则影响</b><span class="hd-r" style="font-size:12px; color:var(--text-3)">换版后受影响的规则命中</span></div>
+        <div class="card-bd" style="padding:0">
+          <table class="tbl">
+            <thead><tr><th>规则</th><th>v2 判定</th><th>v3 判定</th><th>变化</th></tr></thead>
+            <tbody>
+              <tr><td class="mono">L1-010</td><td><span class="pill pill-err">violation</span></td><td><span class="pill pill-ok">pass（预期）</span></td><td>总价栏已对齐明细</td></tr>
+              <tr><td class="mono">L3-001</td><td><span class="pill pill-orange">violation</span></td><td><span class="pill pill-ok">pass（预期）</span></td><td>编号已补 0</td></tr>
+              <tr><td class="mono">L3-012</td><td><span class="pill pill-orange">violation</span></td><td><span class="pill pill-warn">需复核</span></td><td>正文改 36 个月，偏差表未同步</td></tr>
+              <tr><td class="mono">L1-009</td><td><span class="pill pill-err">violation</span></td><td><span class="pill pill-err">violation</span></td><td>调价后仍超限价 2,300 元</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="tbl-foot">v3 为增量审查：仅重跑受变更影响的规则与全文勾稽，未变更部分的复核结论自动继承（<b class="mono">inherit_from_review</b>）</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══════════ s9 规则库 ═══════════ -->
+  <section class="screen" id="s9">
+    <div class="page-head">
+      <div>
+        <h1>规则库</h1>
+        <p class="hd-sub">规则包 eng-v2.4 · 共 12 条（L1 实质性 5 · L3 一致性 7）· 规则定义走 YAML 三方契约（规则作者 / 引擎 / 前端同源），此处只读展示 + 启停</p>
+      </div>
+      <div style="display:flex; gap:8px">
+        <button class="btn btn-sec btn-sm" id="ruleNew">查看规则定义</button>
+        <button class="btn btn-pri btn-sm">上传新规则包</button>
+      </div>
+    </div>
+    <div class="seg" style="margin-bottom:12px">
+      <button class="seg-btn on">全部 12</button>
+      <button class="seg-btn">L1 实质性 5</button>
+      <button class="seg-btn">L3 一致性 7</button>
+      <button class="seg-btn" style="color:var(--warn-700)">高误报 2</button>
+    </div>
+    <div class="card">
+      <div class="card-bd" style="padding:0">
+        <table class="tbl">
+          <thead><tr><th style="width:36px">启用</th><th>规则</th><th>层级</th><th>严重度</th><th>判定</th><th>误报率*</th><th>说明</th></tr></thead>
+          <tbody>
+            <tr><td><input type="checkbox" checked aria-label="启用 L1-009"></td><td class="mono rule-link" data-rule="L1-009">L1-009 <button class="btn-txt btn-sm" style="padding:0">详情</button></td><td>L1 实质性</td><td><span class="pill pill-err">致命</span></td><td><span class="mono" style="font-size:12px">lte</span></td><td class="num">1.2%</td><td>投标总价 ≤ 最高限价（含税口径一致）</td></tr>
+            <tr><td><input type="checkbox" checked aria-label="启用 L1-010"></td><td class="mono">L1-010</td><td>L1 实质性</td><td><span class="pill pill-err">致命</span></td><td><span class="mono" style="font-size:12px">chain_eq</span></td><td class="num">0.8%</td><td>报价算术一致性：明细→合价→总价→大写</td></tr>
+            <tr><td><input type="checkbox" checked aria-label="启用 L1-011"></td><td class="mono">L1-011 <span class="pill pill-warn" style="height:18px;font-size:11px">误报 22%</span></td><td>L1 实质性</td><td><span class="pill pill-err">致命</span></td><td><span class="mono" style="font-size:12px">set_eq</span></td><td class="num" style="color:var(--warn-700)">22.0%</td><td>清单无漏项无擅自增项</td></tr>
+            <tr><td><input type="checkbox" checked aria-label="启用 L1-013"></td><td class="mono">L1-013</td><td>L1 实质性</td><td><span class="pill pill-orange">主要</span></td><td><span class="mono" style="font-size:12px">not_exists</span></td><td class="num">3.1%</td><td>负偏离须显式声明，隐瞒按废标风险提示</td></tr>
+            <tr><td><input type="checkbox" checked aria-label="启用 L1-017"></td><td class="mono">L1-017</td><td>L1 实质性</td><td><span class="pill pill-orange">主要</span></td><td><span class="mono" style="font-size:12px">gte</span></td><td class="num">2.4%</td><td>投标保证金 ≥ 招标要求且在有效期</td></tr>
+            <tr><td><input type="checkbox" checked aria-label="启用 L3-001"></td><td class="mono">L3-001</td><td>L3 一致性</td><td><span class="pill pill-orange">主要</span></td><td><span class="mono" style="font-size:12px">eq_all</span></td><td class="num">4.5%</td><td>项目名称编号全文一致</td></tr>
+            <tr><td><input type="checkbox" checked aria-label="启用 L3-003"></td><td class="mono">L3-003 <span class="pill pill-warn" style="height:18px;font-size:11px">误报 24%</span></td><td>L3 一致性</td><td><span class="pill pill-orange">主要</span></td><td><span class="mono" style="font-size:12px">in_whitelist</span></td><td class="num" style="color:var(--warn-700)">24.0%</td><td>投标人主体与执照白名单一致</td></tr>
+            <tr><td><input type="checkbox" checked aria-label="启用 L3-005"></td><td class="mono">L3-005</td><td>L3 一致性</td><td><span class="pill pill-orange">主要</span></td><td><span class="mono" style="font-size:12px">eq_all</span></td><td class="num">6.2%</td><td>工期三处一致（支持日历天/月换算）</td></tr>
+            <tr><td><input type="checkbox" checked aria-label="启用 L3-006"></td><td class="mono">L3-006</td><td>L3 一致性</td><td><span class="pill pill-orange">主要</span></td><td><span class="mono" style="font-size:12px">reconcile</span></td><td class="num">—</td><td>全文金额与总价勾稽（不足置信转 need_human）</td></tr>
+            <tr><td><input type="checkbox" checked aria-label="启用 L3-012"></td><td class="mono">L3-012</td><td>L3 一致性</td><td><span class="pill pill-orange">主要</span></td><td><span class="mono" style="font-size:12px">eq_all</span></td><td class="num">5.0%</td><td>质保期表述一致</td></tr>
+            <tr><td><input type="checkbox" checked aria-label="启用 L3-015"></td><td class="mono">L3-015</td><td>L3 一致性</td><td><span class="pill pill-warn">待人工</span></td><td><span class="mono" style="font-size:12px">matrix_cover</span></td><td class="num">—</td><td>评分办法响应矩阵覆盖（空项转 need_human）</td></tr>
+            <tr><td><input type="checkbox" checked aria-label="启用 L3-021"></td><td class="mono">L3-021</td><td>L3 一致性</td><td><span class="pill pill-gray">次要</span></td><td><span class="mono" style="font-size:12px">eq_all</span></td><td class="num">1.9%</td><td>目录页码与正文一致</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="tbl-foot">* 误报率 = 近 30 天复核期被标误报次数 / 该规则命中次数 · 高误报规则（≥20%）自动回流评测集并进入看板 FAIL 名单 · 规则启停仅影响新发起的审查，进行中任务不受影响</div>
+    </div>
+  </section>
+
+  <!-- ═══════════ s10 规则效果看板 ═══════════ -->
+  <section class="screen" id="s10">
+    <div class="page-head">
+      <div>
+        <h1>规则效果看板</h1>
+        <p class="hd-sub">评测集 v2026.10（120 例）· 最近全量跑批 10-28 · 误报回流自动进入下一轮评测样本</p>
+      </div>
+      <div style="display:flex; gap:8px"><button class="btn btn-sec btn-sm">重跑评测</button><button class="btn btn-pri btn-sm">导出评测报告</button></div>
+    </div>
+    <div class="metric-strip">
+      <div class="metric-cell"><div class="m-lb">评测样本</div><div class="m-v">32<span class="m-sub">例</span></div></div>
+      <div class="metric-cell"><div class="m-lb">规则通过率</div><div class="m-v">87.5<span class="m-sub">%</span></div></div>
+      <div class="metric-cell"><div class="m-lb">平均审查用时</div><div class="m-v">9m41s</div></div>
+      <div class="metric-cell err"><div class="m-lb">整体误报率</div><div class="m-v">8.2<span class="m-sub">%</span></div></div>
+    </div>
+    <div class="split-wide">
+      <div class="card">
+        <div class="card-hd"><b>逐规则评测</b><span class="hd-r" style="font-size:12px; color:var(--warn-700)">2 条 FAIL</span></div>
+        <div class="card-bd" style="padding:0">
+          <table class="tbl">
+            <thead><tr><th>规则</th><th class="r">样本</th><th class="r">准确率</th><th class="r">误报</th><th>判定</th></tr></thead>
+            <tbody>
+              <tr><td class="mono">L1-009</td><td class="r">28</td><td class="r">96.4%</td><td class="r">1</td><td><span class="pill pill-ok">PASS</span></td></tr>
+              <tr><td class="mono">L1-010</td><td class="r">30</td><td class="r">100%</td><td class="r">0</td><td><span class="pill pill-ok">PASS</span></td></tr>
+              <tr><td class="mono" style="color:var(--error-700)">L1-011</td><td class="r">18</td><td class="r">77.8%</td><td class="r">4</td><td><span class="pill pill-err">FAIL</span></td></tr>
+              <tr><td class="mono">L3-001</td><td class="r">26</td><td class="r">92.3%</td><td class="r">2</td><td><span class="pill pill-ok">PASS</span></td></tr>
+              <tr><td class="mono" style="color:var(--error-700)">L3-003</td><td class="r">25</td><td class="r">76.0%</td><td class="r">6</td><td><span class="pill pill-err">FAIL</span></td></tr>
+              <tr><td class="mono">L3-005</td><td class="r">22</td><td class="r">90.9%</td><td class="r">2</td><td><span class="pill pill-ok">PASS</span></td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="tbl-foot">FAIL 规则的误报样本已由复核回流自动归因：<b class="mono">L1-011</b> 集中在「部分响应视同漏项」口径 · <b class="mono">L3-003</b> 集中在「简称视同全称」——待规则作者修订 <code class="k">precondition</code> 后重跑</div>
+      </div>
+      <div class="card">
+        <div class="card-hd"><b>周趋势</b><span class="hd-r" style="font-size:12px; color:var(--text-3)">近 6 周 · 整体误报率</span></div>
+        <div class="card-bd">
+          <div class="trend">
+            <div class="t-col"><div class="t-bar" style="height:72px"></div><div class="t-lb">14.1%</div><div class="t-wk">W37</div></div>
+            <div class="t-col"><div class="t-bar" style="height:63px"></div><div class="t-lb">12.3%</div><div class="t-wk">W38</div></div>
+            <div class="t-col"><div class="t-bar" style="height:55px"></div><div class="t-lb">10.8%</div><div class="t-wk">W39</div></div>
+            <div class="t-col"><div class="t-bar" style="height:47px"></div><div class="t-lb">9.9%</div><div class="t-wk">W40</div></div>
+            <div class="t-col"><div class="t-bar" style="height:42px"></div><div class="t-lb">8.9%</div><div class="t-wk">W41</div></div>
+            <div class="t-col"><div class="t-bar on" style="height:39px"></div><div class="t-lb">8.2%</div><div class="t-wk">W42</div></div>
+          </div>
+          <div class="note-bar" style="margin-top:12px">误报率连续 6 周下降——回流闭环生效：复核误报 → 自动归因 → 评测样本 → 规则修订。维持「误报必填原因」是数据质量的前提</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+<!--@@PART5-->
+</main>
+
+<!-- ═══════ 报告预览 ═══════ -->
+<div class="overlay" id="reportModal" hidden>
+  <div class="modal" style="max-width:640px">
+    <div class="modal-hd"><b>审查报告预览 · BR-2026-0311</b><button class="btn-txt" data-close>✕</button></div>
+    <div class="modal-bd">
+      <div class="note-bar" style="border-color:var(--warn-500)">本报告为辅助提示，最终责任由投标主体承担</div>
+      <div class="verdict-band" style="margin:12px 0"><span class="vb-ic">✕</span><div><b>不建议提交</b><div class="vb-sub">命中致命红线 3 项，建议整改后重新审查</div></div><span class="vb-cjk">可提交判定 = 无「致命 × violation」且无未处理待人工项</span></div>
+      <ol style="font-size:13px; line-height:1.9; padding-left:18px; margin:0">
+        <li>审查概况 —— 任务 / 版本 / 模式 / 规则包 / 用时 11m32s</li>
+        <li>基准确认包 —— 18 项字段及人工裁定记录（3 项冲突已裁定）</li>
+        <li>问题清单 —— 致命 3 · 主要 4 · 次要 8 · 待人工 2（含证据页码）</li>
+        <li>响应偏离表 —— 负偏离 2 · 漏项 1 · 增项 1</li>
+        <li>复核记录 —— 已复核 12（维持 9 / 误报 3）· 误报原因分布</li>
+        <li>整改建议清单 —— 按规则逐条给出修订指引</li>
+        <li>版本差异 —— v2 → v3 实质变更 6 处</li>
+      </ol>
+      <div class="tbl-foot">附录 A：误报项不进报告正文，仅以计数与原因分布形式出现在第五节（保护投标人，避免以误报误导评审）</div>
+    </div>
+    <div class="modal-ft"><button class="btn btn-sec" data-close>关闭</button><button class="btn btn-pri">下载 PDF</button></div>
+  </div>
+</div>
+
+<!-- ═══════ 批量误报原因 ═══════ -->
+<div class="overlay" id="fpModal" hidden>
+  <div class="modal" style="max-width:460px">
+    <div class="modal-hd"><b>批量标记误报</b><button class="btn-txt" data-close>✕</button></div>
+    <div class="modal-bd">
+      <div style="font-size:13px; margin-bottom:10px">对选中的 <b class="num" id="fpCnt">0</b> 项标记误报——原因必填（逐条回流评测集）：</div>
+      <div class="radio-line" style="flex-direction:column; align-items:flex-start; gap:8px">
+        <label><input type="radio" name="fpb" value="规则误判">规则误判 —— 规则口径与招标文件实际要求不符</label>
+        <label><input type="radio" name="fpb" value="证据错位">证据错位 —— 引用页码/段落定位错误</label>
+        <label><input type="radio" name="fpb" value="口径理解不同">口径理解不同 —— 对同一表述存在合理解读分歧</label>
+        <label><input type="radio" name="fpb" value="基准抽取错误">基准抽取错误 —— 基准包字段抽取有误</label>
+      </div>
+    </div>
+    <div class="modal-ft"><button class="btn btn-sec" data-close>取消</button><button class="btn btn-pri" id="fpSubmit" disabled>确认标为误报</button></div>
+  </div>
+</div>
+
+<!-- ═══════ 规则定义抽屉 ═══════ -->
+<div class="overlay" id="ruleDrawer" hidden>
+  <div class="drawer">
+    <div class="drawer-hd"><b>规则定义 · L1-009</b><button class="btn-txt" data-close>✕</button></div>
+    <div class="drawer-bd">
+      <div style="font-size:13px; line-height:1.7; margin-bottom:10px"><b>投标总价不得高于最高限价。</b>双方口径须一致（含税/不含税），不一致时按 on_missing_input 处理。</div>
+      <div class="expr-block"><div class="expr-hd">PRECONDITION</div><pre>baseline("tender.max_price").tax_mode == bid("bid.total_price").tax_mode</pre></div>
+      <div class="expr-block"><div class="expr-hd">EXPR</div><pre>lte(value("bid.total_price"), baseline("tender.max_price"))</pre></div>
+      <div class="expr-block"><div class="expr-hd">ON_MISSING_INPUT</div><pre>need_human   # 任一参与字段缺失/冲突 → 转待人工，不判违规</pre></div>
+      <div class="expr-block"><div class="expr-hd">MESSAGE_TPL</div><pre>投标总价 {bid.total_price} 超过最高限价 {tender.max_price}，超出 {delta}（{ratio}%）</pre></div>
+      <div class="expr-block"><div class="expr-hd">FIX_TPL</div><pre>以最高限价为上限调减总价；如属限价与清单测算冲突，先向招标方申请澄清</pre></div>
+      <div class="tbl-foot">规则定义走 YAML 三方契约（规则作者 / 引擎 / 前端同源）· 本页只读 · 修订须走规则包版本发布（eng-v2.4 → v2.5）</div>
+    </div>
+  </div>
+</div>
+
+<script>
+(function(){
+  var screens=[].slice.call(document.querySelectorAll('.screen'));
+  var navs=[].slice.call(document.querySelectorAll('.nav-item[data-go]'));
+  function go(id,push){
+    screens.forEach(function(s){ s.classList.toggle('on', s.id===id); });
+    navs.forEach(function(n){ n.classList.toggle('on', n.getAttribute('data-go')===id); });
+    if(push!==false){
+      var n=navs.filter(function(x){return x.getAttribute('data-go')===id;})[0];
+      try{ location.hash=n?n.getAttribute('data-hash')||'':''; }catch(e){}
+    }
+    window.scrollTo(0,0);
+  }
+  navs.forEach(function(n){ n.addEventListener('click',function(){ go(n.getAttribute('data-go')); }); });
+  function route(){
+    var h=(location.hash||'').replace(/^#/,'');
+    if(!h){ return; }
+    var n=navs.filter(function(x){return x.getAttribute('data-hash')===h;})[0];
+    if(n){ go(n.getAttribute('data-go'),false); }
+  }
+  window.addEventListener('hashchange',route); route();
+
+  /* 暗色切换 */
+  var dt=document.getElementById('darkToggle');
+  if(dt){ dt.addEventListener('click',function(){
+    var r=document.documentElement;
+    var dark=r.getAttribute('data-theme')==='dark'||(!r.getAttribute('data-theme')&&window.matchMedia('(prefers-color-scheme: dark)').matches);
+    if(dark){ r.removeAttribute('data-theme'); } else { r.setAttribute('data-theme','dark'); }
+    try{ localStorage.setItem('br-theme', dark?'light':'dark'); }catch(e){}
+  }); }
+  try{ var saved=localStorage.getItem('br-theme'); if(saved==='dark'){ document.documentElement.setAttribute('data-theme','dark'); } }catch(e){}
+
+  /* 浮层开关 */
+  function openOv(id){ var o=document.getElementById(id); if(o){ o.hidden=false; } }
+  function closeOv(ov){ ov.hidden=true; }
+  [].slice.call(document.querySelectorAll('.overlay')).forEach(function(ov){
+    ov.addEventListener('click',function(e){ if(e.target===ov){ closeOv(ov); } });
+    [].slice.call(ov.querySelectorAll('[data-close]')).forEach(function(b){ b.addEventListener('click',function(){ closeOv(ov); }); });
+  });
+  document.addEventListener('keydown',function(e){ if(e.key==='Escape'){ [].slice.call(document.querySelectorAll('.overlay:not([hidden])')).forEach(closeOv); } });
+
+  /* s2 新建 → s3 */
+  var createBtn=document.getElementById('createBtn');
+  if(createBtn){ createBtn.addEventListener('click',function(){ go('s3'); }); }
+  var modeHint=document.getElementById('modeHint');
+  [].slice.call(document.querySelectorAll('input[name="mode"]')).forEach(function(r){
+    r.addEventListener('change',function(){
+      if(modeHint){ modeHint.textContent = r.id==='modeDeep'
+        ? '深度评审：抽取招标基准包（18 项实质性条款）并逐条比对，未确认基准前不会开始审查'
+        : '快速检查：仅跑 L1 实质性红线（限价/算术/清单），约 2 分钟出结果，不抽取基准包'; }
+    });
+  });
+
+  /* s4 卡点：勾选计数 → 门禁按钮 */
+  var gateBtn=document.getElementById('gateBtn'), gateCnt=document.getElementById('gateCnt'), gateMeter=document.getElementById('gateMeter');
+  function gateUpdate(){
+    var pend=[].slice.call(document.querySelectorAll('.ck-pend'));
+    var done=pend.filter(function(c){return c.checked;}).length;
+    var total=18, confirmed=15+done;
+    if(gateCnt){ gateCnt.textContent=confirmed+'/'+total; }
+    if(gateMeter){ gateMeter.style.width=Math.round(confirmed/total*100)+'%'; }
+    if(gateBtn){
+      var left=total-confirmed;
+      gateBtn.disabled=left>0;
+      gateBtn.textContent=left>0 ? '确认基准包并开始审查（待确认 '+left+' 项）' : '确认基准包并开始审查';
+    }
+  }
+  [].slice.call(document.querySelectorAll('.ck-pend')).forEach(function(c){ c.addEventListener('change',gateUpdate); });
+  if(gateBtn){ gateBtn.addEventListener('click',function(){ if(!gateBtn.disabled){ go('s5'); } }); }
+
+  /* s5 筛选 */
+  var segs=document.getElementById('segs');
+  if(segs){
+    [].slice.call(segs.querySelectorAll('button[data-f]')).forEach(function(b){
+      b.addEventListener('click',function(){
+        [].slice.call(segs.querySelectorAll('button')).forEach(function(x){ x.classList.remove('on'); });
+        b.classList.add('on');
+        var f=b.getAttribute('data-f');
+        [].slice.call(document.querySelectorAll('.iss')).forEach(function(card){
+          card.hidden=(f!=='all'&&card.getAttribute('data-sev')!==f);
+        });
+      });
+    });
+  }
+  var qSearch=document.getElementById('q-search');
+  if(qSearch){ qSearch.addEventListener('input',function(){
+    var q=qSearch.value.trim();
+    [].slice.call(document.querySelectorAll('.iss')).forEach(function(card){
+      card.hidden=(q&&card.textContent.indexOf(q)<0);
+    });
+  }); }
+
+  /* s5 批量操作 */
+  var batchBar=document.getElementById('batchBar'), batchCnt=document.getElementById('batchCnt');
+  function selCards(){ return [].slice.call(document.querySelectorAll('.iss-ck:checked')); }
+  function syncBatch(){
+    var n=selCards().length;
+    if(batchBar){ batchBar.hidden=(n===0); }
+    if(batchCnt){ batchCnt.textContent=n; }
+  }
+  [].slice.call(document.querySelectorAll('.iss-ck')).forEach(function(c){ c.addEventListener('change',syncBatch); });
+  function clearSel(){ [].slice.call(document.querySelectorAll('.iss-ck')).forEach(function(c){ c.checked=false; }); syncBatch(); }
+  function markDone(cards,label){
+    cards.forEach(function(ck){
+      var card=ck.closest('.iss'); if(!card){ return; }
+      card.classList.add('done');
+      ck.closest('.iss-ckw').innerHTML='<span class="pill pill-ok">'+label+'</span>';
+    });
+  }
+  var batchOk=document.getElementById('batchOk');
+  if(batchOk){ batchOk.addEventListener('click',function(){ markDone(selCards(),'已复核 · 维持违规'); clearSel(); }); }
+  var batchFp=document.getElementById('batchFp');
+  if(batchFp){ batchFp.addEventListener('click',function(){
+    var n=selCards().length; var fc=document.getElementById('fpCnt'); if(fc){ fc.textContent=n; }
+    var fs=document.getElementById('fpSubmit'); if(fs){ fs.disabled=true; }
+    openOv('fpModal');
+  }); }
+  var fpSubmit=document.getElementById('fpSubmit');
+  if(fpSubmit){ fpSubmit.addEventListener('click',function(){
+    markDone(selCards(),'已复核 · 误报'); clearSel(); closeOv(document.getElementById('fpModal'));
+  }); }
+  [].slice.call(document.querySelectorAll('input[name="fpb"]')).forEach(function(r){
+    r.addEventListener('change',function(){ var fs=document.getElementById('fpSubmit'); if(fs){ fs.disabled=false; } });
+  });
+
+  /* 卡内误报（单条） */
+  [].slice.call(document.querySelectorAll('.fp-btn')).forEach(function(b){
+    b.addEventListener('click',function(){
+      var card=b.closest('.iss'); var fp=card&&card.querySelector('.fp-inline');
+      if(fp){ fp.hidden=!fp.hidden; }
+    });
+  });
+  [].slice.call(document.querySelectorAll('.fp-inline')).forEach(function(fp){
+    [].slice.call(fp.querySelectorAll('input[type="radio"]')).forEach(function(r){
+      r.addEventListener('change',function(){ var s=fp.querySelector('.fp-submit'); if(s){ s.disabled=false; } });
+    });
+    var s=fp.querySelector('.fp-submit');
+    if(s){ s.addEventListener('click',function(){
+      var card=fp.closest('.iss'); card.classList.add('done');
+      var w=card.querySelector('.iss-ckw');
+      if(w){ w.innerHTML='<span class="pill pill-ok">已复核 · 误报</span>'; }
+      fp.hidden=true;
+    }); }
+  });
+
+  /* 定位原文 → 复核工作台 */
+  [].slice.call(document.querySelectorAll('.loc-btn')).forEach(function(b){
+    b.addEventListener('click',function(){ go('s6'); });
+  });
+
+  /* s5 报告 */
+  var openReport=document.getElementById('openReport');
+  if(openReport){ openReport.addEventListener('click',function(){ openOv('reportModal'); }); }
+
+  /* s9 规则抽屉 */
+  function openRule(){ openOv('ruleDrawer'); }
+  var ruleNew=document.getElementById('ruleNew');
+  if(ruleNew){ ruleNew.addEventListener('click',openRule); }
+  [].slice.call(document.querySelectorAll('.rule-link')).forEach(function(b){ b.addEventListener('click',openRule); });
+
+  /* s6 复核流 */
+  var verdictRadios=[].slice.call(document.querySelectorAll('input[name="verdict"]'));
+  var fpReason=document.getElementById('fpReason');
+  verdictRadios.forEach(function(r){
+    r.addEventListener('change',function(){
+      var isFp=verdictRadios[1].checked;
+      if(fpReason){ fpReason.hidden=!isFp; }
+      [].slice.call(document.querySelectorAll('input[name="fpr"]')).forEach(function(x){ x.disabled=!isFp; });
+      var w=document.getElementById('rvWarn'); if(w){ w.hidden=!isFp; }
+    });
+  });
+  var rvSubmit=document.getElementById('rvSubmit');
+  if(rvSubmit){ rvSubmit.addEventListener('click',function(){
+    var isFp=verdictRadios[1].checked;
+    var checked=[].slice.call(document.querySelectorAll('input[name="fpr"]:checked'));
+    if(isFp&&!checked.length){ var w=document.getElementById('rvWarn'); if(w){ w.hidden=false; } return; }
+    var cur=document.querySelector('.q-itm.on'); if(!cur){ return; }
+    cur.classList.remove('on'); cur.classList.add('ok');
+    var badge=cur.querySelector('.q-ttl');
+    if(badge){ badge.insertAdjacentHTML('afterend','<span class="pill '+(isFp?'pill-gray':'pill-ok')+'" style="height:18px;font-size:11px;margin-left:auto">'+(isFp?'误报':'维持')+'</span>'); }
+    var nxt=document.querySelector('.q-itm:not(.on):not(.ok)');
+    if(nxt){ nxt.classList.add('on'); }
+  }); }
+  [].slice.call(document.querySelectorAll('.q-itm')).forEach(function(q){
+    q.addEventListener('click',function(){
+      [].slice.call(document.querySelectorAll('.q-itm')).forEach(function(x){ x.classList.remove('on'); });
+      q.classList.add('on');
+    });
+  });
+
+  /* 复核快捷键 j/k/y/n（仅 s6 可见时） */
+  document.addEventListener('keydown',function(e){
+    var s6=document.getElementById('s6');
+    if(!s6||!s6.classList.contains('on')){ return; }
+    var t=e.target&&e.target.tagName;
+    if(t==='INPUT'||t==='TEXTAREA'||t==='SELECT'){ return; }
+    var items=[].slice.call(document.querySelectorAll('.q-itm'));
+    var idx=items.findIndex(function(x){return x.classList.contains('on');});
+    if(e.key==='j'&&idx<items.length-1){ items[idx].classList.remove('on'); items[idx+1].classList.add('on'); }
+    if(e.key==='k'&&idx>0){ items[idx].classList.remove('on'); items[idx-1].classList.add('on'); }
+    if(e.key==='y'&&rvSubmit){ verdictRadios[0].checked=true; verdictRadios[0].dispatchEvent(new Event('change')); rvSubmit.click(); }
+    if(e.key==='n'){ var curRule=document.querySelector('.q-itm.on .iss-rule'); var card=curRule&&[].slice.call(document.querySelectorAll('.iss')).filter(function(c){ var r=c.querySelector('.iss-rule'); return r&&r.textContent===curRule.textContent; })[0]; if(card){ var btn=card.querySelector('.fp-btn'); if(btn){ btn.click(); } } }
+  });
+})();
+</script>
+</div>
