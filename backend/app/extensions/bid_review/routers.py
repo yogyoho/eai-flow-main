@@ -197,7 +197,13 @@ async def list_task_issues(task_id: str, db: AsyncSession = Depends(get_db), own
     if await crud.get_task(db, task_id=task_id, owner_id=owner_id) is None:
         raise HTTPException(status_code=404, detail="任务不存在")
     issues = await crud.list_issues(db, task_id=task_id, owner_id=owner_id)
-    return {"items": [IssueOut.model_validate(i) for i in issues]}
+    return {
+        "items": [IssueOut.model_validate(i) for i in issues],
+        # 汇总分级(A12 T14 集成约束①,与 worker progress.summary 共用 summarize_issues
+        # 同一口径):正式违规计数(fatal/major/minor/info)不含 need_human 条目,待人工
+        # 单列;条目不删——items 仍全量返回(工作台待人工格与 verdict 过滤消费)。
+        "summary": worker.summarize_issues(issues),
+    }
 
 
 @router.get("/issues/{issue_id}", response_model=IssueOut)

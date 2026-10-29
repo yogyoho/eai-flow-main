@@ -8,20 +8,31 @@ claimer 照 translation worker 惯例:POLL_SECONDS env、SLOTS=1、boot recovery
 (running|parsing→extracting)、基础设施异常指数退避 ≤3 → failed(_infra_fail,
 终态不复活)。fix-round(2026-10-29 评审):领取入口以领取标记态返回(parsing),
 杜绝旧实现守卫二次置换零命中导致 claimed 任务死锁 parsing 的缺陷。
+
+Task 14(2026-10-29):审查阶段按 rule.type 分派——deterministic→run_det_rule /
+semantic|hybrid→run_sem_rule(model_fn 经 _wrap_model_fn 注入,response.content 归一
+str,A12 T14 约束②);逐规则隔离扩展到 sem/hyb(模型不可用/接线失败降级 need_human,
+T9 先例);done 帧 progress 增 durations(各阶段耗时)与 summary(汇总分级,A12 T14
+约束①:正式违规计数不含 need_human 条目,待人工单列,routers issues API 共用
+summarize_issues 同一口径)。
 """
 
 from __future__ import annotations
 
 import asyncio
+import inspect
 import logging
 import os
+import time
 from pathlib import Path
+from types import SimpleNamespace
 
 from sqlalchemy import delete, select, text, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.extensions.bid_review import crud
 from app.extensions.bid_review.engine.extract import ExtractFn, ExtractNotConfigured, build_baseline
+from app.extensions.bid_review.engine.llm_runner import run_sem_rule
 from app.extensions.bid_review.engine.rule_runner import _need_human, load_rulepack, run_det_rule
 from app.extensions.bid_review.models import BaselinePackage, ReviewTask
 from app.extensions.database import get_session_factory
@@ -33,6 +44,117 @@ POLL_SECONDS = float(os.environ.get("EAI_BID_REVIEW_POLL_SECONDS", "5"))
 SLOTS = 1  # 单槽:审查为重 LLM 任务,先串行;提并发再扩(translation D16 先例)
 MAX_INFRA_RETRIES = int(os.environ.get("EAI_BID_REVIEW_INFRA_RETRIES", "3"))
 BACKOFF_CAP_SECONDS = 60.0
+
+SEVERITY_ORDER = ("fatal", "major", "minor", "info")
+
+
+class ModelNotConfigured(RuntimeError):
+    """生产 sem/hyb 裁决模型未接线的显式缺口(ExtractNotConfigured 同款先例)。"""
+
+
+# ── 模型接线(Task 14;A12 T14 约束②归一在 worker 侧,engine._call_model 不改)────
+
+
+def _content_to_str(content) -> str:
+    """response.content 归一为 str:LangChain 分块 list 形态(list 时拼接各 text 部件;
+    str 项直取,dict 项取 text 键)——不归一则 check_schema 两试皆败→整规则静默空产出。"""
+    if isinstance(content, str):
+        return content
+    if isinstance(content, list):
+        parts: list[str] = []
+        for chunk in content:
+            if isinstance(chunk, str):
+                parts.append(chunk)
+            elif isinstance(chunk, dict) and isinstance(chunk.get("text"), str):
+                parts.append(chunk["text"])
+        return "".join(parts)
+    return str(content) if content is not None else ""
+
+
+def _wrap_model_fn(model_fn):
+    """模型接线包装层:调注入的 raw model_fn(同步/异步 callable 均可),把
+    response.content 归一为 str 后以带 .content 的轻量响应对象回交引擎(契约与
+    llm_runner._call_model 的 getattr(response, "content") 对齐)。"""
+
+    async def _wrapped(messages):
+        response = model_fn(messages)
+        if inspect.isawaitable(response):
+            response = await response
+        raw = getattr(response, "content", response)
+        return SimpleNamespace(content=_content_to_str(raw))
+
+    return _wrapped
+
+
+def _default_model_fn():
+    """生产模型接线装配点(显式缺口,_default_extract_fn 同款先例):sem/hyb 规则的
+    LLM 裁决模型未接线(生产模型工厂装配属后续任务)→ 抛 ModelNotConfigured,由
+    逐规则隔离降级 need_human,绝不静默假交付。接线时仅改本函数(返回值经
+    _wrap_model_fn 包装,content 归一已就位)。"""
+
+    def _fn(messages):
+        raise ModelNotConfigured("生产 LLM 裁决模型未接线(worker._default_model_fn 显式缺口;sem/hyb 规则逐规则降级 need_human)")
+
+    return _fn
+
+
+# ── sem/hyb 材料装配(v1 纯文本直存契约)──────────────────────────────
+
+
+def _collect_materials(docs: list[dict]) -> str:
+    """规则卡材料注入(§4.5):各文档 doc_id 头 + 正文拼接。"""
+    return "\n\n".join(f"[{d['doc_id']}]\n{d['text']}" for d in docs)
+
+
+def _collect_docs_text(docs: list[dict]) -> dict:
+    """证据对齐取材(verify.align_evidence 契约 {doc_id: {page: text}}):v1 文档无分页
+    (routers 上传时解码纯文本直存),整篇挂 page 1;页容差 ±1 覆盖 page≤2 锚点,更远
+    页码证据对不上 → 七道第2道降级 need_human(§4.6 表),不静默采信。"""
+    return {d["doc_id"]: {1: d["text"]} for d in docs}
+
+
+# ── 汇总分级(Task 14;A12 T14 约束①,worker 与 routers 共用)────────────
+
+
+def _issue_get(issue, name):
+    return issue.get(name) if isinstance(issue, dict) else getattr(issue, name, None)
+
+
+def summarize_issues(issues) -> dict:
+    """汇总分级(A12 T14 集成约束①):正式违规清单/致命计数不含 need_human 条目——
+    fatal/major/minor/info 仅计 need_human=False 的正式违规,need_human 条目单列待人工
+    计数(工作台 GateMetricsRow 待人工格口径),**不是删除**(条目仍全量落库、issues
+    API 仍全量返回)。排序 fatal→major→minor→info(key 序即序)。worker 落
+    progress.summary 与 issues 列表 API summary 共用本实现,两侧口径一致;接受 ORM 行
+    与引擎 dict 双形态,未知严重度按 info 兜底。"""
+    summary = {s: 0 for s in SEVERITY_ORDER}
+    summary["need_human"] = 0
+    for issue in issues or []:
+        if bool(_issue_get(issue, "need_human")):
+            summary["need_human"] += 1
+        else:
+            sev = str(_issue_get(issue, "severity") or "")
+            summary[sev if sev in summary else "info"] += 1
+    return summary
+
+
+def _done_progress(durations: dict, summary: dict) -> dict:
+    """done 帧 progress:stage/pct 沿用既有契约(前端 TasksView 读 pct),增 durations
+    (各阶段耗时,秒,3 位小数)与 summary(汇总分级)。"""
+    return {
+        "stage": "done",
+        "pct": 100,
+        "msg": "审查完成",
+        "durations": {k: round(v, 3) for k, v in durations.items()},
+        "summary": summary,
+    }
+
+
+def _issue_confidence(issue) -> float:
+    """confidence 安全取值:引擎条目可能带 None(A12 降级候选继承 det issue 无此键),
+    float(None) 会 TypeError;非数值一律回 1.0。"""
+    conf = _issue_get(issue, "confidence")
+    return float(conf) if isinstance(conf, (int, float)) and not isinstance(conf, bool) else 1.0
 
 
 # ── 文档装载与提取装配 ────────────────────────────────────────────────
@@ -98,42 +220,54 @@ async def _write_baselines(db: AsyncSession, task_id: str, docs: list[dict], fie
     await db.commit()
 
 
-async def _run_det_stage(db: AsyncSession, task: ReviewTask, fields: dict, owner_id: str) -> int:
-    """det 规则执行(sem/hyb 集成属 Task 14,此处只跑 type=deterministic):
-    逐条 run_det_rule → crud.add_issue(dedup_key 由 rule_runner 产出);progress.pct 按 i/len。
-    None 值字段先剥离——det 求值器不容 None(比较算子会 TypeError),剥离后 run_det_rule
-    走既有 need_human 通路(on_missing_input=need_human 约定)。"""
+async def _run_review_stage(db: AsyncSession, task: ReviewTask, fields: dict, owner_id: str, model_fn=None) -> int:
+    """审查阶段(Task 14):按 rule.type 分派——deterministic→run_det_rule(既有 det
+    通路)/ semantic|hybrid→run_sem_rule(model_fn 经 _wrap_model_fn 注入,content 归一
+    str,A12 T14 约束②;hyb det 粗筛/候选确认/unclear 存活语义由 llm_runner 承担,worker
+    只接线)。逐规则隔离(T9 先例 9cda4828b 扩展到 sem/hyb):单规则异常——含模型不可用/
+    接线失败(ModelNotConfigured)——降级 need_human 条目,兄弟规则照常,禁整任务崩;
+    crud.add_issue 的 DB 异常不在本包裹内,基础设施失败仍走既有失败链。
+    None 值字段先剥离——det 求值器不容 None(比较算子会 TypeError),剥离后两通路统一走
+    need_human 约定(on_missing_input=need_human);sem 侧同口径(None 字段=缺字段)。"""
     pack = load_rulepack(RULEPACK_PATH)
     det_fields = {k: v for k, v in fields.items() if v is not None}
-    rules = [r for r in pack.rules if r.enabled and r.type == "deterministic"]
+    rules = [r for r in pack.rules if r.enabled]
     total = max(len(rules), 1)
     written = 0
+    model_fn = _wrap_model_fn(model_fn or _default_model_fn())
+    docs = _load_docs(task)
+    materials = _collect_materials(docs)
+    docs_text = _collect_docs_text(docs)
     for i, rule in enumerate(rules, start=1):
-        await crud.set_status(db, task, "running", progress={"stage": "det", "pct": int(i * 100 / total), "msg": f"{rule.id}({i}/{total})"})
+        await crud.set_status(db, task, "running", progress={"stage": "review", "pct": int(i * 100 / total), "msg": f"{rule.id}({i}/{total})"})
         try:
-            issues = run_det_rule(rule, det_fields)
+            if rule.type == "deterministic":
+                issues = run_det_rule(rule, det_fields)
+            else:  # semantic|hybrid
+                issues = await run_sem_rule(rule, det_fields, materials, model_fn, docs_text)
         except Exception as exc:  # noqa: BLE001
-            # fix-round 评审项:逐规则异常隔离——run_det_rule 只把 KeyError 转 need_human,其余求值
-            # 意外(如 str/float 比较 TypeError、求值器强转漏网)在此降级 need_human,不把整条审查
-            # 任务经 _infra_fail 重试 3 次打 failed;crud.add_issue 的 DB 异常不在本包裹内,基础设施
-            # 失败仍走既有失败链。
+            # 逐规则异常隔离(fix-round 评审项,Task 14 扩展到 sem/hyb):run_det_rule 只把
+            # KeyError 转 need_human;求值意外(str/float 比较 TypeError)与模型侧故障
+            # (ModelNotConfigured/端点异常)在此统一降级 need_human,不把整条审查任务经
+            # _infra_fail 重试 3 次打 failed。
             logger.warning("bid_review task %s rule %s crashed, downgraded to need_human: %r", task.id, rule.id, exc)
-            issues = [_need_human(rule, f"规则求值异常 {exc!r}(逐规则隔离降级 need_human)")]
+            issues = [_need_human(rule, f"规则执行异常 {exc!r}(逐规则隔离降级 need_human)")]
         for issue in issues:
             row = await crud.add_issue(
                 db,
                 task_id=task.id,
                 owner_id=owner_id,
-                rule_id=str(issue.get("rule_id", "?")),
-                layer=str(issue.get("layer", "")),
-                severity=str(issue.get("severity", "")),
-                verdict=str(issue.get("verdict", "")),
-                message=str(issue.get("message", "")),
-                fix=str(issue.get("fix") or ""),
-                evidence=list(issue.get("evidence") or []),
-                dedup_key=str(issue.get("dedup_key") or ""),
-                need_human=bool(issue.get("need_human")),
-                confidence=float(issue.get("confidence", 1.0)),
+                rule_id=str(_issue_get(issue, "rule_id") or "?"),
+                layer=str(_issue_get(issue, "layer") or ""),
+                severity=str(_issue_get(issue, "severity") or ""),
+                verdict=str(_issue_get(issue, "verdict") or ""),
+                message=str(_issue_get(issue, "message") or ""),
+                fix=str(_issue_get(issue, "fix") or ""),
+                evidence=list(_issue_get(issue, "evidence") or []),
+                dedup_key=str(_issue_get(issue, "dedup_key") or ""),
+                clause_id=_issue_get(issue, "clause_id"),
+                need_human=bool(_issue_get(issue, "need_human")),
+                confidence=_issue_confidence(issue),
             )
             if row is not None:
                 written += 1
@@ -149,22 +283,30 @@ async def advance_task(
     wait_confirm: bool,
     *,
     entry: str = "created",
+    model_fn=None,
 ) -> ReviewTask:
     """状态机单步推进:parsing→extracting→基线落库→wait_confirm ? awaiting_confirm :
-    running→det→done。
+    running→review(det+sem/hyb)→done。
 
     entry="created"(默认,routers 直推)走 created→parsing 守卫置换,失败=已被
     claimer 并发领走,原样返回不双跑;entry="parsing"(claimer _claim_next 领取后的
     领取标记态)与 entry="extracting"(boot recovery 断点续跑)为已持有入口,跳过守卫
-    直接进管线。异常向上抛,由调用方(routers 直推包装 / claimer)走 _infra_fail 失败链。
+    直接进管线。model_fn 为 sem/hyb 规则模型 callable(缺省 _default_model_fn 生产缺口,
+    经 _wrap_model_fn 包装归一 content);done 帧 progress 记录 durations(各阶段耗时)与
+    summary(汇总分级,A12 T14 约束①)。异常向上抛,由调用方(routers 直推包装 /
+    claimer)走 _infra_fail 失败链。
     """
     task = await crud.get_task(db, task_id, owner_id)
     if task is None:
         raise ValueError(f"bid_review task {task_id} not found for owner {owner_id}")
     if entry == "created" and not await _guarded_transition(db, task_id, {"created"}, "parsing"):
         return await crud.get_task(db, task_id, owner_id)  # 并发方已领走,本侧退出
+    durations: dict[str, float] = {}
     await db.refresh(task)
+    t0 = time.perf_counter()
     await crud.set_status(db, task, "parsing", progress={"stage": "parsing", "pct": 10, "msg": f"载入 {len(docs)} 份文档"})
+    durations["parsing"] = time.perf_counter() - t0
+    t1 = time.perf_counter()
     await crud.set_status(db, task, "extracting", progress={"stage": "extracting", "pct": 20, "msg": "基准字段提取中"})
     payload = build_baseline(docs, extract_fn)
     fields = payload["fields"]
@@ -172,16 +314,21 @@ async def advance_task(
     meta["materials_hash"] = payload["materials_hash"]
     task.engine_meta = meta  # 重新赋值以标记 JSON 列 dirty
     await _write_baselines(db, task_id, docs, fields, payload["materials_hash"])
+    durations["extracting"] = time.perf_counter() - t1
     if wait_confirm:
         return await crud.set_status(db, task, "awaiting_confirm", progress={"stage": "confirm_gate", "pct": 40, "msg": "基线已生成,等待人工确认(确认门仅工作台 UI)"})
-    await crud.set_status(db, task, "running", progress={"stage": "det", "pct": 40, "msg": "确定性规则执行中"})
-    await _run_det_stage(db, task, fields, owner_id)
-    return await crud.set_status(db, task, "done", progress={"stage": "done", "pct": 100, "msg": "审查完成"})
+    t2 = time.perf_counter()
+    await crud.set_status(db, task, "running", progress={"stage": "review", "pct": 40, "msg": "规则审查执行中(det+sem/hyb)"})
+    await _run_review_stage(db, task, fields, owner_id, model_fn)
+    durations["review"] = time.perf_counter() - t2
+    summary = summarize_issues(await crud.list_issues(db, task_id=task_id, owner_id=owner_id))
+    return await crud.set_status(db, task, "done", progress=_done_progress(durations, summary))
 
 
-async def resume_confirmed(db: AsyncSession, task_id: str, owner_id: str) -> ReviewTask:
-    """确认门续跑(routers confirm 端点调用):awaiting_confirm→running→det→done;
-    fields 取基线行内快照(首行,advance_task 各行同快照)。"""
+async def resume_confirmed(db: AsyncSession, task_id: str, owner_id: str, model_fn=None) -> ReviewTask:
+    """确认门续跑(routers confirm 端点调用):awaiting_confirm→running→review(det+
+    sem/hyb)→done;fields 取基线行内快照(首行,advance_task 各行同快照);model_fn
+    语义同 advance_task;done 帧同记录 durations(本调用只含 review 段)与 summary。"""
     task = await crud.get_task(db, task_id, owner_id)
     if task is None:
         raise ValueError(f"bid_review task {task_id} not found for owner {owner_id}")
@@ -191,9 +338,13 @@ async def resume_confirmed(db: AsyncSession, task_id: str, owner_id: str) -> Rev
         if isinstance(payload.get("fields"), dict):
             fields = payload["fields"]
             break
-    await crud.set_status(db, task, "running", progress={"stage": "det", "pct": 40, "msg": "人工确认完成,确定性规则执行中"})
-    await _run_det_stage(db, task, fields, owner_id)
-    return await crud.set_status(db, task, "done", progress={"stage": "done", "pct": 100, "msg": "审查完成"})
+    durations: dict[str, float] = {}
+    t2 = time.perf_counter()
+    await crud.set_status(db, task, "running", progress={"stage": "review", "pct": 40, "msg": "人工确认完成,规则审查执行中(det+sem/hyb)"})
+    await _run_review_stage(db, task, fields, owner_id, model_fn)
+    durations["review"] = time.perf_counter() - t2
+    summary = summarize_issues(await crud.list_issues(db, task_id=task_id, owner_id=owner_id))
+    return await crud.set_status(db, task, "done", progress=_done_progress(durations, summary))
 
 
 # ── 失败链 / boot recovery(translation worker 同构)──────────────────
@@ -290,6 +441,7 @@ async def _run_claimed(task_id: str, entry: str) -> str:
             owner_id=task.owner_id,
             docs=_load_docs(task),
             extract_fn=_default_extract_fn(),
+            model_fn=_default_model_fn(),
             wait_confirm=(task.mode == "deep"),
             entry=entry,
         )

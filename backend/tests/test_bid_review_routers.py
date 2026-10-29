@@ -158,6 +158,26 @@ async def test_feedback_writes_row_and_rulepack_stats(client, db):
     assert (await client.post(f"/api/extensions/bid-review/issues/{a.id}/feedback", json={"action": "severity_change", "new_severity": "huge"})).status_code == 422
 
 
+# ── Task 14:issues 列表 API 汇总分级(A12 T14 集成约束①)──────────────
+
+
+@pytest.mark.asyncio
+async def test_issues_list_summary_grades_need_human_separately(client, db):
+    """T14 A12 约束①:issues 列表 API 响应带 summary(汇总分级)——正式违规计数
+    (fatal/major/minor/info)不含 need_human 条目,待人工单列;条目不删(items 仍
+    全量返回,工作台待人工格与 verdict 过滤消费)。与 worker progress.summary 共用
+    worker.summarize_issues,两侧口径一致。"""
+    t = await crud.create_task(db, owner_id="u1")
+    await crud.add_issue(db, task_id=t.id, owner_id="u1", rule_id="L1-009", layer="L1", severity="fatal", verdict="violation", message="超限价", fix="复核", evidence=[], dedup_key="k1")
+    await crud.add_issue(db, task_id=t.id, owner_id="u1", rule_id="L1-013", layer="L1", severity="fatal", verdict="unclear", message="材料不足", fix="补响应", evidence=[], dedup_key="k2", need_human=True)
+    await crud.add_issue(db, task_id=t.id, owner_id="u1", rule_id="L3-001", layer="L3", severity="minor", verdict="violation", message="页眉不一致", fix="替换", evidence=[], dedup_key="k3")
+    r = await client.get(f"/api/extensions/bid-review/tasks/{t.id}/issues")
+    assert r.status_code == 200
+    body = r.json()
+    assert len(body["items"]) == 3, "need_human 条目仍在清单(单列不删除,待人工格消费)"
+    assert body["summary"] == {"fatal": 1, "major": 0, "minor": 1, "info": 0, "need_human": 1}, "致命计数不含 need_human 条目(fatal sem 条目入待人工)"
+
+
 # ── Task 15:确认门端点收紧 + MCP 无 confirm 断言 ─────────────────────
 
 
