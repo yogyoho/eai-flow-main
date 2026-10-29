@@ -1729,6 +1729,59 @@ see `backend/docs/CONFIGURATION.md` for the events and the merge rule.
 { "provider": "wecom", "display_name": "WeCom", "connection_status": "connected", "proactive_notifications": true }
 ```
 
+### Bid Review (EAI extension, `bid_review`)
+
+投标文件智能审查子系统(`backend/app/extensions/bid_review/`,EAI-CUSTOM 新模块,
+非上游路由)。所有端点要求浏览器会话(cookie JWT + CSRF,`require_permission("system:access")`),
+响应数据一律按登录用户 `owner_id` 隔离(他人任务/问题一律 404)。前端挂
+`/bid-review`(tasks/workbench/baseline/rules 四页);agent 侧另有 MCP 七工具
+(`bid_review_*`,见 `extensions_config.json`),确认门无 MCP 入口(仅 UI)。
+
+```http
+POST /api/extensions/bid-review/tasks
+GET  /api/extensions/bid-review/tasks
+GET  /api/extensions/bid-review/tasks/{task_id}
+POST /api/extensions/bid-review/tasks/{task_id}/confirm
+GET  /api/extensions/bid-review/tasks/{task_id}/issues
+GET  /api/extensions/bid-review/tasks/{task_id}/report?format=md
+GET  /api/extensions/bid-review/issues/{issue_id}
+POST /api/extensions/bid-review/issues/{issue_id}/feedback
+GET  /api/extensions/bid-review/rulepacks
+```
+
+**`POST /tasks`** — multipart form:`mode`(`quick` 直跑 | `deep` 停基准确认门)、
+`tender_files` / `bid_files`(可重复字段)。文档按 UTF-8 纯文本解码落
+`engine_meta.docs`(v1 契约,PDF/Word 结构化解析 v2),返回 `TaskOut` 并后台直推审查管线。
+
+**`GET /tasks`** — `{items: TaskOut[]}`;每任务附聚合计数 `fatal_unhandled`
+(fatal 且未被人工判误报)与 `need_human_count`(误报回流后自然回落);单任务端点
+不填这两字段(`null`=未统计,禁伪零)。
+
+**`POST /tasks/{task_id}/confirm`** — 基准确认门(仅 UI,无 MCP 入口):仅
+`awaiting_confirm` 可确认(其余状态 409),基线全量翻转 `confirmed` 后台续跑
+`running→done`。
+
+**`GET /tasks/{task_id}/issues`** — `{items: IssueOut[], summary}`;`summary` 为
+汇总分级(`fatal/major/minor/info/need_human` 计数,正式违规计数不含 need_human
+条目,条目不删)。
+
+**`GET /tasks/{task_id}/report?format=md`** — 审查报告导出(Task 21),返回
+`text/markdown` 附件(`Content-Disposition: attachment`,文件名
+`bid-review-report-{id8}.md`):首行免责声明、可提交判定提示行(fatal violation=0
+「未命中致命红线,可进入人工终审」/>0「命中致命红线 N 项,建议整改后重新审查」)、
+按 severity 四档分节,每条含规则 ID/证据(doc+page+摘录)/修复建议;need_human
+条目标注【待人工】,false_positive 误报不进正文。`format` 白名单只收 `md`(html
+导出属 M4,其余 422)。
+
+**`POST /issues/{issue_id}/feedback`** — 复核三连:`action` =
+`confirm` | `false_positive` | `severity_change`(附 `new_severity`),非法值 422;
+`false_positive` 走误报回流(issue 翻 `verdict`/`need_human` 落库 +
+`RulePackMeta.stats[rule].fp+1` 与脱敏 `fp_samples` 滚动),`confirm` 回流
+`adopted+1`。
+
+**`GET /rulepacks`** — 生产规则包(`bid-review-core`)+ DB stats 覆盖
+(`{items: [{name, version, rule_count, rules[], stats, enabled}]}`)。
+
 ---
 
 ## Error Responses
