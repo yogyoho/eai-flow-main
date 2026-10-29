@@ -288,7 +288,7 @@ export function findSectionRange(
 ): { blockIds: string[]; startIndex: number; endIndex: number } | null {
   const block = doc[anchorIndex];
   if (!block) return null;
-  const level = (block.props as Record<string, unknown> | undefined)?.level;
+  const level = (block.props)?.level;
   if (block.type !== "heading" || typeof level !== "number") return null;
   let end = anchorIndex;
   for (let i = anchorIndex + 1; i < doc.length; i++) {

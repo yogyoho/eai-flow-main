@@ -6,7 +6,11 @@
 import { useCallback, useReducer, useRef, useState } from "react";
 
 import { type DocAITransformEvent, docmgrApi } from "../api";
-import type { DocOperation, PersonalBlockNoteEditorRef } from "./PersonalBlockNoteEditor";
+
+import type {
+  DocOperation,
+  PersonalBlockNoteEditorRef,
+} from "./PersonalBlockNoteEditor";
 
 // ── 状态机 ───────────────────────────────────────────────────────────
 
@@ -53,7 +57,10 @@ export const initialTaskState = (operation: string): DocAITaskState => ({
   skipped: [],
 });
 
-function upsertSection(sections: TaskSection[], next: TaskSection): TaskSection[] {
+function upsertSection(
+  sections: TaskSection[],
+  next: TaskSection,
+): TaskSection[] {
   const i = sections.findIndex((s) => s.index === next.index);
   if (i === -1) return [...sections, next].sort((a, b) => a.index - b.index);
   const copy = [...sections];
@@ -67,7 +74,8 @@ export function taskReducer(
 ): DocAITaskState | null {
   if (action.type === "reset") return initialTaskState(action.operation);
   if (action.type === "dismiss") return null;
-  if (action.type === "finish") return state ? { ...state, running: false } : state;
+  if (action.type === "finish")
+    return state ? { ...state, running: false } : state;
   if (!state) return state;
   switch (action.type) {
     case "section_start":
@@ -78,7 +86,9 @@ export function taskReducer(
           title: action.title,
           status: action.skipped ? "skipped" : "streaming",
         }),
-        skipped: action.skipped ? [...new Set([...state.skipped, action.index])] : state.skipped,
+        skipped: action.skipped
+          ? [...new Set([...state.skipped, action.index])]
+          : state.skipped,
       };
     case "ops": {
       if (action.ops.length === 0) {
@@ -86,7 +96,8 @@ export function taskReducer(
           ...state,
           sections: upsertSection(state.sections, {
             index: action.index,
-            title: state.sections.find((s) => s.index === action.index)?.title ?? "",
+            title:
+              state.sections.find((s) => s.index === action.index)?.title ?? "",
             status: "unchanged",
           }),
         };
@@ -95,7 +106,8 @@ export function taskReducer(
         ...state,
         sections: upsertSection(state.sections, {
           index: action.index,
-          title: state.sections.find((s) => s.index === action.index)?.title ?? "",
+          title:
+            state.sections.find((s) => s.index === action.index)?.title ?? "",
           status: "ready",
           ops: action.ops as DocOperation[],
         }),
@@ -106,7 +118,8 @@ export function taskReducer(
         ...state,
         sections: upsertSection(state.sections, {
           index: action.index,
-          title: state.sections.find((s) => s.index === action.index)?.title ?? "",
+          title:
+            state.sections.find((s) => s.index === action.index)?.title ?? "",
           status: "failed",
           error: action.message,
         }),
@@ -115,13 +128,20 @@ export function taskReducer(
     case "summary":
       return { ...state, summary: action.content };
     case "done":
-      return { ...state, running: false, failed: action.failed, skipped: action.skipped, message: action.message };
+      return {
+        ...state,
+        running: false,
+        failed: action.failed,
+        skipped: action.skipped,
+        message: action.message,
+      };
     case "apply_section":
       return {
         ...state,
         sections: upsertSection(state.sections, {
           index: action.index,
-          title: state.sections.find((s) => s.index === action.index)?.title ?? "",
+          title:
+            state.sections.find((s) => s.index === action.index)?.title ?? "",
           status: "applied",
         }),
       };
@@ -219,7 +239,10 @@ export function useDocAITask(params: {
               ...(token ? { "X-CSRF-Token": token } : {}),
             },
             credentials: "include",
-            body: JSON.stringify({ rel_path: params.docRelPath, content: cleanContent }),
+            body: JSON.stringify({
+              rel_path: params.docRelPath,
+              content: cleanContent,
+            }),
           },
         );
         if (!putRes.ok) {
@@ -291,11 +314,19 @@ export function useDocAITask(params: {
         applyOpsSelf(sec.ops);
         dispatch({ type: "apply_section", index: sec.index });
       } catch (e) {
-        failures.push(`${sec.title || `第 ${sec.index + 1} 节`}: ${getErrMsg(e, "失败")}`);
+        failures.push(
+          `${sec.title || `第 ${sec.index + 1} 节`}: ${getErrMsg(e, "失败")}`,
+        );
       }
     }
     if (failures.length > 0) {
-      dispatch({ type: "done", total: 0, failed: state.failed, skipped: state.skipped, message: `部分应用失败：${failures.join("；")}` });
+      dispatch({
+        type: "done",
+        total: 0,
+        failed: state.failed,
+        skipped: state.skipped,
+        message: `部分应用失败：${failures.join("；")}`,
+      });
     }
   }, [state, applyOpsSelf]);
 
