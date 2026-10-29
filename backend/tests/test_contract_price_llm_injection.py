@@ -235,12 +235,11 @@ def test_full_roundtrip_masked_get_then_put_keeps_secret(tmp_path, monkeypatch):
 
 
 def _patch_platform(monkeypatch, models):
-    import deerflow.config as deerflow_config
     from types import SimpleNamespace
 
-    monkeypatch.setattr(
-        deerflow_config, "get_app_config", lambda: SimpleNamespace(models=models)
-    )
+    import deerflow.config as deerflow_config
+
+    monkeypatch.setattr(deerflow_config, "get_app_config", lambda: SimpleNamespace(models=models))
 
 
 def test_platform_bridge_activates_when_cpa_unset(tmp_path, monkeypatch):
@@ -254,12 +253,15 @@ def test_platform_bridge_activates_when_cpa_unset(tmp_path, monkeypatch):
         [
             SimpleNamespace(  # 非 OpenAI 协议 → 跳过
                 use="langchain_anthropic:ChatAnthropic",
-                base_url="https://anthropic", api_key="k", model="claude",
+                base_url="https://anthropic",
+                api_key="k",
+                model="claude",
             ),
             SimpleNamespace(
                 use="langchain_openai:ChatOpenAI",
                 base_url="https://apihub.example/v1/",
-                api_key="$PLATFORM_LLM_KEY_T", model="flash-1",
+                api_key="$PLATFORM_LLM_KEY_T",
+                model="flash-1",
             ),
         ],
     )

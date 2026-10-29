@@ -4,7 +4,6 @@ import asyncio
 import glob
 import hashlib
 import os
-import urllib.request
 
 import httpx
 
@@ -37,10 +36,7 @@ async def main():
                 f"{BASE}/api/extensions/translation/tasks",
                 params={"page_size": 100},
             )
-            exists = any(
-                t["doc_sha"] == sha and t["state"] not in ("archived", "cancelled", "superseded")
-                for t in r.json()["items"]
-            )
+            exists = any(t["doc_sha"] == sha and t["state"] not in ("archived", "cancelled", "superseded") for t in r.json()["items"])
             if exists:
                 print(f"  skip (exists): {fname}", flush=True)
                 continue

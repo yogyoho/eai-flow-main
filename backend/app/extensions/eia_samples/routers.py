@@ -110,7 +110,6 @@ async def batch_update_samples(
     return {"updated": updated}
 
 
-
 @router.get("/samples/{sample_id}/source-file")
 async def download_sample_source_file(
     sample_id: UUID,
@@ -122,8 +121,9 @@ async def download_sample_source_file(
     OntoStudio 抽取任务创建时经容器网络透传 Cookie 预取源文件副本——按台账
     source_path 回源, 不接受客户端路径（防路径遍历）。仅 system:access 门。
     """
-    from fastapi import Response
     from pathlib import Path
+
+    from fastapi import Response
 
     sample = await SampleService.get_sample(db, sample_id)
     if not sample:
@@ -133,6 +133,7 @@ async def download_sample_source_file(
         raise HTTPException(status_code=404, detail=f"源文件不存在: {sample.source_path}")
     media = "application/vnd.openxmlformats-officedocument.wordprocessingml.document" if path.suffix.lower() == ".docx" else "text/plain; charset=utf-8"
     return Response(content=path.read_bytes(), media_type=media)
+
 
 @router.get("/samples/{sample_id}", response_model=SampleResponse)
 async def get_sample(
