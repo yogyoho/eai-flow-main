@@ -103,6 +103,30 @@ export class ApiError extends Error {
   }
 }
 
+// EAI-CUSTOM (全文操作 M1): /ai/transform NDJSON 事件（spec §4.1）
+export type DocAITransformEvent =
+  | {
+      type: "section_start";
+      index: number;
+      total: number;
+      title: string;
+      skipped?: boolean;
+    }
+  | {
+      type: "ops";
+      index: number;
+      ops: Array<{ op: string; anchor?: string; content?: string }>;
+    }
+  | { type: "summary"; content: string }
+  | { type: "section_error"; index: number; message: string }
+  | {
+      type: "done";
+      total: number;
+      failed: number[];
+      skipped: number[];
+      message?: string;
+    };
+
 function getCsrfToken(): string | null {
   if (typeof document === "undefined") return null;
   const match = /(?:^|;\s*)csrf_token=([^;]*)/.exec(document.cookie);
@@ -830,6 +854,64 @@ export const docmgrApi = {
     }
 
     return fullText;
+  },
+
+  // EAI-CUSTOM (全文操作 M1): docmgr /ai/transform 的 NDJSON 事件流（每行一个 JSON 事件，
+  // 无 SSE data: 前缀）。克隆 aiEditStream 骨架（withCsrf + getReader + 行缓冲 + AbortSignal）。
+  aiTransformStream: async <T>(
+    data: {
+      thread_id: string;
+      rel_path: string;
+      operation: string;
+      content: string;
+      model_name?: string;
+      sections?: number[];
+    },
+    onEvent: (event: T) => void,
+    signal?: AbortSignal,
+  ): Promise<void> => {
+    const response = await fetch(`${API_BASE}/docmgr/ai/transform`, {
+      method: "POST",
+      headers: withCsrf({ "Content-Type": "application/json" }, "POST"),
+      body: JSON.stringify(data),
+      signal,
+      credentials: "include",
+    });
+
+    if (!response.ok) {
+      const err = await response.text().catch(() => "Unknown error");
+      throw new ApiError(
+        response.status,
+        `AI transform failed: ${response.status} ${err}`,
+      );
+    }
+
+    const reader = response.body?.getReader();
+    if (!reader) throw new ApiError(500, "No response body");
+
+    const decoder = new TextDecoder();
+    let buffer = "";
+
+    try {
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split("\n");
+        buffer = lines.pop() ?? "";
+        for (const line of lines) {
+          const trimmed = line.trim();
+          if (!trimmed) continue;
+          try {
+            onEvent(JSON.parse(trimmed) as T);
+          } catch {
+            /* skip malformed line */
+          }
+        }
+      }
+    } finally {
+      void reader.cancel();
+    }
   },
 
   syncThreadFiles: async (
