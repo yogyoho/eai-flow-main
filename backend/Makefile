@@ -43,6 +43,13 @@ test-live:
 test-blocking-io:
 	PYTHONPATH=. PYTHONIOENCODING=utf-8 PYTHONUTF8=1 uv run pytest tests/blocking_io -q --tb=short
 
+# bid-review 注入集评测门禁(Task 20;设计文档 §7:分钟级,不进默认测试链/CI 手动触发,
+# 任一门禁失败退出码 1)。指标单测(test_bid_review_metrics.py)归 make test 默认链;
+# env 中和前缀与 test-local 同款(屏蔽仓库根 .env 毒入)。
+.PHONY: eval-bid-review
+eval-bid-review:
+	PYTHONPATH=. PYTHONIOENCODING=utf-8 PYTHONUTF8=1 DEER_FLOW_DEV_MODE= DEER_FLOW_HOME= DEER_FLOW_CONFIG_PATH= DEER_FLOW_EXTENSIONS_CONFIG_PATH= DEER_FLOW_DOCKER_SOCKET= DEER_FLOW_REPO_ROOT= DEER_FLOW_HOST_BASE_DIR= DEER_FLOW_HOST_SKILLS_PATH= OPENAI_API_KEY= uv run python tests/eval/bid_review/run_eval.py
+
 # Run the backend unit-test suite as one shard of a parallel CI split.
 #   SPLITS = total number of shards; GROUP = 1-based shard index.
 # Duration-aware: `least_duration` balances the shards by real wall-clock cost
