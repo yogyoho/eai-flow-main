@@ -73,7 +73,9 @@ async def _mk_issue(db, message: str = "投标总价 ¥101 超过最高限价 ¥
 async def test_false_positive_flips_issue_and_backflow_stats(client, db):
     """false_positive 三重回流:issue verdict="false_positive"+need_human=False 落库;
     stats[rule].fp+=1;脱敏快照入 stats[rule].fp_samples(仅判定面 issue_id/rule_id/layer/
-    severity/marked_at,不带 task/owner/evidence/message——消息模板渲染后携带材料值)。"""
+    severity/marked_at,不带 task/owner/evidence/message——消息模板渲染后携带材料值)。
+    全文回归门须 ensure_ascii=False(默认 True 把中文转义成 \\uXXXX,门变空转),另设
+    ASCII 材料值镜像门防序列化门再退化。"""
     issue = await _mk_issue(db, need_human=True)
     r = await client.post(f"/api/extensions/bid-review/issues/{issue.id}/feedback", json={"action": "false_positive", "note": "限价口径含税,规则误报"})
     assert r.status_code == 200
@@ -93,7 +95,16 @@ async def test_false_positive_flips_issue_and_backflow_stats(client, db):
     assert snap["rule_id"] == "L1-009" and snap["layer"] == "L1" and snap["severity"] == "fatal"
     assert snap["issue_id"] == issue.id
     assert "message" not in snap, "材料摘录不入规则包统计:stats 经 GET /rulepacks 对全体 system:access 可见"
-    assert issue.message not in json.dumps(meta.stats), "消息正文(报价/主体名等材料值)不得回流进全局 stats"
+    # 全文回归门必须 ensure_ascii=False:默认 True 会把中文序列化成 \uXXXX 转义,原始
+    # 中文子串永不命中——门对它声明的场景(未来其他代码路径以新形态把材料值塞进 stats,
+    # 键集门护不住的新增键)空转放行,实测对真泄漏仍 True。
+    assert issue.message not in json.dumps(meta.stats, ensure_ascii=False), "消息正文(报价/主体名等材料值)不得回流进全局 stats"
+    # ASCII 材料值镜像门(防中文门再退化为默认 ensure_ascii=True 时空转):ASCII 消息
+    # 不经 unicode 转义,该序列化门对它天生有效——stats 若以任何形态携带消息正文必红。
+    ascii_issue = await _mk_issue(db, message="TOTAL 1280000.00 exceeds MAX 1000000.00 (ACME Corp)", rule_id="L1-010", dedup_key="k2", need_human=True)
+    assert (await client.post(f"/api/extensions/bid-review/issues/{ascii_issue.id}/feedback", json={"action": "false_positive"})).status_code == 200
+    meta = (await db.execute(select(models.RulePackMeta).where(models.RulePackMeta.name == R.RULEPACK_NAME))).scalar_one()
+    assert ascii_issue.message not in json.dumps(meta.stats, ensure_ascii=False), "非中文材料值同样不得以任何形态回流进全局 stats"
 
 
 @pytest.mark.asyncio
