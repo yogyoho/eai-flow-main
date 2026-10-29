@@ -39,3 +39,38 @@ describe("findBlockByAnchor 歧义加固（重复标题静默错配→安全失�
     expect(findBlockByAnchor(doc, "正文一")?.blockId).toBe("p1");
   });
 });
+
+describe("findBlockByAnchor heading 优先裁决（TOC 列表项撞标题, 终审 I-1a）", () => {
+  const listItem = (id: string, text: string) => ({
+    id,
+    type: "bulletListItem",
+    content: [{ type: "text", text }],
+  });
+
+  test("exact 歧义中恰一 heading → heading 胜出（listItem 撞标题）", () => {
+    const doc2 = [
+      listItem("li1", "施工组织设计"),
+      heading("h1", "施工组织设计", 2),
+    ];
+    expect(findBlockByAnchor(doc2, "施工组织设计")?.blockId).toBe("h1");
+  });
+
+  test("exact 歧义中恰一 heading → heading 胜出（paragraph 撞标题）", () => {
+    const doc3 = [heading("h1", "概述", 2), para("p1", "概述")];
+    expect(findBlockByAnchor(doc3, "概述")?.blockId).toBe("h1");
+  });
+
+  test("prefix 歧义中恰一 heading → heading 胜出", () => {
+    const doc4 = [para("p1", "概述正文补遗"), heading("h2", "概述", 2)];
+    expect(findBlockByAnchor(doc4, "概")?.blockId).toBe("h2");
+  });
+
+  test("多 heading 歧义仍 null（不放宽重复标题纪律）", () => {
+    const doc5 = [
+      heading("h1", "概述", 1),
+      listItem("li1", "概述"),
+      heading("h2", "概述", 2),
+    ];
+    expect(findBlockByAnchor(doc5, "概述")).toBeNull();
+  });
+});

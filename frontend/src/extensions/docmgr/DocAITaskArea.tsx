@@ -43,6 +43,7 @@ export interface DocAITaskState {
 export type DocAITaskAction =
   | DocAITransformEvent
   | { type: "reset"; operation: string }
+  | { type: "restart"; operation: string }
   | { type: "apply_section"; index: number }
   | { type: "reverted" }
   | { type: "cancel" }
@@ -73,10 +74,26 @@ export function taskReducer(
   action: DocAITaskAction,
 ): DocAITaskState | null {
   if (action.type === "reset") return initialTaskState(action.operation);
+  // EAI-CUSTOM (全文操作 M1, 终审 I-2a): retry（fresh=false）重开事件闸门——
+  // cancel/finish 后 running 已是 false，不重置则下方守卫会吞掉重试的在途事件。
+  if (action.type === "restart")
+    return state
+      ? { ...state, running: true, message: undefined }
+      : initialTaskState(action.operation);
   if (action.type === "dismiss") return null;
   if (action.type === "finish")
     return state ? { ...state, running: false } : state;
   if (!state) return state;
+  // EAI-CUSTOM (全文操作 M1, 终审 I-2a): cancel/finish 后拒收在途流事件——
+  // 已 resolve 的 chunk 不得让已丢弃的节长回任务区。
+  if (
+    !state.running &&
+    (action.type === "section_start" ||
+      action.type === "ops" ||
+      action.type === "section_error")
+  ) {
+    return state;
+  }
   switch (action.type) {
     case "section_start":
       return {
@@ -213,15 +230,22 @@ export function useDocAITask(params: {
     async (operation: string, sections?: number[], fresh = true) => {
       const ed = params.editorRef.current;
       if (!ed || busy) return;
+      // EAI-CUSTOM (全文操作 M1, 终审 I-2b): controller 前置到函数开头——
+      // PUT 同步阶段点取消也要立刻掐断在途请求，不能等 aiTransformStream 才有 signal。
+      const controller = new AbortController();
+      abortRef.current = controller;
       setBusy(true);
       if (fresh) {
         userEditedRef.current = false;
         setUndoBlocked(false);
         snapshotRef.current = ed.snapshotBlocks();
         dispatch({ type: "reset", operation });
+      } else {
+        dispatch({ type: "restart", operation });
       }
       try {
         const raw = await ed.getMarkdown();
+        if (controller.signal.aborted) return;
         const cleanContent = raw
           .replace(/<span[^>]*data-ai-\w+[^>]*>/g, "")
           .replace(/<\/span>/g, "");
@@ -243,8 +267,10 @@ export function useDocAITask(params: {
               rel_path: params.docRelPath,
               content: cleanContent,
             }),
+            signal: controller.signal,
           },
         );
+        if (controller.signal.aborted) return;
         if (!putRes.ok) {
           throw new Error(`文档同步失败（${putRes.status}），已中止任务`);
         }
@@ -257,8 +283,7 @@ export function useDocAITask(params: {
         } catch {
           /* 版本快照失败不阻塞任务 */
         }
-        const controller = new AbortController();
-        abortRef.current = controller;
+        if (controller.signal.aborted) return;
         await docmgrApi.aiTransformStream<DocAITaskAction>(
           {
             thread_id: params.threadId,
@@ -350,9 +375,17 @@ export function useDocAITask(params: {
       setUndoBlocked(true); // 任务开始后文档被改过（含其他 AI 操作）→ 禁整批回滚，指路版本历史
       return;
     }
-    ed.restoreBlocks(snapshotRef.current);
+    // EAI-CUSTOM (全文操作 M1, 终审 M-4): restoreBlocks 会触发 onChange，
+    // selfApplyRef 屏蔽（同 applyOpsSelf）——否则整批回滚把 userEditedRef 置真，
+    // 撤销一次后 undo 被永久禁用。
+    selfApplyRef.current = true;
+    try {
+      ed.restoreBlocks(snapshotRef.current);
+    } finally {
+      selfApplyRef.current = false;
+    }
     dispatch({ type: "reverted" });
-  }, [params.editorRef]);
+  }, [params.editorRef, selfApplyRef]);
 
   const dismiss = useCallback(() => {
     if (busy) return;
@@ -362,6 +395,9 @@ export function useDocAITask(params: {
   const retrySection = useCallback(
     (index: number) => {
       if (!state) return;
+      // EAI-CUSTOM (全文操作 M1, 终审 M-2): 任一节已应用后禁用重试——应用后内容已变、
+      // 节序号漂移，按旧下标重试会改写错节。
+      if (state.sections.some((s) => s.status === "applied")) return;
       void startTask(state.operation, [index], false);
     },
     [state, startTask],

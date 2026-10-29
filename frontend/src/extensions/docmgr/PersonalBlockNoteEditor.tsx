@@ -191,6 +191,20 @@ function normalizeAnchorText(s: string): string {
     .trim();
 }
 
+// EAI-CUSTOM (全文操作 M1, 终审 I-1a): 歧义裁决——多命中时若恰有一个 heading 类型块
+// 则取该 heading，否则维持 null 纪律。生成目录（- {title} 列表项）会让每个节标题文本
+// 在文档出现两次（TOC 列表项块 + 标题块），纯「多命中 → null」会使所有 replace_section
+// 系统性报「找不到匹配」；heading 优先语义无害（自由对话 replace 路径同受益）。
+function resolveHits(
+  doc: AnchorBlock[],
+  hits: { blockId: string; blockIndex: number }[],
+): { blockId: string; blockIndex: number } | null {
+  if (hits.length === 0) return null;
+  if (hits.length === 1) return hits[0] ?? null;
+  const headings = hits.filter((h) => doc[h.blockIndex]?.type === "heading");
+  return headings.length === 1 ? (headings[0] ?? null) : null;
+}
+
 export function findBlockByAnchor(
   doc: AnchorBlock[],
   anchor: string,
@@ -200,32 +214,33 @@ export function findBlockByAnchor(
   if (!trimmed) return null;
 
   // 1. Exact match（normalized）— 扫全量，>1 命中视为歧义（加固：重复标题
-  //    首中即返回会静默错配到第一个同名节；与 contains 级 null 纪律对齐）
-  let exact: { blockId: string; blockIndex: number } | null = null;
+  //    首中即返回会静默错配到第一个同名节；与 contains 级 null 纪律对齐）；
+  //    歧义中恰一 heading → heading 胜出（resolveHits, 终审 I-1a）
+  const exactHits: { blockId: string; blockIndex: number }[] = [];
   for (let i = 0; i < doc.length; i++) {
     const block = doc[i];
     if (!block) continue;
     const fullText = normalizeAnchorText(getBlockText(block));
     if (!fullText) continue;
     if (fullText === trimmed) {
-      if (exact) return null; // ambiguous
-      exact = { blockId: block.id, blockIndex: i };
+      exactHits.push({ blockId: block.id, blockIndex: i });
     }
   }
+  const exact = resolveHits(doc, exactHits);
   if (exact) return exact;
 
-  // 2. Prefix match（normalized）— 同上加固
-  let prefix: { blockId: string; blockIndex: number } | null = null;
+  // 2. Prefix match（normalized）— 同上加固 + 同一 heading 优先裁决
+  const prefixHits: { blockId: string; blockIndex: number }[] = [];
   for (let i = 0; i < doc.length; i++) {
     const block = doc[i];
     if (!block) continue;
     const fullText = normalizeAnchorText(getBlockText(block));
     if (!fullText) continue;
     if (fullText.startsWith(trimmed)) {
-      if (prefix) return null; // ambiguous
-      prefix = { blockId: block.id, blockIndex: i };
+      prefixHits.push({ blockId: block.id, blockIndex: i });
     }
   }
+  const prefix = resolveHits(doc, prefixHits);
   if (prefix) return prefix;
 
   // 3. Contains match (exactly one, normalized)
@@ -288,7 +303,7 @@ export function findSectionRange(
 ): { blockIds: string[]; startIndex: number; endIndex: number } | null {
   const block = doc[anchorIndex];
   if (!block) return null;
-  const level = (block.props)?.level;
+  const level = block.props?.level;
   if (block.type !== "heading" || typeof level !== "number") return null;
   let end = anchorIndex;
   for (let i = anchorIndex + 1; i < doc.length; i++) {
@@ -307,8 +322,10 @@ export function parseOperationContent(
   content: string,
   tryParse: (md: string) => unknown[],
 ): unknown[] {
-  const parsed = buildBlocksWithDetails(content, (md) =>
-    tryParse(md) as unknown as Parameters<typeof transformMathInBlocks>[0],
+  const parsed = buildBlocksWithDetails(
+    content,
+    (md) =>
+      tryParse(md) as unknown as Parameters<typeof transformMathInBlocks>[0],
   );
   return transformMathInBlocks(parsed);
 }
@@ -428,7 +445,9 @@ const PersonalBlockNoteEditor = forwardRef<
     // 有线程→线程目录；无线程（docmgr 直接新建文档）→用户级目录兜底。
     uploadFile: async (file: File) => {
       try {
-        const { url } = await (threadId ? uploadDocImage(threadId, file) : uploadUserDocImage(file));
+        const { url } = await (threadId
+          ? uploadDocImage(threadId, file)
+          : uploadUserDocImage(file));
         return url;
       } catch (e) {
         toast.error(e instanceof Error ? e.message : "图片上传失败"); // 三入口共用此路径，统一提示原因（spec §5）
@@ -528,10 +547,12 @@ const PersonalBlockNoteEditor = forwardRef<
     if (initialContent?.trim()) {
       // EAI-CUSTOM (计算书): 先切分 <details> 折叠块为 detailsBlock 节点（子树递归），
       // 再做 $...$/$$...$$ 数学转换（children 递归覆盖 detailsBlock 子树）。
-      const parsed = buildBlocksWithDetails(initialContent.trim(), (s) =>
-        editor.tryParseMarkdownToBlocks(s) as unknown as Parameters<
-          typeof transformMathInBlocks
-        >[0],
+      const parsed = buildBlocksWithDetails(
+        initialContent.trim(),
+        (s) =>
+          editor.tryParseMarkdownToBlocks(s) as unknown as Parameters<
+            typeof transformMathInBlocks
+          >[0],
       );
       const blocks = transformMathInBlocks(
         parsed as unknown as Parameters<typeof transformMathInBlocks>[0],
@@ -712,8 +733,10 @@ const PersonalBlockNoteEditor = forwardRef<
         const parsed =
           op.op === "delete"
             ? []
-            : (parseOperationContent(op.content ?? "", (md) =>
-                editor.tryParseMarkdownToBlocks(md) as unknown as unknown[],
+            : (parseOperationContent(
+                op.content ?? "",
+                (md) =>
+                  editor.tryParseMarkdownToBlocks(md) as unknown as unknown[],
               ) as unknown as ReturnType<
                 typeof editor.tryParseMarkdownToBlocks
               >);
