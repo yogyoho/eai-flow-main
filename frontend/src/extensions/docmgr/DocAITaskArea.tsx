@@ -371,3 +371,102 @@ export function useDocAITask(params: {
 }
 
 // ── 预设 chips + 任务区组件（Task 12 实现） ───────────────────────────
+
+// ── 组件 ─────────────────────────────────────────────────────────────
+
+export const PRESETS = [
+  { id: "polish", label: "全文润色" },
+  { id: "proofread", label: "全文校对" },
+  { id: "terminology", label: "术语统一" },
+  { id: "format", label: "格式规范" },
+  { id: "toc", label: "生成目录" },
+  { id: "summary", label: "全文摘要" },
+] as const;
+
+export function PresetChips({
+  disabled,
+  onPick,
+}: {
+  disabled: boolean;
+  onPick: (operation: string) => void;
+}) {
+  return (
+    <div className="flex flex-wrap items-center gap-1.5">
+      {PRESETS.map((p) => (
+        <button
+          key={p.id}
+          type="button"
+          disabled={disabled}
+          onClick={() => onPick(p.id)}
+          title={`对全文执行「${p.label}」（逐节处理，可逐节确认）`}
+          className="border-border/60 hover:border-primary/50 hover:bg-primary/5 rounded-full border px-2.5 py-1 text-xs transition-colors disabled:cursor-not-allowed disabled:opacity-40"
+        >
+          {p.label}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+export function SectionCard({
+  section,
+  onApply,
+  onRetry,
+}: {
+  section: TaskSection;
+  onApply: (index: number) => void;
+  onRetry: (index: number) => void;
+}) {
+  const { index, title, status, ops, error } = section;
+  const preview = ops?.[0]?.content?.slice(0, 160) ?? "";
+  return (
+    <div className="border-border/60 bg-background rounded-lg border text-xs">
+      <div className="flex items-center justify-between px-3 py-1.5">
+        <span className="text-foreground font-medium">
+          {title || `第 ${index + 1} 节`}
+        </span>
+        <span className="text-muted-foreground">
+          {status === "streaming" && "生成中…"}
+          {status === "ready" && "待确认"}
+          {status === "unchanged" && "本节无变更"}
+          {status === "skipped" && "已跳过（含公式/表格/图片）"}
+          {status === "applied" && "✓ 已应用"}
+          {status === "failed" && "失败"}
+        </span>
+      </div>
+      {status === "ready" && preview && (
+        <div className="border-border/40 text-muted-foreground max-h-24 overflow-y-auto border-t px-3 py-1.5 whitespace-pre-wrap">
+          {preview}
+          {(ops?.[0]?.content?.length ?? 0) > 160 ? "…" : ""}
+        </div>
+      )}
+      {status === "failed" && error && (
+        <div className="border-border/40 text-destructive border-t px-3 py-1.5">
+          {error}
+        </div>
+      )}
+      {status === "ready" && (
+        <div className="border-border/40 flex border-t">
+          <button
+            type="button"
+            onClick={() => onApply(index)}
+            className="text-primary hover:bg-primary/5 flex-1 py-1.5"
+          >
+            应用
+          </button>
+        </div>
+      )}
+      {status === "failed" && (
+        <div className="border-border/40 flex border-t">
+          <button
+            type="button"
+            onClick={() => onRetry(index)}
+            className="text-primary hover:bg-primary/5 flex-1 py-1.5"
+          >
+            重试本节
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
