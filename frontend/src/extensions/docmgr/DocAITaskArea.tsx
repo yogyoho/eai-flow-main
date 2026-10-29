@@ -299,7 +299,20 @@ export function useDocAITask(params: {
     (index: number) => {
       const sec = state?.sections.find((s) => s.index === index);
       if (!sec?.ops) return;
-      applyOpsSelf(sec.ops);
+      // EAI-CUSTOM (全文操作 M1, walkthrough F6): apply 异常（如锚点失配）就地转任务区
+      // 反馈，不直抛 window——uncaught 会盖掉该节的失败可见性。
+      try {
+        applyOpsSelf(sec.ops);
+      } catch (e) {
+        dispatch({
+          type: "done",
+          total: 0,
+          failed: state?.failed ?? [],
+          skipped: state?.skipped ?? [],
+          message: `应用失败：${getErrMsg(e, "未知错误")}`,
+        });
+        return;
+      }
       dispatch({ type: "apply_section", index });
     },
     [state, applyOpsSelf],
@@ -354,6 +367,24 @@ export function useDocAITask(params: {
     [state, startTask],
   );
 
+  // EAI-CUSTOM (全文操作 M1, walkthrough F6): 插入摘要同走 catch 转反馈，不直抛。
+  const insertSummary = useCallback(
+    (ops: DocOperation[]) => {
+      try {
+        applyOpsSelf(ops);
+      } catch (e) {
+        dispatch({
+          type: "done",
+          total: 0,
+          failed: state?.failed ?? [],
+          skipped: state?.skipped ?? [],
+          message: `插入失败：${getErrMsg(e, "未知错误")}`,
+        });
+      }
+    },
+    [state, applyOpsSelf],
+  );
+
   return {
     state,
     busy,
@@ -366,7 +397,7 @@ export function useDocAITask(params: {
     undoAll,
     dismiss,
     retrySection,
-    insertSummary: applyOpsSelf,
+    insertSummary,
   };
 }
 
