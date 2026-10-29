@@ -31,7 +31,9 @@ def split_sections_light(content: str) -> list[str]:
             buf.append(line)
     if buf:
         raw.append(buf)
-    sections = ["\n".join(ls) for ls in raw]
+    # bug-3600 无损修复：非末桶补回 split("\n") 吞掉的边界换行符（与 ai_transform.split_sections 同法）
+    last = len(raw) - 1
+    sections = ["\n".join(ls) + ("\n" if k < last else "") for k, ls in enumerate(raw)]
     # 空白块并入前节（与 split_sections 的无损归并同规则）
     out: list[str] = []
     lead = ""
@@ -79,10 +81,7 @@ def main() -> None:
 
     print(f"docs={len(doc_stats)} total_sections={len(all_sizes)}")
     if all_sizes:
-        print(
-            f"section chars: max={max(all_sizes)} mean={int(statistics.mean(all_sizes))} "
-            f"p50={pct(all_sizes, 0.5)} p90={pct(all_sizes, 0.9)} p99={pct(all_sizes, 0.99)}"
-        )
+        print(f"section chars: max={max(all_sizes)} mean={int(statistics.mean(all_sizes))} p50={pct(all_sizes, 0.5)} p90={pct(all_sizes, 0.9)} p99={pct(all_sizes, 0.99)}")
         over = sum(1 for x in all_sizes if x > 4000)
         print(f"sections >4000 chars: {over} ({over * 100 // max(1, len(all_sizes))}%)")
     big = [d for d in doc_stats if d[1] > 400_000]
