@@ -1717,6 +1717,22 @@ async def seed_db() -> None:
                         "sort": 17,
                         "sort_key": "toubiaoziliaoguanli",
                     },
+                    # EAI-CUSTOM (2026-10-29 bid-review): 投标方案审查（应用中心 → 市场营销；
+                    # 子系统端点 /api/extensions/bid-review/*，permissions 块 bid_review / nav:bid-review，
+                    # 前端 /bid-review 四页。应用中心 seed 缺此行则左侧导航无入口（应用列表 = app_definitions 表驱动））
+                    {
+                        "app_id": "bid-review",
+                        "name": "投标方案审查",
+                        "desc": "投标方案合规红线与一致性审查，引擎出具带证据的问题清单与报告导出",
+                        "icon": "clipboard-check",
+                        "domain": "marketing",
+                        "stage": "process",
+                        "path": "/bid-review",
+                        "license": "platform",
+                        "admin": False,
+                        "sort": 18,
+                        "sort_key": "toubiaofangancha",
+                    },
                     {
                         "app_id": "admin",
                         "name": "系统管理",
