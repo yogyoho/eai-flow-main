@@ -5,7 +5,7 @@
 # 字段契约(§6.2):新增 inputs 均为 tender.*/bid.*/project.* dotted 路径,经 extract.collect_field_paths() 自动并入提取请求;
 # extract.FIELD_DICTIONARY 常量仍为 M1 子集,其扩充注释修订属 extract.py 归属任务(本任务文件范围仅本包+测试)。
 # A-* 锚点注册表(素材④ 27 锚)随 anchors.py 落地;本包按既有键命名习惯引用,新增键就近注释。
-# hyb 规则 check.det_expr 与 op 形态同语义:前者是粗筛标记(_hyb_det_prefilter 门)+第3道数值复核触发键,后者是可执行 det 形态。
+# hyb 规则 check.det_expr 与 op 形态同语义:前者是粗筛候选生成表达式(命中产候选交 LLM 确认,A12——不再作第3道数值复核触发键,hybrid 一律不派生 numeric_expr),后者是可执行 det 形态。
 conventions:
   on_missing_input: need_human
   evidence_matching: {normalize: true, similarity_threshold: 0.9, page_tolerance: 1}
@@ -323,14 +323,14 @@ rules:
     fix_tpl: "按招标文件声明函清单逐项补齐并签字盖章"
     confidence_gate: 1.0
     enabled: true
-  # ── L1 hyb(§6.3:003 业绩达标/007 签章完整)——det 粗筛命中即坐实短路,未命中进语义管线(llm_runner._hyb_det_prefilter 契约)──
+  # ── L1 hyb(§6.3:003 业绩达标/007 签章完整)——det 粗筛命中产候选交模型确认,零命中不进语义管线(求值失败 fail-open 例外;llm_runner._hyb_det_prefilter 契约+A12)──
   - id: L1-003
     name: 业绩达标
     layer: L1
     type: hybrid
     applies_to: ["*"]
     inputs: [bid.similar_performances, tender.min_similar_performance_count]
-    # det 粗筛=类似业绩数量不足(坐实);数量够进语义管线核业绩相关性/证明有效性;bid.similar_performances 为业绩名称串列表
+    # det 粗筛=数量不足时产候选(表达式 False=判定失败=命中);候选交模型确认业绩相关性/证明有效性(A12);数量达标零候选不进语义管线;bid.similar_performances 为业绩名称串列表
     check:
       det_expr: "count(bid.similar_performances) >= tender.min_similar_performance_count"
       op: gte
@@ -349,7 +349,7 @@ rules:
     type: hybrid
     applies_to: ["*"]
     inputs: [bid.missing_signature_pages]
-    # det 粗筛=缺失签章页清单(逐页扫描产物,坐实);空清单进语义管线核盖章规范性(鲜章/复印章/骑缝)
+    # det 粗筛=缺失签章页清单(逐页扫描产物,非空产候选);候选交模型确认盖章规范性(鲜章/复印章/骑缝,A12);空清单零候选不进语义管线
     check:
       det_expr: "count(bid.missing_signature_pages) == 0"
       op: eq
@@ -545,7 +545,7 @@ rules:
     type: hybrid
     applies_to: ["*"]
     inputs: [bid.old_project_mentions, project.entity_whitelist.names]
-    # 抽取层按历史项目名正则/NER 扫描产候选串列表;命中即坐实,零命中进语义管线核近似残留(别名/缩写)
+    # 抽取层按历史项目名正则/NER 扫描产候选串列表;非空产候选交模型确认(白名单外合法提及由模型驳回——本规则 hybrid 化核心场景,A12);零命中不进语义管线
     check:
       det_expr: "count(bid.old_project_mentions) == 0"
       op: eq
@@ -564,7 +564,7 @@ rules:
     type: hybrid
     applies_to: ["*"]
     inputs: [bid.device_model_mismatches, tender.device_models, bid.device_models]
-    # 粗筛=抽取层逐型号比对产出的不一致串列表(如 "XX型号:招标A/投标B");零命中进语义管线复核易混淆型号(相近型号/尾缀差异)
+    # 粗筛=抽取层逐型号比对产出的不一致串列表(如 "XX型号:招标A/投标B");非空产候选交模型复核易混淆型号(相近型号/尾缀差异,A12);零命中不进语义管线
     check:
       det_expr: "count(bid.device_model_mismatches) == 0"
       op: eq
