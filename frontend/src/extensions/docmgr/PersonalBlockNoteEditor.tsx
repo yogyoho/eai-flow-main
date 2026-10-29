@@ -343,6 +343,8 @@ export interface PersonalBlockNoteEditorRef {
   ) => number;
   /** Scroll to and flash-highlight a block by id. */
   scrollToBlock: (blockId: string) => boolean;
+  /** EAI-CUSTOM (全文操作): 注册文档变更监听（任务区脏检查）。返回注销函数。 */
+  onDocumentChange: (cb: () => void) => () => void;
 }
 
 interface PersonalBlockNoteEditorProps {
@@ -377,6 +379,9 @@ const PersonalBlockNoteEditor = forwardRef<
   }, []);
 
   const saveTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
+  // EAI-CUSTOM (全文操作 M1): 文档变更监听注册表（任务区脏检查用——任务开始后
+  // 用户手动编辑过则禁用整批回滚，防止 restoreBlocks 吞掉手改，spec §3-6）。
+  const docChangeListenersRef = useRef(new Set<() => void>());
   const convertingRef = useRef(false);
   const onChangeRef = useRef(onChange);
   onChangeRef.current = onChange;
@@ -547,6 +552,7 @@ const PersonalBlockNoteEditor = forwardRef<
     if (!seeded) return;
 
     const disposer = editor.onChange(() => {
+      docChangeListenersRef.current.forEach((cb) => cb());
       rebuildHeadings();
 
       clearTimeout(saveTimer.current);
@@ -783,6 +789,11 @@ const PersonalBlockNoteEditor = forwardRef<
         editor.document.map((b) => b.id),
         blocks as Parameters<typeof editor.replaceBlocks>[1],
       );
+    },
+
+    onDocumentChange: (cb: () => void) => {
+      docChangeListenersRef.current.add(cb);
+      return () => docChangeListenersRef.current.delete(cb);
     },
 
     undo: () => editor.undo(),
