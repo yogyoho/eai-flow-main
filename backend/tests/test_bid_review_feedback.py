@@ -72,7 +72,8 @@ async def _mk_issue(db, message: str = "投标总价 ¥101 超过最高限价 ¥
 @pytest.mark.asyncio
 async def test_false_positive_flips_issue_and_backflow_stats(client, db):
     """false_positive 三重回流:issue verdict="false_positive"+need_human=False 落库;
-    stats[rule].fp+=1;脱敏快照入 stats[rule].fp_samples(仅判定面,不带 task/owner/evidence)。"""
+    stats[rule].fp+=1;脱敏快照入 stats[rule].fp_samples(仅判定面 issue_id/rule_id/layer/
+    severity/marked_at,不带 task/owner/evidence/message——消息模板渲染后携带材料值)。"""
     issue = await _mk_issue(db, need_human=True)
     r = await client.post(f"/api/extensions/bid-review/issues/{issue.id}/feedback", json={"action": "false_positive", "note": "限价口径含税,规则误报"})
     assert r.status_code == 200
@@ -88,9 +89,11 @@ async def test_false_positive_flips_issue_and_backflow_stats(client, db):
     samples = entry["fp_samples"]
     assert len(samples) == 1
     snap = samples[0]
-    assert set(snap.keys()) == {"issue_id", "rule_id", "layer", "severity", "message", "marked_at"}, "快照脱敏:仅判定面字段"
+    assert set(snap.keys()) == {"issue_id", "rule_id", "layer", "severity", "marked_at"}, "快照脱敏:仅判定面字段(无 message)"
     assert snap["rule_id"] == "L1-009" and snap["layer"] == "L1" and snap["severity"] == "fatal"
-    assert snap["message"] == issue.message and snap["issue_id"] == issue.id
+    assert snap["issue_id"] == issue.id
+    assert "message" not in snap, "材料摘录不入规则包统计:stats 经 GET /rulepacks 对全体 system:access 可见"
+    assert issue.message not in json.dumps(meta.stats), "消息正文(报价/主体名等材料值)不得回流进全局 stats"
 
 
 @pytest.mark.asyncio
@@ -127,10 +130,10 @@ async def test_fp_samples_roll_at_cap_20(client, db):
     meta = (await db.execute(select(models.RulePackMeta).where(models.RulePackMeta.name == R.RULEPACK_NAME))).scalar_one()
     entry = meta.stats["L3-003"]
     assert entry["fp"] == 22, "fp 计数不设上限"
-    msgs = [s["message"] for s in entry["fp_samples"]]
-    assert len(msgs) == 20, "fp_samples 滚动封顶 20"
-    assert "误报样本-01" not in msgs and "误报样本-02" not in msgs, "最旧样本先出"
-    assert msgs[0] == "误报样本-03" and msgs[-1] == "误报样本-22"
+    ids_in = [s["issue_id"] for s in entry["fp_samples"]]
+    assert len(ids_in) == 20, "fp_samples 滚动封顶 20"
+    assert ids[0] not in ids_in and ids[1] not in ids_in, "最旧样本先出"
+    assert ids_in[0] == ids[2] and ids_in[-1] == ids[-1]
 
 
 @pytest.mark.asyncio

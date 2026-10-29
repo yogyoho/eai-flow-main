@@ -150,15 +150,17 @@ async def confirm_task(task_id: str, db: AsyncSession = Depends(get_db), owner_i
 
 
 def _fp_snapshot(issue) -> dict:
-    """误报回流候选快照(脱敏):仅留规则判定面——issue_id/规则/层/严重度/截断 message
-    (≤200 字)+ 标记时间;不带 task/owner 归属与 evidence 正文(材料内容不出规则包统计;
-    issue_id 是不透明 UUID,取全量仍需 owner 过滤 API,不构成泄露面)。"""
+    """误报回流候选快照(脱敏):仅留规则判定面——issue_id/规则/层/严重度 + 标记时间。
+    **不带 message**:规则消息模板渲染后携带材料值(报价/最高限价/主体名/资质等级等),
+    而该 stats 经 GET /rulepacks 对任何持 system:access 的用户原样返回(含普通 user
+    角色),材料摘录一旦入统计即对全体用户可见;也不带 task/owner 归属与 evidence 正文。
+    消息正文仍经 owner 过滤的 issues 端点可达,不丢信息;issue_id 是不透明 UUID,取全量
+    仍需 owner 过滤 API,不构成泄露面。"""
     return {
         "issue_id": issue.id,
         "rule_id": issue.rule_id,
         "layer": issue.layer,
         "severity": issue.severity,
-        "message": issue.message[:200],
         "marked_at": datetime.now(UTC).isoformat(timespec="seconds"),
     }
 
