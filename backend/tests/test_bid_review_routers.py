@@ -178,6 +178,52 @@ async def test_issues_list_summary_grades_need_human_separately(client, db):
     assert body["summary"] == {"fatal": 1, "major": 0, "minor": 1, "info": 0, "need_human": 1}, "致命计数不含 need_human 条目(fatal sem 条目入待人工)"
 
 
+# ── micro-A 2026-10-29:GET /tasks 每任务问题计数(致命数/待人工填实的数据源)──
+
+
+@pytest.mark.asyncio
+async def test_list_tasks_per_task_issue_counts(client, db):
+    """micro-A:GET /tasks 每任务附 fatal_unhandled / need_human_count——口径对齐
+    TasksView 行级致命数:fatal 且未被人工判误报(verdict≠false_positive;need_human
+    的 fatal 条目计入),need_human_count=need_human 旗标计数(工作台待人工格口径);
+    误报回流(apply_false_positive 置 verdict/need_human)后自然回落;他人任务的
+    issues 不得串入本任务计数。"""
+    t = await crud.create_task(db, owner_id="u1")
+    sibling = await crud.create_task(db, owner_id="u1")  # 同 owner 兄弟任务:计数互不串
+    # 正式 fatal violation(计入)
+    await crud.add_issue(db, task_id=t.id, owner_id="u1", rule_id="L1-009", layer="L1", severity="fatal", verdict="violation", message="超限价", fix="复核", evidence=[], dedup_key="k1")
+    # fatal need_human(计入 fatal_unhandled + need_human_count)
+    await crud.add_issue(db, task_id=t.id, owner_id="u1", rule_id="L1-013", layer="L1", severity="fatal", verdict="unclear", message="材料不足", fix="补响应", evidence=[], dedup_key="k2", need_human=True)
+    # 已判误报 fatal(两项计数均剔除;经 feedback 端点同款 apply_false_positive 落库)
+    fp = await crud.add_issue(db, task_id=t.id, owner_id="u1", rule_id="L1-010", layer="L1", severity="fatal", verdict="violation", message="口径误报", fix="忽略", evidence=[], dedup_key="k3")
+    await R.apply_false_positive(db, fp)
+    # minor 违规(两项均不计);major need_human(仅入 need_human_count)
+    await crud.add_issue(db, task_id=t.id, owner_id="u1", rule_id="L3-001", layer="L3", severity="minor", verdict="violation", message="页眉不一致", fix="替换", evidence=[], dedup_key="k4")
+    await crud.add_issue(db, task_id=t.id, owner_id="u1", rule_id="L3-002", layer="L3", severity="major", verdict="violation", message="缺章", fix="补", evidence=[], dedup_key="k5", need_human=True)
+    # 兄弟任务的 fatal 不得串入本任务计数(逐任务聚合不得跨 task)
+    await crud.add_issue(db, task_id=sibling.id, owner_id="u1", rule_id="L1-009", layer="L1", severity="fatal", verdict="violation", message="兄弟任务", fix="f", evidence=[], dedup_key="k9")
+
+    r = await client.get("/api/extensions/bid-review/tasks")
+    assert r.status_code == 200
+    row = next(i for i in r.json()["items"] if i["id"] == t.id)
+    assert row["fatal_unhandled"] == 2, "fatal violation + fatal need_human 各计 1,已判误报剔除,兄弟任务不串"
+    assert row["need_human_count"] == 2, "fatal need_human + major need_human"
+    sibling_row = next(i for i in r.json()["items"] if i["id"] == sibling.id)
+    assert sibling_row["fatal_unhandled"] == 1 and sibling_row["need_human_count"] == 0
+
+
+@pytest.mark.asyncio
+async def test_single_task_endpoints_do_not_fill_counts(client, db):
+    """计数仅 GET /tasks 列表聚合填充(micro-A 授权面=列表聚合);单任务端点
+    None=未统计——禁伪零,未统计不得冒充 0。"""
+    t = await crud.create_task(db, owner_id="u1")
+    await crud.add_issue(db, task_id=t.id, owner_id="u1", rule_id="L1-009", layer="L1", severity="fatal", verdict="violation", message="超限价", fix="复核", evidence=[], dedup_key="k1")
+    r = await client.get(f"/api/extensions/bid-review/tasks/{t.id}")
+    assert r.status_code == 200
+    assert r.json()["fatal_unhandled"] is None
+    assert r.json()["need_human_count"] is None
+
+
 # ── Task 15:确认门端点收紧 + MCP 无 confirm 断言 ─────────────────────
 
 

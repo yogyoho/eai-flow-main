@@ -19,6 +19,11 @@ export interface TaskOut {
   engine_meta: Record<string, unknown>;
   prev_task_id: string | null;
   created_at: string;
+  /** 每任务问题计数(micro-A 2026-10-29):仅 GET /tasks 列表聚合填充;单任务端点
+   * null=未统计(禁伪零)。fatal_unhandled=fatal 且未被人工判误报(verdict≠
+   * false_positive,误报回流后自然回落);need_human_count=need_human 旗标计数。 */
+  fatal_unhandled: number | null;
+  need_human_count: number | null;
 }
 
 /** 审查问题(backend IssueOut)。 */

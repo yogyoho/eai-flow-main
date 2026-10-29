@@ -116,8 +116,21 @@ async def create_task(
 
 @router.get("/tasks")
 async def list_tasks(db: AsyncSession = Depends(get_db), owner_id: str = Depends(current_owner)):
+    """任务列表(owner 过滤)。micro-A 2026-10-29:每任务附问题计数(ui-spec §3.1
+    「指标格数据=GET /tasks 聚合」,替代前端逐任务拉 issues 的 N+1):fatal_unhandled=
+    fatal 且未被人工判误报(verdict≠false_positive,误报经 apply_false_positive 落库后
+    自然回落;与 TasksView 行级致命数同口径),need_human_count=need_human 旗标计数
+    (工作台待人工格口径)。仅本端点聚合填充,单任务端点 None=未统计(禁伪零);数据量小
+    逐任务 crud.list_issues 简单聚合。"""
     tasks = await crud.list_tasks(db, owner_id=owner_id)
-    return {"items": [TaskOut.model_validate(t) for t in tasks]}
+    items = []
+    for t in tasks:
+        out = TaskOut.model_validate(t)
+        issues = await crud.list_issues(db, task_id=t.id, owner_id=owner_id)
+        out.fatal_unhandled = sum(1 for i in issues if i.severity == "fatal" and i.verdict != "false_positive")
+        out.need_human_count = sum(1 for i in issues if bool(i.need_human))
+        items.append(out)
+    return {"items": items}
 
 
 @router.get("/tasks/{task_id}", response_model=TaskOut)

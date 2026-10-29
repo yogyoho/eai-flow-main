@@ -9,19 +9,15 @@
  * _enqueue_docs 无条件直推空跑——Task 12 修复轮决定 (b):创建必传文件;M3 工作台
  * 上传 = 补充/重传文档)。
  * 修复轮 2026-10-29(评审 Important:硬编码 fatalCount=0/needHumanCount=0 伪零):
- * 致命未处理/待人工与行级致命数改为逐任务 issues 实测(useBidIssues 同 queryKey/
- * queryFn 缓存空间,useQueries 批量挂起);统计未测全时显示 ———未经测量 ≠ 零,
- * 合规门禁列表首屏伪零会误导用户跳过工作台。回归门:tests/unit/extensions/
- * bid-review-tasks-view.dom.test.tsx。
+ * 统计未测全时显示 ———未经测量 ≠ 零,合规门禁列表首屏伪零会误导用户跳过工作台。
+ * micro-A 2026-10-29:数据源改按 ui-spec §3.1「数据=GET /tasks 聚合」——后端列表端点
+ * 每任务聚合 fatal_unhandled / need_human_count(schemas.TaskOut 新字段),本组件不再
+ * 逐任务拉 issues(N+1 移除);口径(误报剔除/need_human 计入)由后端锁定并经
+ * test_bid_review_routers.py 回归,前端只做「未测量显示 —」的门禁
+ * (tests/unit/extensions/bid-review-tasks-view.dom.test.tsx)。
  */
 
-import {
-  useMutation,
-  useQueries,
-  useQuery,
-  useQueryClient,
-  type UseQueryResult,
-} from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ClipboardList, Plus, RefreshCw } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -36,13 +32,8 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import {
-  createTask,
-  listTaskIssues,
-  listTasks,
-} from "@/extensions/bid-review/api";
-import { bidReviewKeys } from "@/extensions/bid-review/hooks";
-import { type IssueOut, type TaskOut } from "@/extensions/bid-review/types";
+import { createTask, listTasks } from "@/extensions/bid-review/api";
+import { type TaskOut } from "@/extensions/bid-review/types";
 import { PageHeader } from "@/extensions/contract-price/components/PageHeader";
 import { StatCard } from "@/extensions/contract-price/components/StatCard";
 import {
@@ -67,71 +58,34 @@ const MODE_DESC: Record<"quick" | "deep", string> = {
 };
 
 /** 已出问题结果的任务状态——created/parsing/extracting/running 的问题集是半程快照,
- * 拉了也会变,不拉(行内显示 —)。修复轮 2026-10-29:未测量的任务不得以 0 计入统计。 */
+ * 计数未定型,行内显示 —(micro-A 2026-10-29:后端计数只对该段状态有意义)。 */
 const RESULT_STATUSES = new Set(["done", "awaiting_confirm", "failed"]);
 
-/** 致命未处理 = fatal 且未被人工判误报(误报经 Task 16 feedback 落库 verdict=
- * false_positive,已处置不再是「未处理」;工作台 GateMetricsRow 的「致命」计全部
- * fatal,此处口径有意收窄以对齐本页「未处理」标签语义)。 */
-function fatalUnhandled(issues: IssueOut[]): number {
-  return issues.filter(
-    (i) => i.severity === "fatal" && i.verdict !== "false_positive",
-  ).length;
-}
-
-/** 待人工 = need_human 旗标(误报回写时后端已置 false,天然回落;与工作台同口径)。 */
-function countNeedHuman(issues: IssueOut[]): number {
-  return issues.filter((i) => i.need_human).length;
-}
-
-/** 行级致命数格(§3.1 tabular,>0 error 深档)。问题清单未取到(处理中任务/请求中/
- * 失败)显示 ———未测量不得显示 0(修复轮 2026-10-29 伪零消除)。 */
-function FatalCell({
-  query,
-  gated,
-}: {
-  query: UseQueryResult<IssueOut[], Error> | undefined;
-  gated: boolean;
-}) {
-  if (gated) {
+/** 行级致命数格(§3.1 tabular,>0 error 深档)。计数=后端 GET /tasks 聚合字段
+ * fatal_unhandled(micro-A 2026-10-29,口径=致命且未被人工判误报,后端 pytest 锁定);
+ * 处理中任务(半程快照)与计数缺失(null=未统计)显示 ———未经测量不得显示 0
+ * (伪零纪律沿修复轮 2026-10-29)。 */
+function FatalCell({ task }: { task: TaskOut }) {
+  const gated = !RESULT_STATUSES.has(task.status);
+  const count = task.fatal_unhandled;
+  if (gated || count == null) {
     return (
       <span
         className="text-muted-foreground tabular-nums"
-        title="任务未出结果,暂无统计"
+        title={gated ? "任务未出结果,暂无统计" : "问题统计未取到"}
       >
         —
       </span>
     );
   }
-  if (!query || query.isPending) {
-    return (
-      <span
-        className="text-muted-foreground tabular-nums"
-        title="问题清单加载中"
-      >
-        —
-      </span>
-    );
-  }
-  if (query.isError) {
-    return (
-      <span
-        className="text-muted-foreground tabular-nums"
-        title={`问题清单加载失败:${query.error.message}`}
-      >
-        —
-      </span>
-    );
-  }
-  const n = fatalUnhandled(query.data ?? []);
   return (
     <span
       className={cn(
         "tabular-nums",
-        n > 0 && "font-medium text-[var(--error-700)]",
+        count > 0 && "font-medium text-[var(--error-700)]",
       )}
     >
-      {n}
+      {count}
     </span>
   );
 }
@@ -215,31 +169,22 @@ export function TasksView() {
 
   const tasks = tasksQuery.data ?? [];
   const runningCount = tasks.filter((t) => t.status === "running").length;
-  // 逐任务问题统计(修复轮 2026-10-29 填实,原硬编码 0):与 useBidIssues 同 queryKey/
-  // queryFn(缓存共享,工作台读同一份),仅对已出结果的任务经 useQueries 批量挂起。
+  // 聚合卡(micro-A 2026-10-29:计数源=GET /tasks 每任务聚合字段,替代修复轮的逐任务
+  // issues 请求):全部任务均已出结果(RESULT_STATUSES)且各自计数已取到,才给数字;
+  // 存在未定型任务或统计缺失时显示 ———统计未测全时任何数字(包括部分和、包括 0)
+  // 都是编造(伪零纪律沿修复轮 2026-10-29)。
   const statTasks = tasks.filter((t) => RESULT_STATUSES.has(t.status));
-  const issuesQueries = useQueries({
-    queries: statTasks.map((t) => ({
-      queryKey: bidReviewKeys.issues(t.id),
-      queryFn: () => listTaskIssues(t.id),
-    })),
-  });
-  const issuesByTask = new Map<string, UseQueryResult<IssueOut[], Error>>();
-  statTasks.forEach((t, i) => {
-    const q = issuesQueries[i];
-    if (q) issuesByTask.set(t.id, q);
-  });
-  // 聚合卡:全部任务均处已出结果状态且各自问题清单都取到,才给数字;列表加载失败或存在
-  // 处理中/未取到的问题清单时显示 ———统计未测全时任何数字(包括部分和、包括 0)都是编造。
   const allMeasured =
     !tasksQuery.isError &&
     tasks.length === statTasks.length &&
-    issuesQueries.every((q) => q.isSuccess);
+    statTasks.every(
+      (t) => t.fatal_unhandled != null && t.need_human_count != null,
+    );
   const fatalCount = allMeasured
-    ? issuesQueries.reduce((sum, q) => sum + fatalUnhandled(q.data ?? []), 0)
+    ? statTasks.reduce((sum, t) => sum + (t.fatal_unhandled ?? 0), 0)
     : null;
   const needHumanCount = allMeasured
-    ? issuesQueries.reduce((sum, q) => sum + countNeedHuman(q.data ?? []), 0)
+    ? statTasks.reduce((sum, t) => sum + (t.need_human_count ?? 0), 0)
     : null;
 
   return (
@@ -407,12 +352,9 @@ export function TasksView() {
                         </span>
                       </div>
                     </TableCell>
-                    {/* 行级致命数:逐任务 issues 实测(修复轮 2026-10-29 填实原恒「—」占位) */}
+                    {/* 行级致命数:后端 GET /tasks 聚合计数直出(micro-A 2026-10-29) */}
                     <TableCell>
-                      <FatalCell
-                        query={issuesByTask.get(t.id)}
-                        gated={!RESULT_STATUSES.has(t.status)}
-                      />
+                      <FatalCell task={t} />
                     </TableCell>
                     <TableCell className="text-muted-foreground text-xs">
                       {formatDate(t.created_at)}

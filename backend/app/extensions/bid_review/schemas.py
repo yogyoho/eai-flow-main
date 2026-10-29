@@ -28,6 +28,13 @@ class TaskOut(ORMBase):
     engine_meta: dict
     prev_task_id: str | None = None
     created_at: datetime
+    # micro-A 2026-10-29:每任务问题计数,仅 GET /tasks 列表聚合填充(routers.list_tasks);
+    # 单任务端点(created/detail/confirm)不查 issues,None=未统计——禁伪零,未统计不得
+    # 冒充 0。口径:fatal_unhandled=fatal 且未被人工判误报(verdict≠false_positive,
+    # need_human 的 fatal 条目计入,与 TasksView 行级致命数同口径);need_human_count=
+    # need_human 旗标计数(工作台待人工格口径),误报回流后自然回落。
+    fatal_unhandled: int | None = None
+    need_human_count: int | None = None
 
 
 class IssueOut(ORMBase):

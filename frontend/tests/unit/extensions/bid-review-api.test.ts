@@ -16,7 +16,17 @@ rs.mock("@/core/api/fetcher", () => ({
     const body =
       init?.method === "POST"
         ? { id: "t2", status: "created", mode: "quick" }
-        : { items: [{ id: "t1", status: "created", mode: "quick" }] };
+        : {
+            items: [
+              {
+                id: "t1",
+                status: "created",
+                mode: "quick",
+                fatal_unhandled: 2,
+                need_human_count: 1,
+              },
+            ],
+          };
     return new Response(JSON.stringify(body), {
       status: 200,
       headers: { "Content-Type": "application/json" },
@@ -33,6 +43,13 @@ describe("bid-review api", () => {
     expect(calls[calls.length - 1]?.path).toBe(
       "/api/extensions/bid-review/tasks",
     );
+  });
+
+  it("listTasks keeps per-task issue count fields (micro-A 拆包+字段契约门)", async () => {
+    // GET /tasks 每任务聚合字段(micro-A 2026-10-29)经拆包原样透传,TasksView 直接消费
+    const rows = await listTasks();
+    expect(rows[0]?.fatal_unhandled).toBe(2);
+    expect(rows[0]?.need_human_count).toBe(1);
   });
 
   it("createTask posts multipart with mode + tender_files/bid_files", async () => {
