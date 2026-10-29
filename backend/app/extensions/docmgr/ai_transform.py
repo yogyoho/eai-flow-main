@@ -417,6 +417,11 @@ async def ai_transform(
         message: str | None = None
 
         if request.operation == "toc":
+            # EAI-CUSTOM (全文操作 M1, 终审 I-1b): 生成目录前防重插——content 已含
+            # 「目录」标题时直接跳过，避免 TOC 块重复插入（终审 I-1 撞锚点链路的前置防线）。
+            if re.search(r"^#{1,6}\s*目录\s*$", request.content, re.MULTILINE):
+                yield _ndjson({"type": "done", "total": 0, "failed": [], "skipped": [], "message": "文档已含目录，跳过生成"})
+                return
             toc_md = _build_toc(request.content)
             if toc_md is None:
                 message = "文档没有标题，无法生成目录"
@@ -439,6 +444,9 @@ async def ai_transform(
                 try:
                     resp = await asyncio.wait_for(model.ainvoke(_SUMMARY_MAP_PROMPT.format(section=sec["content"])), timeout=SECTION_TIMEOUT_SECONDS)
                     digest.append(_extract_ai_response_text(resp.content).strip())
+                    # EAI-CUSTOM (全文操作 M1, 终审 M-1): 成功节补空 ops 事件——
+                    # reducer 空 ops → unchanged 终态，卡片不再永久「生成中…」。
+                    yield _ndjson({"type": "ops", "index": i, "ops": []})
                 except Exception as e:
                     failed.append(i)
                     logger.warning("docmgr summary map section %s failed: %s", i, e, exc_info=True)

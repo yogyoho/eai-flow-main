@@ -256,6 +256,17 @@ class TestTransformEndpoint:
         assert events[-1]["type"] == "done" and events[-1]["message"] and "标题" in events[-1]["message"]
 
     @pytest.mark.asyncio
+    async def test_toc_existing_toc_skips(self, client, monkeypatch):
+        # 终审 I-1b: content 已含「目录」标题 → 防重插，不产 prepend op，直接 done 跳过
+        fake = FakeModel([])
+        monkeypatch.setattr(AT, "create_chat_model", lambda **kw: fake)
+        events = await _events(client, {"thread_id": "t", "rel_path": "r", "operation": "toc", "content": "# 报告\n\n正文一段。\n\n## 目录\n\n- 报告\n"})
+        assert [e["type"] for e in events] == ["done"]
+        assert events[-1]["total"] == 0
+        assert "已含目录" in events[-1]["message"]
+        assert fake.calls == 0
+
+    @pytest.mark.asyncio
     async def test_terminology_two_pass(self, client, monkeypatch):
         scan = json.dumps([{"canonical": "供水系统", "variants": ["给水系统"]}], ensure_ascii=False)
         fake = FakeModel([scan, "统一后甲。", "统一后乙。"])
@@ -300,5 +311,10 @@ class TestTransformEndpoint:
         assert "summary" in types
         summary_ev = next(e for e in events if e["type"] == "summary")
         assert "整合摘要" in summary_ev["content"]
-        assert all(e["type"] != "ops" for e in events)  # 摘要不直接产 ops
+        # 终审 M-1: 成功 map 节补空 ops 事件 → reducer 空批转「本节无变更」终态（不再永久「生成中…」）
+        ops_events = [e for e in events if e["type"] == "ops"]
+        assert ops_events == [
+            {"type": "ops", "index": 0, "ops": []},
+            {"type": "ops", "index": 1, "ops": []},
+        ]
         assert fake.calls == 3  # 两节 map + 一次 reduce
