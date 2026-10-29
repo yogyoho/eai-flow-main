@@ -317,13 +317,107 @@ def test_hyb_det_prefilter_accepts_rule_dataclass():
     assert issues and issues[0]["verdict"] == "violation", "Rule 数据类直传粗筛同样可达"
 
 
-@pytest.mark.asyncio
-async def test_hybrid_dict_rule_det_hit_short_circuits_model():
-    def forbidden_model(messages):
-        raise AssertionError("det 粗筛命中即坐实,不得再进语义管线调模型(§4.4 hybrid=先 det 粗筛)")
+# ── 评审修正 A12(修复轮 3,2026-10-29):hyb 语义结构性反转回正 ─────────
+# 修复前实现把设计文档 §4.4 反转为 det 终局裁判、双向封死 LLM 确认层:① det 命中即 return
+# det_issues 短路终局,模型永不见候选;② _derive_numeric_expr 以 det_expr 为派生源 + verify
+# 第3道对模型一切结论(violation 与 unclear 一并)pass 即 refuted → hybrid 的 sem 阶段永产不出
+# 条目。三后果:α) det-fail 误报绕过模型直达问题清单(L3-004 白名单外合法提及,inputs 声明的
+# entity_whitelist 在 det 分支无人消费);β) 模型带证据的真违规被过期字段重算驳回;γ) unclear+
+# need_human 被静默 refuted 零人工可见,违 §4.4 铁律。
+# 设计文档 §4.4 全文:「hybrid:先 det 粗筛,候选进 LLM 判定(如 L3-004 旧项目残留:regex/NER
+# 扫描→白名单外候选→模型确认)」(引用全文,禁选择性截引)。
+# 三修法:det 命中=候选注入规则卡交模型确认(full=驳回候选零条目/partial·none=产条目走七道/
+# unclear=need_human 存活出管线);det 通过(零命中)=return [] 零模型调用;hybrid 一律不派生
+# numeric_expr(第3道失去驳回入口)。边界补充:schema 弃 → 候选降级 need_human 注明"模型确认失败"
+# 禁止静默消失;缺字段 need_human 条目直接透传,不进模型确认。
 
-    issues = await run_sem_rule(HYB, fields=HYB_FIELDS, materials="…", model_fn=forbidden_model, docs_text=DOCS)
-    assert issues[0]["verdict"] == "violation" and issues[0]["rule_id"] == "L1-003", "hyb det 粗筛命中即短路,模型不得被调用"
+
+@pytest.mark.asyncio
+async def test_hyb_det_hit_prompt_carries_full_s44_semantics_in_candidate_gate():
+    """候选段规则卡须携带 §4.4 全文语义的确认指令(full=驳回候选/partial·none=确认违规/unclear=待人工),
+    防候选段退化为仅摘录无判定语义的装饰段。"""
+    fake = _CountingFake(json.dumps(GOOD))
+    await run_sem_rule(HYB, fields=HYB_FIELDS, materials="…", model_fn=fake, docs_text=DOCS)
+    card = fake.prompts[0]
+    assert "报价超过限价" in card and "驳回候选" in card and "unclear" in card
+
+
+def _forbidden_model(messages):
+    raise AssertionError("模型不得被调用(A12:该路径无候选可确认/条目直接透传产出)")
+
+
+class _CountingFake:
+    """计数 fake model_fn:记录调用次数与收到的 prompt(候选段注入断言用)。"""
+
+    def __init__(self, content):
+        self.calls = 0
+        self.prompts: list[str] = []
+        self.content = content
+
+    def __call__(self, messages):
+        self.calls += 1
+        self.prompts.append(messages[0]["content"] if messages else "")
+        return type("M", (), {"content": self.content})()
+
+
+@pytest.mark.asyncio
+async def test_hyb_det_hit_candidate_confirmed_by_model_produces_issue():
+    """det 命中=候选注入规则卡交模型确认,模型确认违规 → 产条目走七道。设计文档 §4.4 全文:
+    「hybrid:先 det 粗筛,候选进 LLM 判定(如 L3-004 旧项目残留:regex/NER 扫描→白名单外候选→模型确认)」"""
+    fake = _CountingFake(json.dumps(GOOD))
+    issues = await run_sem_rule(HYB, fields=HYB_FIELDS, materials="…", model_fn=fake, docs_text=DOCS)
+    assert fake.calls == 1, "det 命中不再短路,候选交模型确认(修复前 det 命中即 return 短路终局)"
+    assert "报价超过限价" in fake.prompts[0], "规则卡须含 det 粗筛候选摘录(build_rule_card 候选段)"
+    assert len(issues) == 1 and issues[0]["verdict"] == "violation" and issues[0]["rule_id"] == "L1-003"
+    assert issues[0]["numeric_expr"] is None, "hybrid 一律不派生 numeric_expr → 第3道不触发(结构性门)"
+
+
+@pytest.mark.asyncio
+async def test_hyb_det_hit_candidate_rejected_by_model_yields_zero_issues():
+    """模型 full=驳回候选不产条目——L3-004 白名单外合法提及场景(α 修复,hybrid 的定义性价值):
+    修复前 det 命中即坐实,白名单场景必然误报直达问题清单。"""
+    full = {"verdicts": [{"clause_id": "★1", "verdict": "full", "confidence": 0.95, "reason": "白名单内合法提及,粗筛误命中", "evidence": GOOD["verdicts"][0]["evidence"]}]}
+    issues = await run_sem_rule(HYB, fields=HYB_FIELDS, materials="…", model_fn=_fake(json.dumps(full)), docs_text=DOCS)
+    assert issues == [], "模型驳回候选 → 零条目"
+
+
+@pytest.mark.asyncio
+async def test_hyb_det_hit_model_unclear_need_human_survives_pipeline():
+    """模型 unclear → need_human 条目必须存活出管线(§4.4 铁律「不确定输出 unclear」,γ 回归门):
+    修复前 det_expr 派生 numeric_expr 使第3道把 unclear 一并 refuted,零人工可见。"""
+    unclear = {"verdicts": [{**GOOD["verdicts"][0], "verdict": "unclear", "confidence": 0.4}]}
+    issues = await run_sem_rule(HYB, fields=HYB_FIELDS, materials="…", model_fn=_fake(json.dumps(unclear)), docs_text=DOCS)
+    assert len(issues) == 1 and issues[0]["verdict"] == "unclear" and issues[0]["need_human"] is True
+
+
+@pytest.mark.asyncio
+async def test_hyb_det_pass_zero_hits_returns_empty_without_model_call():
+    """det 通过(零命中)→ return [] 且模型零调用(无候选可确认,省一次模型调用,A12 修法2)。
+    旧断言 test_hyb_det_expr_pass_sem_claims_violation_refuted_by_default_evaluator 固化了 β 错误
+    语义(模型被调且其结论被第3道 refuted),已按本语义重写。"""
+    issues = await run_sem_rule(HYB, fields={"bid.total_price": 99.0, "tender.max_price": 100.0}, materials="…", model_fn=_forbidden_model, docs_text=DOCS)
+    assert issues == []
+
+
+@pytest.mark.asyncio
+async def test_hyb_schema_discard_degrades_candidates_to_need_human():
+    """schema 两试皆坏 JSON → det 候选降级 need_human 条目产出并注明"模型确认失败"
+    (A12 边界补充:禁止静默消失——修复前 det 命中至少坐实,静默丢弃比修复前更退)。"""
+    issues = await run_sem_rule(HYB, fields=HYB_FIELDS, materials="…", model_fn=_fake("不是JSON"), docs_text=DOCS)
+    assert len(issues) == 1
+    assert issues[0]["verdict"] == "need_human" and issues[0]["need_human"] is True
+    assert "模型确认失败" in issues[0]["message"]
+    assert issues[0]["numeric_expr"] is None
+
+
+@pytest.mark.asyncio
+async def test_hyb_missing_field_need_human_passthrough_without_model_call():
+    """det 粗筛产出的缺字段 need_human 条目直接透传产出,不进模型确认(§4.4 det 铁律
+    「任何输入字段缺失 → need_human Issue」);若仅有 need_human 条目而无违规命中,直接返回
+    且不发模型调用(A12 边界补充)。"""
+    issues = await run_sem_rule(HYB, fields={"bid.total_price": 101.0}, materials="…", model_fn=_forbidden_model, docs_text=DOCS)
+    assert len(issues) == 1 and issues[0]["verdict"] == "need_human" and issues[0]["need_human"] is True
+    assert "字段缺失" in issues[0]["message"]
 
 
 @pytest.mark.asyncio
@@ -354,7 +448,9 @@ async def test_sem_rule_accepts_rule_dataclass():
 # (2) 触发键 numeric_expr 取自 check.get("numeric_expr"),设计文档/规则包 YAML 均无该键,
 # 无任何上游生产者 → sem/hyb 的 §4.6「以确定性结果覆盖模型结论」静默失灵。
 # 修复:缺省评估器包 bool→verdict 映射(run_det_rule 语义 False=判定失败=violation);
-# _verdict_to_issue 从 check 形态(det_expr / op-left-right)自动派生 numeric_expr。
+# _verdict_to_issue 从 check 形态自动派生 numeric_expr。
+# 评审修正 A12(修复轮 3)对派生序的收窄:type=hybrid 一律不派生(det_expr 派生源删除、
+# op-left-right 对 hybrid 封禁,第3道对 hybrid 失去驳回入口);纯 sem 派生序不变。
 
 
 def test_recompute_numeric_default_evaluator_bool_to_verdict():
@@ -366,30 +462,38 @@ def test_recompute_numeric_default_evaluator_bool_to_verdict():
 
 
 def test_derive_numeric_expr_from_check_shapes():
-    assert _derive_numeric_expr({"det_expr": "bid.total_price <= tender.max_price"}) == "bid.total_price <= tender.max_price", "hyb det_expr 直接派生"
-    assert _derive_numeric_expr({"op": "lte", "left": "bid.total_price", "right": "tender.max_price"}) == "bid.total_price <= tender.max_price", "op-left-right 拼装"
+    """A12 后派生序:纯 sem=显式 numeric_expr → op-left-right(lte/gte/eq);det_expr 派生源删除、
+    type=hybrid 一律 None(粗筛表达式/op 形态不得反过来终审模型确认层)。"""
+    assert _derive_numeric_expr({"det_expr": "bid.total_price <= tender.max_price"}) is None, "det_expr 派生源删除(A12 修法3)"
+    assert _derive_numeric_expr({"op": "lte", "left": "bid.total_price", "right": "tender.max_price"}) == "bid.total_price <= tender.max_price", "op-left-right 拼装(非 hybrid)"
     assert _derive_numeric_expr({"op": "gte", "left": "a", "right": "b"}) == "a >= b"
     assert _derive_numeric_expr({"numeric_expr": "x == y"}) == "x == y", "显式键优先(Task 18 若正式入契约直接可用)"
+    assert _derive_numeric_expr({"op": "lte", "left": "a", "right": "b", "numeric_expr": "x == y"}) == "x == y", "显式键优先于 op-left-right"
+    assert _derive_numeric_expr({"op": "lte", "left": "a", "right": "b"}, rule_type="hybrid") is None, "type=hybrid 一律 None(op-left-right 形态亦封禁)"
+    assert _derive_numeric_expr({"numeric_expr": "x == y"}, rule_type="hybrid") is None, "type=hybrid 一律 None(显式键亦封禁)"
     assert _derive_numeric_expr(RULE["check"]) is None, "纯 sem 检查形态(per_clause)无从重算"
     assert _derive_numeric_expr({"op": "set_eq", "left": "codes(t.boq)", "right": "codes(b.boq)"}) is None, "set_eq 非 lte/gte/eq,不派生"
 
 
 @pytest.mark.asyncio
-async def test_hyb_op_left_right_recompute_confirms_violation_overrides_unclear():
-    """op-left-right 无 det_expr → 粗筛不触发(det_expr 门)→ 语义管线模型 unclear;
-    缺省数值复核求值 False → violation 覆盖模型结论并解除 need_human(§4.6)。"""
-    rule = {**HYB, "check": {"op": "lte", "left": "bid.total_price", "right": "tender.max_price", "verdict_set": ["full", "partial", "none", "unclear"]}}
+async def test_sem_op_left_right_recompute_confirms_violation_overrides_unclear():
+    """纯 sem 规则 op-left-right 派生与第3道覆盖模型结论不变(A12 明文保留项):
+    模型 unclear → 缺省数值复核求值 False → violation 覆盖并解除 need_human(§4.6)。"""
+    rule = {**HYB, "type": "semantic", "check": {"op": "lte", "left": "bid.total_price", "right": "tender.max_price", "verdict_set": ["full", "partial", "none", "unclear"]}}
     unclear = {"verdicts": [{**GOOD["verdicts"][0], "verdict": "unclear", "confidence": 0.9}]}
     issues = await run_sem_rule(rule, fields=HYB_FIELDS, materials="…", model_fn=_fake(json.dumps(unclear)), docs_text=DOCS)
-    assert issues[0]["numeric_expr"] == "bid.total_price <= tender.max_price", "numeric_expr 从 op-left-right 自动派生"
+    assert issues[0]["numeric_expr"] == "bid.total_price <= tender.max_price", "纯 sem numeric_expr 从 op-left-right 自动派生(不变)"
     assert issues[0]["verdict"] == "violation", "确定性重算坐实违规,覆盖 unclear"
     assert issues[0]["need_human"] is False
 
 
 @pytest.mark.asyncio
-async def test_hyb_det_expr_pass_sem_claims_violation_refuted_by_default_evaluator():
-    """生产路径端到端回归:det_expr 为真(粗筛返回 [],fail-open 进语义管线)→ 模型仍报违规 →
-    第3道走缺省 bool 评估器求值 True→pass → refuted 不产出。修复前缺省路径恒 None,误报漏出。"""
-    violation_claim = {"verdicts": [{**GOOD["verdicts"][0], "verdict": "partial", "confidence": 0.95, "reason": "报价超过限价"}]}
-    issues = await run_sem_rule(HYB, fields={"bid.total_price": 99.0, "tender.max_price": 100.0}, materials="…", model_fn=_fake(json.dumps(violation_claim)), docs_text=DOCS)
-    assert issues == [], "确定性重算未复现违规 → 推翻模型误报(§4.6)"
+async def test_hyb_op_left_right_numeric_expr_none_unclear_survives():
+    """hybrid 即使 op-left-right 形态(无 det_expr)也一律不派生 numeric_expr → 第3道不触发,
+    模型 unclear=need_human 条目存活出管线(γ 结构性门):修复前该形态经 op-left-right 派生
+    进入第3道,unclear 一并被 refuted 零人工可见。"""
+    rule = {**HYB, "check": {"op": "lte", "left": "bid.total_price", "right": "tender.max_price", "verdict_set": ["full", "partial", "none", "unclear"]}}
+    unclear = {"verdicts": [{**GOOD["verdicts"][0], "verdict": "unclear", "confidence": 0.9}]}
+    issues = await run_sem_rule(rule, fields=HYB_FIELDS, materials="…", model_fn=_fake(json.dumps(unclear)), docs_text=DOCS)
+    assert issues[0]["numeric_expr"] is None, "hybrid 一律不派生 numeric_expr"
+    assert issues[0]["verdict"] == "unclear" and issues[0]["need_human"] is True, "unclear=need_human 存活出管线"
