@@ -300,6 +300,19 @@ export function findSectionRange(
   return { blockIds, startIndex: anchorIndex, endIndex: end };
 }
 
+// EAI-CUSTOM (全文操作 M1 / spec §3-2): op.content 统一经「details 切分 + 数学转换」管线，
+// 与 seed 同款。修复 $$..$$ 独立公式被裸 tryParse 成纯文本段落的问题。
+// tryParse 由调用方注入以便测试。
+export function parseOperationContent(
+  content: string,
+  tryParse: (md: string) => unknown[],
+): unknown[] {
+  const parsed = buildBlocksWithDetails(content, (md) =>
+    tryParse(md) as unknown as Parameters<typeof transformMathInBlocks>[0],
+  );
+  return transformMathInBlocks(parsed);
+}
+
 export interface PersonalBlockNoteEditorRef {
   getMarkdown: () => Promise<string>;
   getSelectedText: () => string;
@@ -688,7 +701,16 @@ const PersonalBlockNoteEditor = forwardRef<
 
     applyOperations: (ops: DocOperation[]) => {
       for (const op of ops) {
-        const parsed = editor.tryParseMarkdownToBlocks(op.content ?? "");
+        // EAI-CUSTOM (全文操作 M1 / spec §3-2): op.content 与 seed 同管线
+        // （buildBlocksWithDetails 切分 + transformMathInBlocks），delete 短路不解析。
+        const parsed =
+          op.op === "delete"
+            ? []
+            : (parseOperationContent(op.content ?? "", (md) =>
+                editor.tryParseMarkdownToBlocks(md) as unknown as unknown[],
+              ) as unknown as ReturnType<
+                typeof editor.tryParseMarkdownToBlocks
+              >);
         if (parsed.length === 0 && op.op !== "delete") {
           console.warn(
             "[applyOperations] skip: empty parsed content for op",
