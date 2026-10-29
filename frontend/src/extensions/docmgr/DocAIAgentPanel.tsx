@@ -184,6 +184,55 @@ export function parseOperations(text: string): {
   }
 }
 
+/** EAI-CUSTOM (bug-3301): 解析结果按 message.id+内容缓存——流式完成后重渲染返回同一对象。
+ *  内联解析每次渲染产出新 ops 数组 → auto effect 视为依赖变化重复应用并覆写快照点。 */
+export function createAIMessageParser(): (
+  id: string,
+  content: unknown,
+) => { text: string; ops: DocOperation[] | null; error: string | null } {
+  const cache = new Map<
+    string,
+    {
+      sig: string;
+      parsed: {
+        text: string;
+        ops: DocOperation[] | null;
+        error: string | null;
+      };
+    }
+  >();
+  return (id, content) => {
+    const raw =
+      typeof content === "string"
+        ? content
+        : Array.isArray(content)
+          ? content
+              .map((b) => {
+                if (typeof b !== "object" || b === null || !("text" in b))
+                  return "";
+                const t = (b as { text?: unknown }).text;
+                return typeof t === "string" ? t : "";
+              })
+              .join("")
+          : "";
+    const hit = cache.get(id);
+    if (hit?.sig === raw) return hit.parsed;
+    // ponytail: 缓存上限 50 条，防长对话内存增长
+    if (cache.size > 50) {
+      const first = cache.keys().next().value;
+      if (first !== undefined) cache.delete(first);
+    }
+    const parsed = parseOperations(raw);
+    const result = {
+      text: parsed.analysis,
+      ops: parsed.operations,
+      error: parsed.parseError,
+    };
+    cache.set(id, { sig: raw, parsed: result });
+    return result;
+  };
+}
+
 // ─── sub-components ─────────────────────────────────────────────────────
 
 function WelcomePage() {
@@ -361,10 +410,10 @@ function ConfirmCard({
                 : "-"}
         </span>
         {status === "applied" && (
-          <span className="text-xs font-medium text-success">已应用</span>
+          <span className="text-success text-xs font-medium">已应用</span>
         )}
         {status === "failed" && (
-          <span className="text-xs font-medium text-destructive">失败</span>
+          <span className="text-destructive text-xs font-medium">失败</span>
         )}
       </div>
       {status === "failed" && errorMsg && (
@@ -448,16 +497,24 @@ function OperationCards({
   const [autoError, setAutoError] = useState<string | null>(null);
 
   // Auto mode: apply all immediately, show notification with undo.
-  // ponytail: auto 应用失败不再静默中断——先快照（可整批撤销），applyOperations 抛错时捕获并展示。
+  // ponytail (bug-3301): 逐 op 捕获失败继续（弃首错即断）；appliedRef 防组件重挂载重复应用。
+  const appliedRef = useRef(false);
   useEffect(() => {
-    if (mode === "auto" && operations.length > 0) {
+    if (mode === "auto" && operations.length > 0 && !appliedRef.current) {
+      appliedRef.current = true;
       snapshotRef.current = editorRef.current?.snapshotBlocks() ?? null;
       setAutoError(null);
-      try {
-        editorRef.current?.applyOperations(operations);
-      } catch (e) {
-        setAutoError(getErrorMessage(e, "操作失败，部分内容可能未应用"));
-      }
+      const failures: string[] = [];
+      operations.forEach((op, i) => {
+        try {
+          editorRef.current?.applyOperations([op]);
+        } catch (e) {
+          failures.push(
+            `操作${i + 1}${op.anchor ? `(${op.anchor.slice(0, 20)})` : ""}: ${getErrorMessage(e, "失败")}`,
+          );
+        }
+      });
+      if (failures.length > 0) setAutoError(failures.join("；"));
     }
   }, [operations, editorRef, mode]);
 
@@ -769,32 +826,11 @@ export default function DocAIAgentPanel({
     });
   }, [streamState?.messages]);
 
-  /** Parse a single AI message for operations. */
+  /** Parse a single AI message for operations（bug-3301: 按消息缓存,身份稳定）。 */
+  const parseAIMessageRef = useRef(createAIMessageParser());
   const parseAIMessage = useCallback(
-    (
-      content: unknown,
-    ): { text: string; ops: DocOperation[] | null; error: string | null } => {
-      const raw =
-        typeof content === "string"
-          ? content
-          : Array.isArray(content)
-            ? content
-                .map((b) => {
-                  if (typeof b !== "object" || b === null || !("text" in b))
-                    return "";
-                  const t = (b as { text?: unknown }).text;
-                  return typeof t === "string" ? t : "";
-                })
-                .join("")
-            : "";
-      if (!raw) return { text: "", ops: null, error: null };
-      const parsed = parseOperations(raw);
-      return {
-        text: parsed.analysis,
-        ops: parsed.operations,
-        error: parsed.parseError,
-      };
-    },
+    (msg: { id?: string | null; content: unknown }) =>
+      parseAIMessageRef.current(msg.id ?? "", msg.content),
     [],
   );
 
@@ -869,7 +905,7 @@ export default function DocAIAgentPanel({
                       </div>
                     );
                   }
-                  const { text, ops, error } = parseAIMessage(item.msg.content);
+                  const { text, ops, error } = parseAIMessage(item.msg);
                   return (
                     <div key={item.msg.id}>
                       <div className="text-foreground text-sm leading-relaxed break-words">
@@ -924,7 +960,7 @@ export default function DocAIAgentPanel({
             <span>❌ {error}</span>
             <button
               onClick={() => setError(null)}
-              className="ml-2 text-destructive/70 hover:text-destructive"
+              className="text-destructive/70 hover:text-destructive ml-2"
             >
               ✕
             </button>
