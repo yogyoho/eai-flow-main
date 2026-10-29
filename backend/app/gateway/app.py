@@ -32,6 +32,7 @@ from app.extensions.contract_price import router as contract_price_router
 from app.extensions.dashboard.routers import router as dashboard_router
 from app.extensions.data_source.routers import router as data_source_router
 from app.extensions.dept.routers import router as dept_router
+from app.extensions.docmgr.ai_transform import router as docmgr_ai_router  # EAI-CUSTOM: docmgr 全文操作(预设操作库) M1
 from app.extensions.docmgr.collab_ai_chat import router as collab_ai_chat_router
 from app.extensions.docmgr.collab_routers import router as collab_router
 from app.extensions.docmgr.routers import router as docmgr_router
@@ -1610,6 +1611,9 @@ This gateway provides runtime endpoints for agent runs plus custom endpoints for
 
     # Doc Mgr API is mounted at /api/extensions/docmgr
     app.include_router(docmgr_router)
+
+    # Doc Mgr AI 全文操作（预设操作库，NDJSON 事件流）— /api/extensions/docmgr/ai/transform
+    app.include_router(docmgr_ai_router)  # EAI-CUSTOM
 
     # Collab API (comments + versions) is mounted at /api/extensions/docmgr
     app.include_router(collab_router)
