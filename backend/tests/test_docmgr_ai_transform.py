@@ -93,8 +93,17 @@ class TestSplitSections:
         secs = AT.split_sections(doc)
         assert len(secs) == 1
         assert secs[0]["structured"] is True
-        assert any(len(p) > AT.SECTION_CHAR_LIMIT for p in secs[0]["pieces"])
+        assert any(len(p) > AT.SECTION_CHAR_LIMIT + 1 for p in secs[0]["pieces"])
         assert "".join(s["content"] for s in secs) == doc  # 有损不变量不受影响
+
+    def test_hard_cut_boundary_piece_not_marked_structured(self):
+        # I4 复审回归：_hard_cut 合法上限 4001（句末符恰落扫描窗末位），纯 prose 节不得被误判 structured
+        doc = "# H\n\n" + "x" * 4000 + "。" + "y" * 5000 + "\n"
+        secs = AT.split_sections(doc)
+        assert len(secs) == 1
+        assert secs[0]["structured"] is False
+        assert any(len(p) == AT.SECTION_CHAR_LIMIT + 1 for p in secs[0]["pieces"])
+        assert "".join(s["content"] for s in secs) == doc
 
     def test_hard_cut_lossless(self):
         seg = "这是一句话。" * 2000

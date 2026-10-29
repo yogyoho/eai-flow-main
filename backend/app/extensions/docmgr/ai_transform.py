@@ -222,8 +222,10 @@ def split_sections(content: str) -> list[dict]:
         # pieces 与 structured 无关地按长度再切：端点对 structured 节在消费 pieces 前已跳过，
         # 而表/公式节同样需要原子分片能力（test_table_atomic 语义），留 pieces 才不损失信息
         pieces = [text] if len(text) <= SECTION_CHAR_LIMIT else _split_long(text)
-        if any(len(p) > SECTION_CHAR_LIMIT for p in pieces):
-            # I4: 存在超长原子段（>4000 的围栏/$$/表格桶）无法安全逐片处理，v1 整节跳过
+        if any(len(p) > SECTION_CHAR_LIMIT + 1 for p in pieces):
+            # I4: 存在超长原子段（>4000 的围栏/$$/表格桶）无法安全逐片处理，v1 整节跳过。
+            # +1 容差：_hard_cut 合法上限 4001（句末符恰落扫描窗末位），>4001 才必是原子桶整段保留；
+            # 恰 4001 的原子桶不判跳过也无害（单 piece 直接进模型，安全）——否则纯 prose 节被随机误跳
             structured = True
         sections.append(
             {
