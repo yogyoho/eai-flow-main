@@ -308,9 +308,14 @@ async def test_model_crash_isolated_to_need_human(db, sem_rulepack):
 
 
 @pytest.mark.asyncio
-async def test_default_model_gap_degrades_sem_rule_not_crash(db, sem_rulepack):
-    """生产缺口(显式,_default_extract_fn 同款):不注入 model_fn 时 sem 规则降级
-    need_human 而非崩任务——绝不静默假交付。"""
+async def test_default_model_gap_degrades_sem_rule_not_crash(db, sem_rulepack, monkeypatch):
+    """无可用模型(config 空且 env 未设)时 _default_model_fn 退化为显式缺口 → sem
+    规则逐规则降级 need_human 而非崩任务——绝不静默假交付(生产模型接线落地后,
+    本测试锁的是无模型回退路径,monkeypatch 空配置使判定确定性)。"""
+    from types import SimpleNamespace
+
+    monkeypatch.setattr("deerflow.config.get_app_config", lambda: SimpleNamespace(models=[]))
+    monkeypatch.delenv("EAI_BID_REVIEW_MODEL", raising=False)
     t = await crud.create_task(db, owner_id="u1")
 
     def _extract(d, p):

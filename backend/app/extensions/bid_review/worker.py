@@ -21,8 +21,10 @@ from __future__ import annotations
 
 import asyncio
 import inspect
+import json
 import logging
 import os
+import re
 import time
 from pathlib import Path
 from types import SimpleNamespace
@@ -86,16 +88,57 @@ def _wrap_model_fn(model_fn):
     return _wrapped
 
 
-def _default_model_fn():
-    """生产模型接线装配点(显式缺口,_default_extract_fn 同款先例):sem/hyb 规则的
-    LLM 裁决模型未接线(生产模型工厂装配属后续任务)→ 抛 ModelNotConfigured,由
-    逐规则隔离降级 need_human,绝不静默假交付。接线时仅改本函数(返回值经
-    _wrap_model_fn 包装,content 归一已就位)。"""
+def _resolve_model_name() -> str | None:
+    """生产模型选择(translation worker 同款先例):EAI_BID_REVIEW_MODEL env 优先
+    (值须在 config.yaml models 内,非法值回落),否则 config.yaml 首项;无可用模型
+    返回 None(调用方抛 *NotConfigured,绝不静默假交付)。"""
+    from deerflow.config import get_app_config
 
-    def _fn(messages):
-        raise ModelNotConfigured("生产 LLM 裁决模型未接线(worker._default_model_fn 显式缺口;sem/hyb 规则逐规则降级 need_human)")
+    names = [m.name for m in get_app_config().models]
+    env = os.environ.get("EAI_BID_REVIEW_MODEL")
+    if env and env in names:
+        return env
+    return names[0] if names else None
+
+
+def _default_model_fn():
+    """生产 sem/hyb 裁决模型接线(translation worker create_chat_model 同款先例):
+    模型选择经 _resolve_model_name;LangChain 模型 ainvoke 异步调用——claimer/routers
+    直推均跑在事件循环上,禁同步 invoke 堵环。无可用模型仍抛 ModelNotConfigured,
+    由逐规则隔离降级 need_human,绝不静默假交付。返回值经 _wrap_model_fn 包装,
+    content 归一已就位。"""
+    name = _resolve_model_name()
+    if not name:
+
+        def _fn(messages):
+            raise ModelNotConfigured("config.yaml 无可用模型(EAI_BID_REVIEW_MODEL/首项均缺;sem/hyb 规则逐规则降级 need_human)")
+
+        return _fn
+    from deerflow.models.factory import create_chat_model
+
+    model = create_chat_model(name)
+    logger.info("bid_review sem/hyb using model %s", name)
+
+    async def _fn(messages):
+        return await model.ainvoke(messages)
 
     return _fn
+
+
+def _parse_json_object(text: str) -> dict:
+    """模型输出 → JSON dict(容 ```json 围栏与前后杂文:取首 { 至末 } 切片);
+    解析失败或非 dict 抛 ValueError(调用方重试)。"""
+    s = text.strip()
+    if s.startswith("```"):
+        s = re.sub(r"^```[a-zA-Z0-9_-]*\s*", "", s)
+        s = re.sub(r"\s*```$", "", s)
+    start, end = s.find("{"), s.rfind("}")
+    if start < 0 or end <= start:
+        raise ValueError(f"模型输出不含 JSON 对象: {text[:120]!r}")
+    payload = json.loads(s[start : end + 1])
+    if not isinstance(payload, dict):
+        raise ValueError(f"模型输出 JSON 非对象: {type(payload).__name__}")
+    return payload
 
 
 # ── sem/hyb 材料装配(v1 纯文本直存契约)──────────────────────────────
@@ -176,12 +219,37 @@ def _load_docs(task: ReviewTask) -> list[dict]:
 
 
 def _default_extract_fn() -> ExtractFn:
-    """生产提取函数装配点(显式缺口,translation worker `_default_index_fn` 同款先例):
-    LLM 基准提取未接线(生产模型工厂装配属后续任务)→ 抛 ExtractNotConfigured 落
-    failed,绝不静默假交付。接线时仅改本函数。"""
+    """生产 LLM 基准提取接线(translation worker create_chat_model 同款先例):
+    build_extract_prompt → 同步 invoke(advance_task 以 asyncio.to_thread 卸载本函数,
+    禁在事件循环直跑)→ _parse_json_object 解析,坏输出重试 1 次,仍失败抛
+    RuntimeError → _infra_fail 失败链(≤3 次重投,终态 failed 落因),绝不静默假交付。
+    模型选择同 _default_model_fn;无可用模型抛 ExtractNotConfigured。"""
+    name = _resolve_model_name()
+    if not name:
+
+        def _fn(docs: list[dict], field_paths: list[str]) -> dict:
+            raise ExtractNotConfigured("config.yaml 无可用模型(EAI_BID_REVIEW_MODEL/首项均缺;基准提取未执行)")
+
+        return _fn
+    from app.extensions.bid_review.engine.extract import build_extract_prompt
+    from deerflow.models.factory import create_chat_model
+
+    model = create_chat_model(name)
+    logger.info("bid_review baseline extraction using model %s", name)
 
     def _fn(docs: list[dict], field_paths: list[str]) -> dict:
-        raise ExtractNotConfigured("生产 LLM 基准提取未接线(worker._default_extract_fn 显式缺口;接线前 quick/deep 任务将 failed)")
+        prompt = build_extract_prompt(docs, field_paths)
+        messages = [{"role": "user", "content": prompt}]
+        last_err: Exception | None = None
+        for attempt in (1, 2):
+            response = model.invoke(messages)
+            raw = _content_to_str(getattr(response, "content", ""))
+            try:
+                return _parse_json_object(raw)
+            except ValueError as exc:
+                last_err = exc
+                logger.warning("bid_review extract parse retry attempt=%d err=%s", attempt, exc)
+        raise RuntimeError(f"基准提取两试未获有效 JSON({last_err})") from last_err
 
     return _fn
 
@@ -308,7 +376,9 @@ async def advance_task(
     durations["parsing"] = time.perf_counter() - t0
     t1 = time.perf_counter()
     await crud.set_status(db, task, "extracting", progress={"stage": "extracting", "pct": 20, "msg": "基准字段提取中"})
-    payload = build_baseline(docs, extract_fn)
+    # 生产 extract_fn 是同步 LLM 调用,而 advance_task 跑在事件循环上(claimer/routers 直推)
+    # ——to_thread 卸载防堵环;fake 同步 fn 在线程内语义不变(测试不受影响)。
+    payload = await asyncio.to_thread(build_baseline, docs, extract_fn)
     fields = payload["fields"]
     meta = dict(task.engine_meta or {})
     meta["materials_hash"] = payload["materials_hash"]
