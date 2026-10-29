@@ -266,6 +266,82 @@ async def test_awaiting_confirm_needs_confirm_to_run(client, db, monkeypatch):
     assert resumed and resumed[0] == (t.id, "u1"), "confirm 必须经续跑通道把任务推向 running"
 
 
+# ── Task 21:报告导出(GET /tasks/{id}/report?format=md)─────────────────
+
+
+@pytest.mark.asyncio
+async def test_report_md_disclaimer_sections_and_per_issue_fields(client, db):
+    """Task 21 Step 1 契约:report 端点返回 md 文本——首行含免责声明(措辞照 plan/
+    ui-spec §3.5 原文),按 severity 分节,每条含规则 ID/证据(doc+page)/修复建议;
+    含可提交判定提示行与复核耗时占位。need_human 条目按 severity 归节标注待人工
+    (不静默删除);人工误报(false_positive)不进报告正文;可提交判定口径=正式
+    fatal 违规(fatal 且 verdict=violation 且非 need_human,误报剔除)。"""
+    t = await crud.create_task(db, owner_id="u1")
+    await crud.set_status(db, t, "done")
+    await crud.add_issue(
+        db,
+        task_id=t.id,
+        owner_id="u1",
+        rule_id="L1-009",
+        layer="L1",
+        severity="fatal",
+        verdict="violation",
+        message="明细合计与总价不一致",
+        fix="复核总价口径",
+        evidence=[{"doc_id": "bid.md", "page": 3, "text": "投标总价:¥9,000,000"}],
+        dedup_key="k1",
+    )  # noqa: E501
+    await crud.add_issue(db, task_id=t.id, owner_id="u1", rule_id="L3-001", layer="L3", severity="minor", verdict="violation", message="页眉不一致", fix="替换页眉", evidence=[], dedup_key="k2")
+    await crud.add_issue(db, task_id=t.id, owner_id="u1", rule_id="L1-013", layer="L1", severity="fatal", verdict="unclear", message="响应偏离材料不足", fix="补充响应文件", evidence=[], dedup_key="k3", need_human=True)
+    fp = await crud.add_issue(db, task_id=t.id, owner_id="u1", rule_id="L1-010", layer="L1", severity="fatal", verdict="violation", message="大写口径误报", fix="忽略", evidence=[], dedup_key="k4")
+    await R.apply_false_positive(db, fp)
+
+    r = await client.get(f"/api/extensions/bid-review/tasks/{t.id}/report", params={"format": "md"})
+    assert r.status_code == 200
+    assert "text/markdown" in r.headers["content-type"]
+    body = r.text
+    first_line = body.splitlines()[0]
+    assert "本报告为辅助提示,最终责任由投标主体承担" in first_line, "免责声明必须落报告首行"
+    # 按 severity 四档分节
+    for label in ("致命", "主要", "次要", "提示"):
+        assert label in body
+    # 每条:规则 ID / 证据 doc+page / 修复建议
+    assert "L1-009" in body and "bid.md" in body and "p.3" in body and "复核总价口径" in body
+    assert "L3-001" in body and "替换页眉" in body
+    # need_human 条目存活并标注;人工误报剔除
+    assert "L1-013" in body and "待人工" in body
+    assert "大写口径误报" not in body
+    # 可提交判定提示行(fatal violation=1 → 命中红线措辞照 ui-spec §3.5)
+    assert "命中致命红线 1 项,建议整改后重新审查" in body
+    # 复核耗时占位
+    assert "复核耗时" in body
+
+
+@pytest.mark.asyncio
+async def test_report_md_submittable_hint_when_no_fatal_violation(client, db):
+    """ui-spec §3.5 可提交判定:正式 fatal 违规=0 → 「未命中致命红线,可进入人工终审」
+    (fatal need_human 条目不算命中红线,单列待人工)。"""
+    t = await crud.create_task(db, owner_id="u1")
+    await crud.set_status(db, t, "done")
+    await crud.add_issue(db, task_id=t.id, owner_id="u1", rule_id="L3-001", layer="L3", severity="minor", verdict="violation", message="页眉不一致", fix="替换页眉", evidence=[], dedup_key="k1")
+    await crud.add_issue(db, task_id=t.id, owner_id="u1", rule_id="L1-013", layer="L1", severity="fatal", verdict="unclear", message="材料不足", fix="补响应", evidence=[], dedup_key="k2", need_human=True)
+    r = await client.get(f"/api/extensions/bid-review/tasks/{t.id}/report", params={"format": "md"})
+    assert r.status_code == 200
+    assert "未命中致命红线,可进入人工终审" in r.text
+    assert "命中致命红线" not in r.text.split("未命中致命红线")[1], "零红线时不得再出现命中措辞"
+
+
+@pytest.mark.asyncio
+async def test_report_rejects_html_format_and_other_owner(client, db):
+    """format 白名单:html 导出属 M4 不做(422,禁静默降级 md);他人任务 404(owner
+    过滤同既有端点);format 缺省=md 可用。"""
+    t = await crud.create_task(db, owner_id="u1")
+    other = await crud.create_task(db, owner_id="u2")
+    assert (await client.get(f"/api/extensions/bid-review/tasks/{t.id}/report", params={"format": "html"})).status_code == 422
+    assert (await client.get(f"/api/extensions/bid-review/tasks/{other.id}/report")).status_code == 404
+    assert (await client.get(f"/api/extensions/bid-review/tasks/{t.id}/report")).status_code == 200
+
+
 def test_mcp_tools_expose_no_confirm_gate():
     """Task 15 静态断言:MCP 工具键集与 handler 表均无 confirm/baseline_confirm 类工具——
     基线确认门仅工作台 UI,agent 不可代确认(设计文档 §4.3/§4.8)。"""

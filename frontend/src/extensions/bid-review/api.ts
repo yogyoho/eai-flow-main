@@ -3,7 +3,8 @@
  *
  * Endpoints live under `/api/extensions/bid-review/*`(Gateway;routers.py
  * Task 10:POST /tasks / GET /tasks / GET /tasks/{id} / POST /tasks/{id}/confirm /
- * GET /tasks/{id}/issues / GET /issues/{id} / POST /issues/{id}/feedback / GET /rulepacks)。
+ * GET /tasks/{id}/issues / GET /issues/{id} / POST /issues/{id}/feedback / GET /rulepacks;
+ * Task 21:GET /tasks/{id}/report?format=md Blob 导出)。
  * Fetch 走共享 `@/core/api/fetcher` 的 `fetch`(导出名是 fetch,非 authFetch):
  * 自动 credentials: "include" + 状态变更方法注入 X-CSRF-Token + 401 跳登录。
  * Task 17:补 issues/feedback/confirm/rulepacks 调用;非 2xx 抛 {@link ApiError}
@@ -27,7 +28,7 @@ export class ApiError extends Error {
   }
 }
 
-async function request<T>(path: string, init?: RequestInit): Promise<T> {
+async function requestRaw(path: string, init?: RequestInit): Promise<Response> {
   const res = await fetch(`${API_BASE}${path}`, init);
   if (!res.ok) {
     let message = `请求失败(${res.status})`;
@@ -39,7 +40,11 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
     }
     throw new ApiError(message, res.status);
   }
-  return (await res.json()) as T;
+  return res;
+}
+
+async function request<T>(path: string, init?: RequestInit): Promise<T> {
+  return (await requestRaw(path, init).then((r) => r.json())) as T;
 }
 
 // ── 类型(landed 后端契约;types.ts 不在本任务允许清单,规则库契约类型落此)──
@@ -135,4 +140,14 @@ export function feedbackIssue(
 /** GET /rulepacks —— 规则包清单({items: RulePackOut[]},拆包返回)。 */
 export function listRulepacks(): Promise<RulePackOut[]> {
   return request<{ items: RulePackOut[] }>("/rulepacks").then((r) => r.items);
+}
+
+// ── 报告导出(Task 21)────────────────────────────────────────────────
+
+/** GET /tasks/{id}/report?format=md —— 审查报告导出,返回 Blob(text/markdown;
+ * 首行免责声明+可提交判定提示行+severity 分节,内容契约由后端渲染)。html 导出属
+ * M4,后端 422 → 走 {@link ApiError} 分支。调用方经 URL.createObjectURL + <a
+ * download> 触发浏览器保存(WorkbenchView 导出按钮)。 */
+export function exportReport(taskId: string): Promise<Blob> {
+  return requestRaw(`/tasks/${taskId}/report?format=md`).then((r) => r.blob());
 }

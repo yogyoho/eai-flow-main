@@ -10,7 +10,7 @@
  * 本次会话内本地 recorded 映射呈现"确认勾/误报删除线",刷新即失(v1 已记缺口)。
  */
 
-import { ArrowLeft, Check } from "lucide-react";
+import { ArrowLeft, Check, Download } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
@@ -31,7 +31,7 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet";
-import { type FeedbackAction } from "@/extensions/bid-review/api";
+import { type FeedbackAction, exportReport } from "@/extensions/bid-review/api";
 import {
   GateMetricsRow,
   SegmentedToggle,
@@ -117,6 +117,27 @@ export function WorkbenchView({ taskId }: { taskId?: string | null }) {
   const [reviewed, setReviewed] = useState<Record<string, FeedbackAction>>({});
   const [sheetOpen, setSheetOpen] = useState(false);
   const [newSeverity, setNewSeverity] = useState<string>("major");
+  // 报告导出(Task 21):GET report?format=md → Blob 下载(照 docmgr 导出先例);
+  // 仅 done 任务可导出——半程审查的条目清单不得冒充完整报告。
+  const [exporting, setExporting] = useState(false);
+
+  const handleExportReport = async () => {
+    if (!taskId) return;
+    setExporting(true);
+    try {
+      const blob = await exportReport(taskId);
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `bid-review-report-${taskId.slice(0, 8)}.md`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "报告导出失败");
+    } finally {
+      setExporting(false);
+    }
+  };
 
   const enabled = Boolean(taskId);
   const taskQuery = useBidTask(enabled ? taskId : null);
@@ -242,6 +263,21 @@ export function WorkbenchView({ taskId }: { taskId?: string | null }) {
             复核 {reviewedCount}/{issues.length}
           </span>
         </div>
+        {/* 报告导出(Task 21):outline 照 ui-spec §3.5 导出按钮形态;仅 done 可导 */}
+        <Button
+          variant="outline"
+          size="sm"
+          disabled={exporting || task?.status !== "done"}
+          title={
+            task && task.status !== "done"
+              ? "审查完成后可导出报告"
+              : "导出审查报告(.md)"
+          }
+          onClick={() => void handleExportReport()}
+        >
+          <Download className="h-3.5 w-3.5" />
+          {exporting ? "导出中…" : "导出报告"}
+        </Button>
       </div>
 
       {/* 基准未确认:页顶 NoteBar(warning 深字);确认后状态离开 awaiting_confirm 即移除 */}

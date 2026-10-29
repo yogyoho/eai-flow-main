@@ -10,6 +10,8 @@
   GET  /issues/{id}            问题详情(owner 过滤)
   POST /issues/{id}/feedback   复核反馈(写 ReviewFeedback + RulePackMeta.stats 回流;
                                false_positive 走误报回流 verdict/need_human 落库 + fp_samples)
+  GET  /tasks/{id}/report      审查报告导出 ?format=md(Task 21;首行免责声明+可提交判定
+                               提示行+severity 分节;html 导出属 M4 不做,422)
   GET  /rulepacks              规则包清单(生产规则包 + DB stats)
 
 owner 隔离:模块级 ``current_owner`` 依赖(必须模块级函数,dependency_overrides 才能打桩),
@@ -21,7 +23,7 @@ import asyncio
 import logging
 from datetime import UTC, datetime
 
-from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
+from fastapi import APIRouter, Depends, File, Form, HTTPException, Response, UploadFile
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -249,6 +251,101 @@ async def feedback_issue(issue_id: str, body: FeedbackIn, db: AsyncSession = Dep
         await crud.add_rulepack_stats(db, RULEPACK_NAME, issue.rule_id, adopted=True)
     await db.refresh(issue)
     return issue
+
+
+# ── 报告导出(Task 21;html 导出属 M4,本轮不做)───────────────────────
+
+REPORT_DISCLAIMER = "本报告为辅助提示,最终责任由投标主体承担"
+SEVERITY_LABELS = {"fatal": "致命", "major": "主要", "minor": "次要", "info": "提示"}
+
+
+def _oneline(text: str) -> str:
+    """md 结构行安全化:message/fix 换行拍平为空格,防条目文本撞坏分节结构。"""
+    return " ".join(str(text or "").split())
+
+
+def _fmt_evidence(evidence: list) -> str:
+    """证据列表 → 逐条「doc_id · p.页码(摘录:…)」分号连接;空列表回「无」。"""
+    parts: list[str] = []
+    for ev in evidence or []:
+        if not isinstance(ev, dict):
+            continue
+        loc = _oneline(str(ev.get("doc_id") or "未知文档"))
+        page = ev.get("page")
+        if isinstance(page, int) and not isinstance(page, bool):
+            loc += f" · p.{page}"
+        excerpt = _oneline(str(ev.get("text") or ""))
+        if excerpt:
+            loc += f"(摘录:{excerpt})"
+        parts.append(loc)
+    return ";".join(parts) if parts else "无"
+
+
+def _render_report_md(task, issues: list) -> str:
+    """审查报告 md 渲染(plan Task 21 Step 1 契约,报告呈现形态以 plan 原文为准):
+    首行免责声明 → 任务元信息(含复核耗时占位——人工复核耗时统计 v1 未接入)→
+    可提交判定提示行(措辞照 ui-spec §3.5 照抄;口径=正式 fatal 违规:severity=fatal
+    且 verdict=violation 且非 need_human——人工误报与待人工条目不计入命中红线)→
+    按 severity 四档分节,每条含规则 ID/证据(doc+page)/修复建议;need_human 条目
+    不删除,按 severity 归节并标注【待人工】;false_positive 人工误报不进正文。"""
+    issues = [i for i in issues if i.verdict != "false_positive"]
+    fatal_hits = [i for i in issues if i.severity == "fatal" and i.verdict == "violation" and not i.need_human]
+    now = datetime.now(UTC).strftime("%Y-%m-%d %H:%M UTC")
+    lines = [
+        f"> 免责声明:{REPORT_DISCLAIMER}",
+        "",
+        f"# 投标审查报告 {task.id[:8]}",
+        "",
+        f"- 任务 ID:{task.id}",
+        f"- 任务状态:{task.status}",
+        f"- 审查模式:{task.mode}",
+        "- 复核耗时:待补充(人工复核耗时统计未接入,占位)",
+        f"- 生成时间:{now}",
+        "",
+        "## 可提交判定",
+        "",
+        (f"命中致命红线 {len(fatal_hits)} 项,建议整改后重新审查。" if fatal_hits else "未命中致命红线,可进入人工终审。"),
+        "",
+    ]
+    for sev in ("fatal", "major", "minor", "info"):
+        rows = [i for i in issues if i.severity == sev]
+        lines += [f"## {SEVERITY_LABELS[sev]}({sev})——{len(rows)} 项", ""]
+        if not rows:
+            lines += ["无", ""]
+            continue
+        for i in rows:
+            lines += [
+                f"### {'【待人工】' if i.need_human else ''}{i.rule_id} {_oneline(i.message)}",
+                f"- 判定:{i.verdict}",
+                f"- 证据:{_fmt_evidence(list(i.evidence or []))}",
+                f"- 修复建议:{_oneline(i.fix) or '无'}",
+                "",
+            ]
+    return "\n".join(lines).rstrip() + "\n"
+
+
+@router.get("/tasks/{task_id}/report")
+async def export_task_report(
+    task_id: str,
+    format: str = "md",
+    db: AsyncSession = Depends(get_db),
+    owner_id: str = Depends(current_owner),
+):
+    """审查报告导出(plan Task 21):format=md 返回 markdown 文本(首行免责声明、
+    可提交判定提示行、按 severity 分节、每条含规则 ID/证据/修复建议、复核耗时占位);
+    format 白名单只收 md——html 导出属 M4,422 拒绝不静默降级;owner 过滤同既有端点,
+    Content-Disposition attachment 供浏览器直接下载。"""
+    if format != "md":
+        raise HTTPException(status_code=422, detail="format 仅支持 md(html 导出属 M4)")
+    task = await crud.get_task(db, task_id=task_id, owner_id=owner_id)
+    if task is None:
+        raise HTTPException(status_code=404, detail="任务不存在")
+    issues = await crud.list_issues(db, task_id=task_id, owner_id=owner_id)
+    return Response(
+        content=_render_report_md(task, issues),
+        media_type="text/markdown; charset=utf-8",
+        headers={"Content-Disposition": f'attachment; filename="bid-review-report-{task_id[:8]}.md"'},
+    )
 
 
 # ── 规则包端点 ────────────────────────────────────────────────────────
