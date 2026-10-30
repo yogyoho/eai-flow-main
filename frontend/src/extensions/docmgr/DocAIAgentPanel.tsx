@@ -1,7 +1,21 @@
 "use client";
 
 import { useStream } from "@langchain/langgraph-sdk/react";
-import { RefreshCw, Sparkles, Trash2, X } from "lucide-react";
+import {
+  Check,
+  Copy,
+  FileText,
+  Languages,
+  List,
+  Pencil,
+  RefreshCw,
+  Sparkles,
+  SquareCheckBig,
+  Trash2,
+  Type,
+  X,
+  type LucideIcon,
+} from "lucide-react";
 import React, {
   useCallback,
   useEffect,
@@ -18,7 +32,7 @@ import { cn } from "@/lib/utils";
 
 import { docmgrApi } from "../api";
 
-import { DocAITaskArea, PresetChips, useDocAITask } from "./DocAITaskArea";
+import { DocAITaskArea, PRESETS, useDocAITask } from "./DocAITaskArea";
 import type {
   PersonalBlockNoteEditorRef,
   DocOperation,
@@ -236,48 +250,177 @@ export function createAIMessageParser(): (
 
 // ─── sub-components ─────────────────────────────────────────────────────
 
-function WelcomePage() {
+type HeadingInfo = { index: number; level: number; text: string };
+
+/** clipboard API 不可用（http/旧内核/权限拒绝）时的 execCommand 兜底。 */
+function fallbackCopyText(text: string) {
+  try {
+    const ta = document.createElement("textarea");
+    ta.value = text;
+    ta.style.position = "fixed";
+    ta.style.opacity = "0";
+    document.body.appendChild(ta);
+    ta.select();
+    document.execCommand("copy");
+    ta.remove();
+  } catch {
+    /* ignore */
+  }
+}
+
+// EAI-CUSTOM (面板 v2 方案三): 空态六宫格。操作项复用 DocAITaskArea PRESETS
+//（id/label 不改），图标与一句话描述在此补齐——原型
+// .wolf/tmp/docmgr-ai-panel-redesign-v2.html 方案三 qcard 文案对齐；
+// 图标一律 lucide 内联 SVG（无 emoji、无新依赖）。
+const QCARD_META: Record<
+  (typeof PRESETS)[number]["id"],
+  { icon: LucideIcon; desc: string }
+> = {
+  polish: { icon: Pencil, desc: "逐节提升表达，保留结构" },
+  proofread: { icon: SquareCheckBig, desc: "错别字 · 数值 · 术语一致性" },
+  terminology: { icon: Languages, desc: "同词异形归一" },
+  format: { icon: Type, desc: "空格 · 标题层级（自动应用）" },
+  toc: { icon: List, desc: "按标题层级插入文首" },
+  summary: { icon: FileText, desc: "生成摘要卡，可插入文末" },
+};
+
+// EAI-CUSTOM (面板 v2 方案三): 空态 = 快捷指令宫格 + launcher 预览条。
+// 交互：点宫格选中 → 展开 launcher；目标 pills「全部章节」默认选中，
+// 与任选节互斥（多选节 = 全部之外的任意组合）；「开始执行」投递
+// startTask(op, sections)，全部章节时 sections 为 undefined（全文）。
+function EmptyState({
+  disabled,
+  headings,
+  onStart,
+}: {
+  disabled: boolean;
+  headings: HeadingInfo[];
+  onStart: (operation: string, sections?: number[]) => void;
+}) {
+  const [selected, setSelected] = useState<string | null>(null);
+  const [sections, setSections] = useState<number[]>([]);
+  const shown = headings.slice(0, 8);
+  const selectedPreset = PRESETS.find((p) => p.id === selected);
+
+  const toggleSection = (index: number) =>
+    setSections((prev) =>
+      prev.includes(index) ? prev.filter((i) => i !== index) : [...prev, index],
+    );
+
+  const pillCls = (on: boolean) =>
+    cn(
+      "h-6 rounded-full border px-2.5 text-[11px] transition-colors disabled:cursor-not-allowed disabled:opacity-40",
+      on
+        ? "border-primary/60 bg-primary/10 text-primary font-medium"
+        : "border-border bg-background text-muted-foreground hover:border-primary/40",
+    );
+
   return (
-    <div className="flex h-full flex-col items-center justify-center px-6 text-center">
-      <div className="bg-primary/10 mb-4 flex h-12 w-12 items-center justify-center rounded-xl">
-        <Sparkles className="text-primary h-6 w-6" />
-      </div>
-      <div className="text-foreground mb-6 text-base font-semibold">
-        文档 AI 助手
-      </div>
-
-      <div className="text-muted-foreground w-full space-y-4 text-center text-sm">
-        <div>
-          <div className="text-foreground mb-1.5 font-medium">内容协作</div>
-          <ul className="list-none space-y-1 p-0 text-xs">
-            <li>&quot;给第3节加一段安全措施&quot;</li>
-            <li>&quot;把设计参数表格改成文字描述&quot;</li>
-            <li>&quot;在文档末尾补充结论&quot;</li>
-          </ul>
-        </div>
-        <div>
-          <div className="text-foreground mb-1.5 font-medium">文档审查</div>
-          <ul className="list-none space-y-1 p-0 text-xs">
-            <li>&quot;检查公式编号是否连续&quot;</li>
-            <li>&quot;这段计算逻辑有没有问题&quot;</li>
-            <li>&quot;全文的术语使用是否统一&quot;</li>
-          </ul>
-        </div>
-        <div>
-          <div className="text-foreground mb-1.5 font-medium">
-            格式修正（自动应用）
+    <div className="flex h-full flex-col items-center overflow-y-auto px-4 py-6">
+      <div className="w-full space-y-3">
+        <div className="px-0.5">
+          <div className="text-foreground text-sm font-semibold">
+            选择一个操作
           </div>
-          <ul className="list-none space-y-1 p-0 text-xs">
-            <li>&quot;统一中英文之间的空格&quot;</li>
-            <li>&quot;修正标题层级&quot;</li>
-          </ul>
+          <div className="text-muted-foreground mt-0.5 text-xs">
+            所有操作先出预览，逐节确认后应用
+          </div>
         </div>
-      </div>
+        <div className="grid grid-cols-2 gap-2">
+          {PRESETS.map((p) => {
+            const meta = QCARD_META[p.id];
+            const on = selected === p.id;
+            const Icon = meta.icon;
+            return (
+              <button
+                key={p.id}
+                type="button"
+                disabled={disabled}
+                aria-pressed={on}
+                onClick={() => setSelected(on ? null : p.id)}
+                className={cn(
+                  "flex items-start gap-2 rounded-lg border p-2.5 text-left transition-colors disabled:cursor-not-allowed disabled:opacity-40",
+                  on
+                    ? "border-primary/50 bg-primary/10 ring-primary/15 ring-2"
+                    : "border-border hover:border-primary/40 hover:bg-primary/5",
+                )}
+              >
+                <span className="bg-primary/10 text-primary flex h-[30px] w-[30px] shrink-0 items-center justify-center rounded-lg">
+                  <Icon className="h-4 w-4" />
+                </span>
+                <span className="min-w-0">
+                  <span className="text-foreground block text-[12.5px] font-semibold">
+                    {p.label}
+                  </span>
+                  <span className="text-muted-foreground block text-[11px] leading-snug">
+                    {meta.desc}
+                  </span>
+                </span>
+              </button>
+            );
+          })}
+        </div>
 
-      <div className="text-muted-foreground/70 mt-6 text-xs leading-relaxed">
-        操作有预览，你可以逐条确认或拒绝。
-        <br />
-        格式修正类操作会自动应用，可一键撤销。
+        {selectedPreset && (
+          <div className="border-border bg-muted/40 rounded-lg border p-3">
+            <div className="text-muted-foreground text-[11px]">
+              执行预览 ·{" "}
+              <span className="text-foreground font-semibold">
+                {selectedPreset.label}
+              </span>
+            </div>
+            <div className="mt-2 flex flex-wrap gap-1.5">
+              <button
+                type="button"
+                disabled={disabled}
+                aria-pressed={sections.length === 0}
+                onClick={() => setSections([])}
+                className={pillCls(sections.length === 0)}
+              >
+                全部章节
+              </button>
+              {shown.map((h) => (
+                <button
+                  key={h.index}
+                  type="button"
+                  disabled={disabled}
+                  aria-pressed={sections.includes(h.index)}
+                  title={h.text}
+                  onClick={() => toggleSection(h.index)}
+                  className={cn(
+                    pillCls(sections.includes(h.index)),
+                    "max-w-[9.5rem] truncate",
+                  )}
+                >
+                  {`§${h.index + 1} ${h.text}`}
+                </button>
+              ))}
+            </div>
+            {headings.length === 0 && (
+              <div className="text-muted-foreground/70 mt-1.5 text-[11px]">
+                未检测到章节标题，仅支持全文执行。
+              </div>
+            )}
+            <div className="mt-2.5 flex items-center gap-2">
+              <Button
+                size="sm"
+                className="h-7 px-3 text-xs"
+                disabled={disabled}
+                onClick={() =>
+                  onStart(
+                    selectedPreset.id,
+                    sections.length > 0 ? sections : undefined,
+                  )
+                }
+              >
+                开始执行
+              </Button>
+              <span className="text-muted-foreground/80 text-[11px]">
+                逐节出预览，可随时取消；格式类自动应用可撤销。
+              </span>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
@@ -677,77 +820,92 @@ export default function DocAIAgentPanel({
     : "默认模型";
 
   // ── submit ────────────────────────────────────────────────────────
+  // EAI-CUSTOM (面板 v2): 投递核心从 handleSubmit 抽出，供输入框与回复
+  // 操作条「重新生成」共用（重试 = 重发最后一条用户消息，开新回合）。
+  const submitMessage = useCallback(
+    async (message: string) => {
+      if (docTask.busy) {
+        setError("全文任务进行中，请先完成或取消再发送对话");
+        return;
+      }
+      if (!message || isCreating || submitting) return;
+      const el = inputRef.current;
+
+      setUserMessages((prev) => [...prev, message]);
+      if (el) {
+        el.value = "";
+        el.style.height = "auto";
+      }
+      setError(null);
+      setSubmitting(true);
+
+      try {
+        // Sync current editor content to backend
+        const rawMarkdown = (await editorRef.current?.getMarkdown()) ?? "";
+        const cleanContent = rawMarkdown
+          .replace(/<span[^>]*data-ai-\w+[^>]*>/g, "")
+          .replace(/<\/span>/g, "");
+        const token =
+          typeof document !== "undefined"
+            ? /(?:^|;\s*)csrf_token=([^;]+)/.exec(document.cookie)?.[1]
+            : null;
+        await fetch(
+          `/api/extensions/docmgr/personal-docs/${encodeURIComponent(threadId)}/content`,
+          {
+            method: "PUT",
+            headers: {
+              "Content-Type": "application/json",
+              ...(token ? { "X-CSRF-Token": token } : {}),
+            },
+            credentials: "include",
+            body: JSON.stringify({
+              rel_path: docRelPath,
+              content: cleanContent,
+            }),
+          },
+        );
+
+        // C10: AI 消息提交前把当前内容存为版本快照（改稿后可回退）。失败不阻塞主流程。
+        try {
+          await docmgrApi.createPersonalVersion(threadId, {
+            rel_path: docRelPath,
+            content: cleanContent,
+            label: "AI 编辑前快照",
+          });
+        } catch {
+          /* 版本快照失败不影响 AI 对话 */
+        }
+
+        await ensureThread();
+        pendingRef.current = { message, modelName };
+        setSubmitTick((v) => v + 1);
+      } catch (e) {
+        // Restore input on failure so user can retry
+        if (el) el.value = message;
+        setError(getErrorMessage(e, "发送失败，请重试"));
+      } finally {
+        setSubmitting(false);
+      }
+    },
+    [
+      isCreating,
+      submitting,
+      ensureThread,
+      modelName,
+      editorRef,
+      threadId,
+      docRelPath,
+      docTask.busy,
+    ],
+  );
+
   const handleSubmit = useCallback(async () => {
     const el = inputRef.current;
     if (!el) return;
-    const trimmed = el.value.trim();
-    if (docTask.busy) {
-      setError("全文任务进行中，请先完成或取消再发送对话");
-      return;
-    }
-    if (!trimmed || isCreating || submitting) return;
-
-    const message = trimmed;
-    setUserMessages((prev) => [...prev, message]);
-    el.value = "";
-    el.style.height = "auto";
-    setError(null);
-    setSubmitting(true);
-
-    try {
-      // Sync current editor content to backend
-      const rawMarkdown = (await editorRef.current?.getMarkdown()) ?? "";
-      const cleanContent = rawMarkdown
-        .replace(/<span[^>]*data-ai-\w+[^>]*>/g, "")
-        .replace(/<\/span>/g, "");
-      const token =
-        typeof document !== "undefined"
-          ? /(?:^|;\s*)csrf_token=([^;]+)/.exec(document.cookie)?.[1]
-          : null;
-      await fetch(
-        `/api/extensions/docmgr/personal-docs/${encodeURIComponent(threadId)}/content`,
-        {
-          method: "PUT",
-          headers: {
-            "Content-Type": "application/json",
-            ...(token ? { "X-CSRF-Token": token } : {}),
-          },
-          credentials: "include",
-          body: JSON.stringify({ rel_path: docRelPath, content: cleanContent }),
-        },
-      );
-
-      // C10: AI 消息提交前把当前内容存为版本快照（改稿后可回退）。失败不阻塞主流程。
-      try {
-        await docmgrApi.createPersonalVersion(threadId, {
-          rel_path: docRelPath,
-          content: cleanContent,
-          label: "AI 编辑前快照",
-        });
-      } catch {
-        /* 版本快照失败不影响 AI 对话 */
-      }
-
-      await ensureThread();
-      pendingRef.current = { message, modelName };
-      setSubmitTick((v) => v + 1);
-    } catch (e) {
-      // Restore input on failure so user can retry
-      el.value = message;
-      setError(getErrorMessage(e, "发送失败，请重试"));
-    } finally {
-      setSubmitting(false);
-    }
-  }, [
-    isCreating,
-    submitting,
-    ensureThread,
-    modelName,
-    editorRef,
-    threadId,
-    docRelPath,
-    docTask.busy,
-  ]);
+    const message = el.value.trim();
+    if (!message) return;
+    await submitMessage(message);
+  }, [submitMessage]);
 
   // ── send queued message when stream is ready ──────────────────────
   // Watch streamState.isLoading directly so the effect fires when loading completes.
@@ -863,6 +1021,63 @@ export default function DocAIAgentPanel({
     [],
   );
 
+  // ── 空态目标章节快照（v2 方案三 launcher） ─────────────────────────
+  // EAI-CUSTOM (面板 v2): 快照语义——只在进入空态那一刻轮询读一次编辑器
+  // 标题（渲染期绝不直读 editor；编辑器异步挂载，最多等 5s），此后文档
+  // 再编辑不主动刷新，下一轮进入空态时重新快照。0 标题 → 仅「全部章节」。
+  const [headingSnapshot, setHeadingSnapshot] = useState<HeadingInfo[]>([]);
+  const showEmpty =
+    !isCreating && userMessages.length === 0 && allMessages.length === 0;
+  useEffect(() => {
+    if (!showEmpty) return;
+    let cancelled = false;
+    let tries = 0;
+    const timer = setInterval(() => {
+      const ed = editorRef.current;
+      if (ed) {
+        if (!cancelled) setHeadingSnapshot(ed.getHeadings());
+        clearInterval(timer);
+      } else if (++tries > 25) {
+        if (!cancelled) setHeadingSnapshot([]);
+        clearInterval(timer);
+      }
+    }, 200);
+    return () => {
+      cancelled = true;
+      clearInterval(timer);
+    };
+  }, [showEmpty, editorRef]);
+
+  // ── 回复操作条（v2 方案一：复制 / 重新生成） ───────────────────────
+  const [copiedId, setCopiedId] = useState<string | null>(null);
+
+  // EAI-CUSTOM (面板 v2): 复制走 clipboard API，失败降级 execCommand；
+  // 「已复制」反馈 2s 自清（只清自己那条，避免连点互踩）。
+  const copyReply = useCallback((id: string, text: string) => {
+    const markCopied = () => {
+      setCopiedId(id);
+      setTimeout(() => setCopiedId((v) => (v === id ? null : v)), 2000);
+    };
+    if (typeof navigator !== "undefined" && navigator.clipboard?.writeText) {
+      navigator.clipboard
+        .writeText(text)
+        .then(markCopied)
+        .catch(() => {
+          fallbackCopyText(text);
+          markCopied();
+        });
+    } else {
+      fallbackCopyText(text);
+      markCopied();
+    }
+  }, []);
+
+  // EAI-CUSTOM (面板 v2): 重新生成 = 重发最后一条用户消息（新回合）。
+  const retryLast = useCallback(() => {
+    const last = userMessages[userMessages.length - 1];
+    if (last && !streamLoading && !docTask.busy) void submitMessage(last);
+  }, [userMessages, streamLoading, docTask.busy, submitMessage]);
+
   return (
     <div className="bg-background flex h-full w-full flex-col">
       {/* Header */}
@@ -896,12 +1111,22 @@ export default function DocAIAgentPanel({
       <div className="flex-1 overflow-y-auto">
         {subThreadId ? (
           userMessages.length === 0 && allMessages.length === 0 ? (
-            <WelcomePage />
+            /* EAI-CUSTOM (面板 v2 方案三): 空态 = 快捷宫格 + launcher 预览条 */
+            <EmptyState
+              disabled={isCreating || docTask.busy}
+              headings={headingSnapshot}
+              onStart={(op, sections) => void docTask.startTask(op, sections)}
+            />
           ) : (
             <div className="space-y-4 p-4">
               {/* Interleaved Q&A: 问1 答1 问2 答2 ... */}
               {(() => {
                 const aiMsgs = allMessages.filter((m) => m.type === "ai");
+                // EAI-CUSTOM (面板 v2 方案一): 操作条只挂最后一条回复，且流式结束后才出现。
+                const lastAiId =
+                  aiMsgs.length > 0
+                    ? (aiMsgs[aiMsgs.length - 1]!.id ?? null)
+                    : null;
                 const items: Array<
                   | { type: "human"; text: string; idx: number }
                   | { type: "ai"; msg: (typeof allMessages)[number] }
@@ -928,15 +1153,28 @@ export default function DocAIAgentPanel({
                         key={`user-${item.idx}`}
                         className="flex justify-end"
                       >
-                        <div className="bg-primary text-primary-foreground max-w-[85%] rounded-2xl rounded-br-md px-3.5 py-2 text-sm leading-relaxed break-words whitespace-pre-wrap">
+                        {/* EAI-CUSTOM (面板 v2 方案一): 用户气泡淡 primary 底 + 右下小角 */}
+                        <div className="bg-primary/10 text-foreground max-w-[85%] rounded-xl rounded-br-sm px-3.5 py-2 text-sm leading-relaxed break-words whitespace-pre-wrap">
                           {item.text}
                         </div>
                       </div>
                     );
                   }
                   const { text, ops, error } = parseAIMessage(item.msg);
+                  const msgId = item.msg.id ?? "";
+                  const isLastReply =
+                    !streamLoading && msgId !== "" && msgId === lastAiId;
                   return (
-                    <div key={item.msg.id}>
+                    <div key={item.msg.id} className="max-w-[94%]">
+                      {/* EAI-CUSTOM (面板 v2 方案一): ai-meta——orb + 「AI 助手」 */}
+                      <div className="mb-1 flex items-center gap-1.5">
+                        <span className="bg-primary/10 text-primary flex h-5 w-5 items-center justify-center rounded-md">
+                          <Sparkles className="h-3 w-3" />
+                        </span>
+                        <span className="text-muted-foreground text-xs font-medium">
+                          AI 助手
+                        </span>
+                      </div>
                       <div className="text-foreground text-sm leading-relaxed break-words">
                         {text ? (
                           <SafeStreamdown>{text}</SafeStreamdown>
@@ -959,6 +1197,39 @@ export default function DocAIAgentPanel({
                           ⚠️ {error}
                         </div>
                       )}
+                      {isLastReply && text && (
+                        <div className="mt-1.5 flex items-center gap-0.5">
+                          <button
+                            type="button"
+                            title="复制"
+                            aria-label="复制"
+                            onClick={() => copyReply(msgId, text)}
+                            className="text-muted-foreground hover:bg-muted hover:text-foreground flex h-6 w-6 items-center justify-center rounded-md transition-colors"
+                          >
+                            {copiedId === msgId ? (
+                              <Check className="h-3.5 w-3.5" />
+                            ) : (
+                              <Copy className="h-3.5 w-3.5" />
+                            )}
+                          </button>
+                          {userMessages.length > 0 && (
+                            <button
+                              type="button"
+                              title="重新生成"
+                              aria-label="重新生成"
+                              onClick={retryLast}
+                              className="text-muted-foreground hover:bg-muted hover:text-foreground flex h-6 w-6 items-center justify-center rounded-md transition-colors"
+                            >
+                              <RefreshCw className="h-3.5 w-3.5" />
+                            </button>
+                          )}
+                          {copiedId === msgId && (
+                            <span className="text-muted-foreground ml-1 text-xs">
+                              已复制
+                            </span>
+                          )}
+                        </div>
+                      )}
                     </div>
                   );
                 });
@@ -978,17 +1249,15 @@ export default function DocAIAgentPanel({
             准备中...
           </div>
         ) : (
-          <WelcomePage />
+          <EmptyState
+            disabled={docTask.busy}
+            headings={headingSnapshot}
+            onStart={(op, sections) => void docTask.startTask(op, sections)}
+          />
         )}
       </div>
 
       {/* 全文操作任务通道（EAI-CUSTOM M1） */}
-      <div className="border-border shrink-0 border-t px-3 pt-2">
-        <PresetChips
-          disabled={docTask.busy || isCreating}
-          onPick={(op) => void docTask.startTask(op)}
-        />
-      </div>
       {docTask.state && (
         <DocAITaskArea
           task={docTask.state}
@@ -1029,14 +1298,15 @@ export default function DocAIAgentPanel({
             </button>
           </div>
         )}
-        <div className="bg-muted/30 border-border rounded-2xl border px-3 py-2">
+        {/* EAI-CUSTOM (面板 v2): inrow 聚焦环 primary/20（原型 inrow focus-within） */}
+        <div className="bg-muted/30 border-border focus-within:border-primary/40 focus-within:ring-primary/10 rounded-xl border px-3 py-2 transition-shadow focus-within:ring-2">
           <textarea
             ref={inputRef}
             onInput={autoResize}
             onKeyDown={handleKeyDown}
-            placeholder="输入指令..."
+            placeholder="输入指令…"
             rows={1}
-            disabled={isCreating || submitting}
+            disabled={isCreating || submitting || docTask.busy}
             className="text-foreground placeholder:text-muted-foreground max-h-[120px] w-full min-w-0 resize-none border-none bg-transparent text-sm leading-relaxed outline-none"
           />
           <div className="mt-1.5 flex items-center justify-between">
@@ -1134,21 +1404,56 @@ export default function DocAIAgentPanel({
                 )}
               </div>
             </div>
+            {/* EAI-CUSTOM (面板 v2 方案一): 流式中发送键变停止方块（stop），与任务区停止按钮各自独立通道 */}
             <button
               type="button"
-              onClick={() => void handleSubmit()}
-              disabled={isCreating || submitting}
+              onClick={() => {
+                if (streamLoading) {
+                  void streamState?.stop?.();
+                } else {
+                  void handleSubmit();
+                }
+              }}
+              disabled={
+                isCreating || submitting || (docTask.busy && !streamLoading)
+              }
+              title={streamLoading ? "停止" : "发送"}
+              aria-label={streamLoading ? "停止" : "发送"}
               className={cn(
                 "flex h-7 w-7 shrink-0 items-center justify-center rounded-full transition-colors",
-                !streamState?.isLoading && !isCreating && !submitting
-                  ? "bg-primary text-primary-foreground hover:opacity-90"
-                  : "bg-muted text-muted-foreground",
+                isCreating || submitting
+                  ? "bg-muted text-muted-foreground"
+                  : streamLoading
+                    ? "bg-foreground text-background hover:opacity-90"
+                    : "bg-primary text-primary-foreground hover:opacity-90",
               )}
             >
-              {streamState?.isLoading || isCreating || submitting ? (
+              {isCreating || submitting ? (
                 <span className="border-muted-foreground h-3 w-3 animate-spin rounded-full border-2 border-t-transparent" />
+              ) : streamLoading ? (
+                <svg
+                  width="10"
+                  height="10"
+                  viewBox="0 0 10 10"
+                  aria-hidden="true"
+                >
+                  <rect
+                    x="1"
+                    y="1"
+                    width="8"
+                    height="8"
+                    rx="1.5"
+                    fill="currentColor"
+                  />
+                </svg>
               ) : (
-                <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+                <svg
+                  width="14"
+                  height="14"
+                  viewBox="0 0 14 14"
+                  fill="none"
+                  aria-hidden="true"
+                >
                   <path d="M2 7L12 2L7 12L5.5 7.5L2 7Z" fill="currentColor" />
                 </svg>
               )}

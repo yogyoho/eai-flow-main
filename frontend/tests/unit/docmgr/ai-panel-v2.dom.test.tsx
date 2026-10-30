@@ -1,0 +1,259 @@
+import { afterEach, beforeEach, describe, expect, it, rs } from "@rstest/core";
+import {
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from "@testing-library/react";
+import type { RefObject } from "react";
+
+import DocAIAgentPanel from "@/extensions/docmgr/DocAIAgentPanel";
+import type { PersonalBlockNoteEditorRef } from "@/extensions/docmgr/PersonalBlockNoteEditor";
+
+// ─── 面板 v2 dom 测试：空态宫格 launcher / 回复操作条 / 发送⇄停止 ─────────
+// useStream、docmgrApi、useDocAITask 全部 mock（面板层测试不碰真实流与任务通道）。
+
+const m = rs.hoisted(() => ({
+  submit: rs.fn(),
+  stop: rs.fn(),
+  startTask: rs.fn(),
+  writeText: rs.fn(() => Promise.resolve()),
+  streamState: { isLoading: false, messages: [] as unknown[] },
+}));
+
+rs.mock("@langchain/langgraph-sdk/react", () => ({
+  useStream: () => ({
+    isLoading: m.streamState.isLoading,
+    messages: m.streamState.messages,
+    stop: m.stop,
+    submit: m.submit,
+    values: {},
+  }),
+}));
+
+rs.mock("@/core/models/hooks", () => ({
+  useModels: () => ({ models: [] }),
+}));
+
+rs.mock("@/core/api", () => ({ getAPIClient: () => ({}) }));
+
+rs.mock("@/core/streamdown/components", () => ({
+  SafeStreamdown: () => null,
+}));
+
+rs.mock("@/extensions/api", () => ({
+  docmgrApi: {
+    createPersonalVersion: rs.fn(() => Promise.resolve({})),
+    aiTransformStream: rs.fn(() => Promise.resolve()),
+  },
+}));
+
+// DocAITaskArea 整体替换：PRESETS 按 Chunk 1 冻结版复刻（面板宫格消费它），
+// useDocAITask 返回受控 spy——launcher「开始执行」断言 startTask 收到的 sections。
+rs.mock("@/extensions/docmgr/DocAITaskArea", () => ({
+  PRESETS: [
+    { id: "polish", label: "全文润色" },
+    { id: "proofread", label: "全文校对" },
+    { id: "terminology", label: "术语统一" },
+    { id: "format", label: "格式规范" },
+    { id: "toc", label: "生成目录" },
+    { id: "summary", label: "全文摘要" },
+  ],
+  PresetChips: () => null,
+  DocAITaskArea: () => null,
+  useDocAITask: () => ({
+    state: null,
+    busy: false,
+    undoBlocked: false,
+    markUserEdited: rs.fn(),
+    startTask: m.startTask,
+    cancel: rs.fn(),
+    applySection: rs.fn(),
+    rejectSection: rs.fn(),
+    restoreSection: rs.fn(),
+    applyAll: rs.fn(),
+    undoAll: rs.fn(),
+    dismiss: rs.fn(),
+    retrySection: rs.fn(),
+    insertSummary: rs.fn(),
+  }),
+}));
+
+const HEADINGS = [
+  { index: 0, level: 1, text: "概述" },
+  { index: 5, level: 1, text: "设计参数" },
+  { index: 9, level: 1, text: "水力计算" },
+];
+
+function makeEditorRef(headings = HEADINGS) {
+  const ed = {
+    getHeadings: () => headings.map((h) => ({ ...h })),
+    getSectionText: rs.fn(() => ""),
+    matchAnchor: rs.fn((): null => null),
+    getMarkdown: () => Promise.resolve("# 文档"),
+    getBlockAnchors: rs.fn((): never[] => []),
+    snapshotBlocks: rs.fn((): never[] => []),
+    restoreBlocks: rs.fn(),
+    applyOperations: rs.fn(),
+    scrollToAnchor: rs.fn(),
+    onDocumentChange: rs.fn(() => rs.fn()),
+  };
+  return {
+    current: ed,
+  } as unknown as RefObject<PersonalBlockNoteEditorRef | null>;
+}
+
+const baseProps = (editorRef: ReturnType<typeof makeEditorRef>, id = "t1") => ({
+  docTitle: "测试文档",
+  docRelPath: "docs/a.md",
+  threadId: id,
+  editorRef,
+  onClose: rs.fn(),
+  subThreadId: id,
+  ensureThread: () => Promise.resolve(id),
+  isCreating: false,
+  resetThread: () => Promise.resolve(),
+  onClearHistory: rs.fn(),
+});
+
+function seedUserMessages(threadId: string, msgs: string[]) {
+  localStorage.setItem(
+    `docmgr-ai-usermessages:${threadId}`,
+    JSON.stringify(msgs),
+  );
+}
+
+const originalFetch = globalThis.fetch;
+
+describe("DocAIAgentPanel v2 空态（方案三）", () => {
+  beforeEach(() => {
+    m.streamState.isLoading = false;
+    m.streamState.messages = [];
+    m.startTask.mockClear();
+    Object.defineProperty(navigator, "clipboard", {
+      value: { writeText: m.writeText },
+      configurable: true,
+    });
+  });
+
+  afterEach(() => {
+    cleanup();
+    localStorage.clear();
+    globalThis.fetch = originalFetch;
+  });
+
+  it("空态渲染六宫格，未选中时不出现 launcher", async () => {
+    render(<DocAIAgentPanel {...baseProps(makeEditorRef())} />);
+    for (const label of [
+      "全文润色",
+      "全文校对",
+      "术语统一",
+      "格式规范",
+      "生成目录",
+      "全文摘要",
+    ]) {
+      expect(screen.getByText(label)).not.toBeNull();
+    }
+    expect(screen.queryByText(/执行预览/)).toBeNull();
+    expect(screen.queryByText("全部章节")).toBeNull();
+  });
+
+  it("选节 → 开始执行：startTask 收到正确 sections（块下标数组）", async () => {
+    render(<DocAIAgentPanel {...baseProps(makeEditorRef())} />);
+    fireEvent.click(screen.getByText("全文校对"));
+
+    // launcher 出现：预览标题 + 目标 pills（全部章节默认 on + 3 个节 pill）
+    expect(await screen.findByText(/执行预览/)).not.toBeNull();
+    const allPill = screen.getByText("全部章节");
+    // 节 pills 来自编辑器标题快照（进入空态后轮询捕获，异步到达）
+    const sectionPill = await screen.findByText("§6 设计参数");
+    expect(allPill.getAttribute("aria-pressed")).toBe("true");
+
+    // 互斥：点节 pill → 节 on、全部 off
+    fireEvent.click(sectionPill);
+    expect(sectionPill.getAttribute("aria-pressed")).toBe("true");
+    expect(allPill.getAttribute("aria-pressed")).toBe("false");
+
+    fireEvent.click(screen.getByText("开始执行"));
+    await waitFor(() => expect(m.startTask).toHaveBeenCalled());
+    expect(m.startTask).toHaveBeenCalledWith("proofread", [5]);
+  });
+
+  it("保持全部章节 → 开始执行：startTask sections 为 undefined", async () => {
+    render(<DocAIAgentPanel {...baseProps(makeEditorRef())} />);
+    fireEvent.click(screen.getByText("全文润色"));
+    fireEvent.click(await screen.findByText("开始执行"));
+    await waitFor(() => expect(m.startTask).toHaveBeenCalled());
+    expect(m.startTask).toHaveBeenCalledWith("polish", undefined);
+  });
+
+  it("0 标题文档：launcher 仅「全部章节」+ 提示，不崩溃", async () => {
+    render(<DocAIAgentPanel {...baseProps(makeEditorRef([]))} />);
+    fireEvent.click(screen.getByText("全文摘要"));
+    expect(await screen.findByText(/仅支持全文执行/)).not.toBeNull();
+    expect(screen.getByText("全部章节")).not.toBeNull();
+    expect(screen.queryByText(/^§/)).toBeNull();
+  });
+});
+
+describe("DocAIAgentPanel v2 消息流（方案一）", () => {
+  beforeEach(() => {
+    m.streamState.isLoading = false;
+    m.streamState.messages = [];
+    m.writeText.mockClear();
+    m.submit.mockClear();
+    m.stop.mockClear();
+    Object.defineProperty(navigator, "clipboard", {
+      value: { writeText: m.writeText },
+      configurable: true,
+    });
+    globalThis.fetch = rs.fn(() => Promise.resolve({ ok: true })) as never;
+  });
+
+  afterEach(() => {
+    cleanup();
+    localStorage.clear();
+    globalThis.fetch = originalFetch;
+  });
+
+  it("复制：写入剪贴板并显示「已复制」反馈", async () => {
+    seedUserMessages("t2", ["帮我校对"]);
+    m.streamState.messages = [{ id: "a1", type: "ai", content: "回复内容" }];
+    render(<DocAIAgentPanel {...baseProps(makeEditorRef(), "t2")} />);
+
+    fireEvent.click(await screen.findByTitle("复制"));
+    await waitFor(() => expect(m.writeText).toHaveBeenCalledWith("回复内容"));
+    expect(screen.getByText("已复制")).not.toBeNull();
+  });
+
+  it("重新生成：仅最后一条回复有入口，点击重发最后一条用户消息", async () => {
+    seedUserMessages("t3", ["第一条", "最后指令"]);
+    m.streamState.messages = [
+      { id: "a1", type: "ai", content: "回复一" },
+      { id: "a2", type: "ai", content: "回复二" },
+    ];
+    render(<DocAIAgentPanel {...baseProps(makeEditorRef(), "t3")} />);
+
+    // 只有最后一条回复挂操作条 → 全局仅一个「重新生成」入口
+    const retryBtns = await screen.findAllByTitle("重新生成");
+    expect(retryBtns.length).toBe(1);
+
+    fireEvent.click(retryBtns[0]!);
+    await waitFor(() => expect(m.submit).toHaveBeenCalled());
+    const arg = m.submit.mock.calls[0]?.[0] as {
+      messages: Array<{ content: string }>;
+    };
+    expect(String(arg.messages[0]?.content)).toContain("最后指令");
+  });
+
+  it("流式中发送键变停止：点击调用 stream.stop", () => {
+    seedUserMessages("t4", ["问题"]);
+    m.streamState.isLoading = true;
+    render(<DocAIAgentPanel {...baseProps(makeEditorRef(), "t4")} />);
+
+    const stopBtn = screen.getByTitle("停止");
+    fireEvent.click(stopBtn);
+    expect(m.stop).toHaveBeenCalled();
+  });
+});
