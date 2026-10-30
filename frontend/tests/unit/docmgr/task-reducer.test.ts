@@ -225,6 +225,20 @@ describe("taskReducer（任务区状态机）", () => {
     expect(applied.sections[0]?.status).toBe("applied");
   });
 
+  test("section_start 记录 total 供进度分母；部分重试 total 不缩水（复审#2）", () => {
+    let s = run(s0(), {
+      type: "section_start",
+      index: 0,
+      total: 3,
+      title: "一",
+    });
+    expect(s.total).toBe(3);
+    // 部分重试 run 只报 total=1（旧卡仍在 state）——分母取 max 不得缩水回落
+    s = run(s, { type: "restart", operation: "polish" });
+    s = run(s, { type: "section_start", index: 0, total: 1, title: "一" });
+    expect(s.total).toBe(3);
+  });
+
   test("done 记录 total 供进度条；错误路径 total:0 不覆盖（v2）", () => {
     let s = run(s0(), {
       type: "section_start",

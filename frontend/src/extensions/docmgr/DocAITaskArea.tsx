@@ -6,7 +6,14 @@
 //（接受/拒绝/恢复建议）+ 行级 LCS diff（sectionDiff.ts）。
 
 import { ChevronDown, Square, Undo2, X } from "lucide-react";
-import { useCallback, useMemo, useReducer, useRef, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useReducer,
+  useRef,
+  useState,
+} from "react";
 
 import { cn } from "@/lib/utils";
 
@@ -114,6 +121,10 @@ export function taskReducer(
           title: action.title,
           status: action.skipped ? "skipped" : "streaming",
         }),
+        // EAI-CUSTOM (全文操作 v2, 复审#2): 期望总节数随事件更新（后端每事件都发
+        // len(chosen)）——否则进度分母=已见卡片数，先完成的节会把进度条顶到 100%
+        // 再随新节回落。取 max：部分重试 run 只报 total=1，不得缩水旧分母。
+        total: Math.max(state.total ?? 0, action.total),
         skipped: action.skipped
           ? [...new Set([...state.skipped, action.index])]
           : state.skipped,
@@ -529,8 +540,10 @@ export function PresetChips({
 
 // ── v2 工单组件（工单头 + 逐节 diff 卡，替换 M1 的 SectionCard） ─────
 
-// EAI-CUSTOM (全文操作 v2): pill 色档沿用仓库 Pill 习语（contract-price bits 同款
-// token：success/warn/destructive/muted），不新增色系。
+// EAI-CUSTOM (全文操作 v2): pill 色档沿用仓库 Pill 习语（contract-price bits 同款）：
+// ok=success token、err=destructive token、gray=muted/border token；warn 档用 raw
+// amber-500（无 --color-warning-* 中间档可用的深字组合，bits.tsx warn 先例同款），
+// 不新增色系。
 type PillTone = "ok" | "warn" | "err" | "gray";
 
 const PILL_TONE: Record<PillTone, string> = {
@@ -616,6 +629,17 @@ export function DiffCard({
   const { index, title, status, ops, error } = section;
   // 展开态以挂载时 status 播种（ready 展开、其余收起），用户可自由开合。
   const [open, setOpen] = useState(status === "ready");
+  // EAI-CUSTOM (全文操作 v2, 复审#1): 生产中卡片以 streaming 挂载且 key=index
+  // 不重挂——useState 播种只在「挂载即 ready」时生效，streaming→ready 迁移须
+  // 显式展开，否则 ready 卡永远收起、接受/拒绝主流程不可见。手动收起不被覆盖
+  // （仅非 ready→ready 迁移触发）；rejected 经「恢复建议」回 ready 同样展开。
+  const prevStatusRef = useRef(status);
+  useEffect(() => {
+    if (prevStatusRef.current !== "ready" && status === "ready") {
+      setOpen(true);
+    }
+    prevStatusRef.current = status;
+  }, [status]);
   const newContent = ops?.[0]?.content ?? "";
   const lines = useMemo(
     () =>
@@ -808,9 +832,12 @@ function TicketHeader({
         />
       </div>
       <div className="mt-1.5 space-y-1 text-[11px]">
-        <div className="text-success flex items-center gap-1.5">
-          <span aria-hidden>✓</span>已完成处理 {terminal} 节
-        </div>
+        {/* EAI-CUSTOM (全文操作 v2, 复审#5): 计划行渐进出现——0 节完成时不渲染空行 */}
+        {terminal > 0 && (
+          <div className="text-success flex items-center gap-1.5">
+            <span aria-hidden>✓</span>已完成处理 {terminal} 节
+          </div>
+        )}
         {streamingSec && (
           <div className="flex items-center gap-1.5 text-amber-600 dark:text-amber-400">
             <span
@@ -865,12 +892,28 @@ export function DocAITaskArea({
     (s) => s.status === "applied",
   ).length;
   const readyCount = task.sections.filter((s) => s.status === "ready").length;
-  // diff 旧文本：仅 ready 节需要（applied 后文档已变、rejected 不展示 diff）；
-  // op.anchor 是锚点文本，由面板侧 matchAnchor 解析为块下标后取整节文本。
+  // diff 旧文本（EAI-CUSTOM v2, 复审#3）：按节 index 在首次变 ready 时快照一次并
+  // 缓存——编辑器 onChange 只动 hook 内部 ref，done 后用户手改不会重渲本区，逐 render
+  // 重算既白费全文档遍历、值还不稳定；快照语义（变 ready 时点的文档）与 restore/undo
+  // 后文档回到快照的流转一致。离开 ready（applied/rejected/重试重开 streaming）即清
+  // 缓存，再入 ready 时重新快照。
+  const oldTextCacheRef = useRef(new Map<number, string>());
+  const readyIndexes = new Set(
+    task.sections.filter((s) => s.status === "ready").map((s) => s.index),
+  );
+  for (const k of oldTextCacheRef.current.keys()) {
+    if (!readyIndexes.has(k)) oldTextCacheRef.current.delete(k);
+  }
   const oldTextFor = (s: TaskSection): string | undefined => {
     if (s.status !== "ready" || !getSectionText) return undefined;
+    const cached = oldTextCacheRef.current.get(s.index);
+    if (cached !== undefined) return cached;
+    // op.anchor 是锚点文本，由面板侧 matchAnchor 解析为块下标后取整节文本。
     const anchor = s.ops?.[0]?.anchor;
-    return anchor ? getSectionText(anchor) : undefined;
+    if (!anchor) return undefined;
+    const text = getSectionText(anchor);
+    oldTextCacheRef.current.set(s.index, text);
+    return text;
   };
   return (
     <div className="shrink-0 px-3 pb-2">

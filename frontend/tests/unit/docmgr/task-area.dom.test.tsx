@@ -98,6 +98,48 @@ describe("DiffCard", () => {
     expect(host.querySelector(".line-through")).not.toBeNull();
   });
 
+  test("streaming 挂载→ready 迁移自动展开；手动收起不被覆盖（复审#1）", async () => {
+    const host = document.createElement("div");
+    document.body.appendChild(host);
+    const streaming: TaskSection = {
+      index: 0,
+      title: "第一节",
+      status: "streaming",
+    };
+    const ready: TaskSection = {
+      ...streaming,
+      status: "ready",
+      ops: [{ op: "replace_section", anchor: "第一节", content: "新内容" }],
+    };
+    const props = {
+      onApply: () => undefined,
+      onReject: () => undefined,
+      onRetry: () => undefined,
+    };
+    // 生产路径：卡片以 streaming 挂载（key=index 不重挂）
+    let root: ReturnType<typeof createRoot> | null = null;
+    await act(async () => {
+      root = createRoot(host);
+      root.render(<DiffCard section={streaming} {...props} />);
+    });
+    expect(host.querySelector('button[aria-expanded="false"]')).not.toBeNull();
+    // streaming→ready 迁移 → 自动展开
+    await act(async () => {
+      root!.render(<DiffCard section={ready} oldText="旧内容" {...props} />);
+    });
+    expect(host.querySelector('button[aria-expanded="true"]')).not.toBeNull();
+    expect(host.querySelector(".line-through")).not.toBeNull();
+    // 用户手动收起后，ready 重渲染不重新展开
+    await click(
+      host.querySelector<HTMLButtonElement>('button[aria-expanded="true"]')!,
+    );
+    expect(host.querySelector('button[aria-expanded="false"]')).not.toBeNull();
+    await act(async () => {
+      root!.render(<DiffCard section={ready} oldText="旧内容" {...props} />);
+    });
+    expect(host.querySelector('button[aria-expanded="false"]')).not.toBeNull();
+  });
+
   test("oldText 缺省 → 退化为新内容预览（无 diff 色档）", async () => {
     const host = await render(
       <DiffCard
