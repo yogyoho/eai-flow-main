@@ -315,6 +315,50 @@ export function findSectionRange(
   return { blockIds, startIndex: anchorIndex, endIndex: end };
 }
 
+/** getHeadings 输出行：index=块下标（React key），section=后端任务空间下标。 */
+export interface HeadingRef {
+  index: number;
+  level: number;
+  text: string;
+  /** EAI-CUSTOM (面板 v2 复审#1): 后端 split_sections 桶下标（ai_transform chosen 空间）——
+   *  可选前导节占 1 桶（首个 heading 前存在含文本的非标题顶层块；空块=后端 lead，不算节），
+   *  再加全部 heading 序数（含空文本标题；输出列表仍省略空文本标题）。
+   *  任务投递与面板展示一律用 section；块下标与桶下标相差前置块数，混用会越界被静默过滤或错位改节。 */
+  section: number;
+}
+
+/** 纯函数：从块列表算标题清单（含后端 split_sections 桶下标）。getHeadings 的实现体。 */
+export function computeHeadings(doc: AnchorBlock[]): HeadingRef[] {
+  // 前导节：首个 heading 前存在含文本的非标题顶层块 → 后端多切一个前导桶
+  let preamble = 0;
+  for (const block of doc) {
+    if (!block) continue;
+    if (block.type === "heading") break;
+    if (getBlockText(block).trim()) {
+      preamble = 1;
+      break;
+    }
+  }
+  let headingOrdinal = 0;
+  const out: HeadingRef[] = [];
+  for (let i = 0; i < doc.length; i++) {
+    const block = doc[i];
+    if (block?.type !== "heading") continue;
+    const section = preamble + headingOrdinal;
+    headingOrdinal++; // 序数计全部 heading（含空文本），空文本仅不输出
+    const text = getBlockText(block);
+    if (!text.trim()) continue;
+    const level = block.props?.level;
+    out.push({
+      index: i,
+      level: typeof level === "number" ? level : 1,
+      text,
+      section,
+    });
+  }
+  return out;
+}
+
 // EAI-CUSTOM (全文操作 M1 / spec §3-2): op.content 统一经「details 切分 + 数学转换」管线，
 // 与 seed 同款。修复 $$..$$ 独立公式被裸 tryParse 成纯文本段落的问题。
 // tryParse 由调用方注入以便测试。
@@ -362,8 +406,9 @@ export interface PersonalBlockNoteEditorRef {
   scrollToBlock: (blockId: string) => boolean;
   /** EAI-CUSTOM (全文操作): 注册文档变更监听（任务区脏检查）。返回注销函数。 */
   onDocumentChange: (cb: () => void) => () => void;
-  /** EAI-CUSTOM (全文操作 v2): 收集标题块（块下标/层级/纯文本；空文本标题跳过）。 */
-  getHeadings: () => Array<{ index: number; level: number; text: string }>;
+  /** EAI-CUSTOM (全文操作 v2 / 复审#1): 收集标题块——index=块下标（仅作 key），
+   *  section=后端 split_sections 桶下标（任务投递/展示用；语义见 HeadingRef）。 */
+  getHeadings: () => HeadingRef[];
   /** EAI-CUSTOM (全文操作 v2): 按标题块下标取整节纯文本（\n 连接，与锚点匹配同款提取）；锚点非标题或越界返回 ""。 */
   getSectionText: (anchorIndex: number) => string;
 }
@@ -731,23 +776,8 @@ const PersonalBlockNoteEditor = forwardRef<
     matchAnchor: (text: string) => findBlockByAnchor(editor.document, text),
 
     // EAI-CUSTOM (全文操作 v2): 工单 diff 卡取「旧节文本」——按标题块下标整节提取。
-    getHeadings: () => {
-      const doc = editor.document as unknown as AnchorBlock[];
-      const out: Array<{ index: number; level: number; text: string }> = [];
-      for (let i = 0; i < doc.length; i++) {
-        const block = doc[i];
-        if (block?.type !== "heading") continue;
-        const text = getBlockText(block);
-        if (!text.trim()) continue; // 空文本标题跳过
-        const level = block.props?.level;
-        out.push({
-          index: i,
-          level: typeof level === "number" ? level : 1,
-          text,
-        });
-      }
-      return out;
-    },
+    getHeadings: () =>
+      computeHeadings(editor.document as unknown as AnchorBlock[]),
 
     getSectionText: (anchorIndex: number) => {
       const doc = editor.document as unknown as AnchorBlock[];

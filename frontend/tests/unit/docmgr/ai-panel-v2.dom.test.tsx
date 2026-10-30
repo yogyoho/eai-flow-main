@@ -60,7 +60,6 @@ rs.mock("@/extensions/docmgr/DocAITaskArea", () => ({
     { id: "toc", label: "生成目录" },
     { id: "summary", label: "全文摘要" },
   ],
-  PresetChips: () => null,
   DocAITaskArea: () => null,
   useDocAITask: () => ({
     state: null,
@@ -80,10 +79,12 @@ rs.mock("@/extensions/docmgr/DocAITaskArea", () => ({
   }),
 }));
 
+// 复审#1 fixture：index（块下标）与 section（后端 split_sections 桶下标）刻意
+// 错开——有前导节（preamble=1）时首标题 section=1，证明面板投递/展示用 section 空间。
 const HEADINGS = [
-  { index: 0, level: 1, text: "概述" },
-  { index: 5, level: 1, text: "设计参数" },
-  { index: 9, level: 1, text: "水力计算" },
+  { index: 2, level: 1, text: "概述", section: 1 },
+  { index: 5, level: 1, text: "设计参数", section: 2 },
+  { index: 9, level: 1, text: "水力计算", section: 3 },
 ];
 
 function makeEditorRef(headings = HEADINGS) {
@@ -159,15 +160,16 @@ describe("DocAIAgentPanel v2 空态（方案三）", () => {
     expect(screen.queryByText("全部章节")).toBeNull();
   });
 
-  it("选节 → 开始执行：startTask 收到正确 sections（块下标数组）", async () => {
+  it("选节 → 开始执行：startTask 收到正确 sections（split_sections 桶下标数组）", async () => {
     render(<DocAIAgentPanel {...baseProps(makeEditorRef())} />);
     fireEvent.click(screen.getByText("全文校对"));
 
     // launcher 出现：预览标题 + 目标 pills（全部章节默认 on + 3 个节 pill）
     expect(await screen.findByText(/执行预览/)).not.toBeNull();
     const allPill = screen.getByText("全部章节");
-    // 节 pills 来自编辑器标题快照（进入空态后轮询捕获，异步到达）
-    const sectionPill = await screen.findByText("§6 设计参数");
+    // 节 pills 来自编辑器标题快照（进入空态后轮询捕获，异步到达）；
+    // 展示用 section 空间：设计参数 section=2 → §3（块下标是 5）
+    const sectionPill = await screen.findByText("§3 设计参数");
     expect(allPill.getAttribute("aria-pressed")).toBe("true");
 
     // 互斥：点节 pill → 节 on、全部 off
@@ -177,7 +179,7 @@ describe("DocAIAgentPanel v2 空态（方案三）", () => {
 
     fireEvent.click(screen.getByText("开始执行"));
     await waitFor(() => expect(m.startTask).toHaveBeenCalled());
-    expect(m.startTask).toHaveBeenCalledWith("proofread", [5]);
+    expect(m.startTask).toHaveBeenCalledWith("proofread", [2]);
   });
 
   it("保持全部章节 → 开始执行：startTask sections 为 undefined", async () => {

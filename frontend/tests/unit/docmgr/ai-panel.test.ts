@@ -7,6 +7,7 @@ import {
 import {
   levenshteinDistance,
   findBlockByAnchor,
+  computeHeadings,
 } from "@/extensions/docmgr/PersonalBlockNoteEditor";
 
 // ─── levenshteinDistance ──────────────────────────────────────────────
@@ -158,6 +159,51 @@ describe("findBlockByAnchor", () => {
 
   test("empty document → null", () => {
     expect(findBlockByAnchor([], "anything")).toBeNull();
+  });
+});
+
+// ─── computeHeadings（复审#1：section = 后端 split_sections 桶下标） ───
+
+describe("computeHeadings", () => {
+  test("有前导文本块 → 首标题 section=1，依次递增", () => {
+    const doc = [
+      block("paragraph", "p0", "文档导言"),
+      block("heading", "h1", "概述"),
+      block("paragraph", "p1", "正文"),
+      block("heading", "h2", "设计参数"),
+    ];
+    const out = computeHeadings(doc);
+    expect(out.map((h) => [h.text, h.section])).toEqual([
+      ["概述", 1],
+      ["设计参数", 2],
+    ]);
+    expect(out[0]!.index).toBe(1); // 块下标仅作 key，与 section 空间区分
+  });
+
+  test("无前导文本块（标题起头）→ 首标题 section=0", () => {
+    const doc = [
+      block("heading", "h1", "概述"),
+      block("heading", "h2", "设计参数"),
+    ];
+    const out = computeHeadings(doc);
+    expect(out.map((h) => h.section)).toEqual([0, 1]);
+  });
+
+  test("空文本块不算前导节（后端 lead 不占桶）", () => {
+    const doc = [block("paragraph", "p0", ""), block("heading", "h1", "概述")];
+    expect(computeHeadings(doc)[0]!.section).toBe(0);
+  });
+
+  test("空文本标题计入序数但不出现在输出（与后端分桶一致）", () => {
+    const doc = [
+      block("paragraph", "p0", "导言"),
+      block("heading", "h1", ""), // 空标题：占 1 桶（section=1）但不输出
+      block("heading", "h2", "概述"),
+    ];
+    const out = computeHeadings(doc);
+    expect(out.length).toBe(1);
+    expect(out[0]!.text).toBe("概述");
+    expect(out[0]!.section).toBe(2); // 前导 1 + 空标题序数 1
   });
 });
 

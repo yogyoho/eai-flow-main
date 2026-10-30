@@ -36,6 +36,7 @@ import { DocAITaskArea, PRESETS, useDocAITask } from "./DocAITaskArea";
 import type {
   PersonalBlockNoteEditorRef,
   DocOperation,
+  HeadingRef,
 } from "./PersonalBlockNoteEditor";
 
 function getErrorMessage(err: unknown, fallback: string): string {
@@ -250,7 +251,10 @@ export function createAIMessageParser(): (
 
 // ─── sub-components ─────────────────────────────────────────────────────
 
-type HeadingInfo = { index: number; level: number; text: string };
+// EAI-CUSTOM (面板 v2 复审#1): 空态节 pills 的下标空间 = 后端 split_sections 桶
+// 下标（HeadingRef.section），不是 BlockNote 块下标——两者相差前导节 +1 与
+// 空文本标题计数，混用会被后端静默过滤或错位改节。
+type HeadingInfo = HeadingRef;
 
 /** clipboard API 不可用（http/旧内核/权限拒绝）时的 execCommand 兜底。 */
 function fallbackCopyText(text: string) {
@@ -384,15 +388,15 @@ function EmptyState({
                   key={h.index}
                   type="button"
                   disabled={disabled}
-                  aria-pressed={sections.includes(h.index)}
+                  aria-pressed={sections.includes(h.section)}
                   title={h.text}
-                  onClick={() => toggleSection(h.index)}
+                  onClick={() => toggleSection(h.section)}
                   className={cn(
-                    pillCls(sections.includes(h.index)),
+                    pillCls(sections.includes(h.section)),
                     "max-w-[9.5rem] truncate",
                   )}
                 >
-                  {`§${h.index + 1} ${h.text}`}
+                  {`§${h.section + 1} ${h.text}`}
                 </button>
               ))}
             </div>
@@ -822,20 +826,18 @@ export default function DocAIAgentPanel({
   // ── submit ────────────────────────────────────────────────────────
   // EAI-CUSTOM (面板 v2): 投递核心从 handleSubmit 抽出，供输入框与回复
   // 操作条「重新生成」共用（重试 = 重发最后一条用户消息，开新回合）。
+  // 复审#2：本函数绝不碰输入框——清空草稿/高度重置/失败恢复都是 send 路径
+  // 专属，放 handleSubmit；retry 共用此路径时不毁用户正在输入的内容。
+  // 返回 true = 失败（send 路径需恢复草稿）。
   const submitMessage = useCallback(
-    async (message: string) => {
+    async (message: string): Promise<boolean> => {
       if (docTask.busy) {
         setError("全文任务进行中，请先完成或取消再发送对话");
-        return;
+        return true;
       }
-      if (!message || isCreating || submitting) return;
-      const el = inputRef.current;
+      if (!message || isCreating || submitting) return false;
 
       setUserMessages((prev) => [...prev, message]);
-      if (el) {
-        el.value = "";
-        el.style.height = "auto";
-      }
       setError(null);
       setSubmitting(true);
 
@@ -880,12 +882,12 @@ export default function DocAIAgentPanel({
         pendingRef.current = { message, modelName };
         setSubmitTick((v) => v + 1);
       } catch (e) {
-        // Restore input on failure so user can retry
-        if (el) el.value = message;
         setError(getErrorMessage(e, "发送失败，请重试"));
+        return true;
       } finally {
         setSubmitting(false);
       }
+      return false;
     },
     [
       isCreating,
@@ -904,7 +906,15 @@ export default function DocAIAgentPanel({
     if (!el) return;
     const message = el.value.trim();
     if (!message) return;
-    await submitMessage(message);
+    // EAI-CUSTOM (面板 v2 复审#2): 输入框的清空/高度重置/失败恢复都在 send
+    // 路径这里做——retry 路径不经此函数，不碰用户正在输入的草稿。
+    const failed = await submitMessage(message);
+    if (failed) {
+      el.value = message;
+      return;
+    }
+    el.value = "";
+    el.style.height = "auto";
   }, [submitMessage]);
 
   // ── send queued message when stream is ready ──────────────────────

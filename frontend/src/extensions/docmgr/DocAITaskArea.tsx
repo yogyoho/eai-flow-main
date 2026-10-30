@@ -505,6 +505,8 @@ export function useDocAITask(params: {
 
 // ── 组件 ─────────────────────────────────────────────────────────────
 
+// EAI-CUSTOM (面板 v2 复审#3): PresetChips 已随面板 v2 空态宫格（DocAIAgentPanel
+// EmptyState）退役删除——PRESETS 仍由宫格消费，勿在此恢复 chips 入口。
 export const PRESETS = [
   { id: "polish", label: "全文润色" },
   { id: "proofread", label: "全文校对" },
@@ -513,31 +515,6 @@ export const PRESETS = [
   { id: "toc", label: "生成目录" },
   { id: "summary", label: "全文摘要" },
 ] as const;
-
-export function PresetChips({
-  disabled,
-  onPick,
-}: {
-  disabled: boolean;
-  onPick: (operation: string) => void;
-}) {
-  return (
-    <div className="flex flex-wrap items-center gap-1.5">
-      {PRESETS.map((p) => (
-        <button
-          key={p.id}
-          type="button"
-          disabled={disabled}
-          onClick={() => onPick(p.id)}
-          title={`对全文执行「${p.label}」（逐节处理，可逐节确认）`}
-          className="border-border/60 hover:border-primary/50 hover:bg-primary/5 rounded-full border px-2.5 py-1 text-xs transition-colors disabled:cursor-not-allowed disabled:opacity-40"
-        >
-          {p.label}
-        </button>
-      ))}
-    </div>
-  );
-}
 
 // ── v2 工单组件（工单头 + 逐节 diff 卡，替换 M1 的 SectionCard） ─────
 

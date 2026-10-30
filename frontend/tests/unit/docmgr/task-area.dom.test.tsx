@@ -7,7 +7,6 @@ import { createRoot } from "react-dom/client";
 import {
   DiffCard,
   DocAITaskArea,
-  PresetChips,
   type DocAITaskAction,
   type DocAITaskState,
   type TaskSection,
@@ -40,34 +39,7 @@ const buttonByText = (host: HTMLElement, text: string): HTMLButtonElement =>
     (b) => b.textContent === text,
   )!;
 
-describe("PresetChips", () => {
-  test("渲染 6 个预设并可点击", async () => {
-    const picked: string[] = [];
-    const host = await render(
-      <PresetChips disabled={false} onPick={(op) => picked.push(op)} />,
-    );
-    const buttons = Array.from(host.querySelectorAll("button"));
-    expect(buttons.map((b) => b.textContent)).toEqual([
-      "全文润色",
-      "全文校对",
-      "术语统一",
-      "格式规范",
-      "生成目录",
-      "全文摘要",
-    ]);
-    await click(buttons[0]!);
-    expect(picked).toEqual(["polish"]);
-  });
-
-  test("disabled 时点击无效", async () => {
-    const picked: string[] = [];
-    const host = await render(
-      <PresetChips disabled onPick={(op) => picked.push(op)} />,
-    );
-    const btn = host.querySelector<HTMLButtonElement>("button")!;
-    expect(btn.disabled).toBe(true);
-  });
-});
+// EAI-CUSTOM (面板 v2 复审#3): PresetChips 组件已删（空态宫格取代），其 2 个 dom 测试随之移除。
 
 // ── DiffCard（逐节 diff 卡） ─────────────────────────────────────────
 
