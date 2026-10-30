@@ -6,6 +6,11 @@
   GET  /tasks/{id}             任务详情(含 progress)
   POST /tasks/{id}/confirm     确认门(仅 UI 用;仅 awaiting_confirm 可确认,否则 409;
                                基线全量 confirmed 并续跑 running)
+  GET  /tasks/{id}/docs/{doc_id}/content   溯源定位窗口(EAI-CUSTOM 2026-10-30:?quote=
+                               文本片段或 ?page= 页码 → 命中页/±10段窗口,整本不回传——D6;
+                               未命中 404「未定位到原文」,前端如实呈现)
+  GET  /tasks/{id}/docs/{doc_id}/assets/{asset_id}  原图取数(仅限该文档 segments 引用
+                               的 asset,FileResponse)
   GET  /tasks/{id}/issues      任务问题列表(owner 过滤)
   GET  /issues/{id}            问题详情(owner 过滤)
   POST /issues/{id}/feedback   复核反馈(写 ReviewFeedback + RulePackMeta.stats 回流;
@@ -24,11 +29,12 @@ import logging
 from datetime import UTC, datetime
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Response, UploadFile
+from fastapi.responses import FileResponse
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.extensions.auth.middleware import require_permission
-from app.extensions.bid_review import crud, worker
+from app.extensions.bid_review import crud, parse, worker
 from app.extensions.bid_review.models import RulePackMeta
 from app.extensions.bid_review.schemas import FeedbackIn, IssueOut, TaskOut
 from app.extensions.database import get_db
@@ -96,23 +102,25 @@ async def create_task(
     db: AsyncSession = Depends(get_db),
     owner_id: str = Depends(current_owner),
 ):
-    """创建审查任务(multipart 上传 tender+bid 文档)。v1 文档在请求内解码为纯文本落
-    engine_meta.docs(worker._load_docs 取数源;PDF/Word 结构化解析缺口见其注释),
-    随后后台直推 advance_task(quick 直跑;deep 停确认门)。"""
+    """创建审查任务(multipart 上传 tender+bid 文档)。EAI-CUSTOM(2026-10-30 解析层,
+    spec §2):上传字节快速落盘 raw/(原始字节不进 DB),engine_meta.docs 只存清单
+    (doc_id/role/kind/size/status,全文不上 wire——D6);docx/pdf 解析+OCR 重活全部
+    在 worker.advance_task 的 parsing 阶段做(worker.parse 链)。旧实现(UTF-8 硬解码
+    直存,docx/pdf 出乱码)退役。随后后台直推 advance_task(quick 直跑;deep 停确认门)。"""
     if mode not in ("quick", "deep"):
         raise HTTPException(status_code=422, detail="mode 仅支持 quick|deep")
     task = await crud.create_task(db, owner_id=owner_id, mode=mode)
-    docs: list[dict] = []
+    entries: list[dict] = []
     for f in tender_files or []:
-        docs.append({"doc_id": f.filename or "tender-doc", "role": "tender", "text": (await f.read()).decode("utf-8", "replace")})
+        entries.append(parse.save_raw(owner_id, task.id, "tender", f.filename or "tender-doc", await f.read()))
     for f in bid_files or []:
-        docs.append({"doc_id": f.filename or "bid-doc", "role": "bid", "text": (await f.read()).decode("utf-8", "replace")})
+        entries.append(parse.save_raw(owner_id, task.id, "bid", f.filename or "bid-doc", await f.read()))
     meta = dict(task.engine_meta or {})
-    meta["docs"] = docs
+    meta["docs"] = entries
     task.engine_meta = meta  # 重新赋值以标记 JSON 列 dirty
     await db.commit()
     await db.refresh(task)
-    _enqueue_docs(task, docs)
+    _enqueue_docs(task, entries)
     return task
 
 
@@ -143,6 +151,34 @@ async def get_task_detail(task_id: str, db: AsyncSession = Depends(get_db), owne
     return task
 
 
+@router.get("/tasks/{task_id}/baselines")
+async def list_task_baselines(task_id: str, db: AsyncSession = Depends(get_db), owner_id: str = Depends(current_owner)):
+    """基线行级读端点(EAI-CUSTOM 2026-10-30,分期建议一期 s3/s4——
+    docs/superpowers/specs/2026-10-30-bid-review-ui-gaps-and-completeness.md §二):
+    此前字段级快照仅 MCP bid_review_baseline_get 可达,前端 HTTP 通道缺位,
+    BaselineView 只能降级材料卡。行契约=_write_baselines 落库形:每行同全量
+    fields 快照 + 本行 doc_id(payload)+ kind/confirmed;provenance 逐字段出处
+    {doc_id,page,quote}(extract.normalize_provenance,模型没给的路径缺省不造假)。
+    冲突裁定/置信度/锚点=引擎二期缺口,不在本端点承诺。"""
+    if await crud.get_task(db, task_id=task_id, owner_id=owner_id) is None:
+        raise HTTPException(status_code=404, detail="任务不存在")
+    rows = await crud.list_baselines(db, task_id=task_id, owner_id=owner_id)
+    return {
+        "items": [
+            {
+                "kind": r.kind,
+                "doc_id": (r.payload or {}).get("doc_id"),
+                "confirmed": bool(r.confirmed),
+                "created_at": r.created_at.isoformat() if r.created_at else None,
+                "fields": (r.payload or {}).get("fields") or {},
+                "provenance": (r.payload or {}).get("provenance") or {},
+                "materials_hash": (r.payload or {}).get("materials_hash") or "",
+            }
+            for r in rows
+        ]
+    }
+
+
 @router.post("/tasks/{task_id}/confirm", response_model=TaskOut)
 async def confirm_task(task_id: str, db: AsyncSession = Depends(get_db), owner_id: str = Depends(current_owner)):
     """确认门(仅 UI 用,MCP 不暴露):仅 awaiting_confirm 可确认(其余状态 409——
@@ -159,6 +195,84 @@ async def confirm_task(task_id: str, db: AsyncSession = Depends(get_db), owner_i
         asyncio.create_task(_resume_after_confirm(task.id, owner_id))
     await db.refresh(task)
     return task
+
+
+# ── 文档溯源取数(EAI-CUSTOM 2026-10-30,spec §2/D6/D8)──────────────────
+
+
+def _find_doc_entry(task, doc_id: str) -> dict | None:
+    return next((e for e in (task.engine_meta or {}).get("docs") or [] if isinstance(e, dict) and e.get("doc_id") == doc_id), None)
+
+
+@router.get("/tasks/{task_id}/docs/{doc_id}/content")
+async def get_doc_content(
+    task_id: str,
+    doc_id: str,
+    quote: str = "",
+    page: int | None = None,
+    db: AsyncSession = Depends(get_db),
+    owner_id: str = Depends(current_owner),
+):
+    """溯源定位窗口:证据 chip「定位原文」取数端点。docx 无页边界(D8)走 quote 片段
+    命中段 ±10 条窗口;pdf 优先 ?page= 直取整页(真页码),quote 兜底定位。片段匹配
+    忽略全部空白(PDF 抽取换行/OCR 断行与模型引用常不一致)。只回窗口不回整本(D6:
+    几百页文档全文不上面);未命中 404,前端如实呈现「未定位到原文」。"""
+    task = await crud.get_task(db, task_id=task_id, owner_id=owner_id)
+    if task is None:
+        raise HTTPException(status_code=404, detail="任务不存在")
+    entry = _find_doc_entry(task, doc_id)
+    if entry is None:
+        raise HTTPException(status_code=404, detail="文档不存在")
+    segs = parse.load_segments(owner_id, task_id, str(entry.get("slug") or ""))
+    if not segs:
+        raise HTTPException(status_code=404, detail="文档尚未解析完成")
+    hit = None
+    if page is not None:
+        hit = next((s for s in segs if s.get("page") == page), None)
+    elif quote:
+        q = "".join(quote.split())
+        if q:
+            hit = next((s for s in segs if q in "".join(str(s.get("text") or "").split())), None)
+    if hit is None:
+        raise HTTPException(status_code=404, detail="未定位到原文")
+    if hit.get("page") is not None:
+        win = [s for s in segs if s.get("page") == hit["page"]]
+    else:
+        win = parse.excerpt_window(segs, int(hit["seq"] or 0))
+    return {
+        "doc": {k: entry.get(k) for k in ("doc_id", "role", "kind", "pages", "chars", "assets", "status")},
+        "page": hit.get("page"),
+        "seq": hit.get("seq"),
+        "segments": win,
+    }
+
+
+@router.get("/tasks/{task_id}/docs/{doc_id}/assets/{asset_id}")
+async def get_doc_asset(
+    task_id: str,
+    doc_id: str,
+    asset_id: str,
+    db: AsyncSession = Depends(get_db),
+    owner_id: str = Depends(current_owner),
+):
+    """原图取数(盖章页/图片 OCR 的原件预览)。asset 必须已被该文档 segments 引用
+    (防跨文档探测);asset_id 由解析层生成为 hex md5[:16],无路径注入面。"""
+    task = await crud.get_task(db, task_id=task_id, owner_id=owner_id)
+    if task is None:
+        raise HTTPException(status_code=404, detail="任务不存在")
+    entry = _find_doc_entry(task, doc_id)
+    if entry is None:
+        raise HTTPException(status_code=404, detail="文档不存在")
+    segs = parse.load_segments(owner_id, task_id, str(entry.get("slug") or ""))
+    if asset_id not in {str(s.get("asset_id") or "") for s in segs}:
+        raise HTTPException(status_code=404, detail="资产不存在")
+    matches = list((parse.task_dir(owner_id, task_id) / "assets").glob(f"{asset_id}.*"))
+    if not matches:
+        raise HTTPException(status_code=404, detail="资产文件缺失")
+    import mimetypes
+
+    mt = mimetypes.guess_type(matches[0].name)[0] or "application/octet-stream"
+    return FileResponse(matches[0], media_type=mt)
 
 
 # ── 误报回流(Task 16,工作台与 MCP 共用)──────────────────────────────
@@ -233,10 +347,13 @@ async def get_issue_detail(issue_id: str, db: AsyncSession = Depends(get_db), ow
 async def feedback_issue(issue_id: str, body: FeedbackIn, db: AsyncSession = Depends(get_db), owner_id: str = Depends(current_owner)):
     """复核反馈:写 ReviewFeedback + RulePackMeta.stats 回流。false_positive 走误报回流
     (apply_false_positive:verdict/need_human 落库 + fp+1 + fp_samples 滚动);confirm→
-    adopted+1;severity_change 只落反馈行且允许任意合法档位——人工降级不拦(端点校验只
-    拦非法值;模型侧 fatal 降级拦截是 verify 层 normalize_severity 职责)。"""
-    if body.action not in ("confirm", "false_positive", "severity_change"):
-        raise HTTPException(status_code=422, detail="action 仅支持 confirm|false_positive|severity_change")
+    adopted+1 且清 need_human(EAI-CUSTOM 2026-10-30 待人工闭环:待人工→确认后不再挂
+    待人工格);need_human→verdict="need_human" 落库,不计规则包统计(非误报也非认可,
+    引擎无法判定的人工挂起,A12 三值语义);severity_change 只落反馈行且允许任意合法档位
+    ——人工降级不拦(端点校验只拦非法值;模型侧 fatal 降级拦截是 verify 层
+    normalize_severity 职责)。"""
+    if body.action not in ("confirm", "false_positive", "severity_change", "need_human"):
+        raise HTTPException(status_code=422, detail="action 仅支持 confirm|false_positive|severity_change|need_human")
     if body.action == "severity_change" and body.new_severity not in ("fatal", "major", "minor", "info"):
         raise HTTPException(status_code=422, detail="new_severity 仅支持 fatal|major|minor|info")
     issue = await crud.get_issue(db, issue_id=issue_id, owner_id=owner_id)
@@ -247,7 +364,11 @@ async def feedback_issue(issue_id: str, body: FeedbackIn, db: AsyncSession = Dep
         raise HTTPException(status_code=404, detail="问题不存在")
     if body.action == "false_positive":
         await apply_false_positive(db, issue)
+    elif body.action == "need_human":
+        issue.need_human = True
+        issue.verdict = "need_human"  # 不计规则包统计(非误报非认可;正式违规口径按 verdict 排除)
     elif body.action == "confirm":
+        issue.need_human = False  # 待人工闭环:确认后不再挂待人工格(need_human_count 自然回落)
         await crud.add_rulepack_stats(db, RULEPACK_NAME, issue.rule_id, adopted=True)
     await db.refresh(issue)
     return issue
@@ -366,7 +487,8 @@ async def list_rulepacks(db: AsyncSession = Depends(get_db), owner_id: str = Dep
                 "name": pack.name,
                 "version": pack.version,
                 "rule_count": len(pack.rules),
-                "rules": [{"id": r.id, "name": r.name, "layer": r.layer, "severity": r.severity, "type": r.type} for r in pack.rules],
+                # 2026-10-30 前端工作台证据行回退:det 规则 issue 无 doc/page 证据(anchors.py 未落地),回退展示判定输入字段
+                "rules": [{"id": r.id, "name": r.name, "layer": r.layer, "severity": r.severity, "type": r.type, "inputs": list(r.inputs or [])} for r in pack.rules],
                 "stats": dict(meta.stats or {}) if meta else {},
                 "enabled": bool(meta.enabled) if meta else True,
             }

@@ -209,7 +209,9 @@
 
   padding:6px 8px;}
 .brx .chrome-main {flex:1; overflow-y:auto; min-width:0;}
-.brx .screen {display:none; padding:20px max(24px, env(safe-area-inset-right, 0px)) 40px max(24px, env(safe-area-inset-left, 0px)); max-width:1180px;}
+/* 2026-10-30 用户反馈:弃原型 1180px 上限(未居中导致宽窗口右侧留白远大于左侧),
+   主区流式撑满,左右 padding 对称 24px */
+.brx .screen {display:none; padding:20px max(24px, env(safe-area-inset-right, 0px)) 40px max(24px, env(safe-area-inset-left, 0px));}
 .brx .screen.on {display:block;}
 .brx .proto-banner {display:flex; align-items:center; gap:8px; font-size:12px; color:var(--text-3);
 
@@ -360,6 +362,17 @@
   color:var(--text-2); white-space:nowrap;}
 .brx .src-chip b {font-size:11px; color:var(--main-600); font-variant-numeric:tabular-nums;}
 .brx .src-chip.hl {border-color:var(--chip-hl-border); background:var(--main-10);}
+/* EAI-CUSTOM 2026-10-30:真证据 chip 可点 → 定位原文弹层(spec D6/D8) */
+.brx button.src-chip {cursor:pointer;}
+.brx button.src-chip:hover {border-color:var(--main-300); color:var(--main-600);}
+/* 定位原文弹层:片段窗口逐段卡(命中段高亮;OCR 段带原图预览) */
+.brx .loc-body {display:flex; flex-direction:column; gap:10px;}
+.brx .loc-meta {font-size:12px; color:var(--text-3); margin:0 0 2px;}
+.brx .loc-seg {border:1px solid var(--hairline); border-radius:6px; padding:10px 12px;}
+.brx .loc-seg.hit {border-color:var(--main-300); background:var(--main-10);}
+.brx .loc-seg-hd {display:flex; gap:6px; margin-bottom:6px;}
+.brx .loc-seg-tx {font-size:13px; line-height:1.7; color:var(--text); margin:0; white-space:pre-wrap; word-break:break-word;}
+.brx .loc-img {display:block; max-width:100%; max-height:420px; margin-top:8px; border:1px solid var(--hairline); border-radius:4px;}
 .brx .stat-strip {display:flex; gap:6px; flex-wrap:wrap; padding:2px 16px 12px;}
 .brx .stat-strip .st {font-size:11px; font-family:var(--mono); color:var(--text-2);
 
@@ -377,7 +390,8 @@
 
   text-decoration-color:color-mix(in srgb,var(--error-500) 45%,transparent);}
 /* ═══ 左右分栏 / 族列表 ═══ */
-.brx .split {display:grid; grid-template-columns:264px 1fr; gap:12px; align-items:start;}
+/* 2026-10-30 用户定案:左栏加宽 264→360(风险分布/规则执行表更舒展),右清单相应收窄 */
+.brx .split {display:grid; grid-template-columns:360px 1fr; gap:12px; align-items:start;}
 .brx .split-wide {display:grid; grid-template-columns:1fr 1fr; gap:12px; align-items:start;}
 .brx .fam-list {overflow-y:auto; max-height:600px;}
 .brx .fam-search {padding:10px 12px; border-bottom:1px solid var(--hairline); display:flex;}
@@ -443,14 +457,16 @@
 .brx .gate1-hd h3 {font-size:14px; font-weight:600;}
 .brx .gate1-hd .hd-sub {font-size:12px; color:var(--text-3);}
 .brx .gate1-metrics {display:grid; grid-template-columns:1fr 1fr 1fr; border-top:1px solid var(--hairline);}
-.brx .gate1-m {padding:11px 16px; display:flex; align-items:baseline; gap:8px;}
+/* 2026-10-30 用户反馈:窄栏下「数字+中文标签+英文提示」单行 flex 挤压,
+   中文标签逐字竖排——改两行网格:上行=数字+英文提示,下行=标签独占整行 */
+.brx .gate1-m {padding:11px 16px; display:grid; grid-template-columns:1fr auto; align-items:baseline; gap:2px 8px;}
 .brx .gate1-m + .gate1-m {border-left:1px solid var(--hairline);}
 .brx .gate1-m .v {font-size:20px; font-weight:700; font-variant-numeric:tabular-nums;}
 .brx .gate1-m .v.zero {color:var(--success-700);}
 .brx .gate1-m .v.hot {color:var(--second-600);}
 .brx .gate1-m .v.bad {color:var(--error-700);}
-.brx .gate1-m .l {font-size:12px; color:var(--text-2);}
-.brx .gate1-m .h {margin-left:auto; font-size:11px; color:var(--text-3);}
+.brx .gate1-m .l {grid-column:1 / -1; font-size:12px; color:var(--text-2);}
+.brx .gate1-m .h {font-size:11px; color:var(--text-3);}
 .brx .expr-block {background:var(--code-bg); border-radius:8px; padding:16px 18px;
 
   font-family:var(--mono); font-size:13px; line-height:1.9; color:var(--code-fg);
@@ -492,9 +508,13 @@
   margin-bottom:10px; overflow:hidden;}
 .brx .iss.sel {border-color:var(--main-400); background:var(--main-10);}
 .brx .iss.done {opacity:.72;}
-.brx .iss-hd {display:flex; align-items:center; gap:8px; padding:10px 14px; flex-wrap:wrap;}
+/* 2026-10-30 用户反馈:标题长文本曾把勾选框挤到下一行——容器禁 wrap,
+   标题 flex:1+min-width:0 内部换行,勾选框/编号/chips flex-shrink:0 钉在行内 */
+.brx .iss-hd {display:flex; align-items:flex-start; gap:8px; padding:10px 14px; flex-wrap:nowrap;}
+.brx .iss-hd > .dot, .brx .iss-hd > .iss-rule, .brx .iss-hd > .pill, .brx .iss-hd > .iss-ckw {flex-shrink:0;}
 .brx .iss-rule {font-family:var(--mono); font-size:12px; color:var(--text-2); font-weight:600;}
-.brx .iss-title {font-size:13px; font-weight:600;}
+/* 2026-10-30 原型对齐:规则名入 iss-title(不再单设 name 列),标题即卡标题 */
+.brx .iss-title {flex:1; min-width:0; font-size:13px; font-weight:600; overflow-wrap:anywhere;}
 .brx .iss-ckw {margin-left:auto; display:flex; align-items:center;}
 .brx .iss-ckw input {width:15px; height:15px; accent-color:var(--main-color);}
 .brx .iss-bd {padding:0 14px 12px 14px; display:flex; flex-direction:column; gap:7px;}
@@ -626,6 +646,7 @@
 .brx .seg {flex-wrap:wrap;}
 .brx .batch-bar {flex-wrap:wrap; gap:8px;}
 .brx .iss-acts {flex-wrap:wrap;}
+.brx .iss-hd {flex-wrap:wrap;}
 }
 
 /* ═══ 布局接位(.brx 替代原型 body) ═══ */

@@ -109,14 +109,15 @@ def test_extract_fn_parses_fenced_json(config_models, monkeypatch):
     monkeypatch.setattr("deerflow.models.factory.create_chat_model", lambda name: model)
     fn = worker._default_extract_fn()
     out = fn([{"doc_id": "d1", "text": "报价 99 万"}], ["bid.total_price"])
-    assert out == {"bid.total_price": 990000.0} and calls["n"] == 1 and calls["prompt_has_path"]
+    # EAI-CUSTOM 2026-10-30 抽取 v2:_fn 返回 {"fields","provenance"} 新契约(分片 merge 产物)
+    assert out == {"fields": {"bid.total_price": 990000.0}, "provenance": {}} and calls["n"] == 1 and calls["prompt_has_path"]
 
 
 def test_extract_fn_retries_once_on_garbage(config_models, monkeypatch):
     model, calls = _fake_llm(["模型拒绝了指令性文字", '{"bid.total_price": 1}'])
     monkeypatch.setattr("deerflow.models.factory.create_chat_model", lambda name: model)
     fn = worker._default_extract_fn()
-    assert fn([], ["bid.total_price"]) == {"bid.total_price": 1} and calls["n"] == 2
+    assert fn([], ["bid.total_price"]) == {"fields": {"bid.total_price": 1}, "provenance": {}} and calls["n"] == 2
 
 
 def test_extract_fn_double_garbage_raises(config_models, monkeypatch):

@@ -165,3 +165,28 @@ async def test_mcp_false_positive_same_backflow(db, monkeypatch):
     assert issue.verdict == "false_positive" and issue.need_human is False
     meta = (await db.execute(select(models.RulePackMeta).where(models.RulePackMeta.name == mcp.RULEPACK_NAME))).scalar_one()
     assert meta.stats["L1-009"]["fp"] == 1 and len(meta.stats["L1-009"]["fp_samples"]) == 1
+
+
+@pytest.mark.asyncio
+async def test_need_human_action_and_confirm_clears(client, db):
+    """EAI-CUSTOM 2026-10-30 待人工闭环(spec D9):need_human 动作落 verdict/旗标且
+    不计规则包统计;confirm 清 need_human(待人工格自然回落)+ adopted 计数。"""
+    t = await crud.create_task(db, owner_id="u1")
+    issue = await crud.add_issue(db, task_id=t.id, owner_id="u1", rule_id="L3-005", layer="L3", severity="major", verdict="need_human", message="字段缺失无法判定", dedup_key="k1", need_human=True)
+    r = await client.post(f"/api/extensions/bid-review/issues/{issue.id}/feedback", json={"action": "need_human", "note": "引擎查不出"})
+    assert r.status_code == 200 and r.json()["need_human"] is True and r.json()["verdict"] == "need_human"
+    meta = (await db.execute(select(models.RulePackMeta).where(models.RulePackMeta.name == "bid-review-core"))).scalar_one_or_none()
+    assert meta is None or "L3-005" not in (meta.stats or {}), "need_human 不计规则包统计"
+
+    r = await client.post(f"/api/extensions/bid-review/issues/{issue.id}/feedback", json={"action": "confirm"})
+    assert r.status_code == 200 and r.json()["need_human"] is False  # 确认闭环:不再挂待人工
+    meta = (await db.execute(select(models.RulePackMeta).where(models.RulePackMeta.name == "bid-review-core"))).scalar_one()
+    assert meta.stats["L3-005"]["adopted"] == 1
+
+
+@pytest.mark.asyncio
+async def test_need_human_rejects_unknown_action(client, db):
+    t = await crud.create_task(db, owner_id="u1")
+    issue = await crud.add_issue(db, task_id=t.id, owner_id="u1", rule_id="L1-009", layer="L1", severity="fatal", verdict="violation", message="m", dedup_key="k2")
+    r = await client.post(f"/api/extensions/bid-review/issues/{issue.id}/feedback", json={"action": "bogus"})
+    assert r.status_code == 422

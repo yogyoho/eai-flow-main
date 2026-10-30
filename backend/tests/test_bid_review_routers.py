@@ -80,19 +80,26 @@ async def test_task_lifecycle(client, db):
 
 @pytest.mark.asyncio
 async def test_create_task_with_files_persists_docs(client, db):
-    """multipart 上传(tender+bid 各一份)→ 文档解码落 engine_meta.docs(role 逐份标注),
-    任务保持 created(后台 advance 被打桩旁路)。"""
+    """multipart 上传(tender+bid 各一份)→ EAI-CUSTOM(2026-10-30 解析层):原始字节
+    落 raw/ 磁盘,engine_meta.docs=清单(doc_id/role/kind/slug/status=raw),**全文不进
+    DB**(D6);任务保持 created(后台 advance 被打桩旁路)。"""
     r = await client.post(
         "/api/extensions/bid-review/tasks",
         data={"mode": "deep"},
         files=[("tender_files", ("t.txt", b"TENDER TEXT", "text/plain")), ("bid_files", ("b.txt", b"BID TEXT", "text/plain"))],
     )
     assert r.status_code == 200 and r.json()["mode"] == "deep" and r.json()["status"] == "created"
-    t = await crud.get_task(db, task_id=r.json()["id"], owner_id="u1")
+    tid = r.json()["id"]
+    t = await crud.get_task(db, task_id=tid, owner_id="u1")
     docs = t.engine_meta["docs"]
     assert [d["role"] for d in docs] == ["tender", "bid"]
-    assert docs[0]["doc_id"] == "t.txt" and docs[0]["text"] == "TENDER TEXT"
-    assert docs[1]["text"] == "BID TEXT"
+    assert docs[0]["doc_id"] == "t.txt" and docs[0]["status"] == "raw" and docs[0]["kind"] == "text"
+    assert "text" not in docs[0] and docs[0]["slug"] and docs[1]["slug"]
+    # 原始字节确实落盘(spec §4.1 目录钉死),且 save_raw 返回 slug 可回查
+    from app.extensions.bid_review import parse
+
+    raw = (parse.task_dir("u1", tid) / "raw" / f"{docs[0]['slug']}.bin").read_bytes()
+    assert raw == b"TENDER TEXT"
 
 
 @pytest.mark.asyncio
@@ -369,3 +376,97 @@ def test_mcp_tools_expose_no_confirm_gate():
     assert len(mcp.TOOLS) == 7
     assert all("confirm" not in name for name in mcp.TOOLS), "MCP 绝不暴露确认门"
     assert all("confirm" not in name for name in mcp._HANDLERS), "handler 表同样不得有 confirm 类"
+
+
+@pytest.mark.asyncio
+async def test_doc_content_and_asset_endpoints(client, db, tmp_path, monkeypatch):
+    """溯源取数(EAI-CUSTOM 2026-10-30):quote 命中→窗口、pdf ?page= 整页、未命中
+    404「未定位到原文」、asset 仅限 segments 引用。task_dir 打桩进 tmp_path。"""
+    import fitz
+
+    from app.extensions.bid_review import parse
+
+    async def _ocr(name: str, data: bytes, mime: str) -> str:
+        return "扫描页转写"
+
+    monkeypatch.setattr(parse, "task_dir", lambda owner, task: tmp_path / owner / task)
+
+    doc = fitz.open()
+    p = doc.new_page()
+    p.insert_text((72, 72), "hello pdf page one")
+    doc.new_page()  # 空文本层 → 扫描页
+    r = await client.post(
+        "/api/extensions/bid-review/tasks",
+        data={"mode": "quick"},
+        files=[("tender_files", ("t.pdf", doc.tobytes(), "application/pdf"))],
+    )
+    assert r.status_code == 200
+    tid = r.json()["id"]
+
+    # 模拟 parsing 阶段:parse_raw 后清单翻 parsed
+    t = await crud.get_task(db, task_id=tid, owner_id="u1")
+    entry = t.engine_meta["docs"][0]
+    out = await parse.parse_raw("u1", tid, entry, _ocr)
+    meta = dict(t.engine_meta)
+    meta["docs"] = [out]
+    t.engine_meta = meta
+    await db.commit()
+
+    # quote 命中文本页 → 返回该页(真页码 1)
+    r = await client.get(f"/api/extensions/bid-review/tasks/{tid}/docs/t.pdf/content", params={"quote": "hello pdf page one"})
+    assert r.status_code == 200
+    body = r.json()
+    assert body["page"] == 1 and body["doc"]["kind"] == "pdf"
+    assert any("hello pdf" in s["text"] for s in body["segments"])
+    assert all(s["page"] == 1 for s in body["segments"])
+
+    # page= 直取扫描页 → ocr 段带 asset_id
+    r = await client.get(f"/api/extensions/bid-review/tasks/{tid}/docs/t.pdf/content", params={"page": 2})
+    assert r.status_code == 200
+    segs = r.json()["segments"]
+    assert segs and segs[0]["kind"] == "ocr" and segs[0]["asset_id"] and segs[0]["text"] == "扫描页转写"
+
+    # asset 正向:200 + image/png;未引用 asset / 缺文件 → 404
+    aid = segs[0]["asset_id"]
+    r = await client.get(f"/api/extensions/bid-review/tasks/{tid}/docs/t.pdf/assets/{aid}")
+    assert r.status_code == 200 and r.headers["content-type"].startswith("image/png")
+    r = await client.get(f"/api/extensions/bid-review/tasks/{tid}/docs/t.pdf/assets/deadbeefdeadbeef")
+    assert r.status_code == 404
+
+    # 未命中 → 404 未定位到原文;未知文档 → 404
+    r = await client.get(f"/api/extensions/bid-review/tasks/{tid}/docs/t.pdf/content", params={"quote": "绝不存在的引文"})
+    assert r.status_code == 404 and "未定位到原文" in r.json()["detail"]
+    r = await client.get(f"/api/extensions/bid-review/tasks/{tid}/docs/nope.docx/content", params={"page": 1})
+    assert r.status_code == 404
+
+
+@pytest.mark.asyncio
+async def test_list_baselines_endpoint(client, db):
+    """EAI-CUSTOM 2026-10-30 分期建议一期(s3/s4,ui-gaps spec §二):基线行级
+    HTTP 读端点——payload 投影 fields/provenance + kind/doc_id/confirmed;
+    owner 过滤(他人任务 404,与任务端点同口径)。"""
+    t = await crud.create_task(db, owner_id="u1")
+    db.add(
+        models.BaselinePackage(
+            task_id=t.id,
+            kind="tender",
+            payload={
+                "doc_id": "t.txt",
+                "fields": {"tender.max_price": 8000000, "tender.min_warranty_period": None},
+                "provenance": {"tender.max_price": {"doc_id": "t.txt", "page": 3, "quote": "限价捌佰万"}},
+                "materials_hash": "abc123",
+            },
+        )
+    )
+    db.add(models.BaselinePackage(task_id=t.id, kind="bid", payload={"doc_id": "b.txt", "fields": {"bid.total_price": None}, "provenance": {}, "materials_hash": "abc123"}))
+    await db.commit()
+    r = await client.get(f"/api/extensions/bid-review/tasks/{t.id}/baselines")
+    assert r.status_code == 200
+    items = r.json()["items"]
+    assert [i["kind"] for i in items] == ["tender", "bid"]
+    assert items[0]["doc_id"] == "t.txt" and items[0]["confirmed"] is False
+    assert items[0]["fields"]["tender.max_price"] == 8000000
+    assert items[0]["provenance"]["tender.max_price"]["page"] == 3
+    assert items[0]["materials_hash"] == "abc123"
+    other = await crud.create_task(db, owner_id="u2")
+    assert (await client.get(f"/api/extensions/bid-review/tasks/{other.id}/baselines")).status_code == 404

@@ -12,6 +12,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   confirmTask,
   feedbackIssue,
+  fetchBaselines,
   getTask,
   listRulepacks,
   listTaskIssues,
@@ -22,6 +23,7 @@ export const bidReviewKeys = {
   tasks: ["bid-review", "tasks"] as const,
   task: (taskId: string) => ["bid-review", "task", taskId] as const,
   issues: (taskId: string) => ["bid-review", "issues", taskId] as const,
+  baselines: (taskId: string) => ["bid-review", "baselines", taskId] as const,
   rulepacks: ["bid-review", "rulepacks"] as const,
 };
 
@@ -30,6 +32,16 @@ export function useBidTask(taskId: string | null | undefined) {
   return useQuery({
     queryKey: bidReviewKeys.task(taskId ?? ""),
     queryFn: () => getTask(taskId!),
+    enabled: Boolean(taskId),
+  });
+}
+
+/** GET /tasks/{id}/baselines —— 基线行级快照(EAI-CUSTOM 2026-10-30 分期建议
+ * 一期 s3/s4;taskId 为空时不发请求)。 */
+export function useBidBaselines(taskId: string | null | undefined) {
+  return useQuery({
+    queryKey: bidReviewKeys.baselines(taskId ?? ""),
+    queryFn: () => fetchBaselines(taskId!),
     enabled: Boolean(taskId),
   });
 }

@@ -151,3 +151,35 @@ def test_det_rules_empty_fields_need_human_no_exprerror():
         assert len(issues) == 1, f"{rule.id} 空 fields 应产 1 条 need_human,得 {issues}"
         assert issues[0]["verdict"] == "need_human" and issues[0]["need_human"] is True, f"{rule.id} 空 fields 应 need_human"
         assert issues[0]["rule_id"] == rule.id and issues[0]["source"] == "engine"
+
+
+def test_attach_evidence_from_provenance():
+    """EAI-CUSTOM 2026-10-30(spec D7/D9):provenance ∩ rule.inputs 回填 evidence;
+    dedup_key 不含证据(旧问题不因补证据重发);无 provenance 维持 []。"""
+    from app.extensions.bid_review.engine.rule_runner import Rule, attach_evidence, run_det_rule
+
+    rule = Rule(
+        id="L1-009",
+        name="总价不超限价",
+        layer="L1",
+        type="deterministic",
+        applies_to=["*"],
+        inputs=["bid.total_price", "tender.max_price"],
+        check={"op": "lte", "left": "bid.total_price", "right": "tender.max_price"},
+        severity="fatal",
+        evidence=[],
+        message_tpl="超限价",
+        fix_tpl="",
+        confidence_gate=1.0,
+        enabled=True,
+    )
+    issues = run_det_rule(rule, {"bid.total_price": 100.0, "tender.max_price": 90.0})
+    assert issues and issues[0]["evidence"] == []  # det 本体不带证据
+
+    prov = {"bid.total_price": {"doc_id": "bid.docx", "page": 3, "quote": "总价100万"}, "tender.max_price": {"doc_id": "t.pdf", "page": None, "quote": "限价90万"}, "bid.subtotal": {"doc_id": "x", "page": 1, "quote": "非本规则输入不收"}}
+    out = attach_evidence(issues, rule, prov)
+    ev = out[0]["evidence"]
+    assert [e["section_path"] for e in ev] == ["bid.total_price", "tender.max_price"]  # 只收 inputs 交集
+    assert ev[0] == {"doc_id": "bid.docx", "page": 3, "section_path": "bid.total_price", "text": "总价100万"}
+    assert ev[1]["page"] is None  # docx 无页码诚实 null
+    assert attach_evidence(issues, rule, None) is issues and issues[0]["evidence"]  # 原地回填,空 provenance 不动

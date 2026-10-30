@@ -28,6 +28,7 @@ import re
 import time
 from pathlib import Path
 from types import SimpleNamespace
+from typing import Any
 
 from sqlalchemy import delete, select, text, update
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -35,7 +36,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.extensions.bid_review import crud
 from app.extensions.bid_review.engine.extract import ExtractFn, ExtractNotConfigured, build_baseline
 from app.extensions.bid_review.engine.llm_runner import run_sem_rule
-from app.extensions.bid_review.engine.rule_runner import _need_human, load_rulepack, run_det_rule
+from app.extensions.bid_review.engine.rule_runner import _need_human, attach_evidence, load_rulepack, run_det_rule
 from app.extensions.bid_review.models import BaselinePackage, ReviewTask
 from app.extensions.database import get_session_factory
 
@@ -204,13 +205,17 @@ def _issue_confidence(issue) -> float:
 
 
 def _load_docs(task: ReviewTask) -> list[dict]:
-    """ingest(parsing)阶段文档装载:docs 落在 task.engine_meta["docs"](routers 上传
-    时解码写入,JSON 列)。缺口标注(计划 Task 9 Step 3 授权):bid_materials 仅有资质
-    影像/样例台账域(MinIO),无文档文本解析入口可接,故 v1 采用上传时解码的纯文本直存;
-    PDF/Word 结构化解析 v2 接入时仅需替换本函数取数源。"""
+    """ingest(parsing)阶段文档装载。EAI-CUSTOM(2026-10-30 解析层,spec §2):清单条目
+    status=parsed → 从任务材料目录 segments 拼回全文(全文不上 wire,内存短暂聚合);
+    旧任务(engine_meta.docs 内嵌 text 的 2026-10-30 前格式)走 legacy 分支原样读取,
+    存量任务不受解析层改造影响。"""
     raw = (task.engine_meta or {}).get("docs")
     if not isinstance(raw, list):
         return []
+    if any(isinstance(item, dict) and item.get("status") == "parsed" for item in raw):
+        from app.extensions.bid_review import parse
+
+        return parse.docs_from_entries(task.owner_id, task.id, [i for i in raw if isinstance(i, dict)])
     out: list[dict] = []
     for item in raw:
         if isinstance(item, dict) and isinstance(item.get("text"), str):
@@ -220,10 +225,12 @@ def _load_docs(task: ReviewTask) -> list[dict]:
 
 def _default_extract_fn() -> ExtractFn:
     """生产 LLM 基准提取接线(translation worker create_chat_model 同款先例):
-    build_extract_prompt → 同步 invoke(advance_task 以 asyncio.to_thread 卸载本函数,
-    禁在事件循环直跑)→ _parse_json_object 解析,坏输出重试 1 次,仍失败抛
+    shard_docs 贪心装箱(≤SHARD_CHARS/prompt,几百页大文档不进单 prompt——spec D5)
+    → 逐分片 build_extract_prompt → 同步 invoke(advance_task 以 asyncio.to_thread
+    卸载本函数,禁在事件循环直跑)→ _parse_json_object 解析,坏输出重试 1 次,仍失败抛
     RuntimeError → _infra_fail 失败链(≤3 次重投,终态 failed 落因),绝不静默假交付。
-    模型选择同 _default_model_fn;无可用模型抛 ExtractNotConfigured。"""
+    分片 merge 首个非 null 采纳,不回填(conflict 不覆盖非 null——spec D7);provenance
+    同法合并。单分片仍失败重试整片;无可用模型抛 ExtractNotConfigured。"""
     name = _resolve_model_name()
     if not name:
 
@@ -231,14 +238,13 @@ def _default_extract_fn() -> ExtractFn:
             raise ExtractNotConfigured("config.yaml 无可用模型(EAI_BID_REVIEW_MODEL/首项均缺;基准提取未执行)")
 
         return _fn
-    from app.extensions.bid_review.engine.extract import build_extract_prompt
+    from app.extensions.bid_review.engine.extract import build_extract_prompt, shard_docs
     from deerflow.models.factory import create_chat_model
 
     model = create_chat_model(name)
     logger.info("bid_review baseline extraction using model %s", name)
 
-    def _fn(docs: list[dict], field_paths: list[str]) -> dict:
-        prompt = build_extract_prompt(docs, field_paths)
+    def _invoke_shard(prompt: str) -> dict:
         messages = [{"role": "user", "content": prompt}]
         last_err: Exception | None = None
         for attempt in (1, 2):
@@ -250,6 +256,23 @@ def _default_extract_fn() -> ExtractFn:
                 last_err = exc
                 logger.warning("bid_review extract parse retry attempt=%d err=%s", attempt, exc)
         raise RuntimeError(f"基准提取两试未获有效 JSON({last_err})") from last_err
+
+    def _fn(docs: list[dict], field_paths: list[str]) -> dict:
+        merged: dict[str, Any] = {}
+        merged_prov: dict[str, dict] = {}
+        for shard in shard_docs(docs) or [[]]:  # 空 docs 也跑一片(旧语义:显式问一遍模型,输出全 null)
+            payload = _invoke_shard(build_extract_prompt(shard, field_paths))
+            f_raw = payload.get("fields") if isinstance(payload.get("fields"), dict) else payload
+            if isinstance(f_raw, dict):
+                for k, v in f_raw.items():
+                    if k in field_paths and merged.get(k) is None and v is not None:
+                        merged[k] = v
+            prov = payload.get("provenance") if isinstance(payload, dict) else None
+            if isinstance(prov, dict):
+                for k, v in prov.items():
+                    if k in field_paths and k not in merged_prov and isinstance(v, dict):
+                        merged_prov[k] = v
+        return {"fields": merged, "provenance": merged_prov}
 
     return _fn
 
@@ -271,10 +294,11 @@ async def _get_task_any(db: AsyncSession, task_id: str) -> ReviewTask | None:
     return result.scalar_one_or_none()
 
 
-async def _write_baselines(db: AsyncSession, task_id: str, docs: list[dict], fields: dict, materials_hash: str) -> None:
+async def _write_baselines(db: AsyncSession, task_id: str, docs: list[dict], fields: dict, materials_hash: str, provenance: dict | None = None) -> None:
     """基线落库(kind 按 docs role 拆,计划口径);每行携带全量 fields 快照 + 本行 doc_id
-    (确认门 UI 逐份核对同一快照)。写前清旧行——boot recovery 断点续跑(extracting 入口)
-    重放基线时幂等,不产生重复行。"""
+    (确认门 UI 逐份核对同一快照)。EAI-CUSTOM(2026-10-30 抽取 v2):payload 增
+    provenance(逐字段出处 {doc_id,page,quote},字段抽取层产物;det 求值不消费)。
+    写前清旧行——boot recovery 断点续跑(extracting 入口)重放基线时幂等,不产生重复行。"""
     await db.execute(delete(BaselinePackage).where(BaselinePackage.task_id == task_id))
     await db.commit()
     for doc in docs:
@@ -282,15 +306,16 @@ async def _write_baselines(db: AsyncSession, task_id: str, docs: list[dict], fie
             BaselinePackage(
                 task_id=task_id,
                 kind=str(doc.get("role") or "unknown")[:10],  # String(10) 列宽保护
-                payload={"doc_id": doc.get("doc_id"), "fields": fields, "materials_hash": materials_hash},
+                payload={"doc_id": doc.get("doc_id"), "fields": fields, "materials_hash": materials_hash, "provenance": provenance or {}},
             )
         )
     await db.commit()
 
 
-async def _run_review_stage(db: AsyncSession, task: ReviewTask, fields: dict, owner_id: str, model_fn=None) -> int:
+async def _run_review_stage(db: AsyncSession, task: ReviewTask, fields: dict, owner_id: str, model_fn=None, provenance: dict | None = None) -> int:
     """审查阶段(Task 14):按 rule.type 分派——deterministic→run_det_rule(既有 det
-    通路)/ semantic|hybrid→run_sem_rule(model_fn 经 _wrap_model_fn 注入,content 归一
+    通路;attach_evidence 回填 provenance 证据,EAI-CUSTOM 2026-10-30)/
+    semantic|hybrid→run_sem_rule(model_fn 经 _wrap_model_fn 注入,content 归一
     str,A12 T14 约束②;hyb det 粗筛/候选确认/unclear 存活语义由 llm_runner 承担,worker
     只接线)。逐规则隔离(T9 先例 9cda4828b 扩展到 sem/hyb):单规则异常——含模型不可用/
     接线失败(ModelNotConfigured)——降级 need_human 条目,兄弟规则照常,禁整任务崩;
@@ -310,7 +335,7 @@ async def _run_review_stage(db: AsyncSession, task: ReviewTask, fields: dict, ow
         await crud.set_status(db, task, "running", progress={"stage": "review", "pct": int(i * 100 / total), "msg": f"{rule.id}({i}/{total})"})
         try:
             if rule.type == "deterministic":
-                issues = run_det_rule(rule, det_fields)
+                issues = attach_evidence(run_det_rule(rule, det_fields), rule, provenance)
             else:  # semantic|hybrid
                 issues = await run_sem_rule(rule, det_fields, materials, model_fn, docs_text)
         except Exception as exc:  # noqa: BLE001
@@ -373,6 +398,25 @@ async def advance_task(
     await db.refresh(task)
     t0 = time.perf_counter()
     await crud.set_status(db, task, "parsing", progress={"stage": "parsing", "pct": 10, "msg": f"载入 {len(docs)} 份文档"})
+    # EAI-CUSTOM(2026-10-30 解析层,spec §2):raw 清单条目 → 解析(docx/pdf/text +
+    # OCR 图片插回)+ segments/assets 落盘 + 清单回写。OCR 引擎随系统设置
+    # (parse.build_ocr_fn);单文档失败=抛出走 _infra_fail 失败链(≤3 重投),
+    # 单图 OCR 失败已在 parse 内降级空文本(失败隔离)。旧任务(无 raw 条目)零跳过。
+    raw_entries = [e for e in ((task.engine_meta or {}).get("docs") or []) if isinstance(e, dict) and e.get("status") == "raw"]
+    if raw_entries:
+        from app.extensions.bid_review import parse
+
+        ocr_fn = await parse.build_ocr_fn(db)
+        parsed: list[dict] = []
+        for e in raw_entries:
+            parsed.append(await parse.parse_raw(owner_id, task.id, e, ocr_fn))
+        meta = dict(task.engine_meta or {})
+        by_slug = {str(p["slug"]): p for p in parsed}
+        meta["docs"] = [by_slug.get(str(e.get("slug")), e) for e in meta.get("docs") or []]
+        task.engine_meta = meta  # 重新赋值以标记 JSON 列 dirty
+        await db.commit()
+        await db.refresh(task)
+        docs = _load_docs(task)  # 解析产物重载(parsing 后续阶段消费全文内存形态)
     durations["parsing"] = time.perf_counter() - t0
     t1 = time.perf_counter()
     await crud.set_status(db, task, "extracting", progress={"stage": "extracting", "pct": 20, "msg": "基准字段提取中"})
@@ -383,13 +427,13 @@ async def advance_task(
     meta = dict(task.engine_meta or {})
     meta["materials_hash"] = payload["materials_hash"]
     task.engine_meta = meta  # 重新赋值以标记 JSON 列 dirty
-    await _write_baselines(db, task_id, docs, fields, payload["materials_hash"])
+    await _write_baselines(db, task_id, docs, fields, payload["materials_hash"], payload.get("provenance"))
     durations["extracting"] = time.perf_counter() - t1
     if wait_confirm:
         return await crud.set_status(db, task, "awaiting_confirm", progress={"stage": "confirm_gate", "pct": 40, "msg": "基线已生成,等待人工确认(确认门仅工作台 UI)"})
     t2 = time.perf_counter()
     await crud.set_status(db, task, "running", progress={"stage": "review", "pct": 40, "msg": "规则审查执行中(det+sem/hyb)"})
-    await _run_review_stage(db, task, fields, owner_id, model_fn)
+    await _run_review_stage(db, task, fields, owner_id, model_fn, payload.get("provenance"))
     durations["review"] = time.perf_counter() - t2
     summary = summarize_issues(await crud.list_issues(db, task_id=task_id, owner_id=owner_id))
     return await crud.set_status(db, task, "done", progress=_done_progress(durations, summary))
@@ -403,15 +447,18 @@ async def resume_confirmed(db: AsyncSession, task_id: str, owner_id: str, model_
     if task is None:
         raise ValueError(f"bid_review task {task_id} not found for owner {owner_id}")
     fields: dict = {}
+    provenance: dict = {}
     for b in await crud.list_baselines(db, task_id=task_id, owner_id=owner_id):
         payload = b.payload if isinstance(b.payload, dict) else {}
         if isinstance(payload.get("fields"), dict):
             fields = payload["fields"]
+            prov = payload.get("provenance")
+            provenance = prov if isinstance(prov, dict) else {}
             break
     durations: dict[str, float] = {}
     t2 = time.perf_counter()
     await crud.set_status(db, task, "running", progress={"stage": "review", "pct": 40, "msg": "人工确认完成,规则审查执行中(det+sem/hyb)"})
-    await _run_review_stage(db, task, fields, owner_id, model_fn)
+    await _run_review_stage(db, task, fields, owner_id, model_fn, provenance)
     durations["review"] = time.perf_counter() - t2
     summary = summarize_issues(await crud.list_issues(db, task_id=task_id, owner_id=owner_id))
     return await crud.set_status(db, task, "done", progress=_done_progress(durations, summary))

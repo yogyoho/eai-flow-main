@@ -175,6 +175,22 @@ def _need_human(rule: Rule, msg: str) -> dict:
     }
 
 
+def attach_evidence(issues: list[dict], rule: Rule, provenance: dict | None = None) -> list[dict]:
+    """证据回填(EAI-CUSTOM 2026-10-30,spec D7/D9):抽取层 provenance ∩ rule.inputs →
+    issue.evidence([{doc_id, page, section_path, text:quote}]),run_det_rule 保持纯函数
+    不动;dedup_key 只由 rule_id+message 构成,证据不参与——补证据不会让旧问题重发。
+    provenance 缺失/路径未命中 → 维持 [](前端回退「依据字段」chips;docx 无页码时
+    page=null,定位走 quote 片段窗口——D8 诚实降级,不造假页码)。"""
+    prov = provenance or {}
+    if not prov:
+        return issues
+    for issue in issues:
+        ev = [{"doc_id": str(p["doc_id"]), "page": p.get("page"), "section_path": path, "text": str(p.get("quote") or "")} for path in rule.inputs if (p := prov.get(path))]
+        if ev:
+            issue["evidence"] = ev
+    return issues
+
+
 def run_det_rule(rule: Rule, fields: dict) -> list[dict]:
     """单条 det 规则执行:缺字段 → need_human;precondition 不成立 → [];判定失败 → violation。"""
     exprs = _collect_exprs(rule.check)

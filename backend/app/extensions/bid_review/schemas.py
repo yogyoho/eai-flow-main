@@ -64,6 +64,6 @@ class BaselineOut(ORMBase):
 
 
 class FeedbackIn(BaseModel):
-    action: str  # confirm|false_positive|severity_change
+    action: str  # confirm|false_positive|severity_change|need_human(EAI-CUSTOM 2026-10-30 待人工)
     new_severity: str | None = None
     note: str = ""

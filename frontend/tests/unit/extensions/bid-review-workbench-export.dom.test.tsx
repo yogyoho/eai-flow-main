@@ -155,7 +155,8 @@ describe("bid-review WorkbenchView 导出报告(Task 21)", () => {
     renderWorkbench();
     const button = await screen.findByRole("button", { name: "导出报告" });
     // 等 issues 数据落定(证明查询已跑)后仍禁用——非 done 门生效,而非加载中瞬态
-    await screen.findByText("投标总价超出招标控制价");
+    // (2026-10-30 原型对齐:规则名入标题+判定结论行,无 rulepacks 联表时两者同文,用 All 变体)
+    await screen.findAllByText("投标总价超出招标控制价");
     expect(button.hasAttribute("disabled")).toBe(true);
     expect(calls.some((c) => c.path.includes("/report"))).toBe(false);
   });

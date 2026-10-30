@@ -114,3 +114,76 @@ def test_prompt_carries_duration_type_contract():
         line = next((ln for ln in prompt.splitlines() if ln.startswith(f"- {path}")), None)
         assert line is not None, f"{path} 不在提取 prompt 字段清单中"
         assert "{value" in line and "禁止原文文本" in line, f"{path} 缺 {{value,unit}}-or-number 类型契约: {line}"
+
+
+# ── 抽取 v2(EAI-CUSTOM 2026-10-30,spec D5/D7):provenance + 分片 ──────
+
+
+def test_normalize_provenance_filters_and_clamps():
+    from app.extensions.bid_review.engine.extract import normalize_provenance
+
+    raw = {
+        "bid.total_price": {"doc_id": "bid.docx", "page": "3", "quote": "x" * 200},  # page 非法→None,quote 截120
+        "ghost.path": {"doc_id": "bid.docx", "page": 1, "quote": "q"},  # 未知路径丢
+        "tender.max_price": {"doc_id": "ghost.doc", "page": 1, "quote": "q"},  # 未知 doc_id 丢
+        "bid.subtotal": {"doc_id": "bid.docx", "page": True, "quote": 5},  # bool page→None;非 str quote→""
+        "notadict": 1,
+    }
+    out = normalize_provenance(raw, ["bid.total_price", "tender.max_price", "bid.subtotal"], {"bid.docx"})
+    assert set(out) == {"bid.total_price", "bid.subtotal"}
+    assert out["bid.total_price"] == {"doc_id": "bid.docx", "page": None, "quote": "x" * 120}
+    assert out["bid.subtotal"]["page"] is None and out["bid.subtotal"]["quote"] == ""
+    assert normalize_provenance(None, [], set()) == {}
+
+
+def test_normalize_provenance_role_alias():
+    # EAI-CUSTOM 2026-10-30 E2E 实测:模型把材料头 role 词当 doc_id(tender/bid),
+    # role_map 唯一命中代真;未知 role 仍丢。
+    from app.extensions.bid_review.engine.extract import normalize_provenance
+
+    raw = {
+        "bid.total_price": {"doc_id": "bid", "page": None, "quote": "总价"},
+        "tender.max_price": {"doc_id": "采购", "page": None, "quote": "控制价"},  # 未知 role,丢
+    }
+    out = normalize_provenance(
+        raw,
+        ["bid.total_price", "tender.max_price"],
+        {"招标.docx", "投标.docx"},
+        role_map={"tender": "招标.docx", "bid": "投标.docx"},
+    )
+    assert set(out) == {"bid.total_price"}
+    assert out["bid.total_price"] == {"doc_id": "投标.docx", "page": None, "quote": "总价"}
+
+
+def test_shard_docs_packs_by_cap():
+    from app.extensions.bid_review.engine.extract import shard_docs
+
+    docs = [{"doc_id": "a", "text": "x" * 60}, {"doc_id": "b", "text": "y" * 60}, {"doc_id": "c", "text": "z" * 10}]
+    shards = shard_docs(docs, cap=100)
+    assert [[d["doc_id"] for d in s] for s in shards] == [["a"], ["b", "c"]]  # 贪心:放不下即开新片
+    assert shard_docs([], cap=100) == []
+    assert shard_docs([{"doc_id": "a", "text": "hi"}], cap=100) == [[{"doc_id": "a", "text": "hi"}]]
+
+
+def test_build_baseline_new_shape_and_legacy_compat():
+    # 新契约:{"fields","provenance"} → provenance 归一并只留非 null 字段
+    new_fn = lambda docs, paths: {  # noqa: E731
+        "fields": {"bid.total_price": 1.0, "tender.max_price": None},
+        "provenance": {
+            "bid.total_price": {"doc_id": "bid.docx", "page": 3, "quote": "报价总额"},
+            "tender.max_price": {"doc_id": "t.docx", "page": 1, "quote": "不该留"},  # value null → 丢
+        },
+    }
+    snap = build_baseline([{"doc_id": "bid.docx", "role": "bid", "text": "t"}, {"doc_id": "t.docx", "role": "tender", "text": "t"}], extract_fn=new_fn)
+    assert snap["fields"]["tender.max_price"] is None
+    assert snap["provenance"] == {"bid.total_price": {"doc_id": "bid.docx", "page": 3, "quote": "报价总额"}}
+    # legacy 扁平形态(fake/旧模型输出)→ provenance={},materials_hash 不变
+    legacy = build_baseline(FAKE_DOCS, extract_fn=lambda d, p: {"bid.total_price": 1.0})
+    assert legacy["provenance"] == {} and legacy["materials_hash"] == build_baseline(FAKE_DOCS, extract_fn=lambda d, p: {"bid.total_price": 1.0, "provenance": {}})["materials_hash"]
+
+
+def test_materials_hash_ignores_provenance():
+    # det 零漂移门:provenance 变化不影响 materials_hash(同 fields 同 hash)
+    from app.extensions.bid_review.engine.extract import materials_hash
+
+    assert materials_hash({"a": 1}) == materials_hash({"a": 1})
