@@ -3553,6 +3553,2440 @@
       "related_bugs": [],
       "occurrences": 1,
       "last_seen": "2026-10-28T20:33:47.337Z"
+    },
+    {
+      "id": "bug-216",
+      "timestamp": "2026-10-28T20:58:36.326Z",
+      "error_message": "Significant refactor of ",
+      "file": "skills/public/bid-proposal-review/scripts/eval_det.py",
+      "root_cause": "2 lines replaced/restructured",
+      "fix": "Rewrote 14→17 lines (2 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-10-28T20:58:36.326Z"
+    },
+    {
+      "id": "bug-217",
+      "timestamp": "2026-10-29T05:01:00Z",
+      "error_message": "User pasted: Uncaught ReferenceError: ToastContainer is not defined at KnowledgeBaseManagement (page.tsx:1126)",
+      "file": "frontend/src/app/knowledge/page.tsx (+KnowledgeBaseDetail/UploadModal/ChunkModal/toast.tsx)",
+      "root_cause": "Mid-edit HMR snapshot while swapping custom useToast toast for sonner across 4 files; error also pre-existed transiently because edits landed file-by-file",
+      "fix": "Converted knowledge module to sonner (对齐知识工厂): toast.success/error/info calls, mounted <Toaster/> in page.tsx + [kbId]/page.tsx, dropped toast prop from UploadModal/ChunkModal, deleted _components/toast.tsx; typecheck clean for knowledge (remaining errors are pre-existing contract-price debt)",
+      "tags": [
+        "frontend",
+        "knowledge",
+        "toast",
+        "sonner",
+        "hmr",
+        "refactor"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-10-29T05:01:00Z"
+    },
+    {
+      "id": "bug-218",
+      "timestamp": "2026-10-28T21:06:25.589Z",
+      "error_message": "Missing await",
+      "file": "backend/tests/test_bid_review_crud.py",
+      "root_cause": "Async call without await — returned Promise instead of value",
+      "fix": "Added await to async call",
+      "tags": [
+        "auto-detected",
+        "async-fix",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-10-28T21:06:25.589Z"
+    },
+    {
+      "id": "bug-219",
+      "timestamp": "2026-10-28T21:07:45.685Z",
+      "error_message": "Significant refactor of ",
+      "file": "backend/app/extensions/bid_review/crud.py",
+      "root_cause": "2 lines replaced/restructured",
+      "fix": "Rewrote 22→30 lines (2 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-10-28T21:07:45.685Z"
+    },
+    {
+      "id": "bug-220",
+      "timestamp": "2026-10-28T21:08:22.527Z",
+      "error_message": "Significant refactor of ",
+      "file": "backend/app/extensions/bid_review/engine/expr.py",
+      "root_cause": "3 lines replaced/restructured",
+      "fix": "Rewrote 7→9 lines (3 removed) | Also: segs, out = [], []; while n:",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 2,
+      "last_seen": "2026-10-28T21:08:39.880Z"
+    },
+    {
+      "id": "bug-221",
+      "timestamp": "2026-10-28T21:08:50.504Z",
+      "error_message": "Significant refactor of ",
+      "file": "backend/app/extensions/bid_review/engine/llm_runner.py",
+      "root_cause": "5 lines replaced/restructured",
+      "fix": "Rewrote 15→39 lines (5 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-10-28T21:08:50.504Z"
+    },
+    {
+      "id": "bug-222",
+      "timestamp": "2026-10-28T21:11:37.841Z",
+      "error_message": "Significant refactor of ",
+      "file": "backend/tests/eval/bid_review/golden/manifest.yaml",
+      "root_cause": "3 lines replaced/restructured",
+      "fix": "Rewrote 3→8 lines (3 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "yaml"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-10-28T21:11:37.841Z"
+    },
+    {
+      "id": "bug-223",
+      "timestamp": "2026-10-28T21:12:28.126Z",
+      "error_message": "Significant refactor of ",
+      "file": "backend/tests/eval/bid_review/golden/cases/DEMO-001/case.yaml",
+      "root_cause": "3 lines replaced/restructured",
+      "fix": "Rewrote 3→7 lines (3 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "yaml"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-10-28T21:12:28.126Z"
+    },
+    {
+      "id": "bug-224",
+      "timestamp": "2026-10-28T21:31:02.204Z",
+      "error_message": "Significant refactor of ",
+      "file": "backend/app/extensions/bid_review/engine/verify.py",
+      "root_cause": "4 lines replaced/restructured",
+      "fix": "Rewrote 27→39 lines (4 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-10-28T21:31:02.204Z"
+    },
+    {
+      "id": "bug-225",
+      "timestamp": "2026-10-28T22:11:03.434Z",
+      "error_message": "Incorrect value in code",
+      "file": "backend/app/extensions/bid_review/engine/rulepacks/bid-review-core/1.0.0.yaml",
+      "root_cause": "Had \"按招标文件载明金额缴纳并附凭证,金额/ forms 一致后重传\"",
+      "fix": "Changed to \"按招标文件载明金额缴纳并附凭证,金额/缴纳凭证一致后重传\"",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "yaml"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-10-28T22:11:03.434Z"
+    },
+    {
+      "id": "bug-226",
+      "timestamp": "2026-10-28T22:13:12.190Z",
+      "error_message": "Wrong reference: build_baseline should be ExtractNotConfigured",
+      "file": "backend/app/extensions/bid_review/worker.py",
+      "root_cause": "Used \"build_baseline\" instead of \"ExtractNotConfigured\"",
+      "fix": "Changed build_baseline → ExtractNotConfigured",
+      "tags": [
+        "auto-detected",
+        "wrong-reference",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-10-28T22:13:12.190Z"
+    },
+    {
+      "id": "bug-227",
+      "timestamp": "2026-10-29",
+      "error_message": "next build 全页预渲染崩溃: TypeError: Cannot read properties of undefined (reading 'length'), digest 恒定 569325325, 全栈 ignore-listed(纯 Next/React 内部帧), (0/216) 无一页完成, 报告页随机漂移(showcase/docs/settings/global-error)",
+      "file": "frontend/(构建管线, 非单一源文件)",
+      "root_cause": "未定。8 组构建实验已排除: ①chat-page messages 裸读(258 行,守卫后照崩) ②SDK useStreamLGP getter(1.6.0 全链 null-safe, 非数组兜底 []) ③根 layout 全链(剥壳后错误变 null.useContext=预期 context 缺失,证 providers 渲染成功后崩在更深层) ④global-error 缺失(加应用级实现无效) ⑤版本(sdk1.6.0+next16.4.0 与 10-24 成功打包模板同版) ⑥dev-server .next 竞争(隔离 distDir 同崩) ⑦env 条件(auth on/off+全量校验同崩) ⑧cpu/worker 限制(同崩)。附带: docs 页在 dev 上 SSR 挂起 >10min 两次; --debug-prerender 在本机必 OOM(32GB, 两次 exit 134)",
+      "fix": "未修。E2E 改道常驻 dev server(路由预热后跑套件)绕过。生产构建阻断待查——下次入手建议: Nextra shallow-clone git 时间戳集成(docs 页独有路径+loader.js 警告在位), 或在 react onError 钩子层拦截原始栈",
+      "tags": [
+        "next-build",
+        "prerender",
+        "undefined-length",
+        "未定根因",
+        "E2E阻断"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-10-29"
+    },
+    {
+      "id": "bug-228",
+      "timestamp": "2026-10-29",
+      "error_message": "E2E 主套件 dev-server 模式跑到 [130/445] 被系统内存压力终止: chromium worker 集体 exit 3221225794;此前 ~43 条失败混合 dev 模式假失败(冷编译 30s 超时/dev 指示器挡点击)",
+      "file": "(E2E 环境问题, 非产品缺陷)",
+      "root_cause": "生产构建被 bug-227 阻断 → E2E 只能走 dev server → dev 模式噪声 + 本机多后台任务(诊断构建×6/dev server/chromium×4)内存枯竭",
+      "fix": "未修。772MB 诊断产物(.next-build-test)已清。可信 E2E 需先解 bug-227 恢复生产构建,或释放内存后 worker=1-2 重试 dev 模式",
+      "tags": [
+        "E2E",
+        "memory-pressure",
+        "dev-mode",
+        "inconclusive"
+      ],
+      "related_bugs": [
+        "bug-227"
+      ],
+      "occurrences": 1,
+      "last_seen": "2026-10-29"
+    },
+    {
+      "id": "bug-229",
+      "timestamp": "2026-10-28T22:46:22.100Z",
+      "error_message": "Significant refactor of ",
+      "file": "backend/app/extensions/bid_review/engine/extract.py",
+      "root_cause": "2 lines replaced/restructured",
+      "fix": "Rewrote 3→4 lines (2 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-10-28T22:46:22.100Z"
+    },
+    {
+      "id": "bug-230",
+      "timestamp": "2026-10-28T22:47:46.297Z",
+      "error_message": "Incorrect value in code",
+      "file": "backend/tests/test_bid_review_extract.py",
+      "root_cause": "Had \"{path} 缺 {value,unit}-or-number 类型契约: {line}\"",
+      "fix": "Changed to \"{path} 缺 {{value,unit}}-or-number 类型契约: {line}\"",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-10-28T22:47:46.297Z"
+    },
+    {
+      "id": "bug-231",
+      "timestamp": "2026-10-28T23:05:33.128Z",
+      "error_message": "Significant refactor of ",
+      "file": "backend/tests/test_bid_review_worker.py",
+      "root_cause": "10 lines replaced/restructured",
+      "fix": "Rewrote 18→48 lines (10 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-10-28T23:05:33.128Z"
+    },
+    {
+      "id": "bug-232",
+      "timestamp": "2026-10-28T23:05:59.208Z",
+      "error_message": "Function not marked async",
+      "file": "backend/tests/test_bid_review_worker.py",
+      "root_cause": "Function uses await but wasn't declared async",
+      "fix": "Added async modifier",
+      "tags": [
+        "auto-detected",
+        "async-fix",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-10-28T23:05:59.208Z"
+    },
+    {
+      "id": "bug-233",
+      "timestamp": "2026-10-28T23:06:49.542Z",
+      "error_message": "Significant refactor of ",
+      "file": "backend/app/extensions/bid_review/worker.py",
+      "root_cause": "2 lines replaced/restructured",
+      "fix": "Rewrote 8→11 lines (2 removed) | Also: \"\"\"领取一个待审任务(FOR UPDATE SKIP LOCKED 防多进程争抢,translat; created→parsing(完整管线入口)或 extracting(boot recovery ",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 2,
+      "last_seen": "2026-10-28T23:07:30.642Z"
+    },
+    {
+      "id": "bug-234",
+      "timestamp": "2026-10-28T23:11:23.003Z",
+      "error_message": "Significant refactor of ",
+      "file": "frontend/src/extensions/bid-review/api.ts",
+      "root_cause": "3 lines replaced/restructured",
+      "fix": "Rewrote 7→15 lines (3 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "ts"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-10-28T23:11:23.003Z"
+    },
+    {
+      "id": "bug-235",
+      "timestamp": "2026-10-28T23:11:37.840Z",
+      "error_message": "Significant refactor of ",
+      "file": "frontend/src/extensions/bid-review/components/TasksView.tsx",
+      "root_cause": "2 lines replaced/restructured",
+      "fix": "Rewrote 3→5 lines (2 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-10-28T23:11:37.840Z"
+    },
+    {
+      "id": "bug-236",
+      "timestamp": "2026-10-28T23:11:46.248Z",
+      "error_message": "CSS fix: quick",
+      "file": "frontend/src/extensions/bid-review/components/TasksView.tsx",
+      "root_cause": "quick: \"确定性规则快审(M1 子集),秒级完成 → \"确定性规则快审(M1 子集),上传文件后自动执行,秒级完成。\",",
+      "fix": "Changed quick: \"确定性规则快审(M1 子集),秒级完成 → \"确定性规则快审(M1 子集),上传文件后自动执行,秒级完成。\",",
+      "tags": [
+        "auto-detected",
+        "style-fix",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-10-28T23:11:46.248Z"
+    },
+    {
+      "id": "bug-237",
+      "timestamp": "2026-10-28T23:12:08.348Z",
+      "error_message": "Wrong reference: setDialogOpen should be openDialog",
+      "file": "frontend/src/extensions/bid-review/components/TasksView.tsx",
+      "root_cause": "Used \"setDialogOpen\" instead of \"openDialog\"",
+      "fix": "Changed setDialogOpen → openDialog",
+      "tags": [
+        "auto-detected",
+        "wrong-reference",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 2,
+      "last_seen": "2026-10-28T23:12:21.936Z"
+    },
+    {
+      "id": "bug-238",
+      "timestamp": "2026-10-28T23:12:45.030Z",
+      "error_message": "Null/undefined access in ",
+      "file": "frontend/src/extensions/bid-review/components/TasksView.tsx",
+      "root_cause": "Property access on potentially null/undefined value",
+      "fix": "Added null safety (optional chaining or null check)",
+      "tags": [
+        "auto-detected",
+        "null-safety",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-10-28T23:12:45.030Z"
+    },
+    {
+      "id": "bug-239",
+      "timestamp": "2026-10-28T23:21:54.297Z",
+      "error_message": "CSS fix: mutationFn",
+      "file": "frontend/src/extensions/bid-review/components/TasksView.tsx",
+      "root_cause": "mutationFn: createTask, → (input: { mode: \"quick\" | \"deep\"",
+      "fix": "Changed mutationFn: createTask, → (input: { mode: \"quick\" | \"deep\"",
+      "tags": [
+        "auto-detected",
+        "style-fix",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 2,
+      "last_seen": "2026-10-28T23:22:13.132Z"
+    },
+    {
+      "id": "bug-240",
+      "timestamp": "2026-10-28T23:47:22.866Z",
+      "error_message": "Function not marked async",
+      "file": "backend/tests/test_bid_review_routers.py",
+      "root_cause": "Function uses await but wasn't declared async",
+      "fix": "Added async modifier",
+      "tags": [
+        "auto-detected",
+        "async-fix",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-10-28T23:47:22.866Z"
+    },
+    {
+      "id": "bug-241",
+      "timestamp": "2026-10-28T23:48:00.692Z",
+      "error_message": "Significant refactor of ",
+      "file": "backend/app/extensions/bid_review/routers.py",
+      "root_cause": "2 lines replaced/restructured",
+      "fix": "Rewrote 8→10 lines (2 removed) | Also: \"\"\"确认门(仅 UI 用,MCP 不暴露):基线全量翻转 confirmed;awaiting_c; 续跑 running→det→done(后台 asyncio 任务,独立短会话)。\"\"\"",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 2,
+      "last_seen": "2026-10-28T23:48:32.392Z"
+    },
+    {
+      "id": "bug-242",
+      "timestamp": "2026-10-28T23:52:31.436Z",
+      "error_message": "Missing await",
+      "file": "backend/app/extensions/bid_review/routers.py",
+      "root_cause": "Async call without await — returned Promise instead of value",
+      "fix": "Added await to async call",
+      "tags": [
+        "auto-detected",
+        "async-fix",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-10-28T23:52:31.436Z"
+    },
+    {
+      "id": "bug-243",
+      "timestamp": "2026-10-29T00:04:37.894Z",
+      "error_message": "Type error",
+      "file": "frontend/src/extensions/bid-review/components/primitives.tsx",
+      "root_cause": "Missing or incorrect type annotation",
+      "fix": "Added type assertion/annotation",
+      "tags": [
+        "auto-detected",
+        "type-fix",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-10-29T00:04:37.894Z"
+    },
+    {
+      "id": "bug-244",
+      "timestamp": "2026-10-29T00:05:37.474Z",
+      "error_message": "Null/undefined access in ",
+      "file": "frontend/tests/unit/extensions/bid-review-hooks.dom.test.tsx",
+      "root_cause": "Property access on potentially null/undefined value",
+      "fix": "Added null safety (optional chaining or null check)",
+      "tags": [
+        "auto-detected",
+        "null-safety",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-10-29T00:05:37.474Z"
+    },
+    {
+      "id": "bug-245",
+      "timestamp": "2026-10-29T00:07:11.032Z",
+      "error_message": "Significant refactor of ",
+      "file": "frontend/src/extensions/bid-review/components/BaselineView.tsx",
+      "root_cause": "3 lines replaced/restructured",
+      "fix": "Rewrote 5→3 lines (3 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-10-29T00:07:11.032Z"
+    },
+    {
+      "id": "bug-246",
+      "timestamp": "2026-10-29T00:10:39.749Z",
+      "error_message": "CSS fix: value",
+      "file": "frontend/src/extensions/bid-review/components/primitives.tsx",
+      "root_cause": "value: T → T) => void",
+      "fix": "Changed value: T → T) => void",
+      "tags": [
+        "auto-detected",
+        "style-fix",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-10-29T00:10:39.749Z"
+    },
+    {
+      "id": "bug-247",
+      "timestamp": "2026-10-29T00:10:54.988Z",
+      "error_message": "Null/undefined access in ",
+      "file": "frontend/src/extensions/bid-review/components/primitives.tsx",
+      "root_cause": "Property access on potentially null/undefined value",
+      "fix": "Added null safety (optional chaining or null check)",
+      "tags": [
+        "auto-detected",
+        "null-safety",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-10-29T00:10:54.988Z"
+    },
+    {
+      "id": "bug-248",
+      "timestamp": "2026-10-29T00:11:32.075Z",
+      "error_message": "Missing guard clause",
+      "file": "frontend/src/extensions/bid-review/components/WorkbenchView.tsx",
+      "root_cause": "No early return/throw for edge case: typeof v === \"string\"",
+      "fix": "Added guard clause: if (typeof v === \"string\")",
+      "tags": [
+        "auto-detected",
+        "guard-clause",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-10-29T00:11:32.075Z"
+    },
+    {
+      "id": "bug-249",
+      "timestamp": "2026-10-29T00:15:54.453Z",
+      "error_message": "Null/undefined access in ",
+      "file": "frontend/src/extensions/bid-review/components/BaselineView.tsx",
+      "root_cause": "Property access on potentially null/undefined value",
+      "fix": "Added null safety (optional chaining or null check) | Also: // materials_hash 安全取串(no-base-to-string):engine_meta 为 Reco; const rawHash = task?.engine_meta?.materials_hash;",
+      "tags": [
+        "auto-detected",
+        "null-safety",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 2,
+      "last_seen": "2026-10-29T00:16:04.557Z"
+    },
+    {
+      "id": "bug-250",
+      "timestamp": "2026-10-29T00:16:13.382Z",
+      "error_message": "Wrong operator: ?? should be ||",
+      "file": "frontend/src/extensions/bid-review/components/BaselineView.tsx",
+      "root_cause": "Used \"??\" instead of \"||\"",
+      "fix": "Changed operator ?? → ||",
+      "tags": [
+        "auto-detected",
+        "operator-fix",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 2,
+      "last_seen": "2026-10-29T00:16:22.197Z"
+    },
+    {
+      "id": "bug-251",
+      "timestamp": "2026-10-29T00:16:57.246Z",
+      "error_message": "Null/undefined access in ",
+      "file": "frontend/src/extensions/bid-review/hooks.ts",
+      "root_cause": "Property access on potentially null/undefined value",
+      "fix": "Added null safety (optional chaining or null check)",
+      "tags": [
+        "auto-detected",
+        "null-safety",
+        "ts"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-10-29T00:16:57.246Z"
+    },
+    {
+      "id": "bug-252",
+      "timestamp": "2026-10-29T00:17:11.188Z",
+      "error_message": "Type error",
+      "file": "frontend/tests/unit/extensions/bid-review-hooks.dom.test.tsx",
+      "root_cause": "Missing or incorrect type annotation",
+      "fix": "Added type assertion/annotation",
+      "tags": [
+        "auto-detected",
+        "type-fix",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-10-29T00:17:11.188Z"
+    },
+    {
+      "id": "bug-253",
+      "timestamp": "2026-10-29T00:22:22.652Z",
+      "error_message": "Significant refactor of ",
+      "file": "backend/tests/test_bid_review_feedback.py",
+      "root_cause": "2 lines replaced/restructured",
+      "fix": "Rewrote 4→6 lines (2 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-10-29T00:22:22.652Z"
+    },
+    {
+      "id": "bug-254",
+      "timestamp": "2026-10-29T00:41:17.730Z",
+      "error_message": "Missing await",
+      "file": "backend/tests/test_bid_review_feedback.py",
+      "root_cause": "Async call without await — returned Promise instead of value",
+      "fix": "Added await to async call",
+      "tags": [
+        "auto-detected",
+        "async-fix",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-10-29T00:41:17.730Z"
+    },
+    {
+      "id": "bug-255",
+      "timestamp": "2026-10-29T01:42:33.891Z",
+      "error_message": "Significant refactor of ",
+      "file": "backend/tests/test_bid_review_llm_verify.py",
+      "root_cause": "5 lines replaced/restructured",
+      "fix": "Rewrote 7→94 lines (5 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-10-29T01:42:33.891Z"
+    },
+    {
+      "id": "bug-256",
+      "timestamp": "2026-10-29T01:42:52.567Z",
+      "error_message": "Missing await",
+      "file": "backend/tests/test_bid_review_llm_verify.py",
+      "root_cause": "Async call without await — returned Promise instead of value",
+      "fix": "Added await to async call",
+      "tags": [
+        "auto-detected",
+        "async-fix",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-10-29T01:42:52.567Z"
+    },
+    {
+      "id": "bug-257",
+      "timestamp": "2026-10-29T01:44:59.009Z",
+      "error_message": "Significant refactor of ",
+      "file": "backend/app/extensions/bid_review/engine/llm_runner.py",
+      "root_cause": "2 lines replaced/restructured",
+      "fix": "Rewrote 10→21 lines (2 removed) | Also: \"\"\"hyb 粗筛:det 求值器跑规则(入参先经表示归一——Rule 数据类转 dict 判形态,; _to_det_rule 还原数据类);det 命中即坐实直接返回 det issues。 | Also: hyb 规则 = 先 det 粗筛(命中即坐实短路;求值失败 fail-open 进语义管线)再进同; if det_issues:",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 3,
+      "last_seen": "2026-10-29T01:46:04.133Z"
+    },
+    {
+      "id": "bug-258",
+      "timestamp": "2026-10-29T01:47:56.059Z",
+      "error_message": "Null/undefined access in ",
+      "file": "frontend/src/extensions/bid-review/components/TasksView.tsx",
+      "root_cause": "Property access on potentially null/undefined value",
+      "fix": "Added null safety (optional chaining or null check) | Also: {/* 未测全时 null → 「—」(修复轮 2026-10-29:伪零即误导合规信号) */}; <StatCard label=\"致命未处理\" value={fatalCount ?? \"—\"} tone=\"warn",
+      "tags": [
+        "auto-detected",
+        "null-safety",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 2,
+      "last_seen": "2026-10-29T01:48:28.862Z"
+    },
+    {
+      "id": "bug-259",
+      "timestamp": "2026-10-29T01:48:15.231Z",
+      "error_message": "Significant refactor of ",
+      "file": "frontend/src/extensions/bid-review/components/TasksView.tsx",
+      "root_cause": "3 lines replaced/restructured",
+      "fix": "Rewrote 5→28 lines (3 removed) | Also: {/* 任务级致命数聚合 Task 17 接 issues 后填实 */}; <span className=\"tabular-nums\">—</span>",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 2,
+      "last_seen": "2026-10-29T01:48:39.097Z"
+    },
+    {
+      "id": "bug-260",
+      "timestamp": "2026-10-29T00:00:00.000Z",
+      "error_message": "T13 收口评审 Critical:hyb 规则的 LLM 确认层被双向封死,设计文档 §4.4 hybrid 语义结构性反转——4 条真实 hybrid(L1-003/L1-007 fatal/L3-004/L3-008)退化为纯 det",
+      "file": "backend/app/extensions/bid_review/engine/llm_runner.py",
+      "root_cause": "设计语义在实现层被反转+固化错误语义的测试选择性截引 §4.4(只引「先 det 粗筛」半句):① run_sem_rule 的 _hyb_det_prefilter 命中即 return det_issues 短路终局,模型永不见候选;② _derive_numeric_expr 以 det_expr 为派生源,hybrid 全带 numeric_expr;③ verify.run_seven_checks 第3道 recompute_numeric 返回 pass 时对模型一切结论(violation 与 unclear 一并)refuted → hybrid sem 阶段永产不出条目。三后果:α) det-fail 误报绕过模型直达问题清单(L3-004 白名单外合法提及,inputs 声明的 entity_whitelist 在 det 分支无人消费);β) 模型带证据真违规被过期字段重算驳回;γ) unclear+need_human 被静默 refuted 零人工可见,违 §4.4 铁律",
+      "fix": "三修法收敛 llm_runner.py(verify.py 不动):① det 命中不再短路——违规命中作为候选注入规则卡(build_rule_card 增 candidates 参数+候选段确认语义指令)交模型确认,full=驳回候选零条目/violation=产条目走七道/unclear=need_human 存活出管线;② det 通过(零命中)return [] 零模型调用,fail-open(None)进语义管线行为不变;③ hybrid 一律不派生 numeric_expr(_derive_numeric_expr 删 det_expr 源+rule_type=hybrid→None,含 op-left-right/显式键形态),第3道对 hybrid 失去驳回入口,纯 sem 派生序不变。边界补充:schema 两试皆弃时候选降级 need_human 注明「模型确认失败」(_degrade_candidate_to_need_human,禁止静默消失);缺字段 need_human 条目直接透传不进模型,仅 need_human 无候选时直返不发模型调用。测试先红后绿(8 红):重写两处固化错误语义断言(短路测试的 §4.4 截引改全文引用;β 误报语义测试改 det-pass 零模型调用),新增 confirm/reject/unclear/det-pass/schema 弃降级/缺字段透传/numeric_expr None 结构性门七类断言",
+      "tags": [
+        "bid-review",
+        "hybrid",
+        "llm-runner",
+        "semantics-reversal",
+        "a12",
+        "design-reversal",
+        "selective-quote"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-10-29T00:00:00.000Z"
+    },
+    {
+      "id": "bug-261",
+      "timestamp": "2026-10-29T01:57:04.504Z",
+      "error_message": "Wrong return value",
+      "file": "frontend/tests/unit/extensions/bid-review-tasks-view.dom.test.tsx",
+      "root_cause": "Was returning: new Promise<Response>(() => {}) as unknown as Resp",
+      "fix": "Now returns: new Promise<Response>(() => undefined) as unknown ",
+      "tags": [
+        "auto-detected",
+        "return-value",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-10-29T01:57:04.504Z"
+    },
+    {
+      "id": "bug-262",
+      "timestamp": "2026-10-29T02:25:34.923Z",
+      "error_message": "Missing await",
+      "file": "backend/tests/test_bid_review_routers.py",
+      "root_cause": "Async call without await — returned Promise instead of value",
+      "fix": "Added await to async call",
+      "tags": [
+        "auto-detected",
+        "async-fix",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-10-29T02:25:34.923Z"
+    },
+    {
+      "id": "bug-263",
+      "timestamp": "2026-10-29T02:27:03.497Z",
+      "error_message": "Wrong operator: == should be <=",
+      "file": "backend/tests/eval/bid_review/metrics.py",
+      "root_cause": "Used \"==\" instead of \"<=\"",
+      "fix": "Changed operator == → <=",
+      "tags": [
+        "auto-detected",
+        "operator-fix",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-10-29T02:27:03.497Z"
+    },
+    {
+      "id": "bug-264",
+      "timestamp": "2026-10-29T02:27:15.268Z",
+      "error_message": "Missing await",
+      "file": "backend/app/extensions/bid_review/worker.py",
+      "root_cause": "Async call without await — returned Promise instead of value",
+      "fix": "Added await to async call",
+      "tags": [
+        "auto-detected",
+        "async-fix",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-10-29T02:27:15.268Z"
+    },
+    {
+      "id": "bug-265",
+      "timestamp": "2026-10-29T02:28:33.699Z",
+      "error_message": "Significant refactor of ",
+      "file": "backend/app/extensions/bid_review/worker.py",
+      "root_cause": "22 lines replaced/restructured",
+      "fix": "Rewrote 40→52 lines (22 removed) | Also: running→det→done。; 直接进管线。异常向上抛,由调用方(routers 直推包装 / claimer)走 _infra_f",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 2,
+      "last_seen": "2026-10-29T02:29:05.576Z"
+    },
+    {
+      "id": "bug-266",
+      "timestamp": "2026-10-29T02:29:41.993Z",
+      "error_message": "Wrong reference: rule_id should be rule",
+      "file": "backend/tests/test_bid_review_metrics.py",
+      "root_cause": "Used \"rule_id\" instead of \"rule\"",
+      "fix": "Changed rule_id → rule",
+      "tags": [
+        "auto-detected",
+        "wrong-reference",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 5,
+      "last_seen": "2026-10-29T02:30:43.604Z"
+    },
+    {
+      "id": "bug-267",
+      "timestamp": "2026-10-29T02:35:05.902Z",
+      "error_message": "Significant refactor of ",
+      "file": "skills/public/bid-proposal-review/scripts/eval_det.py",
+      "root_cause": "2 lines replaced/restructured",
+      "fix": "Rewrote 6→8 lines (2 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-10-29T02:35:05.902Z"
+    },
+    {
+      "id": "bug-268",
+      "timestamp": "2026-10-29T02:36:27.956Z",
+      "error_message": "Significant refactor of ",
+      "file": "backend/tests/eval/bid_review/run_eval.py",
+      "root_cause": "7 lines replaced/restructured",
+      "fix": "Rewrote 23→33 lines (7 removed) | Also: \"\"\"case.yaml(field_snapshot 直灌源)+ golden_issues.js; return {\"id\": str(entry[\"id\"]), \"meta\": meta, \"gol | Also: async def _run_case_once(factory, case: dict) -> l; \"\"\"advance_task 全链单跑(parsing→extracting→基线→running",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 3,
+      "last_seen": "2026-10-29T02:37:08.148Z"
+    },
+    {
+      "id": "bug-0269",
+      "timestamp": "2026-10-29T10:37:14",
+      "error_message": "skill 副本 eval_det.py _tpl 的 None 守卫后置于 _fmt 之后恒为死码,None 值渲染为字面量 None(s2 复审发现)",
+      "file": "skills/public/bid-proposal-review/scripts/eval_det.py",
+      "root_cause": "_fmt(None)→str(None)=\"None\" 先发生,后置 return empty-if-None 永看不到 None;canonical rule_runner.py:130 守卫在 _fmt 调用前,副本转录时守卫错位",
+      "fix": "守卫前移对齐 canonical(_resolve 后先判 None 返空串再 _fmt)+ selftest 两行回归断言(容器内 SELFTEST OK),提交 8542a5329;同提交给 SKILL.md 铁律6 补括注消解与 workflow.md Step4 照抄原文的字面冲突(防运行时 agent 拒绝回填证据卡死)",
+      "tags": [
+        "bid-review",
+        "skill-copy",
+        "none-literal",
+        "a11a",
+        "drift"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-10-29T10:37:14"
+    },
+    {
+      "id": "bug-0270",
+      "timestamp": "2026-10-29",
+      "error_message": "test_model_crash_isolated_to_need_human KeyError: 'D1-001'",
+      "file": "backend/tests/test_bid_review_worker_sem.py",
+      "root_cause": "逐规则隔离测试用干净字段(D1 500<=1000)——det 规则干净通过产零条目,by_rule 里根本没有兄弟规则的行,无法证明『兄弟规则照常执行』;隔离断言必须让兄弟规则处于必产条目的字段态(fatal 违规)",
+      "fix": "隔离测试改用 _FIELDS_FATAL(总价超限价),断言 by_rule['D1-001'].verdict=='violation' 证明兄弟规则未受模型异常影响",
+      "tags": [
+        "bid-review",
+        "test-authoring",
+        "isolation-test",
+        "T14"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-10-29"
+    },
+    {
+      "id": "bug-271",
+      "timestamp": "2026-10-29T02:41:50.126Z",
+      "error_message": "Wrong reference: fp_only should be 0",
+      "file": "backend/tests/eval/bid_review/metrics.py",
+      "root_cause": "Used \"fp_only\" instead of \"0\"",
+      "fix": "Changed fp_only → 0",
+      "tags": [
+        "auto-detected",
+        "wrong-reference",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-10-29T02:41:50.126Z"
+    },
+    {
+      "id": "bug-272",
+      "timestamp": "2026-10-29T03:14:57.127Z",
+      "error_message": "Missing await",
+      "file": "backend/tests/test_bid_review_routers.py",
+      "root_cause": "Async call without await — returned Promise instead of value",
+      "fix": "Added await to async call",
+      "tags": [
+        "auto-detected",
+        "async-fix",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-10-29T03:14:57.127Z"
+    },
+    {
+      "id": "bug-273",
+      "timestamp": "2026-10-29T03:16:39.858Z",
+      "error_message": "Wrong return value",
+      "file": "backend/app/extensions/bid_review/routers.py",
+      "root_cause": "Was returning: {\"items\": [TaskOut.model_validate(t) for t in task",
+      "fix": "Now returns: {\"items\": items}",
+      "tags": [
+        "auto-detected",
+        "return-value",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-10-29T03:16:39.858Z"
+    },
+    {
+      "id": "bug-274",
+      "timestamp": "2026-10-29T03:24:22.951Z",
+      "error_message": "CSS fix: 2026-10-29",
+      "file": "frontend/src/extensions/bid-review/components/TasksView.tsx",
+      "root_cause": "2026-10-29: 未测量的任务不得以 0 计入统计。 */ → 后端计数只对该段状态有意义)。 */",
+      "fix": "Changed 2026-10-29: 未测量的任务不得以 0 计入统计。 */ → 后端计数只对该段状态有意义)。 */",
+      "tags": [
+        "auto-detected",
+        "style-fix",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-10-29T03:24:22.951Z"
+    },
+    {
+      "id": "bug-275",
+      "timestamp": "2026-10-29T03:24:43.302Z",
+      "error_message": "Null/undefined access in ",
+      "file": "frontend/src/extensions/bid-review/components/TasksView.tsx",
+      "root_cause": "Property access on potentially null/undefined value",
+      "fix": "Added null safety (optional chaining or null check)",
+      "tags": [
+        "auto-detected",
+        "null-safety",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-10-29T03:24:43.302Z"
+    },
+    {
+      "id": "bug-276",
+      "timestamp": "2026-10-29T03:25:01.243Z",
+      "error_message": "Significant refactor of ",
+      "file": "frontend/src/extensions/bid-review/components/TasksView.tsx",
+      "root_cause": "5 lines replaced/restructured",
+      "fix": "Rewrote 7→4 lines (5 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-10-29T03:25:01.243Z"
+    },
+    {
+      "id": "bug-277",
+      "timestamp": "2026-10-29T03:27:33.956Z",
+      "error_message": "Wrong return value",
+      "file": "frontend/tests/unit/extensions/bid-review-tasks-view.dom.test.tsx",
+      "root_cause": "Was returning: (row?.querySelectorAll(\"td\")[4] as HTMLTableCellEl",
+      "fix": "Now returns: row?.querySelectorAll(\"td\")[4] ?? null;",
+      "tags": [
+        "auto-detected",
+        "return-value",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-10-29T03:27:33.956Z"
+    },
+    {
+      "id": "bug-278",
+      "timestamp": "2026-10-29T03:33:09+00:00",
+      "error_message": "test_list_tasks_per_task_issue_counts StopIteration: u2-owner task row not found in GET /tasks items",
+      "file": "backend/tests/test_bid_review_routers.py",
+      "root_cause": "list_tasks 是 owner 过滤端点(current_owner override=u1),他人(u2)任务本来就不会出现在响应 items 里——测试把被过滤排除的行当成断言对象,next() 无命中在协程内抛 StopIteration(RuntimeError 包裹)",
+      "fix": "跨任务隔离断言改用同 owner 兄弟任务(计数互不串),owner 过滤行为已有 test_list_tasks_owner_filter_and_cross_owner_404 覆盖",
+      "tags": [
+        "bid-review",
+        "test-authoring",
+        "owner-filter",
+        "micro-A"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-10-29T03:33:09+00:00"
+    },
+    {
+      "id": "bug-279",
+      "timestamp": "2026-10-29T05:13:46.682Z",
+      "error_message": "Missing await",
+      "file": "backend/app/extensions/bid_review/worker.py",
+      "root_cause": "Async call without await — returned Promise instead of value",
+      "fix": "Added await to async call",
+      "tags": [
+        "auto-detected",
+        "async-fix",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-10-29T05:13:46.682Z"
+    },
+    {
+      "id": "bug-280",
+      "timestamp": "2026-10-29T05:14:04.624Z",
+      "error_message": "Significant refactor of ",
+      "file": "backend/app/extensions/bid_review/worker.py",
+      "root_cause": "4 lines replaced/restructured",
+      "fix": "Rewrote 9→35 lines (4 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-10-29T05:14:04.625Z"
+    },
+    {
+      "id": "bug-0281",
+      "timestamp": "2026-10-29T13:28:19",
+      "error_message": "bid-review 生产链路基准提取处显式断裂:任意 quick/deep 任务必 failed(终审 not_ready 头号问题);且 bid-review 模块入口仅 superadmin 可见(终审④)",
+      "file": "backend/app/extensions/bid_review/worker.py + config/permissions.yaml + config/roles_custom.yaml",
+      "root_cause": "T8/T14 按 plan 留 _default_extract_fn/_default_model_fn 显式缺口(ModelNotConfigured/ExtractNotConfigured),plan 无任何 task 认领生产装配;nav:bid-review 未授权给任何非 superadmin 角色的 nav 列表(base 与 overlay 两层皆缺)",
+      "fix": "ee17c7890 双装配点真接线(translation create_chat_model 先例,EAI_BID_REVIEW_MODEL>config 首项;extract 段 to_thread 卸载防堵事件循环;无模型保留缺口降级)+10 单测; a47ee21d4 base 两角色补 nav+overlay 两角色补 nav+四页(overlay 为运行时真源须双写)",
+      "tags": [
+        "bid-review",
+        "production-wiring",
+        "model-factory",
+        "event-loop",
+        "permissions",
+        "overlay"
+      ],
+      "related_bugs": [
+        "bug-0269"
+      ],
+      "occurrences": 1,
+      "last_seen": "2026-10-29T13:28:19"
+    },
+    {
+      "id": "bug-282",
+      "timestamp": "2026-10-29T06:01:04.164Z",
+      "error_message": "Missing await",
+      "file": "backend/tests/test_bid_review_routers.py",
+      "root_cause": "Async call without await — returned Promise instead of value",
+      "fix": "Added await to async call",
+      "tags": [
+        "auto-detected",
+        "async-fix",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-10-29T06:01:04.164Z"
+    },
+    {
+      "id": "bug-283",
+      "timestamp": "2026-10-29T06:01:48.584Z",
+      "error_message": "Wrong reference: UploadFile should be Response",
+      "file": "backend/app/extensions/bid_review/routers.py",
+      "root_cause": "Used \"UploadFile\" instead of \"Response\"",
+      "fix": "Changed UploadFile → Response",
+      "tags": [
+        "auto-detected",
+        "wrong-reference",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-10-29T06:01:48.584Z"
+    },
+    {
+      "id": "bug-284",
+      "timestamp": "2026-10-29T06:02:14.871Z",
+      "error_message": "Missing await",
+      "file": "backend/app/extensions/bid_review/routers.py",
+      "root_cause": "Async call without await — returned Promise instead of value",
+      "fix": "Added await to async call",
+      "tags": [
+        "auto-detected",
+        "async-fix",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-10-29T06:02:14.871Z"
+    },
+    {
+      "id": "bug-285",
+      "timestamp": "2026-10-29T06:04:27.296Z",
+      "error_message": "Missing error handling in unknown",
+      "file": "frontend/tests/unit/extensions/bid-review-api.test.ts",
+      "root_cause": "Code path had no error handling — exceptions would propagate uncaught",
+      "fix": "Added try/catch block",
+      "tags": [
+        "auto-detected",
+        "error-handling",
+        "ts"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-10-29T06:04:27.296Z"
+    },
+    {
+      "id": "bug-286",
+      "timestamp": "2026-10-29T06:06:38.516Z",
+      "error_message": "Missing error handling in unknown",
+      "file": "frontend/src/extensions/bid-review/components/WorkbenchView.tsx",
+      "root_cause": "Code path had no error handling — exceptions would propagate uncaught",
+      "fix": "Added try/catch block",
+      "tags": [
+        "auto-detected",
+        "error-handling",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-10-29T06:06:38.516Z"
+    },
+    {
+      "id": "bug-287",
+      "timestamp": "2026-10-29T06:12:44.360Z",
+      "error_message": "Null/undefined access in ",
+      "file": "frontend/src/extensions/bid-review/components/WorkbenchView.tsx",
+      "root_cause": "Property access on potentially null/undefined value",
+      "fix": "Added null safety (optional chaining or null check)",
+      "tags": [
+        "auto-detected",
+        "null-safety",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-10-29T06:12:44.360Z"
+    },
+    {
+      "id": "bug-288",
+      "timestamp": "2026-10-29T06:16:09.332Z",
+      "error_message": "Incorrect value in code",
+      "file": "docs/superpowers/specs/2026-10-29-docmgr-ai-fulltext-ops-design.md",
+      "root_cause": "Had `frontend/contracts/docmgr_findings.v1.json`",
+      "fix": "Changed to `contracts/docmgr_findings.v1.json`",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "md"
+      ],
+      "related_bugs": [],
+      "occurrences": 2,
+      "last_seen": "2026-10-29T06:16:18.945Z"
+    },
+    {
+      "id": "bug-3590",
+      "timestamp": "2026-10-29",
+      "error_message": "auto模式重渲染即重复应用全部ops并覆写撤销快照点",
+      "file": "frontend/src/extensions/docmgr/DocAIAgentPanel.tsx",
+      "root_cause": "OperationCards的operations每次渲染经parseAIMessage内联重解析产生新数组(:872,:886-890)，auto effect deps=[operations]随之重跑(:452-462)；:454无条件覆盖snapshotRef(对比ask模式:487用??=)，任意重渲染(流式tick/setError/开菜单)即重快照+重应用，撤销全部只能还原到已应用态",
+      "fix": "spec修订R7: parseAIMessage结果按message.id useMemo缓存稳定身份; auto批应用逐op捕获继续+失败清单(弃首错即断); 快照仅取一次",
+      "tags": [
+        "blocknote",
+        "react-hooks",
+        "auto-mode",
+        "undo",
+        "docmgr"
+      ],
+      "related_bugs": [
+        "bug-3101"
+      ],
+      "occurrences": 1,
+      "last_seen": "2026-10-29"
+    },
+    {
+      "id": "bug-3591",
+      "timestamp": "2026-10-29",
+      "error_message": "AI面板提交前PUT同步不检查res.ok，同步失败静默继续，盘上留陈旧内容",
+      "file": "frontend/src/extensions/docmgr/DocAIAgentPanel.tsx",
+      "root_cause": "handleSubmit的fetch PUT /personal-docs/{threadId}/content(:622-633)未检查response.ok，400/500后仍走后续AI提交",
+      "fix": "spec修订R5/§4.4: 任务通道补res.ok检查，失败中止提交; spec已定稿待实现",
+      "tags": [
+        "fetch",
+        "error-handling",
+        "docmgr",
+        "content-sync"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-10-29"
+    },
+    {
+      "timestamp": "2026-10-29",
+      "error_message": "make lint F821 undefined name 'secrets' app/gateway/routers/auth.py:502(该行执行即 NameError)",
+      "file": "backend/app/gateway/routers/auth.py",
+      "root_cause": "上游同步/他会话改动引用 secrets 模块未 import;bid-review QUAL 评审 T22 全量验证中发现,文件属他会话在途,非本子系统授权面",
+      "fix": "未修——移交:补 import secrets 或改用既有 token 生成工具;记录人仅登记不越权修改",
+      "tags": [
+        "lint",
+        "F821",
+        "auth",
+        "移交-unfixed"
+      ],
+      "id": "bug-3592",
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-10-29"
+    },
+    {
+      "timestamp": "2026-10-29",
+      "error_message": "报告导出端点无服务侧状态门,created/零问题任务直导即得『未命中致命红线,可进入人工终审』",
+      "file": "backend/app/extensions/bid_review/routers.py",
+      "root_cause": "plan Task 21 未要求后端门,首版仅前端 WorkbenchView 有 done 门;非 UI 消费方可取半程报告当通过结论",
+      "fix": "export_task_report 加 done 门:非 done 409(detail=任务未完成…),commit 95f397e47,先红后绿 157pass/6skip;API.md 同步",
+      "tags": [
+        "bid-review",
+        "report",
+        "409",
+        "status-gate"
+      ],
+      "id": "bug-3593",
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-10-29"
+    },
+    {
+      "timestamp": "2026-10-29",
+      "error_message": "T21 报告导出端点交付后运行系统中不存在:gateway StartedAt(05:06Z)早于提交(06:15Z),/report 路由级 404,.wolf 记录的重启声明与容器事实矛盾",
+      "file": "deer-flow-gateway(容器)",
+      "root_cause": "PID1 无 --reload(bug-1242 EAI-CUSTOM 禁 reload),bind-mount 新代码不自动加载;T22 重启步骤声明未实际执行",
+      "fix": "QUAL 修复轮真实执行 restart gateway+frontend(08:07:39Z/08:07:50Z),探活 healthy,/report 由 {\"detail\":\"Not Found\"} 变端点语义 404『任务不存在』实证新代码加载",
+      "tags": [
+        "docker",
+        "restart",
+        "bug-1242",
+        "process",
+        "bid-review"
+      ],
+      "id": "bug-3594",
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-10-29"
+    },
+    {
+      "id": "bug-3595",
+      "timestamp": "2026-10-29T16:50:00+08:00",
+      "error_message": "make lint F821: app/gateway/routers/auth.py:502 undefined name 'secrets'",
+      "file": "backend/app/gateway/routers/auth.py",
+      "root_cause": "bug-3209/B4 内部服务 userId 桥端点(终审 leftover⑦ 归属处置时发现)使用 secrets.compare_digest 但模块从未 import secrets;该端点零测试覆盖,静态错误长期存活;真实后果=collab canAccessDocument 桥路径一执行即 NameError 500(带有效 X-Internal-Auth 头时才触发,缺头短路躲过)",
+      "fix": "96c158685 补 stdlib import secrets;顺带清偿同批 3 处机械 lint 债(eia_samples routers I001/test_contract_price_llm_injection I001/tlt_e2e_seed F401, ruff --fix+format);全仓 .deer-flow 之外 0 错验证",
+      "tags": [
+        "lint",
+        "F821",
+        "auth",
+        "collab-bridge",
+        "internal-auth",
+        "missing-import",
+        "zero-test-coverage"
+      ],
+      "related_bugs": [
+        "bug-3209"
+      ],
+      "occurrences": 1,
+      "last_seen": "2026-10-29T16:50:00+08:00"
+    },
+    {
+      "id": "bug-3596",
+      "timestamp": "2026-10-29T17:40:00+08:00",
+      "error_message": "用户报:左侧导航栏没有投标审查按钮",
+      "file": "backend/app/extensions/database.py",
+      "root_cause": "app_definitions 表无 bid-review 行:bid-review 模块四层齐缺一(permissions nav:bid-review 注册+前端四页+API 路由+应用中心注册),新模块注册清单漏了应用中心层。左侧导航=Sidebar.tsx 硬编码 allNavItems(业务模块不进侧栏),业务模块入口=应用中心 grid=app_definitions 表驱动",
+      "fix": "632030f9d database.py seed 补 bid-review 行(marketing/process/clipboard-check/sort 18)+icons.ts 补 clipboard-check 映射;seed ON CONFLICT DO NOTHING 幂等,gateway 重启自愈落库;用户指示侧栏不加按钮",
+      "tags": [
+        "app-center",
+        "app_definitions",
+        "seed",
+        "module-registration",
+        "nav-visibility",
+        "new-module-checklist"
+      ],
+      "related_bugs": [
+        "bug-3109"
+      ],
+      "occurrences": 1,
+      "last_seen": "2026-10-29T17:40:00+08:00"
+    },
+    {
+      "id": "bug-3597",
+      "timestamp": "2026-10-29T14:52:23.762Z",
+      "error_message": "Significant refactor of ",
+      "file": "docs/superpowers/plans/2026-10-29-docmgr-ai-fulltext-ops-m1.md",
+      "root_cause": "16 lines replaced/restructured",
+      "fix": "Rewrote 20→34 lines (16 removed) | Also: sizes = split_line_counts(content); doc_stats.append((str(f), len(content), len(sizes)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "md"
+      ],
+      "related_bugs": [],
+      "occurrences": 2,
+      "last_seen": "2026-10-29T14:52:37.807Z"
+    },
+    {
+      "id": "bug-3598",
+      "timestamp": "2026-10-29T14:53:07.765Z",
+      "error_message": "Wrong operator: != should be ==",
+      "file": "docs/superpowers/plans/2026-10-29-docmgr-ai-fulltext-ops-m1.md",
+      "root_cause": "Used \"!=\" instead of \"==\"",
+      "fix": "Changed operator != → ==",
+      "tags": [
+        "auto-detected",
+        "operator-fix",
+        "md"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-10-29T14:53:07.765Z"
+    },
+    {
+      "id": "bug-3599",
+      "timestamp": "2026-10-29T19:20:13.674Z",
+      "error_message": "Significant refactor of ",
+      "file": "docs/superpowers/plans/2026-10-29-docmgr-ai-fulltext-ops-m1.md",
+      "root_cause": "2 lines replaced/restructured",
+      "fix": "Rewrote 6→33 lines (2 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "md"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-10-29T19:20:13.675Z"
+    },
+    {
+      "id": "bug-3600",
+      "timestamp": "2026-10-29T19:22:16.309Z",
+      "error_message": "docmgr T0 盘点: LOSSLESS VIOLATION 147/169 文档——分节规则切分后各节依序拼接 != 原文",
+      "file": "backend/scripts/docmgr_doc_scale.py (规则洞将影响 Task 3 新建的 app/extensions/docmgr/ai_transform.py split_sections)",
+      "root_cause": "split('\n')按标题分桶后 '\n'.join(桶) 重建：桶边界处前一节末行与下一节标题行之间的一个 \n 分隔符在 ''.join(sections) 拼接时丢失，每个非首行标题处恰好丢 1 个 \n，属结构性规则洞(凡含非首行标题的文档全部违例)，非个别脏文档",
+      "fix": "Task 3 实现 split_sections 时给每个非末尾桶补回边界分隔符: section_i = '\n'.join(buf_i) + '\n'(末桶不加，原文末尾换行由末桶自然保留)，使 ''.join(secs) == content 严格成立；修后以 docmgr_doc_scale.py 复跑至 0 violation 再放行。已写入 M1 计划 T0 盘点记录(commit b8ffff1e3)",
+      "tags": [
+        "docmgr",
+        "ai-transform",
+        "lossless",
+        "split-sections",
+        "round-trip",
+        "t0"
+      ],
+      "related_bugs": [
+        "bug-3301",
+        "bug-3302"
+      ],
+      "occurrences": 147,
+      "last_seen": "2026-10-29T19:22:16.309Z"
+    },
+    {
+      "id": "bug-3601",
+      "timestamp": "2026-10-30T03:45:00.000Z",
+      "error_message": "UnboundLocalError: cannot access local variable 'buf' where it is not associated with a value (ai_transform._segments flush)",
+      "file": "backend/app/extensions/docmgr/ai_transform.py",
+      "root_cause": "计划原稿的 flush() 闭包内赋值 buf = [] 但未声明 nonlocal buf，Python 将 buf 视为闭包局部名，if buf: 即 UnboundLocalError；计划代码逐字落地时暴露",
+      "fix": "flush() 加 nonlocal buf 声明（M1 Task 3 实现期先红后绿捕获）",
+      "tags": [
+        "docmgr",
+        "ai-transform",
+        "python-closure",
+        "nonlocal",
+        "plan-code-bug"
+      ],
+      "related_bugs": [
+        "bug-3600"
+      ],
+      "occurrences": 1,
+      "last_seen": "2026-10-30T03:45:00.000Z"
+    },
+    {
+      "id": "bug-3602",
+      "error_message": "test_table_atomic 断言 len(pieces)>1 失败：表格节（structured=True）永远 pieces=[text] 不再切",
+      "file": "backend/app/extensions/docmgr/ai_transform.py",
+      "root_cause": "计划原稿 split_sections 的 pieces 条件写成 [text] if (structured or len<=limit)——structured 短路了再切；但端点对 structured 节在消费 pieces 前已跳过，该短路无消费者，与 test_table_atomic 语义（表节也要原子分片）直接矛盾",
+      "fix": "pieces 条件去掉 structured 分支：[text] if len(text) <= SECTION_CHAR_LIMIT else _split_long(text)；端点行为不变（structured 节 continue 在先）",
+      "timestamp": "2026-10-30T03:45:00.000Z",
+      "tags": [
+        "docmgr",
+        "ai-transform",
+        "split-sections",
+        "plan-code-bug",
+        "tdd"
+      ],
+      "related_bugs": [
+        "bug-3600",
+        "bug-3601"
+      ],
+      "occurrences": 1,
+      "last_seen": "2026-10-30T03:45:00.000Z"
+    },
+    {
+      "id": "bug-3603",
+      "timestamp": "2026-10-29T20:00:09.320Z",
+      "error_message": "Missing error handling in go",
+      "file": "docs/designs/2026-10-30-bid-review-ui.html",
+      "root_cause": "Code path had no error handling — exceptions would propagate uncaught",
+      "fix": "Added try/catch block",
+      "tags": [
+        "auto-detected",
+        "error-handling",
+        "html"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-10-29T20:00:09.320Z"
+    },
+    {
+      "id": "bug-3604",
+      "timestamp": "2026-10-29T20:01:09.231Z",
+      "error_message": "Incorrect value in code",
+      "file": "docs/designs/2026-10-30-bid-review-ui.html",
+      "root_cause": "Had '){ var fb=document.querySelector('",
+      "fix": "Changed to '){ var curRule=document.querySelector('",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "html"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-10-29T20:01:09.231Z"
+    },
+    {
+      "id": "bug-3605",
+      "timestamp": "2026-10-29T20:01:21.166Z",
+      "error_message": "Significant refactor of ",
+      "file": "docs/designs/2026-10-30-bid-review-ui.html",
+      "root_cause": "2 lines replaced/restructured",
+      "fix": "Rewrote 5→3 lines (2 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "html"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-10-29T20:01:21.166Z"
+    },
+    {
+      "id": "bug-3606",
+      "timestamp": "2026-10-29T20:02:05.142Z",
+      "error_message": "Wrong operator: !== should be ===",
+      "file": "docs/designs/2026-10-30-bid-review-ui.html",
+      "root_cause": "Used \"!==\" instead of \"===\"",
+      "fix": "Changed operator !== → ===",
+      "tags": [
+        "auto-detected",
+        "operator-fix",
+        "html"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-10-29T20:02:05.142Z"
+    },
+    {
+      "id": "bug-3607",
+      "timestamp": "2026-10-29T20:02:16.635Z",
+      "error_message": "Significant refactor of ",
+      "file": "backend/app/extensions/docmgr/ai_transform.py",
+      "root_cause": "3 lines replaced/restructured",
+      "fix": "Rewrote 17→27 lines (3 removed) | Also: logger.warning(\"docmgr ai_transform section %s fai; if _norm(new_md) == _norm(sec[\"content\"]):",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 2,
+      "last_seen": "2026-10-29T20:02:53.610Z"
+    },
+    {
+      "id": "bug-3608",
+      "timestamp": "2026-10-29T20:02:39.390Z",
+      "error_message": "Incorrect value in code",
+      "file": "backend/app/extensions/docmgr/ai_transform.py",
+      "root_cause": "Had \"全量切分后的节下标，部分重跑\"",
+      "fix": "Changed to \"全量切分后的节下标，部分重跑；仅改写预设有效，toc/summary 忽略此参数全量处理\"",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-10-29T20:02:39.390Z"
+    },
+    {
+      "id": "bug-3609",
+      "timestamp": "2026-10-29T20:02:50.967Z",
+      "error_message": "Wrong reference: message should be exc_info",
+      "file": "backend/app/extensions/docmgr/ai_transform.py",
+      "root_cause": "Used \"message\" instead of \"exc_info\"",
+      "fix": "Changed message → exc_info",
+      "tags": [
+        "auto-detected",
+        "wrong-reference",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-10-29T20:02:50.967Z"
+    },
+    {
+      "id": "bug-3610",
+      "timestamp": "2026-10-29T20:02:53.081Z",
+      "error_message": "Wrong condition in logic",
+      "file": "docs/designs/2026-10-30-bid-review-ui.html",
+      "root_cause": "Condition was: if (!s6||s6.hidden)",
+      "fix": "Changed to: if (!s6||!s6.classList.contains('on')",
+      "tags": [
+        "auto-detected",
+        "logic-fix",
+        "html"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-10-29T20:02:53.081Z"
+    },
+    {
+      "id": "bug-3611",
+      "timestamp": "2026-10-29T20:03:45.042Z",
+      "error_message": "Incorrect value in code",
+      "file": "backend/tests/test_docmgr_ai_transform.py",
+      "root_cause": "Had \"content\"",
+      "fix": "Changed to \"## 目录\"",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-10-29T20:03:45.042Z"
+    },
+    {
+      "id": "bug-3612",
+      "timestamp": "2026-10-29T20:03:48.543Z",
+      "error_message": "Missing await",
+      "file": "backend/tests/test_docmgr_ai_transform.py",
+      "root_cause": "Async call without await — returned Promise instead of value",
+      "fix": "Added await to async call",
+      "tags": [
+        "auto-detected",
+        "async-fix",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-10-29T20:03:48.543Z"
+    },
+    {
+      "id": "bug-3613",
+      "timestamp": "2026-10-29T20:10:32.162Z",
+      "error_message": "Significant refactor of ",
+      "file": "backend/app/extensions/docmgr/ai_transform.py",
+      "root_cause": "2 lines replaced/restructured",
+      "fix": "Rewrote 3→5 lines (2 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-10-29T20:10:32.162Z"
+    },
+    {
+      "id": "bug-3614",
+      "timestamp": "2026-10-29T20:20:45.592Z",
+      "error_message": "Significant refactor of ",
+      "file": "frontend/src/extensions/docmgr/PersonalBlockNoteEditor.tsx",
+      "root_cause": "5 lines replaced/restructured",
+      "fix": "Rewrote 18→28 lines (5 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-10-29T20:20:45.592Z"
+    },
+    {
+      "id": "bug-3615",
+      "timestamp": "2026-10-29T20:24:57.102Z",
+      "error_message": "findBlockByAnchor exact/prefix 级首中即返回:文档有重复标题(如多节都叫概述)时锚点静默错配到第一个同名块,AI 编辑改错节",
+      "file": "frontend/src/extensions/docmgr/PersonalBlockNoteEditor.tsx",
+      "root_cause": "第1级 exact 与第2级 prefix 匹配循环内命中即 return,不检测后续重复;仅第3级 contains 有 >1 命中返回 null 的歧义纪律",
+      "fix": "两级均改为扫全量+第二命中即 return null(与 contains 级纪律对齐);3/4/5 级不动;TDD 先红后绿,4 新测试+ai-panel 32 既有测试全绿(commit ad480c3bf)",
+      "tags": [
+        "docmgr",
+        "findBlockByAnchor",
+        "anchor",
+        "ambiguity",
+        "silent-mismatch",
+        "frontend"
+      ],
+      "related_bugs": [
+        "bug-3301"
+      ],
+      "occurrences": 1,
+      "last_seen": "2026-10-29T20:24:57.103Z"
+    },
+    {
+      "id": "bug-3616",
+      "timestamp": "2026-10-29T20:28:50.084Z",
+      "error_message": "CSS fix: op",
+      "file": "frontend/src/extensions/docmgr/PersonalBlockNoteEditor.tsx",
+      "root_cause": "op: \"replace\" | \"insert_after\" | \"delete\" | \"prepend\" | \"append\" → | \"replace\"",
+      "fix": "Changed op: \"replace\" | \"insert_after\" | \"delete\" | \"prepend\" | \"append\" → | \"replace\"",
+      "tags": [
+        "auto-detected",
+        "style-fix",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-10-29T20:28:50.084Z"
+    },
+    {
+      "id": "bug-3617",
+      "timestamp": "2026-10-29T20:28:59.557Z",
+      "error_message": "Null/undefined access in ",
+      "file": "frontend/src/extensions/docmgr/PersonalBlockNoteEditor.tsx",
+      "root_cause": "Property access on potentially null/undefined value",
+      "fix": "Added null safety (optional chaining or null check)",
+      "tags": [
+        "auto-detected",
+        "null-safety",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-10-29T20:28:59.557Z"
+    },
+    {
+      "id": "bug-3618",
+      "timestamp": "2026-10-29T20:29:14.687Z",
+      "error_message": "Missing guard clause",
+      "file": "frontend/src/extensions/docmgr/PersonalBlockNoteEditor.tsx",
+      "root_cause": "No early return/throw for edge case: !op.anchor",
+      "fix": "Added guard clause: if (!op.anchor)",
+      "tags": [
+        "auto-detected",
+        "guard-clause",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-10-29T20:29:14.687Z"
+    },
+    {
+      "id": "bug-3619",
+      "timestamp": "2026-10-29T20:37:45.176Z",
+      "error_message": "Incorrect value in code",
+      "file": "frontend/tests/unit/docmgr/section-range.test.ts",
+      "root_cause": "Had \"低级标题不截断高级节\"",
+      "fix": "Changed to \"任一标题即截断（对齐后端扁平切节）\"",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "ts"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-10-29T20:37:45.176Z"
+    },
+    {
+      "id": "bug-3620",
+      "timestamp": "2026-10-29T20:42:43.376Z",
+      "error_message": "Type error",
+      "file": "frontend/src/extensions/docmgr/PersonalBlockNoteEditor.tsx",
+      "root_cause": "Missing or incorrect type annotation",
+      "fix": "Added type assertion/annotation | Also: // EAI-CUSTOM (全文操作 M1 / spec §3-2): op.content 与 seed 同管线; // （buildBlocksWithDetails 切分 + transformMathInBlocks），delet",
+      "tags": [
+        "auto-detected",
+        "type-fix",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 2,
+      "last_seen": "2026-10-29T20:42:54.515Z"
+    },
+    {
+      "id": "bug-3621",
+      "timestamp": "2026-10-29T20:44:07.787Z",
+      "error_message": "Type error",
+      "file": "frontend/tests/unit/docmgr/op-content.test.ts",
+      "root_cause": "Missing or incorrect type annotation",
+      "fix": "Added type assertion/annotation",
+      "tags": [
+        "auto-detected",
+        "type-fix",
+        "ts"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-10-29T20:44:07.787Z"
+    },
+    {
+      "id": "bug-3622",
+      "timestamp": "2026-10-29T20:44:55.951Z",
+      "error_message": "Significant refactor of ",
+      "file": "frontend/tests/unit/docmgr/op-content.test.ts",
+      "root_cause": "3 lines replaced/restructured",
+      "fix": "Rewrote 6→14 lines (3 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "ts"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-10-29T20:44:55.951Z"
+    },
+    {
+      "id": "bug-3623",
+      "timestamp": "2026-10-30T04:50:00.000Z",
+      "error_message": "applyOperations 对 op.content 裸调 editor.tryParseMarkdownToBlocks，$$..299 独立公式回灌即变裸文本段落（spec §3-2 核查发现）",
+      "file": "frontend/src/extensions/docmgr/PersonalBlockNoteEditor.tsx",
+      "root_cause": "op.content 绕过「details 切分(buildBlocksWithDetails)+数学转换(transformMathInBlocks)」管线（seed 路径 :513-520 有先例），BlockNote 内置 markdown 解析不认识自定义 math 块类型，$$ 公式退化为纯文本段",
+      "fix": "新增导出 parseOperationContent(content, tryParse) 统一走管线；applyOperations 非 delete 分支改调它（delete 短路保留），tryParse 注入便于测试；3 新测试 tests/unit/docmgr/op-content.test.ts",
+      "tags": [
+        "docmgr",
+        "math",
+        "equation",
+        "details",
+        "applyOperations",
+        "pipeline"
+      ],
+      "related_bugs": [
+        "bug-3301"
+      ],
+      "occurrences": 1,
+      "last_seen": "2026-10-30T04:50:00.000Z"
+    },
+    {
+      "id": "bug-3624",
+      "timestamp": "2026-10-29T20:51:41.251Z",
+      "error_message": "Null/undefined access in ",
+      "file": "frontend/src/extensions/docmgr/DocAIAgentPanel.tsx",
+      "root_cause": "Property access on potentially null/undefined value",
+      "fix": "Added null safety (optional chaining or null check) | Also: /** Parse a single AI message for operations（bug-3301: 按消息缓存; const parseAIMessageRef = useRef(createAIMessageParser()); | Also: if (hit?.sig === raw) return hit.parsed;",
+      "tags": [
+        "auto-detected",
+        "null-safety",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 3,
+      "last_seen": "2026-10-29T20:56:59.248Z"
+    },
+    {
+      "id": "bug-3625",
+      "timestamp": "2026-10-29T20:51:51.844Z",
+      "error_message": "Significant refactor of ",
+      "file": "frontend/src/extensions/docmgr/DocAIAgentPanel.tsx",
+      "root_cause": "4 lines replaced/restructured",
+      "fix": "Rewrote 13→21 lines (4 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-10-29T20:51:51.844Z"
+    },
+    {
+      "id": "bug-3301",
+      "timestamp": "2026-10-30T04:58:50.000Z",
+      "error_message": "auto 模式每次渲染产出新 ops 数组 → useEffect 重复应用并覆写快照点; 批量 applyOperations 首错即断,后续 op 全部丢弃",
+      "file": "frontend/src/extensions/docmgr/DocAIAgentPanel.tsx",
+      "root_cause": "parseAIMessage 内联解析无缓存,重渲染返回新引用致依赖 effect 重触发; applyOperations 整批调用无逐 op 容错",
+      "fix": "新增 createAIMessageParser 按 message.id+内容签名缓存解析结果(上限50条); OperationCards auto effect 逐 op try/catch 捕获继续+失败清单单横幅+appliedRef 防重复应用; 测试 tests/unit/docmgr/message-parse-cache.test.ts (4测)",
+      "tags": [
+        "docmgr",
+        "auto-mode",
+        "parse-cache",
+        "useEffect",
+        "error-handling"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-10-30T04:58:50.000Z"
+    },
+    {
+      "id": "bug-3626",
+      "timestamp": "2026-10-29T21:00:03.676Z",
+      "error_message": "Significant refactor of ",
+      "file": "frontend/src/app/bid-review/layout.tsx",
+      "root_cause": "11 lines replaced/restructured",
+      "fix": "Rewrote 19→8 lines (11 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-10-29T21:00:03.676Z"
+    },
+    {
+      "id": "bug-3627",
+      "timestamp": "2026-10-29T21:00:41.682Z",
+      "error_message": "CSS fix: isLoading",
+      "file": "frontend/tests/unit/app/bid-review-layout.dom.test.tsx",
+      "root_cause": "isLoading: mocks.loading, → false",
+      "fix": "Changed isLoading: mocks.loading, → false",
+      "tags": [
+        "auto-detected",
+        "style-fix",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-10-29T21:00:41.682Z"
+    },
+    {
+      "id": "bug-3628",
+      "timestamp": "2026-10-29T21:02:16.698Z",
+      "error_message": "Missing error handling in unknown",
+      "file": "frontend/src/extensions/api/index.ts",
+      "root_cause": "Code path had no error handling — exceptions would propagate uncaught",
+      "fix": "Added try/catch block",
+      "tags": [
+        "auto-detected",
+        "error-handling",
+        "ts"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-10-29T21:02:16.698Z"
+    },
+    {
+      "id": "bug-3629",
+      "timestamp": "2026-10-29T21:11:56.790Z",
+      "error_message": "Significant refactor of ",
+      "file": "frontend/tests/unit/extensions/bid-review-tasks-view.dom.test.tsx",
+      "root_cause": "2 lines replaced/restructured",
+      "fix": "Rewrote 8→13 lines (2 removed) | Also: /** StatCard 值段文本(label span 的相邻 value span)。 */; return screen.getByText(label).nextElementSibling?",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 2,
+      "last_seen": "2026-10-29T21:12:09.764Z"
+    },
+    {
+      "id": "bug-3630",
+      "timestamp": "2026-10-29T21:12:28.654Z",
+      "error_message": "Missing guard clause",
+      "file": "frontend/tests/unit/docmgr/task-reducer.test.ts",
+      "root_cause": "No early return/throw for edge case: !next",
+      "fix": "Added guard clause: if (!next)",
+      "tags": [
+        "auto-detected",
+        "guard-clause",
+        "ts"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-10-29T21:12:28.654Z"
+    },
+    {
+      "id": "bug-3631",
+      "timestamp": "2026-10-29T21:12:38.687Z",
+      "error_message": "Wrong reference: taskReducer should be run",
+      "file": "frontend/tests/unit/docmgr/task-reducer.test.ts",
+      "root_cause": "Used \"taskReducer\" instead of \"run\"",
+      "fix": "Changed taskReducer → run",
+      "tags": [
+        "auto-detected",
+        "wrong-reference",
+        "ts"
+      ],
+      "related_bugs": [],
+      "occurrences": 2,
+      "last_seen": "2026-10-29T21:12:43.406Z"
+    },
+    {
+      "id": "bug-3632",
+      "timestamp": "2026-10-29T21:12:50.224Z",
+      "error_message": "Significant refactor of ",
+      "file": "frontend/tests/unit/extensions/bid-review-rulepack-views.dom.test.tsx",
+      "root_cause": "5 lines replaced/restructured",
+      "fix": "Rewrote 9→4 lines (5 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-10-29T21:12:50.224Z"
+    },
+    {
+      "id": "bug-3633",
+      "timestamp": "2026-10-29T21:13:44.891Z",
+      "error_message": "Wrong reference: React should be CSSProperties",
+      "file": "frontend/src/extensions/bid-review/components/WorkbenchView.tsx",
+      "root_cause": "Used \"React\" instead of \"CSSProperties\"",
+      "fix": "Changed React → CSSProperties",
+      "tags": [
+        "auto-detected",
+        "wrong-reference",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-10-29T21:13:44.891Z"
+    },
+    {
+      "id": "bug-3634",
+      "timestamp": "2026-10-29T21:20:13.132Z",
+      "error_message": "Incorrect value in code",
+      "file": "frontend/src/extensions/bid-review/components/rulepack-ui.tsx",
+      "root_cause": "Had \"pill pill-gray\"",
+      "fix": "Changed to `??`",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 2,
+      "last_seen": "2026-10-29T21:22:25.739Z"
+    },
+    {
+      "id": "bug-3635",
+      "timestamp": "2026-10-29T21:21:00.711Z",
+      "error_message": "Type error",
+      "file": "frontend/src/extensions/docmgr/PersonalBlockNoteEditor.tsx",
+      "root_cause": "Missing or incorrect type annotation",
+      "fix": "Added type assertion/annotation",
+      "tags": [
+        "auto-detected",
+        "type-fix",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-10-29T21:21:00.711Z"
+    },
+    {
+      "id": "bug-3636",
+      "timestamp": "2026-10-29T21:21:05.628Z",
+      "error_message": "Wrong reference: rebuildHeadings should be docChangeListenersRef",
+      "file": "frontend/src/extensions/docmgr/PersonalBlockNoteEditor.tsx",
+      "root_cause": "Used \"rebuildHeadings\" instead of \"docChangeListenersRef\"",
+      "fix": "Changed rebuildHeadings → docChangeListenersRef",
+      "tags": [
+        "auto-detected",
+        "wrong-reference",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-10-29T21:21:05.629Z"
+    },
+    {
+      "id": "bug-3637",
+      "timestamp": "2026-10-29T21:22:14.956Z",
+      "error_message": "Null/undefined access in ",
+      "file": "frontend/src/extensions/bid-review/components/rulepack-ui.tsx",
+      "root_cause": "Property access on potentially null/undefined value",
+      "fix": "Added null safety (optional chaining or null check)",
+      "tags": [
+        "auto-detected",
+        "null-safety",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-10-29T21:22:14.956Z"
+    },
+    {
+      "id": "bug-3638",
+      "timestamp": "2026-10-29T21:22:25.123Z",
+      "error_message": "Missing error handling in getErrMsg",
+      "file": "frontend/src/extensions/docmgr/DocAITaskArea.tsx",
+      "root_cause": "Code path had no error handling — exceptions would propagate uncaught",
+      "fix": "Added try/catch block",
+      "tags": [
+        "auto-detected",
+        "error-handling",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-10-29T21:22:25.123Z"
+    },
+    {
+      "id": "bug-3639",
+      "timestamp": "2026-10-29T21:23:11.498Z",
+      "error_message": "Type error",
+      "file": "frontend/src/extensions/bid-review/components/WorkbenchView.tsx",
+      "root_cause": "Missing or incorrect type annotation",
+      "fix": "Added type assertion/annotation",
+      "tags": [
+        "auto-detected",
+        "type-fix",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-10-29T21:23:11.498Z"
+    },
+    {
+      "id": "bug-3640",
+      "timestamp": "2026-10-30T05:40:00.000Z",
+      "error_message": "eslint @typescript-eslint/prefer-nullish-coalescing: Prefer using nullish coalescing operator instead of a ternary expression (rulepack-ui.tsx CountCell)",
+      "file": "frontend/src/extensions/bid-review/components/rulepack-ui.tsx",
+      "root_cause": "CountCell 写成 value === undefined ? \"—\" : value,触发 prefer-nullish-coalescing;同文件空串兜底 severity || \"未知\" 同样被拦",
+      "fix": "计数格改 {value ?? \"—\"}(undefined/null 均显示 —,语义更对);空串兜底改 severity === \"\" ? \"未知\" : severity;prettier --write 四个新改文件过 CI format 门",
+      "tags": [
+        "lint",
+        "frontend",
+        "bid-review",
+        "eslint",
+        "prettier"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-10-30T05:40:00.000Z"
+    },
+    {
+      "id": "bug-3302",
+      "timestamp": "2026-10-30T06:30:00.000Z",
+      "error_message": "docmgr 文档同步 PUT /personal-docs/{id}/content 未检查 res.ok——保存失败(401/CSRF/500)时半程文档仍继续投喂 AI 模型，模型基于磁盘上不完整内容产出操作",
+      "file": "frontend/src/extensions/docmgr/DocAITaskArea.tsx",
+      "root_cause": "任务通道 PUT 同步照抄 fire-and-forget 写法，未校验响应状态码；DocAIAgentPanel 先例同样仅在 catch 里兜底",
+      "fix": "useDocAITask.startTask 对 PUT 响应检查 res.ok，非 2xx 抛错中止任务（半程文档不投喂模型）；同批落 createPersonalVersion 前置快照（失败不阻塞）",
+      "tags": [
+        "docmgr",
+        "fetch",
+        "res.ok",
+        "csrf",
+        "ai-transform",
+        "全文操作M1"
+      ],
+      "related_bugs": [
+        "bug-3301"
+      ],
+      "occurrences": 1,
+      "last_seen": "2026-10-30T06:30:00.000Z"
+    },
+    {
+      "id": "bug-3641",
+      "timestamp": "2026-10-29T21:35:02.262Z",
+      "error_message": "Null/undefined access in ",
+      "file": "frontend/src/extensions/docmgr/DocAITaskArea.tsx",
+      "root_cause": "Property access on potentially null/undefined value",
+      "fix": "Added null safety (optional chaining or null check)",
+      "tags": [
+        "auto-detected",
+        "null-safety",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-10-29T21:35:02.262Z"
+    },
+    {
+      "id": "bug-3642",
+      "timestamp": "2026-10-29T21:36:14.354Z",
+      "error_message": "Missing await",
+      "file": "frontend/tests/unit/docmgr/task-area.dom.test.tsx",
+      "root_cause": "Async call without await — returned Promise instead of value",
+      "fix": "Added await to async call | Also: const host = await render( | Also: const host = await render(<PresetChips disabled onPick={(op) | Also: test(\"streaming → 生成中\", async () => {; const host = await render(<SectionCard section={{ ...base, s | Also: test(\"applied → 已应用标记\", async () => {; const host = await render(<SectionCard section={{ ...base, s",
+      "tags": [
+        "auto-detected",
+        "async-fix",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 7,
+      "last_seen": "2026-10-29T21:36:46.545Z"
+    },
+    {
+      "id": "bug-3310",
+      "timestamp": "2026-10-30",
+      "error_message": "rstest happy-dom 下 plan 逐字测试全空: expected [] to deeply equal — React 19 createRoot().render() 异步提交, DOM 未 flush",
+      "file": "frontend/tests/unit/docmgr/task-area.dom.test.tsx",
+      "root_cause": "React 19 concurrent root render 是宏任务调度, await Promise.resolve() 一个微任务不够; repo 惯例(slash-menu.dom.test.tsx)本就 await act(async () => root.render(...)) + IS_REACT_ACT_ENVIRONMENT=true, plan 模板漏了",
+      "fix": "render helper 改 async: await act(async () => { createRoot(host).render(ui); }), 全部调用点加 await, 文件头设 IS_REACT_ACT_ENVIRONMENT=true",
+      "tags": [
+        "rstest",
+        "happy-dom",
+        "react19",
+        "act",
+        "dom-test",
+        "docmgr"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-10-30"
+    },
+    {
+      "id": "bug-3643",
+      "timestamp": "2026-10-29T21:45:02.155Z",
+      "error_message": "CSS fix: hover",
+      "file": "frontend/src/extensions/docmgr/DocAITaskArea.tsx",
+      "root_cause": "hover: bg-primary/5 flex-1 py-1.5\" → underline\">",
+      "fix": "Changed hover: bg-primary/5 flex-1 py-1.5\" → underline\">",
+      "tags": [
+        "auto-detected",
+        "style-fix",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-10-29T21:45:02.155Z"
+    },
+    {
+      "id": "bug-3644",
+      "timestamp": "2026-10-29T21:45:23.594Z",
+      "error_message": "Wrong condition in logic",
+      "file": "frontend/src/extensions/docmgr/DocAIAgentPanel.tsx",
+      "root_cause": "Condition was: if (!trimmed || isCreating || submitting)",
+      "fix": "Changed to: if (docTask.busy)",
+      "tags": [
+        "auto-detected",
+        "logic-fix",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-10-29T21:45:23.594Z"
+    },
+    {
+      "id": "bug-3645",
+      "timestamp": "2026-10-29T21:45:39.117Z",
+      "error_message": "Null/undefined access in ",
+      "file": "frontend/src/extensions/docmgr/DocAIAgentPanel.tsx",
+      "root_cause": "Property access on potentially null/undefined value",
+      "fix": "Added null safety (optional chaining or null check)",
+      "tags": [
+        "auto-detected",
+        "null-safety",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-10-29T21:45:39.117Z"
+    },
+    {
+      "id": "bug-3646",
+      "timestamp": "2026-10-29T21:45:47.683Z",
+      "error_message": "Type error",
+      "file": "frontend/src/extensions/docmgr/DocAIAgentPanel.tsx",
+      "root_cause": "Missing or incorrect type annotation",
+      "fix": "Added type assertion/annotation",
+      "tags": [
+        "auto-detected",
+        "type-fix",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-10-29T21:45:47.683Z"
+    },
+    {
+      "id": "bug-3647",
+      "timestamp": "2026-10-29T23:15:52.678Z",
+      "error_message": "Missing error handling in unknown",
+      "file": "frontend/src/extensions/docmgr/DocAITaskArea.tsx",
+      "root_cause": "Code path had no error handling — exceptions would propagate uncaught",
+      "fix": "Added try/catch block | Also: // EAI-CUSTOM (全文操作 M1, walkthrough F6): 插入摘要同走 catch 转反馈，不直; const insertSummary = useCallback(",
+      "tags": [
+        "auto-detected",
+        "error-handling",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 2,
+      "last_seen": "2026-10-29T23:16:08.226Z"
+    },
+    {
+      "id": "bug-3311",
+      "timestamp": "2026-10-30T11:50:00+08:00",
+      "error_message": "Uncaught Error: 找不到匹配的文本(walkthrough F6)——任务区 applySection/insertSummary 裸调 applyOpsSelf 无 catch",
+      "file": "frontend/src/extensions/docmgr/DocAITaskArea.tsx",
+      "root_cause": "useDocAITask 的 applySection 与 insertSummary 直接调用 applyOpsSelf,锚点失配等异常沿 onClick 直抛 window,任务区无失败反馈",
+      "fix": "两处 try/catch 转 dispatch done+message(应用失败/插入失败横幅),commit 7236d4fb4",
+      "tags": [
+        "docmgr",
+        "ai-fulltext",
+        "uncaught",
+        "error-boundary"
+      ],
+      "related_bugs": [
+        "bug-3301",
+        "bug-3302"
+      ],
+      "occurrences": 1,
+      "last_seen": "2026-10-30"
+    },
+    {
+      "id": "bug-3648",
+      "timestamp": "2026-10-29T23:41:42.453Z",
+      "error_message": "Null/undefined access in ",
+      "file": "frontend/src/extensions/docmgr/PersonalBlockNoteEditor.tsx",
+      "root_cause": "Property access on potentially null/undefined value",
+      "fix": "Added null safety (optional chaining or null check)",
+      "tags": [
+        "auto-detected",
+        "null-safety",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-10-29T23:41:42.453Z"
+    },
+    {
+      "id": "bug-3649",
+      "timestamp": "2026-10-29T23:42:15.167Z",
+      "error_message": "CSS fix: type",
+      "file": "frontend/src/extensions/docmgr/DocAITaskArea.tsx",
+      "root_cause": "type: \"reset\", operation → \"restart\", operation",
+      "fix": "Changed type: \"reset\", operation → \"restart\", operation",
+      "tags": [
+        "auto-detected",
+        "style-fix",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-10-29T23:42:15.167Z"
+    },
+    {
+      "id": "bug-3650",
+      "timestamp": "2026-10-29T23:42:40.723Z",
+      "error_message": "Missing guard clause",
+      "file": "frontend/tests/unit/docmgr/task-reducer.test.ts",
+      "root_cause": "No early return/throw for edge case: !cancelled",
+      "fix": "Added guard clause: if (!cancelled)",
+      "tags": [
+        "auto-detected",
+        "guard-clause",
+        "ts"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-10-29T23:42:40.723Z"
+    },
+    {
+      "id": "bug-3651",
+      "timestamp": "2026-10-30T00:58:24.007Z",
+      "error_message": "Significant refactor of ",
+      "file": "frontend/src/app/bid-review/layout.tsx",
+      "root_cause": "2 lines replaced/restructured",
+      "fix": "Rewrote 4→9 lines (2 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-10-30T00:58:24.007Z"
+    },
+    {
+      "id": "bug-3652",
+      "timestamp": "2026-10-30T00:58:53.475Z",
+      "error_message": "CSS fix: color",
+      "file": "frontend/src/app/bid-review/bid-review.css",
+      "root_cause": "color: var(--text-3) → var(--main-400, var(--main-600))",
+      "fix": "Changed color: var(--text-3) → var(--main-400, var(--main-600))",
+      "tags": [
+        "auto-detected",
+        "style-fix",
+        "css"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-10-30T00:58:53.475Z"
+    },
+    {
+      "id": "bug-3653",
+      "timestamp": "2026-10-30T01:48:28.828Z",
+      "error_message": "Incorrect value in code",
+      "file": "frontend/src/app/bid-review/layout.tsx",
+      "root_cause": "Had \"任务列表\"",
+      "fix": "Changed to \"任务总览\"",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-10-30T01:48:28.828Z"
+    },
+    {
+      "id": "bug-3654",
+      "timestamp": "2026-10-30T01:48:42.991Z",
+      "error_message": "CSS fix: name",
+      "file": "frontend/tests/unit/app/bid-review-layout.dom.test.tsx",
+      "root_cause": "name: \"任务列表\" → \"任务总览\"",
+      "fix": "Changed name: \"任务列表\" → \"任务总览\"",
+      "tags": [
+        "auto-detected",
+        "style-fix",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-10-30T01:48:42.991Z"
+    },
+    {
+      "id": "bug-3655",
+      "timestamp": "2026-10-30T01:48:55.611Z",
+      "error_message": "Incorrect value in code",
+      "file": "frontend/tests/unit/app/bid-review-layout.dom.test.tsx",
+      "root_cause": "Had \"任务列表\"",
+      "fix": "Changed to \"任务总览\"",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-10-30T01:48:55.611Z"
+    },
+    {
+      "id": "bug-3656",
+      "timestamp": "2026-10-30T01:49:35.216Z",
+      "error_message": "Significant refactor of ",
+      "file": "frontend/src/extensions/bid-review/components/TasksView.tsx",
+      "root_cause": "2 lines replaced/restructured",
+      "fix": "Rewrote 3→6 lines (2 removed) | Also: {/* ── 任务表(原型 s1 .tbl;行点击/任务号链进工作台)── */}; <tbody> | Also: {tasks.map((t) => {; 共 {tasks.length} 个任务 · awaiting_confirm",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 3,
+      "last_seen": "2026-10-30T01:52:02.912Z"
+    },
+    {
+      "id": "bug-3657",
+      "timestamp": "2026-10-30T01:49:53.041Z",
+      "error_message": "Type error",
+      "file": "frontend/src/extensions/bid-review/components/TasksView.tsx",
+      "root_cause": "Missing or incorrect type annotation",
+      "fix": "Added type assertion/annotation",
+      "tags": [
+        "auto-detected",
+        "type-fix",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-10-30T01:49:53.041Z"
+    },
+    {
+      "id": "bug-3658",
+      "timestamp": "2026-10-30T01:50:36.290Z",
+      "error_message": "Incorrect value in code",
+      "file": "frontend/src/extensions/bid-review/components/TasksView.tsx",
+      "root_cause": "Had \"screen on\"",
+      "fix": "Changed to \"screen on brx-fill\"",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-10-30T01:50:36.290Z"
+    },
+    {
+      "id": "bug-3659",
+      "timestamp": "2026-10-30T01:52:16.534Z",
+      "error_message": "Wrong reference: COLS should be HEADERS",
+      "file": "frontend/src/extensions/bid-review/components/TasksView.tsx",
+      "root_cause": "Used \"COLS\" instead of \"HEADERS\"",
+      "fix": "Changed COLS → HEADERS",
+      "tags": [
+        "auto-detected",
+        "wrong-reference",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-10-30T01:52:16.534Z"
     }
   ]
 }

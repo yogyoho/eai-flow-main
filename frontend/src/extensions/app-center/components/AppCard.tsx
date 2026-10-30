@@ -48,11 +48,17 @@ function AppCardImpl({
     onToggleFavorite(app.id);
   };
 
+  // EAI-CUSTOM (2026-10-30): 投标方案审查为独立子系统(无 EAI 壳/左侧导航,
+  // /bid-review 自绘 chrome),应用中心卡片新 tab 打开,不做站内软导航(用户指定)。
+  const openInNewTab = app.path === "/bid-review";
+
   return (
     <Link
       href={app.path}
       role="link"
       aria-label={`${app.name} — ${app.description}`}
+      target={openInNewTab ? "_blank" : undefined}
+      rel={openInNewTab ? "noopener" : undefined}
       className={cn(
         "group relative flex flex-col gap-3 rounded-2xl border border-border bg-card p-5 shadow-sm transition-all",
         "hover:-translate-y-1 hover:border-primary/30 hover:bg-accent/40 hover:shadow-lg hover:shadow-primary/5",

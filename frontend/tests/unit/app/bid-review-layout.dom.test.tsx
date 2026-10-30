@@ -33,10 +33,19 @@ rs.mock("@/core/permissions", () => ({
     canPage: (pageId: string) => !mocks.denied.includes(pageId),
     isLoading: mocks.loading,
   }),
+  // EAI-CUSTOM: layout 脱壳后自备 providers(原 ShellLayout 提供),测试透传
+  PermissionProvider: ({ children }: PropsWithChildren) => <>{children}</>,
 }));
 
-rs.mock("@/extensions/shell", () => ({
-  ShellLayout: ({ children }: PropsWithChildren) => <>{children}</>,
+// EAI-CUSTOM (2026-10-30 独立子系统改造): layout 不再经 ShellLayout,换为
+// 自绘 chrome + StandaloneGate(登录门)。mock 登录态为已登录,门直接放行。
+rs.mock("@/extensions/hooks/useAuth", () => ({
+  AuthProvider: ({ children }: PropsWithChildren) => <>{children}</>,
+  useAuth: () => ({ user: { id: "u1" }, isLoading: false }),
+}));
+
+rs.mock("@/components/workspace/workspace-login-redirect", () => ({
+  WorkspaceLoginRedirect: () => null,
 }));
 
 import BidReviewLayout from "@/app/bid-review/layout";
@@ -58,8 +67,9 @@ describe("bid-review layout 子路由导航(micro-B 站内入口)", () => {
 
   it("四个已注册页各有一条入口,规则库指向 /bid-review/rules", () => {
     renderLayout();
+    // 2026-10-30 用户定案:「任务列表」更名「任务总览」(首项即任务工作台,与审查工作台区分)
     expect(
-      screen.getByRole("link", { name: "任务列表" }).getAttribute("href"),
+      screen.getByRole("link", { name: "任务总览" }).getAttribute("href"),
     ).toBe("/bid-review");
     expect(
       screen.getByRole("link", { name: "审查工作台" }).getAttribute("href"),
@@ -78,7 +88,7 @@ describe("bid-review layout 子路由导航(micro-B 站内入口)", () => {
     mocks.denied = ["bid:page:rules"];
     renderLayout();
     expect(screen.queryByRole("link", { name: "规则库" })).toBeNull();
-    expect(screen.queryByRole("link", { name: "任务列表" })).not.toBeNull();
+    expect(screen.queryByRole("link", { name: "任务总览" })).not.toBeNull();
     expect(screen.queryByRole("link", { name: "审查工作台" })).not.toBeNull();
   });
 

@@ -1,7 +1,7 @@
 # anatomy.md
 
-> Auto-maintained by OpenWolf. Last scanned: 2026-10-28T19:53:48.156Z
-> Files: 41 tracked | Anatomy hits: 0 | Misses: 0
+> Auto-maintained by OpenWolf. Last scanned: 2026-10-30T01:52:16.467Z
+> Files: 15 tracked | Anatomy hits: 0 | Misses: 0
 
 ## ../../00 工作目录/02 项目策划/马宁/应急指挥/bid-run/
 
@@ -23,7 +23,6 @@
 
 ## ../../tmp/
 
-- `reindex-52d6e05c-body.json` (~157 tok)
 
 ## ../../tmp/fire-extract-experiment/workspace/
 
@@ -42,9 +41,6 @@
 
 ## ./
 
-- `TEMPLATE-DELTA-APPLY-20261024.md` — 模板差量包应用说明（中交三公局站 · v20261013 → v20261024 模板） (~588 tok)
-- `TODOS.md` — TODOS (~3846 tok)
-- `yogyoho-main-dev-fork-test-outcome-2026-10-28.md` — Test Outcome — RAGFlow SSO QA (2026-10-28) (~325 tok)
 
 ## .agent/skills/smoke-test/
 
@@ -87,7 +83,6 @@
 
 ## .gstack/qa-reports/
 
-- `qa-report-ragflow-sso-2026-10-28.md` — QA Report: EAI ↔ RAGFlow SSO 集成设计与实现审核 (~732 tok)
 
 ## .kiro/settings/
 
@@ -319,7 +314,9 @@
 
 ## C:/Users/admin/.claude/projects/D--eai-eai-flow-main/memory/
 
-- `superpowers-plans-gitignored-f-commit.md` (~168 tok)
+- `docmgr-ai-fulltext-m1-landed.md` (~479 tok)
+- `git-pack-corruption-pack9b2abcff.md` (~280 tok)
+- `MEMORY.md` (~4125 tok)
 
 ## C:/Users/admin/.gstack/
 
@@ -338,7 +335,6 @@
 
 ## C:/Users/admin/AppData/Local/Temp/
 
-- `buglog-append.py` — One-shot: append bug-194/195/196 (RAGFlow SSO QA 2026-10-28) to .wolf/buglog.json. (~774 tok)
 
 ## C:/Users/admin/AppData/Local/Temp/bidpipe/
 
@@ -423,8 +419,6 @@
 
 ## backend/
 
-- `.tmp_buglog.py` (~521 tok)
-- `.tmp-retrieval-q.json` (~30 tok)
 
 ## backend/.deer-flow/
 
@@ -636,11 +630,17 @@
 ## backend/app/extensions/bid_materials/
 
 
+## backend/app/extensions/bid_review/
+
+
+## backend/app/extensions/bid_review/engine/
+
+
+## backend/app/extensions/bid_review/engine/rulepacks/bid-review-core/
+
+
 ## backend/app/extensions/contract_price/
 
-- `crud.py` — CRUD operations over the cpa_ tables for the management API. (~16567 tok)
-- `models.py` — SQLAlchemy ORM models for the contract-price-analysis ``cpa_`` tables. (~2991 tok)
-- `routers.py` — Contract price analysis management API — all functional areas. (~17252 tok)
 
 ## backend/app/extensions/dashboard/
 
@@ -653,6 +653,7 @@
 
 ## backend/app/extensions/docmgr/
 
+- `ai_transform.py` — EAI-CUSTOM: docmgr 全文操作 M1（spec: docs/superpowers/specs/2026-10-29-docmgr-ai-fulltext-ops-design.md (~5666 tok)
 
 ## backend/app/extensions/eia_samples/
 
@@ -665,7 +666,6 @@
 
 ## backend/app/extensions/knowledge/
 
-- `service.py` — Knowledge base and document management service. (~10082 tok)
 
 ## backend/app/extensions/knowledge_factory/
 
@@ -735,7 +735,6 @@
 
 ## backend/app/extensions/ragflow_sso/
 
-- `service.py` — EAI-CUSTOM: RAGFlow SSO — JWT minting + exchange client + per-user credentials (~2727 tok)
 
 ## backend/app/extensions/review/
 
@@ -898,16 +897,24 @@
 
 ## backend/tests/
 
-- `test_ragflow_sso.py` — EAI-CUSTOM: RAGFlow SSO integration tests — 本地定制,非上游. (~9126 tok)
+- `test_docmgr_ai_transform.py` — docmgr ai_transform（全文操作 M1）单测——分节引擎纯函数 + transform 端点 NDJSON 事件流。 (~4223 tok)
 
 ## backend/tests/ (QA 2026-10-28 增补)
 
-- `test_ragflow_sso.py` — RAGFlow SSO 全套单测(27 用例): JWT mint/web·api 交换/竞态自愈/服务身份/会话可用性/401 自愈包装/INVALID_ 标记双路拒绝 (~1500 tok)
 
 ## backend/tests/e2e/bid/
 
 
 ## backend/tests/eval/
+
+
+## backend/tests/eval/bid_review/
+
+
+## backend/tests/eval/bid_review/golden/
+
+
+## backend/tests/eval/bid_review/golden/cases/DEMO-001/
 
 
 ## backend/tests/fixtures/bid_proposal/
@@ -925,27 +932,26 @@
 ## backend/tests/（translation 相关 9 文件）
 
 
+## bid-review Task 21 报告导出（2026-10-29）
+
+
+## bid-review micro-B（2026-10-29）
+
+
 ## business/sales-service/frontend/src/pages/
 
-- `Workbench.tsx` — Workbench (~3574 tok)
 
 ## config/
 
-- `permissions.yaml` — permissions.yaml — 三级权限模型：导航 → 页面 → 操作 (~5523 tok)
-- `roles_custom.yaml` (~1860 tok)
 
 ## deploy/offline/
 
-- `docker-compose.ragflow.yaml` — ============================================================================= (~2198 tok)
-- `docker-compose.yaml` — ============================================================================= (~2004 tok)
 
 ## deploy/offline/brand-assets/
 
 
 ## deploy/offline/config/
 
-- `permissions.yaml` — permissions.yaml — 三级权限模型：导航 → 页面 → 操作 (~5523 tok)
-- `roles_custom.yaml` (~1860 tok)
 
 ## deploy/offline/nginx/
 
@@ -964,7 +970,6 @@
 
 ## docs/designs/
 
-- `2026-10-29-bid-review-design.md` — 投标方案审查:技能 + 子系统设计(bid-proposal-review + bid_review) (~4047 tok)
 
 ## docs/designs/2026-10-11-jv-mining-translation-kb.md
 
@@ -977,7 +982,6 @@
 
 ## docs/superpowers/plans/
 
-- `2026-10-29-bid-review-implementation.md` — 投标方案审查(技能+子系统)实施计划 (~17234 tok)
 
 ## docs/superpowers/plans/2026-09-13-coal-mine-tunneling-regulation-v2.md
 
@@ -987,7 +991,6 @@
 
 ## docs/superpowers/specs/
 
-- `2026-10-19-eai-unified-sso-design.md` — EAI 统一 SSO / 跨系统认证集成设计方案 (~2115 tok)
 
 ## docs/superpowers/specs/2026-09-13-coal-mine-tunneling-regulation-v2-design.md
 
@@ -1071,6 +1074,26 @@
 
 
 ## frontend/src/app/bid-quote/query/
+
+
+## frontend/src/app/bid-review/
+
+- `bid-review.css` — Styles: 73 rules, 181 vars (~9686 tok)
+- `layout.tsx` — 未登录 → 复用 workspace 登录跳转(保留 returnPath);加载中给纯色底避免闪现。 (~1690 tok)
+
+## frontend/src/app/bid-review/baseline/
+
+
+## frontend/src/app/bid-review/metrics/
+
+
+## frontend/src/app/bid-review/rules/
+
+
+## frontend/src/app/bid-review/tasks/[id]/
+
+
+## frontend/src/app/bid-review/workbench/
 
 
 ## frontend/src/app/biz-pipeline/
@@ -1159,7 +1182,6 @@
 
 ## frontend/src/app/settings/
 
-- `basic-settings.tsx` — BasicSettings (~8124 tok)
 
 ## frontend/src/app/spare-parts/
 
@@ -1356,6 +1378,13 @@
 ## frontend/src/extensions/bid-quote/components/ui/
 
 
+## frontend/src/extensions/bid-review/
+
+
+## frontend/src/extensions/bid-review/components/
+
+- `TasksView.tsx` — EAI-CUSTOM (2026-10-30): 任务工作台参照 docs/designs/2026-10-30-bid-review-ui.html (~6937 tok)
+
 ## frontend/src/extensions/biz-pipeline/
 
 
@@ -1376,14 +1405,9 @@
 
 ## frontend/src/extensions/contract-price/
 
-- `hooks.ts` — TanStack Query hooks for the contract-price-analysis API. (~4452 tok)
 
 ## frontend/src/extensions/contract-price/components/
 
-- `ClustersView.tsx` — Inline borderless input that looks like text until focused; commits on blur. (~12694 tok)
-- `ItemsView.tsx` — Styled checkbox matching roles-page PermCheckbox (CSS, no framer-motion). (~11710 tok)
-- `TermsView.tsx` — EAI-CUSTOM: cpa v3 货物分类术语（spec 2026-10-14 §2.4）。 (~6452 tok)
-- `TracebackDrawer.tsx` — CpaDocument.id; null closes the drawer. (~3288 tok)
 
 ## frontend/src/extensions/contract-price/components/ui/
 
@@ -1405,6 +1429,9 @@
 
 ## frontend/src/extensions/docmgr/
 
+- `DocAIAgentPanel.tsx` — Build the system prompt — format depends on mode. (~10793 tok)
+- `DocAITaskArea.tsx` — initialTaskState (~5450 tok)
+- `PersonalBlockNoteEditor.tsx` — Anchor for agent operation targeting — text→block mapping. (~10602 tok)
 
 ## frontend/src/extensions/docmgr/components/
 
@@ -1570,14 +1597,13 @@
 
 ## frontend/tests/unit/app/
 
+- `bid-review-layout.dom.test.tsx` — micro-B 2026-10-29 站内入口回归门:/bid-review/rules(Task 17 落地)此前无任何 (~925 tok)
 
 ## frontend/tests/unit/app/knowledge/_components/
 
 
 ## frontend/tests/unit/app/settings/
 
-- `basic-settings.test.ts` — Regression: ISSUE-001 — the settings-page RAGFlow entry linked the raw web UI (~210 tok)
-- `basic-settings.test.ts` — 回归钉住: RAGFlow 设置入口必须是后端 SSO login 端点、不得回退直链 :9381 (~80 tok)
 
 ## frontend/tests/unit/components/landing/
 
@@ -1611,6 +1637,9 @@
 
 ## frontend/tests/unit/docmgr/
 
+- `anchor-ambiguity.test.ts` — Declares heading (~590 tok)
+- `task-area.dom.test.tsx` — frontend/tests/unit/docmgr/task-area.dom.test.tsx（.dom 后缀 → rstest 自动启用 happy-dom） (~1027 tok)
+- `task-reducer.test.ts` — Declares DocAITaskAction (~1383 tok)
 
 ## frontend/tests/unit/extensions/
 
@@ -1855,10 +1884,14 @@
 ## skills/public/bid-proposal-overall/scripts/
 
 
+## skills/public/bid-proposal-review/
+
+
 ## skills/public/bid-proposal-review/references/
 
-- `issue-schema.json` (~305 tok)
-- `rules-det-subset.yaml` — bid-proposal-review 自审 det 规则子集(M1)——与子系统 rulepacks/bid-review-core 同源,副本分发 (~1249 tok)
+
+## skills/public/bid-proposal-review/scripts/
+
 
 ## skills/public/bid-proposal-writing/
 
@@ -1943,17 +1976,12 @@
 
 ## skills/public/contract-price-analysis/scripts/
 
-- `cli.py` — End-to-end pipeline (v2: MinIO + eai-flow-ocr). (~36668 tok)
 
 ## skills/public/contract-price-analysis/scripts/clustering/
 
-- `engine.py` — DBSCAN clustering over vectorized goods samples (numpy-only, no scikit-learn). (~2936 tok)
-- `vectorizer.py` — Feature vectorizer: char-ngram TF-IDF over goods name text + spec token extraction. (~1551 tok)
 
 ## skills/public/contract-price-analysis/tests/
 
-- `test_clustering_engine.py` — Tests for the DBSCAN clustering engine. (~1648 tok)
-- `test_terms_pins_merge.py` — cluster 相位 pins 装载纯函数（cpa v3 术语, spec 2026-10-14 §2.3）。 (~1473 tok)
 
 ## skills/public/dfam-check/
 

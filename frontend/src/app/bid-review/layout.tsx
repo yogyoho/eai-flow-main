@@ -1,92 +1,186 @@
 "use client";
 
-import { BookOpen, ClipboardCheck, FileText, ListChecks } from "lucide-react";
+import { BookOpen, ClipboardCheck, FileText, Gauge, ListChecks, Moon, Sun } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import type { ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 
-import { usePermission } from "@/core/permissions";
-import { ShellLayout } from "@/extensions/shell";
+import { QueryClientProvider } from "@/components/query-client-provider";
+import { WorkspaceLoginRedirect } from "@/components/workspace/workspace-login-redirect";
+import { usePermission, PermissionProvider } from "@/core/permissions";
+import { AuthProvider, useAuth } from "@/extensions/hooks/useAuth";
 import { cn } from "@/lib/utils";
 
-// EAI-CUSTOM: 子路由映射到子页面权限点(/api/permissions/me 的 pages),供 canPage 过滤。
-// bid-review 此前无 layout(六兄弟扩展模块中唯一缺席),四页仅任务列表可达,
-// 规则库页完全无站内入口(Task 17 遗留,e242a00bf ②;micro-B 2026-10-29 按
-// contract-price/bid-quote 子路由导航先例补齐,勿自创导航形态)
+import "./bid-review.css";
+
+// EAI-CUSTOM (2026-10-30 独立子系统改造): /bid-review 脱离 EAI 壳(ShellLayout/
+// ExtensionsSidebar),换为本组件自绘原型 chrome(参照 docs/designs/2026-10-30-bid-review-ui.html,
+// 样式全量收敛在 .brx 根类)。入口约定:应用中心卡片 target=_blank 新 tab 打开
+// (AppCard.tsx),站内其余入口不跳转至此。providers 自备(原由 ShellLayout 提供):
+// QueryClientProvider + AuthProvider + PermissionProvider;登录门=StandaloneGate
+// (未登录复用 WorkspaceLoginRedirect,fetcher 401 兜底跳登录由共享 fetcher 承担)。
+// 子路由映射到子页面权限点(/api/permissions/me 的 pages),供 canPage 过滤——
+// 此行为是 micro-B 回归门(tests/unit/app/bid-review-layout.dom.test.tsx)锁定契约,
+// 导航文案/href 勿改;规则效果(metrics)挂 bid:page:rules(同治理域,无独立权限点)。
 const navItems = [
   {
     href: "/bid-review",
-    label: "任务列表",
+    // 2026-10-30 用户定案:「任务总览」——首项即任务工作台(s1),改名与「审查工作台」区分
+    label: "任务总览",
     icon: ListChecks,
     exact: true,
     pageId: "bid:page:tasks",
+    group: 0,
   },
   {
     href: "/bid-review/workbench",
     label: "审查工作台",
     icon: FileText,
     pageId: "bid:page:workbench",
+    group: 0,
   },
   {
     href: "/bid-review/baseline",
     label: "基准确认",
     icon: ClipboardCheck,
     pageId: "bid:page:baseline",
+    group: 0,
   },
   {
     href: "/bid-review/rules",
     label: "规则库",
     icon: BookOpen,
     pageId: "bid:page:rules",
+    group: 1,
+  },
+  {
+    href: "/bid-review/metrics",
+    label: "规则效果",
+    icon: Gauge,
+    pageId: "bid:page:rules",
+    group: 1,
   },
 ];
+
+const GROUP_LABELS = ["审查闭环", "规则治理"];
+
+/** 未登录 → 复用 workspace 登录跳转(保留 returnPath);加载中给纯色底避免闪现。 */
+function StandaloneGate({ children }: { children: ReactNode }) {
+  const { user, isLoading } = useAuth();
+  if (isLoading) {
+    return <div className="brx brx-splash" aria-busy="true" />;
+  }
+  if (!user) {
+    return <WorkspaceLoginRedirect />;
+  }
+  return <>{children}</>;
+}
+
+/** 独立子系统的暗色开关:作用于 .brx 根(data-theme),localStorage 'br-theme'
+ * 记忆;undefined = 跟随系统(prefers-color-scheme)。try/catch——storage 可能被禁。 */
+function useDarkTheme() {
+  const [dark, setDark] = useState<boolean | null>(null);
+  useEffect(() => {
+    try {
+      setDark(window.localStorage.getItem("br-theme") === "dark" ? true : null);
+    } catch {
+      setDark(null);
+    }
+  }, []);
+  const toggle = () => {
+    setDark((prev) => {
+      const systemDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+      const current = prev ?? systemDark;
+      const next = !current;
+      try {
+        if (next) window.localStorage.setItem("br-theme", "dark");
+        else window.localStorage.removeItem("br-theme");
+      } catch {
+        // storage 不可用时仅本次会话生效
+      }
+      return next;
+    });
+  };
+  return { dark, toggle };
+}
 
 function BidReviewLayoutContent({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const { canPage, isLoading } = usePermission();
+  const { dark, toggle } = useDarkTheme();
   // EAI-CUSTOM: 权限加载中 fail-open 全显,加载完按 canPage(pageId) 过滤
   const visibleItems = isLoading
     ? navItems
     : navItems.filter((n) => canPage(n.pageId));
+  const groups = [0, 1].map((g) => visibleItems.filter((n) => n.group === g));
 
   return (
-    <div className="bg-background flex h-full flex-col">
-      <header className="border-border bg-background flex h-16 shrink-0 items-center border-b px-6">
-        <span className="text-foreground mr-8 text-lg font-bold tracking-tight">
-          投标方案审查
-        </span>
-        <nav className="text-muted-foreground flex h-full items-center gap-6 text-sm font-medium">
-          {visibleItems.map(({ href, label, icon: Icon, exact }) => {
-            const isActive = exact
-              ? pathname === href
-              : pathname.startsWith(href);
-            return (
-              <Link
-                key={href}
-                href={href}
-                className={cn(
-                  "flex h-full items-center gap-1.5 border-b-2 py-5 transition-colors",
-                  isActive
-                    ? "border-primary text-primary"
-                    : "hover:text-foreground border-transparent",
-                )}
-              >
-                <Icon className="h-4 w-4" />
-                {label}
-              </Link>
-            );
-          })}
-        </nav>
-      </header>
-      <div className="min-h-0 min-w-0 flex-1 overflow-auto">{children}</div>
+    <div className="brx" data-theme={dark === true ? "dark" : dark === false ? "light" : undefined}>
+      <div className="chrome">
+        <aside className="chrome-side">
+          <div className="chrome-brand">
+            <div className="brand-row">
+              <ClipboardCheck size={17} className="brand-ic" aria-hidden="true" />
+              <div className="brand-txt">
+                <h1>投标方案审查</h1>
+                <p className="g-sub">Bid Proposal Review</p>
+              </div>
+            </div>
+          </div>
+          {groups.map((items, g) =>
+            items.length === 0 ? null : (
+              <nav className="chrome-group" key={g}>
+                <div className="g-label">{GROUP_LABELS[g]}</div>
+                {items.map(({ href, label, icon: Icon, exact }) => {
+                  const isActive = exact
+                    ? pathname === href
+                    : pathname.startsWith(href);
+                  return (
+                    <Link
+                      key={href}
+                      href={href}
+                      className={cn("nav-item", isActive && "on")}
+                    >
+                      <Icon size={15} className="ic" aria-hidden="true" />
+                      {label}
+                    </Link>
+                  );
+                })}
+              </nav>
+            ),
+          )}
+          <div className="chrome-foot">
+            <button
+              type="button"
+              className="nav-item"
+              onClick={toggle}
+              title="切换深浅色"
+            >
+              {dark ? (
+                <Sun size={15} className="ic" aria-hidden="true" />
+              ) : (
+                <Moon size={15} className="ic" aria-hidden="true" />
+              )}
+              深浅色
+            </button>
+          </div>
+        </aside>
+        <main className="chrome-main">{children}</main>
+      </div>
     </div>
   );
 }
 
 export default function BidReviewLayout({ children }: { children: ReactNode }) {
   return (
-    <ShellLayout>
-      <BidReviewLayoutContent>{children}</BidReviewLayoutContent>
-    </ShellLayout>
+    <QueryClientProvider>
+      <AuthProvider>
+        <PermissionProvider>
+          <StandaloneGate>
+            <BidReviewLayoutContent>{children}</BidReviewLayoutContent>
+          </StandaloneGate>
+        </PermissionProvider>
+      </AuthProvider>
+    </QueryClientProvider>
   );
 }

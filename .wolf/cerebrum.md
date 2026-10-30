@@ -25,6 +25,7 @@ OpenWolf's learning memory. Updated automatically as the AI learns from interact
 - [2026-08-21] geological-report 用户交互铁律：数据收集必须用 ask_clarification fields 渲染中文填写表单（label=中文名+单位），绝不向用户展示/索要 JSON 或英文键名；面向用户术语一律"数据项"不说"字段"；缺项清单译成中文按类别分组呈现。适用于所有面向非 IT 用户的技能。
 
 ## Key Learnings
+- [2026-10-30] rstest *.dom.test.tsx + React 19: createRoot().render() 是异步提交（宏任务调度），断言前必须 await act(async () => { root.render(...) }) + 文件头 IS_REACT_ACT_ENVIRONMENT=true；await Promise.resolve() 一个微任务不够 → DOM 全空（bug-3310）。repo 惯例见 tests/unit/docmgr/slash-menu.dom.test.tsx。另: 测试文件也在 eslint 管辖——() => {} 触发 no-empty-function（用 () => undefined），as 断言优先 ! 形态（non-nullable-type-assertion-style）。
 - [2026-10-14] 多会话并发下 pathspec commit 共享文件会扫入他人未提交改动（如 translation/routers.py 同时挂着 glossary CRUD+transition refresh）。选择性提交手法：`git show HEAD:file` + awk 在锚点行后插入自己的行 → 生成「HEAD+我的 hunk」版本 → `git add` → `cp` 恢复完整工作副本 → `git diff --cached` 核对只含自己的 hunk → 无 pathspec `git commit`（提交的是 index）。commit 后 `git status` 里他人改动原样保留待其本人提交。
 - [2026-10-14] 服务端生成列(onupdate=func.now()/server_default)在 flush 后即被标记过期, expire_on_commit=False 救不了(它只管 commit); AsyncSession 下 commit 后直接序列化该 ORM 对象(读 updated_at 等)→ 同步懒加载 → MissingGreenlet 500。特征: 端点 500 但数据已落库。修法: commit 后 await db.refresh(obj) 再序列化(translation/routers.py create_folder 与 transition_task 同手法)。gateway 日志不在 docker logs, 在容器内 /app/logs/gateway.log。
 - graph_views 投影排序按链接引用数降序（mention 4 > 实体/关系各 3）——凡新增以高频链接指向/发出的对象类型都会自动浮到 limit 窗口头部；大行数溯源类类型进图前先想 /graph/nodes 淹没问题（bug-1790745600028 已加 _MENTION_TYPES 默认排除 + include=mentions opt-in）。
@@ -2771,6 +2772,7 @@ P3 item ① 裁决：**双工况 N=3 校核暂不默认开**，维持 SKILL 现�
 - **PostgreSQL LIKE 查反斜杠必翻车**(bug-214,2026-10-29 BUG-D 排查): LIKE '%\%' / chr(92) 拼接 / 参数绑定三种写法全 0 条——LIKE 默认把 \ 当转义字符。查含 \ 的脏数据:全量捞回 Python 侧 `'\' in value` 判定,别信 LIKE 结果下「没有脏数据」的结论。
 - **VLM OCR(如 PaddleOCR-VL)会把孤立符号按数学公式序列化**(bug-213,2026-10-29): Φ→\Phi、×→\times、还裹 \( \) 定界符,相邻页形态不稳定(temperature=0 压不住)。换 prompt("OCR:")保符号丢表格结构=拆东墙补西墙;正解=保留结构型 prompt,下游 normalize(幂等,词界保护,裸 $ 不碰,\n 不压)。**挂载要含缓存重建路径**——只挂活体解析,旧缓存重解析会把已回填的脏值原样带回。
 - **skills/ 无 ruff format 门**(默认 88 列),文件既有长行风格;动 skills 文件勿跑全文件 `ruff format`(会把整文件重排,混入百行噪音+与生产机修复版对照困难),只保证自己新增区域干净。(Do-Not-Repeat)
+- **计划内嵌代码块的缺陷会跨任务传染**(bug-217/A11-A11a,2026-10-29 bid-review):底稿 number_to_words 零-placement 错,Task 2 副本忠实转录→对正确投标误报 fatal,canonical Task 4 同源会继承;金标准夹具全用整万金额恰好落在非缺陷区=selftest 盲区。教训:(a) 评审驱动的"修复处方"入库前先验算边界覆盖(A11 初版「仅<1000 补零」漏了 junction 类,靠复审实证抓回);(b) 金标准/自审夹具必须覆盖缺陷区(非整万/junction 类金额),round-number 夹具会系统性躲开 bug;(c) 空值渲染禁哨兵+标签贪婪匹配(实测吞相邻金额数字),空串原文传递最安全;(d) 中文大写金额段间零规则=已有输出且(当前段<1000 或上一已输出段末位为 0 或跳过过全零段),禁前导零。
 
 ## Key Learnings (2026-10-29 — RAGFlow embd_id 三段式 / mxbai 假"模型缺注册")
 
@@ -2778,3 +2780,46 @@ P3 item ① 裁决：**双工况 N=3 校核暂不默认开**，维持 SKILL 现�
 - 实例名解析键 `tenant_model_instance.instance_name`(本环境 ollama 实例指 http://host.docker.internal:11434);`tenant_model`/`tenant_llm` 表为空是正常的,别拿它们判断模型有没有。
 - ollama 侧模型是否在 = `docker exec deer-flow-ollama ollama list`(或宿主 `ollama list`),与 RAGFlow 注册无关。
 - 修 embd_id = 一条 UPDATE knowledgebase SET embd_id,chunk 向量不动零重嵌,逐请求读库免重启。
+
+## Do-Not-Repeat (2026-10-29 — toast迁移撞并发会话)
+
+- **[2026-10-29] 本仓库并发会话期间严禁裸 `git stash` / `git stash pop`**。裸stash会卷走另一会话的 .wolf/docs 未提交改动;pop 必因 .wolf 并发写冲突失败,把己方工作困在 stash。正确姿势:不用 stash;已发生则 `git checkout stash@{0} -- <具体路径>` 按路径恢复,stash 版 .wolf 先导出备份(.wolf/tmp/stash-backup-*)再决定去留。参见 [[concurrent-session-git-coop]] [[concurrent-session-git-reset-hazard]]。
+
+## [2026-10-29] Key Learnings (E2E 回归 session 之二)
+- **本机 `next build` 当前必红**(bug-220 同源): 全页预渲染 undefined.length(digest 569325325)。8 组排除实验已做完(chat-page守卫/SDK getter/根layout剥壳/global-error/版本/dev-server竞争隔离dist/env条件/cpu限制),下次勿重走。E2E 用常驻 dev server(:3000, 预热后 PLAYWRIGHT_SKIP_WEB_SERVER=1)可跑。
+- **--debug-prerender 在本机必 OOM**(两次 exit 134, 32GB): 它对抛错页做全量组件栈符号化,大树上=内存爆炸。别再用它拿栈。
+- **Next 构建失败的「Export encountered an error on X」报告页不可信**——多 worker 并发时它只是退出瞬间的在飞页,真抛错页要看「Error occurred prerendering page Y」+ TypeError 行的相邻关系,且这也只是最后报告者。digest 相同 + 报告页漂移 = 单点崩溃、随机上报。
+- **docs 页(/[lang]/docs)在 dev 上 SSR 挂起 >10min**(Nextra, shallow clone 警告在位)——dev 模式 E2E 时 docs 相关 spec 会超时,属已知例外非新失败。
+
+## Do-Not-Repeat + Key Learnings (2026-10-29 — bid-review micro-A)
+
+- **bid-review 两处 fatal 计数口径并存,勿混同(2026-10-29, micro-A):** `worker.summarize_issues`(issues API summary/工作台 GateMetricsRow)的 fatal=**排除** need_human 条目(待人工单列);而 TasksView 行级/卡片「致命未处理」=fatal 且 verdict≠false_positive(**含** need_human 条目,有意收窄只剔除已判误报)。micro-A 后该口径的权威实现在 `routers.list_tasks`(fatal_unhandled/need_human_count 每任务聚合,仅列表端点填充,单任务端点 None=未统计禁伪零);前端 TasksView 只消费后端字段不再自算(逐任务 issues N+1 已退役),改口径只动后端+两端测试。
+- **列表端点补计数时单任务端点返回 None 不是 0:** TaskOut 新计数字段默认 None=未统计;前端把 null 当「—」处理(allMeasured 门),若默认 0 会复活伪零(合规信号造假,3ecd32bfb 评审 Important 同病)。
+
+- [2026-10-29] 角色授权改动必须双写 config/permissions.yaml(base)与 config/roles_custom.yaml(overlay)——overlay 为运行时真源且整体替换 base 的 nav/pages(非合并),只改 base 无效;两文件已漂移(overlay 缺 base 的 bid-materials/coal-eia-samples/translation),勿假设二者一致。
+- [2026-10-29] 事件循环纪律:bid_review advance_task 跑在 claimer/routers 的事件循环上,任何同步 LLM 调用(extract_fn)必须 asyncio.to_thread 卸载,模型裁决走 async ainvoke;translation worker 是装配先例(_resolve_effective_model_name:create_chat_model,env>config 首项)。
+## Key Learnings (2026-10-29 — bid-review Task 21 报告导出 session)
+
+- **happy-dom 组件测试点击禁用按钮会被静默吞掉:** 待测按钮初始 disabled(如查询单未落定时的导出按钮)时 `fireEvent.click` 不触发 onClick(happy-dom 实现了禁用元素抑制点击),`waitFor` 超时且无任何报错线索——先 `waitFor(() => expect(button.hasAttribute("disabled")).toBe(false))` 再点;反之断言禁用态要等数据落定后查,排除加载瞬态假阴性。@rstest/core 的 chai 没有 `toBeDisabled`,用 `hasAttribute("disabled")` 或 `(el as HTMLButtonElement).disabled`。
+- **fastapi Response 端点与 JSON 端点共用错误处理的手法:** Blob/markdown 导出端点不进 `res.json()` 分支——api.ts 把 `request<T>` 拆出 `requestRaw`(返回 Response,非 2xx 抛 ApiError 吞 detail),JSON 走 `.json()`、导出走 `.blob()`,错误路径只写一遍。
+- **make lint 全仓失败≠你的文件有问题(并发会话常态):** 全仓 `ruff check .` 会扫到他会话在途文件的 E501/F821/I001;判定归属只看自己改动文件的 scoped ruff。全量 `make lint` 红灯在他会话收口前是常态,回报 concerns 即可,禁自行修授权外文件。
+
+### 2026-10-29 会话追加
+- 工作流被会话重启杀死的恢复法:transcripts 停写+task 0 字节=孤儿;TaskStop 报 No task found 也可直接 Workflow({scriptPath, resumeFromRunId}) — content-hash 缓存重放已完成 agent(不会重复提交),只重跑无结果的。journal.jsonl 是唯一事实源,notification 的 result 常截断。
+- make lint 全仓会扫 .deer-flow/(运行时状态:skills_view 投影/users 数据/e2e 脚本)=1850+ 噪音错;真错误用 `ruff check . -q | grep -oE '\-\-> [^:]+' | grep -v '^\.'` 过滤;ruff.toml exclude 未覆盖 .deer-flow 属挂账债。
+- 零测试覆盖的端点连 F821(NameError)都能长期存活——lint 债不进 CI 门就会烂在主干;auth.py:502 即例(bug-0282)。
+- EAI 前端入口三层要分清:①左侧栏=extensions/shell/Sidebar.tsx 硬编码 allNavItems(10 固定项,业务模块不进,用户明确要求保持);②业务模块入口=应用中心 grid=app_definitions 表驱动(backend database.py seed 列表注册+app-center config/icons.ts 图标映射,两处都要);③页面级权限=permissions.yaml nav:/pages: + 前端 layout usePermission。新模块上线自查清单=四层:permissions 注册/前端页面/API 路由/应用中心 seed 行。
+- **bid-review engine_meta.docs 行带 {doc_id, role, text} (2026-10-30):** v1 上传时解码纯文本直存,text 全文随 GET /tasks/{id} 的 engine_meta 下发(schemas.engine_meta=dict 直通),前端可就地估字符数——BaselineView 材料卡(f-card)即此口径;基线字段级快照仍无 REST 读端点(仅 MCP bid_review_baseline_get),页内以 .note-bar 诚实降级注记。/bid-review 脱壳后页面容器用原型 .screen on 词汇(chrome-main 内),页面内容直接写 .brx 类(bid-review.css),勿再引 PageHeader/shadcn Table。
+
+## Key Learnings (2026-10-30 — bid-review TasksView 原型化重整)
+- 原型 metric 标签与表头/状态 pill 同文(致命未处理/已完成):getByText 型卡片断言助手会多匹配炸掉,助手须在 .metric-strip 容器内定位 .metric-label→相邻 .metric-value,全局 getByText 不可用。
+- 原型化重构时表格列集变化会静默移动测试助手的 td 下标(致命列 4→3),改 DOM 结构必须同步排查 querySelectorAll("td")[n] 型助手。
+- bid-review Σ 卡(致命未处理/待人工复核)门禁=「全测满才求和」:test 2 用 done+running 混合锁死部分和必须显示 —,重构换卡片词汇时此门不可放松;状态计数三格(待基准确认/运行中/已完成)列表在手即真值,但 isError 时也全显示 —。
+- .overlay 默认 display:none,.overlay.open 才 flex——React 条件渲染 {open ? <div className="overlay open">} 即可,无需 JS toggle。
+
+## Key Learnings (2026-10-30 — bid-review RulesView 重整 + MetricsView 新页)
+- **`.brx .screen` 默认 display:none**——React 移植页容器必须写 `className="screen on"`(原型靠 JS 切 .on),漏 on 整页隐形且无报错。
+- **两页「列同规则库」由共享表件单点承担**:rulepack-ui.tsx 的 RuleStatsTable(八列 .tbl)+ severityBrx(fatal=err/major=orange/minor+info=gray,与 primitives.severityPill 的 warn/info 档不同源)+ isHighFp(hit>0 且 fp/hit≥0.2)。改列契约只动这一个文件,RulesView/MetricsView 同步。
+- **同组件渲染两张含相同 id 文本的表(逐规则表 + FAIL 名单)时,`getByText(id)` 炸 multiple matches**——探数据落定用 findAllByText,行定位用 `getByText(卡片标题).closest(".card")` 再 querySelectorAll。
+- **eslint `@typescript-eslint/prefer-nullish-coalescing` 会拦 `x === undefined ? "—" : x` 型三元**——计数空格直接写 `{value ?? "—"}`(undefined/null 都显示 —,恰是想要的语义);而空串兜底 `severity || "未知"` 会被拦,用 `severity === "" ? "未知" : severity`。
+- 跨规则包 key 防碰撞:RuleStatsRow.key 用 `${pack.name}@${pack.version}/${rule.id}` 前缀(单包生产态下即纯 id 后缀)。
