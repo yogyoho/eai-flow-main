@@ -257,6 +257,13 @@ describe("taskReducer（任务区状态机）", () => {
       message: "应用失败：x",
     });
     expect(s.total).toBe(3);
+    // 分节重试 run（重审镜像断言）：section_start/done 都只带 total=1（后端
+    // chosen=[i]）——max 守卫下分母不得从 3 缩回 1，否则重试完成时进度虚满
+    s = run(s, { type: "restart", operation: "polish" });
+    s = run(s, { type: "section_start", index: 1, total: 1, title: "二" });
+    expect(s.total).toBe(3);
+    s = run(s, { type: "done", total: 1, failed: [], skipped: [] });
+    expect(s.total).toBe(3);
   });
 
   test("cancel 丢弃 rejected（v2 决策：取消仅保留 applied/unchanged/skipped）", () => {

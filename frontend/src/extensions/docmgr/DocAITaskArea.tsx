@@ -170,9 +170,10 @@ export function taskReducer(
       return {
         ...state,
         running: false,
-        // EAI-CUSTOM (全文操作 v2): 记录期望总节数供进度条；错误路径复用 done 只为
-        // 携带 message（total:0），此时不覆盖。
-        total: action.total > 0 ? action.total : state.total,
+        // EAI-CUSTOM (全文操作 v2, 重审): 期望总节数取 max（与 section_start 同守卫）——
+        // 分节重试 run 的 done 只带 total=1（后端 chosen=[i]），不得缩水全量分母；
+        // 错误路径复用 done 只为携带 message（total:0），同样被 max 吸收。
+        total: Math.max(state.total ?? 0, action.total),
         failed: action.failed,
         skipped: action.skipped,
         message: action.message,
@@ -912,7 +913,9 @@ export function DocAITaskArea({
     const anchor = s.ops?.[0]?.anchor;
     if (!anchor) return undefined;
     const text = getSectionText(anchor);
-    oldTextCacheRef.current.set(s.index, text);
+    // 重审#2: 空串不缓存——首次锚点解析失败（matchAnchor null）时留待后续 ready
+    // 渲染重试；缓存 "" 会让卡片永久退化到预览兜底、ready 期间不再重试。
+    if (text) oldTextCacheRef.current.set(s.index, text);
     return text;
   };
   return (
