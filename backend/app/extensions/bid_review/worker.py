@@ -34,7 +34,7 @@ from sqlalchemy import delete, select, text, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.extensions.bid_review import crud
-from app.extensions.bid_review.engine.extract import ExtractFn, ExtractNotConfigured, build_baseline
+from app.extensions.bid_review.engine.extract import ExtractFn, ExtractNotConfigured, apply_adjudications, build_baseline
 from app.extensions.bid_review.engine.llm_runner import run_sem_rule
 from app.extensions.bid_review.engine.rule_runner import _need_human, attach_evidence, load_rulepack, run_det_rule
 from app.extensions.bid_review.models import BaselinePackage, ReviewTask
@@ -260,6 +260,8 @@ def _default_extract_fn() -> ExtractFn:
     def _fn(docs: list[dict], field_paths: list[str]) -> dict:
         merged: dict[str, Any] = {}
         merged_prov: dict[str, dict] = {}
+        merged_cand: dict[str, list] = {}
+        merged_conf: dict[str, float] = {}
         for shard in shard_docs(docs) or [[]]:  # 空 docs 也跑一片(旧语义:显式问一遍模型,输出全 null)
             payload = _invoke_shard(build_extract_prompt(shard, field_paths))
             f_raw = payload.get("fields") if isinstance(payload.get("fields"), dict) else payload
@@ -272,7 +274,17 @@ def _default_extract_fn() -> ExtractFn:
                 for k, v in prov.items():
                     if k in field_paths and k not in merged_prov and isinstance(v, dict):
                         merged_prov[k] = v
-        return {"fields": merged, "provenance": merged_prov}
+            cand = payload.get("candidates") if isinstance(payload, dict) else None
+            if isinstance(cand, dict):  # 二期 spec §1.1:候选按路径 append,上限 8 由归一层兜底
+                for k, entries in cand.items():
+                    if k in field_paths and isinstance(entries, list):
+                        merged_cand.setdefault(k, []).extend(entries)
+            conf = payload.get("confidence") if isinstance(payload, dict) else None
+            if isinstance(conf, dict):
+                for k, v in conf.items():
+                    if k in field_paths:
+                        merged_conf[k] = v  # 后写覆盖(跨分片同一字段以后见为准)
+        return {"fields": merged, "provenance": merged_prov, "candidates": merged_cand, "confidence": merged_conf}
 
     return _fn
 
@@ -294,10 +306,12 @@ async def _get_task_any(db: AsyncSession, task_id: str) -> ReviewTask | None:
     return result.scalar_one_or_none()
 
 
-async def _write_baselines(db: AsyncSession, task_id: str, docs: list[dict], fields: dict, materials_hash: str, provenance: dict | None = None) -> None:
+async def _write_baselines(db: AsyncSession, task_id: str, docs: list[dict], fields: dict, materials_hash: str, provenance: dict | None = None, candidates: dict | None = None, fields_conf: dict | None = None) -> None:
     """基线落库(kind 按 docs role 拆,计划口径);每行携带全量 fields 快照 + 本行 doc_id
     (确认门 UI 逐份核对同一快照)。EAI-CUSTOM(2026-10-30 抽取 v2):payload 增
     provenance(逐字段出处 {doc_id,page,quote},字段抽取层产物;det 求值不消费)。
+    EAI-CUSTOM(2026-10-30 二期 spec §1.1/§二):payload 增 candidates(多候选快照,
+    冲突判定原料)+ fields_conf({conf,verified},置信投影)。
     写前清旧行——boot recovery 断点续跑(extracting 入口)重放基线时幂等,不产生重复行。"""
     await db.execute(delete(BaselinePackage).where(BaselinePackage.task_id == task_id))
     await db.commit()
@@ -306,7 +320,14 @@ async def _write_baselines(db: AsyncSession, task_id: str, docs: list[dict], fie
             BaselinePackage(
                 task_id=task_id,
                 kind=str(doc.get("role") or "unknown")[:10],  # String(10) 列宽保护
-                payload={"doc_id": doc.get("doc_id"), "fields": fields, "materials_hash": materials_hash, "provenance": provenance or {}},
+                payload={
+                    "doc_id": doc.get("doc_id"),
+                    "fields": fields,
+                    "materials_hash": materials_hash,
+                    "provenance": provenance or {},
+                    "candidates": candidates or {},
+                    "fields_conf": fields_conf or {},
+                },
             )
         )
     await db.commit()
@@ -427,7 +448,7 @@ async def advance_task(
     meta = dict(task.engine_meta or {})
     meta["materials_hash"] = payload["materials_hash"]
     task.engine_meta = meta  # 重新赋值以标记 JSON 列 dirty
-    await _write_baselines(db, task_id, docs, fields, payload["materials_hash"], payload.get("provenance"))
+    await _write_baselines(db, task_id, docs, fields, payload["materials_hash"], payload.get("provenance"), payload.get("candidates"), payload.get("fields_conf"))
     durations["extracting"] = time.perf_counter() - t1
     if wait_confirm:
         return await crud.set_status(db, task, "awaiting_confirm", progress={"stage": "confirm_gate", "pct": 40, "msg": "基线已生成,等待人工确认(确认门仅工作台 UI)"})
@@ -455,6 +476,8 @@ async def resume_confirmed(db: AsyncSession, task_id: str, owner_id: str, model_
             prov = payload.get("provenance")
             provenance = prov if isinstance(prov, dict) else {}
             break
+    # 二期 spec §1.4:确认门期间的人工裁定合并进快照——裁定就是改基准值,审查引擎无感知
+    fields = apply_adjudications(fields, (task.engine_meta or {}).get("adjudications"))
     durations: dict[str, float] = {}
     t2 = time.perf_counter()
     await crud.set_status(db, task, "running", progress={"stage": "review", "pct": 40, "msg": "人工确认完成,规则审查执行中(det+sem/hyb)"})

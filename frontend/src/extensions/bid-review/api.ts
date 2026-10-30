@@ -124,7 +124,20 @@ export function confirmTask(taskId: string): Promise<TaskOut> {
 
 /** GET /tasks/{id}/baselines 行:_write_baselines 落库形——每行同全量 fields
  * 快照 + 本行 doc_id;provenance 逐字段出处 {doc_id,page,quote}(模型没给的
- * 路径缺省不造假)。冲突裁定/置信度/锚点为引擎二期缺口,契约暂无。 */
+ * 路径缺省不造假)。EAI-CUSTOM 2026-10-31 二期(spec §1.3):candidates 多候选 /
+ * fields_conf 置信 / conflicts 冲突路径 / effective_fields(裁定覆盖后)。 */
+export interface BidCandidate {
+  value: unknown;
+  doc_id: string;
+  page: number | null;
+  quote: string;
+}
+
+export interface BidFieldConf {
+  conf: number | null;
+  verified: boolean;
+}
+
 export interface BidBaselineRow {
   kind: string;
   doc_id: string | null;
@@ -135,14 +148,36 @@ export interface BidBaselineRow {
     string,
     { doc_id: string; page: number | null; quote: string }
   >;
+  candidates: Record<string, BidCandidate[]>;
+  fields_conf: Record<string, BidFieldConf>;
+  conflicts: string[];
+  effective_fields: Record<string, unknown>;
   materials_hash: string;
 }
 
-/** GET /tasks/{id}/baselines —— 基线行级读端点({items: BidBaselineRow[]},拆包)。 */
-export function fetchBaselines(taskId: string): Promise<BidBaselineRow[]> {
-  return request<{ items: BidBaselineRow[] }>(
-    `/tasks/${taskId}/baselines`,
-  ).then((r) => r.items);
+/** GET /tasks/{id}/baselines 响应:行数组 + 顶层 labels(中文名映射)+
+ * adjudications(engine_meta 裁定 {path: {value, at, note?}})。 */
+export interface BidBaselinesOut {
+  items: BidBaselineRow[];
+  labels: Record<string, string>;
+  adjudications: Record<string, { value: unknown; at: string; note?: string }>;
+}
+
+/** GET /tasks/{id}/baselines —— 基线行级读端点(行 + labels + 裁定)。 */
+export function fetchBaselines(taskId: string): Promise<BidBaselinesOut> {
+  return request<BidBaselinesOut>(`/tasks/${taskId}/baselines`);
+}
+
+/** POST /tasks/{id}/baselines/adjudicate —— 冲突裁定(EAI-CUSTOM 2026-10-31
+ * 二期 spec §1.3):仅 awaiting_confirm 可裁定(过门 409);返回更新投影。 */
+export function adjudicateBaseline(
+  taskId: string,
+  body: { path: string; value: unknown; note?: string },
+): Promise<BidBaselinesOut> {
+  return request<BidBaselinesOut>(`/tasks/${taskId}/baselines/adjudicate`, {
+    method: "POST",
+    body: JSON.stringify(body),
+  });
 }
 
 // ── 问题端点 ──────────────────────────────────────────────────────────

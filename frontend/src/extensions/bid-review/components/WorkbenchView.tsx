@@ -157,12 +157,12 @@ const ON_MISSING_LABELS: Record<string, string> = {
  * 「字段缺失无法判定:a, b(on_missing_input=need_human)」,字段路径是英文——
  * 按 FIELD_LABELS 换中文名、路径以小字码注保留(可对照基准),处置词翻中文;
  * 未命中该模式的消息原样返回(其他规则 message 本就是中文)。原始全文由
- * 调用方放 title 悬浮。
+ * 调用方放 title 悬浮。export(2026-10-31 二期):复核工作台同用。
  */
 const MISSING_FIELDS_RE =
   /^(.+?)[:：]\s*(.+?)\s*\(on_missing_input=([a-z_]+)\)$/;
 
-function renderIssueMessage(message: string): ReactNode {
+export function renderIssueMessage(message: string): ReactNode {
   const m = MISSING_FIELDS_RE.exec(message);
   if (!m?.[1] || !m[2] || !m[3]) return message;
   const prefix = m[1];
@@ -190,8 +190,9 @@ function renderIssueMessage(message: string): ReactNode {
   );
 }
 
-/** 误报四因(原型 s5 .fp-inline;必选,后端无独立 reason 字段→折进 note)。 */
-const FP_REASONS = [
+/** 误报四因(原型 s5 .fp-inline;必选,后端无独立 reason 字段→折进 note)。
+ * export(2026-10-31 二期):复核工作台(ReviewQueueView)同用。 */
+export const FP_REASONS = [
   "规则误判",
   "证据错位",
   "口径理解不同",
@@ -207,7 +208,8 @@ const SEVERITIES = [
 
 // ── .brx pill 词汇映射(原型 s5)────────────────────────────────────────
 
-function sevPillBrx(severity: string): { cls: string; label: string } {
+/** export(2026-10-31 二期):复核工作台(ReviewQueueView)严重度 pill 同用。 */
+export function sevPillBrx(severity: string): { cls: string; label: string } {
   switch (severity) {
     case "fatal":
       return { cls: "pill-err", label: "致命" };
@@ -403,6 +405,29 @@ export function WorkbenchView({ taskId }: { taskId?: string | null }) {
       total: allPackRules.length,
     };
   }, [allPackRules, issues, ruleMeta.types]);
+
+  // 资料完备性聚合(二期 spec §五):need_human 缺失字段消息 → 字段路径去重,
+  // 值=涉及规则 id 集(「N 条规则待人工」);非缺失类 need_human 不入卡。
+  const completeness = useMemo(() => {
+    const byPath = new Map<string, Set<string>>();
+    for (const i of issues) {
+      if (!i.need_human) continue;
+      const m = MISSING_FIELDS_RE.exec(i.message);
+      if (!m?.[2]) continue;
+      for (const f of m[2]
+        .split(",")
+        .map((s) => s.trim())
+        .filter(Boolean)) {
+        const set = byPath.get(f) ?? new Set<string>();
+        if (i.rule_id) set.add(i.rule_id);
+        byPath.set(f, set);
+      }
+    }
+    return byPath;
+  }, [issues]);
+  const completenessRules = new Set(
+    [...completeness.values()].flatMap((s) => [...s]),
+  ).size;
 
   // 客户端过滤:seg(致命/主要/次要/提示排除待人工条目,与 summary 口径一致)+ 搜索 q
   const needle = q.trim().toLowerCase();
@@ -613,6 +638,17 @@ export function WorkbenchView({ taskId }: { taskId?: string | null }) {
             </span>
           ) : null}
           {st ? <span className={cn("pill", st.cls)}>{st.label}</span> : null}
+          {/* 常驻基准确认入口(二期 spec §六):不随状态消失——确认后仍可回看
+              基线/冲突裁定;待确认时升主色 */}
+          <Link
+            href={`/bid-review/baseline?task_id=${taskId}`}
+            className={cn(
+              "btn btn-sm",
+              baselineUnconfirmed ? "btn-pri" : "btn-sec",
+            )}
+          >
+            基准确认
+          </Link>
           {/* 报告导出(Task 21):仅 done 可导,行为契约测试锁定 */}
           <button
             type="button"
@@ -818,10 +854,67 @@ export function WorkbenchView({ taskId }: { taskId?: string | null }) {
           {summary.need_human > 0 ? (
             <div className="note-bar warnbar" style={{ margin: "0 0 12px" }}>
               <AlertTriangle className="ic" />
-              <span>
+              <span style={{ flex: 1 }}>
                 待人工为引擎无法判定项——<b>未判定 ≠ 通过</b>
                 ,不计入可提交判定,整改与复核时必须逐条处理。
               </span>
+              {/* 二期 spec §五:复核工作台(s6 队列视图)入口 */}
+              <Link href={`/bid-review/review?task_id=${taskId}`}>
+                到复核工作台
+              </Link>
+            </div>
+          ) : null}
+
+          {/* 资料完备性聚合(二期 spec §五):need_human 缺失字段去重 → 中文名+规则数;
+              指引=补材料重跑或到复核工作台处置 */}
+          {completenessRules > 0 ? (
+            <div className="card" style={{ marginBottom: 12 }}>
+              <div className="card-hd">
+                <h3>资料完备性</h3>
+                <span className="hd-sub">
+                  缺失 {completeness.size} 项基准字段 · 影响 {completenessRules}{" "}
+                  条规则判定
+                </span>
+              </div>
+              <div
+                style={{
+                  padding: "12px 16px",
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: 6,
+                }}
+              >
+                {[...completeness.entries()]
+                  .sort(([a], [b]) => a.localeCompare(b))
+                  .map(([path, rules]) => (
+                    <div
+                      key={path}
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 8,
+                        fontSize: 13,
+                      }}
+                    >
+                      <span>{FIELD_LABELS[path] ?? "未登记字段"}</span>
+                      <code className="k" style={{ fontSize: 11 }}>
+                        {path}
+                      </code>
+                      <span
+                        style={{
+                          marginLeft: "auto",
+                          color: "var(--text-3)",
+                          fontSize: 12,
+                        }}
+                      >
+                        {rules.size} 条规则待人工
+                      </span>
+                    </div>
+                  ))}
+              </div>
+              <div className="tbl-foot">
+                补齐对应材料并重跑审查即可自动判定;或到人工复核工作台逐条处置
+              </div>
             </div>
           ) : null}
 

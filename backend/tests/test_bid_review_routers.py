@@ -8,6 +8,7 @@ Depends(get_db) 取会话,不 override 会打到生产 extensions DB)。
 """
 
 import asyncio
+from datetime import UTC, datetime, timedelta
 
 import httpx
 import pytest
@@ -458,7 +459,9 @@ async def test_list_baselines_endpoint(client, db):
             },
         )
     )
-    db.add(models.BaselinePackage(task_id=t.id, kind="bid", payload={"doc_id": "b.txt", "fields": {"bid.total_price": None}, "provenance": {}, "materials_hash": "abc123"}))
+    # created_at 显式错开:list_baselines 按 (created_at, id) 排序,id 是 UUID——同 tick 落两行时
+    # 兜底排序随机(二期测试加入后时序变化暴露的既有 flake,2026-10-30 修)。
+    db.add(models.BaselinePackage(task_id=t.id, kind="bid", payload={"doc_id": "b.txt", "fields": {"bid.total_price": None}, "provenance": {}, "materials_hash": "abc123"}, created_at=datetime.now(UTC) + timedelta(seconds=1)))
     await db.commit()
     r = await client.get(f"/api/extensions/bid-review/tasks/{t.id}/baselines")
     assert r.status_code == 200
@@ -470,3 +473,98 @@ async def test_list_baselines_endpoint(client, db):
     assert items[0]["materials_hash"] == "abc123"
     other = await crud.create_task(db, owner_id="u2")
     assert (await client.get(f"/api/extensions/bid-review/tasks/{other.id}/baselines")).status_code == 404
+
+
+# ── 二期(EAI-CUSTOM 2026-10-30 spec §1.3):裁定端点 / 门收紧 / 投影扩展 ──
+
+
+async def _mk_conflicted_task(db) -> models.ReviewTask:
+    """带一个冲突字段(bid.total_price 两候选)的 awaiting_confirm 任务。"""
+    t = await crud.create_task(db, owner_id="u1")
+    await crud.set_status(db, t, "awaiting_confirm")
+    payload = {
+        "doc_id": "b.txt",
+        "fields": {"bid.total_price": 8000000, "bid.subtotal": 100},
+        "provenance": {"bid.total_price": {"doc_id": "b.txt", "page": 1, "quote": "捌佰万"}},
+        "materials_hash": "abc123",
+        "candidates": {
+            "bid.total_price": [
+                {"value": 8000000, "doc_id": "b.txt", "page": 1, "quote": "捌佰万"},
+                {"value": 9000000, "doc_id": "b.txt", "page": 2, "quote": "玖佰万"},
+            ]
+        },
+        "fields_conf": {"bid.total_price": {"conf": 0.6, "verified": True}},
+    }
+    db.add(models.BaselinePackage(task_id=t.id, kind="bid", payload=payload))
+    await db.commit()
+    return t
+
+
+@pytest.mark.asyncio
+async def test_baselines_projection_phase2(client, db):
+    t = await _mk_conflicted_task(db)
+    r = await client.get(f"/api/extensions/bid-review/tasks/{t.id}/baselines")
+    assert r.status_code == 200
+    body = r.json()
+    row = body["items"][0]
+    assert row["conflicts"] == ["bid.total_price"]
+    assert row["candidates"]["bid.total_price"][0]["value"] == 8000000
+    assert row["fields_conf"]["bid.total_price"] == {"conf": 0.6, "verified": True}
+    assert row["effective_fields"] == row["fields"]  # 未裁定=原快照
+    assert body["labels"]["bid.total_price"] == "投标总报价"  # 中文名映射
+    assert body["adjudications"] == {}
+
+
+@pytest.mark.asyncio
+async def test_adjudicate_endpoint_matrix(client, db, monkeypatch):
+    t = await _mk_conflicted_task(db)
+    url = f"/api/extensions/bid-review/tasks/{t.id}/baselines/adjudicate"
+    # happy path
+    r = await client.post(url, json={"path": "bid.total_price", "value": 9000000, "note": "以明细表为准"})
+    assert r.status_code == 200
+    body = r.json()
+    assert body["adjudications"]["bid.total_price"]["value"] == 9000000
+    assert body["items"][0]["effective_fields"]["bid.total_price"] == 9000000
+    assert body["items"][0]["fields"]["bid.total_price"] == 8000000  # 快照不动,覆盖只在 effective
+    # 未知路径 422 / null 值 422
+    assert (await client.post(url, json={"path": "bid.ghost", "value": 1})).status_code == 422
+    assert (await client.post(url, json={"path": "bid.subtotal", "value": None})).status_code == 422
+    # 非确认门状态 409
+    await crud.set_status(db, t, "running")
+    assert (await client.post(url, json={"path": "bid.subtotal", "value": 5})).status_code == 409
+    # 他人任务 404
+    other = await crud.create_task(db, owner_id="u2")
+    assert (await client.post(f"/api/extensions/bid-review/tasks/{other.id}/baselines/adjudicate", json={"path": "x", "value": 1})).status_code == 404
+
+
+@pytest.mark.asyncio
+async def test_confirm_gate_blocks_unresolved_conflicts(client, db, monkeypatch):
+    t = await _mk_conflicted_task(db)
+    # 未裁定冲突 → 409
+    r = await client.post(f"/api/extensions/bid-review/tasks/{t.id}/confirm")
+    assert r.status_code == 409 and "未裁定冲突" in r.json()["detail"]
+    # 裁定后放行(后台续跑已旁路)
+    r2 = await client.post(f"/api/extensions/bid-review/tasks/{t.id}/baselines/adjudicate", json={"path": "bid.total_price", "value": 9000000})
+    assert r2.status_code == 200
+    r3 = await client.post(f"/api/extensions/bid-review/tasks/{t.id}/confirm")
+    assert r3.status_code == 200 and r3.json()["status"] == "awaiting_confirm"  # 续跑为 no-op 旁路,状态不前进
+
+
+@pytest.mark.asyncio
+async def test_resume_merges_adjudications(db, monkeypatch):
+    """spec §1.4 关键接缝:resume_confirmed 把 engine_meta 裁定合并进 fields 再进审查。"""
+    t = await _mk_conflicted_task(db)
+    meta = dict(t.engine_meta or {})
+    meta["adjudications"] = {"bid.total_price": {"value": 9000000}}
+    t.engine_meta = meta
+    await db.commit()
+    captured: dict = {}
+
+    async def fake_review(db_, task, fields, owner_id, model_fn=None, provenance=None):
+        captured["fields"] = fields
+        return 0
+
+    monkeypatch.setattr(worker, "_run_review_stage", fake_review)
+    await worker.resume_confirmed(db, t.id, "u1")
+    assert captured["fields"]["bid.total_price"] == 9000000
+    assert captured["fields"]["bid.subtotal"] == 100

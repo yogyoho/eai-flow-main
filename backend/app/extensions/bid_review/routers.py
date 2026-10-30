@@ -35,8 +35,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.extensions.auth.middleware import require_permission
 from app.extensions.bid_review import crud, parse, worker
+from app.extensions.bid_review.engine.extract import apply_adjudications, detect_conflicts
+from app.extensions.bid_review.engine.labels import FIELD_LABELS
 from app.extensions.bid_review.models import RulePackMeta
-from app.extensions.bid_review.schemas import FeedbackIn, IssueOut, TaskOut
+from app.extensions.bid_review.schemas import AdjudicateIn, FeedbackIn, IssueOut, TaskOut
 from app.extensions.database import get_db
 from app.extensions.schemas import CurrentUser
 
@@ -151,6 +153,32 @@ async def get_task_detail(task_id: str, db: AsyncSession = Depends(get_db), owne
     return task
 
 
+def _baseline_items(rows: list, adjudications: dict) -> list[dict]:
+    """基线行投影(GET 与 adjudicate 共用,二期 spec §1.3):行契约 + candidates/
+    fields_conf/conflicts/effective_fields 四个二期扩展。"""
+    items = []
+    for r in rows:
+        payload = r.payload or {}
+        fields = payload.get("fields") or {}
+        candidates = payload.get("candidates") or {}
+        items.append(
+            {
+                "kind": r.kind,
+                "doc_id": payload.get("doc_id"),
+                "confirmed": bool(r.confirmed),
+                "created_at": r.created_at.isoformat() if r.created_at else None,
+                "fields": fields,
+                "provenance": payload.get("provenance") or {},
+                "candidates": candidates,
+                "fields_conf": payload.get("fields_conf") or {},
+                "conflicts": sorted(detect_conflicts(candidates)),
+                "effective_fields": apply_adjudications(fields, adjudications),
+                "materials_hash": payload.get("materials_hash") or "",
+            }
+        )
+    return items
+
+
 @router.get("/tasks/{task_id}/baselines")
 async def list_task_baselines(task_id: str, db: AsyncSession = Depends(get_db), owner_id: str = Depends(current_owner)):
     """基线行级读端点(EAI-CUSTOM 2026-10-30,分期建议一期 s3/s4——
@@ -159,24 +187,45 @@ async def list_task_baselines(task_id: str, db: AsyncSession = Depends(get_db), 
     BaselineView 只能降级材料卡。行契约=_write_baselines 落库形:每行同全量
     fields 快照 + 本行 doc_id(payload)+ kind/confirmed;provenance 逐字段出处
     {doc_id,page,quote}(extract.normalize_provenance,模型没给的路径缺省不造假)。
-    冲突裁定/置信度/锚点=引擎二期缺口,不在本端点承诺。"""
-    if await crud.get_task(db, task_id=task_id, owner_id=owner_id) is None:
+    EAI-CUSTOM(2026-10-30 二期 spec §1.3)投影扩展:candidates 多候选 /
+    fields_conf 置信 / conflicts 冲突路径(detect_conflicts)/ effective_fields
+    (fields ∪ 裁定覆盖)/ 顶层 labels 中文名 + adjudications(engine_meta 透传)。"""
+    task = await crud.get_task(db, task_id=task_id, owner_id=owner_id)
+    if task is None:
         raise HTTPException(status_code=404, detail="任务不存在")
     rows = await crud.list_baselines(db, task_id=task_id, owner_id=owner_id)
-    return {
-        "items": [
-            {
-                "kind": r.kind,
-                "doc_id": (r.payload or {}).get("doc_id"),
-                "confirmed": bool(r.confirmed),
-                "created_at": r.created_at.isoformat() if r.created_at else None,
-                "fields": (r.payload or {}).get("fields") or {},
-                "provenance": (r.payload or {}).get("provenance") or {},
-                "materials_hash": (r.payload or {}).get("materials_hash") or "",
-            }
-            for r in rows
-        ]
-    }
+    adjudications = (task.engine_meta or {}).get("adjudications") or {}
+    return {"items": _baseline_items(rows, adjudications), "labels": dict(FIELD_LABELS), "adjudications": adjudications}
+
+
+@router.post("/tasks/{task_id}/baselines/adjudicate")
+async def adjudicate_baseline(task_id: str, body: AdjudicateIn, db: AsyncSession = Depends(get_db), owner_id: str = Depends(current_owner)):
+    """冲突裁定写入(EAI-CUSTOM 2026-10-30 二期 spec §1.3):人工从多候选中裁决
+    基准值,落 task.engine_meta.adjudications——不建新表(任务级少量状态,与 resume
+    链同生命周期)。仅 awaiting_confirm 可裁定(过门后裁定=改审查依据,409);
+    path 不在快照 / value 非 JSON 安全类型 → 422。返回更新后的行投影(与 GET 同构)。"""
+    task = await crud.get_task(db, task_id=task_id, owner_id=owner_id)
+    if task is None:
+        raise HTTPException(status_code=404, detail="任务不存在")
+    if task.status != "awaiting_confirm":
+        raise HTTPException(status_code=409, detail=f"任务不在确认门(当前 {task.status}):裁定仅确认前有效")
+    rows = await crud.list_baselines(db, task_id=task_id, owner_id=owner_id)
+    if not rows:
+        raise HTTPException(status_code=404, detail="基线未生成")
+    fields = (rows[0].payload or {}).get("fields") or {}
+    if body.path not in fields:
+        raise HTTPException(status_code=422, detail=f"未知字段路径:{body.path}")
+    if body.value is None or not isinstance(body.value, str | int | float | bool | dict | list):
+        raise HTTPException(status_code=422, detail="value 须为 JSON 安全类型且非 null(放弃抽取值请直接不裁定)")
+    meta = dict(task.engine_meta or {})
+    adjudications = dict(meta.get("adjudications") or {})
+    adjudications[body.path] = {"value": body.value, "at": datetime.now(UTC).isoformat(), **({"note": body.note} if body.note else {})}
+    meta["adjudications"] = adjudications
+    task.engine_meta = meta  # 重新赋值以标记 JSON 列 dirty
+    await db.commit()
+    await db.refresh(task)
+    adjudications = (task.engine_meta or {}).get("adjudications") or {}
+    return {"items": _baseline_items(rows, adjudications), "labels": dict(FIELD_LABELS), "adjudications": adjudications}
 
 
 @router.post("/tasks/{task_id}/confirm", response_model=TaskOut)
@@ -189,6 +238,16 @@ async def confirm_task(task_id: str, db: AsyncSession = Depends(get_db), owner_i
         raise HTTPException(status_code=404, detail="任务不存在")
     if task.status != "awaiting_confirm":
         raise HTTPException(status_code=409, detail=f"任务不在确认门(当前 {task.status}):仅 awaiting_confirm 可确认续跑")
+    # 二期 spec §1.3 门收紧:存在「冲突且未裁定」路径 → 409(错误基准 → 全盘误判,
+    # 冲突不裁定即过门等于把裁决推给审查引擎)。与未复核致命 409 同语义层。
+    conflict_paths: set[str] = set()
+    for b in await crud.list_baselines(db, task_id=task_id, owner_id=owner_id):
+        payload = b.payload if isinstance(b.payload, dict) else {}
+        conflict_paths |= set(detect_conflicts(payload.get("candidates") or {}))
+    adj = (task.engine_meta or {}).get("adjudications") or {}
+    unresolved = sorted(p for p in conflict_paths if p not in adj)
+    if unresolved:
+        raise HTTPException(status_code=409, detail=f"存在 {len(unresolved)} 个未裁定冲突字段:请在基准确认页裁决后重试")
     for b in await crud.list_baselines(db, task_id=task_id, owner_id=owner_id):
         await crud.update_baseline(db, b, confirmed=True)
     if task.status == "awaiting_confirm":

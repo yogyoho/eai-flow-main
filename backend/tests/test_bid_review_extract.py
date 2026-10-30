@@ -7,9 +7,14 @@ import pytest
 
 from app.extensions.bid_review.engine.extract import (
     ExtractNotConfigured,
+    apply_adjudications,
     build_baseline,
     build_extract_prompt,
     collect_field_paths,
+    detect_conflicts,
+    normalize_candidates,
+    normalize_confidence,
+    verify_quotes,
 )
 
 FAKE_DOCS = [
@@ -187,3 +192,98 @@ def test_materials_hash_ignores_provenance():
     from app.extensions.bid_review.engine.extract import materials_hash
 
     assert materials_hash({"a": 1}) == materials_hash({"a": 1})
+
+
+# ── 二期(EAI-CUSTOM 2026-10-30 spec §1.1/§二):多候选 / 置信 / 冲突 / quote 核验 / 裁定合并 ──
+
+def test_normalize_candidates_filters_and_caps():
+    paths = {"bid.total_price"}
+    doc_ids = {"bid.pdf"}
+    role_map = {"bid": "bid.pdf"}
+    raw = {
+        "bid.total_price": [
+            {"value": 8000000, "doc_id": "bid", "page": 3, "quote": "总价捌佰万"},  # role 别名代真
+            {"value": "八百万", "doc_id": "bid.pdf", "page": 5, "quote": ""},
+            {"value": None, "doc_id": "bid.pdf"},  # null 不收
+            {"value": 1, "doc_id": "ghost.pdf"},  # 未知 doc_id 丢
+            {"value": {1, 2}, "doc_id": "bid.pdf"},  # 非 JSON 安全类型丢(set 不在类型闸)
+            "junk",  # 非 dict 丢
+        ],
+        "bid.made_up": [{"value": 1, "doc_id": "bid.pdf"}],  # 未知路径丢
+    }
+    out = normalize_candidates(raw, paths, doc_ids, role_map)
+    assert set(out) == {"bid.total_price"}
+    assert len(out["bid.total_price"]) == 2
+    assert out["bid.total_price"][0]["doc_id"] == "bid.pdf"
+    assert out["bid.total_price"][0]["page"] == 3
+
+
+def test_normalize_candidates_cap():
+    raw = {"p": [{"value": i, "doc_id": "d"} for i in range(30)]}
+    out = normalize_candidates(raw, {"p"}, {"d"})
+    assert len(out["p"]) == 8  # _CANDIDATE_MAX
+
+
+def test_detect_conflicts_normalization():
+    cands = {
+        "bid.total_price": [{"value": "8,000,000 元"}, {"value": "8000000元"}, {"value": 9000000}],
+        "bid.subtotal": [{"value": 100}, {"value": 100.0}],  # 归一后同值 → 不冲突
+        "bid.detail_rows": [{"value": [{"a": 1}]}, {"value": [{"a": 1}]}],  # list 归一同值
+    }
+    conflicts = detect_conflicts(cands)
+    assert set(conflicts) == {"bid.total_price"}
+    assert len(conflicts["bid.total_price"]) == 2
+
+
+def test_normalize_confidence_clamps():
+    out = normalize_confidence({"a": 1.4, "b": -0.5, "c": True, "d": "x", "e": 0.75}, {"a", "b", "c", "d", "e"})
+    assert out == {"a": 1.0, "b": 0.0, "e": 0.75}
+
+
+def test_verify_quotes_whitespace_collapsed():
+    docs = [{"doc_id": "bid.pdf", "text": "投标  总价:\n捌佰万元整(含税)"}]
+    prov = {
+        "hit": {"doc_id": "bid.pdf", "quote": "投标 总价: 捌佰万元整"},
+        "miss": {"doc_id": "bid.pdf", "quote": "报价玖佰万"},
+        "empty": {"doc_id": "bid.pdf", "quote": ""},
+        "wrong_doc": {"doc_id": "ghost", "quote": "投标"},
+    }
+    v = verify_quotes(prov, docs)
+    assert v == {"hit": True, "miss": False, "empty": False, "wrong_doc": False}
+
+
+def test_apply_adjudications_merges_known_paths_only():
+    fields = {"bid.total_price": 8000000, "bid.subtotal": 100}
+    adj = {"bid.total_price": {"value": 9000000}, "bid.ghost": {"value": 1}, "bid.subtotal": "not_dict", "bid.detail_rows": {"value": None}}
+    out = apply_adjudications(fields, adj)
+    assert out["bid.total_price"] == 9000000  # 裁定覆盖
+    assert out["bid.subtotal"] == 100  # adj 非 dict 忽略
+    assert out == {"bid.total_price": 9000000, "bid.subtotal": 100}  # 未知/null 路径不新增
+    assert fields["bid.total_price"] == 8000000  # 不改入参
+
+
+def test_build_baseline_payload_with_candidates_and_conf():
+    def rich_fn(docs, field_paths):
+        return {
+            "fields": {"bid.total_price": 9000000, "tender.max_price": 8000000},
+            "provenance": {"tender.max_price": {"doc_id": "tender.pdf", "page": 3, "quote": "最高限价"}},
+            "candidates": {
+                "bid.total_price": [{"value": 8000000, "doc_id": "bid.pdf", "page": 1, "quote": "捌佰万"}, {"value": 9000000, "doc_id": "bid.pdf", "page": 2, "quote": "玖佰万"}],
+                "tender.max_price": [{"value": 8000000, "doc_id": "tender.pdf", "page": 3, "quote": "最高限价"}],
+            },
+            "confidence": {"bid.total_price": 0.6, "tender.max_price": 0.95},
+        }
+
+    snap = build_baseline(FAKE_DOCS, extract_fn=rich_fn)
+    assert snap["materials_hash"] == hashlib.sha1(json.dumps(snap["fields"], sort_keys=True, ensure_ascii=False).encode()).hexdigest()
+    assert len(snap["candidates"]["bid.total_price"]) == 2
+    assert detect_conflicts(snap["candidates"]).keys() == {"bid.total_price"}
+    assert snap["fields_conf"]["bid.total_price"] == {"conf": 0.6, "verified": False}  # 无 provenance quote → 不造假核验
+    assert snap["fields_conf"]["tender.max_price"] == {"conf": 0.95, "verified": True}  # quote 命中 FAKE_DOCS 文本
+
+
+def test_build_baseline_legacy_fn_still_works():
+    # 旧 fake(扁平 {路径: 值})不断:候选空、fields_conf 全 verified=False(无 quote 不造假核验)
+    snap = build_baseline(FAKE_DOCS, extract_fn=fake_extract_fn)
+    assert snap["candidates"] == {}
+    assert snap["fields_conf"]["bid.total_price"] == {"conf": None, "verified": False}

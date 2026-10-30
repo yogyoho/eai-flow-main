@@ -10,6 +10,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import {
+  adjudicateBaseline,
   confirmTask,
   feedbackIssue,
   fetchBaselines,
@@ -37,12 +38,26 @@ export function useBidTask(taskId: string | null | undefined) {
 }
 
 /** GET /tasks/{id}/baselines —— 基线行级快照(EAI-CUSTOM 2026-10-30 分期建议
- * 一期 s3/s4;taskId 为空时不发请求)。 */
+ * 一期 s3/s4;taskId 为空时不发请求)。二期返回 {items, labels, adjudications}。 */
 export function useBidBaselines(taskId: string | null | undefined) {
   return useQuery({
     queryKey: bidReviewKeys.baselines(taskId ?? ""),
     queryFn: () => fetchBaselines(taskId!),
     enabled: Boolean(taskId),
+  });
+}
+
+/** POST /tasks/{id}/baselines/adjudicate —— 冲突裁定(EAI-CUSTOM 2026-10-31 二期
+ * spec §1.3):onSuccess 用响应整包 setQueryData(响应即更新投影,免 refetch);
+ * 409(过门)/422(未知路径/非法值)由调用方组件分流。 */
+export function useBidAdjudicate(taskId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (body: { path: string; value: unknown; note?: string }) =>
+      adjudicateBaseline(taskId, body),
+    onSuccess: (data) => {
+      qc.setQueryData(bidReviewKeys.baselines(taskId), data);
+    },
   });
 }
 

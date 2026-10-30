@@ -214,3 +214,132 @@ describe("bid-review BaselineView 分期建议一期(EAI-CUSTOM 2026-10-30)", ()
     );
   });
 });
+
+// ── 二期(EAI-CUSTOM 2026-10-31 spec §1.5/§二/§四):冲突裁定 / 置信 pill / 中文 label ──
+
+/** 二期投影:labels 中文名 + candidates 冲突 + fields_conf + adjudications。 */
+const BASELINES_P2 = () => ({
+  items: [
+    {
+      kind: "bid",
+      doc_id: "投标文件.docx",
+      confirmed: false,
+      created_at: "2026-10-31T00:00:00Z",
+      fields: { "bid.total_price": 9000000, "bid.subtotal": null },
+      effective_fields: { "bid.total_price": 9000000, "bid.subtotal": null },
+      provenance: {},
+      candidates: {
+        "bid.total_price": [
+          { value: 8000000, doc_id: "投标文件.docx", page: 1, quote: "捌佰万" },
+          { value: 9000000, doc_id: "投标文件.docx", page: 2, quote: "玖佰万" },
+        ],
+      },
+      fields_conf: { "bid.total_price": { conf: 0.6, verified: true } },
+      conflicts: ["bid.total_price"],
+      materials_hash: "abcdef1234567890",
+    },
+  ],
+  labels: {
+    "bid.total_price": "投标总价",
+    "bid.subtotal": "投标明细合计",
+  },
+  adjudications: {},
+});
+
+describe("bid-review BaselineView 二期冲突裁定(EAI-CUSTOM 2026-10-31)", () => {
+  beforeEach(() => {
+    calls.length = 0;
+    responder = () => jsonRes({});
+  });
+
+  afterEach(() => {
+    cleanup();
+  });
+
+  it("冲突卡:多候选 radio + 中文 label + 置信 pill;采纳 → POST adjudicate → 已裁定", async () => {
+    responder = (path, init) => {
+      if (path.endsWith("/baselines")) return jsonRes(BASELINES_P2());
+      if (path.endsWith("/baselines/adjudicate") && init?.method === "POST") {
+        const body = JSON.parse(init.body as string) as {
+          path: string;
+          value: unknown;
+        };
+        expect(body.path).toBe("bid.total_price");
+        expect(body.value).toBe(9000000);
+        const out = BASELINES_P2();
+        out.adjudications = {
+          "bid.total_price": { value: 9000000, at: "2026-10-31T01:00:00Z" },
+        };
+        return jsonRes(out);
+      }
+      if (path.endsWith("/tasks/t1")) return jsonRes(TASK("awaiting_confirm"));
+      return jsonRes({}, 404);
+    };
+    renderBaseline();
+
+    // 中文 label 卡(路径降为 code 小字)+ 冲突待裁定区
+    expect(await screen.findByText("投标总价")).toBeTruthy();
+    expect(screen.getByText(/冲突待裁定/)).toBeTruthy();
+    expect(screen.getByText("待裁定")).toBeTruthy();
+
+    // 采纳按钮初始禁用(未选候选);gate 按钮带未裁定冲突数
+    const adopt = screen.getByRole("button", { name: "采纳为基准值" });
+    expect((adopt as HTMLButtonElement).disabled).toBe(true);
+    const gateBtn = screen.getByRole("button", {
+      name: /确认基准包并开始审查/,
+    });
+    await waitFor(() =>
+      expect(gateBtn.textContent).toContain("未裁定冲突 1 处"),
+    );
+
+    // 选候选 9000000 → 采纳 → POST adjudicate;响应整包回填 → 已裁定 pill
+    const radios = screen
+      .getAllByRole("radio")
+      .filter((r) => (r as HTMLInputElement).name === "cand-bid.total_price");
+    expect(radios.length).toBe(2);
+    fireEvent.click(radios[1]!);
+    await waitFor(() =>
+      expect((adopt as HTMLButtonElement).disabled).toBe(false),
+    );
+    fireEvent.click(adopt);
+    await waitFor(() =>
+      expect(
+        calls.some(
+          (c) =>
+            c.path ===
+            "/api/extensions/bid-review/tasks/t1/baselines/adjudicate",
+        ),
+      ).toBe(true),
+    );
+    expect(await screen.findByText("已裁定")).toBeTruthy();
+    expect(screen.getByText(/当前基准 9,000,000/)).toBeTruthy();
+
+    // 裁定后 gate 按钮不再带未裁定冲突数
+    await waitFor(() =>
+      expect(gateBtn.textContent).not.toContain("未裁定冲突"),
+    );
+  });
+
+  it("已裁定快照直达:adjudications 非空时冲突卡直接呈已裁定态,门不带冲突计数", async () => {
+    const snapshot = BASELINES_P2();
+    snapshot.adjudications = {
+      "bid.total_price": { value: 8000000, at: "2026-10-31T01:00:00Z" },
+    };
+    responder = (path) => {
+      if (path.endsWith("/baselines")) return jsonRes(snapshot);
+      if (path.endsWith("/tasks/t1")) return jsonRes(TASK("awaiting_confirm"));
+      return jsonRes({}, 404);
+    };
+    renderBaseline();
+
+    expect(await screen.findByText("已裁定")).toBeTruthy();
+    // 基准值=裁定覆盖后 effective(此处字段值仍 9000000,裁定 8000000 在
+    // effective_fields 由后端合并——夹具以 fields 直陈,呈 9,000,000)
+    await waitFor(() => {
+      const gateBtn = screen.getByRole("button", {
+        name: /确认基准包并开始审查/,
+      });
+      expect(gateBtn.textContent).not.toContain("未裁定冲突");
+    });
+  });
+});

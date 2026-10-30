@@ -1,6 +1,15 @@
 "use client";
 
-import { BookOpen, ClipboardCheck, FileText, Gauge, ListChecks, Moon, Sun } from "lucide-react";
+import {
+  BookOpen,
+  ClipboardCheck,
+  FileText,
+  Gauge,
+  ListChecks,
+  Moon,
+  Sun,
+  UserCheck,
+} from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState, type ReactNode } from "react";
@@ -36,6 +45,15 @@ const navItems = [
     href: "/bid-review/workbench",
     label: "审查工作台",
     icon: FileText,
+    pageId: "bid:page:workbench",
+    group: 0,
+  },
+  {
+    // EAI-CUSTOM (2026-10-31 二期 spec §五 s6):need_human 队列复核;
+    // 挂 bid:page:workbench(同治理域,先例=metrics 挂 bid:page:rules)
+    href: "/bid-review/review",
+    label: "复核工作台",
+    icon: UserCheck,
     pageId: "bid:page:workbench",
     group: 0,
   },
@@ -89,7 +107,9 @@ function useDarkTheme() {
   }, []);
   const toggle = () => {
     setDark((prev) => {
-      const systemDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+      const systemDark = window.matchMedia(
+        "(prefers-color-scheme: dark)",
+      ).matches;
       const current = prev ?? systemDark;
       const next = !current;
       try {
@@ -115,12 +135,19 @@ function BidReviewLayoutContent({ children }: { children: ReactNode }) {
   const groups = [0, 1].map((g) => visibleItems.filter((n) => n.group === g));
 
   return (
-    <div className="brx" data-theme={dark === true ? "dark" : dark === false ? "light" : undefined}>
+    <div
+      className="brx"
+      data-theme={dark === true ? "dark" : dark === false ? "light" : undefined}
+    >
       <div className="chrome">
         <aside className="chrome-side">
           <div className="chrome-brand">
             <div className="brand-row">
-              <ClipboardCheck size={17} className="brand-ic" aria-hidden="true" />
+              <ClipboardCheck
+                size={17}
+                className="brand-ic"
+                aria-hidden="true"
+              />
               <div className="brand-txt">
                 <h1>投标方案审查</h1>
                 <p className="g-sub">Bid Proposal Review</p>

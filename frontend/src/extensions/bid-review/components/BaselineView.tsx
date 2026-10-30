@@ -6,13 +6,15 @@
  * s3(解析与字段抽取)/s4(基准确认卡点),在同一路由分区呈现:
  * - 解析质量表(s3 一期):engine_meta.docs 清单(kind/pages/chars/assets/status,
  *   pdf 真页码、docx 无页边界诚实 0→「—」;assets>0 行注 OCR 兜底);
- * - 字段对照(s3/s4 一期):GET /tasks/{id}/baselines 行级快照(routers
- *   list_task_baselines,分期建议一期落地)→ 按首段路径族(tender/bid)分组,
- *   字段卡只读核对(值/出处/「查看原文」定位弹层);冲突裁定/置信度/锚点=
- *   引擎二期缺口,挂账不伪造(routers 端点注释同记)。
- * 类词汇表=app/bid-review/bid-review.css(.brx 词汇:.tbl/.split/fam- 系列/.f-card/.gate-bar)。
+ * - 字段对照(s3/s4 一期):GET /tasks/{id}/baselines 行级快照 → 按首段路径族
+ *   (tender/bid)分组,字段卡核对(值/出处/「查看原文」定位弹层)。
+ * EAI-CUSTOM (2026-10-31 二期 spec §1.5/§二/§四):冲突裁定卡(多候选 radio +
+ * 采纳 → adjudicate 端点;已裁定转pill)、置信 pill(高/低/未核验,quote 服务端
+ * 核验为真信号)、字段中文名(labels 投影,path 降为 mono 小字)、确认门计数
+ * 加未裁定冲突数。
+ * 类词汇表=app/bid-review/bid-review.css(.brx 词汇:tbl/split/fam- 系列/f-card/gate-bar)。
  * 行为契约不变:useBidTask 详情 + useBidConfirmTask 确认门;仅 awaiting_confirm 可确认
- * (gateOpen gating);409(ApiError.status)分流 toast「存在未复核致命项」照旧。
+ * (gateOpen gating);409 分流 toast 展示后端 detail(未复核致命/未裁定冲突)。
  */
 
 import Link from "next/link";
@@ -22,11 +24,11 @@ import { toast } from "sonner";
 import {
   type BidBaselineRow,
   type LocateTarget,
-  ApiError,
 } from "@/extensions/bid-review/api";
 import { DocLocateModal } from "@/extensions/bid-review/components/DocLocateModal";
 import { taskStatusPill } from "@/extensions/bid-review/components/primitives";
 import {
+  useBidAdjudicate,
   useBidBaselines,
   useBidConfirmTask,
   useBidTask,
@@ -92,22 +94,47 @@ function formatVal(v: unknown): string {
   return JSON.stringify(v);
 }
 
-/** 单行基线快照 → 字段卡列表数据(行间快照同源,取首行即可)。 */
-function fieldRows(row: BidBaselineRow | undefined) {
-  const fields = row?.fields ?? {};
-  const prov = row?.provenance ?? {};
-  const paths = Object.keys(fields).sort();
-  return paths.map((p) => {
-    const value = fields[p];
-    const src = prov[p];
-    return {
-      path: p,
-      value,
-      missing: value === null || value === undefined,
-      src,
-    };
-  });
+/** 置信 pill(二期 spec §二):quote 服务端核验为真信号——未核验=灰;
+ * 核验且 conf<0.8=低置信 warn;核验且 conf≥0.8(或模型未自报)=高置信 ok。 */
+function confPill(c: { conf: number | null; verified: boolean } | null): {
+  cls: string;
+  text: string;
+} {
+  if (!c?.verified) return { cls: "pill-gray", text: "未核验" };
+  if (c.conf != null && c.conf < 0.8)
+    return { cls: "pill-warn", text: "低置信" };
+  return { cls: "pill-ok", text: "高置信" };
 }
+
+/** 单行基线快照 → 字段卡列表数据(行间快照同源,取首行即可)。
+ * 二期:effective_fields(裁定覆盖后值)+ labels 中文名 + fields_conf 置信。 */
+function fieldRows(
+  row: BidBaselineRow | undefined,
+  labels: Record<string, string>,
+) {
+  const fields = row?.effective_fields ?? row?.fields ?? {};
+  const prov = row?.provenance ?? {};
+  const conf = row?.fields_conf ?? {};
+  const conflictSet = new Set(row?.conflicts ?? []);
+  return Object.keys(fields)
+    .sort()
+    .map((p) => {
+      const value = fields[p];
+      const src = prov[p];
+      return {
+        path: p,
+        label: labels[p] ?? p,
+        value,
+        missing: value === null || value === undefined,
+        src,
+        conf: conf[p] ?? null,
+        conflicted: conflictSet.has(p),
+      };
+    });
+}
+
+// 稳定空对象:labels/adjudications 缺省时避免每渲染换引用破坏 useMemo 依赖
+const NO_LABELS: Record<string, string> = {};
 
 export function BaselineView({ taskId }: { taskId?: string | null }) {
   const taskQuery = useBidTask(taskId ?? null);
@@ -116,10 +143,15 @@ export function BaselineView({ taskId }: { taskId?: string | null }) {
 
   const task = taskQuery.data ?? null;
   const gateOpen = task?.status === "awaiting_confirm";
-  const rows = useMemo(() => baselinesQuery.data ?? [], [baselinesQuery.data]);
+  const data = baselinesQuery.data;
+  const rows = useMemo(() => data?.items ?? [], [data]);
+  const labels = data?.labels ?? NO_LABELS;
+  const adjudications = data?.adjudications ?? {};
   const [fam, setFam] = useState<string>("tender");
   const [search, setSearch] = useState("");
   const [locate, setLocate] = useState<LocateTarget | null>(null);
+  const [picks, setPicks] = useState<Record<string, number>>({});
+  const adjudicate = useBidAdjudicate(taskId ?? "");
 
   // 解析质量数据 = engine_meta.docs 清单(解析层落;v1 旧任务仅有 doc_id/role/text)
   const docs = Array.isArray(task?.engine_meta?.docs)
@@ -127,8 +159,19 @@ export function BaselineView({ taskId }: { taskId?: string | null }) {
     : [];
   const ocrDocs = docs.filter((d) => (d.assets ?? 0) > 0);
 
+  // 冲突路径(全行并集;候选清单各行同源,取首行);已裁定路径不计未裁
+  const conflictPaths = useMemo(() => {
+    const all = new Set<string>();
+    for (const r of rows) for (const p of r.conflicts ?? []) all.add(p);
+    return [...all].sort();
+  }, [rows]);
+  const unresolvedCount = conflictPaths.filter(
+    (p) => adjudications[p] === undefined,
+  ).length;
+  const conflictCands = rows[0]?.candidates ?? {};
+
   // 字段族计数(全快照口径,不随筛选变);检索只过滤当前族展示
-  const allRows = useMemo(() => fieldRows(rows[0]), [rows]);
+  const allRows = useMemo(() => fieldRows(rows[0], labels), [rows, labels]);
   const famStats = useMemo(() => {
     const m = new Map<string, { total: number; missing: number }>();
     for (const f of allRows) {
@@ -150,13 +193,8 @@ export function BaselineView({ taskId }: { taskId?: string | null }) {
 
   useEffect(() => {
     if (confirm.isError) {
-      const err = confirm.error;
-      // 确认门 409 → toast「存在未复核致命项」(spec §3.2/§3.3;Task 15 收紧落地即生效)
-      toast.error(
-        err instanceof ApiError && err.status === 409
-          ? "存在未复核致命项"
-          : (err?.message ?? "确认失败"),
-      );
+      // 二期:后端 confirm 门 409 detail 已分流(未复核致命项 / 未裁定冲突 N 个),透传
+      toast.error(confirm.error?.message ?? "确认失败");
     }
   }, [confirm.isError, confirm.error]);
 
@@ -195,9 +233,10 @@ export function BaselineView({ taskId }: { taskId?: string | null }) {
   }
 
   const st = task ? taskStatusPill(task.status) : null;
-  // 进度按确认门状态位(逐字段勾选核对=原型 ck-pend,依赖冲突裁定,二期挂账)
-  const gatePct = gateOpen ? 0 : task ? 100 : 0;
   const unconfirmedRows = rows.filter((r) => !r.confirmed).length;
+  // 门进度:仅 awaiting_confirm 且(行全确认 + 冲突全裁定)才 100%
+  const gatePct =
+    gateOpen && unconfirmedRows + unresolvedCount > 0 ? 0 : task ? 100 : 0;
 
   return (
     <div className="screen on">
@@ -372,8 +411,8 @@ export function BaselineView({ taskId }: { taskId?: string | null }) {
           <div>
             <h3>基准字段对照</h3>
             <div className="hd-sub">
-              引擎从材料中抽取的基准快照——审查即以此为准;冲突裁定/置信度为引擎
-              二期能力,当前缺失字段如实标注
+              引擎从材料中抽取的基准快照——审查即以此为准;冲突取值需人工裁定,
+              置信 pill 以 quote 原文核验为准
             </div>
           </div>
         </div>
@@ -411,11 +450,178 @@ export function BaselineView({ taskId }: { taskId?: string | null }) {
             >
               共 <span className="num">{allRows.length}</span> 字段 · 已抽取{" "}
               <span className="num">{allRows.length - missingTotal}</span> ·
-              缺失 <span className="num">{missingTotal}</span> · 快照哈希{" "}
+              缺失 <span className="num">{missingTotal}</span>
+              {conflictPaths.length > 0 ? (
+                <>
+                  {" "}
+                  · 冲突 <span className="num">{conflictPaths.length}</span>
+                  {unresolvedCount > 0
+                    ? `(未裁 ${unresolvedCount})`
+                    : "(已全裁定)"}
+                </>
+              ) : null}{" "}
+              · 快照哈希{" "}
               <code className="k">
                 {(rows[0]?.materials_hash ?? "").slice(0, 12) || "—"}
               </code>
             </div>
+            {/* ── 冲突裁定卡(二期 spec §1.5):多候选 radio + 采纳 → adjudicate;已裁定转pill ── */}
+            {conflictPaths.length > 0 ? (
+              <div
+                style={{
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: 8,
+                  marginBottom: 12,
+                }}
+              >
+                <div style={{ fontSize: 13, fontWeight: 600 }}>
+                  冲突待裁定 <span className="num">{conflictPaths.length}</span>
+                  处——同一字段在材料中取到多个不一致候选,采纳后写入基准
+                </div>
+                {conflictPaths.map((p) => {
+                  const cands = conflictCands[p] ?? [];
+                  const adj = adjudications[p];
+                  return (
+                    <div className="f-card pend" key={p}>
+                      <div className="f-hd">
+                        <span className="f-path" title={p}>
+                          {labels[p] ?? p}
+                          <code
+                            className="k"
+                            style={{ marginLeft: 6, fontSize: 11 }}
+                          >
+                            {p}
+                          </code>
+                        </span>
+                        {adj ? (
+                          <span className="pill pill-ok">已裁定</span>
+                        ) : (
+                          <span className="pill pill-warn">待裁定</span>
+                        )}
+                      </div>
+                      <div
+                        role="radiogroup"
+                        aria-label={`裁定 ${labels[p] ?? p}`}
+                        style={{
+                          display: "flex",
+                          flexDirection: "column",
+                          gap: 4,
+                          margin: "8px 0",
+                        }}
+                      >
+                        {cands.map((c, i) => {
+                          const isAdjValue =
+                            adj != null &&
+                            JSON.stringify(c.value) ===
+                              JSON.stringify(adj.value);
+                          return (
+                            <label
+                              key={i}
+                              style={{
+                                display: "flex",
+                                alignItems: "center",
+                                gap: 6,
+                                fontSize: 13,
+                                cursor: gateOpen ? "pointer" : "default",
+                              }}
+                            >
+                              <input
+                                type="radio"
+                                name={`cand-${p}`}
+                                checked={picks[p] === i || isAdjValue}
+                                disabled={!gateOpen}
+                                onChange={() =>
+                                  setPicks((m) => ({ ...m, [p]: i }))
+                                }
+                              />
+                              <span>{formatVal(c.value)}</span>
+                              <span
+                                style={{
+                                  color: "var(--text-3)",
+                                  fontSize: 12,
+                                  overflow: "hidden",
+                                  textOverflow: "ellipsis",
+                                  whiteSpace: "nowrap",
+                                }}
+                                title={`${c.doc_id}${c.page != null ? ` · p.${c.page}` : ""}${c.quote ? ` ·「${c.quote}」` : ""}`}
+                              >
+                                {c.doc_id}
+                                {c.page != null ? ` · p.${c.page}` : ""}
+                                {c.quote ? ` ·「${c.quote}」` : ""}
+                              </span>
+                            </label>
+                          );
+                        })}
+                        {cands.length === 0 ? (
+                          <span
+                            style={{ fontSize: 12, color: "var(--text-3)" }}
+                          >
+                            候选清单缺失(旧快照)——可重跑字段抽取后再裁定。
+                          </span>
+                        ) : null}
+                      </div>
+                      <div
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: 8,
+                          flexWrap: "wrap",
+                        }}
+                      >
+                        <button
+                          type="button"
+                          className="btn btn-pri btn-sm"
+                          disabled={
+                            !gateOpen ||
+                            picks[p] == null ||
+                            adjudicate.isPending
+                          }
+                          onClick={() => {
+                            const i = picks[p];
+                            const c = i != null ? cands[i] : undefined;
+                            if (!c) return;
+                            adjudicate.mutate(
+                              { path: p, value: c.value },
+                              {
+                                onSuccess: () =>
+                                  toast.success(
+                                    `已采纳「${formatVal(c.value)}」为 ${labels[p] ?? p} 的基准值`,
+                                  ),
+                                onError: (e) =>
+                                  toast.error(
+                                    e instanceof Error ? e.message : "裁定失败",
+                                  ),
+                              },
+                            );
+                          }}
+                        >
+                          采纳为基准值
+                        </button>
+                        {adj ? (
+                          <span
+                            style={{
+                              fontSize: 12,
+                              color: "var(--text-3)",
+                            }}
+                          >
+                            当前基准 {formatVal(adj.value)} · 裁定于{" "}
+                            {adj.at.slice(0, 16).replace("T", " ")}
+                          </span>
+                        ) : null}
+                        {!gateOpen ? (
+                          <span
+                            style={{ fontSize: 12, color: "var(--text-3)" }}
+                          >
+                            仅待确认状态可裁定
+                          </span>
+                        ) : null}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            ) : null}
             <div className="split">
               <div className="card" style={{ overflow: "hidden" }}>
                 <div className="fam-search">
@@ -485,11 +691,32 @@ export function BaselineView({ taskId }: { taskId?: string | null }) {
                       key={f.path}
                     >
                       <div className="f-hd">
-                        <span className="f-path">{f.path}</span>
-                        <span
-                          className={`pill ${f.missing ? "pill-warn" : "pill-ok"}`}
-                        >
-                          {f.missing ? "缺失" : "已抽取"}
+                        <span className="f-path" title={f.path}>
+                          {f.label}
+                          {f.label !== f.path ? (
+                            <code
+                              className="k"
+                              style={{ marginLeft: 6, fontSize: 11 }}
+                            >
+                              {f.path}
+                            </code>
+                          ) : null}
+                        </span>
+                        <span style={{ display: "flex", gap: 4 }}>
+                          {!f.missing && !f.conflicted ? (
+                            <span className={`pill ${confPill(f.conf).cls}`}>
+                              {confPill(f.conf).text}
+                            </span>
+                          ) : null}
+                          <span
+                            className={`pill ${f.missing ? "pill-warn" : "pill-ok"}`}
+                          >
+                            {f.missing
+                              ? "缺失"
+                              : f.conflicted
+                                ? "冲突"
+                                : "已抽取"}
+                          </span>
                         </span>
                       </div>
                       <div className="f-val">{formatVal(f.value)}</div>
@@ -559,7 +786,7 @@ export function BaselineView({ taskId }: { taskId?: string | null }) {
             基准确认进度{" "}
             <span className="num">
               {gateOpen
-                ? `0%(待确认${unconfirmedRows > 0 ? ` · ${unconfirmedRows} 行未确认` : ""})`
+                ? `0%(待确认${unconfirmedRows > 0 ? ` · ${unconfirmedRows} 行未确认` : ""}${unresolvedCount > 0 ? ` · ${unresolvedCount} 处冲突未裁定` : ""})`
                 : task
                   ? "100%(已过确认门)"
                   : "—"}
@@ -588,8 +815,8 @@ export function BaselineView({ taskId }: { taskId?: string | null }) {
         >
           {confirm.isPending
             ? "确认中…"
-            : gateOpen && unconfirmedRows > 0
-              ? `确认基准包并开始审查(待确认 ${unconfirmedRows} 行)`
+            : gateOpen && unconfirmedRows + unresolvedCount > 0
+              ? `确认基准包并开始审查(待确认 ${unconfirmedRows} 行${unresolvedCount > 0 ? ` · 未裁定冲突 ${unresolvedCount} 处` : ""})`
               : "确认基准包并开始审查"}
         </button>
       </div>

@@ -67,3 +67,12 @@ class FeedbackIn(BaseModel):
     action: str  # confirm|false_positive|severity_change|need_human(EAI-CUSTOM 2026-10-30 待人工)
     new_severity: str | None = None
     note: str = ""
+
+
+class AdjudicateIn(BaseModel):
+    """冲突裁定请求体(EAI-CUSTOM 2026-10-30 二期 spec §1.3):从多候选中人工裁决
+    基准值;path/value 合法性在 routers 校验(422),note 可选复核备注。"""
+
+    path: str
+    value: object = None  # JSON 安全类型闸在端点做(BaseModel 不预设 union 丢 list/dict)
+    note: str = ""
