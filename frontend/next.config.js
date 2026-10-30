@@ -43,6 +43,9 @@ const config = {
   // hang up). Host `pnpm dev` only; Docker :2026 goes direct via nginx.
   experimental: {
     proxyClientMaxBodySize: "100mb",
+    // EAI-CUSTOM (next-upgrade 16.4.0 -> 16.4.3): 本次升级由已发布的安全通告驱动，
+    // 标记为安全升级（security）供 Next.js 升级审计/遥测识别；其余配置保持不变。
+    agentUpgrade: "security",
   },
   // 允许局域网其他设备 + ngrok 隧道访问 dev server（HMR/WebSocket 跨域）
   // EAI-CUSTOM (bug-3254): 必须含 127.0.0.1 —— Next dev origin 门只隐式放行 localhost,
