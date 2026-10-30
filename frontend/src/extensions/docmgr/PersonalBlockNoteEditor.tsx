@@ -362,6 +362,10 @@ export interface PersonalBlockNoteEditorRef {
   scrollToBlock: (blockId: string) => boolean;
   /** EAI-CUSTOM (全文操作): 注册文档变更监听（任务区脏检查）。返回注销函数。 */
   onDocumentChange: (cb: () => void) => () => void;
+  /** EAI-CUSTOM (全文操作 v2): 收集标题块（块下标/层级/纯文本；空文本标题跳过）。 */
+  getHeadings: () => Array<{ index: number; level: number; text: string }>;
+  /** EAI-CUSTOM (全文操作 v2): 按标题块下标取整节纯文本（\n 连接，与锚点匹配同款提取）；锚点非标题或越界返回 ""。 */
+  getSectionText: (anchorIndex: number) => string;
 }
 
 interface PersonalBlockNoteEditorProps {
@@ -725,6 +729,38 @@ const PersonalBlockNoteEditor = forwardRef<
     },
 
     matchAnchor: (text: string) => findBlockByAnchor(editor.document, text),
+
+    // EAI-CUSTOM (全文操作 v2): 工单 diff 卡取「旧节文本」——按标题块下标整节提取。
+    getHeadings: () => {
+      const doc = editor.document as unknown as AnchorBlock[];
+      const out: Array<{ index: number; level: number; text: string }> = [];
+      for (let i = 0; i < doc.length; i++) {
+        const block = doc[i];
+        if (block?.type !== "heading") continue;
+        const text = getBlockText(block);
+        if (!text.trim()) continue; // 空文本标题跳过
+        const level = block.props?.level;
+        out.push({
+          index: i,
+          level: typeof level === "number" ? level : 1,
+          text,
+        });
+      }
+      return out;
+    },
+
+    getSectionText: (anchorIndex: number) => {
+      const doc = editor.document as unknown as AnchorBlock[];
+      const range = findSectionRange(doc, anchorIndex);
+      if (!range) return "";
+      const lines: string[] = [];
+      for (let i = range.startIndex; i <= range.endIndex; i++) {
+        // 空白块（常见于随手敲出的空段落）不进 diff 旧文本——只产空行噪声。
+        const text = getBlockText(doc[i]);
+        if (text.trim()) lines.push(text);
+      }
+      return lines.join("\n");
+    },
 
     applyOperations: (ops: DocOperation[]) => {
       for (const op of ops) {

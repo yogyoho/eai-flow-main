@@ -134,7 +134,7 @@ describe("taskReducer（任务区状态机）", () => {
   });
 
   test("cancel 后拒收在途流事件（终审 I-2a）", () => {
-    let s = run(s0(), {
+    const s = run(s0(), {
       type: "section_start",
       index: 0,
       total: 3,
@@ -182,5 +182,101 @@ describe("taskReducer（任务区状态机）", () => {
 
   test("dismiss 清空任务", () => {
     expect(taskReducer(s0(), { type: "dismiss" })).toBeNull();
+  });
+
+  // ── 全文操作 v2: 拒绝 / 恢复建议 ──────────────────────────────────
+
+  test("reject_section → rejected，ops 保留、不入 failed、仍在列表（v2）", () => {
+    const ops = [{ op: "replace_section", anchor: "一", content: "x" }];
+    let s = run(s0(), {
+      type: "section_start",
+      index: 0,
+      total: 1,
+      title: "一",
+    });
+    s = run(s, { type: "ops", index: 0, ops });
+    s = run(s, { type: "reject_section", index: 0 });
+    expect(s.sections[0]).toMatchObject({ index: 0, status: "rejected" });
+    expect(s.sections[0]?.ops).toEqual(ops);
+    expect(s.failed).toEqual([]);
+  });
+
+  test("restore_section → rejected 反悔回 ready（ops 仍在）；非 rejected 不动（v2）", () => {
+    const ops = [{ op: "replace_section", anchor: "一", content: "x" }];
+    let s = run(s0(), {
+      type: "section_start",
+      index: 0,
+      total: 1,
+      title: "一",
+    });
+    s = run(s, { type: "ops", index: 0, ops });
+    s = run(s, { type: "reject_section", index: 0 });
+    s = run(s, { type: "restore_section", index: 0 });
+    expect(s.sections[0]).toMatchObject({ status: "ready" });
+    expect(s.sections[0]?.ops).toEqual(ops);
+    // 非 rejected（如 applied）收到 restore 不变化
+    const applied = run(
+      {
+        ...s,
+        sections: s.sections.map((x) => ({ ...x, status: "applied" as const })),
+      },
+      { type: "restore_section", index: 0 },
+    );
+    expect(applied.sections[0]?.status).toBe("applied");
+  });
+
+  test("done 记录 total 供进度条；错误路径 total:0 不覆盖（v2）", () => {
+    let s = run(s0(), {
+      type: "section_start",
+      index: 0,
+      total: 3,
+      title: "一",
+    });
+    s = run(s, { type: "done", total: 3, failed: [], skipped: [] });
+    expect(s.total).toBe(3);
+    // apply 失败等错误路径复用 done 携带 message（total:0）——不得把进度分母清零
+    s = run(s, {
+      type: "done",
+      total: 0,
+      failed: [],
+      skipped: [],
+      message: "应用失败：x",
+    });
+    expect(s.total).toBe(3);
+  });
+
+  test("cancel 丢弃 rejected（v2 决策：取消仅保留 applied/unchanged/skipped）", () => {
+    let s = run(s0(), {
+      type: "section_start",
+      index: 0,
+      total: 4,
+      title: "一",
+    });
+    s = run(s, {
+      type: "ops",
+      index: 0,
+      ops: [{ op: "replace_section", anchor: "一", content: "x" }],
+    });
+    s = run(s, { type: "apply_section", index: 0 });
+    s = run(s, { type: "section_start", index: 1, total: 4, title: "二" });
+    s = run(s, {
+      type: "ops",
+      index: 1,
+      ops: [{ op: "replace_section", anchor: "二", content: "y" }],
+    });
+    s = run(s, { type: "reject_section", index: 1 });
+    s = run(s, {
+      type: "section_start",
+      index: 3,
+      total: 4,
+      title: "四",
+      skipped: true,
+    });
+    s = run(s, { type: "cancel" });
+    // rejected 与 ready 同属未确认 → 取消即丢弃；仅 applied/skipped 幸存
+    expect(s.sections.map((x) => [x.index, x.status])).toEqual([
+      [0, "applied"],
+      [3, "skipped"],
+    ]);
   });
 });

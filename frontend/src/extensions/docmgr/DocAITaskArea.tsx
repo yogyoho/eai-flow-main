@@ -2,8 +2,13 @@
 
 // EAI-CUSTOM (全文操作 M1): 面板任务区状态机 + 组件（spec §4.4）。
 // 任务区独立于 thread 消息流：不伪造 assistant 消息、不污染 lead_agent 线程历史。
+// EAI-CUSTOM (全文操作 v2): 任务区工单化——ticket 头（进度条+计划行）+ 逐节 diff 卡
+//（接受/拒绝/恢复建议）+ 行级 LCS diff（sectionDiff.ts）。
 
-import { useCallback, useReducer, useRef, useState } from "react";
+import { ChevronDown, Square, Undo2, X } from "lucide-react";
+import { useCallback, useMemo, useReducer, useRef, useState } from "react";
+
+import { cn } from "@/lib/utils";
 
 import { type DocAITransformEvent, docmgrApi } from "../api";
 
@@ -11,6 +16,7 @@ import type {
   DocOperation,
   PersonalBlockNoteEditorRef,
 } from "./PersonalBlockNoteEditor";
+import { diffLines, type DiffLine } from "./sectionDiff";
 
 // ── 状态机 ───────────────────────────────────────────────────────────
 
@@ -19,6 +25,7 @@ export type TaskSectionStatus =
   | "ready"
   | "unchanged"
   | "applied"
+  | "rejected"
   | "skipped"
   | "failed";
 
@@ -38,6 +45,8 @@ export interface DocAITaskState {
   failed: number[];
   skipped: number[];
   message?: string;
+  /** EAI-CUSTOM (全文操作 v2): 后端期望总节数（done 事件携带；错误路径 total:0 不采纳）——工单进度条分母。 */
+  total?: number;
 }
 
 export type DocAITaskAction =
@@ -45,6 +54,8 @@ export type DocAITaskAction =
   | { type: "reset"; operation: string }
   | { type: "restart"; operation: string }
   | { type: "apply_section"; index: number }
+  | { type: "reject_section"; index: number }
+  | { type: "restore_section"; index: number }
   | { type: "reverted" }
   | { type: "cancel" }
   | { type: "dismiss" }
@@ -148,6 +159,9 @@ export function taskReducer(
       return {
         ...state,
         running: false,
+        // EAI-CUSTOM (全文操作 v2): 记录期望总节数供进度条；错误路径复用 done 只为
+        // 携带 message（total:0），此时不覆盖。
+        total: action.total > 0 ? action.total : state.total,
         failed: action.failed,
         skipped: action.skipped,
         message: action.message,
@@ -162,6 +176,32 @@ export function taskReducer(
           status: "applied",
         }),
       };
+    // EAI-CUSTOM (全文操作 v2): 拒绝 = 用户否决本节建议。ops 保留（「恢复建议」可
+    // 反悔回 ready），不计入 failed，不从列表清除。用户动作，同 apply_section 不设
+    // running 守卫。
+    case "reject_section":
+      return {
+        ...state,
+        sections: upsertSection(state.sections, {
+          index: action.index,
+          title:
+            state.sections.find((s) => s.index === action.index)?.title ?? "",
+          status: "rejected",
+        }),
+      };
+    // EAI-CUSTOM (全文操作 v2): 恢复建议 = 反悔拒绝，仅 rejected → ready 单向。
+    case "restore_section": {
+      const target = state.sections.find((s) => s.index === action.index);
+      if (target?.status !== "rejected") return state;
+      return {
+        ...state,
+        sections: upsertSection(state.sections, {
+          index: action.index,
+          title: target.title,
+          status: "ready",
+        }),
+      };
+    }
     case "reverted":
       return {
         ...state,
@@ -173,7 +213,8 @@ export function taskReducer(
       return {
         ...state,
         running: false,
-        // 取消 = 未确认 ops 丢弃（spec §4.4）：已应用/无变更/跳过保留，其余清除
+        // 取消 = 未确认 ops 丢弃（spec §4.4）：已应用/无变更/跳过保留，其余清除。
+        // v2 决策：rejected 同属未确认，取消即丢弃（与 ready/streaming/failed 一致）。
         sections: state.sections.filter((s) =>
           ["applied", "unchanged", "skipped"].includes(s.status),
         ),
@@ -343,6 +384,15 @@ export function useDocAITask(params: {
     [state, applyOpsSelf],
   );
 
+  // EAI-CUSTOM (全文操作 v2): 拒绝/恢复均为用户即时动作，不设 running 守卫（同 apply_section）。
+  const rejectSection = useCallback((index: number) => {
+    dispatch({ type: "reject_section", index });
+  }, []);
+
+  const restoreSection = useCallback((index: number) => {
+    dispatch({ type: "restore_section", index });
+  }, []);
+
   const applyAll = useCallback(() => {
     if (!state) return;
     const failures: string[] = [];
@@ -429,6 +479,8 @@ export function useDocAITask(params: {
     startTask,
     cancel,
     applySection,
+    rejectSection,
+    restoreSection,
     applyAll,
     undoAll,
     dismiss,
@@ -475,41 +527,179 @@ export function PresetChips({
   );
 }
 
-export function SectionCard({
+// ── v2 工单组件（工单头 + 逐节 diff 卡，替换 M1 的 SectionCard） ─────
+
+// EAI-CUSTOM (全文操作 v2): pill 色档沿用仓库 Pill 习语（contract-price bits 同款
+// token：success/warn/destructive/muted），不新增色系。
+type PillTone = "ok" | "warn" | "err" | "gray";
+
+const PILL_TONE: Record<PillTone, string> = {
+  ok: "border-success/30 bg-success/10 text-success",
+  warn: "border-amber-500/30 bg-amber-500/10 text-amber-600 dark:text-amber-400",
+  err: "border-destructive/30 bg-destructive/10 text-destructive",
+  gray: "border-border bg-muted/40 text-muted-foreground",
+};
+
+function statusPill(status: TaskSectionStatus): {
+  tone: PillTone;
+  label: string;
+  pulse?: boolean;
+} {
+  switch (status) {
+    case "streaming":
+      return { tone: "warn", label: "生成中", pulse: true };
+    case "ready":
+      return { tone: "warn", label: "待确认" };
+    case "applied":
+      return { tone: "ok", label: "已接受" };
+    case "rejected":
+      return { tone: "gray", label: "已拒绝" };
+    case "unchanged":
+      return { tone: "gray", label: "无变更" };
+    case "skipped":
+      return { tone: "gray", label: "已跳过" };
+    case "failed":
+      return { tone: "err", label: "失败" };
+  }
+}
+
+function StatusPill({ status }: { status: TaskSectionStatus }) {
+  const pill = statusPill(status);
+  return (
+    <span
+      className={cn(
+        "inline-flex h-5 shrink-0 items-center gap-1 rounded-full border px-2 text-[11px] font-medium whitespace-nowrap",
+        PILL_TONE[pill.tone],
+      )}
+    >
+      {pill.pulse && (
+        <span
+          aria-hidden
+          className="h-1.5 w-1.5 animate-pulse rounded-full bg-current"
+        />
+      )}
+      {pill.label}
+    </span>
+  );
+}
+
+// 行 diff 色档：del=destructive 删除线；ins=emerald（仓库既有「新增」色习语，见
+// ApprovalsQueue/StatCard 先例）；ctx=muted。前缀 − / + / 空格。
+const DIFF_LINE_CLASS: Record<DiffLine["type"], string> = {
+  del: "bg-destructive/10 text-destructive line-through",
+  ins: "bg-emerald-500/10 text-emerald-700 dark:text-emerald-400",
+  ctx: "text-muted-foreground",
+};
+
+const DIFF_LINE_PREFIX: Record<DiffLine["type"], string> = {
+  del: "−",
+  ins: "+",
+  ctx: " ",
+};
+
+export function DiffCard({
   section,
+  oldText,
   onApply,
+  onReject,
   onRetry,
+  onRestore,
 }: {
   section: TaskSection;
+  /** 旧节文本（父层经 getSectionText 解析锚点后取得）；空/缺省时 ready 态退化为新内容预览。 */
+  oldText?: string;
   onApply: (index: number) => void;
+  onReject: (index: number) => void;
   onRetry: (index: number) => void;
+  onRestore?: (index: number) => void;
 }) {
   const { index, title, status, ops, error } = section;
-  const preview = ops?.[0]?.content?.slice(0, 160) ?? "";
+  // 展开态以挂载时 status 播种（ready 展开、其余收起），用户可自由开合。
+  const [open, setOpen] = useState(status === "ready");
+  const newContent = ops?.[0]?.content ?? "";
+  const lines = useMemo(
+    () =>
+      status === "ready" && oldText ? diffLines(oldText, newContent) : null,
+    [status, oldText, newContent],
+  );
   return (
-    <div className="border-border/60 bg-background rounded-lg border text-xs">
-      <div className="flex items-center justify-between px-3 py-1.5">
-        <span className="text-foreground font-medium">
+    <div className="border-border/60 bg-background overflow-hidden rounded-lg border text-xs">
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        aria-expanded={open}
+        className="hover:bg-muted/40 flex w-full items-center gap-2 px-3 py-2 text-left transition-colors"
+      >
+        <StatusPill status={status} />
+        <span className="text-foreground min-w-0 flex-1 truncate font-medium">
           {title || `第 ${index + 1} 节`}
         </span>
-        <span className="text-muted-foreground">
-          {status === "streaming" && "生成中…"}
-          {status === "ready" && "待确认"}
-          {status === "unchanged" && "本节无变更"}
-          {status === "skipped" && "已跳过（含公式/表格/图片）"}
-          {status === "applied" && "✓ 已应用"}
-          {status === "failed" && "失败"}
-        </span>
-      </div>
-      {status === "ready" && preview && (
-        <div className="border-border/40 text-muted-foreground max-h-24 overflow-y-auto border-t px-3 py-1.5 whitespace-pre-wrap">
-          {preview}
-          {(ops?.[0]?.content?.length ?? 0) > 160 ? "…" : ""}
-        </div>
-      )}
-      {status === "failed" && error && (
-        <div className="border-border/40 text-destructive border-t px-3 py-1.5">
-          {error}
+        <ChevronDown
+          className={cn(
+            "text-muted-foreground h-3.5 w-3.5 shrink-0 transition-transform",
+            open && "rotate-180",
+          )}
+        />
+      </button>
+      {open && (
+        <div className="border-border/40 space-y-2 border-t px-3 py-2">
+          {status === "ready" &&
+            (lines ? (
+              <div className="border-border/40 max-h-52 overflow-y-auto rounded border">
+                {lines.map((l, i) => (
+                  <div
+                    key={i}
+                    className={cn(
+                      "flex gap-1.5 px-2 py-px font-mono text-[11.5px] leading-relaxed break-all whitespace-pre-wrap",
+                      DIFF_LINE_CLASS[l.type],
+                    )}
+                  >
+                    <span
+                      aria-hidden
+                      className="w-2 shrink-0 text-center select-none"
+                    >
+                      {DIFF_LINE_PREFIX[l.type]}
+                    </span>
+                    <span className="min-w-0">{l.text || " "}</span>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="text-muted-foreground max-h-52 overflow-y-auto whitespace-pre-wrap">
+                {newContent || "（空内容）"}
+              </div>
+            ))}
+          {status === "skipped" && (
+            <div className="text-muted-foreground">
+              含公式/表格/图片，AI 未改动本节
+            </div>
+          )}
+          {status === "unchanged" && (
+            <div className="text-muted-foreground">本节内容未变化</div>
+          )}
+          {status === "failed" && (
+            <>
+              <div className="text-destructive whitespace-pre-wrap">
+                {error}
+              </div>
+              <button
+                type="button"
+                onClick={() => onRetry(index)}
+                className="border-border/60 text-primary hover:bg-primary/5 rounded border px-2 py-1"
+              >
+                重试本节
+              </button>
+            </>
+          )}
+          {status === "rejected" && onRestore && (
+            <button
+              type="button"
+              onClick={() => onRestore(index)}
+              className="border-border/60 text-muted-foreground hover:bg-muted rounded border px-2 py-1"
+            >
+              恢复建议
+            </button>
+          )}
         </div>
       )}
       {status === "ready" && (
@@ -517,23 +707,125 @@ export function SectionCard({
           <button
             type="button"
             onClick={() => onApply(index)}
-            className="text-primary hover:bg-primary/5 flex-1 py-1.5"
+            className="bg-primary text-primary-foreground hover:bg-primary/90 flex-1 py-1.5 font-medium"
           >
-            应用
+            接受
           </button>
-        </div>
-      )}
-      {status === "failed" && (
-        <div className="border-border/40 flex border-t">
           <button
             type="button"
-            onClick={() => onRetry(index)}
-            className="text-primary hover:bg-primary/5 flex-1 py-1.5"
+            onClick={() => onReject(index)}
+            className="border-border/60 text-muted-foreground hover:bg-muted flex-1 border-l py-1.5"
           >
-            重试本节
+            拒绝
           </button>
         </div>
       )}
+    </div>
+  );
+}
+
+// EAI-CUSTOM (全文操作 v2): 工单头——任务名 + 状态 pill + 进度条 + 计划行（纯 state 派生）。
+const TERMINAL_STATUSES: readonly TaskSectionStatus[] = [
+  "applied",
+  "unchanged",
+  "skipped",
+  "failed",
+  "rejected",
+];
+
+function TicketHeader({
+  task,
+  busy,
+  onCancel,
+  onDismiss,
+}: {
+  task: DocAITaskState;
+  busy: boolean;
+  onCancel: () => void;
+  onDismiss: () => void;
+}) {
+  const terminal = task.sections.filter((s) =>
+    TERMINAL_STATUSES.includes(s.status),
+  ).length;
+  const ready = task.sections.filter((s) => s.status === "ready").length;
+  // 期望总数：优先 done 事件携带的后端口径；流式中退化为已见卡片数。
+  const total =
+    task.total && task.total > 0 ? task.total : task.sections.length;
+  const pct =
+    total > 0 ? Math.min(100, Math.round((terminal / total) * 100)) : 0;
+  // 「正在处理」取最后一个 streaming 节（后端逐节推进，同刻至多一个在途）。
+  const streamingSec = [...task.sections]
+    .reverse()
+    .find((s) => s.status === "streaming");
+  const opLabel =
+    PRESETS.find((p) => p.id === task.operation)?.label ?? task.operation;
+  return (
+    <div>
+      <div className="flex items-center gap-2">
+        <span className="text-foreground text-xs font-semibold">{opLabel}</span>
+        {busy ? (
+          <span className="inline-flex h-5 items-center gap-1 rounded-full border border-amber-500/30 bg-amber-500/10 px-2 text-[11px] font-medium whitespace-nowrap text-amber-600 dark:text-amber-400">
+            <span
+              aria-hidden
+              className="h-1.5 w-1.5 animate-pulse rounded-full bg-current"
+            />
+            执行中
+          </span>
+        ) : (
+          <span className="border-border bg-muted/40 text-muted-foreground inline-flex h-5 items-center rounded-full border px-2 text-[11px] font-medium whitespace-nowrap">
+            已完成
+          </span>
+        )}
+        <div className="ml-auto flex items-center gap-1">
+          {busy && (
+            <button
+              type="button"
+              onClick={onCancel}
+              aria-label="停止任务"
+              title="停止任务"
+              className="text-muted-foreground hover:bg-destructive/10 hover:text-destructive rounded p-1 transition-colors"
+            >
+              <Square className="h-3 w-3" fill="currentColor" />
+            </button>
+          )}
+          {!busy && (
+            <button
+              type="button"
+              onClick={onDismiss}
+              aria-label="关闭任务区"
+              title="关闭"
+              className="text-muted-foreground hover:bg-muted hover:text-foreground rounded p-1 transition-colors"
+            >
+              <X className="h-3.5 w-3.5" />
+            </button>
+          )}
+        </div>
+      </div>
+      <div className="bg-muted mt-2 h-1 overflow-hidden rounded-full">
+        <div
+          className="bg-primary h-full rounded-full transition-all"
+          style={{ width: `${pct}%` }}
+        />
+      </div>
+      <div className="mt-1.5 space-y-1 text-[11px]">
+        <div className="text-success flex items-center gap-1.5">
+          <span aria-hidden>✓</span>已完成处理 {terminal} 节
+        </div>
+        {streamingSec && (
+          <div className="flex items-center gap-1.5 text-amber-600 dark:text-amber-400">
+            <span
+              aria-hidden
+              className="h-1.5 w-1.5 animate-pulse rounded-full bg-current"
+            />
+            正在处理 {streamingSec.title || `第 ${streamingSec.index + 1} 节`}
+          </div>
+        )}
+        {ready > 0 && (
+          <div className="flex items-center gap-1.5 text-amber-600 dark:text-amber-400">
+            <span aria-hidden>○</span>待确认 {ready} 节
+          </div>
+        )}
+      </div>
     </div>
   );
 }
@@ -549,6 +841,9 @@ export function DocAITaskArea({
   onInsertSummary,
   onCancel,
   onDismiss,
+  onRejectSection,
+  onRestoreSection,
+  getSectionText,
 }: {
   task: DocAITaskState;
   busy: boolean;
@@ -560,103 +855,98 @@ export function DocAITaskArea({
   onInsertSummary: (content: string) => void;
   onCancel: () => void;
   onDismiss: () => void;
+  /** EAI-CUSTOM (全文操作 v2): 拒绝 / 恢复建议回调（hook 的 rejectSection / restoreSection）。 */
+  onRejectSection?: (index: number) => void;
+  onRestoreSection?: (index: number) => void;
+  /** EAI-CUSTOM (全文操作 v2): 锚点文本 → 旧节纯文本（DocAIAgentPanel 持编辑器 ref 负责解析）。 */
+  getSectionText?: (anchor: string) => string;
 }) {
   const appliedCount = task.sections.filter(
     (s) => s.status === "applied",
   ).length;
   const readyCount = task.sections.filter((s) => s.status === "ready").length;
+  // diff 旧文本：仅 ready 节需要（applied 后文档已变、rejected 不展示 diff）；
+  // op.anchor 是锚点文本，由面板侧 matchAnchor 解析为块下标后取整节文本。
+  const oldTextFor = (s: TaskSection): string | undefined => {
+    if (s.status !== "ready" || !getSectionText) return undefined;
+    const anchor = s.ops?.[0]?.anchor;
+    return anchor ? getSectionText(anchor) : undefined;
+  };
   return (
-    <div className="shrink-0 space-y-2 px-3 py-2">
-      <div className="flex items-center justify-between">
-        <span className="text-foreground text-xs font-semibold">
-          全文任务{busy ? "（进行中…）" : ""}
-        </span>
-        <div className="flex items-center gap-2">
-          {busy && (
-            <button
-              type="button"
-              onClick={onCancel}
-              className="text-muted-foreground hover:text-foreground text-xs"
-            >
-              取消
-            </button>
-          )}
-          {!busy && (
-            <button
-              type="button"
-              onClick={onDismiss}
-              className="text-muted-foreground hover:text-foreground text-xs"
-            >
-              关闭
-            </button>
-          )}
-        </div>
-      </div>
-      {task.message && (
-        <div className="bg-muted/30 text-muted-foreground rounded px-2 py-1.5 text-xs">
-          {task.message}
-        </div>
-      )}
-      {undoBlocked && (
-        <div className="rounded border border-amber-200 bg-amber-50 px-2 py-1.5 text-xs text-amber-700 dark:border-amber-900/40 dark:bg-amber-950/20 dark:text-amber-400">
-          任务开始后文档已被修改，整批回滚已禁用；请用「版本历史」恢复到「AI
-          全文操作前快照」。
-        </div>
-      )}
-      {task.summary && (
-        <div className="border-border/60 rounded-lg border p-2 text-xs">
-          <div className="text-foreground mb-1 font-medium">全文摘要</div>
-          <div className="text-muted-foreground max-h-40 overflow-y-auto whitespace-pre-wrap">
-            {task.summary}
+    <div className="shrink-0 px-3 pb-2">
+      <div className="border-border/60 bg-muted/20 space-y-2 rounded-lg border p-2.5">
+        <TicketHeader
+          task={task}
+          busy={busy}
+          onCancel={onCancel}
+          onDismiss={onDismiss}
+        />
+        {task.message && (
+          <div className="bg-muted/30 text-muted-foreground rounded px-2 py-1.5 text-xs">
+            {task.message}
           </div>
-          <button
-            type="button"
-            onClick={() => onInsertSummary(task.summary!)}
-            className="text-primary mt-1.5 hover:underline"
-          >
-            插入文末
-          </button>
-        </div>
-      )}
-      <div className="max-h-72 space-y-1.5 overflow-y-auto">
-        {task.sections.map((s) => (
-          <SectionCard
-            key={s.index}
-            section={s}
-            onApply={onApplySection}
-            onRetry={onRetrySection}
-          />
-        ))}
-      </div>
-      {!busy && readyCount > 0 && (
-        <div className="flex items-center gap-2">
-          <button
-            type="button"
-            onClick={onApplyAll}
-            className="bg-primary text-primary-foreground rounded-md px-3 py-1.5 text-xs"
-          >
-            全部应用（{readyCount}）
-          </button>
-          {appliedCount > 0 && !undoBlocked && (
+        )}
+        {undoBlocked && (
+          <div className="rounded border border-amber-200 bg-amber-50 px-2 py-1.5 text-xs text-amber-700 dark:border-amber-900/40 dark:bg-amber-950/20 dark:text-amber-400">
+            任务开始后文档已被修改，整批回滚已禁用；请用「版本历史」恢复到「AI
+            全文操作前快照」。
+          </div>
+        )}
+        {task.summary && (
+          <div className="border-border/60 rounded-lg border p-2 text-xs">
+            <div className="text-foreground mb-1 font-medium">全文摘要</div>
+            <div className="text-muted-foreground max-h-40 overflow-y-auto whitespace-pre-wrap">
+              {task.summary}
+            </div>
             <button
               type="button"
-              onClick={onUndoAll}
-              className="border-border/60 rounded-md border px-3 py-1.5 text-xs"
+              onClick={() => onInsertSummary(task.summary!)}
+              className="text-primary mt-1.5 hover:underline"
             >
-              撤销整批
+              插入文末
             </button>
-          )}
+          </div>
+        )}
+        <div className="max-h-72 space-y-1.5 overflow-y-auto">
+          {task.sections.map((s) => (
+            <DiffCard
+              key={s.index}
+              section={s}
+              oldText={oldTextFor(s)}
+              onApply={onApplySection}
+              onReject={onRejectSection ?? (() => undefined)}
+              onRetry={onRetrySection}
+              onRestore={onRestoreSection}
+            />
+          ))}
         </div>
-      )}
-      {!busy && appliedCount > 0 && readyCount === 0 && !undoBlocked && (
-        <button
-          type="button"
-          onClick={onUndoAll}
-          className="border-border/60 rounded-md border px-3 py-1.5 text-xs"
-        >
-          撤销整批（{appliedCount}）
-        </button>
-      )}
+        {!busy && (readyCount > 0 || appliedCount > 0) && (
+          <div className="space-y-1.5">
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={onApplyAll}
+                disabled={readyCount === 0}
+                className="bg-primary text-primary-foreground hover:bg-primary/90 flex-1 rounded-md py-1.5 text-xs font-medium disabled:cursor-not-allowed disabled:opacity-40"
+              >
+                接受全部（{readyCount}）
+              </button>
+              <button
+                type="button"
+                onClick={onUndoAll}
+                disabled={appliedCount === 0 || undoBlocked}
+                className="border-border/60 text-muted-foreground hover:bg-muted hover:text-foreground rounded-md border px-3 py-1.5 text-xs disabled:cursor-not-allowed disabled:opacity-40"
+              >
+                撤销整批
+              </button>
+            </div>
+            <div className="text-muted-foreground flex items-center gap-1 text-[11px]">
+              <Undo2 aria-hidden className="h-3 w-3 shrink-0" />
+              每次批量应用前自动建版本快照，可一键整批撤销。
+            </div>
+          </div>
+        )}
+      </div>
     </div>
   );
 }

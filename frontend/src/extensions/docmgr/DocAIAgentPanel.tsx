@@ -998,6 +998,16 @@ export default function DocAIAgentPanel({
           onApplyAll={docTask.applyAll}
           onUndoAll={docTask.undoAll}
           onRetrySection={docTask.retrySection}
+          onRejectSection={docTask.rejectSection}
+          onRestoreSection={docTask.restoreSection}
+          // EAI-CUSTOM (全文操作 v2): op.anchor 是锚点文本——先 matchAnchor 解析为
+          // 块下标，再经编辑器 getSectionText 取该节旧文本，供 diff 卡行级对照。
+          getSectionText={(anchor) => {
+            const ed = editorRef.current;
+            if (!ed) return "";
+            const m = ed.matchAnchor(anchor);
+            return m ? ed.getSectionText(m.blockIndex) : "";
+          }}
           onInsertSummary={(content) =>
             docTask.insertSummary([{ op: "append", content }])
           }
