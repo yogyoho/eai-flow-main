@@ -586,6 +586,21 @@ def _numbering_block(table: list[dict]) -> str:
     return f"\n**全文编号清单（审查对照基准）**：\n{rows}\n"
 
 
+def _norm_scan_number(v: object) -> str | None:
+    """编号清单元素归一（EAI-CUSTOM 全文操作 M2 复审修2）：接受 str/int/float，整数 float 去 .0 转 str（1.0→"1"）；
+    bool 先排除（bool 是 int 子类，str(True) 会污染清单）；空白串按无编号处理。"""
+    if isinstance(v, bool):
+        return None
+    if isinstance(v, str):
+        s = v.strip()
+        return s or None
+    if isinstance(v, int):
+        return str(v)
+    if isinstance(v, float):
+        return str(int(v)) if v.is_integer() else str(v)
+    return None
+
+
 async def _scan_numbering(model, doc: str) -> list[dict]:
     """编号审查第一遍：全文提编号清单，返回 [{title, numbers}]；超时/异常/解析失败一律按空表处理（调用方空表短路）。
 
@@ -597,38 +612,53 @@ async def _scan_numbering(model, doc: str) -> list[dict]:
     except Exception:
         logger.warning("docmgr numbering scan failed, treated as empty", exc_info=True)
         return []
-    m = re.search(r"\[[\s\S]*\]", _extract_ai_response_text(resp.content))
+    raw = _extract_ai_response_text(resp.content)
+    m = re.search(r"\[[\s\S]*\]", raw)
     if not m:
         return []
     try:
         data = json.loads(m.group(0))
     except json.JSONDecodeError:
-        return []
+        # 复审修1: 贪婪 regex 会把数组后追加散文的 "]" 吞进候选（如「详见 [附录A]」）→ json.loads 整体报废；
+        # raw_decode 从候选起点解析、停在第一个完整 JSON 数组，也失败才按空表处理
+        try:
+            data, _end = json.JSONDecoder().raw_decode(raw[m.start() :])
+        except json.JSONDecodeError:
+            return []
     out: list[dict] = []
     for item in data if isinstance(data, list) else []:
         if isinstance(item, dict) and isinstance(item.get("title"), str) and isinstance(item.get("numbers"), list):
-            numbers = [str(v) for v in item["numbers"] if isinstance(v, (str, int)) and str(v).strip()]
+            numbers = [s for s in (_norm_scan_number(v) for v in item["numbers"]) if s]
             if numbers:
                 out.append({"title": item["title"], "numbers": numbers})
     return out
 
 
 def _parse_findings(text: str) -> list | None:
-    """模型输出 → JSON 数组（复用 _scan_terminology 手法：regex 提取 + json.loads）；解析失败/非 list 返回 None（调用方按节失败处理）。"""
+    """模型输出 → JSON 数组（复用 _scan_terminology 手法：regex 提取 + json.loads）；解析失败/非 list 返回 None（调用方按节失败处理）。
+
+    复审修1: json.loads 失败时用 raw_decode 从候选起点重试——贪婪 regex 会把数组后追加散文的
+    "]" 吞进候选（如「详见 [附录A]」），raw_decode 停在第一个完整 JSON 数组；也失败才返回 None。
+    """
     m = re.search(r"\[[\s\S]*\]", text)
     if not m:
         return None
     try:
         data = json.loads(m.group(0))
     except json.JSONDecodeError:
-        return None
+        try:
+            data, _end = json.JSONDecoder().raw_decode(text[m.start() :])
+        except json.JSONDecodeError:
+            return None
     return data if isinstance(data, list) else None
 
 
 def _normalize_finding(item, review_type: str, section_index: int, n: int, section_title: str) -> dict | None:
     """契约过滤（EAI-CUSTOM 全文操作 M2，contracts/docmgr_findings.v1.json）：
 
-    - 缺任一 required 字段（severity/anchor/excerpt/problem/suggestion；id 服务端生成不要求模型给）→ 丢整条 + warning
+    - 缺任一 required 字段（severity/anchor/excerpt/problem/suggestion；id 服务端生成不要求模型给）→ 丢整条 + warning；
+      复审修3: excerpt/problem/suggestion 空白串同按缺字段丢条（全空白描述无消费价值）；
+      anchor 服务端权威覆写不判空、severity 空白走下方降级分支，二者维持 isinstance 检查
     - severity 白名单外降级 warn
     - excerpt 截断到 120 字
     - anchor 服务端权威覆写为节标题（契约定义 anchor=节标题；模型回显不可靠，覆写保证 scrollToAnchor 与 fix_op 同源）
@@ -638,7 +668,8 @@ def _normalize_finding(item, review_type: str, section_index: int, n: int, secti
     if not isinstance(item, dict):
         logger.warning("docmgr ai_review finding dropped: not a dict (section %s #%s)", section_index, n)
         return None
-    missing = [k for k in ("severity", "anchor", "excerpt", "problem", "suggestion") if not isinstance(item.get(k), str)]
+    missing = [k for k in ("severity", "anchor") if not isinstance(item.get(k), str)]
+    missing += [k for k in ("excerpt", "problem", "suggestion") if not (isinstance(item.get(k), str) and item[k].strip())]
     if missing:
         logger.warning("docmgr ai_review finding dropped: missing %s (section %s #%s)", missing, section_index, n)
         return None

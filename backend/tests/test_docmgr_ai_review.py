@@ -262,6 +262,50 @@ class TestReviewStream:
         assert any(e["type"] == "section_error" and "标题" in e["message"] for e in events)
         assert events[-1]["failed"] == [0]
 
+    @pytest.mark.asyncio
+    async def test_trailing_bracket_prose_still_parses(self, client, monkeypatch):
+        # 复审修1: 贪婪 regex 会把数组后追加散文的 "]" 吞进候选（如「详见 [附录A]」），json.loads 整体报废；
+        # raw_decode 兜底停在第一个完整数组，不整节报废
+        reply = _finding_json(_ok()) + "\n\n综上，详见 [附录A] 与 [附录B]。"
+        fake = FakeModel([reply])
+        monkeypatch.setattr(AT, "create_chat_model", lambda **kw: fake)
+        events = await _events(client, {"thread_id": "t", "rel_path": "r", "review_type": "units", "content": "# A\n\nx\n"})
+        assert [e["type"] for e in events] == ["section_start", "finding", "done"]
+        assert events[-1]["failed"] == []
+
+    @pytest.mark.asyncio
+    async def test_numbering_scan_floats_and_trailing_prose(self, client, monkeypatch):
+        # 复审修2: float 编号归一（整数 float 去 .0）+ bool 排除（修 [1, 1.1, 1.2] 假阴性短路）；
+        # 复审修1 同款 raw_decode 兜底护住扫描路径（数组后带「参见 [附录X]」不报废）
+        scan = json.dumps([{"title": "一", "numbers": [1, 1.1, 1.2, True]}], ensure_ascii=False) + "（提取完毕）参见 [附录X]。"
+        fake = FakeModel([scan, "[]", "[]"])
+        monkeypatch.setattr(AT, "create_chat_model", lambda **kw: fake)
+        events = await _events(client, {"thread_id": "t", "rel_path": "r", "review_type": "numbering", "content": DOC2})
+        assert fake.calls == 3  # 扫描成功，进入第二遍逐节
+        assert "1.1" in fake.prompts[1] and "1.2" in fake.prompts[1] and "True" not in fake.prompts[1]
+        assert events[-1]["type"] == "done" and events[-1]["failed"] == []
+
+    @pytest.mark.asyncio
+    async def test_blank_text_field_dropped(self, client, monkeypatch):
+        # 复审修3: excerpt/problem/suggestion 空白串当缺字段丢条（anchor 覆写、severity 降级不受影响）
+        items = _finding_json(_ok("warn", problem="   "), _ok("info"))
+        fake = FakeModel([items])
+        monkeypatch.setattr(AT, "create_chat_model", lambda **kw: fake)
+        events = await _events(client, {"thread_id": "t", "rel_path": "r", "review_type": "units", "content": "# A\n\nx\n"})
+        findings = [e["finding"] for e in events if e["type"] == "finding"]
+        assert [f["id"] for f in findings] == ["units-0-1"]  # 空串条丢弃，合法条保原始位次 id
+        assert events[-1]["summary"] == {"error": 0, "warn": 0, "info": 1}
+
+    @pytest.mark.asyncio
+    async def test_numbering_scan_error_short_circuits(self, client, monkeypatch):
+        # 复审修4a: 对称 transform terminology scan error 先例——扫描调用炸 → 空表短路 done，不 500 不悬挂
+        fake = FakeModel([], raise_on=1)
+        monkeypatch.setattr(AT, "create_chat_model", lambda **kw: fake)
+        events = await _events(client, {"thread_id": "t", "rel_path": "r", "review_type": "numbering", "content": DOC2})
+        assert [e["type"] for e in events] == ["done"]
+        assert events[0]["total"] == 0 and "编号" in events[0]["message"]
+        assert fake.calls == 1
+
 
 class TestContractSmoke:
     @pytest.mark.asyncio
@@ -273,13 +317,19 @@ class TestContractSmoke:
         contract = json.loads(CONTRACT_PATH.read_text(encoding="utf-8"))
         props = set(contract["properties"])
         required = set(contract["required"])
-        emitted = 0
-        for e in events:
-            if e["type"] != "finding":
-                continue
-            emitted += 1
-            f = e["finding"]
+        fix_def = contract["$defs"]["fix_op"]
+        findings = [e["finding"] for e in events if e["type"] == "finding"]
+        assert len(findings) == 3
+        for f in findings:
             assert set(f) <= props, f"finding 键超出契约 properties: {set(f) - props}"
             assert required <= set(f), f"契约 required 字段缺失: {required - set(f)}"
             assert f["severity"] in contract["properties"]["severity"]["enum"]
-        assert emitted == 3
+        # 复审修4b: fix_op 子对象对 $defs.fix_op 校验（op const / anchor minLength / content string）
+        with_fix = [f["fix_op"] for f in findings if "fix_op" in f]
+        assert len(with_fix) == 1  # 前置夹具第一条带 fixed_section，防 vacuous 通过
+        for fx in with_fix:
+            assert set(fx) <= set(fix_def["properties"])
+            assert set(fix_def["required"]) <= set(fx)
+            assert fx["op"] == fix_def["properties"]["op"]["const"]
+            assert len(fx["anchor"]) >= fix_def["properties"]["anchor"]["minLength"]
+            assert isinstance(fx["content"], str)
