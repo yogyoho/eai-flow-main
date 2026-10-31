@@ -33,7 +33,7 @@
 - Create: `frontend/src/app/bid-review/parsing/page.tsx`
 - Test: `frontend/tests/unit/app/bid-review-layout.dom.test.tsx`
 
-- [ ] **Step 1: 先改测试(红)**——layout dom 测试:「四个已注册页」用例改「五个」并加一行:
+- [x] **Step 1: 先改测试(红)**——layout dom 测试:「四个已注册页」用例改「五个」并加一行:
 
 ```tsx
     expect(
@@ -43,9 +43,9 @@
 
   canPage 用例:mock 的 /me pages 列表加 `bid:page:parsing`(与既有四页同列);若用例按「拒绝其一」构造,保持既有拒绝目标不变。
 
-- [ ] **Step 2: 跑红** `cd frontend && pnpm test bid-review-layout` → FAIL(link 不存在)
+- [x] **Step 2: 跑红** `cd frontend && pnpm test bid-review-layout` → FAIL(link 不存在)
 
-- [ ] **Step 3: 实现**——
+- [x] **Step 3: 实现**——
 
   permissions.yaml(workbench 条目后):
 ```yaml
@@ -120,8 +120,8 @@ export default function BidReviewParsingPage() {
 }
 ```
 
-- [ ] **Step 4: 跑绿** `pnpm test bid-review-layout` → PASS
-- [ ] **Step 5: Commit** `feat(bid-review): /parsing 权限点+nav/路由骨架(Plan6 T1)`
+- [x] **Step 4: 跑绿** `pnpm test bid-review-layout` → PASS
+- [x] **Step 5: Commit** `feat(bid-review): /parsing 权限点+nav/路由骨架(Plan6 T1)`
 
 ---
 
@@ -133,7 +133,7 @@ export default function BidReviewParsingPage() {
 - Modify: `frontend/src/extensions/bid-review/components/WorkbenchView.tsx`(删本地 stepper 三件,改用共享件)
 - Modify: `frontend/src/extensions/bid-review/components/BaselineView.tsx`(helper 改 import)
 
-- [ ] **Step 1: TaskStepper.tsx**(从 WorkbenchView L69-103 纯搬运 + stepper JSX/进度行入组件):
+- [x] **Step 1: TaskStepper.tsx**(从 WorkbenchView L69-103 纯搬运 + stepper JSX/进度行入组件):
 
 ```tsx
 "use client";
@@ -220,10 +220,10 @@ export function TaskStepper({ task }: { task: TaskOut | null }) {
 }
 ```
 
-- [ ] **Step 2: baselineFields.ts**(从 BaselineView L39-137 纯搬运,导出全部):`DocMeta`/`KIND_LABEL`/`roleLabel`/`rolePillClass`/`STATUS_PILL_CLASS`(连带 `PillTone` import 自 contract-price bits)/`FAMILIES`/`familyOf`/`formatVal`/`confPill`/`fieldRows`/`NO_LABELS`——`fieldRows` 的 `BidBaselineRow` type import 自 api。加头注:`/** 基线字段/解析质量共享词汇(Plan6 自 BaselineView 上移;裁定交互仍留 BaselineView)。EAI-CUSTOM 2026-10-31 */`。
-- [ ] **Step 3: 两消费方改 import**——WorkbenchView 删 STAGE_LABELS/STAGE_INDEX/resolveStageIdx 本地定义,stepper JSX+进度行(L671-687)换 `<TaskStepper task={task} />`;BaselineView 删 L39-137 被搬定义,改 `import { DocMeta, KIND_LABEL, ... } from "./baselineFields"`。
-- [ ] **Step 4: 回归** `pnpm test bid-review` 全套(纯搬运,零行为变化,既有测试必须全绿)
-- [ ] **Step 5: Commit** `refactor(bid-review): TaskStepper/baselineFields 共享件抽取(Plan6 T2)`
+- [x] **Step 2: baselineFields.ts**(从 BaselineView L39-137 纯搬运,导出全部):`DocMeta`/`KIND_LABEL`/`roleLabel`/`rolePillClass`/`STATUS_PILL_CLASS`(连带 `PillTone` import 自 contract-price bits)/`FAMILIES`/`familyOf`/`formatVal`/`confPill`/`fieldRows`/`NO_LABELS`——`fieldRows` 的 `BidBaselineRow` type import 自 api。加头注:`/** 基线字段/解析质量共享词汇(Plan6 自 BaselineView 上移;裁定交互仍留 BaselineView)。EAI-CUSTOM 2026-10-31 */`。
+- [x] **Step 3: 两消费方改 import**——WorkbenchView 删 STAGE_LABELS/STAGE_INDEX/resolveStageIdx 本地定义,stepper JSX+进度行(L671-687)换 `<TaskStepper task={task} />`;BaselineView 删 L39-137 被搬定义,改 `import { DocMeta, KIND_LABEL, ... } from "./baselineFields"`。
+- [x] **Step 4: 回归** `pnpm test bid-review` 全套(纯搬运,零行为变化,既有测试必须全绿)
+- [x] **Step 5: Commit** `refactor(bid-review): TaskStepper/baselineFields 共享件抽取(Plan6 T2)`
 
 ---
 
@@ -234,7 +234,7 @@ export function TaskStepper({ task }: { task: TaskOut | null }) {
 - Modify: `frontend/src/app/bid-review/parsing/page.tsx`(换真身)
 - Test: `frontend/tests/unit/extensions/bid-review-parsing.dom.test.tsx`(新建)
 
-- [ ] **Step 1: 先写测试(红)**——结构仿 tasks-view dom 测试(fetcher mock+QueryClientProvider+useSearchParams mock)。夹具:
+- [x] **Step 1: 先写测试(红)**——结构仿 tasks-view dom 测试(fetcher mock+QueryClientProvider+useSearchParams mock)。夹具:
 
 ```tsx
 const TASK = { id: "t1", owner_id: "u1", status: "awaiting_confirm", mode: "deep",
@@ -262,9 +262,9 @@ const BASELINES = { items: [{ doc_id: "b.pdf", materials_hash: "abcdef1234567890
   5. **failed**:status=failed → errbar 含 task.error 文本。
   6. **taskId=null** → 「未指定任务」降级。
 
-- [ ] **Step 2: 跑红** `pnpm test bid-review-parsing` → 模块不存在 FAIL
+- [x] **Step 2: 跑红** `pnpm test bid-review-parsing` → 模块不存在 FAIL
 
-- [ ] **Step 3: 实现 ParsingView.tsx**——组合(全部词汇/渲染块有既定来源):
+- [x] **Step 3: 实现 ParsingView.tsx**——组合(全部词汇/渲染块有既定来源):
 
 ```tsx
 "use client";
@@ -282,8 +282,8 @@ const BASELINES = { items: [{ doc_id: "b.pdf", materials_hash: "abcdef1234567890
   区块顺序:page-head(ph-icon Layers、h2 解析与字段抽取+TaskTitleTag、ph-sub=`[biz_no, [project_name,lot_name].filter(Boolean).join(" / "), mode==="deep"?"深度评审":"快速审查"].filter(Boolean).join(" · ")`、ph-actions=待基准确认 pill(awaiting_confirm)+状态 pill(taskStatusPillBrx 不引——用 TASK_STATUS_LABELS+pill-gray/warn 简配,或直接复用 BaselineView 的 taskStatusPill+STATUS_PILL_CLASS)) → failed errbar → `<TaskStepper task={task} />` → 解析质量 gate1 卡(**整段移植 BaselineView L322-412 markup**,helper 走 baselineFields) → 基准字段抽取只读卡(卡头「基准字段抽取」hd-sub「引擎从材料中抽取的基准快照——审查即以此为准」+汇总行(同 BaselineView 公式)+冲突注(不嵌 radio):`冲突待裁定 N 处——同一字段在材料中取到多个不一致候选,需在基准确认页人工裁定` + `<Link href={taskHref("baseline", taskId)}>去基准确认 →</Link>` + 族 tabs(照 BaselineView fam-list 块)+f-card 列表(**照 BaselineView L697-772 只读块**,查看原文→setLocate→尾部 `<DocLocateModal …/>`)+tbl-foot「缺失字段按 need_human 处理——不阻断审查,也不计为通过;冲突字段需在基准确认页人工裁定后生效」)。
   降级:baselines rows 空 → 「基线尚未生成」note(照 BaselineView);docs 空 → 表内「该任务无上传材料」。
 
-- [ ] **Step 4: 跑绿** `pnpm test bid-review-parsing` → 6 用例 PASS
-- [ ] **Step 5: Commit** `feat(bid-review): /parsing 解析与字段抽取专屏(Plan6 T3)`
+- [x] **Step 4: 跑绿** `pnpm test bid-review-parsing` → 6 用例 PASS
+- [x] **Step 5: Commit** `feat(bid-review): /parsing 解析与字段抽取专屏(Plan6 T3)`
 
 ---
 
@@ -294,20 +294,20 @@ const BASELINES = { items: [{ doc_id: "b.pdf", materials_hash: "abcdef1234567890
 - Modify: `frontend/src/extensions/bid-review/components/BaselineView.tsx`(删 gate1 解析质量卡)
 - Test: `frontend/tests/unit/extensions/bid-review-tasks-view.dom.test.tsx`(href 断言改);baseline dom 测试若有解析质量断言随迁
 
-- [ ] **Step 1: 先改测试(红)**——tasks-view 用例 5:`linkOf("t3")` href 改 `"/bid-review/parsing?task_id=t3"`(label「查看进度」不变)。baseline dom 测试 grep「解析质量」——有断言则对应用例删除(该卡已迁 /parsing,由 parsing 测试接管)。
-- [ ] **Step 2: 跑红** → href 断言 FAIL
-- [ ] **Step 3: 实现**——TasksView ActionCell 在途分支 `taskHref("workbench", t.id)` → `taskHref("parsing", t.id)`;BaselineView 删解析质量 gate1-card 整段+`docs/ocrDocs` 派生与 DocMeta/KIND_LABEL/roleLabel/rolePillClass 残余 import(不再用者)。
-- [ ] **Step 4: 跑绿** `pnpm test bid-review` 全套 → PASS
-- [ ] **Step 5: Commit** `feat(bid-review): 查看进度改指 /parsing+baseline 卸下解析质量卡(Plan6 T4)`
+- [x] **Step 1: 先改测试(红)**——tasks-view 用例 5:`linkOf("t3")` href 改 `"/bid-review/parsing?task_id=t3"`(label「查看进度」不变)。baseline dom 测试 grep「解析质量」——有断言则对应用例删除(该卡已迁 /parsing,由 parsing 测试接管)。
+- [x] **Step 2: 跑红** → href 断言 FAIL
+- [x] **Step 3: 实现**——TasksView ActionCell 在途分支 `taskHref("workbench", t.id)` → `taskHref("parsing", t.id)`;BaselineView 删解析质量 gate1-card 整段+`docs/ocrDocs` 派生与 DocMeta/KIND_LABEL/roleLabel/rolePillClass 残余 import(不再用者)。
+- [x] **Step 4: 跑绿** `pnpm test bid-review` 全套 → PASS
+- [x] **Step 5: Commit** `feat(bid-review): 查看进度改指 /parsing+baseline 卸下解析质量卡(Plan6 T4)`
 
 ---
 
 ### Task 5: 收尾验证 + 记账
 
-- [ ] **Step 1:** `pnpm typecheck && pnpm lint`(typecheck 仅 contract-price 既有 9 错容忍)+ `pnpm test bid-review` 全套
-- [ ] **Step 2:** 权限回归:`cd backend && PYTHONPATH=. uv run pytest tests/test_auth_me_permissions.py -q`(yaml 新点不破坏 /me)
-- [ ] **Step 3:** 记账——`.wolf/memory.md`/`anatomy.md`(parsing/page.tsx、ParsingView、TaskStepper、baselineFields 四新文件)条目;cerebrum 记偏差裁定(stepper 双页共享至 M3)。
-- [ ] **Step 4:** push(flaky 重试)。
+- [x] **Step 1:** `pnpm typecheck && pnpm lint`(typecheck 仅 contract-price 既有 9 错容忍)+ `pnpm test bid-review` 全套
+- [x] **Step 2:** 权限回归:`cd backend && PYTHONPATH=. uv run pytest tests/test_auth_me_permissions.py -q`(yaml 新点不破坏 /me)
+- [x] **Step 3:** 记账——`.wolf/memory.md`/`anatomy.md`(parsing/page.tsx、ParsingView、TaskStepper、baselineFields 四新文件)条目;cerebrum 记偏差裁定(stepper 双页共享至 M3)。
+- [x] **Step 4:** push(flaky 重试)。
 
 ---
 
