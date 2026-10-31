@@ -5,7 +5,7 @@ task 联接传导)。供 routers(Task 10)/worker(Task 9)/mcp(Task 11)复用。
 
 from datetime import UTC, datetime
 
-from sqlalchemy import String, func, select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.extensions.bid_review.models import (
