@@ -602,10 +602,8 @@ async def test_list_tasks_b1_fields(db, client):
     t.lot_name = "标段一"
     t.tender_no = "TND-1"
     await db.commit()
-    await crud.add_issue(db, task_id=t.id, owner_id="u1", rule_id="L1-001", layer="L1",
-                         severity="major", verdict="violation", message="m", evidence=[], dedup_key="d1")
-    await crud.add_issue(db, task_id=t.id, owner_id="u1", rule_id="L1-002", layer="L1",
-                         severity="major", verdict="false_positive", message="m", evidence=[], dedup_key="d2")
+    await crud.add_issue(db, task_id=t.id, owner_id="u1", rule_id="L1-001", layer="L1", severity="major", verdict="violation", message="m", evidence=[], dedup_key="d1")
+    await crud.add_issue(db, task_id=t.id, owner_id="u1", rule_id="L1-002", layer="L1", severity="major", verdict="false_positive", message="m", evidence=[], dedup_key="d2")
     await crud.set_status(db, t, "done")
     r = await client.get("/api/extensions/bid-review/tasks")
     assert r.status_code == 200, r.text

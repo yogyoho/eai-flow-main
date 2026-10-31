@@ -118,7 +118,7 @@ def normalize_candidates(
         if path not in field_paths or not isinstance(entries, list):
             continue
         kept: list[dict] = []
-        for entry in entries[:_CANDIDATE_MAX * 2]:  # 超量先粗剪再筛选,避免病态输入拖垮
+        for entry in entries[: _CANDIDATE_MAX * 2]:  # 超量先粗剪再筛选,避免病态输入拖垮
             if not isinstance(entry, dict) or not _json_safe(entry.get("value")):
                 continue
             doc_id = entry.get("doc_id")
@@ -336,11 +336,7 @@ def build_baseline(docs: list[dict], extract_fn: ExtractFn | None = None) -> dic
     candidates = normalize_candidates(raw.get("candidates"), field_paths, doc_ids, role_map)
     confidences = normalize_confidence(raw.get("confidence"), field_paths)
     verified = verify_quotes(provenance, docs)
-    fields_conf = {
-        path: {"conf": confidences.get(path), "verified": bool(verified.get(path, False))}
-        for path in field_paths
-        if fields.get(path) is not None
-    }
+    fields_conf = {path: {"conf": confidences.get(path), "verified": bool(verified.get(path, False))} for path in field_paths if fields.get(path) is not None}
     return {
         "fields": fields,
         "materials_hash": materials_hash(fields),
