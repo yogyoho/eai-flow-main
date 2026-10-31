@@ -6,9 +6,8 @@
  * 专屏;自 WorkbenchView 上移为共享件——workbench 在 M3 /results 拆分前暂留显示
  * (共享组件,非重复实现),届时拆分即随区段一移除。
  */
-import { cn } from "@/lib/utils";
-
 import { type TaskOut } from "@/extensions/bid-review/types";
+import { cn } from "@/lib/utils";
 
 // ── 步骤条(原型 s3:6 步;stage 词汇=worker progress.stage)──────────────
 const STAGE_LABELS = [

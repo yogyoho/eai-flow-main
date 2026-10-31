@@ -102,7 +102,6 @@ export function ParsingView({ taskId }: { taskId?: string | null }) {
   const data = baselinesQuery.data;
   const rows = useMemo(() => data?.items ?? [], [data]);
   const labels = data?.labels ?? NO_LABELS;
-  const adjudications = data?.adjudications ?? {};
   const [locate, setLocate] = useState<LocateTarget | null>(null);
 
   // 解析质量数据 = engine_meta.docs 清单(原型 s3:文件/页数/置信度/状态/说明)
@@ -110,7 +109,6 @@ export function ParsingView({ taskId }: { taskId?: string | null }) {
     ? (task.engine_meta.docs as DocMeta[])
     : [];
   const totalPages = docs.reduce((s, d) => s + (d.pages ?? 0), 0);
-  const ocrDocs = docs.filter((d) => (d.assets ?? 0) > 0);
 
   // 派生(与 BaselineView 同公式;冲突只读展示,裁定在基准确认页)
   const conflictPaths = useMemo(() => {

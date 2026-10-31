@@ -23,12 +23,12 @@ import {
   type LocateTarget,
 } from "@/extensions/bid-review/api";
 import { DocLocateBody } from "@/extensions/bid-review/components/DocLocateModal";
-import { TaskTitleTag } from "@/extensions/bid-review/components/TaskTitleTag";
 import {
   FP_REASONS,
   renderIssueMessage,
   sevPillBrx,
 } from "@/extensions/bid-review/components/ResultsView";
+import { TaskTitleTag } from "@/extensions/bid-review/components/TaskTitleTag";
 import {
   useBidFeedback,
   useBidIssues,

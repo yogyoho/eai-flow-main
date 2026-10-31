@@ -50,7 +50,6 @@ import {
 import { toast } from "sonner";
 
 import { ClipboardSafeStreamdown } from "@/components/ai-elements/streamdown";
-
 import {
   type FeedbackAction,
   type LocateTarget,
@@ -268,8 +267,7 @@ export function ResultsView({ taskId }: { taskId?: string | null }) {
         if (alive) setReportMd(t);
       })
       .catch((e: unknown) => {
-        if (alive)
-          toast.error(e instanceof Error ? e.message : "报告生成失败");
+        if (alive) toast.error(e instanceof Error ? e.message : "报告生成失败");
       });
     return () => {
       alive = false;
@@ -1525,9 +1523,7 @@ export function ResultsView({ taskId }: { taskId?: string | null }) {
                     <AlertTriangle className="ic" />
                   </span>
                   <div>
-                    <h3>
-                      {fatalUnhandled > 0 ? "不建议提交" : "建议提交"}
-                    </h3>
+                    <h3>{fatalUnhandled > 0 ? "不建议提交" : "建议提交"}</h3>
                     <div className="vb-sub">
                       {fatalUnhandled > 0
                         ? `命中致命红线 ${fatalUnhandled} 项,建议整改后重新审查`
@@ -1544,9 +1540,7 @@ export function ResultsView({ taskId }: { taskId?: string | null }) {
                 {reportMd === null ? (
                   <span style={{ color: "var(--text-3)" }}>报告生成中…</span>
                 ) : (
-                  <ClipboardSafeStreamdown>
-                    {reportMd}
-                  </ClipboardSafeStreamdown>
+                  <ClipboardSafeStreamdown>{reportMd}</ClipboardSafeStreamdown>
                 )}
               </div>
             </div>

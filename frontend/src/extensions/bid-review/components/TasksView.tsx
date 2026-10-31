@@ -35,6 +35,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
 import { createTask } from "@/extensions/bid-review/api";
+import { formatDuration } from "@/extensions/bid-review/components/primitives";
 import { TaskTitleTag } from "@/extensions/bid-review/components/TaskTitleTag";
 import {
   bidReviewKeys,
@@ -44,7 +45,6 @@ import {
 } from "@/extensions/bid-review/hooks";
 import { taskHref } from "@/extensions/bid-review/nav";
 // formatDuration Plan7 T2 上移共享(ResultsView 页头五元组同用)
-import { formatDuration } from "@/extensions/bid-review/components/primitives";
 import { type TaskOut } from "@/extensions/bid-review/types";
 import { cn } from "@/lib/utils";
 
@@ -201,11 +201,19 @@ function CountPairCell({
  */
 function VerdictCell({ task }: { task: TaskOut }) {
   if (task.status !== "done" && task.status !== "completed") {
-    return <span className="unmapped-cell" title="未出结果,不产生判定">—</span>;
+    return (
+      <span className="unmapped-cell" title="未出结果,不产生判定">
+        —
+      </span>
+    );
   }
   const fatal = task.fatal_unhandled;
   if (fatal == null) {
-    return <span className="unmapped-cell" title="问题统计未取到">—</span>;
+    return (
+      <span className="unmapped-cell" title="问题统计未取到">
+        —
+      </span>
+    );
   }
   return fatal > 0 ? (
     <span className="pill pill-err">不建议提交</span>
@@ -238,7 +246,11 @@ function ActionCell({ task }: { task: TaskOut }) {
     return link(taskHref("results", task.id), "查看结果");
   }
   if (task.status === "failed") {
-    return <span className="unmapped-cell" title="重试端点(B8)落地前不提供">—</span>;
+    return (
+      <span className="unmapped-cell" title="重试端点(B8)落地前不提供">
+        —
+      </span>
+    );
   }
   return link(taskHref("parsing", task.id), "查看进度");
 }
@@ -358,7 +370,12 @@ export function TasksView() {
       tender: File[];
       bid: File[];
       identity: { project_name: string; lot_name: string; tender_no: string };
-    }) => createTask(input.mode, { tender: input.tender, bid: input.bid }, input.identity),
+    }) =>
+      createTask(
+        input.mode,
+        { tender: input.tender, bid: input.bid },
+        input.identity,
+      ),
     onSuccess: (created) => {
       void queryClient.invalidateQueries({ queryKey: bidReviewKeys.tasks });
       setDialogOpen(false);
@@ -411,8 +428,7 @@ export function TasksView() {
     selectedTask != null && RESULT_STATUSES.has(selectedTask.status);
   const issuesQuery = useBidIssues(selectedResulted ? selectedId : null);
   const issues = issuesQuery.data;
-  const issueTotal =
-    selectedResulted && issues != null ? issues.length : null;
+  const issueTotal = selectedResulted && issues != null ? issues.length : null;
   const falsePositiveCount =
     selectedResulted && issues != null
       ? issues.filter((i) => i.verdict === "false_positive").length
@@ -519,7 +535,9 @@ export function TasksView() {
           </div>
           <div className="metric-cell">
             <span className="metric-label">误报已剔除</span>
-            <span className="metric-value num">{vital(falsePositiveCount)}</span>
+            <span className="metric-value num">
+              {vital(falsePositiveCount)}
+            </span>
           </div>
           <div className="metric-cell">
             <span className="metric-label">审查用时</span>
@@ -654,7 +672,8 @@ export function TasksView() {
                           key={h}
                           scope="col"
                           className={cn(
-                            (i === FATAL_COL || i === HEADERS.length - 1) && "r",
+                            (i === FATAL_COL || i === HEADERS.length - 1) &&
+                              "r",
                           )}
                         >
                           {h}
@@ -692,21 +711,23 @@ export function TasksView() {
                           {/* 项目·标段(原型 L558「项目名 · 标段」);抽取回填,
                               老任务 null→—(伪零:未抽取 ≠ 无项目) */}
                           <td>
-                            {t.project_name || t.lot_name
-                              ? [t.project_name, t.lot_name]
-                                  .filter(Boolean)
-                                  .join(" · ")
-                              : (
-                                  <span
-                                    className="unmapped-cell"
-                                    title="未抽取到项目/标段(老任务须重跑抽取)"
-                                  >
-                                    —
-                                  </span>
-                                )}
+                            {t.project_name || t.lot_name ? (
+                              [t.project_name, t.lot_name]
+                                .filter(Boolean)
+                                .join(" · ")
+                            ) : (
+                              <span
+                                className="unmapped-cell"
+                                title="未抽取到项目/标段(老任务须重跑抽取)"
+                              >
+                                —
+                              </span>
+                            )}
                           </td>
                           <td>
-                            <span className={cn("pill", mp.cls)}>{mp.label}</span>
+                            <span className={cn("pill", mp.cls)}>
+                              {mp.label}
+                            </span>
                           </td>
                           <td>
                             <span className={cn("pill", st.cls)}>
@@ -751,8 +772,8 @@ export function TasksView() {
                 {filtered.length !== tasks.length
                   ? ` / ${tasks.length}`
                   : ""}{" "}
-                个任务 · awaiting_confirm
-                阶段不产生审查判定,问题数显示为 —(未进入审查 ≠ 通过)
+                个任务 · awaiting_confirm 阶段不产生审查判定,问题数显示为
+                —(未进入审查 ≠ 通过)
               </div>
             </>
           )}

@@ -35,11 +35,11 @@
 - Modify: `backend/tests/test_auth_me_permissions.py`、`frontend/tests/e2e-real-backend/auth-disabled-contract.spec.ts`
 - Modify: `frontend/src/app/bid-review/tasks/[id]/page.tsx`(深链 shim 指向 results)
 
-- [ ] **Step 1: 写失败测试**(三测试文件同步改):nav.test 断言 `taskHref("results", "abc")` → `/bid-review/results?task_id=abc`(workbench 键不存在,类型错即红);layout.dom 断言 nav 含 href `/bid-review/results`+label `审查结果`+`canPage(user,"bid:page:results")` 非 null;layout-flow href 集 `workbench`→`results`(顺序断言 baseline<review 不变)。
-- [ ] **Step 2: 跑红** `pnpm test bid-review-nav && pnpm test bid-review-layout`(type error / 断言 fail)。
-- [ ] **Step 3: 实现**:nav.ts `TaskPage` 联合 `"workbench"`→`"results"`、PAGE_PATHS `results: "/bid-review/results"`;layout.tsx NAV_ITEMS 该项 href→`/bid-review/results`、label→`审查结果`、pageId→`bid:page:results`、taskPage→`results`(icon 不换,减少 diff);tasks/[id]/page.tsx redirect 目标→`/bid-review/results?task_id=`;permissions.yaml `bid:page:workbench` 条目改 id `bid:page:results`+display_name `审查结果`(EAI-CUSTOM 注注明 Plan7);roles_custom.yaml 两处 overlay `- bid:page:workbench`→`- bid:page:results`;后端 pytest 权限表、auth-disabled-contract 同步改。
-- [ ] **Step 4: 跑绿** 前端三测试 + `cd backend && PYTHONPATH=. uv run pytest tests/test_auth_me_permissions.py -q`。
-- [ ] **Step 5: 提交** `feat(bid-review): /results 路由换血——权限+nav+回归门(Plan7 T1)`(严格 pathspec)。
+- [x] **Step 1: 写失败测试**(三测试文件同步改):nav.test 断言 `taskHref("results", "abc")` → `/bid-review/results?task_id=abc`(workbench 键不存在,类型错即红);layout.dom 断言 nav 含 href `/bid-review/results`+label `审查结果`+`canPage(user,"bid:page:results")` 非 null;layout-flow href 集 `workbench`→`results`(顺序断言 baseline<review 不变)。
+- [x] **Step 2: 跑红** `pnpm test bid-review-nav && pnpm test bid-review-layout`(type error / 断言 fail)。
+- [x] **Step 3: 实现**:nav.ts `TaskPage` 联合 `"workbench"`→`"results"`、PAGE_PATHS `results: "/bid-review/results"`;layout.tsx NAV_ITEMS 该项 href→`/bid-review/results`、label→`审查结果`、pageId→`bid:page:results`、taskPage→`results`(icon 不换,减少 diff);tasks/[id]/page.tsx redirect 目标→`/bid-review/results?task_id=`;permissions.yaml `bid:page:workbench` 条目改 id `bid:page:results`+display_name `审查结果`(EAI-CUSTOM 注注明 Plan7);roles_custom.yaml 两处 overlay `- bid:page:workbench`→`- bid:page:results`;后端 pytest 权限表、auth-disabled-contract 同步改。
+- [x] **Step 4: 跑绿** 前端三测试 + `cd backend && PYTHONPATH=. uv run pytest tests/test_auth_me_permissions.py -q`。
+- [x] **Step 5: 提交** `feat(bid-review): /results 路由换血——权限+nav+回归门(Plan7 T1)`(严格 pathspec)。
 
 ### Task 2: ResultsView 抽取(git mv)+页头五元组+发起复核/刷新常驻
 
@@ -51,9 +51,9 @@
 - Modify: `frontend/src/extensions/bid-review/components/TasksView.tsx`(查看结果→taskHref("results"))、`ReviewQueueView.tsx:196`(返回链接→/results)
 - Test: 两改名测试文件内 import/页头断言更新+新增五元组用例
 
-- [ ] **Step 1: 写失败测试**:results-evidence 测试新增「页头五元组+常驻按钮」用例——夹具 task 带 `done_at`(created 2026-10-29T00:00Z/done 00:11:32Z→用时 11m 32s);断言 h2 含 `审查结果`、ph-sub 含 `用时`、`screen.getByRole("link",{name:"发起复核"}).getAttribute("href")`=`/bid-review/review?task_id=t1`、存在 `刷新` 按钮。
-- [ ] **Step 2: 跑红**(组件/路由尚不存在)。
-- [ ] **Step 3: 实现**:
+- [x] **Step 1: 写失败测试**:results-evidence 测试新增「页头五元组+常驻按钮」用例——夹具 task 带 `done_at`(created 2026-10-29T00:00Z/done 00:11:32Z→用时 11m 32s);断言 h2 含 `审查结果`、ph-sub 含 `用时`、`screen.getByRole("link",{name:"发起复核"}).getAttribute("href")`=`/bid-review/review?task_id=t1`、存在 `刷新` 按钮。
+- [x] **Step 2: 跑红**(组件/路由尚不存在)。
+- [x] **Step 3: 实现**:
   - `git mv` 组件与两测试文件;`WorkbenchView`→`ResultsView` 全文改名(组件名+文件头注「审查结果专屏(原型 s5;spec §4.5,Plan7 自 WorkbenchView 拆分;裁定8 工作台退役)」),两测试 import 更新。
   - `results/page.tsx`:照 parsing/page.tsx 模式(Toaster+Suspense+useSelectedTask→`<ResultsView taskId={taskId} />`)。
   - primitives.ts 增 `export function formatDuration(createdIso: string | null, doneIso: string | null): string`(实现自 TasksView:253 原样上移,null/半程→"—");TasksView 删本地函数改 import。
@@ -61,8 +61,8 @@
   - TasksView 查看结果 `taskHref("workbench",...)`→`taskHref("results",...)`;ReviewQueueView 返回链接 href→`/bid-review/results?task_id=`(文案「返回工作台」→「返回结果页」)。
   - 左列「未判定 ≠ 通过」warnbar 挂 `<Link href={taskHref("review", taskId)}>到复核工作台 →</Link>`(spec §4.5);复核进度卡/规则执行卡尾注补挂账半句(B2 落库后刷新不丢/B4 落地后换评分覆盖度 meter)。
   - 右列分页 tbl-foot 补「完整清单见导出报告」半句(spec §4.5)。
-- [ ] **Step 4: 跑绿** `pnpm test bid-review`(全量;tasks-view L303 断言同步改 `/bid-review/results?task_id=t1`)。
-- [ ] **Step 5: 提交** `feat(bid-review): ResultsView 抽取+页头五元组+发起复核/刷新常驻(Plan7 T2)`。
+- [x] **Step 4: 跑绿** `pnpm test bid-review`(全量;tasks-view L303 断言同步改 `/bid-review/results?task_id=t1`)。
+- [x] **Step 5: 提交** `feat(bid-review): ResultsView 抽取+页头五元组+发起复核/刷新常驻(Plan7 T2)`。
 
 ### Task 3: /workbench 重定向 shim
 
@@ -70,9 +70,9 @@
 - Modify: `frontend/src/app/bid-review/workbench/page.tsx`(整页换 client redirect)
 - Test: `frontend/tests/unit/app/bid-review-workbench-shim.dom.test.tsx`(新)
 
-- [ ] **Step 1: 写失败测试**:mock next/navigation(useRouter.replace spy+useSearchParams);render 页 → `waitFor(replace 被调)` 断言 `/bid-review/results?task_id=t9`(带 task_id)与 `/bid-review/results`(不带)两例。
-- [ ] **Step 2: 跑红**。
-- [ ] **Step 3: 实现**:page.tsx 换为——
+- [x] **Step 1: 写失败测试**:mock next/navigation(useRouter.replace spy+useSearchParams);render 页 → `waitFor(replace 被调)` 断言 `/bid-review/results?task_id=t9`(带 task_id)与 `/bid-review/results`(不带)两例。
+- [x] **Step 2: 跑红**。
+- [x] **Step 3: 实现**:page.tsx 换为——
 
 ```tsx
 "use client";
@@ -96,8 +96,8 @@ export default function WorkbenchRedirectPage() {
 }
 ```
 
-- [ ] **Step 4: 跑绿**;`grep -rn '"workbench"' frontend/src` 仅剩 shim+tasks/[id] 注释。
-- [ ] **Step 5: 提交** `feat(bid-review): /workbench 重定向 shim(Plan7 T3)`。
+- [x] **Step 4: 跑绿**;`grep -rn '"workbench"' frontend/src` 仅剩 shim+tasks/[id] 注释。
+- [x] **Step 5: 提交** `feat(bid-review): /workbench 重定向 shim(Plan7 T3)`。
 
 ### Task 4: 报告预览 modal(导出改开弹层)
 
@@ -105,15 +105,15 @@ export default function WorkbenchRedirectPage() {
 - Modify: `frontend/src/extensions/bid-review/components/ResultsView.tsx`
 - Test: `frontend/tests/unit/extensions/bid-review-results-export.dom.test.tsx`
 
-- [ ] **Step 1: 写失败测试**(改既有 export 用例):点「导出报告」→ `await screen.findByRole("dialog",{name:"审查报告预览"})`;弹层含免责注记文本 `本报告为辅助提示,最终责任由投标主体承担`+判定摘要(不建议提交)+「下载 .md」按钮;点下载→既有 blob 断言不变(下载逻辑原样,URL.createObjectURL+a.click 保留)。
-- [ ] **Step 2: 跑红**(现导出直下,无 modal)。
-- [ ] **Step 3: 实现**:导出按钮 onClick 改 `setReportOpen(true)`;modal JSX(照原型 L1327 骨架,dialog role+aria-label「审查报告预览」):modal-hd 标题+✕、modal-bd 内 note-bar 免责+verdict-band 摘要(复用现有 verdict 计算:label/副语/口径句)+md 正文(`const [md,setMd]=useState<string|null>(null)`;open 时 `const blob=await exportReport(taskId); setMd(await blob.text())`,Streamdown 渲染,null 时「报告生成中…」)、modal-ft `关闭`+`下载 .md`(onClick=现 handleExportReport 原样)。免责注+PDF 不做注记(挂账)写入文件头。
-- [ ] **Step 4: 跑绿** export 测试+全量 bid-review。
-- [ ] **Step 5: 提交** `feat(bid-review): 报告预览 modal——免责+判定摘要+md 渲染+下载(Plan7 T4)`。
+- [x] **Step 1: 写失败测试**(改既有 export 用例):点「导出报告」→ `await screen.findByRole("dialog",{name:"审查报告预览"})`;弹层含免责注记文本 `本报告为辅助提示,最终责任由投标主体承担`+判定摘要(不建议提交)+「下载 .md」按钮;点下载→既有 blob 断言不变(下载逻辑原样,URL.createObjectURL+a.click 保留)。
+- [x] **Step 2: 跑红**(现导出直下,无 modal)。
+- [x] **Step 3: 实现**:导出按钮 onClick 改 `setReportOpen(true)`;modal JSX(照原型 L1327 骨架,dialog role+aria-label「审查报告预览」):modal-hd 标题+✕、modal-bd 内 note-bar 免责+verdict-band 摘要(复用现有 verdict 计算:label/副语/口径句)+md 正文(`const [md,setMd]=useState<string|null>(null)`;open 时 `const blob=await exportReport(taskId); setMd(await blob.text())`,Streamdown 渲染,null 时「报告生成中…」)、modal-ft `关闭`+`下载 .md`(onClick=现 handleExportReport 原样)。免责注+PDF 不做注记(挂账)写入文件头。
+- [x] **Step 4: 跑绿** export 测试+全量 bid-review。
+- [x] **Step 5: 提交** `feat(bid-review): 报告预览 modal——免责+判定摘要+md 渲染+下载(Plan7 T4)`。
 
 ### Task 5: 收尾——lint/typecheck/后端回归/记账/push
 
-- [ ] **Step 1**: `pnpm exec prettier --write` 改动文件;`pnpm lint`;`pnpm typecheck`(grep -v contract-price);`pnpm test`(全前端)。
-- [ ] **Step 2**: `cd backend && PYTHONPATH=. uv run pytest tests/test_auth_me_permissions.py -q`。
-- [ ] **Step 3**: .wolf 记账——memory.md 逐动作行;anatomy.md 改名条目(WorkbenchView→ResultsView、测试两文件、results/page.tsx、workbench/page.tsx 描述);cerebrum 挂账条目(B2/B4/B7/PDF);spec §6 不新增裁定(本计划皆 §4.5 既定内容)。
-- [ ] **Step 4**: 计划文档勾选;`git push origin main-dev-fork`(flaky 重试)。
+- [x] **Step 1**: `pnpm exec prettier --write` 改动文件;`pnpm lint`;`pnpm typecheck`(grep -v contract-price);`pnpm test`(全前端)。
+- [x] **Step 2**: `cd backend && PYTHONPATH=. uv run pytest tests/test_auth_me_permissions.py -q`。
+- [x] **Step 3**: .wolf 记账——memory.md 逐动作行;anatomy.md 改名条目(WorkbenchView→ResultsView、测试两文件、results/page.tsx、workbench/page.tsx 描述);cerebrum 挂账条目(B2/B4/B7/PDF);spec §6 不新增裁定(本计划皆 §4.5 既定内容)。
+- [x] **Step 4**: 计划文档勾选;`git push origin main-dev-fork`(flaky 重试)。

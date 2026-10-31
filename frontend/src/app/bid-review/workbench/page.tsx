@@ -3,8 +3,8 @@
  * /workbench 深链兼容重定向(Plan7,裁定8 工作台退役):→ /results?task_id=。
  * EAI-CUSTOM (2026-10-31): 旧书签/徽标链路保活;本路由不再承载内容。
  */
-import { useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import { useEffect } from "react";
 
 export default function WorkbenchRedirectPage() {
   const router = useRouter();
