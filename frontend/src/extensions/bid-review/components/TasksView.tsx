@@ -85,6 +85,9 @@ const MODE_PILL: Record<string, { cls: string; label: string }> = {
   deep: { cls: "pill-main", label: "深度评审" },
 };
 
+/** 原型 s2 L604:单文件 ≤ 200MB,前端拒收(超限不入列,errbar 提示)。 */
+const MAX_FILE_MB = 200;
+
 /** 模式 pill(原型 s1:quick=pill-gray 快速评审 / deep=pill-main 深度评审)。 */
 function modePill(mode: string): { cls: string; label: string } {
   return MODE_PILL[mode] ?? { cls: "pill-gray", label: mode };
@@ -305,7 +308,7 @@ function FileGroup({
             }}
           />
         </label>
-        (可多选;招标与投标文件至少各一份)
+        (可多选;单文件 ≤ {MAX_FILE_MB}MB;招标与投标文件至少各一份)
       </div>
       {files.length > 0 ? (
         <table className="tbl" style={{ marginTop: 8 }}>
@@ -352,6 +355,11 @@ export function TasksView() {
   const [mode, setMode] = useState<"quick" | "deep">("quick");
   const [tenderFiles, setTenderFiles] = useState<File[]>([]);
   const [bidFiles, setBidFiles] = useState<File[]>([]);
+  // 裁定12+14(Plan5):基本信息=可选覆盖位(留空由引擎从投标文件抽取回填)
+  const [projectName, setProjectName] = useState("");
+  const [lotName, setLotName] = useState("");
+  const [tenderNo, setTenderNo] = useState("");
+  const [fileError, setFileError] = useState<string | null>(null);
 
   const tasksQuery = useBidTasks();
 
@@ -360,7 +368,8 @@ export function TasksView() {
       mode: "quick" | "deep";
       tender: File[];
       bid: File[];
-    }) => createTask(input.mode, input),
+      identity: { project_name: string; lot_name: string; tender_no: string };
+    }) => createTask(input.mode, { tender: input.tender, bid: input.bid }, input.identity),
     onSuccess: (created) => {
       void queryClient.invalidateQueries({ queryKey: bidReviewKeys.tasks });
       setDialogOpen(false);
@@ -368,8 +377,25 @@ export function TasksView() {
     },
   });
 
-  /** 打开新建 modal:清残留文件与上次错误(创建成功/取消后再开都是干净态)。 */
+  /** 上传组统一入口:单文件 ≤ MAX_FILE_MB,超限拒收并 errbar 提示(原型 s2)。 */
+  const addFiles =
+    (setter: (fn: (prev: File[]) => File[]) => void) => (fs: File[]) => {
+      const ok = fs.filter((f) => f.size <= MAX_FILE_MB * 1024 * 1024);
+      const rejected = fs.length - ok.length;
+      if (rejected > 0) {
+        setFileError(`${rejected} 个文件超过 ${MAX_FILE_MB}MB 上限,已跳过`);
+      } else if (ok.length > 0) {
+        setFileError(null);
+      }
+      if (ok.length > 0) setter((prev) => [...prev, ...ok]);
+    };
+
+  /** 打开新建 modal:清残留字段/文件与上次错误(创建成功/取消后再开都是干净态)。 */
   const openDialog = () => {
+    setProjectName("");
+    setLotName("");
+    setTenderNo("");
+    setFileError(null);
     setTenderFiles([]);
     setBidFiles([]);
     createMutation.reset();
@@ -780,6 +806,34 @@ export function TasksView() {
               </button>
             </div>
             <div className="modal-bd">
+              {/* 原型 s2 基本信息:项目/标段=裁定12 可选覆盖位,留空由引擎抽取回填 */}
+              <div className="frm-row">
+                <label>项目 / 标段名称</label>
+                <div>
+                  <input
+                    className="inp"
+                    style={{ width: "100%" }}
+                    value={projectName}
+                    onChange={(e) => setProjectName(e.target.value)}
+                    placeholder="如:XX数据中心一期采购项目 · 标段一"
+                    aria-label="项目 / 标段名称"
+                  />
+                  <div className="frm-help">
+                    用于任务列表展示与报告抬头;留空由引擎从投标文件自动抽取回填。
+                  </div>
+                </div>
+              </div>
+              <div className="frm-row">
+                <label>招标编号</label>
+                <input
+                  className="inp mono"
+                  style={{ width: "100%" }}
+                  value={tenderNo}
+                  onChange={(e) => setTenderNo(e.target.value)}
+                  placeholder="选填"
+                  aria-label="招标编号"
+                />
+              </div>
               <div className="frm-row">
                 <label>
                   评审模式<span className="must">*</span>
@@ -815,7 +869,7 @@ export function TasksView() {
               <FileGroup
                 label="招标文件"
                 files={tenderFiles}
-                onAdd={(fs) => setTenderFiles((prev) => [...prev, ...fs])}
+                onAdd={addFiles(setTenderFiles)}
                 onRemove={(i) =>
                   setTenderFiles((prev) => prev.filter((_, idx) => idx !== i))
                 }
@@ -823,7 +877,7 @@ export function TasksView() {
               <FileGroup
                 label="投标文件"
                 files={bidFiles}
-                onAdd={(fs) => setBidFiles((prev) => [...prev, ...fs])}
+                onAdd={addFiles(setBidFiles)}
                 onRemove={(i) =>
                   setBidFiles((prev) => prev.filter((_, idx) => idx !== i))
                 }
@@ -835,6 +889,12 @@ export function TasksView() {
                   等文本格式最适配;PDF/Word 结构化解析后续版本支持)。
                 </span>
               </div>
+              {fileError ? (
+                <div className="note-bar errbar" role="alert">
+                  <Info className="ic" aria-hidden="true" />
+                  <span>{fileError}</span>
+                </div>
+              ) : null}
               {createMutation.isError ? (
                 <div className="note-bar errbar" role="alert">
                   <Info className="ic" aria-hidden="true" />
@@ -858,6 +918,11 @@ export function TasksView() {
                     mode,
                     tender: tenderFiles,
                     bid: bidFiles,
+                    identity: {
+                      project_name: projectName,
+                      lot_name: lotName,
+                      tender_no: tenderNo,
+                    },
                   })
                 }
                 disabled={

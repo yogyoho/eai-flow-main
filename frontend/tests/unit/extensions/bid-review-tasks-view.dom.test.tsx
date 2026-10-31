@@ -393,4 +393,72 @@ describe("bid-review TasksView 选中任务体征契约门(Plan2 2026-10-31)", (
       "共 1 / 2",
     );
   });
+
+  it("对话框:身份字段随 FormData 提交,留空不发(裁定12+14)", async () => {
+    responder = (path, init) => {
+      if (init?.method === "POST") {
+        return jsonRes({
+          ...TASK,
+          id: "t-new",
+          biz_no: "TBR-20261031-0001",
+        });
+      }
+      if (path.endsWith("/tasks")) {
+        return jsonRes({ items: [TASK] });
+      }
+      return jsonRes({}, 404);
+    };
+    renderTasks();
+    await screen.findByTitle("t1");
+    fireEvent.click(screen.getByRole("button", { name: "新建审查任务" }));
+    fireEvent.change(screen.getByLabelText("项目 / 标段名称"), {
+      target: { value: "XX数据中心二期" },
+    });
+    fireEvent.change(screen.getByLabelText("招标编号"), {
+      target: { value: "TZ-2026-009" },
+    });
+    fireEvent.change(screen.getByLabelText("选择招标文件"), {
+      target: { files: [new File(["T"], "t.txt", { type: "text/plain" })] },
+    });
+    fireEvent.change(screen.getByLabelText("选择投标文件"), {
+      target: { files: [new File(["B"], "b.txt", { type: "text/plain" })] },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "创建任务" }));
+    await waitFor(() => {
+      const post = calls.find((c) => c.init?.method === "POST");
+      expect(post).toBeTruthy();
+      const form = post?.init?.body as FormData;
+      expect(form.get("mode")).toBe("quick");
+      expect(form.get("project_name")).toBe("XX数据中心二期");
+      expect(form.get("tender_no")).toBe("TZ-2026-009");
+      // 留空不 append(=引擎抽取回填位)
+      expect(form.get("lot_name")).toBeNull();
+      expect(form.getAll("tender_files")).toHaveLength(1);
+      expect(form.getAll("bid_files")).toHaveLength(1);
+    });
+  });
+
+  it("对话框:单文件 >200MB 拒收(errbar 提示,文件不入列)", async () => {
+    responder = (path) => {
+      if (path.endsWith("/tasks")) return jsonRes({ items: [TASK] });
+      return jsonRes({}, 404);
+    };
+    renderTasks();
+    await screen.findByTitle("t1");
+    fireEvent.click(screen.getByRole("button", { name: "新建审查任务" }));
+    const big = new File(["x"], "huge.bin");
+    Object.defineProperty(big, "size", { value: 201 * 1024 * 1024 });
+    fireEvent.change(screen.getByLabelText("选择招标文件"), {
+      target: { files: [big] },
+    });
+    expect(screen.getByRole("alert").textContent).toContain(
+      "超过 200MB 上限",
+    );
+    expect(screen.queryByTitle("huge.bin")).toBeNull();
+    // 招标侧被拒收=空 → 创建门保持关闭
+    expect(screen.getByRole("button", { name: "创建任务" })).toHaveProperty(
+      "disabled",
+      true,
+    );
+  });
 });
