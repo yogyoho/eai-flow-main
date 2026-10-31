@@ -4,8 +4,9 @@
  * 基准确认页(bid:page:baseline)。
  * EAI-CUSTOM (2026-10-30): 参照 docs/designs/2026-10-30-bid-review-ui.html 原型
  * s4(基准确认卡点),字段对照在此分区呈现:
- * - 字段对照(s3/s4 一期):GET /tasks/{id}/baselines 行级快照 → 按首段路径族
- *   (tender/bid)分组,字段卡核对(值/出处/「查看原文」定位弹层)。
+ * - 字段对照(s3/s4 一期):GET /tasks/{id}/baselines 行级快照 → 按业务主题族
+ *   (报价基准/清单基准/项目与主体/工期与质保/其他条款,Plan8 §4.4)分组,字段卡
+ *   核对(值/出处/「查看原文」定位弹层)。
  *   Plan6 (2026-10-31,spec §4.3):解析质量表已迁 /parsing 归拢专屏。
  * EAI-CUSTOM (2026-10-31 二期 spec §1.5/§二/§四):冲突裁定卡(多候选 radio +
  * 采纳 → adjudicate 端点;已裁定转pill)、置信 pill(高/低/未核验,quote 服务端
@@ -25,14 +26,15 @@ import {
   type LocateTarget,
 } from "@/extensions/bid-review/api";
 // 共享词汇(Plan6 自本文件上移,ParsingView 同用;裁定交互仍留本文件)
+// Plan8 §4.4:字段族改五业务主题(FIELD_THEMES/themeOf)
 import {
-  FAMILIES,
-  familyOf,
+  FIELD_THEMES,
   NO_LABELS,
   STATUS_PILL_CLASS,
   confPill,
   fieldRows,
   formatVal,
+  themeOf,
 } from "@/extensions/bid-review/components/baselineFields";
 import { DocLocateModal } from "@/extensions/bid-review/components/DocLocateModal";
 import { taskStatusPill } from "@/extensions/bid-review/components/primitives";
@@ -55,7 +57,7 @@ export function BaselineView({ taskId }: { taskId?: string | null }) {
   const rows = useMemo(() => data?.items ?? [], [data]);
   const labels = data?.labels ?? NO_LABELS;
   const adjudications = data?.adjudications ?? {};
-  const [fam, setFam] = useState<string>("tender");
+  const [fam, setFam] = useState<string>(FIELD_THEMES[0] ?? "其他条款");
   const [search, setSearch] = useState("");
   const [locate, setLocate] = useState<LocateTarget | null>(null);
   const [picks, setPicks] = useState<Record<string, number>>({});
@@ -72,12 +74,13 @@ export function BaselineView({ taskId }: { taskId?: string | null }) {
   ).length;
   const conflictCands = rows[0]?.candidates ?? {};
 
-  // 字段族计数(全快照口径,不随筛选变);检索只过滤当前族展示
+  // 字段族计数(全快照口径,不随筛选变;Plan8 §4.4 按 themeOf 业务主题分组);
+  // 检索只过滤当前族展示
   const allRows = useMemo(() => fieldRows(rows[0], labels), [rows, labels]);
   const famStats = useMemo(() => {
     const m = new Map<string, { total: number; missing: number }>();
     for (const f of allRows) {
-      const k = familyOf(f.path);
+      const k = themeOf(f.path);
       const cur = m.get(k) ?? { total: 0, missing: 0 };
       cur.total += 1;
       if (f.missing) cur.missing += 1;
@@ -85,10 +88,12 @@ export function BaselineView({ taskId }: { taskId?: string | null }) {
     }
     return m;
   }, [allRows]);
-  const famKey = famStats.has(fam) ? fam : (FAMILIES[0]?.key ?? "");
+  const famKey = famStats.has(fam)
+    ? fam
+    : (FIELD_THEMES[0] ?? "其他条款");
   const shown = allRows.filter(
     (f) =>
-      familyOf(f.path) === famKey &&
+      themeOf(f.path) === famKey &&
       (search === "" || f.path.toLowerCase().includes(search.toLowerCase())),
   );
   const missingTotal = allRows.filter((f) => f.missing).length;
@@ -466,16 +471,16 @@ export function BaselineView({ taskId }: { taskId?: string | null }) {
                   />
                 </div>
                 <div className="fam-list">
-                  {FAMILIES.filter((f) => famStats.has(f.key)).map((f) => {
-                    const stat = famStats.get(f.key);
+                  {FIELD_THEMES.filter((t) => famStats.has(t)).map((t) => {
+                    const stat = famStats.get(t);
                     return (
                       <button
                         type="button"
-                        key={f.key}
-                        className={`fam-item ${famKey === f.key ? "on" : ""}`}
-                        onClick={() => setFam(f.key)}
+                        key={t}
+                        className={`fam-item ${famKey === t ? "on" : ""}`}
+                        onClick={() => setFam(t)}
                       >
-                        {f.label}
+                        {t}
                         {(stat?.missing ?? 0) > 0 ? (
                           <span className="mini-dot" aria-hidden />
                         ) : null}
@@ -486,25 +491,6 @@ export function BaselineView({ taskId }: { taskId?: string | null }) {
                       </button>
                     );
                   })}
-                  {[...famStats.keys()]
-                    .filter((k) => !FAMILIES.some((f) => f.key === k))
-                    .map((k) => {
-                      const stat = famStats.get(k);
-                      return (
-                        <button
-                          type="button"
-                          key={k}
-                          className={`fam-item ${famKey === k ? "on" : ""}`}
-                          onClick={() => setFam(k)}
-                        >
-                          {k}
-                          <span className="fam-cnt">
-                            {stat ? stat.total - stat.missing : 0}/
-                            {stat?.total ?? 0}
-                          </span>
-                        </button>
-                      );
-                    })}
                 </div>
               </div>
               <div

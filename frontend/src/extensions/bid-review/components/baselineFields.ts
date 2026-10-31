@@ -47,14 +47,29 @@ export const STATUS_PILL_CLASS: Record<PillTone, string> = {
   info: "pill-main",
 };
 
-/** 字段族:路径首段(tender/bid);一期限引擎语义,主题级中文分组待标签映射。 */
-export const FAMILIES: { key: string; label: string }[] = [
-  { key: "tender", label: "招标基准" },
-  { key: "bid", label: "投标响应" },
+// ── 主题族(Plan8 §4.4 增强):五业务主题,替代路径首段族(tender/bid)──
+export const FIELD_THEMES = [
+  "报价基准",
+  "清单基准",
+  "项目与主体",
+  "工期与质保",
+  "其他条款",
+] as const;
+
+export type FieldTheme = (typeof FIELD_THEMES)[number];
+
+// 顺序即优先级:boq 先于 price;无匹配路径落「其他条款」。
+const THEME_RULES: [RegExp, FieldTheme][] = [
+  [/boq|bill|清单/i, "清单基准"],
+  [/price|subtotal|amount|budget|detail_rows|报价|价格/i, "报价基准"],
+  [/project|identity|name|code|owner|agency|contact|项目|主体/i, "项目与主体"],
+  [/duration|warranty|schedule|period|days|months|工期|质保/i, "工期与质保"],
 ];
 
-export function familyOf(path: string): string {
-  return path.split(".", 1)[0] ?? path;
+/** 字段路径 → 业务主题(Plan8 §4.4);无匹配落「其他条款」。 */
+export function themeOf(path: string): FieldTheme {
+  for (const [re, theme] of THEME_RULES) if (re.test(path)) return theme;
+  return "其他条款";
 }
 
 export function formatVal(v: unknown): string {

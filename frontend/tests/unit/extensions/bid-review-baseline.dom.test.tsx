@@ -162,15 +162,16 @@ describe("bid-review BaselineView 分期建议一期(EAI-CUSTOM 2026-10-30)", ()
     // 本页只留字段对照+确认门。
 
     // 字段对照:族按钮 + 字段卡(已抽取/缺失 pill 与值);findByRole 兼数据加载门
+    // 字段族主题(Plan8 §4.4):报价基准(默认选中)/清单基准按钮可见
     expect(
-      await screen.findByRole("button", { name: /招标基准/ }),
+      await screen.findByRole("button", { name: /报价基准/ }),
     ).toBeTruthy();
+    expect(screen.getByRole("button", { name: /清单基准/ })).toBeTruthy();
     expect(await screen.findByText("tender.max_price")).toBeTruthy();
     expect(screen.getByText("8,000,000")).toBeTruthy();
-    expect(screen.getByText("tender.boq_items")).toBeTruthy();
-    expect(screen.getAllByText("缺失").length).toBeGreaterThan(0);
 
     // 查看原文 → content?page=3(pdf 真页码直取)→ 定位弹层渲染命中段
+    // (max_price 卡属默认族,先做定位流程再切族)
     fireEvent.click(screen.getByRole("button", { name: "查看原文" }));
     await waitFor(() =>
       expect(
@@ -185,6 +186,11 @@ describe("bid-review BaselineView 分期建议一期(EAI-CUSTOM 2026-10-30)", ()
       await screen.findByRole("dialog", { name: "定位原文" }),
     ).toBeTruthy();
     expect(screen.getByText(/最高限价:人民币捌佰万元整/)).toBeTruthy();
+
+    // Plan8 §4.4:boq_items 归「清单基准」主题,切族可见(缺失 pill)
+    fireEvent.click(screen.getByRole("button", { name: /清单基准/ }));
+    expect(await screen.findByText("tender.boq_items")).toBeTruthy();
+    expect(screen.getAllByText("缺失").length).toBeGreaterThan(0);
   });
 
   it("确认门 gating:仅 awaiting_confirm 可确认,按钮带未确认行数并 POST /confirm", async () => {
@@ -305,7 +311,10 @@ describe("bid-review BaselineView 二期冲突裁定(EAI-CUSTOM 2026-10-31)", ()
     renderBaseline();
 
     // 中文 label 卡(路径降为 code 小字)+ 冲突待裁定区
-    expect(await screen.findByText("投标总价")).toBeTruthy();
+    // Plan8 §4.4 后字段卡同屏可见(报价基准族),裁定卡+字段卡各一份 → findAll
+    expect(
+      (await screen.findAllByText("投标总价")).length,
+    ).toBeGreaterThan(0);
     expect(screen.getByText(/冲突待裁定/)).toBeTruthy();
     expect(screen.getByText("待裁定")).toBeTruthy();
 
