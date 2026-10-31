@@ -12,6 +12,7 @@ FIELD_LABELS: dict[str, str] = {
     # ── tender(招标基准)────────────────────────────────────────────
     "tender.project_identity.name": "项目名称",
     "tender.project_identity.code": "项目编号",
+    "tender.project_identity.lot_section": "标段",  # B1 裁定12(2026-10-31)
     "tender.max_price": "最高限价",
     "tender.price_includes_tax": "报价含税要求",
     "tender.tax_rate": "税率要求",

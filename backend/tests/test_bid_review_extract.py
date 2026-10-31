@@ -287,3 +287,11 @@ def test_build_baseline_legacy_fn_still_works():
     snap = build_baseline(FAKE_DOCS, extract_fn=fake_extract_fn)
     assert snap["candidates"] == {}
     assert snap["fields_conf"]["bid.total_price"] == {"conf": None, "verified": False}
+
+
+def test_lot_section_in_field_paths():
+    """裁定12:标段入基础字段字典(提取 prompt 自动可见)+labels 中文名。"""
+    from app.extensions.bid_review.engine import extract as extract_mod, labels
+
+    assert "tender.project_identity.lot_section" in extract_mod.collect_field_paths()
+    assert labels.FIELD_LABELS["tender.project_identity.lot_section"] == "标段"

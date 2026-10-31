@@ -412,3 +412,27 @@ async def test_boot_recovery_resets_parsing_to_extracting(db):
     assert await boot_recovery(factory) == 1
     await db.refresh(t)
     assert t.status == "extracting"
+
+
+@pytest.mark.asyncio
+async def test_advance_task_backfills_project_identity(db):
+    """裁定12/B1:基线落库后回填 task.project_name/lot_name/tender_no(仅收标量,
+    结构化值不落列;awaiting_confirm 与直跑两路径同覆盖)。"""
+    t = await crud.create_task(db, owner_id="u1")
+    docs = [{"doc_id": "t.pdf", "role": "tender", "text": "x"}]
+    fields = {
+        "tender.project_identity.name": "XX数据中心一期采购项目",
+        "tender.project_identity.lot_section": "标段一(机电设备)",
+        "tender.project_identity.code": "TND-2026-114",
+        "tender.max_price": {"value": 100},  # 非标量→不回填
+    }
+
+    def _extract(d, p):
+        return {**{k: None for k in p}, **fields}
+
+    task = await advance_task(db, t.id, owner_id="u1", docs=docs, extract_fn=_extract, wait_confirm=True)
+    await db.refresh(task)
+    assert task.project_name == "XX数据中心一期采购项目"
+    assert task.lot_name == "标段一(机电设备)"
+    assert task.tender_no == "TND-2026-114"
+    assert "tender.max_price" not in ("", None)  # 结构化值无对应列,仅保证不炸

@@ -29,6 +29,8 @@ FIELD_DICTIONARY: frozenset[str] = frozenset(
         # L3-001 项目名称/编号一致(编号 bid 侧字段 v2 定,当前仅作提取输入)
         "tender.project_identity.name",
         "tender.project_identity.code",
+        # B1 裁定12(2026-10-31):标段抽取回填 task.lot_name(任务列表「项目/标段」列)
+        "tender.project_identity.lot_section",
         "bid.header_footer.project_name",
         # L3-003 投标人主体一致
         "bid.entity.license_name",

@@ -449,6 +449,19 @@ async def advance_task(
     meta["materials_hash"] = payload["materials_hash"]
     task.engine_meta = meta  # 重新赋值以标记 JSON 列 dirty
     await _write_baselines(db, task_id, docs, fields, payload["materials_hash"], payload.get("provenance"), payload.get("candidates"), payload.get("fields_conf"))
+    # B1 抽取回填(裁定12:项目/标段/编号从投标文件抽,非向导手填):基线落库后同处
+    # 写 task 三列;仅收标量(str/int/float),dict/list 等结构化值不回填(伪零纪律:
+    # 抽不到保持 null,前端显 —)。
+    def _scalar(v: object) -> str | None:
+        if isinstance(v, (str, int, float)) and str(v).strip():
+            return str(v).strip()
+        return None
+
+    task.project_name = _scalar(fields.get("tender.project_identity.name"))
+    task.lot_name = _scalar(fields.get("tender.project_identity.lot_section"))
+    task.tender_no = _scalar(fields.get("tender.project_identity.code"))
+    await db.commit()
+    await db.refresh(task)
     durations["extracting"] = time.perf_counter() - t1
     if wait_confirm:
         return await crud.set_status(db, task, "awaiting_confirm", progress={"stage": "confirm_gate", "pct": 40, "msg": "基线已生成,等待人工确认(确认门仅工作台 UI)"})
