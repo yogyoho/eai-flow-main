@@ -303,6 +303,10 @@ describe("bid-review TasksView 选中任务体征契约门(Plan2 2026-10-31)", (
       "/bid-review/workbench?task_id=t1",
     );
     expect(linkOf("t3")?.textContent?.trim()).toBe("查看进度");
+    // Plan6 (spec §4.3):在途查看进度改指 /parsing 归拢专屏(原 workbench)
+    expect(linkOf("t3")?.getAttribute("href")).toBe(
+      "/bid-review/parsing?task_id=t3",
+    );
     expect(linkOf("t4")).toBeNull();
     expect(rowOf("t4")?.querySelector("td:last-child")?.textContent).toContain(
       "—",

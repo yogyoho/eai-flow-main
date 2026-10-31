@@ -10,7 +10,8 @@ import {
 import type { PropsWithChildren } from "react";
 
 // EAI-CUSTOM 2026-10-30 分期建议一期(s3/s4,ui-gaps spec §二):
-// ① 解析质量表 = engine_meta.docs 清单(pdf 真页码/assets;docx 无页边界「—」);
+// ① 解析质量表 = engine_meta.docs 清单 —— Plan6(2026-10-31)已迁 /parsing 归拢
+//    专屏,断言随迁 bid-review-parsing.dom.test.tsx;
 // ② 字段对照卡 = GET /tasks/{id}/baselines 行级快照 → 已抽取/缺失 pill +
 //    「查看原文」→ content 端点定位弹层(与工作台证据 chip 同源);
 // ③ 确认门 gating:仅 awaiting_confirm 可确认,按钮带未确认行数,POST /confirm。
@@ -147,7 +148,7 @@ describe("bid-review BaselineView 分期建议一期(EAI-CUSTOM 2026-10-30)", ()
     cleanup();
   });
 
-  it("解析质量表 + 字段卡对照渲染;查看原文 → content 定位弹层", async () => {
+  it("字段卡对照渲染;查看原文 → content 定位弹层", async () => {
     responder = (path) => {
       if (path.endsWith("/baselines")) return jsonRes({ items: BASELINES });
       if (path.includes("/docs/") && path.includes("/content"))
@@ -157,13 +158,13 @@ describe("bid-review BaselineView 分期建议一期(EAI-CUSTOM 2026-10-30)", ()
     };
     renderBaseline();
 
-    // 解析质量表:清单行 + OCR 兜底注记(pdf assets=1)
-    expect(await screen.findByText("招标文件.pdf")).toBeTruthy();
-    expect(screen.getByText("解析质量")).toBeTruthy();
-    expect(screen.getByText(/份文档含扫描页/)).toBeTruthy();
+    // Plan6:解析质量表已迁 /parsing 归拢专屏(bid-review-parsing.dom.test.tsx 接管),
+    // 本页只留字段对照+确认门。
 
-    // 字段对照:族按钮 + 字段卡(已抽取/缺失 pill 与值)
-    expect(screen.getByRole("button", { name: /招标基准/ })).toBeTruthy();
+    // 字段对照:族按钮 + 字段卡(已抽取/缺失 pill 与值);findByRole 兼数据加载门
+    expect(
+      await screen.findByRole("button", { name: /招标基准/ }),
+    ).toBeTruthy();
     expect(await screen.findByText("tender.max_price")).toBeTruthy();
     expect(screen.getByText("8,000,000")).toBeTruthy();
     expect(screen.getByText("tender.boq_items")).toBeTruthy();

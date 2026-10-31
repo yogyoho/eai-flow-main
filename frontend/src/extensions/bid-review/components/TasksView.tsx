@@ -215,9 +215,9 @@ function VerdictCell({ task }: { task: TaskOut }) {
 /**
  * 操作列状态分派(spec §4.1;D3-A 裁决:行点击仅选中,跳转走操作列)。
  * awaiting_confirm → 去基准确认(baseline);done → 查看结果(workbench,
- * Plan 6 /results 拆分前暂路由);在途 → 查看进度(workbench);failed 的
- * 「重试解析」挂账 B8,落地前不渲染链接。链接 stopPropagation——行 onClick
- * 是选中,不得被操作列触发。
+ * Plan 6 /results 拆分前暂路由);在途 → 查看进度(/parsing 归拢专屏,Plan6
+ * spec §4.3);failed 的「重试解析」挂账 B8,落地前不渲染链接。链接
+ * stopPropagation——行 onClick 是选中,不得被操作列触发。
  */
 function ActionCell({ task }: { task: TaskOut }) {
   const link = (href: string, label: string) => (
@@ -238,7 +238,7 @@ function ActionCell({ task }: { task: TaskOut }) {
   if (task.status === "failed") {
     return <span className="unmapped-cell" title="重试端点(B8)落地前不提供">—</span>;
   }
-  return link(taskHref("workbench", task.id), "查看进度");
+  return link(taskHref("parsing", task.id), "查看进度");
 }
 
 /** 日期段用连字符 yyyy-MM-dd(用户定案 2026-10-16,zh-CN toLocaleString 是斜杠)。 */

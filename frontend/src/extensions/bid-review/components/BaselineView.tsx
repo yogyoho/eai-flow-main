@@ -3,11 +3,10 @@
 /**
  * 基准确认页(bid:page:baseline)。
  * EAI-CUSTOM (2026-10-30): 参照 docs/designs/2026-10-30-bid-review-ui.html 原型
- * s3(解析与字段抽取)/s4(基准确认卡点),在同一路由分区呈现:
- * - 解析质量表(s3 一期):engine_meta.docs 清单(kind/pages/chars/assets/status,
- *   pdf 真页码、docx 无页边界诚实 0→「—」;assets>0 行注 OCR 兜底);
+ * s4(基准确认卡点),字段对照在此分区呈现:
  * - 字段对照(s3/s4 一期):GET /tasks/{id}/baselines 行级快照 → 按首段路径族
  *   (tender/bid)分组,字段卡核对(值/出处/「查看原文」定位弹层)。
+ *   Plan6 (2026-10-31,spec §4.3):解析质量表已迁 /parsing 归拢专屏。
  * EAI-CUSTOM (2026-10-31 二期 spec §1.5/§二/§四):冲突裁定卡(多候选 radio +
  * 采纳 → adjudicate 端点;已裁定转pill)、置信 pill(高/低/未核验,quote 服务端
  * 核验为真信号)、字段中文名(labels 投影,path 降为 mono 小字)、确认门计数
@@ -27,7 +26,6 @@ import {
 } from "@/extensions/bid-review/api";
 // 共享词汇(Plan6 自本文件上移,ParsingView 同用;裁定交互仍留本文件)
 import {
-  type DocMeta,
   FAMILIES,
   familyOf,
   NO_LABELS,
@@ -35,9 +33,6 @@ import {
   confPill,
   fieldRows,
   formatVal,
-  KIND_LABEL,
-  roleLabel,
-  rolePillClass,
 } from "@/extensions/bid-review/components/baselineFields";
 import { DocLocateModal } from "@/extensions/bid-review/components/DocLocateModal";
 import { taskStatusPill } from "@/extensions/bid-review/components/primitives";
@@ -65,12 +60,6 @@ export function BaselineView({ taskId }: { taskId?: string | null }) {
   const [locate, setLocate] = useState<LocateTarget | null>(null);
   const [picks, setPicks] = useState<Record<string, number>>({});
   const adjudicate = useBidAdjudicate(taskId ?? "");
-
-  // 解析质量数据 = engine_meta.docs 清单(解析层落;v1 旧任务仅有 doc_id/role/text)
-  const docs = Array.isArray(task?.engine_meta?.docs)
-    ? (task.engine_meta.docs as DocMeta[])
-    : [];
-  const ocrDocs = docs.filter((d) => (d.assets ?? 0) > 0);
 
   // 冲突路径(全行并集;候选清单各行同源,取首行);已裁定路径不计未裁
   const conflictPaths = useMemo(() => {
@@ -225,95 +214,8 @@ export function BaselineView({ taskId }: { taskId?: string | null }) {
         </div>
       ) : null}
 
-      {/* ── 解析质量表(原型 s3 一期;数据=解析层 engine_meta.docs 清单)── */}
-      <div className="gate1-card" style={{ marginTop: 12 }}>
-        <div className="gate1-hd">
-          <div className="gate1-badge">
-            <svg className="ic" viewBox="0 0 24 24" aria-hidden>
-              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-              <path d="M14 2v6h6M16 13H8M16 17H8M10 9H8" />
-            </svg>
-          </div>
-          <div>
-            <h3>解析质量</h3>
-            <div className="hd-sub">
-              机器读了什么——上传材料解析清单(docx 无页边界,页数以「—」示)
-            </div>
-          </div>
-        </div>
-        <div style={{ overflowX: "auto" }}>
-          <table className="tbl">
-            <thead>
-              <tr>
-                <th>文件</th>
-                <th>角色</th>
-                <th>类型</th>
-                <th className="r">页数</th>
-                <th className="r">字符</th>
-                <th className="r">图片/扫描页</th>
-                <th>状态</th>
-              </tr>
-            </thead>
-            <tbody>
-              {docs.length === 0 ? (
-                <tr>
-                  <td colSpan={7} style={{ color: "var(--text-3)" }}>
-                    {taskQuery.isPending ? "任务加载中…" : "该任务无上传材料"}
-                  </td>
-                </tr>
-              ) : (
-                docs.map((d, idx) => (
-                  <tr key={`${d.doc_id ?? "doc"}-${idx}`}>
-                    <td className="mono" title={d.doc_id}>
-                      {d.doc_id ?? "—"}
-                    </td>
-                    <td>
-                      <span className={`pill ${rolePillClass(d.role)}`}>
-                        {roleLabel(d.role)}
-                      </span>
-                    </td>
-                    <td>{KIND_LABEL[d.kind ?? ""] ?? d.kind ?? "文本"}</td>
-                    <td className="r num">
-                      {(d.pages ?? 0) > 0 ? d.pages : "—"}
-                    </td>
-                    <td className="r num">
-                      {d.chars != null && d.chars > 0
-                        ? d.chars.toLocaleString()
-                        : typeof d.text === "string"
-                          ? d.text.length.toLocaleString()
-                          : "—"}
-                    </td>
-                    <td className="r num">{d.assets ?? 0}</td>
-                    <td>
-                      <span
-                        className={`pill ${
-                          d.status === "parsed" ? "pill-ok" : "pill-warn"
-                        }`}
-                      >
-                        {d.status === "parsed"
-                          ? "已解析"
-                          : (d.status ?? "待解析")}
-                      </span>
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
-        {ocrDocs.length > 0 ? (
-          <div className="drawer-ft">
-            <svg className="ic" viewBox="0 0 24 24" aria-hidden>
-              <circle cx="12" cy="12" r="10" />
-              <path d="M12 16v-4M12 8h.01" />
-            </svg>
-            <span>
-              {ocrDocs.length} 份文档含扫描页/内嵌图片,已 OCR
-              转写并入检索文本(转写可能有误,字段核对时留意)。
-            </span>
-          </div>
-        ) : null}
-      </div>
+      {/* ── 解析质量表已迁 /parsing 归拢专屏(Plan6,spec §4.3;
+          bid-review-parsing.dom.test.tsx 接管断言)── */}
 
       {/* ── 字段对照 + 确认(s4 一期;baselines 行级快照)────────────── */}
       <div className="gate1-card">
