@@ -205,6 +205,37 @@ describe("computeHeadings", () => {
     expect(out[0]!.text).toBe("概述");
     expect(out[0]!.section).toBe(2); // 前导 1 + 空标题序数 1
   });
+
+  // EAI-CUSTOM (全文操作 M2 Chunk 2): 媒体块（image 等 BlockNote 无 content 数组的
+  // 块类型）导出 markdown 必产非空行 → 后端记前导桶；前端只查文本会漏计（差 1 桶错位）。
+  test("媒体块（无 content 数组）视同含文本前导块", () => {
+    const imageBlock = {
+      type: "image",
+      id: "img1",
+      props: {},
+      children: [],
+    };
+    const doc = [imageBlock, block("heading", "h1", "概述")];
+    const out = computeHeadings(doc);
+    expect(out.length).toBe(1);
+    expect(out[0]!.section).toBe(1); // 修复前为 0，与后端 split_sections 差 1 桶
+  });
+
+  test("媒体块在标题之后不影响 section 下标", () => {
+    const imageBlock = {
+      type: "image",
+      id: "img2",
+      props: {},
+      children: [],
+    };
+    const doc = [
+      block("heading", "h1", "概述"),
+      imageBlock,
+      block("heading", "h2", "设计参数"),
+    ];
+    const out = computeHeadings(doc);
+    expect(out.map((h) => h.section)).toEqual([0, 1]);
+  });
 });
 
 // ─── parseOperations ──────────────────────────────────────────────────

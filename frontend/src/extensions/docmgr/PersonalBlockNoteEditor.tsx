@@ -334,7 +334,10 @@ export function computeHeadings(doc: AnchorBlock[]): HeadingRef[] {
   for (const block of doc) {
     if (!block) continue;
     if (block.type === "heading") break;
-    if (getBlockText(block).trim()) {
+    // EAI-CUSTOM (全文操作 M2 Chunk 2): 无 content 数组的块（image/file 等媒体块，BlockNote
+    // 无顶层 content 的块类型）导出 markdown 必产非空行 → 后端 split_sections 记前导桶；
+    // 前端只查文本会漏计（首节 section 与后端差 1 桶错位），故视同「含文本非标题块」。
+    if (!Array.isArray(block.content) || getBlockText(block).trim()) {
       preamble = 1;
       break;
     }

@@ -127,6 +127,40 @@ export type DocAITransformEvent =
       message?: string;
     };
 
+// EAI-CUSTOM (全文操作 M2): /ai/review 审查发现（contracts/docmgr_findings.v1.json 对应）。
+// fix_op 为可选整节修正操作（op 恒为 replace_section），复用既有 applyOperations 通道回灌。
+export interface DocAIFinding {
+  id: string;
+  severity: "error" | "warn" | "info";
+  anchor: string;
+  excerpt: string;
+  problem: string;
+  suggestion: string;
+  fix_op?: { op: "replace_section"; anchor: string; content: string };
+}
+
+// EAI-CUSTOM (全文操作 M2): /ai/review NDJSON 事件。注意空表短路路径（consistency/numbering
+// 全文扫描为空表）的 done 无 summary 键（仅 {type,total,failed,skipped,message}）——
+// 消费端读 summary 处必须容错（?? {error:0, warn:0, info:0}）。
+export type DocAIReviewEvent =
+  | {
+      type: "section_start";
+      index: number;
+      total: number;
+      title: string;
+      skipped?: boolean;
+    }
+  | { type: "finding"; index: number; finding: DocAIFinding }
+  | { type: "section_error"; index: number; message: string }
+  | {
+      type: "done";
+      total: number;
+      failed: number[];
+      skipped: number[];
+      summary?: { error: number; warn: number; info: number };
+      message?: string;
+    };
+
 function getCsrfToken(): string | null {
   if (typeof document === "undefined") return null;
   const match = /(?:^|;\s*)csrf_token=([^;]*)/.exec(document.cookie);
@@ -883,6 +917,65 @@ export const docmgrApi = {
       throw new ApiError(
         response.status,
         `AI transform failed: ${response.status} ${err}`,
+      );
+    }
+
+    const reader = response.body?.getReader();
+    if (!reader) throw new ApiError(500, "No response body");
+
+    const decoder = new TextDecoder();
+    let buffer = "";
+
+    try {
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split("\n");
+        buffer = lines.pop() ?? "";
+        for (const line of lines) {
+          const trimmed = line.trim();
+          if (!trimmed) continue;
+          try {
+            onEvent(JSON.parse(trimmed) as T);
+          } catch {
+            /* skip malformed line */
+          }
+        }
+      }
+    } finally {
+      void reader.cancel();
+    }
+  },
+
+  // EAI-CUSTOM (全文操作 M2): docmgr /ai/review 的 NDJSON 事件流（每行一个 JSON 事件，
+  // 无 SSE data: 前缀）。克隆 aiTransformStream 骨架（withCsrf + getReader + 行缓冲 +
+  // trim 空行跳过 + AbortSignal），仅 URL 与请求体不同——审查不收 sections，固定全文档。
+  aiReviewStream: async <T>(
+    data: {
+      thread_id: string;
+      rel_path: string;
+      review_type: string;
+      instruction?: string;
+      model_name?: string;
+      content: string;
+    },
+    onEvent: (event: T) => void,
+    signal?: AbortSignal,
+  ): Promise<void> => {
+    const response = await fetch(`${API_BASE}/docmgr/ai/review`, {
+      method: "POST",
+      headers: withCsrf({ "Content-Type": "application/json" }, "POST"),
+      body: JSON.stringify(data),
+      signal,
+      credentials: "include",
+    });
+
+    if (!response.ok) {
+      const err = await response.text().catch(() => "Unknown error");
+      throw new ApiError(
+        response.status,
+        `AI review failed: ${response.status} ${err}`,
       );
     }
 

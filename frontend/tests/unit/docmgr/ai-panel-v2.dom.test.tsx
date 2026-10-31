@@ -18,6 +18,7 @@ const m = rs.hoisted(() => ({
   submit: rs.fn(),
   stop: rs.fn(),
   startTask: rs.fn(),
+  startReview: rs.fn(),
   writeText: rs.fn(() => Promise.resolve()),
   streamState: { isLoading: false, messages: [] as unknown[] },
 }));
@@ -79,6 +80,32 @@ rs.mock("@/extensions/docmgr/DocAITaskArea", () => ({
   }),
 }));
 
+// EAI-CUSTOM (全文操作 M2 Chunk 2): 审查任务区整体替换（面板层不碰真实审查流）——
+// REVIEW_PRESETS 按 Chunk 2 冻结版复刻（宫格第二组消费它），startReview 走受控 spy。
+rs.mock("@/extensions/docmgr/DocAIReviewArea", () => ({
+  REVIEW_PRESETS: [
+    { id: "consistency", label: "术语一致性审查" },
+    { id: "numbering", label: "编号连续性审查" },
+    { id: "units", label: "公式单位审查" },
+  ],
+  DocAIReviewArea: () => null,
+  useDocAIReview: () => ({
+    state: null,
+    busy: false,
+    undoBlocked: false,
+    hasSnapshot: false,
+    markUserEdited: rs.fn(),
+    startReview: m.startReview,
+    cancel: rs.fn(),
+    applyFix: rs.fn(),
+    applyAllFixes: rs.fn(),
+    undoAllFixes: rs.fn(),
+    dismissFinding: rs.fn(),
+    restoreFinding: rs.fn(),
+    reset: rs.fn(),
+  }),
+}));
+
 // 复审#1 fixture：index（块下标）与 section（后端 split_sections 桶下标）刻意
 // 错开——有前导节（preamble=1）时首标题 section=1，证明面板投递/展示用 section 空间。
 const HEADINGS = [
@@ -132,6 +159,7 @@ describe("DocAIAgentPanel v2 空态（方案三）", () => {
     m.streamState.isLoading = false;
     m.streamState.messages = [];
     m.startTask.mockClear();
+    m.startReview.mockClear();
     Object.defineProperty(navigator, "clipboard", {
       value: { writeText: m.writeText },
       configurable: true,
@@ -196,6 +224,34 @@ describe("DocAIAgentPanel v2 空态（方案三）", () => {
     expect(await screen.findByText(/仅支持全文执行/)).not.toBeNull();
     expect(screen.getByText("全部章节")).not.toBeNull();
     expect(screen.queryByText(/^§/)).toBeNull();
+  });
+
+  // EAI-CUSTOM (全文操作 M2 Chunk 2): 宫格第二组「深度审查」——审查卡选中断言 +
+  // 「开始执行」走 startReview（审查固定全文档，sections 不传）。
+  it("深度审查卡：选中出 launcher（全文档审查提示），开始执行走 startReview", async () => {
+    render(<DocAIAgentPanel {...baseProps(makeEditorRef())} />);
+    expect(screen.getByText("深度审查")).not.toBeNull();
+    fireEvent.click(screen.getByText("术语一致性审查"));
+    expect(await screen.findByText(/全文档审查/)).not.toBeNull();
+    fireEvent.click(screen.getByText("开始执行"));
+    await waitFor(() => expect(m.startReview).toHaveBeenCalled());
+    expect(m.startReview).toHaveBeenCalledWith("consistency");
+
+    // 跨组互斥：改写卡与审查卡共享同一选中态（卡按钮经 label span closest("button") 取）
+    fireEvent.click(screen.getByText("全文润色"));
+    expect(
+      screen
+        .getByText("术语一致性审查")
+        .closest("button")!
+        .getAttribute("aria-pressed"),
+    ).toBe("false");
+    // 改写卡文案在 launcher 标题重复出现，用 desc 文案唯一定位卡片按钮
+    expect(
+      screen
+        .getByText("逐节提升表达，保留结构")
+        .closest("button")!
+        .getAttribute("aria-pressed"),
+    ).toBe("true");
   });
 });
 

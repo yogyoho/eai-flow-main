@@ -7,8 +7,11 @@ import {
   FileText,
   Languages,
   List,
+  ListOrdered,
   Pencil,
   RefreshCw,
+  Ruler,
+  ScanText,
   Sparkles,
   SquareCheckBig,
   Trash2,
@@ -32,6 +35,11 @@ import { cn } from "@/lib/utils";
 
 import { docmgrApi } from "../api";
 
+import {
+  DocAIReviewArea,
+  REVIEW_PRESETS,
+  useDocAIReview,
+} from "./DocAIReviewArea";
 import { DocAITaskArea, PRESETS, useDocAITask } from "./DocAITaskArea";
 import type {
   PersonalBlockNoteEditorRef,
@@ -288,6 +296,17 @@ const QCARD_META: Record<
   summary: { icon: FileText, desc: "生成摘要卡，可插入文末" },
 };
 
+// EAI-CUSTOM (全文操作 M2 Chunk 2): 审查卡元数据——第二组「深度审查」，与改写卡
+// 共用卡片样式；审查固定全文档（不收 sections），图标沿用 lucide 内联习语。
+const REVIEW_QCARD_META: Record<
+  (typeof REVIEW_PRESETS)[number]["id"],
+  { icon: LucideIcon; desc: string }
+> = {
+  consistency: { icon: ScanText, desc: "跨节术语变体检查" },
+  numbering: { icon: ListOrdered, desc: "跳号 · 重复编号检查" },
+  units: { icon: Ruler, desc: "公式单位规范检查" },
+};
+
 // EAI-CUSTOM (面板 v2 方案三): 空态 = 快捷指令宫格 + launcher 预览条。
 // 交互：点宫格选中 → 展开 launcher；目标 pills「全部章节」默认选中，
 // 与任选节互斥（多选节 = 全部之外的任意组合）；「开始执行」投递
@@ -304,7 +323,13 @@ function EmptyState({
   const [selected, setSelected] = useState<string | null>(null);
   const [sections, setSections] = useState<number[]>([]);
   const shown = headings.slice(0, 8);
-  const selectedPreset = PRESETS.find((p) => p.id === selected);
+  // EAI-CUSTOM (全文操作 M2 Chunk 2): 两组卡共用同一 selected → 跨组互斥
+  //（改写卡与审查卡二选一，选中一组即取消另一组）。
+  const selectedPreset = [...PRESETS, ...REVIEW_PRESETS].find(
+    (p) => p.id === selected,
+  );
+  const isReview =
+    !!selectedPreset && REVIEW_PRESETS.some((p) => p.id === selectedPreset.id);
 
   const toggleSection = (index: number) =>
     setSections((prev) =>
@@ -319,6 +344,43 @@ function EmptyState({
         : "border-border bg-background text-muted-foreground hover:border-primary/40",
     );
 
+  // EAI-CUSTOM (全文操作 M2 Chunk 2): 卡片渲染两组共用——普通函数返回 JSX（无状态
+  // 按钮，规避内联组件型 remount 陷阱），两组仅元数据不同。
+  const renderCard = (
+    p: { id: string; label: string },
+    meta: { icon: LucideIcon; desc: string },
+  ) => {
+    const on = selected === p.id;
+    const Icon = meta.icon;
+    return (
+      <button
+        key={p.id}
+        type="button"
+        disabled={disabled}
+        aria-pressed={on}
+        onClick={() => setSelected(on ? null : p.id)}
+        className={cn(
+          "flex items-start gap-2 rounded-lg border p-2.5 text-left transition-colors disabled:cursor-not-allowed disabled:opacity-40",
+          on
+            ? "border-primary/50 bg-primary/10 ring-primary/15 ring-2"
+            : "border-border hover:border-primary/40 hover:bg-primary/5",
+        )}
+      >
+        <span className="bg-primary/10 text-primary flex h-[30px] w-[30px] shrink-0 items-center justify-center rounded-lg">
+          <Icon className="h-4 w-4" />
+        </span>
+        <span className="min-w-0">
+          <span className="text-foreground block text-[12.5px] font-semibold">
+            {p.label}
+          </span>
+          <span className="text-muted-foreground block text-[11px] leading-snug">
+            {meta.desc}
+          </span>
+        </span>
+      </button>
+    );
+  };
+
   return (
     <div className="flex h-full flex-col items-center overflow-y-auto px-4 py-6">
       <div className="w-full space-y-3">
@@ -331,38 +393,19 @@ function EmptyState({
           </div>
         </div>
         <div className="grid grid-cols-2 gap-2">
-          {PRESETS.map((p) => {
-            const meta = QCARD_META[p.id];
-            const on = selected === p.id;
-            const Icon = meta.icon;
-            return (
-              <button
-                key={p.id}
-                type="button"
-                disabled={disabled}
-                aria-pressed={on}
-                onClick={() => setSelected(on ? null : p.id)}
-                className={cn(
-                  "flex items-start gap-2 rounded-lg border p-2.5 text-left transition-colors disabled:cursor-not-allowed disabled:opacity-40",
-                  on
-                    ? "border-primary/50 bg-primary/10 ring-primary/15 ring-2"
-                    : "border-border hover:border-primary/40 hover:bg-primary/5",
-                )}
-              >
-                <span className="bg-primary/10 text-primary flex h-[30px] w-[30px] shrink-0 items-center justify-center rounded-lg">
-                  <Icon className="h-4 w-4" />
-                </span>
-                <span className="min-w-0">
-                  <span className="text-foreground block text-[12.5px] font-semibold">
-                    {p.label}
-                  </span>
-                  <span className="text-muted-foreground block text-[11px] leading-snug">
-                    {meta.desc}
-                  </span>
-                </span>
-              </button>
-            );
-          })}
+          {PRESETS.map((p) => renderCard(p, QCARD_META[p.id]))}
+        </div>
+
+        {/* EAI-CUSTOM (全文操作 M2 Chunk 2): 宫格第二组「深度审查」——审查只读不改文，
+            固定全文档执行（请求体无 sections）。 */}
+        <div className="px-0.5">
+          <div className="text-foreground text-sm font-semibold">深度审查</div>
+          <div className="text-muted-foreground mt-0.5 text-xs">
+            只读检查全文，问题逐条给出修复建议
+          </div>
+        </div>
+        <div className="grid grid-cols-2 gap-2">
+          {REVIEW_PRESETS.map((p) => renderCard(p, REVIEW_QCARD_META[p.id]))}
         </div>
 
         {selectedPreset && (
@@ -373,37 +416,46 @@ function EmptyState({
                 {selectedPreset.label}
               </span>
             </div>
-            <div className="mt-2 flex flex-wrap gap-1.5">
-              <button
-                type="button"
-                disabled={disabled}
-                aria-pressed={sections.length === 0}
-                onClick={() => setSections([])}
-                className={pillCls(sections.length === 0)}
-              >
-                全部章节
-              </button>
-              {shown.map((h) => (
-                <button
-                  key={h.index}
-                  type="button"
-                  disabled={disabled}
-                  aria-pressed={sections.includes(h.section)}
-                  title={h.text}
-                  onClick={() => toggleSection(h.section)}
-                  className={cn(
-                    pillCls(sections.includes(h.section)),
-                    "max-w-[9.5rem] truncate",
-                  )}
-                >
-                  {`§${h.section + 1} ${h.text}`}
-                </button>
-              ))}
-            </div>
-            {headings.length === 0 && (
-              <div className="text-muted-foreground/70 mt-1.5 text-[11px]">
-                未检测到章节标题，仅支持全文执行。
+            {isReview ? (
+              // 审查卡 launcher：无节 pills——固定全文档审查。
+              <div className="text-muted-foreground/80 mt-2 text-[11px]">
+                全文档审查，不区分章节；审出问题逐条确认修复，可整批撤销。
               </div>
+            ) : (
+              <>
+                <div className="mt-2 flex flex-wrap gap-1.5">
+                  <button
+                    type="button"
+                    disabled={disabled}
+                    aria-pressed={sections.length === 0}
+                    onClick={() => setSections([])}
+                    className={pillCls(sections.length === 0)}
+                  >
+                    全部章节
+                  </button>
+                  {shown.map((h) => (
+                    <button
+                      key={h.index}
+                      type="button"
+                      disabled={disabled}
+                      aria-pressed={sections.includes(h.section)}
+                      title={h.text}
+                      onClick={() => toggleSection(h.section)}
+                      className={cn(
+                        pillCls(sections.includes(h.section)),
+                        "max-w-[9.5rem] truncate",
+                      )}
+                    >
+                      {`§${h.section + 1} ${h.text}`}
+                    </button>
+                  ))}
+                </div>
+                {headings.length === 0 && (
+                  <div className="text-muted-foreground/70 mt-1.5 text-[11px]">
+                    未检测到章节标题，仅支持全文执行。
+                  </div>
+                )}
+              </>
             )}
             <div className="mt-2.5 flex items-center gap-2">
               <Button
@@ -411,16 +463,20 @@ function EmptyState({
                 className="h-7 px-3 text-xs"
                 disabled={disabled}
                 onClick={() =>
-                  onStart(
-                    selectedPreset.id,
-                    sections.length > 0 ? sections : undefined,
-                  )
+                  isReview
+                    ? onStart(selectedPreset.id)
+                    : onStart(
+                        selectedPreset.id,
+                        sections.length > 0 ? sections : undefined,
+                      )
                 }
               >
                 开始执行
               </Button>
               <span className="text-muted-foreground/80 text-[11px]">
-                逐节出预览，可随时取消；格式类自动应用可撤销。
+                {isReview
+                  ? "审查只读不改文；发现问题可逐条或整批修复。"
+                  : "逐节出预览，可随时取消；格式类自动应用可撤销。"}
               </span>
             </div>
           </div>
@@ -772,6 +828,11 @@ export default function DocAIAgentPanel({
   // ── 全文操作任务通道（EAI-CUSTOM M1） ─────────────────────────────
   const docTask = useDocAITask({ editorRef, threadId, docRelPath, modelName });
 
+  // EAI-CUSTOM (全文操作 M2 Chunk 2): 审查通道——审查与改写共用一把互斥锁
+  //（taskBusy），宫格跨组互斥选择之外的第二层互斥：任一在跑即禁发送/宫格/输入。
+  const review = useDocAIReview({ editorRef, threadId, docRelPath, modelName });
+  const taskBusy = docTask.busy || review.busy;
+
   // ── model selector ────────────────────────────────────────────────
   useEffect(() => {
     if (!modelMenuOpen) return;
@@ -831,7 +892,7 @@ export default function DocAIAgentPanel({
   // 返回 true = 失败（send 路径需恢复草稿）。
   const submitMessage = useCallback(
     async (message: string): Promise<boolean> => {
-      if (docTask.busy) {
+      if (taskBusy) {
         setError("全文任务进行中，请先完成或取消再发送对话");
         return true;
       }
@@ -897,7 +958,7 @@ export default function DocAIAgentPanel({
       editorRef,
       threadId,
       docRelPath,
-      docTask.busy,
+      taskBusy,
     ],
   );
 
@@ -1085,8 +1146,8 @@ export default function DocAIAgentPanel({
   // EAI-CUSTOM (面板 v2): 重新生成 = 重发最后一条用户消息（新回合）。
   const retryLast = useCallback(() => {
     const last = userMessages[userMessages.length - 1];
-    if (last && !streamLoading && !docTask.busy) void submitMessage(last);
-  }, [userMessages, streamLoading, docTask.busy, submitMessage]);
+    if (last && !streamLoading && !taskBusy) void submitMessage(last);
+  }, [userMessages, streamLoading, taskBusy, submitMessage]);
 
   return (
     <div className="bg-background flex h-full w-full flex-col">
@@ -1123,9 +1184,15 @@ export default function DocAIAgentPanel({
           userMessages.length === 0 && allMessages.length === 0 ? (
             /* EAI-CUSTOM (面板 v2 方案三): 空态 = 快捷宫格 + launcher 预览条 */
             <EmptyState
-              disabled={isCreating || docTask.busy}
+              disabled={isCreating || taskBusy}
               headings={headingSnapshot}
-              onStart={(op, sections) => void docTask.startTask(op, sections)}
+              onStart={(op, sections) => {
+                // EAI-CUSTOM (全文操作 M2 Chunk 2): 审查 op 走 startReview（固定
+                // 全文档，不收 sections），改写 op 仍走 startTask。
+                if (REVIEW_PRESETS.some((p) => p.id === op))
+                  void review.startReview(op);
+                else void docTask.startTask(op, sections);
+              }}
             />
           ) : (
             <div className="space-y-4 p-4">
@@ -1260,9 +1327,13 @@ export default function DocAIAgentPanel({
           </div>
         ) : (
           <EmptyState
-            disabled={docTask.busy}
+            disabled={taskBusy}
             headings={headingSnapshot}
-            onStart={(op, sections) => void docTask.startTask(op, sections)}
+            onStart={(op, sections) => {
+              if (REVIEW_PRESETS.some((p) => p.id === op))
+                void review.startReview(op);
+              else void docTask.startTask(op, sections);
+            }}
           />
         )}
       </div>
@@ -1295,6 +1366,27 @@ export default function DocAIAgentPanel({
         />
       )}
 
+      {/* 审查任务区（EAI-CUSTOM 全文操作 M2 Chunk 2）——与任务区同槽相邻挂载 */}
+      {review.state && (
+        <DocAIReviewArea
+          state={review.state}
+          busy={review.busy}
+          undoBlocked={review.undoBlocked}
+          hasSnapshot={review.hasSnapshot}
+          onLocate={(anchor) => {
+            const ed = editorRef.current;
+            return ed ? ed.scrollToAnchor(anchor) : false;
+          }}
+          onApplyFix={review.applyFix}
+          onApplyAllFixes={review.applyAllFixes}
+          onUndoAllFixes={review.undoAllFixes}
+          onDismissFinding={review.dismissFinding}
+          onRestoreFinding={review.restoreFinding}
+          onCancel={review.cancel}
+          onReset={review.reset}
+        />
+      )}
+
       {/* Input area */}
       <div className="border-border shrink-0 border-t p-3">
         {error && (
@@ -1316,7 +1408,7 @@ export default function DocAIAgentPanel({
             onKeyDown={handleKeyDown}
             placeholder="输入指令…"
             rows={1}
-            disabled={isCreating || submitting || docTask.busy}
+            disabled={isCreating || submitting || taskBusy}
             className="text-foreground placeholder:text-muted-foreground max-h-[120px] w-full min-w-0 resize-none border-none bg-transparent text-sm leading-relaxed outline-none"
           />
           <div className="mt-1.5 flex items-center justify-between">
@@ -1425,7 +1517,7 @@ export default function DocAIAgentPanel({
                 }
               }}
               disabled={
-                isCreating || submitting || (docTask.busy && !streamLoading)
+                isCreating || submitting || (taskBusy && !streamLoading)
               }
               title={streamLoading ? "停止" : "发送"}
               aria-label={streamLoading ? "停止" : "发送"}
