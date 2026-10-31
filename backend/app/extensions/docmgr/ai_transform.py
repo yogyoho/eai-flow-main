@@ -1,9 +1,15 @@
-"""EAI-CUSTOM: docmgr 全文操作 M1（spec: docs/superpowers/specs/2026-10-29-docmgr-ai-fulltext-ops-design.md §4）。
+"""EAI-CUSTOM: docmgr 全文操作 M1 + 审查 M2（spec: docs/superpowers/specs/2026-10-29-docmgr-ai-fulltext-ops-design.md §4/§5）。
 
 - 服务端零读盘：content 请求体直传，thread_id/rel_path 仅审计日志用（无越权读通道、无 PUT-read 竞态）。
 - 模型装配走 create_chat_model（同 routers.py ai-edit 先例），max_tokens 显式 8192 防 provider 默认 4096 截断。
-- 产出永远是 DocOperation[]（新增 replace_section）；分节引擎为确定性纯函数，同 content 必得同边界。
+- M1 产出永远是 DocOperation[]（新增 replace_section）；分节引擎为确定性纯函数，同 content 必得同边界。
 - 无损性（T0 bug-3600）：split("\\n") 分桶后每非末桶/非末段补回边界换行符，"".join(各节) == 原文。
+- M2 审查（/ai/review）：只报告不改文，产出 findings（契约 contracts/docmgr_findings.v1.json）；
+  consistency/numbering 两遍法（全文扫描建全局对照表→逐节携表审查），units/custom 单遍逐节；
+  findings 过滤（severity 白名单外降级 warn / 缺字段丢条 / excerpt 截断 120 字）在服务端权威收口，
+  fixed_section → fix_op（replace_section）复用既有 applyOperations 回灌，零新应用机制。
+- I2 铁律（审查侧同样覆盖）：每个模型调用（含两遍法的扫描第一遍）都 wait_for + except，
+  provider 挂起不得变成 200 + 零事件 + 永久悬挂。
 - 升级注意：collab_ai_chat.py 的裸 httpx 装配是反面教材（无 override / 无 max_tokens / 错误静默），勿回抄。
 """
 
@@ -504,6 +510,242 @@ async def ai_transform(
         if message:
             done["message"] = message
         yield _ndjson(done)
+
+    return StreamingResponse(
+        generate(),
+        media_type="application/x-ndjson",
+        headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
+    )
+
+
+# ── 审查（M2）─────────────────────────────────────────────────────────
+
+
+# EAI-CUSTOM (全文操作 M2): 审查类型与 severity 白名单；excerpt 契约上限 120 字（服务端截断）
+_ALL_REVIEW_TYPES = {"consistency", "numbering", "units", "custom"}
+_REVIEW_SEVERITIES = ("error", "warn", "info")
+_REVIEW_EXCERPT_MAX = 120
+
+_NUMBERING_SCAN_PROMPT = """你是编号审校助手。扫描下方文档全文，提取标题编号与正文中的显式编号序列（章节号如 1 / 1.1、中文序号如 一、（一）、条款号、图表编号等），按所在章节分组。
+
+只输出 JSON 数组，格式：[{{"title": "编号所在章节标题", "numbers": ["1", "1.1", "1.2"]}}]
+没有发现任何编号序列时输出 []。不要输出解释。
+
+**文档全文**：
+{doc}"""
+
+_REVIEW_FOCUS: dict[str, str] = {
+    "consistency": "术语一致性",
+    "numbering": "编号连续性",
+    "units": "公式单位规范",
+    "custom": "用户指定关注点",
+}
+
+_REVIEW_RULES: dict[str, str] = {
+    "consistency": "对照下方术语表，逐句检查本节是否仍残留术语表右列的变体术语；残留即报，术语表之外的措辞差异不报。",
+    "numbering": "对照下方全文编号清单，检查本节标题与正文中的编号：跳号、断档、重复、层级错乱均报。",
+    "units": "检查本节公式与数值的单位使用规范：单位缺失、同一物理量前后单位不统一、量纲或单位符号书写不一致均报；只报告问题，不要为改格式而改文。",
+}
+
+# EAI-CUSTOM (全文操作 M2): fixed_section 鼓励语仅 consistency/units 注入；numbering/custom 的 prompt 不给该字段提示
+_REVIEW_FIX_HINT = """
+   - 可选 "fixed_section"：仅当你确能给出该节的完整修正版 markdown 全文时提供；给不出完整修正节就不要提供该字段；只修问题本身，不要为改格式而改文"""
+
+_REVIEW_SECTION_PROMPT = """你是文档审校助手。下面是一篇文档中的一节，请只审查这一节中的「{focus}」问题。
+
+**审查要求**：{rules}
+{context_block}
+**输出约束**：
+1. 只输出 JSON 数组；未发现任何问题时输出 []
+2. 数组每个元素是一个 JSON 对象，字段如下（id 由服务端生成，不要输出 id 字段）：
+   - "severity"："error"=确定错误/歧义；"warn"=疑似不一致；"info"=建议级
+   - "anchor"：问题所在节标题，固定填下方给出的「本节标题」
+   - "excerpt"：问题原文片段，从原文逐字摘录，≤120 字，不得改写
+   - "problem"：问题描述（一句话）
+   - "suggestion"：修改建议（一句话）{fix_hint}
+3. 不要输出解释、前言、结语，也不要用 ``` 围栏包裹
+
+**本节标题**：{title}
+**本节内容**：
+{section}"""
+
+
+class AIReviewRequest(BaseModel):
+    thread_id: str = Field(..., description="仅审计日志；服务端零读盘")
+    rel_path: str = Field(..., description="仅审计日志；服务端零读盘")
+    review_type: str = Field(..., description="consistency | numbering | units | custom")
+    instruction: str | None = Field(None, description="custom 审查指令；review_type=custom 时必填")
+    model_name: str | None = Field(None, description="模型覆盖，缺省走 Settings 默认")
+    content: str = Field(..., min_length=1, description="面板当前全文 markdown（请求体直传）")
+
+
+def _numbering_block(table: list[dict]) -> str:
+    if not table:
+        return ""
+    rows = "\n".join(f"- 「{t['title']}」：{'、'.join(t['numbers'])}" for t in table)
+    return f"\n**全文编号清单（审查对照基准）**：\n{rows}\n"
+
+
+async def _scan_numbering(model, doc: str) -> list[dict]:
+    """编号审查第一遍：全文提编号清单，返回 [{title, numbers}]；超时/异常/解析失败一律按空表处理（调用方空表短路）。
+
+    手法与 _scan_terminology 同款（regex 提取 + json.loads + 防御过滤）；I2：首个 yield 之前的
+    模型调用必须 wait_for + except，否则 provider 挂起会变成 200 + 零事件 + 永久悬挂。
+    """
+    try:
+        resp = await asyncio.wait_for(model.ainvoke(_NUMBERING_SCAN_PROMPT.format(doc=doc)), timeout=SUMMARY_TIMEOUT_SECONDS)
+    except Exception:
+        logger.warning("docmgr numbering scan failed, treated as empty", exc_info=True)
+        return []
+    m = re.search(r"\[[\s\S]*\]", _extract_ai_response_text(resp.content))
+    if not m:
+        return []
+    try:
+        data = json.loads(m.group(0))
+    except json.JSONDecodeError:
+        return []
+    out: list[dict] = []
+    for item in data if isinstance(data, list) else []:
+        if isinstance(item, dict) and isinstance(item.get("title"), str) and isinstance(item.get("numbers"), list):
+            numbers = [str(v) for v in item["numbers"] if isinstance(v, (str, int)) and str(v).strip()]
+            if numbers:
+                out.append({"title": item["title"], "numbers": numbers})
+    return out
+
+
+def _parse_findings(text: str) -> list | None:
+    """模型输出 → JSON 数组（复用 _scan_terminology 手法：regex 提取 + json.loads）；解析失败/非 list 返回 None（调用方按节失败处理）。"""
+    m = re.search(r"\[[\s\S]*\]", text)
+    if not m:
+        return None
+    try:
+        data = json.loads(m.group(0))
+    except json.JSONDecodeError:
+        return None
+    return data if isinstance(data, list) else None
+
+
+def _normalize_finding(item, review_type: str, section_index: int, n: int, section_title: str) -> dict | None:
+    """契约过滤（EAI-CUSTOM 全文操作 M2，contracts/docmgr_findings.v1.json）：
+
+    - 缺任一 required 字段（severity/anchor/excerpt/problem/suggestion；id 服务端生成不要求模型给）→ 丢整条 + warning
+    - severity 白名单外降级 warn
+    - excerpt 截断到 120 字
+    - anchor 服务端权威覆写为节标题（契约定义 anchor=节标题；模型回显不可靠，覆写保证 scrollToAnchor 与 fix_op 同源）
+    - fixed_section 非空字符串 → 附 fix_op（replace_section；content 走 _strip_markdown_fence 兜 fence 包裹）
+    - 返回 None = 该条被丢弃
+    """
+    if not isinstance(item, dict):
+        logger.warning("docmgr ai_review finding dropped: not a dict (section %s #%s)", section_index, n)
+        return None
+    missing = [k for k in ("severity", "anchor", "excerpt", "problem", "suggestion") if not isinstance(item.get(k), str)]
+    if missing:
+        logger.warning("docmgr ai_review finding dropped: missing %s (section %s #%s)", missing, section_index, n)
+        return None
+    severity = item["severity"] if item["severity"] in _REVIEW_SEVERITIES else "warn"
+    finding: dict = {
+        "id": f"{review_type}-{section_index}-{n}",
+        "severity": severity,
+        "anchor": section_title,
+        "excerpt": item["excerpt"][:_REVIEW_EXCERPT_MAX],
+        "problem": item["problem"],
+        "suggestion": item["suggestion"],
+    }
+    fixed = item.get("fixed_section")
+    if isinstance(fixed, str) and fixed.strip():
+        # EAI-CUSTOM (全文操作 M2): 整节修正 → DocOperation 复用（修复 = applyOperations 原样回灌，spec §5）
+        finding["fix_op"] = {"op": "replace_section", "anchor": section_title, "content": _strip_markdown_fence(fixed)}
+    return finding
+
+
+@router.post("/ai/review")
+async def ai_review(
+    request: AIReviewRequest,
+    current_user: CurrentUser = Depends(_doc_perm),  # EAI-CUSTOM: 权限门同 transform
+):
+    if request.review_type not in _ALL_REVIEW_TYPES:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"Unknown review_type: {request.review_type}. Must be one of: {sorted(_ALL_REVIEW_TYPES)}")
+    if request.review_type == "custom" and not (request.instruction or "").strip():
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="custom 审查必须提供 instruction")
+    if len(request.content) > MAX_CONTENT_CHARS:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"文档过长（>{MAX_CONTENT_CHARS} 字符），请分段处理")
+    model = create_chat_model(name=request.model_name, thinking_enabled=False, model_overrides={"max_tokens": 8192})
+    sections = split_sections(request.content)
+    if len(sections) > MAX_SECTIONS:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"分节数超过上限 {MAX_SECTIONS}，请分段处理")
+    logger.info(
+        "docmgr ai_review user=%s type=%s thread=%s rel=%s sections=%d chars=%d",
+        getattr(current_user, "id", "?"),
+        request.review_type,
+        request.thread_id,
+        request.rel_path,
+        len(sections),
+        len(request.content),
+    )
+
+    async def generate() -> AsyncIterator[str]:
+        failed: list[int] = []
+        skipped: list[int] = []
+        summary = {"error": 0, "warn": 0, "info": 0}
+        # EAI-CUSTOM (全文操作 M2): 两遍法先全文扫描建全局对照表；空表短路 done total=0
+        # （同 transform terminology 短路先例——逐节空转审查是无意义 N 次模型调用）
+        context_block = ""
+        if request.review_type == "consistency":
+            table = await _scan_terminology(model, request.content)
+            if not table:
+                yield _ndjson({"type": "done", "total": 0, "failed": [], "skipped": [], "message": "未发现术语变体"})
+                return
+            context_block = _terminology_block(table)
+        elif request.review_type == "numbering":
+            numbering = await _scan_numbering(model, request.content)
+            if not numbering:
+                yield _ndjson({"type": "done", "total": 0, "failed": [], "skipped": [], "message": "未提取到编号清单"})
+                return
+            context_block = _numbering_block(numbering)
+        rules = _REVIEW_RULES.get(request.review_type) or f"按用户指令审查本节，只报告指令关注的问题。用户指令：{request.instruction}"
+        fix_hint = _REVIEW_FIX_HINT if request.review_type in ("consistency", "units") else ""
+        for i, sec in enumerate(sections):
+            start_ev: dict = {"type": "section_start", "index": i, "total": len(sections), "title": sec["title"] or f"第 {i + 1} 节"}
+            if sec["structured"]:
+                start_ev["skipped"] = True
+                skipped.append(i)
+                yield _ndjson(start_ev)
+                continue
+            yield _ndjson(start_ev)
+            if not sec["title"]:
+                failed.append(i)
+                yield _ndjson({"type": "section_error", "index": i, "message": "文档无标题（全文单节），无法按节定位；请先给文档加标题，或改用对话模式"})
+                continue
+            prompt = _REVIEW_SECTION_PROMPT.format(
+                focus=_REVIEW_FOCUS[request.review_type],
+                rules=rules,
+                context_block=context_block,
+                fix_hint=fix_hint,
+                title=sec["title"],
+                section=sec["content"],
+            )
+            try:
+                # I2 铁律：每个模型调用 wait_for + except，provider 挂起不得变成 200+零事件悬挂
+                resp = await asyncio.wait_for(model.ainvoke(prompt), timeout=SECTION_TIMEOUT_SECONDS)
+                items = _parse_findings(_extract_ai_response_text(resp.content))
+            except Exception as e:
+                failed.append(i)
+                logger.warning("docmgr ai_review section %s failed: %s", i, e, exc_info=True)
+                yield _ndjson({"type": "section_error", "index": i, "message": "本节审查失败，可稍后重试"})
+                continue
+            if items is None:
+                failed.append(i)
+                logger.warning("docmgr ai_review section %s findings not parseable", i)
+                yield _ndjson({"type": "section_error", "index": i, "message": "本节审查输出无法解析，可稍后重试"})
+                continue
+            for n, item in enumerate(items):
+                finding = _normalize_finding(item, request.review_type, i, n, sec["title"])
+                if finding is None:
+                    continue
+                summary[finding["severity"]] += 1
+                yield _ndjson({"type": "finding", "index": i, "finding": finding})
+        # EAI-CUSTOM (全文操作 M2): summary 按 severity 实际发出（过滤后）条数计；total = 全量节数
+        yield _ndjson({"type": "done", "total": len(sections), "failed": failed, "skipped": skipped, "summary": dict(summary)})
 
     return StreamingResponse(
         generate(),

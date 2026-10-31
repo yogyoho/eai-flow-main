@@ -1,0 +1,29 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "docmgr_findings.v1",
+  "title": "docmgr AI review finding v1",
+  "description": "docmgr 审查端点 /ai/review 产出的单条 finding（NDJSON finding 事件的 finding 字段）。id 由服务端生成（{review_type}-{section_index}-{n}，会话内稳定、跨会话不稳定，明确不做记忆）；anchor=节标题，前端 scrollToAnchor 定位用；fix_op 仅在模型给出整节修正文时出现，修复=前端 applyOperations 原样回灌，零新应用机制。",
+  "type": "object",
+  "required": ["id", "severity", "anchor", "excerpt", "problem", "suggestion"],
+  "properties": {
+    "id": { "type": "string", "description": "{review_type}-{section_index}-{n}；服务端生成，模型输出不含 id" },
+    "severity": { "enum": ["error", "warn", "info"], "description": "error=确定错误/歧义；warn=疑似不一致；info=建议级" },
+    "anchor": { "type": "string", "minLength": 1, "description": "定位/修复锚点：节标题（scrollToAnchor 可匹配文本）" },
+    "excerpt": { "type": "string", "maxLength": 120, "description": "问题原文片段，逐字摘录；服务端截断到 120 字" },
+    "problem": { "type": "string", "description": "问题描述" },
+    "suggestion": { "type": "string", "description": "修改建议" },
+    "fix_op": { "$ref": "#/$defs/fix_op" }
+  },
+  "$defs": {
+    "fix_op": {
+      "type": "object",
+      "description": "可选 DocOperation；v1 仅 replace_section（模型给出整节修正文时才有）",
+      "required": ["op", "anchor", "content"],
+      "properties": {
+        "op": { "const": "replace_section" },
+        "anchor": { "type": "string", "minLength": 1, "description": "目标节标题" },
+        "content": { "type": "string", "description": "整节修正后 markdown 全文" }
+      }
+    }
+  }
+}
