@@ -96,13 +96,18 @@ export function listTasks(): Promise<TaskOut[]> {
  * bid_files 重复字段 → FastAPI list[UploadFile];后端 _enqueue_docs 对零材料任务也无条件
  * 直推空跑,故 UI 必传文件——Task 12 修复轮决定 (b),M3 工作台上传=补充/重传文档)。
  * v1 后端将文件按 UTF-8 纯文本解码落 engine_meta.docs(.txt/.md 等文本格式最适配;
- * PDF/Word 结构化解析缺口见 routers.create_task 注释)。 */
+ * PDF/Word 结构化解析缺口见 routers.create_task 注释)。
+ * identity(裁定12+14,Plan5):可选身份覆盖位;空白不 append,留空=引擎抽取回填位。 */
 export function createTask(
   mode: "quick" | "deep",
   files: { tender: File[]; bid: File[] },
+  identity?: { project_name?: string | null; lot_name?: string | null; tender_no?: string | null },
 ): Promise<TaskOut> {
   const form = new FormData();
   form.set("mode", mode);
+  if (identity?.project_name?.trim()) form.set("project_name", identity.project_name.trim());
+  if (identity?.lot_name?.trim()) form.set("lot_name", identity.lot_name.trim());
+  if (identity?.tender_no?.trim()) form.set("tender_no", identity.tender_no.trim());
   for (const f of files.tender) form.append("tender_files", f);
   for (const f of files.bid) form.append("bid_files", f);
   return request<TaskOut>("/tasks", { method: "POST", body: form });
