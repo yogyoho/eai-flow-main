@@ -63,6 +63,8 @@ export function BaselineView({ taskId }: { taskId?: string | null }) {
   const [picks, setPicks] = useState<Record<string, number>>({});
   // 核对勾 gate(Plan8 §4.4):每冲突卡「我已核对两处原文」勾选后采纳才可点
   const [verified, setVerified] = useState<Record<string, boolean>>({});
+  // 已抽取字段折叠(Plan8 §4.4):非冲突非缺失默认折叠,折叠注 toggle 展开
+  const [expanded, setExpanded] = useState<Record<string, boolean>>({});
   const adjudicate = useBidAdjudicate(taskId ?? "");
 
   // 冲突路径(全行并集;候选清单各行同源,取首行);已裁定路径不计未裁
@@ -99,6 +101,8 @@ export function BaselineView({ taskId }: { taskId?: string | null }) {
       (search === "" || f.path.toLowerCase().includes(search.toLowerCase())),
   );
   const missingTotal = allRows.filter((f) => f.missing).length;
+  // 当前族被折叠的已抽取字段数(Plan8 §4.4 折叠注用;检索态全展开)
+  const okCount = shown.filter((f) => !f.missing && !f.conflicted).length;
 
   useEffect(() => {
     if (confirm.isError) {
@@ -529,6 +533,14 @@ export function BaselineView({ taskId }: { taskId?: string | null }) {
                 }}
               >
                 {shown.map((f) => {
+                  // 已抽取字段默认折叠(Plan8 §4.4):检索态全展开,保序跳行
+                  if (
+                    search === "" &&
+                    !expanded[famKey] &&
+                    !f.missing &&
+                    !f.conflicted
+                  )
+                    return null;
                   const src = f.src;
                   return (
                     <div
@@ -610,6 +622,27 @@ export function BaselineView({ taskId }: { taskId?: string | null }) {
                     </div>
                   );
                 })}
+                {/* 折叠注 toggle(Plan8 §4.4,原型 s4 tbl-foot 句式) */}
+                {okCount > 0 && search === "" ? (
+                  <button
+                    type="button"
+                    className="tbl-foot"
+                    style={{
+                      cursor: "pointer",
+                      textAlign: "left",
+                      background: "none",
+                      border: "none",
+                      width: "100%",
+                    }}
+                    onClick={() =>
+                      setExpanded((m) => ({ ...m, [famKey]: !m[famKey] }))
+                    }
+                  >
+                    {expanded[famKey]
+                      ? `已展开全部字段——点击收起 ${okCount} 个已抽取字段`
+                      : `其余 ${okCount} 个已抽取字段已由引擎交叉校验通过，点击展开逐项核对`}
+                  </button>
+                ) : null}
                 {shown.length === 0 ? (
                   <div className="f-card">
                     <div className="f-hd">

@@ -167,6 +167,12 @@ describe("bid-review BaselineView 分期建议一期(EAI-CUSTOM 2026-10-30)", ()
       await screen.findByRole("button", { name: /报价基准/ }),
     ).toBeTruthy();
     expect(screen.getByRole("button", { name: /清单基准/ })).toBeTruthy();
+    // 已抽取字段默认折叠(Plan8 §4.4):折叠注可见,max_price 卡不可见
+    expect(screen.getByText(/已由引擎交叉校验通过/)).toBeTruthy();
+    expect(screen.queryByText("tender.max_price")).toBeNull();
+
+    // 点折叠注展开 → 字段卡出现
+    fireEvent.click(screen.getByText(/已由引擎交叉校验通过/));
     expect(await screen.findByText("tender.max_price")).toBeTruthy();
     expect(screen.getByText("8,000,000")).toBeTruthy();
 
