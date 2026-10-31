@@ -624,7 +624,7 @@ export function WorkbenchView({ taskId }: { taskId?: string | null }) {
         <div>
           <h2>
             审查工作台
-            <TaskTitleTag taskId={taskId} />
+            <TaskTitleTag taskId={taskId} bizNo={task?.biz_no} />
           </h2>
           <div className="ph-sub">
             {task

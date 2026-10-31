@@ -58,6 +58,15 @@ const TASK = {
   created_at: "2026-10-29T00:00:00Z",
   fatal_unhandled: 1,
   need_human_count: 1,
+  // B1 批(Plan4 2026-10-31):业务号/项目/标段/更新时间/完成时刻/主要未处理/创建人
+  biz_no: "TBR-20261029-0001",
+  project_name: "XX数据中心一期采购项目",
+  lot_name: "标段一(机电设备)",
+  tender_no: null,
+  updated_at: "2026-10-30T16:20:00Z",
+  done_at: "2026-10-29T00:11:32Z",
+  main_unhandled: 4,
+  created_by_name: "张工",
 };
 
 /** 选中任务(s1 列表首位=最新)的 issues 响应体;条目只需 verdict 字段。 */
@@ -90,16 +99,23 @@ function statValue(label: string): string {
   return labelEl?.nextElementSibling?.textContent?.trim() ?? "";
 }
 
-/** 致命/待人工合并格(任务行第 5 列:任务号/模式/状态/可提交判定/致命·待人工/创建时间/操作)。 */
+/** 致命/主要合并格(九列:任务号/项目·标段/模式/状态/可提交判定/致命·主要/创建人/更新时间/操作)。 */
 function fatalCell(taskId: string): Element | null {
+  const row = screen.getByTitle(taskId).closest("tr");
+  return row?.querySelectorAll("td")[5] ?? null;
+}
+
+/** 可提交判定格(九列下标 4:任务号/项目·标段/模式/状态/判定)。 */
+function verdictCell(taskId: string): Element | null {
   const row = screen.getByTitle(taskId).closest("tr");
   return row?.querySelectorAll("td")[4] ?? null;
 }
 
-/** 可提交判定格(任务行第 4 列)。 */
-function verdictCell(taskId: string): Element | null {
-  const row = screen.getByTitle(taskId).closest("tr");
-  return row?.querySelectorAll("td")[3] ?? null;
+/** 任意列取格(Plan4 九列:0=任务号 1=项目·标段 4=判定 5=致命·主要 6=创建人 7=更新时间)。 */
+function cellAt(taskId: string, i: number): Element | null {
+  return (
+    screen.getByTitle(taskId).closest("tr")?.querySelectorAll("td")[i] ?? null
+  );
 }
 
 function rowOf(taskId: string): HTMLTableRowElement | null {
@@ -135,7 +151,13 @@ describe("bid-review TasksView 选中任务体征契约门(Plan2 2026-10-31)", (
         return jsonRes({
           items: [
             TASK,
-            { ...TASK, id: "t2", fatal_unhandled: 0, need_human_count: 0 },
+            {
+              ...TASK,
+              id: "t2",
+              fatal_unhandled: 0,
+              need_human_count: 0,
+              main_unhandled: 0,
+            },
           ],
         });
       }
@@ -149,7 +171,7 @@ describe("bid-review TasksView 选中任务体征契约门(Plan2 2026-10-31)", (
     renderTasks();
     await screen.findByTitle("t2");
     await waitFor(() => {
-      expect(fatalCell("t1")?.textContent?.trim()).toBe("1 / 1");
+      expect(fatalCell("t1")?.textContent?.trim()).toBe("1 / 4");
       expect(fatalCell("t2")?.textContent?.trim()).toBe("0 / 0");
     });
     expect(fatalCell("t1")?.querySelector(".v-hot")).not.toBeNull();
@@ -162,9 +184,24 @@ describe("bid-review TasksView 选中任务体征契约门(Plan2 2026-10-31)", (
     expect(statValue("待人工复核")).toBe("1");
     expect(statValue("问题总数")).toBe("3");
     expect(statValue("误报已剔除")).toBe("1");
-    expect(statValue("审查用时")).toBe("—");
-    // 2026-10-31 用户定案:选中任务号随页头标题展示(不进侧栏)
-    expect(document.querySelector(".page-head h2")?.textContent).toContain("t1");
+    // Plan4 T3:审查用时=done_at−created_at 客户端算(2026-10-29T00:00Z→00:11:32Z)
+    expect(statValue("审查用时")).toBe("11m 32s");
+    // Plan4 T2:九列——任务号=biz_no / 项目·标段 / 致命·主要 / 创建人 / 更新时间
+    expect(cellAt("t1", 0)?.textContent?.trim()).toBe("TBR-20261029-0001");
+    expect(cellAt("t1", 1)?.textContent?.trim()).toBe(
+      "XX数据中心一期采购项目 · 标段一(机电设备)",
+    );
+    expect(cellAt("t1", 5)?.textContent?.trim()).toBe("1 / 4");
+    expect(cellAt("t1", 5)?.querySelector(".v-hot")).not.toBeNull();
+    expect(cellAt("t1", 6)?.textContent?.trim()).toBe("张工");
+    // 更新时间=formatDate 本地时区渲染(TZ 无关断言,CI=UTC/本机=UTC+8 都过)
+    expect(cellAt("t1", 7)?.textContent?.trim()).toMatch(
+      /^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/,
+    );
+    // 2026-10-31 用户定案:选中任务号随页头标题展示;Plan4 换 TBR 业务号
+    expect(document.querySelector(".page-head h2")?.textContent).toContain(
+      "TBR-20261029-0001",
+    );
   });
 
   it("半程任务行级「—」;issues 请求恰一条且只对选中任务(非 N+1)", async () => {
@@ -184,9 +221,12 @@ describe("bid-review TasksView 选中任务体征契约门(Plan2 2026-10-31)", (
     await waitFor(() =>
       expect(statValue("问题总数")).toBe("2"),
     );
-    // 处理中任务:行级 —(半程快照不得冒充统计),判定也不产生
+    // 处理中任务:行级 —(半程快照不得冒充统计),判定也不产生;项目列与结果无关照常真值
     expect(fatalCell("t2")?.textContent?.trim()).toBe("—");
     expect(verdictCell("t2")?.textContent?.trim()).toBe("—");
+    expect(cellAt("t2", 1)?.textContent?.trim()).toBe(
+      "XX数据中心一期采购项目 · 标段一(机电设备)",
+    );
     // 契约演进:仅选中任务(t1=最新)一条 issues 请求;逐任务批量仍然禁止
     const issueCalls = calls.filter((c) => c.path.includes("/issues"));
     expect(issueCalls).toHaveLength(1);
@@ -201,7 +241,14 @@ describe("bid-review TasksView 选中任务体征契约门(Plan2 2026-10-31)", (
     responder = (path) => {
       if (path.endsWith("/tasks")) {
         return jsonRes({
-          items: [{ ...TASK, fatal_unhandled: null, need_human_count: null }],
+          items: [
+            {
+              ...TASK,
+              fatal_unhandled: null,
+              need_human_count: null,
+              main_unhandled: null,
+            },
+          ],
         });
       }
       if (path.endsWith("/tasks/t1/issues")) {
@@ -281,5 +328,69 @@ describe("bid-review TasksView 选中任务体征契约门(Plan2 2026-10-31)", (
     await screen.findByTitle("t2");
     expect(rowOf("t2")?.className).toContain("on");
     expect(rowOf("t1")?.className).not.toContain("on");
+  });
+
+  it("存量降级:B1 字段 null → 任务号回退 id8,项目/创建人/更新时间/用时 —", async () => {
+    responder = (path) => {
+      if (path.endsWith("/tasks")) {
+        return jsonRes({
+          items: [
+            {
+              ...TASK,
+              biz_no: null,
+              project_name: null,
+              lot_name: null,
+              updated_at: null,
+              done_at: null,
+              main_unhandled: null,
+              created_by_name: null,
+            },
+          ],
+        });
+      }
+      return jsonRes({}, 404);
+    };
+    renderTasks();
+    await screen.findByTitle("t1");
+    expect(cellAt("t1", 0)?.textContent?.trim()).toBe("t1");
+    expect(cellAt("t1", 1)?.textContent?.trim()).toBe("—");
+    expect(cellAt("t1", 6)?.textContent?.trim()).toBe("—");
+    expect(cellAt("t1", 7)?.textContent?.trim()).toBe("—");
+    expect(statValue("审查用时")).toBe("—");
+    expect(document.querySelector(".page-head h2")?.textContent).toContain("t1");
+  });
+
+  it("搜索命中业务号与项目名(客户端过滤,foot 计数跟随)", async () => {
+    responder = (path) => {
+      if (path.endsWith("/tasks")) {
+        return jsonRes({
+          items: [
+            TASK,
+            {
+              ...TASK,
+              id: "t2",
+              biz_no: "TBR-20261029-0002",
+              project_name: "智慧园区消防改造项目",
+              lot_name: null,
+            },
+          ],
+        });
+      }
+      return jsonRes({}, 404);
+    };
+    renderTasks();
+    await screen.findByTitle("t2");
+    const inp = screen.getByLabelText("搜索任务号 / 项目名");
+    // 项目名命中:仅 t2
+    fireEvent.change(inp, { target: { value: "智慧园区" } });
+    expect(screen.queryByTitle("t1")).toBeNull();
+    expect(screen.getByTitle("t2")).toBeTruthy();
+    // 业务号尾段命中:仅 t1
+    fireEvent.change(inp, { target: { value: "0001" } });
+    expect(screen.getByTitle("t1")).toBeTruthy();
+    expect(screen.queryByTitle("t2")).toBeNull();
+    expect(document.querySelector(".tbl-foot")?.textContent).toContain(
+      "共 1 / 2",
+    );
   });
 });

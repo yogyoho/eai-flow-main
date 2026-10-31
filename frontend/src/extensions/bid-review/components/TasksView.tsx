@@ -21,10 +21,11 @@
  * workbench?task_id=。
  * UX 重构 Plan2(2026-10-31,spec §3.2/§4.1 D1-D3 裁决):统计卡换血为「选中任务
  * 体征」五格(useSelectedTask fallback 最新任务;体征=TaskOut 聚合+选中任务单条
- * issues 查询,O(1) 非 N+1);行点击=选中(router.replace ?task_id),跳转走操作列;
- * 列=任务号/模式/状态/可提交判定/致命·待人工(合并,批1)/创建时间/操作——B1
- * 后端批(biz_no/project_name/main_unhandled/created_by_name/updated_at/done_at)
- * 落地后再做 9 列全量对齐。审查用时格 B1 done_at 前恒 —。
+ * issues 查询,O(1) 非 N+1);行点击=选中(router.replace ?task_id),跳转走操作列。
+ * Plan4(2026-10-31,B1 前端消费):九列全量对齐原型 s1——任务号=biz_no/项目·标段/
+ * 致命·主要(main_unhandled)/创建人(created_by_name)/更新时间(updated_at);搜索
+ * 升级业务号+项目名;统计卡审查用时=done_at−created_at 客户端算(存量 done_at
+ * null→—,不伪造);页头任务号换 TBR 业务号(TaskTitleTag bizNo)。
  */
 
 import { useMutation, useQueryClient } from "@tanstack/react-query";
@@ -45,17 +46,23 @@ import { taskHref } from "@/extensions/bid-review/nav";
 import { type TaskOut } from "@/extensions/bid-review/types";
 import { cn } from "@/lib/utils";
 
+// B1 前端批(Plan4 2026-10-31,spec §3 s1):九列全量对齐原型 L549——任务号=biz_no
+// (缺失回退 id8)/项目·标段(抽取回填,null→—)/模式/状态/可提交判定/致命·主要
+// (fatal+main_unhandled)/创建人(created_by_name)/更新时间(updated_at)/操作;
+// 搜索升级业务号+项目名;统计卡审查用时=done_at−created_at 客户端算。
 const HEADERS = [
   "任务号",
+  "项目 / 标段",
   "模式",
   "状态",
   "可提交判定",
-  "致命/待人工",
-  "创建时间",
+  "致命/主要",
+  "创建人",
+  "更新时间",
   "操作",
 ];
-/** 致命/待人工合并格下标(Plan2 批1;B1 后 9 列布局再调)。 */
-const FATAL_COL = 4;
+/** 致命/主要合并格下标(九列布局,原型 s1 L550)。 */
+const FATAL_COL = 5;
 
 const MODE_META: Record<
   "quick" | "deep",
@@ -149,19 +156,18 @@ function matchStatusFilter(t: TaskOut, f: StatusFilter): boolean {
 }
 
 /**
- * 致命/待人工合并格(原型 s1「3 / 4」习语;Plan2 批1 列名「致命/待人工」,
- * B1 main_unhandled 落地后换「致命/主要」)。计数=后端 GET /tasks 聚合字段
- * (micro-A 2026-10-29,口径=致命且未被人工判误报 / need_human 旗标,后端 pytest
- * 锁定);处理中任务(半程快照)与计数缺失(null=未统计)显示 ———未经测量不得
- * 显示 0(伪零纪律);fatal>0 走 .v-hot 红档(原型 s1 致命/主要列习语)。
+ * 致命/主要合并格(原型 s1「3 / 4」习语)。计数=后端 GET /tasks 聚合字段
+ * (micro-A 2026-10-29:fatal=致命且未被人工判误报;Plan4 B1:main=major 且未
+ * 误报,后端 pytest 锁定);处理中任务(半程快照)与计数缺失(null=未统计)
+ * 显示 ———未经测量不得显示 0(伪零纪律);fatal>0 走 .v-hot 红档。
  */
 function CountPairCell({
   fatal,
-  needHuman,
+  main,
   gated,
 }: {
   fatal: number | null;
-  needHuman: number | null;
+  main: number | null;
   gated: boolean;
 }) {
   if (gated) {
@@ -177,7 +183,7 @@ function CountPairCell({
         {fatal ?? "—"}
       </span>
       {" / "}
-      {needHuman ?? "—"}
+      {main ?? "—"}
     </span>
   );
 }
@@ -237,6 +243,19 @@ function formatDate(s: string): string {
   const d = new Date(s);
   const p = (n: number) => String(n).padStart(2, "0");
   return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}:${p(d.getSeconds())}`;
+}
+
+/** 审查用时=done_at−created_at(客户端算,spec §3 s1;Plan4 T3)。秒/分/时三段;
+ * 非法或负值一律 —(不冒充)。 */
+function formatDuration(createdIso: string, doneIso: string): string {
+  const ms = new Date(doneIso).getTime() - new Date(createdIso).getTime();
+  if (!Number.isFinite(ms) || ms < 0) return "—";
+  const s = Math.round(ms / 1000);
+  if (s < 60) return `${s}s`;
+  const m = Math.floor(s / 60);
+  if (m < 60) return `${m}m ${s % 60}s`;
+  const h = Math.floor(m / 60);
+  return `${h}h ${m % 60}m`;
 }
 
 function formatSize(bytes: number): string {
@@ -401,12 +420,16 @@ export function TasksView() {
       )
     : "—";
 
-  // 工具条客户端过滤:任务号关键字(忽略大小写)∩ 状态档;列表端点无服务端过滤
+  // 工具条客户端过滤:业务号/任务id/项目名/标段任一命中(忽略大小写)∩ 状态档;
+  // 列表端点无服务端过滤参数(B1 后前端先行,服务端化待后端补参数)
   const kw = q.trim().toLowerCase();
   const filtered = tasks.filter(
     (t) =>
       matchStatusFilter(t, statusFilter) &&
-      (kw === "" || t.id.toLowerCase().includes(kw)),
+      (kw === "" ||
+        [t.biz_no, t.id, t.project_name, t.lot_name].some((v) =>
+          v?.toLowerCase().includes(kw),
+        )),
   );
 
   return (
@@ -419,8 +442,8 @@ export function TasksView() {
         <div>
           <h2>
             任务工作台
-            {/* 选中任务号随页头标题(2026-10-31 用户定案,不进侧栏) */}
-            <TaskTitleTag taskId={selectedId} />
+            {/* 选中任务号随页头标题(2026-10-31 用户定案,不进侧栏);Plan4 换业务号 */}
+            <TaskTitleTag taskId={selectedId} bizNo={selectedTask?.biz_no} />
           </h2>
           <div className="ph-sub">投标方案合规红线与一致性审查 · 全部任务</div>
         </div>
@@ -484,10 +507,12 @@ export function TasksView() {
             <span className="metric-value num">{vital(falsePositiveCount)}</span>
           </div>
           <div className="metric-cell">
-            <span className="metric-label" title="B1 done_at 落地后提供">
-              审查用时
+            <span className="metric-label">审查用时</span>
+            <span className="metric-value num">
+              {selectedTask?.done_at && selectedTask.created_at
+                ? formatDuration(selectedTask.created_at, selectedTask.done_at)
+                : "—"}
             </span>
-            <span className="metric-value num">—</span>
           </div>
         </div>
       )}
@@ -578,15 +603,15 @@ export function TasksView() {
         </div>
       ) : (
         <div className="card">
-          {/* 工具条(原型 s1):搜索(仅任务号,TaskOut 无项目名字段)+ 状态 seg */}
+          {/* 工具条(原型 s1):搜索(业务号/项目名,原型 L541)+ 状态 seg */}
           <div className="toolbar">
             <input
               className="inp"
               style={{ width: 220 }}
               value={q}
               onChange={(e) => setQ(e.target.value)}
-              placeholder="搜索任务号…"
-              aria-label="搜索任务号"
+              placeholder="搜索任务号 / 项目名…"
+              aria-label="搜索任务号 / 项目名"
             />
             <div className="seg">
               {STATUS_FILTERS.map((f) => (
@@ -646,8 +671,24 @@ export function TasksView() {
                               title={t.id}
                               onClick={(e) => e.stopPropagation()}
                             >
-                              {t.id.slice(0, 8)}
+                              {t.biz_no ?? t.id.slice(0, 8)}
                             </Link>
+                          </td>
+                          {/* 项目·标段(原型 L558「项目名 · 标段」);抽取回填,
+                              老任务 null→—(伪零:未抽取 ≠ 无项目) */}
+                          <td>
+                            {t.project_name || t.lot_name
+                              ? [t.project_name, t.lot_name]
+                                  .filter(Boolean)
+                                  .join(" · ")
+                              : (
+                                  <span
+                                    className="unmapped-cell"
+                                    title="未抽取到项目/标段(老任务须重跑抽取)"
+                                  >
+                                    —
+                                  </span>
+                                )}
                           </td>
                           <td>
                             <span className={cn("pill", mp.cls)}>{mp.label}</span>
@@ -664,15 +705,23 @@ export function TasksView() {
                           <td>
                             <VerdictCell task={t} />
                           </td>
-                          {/* 行级计数合并格:后端 GET /tasks 聚合直出;伪零门见 CountPairCell */}
+                          {/* 致命/主要合并格:后端 GET /tasks 聚合直出;伪零门见 CountPairCell */}
                           <td className="r">
                             <CountPairCell
                               fatal={gated ? null : t.fatal_unhandled}
-                              needHuman={gated ? null : t.need_human_count}
+                              main={gated ? null : (t.main_unhandled ?? null)}
                               gated={gated}
                             />
                           </td>
-                          <td className="num">{formatDate(t.created_at)}</td>
+                          {/* 创建人(list_tasks join 聚合,null=未统计)/更新时间 */}
+                          <td>
+                            {t.created_by_name ?? (
+                              <span className="unmapped-cell">—</span>
+                            )}
+                          </td>
+                          <td className="num">
+                            {t.updated_at ? formatDate(t.updated_at) : "—"}
+                          </td>
                           <td className="r">
                             <ActionCell task={t} />
                           </td>

@@ -255,7 +255,7 @@ export function BaselineView({ taskId }: { taskId?: string | null }) {
         <div>
           <h2>
             招标基准确认
-            <TaskTitleTag taskId={taskId} />
+            <TaskTitleTag taskId={taskId} bizNo={task?.biz_no} />
           </h2>
           <div className="ph-sub">
             确认招标要求——未完成将不能开始审查 ·

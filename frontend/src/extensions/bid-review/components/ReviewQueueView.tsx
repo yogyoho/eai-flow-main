@@ -28,7 +28,11 @@ import {
   renderIssueMessage,
   sevPillBrx,
 } from "@/extensions/bid-review/components/WorkbenchView";
-import { useBidFeedback, useBidIssues } from "@/extensions/bid-review/hooks";
+import {
+  useBidFeedback,
+  useBidIssues,
+  useBidTask,
+} from "@/extensions/bid-review/hooks";
 import { type IssueOut } from "@/extensions/bid-review/types";
 import { cn } from "@/lib/utils";
 
@@ -57,6 +61,8 @@ function evidenceTarget(issue: IssueOut): LocateTarget | null {
 export function ReviewQueueView({ taskId }: { taskId?: string | null }) {
   const issuesQuery = useBidIssues(taskId ?? null);
   const feedback = useBidFeedback();
+  // 页头业务号(Plan4):与工作台同 queryKey,通常命中缓存零额外请求
+  const taskQuery = useBidTask(taskId ?? null);
 
   // 队列 = need_human 未处置项;提交成功即入 handled(本地即时推进,重取后
   // confirm 项的旗标翻转与 handled 语义一致,不重复计数)
@@ -179,7 +185,7 @@ export function ReviewQueueView({ taskId }: { taskId?: string | null }) {
         <div>
           <h2>
             人工复核工作台
-            <TaskTitleTag taskId={taskId} />
+            <TaskTitleTag taskId={taskId} bizNo={taskQuery.data?.biz_no} />
           </h2>
           <div className="ph-sub">
             待人工队列逐条处置——未判定 ≠ 通过 · 误报自动回流评测集
