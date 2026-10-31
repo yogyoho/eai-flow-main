@@ -483,7 +483,7 @@ uv run ruff format --check app/extensions/bid_review/
 
 Expected: 全绿。
 
-- [ ] **Step 2: gateway 重启**
+- [x] **Step 2: gateway 重启**
 
 ```bash
 docker compose -p eai-docker restart gateway

@@ -41,7 +41,7 @@ docker compose -p eai-docker up -d            # Start all services
 - `deer-flow-frontend` — Next.js frontend (container listens on port 3000, `next dev --webpack`; EAI-CUSTOM bug-3306 勘误: 旧文档写 4000)
 - `deer-flow-nginx` — Reverse proxy (port 2026, the unified entry point)
 - `deer-flow-collab` — Hocuspocus collab-server (port 8002)
-- `eai-docker-postgres-ext-1` — PostgreSQL for extensions module
+- `eai-flow-postgres-ext` — PostgreSQL for extensions module (host :5432; 2026-10-31 实测容器名,旧写法 `eai-docker-postgres-ext-1` 已失效)
 - `ontostudio-backend` / `ontostudio-frontend` — 本体系统（独立服务，`profiles: ["ontostudio"]`，**不随全量 `up -d` 起飞**；显式点名服务名即自动激活 profile）。后端 FastAPI :8005 + 内置 pyoxigraph 图存储，前端 Vite SPA 经 nginx `/ontostudio/` 托管。EAI-CUSTOM
 
 #### OntoStudio 两个环境变量（EAI-CUSTOM，值一律放 **`docker/.env`**）
