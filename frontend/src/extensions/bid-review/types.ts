@@ -24,6 +24,20 @@ export interface TaskOut {
    * false_positive,误报回流后自然回落);need_human_count=need_human 旗标计数。 */
   fatal_unhandled: number | null;
   need_human_count: number | null;
+  /** ── B1 扩展(EAI-CUSTOM 2026-10-31,spec §5 B1/裁定12)──────────
+   * biz_no=业务号 TBR-YYYYMMDD-NNNN(存量迁移回填);项目/标段/编号=抽取回填
+   * (老任务 null,须重跑抽取才有);updated_at=行级更新时刻;done_at=完成时刻
+   * (set_status 一次性落点,存量不伪造)。main_unhandled/created_by_name 仅
+   * GET /tasks 列表聚合填充,单任务端点 null=未统计(伪零纪律)。TS 侧可选:
+   * 后端恒输出,镜像可选只为容忍旧测试夹具。 */
+  biz_no?: string | null;
+  project_name?: string | null;
+  lot_name?: string | null;
+  tender_no?: string | null;
+  updated_at?: string | null;
+  done_at?: string | null;
+  main_unhandled?: number | null;
+  created_by_name?: string | null;
 }
 
 /** 审查问题(backend IssueOut)。 */
