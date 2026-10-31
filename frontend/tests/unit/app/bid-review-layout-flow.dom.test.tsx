@@ -1,0 +1,159 @@
+import { afterEach, beforeEach, describe, expect, it, rs } from "@rstest/core";
+import { cleanup, render, screen } from "@testing-library/react";
+import type { PropsWithChildren, ReactNode } from "react";
+
+// UX 重构 Plan 1 T3:侧栏流程化三条行为——
+// ① 审查闭环组按流程序排列(基准确认在复核工作台之前);
+// ② 三类计数徽标(任务总览进行中/基准确认 warn/复核工作台待复核)来自共享任务查询;
+// ③ URL 带 task_id 时侧栏渲染「当前任务」chip(id8+状态词)。
+// 徽标 span 会并入 link 的 accessible name,名字断言用 regex。
+// micro-B 回归门(tests/unit/app/bid-review-layout.dom.test.tsx)锁定 href/label
+// 契约——本任务不改任何 href/label,该测试须原样保持绿。
+const mocks = rs.hoisted(() => ({
+  search: new URLSearchParams(),
+  tasks: [] as unknown[],
+}));
+
+rs.mock("next/navigation", () => ({
+  usePathname: () => "/bid-review",
+  useSearchParams: () => mocks.search,
+}));
+
+rs.mock("next/link", () => {
+  const MockLink = ({
+    href,
+    children,
+  }: {
+    href: string;
+    children: ReactNode;
+  }) => <a href={href}>{children}</a>;
+  return { default: MockLink };
+});
+
+rs.mock("@/core/permissions", () => ({
+  usePermission: () => ({ canPage: () => true, isLoading: false }),
+  PermissionProvider: ({ children }: PropsWithChildren) => <>{children}</>,
+}));
+
+rs.mock("@/extensions/hooks/useAuth", () => ({
+  AuthProvider: ({ children }: PropsWithChildren) => <>{children}</>,
+  useAuth: () => ({ user: { id: "u1" }, isLoading: false }),
+}));
+
+rs.mock("@/components/workspace/workspace-login-redirect", () => ({
+  WorkspaceLoginRedirect: () => null,
+}));
+
+// layout 只消费 useBidTasks;mock 共享任务查询返回 fixtures。
+rs.mock("@/extensions/bid-review/hooks", () => ({
+  bidReviewKeys: { tasks: ["bid-review", "tasks"] },
+  useBidTasks: () => ({ data: mocks.tasks }),
+}));
+
+import BidReviewLayout from "@/app/bid-review/layout";
+
+function fixture(partial: Record<string, unknown>) {
+  return {
+    id: "t0",
+    owner_id: "o",
+    status: "created",
+    mode: "deep",
+    progress: {},
+    error: null,
+    engine_meta: {},
+    prev_task_id: null,
+    created_at: "2026-10-31T00:00:00Z",
+    fatal_unhandled: null,
+    need_human_count: null,
+    ...partial,
+  };
+}
+
+function renderLayout() {
+  return render(
+    <BidReviewLayout>
+      <div>page body</div>
+    </BidReviewLayout>,
+  );
+}
+
+describe("bid-review layout 流程化(Plan 1)", () => {
+  beforeEach(() => {
+    mocks.search = new URLSearchParams();
+    mocks.tasks = [];
+  });
+  afterEach(cleanup);
+
+  it("审查闭环组按流程序:基准确认排在复核工作台之前", () => {
+    renderLayout();
+    const links = screen.getAllByRole("link").map((l) => l.getAttribute("href"));
+    expect(links.indexOf("/bid-review/baseline")).toBeLessThan(
+      links.indexOf("/bid-review/review"),
+    );
+    // 既有页一个不少(micro-B 契约的 href 集不变)
+    for (const href of [
+      "/bid-review",
+      "/bid-review/workbench",
+      "/bid-review/baseline",
+      "/bid-review/review",
+      "/bid-review/rules",
+      "/bid-review/metrics",
+    ]) {
+      expect(links).toContain(href);
+    }
+  });
+
+  it("徽标:进行中 2 / 基准确认 warn 1 / 复核待复核 5(Σ need_human_count)", () => {
+    mocks.tasks = [
+      fixture({ id: "a", status: "parsing" }),
+      fixture({ id: "b", status: "running" }),
+      fixture({ id: "c", status: "awaiting_confirm" }),
+      fixture({ id: "d", status: "done", need_human_count: 3 }),
+      fixture({ id: "e", status: "done", need_human_count: 2 }),
+    ];
+    renderLayout();
+    expect(screen.getByRole("link", { name: /任务总览/ }).textContent).toContain(
+      "2",
+    );
+    const baselineLink = screen.getByRole("link", { name: /基准确认/ });
+    expect(baselineLink.textContent).toContain("1");
+    expect(baselineLink.querySelector(".nav-cnt.warn")).not.toBeNull();
+    expect(screen.getByRole("link", { name: /复核工作台/ }).textContent).toContain(
+      "5",
+    );
+  });
+
+  it("计数为零的徽标不渲染;规则治理组无徽标", () => {
+    mocks.tasks = [fixture({ id: "a", status: "done" })];
+    renderLayout();
+    expect(
+      screen.getByRole("link", { name: "任务总览" }).querySelector(".nav-cnt"),
+    ).toBeNull();
+    expect(
+      screen.getByRole("link", { name: "规则库" }).querySelector(".nav-cnt"),
+    ).toBeNull();
+  });
+
+  it("URL 带 task_id 时渲染「当前任务」chip(id8+状态词)", () => {
+    mocks.search = new URLSearchParams(
+      "task_id=5a8e15b8-8ac4-4141-a7e0-2e125953380b",
+    );
+    mocks.tasks = [
+      fixture({
+        id: "5a8e15b8-8ac4-4141-a7e0-2e125953380b",
+        status: "awaiting_confirm",
+      }),
+    ];
+    renderLayout();
+    expect(screen.getByText("当前任务")).not.toBeNull();
+    expect(screen.getByText("5a8e15b8")).not.toBeNull();
+    expect(screen.getByText("待基准确认")).not.toBeNull();
+  });
+
+  it("task_id 不在列表中(如直链新任务)chip 仍显示 id8,无状态词", () => {
+    mocks.search = new URLSearchParams("task_id=ffffffff-0000");
+    renderLayout();
+    expect(screen.getByText("当前任务")).not.toBeNull();
+    expect(screen.getByText("ffffffff")).not.toBeNull();
+  });
+});

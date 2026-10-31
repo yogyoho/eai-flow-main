@@ -11,27 +11,46 @@ import {
   UserCheck,
 } from "lucide-react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
-import { useEffect, useState, type ReactNode } from "react";
+import { usePathname, useSearchParams } from "next/navigation";
+import { Suspense, useEffect, useState, type ReactNode } from "react";
 
 import { QueryClientProvider } from "@/components/query-client-provider";
 import { WorkspaceLoginRedirect } from "@/components/workspace/workspace-login-redirect";
 import { usePermission, PermissionProvider } from "@/core/permissions";
+import { useBidTasks } from "@/extensions/bid-review/hooks";
+import {
+  sidebarBadges,
+  taskStatusLabel,
+  type SidebarBadges,
+} from "@/extensions/bid-review/nav";
+import type { TaskOut } from "@/extensions/bid-review/types";
 import { AuthProvider, useAuth } from "@/extensions/hooks/useAuth";
 import { cn } from "@/lib/utils";
 
 import "./bid-review.css";
 
-// EAI-CUSTOM (2026-10-30 独立子系统改造): /bid-review 脱离 EAI 壳(ShellLayout/
-// ExtensionsSidebar),换为本组件自绘原型 chrome(参照 docs/designs/2026-10-30-bid-review-ui.html,
-// 样式全量收敛在 .brx 根类)。入口约定:应用中心卡片 target=_blank 新 tab 打开
-// (AppCard.tsx),站内其余入口不跳转至此。providers 自备(原由 ShellLayout 提供):
+// EAI-CUSTOM (2026-10-30 独立子系统改造;2026-10-31 UX 重构 Plan 1 流程化):
+// /bid-review 脱离 EAI 壳(ShellLayout/ExtensionsSidebar),换为本组件自绘原型
+// chrome(参照 docs/designs/2026-10-30-bid-review-ui.html,样式全量收敛在 .brx
+// 根类)。入口约定:应用中心卡片 target=_blank 新 tab 打开(AppCard.tsx),站内
+// 其余入口不跳转至此。providers 自备(原由 ShellLayout 提供):
 // QueryClientProvider + AuthProvider + PermissionProvider;登录门=StandaloneGate
 // (未登录复用 WorkspaceLoginRedirect,fetcher 401 兜底跳登录由共享 fetcher 承担)。
 // 子路由映射到子页面权限点(/api/permissions/me 的 pages),供 canPage 过滤——
-// 此行为是 micro-B 回归门(tests/unit/app/bid-review-layout.dom.test.tsx)锁定契约,
-// 导航文案/href 勿改;规则效果(metrics)挂 bid:page:rules(同治理域,无独立权限点)。
-const navItems = [
+// micro-B 回归门(tests/unit/app/bid-review-layout.dom.test.tsx)锁定 href/label
+// 契约,勿改。UX 重构 Plan 1:组 0 按审查闭环流程序排列(基准确认→复核工作台),
+// 徽标数据来自共享 useBidTasks(badge 键见 SidebarBadges);/workbench 为 results
+// 拆分(Plan 6)落地前的暂用路由,届时换 /results + 重定向 shim。徽标点击直达
+// task_id 属任务选择器计划(Plan 3)——徽标在 Link 内,嵌套 <a> 非法。
+const navItems: Array<{
+  href: string;
+  label: string;
+  icon: typeof ListChecks;
+  exact?: boolean;
+  pageId: string;
+  group: 0 | 1;
+  badge?: keyof SidebarBadges;
+}> = [
   {
     href: "/bid-review",
     // 2026-10-30 用户定案:「任务总览」——首项即任务工作台(s1),改名与「审查工作台」区分
@@ -40,6 +59,7 @@ const navItems = [
     exact: true,
     pageId: "bid:page:tasks",
     group: 0,
+    badge: "running",
   },
   {
     href: "/bid-review/workbench",
@@ -49,6 +69,14 @@ const navItems = [
     group: 0,
   },
   {
+    href: "/bid-review/baseline",
+    label: "基准确认",
+    icon: ClipboardCheck,
+    pageId: "bid:page:baseline",
+    group: 0,
+    badge: "awaitingConfirm",
+  },
+  {
     // EAI-CUSTOM (2026-10-31 二期 spec §五 s6):need_human 队列复核;
     // 挂 bid:page:workbench(同治理域,先例=metrics 挂 bid:page:rules)
     href: "/bid-review/review",
@@ -56,13 +84,7 @@ const navItems = [
     icon: UserCheck,
     pageId: "bid:page:workbench",
     group: 0,
-  },
-  {
-    href: "/bid-review/baseline",
-    label: "基准确认",
-    icon: ClipboardCheck,
-    pageId: "bid:page:baseline",
-    group: 0,
+    badge: "reviewTodo",
   },
   {
     href: "/bid-review/rules",
@@ -124,6 +146,31 @@ function useDarkTheme() {
   return { dark, toggle };
 }
 
+/** 「当前任务」chip:URL 带 task_id 时显示(id8+状态词;任务不在列表缓存时只显
+ * id8)。useSearchParams 需要 Suspense 边界,由调用处包裹。 */
+function TaskChip({ tasks }: { tasks: TaskOut[] | undefined }) {
+  const taskId = useSearchParams().get("task_id");
+  if (!taskId) return null;
+  const task = tasks?.find((t) => t.id === taskId);
+  return (
+    <div className="nav-item" title="当前任务" style={{ cursor: "default" }}>
+      <div>
+        <div className="g-sub">当前任务</div>
+        <div className="brand-row" style={{ gap: 6 }}>
+          <span
+            style={{ fontFamily: "var(--font-mono, monospace)", fontSize: 12 }}
+          >
+            {taskId.slice(0, 8)}
+          </span>
+          {task ? (
+            <span style={{ fontSize: 12 }}>{taskStatusLabel(task.status)}</span>
+          ) : null}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function BidReviewLayoutContent({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const { canPage, isLoading } = usePermission();
@@ -133,6 +180,9 @@ function BidReviewLayoutContent({ children }: { children: ReactNode }) {
     ? navItems
     : navItems.filter((n) => canPage(n.pageId));
   const groups = [0, 1].map((g) => visibleItems.filter((n) => n.group === g));
+  // 徽标共享查询(与 TasksView 同 key 同缓存);数据未到时徽标不渲染(禁伪零)
+  const { data: tasks } = useBidTasks();
+  const badges = sidebarBadges(tasks ?? []);
 
   return (
     <div
@@ -154,14 +204,18 @@ function BidReviewLayoutContent({ children }: { children: ReactNode }) {
               </div>
             </div>
           </div>
+          <Suspense fallback={null}>
+            <TaskChip tasks={tasks} />
+          </Suspense>
           {groups.map((items, g) =>
             items.length === 0 ? null : (
               <nav className="chrome-group" key={g}>
                 <div className="g-label">{GROUP_LABELS[g]}</div>
-                {items.map(({ href, label, icon: Icon, exact }) => {
+                {items.map(({ href, label, icon: Icon, exact, badge }) => {
                   const isActive = exact
                     ? pathname === href
                     : pathname.startsWith(href);
+                  const count = badge ? badges[badge] : 0;
                   return (
                     <Link
                       key={href}
@@ -170,6 +224,16 @@ function BidReviewLayoutContent({ children }: { children: ReactNode }) {
                     >
                       <Icon size={15} className="ic" aria-hidden="true" />
                       {label}
+                      {badge && count > 0 ? (
+                        <span
+                          className={cn(
+                            "nav-cnt",
+                            badge === "awaitingConfirm" && "warn",
+                          )}
+                        >
+                          {count}
+                        </span>
+                      ) : null}
                     </Link>
                   );
                 })}

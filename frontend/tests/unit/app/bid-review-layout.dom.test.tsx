@@ -15,6 +15,9 @@ const mocks = rs.hoisted(() => ({
 
 rs.mock("next/navigation", () => ({
   usePathname: () => "/bid-review",
+  // UX 重构 Plan 1:layout 新增 TaskChip 依赖 useSearchParams(Suspense 内);
+  // 本文件断言不带 task_id 的默认态,恒返回空查询串。
+  useSearchParams: () => new URLSearchParams(),
 }));
 
 rs.mock("next/link", () => {
@@ -46,6 +49,13 @@ rs.mock("@/extensions/hooks/useAuth", () => ({
 
 rs.mock("@/components/workspace/workspace-login-redirect", () => ({
   WorkspaceLoginRedirect: () => null,
+}));
+
+// UX 重构 Plan 1:layout 消费共享 useBidTasks(侧栏徽标);本文件只测导航契约,
+// 徽标恒无数据(data: undefined)→ 不渲染,契约断言不受影响。
+rs.mock("@/extensions/bid-review/hooks", () => ({
+  bidReviewKeys: { tasks: ["bid-review", "tasks"] },
+  useBidTasks: () => ({ data: undefined }),
 }));
 
 import BidReviewLayout from "@/app/bid-review/layout";
