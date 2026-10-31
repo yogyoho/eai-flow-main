@@ -21,10 +21,7 @@ import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 
-import {
-  type BidBaselineRow,
-  type LocateTarget,
-} from "@/extensions/bid-review/api";
+import { type LocateTarget } from "@/extensions/bid-review/api";
 // 共享词汇(Plan6 自本文件上移,ParsingView 同用;裁定交互仍留本文件)
 // Plan8 §4.4:字段族改五业务主题(FIELD_THEMES/themeOf)
 import {
@@ -92,9 +89,7 @@ export function BaselineView({ taskId }: { taskId?: string | null }) {
     }
     return m;
   }, [allRows]);
-  const famKey = famStats.has(fam)
-    ? fam
-    : (FIELD_THEMES[0] ?? "其他条款");
+  const famKey = famStats.has(fam) ? fam : (FIELD_THEMES[0] ?? "其他条款");
   const shown = allRows.filter(
     (f) =>
       themeOf(f.path) === famKey &&
@@ -177,8 +172,8 @@ export function BaselineView({ taskId }: { taskId?: string | null }) {
             <TaskTitleTag taskId={taskId} bizNo={task?.biz_no} />
           </h2>
           <div className="ph-sub">
-            确认招标要求——未完成将不能开始审查 ·
-            确认门仅工作台 UI,agent 不可代确认
+            确认招标要求——未完成将不能开始审查 · 确认门仅工作台 UI,agent
+            不可代确认
           </div>
         </div>
         <div className="ph-actions">

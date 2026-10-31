@@ -318,9 +318,7 @@ describe("bid-review BaselineView 二期冲突裁定(EAI-CUSTOM 2026-10-31)", ()
 
     // 中文 label 卡(路径降为 code 小字)+ 冲突待裁定区
     // Plan8 §4.4 后字段卡同屏可见(报价基准族),裁定卡+字段卡各一份 → findAll
-    expect(
-      (await screen.findAllByText("投标总价")).length,
-    ).toBeGreaterThan(0);
+    expect((await screen.findAllByText("投标总价")).length).toBeGreaterThan(0);
     expect(screen.getByText(/冲突待裁定/)).toBeTruthy();
     expect(screen.getByText("待裁定")).toBeTruthy();
 
@@ -344,9 +342,7 @@ describe("bid-review BaselineView 二期冲突裁定(EAI-CUSTOM 2026-10-31)", ()
     await waitFor(() =>
       expect((adopt as HTMLButtonElement).disabled).toBe(true),
     );
-    fireEvent.click(
-      screen.getByRole("checkbox", { name: /我已核对两处原文/ }),
-    );
+    fireEvent.click(screen.getByRole("checkbox", { name: /我已核对两处原文/ }));
     await waitFor(() =>
       expect((adopt as HTMLButtonElement).disabled).toBe(false),
     );
