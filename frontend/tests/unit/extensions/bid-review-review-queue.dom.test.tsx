@@ -188,4 +188,57 @@ describe("bid-review ReviewQueueView 复核工作台(EAI-CUSTOM 2026-10-31)", ()
       expect(body.note).toContain("误报原因:证据错位");
     });
   });
+
+  it("M4 §4.6:全量未复核队列+seg筛选(默认待人工)+stage-chip+页脚进度;转待人工→need_human", async () => {
+    const MIX = {
+      items: [
+        // 致命违规:不在默认段,「全部」段可达
+        issue("i1", {
+          severity: "fatal",
+          verdict: "violation",
+          need_human: false,
+        }),
+        // need_human:默认段唯一入队项
+        issue("i2"),
+        // 已复核维持:全量口径下也不入队
+        issue("i3", { review_state: "maintained", need_human: false }),
+      ],
+    };
+    responder = (path) => {
+      if (path.endsWith("/issues")) return jsonRes(MIX);
+      if (path.includes("/feedback")) return jsonRes({});
+      if (path.includes("/docs/") && path.includes("/content"))
+        return jsonRes(CONTENT);
+      return jsonRes({}, 404);
+    };
+    renderReview();
+
+    // 默认段=待人工:仅 i2;stage-chip 复核中 1/1
+    expect(await screen.findByText(/复核中 1\/1/)).toBeTruthy();
+    expect(screen.getByText(/R-i2/)).toBeTruthy();
+    expect(screen.queryByText(/R-i1/)).toBeNull();
+
+    // hd-sub 进度注 + 页脚:已复核 1(维持 1)/ 待复核 2
+    expect(screen.getByText(/已复核 1/)).toBeTruthy();
+    expect(screen.getByText(/本任务复核进度 1 \/ 3/)).toBeTruthy();
+
+    // 切「全部」→ i1 滑入(i3 maintained 仍排除)
+    fireEvent.click(screen.getByRole("button", { name: /全部/ }));
+    expect(await screen.findByText(/R-i1/)).toBeTruthy();
+    expect(screen.getByText(/复核中 1\/2/)).toBeTruthy();
+
+    // 第四处置项:转待人工 → POST action=need_human
+    fireEvent.click(screen.getByRole("radio", { name: /转待人工/ }));
+    fireEvent.click(screen.getByRole("button", { name: "转待人工并下一条" }));
+    await waitFor(() => {
+      const fb = calls.find(
+        (c) => c.path === "/api/extensions/bid-review/issues/i1/feedback",
+      );
+      expect(fb).toBeTruthy();
+      const body = JSON.parse(fb!.init!.body as string) as { action: string };
+      expect(body.action).toBe("need_human");
+    });
+    // 本地 handled 推进(裁决 7):页脚待复核收敛 2→1
+    await waitFor(() => expect(screen.getByText(/待复核 1/)).toBeTruthy());
+  });
 });

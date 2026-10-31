@@ -1,14 +1,16 @@
 "use client";
 
 /**
- * 人工复核工作台(二期 spec §五,原型 s6;EAI-CUSTOM 2026-10-31)。
- * need_human 队列逐条处置:左栏原文对照(DocLocateBody 内嵌,取当前项首条
- * 证据 {doc_id,page,text} → 定位窗口),右栏问题卡 + 处置表单
- * (确认问题 confirm / 误报 false_positive 必填四因 / 严重度调整 severity_change)。
- * 键盘快捷键:J/K 切换、Y 确认提交、N 选中误报(误报必填原因——快捷键只选中
- * 不代提交;输入框聚焦时全部禁用)。提交走既有 useBidFeedback(confirm 清
- * need_human 旗标、误报落库回流),本地 handled 集合立即推进队列,不依赖
- * 重取时序。零后端增量——反馈写路径一期已闭环。
+ * 人工复核工作台(二期 spec §五,原型 s6;EAI-CUSTOM 2026-10-31;M4 Plan9 §4.6)。
+ * 队列口径 M4 起为全量未复核(review_state==="unresolved" 且不在本会话 handled,
+ * 裁决 1):seg 严重度筛选默认待人工;处置四动作 confirm / false_positive 必填
+ * 四因 / severity_change / need_human(转待人工,裁决 6)。页头 stage-chip
+ * 「复核中 k/N」+ hd-sub 进度注,右卡页脚复核进度条(维持/误报/待复核)。
+ * 左栏原文对照(DocLocateBody 内嵌,取当前项首条证据 {doc_id,page,text} →
+ * 定位窗口)。键盘快捷键:J/K 切换、Y 确认提交、N 选中误报(误报必填原因——
+ * 快捷键只选中不代提交;输入框聚焦时全部禁用)。提交走既有 useBidFeedback
+ * (confirm 清 need_human 旗标、误报落库回流),本地 handled(id→动作)立即
+ * 推进队列并并入计数,服务端 review_state 真源(裁决 7)。
  * 权限:挂 bid:page:results(同治理域,先例=metrics 挂 bid:page:rules;Plan7
  * workbench 退役后随 results 宿主权限)。
  */
@@ -25,8 +27,10 @@ import {
 import { DocLocateBody } from "@/extensions/bid-review/components/DocLocateModal";
 import {
   FP_REASONS,
+  SEG_OPTIONS,
   renderIssueMessage,
   sevPillBrx,
+  type SevFilter,
 } from "@/extensions/bid-review/components/ResultsView";
 import { TaskTitleTag } from "@/extensions/bid-review/components/TaskTitleTag";
 import {
@@ -65,19 +69,42 @@ export function ReviewQueueView({ taskId }: { taskId?: string | null }) {
   // 页头业务号(Plan4):与工作台同 queryKey,通常命中缓存零额外请求
   const taskQuery = useBidTask(taskId ?? null);
 
-  // 队列 = need_human 未处置项;提交成功即入 handled(本地即时推进,重取后
-  // confirm 项的旗标翻转与 handled 语义一致,不重复计数)
-  const [handled, setHandled] = useState<Set<string>>(() => new Set());
+  // 队列口径(M4 §4.6 裁决 1)= 全量未复核:review_state==="unresolved" 且不在
+  // 本会话 handled;seg 再按严重度切段(默认待人工)。handled 记 id→最新动作
+  // (裁决 7:本地集合仅乐观 UI,服务端 review_state 真源,重取后语义收敛),
+  // 并入维持/误报计数。
+  const [handled, setHandled] = useState<Record<string, string>>({});
+  const [seg, setSeg] = useState<SevFilter>("human");
+  const inSeg = (i: IssueOut, s: SevFilter) =>
+    s === "all" ? true : s === "human" ? i.need_human : i.severity === s;
   const queue = useMemo(
     () =>
       (issuesQuery.data ?? []).filter(
-        (i) => i.need_human && !handled.has(i.id),
+        (i) =>
+          (handled[i.id] ?? i.review_state ?? "unresolved") === "unresolved" &&
+          inSeg(i, seg),
       ),
-    [issuesQuery.data, handled],
+    [issuesQuery.data, handled, seg],
   );
   const [idx, setIdx] = useState(0);
   const safeIdx = queue.length === 0 ? 0 : Math.min(idx, queue.length - 1);
   const current = queue[safeIdx] ?? null;
+
+  // 复核进度注/页脚计数(M4 §4.6):已复核=全量-未复核;维持/误报并入 handled
+  const issues = issuesQuery.data ?? [];
+  const pendingCount = useMemo(
+    () =>
+      issues.filter(
+        (i) =>
+          (handled[i.id] ?? i.review_state ?? "unresolved") === "unresolved",
+      ).length,
+    [issues, handled],
+  );
+  const reviewedTotal = issues.length - pendingCount;
+  const stateNow = (i: IssueOut) =>
+    handled[i.id] ?? i.review_state ?? "unresolved";
+  const maintained = issues.filter((i) => stateNow(i) === "maintained").length;
+  const fpTotal = issues.filter((i) => stateNow(i) === "false_positive").length;
 
   // 处置表单:确认问题 / 误报(四因必选,默认首因)/ 严重度调整(默认主要)
   const [action, setAction] = useState<FeedbackAction>("confirm");
@@ -112,9 +139,11 @@ export function ReviewQueueView({ taskId }: { taskId?: string | null }) {
               ? "已确认问题"
               : a === "false_positive"
                 ? "已标误报(回流评测集)"
-                : "已调整严重度",
+                : a === "need_human"
+                  ? "已转待人工(不计违规)"
+                  : "已调整严重度",
           );
-          setHandled((s) => new Set(s).add(current.id));
+          setHandled((m) => ({ ...m, [current.id]: a }));
         },
         onError: (e) =>
           toast.error(e instanceof Error ? e.message : "提交失败"),
@@ -189,10 +218,14 @@ export function ReviewQueueView({ taskId }: { taskId?: string | null }) {
             <TaskTitleTag taskId={taskId} bizNo={taskQuery.data?.biz_no} />
           </h2>
           <div className="ph-sub">
-            待人工队列逐条处置——未判定 ≠ 通过 · 误报自动回流评测集
+            复核队列 {pendingCount} 项 · 已复核 {reviewedTotal}(维持{" "}
+            {maintained} / 误报 {fpTotal}) · 未判定 ≠ 通过 · 误报自动回流评测集
           </div>
         </div>
         <div className="ph-actions">
+          <span className="stage-chip">
+            复核中 {Math.min(safeIdx + 1, queue.length)}/{queue.length}
+          </span>
           <Link
             href={`/bid-review/results?task_id=${taskId}`}
             className="btn btn-sec btn-sm"
@@ -221,12 +254,9 @@ export function ReviewQueueView({ taskId }: { taskId?: string | null }) {
         <div className="note-bar">
           <span>问题列表加载中…</span>
         </div>
-      ) : queue.length === 0 ? (
+      ) : pendingCount === 0 ? (
         <div className="note-bar">
-          <span>
-            待人工队列为空——引擎无法判定项已全部处置,或本任务暂无 need_human
-            问题。
-          </span>
+          <span>待复核队列为空——全部未复核项已处置,或本任务暂无问题。</span>
         </div>
       ) : (
         <div className="split">
@@ -266,9 +296,33 @@ export function ReviewQueueView({ taskId }: { taskId?: string | null }) {
               <h3>待复核队列</h3>
               <span className="hd-sub">
                 当前 <b className="num">{safeIdx + 1}</b> /{" "}
-                <span className="num">{queue.length}</span> · 未处置{" "}
                 <span className="num">{queue.length}</span>
               </span>
+            </div>
+            {/* seg 严重度筛选(M4 §4.6):默认待人工,词汇与 /results 清单同源 */}
+            <div
+              className="seg"
+              role="group"
+              aria-label="严重度筛选"
+              style={{ padding: "10px 16px 0" }}
+            >
+              {SEG_OPTIONS.map((opt) => {
+                const n = issues.filter((i) => inSeg(i, opt.value)).length;
+                return (
+                  <button
+                    key={opt.value}
+                    type="button"
+                    className={cn(seg === opt.value && "on")}
+                    aria-pressed={seg === opt.value}
+                    onClick={() => {
+                      setSeg(opt.value);
+                      setIdx(0);
+                    }}
+                  >
+                    {opt.label} {n}
+                  </button>
+                );
+              })}
             </div>
             <div className="toolbar">
               <button
@@ -402,6 +456,17 @@ export function ReviewQueueView({ taskId }: { taskId?: string | null }) {
                       <option value="info">提示</option>
                     </select>
                   </label>
+                  <label
+                    style={{ display: "flex", alignItems: "center", gap: 6 }}
+                  >
+                    <input
+                      type="radio"
+                      name="review-action"
+                      checked={action === "need_human"}
+                      onChange={() => setAction("need_human")}
+                    />
+                    转待人工(引擎无法判定,挂起不计违规)
+                  </label>
                 </div>
 
                 <textarea
@@ -426,11 +491,36 @@ export function ReviewQueueView({ taskId }: { taskId?: string | null }) {
                         ? "提交并下一条"
                         : action === "false_positive"
                           ? "标误报并下一条"
-                          : "调整严重度并下一条"}
+                          : action === "need_human"
+                            ? "转待人工并下一条"
+                            : "调整严重度并下一条"}
                   </button>
                 </div>
               </div>
             ) : null}
+            {queue.length === 0 && pendingCount > 0 ? (
+              <div
+                style={{
+                  padding: "12px 16px",
+                  fontSize: 13,
+                  color: "var(--text-3)",
+                }}
+              >
+                当前筛选段暂无待复核项——切其它段查看。
+              </div>
+            ) : null}
+            {/* 页脚复核进度(M4 §4.6,原型 s6 tbl-foot 句式) */}
+            <div
+              className="tbl-foot"
+              style={{ justifyContent: "space-between" }}
+            >
+              <span>
+                本任务复核进度 {reviewedTotal} / {issues.length}
+              </span>
+              <span>
+                维持 {maintained} · 误报 {fpTotal} · 待复核 {pendingCount}
+              </span>
+            </div>
           </div>
         </div>
       )}
