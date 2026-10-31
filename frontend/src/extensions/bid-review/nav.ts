@@ -6,10 +6,17 @@
  */
 import type { TaskOut } from "./types";
 
-export type TaskPage = "tasks" | "workbench" | "baseline" | "review";
+export type TaskPage =
+  | "tasks"
+  | "parsing"
+  | "workbench"
+  | "baseline"
+  | "review";
 
 const PAGE_PATHS: Record<TaskPage, string> = {
   tasks: "/bid-review",
+  // Plan6 (spec §4.3):解析与字段抽取归拢专屏
+  parsing: "/bid-review/parsing",
   workbench: "/bid-review/workbench",
   baseline: "/bid-review/baseline",
   review: "/bid-review/review",

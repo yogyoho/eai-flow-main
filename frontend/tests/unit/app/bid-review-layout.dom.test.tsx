@@ -5,7 +5,8 @@ import type { PropsWithChildren, ReactNode } from "react";
 // micro-B 2026-10-29 站内入口回归门:/bid-review/rules(Task 17 落地)此前无任何
 // 站内入口可达(e242a00bf 遗留②——nav 注册属 Task 12 范畴遗漏)。锁定 bid-review
 // layout 子路由导航(照 contract-price/bid-quote 先例)的三条行为:
-// ① 四个已注册页(bid:page:tasks/workbench/baseline/rules)各有一条导航入口;
+// ① 五个已注册页(bid:page:tasks/parsing/workbench/baseline/rules)各有一条导航
+//    入口(Plan6:新页 /parsing 解析与字段抽取,spec §4.3 归拢专屏);
 // ② canPage 拒绝的页入口隐藏(权限点过滤,同 contract-price layout);
 // ③ 权限加载中 fail-open 全显(同先例,防权限未就绪时导航闪没)。
 const mocks = rs.hoisted(() => ({
@@ -75,12 +76,16 @@ describe("bid-review layout 子路由导航(micro-B 站内入口)", () => {
   });
   afterEach(cleanup);
 
-  it("四个已注册页各有一条入口,规则库指向 /bid-review/rules", () => {
+  it("五个已注册页各有一条入口,规则库指向 /bid-review/rules", () => {
     renderLayout();
     // 2026-10-30 用户定案:「任务列表」更名「任务总览」(首项即任务工作台,与审查工作台区分)
     expect(
       screen.getByRole("link", { name: "任务总览" }).getAttribute("href"),
     ).toBe("/bid-review");
+    // Plan6 (spec §4.3):解析与字段抽取归拢专屏,插在任务总览与工作台之间
+    expect(
+      screen.getByRole("link", { name: "解析与字段抽取" }).getAttribute("href"),
+    ).toBe("/bid-review/parsing");
     expect(
       screen.getByRole("link", { name: "审查工作台" }).getAttribute("href"),
     ).toBe("/bid-review/workbench");
@@ -99,6 +104,7 @@ describe("bid-review layout 子路由导航(micro-B 站内入口)", () => {
     renderLayout();
     expect(screen.queryByRole("link", { name: "规则库" })).toBeNull();
     expect(screen.queryByRole("link", { name: "任务总览" })).not.toBeNull();
+    expect(screen.queryByRole("link", { name: "解析与字段抽取" })).not.toBeNull();
     expect(screen.queryByRole("link", { name: "审查工作台" })).not.toBeNull();
   });
 

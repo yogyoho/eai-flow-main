@@ -5,6 +5,7 @@ import {
   ClipboardCheck,
   FileText,
   Gauge,
+  Layers,
   ListChecks,
   Moon,
   Sun,
@@ -65,6 +66,15 @@ const navItems: Array<{
     group: 0,
     badge: "running",
     taskPage: "tasks",
+  },
+  {
+    // UX 重构 Plan6 (spec §4.3):解析与字段抽取归拢专屏(原型 s3)
+    href: "/bid-review/parsing",
+    label: "解析与字段抽取",
+    icon: Layers,
+    pageId: "bid:page:parsing",
+    group: 0,
+    taskPage: "parsing",
   },
   {
     href: "/bid-review/workbench",

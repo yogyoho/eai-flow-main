@@ -173,6 +173,9 @@ modules:
     pages:
       - id: "bid:page:tasks"
         display_name: "任务列表"
+      - id: "bid:page:parsing" # EAI-CUSTOM (2026-10-31 UX 重构 Plan6,spec §4.3):解析与字段抽取归拢专屏
+        display_name: "解析与字段抽取"
+        operations: []
       - id: "bid:page:workbench"
         display_name: "审查工作台"
         operations: []

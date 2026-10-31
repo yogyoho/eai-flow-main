@@ -113,6 +113,7 @@ roles:
     - settings:page:datasource
     - settings:page:license
     - bid:page:tasks
+    - bid:page:parsing
     - bid:page:workbench
     - bid:page:baseline
     - bid:page:rules
@@ -214,6 +215,7 @@ roles:
     - settings:page:license
     - kf:page:extraction
     - bid:page:tasks
+    - bid:page:parsing
     - bid:page:workbench
     - bid:page:baseline
     - bid:page:rules
