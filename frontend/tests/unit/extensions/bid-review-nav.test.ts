@@ -29,9 +29,9 @@ function task(partial: Partial<TaskOut>): TaskOut {
 }
 
 describe("taskHref", () => {
-  it("任务链页拼 task_id 并编码", () => {
-    expect(taskHref("workbench", "abc")).toBe(
-      "/bid-review/workbench?task_id=abc",
+  it("任务链页拼 task_id 并编码(Plan7:workbench 退役,结果页=results)", () => {
+    expect(taskHref("results", "abc")).toBe(
+      "/bid-review/results?task_id=abc",
     );
     expect(taskHref("review", "a b")).toBe("/bid-review/review?task_id=a%20b");
     expect(taskHref("baseline", "x")).toBe("/bid-review/baseline?task_id=x");

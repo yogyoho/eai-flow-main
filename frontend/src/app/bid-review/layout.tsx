@@ -77,12 +77,13 @@ const navItems: Array<{
     taskPage: "parsing",
   },
   {
-    href: "/bid-review/workbench",
-    label: "审查工作台",
+    // Plan7 (spec §4.5,裁定8):审查结果专屏,「审查工作台」退役
+    href: "/bid-review/results",
+    label: "审查结果",
     icon: FileText,
-    pageId: "bid:page:workbench",
+    pageId: "bid:page:results",
     group: 0,
-    taskPage: "workbench",
+    taskPage: "results",
   },
   {
     href: "/bid-review/baseline",

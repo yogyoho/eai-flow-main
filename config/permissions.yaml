@@ -176,8 +176,8 @@ modules:
       - id: "bid:page:parsing" # EAI-CUSTOM (2026-10-31 UX 重构 Plan6,spec §4.3):解析与字段抽取归拢专屏
         display_name: "解析与字段抽取"
         operations: []
-      - id: "bid:page:workbench"
-        display_name: "审查工作台"
+      - id: "bid:page:results" # EAI-CUSTOM (2026-10-31 UX 重构 Plan7,spec §4.5 裁定8):审查结果专屏,替代 workbench
+        display_name: "审查结果"
         operations: []
       - id: "bid:page:baseline"
         display_name: "基准确认"

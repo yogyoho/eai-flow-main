@@ -93,7 +93,7 @@ describe("bid-review layout 流程化(Plan 1)", () => {
     // 既有页一个不少(micro-B 契约的 href 集不变)
     for (const href of [
       "/bid-review",
-      "/bid-review/workbench",
+      "/bid-review/results",
       "/bid-review/baseline",
       "/bid-review/review",
       "/bid-review/rules",
@@ -157,8 +157,8 @@ describe("bid-review layout 流程化(Plan 1)", () => {
       "/bid-review?task_id=newest1",
     );
     expect(
-      screen.getByRole("link", { name: /审查工作台/ }).getAttribute("href"),
-    ).toBe("/bid-review/workbench?task_id=newest1");
+      screen.getByRole("link", { name: /审查结果/ }).getAttribute("href"),
+    ).toBe("/bid-review/results?task_id=newest1");
     expect(
       screen.getByRole("link", { name: /基准确认/ }).getAttribute("href"),
     ).toBe("/bid-review/baseline?task_id=newest1");

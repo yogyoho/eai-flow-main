@@ -82,13 +82,14 @@ describe("bid-review layout 子路由导航(micro-B 站内入口)", () => {
     expect(
       screen.getByRole("link", { name: "任务总览" }).getAttribute("href"),
     ).toBe("/bid-review");
-    // Plan6 (spec §4.3):解析与字段抽取归拢专屏,插在任务总览与工作台之间
+    // Plan6 (spec §4.3):解析与字段抽取归拢专屏,插在任务总览与结果页之间
     expect(
       screen.getByRole("link", { name: "解析与字段抽取" }).getAttribute("href"),
     ).toBe("/bid-review/parsing");
+    // Plan7 (spec §4.5,裁定8):「审查工作台」退役 → 「审查结果」/results
     expect(
-      screen.getByRole("link", { name: "审查工作台" }).getAttribute("href"),
-    ).toBe("/bid-review/workbench");
+      screen.getByRole("link", { name: "审查结果" }).getAttribute("href"),
+    ).toBe("/bid-review/results");
     expect(
       screen.getByRole("link", { name: "基准确认" }).getAttribute("href"),
     ).toBe("/bid-review/baseline");
@@ -105,7 +106,7 @@ describe("bid-review layout 子路由导航(micro-B 站内入口)", () => {
     expect(screen.queryByRole("link", { name: "规则库" })).toBeNull();
     expect(screen.queryByRole("link", { name: "任务总览" })).not.toBeNull();
     expect(screen.queryByRole("link", { name: "解析与字段抽取" })).not.toBeNull();
-    expect(screen.queryByRole("link", { name: "审查工作台" })).not.toBeNull();
+    expect(screen.queryByRole("link", { name: "审查结果" })).not.toBeNull();
   });
 
   it("权限加载中 fail-open 全显(同 contract-price 先例)", () => {

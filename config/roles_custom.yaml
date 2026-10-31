@@ -114,7 +114,7 @@ roles:
     - settings:page:license
     - bid:page:tasks
     - bid:page:parsing
-    - bid:page:workbench
+    - bid:page:results
     - bid:page:baseline
     - bid:page:rules
   dept_head:
@@ -216,7 +216,7 @@ roles:
     - kf:page:extraction
     - bid:page:tasks
     - bid:page:parsing
-    - bid:page:workbench
+    - bid:page:results
     - bid:page:baseline
     - bid:page:rules
     is_system: false

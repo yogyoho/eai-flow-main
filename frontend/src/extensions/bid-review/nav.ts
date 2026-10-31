@@ -9,7 +9,7 @@ import type { TaskOut } from "./types";
 export type TaskPage =
   | "tasks"
   | "parsing"
-  | "workbench"
+  | "results"
   | "baseline"
   | "review";
 
@@ -17,7 +17,8 @@ const PAGE_PATHS: Record<TaskPage, string> = {
   tasks: "/bid-review",
   // Plan6 (spec §4.3):解析与字段抽取归拢专屏
   parsing: "/bid-review/parsing",
-  workbench: "/bid-review/workbench",
+  // Plan7 (spec §4.5,裁定8):审查结果专屏,「审查工作台」退役
+  results: "/bid-review/results",
   baseline: "/bid-review/baseline",
   review: "/bid-review/review",
 };
