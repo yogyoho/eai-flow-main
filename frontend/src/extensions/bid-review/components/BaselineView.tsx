@@ -61,6 +61,8 @@ export function BaselineView({ taskId }: { taskId?: string | null }) {
   const [search, setSearch] = useState("");
   const [locate, setLocate] = useState<LocateTarget | null>(null);
   const [picks, setPicks] = useState<Record<string, number>>({});
+  // 核对勾 gate(Plan8 §4.4):每冲突卡「我已核对两处原文」勾选后采纳才可点
+  const [verified, setVerified] = useState<Record<string, boolean>>({});
   const adjudicate = useBidAdjudicate(taskId ?? "");
 
   // 冲突路径(全行并集;候选清单各行同源,取首行);已裁定路径不计未裁
@@ -398,6 +400,30 @@ export function BaselineView({ taskId }: { taskId?: string | null }) {
                           </span>
                         ) : null}
                       </div>
+                      {/* 核对勾 gate(Plan8 §4.4,原型 s4 f-ck):已裁定卡不呈现 */}
+                      {!adj ? (
+                        <label
+                          style={{
+                            display: "flex",
+                            alignItems: "center",
+                            gap: 6,
+                            fontSize: 13,
+                          }}
+                        >
+                          <input
+                            type="checkbox"
+                            checked={!!verified[p]}
+                            disabled={!gateOpen}
+                            onChange={(e) =>
+                              setVerified((m) => ({
+                                ...m,
+                                [p]: e.target.checked,
+                              }))
+                            }
+                          />
+                          我已核对两处原文，确认上述裁定
+                        </label>
+                      ) : null}
                       <div
                         style={{
                           display: "flex",
@@ -412,6 +438,7 @@ export function BaselineView({ taskId }: { taskId?: string | null }) {
                           disabled={
                             !gateOpen ||
                             picks[p] == null ||
+                            !verified[p] ||
                             adjudicate.isPending
                           }
                           onClick={() => {

@@ -334,6 +334,13 @@ describe("bid-review BaselineView 二期冲突裁定(EAI-CUSTOM 2026-10-31)", ()
       .filter((r) => (r as HTMLInputElement).name === "cand-bid.total_price");
     expect(radios.length).toBe(2);
     fireEvent.click(radios[1]!);
+    // 核对勾 gate(Plan8 §4.4):仅选候选不够,须勾「我已核对两处原文」
+    await waitFor(() =>
+      expect((adopt as HTMLButtonElement).disabled).toBe(true),
+    );
+    fireEvent.click(
+      screen.getByRole("checkbox", { name: /我已核对两处原文/ }),
+    );
     await waitFor(() =>
       expect((adopt as HTMLButtonElement).disabled).toBe(false),
     );
