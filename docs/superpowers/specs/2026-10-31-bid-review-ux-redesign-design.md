@@ -49,10 +49,11 @@
 - 徽标数据源:layout 层挂共享任务查询(见 3.3),客户端计算;点击徽标直达对应页并带「最近一条命中任务」的 task_id。
 - 命名:六页名与原型全量对齐;「审查工作台」名称退役;「任务总览」保留(2026-10-30 定案)。
 
-### 3.2 任务上下文
+### 3.2 任务上下文(2026-10-31 s1 复核裁决:选中任务模型,替代原「任务选择器」方案)
 
-- URL 带 `task_id` 时:侧栏顶部渲染「当前任务」chip(业务任务号+项目名+状态 pill);审查闭环六页互跳自动携带 task_id(沿用现有 workbenchHref 模式,统一收口成一个 `taskHref(page, taskId)` 工具)。
-- 无 `task_id` 进入任务链页(/parsing /baseline /results /review):渲染**任务选择器**(从任务列表选,支持按状态过滤),替代现有「未指定任务」死空态。选择后以 `?task_id=` 进入该页。
+- **单一事实源 = URL `?task_id`**,零新状态层:`effectiveTaskId = URL param → 最新任务(useBidTasks[0])→ null`。共享 hook `useSelectedTask()` 封装 fallback 链,审查闭环六页统一消费——无 param 进入任何任务链页都直接显示最新任务数据(替代原「任务选择器」屏与「未指定任务」死空态)。
+- 列表行点击 = **选中**(`router.replace` 写 `?task_id=`,选中行高亮);页面跳转改走操作列状态分派(见 4.1)。
+- 侧栏顶部「当前任务」chip(业务任务号+项目名+状态 pill,B1 后升级)显示 **effective** 选中(含最新任务 fallback);审查闭环四任务链页的 nav link 自动携带当前 effective task_id(`taskHref(page, taskId)` 收口,Plan 1 已落地),六页互跳不断档。
 - 路由迁移:`/bid-review/workbench` → 重定向 shim 到 `/bid-review/results`(保深链,同 `tasks/[id]` shim 模式);`tasks/[id]` shim 保留。
 
 ### 3.3 数据地基(纯前端)
@@ -69,13 +70,13 @@
 
 ### 4.1 任务总览 `/bid-review`(s1)
 
-- **metric-strip 对齐五格**:待基准确认(warn)/待人工复核/运行中(accent)/致命未处理(err)/本月已完成(客户端按 created_at 过滤 done 任务,可达)。去掉「全测满才求和」伪零门,计数缺失显「—」的纪律仅保留给真正缺数据的格。
+- **metric-strip 换血为「当前任务体征」**(2026-10-31 用户定案:任务彼此独立,跨任务汇总无行动价值;统计卡骨架保留、内容更换):致命未处理(err)/待人工复核(warn)/问题总数/误报已剔除/审查用时(done_at−created_at,B1 前显 —)。数据源:TaskOut 聚合字段 + `useBidIssues(选中任务)`;半程态(created/parsing/extracting/running)问题集是快照,四格显 —(伪零纪律,「未进入审查 ≠ 通过」)。跨任务计数由侧栏徽标承担(Plan 1 已落地),页头不重复。
 - **列表 9 列**(依赖 B1):任务号(业务号 TBR-*)/项目·标段/模式/状态/可提交判定/致命·主要/创建人/更新时间/操作。
   - 可提交判定:客户端按 TaskOut 计算——done 且 fatal_unhandled>0 →「不建议提交」(err);done 且 =0 →「建议提交」(ok);其余「—」(表尾保留「未进入审查 ≠ 通过」文案)。
   - 操作列按状态分派:awaiting_confirm →「去基准确认」;done →「查看结果」;running/extracting/parsing →「查看进度」;failed →「重试解析」(B8 落地前不渲染)。
   - 搜索框支持业务号+项目名(B1 后);seg 五档保留(「待基准确认」措辞)。
 - 「导出列表」继续不做(v1 无后端,挂账)。
-- 保留:骨架屏、errbar+重试、空态、行点击跳转(跳 /results)、刷新按钮。
+- 保留:骨架屏、errbar+重试、空态、刷新按钮。行点击语义改为**选中**(D3-A,2026-10-31;原「行点击跳转 /results」退役),跳转全部走操作列。
 
 ### 4.2 新建审查任务 `/bid-review/new`(s2,新页)
 
@@ -149,7 +150,7 @@
 
 | # | 内容 | 契约要点 | 量级 |
 |---|------|---------|------|
-| B1 | TaskOut 扩展 | `project_name`、`tender_no`、`biz_no`(TBR-{YYYYMMDD}-{seq},创建时生成,唯一)、`created_by_name`、`updated_at`/`done_at`;tasks 表加列+迁移 | 小 |
+| B1 | TaskOut 扩展 | `project_name`、`tender_no`、`biz_no`(TBR-{YYYYMMDD}-{seq},创建时生成,唯一)、`created_by_name`、`updated_at`/`done_at`、`main_unhandled`(未处理「主要」severity 计数,2026-10-31 D1-A 并入,list_tasks 同循环聚合);tasks 表加列+迁移(biz_no 存量回填) | 小 |
 | B2 | 复核落库 | feedback 端点动作枚举扩 `confirm`/`severity_change`/`defer_need_human`(误报已有);issues 投影加 `review_state`(unresolved/maintained/false_positive/severity_changed/deferred);全量未复核队列查询支持(按 segment 过滤) | 中 |
 | B3 | 解析置信 | 解析层回传 per-doc confidence + `low_conf_pages:[{page_from,page_to,confidence,note}]`,engine_meta.docs 投影透出。**先探明 parse 层是否已产出置信再定实现**(若 parse 无置信,引擎侧补计算,量级升) | 中 |
 | B4 | 评分覆盖度 | 引擎抽取评分办法项(baseline 字段族扩展或独立投影);`GET /tasks/{id}/score_coverage` → `{total, covered, items:[{name, covered_by_rules:[rule_id]}]}` | 中 |
@@ -170,12 +171,16 @@
 7. **复核落库**:confirm/severity_change/defer 三动作落库(裁决 2);本地 handled 集合保留为乐观 UI,服务端 state 为真源。
 8. **命名**:「审查工作台」退役;六页名对齐原型;「任务总览」保留。
 9. **规则启停/评测 runner/s7/s8 整屏/重试端点/PDF 导出**:维持挂账(见 §2)。
+10. **s1 统计卡**(2026-10-31 用户两段定案):跨任务汇总无行动价值(任务彼此独立)但**不删卡**,内容换为当前选中任务体征五格(致命/待人工/问题总数/误报/用时);跨任务计数只留在侧栏徽标。
+11. **D1 致命/主要列**:B1 并入 `main_unhandled` 聚合,严格对齐原型(弃「致命/待人工」零后端替代)。
+12. **D2 统计卡第五格**:审查用时(B1 done_at 前显 —;弃零后端「基准确认状态」,与状态 pill 重复)。
+13. **D3 行点击语义**:点击仅选中(写 `?task_id=`+高亮),跳转走操作列(选中模型见 §3.2)。
 
 ## 7. 里程碑与依赖
 
 | 里程碑 | 内容 | 依赖 |
 |---|------|------|
-| M1 IA 地基 | 共享 useBidTasks、侧栏流程化(徽标+任务 chip+点击直达)、路由骨架(/new /parsing /results + /workbench shim)、任务选择器、权限 yaml 新点+回归门扩展 | 无 |
+| M1 IA 地基 | 共享 useBidTasks、侧栏流程化(徽标+任务 chip)、选中任务模型(useSelectedTask,§3.2)、路由骨架(/new /parsing /results + /workbench shim)、权限 yaml 新点+回归门扩展 | 无 |
 | M2 任务链页 | /new 向导页、/parsing 归拢专屏、任务总览 9 列+行动作、baseline 增强(主题族/核对勾/折叠/渐进 meter/计数 pill/proto-banner 清除) | M1;业务号列等 B1 |
 | M3 结果页 | /results 拆分迁移、verdict 定稿、报告预览 modal、发起复核常驻、版本对比卡片 | M1;对比卡片 B7 |
 | M4 复核页 | 全量队列+seg+四 radio+stage-chip+进度 footer | M1;B2 |
@@ -186,7 +191,7 @@
 
 ## 8. 测试与验收
 
-- **前端**:dom 测试(rstest,tests/unit 镜像 src)随每里程碑扩展;既有 bid-review dom 测试随路由迁移改路径;新增:徽标计算、任务 chip/选择器、/new 校验门(200MB/双组必填)、/parsing 归拢渲染、/results 拆分后关键区块存在性、/review 四 radio+seg 过滤、rules 抽屉、metrics 归因渲染。
+- **前端**:dom 测试(rstest,tests/unit 镜像 src)随每里程碑扩展;既有 bid-review dom 测试随路由迁移改路径;新增:徽标计算、任务 chip/选中模型 fallback 链、/new 校验门(200MB/双组必填)、/parsing 归拢渲染、/results 拆分后关键区块存在性、/review 四 radio+seg 过滤、rules 抽屉、metrics 归因渲染。
 - **后端**:B1-B7 每端点 pytest(含权限与 owner 过滤用例);B2 落库后 need_human 计数与 review_state 联动用例(确认→清旗、转待人工→置旗、误报→回落)。
 - **走查**:每里程碑真浏览器走查(登录态热、路由编译预算预留);最终全流程走查:新建→解析→基准确认→审查→复核→导出。
 - **回归门**:micro-B 权限测试扩展锁新页面点;harness 边界测试不触(纯扩展模块)。
