@@ -8,6 +8,7 @@
  */
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useSearchParams } from "next/navigation";
 
 import {
   adjudicateBaseline,
@@ -123,4 +124,18 @@ export function useBidConfirmTask() {
  * 一处失效多处同步。 */
 export function useBidTasks() {
   return useQuery({ queryKey: bidReviewKeys.tasks, queryFn: listTasks });
+}
+
+/** 选中任务模型(spec §3.2,UX 重构 Plan 2):effectiveTaskId = URL ?task_id →
+ * 最新任务(列表首位)→ null。六页任务链统一消费;isFallback=true 表示走了
+ * 最新任务 fallback(非用户显式选择,页面可据此微调文案)。task 为 undefined
+ * 的两种情形:param 深链不在列表缓存 / 任务列表未加载——调用方按「无详情」
+ * 处理,不得伪造。useSearchParams 调用方须在 Suspense 边界内。 */
+export function useSelectedTask() {
+  const paramId = useSearchParams().get("task_id");
+  const { data: tasks } = useBidTasks();
+  const list = tasks ?? [];
+  const taskId = paramId ?? list[0]?.id ?? null;
+  const task = taskId ? list.find((t) => t.id === taskId) : undefined;
+  return { taskId, task, isFallback: !paramId && taskId != null };
 }
