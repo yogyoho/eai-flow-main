@@ -319,6 +319,9 @@
 .brx .tbl td {padding:9px 12px; border-bottom:1px solid var(--gray-100); font-size:13px; vertical-align:middle;}
 .brx .tbl tbody tr {transition:background .12s;}
 .brx .tbl tbody tr:hover {background:var(--gray-50);}
+/* Plan2 T3(spec §3.2):选中任务行(tr.on;行点击=选中)。hover 不盖选中底色。 */
+.brx .tbl tbody tr.on {background:var(--main-10);}
+.brx .tbl tbody tr.on:hover {background:var(--main-10);}
 .brx .tbl .r {text-align:right;}
 .brx .meter {height:5px; border-radius:3px; background:var(--gray-100); width:64px; display:inline-block;
 

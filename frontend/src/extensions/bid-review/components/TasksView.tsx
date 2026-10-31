@@ -19,6 +19,12 @@
  * 两组上传(POST /tasks multipart 是后端唯一文档入口,零材料任务会被后端
  * _enqueue_docs 无条件直推空跑,故必传——Task 12 修复轮决定 (b));创建成功跳
  * workbench?task_id=。
+ * UX 重构 Plan2(2026-10-31,spec §3.2/§4.1 D1-D3 裁决):统计卡换血为「选中任务
+ * 体征」五格(useSelectedTask fallback 最新任务;体征=TaskOut 聚合+选中任务单条
+ * issues 查询,O(1) 非 N+1);行点击=选中(router.replace ?task_id),跳转走操作列;
+ * 列=任务号/模式/状态/可提交判定/致命·待人工(合并,批1)/创建时间/操作——B1
+ * 后端批(biz_no/project_name/main_unhandled/created_by_name/updated_at/done_at)
+ * 落地后再做 9 列全量对齐。审查用时格 B1 done_at 前恒 —。
  */
 
 import { useMutation, useQueryClient } from "@tanstack/react-query";
@@ -28,16 +34,27 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
 import { createTask } from "@/extensions/bid-review/api";
-import { bidReviewKeys, useBidTasks } from "@/extensions/bid-review/hooks";
+import {
+  bidReviewKeys,
+  useBidIssues,
+  useBidTasks,
+  useSelectedTask,
+} from "@/extensions/bid-review/hooks";
+import { taskHref } from "@/extensions/bid-review/nav";
 import { type TaskOut } from "@/extensions/bid-review/types";
 import { cn } from "@/lib/utils";
 
-const HEADERS = ["任务号", "模式", "状态", "致命未处理", "待人工", "创建时间"];
-
-/** 工作台深链(工作台真实地址;旧 /bid-review/tasks/{id} 重定向页仅保旧深链兼容)。 */
-function workbenchHref(taskId: string): string {
-  return `/bid-review/workbench?task_id=${encodeURIComponent(taskId)}`;
-}
+const HEADERS = [
+  "任务号",
+  "模式",
+  "状态",
+  "可提交判定",
+  "致命/待人工",
+  "创建时间",
+  "操作",
+];
+/** 致命/待人工合并格下标(Plan2 批1;B1 后 9 列布局再调)。 */
+const FATAL_COL = 4;
 
 const MODE_META: Record<
   "quick" | "deep",
@@ -131,37 +148,87 @@ function matchStatusFilter(t: TaskOut, f: StatusFilter): boolean {
 }
 
 /**
- * 行级计数量格(致命未处理/待人工两列共用)。计数=后端 GET /tasks 聚合字段
+ * 致命/待人工合并格(原型 s1「3 / 4」习语;Plan2 批1 列名「致命/待人工」,
+ * B1 main_unhandled 落地后换「致命/主要」)。计数=后端 GET /tasks 聚合字段
  * (micro-A 2026-10-29,口径=致命且未被人工判误报 / need_human 旗标,后端 pytest
  * 锁定);处理中任务(半程快照)与计数缺失(null=未统计)显示 ———未经测量不得
- * 显示 0(伪零纪律);>0 致命走 .v-hot 红档(原型 s1 致命/主要列习语)。
+ * 显示 0(伪零纪律);fatal>0 走 .v-hot 红档(原型 s1 致命/主要列习语)。
  */
-function CountCell({
-  task,
-  field,
+function CountPairCell({
+  fatal,
+  needHuman,
+  gated,
 }: {
-  task: TaskOut;
-  field: "fatal_unhandled" | "need_human_count";
+  fatal: number | null;
+  needHuman: number | null;
+  gated: boolean;
 }) {
-  const gated = !RESULT_STATUSES.has(task.status);
-  const count = task[field];
-  if (gated || count == null) {
+  if (gated) {
     return (
-      <span
-        className="unmapped-cell num"
-        title={gated ? "任务未出结果,暂无统计" : "问题统计未取到"}
-      >
+      <span className="unmapped-cell num" title="任务未出结果,暂无统计">
         —
       </span>
     );
   }
   return (
-    <span
-      className={cn("num", field === "fatal_unhandled" && count > 0 && "v-hot")}
-    >
-      {count}
+    <span className="num">
+      <span className={cn(fatal != null && fatal > 0 && "v-hot")}>
+        {fatal ?? "—"}
+      </span>
+      {" / "}
+      {needHuman ?? "—"}
     </span>
   );
+}
+
+/**
+ * 可提交判定列(spec §4.1,D3 裁决定稿口径):done 且 fatal_unhandled>0 →
+ * 不建议提交(err);done 且 =0 → 建议提交(ok);未出结果 / fatal_unhandled
+ * 为 null(未统计)→ —。done 但 null 计数不得判「建议提交」——未经测量 ≠ 通过
+ * (伪零纪律,同 micro-A 口径)。
+ */
+function VerdictCell({ task }: { task: TaskOut }) {
+  if (task.status !== "done" && task.status !== "completed") {
+    return <span className="unmapped-cell" title="未出结果,不产生判定">—</span>;
+  }
+  const fatal = task.fatal_unhandled;
+  if (fatal == null) {
+    return <span className="unmapped-cell" title="问题统计未取到">—</span>;
+  }
+  return fatal > 0 ? (
+    <span className="pill pill-err">不建议提交</span>
+  ) : (
+    <span className="pill pill-ok">建议提交</span>
+  );
+}
+
+/**
+ * 操作列状态分派(spec §4.1;D3-A 裁决:行点击仅选中,跳转走操作列)。
+ * awaiting_confirm → 去基准确认(baseline);done → 查看结果(workbench,
+ * Plan 6 /results 拆分前暂路由);在途 → 查看进度(workbench);failed 的
+ * 「重试解析」挂账 B8,落地前不渲染链接。链接 stopPropagation——行 onClick
+ * 是选中,不得被操作列触发。
+ */
+function ActionCell({ task }: { task: TaskOut }) {
+  const link = (href: string, label: string) => (
+    <Link
+      href={href}
+      className="btn btn-txt btn-sm"
+      onClick={(e) => e.stopPropagation()}
+    >
+      {label}
+    </Link>
+  );
+  if (task.status === "awaiting_confirm") {
+    return link(taskHref("baseline", task.id), "去基准确认");
+  }
+  if (task.status === "done" || task.status === "completed") {
+    return link(taskHref("workbench", task.id), "查看结果");
+  }
+  if (task.status === "failed") {
+    return <span className="unmapped-cell" title="重试端点(B8)落地前不提供">—</span>;
+  }
+  return link(taskHref("workbench", task.id), "查看进度");
 }
 
 /** 日期段用连字符 yyyy-MM-dd(用户定案 2026-10-16,zh-CN toLocaleString 是斜杠)。 */
@@ -277,7 +344,7 @@ export function TasksView() {
     onSuccess: (created) => {
       void queryClient.invalidateQueries({ queryKey: bidReviewKeys.tasks });
       setDialogOpen(false);
-      router.push(workbenchHref(created.id));
+      router.push(taskHref("workbench", created.id));
     },
   });
 
@@ -300,29 +367,38 @@ export function TasksView() {
   }, [dialogOpen]);
 
   const tasks = tasksQuery.data ?? [];
-  // 五格指标:三格状态计数(列表在手即真值,isError 时同样不给数);两格 Σ 走
-  // 「全测满才求和」门(micro-A 2026-10-29):全部任务均已出结果(RESULT_STATUSES)
-  // 且各自计数已取到,才给数字;存在未定型任务或统计缺失时显示 ———统计未测全时
-  // 任何数字(包括部分和、包括 0)都是编造(伪零纪律)。
-  const listOk = !tasksQuery.isError;
-  const awaitingCount = tasks.filter(
-    (t) => t.status === "awaiting_confirm",
-  ).length;
-  const runningCount = tasks.filter((t) => t.status === "running").length;
-  const doneCount = tasks.filter((t) => t.status === "done").length;
-  const statTasks = tasks.filter((t) => RESULT_STATUSES.has(t.status));
-  const allMeasured =
-    !tasksQuery.isError &&
-    tasks.length === statTasks.length &&
-    statTasks.every(
-      (t) => t.fatal_unhandled != null && t.need_human_count != null,
-    );
-  const fatalCount = allMeasured
-    ? statTasks.reduce((sum, t) => sum + (t.fatal_unhandled ?? 0), 0)
-    : null;
-  const needHumanCount = allMeasured
-    ? statTasks.reduce((sum, t) => sum + (t.need_human_count ?? 0), 0)
-    : null;
+  // 选中任务模型(spec §3.2,Plan2):无 param 回退最新任务;统计卡=选中任务
+  // 体征(跨任务计数退役到侧栏徽标,layout 负责)。
+  const { taskId: selectedId, task: selectedTask } = useSelectedTask();
+  // 选中任务体征明细(问题总数/误报数):仅选中任务一条请求(O(1) 非 N+1);
+  // 半程态(未出结果)不使能——问题集是半程快照,统计未定型。
+  const selectedResulted =
+    selectedTask != null && RESULT_STATUSES.has(selectedTask.status);
+  const issuesQuery = useBidIssues(selectedResulted ? selectedId : null);
+  const issues = issuesQuery.data;
+  const issueTotal =
+    selectedResulted && issues != null ? issues.length : null;
+  const falsePositiveCount =
+    selectedResulted && issues != null
+      ? issues.filter((i) => i.verdict === "false_positive").length
+      : null;
+  /** 体征格值:半程态/未统计(isError)/加载中一律 —(伪零纪律)。 */
+  const vital = (v: number | null | undefined): number | string =>
+    selectedResulted && v != null && !issuesQuery.isError ? v : "—";
+  const fatalVital: number | string = selectedTask
+    ? vital(
+        RESULT_STATUSES.has(selectedTask.status)
+          ? selectedTask.fatal_unhandled
+          : null,
+      )
+    : "—";
+  const needHumanVital: number | string = selectedTask
+    ? vital(
+        RESULT_STATUSES.has(selectedTask.status)
+          ? selectedTask.need_human_count
+          : null,
+      )
+    : "—";
 
   // 工具条客户端过滤:任务号关键字(忽略大小写)∩ 状态档;列表端点无服务端过滤
   const kw = q.trim().toLowerCase();
@@ -367,7 +443,8 @@ export function TasksView() {
         </div>
       </div>
 
-      {/* ── metric-strip 五格骨架(shimmer .sk;refetch 不闪,isPending 才出)── */}
+      {/* ── metric-strip = 当前任务体征(Plan2 换血,spec §4.1;跨任务计数
+          在侧栏徽标)。半程态/未统计一律 —,伪零纪律不变 ── */}
       {tasksQuery.isPending ? (
         <div className="metric-strip" aria-hidden="true">
           {[0, 1, 2, 3, 4].map((i) => (
@@ -383,34 +460,29 @@ export function TasksView() {
         </div>
       ) : (
         <div className="metric-strip">
-          <div className="metric-cell warn">
-            <span className="metric-label">
-              <span className="dot dot-warn"></span>待基准确认
-            </span>
-            <span className="metric-value num">
-              {listOk ? awaitingCount : "—"}
-            </span>
-          </div>
-          <div className="metric-cell err">
-            <span className="metric-label">待人工复核</span>
-            <span className="metric-value num">{needHumanCount ?? "—"}</span>
-          </div>
-          <div className="metric-cell accent">
-            <span className="metric-label">运行中</span>
-            <span className="metric-value num">
-              {listOk ? runningCount : "—"}
-            </span>
-          </div>
           <div className="metric-cell err">
             <span className="metric-label">致命未处理</span>
-            <span className="metric-value num">{fatalCount ?? "—"}</span>
+            <span className="metric-value num">{fatalVital}</span>
+          </div>
+          <div className="metric-cell warn">
+            <span className="metric-label">
+              <span className="dot dot-warn"></span>待人工复核
+            </span>
+            <span className="metric-value num">{needHumanVital}</span>
           </div>
           <div className="metric-cell">
-            <span className="metric-label">已完成</span>
-            <span className="metric-value num">
-              {listOk ? doneCount : "—"}
-              <small>个</small>
+            <span className="metric-label">问题总数</span>
+            <span className="metric-value num">{vital(issueTotal)}</span>
+          </div>
+          <div className="metric-cell">
+            <span className="metric-label">误报已剔除</span>
+            <span className="metric-value num">{vital(falsePositiveCount)}</span>
+          </div>
+          <div className="metric-cell">
+            <span className="metric-label" title="B1 done_at 落地后提供">
+              审查用时
             </span>
+            <span className="metric-value num">—</span>
           </div>
         </div>
       )}
@@ -443,7 +515,9 @@ export function TasksView() {
                     <th
                       key={h}
                       scope="col"
-                      className={cn(i >= 3 && i <= 4 && "r")}
+                      className={cn(
+                        (i === FATAL_COL || i === HEADERS.length - 1) && "r",
+                      )}
                     >
                       {h}
                     </th>
@@ -462,14 +536,17 @@ export function TasksView() {
                     <td>
                       <span className="sk" style={{ width: 92, height: 16 }} />
                     </td>
-                    <td className="r">
-                      <span className="sk" style={{ width: 24, height: 14 }} />
+                    <td>
+                      <span className="sk" style={{ width: 56, height: 16 }} />
                     </td>
                     <td className="r">
                       <span className="sk" style={{ width: 24, height: 14 }} />
                     </td>
                     <td>
                       <span className="sk" style={{ width: 124, height: 14 }} />
+                    </td>
+                    <td className="r">
+                      <span className="sk" style={{ width: 64, height: 14 }} />
                     </td>
                   </tr>
                 ))}
@@ -531,7 +608,9 @@ export function TasksView() {
                         <th
                           key={h}
                           scope="col"
-                          className={cn(i >= 3 && i <= 4 && "r")}
+                          className={cn(
+                            (i === FATAL_COL || i === HEADERS.length - 1) && "r",
+                          )}
                         >
                           {h}
                         </th>
@@ -542,15 +621,22 @@ export function TasksView() {
                     {filtered.map((t) => {
                       const st = statusPill(t.status);
                       const mp = modePill(t.mode);
+                      const gated = !RESULT_STATUSES.has(t.status);
                       return (
                         <tr
                           key={t.id}
-                          className="cursor-pointer"
-                          onClick={() => router.push(workbenchHref(t.id))}
+                          className={cn(
+                            "cursor-pointer",
+                            t.id === selectedId && "on",
+                          )}
+                          title="点击选中该任务"
+                          onClick={() =>
+                            router.replace(taskHref("tasks", t.id))
+                          }
                         >
                           <td>
                             <Link
-                              href={workbenchHref(t.id)}
+                              href={taskHref("workbench", t.id)}
                               className="mono"
                               title={t.id}
                               onClick={(e) => e.stopPropagation()}
@@ -569,14 +655,22 @@ export function TasksView() {
                               {st.label}
                             </span>
                           </td>
-                          {/* 行级计数:后端 GET /tasks 聚合计数直出;伪零门见 CountCell */}
-                          <td className="r">
-                            <CountCell task={t} field="fatal_unhandled" />
+                          {/* 可提交判定(D3 定稿口径,见 VerdictCell) */}
+                          <td>
+                            <VerdictCell task={t} />
                           </td>
+                          {/* 行级计数合并格:后端 GET /tasks 聚合直出;伪零门见 CountPairCell */}
                           <td className="r">
-                            <CountCell task={t} field="need_human_count" />
+                            <CountPairCell
+                              fatal={gated ? null : t.fatal_unhandled}
+                              needHuman={gated ? null : t.need_human_count}
+                              gated={gated}
+                            />
                           </td>
                           <td className="num">{formatDate(t.created_at)}</td>
+                          <td className="r">
+                            <ActionCell task={t} />
+                          </td>
                         </tr>
                       );
                     })}
