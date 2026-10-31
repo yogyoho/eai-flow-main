@@ -20,8 +20,10 @@ import { usePermission, PermissionProvider } from "@/core/permissions";
 import { useBidTasks } from "@/extensions/bid-review/hooks";
 import {
   sidebarBadges,
+  taskHref,
   taskStatusLabel,
   type SidebarBadges,
+  type TaskPage,
 } from "@/extensions/bid-review/nav";
 import type { TaskOut } from "@/extensions/bid-review/types";
 import { AuthProvider, useAuth } from "@/extensions/hooks/useAuth";
@@ -50,6 +52,9 @@ const navItems: Array<{
   pageId: string;
   group: 0 | 1;
   badge?: keyof SidebarBadges;
+  // UX 重构 Plan 2 T2(spec §3.2):任务链页 href 携带 effective task_id;
+  // 治理页不挂,保持裸路径。
+  taskPage?: TaskPage;
 }> = [
   {
     href: "/bid-review",
@@ -60,6 +65,7 @@ const navItems: Array<{
     pageId: "bid:page:tasks",
     group: 0,
     badge: "running",
+    taskPage: "tasks",
   },
   {
     href: "/bid-review/workbench",
@@ -67,6 +73,7 @@ const navItems: Array<{
     icon: FileText,
     pageId: "bid:page:workbench",
     group: 0,
+    taskPage: "workbench",
   },
   {
     href: "/bid-review/baseline",
@@ -75,6 +82,7 @@ const navItems: Array<{
     pageId: "bid:page:baseline",
     group: 0,
     badge: "awaitingConfirm",
+    taskPage: "baseline",
   },
   {
     // EAI-CUSTOM (2026-10-31 二期 spec §五 s6):need_human 队列复核;
@@ -85,6 +93,7 @@ const navItems: Array<{
     pageId: "bid:page:workbench",
     group: 0,
     badge: "reviewTodo",
+    taskPage: "review",
   },
   {
     href: "/bid-review/rules",
@@ -146,12 +155,14 @@ function useDarkTheme() {
   return { dark, toggle };
 }
 
-/** 「当前任务」chip:URL 带 task_id 时显示(id8+状态词;任务不在列表缓存时只显
- * id8)。useSearchParams 需要 Suspense 边界,由调用处包裹。 */
+/** 「当前任务」chip:显示 effective 选中(URL param → 最新任务 fallback,
+ * spec §3.2——初始化即有选中态)。任务不在列表缓存时只显 id8。
+ * useSearchParams 需要 Suspense 边界,由调用处包裹。 */
 function TaskChip({ tasks }: { tasks: TaskOut[] | undefined }) {
-  const taskId = useSearchParams().get("task_id");
+  const list = tasks ?? [];
+  const taskId = useSearchParams().get("task_id") ?? list[0]?.id ?? null;
   if (!taskId) return null;
-  const task = tasks?.find((t) => t.id === taskId);
+  const task = list.find((t) => t.id === taskId);
   return (
     <div className="nav-item" title="当前任务" style={{ cursor: "default" }}>
       <div>
@@ -171,8 +182,63 @@ function TaskChip({ tasks }: { tasks: TaskOut[] | undefined }) {
   );
 }
 
-function BidReviewLayoutContent({ children }: { children: ReactNode }) {
+/** 审查闭环 nav:任务链页 href 携带 effective task_id(六页互跳不断档,spec §3.2);
+ * 治理页 href 保持裸路径。isActive 仍按基路径匹配(query 不参与)。
+ * groups/badges/tasks 全部由父组件传入,本组件只补 useSearchParams 算 effective
+ * (必须在 Suspense 边界内,由调用处包裹)。 */
+function TaskNavGroups({
+  groups,
+  badges,
+  tasks,
+}: {
+  groups: Array<Array<(typeof navItems)[number]>>;
+  badges: SidebarBadges;
+  tasks: TaskOut[] | undefined;
+}) {
   const pathname = usePathname();
+  const effId = useSearchParams().get("task_id") ?? tasks?.[0]?.id ?? null;
+  return (
+    <>
+      {groups.map((items, g) =>
+        items.length === 0 ? null : (
+          <nav className="chrome-group" key={g}>
+            <div className="g-label">{GROUP_LABELS[g]}</div>
+            {items.map(({ href, label, icon: Icon, exact, badge, taskPage }) => {
+              const isActive = exact
+                ? pathname === href
+                : pathname.startsWith(href);
+              const linkHref =
+                taskPage && effId ? taskHref(taskPage, effId) : href;
+              const count = badge ? badges[badge] : 0;
+              return (
+                <Link
+                  key={href}
+                  href={linkHref}
+                  className={cn("nav-item", isActive && "on")}
+                >
+                  <Icon size={15} className="ic" aria-hidden="true" />
+                  {label}
+                  {badge && count > 0 ? (
+                    <span
+                      className={cn(
+                        "nav-cnt",
+                        badge === "awaitingConfirm" && "warn",
+                      )}
+                    >
+                      {count}
+                    </span>
+                  ) : null}
+                </Link>
+              );
+            })}
+          </nav>
+        ),
+      )}
+    </>
+  );
+}
+
+function BidReviewLayoutContent({ children }: { children: ReactNode }) {
   const { canPage, isLoading } = usePermission();
   const { dark, toggle } = useDarkTheme();
   // EAI-CUSTOM: 权限加载中 fail-open 全显,加载完按 canPage(pageId) 过滤
@@ -207,39 +273,9 @@ function BidReviewLayoutContent({ children }: { children: ReactNode }) {
           <Suspense fallback={null}>
             <TaskChip tasks={tasks} />
           </Suspense>
-          {groups.map((items, g) =>
-            items.length === 0 ? null : (
-              <nav className="chrome-group" key={g}>
-                <div className="g-label">{GROUP_LABELS[g]}</div>
-                {items.map(({ href, label, icon: Icon, exact, badge }) => {
-                  const isActive = exact
-                    ? pathname === href
-                    : pathname.startsWith(href);
-                  const count = badge ? badges[badge] : 0;
-                  return (
-                    <Link
-                      key={href}
-                      href={href}
-                      className={cn("nav-item", isActive && "on")}
-                    >
-                      <Icon size={15} className="ic" aria-hidden="true" />
-                      {label}
-                      {badge && count > 0 ? (
-                        <span
-                          className={cn(
-                            "nav-cnt",
-                            badge === "awaitingConfirm" && "warn",
-                          )}
-                        >
-                          {count}
-                        </span>
-                      ) : null}
-                    </Link>
-                  );
-                })}
-              </nav>
-            ),
-          )}
+          <Suspense fallback={null}>
+            <TaskNavGroups groups={groups} badges={badges} tasks={tasks} />
+          </Suspense>
           <div className="chrome-foot">
             <button
               type="button"

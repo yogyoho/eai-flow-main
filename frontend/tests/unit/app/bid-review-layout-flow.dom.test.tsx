@@ -156,4 +156,43 @@ describe("bid-review layout 流程化(Plan 1)", () => {
     expect(screen.getByText("当前任务")).not.toBeNull();
     expect(screen.getByText("ffffffff")).not.toBeNull();
   });
+
+  // UX 重构 Plan 2 T2(spec §3.2):nav 携带 effective task_id——六页互跳不断档,
+  // 初始化(fallback 最新)即有选中态;治理页(规则库/规则效果)保持裸路径。
+  it("任务链页 nav link 携带 effective task_id(无 param 回退最新);治理页不带", () => {
+    mocks.tasks = [fixture({ id: "newest1" }), fixture({ id: "older2" })];
+    renderLayout();
+    expect(screen.getByRole("link", { name: /任务总览/ }).getAttribute("href")).toBe(
+      "/bid-review?task_id=newest1",
+    );
+    expect(
+      screen.getByRole("link", { name: /审查工作台/ }).getAttribute("href"),
+    ).toBe("/bid-review/workbench?task_id=newest1");
+    expect(
+      screen.getByRole("link", { name: /基准确认/ }).getAttribute("href"),
+    ).toBe("/bid-review/baseline?task_id=newest1");
+    expect(
+      screen.getByRole("link", { name: /复核工作台/ }).getAttribute("href"),
+    ).toBe("/bid-review/review?task_id=newest1");
+    expect(screen.getByRole("link", { name: "规则库" }).getAttribute("href")).toBe(
+      "/bid-review/rules",
+    );
+  });
+
+  it("URL param 显式选择时 nav link 跟随 param(非最新)", () => {
+    mocks.search = new URLSearchParams("task_id=chosen9");
+    mocks.tasks = [fixture({ id: "newest1" }), fixture({ id: "chosen9" })];
+    renderLayout();
+    expect(
+      screen.getByRole("link", { name: /基准确认/ }).getAttribute("href"),
+    ).toBe("/bid-review/baseline?task_id=chosen9");
+  });
+
+  it("chip 回退显示最新任务(无 param 也亮,初始化即有选中态)", () => {
+    mocks.tasks = [fixture({ id: "aa11bb22-cccc", status: "running" })];
+    renderLayout();
+    expect(screen.getByText("当前任务")).not.toBeNull();
+    expect(screen.getByText("aa11bb22")).not.toBeNull();
+    expect(screen.getByText("进行中")).not.toBeNull();
+  });
 });
