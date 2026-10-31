@@ -6,12 +6,7 @@
  */
 import type { TaskOut } from "./types";
 
-export type TaskPage =
-  | "tasks"
-  | "parsing"
-  | "results"
-  | "baseline"
-  | "review";
+export type TaskPage = "tasks" | "parsing" | "results" | "baseline" | "review";
 
 const PAGE_PATHS: Record<TaskPage, string> = {
   tasks: "/bid-review",

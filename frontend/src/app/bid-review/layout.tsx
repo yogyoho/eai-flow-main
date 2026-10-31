@@ -187,34 +187,36 @@ function TaskNavGroups({
         items.length === 0 ? null : (
           <nav className="chrome-group" key={g}>
             <div className="g-label">{GROUP_LABELS[g]}</div>
-            {items.map(({ href, label, icon: Icon, exact, badge, taskPage }) => {
-              const isActive = exact
-                ? pathname === href
-                : pathname.startsWith(href);
-              const linkHref =
-                taskPage && effId ? taskHref(taskPage, effId) : href;
-              const count = badge ? badges[badge] : 0;
-              return (
-                <Link
-                  key={href}
-                  href={linkHref}
-                  className={cn("nav-item", isActive && "on")}
-                >
-                  <Icon size={15} className="ic" aria-hidden="true" />
-                  {label}
-                  {badge && count > 0 ? (
-                    <span
-                      className={cn(
-                        "nav-cnt",
-                        badge === "awaitingConfirm" && "warn",
-                      )}
-                    >
-                      {count}
-                    </span>
-                  ) : null}
-                </Link>
-              );
-            })}
+            {items.map(
+              ({ href, label, icon: Icon, exact, badge, taskPage }) => {
+                const isActive = exact
+                  ? pathname === href
+                  : pathname.startsWith(href);
+                const linkHref =
+                  taskPage && effId ? taskHref(taskPage, effId) : href;
+                const count = badge ? badges[badge] : 0;
+                return (
+                  <Link
+                    key={href}
+                    href={linkHref}
+                    className={cn("nav-item", isActive && "on")}
+                  >
+                    <Icon size={15} className="ic" aria-hidden="true" />
+                    {label}
+                    {badge && count > 0 ? (
+                      <span
+                        className={cn(
+                          "nav-cnt",
+                          badge === "awaitingConfirm" && "warn",
+                        )}
+                      >
+                        {count}
+                      </span>
+                    ) : null}
+                  </Link>
+                );
+              },
+            )}
           </nav>
         ),
       )}

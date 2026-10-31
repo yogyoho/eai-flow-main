@@ -86,7 +86,9 @@ describe("bid-review layout 流程化(Plan 1)", () => {
 
   it("审查闭环组按流程序:基准确认排在复核工作台之前", () => {
     renderLayout();
-    const links = screen.getAllByRole("link").map((l) => l.getAttribute("href"));
+    const links = screen
+      .getAllByRole("link")
+      .map((l) => l.getAttribute("href"));
     expect(links.indexOf("/bid-review/baseline")).toBeLessThan(
       links.indexOf("/bid-review/review"),
     );
@@ -112,15 +114,15 @@ describe("bid-review layout 流程化(Plan 1)", () => {
       fixture({ id: "e", status: "done", need_human_count: 2 }),
     ];
     renderLayout();
-    expect(screen.getByRole("link", { name: /任务总览/ }).textContent).toContain(
-      "2",
-    );
+    expect(
+      screen.getByRole("link", { name: /任务总览/ }).textContent,
+    ).toContain("2");
     const baselineLink = screen.getByRole("link", { name: /基准确认/ });
     expect(baselineLink.textContent).toContain("1");
     expect(baselineLink.querySelector(".nav-cnt.warn")).not.toBeNull();
-    expect(screen.getByRole("link", { name: /复核工作台/ }).textContent).toContain(
-      "5",
-    );
+    expect(
+      screen.getByRole("link", { name: /复核工作台/ }).textContent,
+    ).toContain("5");
   });
 
   it("计数为零的徽标不渲染;规则治理组无徽标", () => {
@@ -137,7 +139,9 @@ describe("bid-review layout 流程化(Plan 1)", () => {
   // 2026-10-31 用户定案:选中任务号不进侧栏(摘 chip),随各页页头标题展示
   // (TaskTitleTag,原型「审查结果 · TBR-…」习语)。
   it("侧栏不再渲染「当前任务」chip(任务号改页头标题展示)", () => {
-    mocks.search = new URLSearchParams("task_id=5a8e15b8-8ac4-4141-a7e0-2e125953380b");
+    mocks.search = new URLSearchParams(
+      "task_id=5a8e15b8-8ac4-4141-a7e0-2e125953380b",
+    );
     mocks.tasks = [
       fixture({
         id: "5a8e15b8-8ac4-4141-a7e0-2e125953380b",
@@ -153,9 +157,9 @@ describe("bid-review layout 流程化(Plan 1)", () => {
   it("任务链页 nav link 携带 effective task_id(无 param 回退最新);治理页不带", () => {
     mocks.tasks = [fixture({ id: "newest1" }), fixture({ id: "older2" })];
     renderLayout();
-    expect(screen.getByRole("link", { name: /任务总览/ }).getAttribute("href")).toBe(
-      "/bid-review?task_id=newest1",
-    );
+    expect(
+      screen.getByRole("link", { name: /任务总览/ }).getAttribute("href"),
+    ).toBe("/bid-review?task_id=newest1");
     expect(
       screen.getByRole("link", { name: /审查结果/ }).getAttribute("href"),
     ).toBe("/bid-review/results?task_id=newest1");
@@ -165,9 +169,9 @@ describe("bid-review layout 流程化(Plan 1)", () => {
     expect(
       screen.getByRole("link", { name: /复核工作台/ }).getAttribute("href"),
     ).toBe("/bid-review/review?task_id=newest1");
-    expect(screen.getByRole("link", { name: "规则库" }).getAttribute("href")).toBe(
-      "/bid-review/rules",
-    );
+    expect(
+      screen.getByRole("link", { name: "规则库" }).getAttribute("href"),
+    ).toBe("/bid-review/rules");
   });
 
   it("URL param 显式选择时 nav link 跟随 param(非最新)", () => {

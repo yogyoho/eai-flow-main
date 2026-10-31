@@ -105,7 +105,9 @@ describe("bid-review layout 子路由导航(micro-B 站内入口)", () => {
     renderLayout();
     expect(screen.queryByRole("link", { name: "规则库" })).toBeNull();
     expect(screen.queryByRole("link", { name: "任务总览" })).not.toBeNull();
-    expect(screen.queryByRole("link", { name: "解析与字段抽取" })).not.toBeNull();
+    expect(
+      screen.queryByRole("link", { name: "解析与字段抽取" }),
+    ).not.toBeNull();
     expect(screen.queryByRole("link", { name: "审查结果" })).not.toBeNull();
   });
 
