@@ -73,9 +73,10 @@ import { cn } from "@/lib/utils";
 // ── 筛选/误因/严重度词汇 ────────────────────────────────────────────────
 // 2026-10-30 与原型对齐:s5 清单筛选 5 段(全部/致命/主要/次要/待人工);
 // info 级问题仍在「全部」与搜索可达,不设独立段。
-type SevFilter = "all" | "fatal" | "major" | "minor" | "human";
+// Plan9(2026-10-31)导出:s6 复核工作台 seg 筛选同词汇复用。
+export type SevFilter = "all" | "fatal" | "major" | "minor" | "human";
 
-const SEG_OPTIONS: { value: SevFilter; label: string }[] = [
+export const SEG_OPTIONS: { value: SevFilter; label: string }[] = [
   { value: "all", label: "全部" },
   { value: "fatal", label: "致命" },
   { value: "major", label: "主要" },

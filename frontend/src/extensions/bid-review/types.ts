@@ -55,6 +55,8 @@ export interface IssueOut {
   dedup_key: string;
   need_human: boolean;
   confidence: number;
+  /** B2 复核投影(unresolved|maintained|false_positive|severity_changed|deferred);旧网关缺省。 */
+  review_state?: string;
   created_at: string;
 }
 
