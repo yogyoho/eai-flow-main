@@ -54,6 +54,7 @@ import {
   exportReport,
 } from "@/extensions/bid-review/api";
 import { DocLocateModal } from "@/extensions/bid-review/components/DocLocateModal";
+import { TaskTitleTag } from "@/extensions/bid-review/components/TaskTitleTag";
 import {
   useBidFeedback,
   useBidIssues,
@@ -622,7 +623,8 @@ export function WorkbenchView({ taskId }: { taskId?: string | null }) {
         </div>
         <div>
           <h2>
-            审查工作台 · <span className="mono">{taskId.slice(0, 8)}</span>
+            审查工作台
+            <TaskTitleTag taskId={taskId} />
           </h2>
           <div className="ph-sub">
             {task

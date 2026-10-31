@@ -22,6 +22,7 @@ import {
   type LocateTarget,
 } from "@/extensions/bid-review/api";
 import { DocLocateBody } from "@/extensions/bid-review/components/DocLocateModal";
+import { TaskTitleTag } from "@/extensions/bid-review/components/TaskTitleTag";
 import {
   FP_REASONS,
   renderIssueMessage,
@@ -176,10 +177,12 @@ export function ReviewQueueView({ taskId }: { taskId?: string | null }) {
           <UserCheck className="ic" />
         </div>
         <div>
-          <h2>人工复核工作台</h2>
+          <h2>
+            人工复核工作台
+            <TaskTitleTag taskId={taskId} />
+          </h2>
           <div className="ph-sub">
-            任务 {taskId.slice(0, 8)} · 待人工队列逐条处置——未判定 ≠ 通过 ·
-            误报自动回流评测集
+            待人工队列逐条处置——未判定 ≠ 通过 · 误报自动回流评测集
           </div>
         </div>
         <div className="ph-actions">

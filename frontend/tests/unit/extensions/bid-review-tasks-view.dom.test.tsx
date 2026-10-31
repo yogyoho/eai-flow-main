@@ -163,6 +163,8 @@ describe("bid-review TasksView 选中任务体征契约门(Plan2 2026-10-31)", (
     expect(statValue("问题总数")).toBe("3");
     expect(statValue("误报已剔除")).toBe("1");
     expect(statValue("审查用时")).toBe("—");
+    // 2026-10-31 用户定案:选中任务号随页头标题展示(不进侧栏)
+    expect(document.querySelector(".page-head h2")?.textContent).toContain("t1");
   });
 
   it("半程任务行级「—」;issues 请求恰一条且只对选中任务(非 N+1)", async () => {

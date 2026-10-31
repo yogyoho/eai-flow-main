@@ -34,6 +34,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
 import { createTask } from "@/extensions/bid-review/api";
+import { TaskTitleTag } from "@/extensions/bid-review/components/TaskTitleTag";
 import {
   bidReviewKeys,
   useBidIssues,
@@ -416,7 +417,11 @@ export function TasksView() {
           <ListChecks className="ic" aria-hidden="true" />
         </div>
         <div>
-          <h2>任务工作台</h2>
+          <h2>
+            任务工作台
+            {/* 选中任务号随页头标题(2026-10-31 用户定案,不进侧栏) */}
+            <TaskTitleTag taskId={selectedId} />
+          </h2>
           <div className="ph-sub">投标方案合规红线与一致性审查 · 全部任务</div>
         </div>
         <div className="ph-actions">

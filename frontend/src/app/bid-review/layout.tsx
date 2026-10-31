@@ -21,7 +21,6 @@ import { useBidTasks } from "@/extensions/bid-review/hooks";
 import {
   sidebarBadges,
   taskHref,
-  taskStatusLabel,
   type SidebarBadges,
   type TaskPage,
 } from "@/extensions/bid-review/nav";
@@ -155,33 +154,6 @@ function useDarkTheme() {
   return { dark, toggle };
 }
 
-/** 「当前任务」chip:显示 effective 选中(URL param → 最新任务 fallback,
- * spec §3.2——初始化即有选中态)。任务不在列表缓存时只显 id8。
- * useSearchParams 需要 Suspense 边界,由调用处包裹。 */
-function TaskChip({ tasks }: { tasks: TaskOut[] | undefined }) {
-  const list = tasks ?? [];
-  const taskId = useSearchParams().get("task_id") ?? list[0]?.id ?? null;
-  if (!taskId) return null;
-  const task = list.find((t) => t.id === taskId);
-  return (
-    <div className="nav-item" title="当前任务" style={{ cursor: "default" }}>
-      <div>
-        <div className="g-sub">当前任务</div>
-        <div className="brand-row" style={{ gap: 6 }}>
-          <span
-            style={{ fontFamily: "var(--font-mono, monospace)", fontSize: 12 }}
-          >
-            {taskId.slice(0, 8)}
-          </span>
-          {task ? (
-            <span style={{ fontSize: 12 }}>{taskStatusLabel(task.status)}</span>
-          ) : null}
-        </div>
-      </div>
-    </div>
-  );
-}
-
 /** 审查闭环 nav:任务链页 href 携带 effective task_id(六页互跳不断档,spec §3.2);
  * 治理页 href 保持裸路径。isActive 仍按基路径匹配(query 不参与)。
  * groups/badges/tasks 全部由父组件传入,本组件只补 useSearchParams 算 effective
@@ -270,9 +242,8 @@ function BidReviewLayoutContent({ children }: { children: ReactNode }) {
               </div>
             </div>
           </div>
-          <Suspense fallback={null}>
-            <TaskChip tasks={tasks} />
-          </Suspense>
+          {/* 2026-10-31 用户定案:选中任务号不进侧栏(原 chip 摘除),
+              随各页页头标题展示(TaskTitleTag,见 components/TaskTitleTag.tsx) */}
           <Suspense fallback={null}>
             <TaskNavGroups groups={groups} badges={badges} tasks={tasks} />
           </Suspense>

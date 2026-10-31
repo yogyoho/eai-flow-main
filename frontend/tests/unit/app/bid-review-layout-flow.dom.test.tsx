@@ -134,10 +134,10 @@ describe("bid-review layout 流程化(Plan 1)", () => {
     ).toBeNull();
   });
 
-  it("URL 带 task_id 时渲染「当前任务」chip(id8+状态词)", () => {
-    mocks.search = new URLSearchParams(
-      "task_id=5a8e15b8-8ac4-4141-a7e0-2e125953380b",
-    );
+  // 2026-10-31 用户定案:选中任务号不进侧栏(摘 chip),随各页页头标题展示
+  // (TaskTitleTag,原型「审查结果 · TBR-…」习语)。
+  it("侧栏不再渲染「当前任务」chip(任务号改页头标题展示)", () => {
+    mocks.search = new URLSearchParams("task_id=5a8e15b8-8ac4-4141-a7e0-2e125953380b");
     mocks.tasks = [
       fixture({
         id: "5a8e15b8-8ac4-4141-a7e0-2e125953380b",
@@ -145,16 +145,7 @@ describe("bid-review layout 流程化(Plan 1)", () => {
       }),
     ];
     renderLayout();
-    expect(screen.getByText("当前任务")).not.toBeNull();
-    expect(screen.getByText("5a8e15b8")).not.toBeNull();
-    expect(screen.getByText("待基准确认")).not.toBeNull();
-  });
-
-  it("task_id 不在列表中(如直链新任务)chip 仍显示 id8,无状态词", () => {
-    mocks.search = new URLSearchParams("task_id=ffffffff-0000");
-    renderLayout();
-    expect(screen.getByText("当前任务")).not.toBeNull();
-    expect(screen.getByText("ffffffff")).not.toBeNull();
+    expect(screen.queryByText("当前任务")).toBeNull();
   });
 
   // UX 重构 Plan 2 T2(spec §3.2):nav 携带 effective task_id——六页互跳不断档,
@@ -186,13 +177,5 @@ describe("bid-review layout 流程化(Plan 1)", () => {
     expect(
       screen.getByRole("link", { name: /基准确认/ }).getAttribute("href"),
     ).toBe("/bid-review/baseline?task_id=chosen9");
-  });
-
-  it("chip 回退显示最新任务(无 param 也亮,初始化即有选中态)", () => {
-    mocks.tasks = [fixture({ id: "aa11bb22-cccc", status: "running" })];
-    renderLayout();
-    expect(screen.getByText("当前任务")).not.toBeNull();
-    expect(screen.getByText("aa11bb22")).not.toBeNull();
-    expect(screen.getByText("进行中")).not.toBeNull();
   });
 });

@@ -235,6 +235,9 @@
 
   color:var(--main-600); display:flex; align-items:center; justify-content:center; flex:none;}
 .brx .page-head h2 {font-size:16px; font-weight:600; line-height:1.3;}
+/* 页头任务号(TaskTitleTag,2026-10-31 用户定案:「审查结果 · TBR-…」习语)。 */
+.brx .page-head h2 .tt-id {color:var(--text-3); font-weight:500;}
+.brx .page-head h2 .tt-id .mono {font-size:inherit;}
 .brx .page-head .ph-sub {font-size:12px; color:var(--text-3);}
 .brx .page-head .ph-actions {margin-left:auto; display:flex; gap:8px; align-items:center; flex-wrap:wrap;}
 /* ═══ 按钮 / 标签 / 输入 ═══ */

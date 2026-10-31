@@ -27,6 +27,7 @@ import {
 } from "@/extensions/bid-review/api";
 import { DocLocateModal } from "@/extensions/bid-review/components/DocLocateModal";
 import { taskStatusPill } from "@/extensions/bid-review/components/primitives";
+import { TaskTitleTag } from "@/extensions/bid-review/components/TaskTitleTag";
 import {
   useBidAdjudicate,
   useBidBaselines,
@@ -252,9 +253,12 @@ export function BaselineView({ taskId }: { taskId?: string | null }) {
           </svg>
         </div>
         <div>
-          <h2>招标基准确认</h2>
+          <h2>
+            招标基准确认
+            <TaskTitleTag taskId={taskId} />
+          </h2>
           <div className="ph-sub">
-            任务 {taskId.slice(0, 8)} · 确认招标要求——未完成将不能开始审查 ·
+            确认招标要求——未完成将不能开始审查 ·
             确认门仅工作台 UI,agent 不可代确认
           </div>
         </div>
