@@ -1368,6 +1368,28 @@ async def migrate_db() -> None:
             await conn.execute(_GSB_RUN_RUNNING_DEDUP_SQL)
             await conn.execute(text(_GSB_RUN_RUNNING_UQ_DDL))
 
+        # === bid_review B1 扩展(EAI-CUSTOM 2026-10-31,spec §5 B1/裁定12)===
+        # 表由 init_db create_all 建在场;新装库 create_all 自带 ORM 列,ALTER 幂等 no-op。
+        await conn.execute(text("ALTER TABLE bid_review_tasks ADD COLUMN IF NOT EXISTS biz_no VARCHAR(20)"))
+        await conn.execute(text("CREATE UNIQUE INDEX IF NOT EXISTS uq_bid_review_tasks_biz_no ON bid_review_tasks(biz_no)"))
+        await conn.execute(text("ALTER TABLE bid_review_tasks ADD COLUMN IF NOT EXISTS project_name VARCHAR(255)"))
+        await conn.execute(text("ALTER TABLE bid_review_tasks ADD COLUMN IF NOT EXISTS lot_name VARCHAR(255)"))
+        await conn.execute(text("ALTER TABLE bid_review_tasks ADD COLUMN IF NOT EXISTS tender_no VARCHAR(255)"))
+        await conn.execute(text("ALTER TABLE bid_review_tasks ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ DEFAULT NOW()"))
+        await conn.execute(text("ALTER TABLE bid_review_tasks ADD COLUMN IF NOT EXISTS done_at TIMESTAMPTZ"))
+        # biz_no 存量回填:按创建日分区,日内按 created_at,id 决胜,序号 0001 起。
+        await conn.execute(text("""
+            UPDATE bid_review_tasks t SET biz_no = sub.b FROM (
+                SELECT id,
+                       'TBR-' || TO_CHAR(created_at, 'YYYYMMDD') || '-' ||
+                       LPAD((ROW_NUMBER() OVER (
+                           PARTITION BY TO_CHAR(created_at, 'YYYYMMDD')
+                           ORDER BY created_at, id
+                       ))::text, 4, '0') AS b
+                FROM bid_review_tasks WHERE biz_no IS NULL
+            ) sub WHERE t.id = sub.id
+        """))
+
 
 # EAI-CUSTOM: 启动时校准 DB roles 作为 yaml registry 的物化镜像
 async def _calibrate_roles_from_registry(conn, registry) -> None:

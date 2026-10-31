@@ -55,3 +55,15 @@ def test_package_init_self_registers_tables():
         "bid_review_rulepacks",
         "bid_review_feedback",
     } <= set(Base.metadata.tables)
+
+
+def test_review_task_b1_columns_exist():
+    """B1(2026-10-31):六新列在 ORM 与 create_all 产物中存在。"""
+    cols = {c.name for c in ReviewTask.__table__.columns}
+    assert {"biz_no", "project_name", "lot_name", "tender_no", "updated_at", "done_at"} <= cols
+
+
+def test_review_task_updated_at_onupdate():
+    """updated_at 行级 onupdate 挂钩(读时刷新即变)。"""
+    col = ReviewTask.__table__.columns["updated_at"]
+    assert col.onupdate is not None

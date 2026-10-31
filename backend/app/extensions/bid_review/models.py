@@ -34,6 +34,17 @@ class ReviewTask(Base):
     engine_meta: Mapped[dict] = mapped_column(JSON, default=dict)  # {model, prompt_version, materials_hash}
     prev_task_id: Mapped[str | None] = mapped_column(String(36), nullable=True)  # v2 差异审查
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)
+    # ── B1 扩展(EAI-CUSTOM 2026-10-31,spec §5 B1/裁定12)──────────────
+    # biz_no 业务号 TBR-{YYYYMMDD}-{seq:04d},创建时 crud 生成;存量迁移回填;
+    # 唯一性由 migrate_db 的唯一索引收口(PG;sqlite 测试不跑迁移,单测断言生成序而非约束)。
+    biz_no: Mapped[str | None] = mapped_column(String(20), nullable=True, index=True)
+    # 项目/标段/招标编号:抽取回填(worker.advance_task 基线落库后,裁定12=从投标文件抽,
+    # 非向导手填);创建时 null,伪零纪律显 —。
+    project_name: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    lot_name: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    tender_no: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now, onupdate=_now)
+    done_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)  # crud.set_status(done) 落
 
 
 class BaselinePackage(Base):
