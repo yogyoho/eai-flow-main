@@ -22,7 +22,7 @@
 - Modify: `backend/app/extensions/bid_review/routers.py`(映射表 + 三端点)
 - Test: `backend/tests/test_bid_review_feedback.py`
 
-- [ ] **Step 1: 写失败测试** — 在 `test_bid_review_feedback.py` 末尾追加(沿用既有 client/_mk_issue 夹具;先看既有测试确认路由前缀再定 path):
+- [x] **Step 1: 写失败测试** — 在 `test_bid_review_feedback.py` 末尾追加(沿用既有 client/_mk_issue 夹具;先看既有测试确认路由前缀再定 path):
 
 ```python
 def test_review_state_projection(client, make_issue):
@@ -75,9 +75,9 @@ def test_review_state_projection(client, make_issue):
 
 (夹具名/路由前缀以既有文件为准,不一致就改为既有写法。)
 
-- [ ] **Step 2: 跑红** — `cd /d/eai/eai-flow-main/backend && PYTHONPATH=. uv run pytest tests/test_bid_review_feedback.py -v`;预期 FAIL(`KeyError: 'review_state'`)。
+- [x] **Step 2: 跑红** — `cd /d/eai/eai-flow-main/backend && PYTHONPATH=. uv run pytest tests/test_bid_review_feedback.py -v`;预期 FAIL(`KeyError: 'review_state'`)。
 
-- [ ] **Step 3: 实现** —
+- [x] **Step 3: 实现** —
 
 (a) schemas.py IssueOut(confidence 之后)加:
 
@@ -149,8 +149,8 @@ def _with_review_state(issue, states: dict[str, str]) -> IssueOut:
     return out
 ```
 
-- [ ] **Step 4: 跑绿** — 同命令 PASS(既有 6 测不回归)。
-- [ ] **Step 5: 重启网关 + lint** — `docker compose -p eai-docker restart gateway`;`cd backend && make lint`;`git add app/extensions/bid_review/schemas.py app/extensions/bid_review/crud.py app/extensions/bid_review/routers.py tests/test_bid_review_feedback.py && git commit -m "feat(bid-review): issues投影加review_state(最新反馈动作映射,B2收尾,Plan9 T1,spec §4.6)"`
+- [x] **Step 4: 跑绿** — 同命令 PASS(既有 6 测不回归)。
+- [x] **Step 5: 重启网关 + lint** — `docker compose -p eai-docker restart gateway`;`cd backend && make lint`;`git add app/extensions/bid_review/schemas.py app/extensions/bid_review/crud.py app/extensions/bid_review/routers.py tests/test_bid_review_feedback.py && git commit -m "feat(bid-review): issues投影加review_state(最新反馈动作映射,B2收尾,Plan9 T1,spec §4.6)"`
 
 ---
 
@@ -160,16 +160,16 @@ def _with_review_state(issue, states: dict[str, str]) -> IssueOut:
 - Modify: `frontend/src/extensions/bid-review/types.ts`(IssueOut)
 - Modify: `frontend/src/extensions/bid-review/components/ResultsView.tsx`(导出)
 
-- [ ] **Step 1:** types.ts IssueOut `confidence` 后加(旧网关容忍缺省):
+- [x] **Step 1:** types.ts IssueOut `confidence` 后加(旧网关容忍缺省):
 
 ```ts
   /** B2 复核投影(unresolved|maintained|false_positive|severity_changed|deferred);旧网关无此字段。 */
   review_state?: string;
 ```
 
-- [ ] **Step 2:** ResultsView.tsx 的 `type SevFilter` 加 export、`const SEG_OPTIONS` 加 export(消费方 ReviewQueueView 已 import 该文件,无环)。
-- [ ] **Step 3: 跑绿** — `cd /d/eai/eai-flow-main/frontend && pnpm typecheck 2>&1 | grep -c "error TS"` 计数不增。
-- [ ] **Step 4: 提交** — `git add src/extensions/bid-review/types.ts src/extensions/bid-review/components/ResultsView.tsx && git commit -m "feat(bid-review): IssueOut.review_state类型+SEG_OPTIONS导出(Plan9 T2,spec §4.6)"`
+- [x] **Step 2:** ResultsView.tsx 的 `type SevFilter` 加 export、`const SEG_OPTIONS` 加 export(消费方 ReviewQueueView 已 import 该文件,无环)。
+- [x] **Step 3: 跑绿** — `cd /d/eai/eai-flow-main/frontend && pnpm typecheck 2>&1 | grep -c "error TS"` 计数不增。
+- [x] **Step 4: 提交** — `git add src/extensions/bid-review/types.ts src/extensions/bid-review/components/ResultsView.tsx && git commit -m "feat(bid-review): IssueOut.review_state类型+SEG_OPTIONS导出(Plan9 T2,spec §4.6)"`
 
 ---
 
@@ -179,7 +179,7 @@ def _with_review_state(issue, states: dict[str, str]) -> IssueOut:
 - Modify: `frontend/src/extensions/bid-review/components/ReviewQueueView.tsx`
 - Test: `frontend/tests/unit/extensions/bid-review-review-queue.dom.test.tsx`
 
-- [ ] **Step 1: 写失败测试** — 测试文件末尾追加新 `it`(夹具复用 `issue()` helper,review_state 走 over):
+- [x] **Step 1: 写失败测试** — 测试文件末尾追加新 `it`(夹具复用 `issue()` helper,review_state 走 over):
 
 ```tsx
   it("M4 §4.6:全量未复核队列+seg筛选(默认待人工)+stage-chip+页脚进度;转待人工→need_human", async () => {
@@ -236,9 +236,9 @@ def _with_review_state(issue, states: dict[str, str]) -> IssueOut:
   });
 ```
 
-- [ ] **Step 2: 跑红** — `pnpm test bid-review-review-queue`;预期 FAIL(找不到 复核中 1/1)。
+- [x] **Step 2: 跑红** — `pnpm test bid-review-review-queue`;预期 FAIL(找不到 复核中 1/1)。
 
-- [ ] **Step 3: 实现** — ReviewQueueView.tsx 六处:
+- [x] **Step 3: 实现** — ReviewQueueView.tsx 六处:
 
 (a) import 增补:ResultsView 行加 `SEG_OPTIONS`,`type SevFilter`(api.ts 的 FeedbackAction 已含 need_human,无类型增量);types 行已有 IssueOut。
 
@@ -378,8 +378,8 @@ import {
             </div>
 ```
 
-- [ ] **Step 4: 跑绿** — `pnpm test bid-review-review-queue` PASS(既有 2 测不回归:夹具均 need_human 无 review_state,默认段行为不变)。
-- [ ] **Step 5: 提交** — `git add src/extensions/bid-review/components/ReviewQueueView.tsx tests/unit/extensions/bid-review-review-queue.dom.test.tsx && git commit -m "feat(bid-review): /review 全量未复核队列+seg筛选+stage-chip+页脚进度(Plan9 T3,spec §4.6)"`
+- [x] **Step 4: 跑绿** — `pnpm test bid-review-review-queue` PASS(既有 2 测不回归:夹具均 need_human 无 review_state,默认段行为不变)。
+- [x] **Step 5: 提交** — `git add src/extensions/bid-review/components/ReviewQueueView.tsx tests/unit/extensions/bid-review-review-queue.dom.test.tsx && git commit -m "feat(bid-review): /review 全量未复核队列+seg筛选+stage-chip+页脚进度(Plan9 T3,spec §4.6)"`
 
 ---
 
@@ -390,7 +390,7 @@ import {
 
 (与 T3 同文件,若 T3 已连带落 T4 的 radio/label/toast 改动,此任务仅补测试断言与查漏。)
 
-- [ ] **Step 1:** radiogroup「处置判定」severity_change label 之后追加第四项(radio 顺序保持 确认/误报/严重度调整/转待人工,既有测试 radios[1]=误报 不破):
+- [x] **Step 1:** radiogroup「处置判定」severity_change label 之后追加第四项(radio 顺序保持 确认/误报/严重度调整/转待人工,既有测试 radios[1]=误报 不破):
 
 ```tsx
                   <label
@@ -406,18 +406,18 @@ import {
                   </label>
 ```
 
-- [ ] **Step 2:** 快捷键 effect 不动(Y 确认 / N 选中误报语义不变;need_human 无快捷键)。
-- [ ] **Step 3: 跑绿** — `pnpm test bid-review-review-queue` PASS。
-- [ ] **Step 4: 提交** — `git add src/extensions/bid-review/components/ReviewQueueView.tsx && git commit -m "feat(bid-review): /review 四处置radio——加转待人工need_human(Plan9 T4,spec §4.6裁决6)"`
+- [x] **Step 2:** 快捷键 effect 不动(Y 确认 / N 选中误报语义不变;need_human 无快捷键)。
+- [x] **Step 3: 跑绿** — `pnpm test bid-review-review-queue` PASS。
+- [x] **Step 4: 提交** — `git add src/extensions/bid-review/components/ReviewQueueView.tsx && git commit -m "feat(bid-review): /review 四处置radio——加转待人工need_human(Plan9 T4,spec §4.6裁决6)"`
 
 ---
 
 ### Task 5: T5 收尾
 
-- [ ] **Step 1:** `cd /d/eai/eai-flow-main/frontend && pnpm exec prettier --write src/extensions/bid-review/components/ReviewQueueView.tsx src/extensions/bid-review/components/ResultsView.tsx src/extensions/bid-review/types.ts tests/unit/extensions/bid-review-review-queue.dom.test.tsx`
-- [ ] **Step 2:** `pnpm test bid-review` 全量(69+ 用例 0 fail)
-- [ ] **Step 3:** `pnpm lint` bid-review 范围 0 error;`pnpm typecheck` 非 contract-price 旧债 0 新增
-- [ ] **Step 4:** prettier 增量单独 style commit;plan 全部 `- [x]`;`.wolf/memory.md`+`anatomy.md` 记账;提交 `git add -f ../docs/superpowers/plans/2026-10-31-bid-review-plan9-review-m4.md ../.wolf/memory.md ../.wolf/anatomy.md && git commit -m "chore(bid-review): Plan9 收尾——计划勾选+wolf记账"`
+- [x] **Step 1:** `cd /d/eai/eai-flow-main/frontend && pnpm exec prettier --write src/extensions/bid-review/components/ReviewQueueView.tsx src/extensions/bid-review/components/ResultsView.tsx src/extensions/bid-review/types.ts tests/unit/extensions/bid-review-review-queue.dom.test.tsx`
+- [x] **Step 2:** `pnpm test bid-review` 全量(69+ 用例 0 fail)
+- [x] **Step 3:** `pnpm lint` bid-review 范围 0 error;`pnpm typecheck` 非 contract-price 旧债 0 新增
+- [x] **Step 4:** prettier 增量单独 style commit;plan 全部 `- [x]`;`.wolf/memory.md`+`anatomy.md` 记账;提交 `git add -f ../docs/superpowers/plans/2026-10-31-bid-review-plan9-review-m4.md ../.wolf/memory.md ../.wolf/anatomy.md && git commit -m "chore(bid-review): Plan9 收尾——计划勾选+wolf记账"`
 
 ---
 
