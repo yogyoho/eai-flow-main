@@ -29,7 +29,7 @@
 - Modify: `backend/app/extensions/bid_review/worker.py`(L460-462 回填)
 - Test: `backend/tests/test_bid_review_routers.py` + `backend/tests/test_bid_review_worker.py`
 
-- [ ] **Step 1: 先写测试(红)**——routers.py 测试加在 `test_create_task_rejects_bad_mode` 后:
+- [x] **Step 1: 先写测试(红)**——routers.py 测试加在 `test_create_task_rejects_bad_mode` 后:
 
 ```python
 @pytest.mark.asyncio
@@ -60,9 +60,9 @@ async def test_extract_backfill_skips_manual_overrides(...):
     # lot_name/tender_no(未填)照常回填。
 ```
 
-- [ ] **Step 2: 跑红** `cd backend && PYTHONPATH=. uv run pytest tests/test_bid_review_routers.py -k identity -v` → FAIL(422,unexpected field)
+- [x] **Step 2: 跑红** `cd backend && PYTHONPATH=. uv run pytest tests/test_bid_review_routers.py -k identity -v` → FAIL(422,unexpected field)
 
-- [ ] **Step 3: 实现(绿)**——
+- [x] **Step 3: 实现(绿)**——
 
   crud.py:
 ```python
@@ -104,8 +104,8 @@ async def create_task(
         task.tender_no = _scalar(fields.get("tender.project_identity.code"))
 ```
 
-- [ ] **Step 4: 跑绿** `PYTHONPATH=. uv run pytest tests/test_bid_review_routers.py tests/test_bid_review_worker.py -v`
-- [ ] **Step 5: Commit** `feat(bid-review): POST /tasks 可选身份覆盖位+worker 回填仅填 NULL(裁定12/14,Plan5 T1)`
+- [x] **Step 4: 跑绿** `PYTHONPATH=. uv run pytest tests/test_bid_review_routers.py tests/test_bid_review_worker.py -v`
+- [x] **Step 5: Commit** `feat(bid-review): POST /tasks 可选身份覆盖位+worker 回填仅填 NULL(裁定12/14,Plan5 T1)`
 
 ---
 
@@ -114,7 +114,7 @@ async def create_task(
 **Files:**
 - Modify: `frontend/src/extensions/bid-review/api.ts`(createTask)
 
-- [ ] **Step 1: 实现**(纯透传,dom 测试在 T3 一起断言):
+- [x] **Step 1: 实现**(纯透传,dom 测试在 T3 一起断言):
 
 ```ts
 export function createTask(
@@ -134,7 +134,7 @@ export function createTask(
 }
 ```
 
-- [ ] **Step 2:** `pnpm typecheck`(9 个 contract-price 既有错误除外)→ Commit `feat(bid-review): createTask 可选身份覆盖位参数(Plan5 T2)`
+- [x] **Step 2:** `pnpm typecheck`(9 个 contract-price 既有错误除外)→ Commit `feat(bid-review): createTask 可选身份覆盖位参数(Plan5 T2)`
 
 ---
 
@@ -144,7 +144,7 @@ export function createTask(
 - Modify: `frontend/src/extensions/bid-review/components/TasksView.tsx`(state/基本信息行/200MB/顺序)
 - Test: `frontend/tests/unit/extensions/bid-review-tasks-view.dom.test.tsx`(新 2 用例)
 
-- [ ] **Step 1: 先改测试(红)**——新用例(加在搜索用例后):
+- [x] **Step 1: 先改测试(红)**——新用例(加在搜索用例后):
 
 ```tsx
   it("对话框:身份字段随 FormData 提交,留空不发;创建成功跳工作台", async () => {
@@ -190,9 +190,9 @@ export function createTask(
   });
 ```
 
-- [ ] **Step 2: 跑红** `cd frontend && pnpm test bid-review-tasks-view` → 新 2 例 FAIL(无 项目 / 标段名称 label)
+- [x] **Step 2: 跑红** `cd frontend && pnpm test bid-review-tasks-view` → 新 2 例 FAIL(无 项目 / 标段名称 label)
 
-- [ ] **Step 3: 实现(绿)**——TasksView.tsx:
+- [x] **Step 3: 实现(绿)**——TasksView.tsx:
 
   a) 常量与 state(L352 附近):
 ```ts
@@ -264,16 +264,16 @@ const MAX_FILE_MB = 200;
               ) : null}
 ```
 
-- [ ] **Step 4: 跑绿** `pnpm test bid-review-tasks-view` → 10 用例全绿;`pnpm test bid-review` 全套回归
-- [ ] **Step 5: Commit** `feat(bid-review): 新建任务对话框对齐原型 s2——基本信息覆盖位+200MB 校验(Plan5 T3)`
+- [x] **Step 4: 跑绿** `pnpm test bid-review-tasks-view` → 10 用例全绿;`pnpm test bid-review` 全套回归
+- [x] **Step 5: Commit** `feat(bid-review): 新建任务对话框对齐原型 s2——基本信息覆盖位+200MB 校验(Plan5 T3)`
 
 ---
 
 ### Task 4: 收尾验证 + 记账
 
-- [ ] **Step 1:** `cd backend && make lint` + `cd frontend && pnpm typecheck && pnpm lint`
-- [ ] **Step 2:** 记账——`.wolf/memory.md` 一条;`.wolf/anatomy.md` plan5 条目;cerebrum 记用户裁定(弹窗保留,spec §4.2 页化退役);spec 修订已先行落盘(裁定 14+§4.2 退役注记)。
-- [ ] **Step 3:** push `git push origin main-dev-fork`(flaky 重试)。
+- [x] **Step 1:** `cd backend && make lint` + `cd frontend && pnpm typecheck && pnpm lint`
+- [x] **Step 2:** 记账——`.wolf/memory.md` 一条;`.wolf/anatomy.md` plan5 条目;cerebrum 记用户裁定(弹窗保留,spec §4.2 页化退役);spec 修订已先行落盘(裁定 14+§4.2 退役注记)。
+- [x] **Step 3:** push `git push origin main-dev-fork`(flaky 重试)。
 
 ---
 
