@@ -150,7 +150,7 @@
 
 | # | 内容 | 契约要点 | 量级 |
 |---|------|---------|------|
-| B1 | TaskOut 扩展 | `project_name`、`tender_no`、`biz_no`(TBR-{YYYYMMDD}-{seq},创建时生成,唯一)、`created_by_name`、`updated_at`/`done_at`、`main_unhandled`(未处理「主要」severity 计数,2026-10-31 D1-A 并入,list_tasks 同循环聚合);tasks 表加列+迁移(biz_no 存量回填) | 小 |
+| B1 | TaskOut 扩展 | `project_name`、`tender_no`、`biz_no`(TBR-{YYYYMMDD}-{seq},创建时生成,唯一)、`created_by_name`、`updated_at`/`done_at`、`main_unhandled`(未处理「主要」severity 计数,2026-10-31 D1-A 并入,list_tasks 同循环聚合);tasks 表加列+迁移(biz_no 存量回填)。**项目/标段数据源(2026-10-31 走查裁定):抽取回填,非向导必填**——引擎已抽 `tender.project_identity.name`;新增 `tender.project_identity.lot_section`(标段)入基础字段字典+labels;worker 抽取完成后同处回填 task 两列(创建时 null,伪零纪律显 —);/new 向导项目/标段改可选(人工覆盖位) | 小 |
 | B2 | 复核落库 | feedback 端点动作枚举扩 `confirm`/`severity_change`/`defer_need_human`(误报已有);issues 投影加 `review_state`(unresolved/maintained/false_positive/severity_changed/deferred);全量未复核队列查询支持(按 segment 过滤) | 中 |
 | B3 | 解析置信 | 解析层回传 per-doc confidence + `low_conf_pages:[{page_from,page_to,confidence,note}]`,engine_meta.docs 投影透出。**先探明 parse 层是否已产出置信再定实现**(若 parse 无置信,引擎侧补计算,量级升) | 中 |
 | B4 | 评分覆盖度 | 引擎抽取评分办法项(baseline 字段族扩展或独立投影);`GET /tasks/{id}/score_coverage` → `{total, covered, items:[{name, covered_by_rules:[rule_id]}]}` | 中 |
@@ -173,6 +173,7 @@
 9. **规则启停/评测 runner/s7/s8 整屏/重试端点/PDF 导出**:维持挂账(见 §2)。
 10. **s1 统计卡**(2026-10-31 用户两段定案):跨任务汇总无行动价值(任务彼此独立)但**不删卡**,内容换为当前选中任务体征五格(致命/待人工/问题总数/误报/用时);跨任务计数只留在侧栏徽标。
 11. **D1 致命/主要列**:B1 并入 `main_unhandled` 聚合,严格对齐原型(弃「致命/待人工」零后端替代)。
+12. **项目/标段数据源**(2026-10-31 走查):从投标文件抽取回填(引擎字段字典扩展),非新建对话框必填输入;向导字段降为可选覆盖位。复用既有 `tender.project_identity.name`,仅标段需新增字段路径。
 12. **D2 统计卡第五格**:审查用时(B1 done_at 前显 —;弃零后端「基准确认状态」,与状态 pill 重复)。
 13. **D3 行点击语义**:点击仅选中(写 `?task_id=`+高亮),跳转走操作列(选中模型见 §3.2)。
 
