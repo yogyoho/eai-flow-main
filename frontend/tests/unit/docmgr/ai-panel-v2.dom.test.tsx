@@ -21,6 +21,13 @@ const m = rs.hoisted(() => ({
   startReview: rs.fn(),
   writeText: rs.fn(() => Promise.resolve()),
   streamState: { isLoading: false, messages: [] as unknown[] },
+  // 复审 I-1: busy 互跨禁用断言——两通道 busy 可控 + 挂载 props 捕获
+  docTaskBusy: false,
+  reviewBusy: false,
+  docTaskState: { sections: [] } as Record<string, unknown>,
+  reviewState: { reviewType: "consistency" } as Record<string, unknown>,
+  capturedTask: null as Record<string, unknown> | null,
+  capturedReview: null as Record<string, unknown> | null,
 }));
 
 rs.mock("@langchain/langgraph-sdk/react", () => ({
@@ -61,10 +68,13 @@ rs.mock("@/extensions/docmgr/DocAITaskArea", () => ({
     { id: "toc", label: "生成目录" },
     { id: "summary", label: "全文摘要" },
   ],
-  DocAITaskArea: () => null,
+  DocAITaskArea: (props: Record<string, unknown>) => {
+    m.capturedTask = props;
+    return null;
+  },
   useDocAITask: () => ({
-    state: null,
-    busy: false,
+    state: m.docTaskState,
+    busy: m.docTaskBusy,
     undoBlocked: false,
     markUserEdited: rs.fn(),
     startTask: m.startTask,
@@ -88,10 +98,13 @@ rs.mock("@/extensions/docmgr/DocAIReviewArea", () => ({
     { id: "numbering", label: "编号连续性审查" },
     { id: "units", label: "公式单位审查" },
   ],
-  DocAIReviewArea: () => null,
+  DocAIReviewArea: (props: Record<string, unknown>) => {
+    m.capturedReview = props;
+    return null;
+  },
   useDocAIReview: () => ({
-    state: null,
-    busy: false,
+    state: m.reviewState,
+    busy: m.reviewBusy,
     undoBlocked: false,
     hasSnapshot: false,
     markUserEdited: rs.fn(),
@@ -160,6 +173,10 @@ describe("DocAIAgentPanel v2 空态（方案三）", () => {
     m.streamState.messages = [];
     m.startTask.mockClear();
     m.startReview.mockClear();
+    m.docTaskBusy = false;
+    m.reviewBusy = false;
+    m.capturedTask = null;
+    m.capturedReview = null;
     Object.defineProperty(navigator, "clipboard", {
       value: { writeText: m.writeText },
       configurable: true,
@@ -253,6 +270,24 @@ describe("DocAIAgentPanel v2 空态（方案三）", () => {
         .getAttribute("aria-pressed"),
     ).toBe("true");
   });
+
+  // EAI-CUSTOM (全文操作 M2 复审 I-1): busy 互跨禁用——审查运行中改写任务卡收到
+  // busy=true（批量栏 !busy 门控即冻结）；改写运行中审查区收到 actionsDisabled=true。
+  it("busy 互跨禁用：审查运行中冻结任务卡；改写运行中冻结审查区", async () => {
+    m.reviewBusy = true;
+    let r = render(<DocAIAgentPanel {...baseProps(makeEditorRef())} />);
+    expect(m.capturedTask?.busy).toBe(true);
+    expect(m.capturedReview?.busy).toBe(true);
+    expect(m.capturedReview?.actionsDisabled).toBe(false);
+    r.unmount();
+
+    m.docTaskBusy = true;
+    m.reviewBusy = false;
+    r = render(<DocAIAgentPanel {...baseProps(makeEditorRef())} />);
+    expect(m.capturedReview?.actionsDisabled).toBe(true);
+    expect(m.capturedTask?.busy).toBe(true);
+    r.unmount();
+  });
 });
 
 describe("DocAIAgentPanel v2 消息流（方案一）", () => {
@@ -262,6 +297,10 @@ describe("DocAIAgentPanel v2 消息流（方案一）", () => {
     m.writeText.mockClear();
     m.submit.mockClear();
     m.stop.mockClear();
+    m.docTaskBusy = false;
+    m.reviewBusy = false;
+    m.capturedTask = null;
+    m.capturedReview = null;
     Object.defineProperty(navigator, "clipboard", {
       value: { writeText: m.writeText },
       configurable: true,

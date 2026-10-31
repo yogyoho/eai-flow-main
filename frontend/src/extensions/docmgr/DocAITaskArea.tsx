@@ -835,11 +835,6 @@ function TicketHeader({
   );
 }
 
-// EAI-CUSTOM (全文操作 M2 Chunk 2): 导出工单头——审查任务区（DocAIReviewArea）沿用同一
-// 「工单头」展示习语（任务名+状态 pill+进度条+计划行）；其审查版计划行文案（已审/正在审/
-// 待查看 findings）与改写版不同，故审查区自持头组件、此处仅开放共享符号。
-export { TicketHeader };
-
 export function DocAITaskArea({
   task,
   busy,

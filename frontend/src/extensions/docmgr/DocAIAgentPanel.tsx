@@ -1342,7 +1342,9 @@ export default function DocAIAgentPanel({
       {docTask.state && (
         <DocAITaskArea
           task={docTask.state}
-          busy={docTask.busy}
+          // EAI-CUSTOM (全文操作 M2 复审 I-1): busy 互跨——审查流运行中也冻结改写
+          // 任务卡（批量栏 !busy 门控），反向由审查区 actionsDisabled={docTask.busy} 承担。
+          busy={taskBusy}
           undoBlocked={docTask.undoBlocked}
           onApplySection={docTask.applySection}
           onApplyAll={docTask.applyAll}
@@ -1373,6 +1375,7 @@ export default function DocAIAgentPanel({
           busy={review.busy}
           undoBlocked={review.undoBlocked}
           hasSnapshot={review.hasSnapshot}
+          actionsDisabled={docTask.busy}
           onLocate={(anchor) => {
             const ed = editorRef.current;
             return ed ? ed.scrollToAnchor(anchor) : false;

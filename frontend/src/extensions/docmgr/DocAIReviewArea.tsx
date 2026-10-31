@@ -482,11 +482,14 @@ const SEVERITY_GROUPS = [
 /** 单条审查发现卡：excerpt（等宽、可截断）+ problem + suggestion + 定位/修复/忽略。 */
 function FindingsCard({
   entry,
+  actionsDisabled,
   onLocate,
   onApplyFix,
   onDismiss,
 }: {
   entry: ReviewFindingEntry;
+  /** EAI-CUSTOM (全文操作 M2 复审 I-1): 改写任务运行中冻结审查操作（busy 互跨禁用）。 */
+  actionsDisabled?: boolean;
   onLocate: (anchor: string) => boolean;
   onApplyFix: (finding: DocAIFinding) => void;
   onDismiss: (id: string) => void;
@@ -532,7 +535,7 @@ function FindingsCard({
           <div className="mt-1.5 flex items-center gap-1.5">
             <button
               type="button"
-              disabled={locateFailed}
+              disabled={locateFailed || actionsDisabled}
               onClick={() => {
                 if (!onLocate(finding.anchor)) setLocateFailed(true);
               }}
@@ -544,16 +547,18 @@ function FindingsCard({
             {finding.fix_op && (
               <button
                 type="button"
+                disabled={actionsDisabled}
                 onClick={() => onApplyFix(finding)}
-                className="border-primary/40 text-primary hover:bg-primary/10 rounded border px-2 py-0.5 text-[11px] font-medium"
+                className="border-primary/40 text-primary hover:bg-primary/10 rounded border px-2 py-0.5 text-[11px] font-medium disabled:cursor-not-allowed disabled:opacity-40"
               >
                 修复
               </button>
             )}
             <button
               type="button"
+              disabled={actionsDisabled}
               onClick={() => onDismiss(finding.id)}
-              className="text-muted-foreground hover:bg-muted hover:text-foreground ml-auto rounded px-2 py-0.5 text-[11px]"
+              className="text-muted-foreground hover:bg-muted hover:text-foreground ml-auto rounded px-2 py-0.5 text-[11px] disabled:cursor-not-allowed disabled:opacity-40"
             >
               忽略
             </button>
@@ -564,10 +569,10 @@ function FindingsCard({
   );
 }
 
-// EAI-CUSTOM (全文操作 M2): 审查版工单头——与 DocAITaskArea TicketHeader 同构
-//（任务名+状态 pill+进度条+计划行），计划行用审查语义文案（已审 n 节/正在审/待查看
-// findings n 条）。progress 分母口径同 TicketHeader：优先 done/section_start 携带的
-// 后端 total，流式中退化为已见节数。
+// EAI-CUSTOM (全文操作 M2, 复审 S-2 裁决): 审查版工单头——结构克隆 DocAITaskArea
+// TicketHeader（任务名+状态 pill+进度条+计划行习语，不共享符号），计划行用审查语义
+// 文案（已审 n 节/正在审/待查看 findings n 条）。progress 分母口径同克隆源：优先
+// done/section_start 携带的后端 total，流式中退化为已见节数。
 function ReviewTicketHeader({
   state,
   busy,
@@ -584,8 +589,10 @@ function ReviewTicketHeader({
     state.total && state.total > 0 ? state.total : state.audited.length;
   const pct =
     total > 0 ? Math.min(100, Math.round((audited / total) * 100)) : 0;
+  // 复审 S-5:「待查看」=待处理——已修复（fixed）与已忽略（dismissed）条目都扣减，
+  // 全部修复后该行滞留即口径错误。
   const visibleCount = state.entries.filter(
-    (e) => !state.dismissedIds.includes(e.finding.id),
+    (e) => !e.fixed && !state.dismissedIds.includes(e.finding.id),
   ).length;
   return (
     <div>
@@ -673,6 +680,7 @@ export function DocAIReviewArea({
   busy,
   undoBlocked,
   hasSnapshot,
+  actionsDisabled,
   onLocate,
   onApplyFix,
   onApplyAllFixes,
@@ -687,6 +695,8 @@ export function DocAIReviewArea({
   undoBlocked: boolean;
   /** 整批修复已执行（快照在手）→ 显示「撤销整批」。 */
   hasSnapshot: boolean;
+  /** EAI-CUSTOM (全文操作 M2 复审 I-1): 改写任务运行中冻结全部审查操作钮。 */
+  actionsDisabled?: boolean;
   /** 定位：编辑器 scrollToAnchor（false = 未匹配 → 按钮转禁用态）。 */
   onLocate: (anchor: string) => boolean;
   onApplyFix: (finding: DocAIFinding) => void;
@@ -756,6 +766,7 @@ export function DocAIReviewArea({
                     <FindingsCard
                       key={e.finding.id}
                       entry={e}
+                      actionsDisabled={actionsDisabled}
                       onLocate={onLocate}
                       onApplyFix={onApplyFix}
                       onDismiss={onDismissFinding}
@@ -784,7 +795,7 @@ export function DocAIReviewArea({
               <button
                 type="button"
                 onClick={onApplyAllFixes}
-                disabled={fixableCount === 0}
+                disabled={fixableCount === 0 || actionsDisabled}
                 className="bg-primary text-primary-foreground hover:bg-primary/90 flex-1 rounded-md py-1.5 text-xs font-medium disabled:cursor-not-allowed disabled:opacity-40"
               >
                 全部修复（{fixableCount}）
@@ -793,7 +804,7 @@ export function DocAIReviewArea({
                 <button
                   type="button"
                   onClick={onUndoAllFixes}
-                  disabled={undoBlocked}
+                  disabled={undoBlocked || actionsDisabled}
                   className="border-border/60 text-muted-foreground hover:bg-muted hover:text-foreground rounded-md border px-3 py-1.5 text-xs disabled:cursor-not-allowed disabled:opacity-40"
                 >
                   撤销整批

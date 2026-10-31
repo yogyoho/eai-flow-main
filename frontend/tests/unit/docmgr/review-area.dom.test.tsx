@@ -108,6 +108,7 @@ function Harness({
   busy = false,
   undoBlocked = false,
   hasSnapshot = false,
+  actionsDisabled = false,
   locate,
   spies,
 }: {
@@ -115,6 +116,7 @@ function Harness({
   busy?: boolean;
   undoBlocked?: boolean;
   hasSnapshot?: boolean;
+  actionsDisabled?: boolean;
   locate?: (anchor: string) => boolean;
   spies?: {
     onCancel?: () => void;
@@ -129,6 +131,7 @@ function Harness({
       busy={busy}
       undoBlocked={undoBlocked}
       hasSnapshot={hasSnapshot}
+      actionsDisabled={actionsDisabled}
       onLocate={locate ?? (() => true)}
       onApplyFix={(f) => dispatch({ type: "fix_applied", id: f.id })}
       onApplyAllFixes={() => {
@@ -194,9 +197,14 @@ describe("DocAIReviewArea（审查任务区组件）", () => {
   test("修复：仅 fix_op 存在才出现；点击 → onApplyFix → 翻「已修复」", async () => {
     const host = await render(<Harness initial={doneState()} />);
     expect(buttonsByText(host, "修复").length).toBe(1);
+    // 复审 S-5:「待查看」计数只含待处理——修复前 3 条
+    expect(host.textContent).toContain("待查看 findings 3 条");
     await click(buttonByText(host, "修复"));
     expect(host.textContent).toContain("已修复");
     expect(buttonsByText(host, "修复").length).toBe(0);
+    // 修复后计数扣减：3 → 2（fixed 条目不再计入待处理）
+    expect(host.textContent).toContain("待查看 findings 2 条");
+    expect(host.textContent).not.toContain("待查看 findings 3 条");
   });
 
   test("忽略：条目移出展示列表；恢复忽略（n）入口一键还原", async () => {
@@ -229,6 +237,23 @@ describe("DocAIReviewArea（审查任务区组件）", () => {
   test("无快照（未整批修复过）不显示撤销整批", async () => {
     const host = await render(<Harness initial={doneState()} />);
     expect(buttonByText(host, "撤销整批")).toBeUndefined();
+  });
+
+  // EAI-CUSTOM (全文操作 M2 复审 I-1): busy 互跨禁用——改写任务运行中（docTask.busy →
+  // actionsDisabled）审查操作钮全部冻结；反向由 DocAITaskArea busy={taskBusy} 承担。
+  test("actionsDisabled：改写任务运行中冻结 定位/修复/忽略/全部修复/撤销整批", async () => {
+    const host = await render(
+      <Harness
+        initial={doneState()}
+        hasSnapshot={true}
+        actionsDisabled={true}
+      />,
+    );
+    expect(buttonByText(host, "定位").disabled).toBe(true);
+    expect(buttonByText(host, "修复").disabled).toBe(true);
+    expect(buttonByText(host, "忽略").disabled).toBe(true);
+    expect(buttonByText(host, "全部修复（1）").disabled).toBe(true);
+    expect(buttonByText(host, "撤销整批").disabled).toBe(true);
   });
 
   test("undoBlocked → 脏检查提示（batch bar 既有模式文案）", async () => {
@@ -345,6 +370,32 @@ const REVIEW_STREAM: unknown[] = [
     failed: [1],
     skipped: [],
     summary: { error: 1, warn: 1, info: 0 },
+  },
+];
+
+// 负面③（复审 S-6）fixture：两条带 fix_op 的发现——顺序 apply 第二条抛错。
+const REVIEW_STREAM_TWO_FIXABLE: unknown[] = [
+  { type: "section_start", index: 0, total: 1, title: "概述" },
+  { type: "finding", index: 0, finding: errFinding },
+  {
+    type: "finding",
+    index: 0,
+    finding: {
+      id: "e2",
+      severity: "error",
+      anchor: "水力计算",
+      excerpt: "管径 DN200",
+      problem: "管径与水泵扬程不匹配",
+      suggestion: "复核后统一口径",
+      fix_op: { op: "replace_section", anchor: "水力计算", content: "修正节" },
+    },
+  },
+  {
+    type: "done",
+    total: 1,
+    failed: [],
+    skipped: [],
+    summary: { error: 2, warn: 0, info: 0 },
   },
 ];
 
@@ -522,5 +573,158 @@ describe("useDocAIReview（审查任务通道）", () => {
       result.current.reset();
     });
     expect(result.current.state).toBeNull();
+  });
+
+  // ── 负面路径四测（复审 S-6） ─────────────────────────────────────
+
+  test("负面①：PUT 同步非 2xx → fail 收官，message 提示文档同步失败", async () => {
+    const calls: string[] = [];
+    globalThis.fetch = (async (
+      input: RequestInfo | URL,
+      init?: RequestInit,
+    ) => {
+      const url = urlOf(input);
+      calls.push(`${init?.method ?? "GET"} ${url}`);
+      if (url.includes("/personal-docs") && url.includes("/content")) {
+        return {
+          ok: false,
+          status: 500,
+          text: async () => "boom",
+        } as unknown as Response;
+      }
+      return fakeOk();
+    }) as typeof fetch;
+    const ed = makeEditor();
+    const { result } = renderHook(() => useReview(makeEditorRef(ed)));
+    await act(async () => {
+      await result.current.startReview("consistency");
+    });
+    const st = result.current.state!;
+    expect(st.running).toBe(false);
+    expect(st.message).toContain("文档同步失败");
+    expect(result.current.busy).toBe(false);
+    // 同步失败即中止：不进版本快照，更不发审查请求
+    expect(calls.some((c) => c.includes("/versions"))).toBe(false);
+    expect(calls.some((c) => c.includes("/ai/review"))).toBe(false);
+  });
+
+  test("负面②：applyFix 锚点应用抛错 → 该条不得翻 fixed（数据保真）", async () => {
+    globalThis.fetch = (async (input: RequestInfo | URL) => {
+      const url = urlOf(input);
+      if (url.includes("/ai/review")) return fakeNdjson(REVIEW_STREAM);
+      return fakeOk();
+    }) as typeof fetch;
+    const ed = makeEditor();
+    ed.applyOperations = (() => {
+      throw new Error("anchor not found");
+    }) as unknown as typeof ed.applyOperations;
+    const { result } = renderHook(() => useReview(makeEditorRef(ed)));
+    await act(async () => {
+      await result.current.startReview("consistency");
+    });
+    await act(async () => {
+      result.current.applyFix(errFinding);
+    });
+    const e1 = result.current.state!.entries.find(
+      (x) => x.finding.id === "e1",
+    )!;
+    expect(e1.fixed).toBe(false);
+    expect(result.current.state!.message).toContain("修复失败");
+  });
+
+  test("负面③：applyAllFixes 部分失败 → 已应用 fixed 保留 + 聚合 message", async () => {
+    globalThis.fetch = (async (input: RequestInfo | URL) => {
+      const url = urlOf(input);
+      if (url.includes("/ai/review")) {
+        return fakeNdjson(REVIEW_STREAM_TWO_FIXABLE);
+      }
+      return fakeOk();
+    }) as typeof fetch;
+    const ed = makeEditor();
+    let calls = 0;
+    ed.applyOperations = (() => {
+      calls += 1;
+      if (calls === 2) throw new Error("anchor not found");
+    }) as unknown as typeof ed.applyOperations;
+    const { result } = renderHook(() => useReview(makeEditorRef(ed)));
+    await act(async () => {
+      await result.current.startReview("consistency");
+    });
+    await act(async () => {
+      result.current.applyAllFixes();
+    });
+    const entries = result.current.state!.entries;
+    expect(entries.find((x) => x.finding.id === "e1")!.fixed).toBe(true);
+    expect(entries.find((x) => x.finding.id === "e2")!.fixed).toBe(false);
+    expect(result.current.state!.message).toContain("部分修复失败");
+    expect(result.current.state!.message).toContain("水力计算");
+  });
+
+  test("负面④：cancel（AbortError）→ 不派 fail、无 message、已收 findings 保留", async () => {
+    const encoder = new TextEncoder();
+    const firstChunk = encoder.encode(
+      [
+        { type: "section_start", index: 0, total: 1, title: "概述" },
+        { type: "finding", index: 0, finding: errFinding },
+      ]
+        .map((l) => JSON.stringify(l) + "\n")
+        .join(""),
+    );
+    globalThis.fetch = (async (
+      input: RequestInfo | URL,
+      init?: RequestInit,
+    ) => {
+      const url = urlOf(input);
+      if (url.includes("/ai/review")) {
+        const signal = init?.signal;
+        let sent = false;
+        return {
+          ok: true,
+          body: {
+            getReader: () => ({
+              read: () => {
+                if (!sent) {
+                  sent = true;
+                  return Promise.resolve({ done: false, value: firstChunk });
+                }
+                // 后续 read 挂起，abort 时以 AbortError 拒绝（真 fetch 语义）
+                return new Promise((_res, rej) => {
+                  signal?.addEventListener("abort", () => {
+                    const e = new Error("The user aborted a request.");
+                    e.name = "AbortError";
+                    rej(e);
+                  });
+                });
+              },
+              cancel: () => undefined,
+            }),
+          },
+        } as unknown as Response;
+      }
+      return fakeOk();
+    }) as typeof fetch;
+    const ed = makeEditor();
+    const { result } = renderHook(() => useReview(makeEditorRef(ed)));
+    let running: Promise<void> | undefined;
+    await act(async () => {
+      running = result.current.startReview("consistency");
+    });
+    // 等首块事件落地（微任务 + 一拍宏任务）
+    await act(async () => {
+      await new Promise<void>((resolve) => setTimeout(resolve, 25));
+    });
+    expect(
+      result.current.state!.entries.some((x) => x.finding.id === "e1"),
+    ).toBe(true);
+    await act(async () => {
+      result.current.cancel();
+      await running;
+    });
+    const st = result.current.state!;
+    expect(st.running).toBe(false);
+    // AbortError 路径不派 fail：无错误 message，已收 findings 原样保留
+    expect(st.message).toBeUndefined();
+    expect(st.entries.some((x) => x.finding.id === "e1")).toBe(true);
+    expect(result.current.busy).toBe(false);
   });
 });
