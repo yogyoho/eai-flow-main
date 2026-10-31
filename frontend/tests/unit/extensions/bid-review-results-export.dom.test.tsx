@@ -104,7 +104,7 @@ describe("bid-review ResultsView 导出报告(Task 21,Plan7 拆分)", () => {
     cleanup();
   });
 
-  it("done 任务点击导出:请求 ?format=md,Blob 交给 createObjectURL 并回收", async () => {
+  it("done 点导出:开报告预览 modal(免责+判定摘要+md);弹层内下载 .md 走 Blob(Plan7 T4)", async () => {
     responder = (path) => {
       if (path.includes("/report")) return mdRes();
       if (path.endsWith("/tasks/t1/issues")) return jsonRes({ items: [ISSUE] });
@@ -129,9 +129,22 @@ describe("bid-review ResultsView 导出报告(Task 21,Plan7 拆分)", () => {
     // 任务详情查询未落定时按钮处于禁用态(happy-dom 抑制禁用元素点击)——先等启用再点
     await waitFor(() => expect(button.hasAttribute("disabled")).toBe(false));
     fireEvent.click(button);
+    // Plan7 T4:导出改开预览 modal——不再直接下载
+    const dialog = await screen.findByRole("dialog", {
+      name: "审查报告预览",
+    });
+    expect(dialog).toBeTruthy();
+    // 免责注记(spec §4.5 原型 note-bar)
+    expect(screen.getByText(/本报告为辅助提示/)).toBeTruthy();
+    // 判定摘要(复用 verdict 计算:fatal ISSUE → 不建议提交)
+    expect(screen.getAllByText("不建议提交").length).toBeGreaterThan(0);
+    // md 正文已渲染(报告标题来自 mock mdRes)
     await waitFor(() =>
       expect(calls.some((c) => c.path.includes("/report"))).toBe(true),
     );
+    expect(await screen.findByText(/投标审查报告/)).toBeTruthy();
+    // 弹层内「下载 .md」→ 既有下载逻辑原样(URL.createObjectURL+a.click)
+    fireEvent.click(screen.getByRole("button", { name: "下载 .md" }));
     await waitFor(() => expect(created).toHaveLength(1));
     expect(created[0]).toBeInstanceOf(Blob);
     expect(await created[0]!.text()).toContain("# 投标审查报告");

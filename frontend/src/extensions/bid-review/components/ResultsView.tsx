@@ -49,6 +49,8 @@ import {
 } from "react";
 import { toast } from "sonner";
 
+import { ClipboardSafeStreamdown } from "@/components/ai-elements/streamdown";
+
 import {
   type FeedbackAction,
   type LocateTarget,
@@ -252,6 +254,27 @@ export function ResultsView({ taskId }: { taskId?: string | null }) {
   const [reviewed, setReviewed] = useState<Record<string, FeedbackAction>>({});
   // 报告导出(Task 21):GET report?format=md → Blob 下载;仅 done 可导出。
   const [exporting, setExporting] = useState(false);
+  // 报告预览 modal(Plan7 T4,原型 s5):导出改开弹层——免责注记+判定摘要+
+  // md 正文;「下载 .md」走既有 handleExportReport。PDF 导出挂账(原型不抄)。
+  const [reportOpen, setReportOpen] = useState(false);
+  const [reportMd, setReportMd] = useState<string | null>(null);
+  useEffect(() => {
+    if (!reportOpen || !taskId) return;
+    let alive = true;
+    setReportMd(null);
+    exportReport(taskId)
+      .then((b) => b.text())
+      .then((t) => {
+        if (alive) setReportMd(t);
+      })
+      .catch((e: unknown) => {
+        if (alive)
+          toast.error(e instanceof Error ? e.message : "报告生成失败");
+      });
+    return () => {
+      alive = false;
+    };
+  }, [reportOpen, taskId]);
   // 清单筛选/搜索(客户端)
   const [seg, setSeg] = useState<SevFilter>("all");
   const [q, setQ] = useState("");
@@ -631,9 +654,9 @@ export function ResultsView({ taskId }: { taskId?: string | null }) {
                 ? "审查完成后可导出报告"
                 : "导出审查报告(.md)"
             }
-            onClick={() => void handleExportReport()}
+            onClick={() => setReportOpen(true)}
           >
-            {exporting ? "导出中…" : "导出报告"}
+            导出报告
           </button>
         </div>
       </div>
@@ -1458,6 +1481,95 @@ export function ResultsView({ taskId }: { taskId?: string | null }) {
                 onClick={() => void batchFalsePositive()}
               >
                 {feedback.isPending ? "提交中…" : "提交误报"}
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      {/* 报告预览 modal(Plan7 T4,原型 s5 L1327):免责注记+判定摘要(复用
+          verdict 计算)+ md 正文(Streamdown);「下载 .md」走既有下载逻辑 */}
+      {reportOpen ? (
+        <div
+          className="overlay open"
+          role="dialog"
+          aria-modal="true"
+          aria-label="审查报告预览"
+        >
+          <div className="modal" style={{ maxWidth: 860, width: "92%" }}>
+            <div className="modal-hd">
+              <h3>审查报告预览</h3>
+              <button
+                type="button"
+                className="x"
+                aria-label="关闭"
+                onClick={() => setReportOpen(false)}
+              >
+                ✕
+              </button>
+            </div>
+            <div className="modal-bd">
+              <div
+                className="note-bar warnbar"
+                style={{ marginTop: 0, marginBottom: 12 }}
+              >
+                <AlertTriangle className="ic" />
+                <span>本报告为辅助提示,最终责任由投标主体承担。</span>
+              </div>
+              {issues.length > 0 ? (
+                <div
+                  className={cn("verdict-band", fatalUnhandled === 0 && "ok")}
+                  role="status"
+                >
+                  <span className="vb-ic">
+                    <AlertTriangle className="ic" />
+                  </span>
+                  <div>
+                    <h3>
+                      {fatalUnhandled > 0 ? "不建议提交" : "建议提交"}
+                    </h3>
+                    <div className="vb-sub">
+                      {fatalUnhandled > 0
+                        ? `命中致命红线 ${fatalUnhandled} 项,建议整改后重新审查`
+                        : "无未处理致命问题——次要与待人工项仍须逐条处理后提交"}
+                    </div>
+                  </div>
+                  <span className="vb-cjk">
+                    判定口径:存在 severity=fatal 且未被人工判误报的问题(致命
+                    &gt; 0 一律红)
+                  </span>
+                </div>
+              ) : null}
+              <div style={{ marginTop: 12 }}>
+                {reportMd === null ? (
+                  <span style={{ color: "var(--text-3)" }}>报告生成中…</span>
+                ) : (
+                  <ClipboardSafeStreamdown>
+                    {reportMd}
+                  </ClipboardSafeStreamdown>
+                )}
+              </div>
+            </div>
+            <div className="modal-ft">
+              <button
+                type="button"
+                className="btn btn-sec"
+                onClick={() => setReportOpen(false)}
+              >
+                关闭
+              </button>
+              <button
+                type="button"
+                className="btn btn-pri"
+                disabled={exporting || task?.status !== "done"}
+                title={
+                  task && task.status !== "done"
+                    ? "审查完成后可导出报告"
+                    : "导出审查报告(.md)"
+                }
+                onClick={() => void handleExportReport()}
+              >
+                {exporting ? "导出中…" : "下载 .md"}
               </button>
             </div>
           </div>
