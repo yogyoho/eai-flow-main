@@ -1,14 +1,15 @@
 "use client";
 
-import { useSearchParams } from "next/navigation";
 import { Suspense } from "react";
 
 import { Toaster } from "@/components/ui/sonner";
 import { BaselineView } from "@/extensions/bid-review/components/BaselineView";
+import { useSelectedTask } from "@/extensions/bid-review/hooks";
 
 function BaselineContent() {
-  const params = useSearchParams();
-  return <BaselineView taskId={params.get("task_id")} />;
+  // 选中任务模型(spec §3.2,Plan2):URL param → 最新任务 fallback;null 仅当零任务
+  const { taskId } = useSelectedTask();
+  return <BaselineView taskId={taskId} />;
 }
 
 export default function BidReviewBaselinePage() {
