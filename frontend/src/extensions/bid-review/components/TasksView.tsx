@@ -21,14 +21,14 @@
  * workbench?task_id=。
  */
 
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Info, ListChecks, Plus, RefreshCw, X } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
-import { createTask, listTasks } from "@/extensions/bid-review/api";
-import { bidReviewKeys } from "@/extensions/bid-review/hooks";
+import { createTask } from "@/extensions/bid-review/api";
+import { bidReviewKeys, useBidTasks } from "@/extensions/bid-review/hooks";
 import { type TaskOut } from "@/extensions/bid-review/types";
 import { cn } from "@/lib/utils";
 
@@ -266,10 +266,7 @@ export function TasksView() {
   const [tenderFiles, setTenderFiles] = useState<File[]>([]);
   const [bidFiles, setBidFiles] = useState<File[]>([]);
 
-  const tasksQuery = useQuery({
-    queryKey: bidReviewKeys.tasks,
-    queryFn: listTasks,
-  });
+  const tasksQuery = useBidTasks();
 
   const createMutation = useMutation({
     mutationFn: (input: {

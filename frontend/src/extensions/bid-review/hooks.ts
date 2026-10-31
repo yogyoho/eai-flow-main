@@ -17,6 +17,7 @@ import {
   getTask,
   listRulepacks,
   listTaskIssues,
+  listTasks,
   type FeedbackBody,
 } from "./api";
 
@@ -115,4 +116,11 @@ export function useBidConfirmTask() {
       void qc.invalidateQueries({ queryKey: bidReviewKeys.issues(taskId) });
     },
   });
+}
+
+/** GET /tasks —— 任务列表共享查询(UX 重构 Plan 1):TasksView 列表与 layout
+ * 侧栏徽标/任务 chip 同 key(bidReviewKeys.tasks)同缓存,mutation invalidate
+ * 一处失效多处同步。 */
+export function useBidTasks() {
+  return useQuery({ queryKey: bidReviewKeys.tasks, queryFn: listTasks });
 }
