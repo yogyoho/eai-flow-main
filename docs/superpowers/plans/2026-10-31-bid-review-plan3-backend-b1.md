@@ -27,7 +27,7 @@
 - Modify: `backend/app/extensions/database.py`(migrate_db 尾部加段)
 - Test: `backend/tests/test_bid_review_models.py`(追加)
 
-- [ ] **Step 1: 写失败测试**(models 列存在性,sqlite create_all 直验)
+- [x] **Step 1: 写失败测试**(models 列存在性,sqlite create_all 直验)
 
 在 `test_bid_review_models.py` 追加:
 
@@ -50,12 +50,12 @@ def test_review_task_updated_at_onupdate():
 
 (若文件已有 import `models` 则复用;无则 `from app.extensions.bid_review import models`。)
 
-- [ ] **Step 2: 跑测试确认失败**
+- [x] **Step 2: 跑测试确认失败**
 
 Run: `cd backend && PYTHONPATH=. uv run pytest tests/test_bid_review_models.py -k b1_columns -x -q`
 Expected: FAIL(KeyError 或集合断言失败)
 
-- [ ] **Step 3: 最小实现**
+- [x] **Step 3: 最小实现**
 
 models.py ReviewTask 追加(placed after `created_at`):
 
@@ -100,12 +100,12 @@ database.py `migrate_db()` 内、既有段落之后追加(函数末尾前):
 
 (ORM `unique=True` 不加——迁移索引收口唯一性,避免新装库 create_all 约束+迁移索引双份。)
 
-- [ ] **Step 4: 跑测试确认通过**
+- [x] **Step 4: 跑测试确认通过**
 
 Run: `cd backend && PYTHONPATH=. uv run pytest tests/test_bid_review_models.py -x -q`
 Expected: PASS(全文件)
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add backend/app/extensions/bid_review/models.py backend/app/extensions/database.py backend/tests/test_bid_review_models.py
@@ -120,7 +120,7 @@ git commit -m "feat(bid-review): B1 ReviewTask 六新列(biz_no/项目/标段/�
 - Modify: `backend/app/extensions/bid_review/crud.py:20-26`(create_task + 新 helper)
 - Test: `backend/tests/test_bid_review_crud.py`(追加)
 
-- [ ] **Step 1: 写失败测试**
+- [x] **Step 1: 写失败测试**
 
 追加到 `test_bid_review_crud.py`(复用既有 db 夹具;若文件夹具名不同,按现状适配):
 
@@ -145,12 +145,12 @@ def test_next_biz_no_parses_seq():
 
 (若测试文件无 `from datetime import UTC, datetime` 则补。)
 
-- [ ] **Step 2: 跑失败**
+- [x] **Step 2: 跑失败**
 
 Run: `cd backend && PYTHONPATH=. uv run pytest tests/test_bid_review_crud.py -k biz_no -x -q`
 Expected: FAIL(AttributeError: no `_seq_of` / biz_no None)
 
-- [ ] **Step 3: 实现**
+- [x] **Step 3: 实现**
 
 crud.py:
 
@@ -183,12 +183,12 @@ async def create_task(session: AsyncSession, owner_id: str, mode: str = "quick")
 
 import 补:`from datetime import UTC, datetime` 与 `from sqlalchemy import func, select`。
 
-- [ ] **Step 4: 跑通过**
+- [x] **Step 4: 跑通过**
 
 Run: `cd backend && PYTHONPATH=. uv run pytest tests/test_bid_review_crud.py -x -q`
 Expected: PASS
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add backend/app/extensions/bid_review/crud.py backend/tests/test_bid_review_crud.py
@@ -203,7 +203,7 @@ git commit -m "feat(bid-review): B1 biz_no 生成——TBR-{YYYYMMDD}-{seq:04d} 
 - Modify: `backend/app/extensions/bid_review/crud.py:38-57`(set_status)
 - Test: `backend/tests/test_bid_review_crud.py`(追加)
 
-- [ ] **Step 1: 写失败测试**
+- [x] **Step 1: 写失败测试**
 
 ```python
 @pytest.mark.asyncio
@@ -219,12 +219,12 @@ async def test_set_status_done_at(db):
     assert t.done_at == done1
 ```
 
-- [ ] **Step 2: 跑失败**
+- [x] **Step 2: 跑失败**
 
 Run: `cd backend && PYTHONPATH=. uv run pytest tests/test_bid_review_crud.py -k done_at -x -q`
 Expected: FAIL(done_at None)
 
-- [ ] **Step 3: 实现**
+- [x] **Step 3: 实现**
 
 set_status 内、`task.status = status` 后:
 
@@ -233,12 +233,12 @@ set_status 内、`task.status = status` 后:
         task.done_at = datetime.now(UTC)
 ```
 
-- [ ] **Step 4: 跑通过**
+- [x] **Step 4: 跑通过**
 
 Run: `cd backend && PYTHONPATH=. uv run pytest tests/test_bid_review_crud.py -x -q`
 Expected: PASS
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add backend/app/extensions/bid_review/crud.py backend/tests/test_bid_review_crud.py
@@ -255,7 +255,7 @@ git commit -m "feat(bid-review): B1 done_at——set_status(done) 一次性落�
 - Modify: `backend/app/extensions/bid_review/worker.py`(advance_task 基线落库后回填)
 - Test: `backend/tests/test_bid_review_extract.py`(追加)、`backend/tests/test_bid_review_worker.py`(追加)
 
-- [ ] **Step 1: 写失败测试**
+- [x] **Step 1: 写失败测试**
 
 test_bid_review_extract.py 追加:
 
@@ -285,12 +285,12 @@ async def test_advance_task_backfills_project_identity(db, monkeypatch):
 
 (执行时按该文件现有 advance_task 测试的夹具/驱动逐字改写;计划不预写未知夹具名——以现有用例为模板,断言块如上。)
 
-- [ ] **Step 2: 跑失败**
+- [x] **Step 2: 跑失败**
 
 Run: `cd backend && PYTHONPATH=. uv run pytest tests/test_bid_review_extract.py -k lot_section -x -q`
 Expected: FAIL(KeyError / not in)
 
-- [ ] **Step 3: 实现**
+- [x] **Step 3: 实现**
 
 extract.py 基础字段集(紧邻 tender.project_identity.code 行)加:
 
@@ -324,12 +324,12 @@ worker.py advance_task,`await _write_baselines(...)` 行后加:
 
 (局部函数体最短;若该文件已有同类 helper 则复用。)
 
-- [ ] **Step 4: 跑通过**
+- [x] **Step 4: 跑通过**
 
 Run: `cd backend && PYTHONPATH=. uv run pytest tests/test_bid_review_extract.py tests/test_bid_review_worker.py -x -q`
 Expected: PASS(注意既有 worker 用例若 fake fields 无这些键,回填 None 不破坏断言)
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add backend/app/extensions/bid_review/engine/extract.py backend/app/extensions/bid_review/engine/labels.py backend/app/extensions/bid_review/worker.py backend/tests/test_bid_review_extract.py backend/tests/test_bid_review_worker.py
@@ -346,7 +346,7 @@ git commit -m "feat(bid-review): B1 抽取回填——lot_section 新字段+项�
 - Modify: `backend/app/extensions/bid_review/routers.py:130-146`(list_tasks 聚合)
 - Test: `backend/tests/test_bid_review_routers.py`(追加)
 
-- [ ] **Step 1: 写失败测试**
+- [x] **Step 1: 写失败测试**
 
 test_bid_review_routers.py 追加:
 
@@ -398,12 +398,12 @@ async def test_creator_names_with_users_table(db):
 
 (User 建表在 sqlite 含 REFERENCES departments——sqlite 建表期不校验,可直建。)
 
-- [ ] **Step 2: 跑失败**
+- [x] **Step 2: 跑失败**
 
 Run: `cd backend && PYTHONPATH=. uv run pytest tests/test_bid_review_routers.py -k b1_fields -x -q`
 Expected: FAIL(TaskOut 无 main_unhandled / created_by_name 键)
 
-- [ ] **Step 3: 实现**
+- [x] **Step 3: 实现**
 
 schemas.py TaskOut 追加:
 
@@ -457,12 +457,12 @@ routers.py list_tasks 循环内补一行 + 循环外一次 creator_names:
         items.append(out)
 ```
 
-- [ ] **Step 4: 跑通过**
+- [x] **Step 4: 跑通过**
 
 Run: `cd backend && PYTHONPATH=. uv run pytest tests/test_bid_review_routers.py tests/test_bid_review_crud.py -x -q`
 Expected: PASS
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add backend/app/extensions/bid_review/schemas.py backend/app/extensions/bid_review/crud.py backend/app/extensions/bid_review/routers.py backend/tests/test_bid_review_routers.py
@@ -473,7 +473,7 @@ git commit -m "feat(bid-review): B1 TaskOut 扩展+list 聚合 main_unhandled/cr
 
 ### Task 6: 全量验证 + 重启 + 记账
 
-- [ ] **Step 1: bid_review 全量 + ruff**
+- [x] **Step 1: bid_review 全量 + ruff**
 
 ```bash
 cd backend && PYTHONPATH=. uv run pytest tests/test_bid_review_crud.py tests/test_bid_review_models.py tests/test_bid_review_routers.py tests/test_bid_review_worker.py tests/test_bid_review_extract.py tests/test_bid_review_mcp.py tests/test_bid_review_feedback.py -q
@@ -491,7 +491,7 @@ docker compose -p eai-docker restart gateway
 
 (migrate_db 在 PG 实跑:重启后查 `docker exec eai-docker-postgres-ext-1 psql -U agentflow -d agentflow -c "\d bid_review_tasks"` 确认六列+唯一索引+存量 biz_no 非空。)
 
-- [ ] **Step 3: OpenWolf 记账 + 提交计划文档**
+- [x] **Step 3: OpenWolf 记账 + 提交计划文档**
 
 计划文档先随 Task 1 commit 一并 `git add -f` 入库。
 
