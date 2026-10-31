@@ -190,3 +190,44 @@ async def test_need_human_rejects_unknown_action(client, db):
     issue = await crud.add_issue(db, task_id=t.id, owner_id="u1", rule_id="L1-009", layer="L1", severity="fatal", verdict="violation", message="m", dedup_key="k2")
     r = await client.post(f"/api/extensions/bid-review/issues/{issue.id}/feedback", json={"action": "bogus"})
     assert r.status_code == 422
+
+
+@pytest.mark.asyncio
+async def test_review_state_projection(client, db):
+    """B2 复核落库投影(Plan9 spec §4.6):review_state = 最新反馈动作映射,
+    unresolved|maintained|false_positive|severity_changed|deferred;列表/详情/
+    反馈响应三处同投影;最新动作覆盖旧动作。"""
+    t = await crud.create_task(db, owner_id="u1")
+    i1 = await crud.add_issue(db, task_id=t.id, owner_id="u1", rule_id="L1-009", layer="L1", severity="fatal", verdict="violation", message="m1", dedup_key="k1", need_human=False)
+    i2 = await crud.add_issue(db, task_id=t.id, owner_id="u1", rule_id="L3-005", layer="L3", severity="major", verdict="need_human", message="m2", dedup_key="k2", need_human=True)
+
+    # 初始:全部 unresolved
+    r = await client.get(f"/api/extensions/bid-review/tasks/{t.id}/issues")
+    assert r.status_code == 200
+    items = {i["id"]: i for i in r.json()["items"]}
+    assert items[i1.id]["review_state"] == "unresolved"
+    assert items[i2.id]["review_state"] == "unresolved"
+
+    # confirm → maintained(反馈响应即投影)
+    r = await client.post(f"/api/extensions/bid-review/issues/{i1.id}/feedback", json={"action": "confirm"})
+    assert r.status_code == 200
+    assert r.json()["review_state"] == "maintained"
+
+    # severity_change → severity_changed(只落反馈行,不回写 issue.severity)
+    r = await client.post(f"/api/extensions/bid-review/issues/{i2.id}/feedback", json={"action": "severity_change", "new_severity": "minor"})
+    assert r.json()["review_state"] == "severity_changed"
+    r = await client.get(f"/api/extensions/bid-review/issues/{i2.id}")
+    assert r.json()["review_state"] == "severity_changed"
+    assert r.json()["severity"] == "major"
+
+    # 最新动作覆盖:need_human → deferred;再 false_positive → false_positive
+    r = await client.post(f"/api/extensions/bid-review/issues/{i1.id}/feedback", json={"action": "need_human"})
+    assert r.json()["review_state"] == "deferred"
+    r = await client.post(f"/api/extensions/bid-review/issues/{i1.id}/feedback", json={"action": "false_positive"})
+    assert r.json()["review_state"] == "false_positive"
+
+    # 列表终态投影
+    r = await client.get(f"/api/extensions/bid-review/tasks/{t.id}/issues")
+    items = {i["id"]: i for i in r.json()["items"]}
+    assert items[i1.id]["review_state"] == "false_positive"
+    assert items[i2.id]["review_state"] == "severity_changed"

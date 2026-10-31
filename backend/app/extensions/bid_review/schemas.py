@@ -63,6 +63,11 @@ class IssueOut(ORMBase):
     dedup_key: str
     need_human: bool = False
     confidence: float = 1.0
+    # B2 复核落库投影(EAI-CUSTOM 2026-10-31 Plan9 spec §4.6):该 issue 最新一条
+    # 复核反馈动作映射的复核态,unresolved|maintained|false_positive|severity_changed|
+    # deferred;无反馈=unresolved。verdict 表达不了 maintained/severity_changed
+    # (confirm/severity_change 不改 verdict),故单独投影。
+    review_state: str = "unresolved"
     created_at: datetime
 
 

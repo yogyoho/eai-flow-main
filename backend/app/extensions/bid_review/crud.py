@@ -204,6 +204,22 @@ async def update_baseline(session: AsyncSession, baseline: BaselinePackage, *, c
 # --- ReviewFeedback ----------------------------------------------------------
 
 
+async def latest_feedback_actions(session: AsyncSession, issue_ids: list[str]) -> dict[str, str]:
+    """issue_id → 最新一次复核反馈动作(B2 review_state 投影,routers 映射为复核态)。
+
+    同 created_at 按 id 定序兜底;空入参直接返回空表(列表页无反馈时零查询)。
+    """
+    if not issue_ids:
+        return {}
+    result = await session.execute(
+        select(ReviewFeedback).where(ReviewFeedback.issue_id.in_(issue_ids)).order_by(ReviewFeedback.created_at, ReviewFeedback.id)
+    )
+    latest: dict[str, str] = {}
+    for fb in result.scalars():
+        latest[fb.issue_id] = fb.action
+    return latest
+
+
 async def record_feedback(
     session: AsyncSession,
     issue_id: str,

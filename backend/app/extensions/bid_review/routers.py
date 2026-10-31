@@ -395,13 +395,31 @@ async def apply_false_positive(db: AsyncSession, issue):
 # ── 问题端点 ──────────────────────────────────────────────────────────
 
 
+# ── B2 复核落库投影(EAI-CUSTOM 2026-10-31 Plan9 spec §4.6)────────────────
+# 反馈动作 → review_state;最新动作即真源,verdict 不参与(confirm/severity_change
+# 不改 verdict,单独投影才能表达 maintained/severity_changed)。
+_REVIEW_ACTION_STATE = {
+    "confirm": "maintained",
+    "false_positive": "false_positive",
+    "severity_change": "severity_changed",
+    "need_human": "deferred",
+}
+
+
+def _with_review_state(issue, states: dict[str, str]) -> IssueOut:
+    out = IssueOut.model_validate(issue)
+    out.review_state = _REVIEW_ACTION_STATE.get(states.get(issue.id, ""), "unresolved")
+    return out
+
+
 @router.get("/tasks/{task_id}/issues")
 async def list_task_issues(task_id: str, db: AsyncSession = Depends(get_db), owner_id: str = Depends(current_owner)):
     if await crud.get_task(db, task_id=task_id, owner_id=owner_id) is None:
         raise HTTPException(status_code=404, detail="任务不存在")
     issues = await crud.list_issues(db, task_id=task_id, owner_id=owner_id)
+    states = await crud.latest_feedback_actions(db, [i.id for i in issues])
     return {
-        "items": [IssueOut.model_validate(i) for i in issues],
+        "items": [_with_review_state(i, states) for i in issues],
         # 汇总分级(A12 T14 集成约束①,与 worker progress.summary 共用 summarize_issues
         # 同一口径):正式违规计数(fatal/major/minor/info)不含 need_human 条目,待人工
         # 单列;条目不删——items 仍全量返回(工作台待人工格与 verdict 过滤消费)。
@@ -414,7 +432,7 @@ async def get_issue_detail(issue_id: str, db: AsyncSession = Depends(get_db), ow
     issue = await crud.get_issue(db, issue_id=issue_id, owner_id=owner_id)
     if issue is None:
         raise HTTPException(status_code=404, detail="问题不存在")
-    return issue
+    return _with_review_state(issue, await crud.latest_feedback_actions(db, [issue.id]))
 
 
 @router.post("/issues/{issue_id}/feedback", response_model=IssueOut)
@@ -445,7 +463,9 @@ async def feedback_issue(issue_id: str, body: FeedbackIn, db: AsyncSession = Dep
         issue.need_human = False  # 待人工闭环:确认后不再挂待人工格(need_human_count 自然回落)
         await crud.add_rulepack_stats(db, RULEPACK_NAME, issue.rule_id, adopted=True)
     await db.refresh(issue)
-    return issue
+    out = IssueOut.model_validate(issue)
+    out.review_state = _REVIEW_ACTION_STATE.get(body.action, "unresolved")
+    return out
 
 
 # ── 报告导出(Task 21;html 导出属 M4,本轮不做)───────────────────────
