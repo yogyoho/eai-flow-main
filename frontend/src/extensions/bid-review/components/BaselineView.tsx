@@ -136,17 +136,24 @@ export function BaselineView({ taskId }: { taskId?: string | null }) {
 
   const st = task ? taskStatusPill(task.status) : null;
   const unconfirmedRows = rows.filter((r) => !r.confirmed).length;
-  // 门进度:仅 awaiting_confirm 且(行全确认 + 冲突全裁定)才 100%
-  const gatePct =
-    gateOpen && unconfirmedRows + unresolvedCount > 0 ? 0 : task ? 100 : 0;
+  // 门进度(Plan8 §4.4):渐进口径=(已确认行数+已裁定冲突数)/(总行数+冲突总数);
+  // 无任务 0,已过门(非 awaiting_confirm)100%,分母 0(快照未到)0。
+  const pendingTotal = rows.length + conflictPaths.length;
+  const gatePct = !task
+    ? 0
+    : !gateOpen
+      ? 100
+      : pendingTotal === 0
+        ? 0
+        : Math.round(
+            ((rows.filter((r) => r.confirmed).length +
+              (conflictPaths.length - unresolvedCount)) /
+              pendingTotal) *
+              100,
+          );
 
   return (
     <div className="screen on">
-      <div className="proto-banner">
-        <b>P0-2b/P0-3</b>· 解析与字段抽取 + 基准确认卡点 · 人工核对基准包 →
-        解锁审查 · 未确认不得进入审查(不可绕过)
-      </div>
-
       <div className="page-head">
         <div className="ph-icon">
           <svg className="ic" viewBox="0 0 24 24" aria-hidden>
@@ -164,6 +171,13 @@ export function BaselineView({ taskId }: { taskId?: string | null }) {
           </div>
         </div>
         <div className="ph-actions">
+          {/* 页头待确认 pill(Plan8 §4.4,原型 s4):=未确认行+未裁冲突 */}
+          {gateOpen && unconfirmedRows + unresolvedCount > 0 ? (
+            <span className="pill pill-orange">
+              <span className="dot dot-warn" aria-hidden />
+              待确认 {unconfirmedRows + unresolvedCount} 项
+            </span>
+          ) : null}
           {st ? (
             <span className={`pill ${STATUS_PILL_CLASS[st.tone]}`}>
               {st.tone === "warn" ? (
@@ -604,7 +618,7 @@ export function BaselineView({ taskId }: { taskId?: string | null }) {
             基准确认进度{" "}
             <span className="num">
               {gateOpen
-                ? `0%(待确认${unconfirmedRows > 0 ? ` · ${unconfirmedRows} 行未确认` : ""}${unresolvedCount > 0 ? ` · ${unresolvedCount} 处冲突未裁定` : ""})`
+                ? `${gatePct}%${unconfirmedRows + unresolvedCount > 0 ? `(待确认${unconfirmedRows > 0 ? ` · ${unconfirmedRows} 行未确认` : ""}${unresolvedCount > 0 ? ` · ${unresolvedCount} 处冲突未裁定` : ""})` : "(可确认)"}`
                 : task
                   ? "100%(已过确认门)"
                   : "—"}

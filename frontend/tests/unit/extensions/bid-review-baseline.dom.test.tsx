@@ -214,6 +214,32 @@ describe("bid-review BaselineView 分期建议一期(EAI-CUSTOM 2026-10-30)", ()
       ).toBe(true),
     );
   });
+
+  it("页头待确认 pill + 渐进门 meter(Plan8 §4.4):pill=未确认行+未裁冲突,meter 渐进,proto-banner 清除", async () => {
+    // 双行夹具一行已确认:无交互即得渐进 50%(1/2)
+    const HALF = [
+      { ...BASELINES[0]!, confirmed: true },
+      { ...BASELINES[1]!, confirmed: false },
+    ];
+    responder = (path) => {
+      if (path.endsWith("/baselines")) return jsonRes({ items: HALF });
+      if (path.endsWith("/tasks/t1")) return jsonRes(TASK("awaiting_confirm"));
+      return jsonRes({}, 404);
+    };
+    renderBaseline();
+
+    // 页头 warn pill = 未确认行 1 + 未裁冲突 0 = 1 项
+    expect(await screen.findByText(/待确认 1 项/)).toBeTruthy();
+    // proto-banner 已清除(Plan8 T1)
+    expect(screen.queryByText(/P0-2b/)).toBeNull();
+
+    // 渐进 meter:已确认行 1 / 分母(2 行 + 0 冲突) = 50%
+    const gateBtn = screen.getByRole("button", {
+      name: /确认基准包并开始审查/,
+    });
+    await waitFor(() => expect(gateBtn.textContent).toContain("待确认 1 行"));
+    expect(screen.getByText(/50%/)).toBeTruthy();
+  });
 });
 
 // ── 二期(EAI-CUSTOM 2026-10-31 spec §1.5/§二/§四):冲突裁定 / 置信 pill / 中文 label ──
@@ -315,10 +341,13 @@ describe("bid-review BaselineView 二期冲突裁定(EAI-CUSTOM 2026-10-31)", ()
     expect(await screen.findByText("已裁定")).toBeTruthy();
     expect(screen.getByText(/当前基准 9,000,000/)).toBeTruthy();
 
-    // 裁定后 gate 按钮不再带未裁定冲突数
+    // 裁定后 gate 按钮不再带未裁定冲突数;渐进 meter 0%→50%(1 冲突已裁/分母 2)
     await waitFor(() =>
       expect(gateBtn.textContent).not.toContain("未裁定冲突"),
     );
+    await waitFor(() => expect(screen.getByText(/50%/)).toBeTruthy());
+    // 页头 pill 收敛:未裁冲突清零,剩未确认行 1 → 待确认 1 项
+    await waitFor(() => expect(screen.getByText(/待确认 1 项/)).toBeTruthy());
   });
 
   it("已裁定快照直达:adjudications 非空时冲突卡直接呈已裁定态,门不带冲突计数", async () => {
