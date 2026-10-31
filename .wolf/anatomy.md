@@ -1,7 +1,7 @@
 # anatomy.md
 
-> Auto-maintained by OpenWolf. Last scanned: 2026-10-30T01:52:16.467Z
-> Files: 15 tracked | Anatomy hits: 0 | Misses: 0
+> Auto-maintained by OpenWolf. Last scanned: 2026-10-31T08:54:38.846Z
+> Files: 92 tracked | Anatomy hits: 0 | Misses: 0
 
 ## ../../00 工作目录/02 项目策划/马宁/应急指挥/bid-run/
 
@@ -84,6 +84,13 @@
 ## .gstack/qa-reports/
 
 
+## .gstack/qa-reports/run-20261031T003731Z/
+
+- `annotations.json` (~169 tok)
+- `baseline.json` (~185 tok)
+- `deadline.json` (~14 tok)
+- `qa-report-bid-review-review-2026-10-31.md` — QA Report: /bid-review/review 复核工作台走查(report-only) (~1316 tok)
+
 ## .kiro/settings/
 
 
@@ -122,6 +129,13 @@
 
 ## .superpowers/brainstorm/51743-1779257723/content/
 
+
+## .superpowers/brainstorm/874-1793411211/content/
+
+- `design-overview.html` (~2217 tok)
+- `gap-map.html` (~1627 tok)
+- `ia-approaches.html` (~1371 tok)
+- `waiting.html` (~104 tok)
 
 ## .tmp-geo-test/
 
@@ -314,9 +328,12 @@
 
 ## C:/Users/admin/.claude/projects/D--eai-eai-flow-main/memory/
 
+- `bid-review-evidence-pipeline-e2e.md` (~332 tok)
 - `docmgr-ai-fulltext-m1-landed.md` (~479 tok)
+- `docmgr-ai-panel-v2-landed.md` (~537 tok)
+- `docmgr-ai-review-m2-landed.md` (~658 tok)
 - `git-pack-corruption-pack9b2abcff.md` (~280 tok)
-- `MEMORY.md` (~4125 tok)
+- `MEMORY.md` (~4204 tok)
 
 ## C:/Users/admin/.gstack/
 
@@ -419,6 +436,9 @@
 
 ## backend/
 
+- `.tmp_e2e_bid.py` — E2E: 真实 word 文档 → 证据管线 (spec 2026-10-30-bid-review-evidence-pipeline-design Task 10). (~1410 tok)
+- `.tmp_probe_extract.py` — 探针:容器内复现 extract 调用,看模型原始输出为何没合并出字段。 (~435 tok)
+- `.tmp_probe_ocr.py` — 诊断:内建 OCR 引擎对报价 PNG 为何空文本。 (~144 tok)
 
 ## backend/.deer-flow/
 
@@ -620,6 +640,8 @@
 
 ## backend/app/extensions/
 
+- `database.py` — Database connection and session management for extensions module. (~27822 tok)
+- `ocr_resolve.py` — OCR 引擎公共解析(EAI-CUSTOM 2026-10-30,spec: bid-review evidence pipeline §3)。 (~782 tok)
 
 ## backend/app/extensions/app_center/
 
@@ -632,15 +654,26 @@
 
 ## backend/app/extensions/bid_review/
 
+- `crud.py` — bid_review CRUD —— 全部查询函数带 owner_id 过滤(仓库惯例:router 层从 auth (~2432 tok)
+- `models.py` — 投标审查子系统 ORM(五张表;新表走 create_all,无需 alembic)。 (~1449 tok)
+- `parse.py` — 投标审查文档解析层(EAI-CUSTOM 2026-10-30,spec: bid-review evidence pipeline §2/D1/D4/D6/D8)。 (~4050 tok)
+- `routers.py` — bid_review 工作台 API(Task 10)——8 端点(设计文档 §4.7),挂 gateway (~7252 tok)
+- `schemas.py` — bid_review Pydantic 请求/响应模型(照 contract_price/schemas.py 惯例)。 (~727 tok)
+- `worker.py` — bid_review worker(Task 9)——状态机推进 + claimer 循环 + gateway 生命周期入口。 (~8292 tok)
 
 ## backend/app/extensions/bid_review/engine/
 
+- `anchors.py` — A-* 锚点注册表(EAI-CUSTOM 2026-10-30 二期,spec §三)。 (~1386 tok)
+- `extract.py` — 基准字段提取:解析后文档文本 → field_snapshot(+materials_hash);LLM 提取函数可注入(translation worker `TranslateFn` 惯例)。 (~4087 tok)
+- `labels.py` — 字段中文名映射(EAI-CUSTOM 2026-10-30 二期,spec §四;ui-gaps spec 提案 A②并入)。 (~984 tok)
+- `rule_runner.py` — 规则包加载 + det 执行(canonical;技能内 eval_det.py 为其无量词子集副本)。 (~2463 tok)
 
 ## backend/app/extensions/bid_review/engine/rulepacks/bid-review-core/
 
 
 ## backend/app/extensions/contract_price/
 
+- `service.py` — Pipeline orchestration service for the management API. (~2519 tok)
 
 ## backend/app/extensions/dashboard/
 
@@ -653,7 +686,7 @@
 
 ## backend/app/extensions/docmgr/
 
-- `ai_transform.py` — EAI-CUSTOM: docmgr 全文操作 M1（spec: docs/superpowers/specs/2026-10-29-docmgr-ai-fulltext-ops-design.md (~5666 tok)
+- `ai_transform.py` — EAI-CUSTOM: docmgr 全文操作 M1 + 审查 M2（spec: docs/superpowers/specs/2026-10-29-docmgr-ai-fulltext-ops-de (~9112 tok)
 
 ## backend/app/extensions/eia_samples/
 
@@ -744,6 +777,7 @@
 
 ## backend/app/extensions/settings/
 
+- `routers.py` — Settings API router. (~4244 tok)
 
 ## backend/app/extensions/spare_parts/
 
@@ -897,7 +931,16 @@
 
 ## backend/tests/
 
+- `test_bid_review_extract.py` — bid_review engine/extract.py 基准提取单测:shape/materials_hash 稳定 + null 显式保留 + 非字典路径丢弃 + prompt 骨架转录。 (~3651 tok)
+- `test_bid_review_feedback.py` — Task 16 测试:feedback 复核三连 + 误报回流——confirm/false_positive/severity_change。 (~3059 tok)
+- `test_bid_review_parse.py` — bid_review 解析层测试(EAI-CUSTOM 2026-10-30,spec §2/§4.1)。 (~1529 tok)
+- `test_bid_review_routers.py` — Task 10 测试:bid_review 8 端点——httpx ASGITransport + 独立 FastAPI 子应用挂 router; (~8180 tok)
+- `test_bid_review_rule_runner.py` — test_load_and_validate, test_unknown_operator_rejected, test_run_l1_009_violation_and_need_human, te (~2310 tok)
+- `test_bid_review_worker_prod_model.py` — 生产模型接线单测(worker._resolve_model_name/_default_model_fn/_default_extract_fn/_parse_json_object)。 (~1445 tok)
+- `test_docmgr_ai_review.py` — docmgr ai_review（全文操作 M2 审查）单测——审查端点 NDJSON 事件流 + findings 契约过滤。 (~4900 tok)
+- `test_docmgr_ai_review.py` — docmgr ai_review（全文操作 M2 审查）单测——审查端点 NDJSON 事件流 + findings 契约过滤,克隆 M1 fake-model 手法。 (~4300 tok)
 - `test_docmgr_ai_transform.py` — docmgr ai_transform（全文操作 M1）单测——分节引擎纯函数 + transform 端点 NDJSON 事件流。 (~4223 tok)
+- `test_ocr_resolve.py` — 公共 OCR 引擎解析(EAI-CUSTOM 2026-10-30): resolve_ocr_entry / resolve_default_ocr_entry。 (~883 tok)
 
 ## backend/tests/ (QA 2026-10-28 增补)
 
@@ -944,6 +987,10 @@
 ## config/
 
 
+## contracts/
+
+- `docmgr_findings.v1.json` (~428 tok)
+
 ## deploy/offline/
 
 
@@ -982,6 +1029,12 @@
 
 ## docs/superpowers/plans/
 
+- `2026-10-30-docmgr-ai-panel-v2-refactor.md` — docmgr AI 助手面板 v2 重构实施计划 (~1737 tok)
+- `2026-10-30-docmgr-ai-review-m2.md` — docmgr AI 审查 findings 闭环（M2）实施计划 (~1635 tok)
+- `2026-10-31-bid-review-plan1-ia-foundation.md` — 投标审查 UX 重构 · Plan 1:IA 地基 实施计划 (~5461 tok)
+- `2026-10-31-bid-review-plan2-s1-selected-task.md` — 投标审查 UX 重构 · Plan 2:s1 任务工作台——选中任务模型+统计卡换血(前端批) 实施计划 (~7235 tok)
+- `2026-10-31-bid-review-plan3-backend-b1.md` — bid-review Plan 3:后端 B1 批 实施计划 (~4620 tok)
+- `2026-10-31-bid-review-plan4-s1-full-alignment.md` — bid-review Plan 4 — s1 任务工作台前端全量对齐(B1 消费) (~3131 tok)
 
 ## docs/superpowers/plans/2026-09-13-coal-mine-tunneling-regulation-v2.md
 
@@ -991,6 +1044,10 @@
 
 ## docs/superpowers/specs/
 
+- `2026-10-30-bid-review-evidence-pipeline-design.md` — 投标审查证据管线 + 原型操作 设计(spec) (~1742 tok)
+- `2026-10-30-bid-review-phase2-adjudication-design.md` — 投标审查二期设计:冲突裁定 / 置信度 / 锚点 + 复核工作台 (~1473 tok)
+- `2026-10-30-bid-review-ui-gaps-and-completeness.md` — 投标审查 UI 缺口分析与「完备性核查单」提案 (~840 tok)
+- `2026-10-31-bid-review-ux-redesign-design.md` — 投标审查模块 UX 全面重构设计(方案丙) (~2966 tok)
 
 ## docs/superpowers/specs/2026-09-13-coal-mine-tunneling-regulation-v2-design.md
 
@@ -1078,14 +1135,19 @@
 
 ## frontend/src/app/bid-review/
 
-- `bid-review.css` — Styles: 73 rules, 181 vars (~9686 tok)
-- `layout.tsx` — 未登录 → 复用 workspace 登录跳转(保留 returnPath);加载中给纯色底避免闪现。 (~1690 tok)
+- `bid-review.css` — Styles: 72 rules, 181 vars (~10516 tok)
+- `layout.tsx` — 未登录 → 复用 workspace 登录跳转(保留 returnPath);加载中给纯色底避免闪现。 (~2429 tok)
 
 ## frontend/src/app/bid-review/baseline/
 
+- `page.tsx` — BaselineContent (~217 tok)
 
 ## frontend/src/app/bid-review/metrics/
 
+
+## frontend/src/app/bid-review/review/
+
+- `page.tsx` — ReviewContent (~218 tok)
 
 ## frontend/src/app/bid-review/rules/
 
@@ -1095,6 +1157,7 @@
 
 ## frontend/src/app/bid-review/workbench/
 
+- `page.tsx` — WorkbenchContent (~219 tok)
 
 ## frontend/src/app/biz-pipeline/
 
@@ -1182,6 +1245,7 @@
 
 ## frontend/src/app/settings/
 
+- `basic-settings.tsx` — EAI-CUSTOM (2026-10-30): 全局默认 OCR 引擎(builtin | 注册表服务名)。 (~8466 tok)
 
 ## frontend/src/app/spare-parts/
 
@@ -1344,6 +1408,7 @@
 
 ## frontend/src/extensions/api/
 
+- `index.ts` — API routes: GET (2 endpoints) (~17778 tok)
 
 ## frontend/src/extensions/app-center/
 
@@ -1380,10 +1445,22 @@
 
 ## frontend/src/extensions/bid-review/
 
+- `api.ts` — API client for the bid-review extension. (~2570 tok)
+- `hooks.ts` — TanStack Query hooks for the bid-review API(Task 17)。 (~1349 tok)
+- `nav.ts` — 侧栏流程化纯工具(UX 重构 Plan 1 / spec §3)。 (~560 tok)
+- `types.ts` — TypeScript types for the bid-review extension API. (~588 tok)
 
 ## frontend/src/extensions/bid-review/components/
 
-- `TasksView.tsx` — EAI-CUSTOM (2026-10-30): 任务工作台参照 docs/designs/2026-10-30-bid-review-ui.html (~6937 tok)
+- `BaselineView.tsx` — 基准确认页(bid:page:baseline)。 (~8778 tok)
+- `DocLocateModal.tsx` — 定位原文 modal(EAI-CUSTOM 2026-10-30,spec D6/D8)——自 WorkbenchView 抽出共享 (~1336 tok)
+- `ReviewQueueView.tsx` — 人工复核工作台(二期 spec §五,原型 s6;EAI-CUSTOM 2026-10-31)。 (~3999 tok)
+- `TasksView.tsx` — EAI-CUSTOM (2026-10-30): 任务工作台参照 docs/designs/2026-10-30-bid-review-ui.html (~8465 tok)
+- `TaskTitleTag.tsx` — 页头任务号(2026-10-31 用户定案:选中任务编号不进侧栏,随各页页头主标题右侧 (~139 tok)
+- `WorkbenchView.tsx` — 审查工作台(bid:page:workbench)——Task 17,核心视图。 (~15794 tok)
+
+## frontend/src/extensions/bid-review/nav.ts
+
 
 ## frontend/src/extensions/biz-pipeline/
 
@@ -1429,9 +1506,11 @@
 
 ## frontend/src/extensions/docmgr/
 
-- `DocAIAgentPanel.tsx` — Build the system prompt — format depends on mode. (~10793 tok)
-- `DocAITaskArea.tsx` — initialTaskState (~5450 tok)
-- `PersonalBlockNoteEditor.tsx` — Anchor for agent operation targeting — text→block mapping. (~10602 tok)
+- `DocAIAgentPanel.tsx` — Build the system prompt — format depends on mode. (~15204 tok)
+- `DocAIReviewArea.tsx` — 来源节（后端 split_sections 桶下标），供失败兜底文案「第 n 节」。 (~7621 tok)
+- `DocAITaskArea.tsx` — EAI-CUSTOM (全文操作 v2): 后端期望总节数（done 事件携带；错误路径 total:0 不采纳）——工单进度条分母。 (~9015 tok)
+- `PersonalBlockNoteEditor.tsx` — Anchor for agent operation targeting — text→block mapping. (~11326 tok)
+- `sectionDiff.ts` — EAI-CUSTOM (全文操作 v2): 行级 LCS diff 纯工具——工单逐节 diff 卡的底座。 (~458 tok)
 
 ## frontend/src/extensions/docmgr/components/
 
@@ -1597,7 +1676,11 @@
 
 ## frontend/tests/unit/app/
 
-- `bid-review-layout.dom.test.tsx` — micro-B 2026-10-29 站内入口回归门:/bid-review/rules(Task 17 落地)此前无任何 (~925 tok)
+- `bid-review-layout-flow.dom.test.tsx` — UX 重构 Plan 1 T3:侧栏流程化三条行为—— (~1632 tok)
+- `bid-review-layout.dom.test.tsx` — micro-B 2026-10-29 站内入口回归门:/bid-review/rules(Task 17 落地)此前无任何 (~1040 tok)
+
+## frontend/tests/unit/app/bid-review-layout-flow.dom.test.tsx
+
 
 ## frontend/tests/unit/app/knowledge/_components/
 
@@ -1637,17 +1720,32 @@
 
 ## frontend/tests/unit/docmgr/
 
+- `ai-panel-v2.dom.test.tsx` — m (~3284 tok)
+- `ai-panel.test.ts` — Helper: create a mock BlockNote block. (~3255 tok)
 - `anchor-ambiguity.test.ts` — Declares heading (~590 tok)
-- `task-area.dom.test.tsx` — frontend/tests/unit/docmgr/task-area.dom.test.tsx（.dom 后缀 → rstest 自动启用 happy-dom） (~1027 tok)
-- `task-reducer.test.ts` — Declares DocAITaskAction (~1383 tok)
+- `review-area.dom.test.tsx` — frontend/tests/unit/docmgr/review-area.dom.test.tsx（.dom 后缀 → rstest 自动启用 happy-dom） (~6622 tok)
+- `review-reducer.test.ts` — Declares DocAIFinding (~2540 tok)
+- `section-diff.test.ts` — Declares old (~619 tok)
+- `task-area.dom.test.tsx` — reducer 驱动的壳：点击 拒绝/接受 走真实 taskReducer 流转。 (~4385 tok)
+- `task-reducer.test.ts` — Declares DocAITaskAction (~2544 tok)
 
 ## frontend/tests/unit/extensions/
 
+- `bid-review-baseline.dom.test.tsx` — 二期投影:labels 中文名 + candidates 冲突 + fields_conf + adjudications。 (~2876 tok)
+- `bid-review-nav.test.ts` — Declares task (~823 tok)
+- `bid-review-review-queue.dom.test.tsx` — calls (~1468 tok)
+- `bid-review-selected-task.dom.test.tsx` — happy-dom 下等 TanStack Query 落定的最简轮询。 (~1011 tok)
+- `bid-review-tasks-view.dom.test.tsx` — 选中任务(s1 列表首位=最新)的 issues 响应体;条目只需 verdict 字段。 (~3699 tok)
+- `bid-review-workbench-evidence.dom.test.tsx` — calls (~1503 tok)
+- `bid-review-workbench-export.dom.test.tsx` — calls (~1434 tok)
 
 ## frontend/tests/unit/extensions/bid-materials/
 
 
 ## frontend/tests/unit/extensions/bid-quote/
+
+
+## frontend/tests/unit/extensions/bid-review-nav.test.ts
 
 
 ## frontend/tests/unit/extensions/collab/
@@ -2111,3 +2209,4 @@
 
 ## 部署面
 
+- docs/superpowers/plans/2026-10-31-bid-review-plan4-s1-full-alignment.md — Plan4 计划(s1 前端全量对齐),T1-T5 全勾已落地(~3k tokens)

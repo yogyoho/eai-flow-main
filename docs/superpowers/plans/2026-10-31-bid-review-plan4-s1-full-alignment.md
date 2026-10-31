@@ -27,7 +27,7 @@
 **Files:**
 - Modify: `frontend/src/extensions/bid-review/types.ts`(TaskOut 尾部)
 
-- [ ] **Step 1: TaskOut 追加字段**(接口尾部、need_human_count 之后)
+- [x] **Step 1: TaskOut 追加字段**(接口尾部、need_human_count 之后)
 
 ```ts
   /** ── B1 扩展(EAI-CUSTOM 2026-10-31,spec §5 B1/裁定12)──────────
@@ -46,9 +46,9 @@
   created_by_name?: string | null;
 ```
 
-- [ ] **Step 2: 验证** `cd frontend && pnpm typecheck` → PASS(纯类型,无运行时门)
+- [x] **Step 2: 验证** `cd frontend && pnpm typecheck` → PASS(纯类型,无运行时门)
 
-- [ ] **Step 3: Commit** `git add frontend/src/extensions/bid-review/types.ts && git commit -m "feat(bid-review): TaskOut TS 镜像 B1 八字段(Plan4 T1)"`
+- [x] **Step 3: Commit** `git add frontend/src/extensions/bid-review/types.ts && git commit -m "feat(bid-review): TaskOut TS 镜像 B1 八字段(Plan4 T1)"`
 
 ---
 
@@ -58,7 +58,7 @@
 - Modify: `frontend/src/extensions/bid-review/components/TasksView.tsx`(HEADERS/FATAL_COL/CountPairCell/行渲染/搜索)
 - Test: `frontend/tests/unit/extensions/bid-review-tasks-view.dom.test.tsx`(六用例适配+两新用例)
 
-- [ ] **Step 1: 先改测试(红)**——夹具加 B1 字段、下标平移、断言九列、新增搜索/降级用例:
+- [x] **Step 1: 先改测试(红)**——夹具加 B1 字段、下标平移、断言九列、新增搜索/降级用例:
 
   a) TASK 夹具(L49-61)补:
   ```ts
@@ -152,9 +152,9 @@
 
   g) 用例 4(加载失败)不动;用例 5/6 不动(下标经 helper 间接引用,verdict 3/fatal 5 已平移)。
 
-- [ ] **Step 2: 跑红** `cd frontend && pnpm test -- bid-review-tasks-view` → 新断言 FAIL(列数/文案/值不符)
+- [x] **Step 2: 跑红** `cd frontend && pnpm test -- bid-review-tasks-view` → 新断言 FAIL(列数/文案/值不符)
 
-- [ ] **Step 3: 实现(绿)**——TasksView.tsx 六处:
+- [x] **Step 3: 实现(绿)**——TasksView.tsx 六处:
 
   a) HEADERS/FATAL_COL(现 ~L50):
   ```ts
@@ -208,8 +208,8 @@
 
   f) 文件头注释(L26 前后「B1 落地后再做 9 列全量对齐」预告)改为已落地纪要。
 
-- [ ] **Step 4: 跑绿** `pnpm test -- bid-review-tasks-view` → 8 用例 PASS
-- [ ] **Step 5: Commit** `git add -A frontend/src/extensions/bid-review/components/TasksView.tsx frontend/tests/unit/extensions/bid-review-tasks-view.dom.test.tsx && git commit -m "feat(bid-review): s1 任务表九列全量对齐——biz_no/项目·标段/致命·主要/创建人/更新时间+搜索升级(Plan4 T2)"`
+- [x] **Step 4: 跑绿** `pnpm test -- bid-review-tasks-view` → 8 用例 PASS
+- [x] **Step 5: Commit** `git add -A frontend/src/extensions/bid-review/components/TasksView.tsx frontend/tests/unit/extensions/bid-review-tasks-view.dom.test.tsx && git commit -m "feat(bid-review): s1 任务表九列全量对齐——biz_no/项目·标段/致命·主要/创建人/更新时间+搜索升级(Plan4 T2)"`
 
 ---
 
@@ -218,9 +218,9 @@
 **Files:**
 - Modify: `frontend/src/extensions/bid-review/components/TasksView.tsx`(formatDuration + metric 第五格)
 
-- [ ] **Step 1: 测试已在 Task 2 落**(用例 1 `11m 32s` / 降级用例 `—`),本任务直接实现。
+- [x] **Step 1: 测试已在 Task 2 落**(用例 1 `11m 32s` / 降级用例 `—`),本任务直接实现。
 
-- [ ] **Step 2: 实现**——formatDate 旁加:
+- [x] **Step 2: 实现**——formatDate 旁加:
   ```ts
   /** 审查用时=done_at−created_at(客户端算,spec §3 s1)。秒/分/时三段;
    * 非法或负值一律 —(不冒充)。 */
@@ -248,8 +248,8 @@
   ```
   (删 title="B1 done_at 落地后提供"。)
 
-- [ ] **Step 3: 跑绿** `pnpm test -- bid-review-tasks-view` → PASS
-- [ ] **Step 4: Commit**(与 T2 分开或合并提交均可,分开:`fix(bid-review): 统计卡审查用时真值 done_at−created_at(Plan4 T3)`)
+- [x] **Step 3: 跑绿** `pnpm test -- bid-review-tasks-view` → PASS
+- [x] **Step 4: Commit**(与 T2 分开或合并提交均可,分开:`fix(bid-review): 统计卡审查用时真值 done_at−created_at(Plan4 T3)`)
 
 ---
 
@@ -259,7 +259,7 @@
 - Modify: `frontend/src/extensions/bid-review/components/TaskTitleTag.tsx`
 - Modify: `TasksView.tsx:423` / `WorkbenchView.tsx:627` / `BaselineView.tsx:258` / `ReviewQueueView.tsx:182`(传参)+ ReviewQueueView 补 `useBidTask`
 
-- [ ] **Step 1: TaskTitleTag**:
+- [x] **Step 1: TaskTitleTag**:
   ```tsx
   export function TaskTitleTag({
     taskId,
@@ -275,23 +275,23 @@
   }
   ```
 
-- [ ] **Step 2: 四消费方**:
+- [x] **Step 2: 四消费方**:
   - TasksView: `<TaskTitleTag taskId={selectedId} bizNo={selectedTask?.biz_no} />`
   - WorkbenchView: `<TaskTitleTag taskId={taskId} bizNo={task?.biz_no} />`
   - BaselineView: `<TaskTitleTag taskId={taskId} bizNo={task?.biz_no} />`
   - ReviewQueueView: 顶部补 `const taskQuery = useBidTask(taskId ?? null);`(import 自 hooks,与 workbench 同 queryKey 去重);`<TaskTitleTag taskId={taskId} bizNo={taskQuery.data?.biz_no} />`
 
-- [ ] **Step 3: 全量验证** `pnpm test -- bid-review` + `pnpm typecheck`;review-queue 的 dom 测试若因新增 useBidTask 请求而断言波动,responder 补 `/tasks/` 分支或确认 404 静默无害后放行。
-- [ ] **Step 4: Commit** `feat(bid-review): 页头任务号换 TBR 业务号 biz_no(四页,Plan4 T4)`
+- [x] **Step 3: 全量验证** `pnpm test -- bid-review` + `pnpm typecheck`;review-queue 的 dom 测试若因新增 useBidTask 请求而断言波动,responder 补 `/tasks/` 分支或确认 404 静默无害后放行。
+- [x] **Step 4: Commit** `feat(bid-review): 页头任务号换 TBR 业务号 biz_no(四页,Plan4 T4)`
 
 ---
 
 ### Task 5: 收尾验证 + 记账
 
-- [ ] **Step 1:** `cd frontend && pnpm test -- bid-review && pnpm typecheck && pnpm lint`(filter 全绿;lint 只看新改文件无新告警)
-- [ ] **Step 2:** 线上走查(可选,容器源码 bind-mount 已生效)::2026/bid-review 确认九列/页头业务号/审查用时/搜索。
-- [ ] **Step 3:** 记账——`.wolf/memory.md` 一条;`.wolf/anatomy.md` plan4 条目;cerebrum 如有新教训;buglog 仅在修了坏东西时记。
-- [ ] **Step 4:** push `git push origin main-dev-fork`(flaky 重试惯例)。
+- [x] **Step 1:** `cd frontend && pnpm test -- bid-review && pnpm typecheck && pnpm lint`(filter 全绿;lint 只看新改文件无新告警)
+- [x] **Step 2:** 线上走查(可选,容器源码 bind-mount 已生效)::2026/bid-review 确认九列/页头业务号/审查用时/搜索。
+- [x] **Step 3:** 记账——`.wolf/memory.md` 一条;`.wolf/anatomy.md` plan4 条目;cerebrum 如有新教训;buglog 仅在修了坏东西时记。
+- [x] **Step 4:** push `git push origin main-dev-fork`(flaky 重试惯例)。
 
 ---
 

@@ -25,6 +25,8 @@ OpenWolf's learning memory. Updated automatically as the AI learns from interact
 - [2026-08-21] geological-report 用户交互铁律：数据收集必须用 ask_clarification fields 渲染中文填写表单（label=中文名+单位），绝不向用户展示/索要 JSON 或英文键名；面向用户术语一律"数据项"不说"字段"；缺项清单译成中文按类别分组呈现。适用于所有面向非 IT 用户的技能。
 
 ## Key Learnings
+- [2026-10-30] docmgr 编辑器画布硬编码浅色：PersonalBlockNoteEditor 无任何 dark 处理（仅 :434 code block 有 light 覆盖），强制翻 html.dark 会出现「白底白字」伪影——面板 token 组件正常变暗、画布不变，别误判成回归。docmgr 页面按仅浅色验收。
+- [2026-10-30] 后端 ai/transform 的 `sections` 是 split_sections **桶下标**（可选前导节 +1 偏移，空文本标题计序但不输出）；BlockNote 块下标与之相差前置块数+1，混用会被 `0<=i<len` 过滤静默 no-op（done total:0 假完成）。前端统一走 `computeHeadings().section`（bug-3700，docmgr 面板 v2）。
 - [2026-10-30] rstest *.dom.test.tsx + React 19: createRoot().render() 是异步提交（宏任务调度），断言前必须 await act(async () => { root.render(...) }) + 文件头 IS_REACT_ACT_ENVIRONMENT=true；await Promise.resolve() 一个微任务不够 → DOM 全空（bug-3310）。repo 惯例见 tests/unit/docmgr/slash-menu.dom.test.tsx。另: 测试文件也在 eslint 管辖——() => {} 触发 no-empty-function（用 () => undefined），as 断言优先 ! 形态（non-nullable-type-assertion-style）。
 - [2026-10-14] 多会话并发下 pathspec commit 共享文件会扫入他人未提交改动（如 translation/routers.py 同时挂着 glossary CRUD+transition refresh）。选择性提交手法：`git show HEAD:file` + awk 在锚点行后插入自己的行 → 生成「HEAD+我的 hunk」版本 → `git add` → `cp` 恢复完整工作副本 → `git diff --cached` 核对只含自己的 hunk → 无 pathspec `git commit`（提交的是 index）。commit 后 `git status` 里他人改动原样保留待其本人提交。
 - [2026-10-14] 服务端生成列(onupdate=func.now()/server_default)在 flush 后即被标记过期, expire_on_commit=False 救不了(它只管 commit); AsyncSession 下 commit 后直接序列化该 ORM 对象(读 updated_at 等)→ 同步懒加载 → MissingGreenlet 500。特征: 端点 500 但数据已落库。修法: commit 后 await db.refresh(obj) 再序列化(translation/routers.py create_folder 与 transition_task 同手法)。gateway 日志不在 docker logs, 在容器内 /app/logs/gateway.log。
@@ -501,7 +503,11 @@ fixture 策略: 全节点 template_text=null(不发明招标内容), 真文渲�
 3. **landing Galaxy 动画调度 = 永久不适配**(用户定案): 落地页已由 landing-new 替代上游 landing，断言的 hero.tsx 不在渲染路径。
 教训: 上游"结构契约"测试 skip 前先查挂载链——本例 host/deep-link 组件文件都在但从未被挂载(死代码)，恢复挂载即恢复契约。
 
-## Do-Not-Repeat（2026-07-17 session）
+## Do-Not-Repeat
+- 2026-10-31 对齐原型时禁止"顺手美化":原型页就是样式契约,原样照抄(页头任务号=纯 h2 正文,不 mono、不弱化;用户走查指出偏差)。brx 域选中/激活态底色一律 `--main-100`(侧栏激活项同款);`--main-10` 是 #fbfaff 近白,白底上作高亮=隐身(bug-3707)。
+（2026-07-17 session）
+
+- **[2026-10-30] 块注释里罗列以 `/` 分隔的类名/路径时,检查是否拼出字面 `*/`**(`.fam-*/.f-card` 这类清单会提前闭合 `/** */`,tsc 报一堆 TS1109/TS1127 解析错)。写法改用「fam- 系列」或把带 `*` 的项放清单末尾。
 
 - **[2026-07-17] `make rebuild-frontend` after adding ANY new npm dependency.** `@google/model-viewer` was in `package.json` but the Docker image was never rebuilt → `node_modules` baked into the image lacked it → Turbopack crashed on first `/cad-design` access → cache corrupted → ALL pages went 500 + React stopped hydrating (zero `__reactFiber` on any element). Fix: `cd frontend && pnpm install --lockfile-only && cd .. && make rebuild-frontend`. The `make check-frontend-deps` command detects this drift. See [[frontend-deps-need-image-rebuild]].
 
@@ -2823,3 +2829,57 @@ P3 item ① 裁决：**双工况 N=3 校核暂不默认开**，维持 SKILL 现�
 - **同组件渲染两张含相同 id 文本的表(逐规则表 + FAIL 名单)时,`getByText(id)` 炸 multiple matches**——探数据落定用 findAllByText,行定位用 `getByText(卡片标题).closest(".card")` 再 querySelectorAll。
 - **eslint `@typescript-eslint/prefer-nullish-coalescing` 会拦 `x === undefined ? "—" : x` 型三元**——计数空格直接写 `{value ?? "—"}`(undefined/null 都显示 —,恰是想要的语义);而空串兜底 `severity || "未知"` 会被拦,用 `severity === "" ? "未知" : severity`。
 - 跨规则包 key 防碰撞:RuleStatsRow.key 用 `${pack.name}@${pack.version}/${rule.id}` 前缀(单包生产态下即纯 id 后缀)。
+
+## Key Learnings (2026-10-30 docmgr v2)
+- docmgr `DocOperation.anchor` 是**锚点文本**(string),不是块下标!text→blockIndex 须经 `editorRef.matchAnchor(anchor)?.blockIndex`,再喂 `getSectionText(blockIndex)`(ref 新增,findSectionRange 整节提取)。任务书若写"anchor 是块下标"即为讹误。
+- docmgr 状态 pill 色档习语(contract-price bits 同款 token,勿引 .brx 类——那是 bid-review 命名空间):ok=`border-success/30 bg-success/10 text-success`;warn=`border-amber-500/30 bg-amber-500/10 text-amber-600 dark:text-amber-400`;err=destructive 同构;gray=`border-border bg-muted/40 text-muted-foreground`。"新增"diff 行用 emerald(ApprovalsQueue/StatCard 先例)。
+- taskReducer 复用 `done` action 携带错误 message 时 total:0——若要存 total 做进度分母,须 `total>0` 才采纳。
+- docmgr 面板空态标题 pills 用「进入空态时轮询快照一次」语义(渲染期绝不直读 editorRef;编辑器异步挂载,launcher 与快照异步到达,dom 测试须 findByText 等节 pill)
+- rstest 测试里 no-op stub 用 rs.fn() 而非 ()=>{}——eslint no-empty-function 会打回空箭头/空方法(仓库 AIDocumentReview.dom.test 先例)
+- docmgr 节有两套下标空间:前端 BlockNote 块下标 vs 后端 split_sections 桶下标(前导节+每heading一桶含空文本标题);跨端传 sections 必用桶空间(computeHeadings.section),块下标只作 React key
+- 全目录 prettier --write 会顺手重排历史不洁文件(docmgr 旧测试一批纯格式 diff)——并发工作区里只对本次域内文件点名跑 prettier,别跑目录级
+
+## Key Learnings (2026-10-30, bid-review evidence E2E)
+- gateway 容器里 `python` (PATH) 不是项目解释器；uv venv 在 `/app/backend/.venv/bin/python`。验证容器内依赖/import 必须用它，别误判"依赖缺失须重建镜像"。
+- `docker exec` 从 Git Bash 传容器内绝对路径会被 MSYS 改写（/app→C:/Program Files/Git/app）；把路径放进 `sh -c '...'` 内部即可。
+- EAI 登录门面 `POST /api/extensions/auth/login` body 字段是 `username`（工号或 email 都行），不是 `email`；写通道需 cookie `csrf_token` 回显到 `X-CSRF-Token` 头。
+- testing-library `getByText("第 3 页")` 匹配不到 JSX `第 {page} 页`（拆成多个 text node，exact 全串匹配失败）；用 `/第\s*3\s*页/` 正则。
+- eai-flow-ocr `/ocr` Phase 0 只收 PDF("only .pdf is supported");图片 OCR 须先 fitz 包单页 PDF 再投递(bid_review parse._ocr_builtin 已修,bug-3703)。
+- 提取类 prompt 里"材料标题方括号=文档ID"的约定,材料头必须把 doc_id 放进方括号(role 括号外注),否则模型把 role 词当 doc_id;normalize 层再配 role→doc_id 别名兜底(bug-3702)。
+- agnes-2.5-Flash 做基准提取:输出 JSON 契约遵守良好,66 字段 30s 内;但薄文档大多数字段真缺→det 规则按 on_missing_input=need_human 诚实降级(30 问题里 29 待人工是设计行为非 bug)。
+
+## Key Learnings (2026-10-31 bid-review 二期)
+- 端点返回「投影整包」模式:adjudicate/confirm 类 mutation 返回更新后的完整读投影,前端 onSuccess 直接 qc.setQueryData 免 refetch——比 invalidate+refetch 少一 RTT 且无闪烁。
+- 旧行 payload 缺新键是常态:_write_baselines 落库快照不迁移,_baseline_items 用 payload.get(key, {}) 诚实降级;新键仅重跑抽取后出现,UI 不得伪造空态语义。
+- 改函数返回形前先 grep 契约断言(`assert out ==`/toEqual 整形比较),否则 prod_model 类影子测试在 -k 全量跑才炸(bug-3704)。
+- rstest dom 测 mock fetch:新增 mutation 调用必须同步 mock 其端点,漏 mock → 404 走 onError,链路静默不推进(表现为"断言队列未前进"而非请求错误)。
+- review/review-queue 页权限挂 bid:page:workbench(同治理域复用 pageId),先例=metrics 挂 bid:page:rules;避免 permissions.yaml + 后端测试连带 churn。
+
+## Key Learnings (2026-10-31 docmgr M2 Chunk1 会话)
+
+- **本机 git 版本较老**:`git status --porcelain --staged` 不支持(exit 129 unknown option);看暂存区用 `git diff --cached --name-only`。
+- **backend `make lint` 目录级清零在并发会话期不可达**:他会话在途脏文件(如 contract_price/service.py F401)会挂 make lint;正确姿势=ruff check 只指名自己的文件清零,make lint 的外来红归属到他会话(同 2026-09-19 并发红测试判别条)。
+- **docmgr M2 审查端点先例**(/ai/review):两遍法扫描(consistency=_scan_terminology/numbering=_scan_numbering)空表都短路 done total=0;findings 过滤在 _normalize_finding 收口——id 服务端生成(模型不给 id)、severity 白名单外降级 warn、缺 required 字段丢条、excerpt 截 120、anchor 服务端权威覆写为节标题、fixed_section→fix_op(replace_section);契约文件 contracts/docmgr_findings.v1.json(仓库根 contracts/ 已跟踪,正常 git add 即可)。
+
+- 2026-10-31 用户修正(bid-review s1 统计卡):先说「头部统计卡没啥用处(任务彼此独立)」,随即补「不要删除,要更换有价值的统计信息」→ 结论=保留统计卡骨架,内容从跨任务汇总换为当前选中任务的体征(致命/待人工/问题数/误报/用时)。跨任务计数已由侧栏徽标承担,勿在页头重复。
+
+## 2026-10-31 bid-review Plan2 执行期用户裁决
+- **选中任务号展示位置**:用户中途纠正「当前被选中审查任务编号,不要显示左侧菜单栏,可以显示主体标题右侧,参照'审核结果'页面的标题」→ 摘掉 Plan1 落地的侧栏「当前任务」chip(TaskChip 删除),改为共享 TaskTitleTag 组件挂四个任务链页 h2(习语=原型 L810「审查结果 · TBR-2026-0309」)。**Do-Not-Repeat: 设计选中态 UI 时,位置类决策先问用户偏好,别默认塞侧栏。**
+- **issues 请求契约显式演进**:「零 issues 请求」(micro-A)→「仅选中任务一条」(Plan2 统计卡体征),断言恰一条+只对选中任务;fetcher mock 收到的 path 带网关前缀,断言用 endsTo/endsWith 不用全等。
+
+## Key Learnings + Do-Not-Repeat (2026-10-31 — docmgr M2 审查闭环走查 session)
+
+**Key Learnings:**
+- docmgr AI 助手面板开关钮程序化点击须派完整指针事件序列（pointerdown/mousedown/pointerup/mouseup/click，带坐标），裸 `.click()` 无效（按钮走 pointer 事件或受控 open）；宫格卡与「开始执行」launcher 用 onClick 裸 click 即可。MCP click 工具（真实 CDP 输入）两者皆可。
+- 后端 Chunk 落地后走查前必须 `docker compose -p eai-docker restart gateway`——本轮首跑审查即 404（端点只在代码里，gateway 进程没有），重启后 52s 就绪。
+- 审查 fix 链（修复/全部修复/撤销整批）live 演练被模型行为卡死：三轮审查（consistency/units/numbering）模型均未回传 fixed_section → 无 fix_op 无修复钮。这是后端 prompt 可选项（_REVIEW_FIX_HINT）非缺陷；该链靠 14 个自动化测试锁。想 live 演练须先确认模型会回 fixed_section 或用 API custom 强指令。
+- gateway 走查中一过性 502（bug-3019 楔死水位）自愈；SPA 卡「加载中」但 API 全正常 = dev-mode stale 状态，硬刷新即愈，勿重启容器。
+
+**Do-Not-Repeat:**
+- 前端互斥冻结勿寄生在 busy prop（三职：pill 切换/停止关闭钮/批量栏门控）——会产生假「执行中」pill+死停止钮且冻不住 DiffCard 四钮；用独立 actionsDisabled 单 prop 对称下沉（f2dbe05c8 终审裁定）。
+- curl 探活 /docmgr 首访问给 30s 会误判超时——webpack dev 按需编译首编 145s，max-time 放 180s。
+
+## Key Learnings (append 2026-10-31)
+- extensions 登录契约:`POST /api/extensions/auth/login` 体为 `{username, password}`——username 字段吃 email 或工号(email 会 422 若错用 email 键名)。
+- gateway 的 8001 **不发布到 host**(compose 只 expose 内网);host 侧探活须走 nginx :2026 或 `docker exec deer-flow-nginx wget http://gateway:8001/health`。extensions PG 容器名=`eai-flow-postgres-ext`(CLAUDE.md 旧名 eai-docker-postgres-ext-1 已修)。
+- 前端测试断言 formatDate 输出一律 TZ 无关(正则 ^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$);本机 UTC+8/CI UTC 字面量必炸(Plan4 2026-10-31 实证)。
