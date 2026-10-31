@@ -35,6 +35,18 @@ class TaskOut(ORMBase):
     # need_human 旗标计数(工作台待人工格口径),误报回流后自然回落。
     fatal_unhandled: int | None = None
     need_human_count: int | None = None
+    # ── B1 扩展(EAI-CUSTOM 2026-10-31,spec §5 B1/裁定12)──────────────
+    # biz_no/项目/标段/编号为 task 列直出;done_at=完成时刻(set_status 落);
+    # main_unhandled/created_by_name 仅 list_tasks 聚合填充,单任务端点 None=未统计
+    # (micro-A 伪零纪律同款)。created_by_name=users join COALESCE(full_name, username)。
+    biz_no: str | None = None
+    project_name: str | None = None
+    lot_name: str | None = None
+    tender_no: str | None = None
+    updated_at: datetime | None = None
+    done_at: datetime | None = None
+    main_unhandled: int | None = None
+    created_by_name: str | None = None
 
 
 class IssueOut(ORMBase):

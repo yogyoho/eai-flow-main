@@ -568,3 +568,53 @@ async def test_resume_merges_adjudications(db, monkeypatch):
     await worker.resume_confirmed(db, t.id, "u1")
     assert captured["fields"]["bid.total_price"] == 9000000
     assert captured["fields"]["bid.subtotal"] == 100
+
+
+# ── B1(2026-10-31,Plan3 T5):list_tasks 扩展字段 ────────────────────────
+
+
+@pytest.mark.asyncio
+async def test_list_tasks_b1_fields(db, client):
+    """B1:list 带 biz_no/项目/标段/编号/updated_at/done_at/main_unhandled/
+    created_by_name(测试库无 users 表→None);main_unhandled=major 且未误报。"""
+    t = await crud.create_task(db, owner_id="u1")
+    t.project_name = "某项目"
+    t.lot_name = "标段一"
+    t.tender_no = "TND-1"
+    await db.commit()
+    await crud.add_issue(db, task_id=t.id, owner_id="u1", rule_id="L1-001", layer="L1",
+                         severity="major", verdict="violation", message="m", evidence=[], dedup_key="d1")
+    await crud.add_issue(db, task_id=t.id, owner_id="u1", rule_id="L1-002", layer="L1",
+                         severity="major", verdict="false_positive", message="m", evidence=[], dedup_key="d2")
+    await crud.set_status(db, t, "done")
+    r = await client.get("/api/extensions/bid-review/tasks")
+    assert r.status_code == 200, r.text
+    item = r.json()["items"][0]
+    assert item["biz_no"].startswith("TBR-")
+    assert item["project_name"] == "某项目"
+    assert item["lot_name"] == "标段一"
+    assert item["tender_no"] == "TND-1"
+    assert item["main_unhandled"] == 1
+    assert item["created_by_name"] is None
+    assert item["updated_at"] is not None
+    assert item["done_at"] is not None
+
+
+@pytest.mark.asyncio
+async def test_creator_names_with_users_table(db):
+    """B1:users 表在场时 owner_id(uuid 串)→COALESCE(full_name, username)。"""
+    import uuid as _uuid
+
+    from sqlalchemy import text
+
+    # 五表子集库无 users——经本 session 建最小表(creator_names 只 select id/full_name/username,
+    # ORM 侧同名单列投影,不触发全实体加载)
+    await db.execute(text("CREATE TABLE users (id VARCHAR(40) PRIMARY KEY, username VARCHAR(100), full_name VARCHAR(255))"))
+    uid = str(_uuid.uuid4())
+    await db.execute(
+        text("INSERT INTO users (id, username, full_name) VALUES (:i, :u, :f)"),
+        [{"i": uid, "u": "zhang.san", "f": "张工"}],
+    )
+    await db.commit()
+    names = await crud.creator_names(db, [uid, "u-not-exist"])
+    assert names == {uid: "张工"}

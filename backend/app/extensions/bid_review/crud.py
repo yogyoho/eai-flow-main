@@ -5,7 +5,8 @@ task 联接传导)。供 routers(Task 10)/worker(Task 9)/mcp(Task 11)复用。
 
 from datetime import UTC, datetime
 
-from sqlalchemy import func, select
+from sqlalchemy import String, func, select
+from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.extensions.bid_review.models import (
@@ -54,6 +55,21 @@ async def list_tasks(session: AsyncSession, owner_id: str) -> list[ReviewTask]:
 async def get_task(session: AsyncSession, task_id: str, owner_id: str) -> ReviewTask | None:
     result = await session.execute(select(ReviewTask).where(ReviewTask.id == task_id, ReviewTask.owner_id == owner_id))
     return result.scalar_one_or_none()
+
+
+async def creator_names(session: AsyncSession, owner_ids: list[str]) -> dict[str, str]:
+    """owner_id → 显示名(COALESCE(full_name, username);B1 2026-10-31)。单查询 IN
+    非逐任务 N+1;users 表缺失(单测五表子集库)或无匹配行时安全返回 {}——
+    TaskOut.created_by_name 保持 None(伪零纪律:查不到不冒充)。"""
+    if not owner_ids:
+        return {}
+    try:
+        from app.extensions.models import User
+
+        rows = await session.execute(select(func.cast(User.id, String).label("oid"), func.coalesce(User.full_name, User.username)).where(func.cast(User.id, String).in_(owner_ids)))
+        return {oid: name for oid, name in rows.all() if name}
+    except SQLAlchemyError:
+        return {}
 
 
 async def set_status(

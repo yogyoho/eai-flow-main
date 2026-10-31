@@ -135,12 +135,15 @@ async def list_tasks(db: AsyncSession = Depends(get_db), owner_id: str = Depends
     (工作台待人工格口径)。仅本端点聚合填充,单任务端点 None=未统计(禁伪零);数据量小
     逐任务 crud.list_issues 简单聚合。"""
     tasks = await crud.list_tasks(db, owner_id=owner_id)
+    names = await crud.creator_names(db, [t.owner_id for t in tasks])  # B1:单查询 IN,非逐任务
     items = []
     for t in tasks:
         out = TaskOut.model_validate(t)
         issues = await crud.list_issues(db, task_id=t.id, owner_id=owner_id)
         out.fatal_unhandled = sum(1 for i in issues if i.severity == "fatal" and i.verdict != "false_positive")
         out.need_human_count = sum(1 for i in issues if bool(i.need_human))
+        out.main_unhandled = sum(1 for i in issues if i.severity == "major" and i.verdict != "false_positive")  # B1 D1-A
+        out.created_by_name = names.get(t.owner_id)  # B1:创建人列(COALESCE(full_name, username))
         items.append(out)
     return {"items": items}
 
