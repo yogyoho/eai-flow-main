@@ -3,7 +3,9 @@
 task 联接传导)。供 routers(Task 10)/worker(Task 9)/mcp(Task 11)复用。
 """
 
-from sqlalchemy import select
+from datetime import UTC, datetime
+
+from sqlalchemy import String, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.extensions.bid_review.models import (
@@ -17,8 +19,27 @@ from app.extensions.bid_review.models import (
 # --- ReviewTask --------------------------------------------------------------
 
 
+def _seq_of(biz_no: str | None) -> int | None:
+    """'TBR-YYYYMMDD-NNNN' 尾段序号;None/畸形返回 None(从 0001 重开)。"""
+    if not biz_no:
+        return None
+    parts = biz_no.rsplit("-", 1)
+    if len(parts) != 2 or not parts[1].isdigit():
+        return None
+    return int(parts[1])
+
+
+async def _next_biz_no(session: AsyncSession) -> str:
+    """TBR-{YYYYMMDD}-{seq:04d}:当日 max 尾段+1,零填充;唯一性由迁移索引兜底
+    (B1,2026-10-31;存量行 biz_no NULL 不参与 max)。"""
+    prefix = f"TBR-{datetime.now(UTC).strftime('%Y%m%d')}-"
+    row = await session.execute(select(func.max(ReviewTask.biz_no)).where(ReviewTask.biz_no.like(prefix + "%")))
+    seq = _seq_of(row.scalar_one_or_none())
+    return f"{prefix}{(seq or 0) + 1:04d}"
+
+
 async def create_task(session: AsyncSession, owner_id: str, mode: str = "quick") -> ReviewTask:
-    task = ReviewTask(owner_id=owner_id, mode=mode)
+    task = ReviewTask(owner_id=owner_id, mode=mode, biz_no=await _next_biz_no(session))
     session.add(task)
     await session.commit()
     await session.refresh(task)
@@ -44,6 +65,8 @@ async def set_status(
 ) -> ReviewTask:
     """状态机推进(Task 9 worker 使用);progress/error 传 None 保持原值。"""
     task.status = status
+    if status == "done" and task.done_at is None:  # B1:完成时刻一次性落点(幂等)
+        task.done_at = datetime.now(UTC)
     if progress is not None:
         task.progress = progress
     if error is not None:

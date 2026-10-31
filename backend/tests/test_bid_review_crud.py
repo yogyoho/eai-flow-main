@@ -114,3 +114,38 @@ async def test_add_rulepack_stats_accumulates(db):
     meta = await crud.add_rulepack_stats(db, name="bid-review-core", rule_id="L1-009", hit=True, fp=True)
     assert meta.version == "1.0.0"
     assert meta.stats["L1-009"]["fp"] == 2 and meta.stats["L1-009"]["hit"] == 1
+
+
+# ── B1(2026-10-31,Plan3 T2/T3):biz_no 生成 + done_at 落点 ──────────────
+
+
+@pytest.mark.asyncio
+async def test_create_task_biz_no_format_and_sequence(db):
+    """B1:biz_no=TBR-{当日}-{seq:04d},同日递增。"""
+    t1 = await crud.create_task(db, owner_id="u1")
+    t2 = await crud.create_task(db, owner_id="u1")
+    from datetime import UTC, datetime
+
+    prefix = f"TBR-{datetime.now(UTC).strftime('%Y%m%d')}-"
+    assert t1.biz_no == f"{prefix}0001"
+    assert t2.biz_no == f"{prefix}0002"
+
+
+def test_seq_of_parses_tail():
+    """max(biz_no) 尾段解析:畸形/None 返回 None(从 0001 重开)。"""
+    assert crud._seq_of("TBR-20261031-0007") == 7
+    assert crud._seq_of(None) is None
+    assert crud._seq_of("junk") is None
+
+
+@pytest.mark.asyncio
+async def test_set_status_done_at(db):
+    """B1:done 落 done_at 一次(幂等,非 done 不动)。"""
+    t = await crud.create_task(db, owner_id="u1")
+    t = await crud.set_status(db, t, "running", progress={"stage": "x", "pct": 1})
+    assert t.done_at is None
+    t = await crud.set_status(db, t, "done")
+    done1 = t.done_at
+    assert done1 is not None
+    t = await crud.set_status(db, t, "done")  # 重放幂等
+    assert t.done_at == done1
