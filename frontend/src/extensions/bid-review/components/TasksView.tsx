@@ -43,6 +43,8 @@ import {
   useSelectedTask,
 } from "@/extensions/bid-review/hooks";
 import { taskHref } from "@/extensions/bid-review/nav";
+// formatDuration Plan7 T2 上移共享(ResultsView 页头五元组同用)
+import { formatDuration } from "@/extensions/bid-review/components/primitives";
 import { type TaskOut } from "@/extensions/bid-review/types";
 import { cn } from "@/lib/utils";
 
@@ -214,8 +216,8 @@ function VerdictCell({ task }: { task: TaskOut }) {
 
 /**
  * 操作列状态分派(spec §4.1;D3-A 裁决:行点击仅选中,跳转走操作列)。
- * awaiting_confirm → 去基准确认(baseline);done → 查看结果(workbench,
- * Plan 6 /results 拆分前暂路由);在途 → 查看进度(/parsing 归拢专屏,Plan6
+ * awaiting_confirm → 去基准确认(baseline);done → 查看结果(/results,
+ * Plan7 拆分后正名);在途 → 查看进度(/parsing 归拢专屏,Plan6
  * spec §4.3);failed 的「重试解析」挂账 B8,落地前不渲染链接。链接
  * stopPropagation——行 onClick 是选中,不得被操作列触发。
  */
@@ -233,7 +235,7 @@ function ActionCell({ task }: { task: TaskOut }) {
     return link(taskHref("baseline", task.id), "去基准确认");
   }
   if (task.status === "done" || task.status === "completed") {
-    return link(taskHref("workbench", task.id), "查看结果");
+    return link(taskHref("results", task.id), "查看结果");
   }
   if (task.status === "failed") {
     return <span className="unmapped-cell" title="重试端点(B8)落地前不提供">—</span>;
@@ -246,19 +248,6 @@ function formatDate(s: string): string {
   const d = new Date(s);
   const p = (n: number) => String(n).padStart(2, "0");
   return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}:${p(d.getSeconds())}`;
-}
-
-/** 审查用时=done_at−created_at(客户端算,spec §3 s1;Plan4 T3)。秒/分/时三段;
- * 非法或负值一律 —(不冒充)。 */
-function formatDuration(createdIso: string, doneIso: string): string {
-  const ms = new Date(doneIso).getTime() - new Date(createdIso).getTime();
-  if (!Number.isFinite(ms) || ms < 0) return "—";
-  const s = Math.round(ms / 1000);
-  if (s < 60) return `${s}s`;
-  const m = Math.floor(s / 60);
-  if (m < 60) return `${m}m ${s % 60}s`;
-  const h = Math.floor(m / 60);
-  return `${h}h ${m % 60}m`;
 }
 
 function formatSize(bytes: number): string {
@@ -373,7 +362,7 @@ export function TasksView() {
     onSuccess: (created) => {
       void queryClient.invalidateQueries({ queryKey: bidReviewKeys.tasks });
       setDialogOpen(false);
-      router.push(taskHref("workbench", created.id));
+      router.push(taskHref("results", created.id));
     },
   });
 
@@ -692,7 +681,7 @@ export function TasksView() {
                         >
                           <td>
                             <Link
-                              href={taskHref("workbench", t.id)}
+                              href={taskHref("results", t.id)}
                               className="mono"
                               title={t.id}
                               onClick={(e) => e.stopPropagation()}

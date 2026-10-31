@@ -1,7 +1,8 @@
 "use client";
 
 /**
- * 审查工作台(bid:page:workbench)——Task 17,核心视图。
+ * 审查结果专屏(原型 s5;spec §4.5,Plan7 自 WorkbenchView 拆分;裁定8
+ * 「审查工作台」退役,路由 /bid-review/results)。
  * EAI-CUSTOM (2026-10-30): 按 docs/designs/2026-10-30-bid-review-ui.html 原型重整,
  * 页面按原型三段在同一路由内分区呈现——s3(步骤条 .stepper + 审查材料小表)、
  * s5(可提交判定横幅 .verdict-band + 风险分布 + 问题清单 .iss 四行卡)、
@@ -54,6 +55,7 @@ import {
   exportReport,
 } from "@/extensions/bid-review/api";
 import { DocLocateModal } from "@/extensions/bid-review/components/DocLocateModal";
+import { formatDuration } from "@/extensions/bid-review/components/primitives";
 import { TaskStepper } from "@/extensions/bid-review/components/TaskStepper";
 import { TaskTitleTag } from "@/extensions/bid-review/components/TaskTitleTag";
 import {
@@ -244,7 +246,7 @@ function formatDate(s: string): string {
   return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}:${p(d.getSeconds())}`;
 }
 
-export function WorkbenchView({ taskId }: { taskId?: string | null }) {
+export function ResultsView({ taskId }: { taskId?: string | null }) {
   // 复核状态本地映射:confirm/severity 后端不落 issue 行(v1 缺口),刷新即失;
   // 误报经 apply_false_positive 落库 verdict=false_positive,重取后由服务端数据呈现。
   const [reviewed, setReviewed] = useState<Record<string, FeedbackAction>>({});
@@ -363,28 +365,9 @@ export function WorkbenchView({ taskId }: { taskId?: string | null }) {
     };
   }, [allPackRules, issues, ruleMeta.types]);
 
-  // 资料完备性聚合(二期 spec §五):need_human 缺失字段消息 → 字段路径去重,
-  // 值=涉及规则 id 集(「N 条规则待人工」);非缺失类 need_human 不入卡。
-  const completeness = useMemo(() => {
-    const byPath = new Map<string, Set<string>>();
-    for (const i of issues) {
-      if (!i.need_human) continue;
-      const m = MISSING_FIELDS_RE.exec(i.message);
-      if (!m?.[2]) continue;
-      for (const f of m[2]
-        .split(",")
-        .map((s) => s.trim())
-        .filter(Boolean)) {
-        const set = byPath.get(f) ?? new Set<string>();
-        if (i.rule_id) set.add(i.rule_id);
-        byPath.set(f, set);
-      }
-    }
-    return byPath;
-  }, [issues]);
-  const completenessRules = new Set(
-    [...completeness.values()].flatMap((s) => [...s]),
-  ).size;
+  // 裁定 16(2026-10-31 用户):原「资料完备性」卡删除——缺失字段已在 /parsing
+  // 基准字段抽取卡(含值/锚点)呈现,受影响规则已在问题清单「待确认」组逐条可见,
+  // 本卡为同一事实的第三次重复且无操作入口。
 
   // 客户端过滤:seg(致命/主要/次要/提示排除待人工条目,与 summary 口径一致)+ 搜索 q
   const needle = q.trim().toLowerCase();
@@ -579,16 +562,47 @@ export function WorkbenchView({ taskId }: { taskId?: string | null }) {
         </div>
         <div>
           <h2>
-            审查工作台
+            审查结果
             <TaskTitleTag taskId={taskId} bizNo={task?.biz_no} />
           </h2>
           <div className="ph-sub">
             {task
-              ? `${task.mode === "deep" ? "深度评审" : "快速审查"} · 创建于 ${formatDate(task.created_at)}`
+              ? `${task.mode === "deep" ? "深度评审" : "快速审查"} · 创建于 ${formatDate(task.created_at)}${task.done_at ? ` · 用时 ${formatDuration(task.created_at, task.done_at)}` : ""}`
               : "任务详情加载中…"}
           </div>
         </div>
         <div className="ph-actions">
+          {/* 常驻(原型 s5):发起复核——出结果才可用,未完成置灰注因 */}
+          {taskId ? (
+            <Link
+              href={`/bid-review/review?task_id=${taskId}`}
+              className="btn btn-sec btn-sm"
+              aria-disabled={task?.status !== "done" || undefined}
+              title={
+                task && task.status !== "done"
+                  ? "审查完成后可发起复核"
+                  : "到复核工作台逐条处置待人工问题"
+              }
+              style={
+                task && task.status !== "done"
+                  ? { opacity: 0.5, pointerEvents: "none" }
+                  : undefined
+              }
+            >
+              发起复核
+            </Link>
+          ) : null}
+          <button
+            type="button"
+            className="btn btn-sec btn-sm"
+            onClick={() => {
+              void taskQuery.refetch();
+              void issuesQuery.refetch();
+              toast.success("已刷新");
+            }}
+          >
+            刷新
+          </button>
           {baselineUnconfirmed ? (
             <span className="pill pill-orange">
               <span className="dot dot-warn" />
@@ -803,58 +817,7 @@ export function WorkbenchView({ taskId }: { taskId?: string | null }) {
             </div>
           ) : null}
 
-          {/* 资料完备性聚合(二期 spec §五):need_human 缺失字段去重 → 中文名+规则数;
-              指引=补材料重跑或到复核工作台处置 */}
-          {completenessRules > 0 ? (
-            <div className="card" style={{ marginBottom: 12 }}>
-              <div className="card-hd">
-                <h3>资料完备性</h3>
-                <span className="hd-sub">
-                  缺失 {completeness.size} 项基准字段 · 影响 {completenessRules}{" "}
-                  条规则判定
-                </span>
-              </div>
-              <div
-                style={{
-                  padding: "12px 16px",
-                  display: "flex",
-                  flexDirection: "column",
-                  gap: 6,
-                }}
-              >
-                {[...completeness.entries()]
-                  .sort(([a], [b]) => a.localeCompare(b))
-                  .map(([path, rules]) => (
-                    <div
-                      key={path}
-                      style={{
-                        display: "flex",
-                        alignItems: "center",
-                        gap: 8,
-                        fontSize: 13,
-                      }}
-                    >
-                      <span>{FIELD_LABELS[path] ?? "未登记字段"}</span>
-                      <code className="k" style={{ fontSize: 11 }}>
-                        {path}
-                      </code>
-                      <span
-                        style={{
-                          marginLeft: "auto",
-                          color: "var(--text-3)",
-                          fontSize: 12,
-                        }}
-                      >
-                        {rules.size} 条规则待人工
-                      </span>
-                    </div>
-                  ))}
-              </div>
-              <div className="tbl-foot">
-                补齐对应材料并重跑审查即可自动判定;或到人工复核工作台逐条处置
-              </div>
-            </div>
-          ) : null}
+          {/* 裁定 16:资料完备性卡已删(重复信息,见 useMemo 处注记) */}
 
           {/* 规则执行(原型 s5 左列):规则包 type 分组判定进度 + 命中覆盖 */}
           {allPackRules.length > 0 ? (

@@ -33,7 +33,7 @@ rs.mock("next/navigation", () => ({
   useRouter: () => ({ push: rs.fn(), replace: rs.fn(), refresh: rs.fn() }),
 }));
 
-import { WorkbenchView } from "@/extensions/bid-review/components/WorkbenchView";
+import { ResultsView } from "@/extensions/bid-review/components/ResultsView";
 
 const TASK = {
   id: "t1",
@@ -45,6 +45,7 @@ const TASK = {
   engine_meta: {},
   prev_task_id: null,
   created_at: "2026-10-29T00:00:00Z",
+  done_at: "2026-10-29T00:11:32Z",
 };
 
 const ISSUE = {
@@ -100,14 +101,14 @@ function renderWorkbench() {
   const queryClient = new QueryClient({
     defaultOptions: { queries: { retry: false } },
   });
-  return render(<WorkbenchView taskId="t1" />, {
+  return render(<ResultsView taskId="t1" />, {
     wrapper: ({ children }: PropsWithChildren) => (
       <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
     ),
   });
 }
 
-describe("bid-review WorkbenchView 证据管线(EAI-CUSTOM 2026-10-30)", () => {
+describe("bid-review ResultsView 证据管线(EAI-CUSTOM 2026-10-30)", () => {
   beforeEach(() => {
     calls.length = 0;
     responder = () => jsonRes({});
@@ -115,6 +116,31 @@ describe("bid-review WorkbenchView 证据管线(EAI-CUSTOM 2026-10-30)", () => {
 
   afterEach(() => {
     cleanup();
+  });
+
+  it("页头五元组+常驻按钮:审查结果/用时 11m 32s/发起复核→review/刷新(Plan7 spec §4.5)", async () => {
+    responder = (path) => {
+      if (path.endsWith("/tasks/t1/issues")) return jsonRes({ items: [ISSUE] });
+      if (path.endsWith("/tasks/t1")) return jsonRes(TASK);
+      return jsonRes({}, 404);
+    };
+    renderWorkbench();
+    await screen.findAllByText("投标总价超出招标控制价");
+    // h2 = 审查结果(裁定8 工作台退役)
+    expect(screen.getByRole("heading", { level: 2 })?.textContent).toContain(
+      "审查结果",
+    );
+    // 用时 = done_at − created_at 客户端算(11m 32s)
+    expect(screen.getByText(/用时/)?.textContent).toContain("11m 32s");
+    // 常驻按钮:发起复核 → /bid-review/review?task_id=t1(status=done 可用)
+    const review = screen.getByRole("link", { name: "发起复核" });
+    expect(review.getAttribute("href")).toBe(
+      "/bid-review/review?task_id=t1",
+    );
+    // 常驻按钮:刷新
+    expect(screen.getByRole("button", { name: "刷新" })).toBeTruthy();
+    // 资料完备性卡已删(裁定 16,2026-10-31 用户:与 /parsing 缺失列+待确认组重复)
+    expect(screen.queryByText("资料完备性")).toBeNull();
   });
 
   it("证据 chip 点击 → content?page= 定位弹层渲染命中窗口", async () => {

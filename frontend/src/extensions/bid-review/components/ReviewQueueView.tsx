@@ -9,7 +9,8 @@
  * 不代提交;输入框聚焦时全部禁用)。提交走既有 useBidFeedback(confirm 清
  * need_human 旗标、误报落库回流),本地 handled 集合立即推进队列,不依赖
  * 重取时序。零后端增量——反馈写路径一期已闭环。
- * 权限:挂 bid:page:workbench(同治理域,先例=metrics 挂 bid:page:rules)。
+ * 权限:挂 bid:page:results(同治理域,先例=metrics 挂 bid:page:rules;Plan7
+ * workbench 退役后随 results 宿主权限)。
  */
 
 import { ArrowLeft, ArrowRight, UserCheck } from "lucide-react";
@@ -27,7 +28,7 @@ import {
   FP_REASONS,
   renderIssueMessage,
   sevPillBrx,
-} from "@/extensions/bid-review/components/WorkbenchView";
+} from "@/extensions/bid-review/components/ResultsView";
 import {
   useBidFeedback,
   useBidIssues,
@@ -193,10 +194,10 @@ export function ReviewQueueView({ taskId }: { taskId?: string | null }) {
         </div>
         <div className="ph-actions">
           <Link
-            href={`/bid-review/workbench?task_id=${taskId}`}
+            href={`/bid-review/results?task_id=${taskId}`}
             className="btn btn-sec btn-sm"
           >
-            返回工作台
+            返回结果页
           </Link>
         </div>
       </div>

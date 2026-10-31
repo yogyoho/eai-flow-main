@@ -96,11 +96,12 @@ const navItems: Array<{
   },
   {
     // EAI-CUSTOM (2026-10-31 二期 spec §五 s6):need_human 队列复核;
-    // 挂 bid:page:workbench(同治理域,先例=metrics 挂 bid:page:rules)
+    // 挂 bid:page:results(同治理域,先例=metrics 挂 bid:page:rules;
+    // Plan7:workbench 退役后复核自 results 发起,随宿主权限)
     href: "/bid-review/review",
     label: "复核工作台",
     icon: UserCheck,
-    pageId: "bid:page:workbench",
+    pageId: "bid:page:results",
     group: 0,
     badge: "reviewTodo",
     taskPage: "review",

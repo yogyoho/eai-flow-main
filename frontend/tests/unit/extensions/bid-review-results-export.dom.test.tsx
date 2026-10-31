@@ -33,7 +33,7 @@ rs.mock("next/navigation", () => ({
   useRouter: () => ({ push: rs.fn(), replace: rs.fn(), refresh: rs.fn() }),
 }));
 
-import { WorkbenchView } from "@/extensions/bid-review/components/WorkbenchView";
+import { ResultsView } from "@/extensions/bid-review/components/ResultsView";
 
 const TASK = {
   id: "t1",
@@ -82,7 +82,7 @@ function renderWorkbench() {
   const queryClient = new QueryClient({
     defaultOptions: { queries: { retry: false } },
   });
-  return render(<WorkbenchView taskId="t1" />, {
+  return render(<ResultsView taskId="t1" />, {
     wrapper: ({ children }: PropsWithChildren) => (
       <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
     ),
@@ -92,7 +92,7 @@ function renderWorkbench() {
 const originalCreate = URL.createObjectURL.bind(URL);
 const originalRevoke = URL.revokeObjectURL.bind(URL);
 
-describe("bid-review WorkbenchView 导出报告(Task 21)", () => {
+describe("bid-review ResultsView 导出报告(Task 21,Plan7 拆分)", () => {
   beforeEach(() => {
     calls.length = 0;
     responder = () => jsonRes({});

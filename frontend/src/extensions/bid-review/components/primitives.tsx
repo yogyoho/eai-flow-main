@@ -49,6 +49,24 @@ export function taskStatusPill(status: string): {
   }
 }
 
+// ── 审查用时(Plan7 T2 自 TasksView 上移共享:ResultsView 页头五元组同用)────
+/** 审查用时=done_at−created_at(客户端算,spec §3 s1;Plan4 T3)。秒/分/时三段;
+ * null/非法/负值一律 —(不冒充)。 */
+export function formatDuration(
+  createdIso: string | null,
+  doneIso: string | null,
+): string {
+  if (!createdIso || !doneIso) return "—";
+  const ms = new Date(doneIso).getTime() - new Date(createdIso).getTime();
+  if (!Number.isFinite(ms) || ms < 0) return "—";
+  const s = Math.round(ms / 1000);
+  if (s < 60) return `${s}s`;
+  const m = Math.floor(s / 60);
+  if (m < 60) return `${m}m ${s % 60}s`;
+  const h = Math.floor(m / 60);
+  return `${h}h ${m % 60}m`;
+}
+
 export function severityPill(severity: string): {
   tone: PillTone;
   label: string;
