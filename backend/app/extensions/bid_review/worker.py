@@ -449,17 +449,21 @@ async def advance_task(
     meta["materials_hash"] = payload["materials_hash"]
     task.engine_meta = meta  # 重新赋值以标记 JSON 列 dirty
     await _write_baselines(db, task_id, docs, fields, payload["materials_hash"], payload.get("provenance"), payload.get("candidates"), payload.get("fields_conf"))
-    # B1 抽取回填(裁定12:项目/标段/编号从投标文件抽,非向导手填):基线落库后同处
-    # 写 task 三列;仅收标量(str/int/float),dict/list 等结构化值不回填(伪零纪律:
-    # 抽不到保持 null,前端显 —)。
+    # B1 抽取回填(裁定12:项目/标段/编号从投标文件抽):基线落库后同处写 task 三列;
+    # 仅收标量(str/int/float),dict/list 等结构化值不回填(伪零纪律:抽不到保持
+    # null,前端显 —)。裁定12+14(EAI-CUSTOM 2026-10-31):人工覆盖位优先——弹窗
+    # 已填的列非 NULL,仅 NULL(留空)时才回填,不覆盖手填值。
     def _scalar(v: object) -> str | None:
         if isinstance(v, (str, int, float)) and str(v).strip():
             return str(v).strip()
         return None
 
-    task.project_name = _scalar(fields.get("tender.project_identity.name"))
-    task.lot_name = _scalar(fields.get("tender.project_identity.lot_section"))
-    task.tender_no = _scalar(fields.get("tender.project_identity.code"))
+    if task.project_name is None:
+        task.project_name = _scalar(fields.get("tender.project_identity.name"))
+    if task.lot_name is None:
+        task.lot_name = _scalar(fields.get("tender.project_identity.lot_section"))
+    if task.tender_no is None:
+        task.tender_no = _scalar(fields.get("tender.project_identity.code"))
     await db.commit()
     await db.refresh(task)
     durations["extracting"] = time.perf_counter() - t1

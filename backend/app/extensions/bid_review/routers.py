@@ -101,6 +101,9 @@ async def create_task(
     mode: str = Form("quick"),
     tender_files: list[UploadFile] | None = File(default=None),
     bid_files: list[UploadFile] | None = File(default=None),
+    project_name: str = Form(""),
+    lot_name: str = Form(""),
+    tender_no: str = Form(""),
     db: AsyncSession = Depends(get_db),
     owner_id: str = Depends(current_owner),
 ):
@@ -108,10 +111,19 @@ async def create_task(
     spec §2):上传字节快速落盘 raw/(原始字节不进 DB),engine_meta.docs 只存清单
     (doc_id/role/kind/size/status,全文不上 wire——D6);docx/pdf 解析+OCR 重活全部
     在 worker.advance_task 的 parsing 阶段做(worker.parse 链)。旧实现(UTF-8 硬解码
-    直存,docx/pdf 出乱码)退役。随后后台直推 advance_task(quick 直跑;deep 停确认门)。"""
+    直存,docx/pdf 出乱码)退役。随后后台直推 advance_task(quick 直跑;deep 停确认门)。
+    EAI-CUSTOM(2026-10-31 裁定12+14):project_name/lot_name/tender_no=弹窗可选覆盖位,
+    空串归 None(=引擎抽取回填位,worker 仅填 NULL 列)。"""
     if mode not in ("quick", "deep"):
         raise HTTPException(status_code=422, detail="mode 仅支持 quick|deep")
-    task = await crud.create_task(db, owner_id=owner_id, mode=mode)
+    task = await crud.create_task(
+        db,
+        owner_id=owner_id,
+        mode=mode,
+        project_name=project_name.strip() or None,
+        lot_name=lot_name.strip() or None,
+        tender_no=tender_no.strip() or None,
+    )
     entries: list[dict] = []
     for f in tender_files or []:
         entries.append(parse.save_raw(owner_id, task.id, "tender", f.filename or "tender-doc", await f.read()))

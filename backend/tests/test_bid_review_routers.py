@@ -110,6 +110,26 @@ async def test_create_task_rejects_bad_mode(client):
 
 
 @pytest.mark.asyncio
+async def test_create_task_identity_overrides(client, db):
+    """裁定12+14(Plan5):弹窗身份字段=可选覆盖位,非空直落 task 三列;
+    空串/空白/未传归 None(=引擎抽取回填位)。"""
+    r = await client.post(
+        "/api/extensions/bid-review/tasks",
+        data={"mode": "quick", "project_name": "XX项目", "lot_name": "标段一", "tender_no": "TZ-2026-001"},
+    )
+    assert r.status_code == 200
+    t = await crud.get_task(db, task_id=r.json()["id"], owner_id="u1")
+    assert (t.project_name, t.lot_name, t.tender_no) == ("XX项目", "标段一", "TZ-2026-001")
+
+    r2 = await client.post(
+        "/api/extensions/bid-review/tasks",
+        data={"mode": "quick", "project_name": "   "},
+    )
+    t2 = await crud.get_task(db, task_id=r2.json()["id"], owner_id="u1")
+    assert (t2.project_name, t2.lot_name, t2.tender_no) == (None, None, None)
+
+
+@pytest.mark.asyncio
 async def test_list_tasks_owner_filter_and_cross_owner_404(client, db):
     mine = await crud.create_task(db, owner_id="u1")
     other = await crud.create_task(db, owner_id="u2")

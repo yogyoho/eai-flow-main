@@ -436,3 +436,25 @@ async def test_advance_task_backfills_project_identity(db):
     assert task.lot_name == "标段一(机电设备)"
     assert task.tender_no == "TND-2026-114"
     assert "tender.max_price" not in ("", None)  # 结构化值无对应列,仅保证不炸
+
+
+@pytest.mark.asyncio
+async def test_advance_task_backfill_skips_manual_overrides(db):
+    """裁定12+14(Plan5):人工覆盖位优先——创建时已填的列不被抽取回填覆盖,
+    未填列(None)照常回填。"""
+    t = await crud.create_task(db, owner_id="u1", project_name="人工填写项目")
+    docs = [{"doc_id": "t.pdf", "role": "tender", "text": "x"}]
+    fields = {
+        "tender.project_identity.name": "抽取到的项目名",
+        "tender.project_identity.lot_section": "抽取到的标段",
+        "tender.project_identity.code": "抽取到的编号",
+    }
+
+    def _extract(d, p):
+        return {**{k: None for k in p}, **fields}
+
+    task = await advance_task(db, t.id, owner_id="u1", docs=docs, extract_fn=_extract, wait_confirm=True)
+    await db.refresh(task)
+    assert task.project_name == "人工填写项目"
+    assert task.lot_name == "抽取到的标段"
+    assert task.tender_no == "抽取到的编号"

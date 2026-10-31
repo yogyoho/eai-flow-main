@@ -39,8 +39,25 @@ async def _next_biz_no(session: AsyncSession) -> str:
     return f"{prefix}{(seq or 0) + 1:04d}"
 
 
-async def create_task(session: AsyncSession, owner_id: str, mode: str = "quick") -> ReviewTask:
-    task = ReviewTask(owner_id=owner_id, mode=mode, biz_no=await _next_biz_no(session))
+async def create_task(
+    session: AsyncSession,
+    owner_id: str,
+    mode: str = "quick",
+    *,
+    project_name: str | None = None,
+    lot_name: str | None = None,
+    tender_no: str | None = None,
+) -> ReviewTask:
+    # 裁定12+14(EAI-CUSTOM 2026-10-31):身份字段=弹窗可选覆盖位;None 落列,
+    # worker 抽取回填仅填 NULL 列(人工手填优先,见 worker 回填守卫)。
+    task = ReviewTask(
+        owner_id=owner_id,
+        mode=mode,
+        biz_no=await _next_biz_no(session),
+        project_name=project_name,
+        lot_name=lot_name,
+        tender_no=tender_no,
+    )
     session.add(task)
     await session.commit()
     await session.refresh(task)
