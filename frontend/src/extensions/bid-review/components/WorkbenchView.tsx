@@ -54,6 +54,7 @@ import {
   exportReport,
 } from "@/extensions/bid-review/api";
 import { DocLocateModal } from "@/extensions/bid-review/components/DocLocateModal";
+import { TaskStepper } from "@/extensions/bid-review/components/TaskStepper";
 import { TaskTitleTag } from "@/extensions/bid-review/components/TaskTitleTag";
 import {
   useBidFeedback,
@@ -65,45 +66,6 @@ import { type IssueOut } from "@/extensions/bid-review/types";
 import { cn } from "@/lib/utils";
 
 // 定位原文 modal 已抽共享(EAI-CUSTOM 2026-10-30 分期建议一期:BaselineView 字段卡同用)
-
-// ── 步骤条(原型 s3:6 步;stage 词汇=worker progress.stage)──────────────
-const STAGE_LABELS = [
-  "已创建",
-  "文档解析",
-  "字段抽取",
-  "基准确认",
-  "审查执行",
-  "完成",
-] as const;
-
-const STAGE_INDEX: Record<string, number> = {
-  created: 0,
-  parsing: 1,
-  extracting: 2,
-  confirm_gate: 3,
-  review: 4,
-  done: 5,
-};
-
-/** 当前步:progress.stage 优先;缺失时按任务状态兜底(测试夹具/早期任务无 stage)。 */
-function resolveStageIdx(stageRaw: string | null, status: string): number {
-  if (stageRaw && stageRaw in STAGE_INDEX) return STAGE_INDEX[stageRaw]!;
-  switch (status) {
-    case "done":
-    case "completed":
-      return 5;
-    case "running":
-      return 4;
-    case "awaiting_confirm":
-      return 3;
-    case "extracting":
-      return 2;
-    case "parsing":
-      return 1;
-    default:
-      return 0;
-  }
-}
 
 // ── 筛选/误因/严重度词汇 ────────────────────────────────────────────────
 // 2026-10-30 与原型对齐:s5 清单筛选 5 段(全部/致命/主要/次要/待人工);
@@ -334,13 +296,7 @@ export function WorkbenchView({ taskId }: { taskId?: string | null }) {
   // 计划 Task 17 Step 2:确认前 workbench 只读。
   const readOnly = baselineUnconfirmed;
 
-  // 步骤条输入:task.progress {stage,pct,msg}
-  const progress: Record<string, unknown> = task?.progress ?? {};
-  const stageRaw = typeof progress.stage === "string" ? progress.stage : null;
-  const pctVal = typeof progress.pct === "number" ? progress.pct : null;
-  const progressMsg = typeof progress.msg === "string" ? progress.msg : "";
-  const stageIdx = resolveStageIdx(stageRaw, task?.status ?? "");
-  const taskDone = task?.status === "done";
+  // 步骤条输入已收敛进共享件 TaskStepper(Plan6)
 
   // 审查材料:engine_meta.docs({doc_id,role:tender|bid})
   const rawDocs = task?.engine_meta?.docs;
@@ -668,28 +624,8 @@ export function WorkbenchView({ taskId }: { taskId?: string | null }) {
         </div>
       </div>
 
-      {/* 步骤条:task.progress {stage,pct,msg} → done/on */}
-      <div className="stepper">
-        {STAGE_LABELS.map((label, i) => (
-          <span
-            key={label}
-            className={cn(
-              "step",
-              (taskDone || i < stageIdx) && "done",
-              !taskDone && i === stageIdx && "on",
-            )}
-          >
-            <span className="sn">{i + 1}</span>
-            {label}
-          </span>
-        ))}
-      </div>
-      {progressMsg ? (
-        <div className="tbl-foot">
-          引擎:{progressMsg}
-          {pctVal != null ? <span className="num"> · {pctVal}%</span> : null}
-        </div>
-      ) : null}
+      {/* 步骤条:共享件(Plan6 上移,canonical home=/parsing;M3 拆分前暂留) */}
+      <TaskStepper task={task} />
 
       {/* 基准未确认:确认门注记(确认前工作台只读);确认后状态离开即移除 */}
       {baselineUnconfirmed ? (
