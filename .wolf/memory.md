@@ -26952,3 +26952,202 @@
 | 16:52 | Edited frontend/tests/unit/extensions/bid-review-tasks-view.dom.test.tsx | CSS: main_unhandled | ~56 |
 | 16:54 | Edited frontend/src/extensions/bid-review/components/TasksView.tsx | added nullish coalescing | ~77 |
 | 16:40 | Plan4 落地:s1 九列全量对齐(biz_no/项目·标段/致命·主要/创建人/更新时间)+审查用时真值+搜索升级+页头业务号四页;56 测试绿 | TasksView/TaskTitleTag/{Workbench,Baseline,ReviewQueue}View/types.ts | 8ffb18786 pushed | ~35k |
+| 16:59 | Session end: 28 writes across 8 files (2026-10-31-bid-review-plan4-s1-full-alignment.md, types.ts, bid-review-tasks-view.dom.test.tsx, TasksView.tsx, TaskTitleTag.tsx) | 9 reads | ~48287 tok |
+
+## Session: 2026-10-31 17:12
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 17:16 | Created docs/superpowers/plans/2026-10-31-bid-review-plan5-new-task-dialog.md | — | ~3265 |
+| 17:17 | Edited backend/tests/test_bid_review_routers.py | modified test_create_task_rejects_bad_mode() | ~316 |
+| 17:18 | Edited backend/tests/test_bid_review_worker.py | modified test_advance_task_backfill_skips_manual_overrides() | ~323 |
+| 17:19 | Edited backend/app/extensions/bid_review/crud.py | modified create_task() | ~182 |
+| 17:20 | Edited backend/app/extensions/bid_review/routers.py | modified create_task() | ~346 |
+| 17:20 | Edited backend/app/extensions/bid_review/worker.py | modified _scalar() | ~202 |
+| 17:22 | Edited frontend/src/extensions/bid-review/api.ts | added optional chaining | ~314 |
+| 17:24 | Edited frontend/tests/unit/extensions/bid-review-tasks-view.dom.test.tsx | added 3 condition(s) | ~721 |
+| 17:25 | Edited frontend/src/extensions/bid-review/components/TasksView.tsx | CSS: L604 | ~69 |
+| 17:25 | Edited frontend/src/extensions/bid-review/components/TasksView.tsx | added 3 condition(s) | ~505 |
+| 17:25 | Edited frontend/src/extensions/bid-review/components/TasksView.tsx | CSS: width, width | ~324 |
+| 17:26 | Edited frontend/src/extensions/bid-review/components/TasksView.tsx | expanded (+6 lines) | ~307 |
+| 17:26 | Edited frontend/src/extensions/bid-review/components/TasksView.tsx | 7→12 lines | ~115 |
+| 17:26 | Edited frontend/src/extensions/bid-review/components/TasksView.tsx | inline fix | ~14 |
+| 17:30 | Plan5 新建任务弹窗对齐原型s2:POST /tasks 身份覆盖位+worker回填仅填NULL+基本信息组+200MB;8 commit系列 | bid_review routers/crud/worker+TasksView+api.ts | 58前端+51后端绿,push | ~46k |
+| 17:32 | Session end: 14 writes across 9 files (2026-10-31-bid-review-plan5-new-task-dialog.md, test_bid_review_routers.py, test_bid_review_worker.py, crud.py, routers.py) | 7 reads | ~44427 tok |
+| 17:32 | Session end: 14 writes across 9 files (2026-10-31-bid-review-plan5-new-task-dialog.md, test_bid_review_routers.py, test_bid_review_worker.py, crud.py, routers.py) | 7 reads | ~44427 tok |
+| 17:47 | Created docs/superpowers/plans/2026-10-31-bid-review-plan6-parsing-screen.md | — | ~3693 |
+
+## Session: 2026-10-31 17:50
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 17:50 | Edited frontend/tests/unit/app/bid-review-layout.dom.test.tsx | CSS: Plan6 | ~113 |
+| 17:51 | Edited frontend/tests/unit/app/bid-review-layout.dom.test.tsx | modified Plan6() | ~152 |
+| 17:51 | Edited frontend/tests/unit/app/bid-review-layout.dom.test.tsx | 7→8 lines | ~113 |
+| 17:51 | Edited config/permissions.yaml | modified CUSTOM() | ~68 |
+| 17:52 | Edited config/roles_custom.yaml | 5→6 lines | ~36 |
+| 17:52 | Edited config/roles_custom.yaml | 7→8 lines | ~50 |
+| 17:52 | Edited frontend/src/extensions/bid-review/nav.ts | modified Plan6() | ~98 |
+| 17:52 | Edited frontend/src/app/bid-review/layout.tsx | 10→11 lines | ~39 |
+| 17:52 | Edited frontend/src/app/bid-review/layout.tsx | modified Plan6() | ~137 |
+| 17:52 | Created frontend/src/app/bid-review/parsing/page.tsx | — | ~268 |
+| 17:54 | Created frontend/src/extensions/bid-review/components/TaskStepper.tsx | — | ~642 |
+| 17:54 | Edited frontend/src/extensions/bid-review/components/WorkbenchView.tsx | removed 42 lines | ~39 |
+| 17:55 | Edited frontend/src/extensions/bid-review/components/WorkbenchView.tsx | removed 22 lines | ~28 |
+| 17:55 | Edited frontend/src/extensions/bid-review/components/WorkbenchView.tsx | removed 7 lines | ~11 |
+| 17:55 | Edited frontend/src/extensions/bid-review/components/WorkbenchView.tsx | added 1 import(s) | ~69 |
+| 17:55 | Created frontend/src/extensions/bid-review/components/baselineFields.ts | — | ~883 |
+| 17:56 | Edited frontend/src/extensions/bid-review/components/BaselineView.tsx | expanded (+13 lines) | ~215 |
+| 17:57 | Edited frontend/src/extensions/bid-review/components/BaselineView.tsx | removed 102 lines | ~20 |
+| 18:05 | Created frontend/tests/unit/extensions/bid-review-parsing.dom.test.tsx | — | ~2008 |
+| 18:07 | Created frontend/src/extensions/bid-review/components/ParsingView.tsx | — | ~5322 |
+| 18:08 | Edited frontend/src/app/bid-review/parsing/page.tsx | modified ParsingContent() | ~120 |
+| 18:09 | Edited frontend/tests/unit/extensions/bid-review-parsing.dom.test.tsx | inline fix | ~22 |
+| 18:09 | Edited frontend/tests/unit/extensions/bid-review-parsing.dom.test.tsx | 5→8 lines | ~81 |
+| 18:09 | Edited frontend/tests/unit/extensions/bid-review-parsing.dom.test.tsx | 9→12 lines | ~134 |
+| 18:09 | Edited frontend/tests/unit/extensions/bid-review-parsing.dom.test.tsx | 6→8 lines | ~74 |
+| 18:09 | Edited frontend/tests/unit/extensions/bid-review-parsing.dom.test.tsx | 5→7 lines | ~62 |
+| 18:09 | Edited frontend/tests/unit/extensions/bid-review-parsing.dom.test.tsx | 3→6 lines | ~55 |
+| 18:11 | Edited frontend/tests/unit/extensions/bid-review-tasks-view.dom.test.tsx | modified Plan6() | ~63 |
+| 18:12 | Edited frontend/tests/unit/extensions/bid-review-baseline.dom.test.tsx | CSS: Plan6 | ~147 |
+| 18:12 | Edited frontend/tests/unit/extensions/bid-review-baseline.dom.test.tsx | 5→6 lines | ~97 |
+| 18:14 | Edited frontend/tests/unit/extensions/bid-review-baseline.dom.test.tsx | getByRole() → findByRole() | ~62 |
+| 18:15 | Edited frontend/src/extensions/bid-review/components/TasksView.tsx | modified ActionCell() | ~259 |
+| 18:15 | Edited frontend/src/extensions/bid-review/components/BaselineView.tsx | removed 91 lines | ~49 |
+| 18:15 | Edited frontend/src/extensions/bid-review/components/BaselineView.tsx | reduced (-6 lines) | ~46 |
+| 18:15 | Edited frontend/src/extensions/bid-review/components/BaselineView.tsx | 14→10 lines | ~61 |
+| 18:16 | Edited frontend/src/extensions/bid-review/components/BaselineView.tsx | modified CUSTOM() | ~84 |
+
+## Session: 2026-10-31 18:30
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 18:32 | Edited frontend/tests/unit/extensions/bid-review-parsing.dom.test.tsx | 5→6 lines | ~87 |
+| 18:33 | Edited frontend/tests/unit/extensions/bid-review-parsing.dom.test.tsx | expanded (+10 lines) | ~99 |
+| 18:34 | Edited frontend/tests/unit/extensions/bid-review-parsing.dom.test.tsx | added optional chaining | ~1286 |
+| 18:36 | Created frontend/src/extensions/bid-review/components/ParsingView.tsx | — | ~4191 |
+| 18:38 | Edited frontend/tests/unit/extensions/bid-review-parsing.dom.test.tsx | 29→32 lines | ~440 |
+| 18:39 | Edited frontend/src/extensions/bid-review/components/ParsingView.tsx | inline fix | ~24 |
+| 18:40 | Edited frontend/src/extensions/bid-review/components/ParsingView.tsx | 8→6 lines | ~61 |
+| 18:40 | Edited frontend/src/extensions/bid-review/components/ParsingView.tsx | 3→4 lines | ~52 |
+| 18:41 | Edited frontend/src/extensions/bid-review/components/ParsingView.tsx | 3→3 lines | ~44 |
+| 18:42 | Edited docs/superpowers/specs/2026-10-31-bid-review-ux-redesign-design.md | 1→2 lines | ~139 |
+| 18:42 | Edited docs/superpowers/specs/2026-10-31-bid-review-ux-redesign-design.md | 2→2 lines | ~116 |
+| 18:46 | Edited frontend/tests/unit/extensions/bid-review-parsing.dom.test.tsx | inline fix | ~25 |
+| 18:46 | Edited frontend/tests/unit/extensions/bid-review-parsing.dom.test.tsx | added optional chaining | ~583 |
+| 18:46 | Edited frontend/tests/unit/extensions/bid-review-parsing.dom.test.tsx | 2→2 lines | ~31 |
+| 18:47 | Edited frontend/src/extensions/bid-review/components/ParsingView.tsx | added 1 condition(s) | ~348 |
+| 18:48 | Edited frontend/src/extensions/bid-review/components/ParsingView.tsx | expanded (+13 lines) | ~223 |
+| 18:48 | Edited frontend/src/extensions/bid-review/components/ParsingView.tsx | 2→2 lines | ~19 |
+| 18:49 | Edited frontend/src/extensions/bid-review/components/ParsingView.tsx | expanded (+9 lines) | ~115 |
+| 18:49 | Edited frontend/src/extensions/bid-review/components/ParsingView.tsx | added nullish coalescing | ~36 |
+| 18:50 | Edited frontend/src/extensions/bid-review/components/ParsingView.tsx | 7→6 lines | ~38 |
+| 18:50 | Edited frontend/src/extensions/bid-review/components/ParsingView.tsx | 4→5 lines | ~29 |
+| 18:51 | Edited frontend/src/extensions/bid-review/components/ParsingView.tsx | 2→2 lines | ~20 |
+| 18:51 | Edited frontend/src/extensions/bid-review/components/ParsingView.tsx | expanded (+9 lines) | ~120 |
+| 19:05 | 裁定15:/parsing 两卡按原型 s3 扁平表重写(质量5列+OCR兜底行/字段5列+三pill),7用例 | ParsingView.tsx+spec§6 | a0adbf4ad | ~9k |
+| 19:06 | 两表分页(每页10行,共N+上下页,独立/越界收敛) | ParsingView.tsx | a0adbf4ad | ~2k |
+| 19:07 | 后端权限回归 7 pass(Plan6 权限点) | test_auth_me_permissions.py | green | ~1k |
+| 18:57 | Edited frontend/tests/unit/extensions/bid-review-parsing.dom.test.tsx | CSS: duration | ~594 |
+| 18:58 | Edited frontend/tests/unit/extensions/bid-review-parsing.dom.test.tsx | removed 17 lines | ~28 |
+| 18:58 | Edited frontend/tests/unit/extensions/bid-review-parsing.dom.test.tsx | 3→3 lines | ~27 |
+| 18:59 | Edited frontend/src/extensions/bid-review/components/baselineFields.ts | added nullish coalescing | ~276 |
+| 18:59 | Edited frontend/src/extensions/bid-review/components/ParsingView.tsx | 17→19 lines | ~203 |
+| 19:00 | Edited frontend/src/extensions/bid-review/components/ParsingView.tsx | 3→4 lines | ~28 |
+| 19:00 | Edited frontend/src/extensions/bid-review/components/ParsingView.tsx | 2→4 lines | ~54 |
+| 19:15 | 字段表加说明列(pathZh 段翻译 bid.total_price→投标.总价,labels 优先) | baselineFields.ts+ParsingView.tsx | 26c719610 | ~2k |
+| 19:16 | Plan6 收尾:计划勾选+push(276d2034c..26c719610 共7 commit) | plan6 doc | pushed | ~1k |
+| 19:03 | Session end: 30 writes across 4 files (bid-review-parsing.dom.test.tsx, ParsingView.tsx, 2026-10-31-bid-review-ux-redesign-design.md, baselineFields.ts) | 4 reads | ~18886 tok |
+| 19:10 | Created docs/superpowers/plans/2026-10-31-bid-review-plan7-results-split.md | — | ~2303 |
+| 19:11 | Edited docs/superpowers/plans/2026-10-31-bid-review-plan7-results-split.md | 1→2 lines | ~51 |
+| 19:14 | Edited frontend/tests/unit/extensions/bid-review-nav.test.ts | 10→10 lines | ~121 |
+
+## Session: 2026-10-31 19:18
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 19:18 | Edited frontend/src/extensions/bid-review/nav.ts | modified Plan6() | ~109 |
+| 19:18 | Edited frontend/src/app/bid-review/layout.tsx | modified Plan7() | ~57 |
+| 19:18 | Edited frontend/src/app/bid-review/tasks/[id]/page.tsx | modified BidReviewTaskRedirectPage() | ~129 |
+| 19:19 | Edited config/permissions.yaml | modified CUSTOM() | ~44 |
+| 19:20 | Edited config/roles_custom.yaml | 6→6 lines | ~36 |
+| 19:20 | Edited config/roles_custom.yaml | 6→6 lines | ~38 |
+| 19:22 | Edited frontend/tests/unit/extensions/bid-review-results-evidence.dom.test.tsx | CSS: done_at, 11 | ~91 |
+| 19:22 | Edited frontend/tests/unit/extensions/bid-review-results-evidence.dom.test.tsx | modified renderWorkbench() | ~92 |
+| 19:22 | Edited frontend/tests/unit/extensions/bid-review-results-evidence.dom.test.tsx | added optional chaining | ~310 |
+| 19:23 | Edited frontend/src/app/bid-review/layout.tsx | workbench() → results() | ~99 |
+| 19:24 | Edited frontend/src/extensions/bid-review/components/primitives.tsx | CSS: createdIso, doneIso | ~371 |
+| 19:24 | Edited frontend/src/extensions/bid-review/components/ResultsView.tsx | 2→3 lines | ~28 |
+| 19:24 | Edited frontend/src/extensions/bid-review/components/ResultsView.tsx | inline fix | ~20 |
+| 19:24 | Edited frontend/src/extensions/bid-review/components/ResultsView.tsx | CSS: opacity, pointerEvents | ~404 |
+| 19:25 | Edited frontend/src/extensions/bid-review/components/ResultsView.tsx | inline fix | ~10 |
+| 19:25 | Edited frontend/src/extensions/bid-review/components/ResultsView.tsx | modified 16() | ~52 |
+| 19:25 | Edited frontend/src/extensions/bid-review/components/ResultsView.tsx | removed 54 lines | ~32 |
+| 19:26 | Edited frontend/src/extensions/bid-review/components/TasksView.tsx | added 1 import(s) | ~72 |
+| 19:26 | Edited frontend/src/extensions/bid-review/components/TasksView.tsx | modified formatDate() | ~73 |
+| 19:26 | Edited frontend/src/extensions/bid-review/components/TasksView.tsx | 7→7 lines | ~71 |
+| 19:26 | Edited frontend/src/extensions/bid-review/components/TasksView.tsx | "workbench" → "results" | ~15 |
+| 19:26 | Edited frontend/src/extensions/bid-review/components/TasksView.tsx | "workbench" → "results" | ~15 |
+| 19:26 | Edited frontend/src/extensions/bid-review/components/TasksView.tsx | "workbench" → "results" | ~18 |
+| 19:26 | Edited frontend/src/extensions/bid-review/components/ReviewQueueView.tsx | 6→6 lines | ~48 |
+| 19:27 | Edited frontend/src/extensions/bid-review/components/ReviewQueueView.tsx | workbench() → results() | ~28 |
+| 19:27 | Edited frontend/tests/unit/extensions/bid-review-tasks-view.dom.test.tsx | 4→4 lines | ~46 |
+| 19:28 | Edited frontend/src/extensions/bid-review/components/ReviewQueueView.tsx | 4→4 lines | ~31 |
+| 19:28 | Created frontend/src/app/bid-review/results/page.tsx | — | ~234 |
+| 19:28 | Created frontend/src/app/bid-review/workbench/page.tsx | — | ~164 |
+| 19:28 | Created frontend/tests/unit/app/bid-review-workbench-shim.dom.test.tsx | — | ~355 |
+| 19:29 | Edited frontend/tests/unit/app/bid-review-workbench-shim.dom.test.tsx | 3→2 lines | ~39 |
+| 19:29 | Edited frontend/tests/unit/extensions/bid-review-results-export.dom.test.tsx | "@/extensions/bid-review/c" → "@/extensions/bid-review/c" | ~22 |
+| 19:29 | Edited frontend/tests/unit/extensions/bid-review-results-export.dom.test.tsx | modified renderWorkbench() | ~92 |
+| 19:29 | Edited frontend/tests/unit/extensions/bid-review-results-export.dom.test.tsx | "bid-review WorkbenchView " → "bid-review ResultsView 导出" | ~19 |
+| 19:29 | Edited frontend/tests/unit/extensions/bid-review-results-evidence.dom.test.tsx | "bid-review WorkbenchView " → "bid-review ResultsView 证据" | ~20 |
+| 19:31 | Edited frontend/src/extensions/bid-review/components/ResultsView.tsx | added 1 import(s) | ~69 |
+| 19:33 | Edited frontend/tests/unit/extensions/bid-review-results-export.dom.test.tsx | CSS: T4 | ~580 |
+| 19:35 | Edited frontend/src/extensions/bid-review/components/ResultsView.tsx | handleExportReport() → setReportOpen() | ~28 |
+| 19:35 | Edited frontend/src/extensions/bid-review/components/ResultsView.tsx | CSS: e, message | ~220 |
+| 19:35 | Edited frontend/src/extensions/bid-review/components/ResultsView.tsx | added optional chaining | ~908 |
+| 19:35 | Edited frontend/src/extensions/bid-review/components/ResultsView.tsx | added 1 import(s) | ~92 |
+| 19:51 | Edited frontend/src/extensions/bid-review/components/TaskStepper.tsx | 3→2 lines | ~28 |
+| 19:53 | Edited frontend/src/extensions/bid-review/components/ParsingView.tsx | 10→8 lines | ~98 |
+| 19:55 | Edited docs/superpowers/specs/2026-10-31-bid-review-ux-redesign-design.md | 1→2 lines | ~132 |
+| 19:55 | Edited docs/superpowers/specs/2026-10-31-bid-review-ux-redesign-design.md | inline fix | ~28 |
+| 19:40 | Plan7 T1 路由换血:nav.ts TaskPage workbench→results+PAGE_PATHS+layout NAV_ITEMS+tasks/[id] redirect+permissions.yaml+roles_custom.yaml×2;复核页 pageId 随宿主改挂 bid:page:results | nav.ts/layout.tsx/tasks-[id]/permissions.yaml/roles_custom.yaml | 3598bc599,三测试绿 | ~8k |
+| 19:55 | Plan7 T2+T3:git mv WorkbenchView→ResultsView+两测试改名;results/page.tsx 新建;workbench/page.tsx 换 redirect shim+新 shim 测试;formatDuration 上移 primitives;页头五元组(用时)+发起复核/刷新常驻;TasksView/ReviewQueueView 引用换;裁定16 删资料完备性卡(聚合+JSX) | ResultsView.tsx/primitives.tsx/TasksView.tsx/ReviewQueueView.tsx/results//workbench/ | 093b73d4d,68 测试绿 | ~25k |
+| 20:10 | Plan7 T4:导出改开报告预览 modal(免责注记+verdict 摘要+ClipboardSafeStreamdown md+下载 .md 走原 handleExportReport) | ResultsView.tsx/results-export 测试 | 9f766dca8 | ~10k |
+| 20:25 | Plan7 T5 收尾:prettier+eslint fix(4 文件 import/order+TaskStepper 遗留)+ParsingView 死变量清+typecheck 净+后端 pytest 7pass+计划勾选+spec §6 裁定16+§4.5 左列同步 | plan7 doc/spec/wolf | 待提交 | ~6k |
+| 19:59 | Session end: 45 writes across 16 files (nav.ts, layout.tsx, page.tsx, permissions.yaml, roles_custom.yaml) | 16 reads | ~73257 tok |
+| 20:02 | Session end: 45 writes across 16 files (nav.ts, layout.tsx, page.tsx, permissions.yaml, roles_custom.yaml) | 17 reads | ~73257 tok |
+
+## Session: 2026-10-31 20:08
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 20:13 | Created docs/superpowers/plans/2026-10-31-bid-review-plan8-baseline-enhance.md | — | ~3238 |
+| 20:13 | Edited frontend/tests/unit/extensions/bid-review-baseline.dom.test.tsx | 8→11 lines | ~132 |
+| 20:13 | Edited frontend/tests/unit/extensions/bid-review-baseline.dom.test.tsx | added 2 condition(s) | ~344 |
+| 20:14 | Edited frontend/src/extensions/bid-review/components/BaselineView.tsx | modified taskStatusPill() | ~189 |
+| 20:14 | Edited frontend/src/extensions/bid-review/components/BaselineView.tsx | modified pill() | ~109 |
+| 20:15 | Edited frontend/src/extensions/bid-review/components/BaselineView.tsx | 10→10 lines | ~134 |
+| 20:15 | Edited frontend/tests/unit/extensions/bid-review-baseline.dom.test.tsx | 4→6 lines | ~75 |
+| 20:16 | Edited frontend/src/extensions/bid-review/components/baselineFields.ts | added 1 condition(s) | ~203 |
+| 20:16 | Edited frontend/src/extensions/bid-review/components/BaselineView.tsx | CSS: 4 | ~75 |
+| 20:16 | Edited frontend/src/extensions/bid-review/components/BaselineView.tsx | added nullish coalescing | ~20 |
+| 20:17 | Edited frontend/src/extensions/bid-review/components/BaselineView.tsx | familyOf() → themeOf() | ~163 |
+| 20:17 | Edited frontend/src/extensions/bid-review/components/BaselineView.tsx | reduced (-19 lines) | ~264 |
+| 20:17 | Edited frontend/src/extensions/bid-review/components/BaselineView.tsx | 3→4 lines | ~47 |
+| 20:18 | Edited frontend/src/extensions/bid-review/components/BaselineView.tsx | familyOf() → themeOf() | ~46 |
+| 20:19 | Edited frontend/tests/unit/extensions/bid-review-baseline.dom.test.tsx | CSS: 4, name | ~109 |
+| 20:20 | Edited frontend/tests/unit/extensions/bid-review-baseline.dom.test.tsx | 24→25 lines | ~266 |
+| 20:21 | Edited frontend/tests/unit/extensions/bid-review-baseline.dom.test.tsx | 2→5 lines | ~53 |
+| 20:22 | Edited frontend/tests/unit/extensions/bid-review-baseline.dom.test.tsx | CSS: name | ~110 |
+| 20:23 | Edited frontend/src/extensions/bid-review/components/BaselineView.tsx | modified gate() | ~54 |
+| 20:23 | Edited frontend/src/extensions/bid-review/components/BaselineView.tsx | CSS: display, alignItems, gap | ~372 |
+| 20:23 | Edited frontend/src/extensions/bid-review/components/BaselineView.tsx | 5→6 lines | ~71 |
+| 20:24 | Edited frontend/tests/unit/extensions/bid-review-baseline.dom.test.tsx | expanded (+6 lines) | ~106 |
+| 20:25 | Edited frontend/src/extensions/bid-review/components/BaselineView.tsx | 1→3 lines | ~56 |
+| 20:25 | Edited frontend/src/extensions/bid-review/components/BaselineView.tsx | 1→3 lines | ~52 |
+| 20:25 | Edited frontend/src/extensions/bid-review/components/BaselineView.tsx | added 1 condition(s) | ~100 |
+| 20:25 | Edited frontend/src/extensions/bid-review/components/BaselineView.tsx | expanded (+21 lines) | ~332 |
+| 20:29 | Edited docs/superpowers/plans/2026-10-31-bid-review-plan8-baseline-enhance.md | inline fix | ~4 |
+| 21:30 | Plan8 /baseline §4.4 六项增强全落地:T1 页头待确认pill+渐进门meter+proto-banner清除(2564d2851);T2 FIELD_THEMES五主题族替代首段路径族(a99576318);T3 裁定卡核对勾gate(be20c9608);T4 已抽取字段默认折叠+折叠注(1a678f71f);T5 prettier+计划勾选 | BaselineView.tsx/baselineFields.ts/bid-review-baseline.dom.test.tsx | 69 tests 0 fail | ~35k |
+| 20:30 | Edited frontend/src/extensions/bid-review/components/BaselineView.tsx | 4→1 lines | ~19 |

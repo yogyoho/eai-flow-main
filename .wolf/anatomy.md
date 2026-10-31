@@ -1,7 +1,7 @@
 # anatomy.md
 
-> Auto-maintained by OpenWolf. Last scanned: 2026-10-31T08:54:38.846Z
-> Files: 92 tracked | Anatomy hits: 0 | Misses: 0
+> Auto-maintained by OpenWolf. Last scanned: 2026-10-31T12:30:38.956Z
+> Files: 111 tracked | Anatomy hits: 0 | Misses: 0
 
 ## ../../00 工作目录/02 项目策划/马宁/应急指挥/bid-run/
 
@@ -654,12 +654,12 @@
 
 ## backend/app/extensions/bid_review/
 
-- `crud.py` — bid_review CRUD —— 全部查询函数带 owner_id 过滤(仓库惯例:router 层从 auth (~2432 tok)
+- `crud.py` — bid_review CRUD —— 全部查询函数带 owner_id 过滤(仓库惯例:router 层从 auth (~2519 tok)
 - `models.py` — 投标审查子系统 ORM(五张表;新表走 create_all,无需 alembic)。 (~1449 tok)
 - `parse.py` — 投标审查文档解析层(EAI-CUSTOM 2026-10-30,spec: bid-review evidence pipeline §2/D1/D4/D6/D8)。 (~4050 tok)
-- `routers.py` — bid_review 工作台 API(Task 10)——8 端点(设计文档 §4.7),挂 gateway (~7252 tok)
+- `routers.py` — bid_review 工作台 API(Task 10)——8 端点(设计文档 §4.7),挂 gateway (~7362 tok)
 - `schemas.py` — bid_review Pydantic 请求/响应模型(照 contract_price/schemas.py 惯例)。 (~727 tok)
-- `worker.py` — bid_review worker(Task 9)——状态机推进 + claimer 循环 + gateway 生命周期入口。 (~8292 tok)
+- `worker.py` — bid_review worker(Task 9)——状态机推进 + claimer 循环 + gateway 生命周期入口。 (~8344 tok)
 
 ## backend/app/extensions/bid_review/engine/
 
@@ -934,9 +934,10 @@
 - `test_bid_review_extract.py` — bid_review engine/extract.py 基准提取单测:shape/materials_hash 稳定 + null 显式保留 + 非字典路径丢弃 + prompt 骨架转录。 (~3651 tok)
 - `test_bid_review_feedback.py` — Task 16 测试:feedback 复核三连 + 误报回流——confirm/false_positive/severity_change。 (~3059 tok)
 - `test_bid_review_parse.py` — bid_review 解析层测试(EAI-CUSTOM 2026-10-30,spec §2/§4.1)。 (~1529 tok)
-- `test_bid_review_routers.py` — Task 10 测试:bid_review 8 端点——httpx ASGITransport + 独立 FastAPI 子应用挂 router; (~8180 tok)
+- `test_bid_review_routers.py` — Task 10 测试:bid_review 8 端点——httpx ASGITransport + 独立 FastAPI 子应用挂 router; (~9029 tok)
 - `test_bid_review_rule_runner.py` — test_load_and_validate, test_unknown_operator_rejected, test_run_l1_009_violation_and_need_human, te (~2310 tok)
 - `test_bid_review_worker_prod_model.py` — 生产模型接线单测(worker._resolve_model_name/_default_model_fn/_default_extract_fn/_parse_json_object)。 (~1445 tok)
+- `test_bid_review_worker.py` — Task 9 测试:bid_review worker——状态机推进(advance_task)+ boot recovery + (~5181 tok)
 - `test_docmgr_ai_review.py` — docmgr ai_review（全文操作 M2 审查）单测——审查端点 NDJSON 事件流 + findings 契约过滤。 (~4900 tok)
 - `test_docmgr_ai_review.py` — docmgr ai_review（全文操作 M2 审查）单测——审查端点 NDJSON 事件流 + findings 契约过滤,克隆 M1 fake-model 手法。 (~4300 tok)
 - `test_docmgr_ai_transform.py` — docmgr ai_transform（全文操作 M1）单测——分节引擎纯函数 + transform 端点 NDJSON 事件流。 (~4223 tok)
@@ -986,6 +987,8 @@
 
 ## config/
 
+- `permissions.yaml` — permissions.yaml — 三级权限模型：导航 → 页面 → 操作 (~8204 tok)
+- `roles_custom.yaml` (~3554 tok)
 
 ## contracts/
 
@@ -1035,6 +1038,10 @@
 - `2026-10-31-bid-review-plan2-s1-selected-task.md` — 投标审查 UX 重构 · Plan 2:s1 任务工作台——选中任务模型+统计卡换血(前端批) 实施计划 (~7235 tok)
 - `2026-10-31-bid-review-plan3-backend-b1.md` — bid-review Plan 3:后端 B1 批 实施计划 (~4620 tok)
 - `2026-10-31-bid-review-plan4-s1-full-alignment.md` — bid-review Plan 4 — s1 任务工作台前端全量对齐(B1 消费) (~3131 tok)
+- `2026-10-31-bid-review-plan5-new-task-dialog.md` — bid-review Plan 5 — 新建审查任务对话框对齐原型 s2(弹窗形态,裁定 14) (~3061 tok)
+- `2026-10-31-bid-review-plan6-parsing-screen.md` — bid-review Plan 6 — /parsing 解析与字段抽取归拢专屏(spec §4.3) (~3462 tok)
+- `2026-10-31-bid-review-plan7-results-split.md` — bid-review Plan 7 — /results 拆分(spec §4.5,M3)实现计划 (~2171 tok)
+- `2026-10-31-bid-review-plan8-baseline-enhance.md` — Plan 8 — /baseline §4.4 增强 Implementation Plan (~3036 tok)
 
 ## docs/superpowers/plans/2026-09-13-coal-mine-tunneling-regulation-v2.md
 
@@ -1047,7 +1054,7 @@
 - `2026-10-30-bid-review-evidence-pipeline-design.md` — 投标审查证据管线 + 原型操作 设计(spec) (~1742 tok)
 - `2026-10-30-bid-review-phase2-adjudication-design.md` — 投标审查二期设计:冲突裁定 / 置信度 / 锚点 + 复核工作台 (~1473 tok)
 - `2026-10-30-bid-review-ui-gaps-and-completeness.md` — 投标审查 UI 缺口分析与「完备性核查单」提案 (~840 tok)
-- `2026-10-31-bid-review-ux-redesign-design.md` — 投标审查模块 UX 全面重构设计(方案丙) (~2966 tok)
+- `2026-10-31-bid-review-ux-redesign-design.md` — 投标审查模块 UX 全面重构设计(方案丙) (~3237 tok)
 
 ## docs/superpowers/specs/2026-09-13-coal-mine-tunneling-regulation-v2-design.md
 
@@ -1136,7 +1143,7 @@
 ## frontend/src/app/bid-review/
 
 - `bid-review.css` — Styles: 72 rules, 181 vars (~10516 tok)
-- `layout.tsx` — 未登录 → 复用 workspace 登录跳转(保留 returnPath);加载中给纯色底避免闪现。 (~2429 tok)
+- `layout.tsx` — 未登录 → 复用 workspace 登录跳转(保留 returnPath);加载中给纯色底避免闪现。 (~2514 tok)
 
 ## frontend/src/app/bid-review/baseline/
 
@@ -1144,6 +1151,14 @@
 
 ## frontend/src/app/bid-review/metrics/
 
+
+## frontend/src/app/bid-review/parsing/
+
+- `page.tsx` — ParsingContent (~229 tok)
+
+## frontend/src/app/bid-review/results/
+
+- `page.tsx` — ResultsContent (~234 tok)
 
 ## frontend/src/app/bid-review/review/
 
@@ -1154,10 +1169,11 @@
 
 ## frontend/src/app/bid-review/tasks/[id]/
 
+- `page.tsx` — 深链兼容重定向:/bid-review/tasks/{id} → /bid-review/results?task_id={id}。 (~142 tok)
 
 ## frontend/src/app/bid-review/workbench/
 
-- `page.tsx` — WorkbenchContent (~219 tok)
+- `page.tsx` — /workbench 深链兼容重定向(Plan7,裁定8 工作台退役):→ /results?task_id=。 (~164 tok)
 
 ## frontend/src/app/biz-pipeline/
 
@@ -1445,19 +1461,24 @@
 
 ## frontend/src/extensions/bid-review/
 
-- `api.ts` — API client for the bid-review extension. (~2570 tok)
+- `api.ts` — API client for the bid-review extension. (~2686 tok)
 - `hooks.ts` — TanStack Query hooks for the bid-review API(Task 17)。 (~1349 tok)
-- `nav.ts` — 侧栏流程化纯工具(UX 重构 Plan 1 / spec §3)。 (~560 tok)
+- `nav.ts` — 侧栏流程化纯工具(UX 重构 Plan 1 / spec §3)。 (~598 tok)
 - `types.ts` — TypeScript types for the bid-review extension API. (~588 tok)
 
 ## frontend/src/extensions/bid-review/components/
 
-- `BaselineView.tsx` — 基准确认页(bid:page:baseline)。 (~8778 tok)
+- `baselineFields.ts` — 基线字段/解析质量共享词汇(Plan6 自 BaselineView 上移;Plan8 FIELD_THEMES/themeOf 五业务主题替代 FAMILIES/familyOf) (~1220 tok)
+- `BaselineView.tsx` — 基准确认页(bid:page:baseline)。Plan8 §4.4:页头待确认pill+渐进门meter+五主题族+裁定核对勾gate+已抽取字段折叠。 (~8000 tok)
 - `DocLocateModal.tsx` — 定位原文 modal(EAI-CUSTOM 2026-10-30,spec D6/D8)——自 WorkbenchView 抽出共享 (~1336 tok)
-- `ReviewQueueView.tsx` — 人工复核工作台(二期 spec §五,原型 s6;EAI-CUSTOM 2026-10-31)。 (~3999 tok)
-- `TasksView.tsx` — EAI-CUSTOM (2026-10-30): 任务工作台参照 docs/designs/2026-10-30-bid-review-ui.html (~8465 tok)
+- `ParsingView.tsx` — 解析与字段抽取专屏(原型 s3;spec §4.3,UX 重构 Plan6)。 (~4844 tok)
+- `primitives.tsx` — 投标方案审查共享基元(ui-spec §1 四件:SplitPane/SegmentedToggle/GateMetricsRow/ (~2585 tok)
+- `ResultsView.tsx` — 审查结果专屏(原型 s5;spec §4.5,Plan7 自 WorkbenchView 拆分;裁定8 (~16028 tok)
+- `ResultsView.tsx` — 审查工作台(bid:page:workbench)——Task 17,核心视图。 (~15320 tok)
+- `ReviewQueueView.tsx` — 人工复核工作台(二期 spec §五,原型 s6;EAI-CUSTOM 2026-10-31)。 (~4008 tok)
+- `TaskStepper.tsx` — 六步步骤条(原型 s3)+ 引擎进度行。 (~641 tok)
+- `TasksView.tsx` — EAI-CUSTOM (2026-10-30): 任务工作台参照 docs/designs/2026-10-30-bid-review-ui.html (~9086 tok)
 - `TaskTitleTag.tsx` — 页头任务号(2026-10-31 用户定案:选中任务编号不进侧栏,随各页页头主标题右侧 (~139 tok)
-- `WorkbenchView.tsx` — 审查工作台(bid:page:workbench)——Task 17,核心视图。 (~15794 tok)
 
 ## frontend/src/extensions/bid-review/nav.ts
 
@@ -1677,7 +1698,8 @@
 ## frontend/tests/unit/app/
 
 - `bid-review-layout-flow.dom.test.tsx` — UX 重构 Plan 1 T3:侧栏流程化三条行为—— (~1632 tok)
-- `bid-review-layout.dom.test.tsx` — micro-B 2026-10-29 站内入口回归门:/bid-review/rules(Task 17 落地)此前无任何 (~1040 tok)
+- `bid-review-layout.dom.test.tsx` — micro-B 2026-10-29 站内入口回归门:/bid-review/rules(Task 17 落地)此前无任何 (~1127 tok)
+- `bid-review-workbench-shim.dom.test.tsx` — Plan7 T3:/workbench 退役重定向 shim(裁定8)——旧深链保活,内容归 /results。 (~342 tok)
 
 ## frontend/tests/unit/app/bid-review-layout-flow.dom.test.tsx
 
@@ -1731,11 +1753,14 @@
 
 ## frontend/tests/unit/extensions/
 
-- `bid-review-baseline.dom.test.tsx` — 二期投影:labels 中文名 + candidates 冲突 + fields_conf + adjudications。 (~2876 tok)
-- `bid-review-nav.test.ts` — Declares task (~823 tok)
+- `bid-review-baseline.dom.test.tsx` — 二期投影:labels 中文名 + candidates 冲突 + fields_conf + adjudications。 (~3438 tok)
+- `bid-review-nav.test.ts` — Declares task (~831 tok)
+- `bid-review-parsing.dom.test.tsx` — body 全文包含(字段卡文本嵌套 span,精确 getByText 脆)。 (~3598 tok)
+- `bid-review-results-evidence.dom.test.tsx` — calls (~1803 tok)
+- `bid-review-results-export.dom.test.tsx` — calls (~1602 tok)
 - `bid-review-review-queue.dom.test.tsx` — calls (~1468 tok)
 - `bid-review-selected-task.dom.test.tsx` — happy-dom 下等 TanStack Query 落定的最简轮询。 (~1011 tok)
-- `bid-review-tasks-view.dom.test.tsx` — 选中任务(s1 列表首位=最新)的 issues 响应体;条目只需 verdict 字段。 (~3699 tok)
+- `bid-review-tasks-view.dom.test.tsx` — 选中任务(s1 列表首位=最新)的 issues 响应体;条目只需 verdict 字段。 (~4435 tok)
 - `bid-review-workbench-evidence.dom.test.tsx` — calls (~1503 tok)
 - `bid-review-workbench-export.dom.test.tsx` — calls (~1434 tok)
 
@@ -2209,4 +2234,3 @@
 
 ## 部署面
 
-- docs/superpowers/plans/2026-10-31-bid-review-plan4-s1-full-alignment.md — Plan4 计划(s1 前端全量对齐),T1-T5 全勾已落地(~3k tokens)

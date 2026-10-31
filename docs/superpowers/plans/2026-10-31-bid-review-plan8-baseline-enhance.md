@@ -20,7 +20,7 @@
 - Modify: `frontend/src/extensions/bid-review/components/BaselineView.tsx`
 - Test: `frontend/tests/unit/extensions/bid-review-baseline.dom.test.tsx`
 
-- [ ] **Step 1: 写失败测试** — 在一期 describe 末尾加一个 `it`(双行夹具一行已确认 → 无需交互即可断言渐进 50%):
+- [x] **Step 1: 写失败测试** — 在一期 describe 末尾加一个 `it`(双行夹具一行已确认 → 无需交互即可断言渐进 50%):
 
 ```tsx
   it("页头待确认 pill + 渐进门 meter(Plan8 §4.4):pill=未确认行+未裁冲突,meter 渐进,proto-banner 清除", async () => {
@@ -49,9 +49,9 @@
   });
 ```
 
-- [ ] **Step 2: 跑红** — `cd /d/eai/eai-flow-main/frontend && pnpm test bid-review-baseline`;预期 FAIL(找不到 `待确认 1 项`,且 queryByText(/P0-2b/) 非 null)。
+- [x] **Step 2: 跑红** — `cd /d/eai/eai-flow-main/frontend && pnpm test bid-review-baseline`;预期 FAIL(找不到 `待确认 1 项`,且 queryByText(/P0-2b/) 非 null)。
 
-- [ ] **Step 3: 实现** — BaselineView.tsx 三处:
+- [x] **Step 3: 实现** — BaselineView.tsx 三处:
 
 (a) 删 proto-banner 整块(L145-148 的 `<div className="proto-banner">…</div>`)。
 
@@ -96,9 +96,9 @@
                 : "—"}
 ```
 
-- [ ] **Step 4: 跑绿** — 同命令,PASS。
+- [x] **Step 4: 跑绿** — 同命令,PASS。
 
-- [ ] **Step 5: 提交** — `git add src/extensions/bid-review/components/BaselineView.tsx tests/unit/extensions/bid-review-baseline.dom.test.tsx && git commit -m "feat(bid-review): /baseline 页头待确认pill+渐进门meter+proto-banner清除(Plan8 T1,spec §4.4)"`
+- [x] **Step 5: 提交** — `git add src/extensions/bid-review/components/BaselineView.tsx tests/unit/extensions/bid-review-baseline.dom.test.tsx && git commit -m "feat(bid-review): /baseline 页头待确认pill+渐进门meter+proto-banner清除(Plan8 T1,spec §4.4)"`
 
 ---
 
@@ -109,7 +109,7 @@
 - Modify: `frontend/src/extensions/bid-review/components/BaselineView.tsx`
 - Test: `frontend/tests/unit/extensions/bid-review-baseline.dom.test.tsx`
 
-- [ ] **Step 1: 写失败测试** — 一期第一个 `it` 的族按钮断言换主题:
+- [x] **Step 1: 写失败测试** — 一期第一个 `it` 的族按钮断言换主题:
 
 ```tsx
     // 字段族主题(Plan8 §4.4):报价基准(默认选中)/清单基准按钮可见
@@ -121,9 +121,9 @@
 
 (原 `findByRole("button", { name: /招标基准/ })` 删除。)
 
-- [ ] **Step 2: 跑红** — 预期 FAIL(无 报价基准 按钮)。
+- [x] **Step 2: 跑红** — 预期 FAIL(无 报价基准 按钮)。
 
-- [ ] **Step 3: 实现** —
+- [x] **Step 3: 实现** —
 
 (a) baselineFields.ts:FAMILIES+familyOf 删除(grep 确认仅 BaselineView 消费),换成:
 
@@ -156,9 +156,9 @@ export function themeOf(path: string): FieldTheme {
 
 (b) BaselineView.tsx:import 换 `FIELD_THEMES, themeOf`(去 FAMILIES/familyOf,保持 eslint 序);`useState<string>(FIELD_THEMES[0] ?? "其他条款")`;famStats 的 key 用 `themeOf(f.path)`;famKey 兜底 `FIELD_THEMES[0] ?? "其他条款"`;fam-list 渲染 `FIELD_THEMES.filter((t) => famStats.has(t))`,删掉「FAMILIES 之外的族」fallback 渲染块(themeOf 永不落空)。
 
-- [ ] **Step 4: 跑绿** — `pnpm test bid-review-baseline` PASS。
+- [x] **Step 4: 跑绿** — `pnpm test bid-review-baseline` PASS。
 
-- [ ] **Step 5: 提交** — `git add src/extensions/bid-review/components/baselineFields.ts src/extensions/bid-review/components/BaselineView.tsx tests/unit/extensions/bid-review-baseline.dom.test.tsx && git commit -m "feat(bid-review): /baseline 五主题字段族FIELD_THEMES替代首段路径族(Plan8 T2,spec §4.4)"`
+- [x] **Step 5: 提交** — `git add src/extensions/bid-review/components/baselineFields.ts src/extensions/bid-review/components/BaselineView.tsx tests/unit/extensions/bid-review-baseline.dom.test.tsx && git commit -m "feat(bid-review): /baseline 五主题字段族FIELD_THEMES替代首段路径族(Plan8 T2,spec §4.4)"`
 
 ---
 
@@ -168,7 +168,7 @@ export function themeOf(path: string): FieldTheme {
 - Modify: `frontend/src/extensions/bid-review/components/BaselineView.tsx`
 - Test: `frontend/tests/unit/extensions/bid-review-baseline.dom.test.tsx`
 
-- [ ] **Step 1: 改既有裁定流测试为红** — P2 第一个 `it` 中,`fireEvent.click(radios[1]!)` 后、点采纳前插两步(选中候选后采纳**仍禁用**,勾选后才启用):
+- [x] **Step 1: 改既有裁定流测试为红** — P2 第一个 `it` 中,`fireEvent.click(radios[1]!)` 后、点采纳前插两步(选中候选后采纳**仍禁用**,勾选后才启用):
 
 ```tsx
     fireEvent.click(radios[1]!);
@@ -181,9 +181,9 @@ export function themeOf(path: string): FieldTheme {
     fireEvent.click(adopt);
 ```
 
-- [ ] **Step 2: 跑红** — 预期 FAIL(getByRole checkbox 找不到)。
+- [x] **Step 2: 跑红** — 预期 FAIL(getByRole checkbox 找不到)。
 
-- [ ] **Step 3: 实现** — BaselineView.tsx:
+- [x] **Step 3: 实现** — BaselineView.tsx:
 
 (a) state:`const [verified, setVerified] = useState<Record<string, boolean>>({});`(picks 旁)。
 
@@ -223,9 +223,9 @@ export function themeOf(path: string): FieldTheme {
                           }
 ```
 
-- [ ] **Step 4: 跑绿** — PASS(含「已裁定快照直达」用例不回归)。
+- [x] **Step 4: 跑绿** — PASS(含「已裁定快照直达」用例不回归)。
 
-- [ ] **Step 5: 提交** — `git add src/extensions/bid-review/components/BaselineView.tsx tests/unit/extensions/bid-review-baseline.dom.test.tsx && git commit -m "feat(bid-review): 裁定卡核对勾gate——勾选我已核对两处原文后采纳才可点(Plan8 T3,spec §4.4)"`
+- [x] **Step 5: 提交** — `git add src/extensions/bid-review/components/BaselineView.tsx tests/unit/extensions/bid-review-baseline.dom.test.tsx && git commit -m "feat(bid-review): 裁定卡核对勾gate——勾选我已核对两处原文后采纳才可点(Plan8 T3,spec §4.4)"`
 
 ---
 
@@ -235,7 +235,7 @@ export function themeOf(path: string): FieldTheme {
 - Modify: `frontend/src/extensions/bid-review/components/BaselineView.tsx`
 - Test: `frontend/tests/unit/extensions/bid-review-baseline.dom.test.tsx`
 
-- [ ] **Step 1: 改一期第一个 `it` 为红** — 族按钮断言后,原 `findByText("tender.max_price")`/`getByText("8,000,000")` 改为折叠语义:
+- [x] **Step 1: 改一期第一个 `it` 为红** — 族按钮断言后,原 `findByText("tender.max_price")`/`getByText("8,000,000")` 改为折叠语义:
 
 ```tsx
     // 已抽取字段默认折叠(Plan8 §4.4):折叠注可见,max_price 卡不可见
@@ -258,9 +258,9 @@ export function themeOf(path: string): FieldTheme {
     expect(screen.getAllByText("缺失").length).toBeGreaterThan(0);
 ```
 
-- [ ] **Step 2: 跑红** — 预期 FAIL(max_price 未折叠即可见)。
+- [x] **Step 2: 跑红** — 预期 FAIL(max_price 未折叠即可见)。
 
-- [ ] **Step 3: 实现** — BaselineView.tsx:
+- [x] **Step 3: 实现** — BaselineView.tsx:
 
 (a) state:`const [expanded, setExpanded] = useState<Record<string, boolean>>({});`
 
@@ -306,18 +306,18 @@ export function themeOf(path: string): FieldTheme {
                 ) : null}
 ```
 
-- [ ] **Step 4: 跑绿** — PASS。
+- [x] **Step 4: 跑绿** — PASS。
 
-- [ ] **Step 5: 提交** — `git add src/extensions/bid-review/components/BaselineView.tsx tests/unit/extensions/bid-review-baseline.dom.test.tsx && git commit -m "feat(bid-review): 已抽取字段默认折叠+折叠注toggle(Plan8 T4,spec §4.4)"`
+- [x] **Step 5: 提交** — `git add src/extensions/bid-review/components/BaselineView.tsx tests/unit/extensions/bid-review-baseline.dom.test.tsx && git commit -m "feat(bid-review): 已抽取字段默认折叠+折叠注toggle(Plan8 T4,spec §4.4)"`
 
 ---
 
 ### Task 5: T5 收尾
 
-- [ ] **Step 1:** `cd /d/eai/eai-flow-main/frontend && pnpm exec prettier --write src/extensions/bid-review/components/BaselineView.tsx src/extensions/bid-review/components/baselineFields.ts tests/unit/extensions/bid-review-baseline.dom.test.tsx`
-- [ ] **Step 2:** `pnpm test bid-review` 全量(68+ 用例 0 fail)
-- [ ] **Step 3:** `pnpm lint -- --quiet 2>&1 | grep -c bid-review` 或直接 `pnpm lint` 确认 bid-review 范围 0 error;`pnpm typecheck` 确认非 contract-price 旧债 0 新增
-- [ ] **Step 4:** prettier 增量单独 style commit;plan 全部 `- [x]`;`.wolf/memory.md`+`anatomy.md` 记账;提交 `git add -f ../docs/superpowers/plans/2026-10-31-bid-review-plan8-baseline-enhance.md ../.wolf/memory.md ../.wolf/anatomy.md && git commit -m "chore(bid-review): Plan8 收尾——计划勾选+wolf记账+格式化增量"`
+- [x] **Step 1:** `cd /d/eai/eai-flow-main/frontend && pnpm exec prettier --write src/extensions/bid-review/components/BaselineView.tsx src/extensions/bid-review/components/baselineFields.ts tests/unit/extensions/bid-review-baseline.dom.test.tsx`
+- [x] **Step 2:** `pnpm test bid-review` 全量(68+ 用例 0 fail)
+- [x] **Step 3:** `pnpm lint -- --quiet 2>&1 | grep -c bid-review` 或直接 `pnpm lint` 确认 bid-review 范围 0 error;`pnpm typecheck` 确认非 contract-price 旧债 0 新增
+- [x] **Step 4:** prettier 增量单独 style commit;plan 全部 `- [x]`;`.wolf/memory.md`+`anatomy.md` 记账;提交 `git add -f ../docs/superpowers/plans/2026-10-31-bid-review-plan8-baseline-enhance.md ../.wolf/memory.md ../.wolf/anatomy.md && git commit -m "chore(bid-review): Plan8 收尾——计划勾选+wolf记账+格式化增量"`
 
 ---
 
