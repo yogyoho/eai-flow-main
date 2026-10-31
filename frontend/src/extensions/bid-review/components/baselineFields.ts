@@ -3,9 +3,7 @@
  * BaselineView)。EAI-CUSTOM 2026-10-31。消费方:BaselineView(裁定卡+字段卡)
  * 与 ParsingView(/parsing 归拢专屏,只读展示)。
  */
-import {
-  type BidBaselineRow,
-} from "@/extensions/bid-review/api";
+import { type BidBaselineRow } from "@/extensions/bid-review/api";
 import { type PillTone } from "@/extensions/contract-price/components/ui/bits";
 
 export interface DocMeta {
@@ -67,9 +65,39 @@ export function formatVal(v: unknown): string {
   return JSON.stringify(v);
 }
 
+// 字段路径段 → 中文(2026-10-31 用户要求 /parsing 说明列;未收录段原样透传)。
+// 覆盖字段字典常见段;新字段类型出现时随 labels 维护同款扩表。
+const SEG_ZH: Record<string, string> = {
+  tender: "招标",
+  bid: "投标",
+  project_identity: "项目主体",
+  name: "名称",
+  code: "编号",
+  max_price: "最高限价",
+  total_price: "总价",
+  total_price_words: "总价大写",
+  subtotal: "小计",
+  detail_rows: "明细行数",
+  boq_items: "工程量清单",
+  price_includes_tax: "含税报价",
+  duration: "工期",
+  warranty_months: "质保期(月)",
+};
+
+/** 说明列:labels 中文名优先(服务端权威),无 label 走段翻译(如 bid.total_price→投标.总价)。 */
+export function pathZh(path: string, label?: string): string {
+  if (label && label !== path) return label;
+  return path
+    .split(".")
+    .map((s) => SEG_ZH[s] ?? s)
+    .join(".");
+}
+
 /** 置信 pill(二期 spec §二):quote 服务端核验为真信号——未核验=灰;
  * 核验且 conf<0.8=低置信 warn;核验且 conf≥0.8(或模型未自报)=高置信 ok。 */
-export function confPill(c: { conf: number | null; verified: boolean } | null): {
+export function confPill(
+  c: { conf: number | null; verified: boolean } | null,
+): {
   cls: string;
   text: string;
 } {

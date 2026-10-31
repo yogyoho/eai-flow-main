@@ -231,44 +231,54 @@ describe("bid-review ParsingView /parsing 归拢专屏(Plan6 spec §4.3)", () =>
     expect(bodyHas("冲突 1")).toBe(true);
     expect(bodyHas("缺失 1")).toBe(true);
     expect(bodyHas("abcdef123456")).toBe(true);
-    // 原型 5 列:字段路径/锚点/抽取值/形态/状态
+    // 6 列(2026-10-31 用户要求:字段路径右侧加「说明」列,路径译中文):字段路径/说明/锚点/抽取值/形态/状态
     const fields = document.querySelectorAll(".card")[1]!;
     const headers = [...fields.querySelectorAll("thead th")].map((th) =>
       th.textContent?.trim(),
     );
-    expect(headers).toEqual(["字段路径", "锚点", "抽取值", "形态", "状态"]);
+    expect(headers).toEqual([
+      "字段路径",
+      "说明",
+      "锚点",
+      "抽取值",
+      "形态",
+      "状态",
+    ]);
     const rows = [...fields.querySelectorAll("tbody tr")];
     expect(rows.length).toBe(3);
     // fieldRows 按路径字典序:bid.total_price / tender.duration / tender.max_price
-    // tender.max_price:mono 路径 + 锚点 code.k(doc·p.X)+查看原文 + num 值 + number 形态 + 已抽取
+    // 说明列:labels 优先(招标最高限价),无 label 走段翻译(bid.total_price→投标.总价)
+    const tp = rows[0]!.querySelectorAll("td");
+    expect(tp[0]?.textContent?.trim()).toBe("bid.total_price");
+    expect(tp[1]?.textContent?.trim()).toBe("投标.总价");
+    expect(tp[5]?.querySelector(".pill-warn")?.textContent?.trim()).toBe(
+      "冲突",
+    );
+    expect(tp[3]?.textContent).toContain("候选 1,000,000");
+    // tender.duration:null → 说明段翻译「招标.工期」、值格「未在正文定位到」、形态「—」、缺失 pill-gray
+    const dur = rows[1]!.querySelectorAll("td");
+    expect(dur[0]?.textContent?.trim()).toBe("tender.duration");
+    expect(dur[1]?.textContent?.trim()).toBe("招标.工期");
+    expect(dur[3]?.textContent?.trim()).toBe("未在正文定位到");
+    expect(dur[4]?.textContent?.trim()).toBe("—");
+    expect(dur[5]?.querySelector(".pill-gray")?.textContent?.trim()).toBe(
+      "缺失",
+    );
+    // tender.max_price:mono 路径 + 说明=labels 中文名 + 锚点 code.k(doc·p.X)+查看原文 + num 值 + number 形态 + 已抽取
     const mx = rows[2]!.querySelectorAll("td");
     expect(mx[0]?.textContent?.trim()).toBe("tender.max_price");
     expect(mx[0]?.className).toContain("mono");
-    expect(mx[1]?.textContent).toContain("b.pdf · p.3");
-    expect(mx[1]?.querySelector("code.k")).not.toBeNull();
+    expect(mx[1]?.textContent?.trim()).toBe("招标最高限价");
+    expect(mx[2]?.textContent).toContain("b.pdf · p.3");
+    expect(mx[2]?.querySelector("code.k")).not.toBeNull();
     expect(
-      [...mx[1]!.querySelectorAll("button")].some((b) =>
+      [...mx[2]!.querySelectorAll("button")].some((b) =>
         b.textContent?.includes("查看原文"),
       ),
     ).toBe(true);
-    expect(mx[2]?.textContent).toContain("1,000,000");
-    expect(mx[3]?.textContent?.trim()).toBe("number");
-    expect(mx[4]?.textContent?.trim()).toBe("已抽取");
-    // tender.duration:null → 值格「未在正文定位到」、形态「—」、缺失 pill-gray
-    const dur = rows[1]!.querySelectorAll("td");
-    expect(dur[0]?.textContent?.trim()).toBe("tender.duration");
-    expect(dur[2]?.textContent?.trim()).toBe("未在正文定位到");
-    expect(dur[3]?.textContent?.trim()).toBe("—");
-    expect(dur[4]?.querySelector(".pill-gray")?.textContent?.trim()).toBe(
-      "缺失",
-    );
-    // bid.total_price:冲突行=状态 pill-warn 冲突+值内嵌候选 pill(汇总表 1,000,000)
-    const tp = rows[0]!.querySelectorAll("td");
-    expect(tp[0]?.textContent?.trim()).toBe("bid.total_price");
-    expect(tp[4]?.querySelector(".pill-warn")?.textContent?.trim()).toBe(
-      "冲突",
-    );
-    expect(tp[2]?.textContent).toContain("候选 1,000,000");
+    expect(mx[3]?.textContent).toContain("1,000,000");
+    expect(mx[4]?.textContent?.trim()).toBe("number");
+    expect(mx[5]?.textContent?.trim()).toBe("已抽取");
     // tbl-foot:on_missing_input 原型句式(三值语义防误读)
     expect(bodyHas("on_missing_input: need_human")).toBe(true);
     expect(bodyHas("不计为通过")).toBe(true);

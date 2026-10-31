@@ -9,8 +9,10 @@
  * ③ 解析质量卡 = 原型 s3 扁平 5 列表(文件/页数/识别置信度/状态/说明)+ OCR
  *   兜底整行;B3 页级置信未落地 → 置信格「—」诚实降级,OCR 注记走兜底行,
  *   不伪造页码区间/置信数字;
- * ④ 基准字段抽取卡 = 原型 s3 扁平 5 列表(字段路径/锚点/抽取值/形态/状态)+
- *   hd-right 三 pill(已抽取/冲突/缺失)+ tbl-foot on_missing_input 注。
+ * ④ 基准字段抽取卡 = 原型 s3 扁平表+说明列(字段路径/说明/锚点/抽取值/形态/
+ *   状态;2026-10-31 用户要求:说明列=labels 中文名,无 label 段翻译
+ *   bid.total_price→投标.总价)+hd-right 三 pill(已抽取/冲突/缺失)+
+ *   tbl-foot on_missing_input 注。
  *   裁定 15(2026-10-31 用户纠正):本屏不用基准确认页的字段族 tabs/字段卡
  *   交互形态——归拢只读屏用表,裁定交互仍留基准确认页(冲突行只给候选
  *   pill+「去基准确认」链接,不嵌 radio)。
@@ -33,6 +35,7 @@ import {
   STATUS_PILL_CLASS,
   fieldRows,
   formatVal,
+  pathZh,
 } from "@/extensions/bid-review/components/baselineFields";
 import { DocLocateModal } from "@/extensions/bid-review/components/DocLocateModal";
 import { taskStatusPill } from "@/extensions/bid-review/components/primitives";
@@ -358,6 +361,7 @@ export function ParsingView({ taskId }: { taskId?: string | null }) {
                 <thead>
                   <tr>
                     <th>字段路径</th>
+                    <th>说明</th>
                     <th>锚点</th>
                     <th>抽取值</th>
                     <th>形态</th>
@@ -374,6 +378,7 @@ export function ParsingView({ taskId }: { taskId?: string | null }) {
                         <td className="mono" title={f.label}>
                           {f.path}
                         </td>
+                        <td>{pathZh(f.path, f.label)}</td>
                         <td>
                           {src ? (
                             <>
