@@ -201,6 +201,55 @@ describe("DiffCard", () => {
     expect(retried).toEqual([0]);
   });
 
+  // EAI-CUSTOM (全文操作 M2 终审 I-1): 审查流运行中 actionsDisabled 冻结四钮——
+  // 接受/拒绝（ready footer）+ 重试本节（failed）+ 恢复建议（rejected）。
+  test("actionsDisabled → 接受/拒绝/重试本节/恢复建议 全部禁用（不触发回调）", async () => {
+    const actions: string[] = [];
+    const props = {
+      onApply: (i: number) => actions.push(`apply${i}`),
+      onReject: (i: number) => actions.push(`reject${i}`),
+      onRetry: (i: number) => actions.push(`retry${i}`),
+      onRestore: (i: number) => actions.push(`restore${i}`),
+    };
+    // ready 卡（默认展开）→ 接受/拒绝 禁用
+    const readyHost = await render(
+      <DiffCard section={readySection} actionsDisabled {...props} />,
+    );
+    expect(buttonByText(readyHost, "接受").disabled).toBe(true);
+    expect(buttonByText(readyHost, "拒绝").disabled).toBe(true);
+    await click(buttonByText(readyHost, "接受"));
+    await click(buttonByText(readyHost, "拒绝"));
+    expect(actions).toEqual([]);
+
+    // failed 卡（默认收起 → 展开）→ 重试本节 禁用
+    const failedHost = await render(
+      <DiffCard
+        section={{ ...readySection, status: "failed", error: "boom" }}
+        actionsDisabled
+        {...props}
+      />,
+    );
+    await click(failedHost.querySelector<HTMLButtonElement>("button")!);
+    const retryBtn = buttonByText(failedHost, "重试本节");
+    expect(retryBtn.disabled).toBe(true);
+    await click(retryBtn);
+    expect(actions).toEqual([]);
+
+    // rejected 卡（默认收起 → 展开）→ 恢复建议 禁用
+    const rejectedHost = await render(
+      <DiffCard
+        section={{ ...readySection, status: "rejected" }}
+        actionsDisabled
+        {...props}
+      />,
+    );
+    await click(rejectedHost.querySelector<HTMLButtonElement>("button")!);
+    const restoreBtn = buttonByText(rejectedHost, "恢复建议");
+    expect(restoreBtn.disabled).toBe(true);
+    await click(restoreBtn);
+    expect(actions).toEqual([]);
+  });
+
   test("applied → 已接受 pill；skipped/unchanged → 灰档 pill", async () => {
     for (const [status, label] of [
       ["applied", "已接受"],
@@ -233,11 +282,13 @@ const harnessReducer = (
 function Harness({
   initial,
   busy = false,
+  actionsDisabled,
   spies,
   getSectionText,
 }: {
   initial: DocAITaskState;
   busy?: boolean;
+  actionsDisabled?: boolean;
   spies?: {
     onApplySection?: (i: number) => void;
     onRejectSection?: (i: number) => void;
@@ -251,6 +302,7 @@ function Harness({
     <DocAITaskArea
       task={task}
       busy={busy}
+      actionsDisabled={actionsDisabled}
       undoBlocked={false}
       onApplySection={(i) => {
         spies?.onApplySection?.(i);
@@ -364,6 +416,39 @@ describe("DocAITaskArea（工单）", () => {
     expect(host.textContent).not.toContain("接受全部");
     await click(host.querySelector('button[aria-label="停止任务"]')!);
     expect(cancelled).toEqual([true]);
+  });
+
+  // EAI-CUSTOM (全文操作 M2 终审 I-1): 审查流运行中 actionsDisabled=true 且 busy=false
+  // → header 保持真态（已完成 + 关闭任务区可关），批量条渲染但禁用（保 affordance），
+  // DiffCard 接受/拒绝同步禁用；本任务自己的 busy=true 批量条隐藏行为不变（上一测）。
+  test("actionsDisabled → 批量条渲染但禁用 + 四钮冻结 + header 不说谎", async () => {
+    const applied: number[] = [];
+    const host = await render(
+      <Harness
+        initial={twoSectionState()}
+        actionsDisabled={true}
+        spies={{ onApplySection: (i) => applied.push(i) }}
+      />,
+    );
+    // header 真态：非 busy → 已完成 + 关闭任务区可用
+    expect(host.textContent).toContain("已完成");
+    expect(
+      host.querySelector('button[aria-label="关闭任务区"]'),
+    ).not.toBeNull();
+    // 批量条渲染（affordance 保留）但两钮禁用
+    expect(host.textContent).toContain("接受全部（1）");
+    const applyAll = Array.from(host.querySelectorAll("button")).find((b) =>
+      b.textContent?.startsWith("接受全部"),
+    )!;
+    expect(applyAll.disabled).toBe(true);
+    const undoBtn = buttonByText(host, "撤销整批");
+    expect(undoBtn.disabled).toBe(true);
+    // DiffCard 接受/拒绝禁用且不触发回调
+    expect(buttonByText(host, "接受").disabled).toBe(true);
+    expect(buttonByText(host, "拒绝").disabled).toBe(true);
+    await click(buttonByText(host, "接受"));
+    await click(applyAll);
+    expect(applied).toEqual([]);
   });
 
   test("streaming 节 → 正在处理 计划行", async () => {

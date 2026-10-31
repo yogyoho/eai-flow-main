@@ -271,12 +271,14 @@ describe("DocAIAgentPanel v2 空态（方案三）", () => {
     ).toBe("true");
   });
 
-  // EAI-CUSTOM (全文操作 M2 复审 I-1): busy 互跨禁用——审查运行中改写任务卡收到
-  // busy=true（批量栏 !busy 门控即冻结）；改写运行中审查区收到 actionsDisabled=true。
-  it("busy 互跨禁用：审查运行中冻结任务卡；改写运行中冻结审查区", async () => {
+  // EAI-CUSTOM (全文操作 M2 终审 I-1): busy 互跨禁用（对称 actionsDisabled 模式）——
+  // 审查运行中任务卡收到 actionsDisabled=true 而 busy=false（header 不说谎）；
+  // 改写运行中审查区收到 actionsDisabled=true。双向不寄生 busy。
+  it("busy 互跨禁用：审查运行中 actionsDisabled 冻结任务卡；改写运行中冻结审查区", async () => {
     m.reviewBusy = true;
     let r = render(<DocAIAgentPanel {...baseProps(makeEditorRef())} />);
-    expect(m.capturedTask?.busy).toBe(true);
+    expect(m.capturedTask?.busy).toBe(false);
+    expect(m.capturedTask?.actionsDisabled).toBe(true);
     expect(m.capturedReview?.busy).toBe(true);
     expect(m.capturedReview?.actionsDisabled).toBe(false);
     r.unmount();
@@ -285,7 +287,9 @@ describe("DocAIAgentPanel v2 空态（方案三）", () => {
     m.reviewBusy = false;
     r = render(<DocAIAgentPanel {...baseProps(makeEditorRef())} />);
     expect(m.capturedReview?.actionsDisabled).toBe(true);
+    expect(m.capturedReview?.busy).toBe(false);
     expect(m.capturedTask?.busy).toBe(true);
+    expect(m.capturedTask?.actionsDisabled).toBe(false);
     r.unmount();
   });
 });

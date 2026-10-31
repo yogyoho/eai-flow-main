@@ -591,6 +591,7 @@ const DIFF_LINE_PREFIX: Record<DiffLine["type"], string> = {
 export function DiffCard({
   section,
   oldText,
+  actionsDisabled,
   onApply,
   onReject,
   onRetry,
@@ -599,6 +600,8 @@ export function DiffCard({
   section: TaskSection;
   /** 旧节文本（父层经 getSectionText 解析锚点后取得）；空/缺省时 ready 态退化为新内容预览。 */
   oldText?: string;
+  /** EAI-CUSTOM (全文操作 M2 终审 I-1): 审查流运行中冻结接受/拒绝/重试/恢复四钮。 */
+  actionsDisabled?: boolean;
   onApply: (index: number) => void;
   onReject: (index: number) => void;
   onRetry: (index: number) => void;
@@ -687,7 +690,8 @@ export function DiffCard({
               <button
                 type="button"
                 onClick={() => onRetry(index)}
-                className="border-border/60 text-primary hover:bg-primary/5 rounded border px-2 py-1"
+                disabled={actionsDisabled}
+                className="border-border/60 text-primary hover:bg-primary/5 rounded border px-2 py-1 disabled:cursor-not-allowed disabled:opacity-40"
               >
                 重试本节
               </button>
@@ -697,7 +701,8 @@ export function DiffCard({
             <button
               type="button"
               onClick={() => onRestore(index)}
-              className="border-border/60 text-muted-foreground hover:bg-muted rounded border px-2 py-1"
+              disabled={actionsDisabled}
+              className="border-border/60 text-muted-foreground hover:bg-muted rounded border px-2 py-1 disabled:cursor-not-allowed disabled:opacity-40"
             >
               恢复建议
             </button>
@@ -709,14 +714,16 @@ export function DiffCard({
           <button
             type="button"
             onClick={() => onApply(index)}
-            className="bg-primary text-primary-foreground hover:bg-primary/90 flex-1 py-1.5 font-medium"
+            disabled={actionsDisabled}
+            className="bg-primary text-primary-foreground hover:bg-primary/90 flex-1 py-1.5 font-medium disabled:cursor-not-allowed disabled:opacity-40"
           >
             接受
           </button>
           <button
             type="button"
             onClick={() => onReject(index)}
-            className="border-border/60 text-muted-foreground hover:bg-muted flex-1 border-l py-1.5"
+            disabled={actionsDisabled}
+            className="border-border/60 text-muted-foreground hover:bg-muted flex-1 border-l py-1.5 disabled:cursor-not-allowed disabled:opacity-40"
           >
             拒绝
           </button>
@@ -839,6 +846,7 @@ export function DocAITaskArea({
   task,
   busy,
   undoBlocked,
+  actionsDisabled,
   onApplySection,
   onApplyAll,
   onUndoAll,
@@ -853,6 +861,10 @@ export function DocAITaskArea({
   task: DocAITaskState;
   busy: boolean;
   undoBlocked: boolean;
+  /** EAI-CUSTOM (全文操作 M2 终审 I-1): 审查流运行中冻结逐节四钮+批量条两钮（与
+   * DocAIReviewArea.actionsDisabled 对称）；缺省 undefined = M1 行为零变化——busy
+   * 只表本任务流，不寄生跨通道状态（header 保持真态）。 */
+  actionsDisabled?: boolean;
   onApplySection: (index: number) => void;
   onApplyAll: () => void;
   onUndoAll: () => void;
@@ -936,6 +948,7 @@ export function DocAITaskArea({
               key={s.index}
               section={s}
               oldText={oldTextFor(s)}
+              actionsDisabled={actionsDisabled}
               onApply={onApplySection}
               onReject={onRejectSection ?? (() => undefined)}
               onRetry={onRetrySection}
@@ -949,7 +962,7 @@ export function DocAITaskArea({
               <button
                 type="button"
                 onClick={onApplyAll}
-                disabled={readyCount === 0}
+                disabled={readyCount === 0 || actionsDisabled}
                 className="bg-primary text-primary-foreground hover:bg-primary/90 flex-1 rounded-md py-1.5 text-xs font-medium disabled:cursor-not-allowed disabled:opacity-40"
               >
                 接受全部（{readyCount}）
@@ -957,7 +970,7 @@ export function DocAITaskArea({
               <button
                 type="button"
                 onClick={onUndoAll}
-                disabled={appliedCount === 0 || undoBlocked}
+                disabled={appliedCount === 0 || undoBlocked || actionsDisabled}
                 className="border-border/60 text-muted-foreground hover:bg-muted hover:text-foreground rounded-md border px-3 py-1.5 text-xs disabled:cursor-not-allowed disabled:opacity-40"
               >
                 撤销整批

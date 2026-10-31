@@ -1342,9 +1342,10 @@ export default function DocAIAgentPanel({
       {docTask.state && (
         <DocAITaskArea
           task={docTask.state}
-          // EAI-CUSTOM (全文操作 M2 复审 I-1): busy 互跨——审查流运行中也冻结改写
-          // 任务卡（批量栏 !busy 门控），反向由审查区 actionsDisabled={docTask.busy} 承担。
-          busy={taskBusy}
+          // EAI-CUSTOM (全文操作 M2 终审 I-1): busy 不寄生跨通道状态（header 保持真态），
+          // 审查流运行中的冻结走对称的 actionsDisabled（DiffCard 四钮+批量条两钮）。
+          busy={docTask.busy}
+          actionsDisabled={review.busy}
           undoBlocked={docTask.undoBlocked}
           onApplySection={docTask.applySection}
           onApplyAll={docTask.applyAll}
