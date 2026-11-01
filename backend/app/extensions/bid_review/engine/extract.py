@@ -44,6 +44,8 @@ FIELD_DICTIONARY: frozenset[str] = frozenset(
         "bid.amount_occurrences",
         # B4 评分覆盖度(spec §5):评分办法项清单,项携带 related_paths 供覆盖求交
         "tender.scoring_items",
+        # B9 响应偏离表(spec 2026-11-01 §1.1):抽取期 LLM 逐条对照招标要求↔投标响应
+        "deviation.items",
     }
 )
 
@@ -70,6 +72,16 @@ FIELD_TYPE_CONTRACTS["tender.scoring_items"] = (
     '[{name:"评分项名称", max_score:分数数字, related_paths:[与该项相关的字段路径]}] 数组;'
     "逐项列出评分办法的全部评分项;related_paths 只从待抽取字段路径清单里选真实相关的,"
     "没有就不给;禁止编造评分项。"
+)
+# B9 响应偏离表(spec 2026-11-01 §1.1):逐条对照契约——五值 kind 对应前端五色 pill;
+# missing=漏项(致命),extra=擅自增项(主要);原文只抄不编。
+FIELD_TYPE_CONTRACTS["deviation.items"] = (
+    '[{"item":"条目名","tender_req":"招标要求原文或null","bid_response":"投标响应原文或null",'
+    '"kind":"match|positive|negative|missing|extra","severity":"fatal|major|minor|null",'
+    '"evidence":{"role":"tender|bid","quote":"原文摘录","page":页码或null}}] 数组;'
+    "逐条列出招标要求与投标响应对照(一致项也列,kind=match);missing=招标有而投标未响应(漏项,severity=fatal);"
+    "extra=投标自行增报招标清单外(severity=major);negative=负偏离(劣于要求,severity=主要major/次要minor);"
+    "positive=正偏离(优于要求);tender_req/bid_response/evidence.quote 只抄材料原文,禁止编造;没有可比对条目时给空数组。"
 )
 
 # 提取函数契约:docs(解析后文档列表 {doc_id, role, text})+ field_paths →

@@ -92,7 +92,7 @@ def test_collect_paths_cover_m1_dictionary():
     paths = collect_field_paths()
     assert {"bid.total_price", "tender.max_price", "tender.boq_items"} <= set(paths)
     assert paths == sorted(paths)
-    assert all(p.split(".", 1)[0] in {"tender", "bid", "project"} for p in paths)
+    assert all(p.split(".", 1)[0] in {"tender", "bid", "project", "deviation"} for p in paths)  # deviation=B9 偏离对照维度(2026-11-01 spec §1.1)
 
 
 def test_prompt_skeleton_transcribed():
@@ -291,7 +291,22 @@ def test_build_baseline_legacy_fn_still_works():
 
 def test_lot_section_in_field_paths():
     """裁定12:标段入基础字段字典(提取 prompt 自动可见)+labels 中文名。"""
-    from app.extensions.bid_review.engine import extract as extract_mod, labels
+    from app.extensions.bid_review.engine import extract as extract_mod
+    from app.extensions.bid_review.engine import labels
 
     assert "tender.project_identity.lot_section" in extract_mod.collect_field_paths()
     assert labels.FIELD_LABELS["tender.project_identity.lot_section"] == "标段"
+
+
+def test_deviation_items_field_contract():
+    """B9 响应偏离表(spec 2026-11-01 §1.1):deviation.items 入字段字典+五值 kind 类型契约+中文名+prompt 可见。"""
+    from app.extensions.bid_review.engine import extract as extract_mod
+    from app.extensions.bid_review.engine import labels
+
+    assert "deviation.items" in extract_mod.collect_field_paths()
+    contract = extract_mod.FIELD_TYPE_CONTRACTS["deviation.items"]
+    for needle in ("tender_req", "bid_response", "match", "positive", "negative", "missing", "extra", "severity", "evidence", "禁止编造"):
+        assert needle in contract, f"契约缺关键词: {needle}"
+    assert labels.FIELD_LABELS["deviation.items"] == "响应偏离表"
+    prompt = extract_mod.build_extract_prompt(FAKE_DOCS, ["deviation.items"])
+    assert any(ln.startswith("- deviation.items") and "类型:" in ln for ln in prompt.splitlines()), "prompt 字段行缺类型契约"

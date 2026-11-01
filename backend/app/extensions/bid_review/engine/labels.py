@@ -32,6 +32,7 @@ FIELD_LABELS: dict[str, str] = {
     "tender.tenderee_name": "招标人名称",
     "tender.device_models": "招标设备型号要求",
     "tender.scoring_items": "评分办法项",  # B4 评分覆盖度(spec §5)
+    "deviation.items": "响应偏离表",  # B9(spec 2026-11-01 §1.1)
     # ── bid(投标响应)───────────────────────────────────────────────
     "bid.total_price": "投标总报价",
     "bid.total_price_words": "总报价大写金额",
