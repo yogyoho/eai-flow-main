@@ -35,7 +35,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.extensions.auth.middleware import require_permission
 from app.extensions.bid_review import crud, parse, worker
-from app.extensions.bid_review.engine.extract import apply_adjudications, detect_conflicts
+from app.extensions.bid_review.engine.extract import apply_adjudications, compute_score_coverage, detect_conflicts
 from app.extensions.bid_review.engine.labels import FIELD_LABELS
 from app.extensions.bid_review.models import ReviewFeedback, ReviewIssue, RulePackMeta
 from app.extensions.bid_review.schemas import AdjudicateIn, FeedbackIn, IssueOut, TaskOut
@@ -616,6 +616,36 @@ async def diff_task(
         "removed": [{"rule_id": i.rule_id, "severity": i.severity, "message": i.message} for i in removed],
         "unchanged_count": len(cur_keys & old_keys),
     }
+
+
+@router.get("/tasks/{task_id}/score_coverage")
+async def task_score_coverage(
+    task_id: str,
+    db: AsyncSession = Depends(get_db),
+    owner_id: str = Depends(current_owner),
+):
+    """评分覆盖度(spec §5 B4):基线评分办法项 × 生产规则包 inputs 机械求交。
+    评分办法项由抽取层落 baseline fields.tender.scoring_items(项携带
+    related_paths,限定字段字典路径);基线每行携带同全量快照 → 逐行收集后按
+    name 去重。旧任务/未抽出评分项 → {total:0, covered:0, items:[]}(前端据此
+    回落「规则命中」meter 现状口径,spec §4.5 line 117)。"""
+    task = await crud.get_task(db, task_id=task_id, owner_id=owner_id)
+    if task is None:
+        raise HTTPException(status_code=404, detail="任务不存在")
+    baselines = await crud.list_baselines(db, task_id=task_id, owner_id=owner_id)
+    raw_items: list[dict] = []
+    seen_names: set[str] = set()
+    for row in baselines:
+        for item in (row.payload or {}).get("fields", {}).get("tender.scoring_items") or []:
+            if isinstance(item, dict) and str(item.get("name") or "").strip() not in seen_names:
+                name = str(item.get("name") or "").strip()
+                if name:
+                    seen_names.add(name)
+                    raw_items.append(item)
+    if not raw_items:
+        return {"total": 0, "covered": 0, "items": []}
+    pack = worker.load_rulepack(worker.RULEPACK_PATH)
+    return compute_score_coverage(raw_items, pack.rules)
 
 
 # ── 规则包端点 ────────────────────────────────────────────────────────

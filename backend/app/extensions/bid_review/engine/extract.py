@@ -42,6 +42,8 @@ FIELD_DICTIONARY: frozenset[str] = frozenset(
         "bid.duration_commitment_letter",
         # L3-006 金额全文一致
         "bid.amount_occurrences",
+        # B4 评分覆盖度(spec §5):评分办法项清单,项携带 related_paths 供覆盖求交
+        "tender.scoring_items",
     }
 )
 
@@ -62,6 +64,13 @@ FIELD_TYPE_CONTRACTS: dict[str, str] = {
         "tender.min_warranty_period",
     )
 }
+# B4 评分覆盖度(spec §5):评分办法项结构契约——related_paths 只允许从「待抽取字段路径」
+# 清单里选(与规则 inputs 同源,覆盖求交才有意义);项目级主观评分维度查不到对应字段就别硬选。
+FIELD_TYPE_CONTRACTS["tender.scoring_items"] = (
+    '[{name:"评分项名称", max_score:分数数字, related_paths:[与该项相关的字段路径]}] 数组;'
+    "逐项列出评分办法的全部评分项;related_paths 只从待抽取字段路径清单里选真实相关的,"
+    "没有就不给;禁止编造评分项。"
+)
 
 # 提取函数契约:docs(解析后文档列表 {doc_id, role, text})+ field_paths →
 # {"fields": {路径: 值}, "provenance": {路径: {doc_id, page, quote}}}(EAI-CUSTOM
@@ -273,6 +282,36 @@ def shard_docs(docs: list[dict], cap: int = SHARD_CHARS) -> list[list[dict]]:
 def materials_hash(fields: dict[str, Any]) -> str:
     """sha1(字段快照 JSON,sort_keys + ensure_ascii=False)——同一快照逐字节稳定(det 零漂移门的前置)。"""
     return hashlib.sha1(json.dumps(fields, sort_keys=True, ensure_ascii=False, default=str).encode("utf-8")).hexdigest()
+
+
+def compute_score_coverage(scoring_items: list, rules) -> dict:
+    """B4 评分覆盖度(spec §5):评分办法项 × 启用规则 inputs 机械求交。
+
+    item.related_paths(抽取层限定为字段字典路径,与规则 inputs 同源)与规则
+    inputs 的交集非空即覆盖——映射可审计,不靠语义猜。related_paths 缺失/全未知
+    路径 → 该项未覆盖(诚实:映射不来就别装覆盖);非 dict 项与无名项丢弃,不进
+    计数。rules 取鸭子类型(id/inputs/enabled),便于测试与规则包形态演进。
+    """
+    rule_inputs = [
+        (str(getattr(r, "id", "?")), {p for p in getattr(r, "inputs", []) or [] if isinstance(p, str)})
+        for r in rules
+        if getattr(r, "enabled", True)
+    ]
+    items_out: list[dict] = []
+    for item in scoring_items:
+        if not isinstance(item, dict):
+            continue
+        name = str(item.get("name") or "").strip()
+        if not name:
+            continue
+        related = {p for p in item.get("related_paths") or [] if isinstance(p, str)}
+        covered_by = [rid for rid, inputs in rule_inputs if related & inputs]
+        items_out.append({"name": name, "max_score": item.get("max_score"), "covered_by_rules": covered_by})
+    return {
+        "total": len(items_out),
+        "covered": sum(1 for i in items_out if i["covered_by_rules"]),
+        "items": items_out,
+    }
 
 
 def build_extract_prompt(docs: list[dict], field_paths: list[str]) -> str:
