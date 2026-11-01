@@ -648,6 +648,33 @@ async def task_score_coverage(
     return compute_score_coverage(raw_items, pack.rules)
 
 
+@router.post("/tasks/{task_id}/retry", response_model=TaskOut)
+async def retry_task(
+    task_id: str,
+    db: AsyncSession = Depends(get_db),
+    owner_id: str = Depends(current_owner),
+):
+    """重试解析(spec §4.1 B8,任务列表操作列):仅 failed 终态可重试——终态
+    done/awaiting_confirm 不复活、created/在途不双跑(409),不存在/属他者 404。
+    重试 = error 清空 + infra_attempts 归零(手动重试给全新预算,不继承自动失败
+    链计数)+ 回 created + _enqueue_docs 后台直推。解析幂等:失败文档条目仍是
+    raw,重入 parsing 只补解析失败文档,已解析条目不重复跑 OCR(worker.advance_task
+    仅解析 status=="raw" 条目)。"""
+    task = await crud.get_task(db, task_id=task_id, owner_id=owner_id)
+    if task is None:
+        raise HTTPException(status_code=404, detail="任务不存在")
+    if task.status != "failed":
+        raise HTTPException(status_code=409, detail="仅失败任务可重试")
+    meta = dict(task.engine_meta or {})
+    meta["infra_attempts"] = 0
+    task.engine_meta = meta  # 重新赋值以标记 JSON 列 dirty
+    task.error = None
+    await crud.set_status(db, task, "created", progress={"stage": "parsing", "pct": 0, "msg": "手动重试,重新解析"})
+    _enqueue_docs(task, [])
+    await db.refresh(task)
+    return task
+
+
 # ── 规则包端点 ────────────────────────────────────────────────────────
 
 
