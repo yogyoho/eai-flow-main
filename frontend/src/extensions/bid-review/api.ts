@@ -99,11 +99,56 @@ export interface DiffAdded {
   need_human: boolean;
 }
 
-/** GET /tasks/{id}/diff?prev= 响应(B7 版本三态;匹配键=dedup_key)。 */
+/** GET /tasks/{id}/diff?prev= 响应(B7 版本三态;匹配键=dedup_key)。B10 整屏扩展
+ * (spec 2026-11-01 §2.1):fields=两版基线逐路径差异对;rules=问题按 rule_id 归并
+ * (present=非误报;severity 最严)。旧网关响应缺两键 → 可选字段,消费方兜底。 */
+export interface BidDiffFieldRow {
+  path: string;
+  label: string;
+  prev: unknown;
+  cur: unknown;
+}
+
+export interface BidDiffRuleSide {
+  present: boolean;
+  severity: string | null;
+}
+
+export interface BidDiffRuleRow {
+  rule_id: string;
+  prev: BidDiffRuleSide;
+  cur: BidDiffRuleSide;
+}
+
 export interface BidDiffOut {
   added: DiffAdded[];
   removed: { rule_id: string; severity: string; message: string }[];
   unchanged_count: number;
+  fields?: BidDiffFieldRow[];
+  rules?: BidDiffRuleRow[];
+}
+
+/** GET /tasks/{id}/deviations 行(B9 spec §1.1:抽取期 LLM 逐条对照,结构原样透传)。 */
+export interface BidDeviationItem {
+  item: string;
+  tender_req: string | null;
+  bid_response: string | null;
+  kind: "match" | "positive" | "negative" | "missing" | "extra" | string;
+  severity: "fatal" | "major" | "minor" | null;
+  evidence: { role: string; quote: string; page: number | null } | null;
+}
+
+/** GET /tasks/{id}/deviations 响应(B9 §1.2):counts 服务端算;旧任务零投影
+ * counts 全 0 + items 空(诚实,不装数据)。 */
+export interface BidDeviationsOut {
+  counts: {
+    tender_items: number;
+    bid_items: number;
+    negative: number;
+    missing: number;
+    extra: number;
+  };
+  items: BidDeviationItem[];
 }
 
 /** GET /tasks/{id}/score_coverage 行(B4 spec §5):评分办法项 × 启用规则 inputs 求交。 */
@@ -138,6 +183,8 @@ export function createTask(
     project_name?: string | null;
     lot_name?: string | null;
     tender_no?: string | null;
+    /** B10 版本链(spec §2.3):对比基准任务;空串/null 不 append。 */
+    prev_task_id?: string | null;
   },
 ): Promise<TaskOut> {
   const form = new FormData();
@@ -148,6 +195,8 @@ export function createTask(
     form.set("lot_name", identity.lot_name.trim());
   if (identity?.tender_no?.trim())
     form.set("tender_no", identity.tender_no.trim());
+  if (identity?.prev_task_id?.trim())
+    form.set("prev_task_id", identity.prev_task_id.trim());
   for (const f of files.tender) form.append("tender_files", f);
   for (const f of files.bid) form.append("bid_files", f);
   return request<TaskOut>("/tasks", { method: "POST", body: form });
@@ -171,6 +220,11 @@ export function fetchTaskDiff(
 /** GET /tasks/{id}/score_coverage —— B4 评分覆盖度(/results 规则执行卡 meter 升级)。 */
 export function fetchScoreCoverage(taskId: string): Promise<ScoreCoverageOut> {
   return request<ScoreCoverageOut>(`/tasks/${taskId}/score_coverage`);
+}
+
+/** GET /tasks/{id}/deviations —— B9 响应偏离表(spec 2026-11-01 §1.2)。 */
+export function fetchDeviations(taskId: string): Promise<BidDeviationsOut> {
+  return request<BidDeviationsOut>(`/tasks/${taskId}/deviations`);
 }
 
 /** GET /tasks/{id}/confirm —— 确认门(仅 UI):基线全量翻转 confirmed;

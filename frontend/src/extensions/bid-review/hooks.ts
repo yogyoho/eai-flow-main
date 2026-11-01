@@ -15,6 +15,7 @@ import {
   confirmTask,
   feedbackIssue,
   fetchBaselines,
+  fetchDeviations,
   fetchTaskDiff,
   getTask,
   fetchBidTrends,
@@ -36,6 +37,8 @@ export const bidReviewKeys = {
     ["bid-review", "diff", taskId, prevId] as const,
   scoreCoverage: (taskId: string) =>
     ["bid-review", "scoreCoverage", taskId] as const,
+  deviations: (taskId: string) =>
+    ["bid-review", "deviations", taskId] as const,
   baselines: (taskId: string) => ["bid-review", "baselines", taskId] as const,
   rulepacks: ["bid-review", "rulepacks"] as const,
   ruleExprs: (name: string) => ["bid-review", "ruleExprs", name] as const,
@@ -104,6 +107,16 @@ export function useBidScoreCoverage(taskId: string | null | undefined) {
   return useQuery({
     queryKey: bidReviewKeys.scoreCoverage(taskId ?? ""),
     queryFn: () => fetchScoreCoverage(taskId!),
+    enabled: Boolean(taskId),
+  });
+}
+
+/** GET /tasks/{id}/deviations —— B9 响应偏离表(spec 2026-11-01 §1.2);旧任务
+ * 零投影(counts 全 0 + items 空),调用方据此渲染「未包含偏离维度」空态。 */
+export function useBidDeviations(taskId: string | null | undefined) {
+  return useQuery({
+    queryKey: bidReviewKeys.deviations(taskId ?? ""),
+    queryFn: () => fetchDeviations(taskId!),
     enabled: Boolean(taskId),
   });
 }
