@@ -20,6 +20,7 @@ import {
   fetchBidTrends,
   fetchFailAttribution,
   fetchRuleExprs,
+  fetchScoreCoverage,
   listRulepacks,
   listTaskIssues,
   listTasks,
@@ -32,6 +33,8 @@ export const bidReviewKeys = {
   issues: (taskId: string) => ["bid-review", "issues", taskId] as const,
   diff: (taskId: string, prevId: string) =>
     ["bid-review", "diff", taskId, prevId] as const,
+  scoreCoverage: (taskId: string) =>
+    ["bid-review", "scoreCoverage", taskId] as const,
   baselines: (taskId: string) => ["bid-review", "baselines", taskId] as const,
   rulepacks: ["bid-review", "rulepacks"] as const,
   ruleExprs: (name: string) => ["bid-review", "ruleExprs", name] as const,
@@ -91,6 +94,16 @@ export function useBidDiff(
     queryKey: bidReviewKeys.diff(taskId ?? "", prevTaskId ?? ""),
     queryFn: () => fetchTaskDiff(taskId!, prevTaskId!),
     enabled: Boolean(taskId && prevTaskId),
+  });
+}
+
+/** GET /tasks/{id}/score_coverage —— B4 评分覆盖度(spec §5);旧任务返回
+ * total=0 零投影(诚实:未抽出评分项就不装覆盖),调用方据此回落「规则命中」。 */
+export function useBidScoreCoverage(taskId: string | null | undefined) {
+  return useQuery({
+    queryKey: bidReviewKeys.scoreCoverage(taskId ?? ""),
+    queryFn: () => fetchScoreCoverage(taskId!),
+    enabled: Boolean(taskId),
   });
 }
 

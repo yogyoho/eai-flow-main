@@ -318,4 +318,102 @@ describe("bid-review ResultsView 证据管线(EAI-CUSTOM 2026-10-30)", () => {
     expect(screen.queryByRole("button", { name: "对比上一版本" })).toBeNull();
     expect(calls.filter((c) => c.path.includes("/diff")).length).toBe(0);
   });
+
+  it("B4 评分覆盖:数据在 → 规则执行卡 meter 升级「评分覆盖度」(total/covered 直出)", async () => {
+    responder = (path) => {
+      if (path.endsWith("/tasks/t1/issues")) return jsonRes({ items: [ISSUE] });
+      if (path.endsWith("/tasks/t1")) return jsonRes(TASK);
+      if (path.endsWith("/rulepacks"))
+        return jsonRes({
+          items: [
+            {
+              name: "bid-review-core",
+              version: "1.0.0",
+              rule_count: 2,
+              enabled: true,
+              stats: {},
+              rules: [
+                {
+                  id: "L1-009",
+                  name: "总价不超限价",
+                  layer: "L1",
+                  severity: "fatal",
+                  type: "deterministic",
+                },
+                {
+                  id: "L3-005",
+                  name: "工期三处一致",
+                  layer: "L3",
+                  severity: "major",
+                  type: "semantic",
+                },
+              ],
+            },
+          ],
+        });
+      if (path.endsWith("/tasks/t1/score_coverage"))
+        return jsonRes({
+          total: 4,
+          covered: 3,
+          items: [
+            { name: "价格分", max_score: 50, covered_by_rules: ["L1-009"] },
+            { name: "方案分", max_score: 30, covered_by_rules: [] },
+          ],
+        });
+      return jsonRes({}, 404);
+    };
+    renderWorkbench();
+    await screen.findByText("审查结果");
+    // 规则执行卡:评分覆盖度行替换规则命中行(spec §4.5 line 117),75% + 已覆盖注
+    expect(await screen.findByText("评分覆盖度")).toBeTruthy();
+    expect(screen.queryByText("规则命中")).toBeNull();
+    expect(document.body.textContent).toContain("评分办法 4 项已覆盖 3");
+    expect(document.body.textContent).toContain("75%");
+    // 口径注:未覆盖 ≠ 审错
+    expect(document.body.textContent).toContain("未覆盖不代表审错");
+  });
+
+  it("B4 评分覆盖:旧任务 total=0 → 回落「规则命中」meter 现状口径", async () => {
+    responder = (path) => {
+      if (path.endsWith("/tasks/t1/issues")) return jsonRes({ items: [ISSUE] });
+      if (path.endsWith("/tasks/t1")) return jsonRes(TASK);
+      if (path.endsWith("/rulepacks"))
+        return jsonRes({
+          items: [
+            {
+              name: "bid-review-core",
+              version: "1.0.0",
+              rule_count: 2,
+              enabled: true,
+              stats: {},
+              rules: [
+                {
+                  id: "L1-009",
+                  name: "总价不超限价",
+                  layer: "L1",
+                  severity: "fatal",
+                  type: "deterministic",
+                },
+                {
+                  id: "L3-005",
+                  name: "工期三处一致",
+                  layer: "L3",
+                  severity: "major",
+                  type: "semantic",
+                },
+              ],
+            },
+          ],
+        });
+      if (path.endsWith("/tasks/t1/score_coverage"))
+        return jsonRes({ total: 0, covered: 0, items: [] });
+      return jsonRes({}, 404);
+    };
+    renderWorkbench();
+    await screen.findByText("审查结果");
+    // 回落:ISSUE 命中 L1-009 → 1/2 = 50%
+    expect(await screen.findByText("规则命中")).toBeTruthy();
+    expect(screen.queryByText("评分覆盖度")).toBeNull();
+    expect(document.body.textContent).toContain("命中 1 / 2 条");
+  });
 });

@@ -64,6 +64,7 @@ import {
   useBidFeedback,
   useBidIssues,
   useBidRulepacks,
+  useBidScoreCoverage,
   useBidTask,
 } from "@/extensions/bid-review/hooks";
 import { type IssueOut } from "@/extensions/bid-review/types";
@@ -294,6 +295,9 @@ export function ResultsView({ taskId }: { taskId?: string | null }) {
     diffOpen ? taskId : null,
     diffOpen ? (taskQuery.data?.prev_task_id ?? null) : null,
   );
+  // B4 评分覆盖度(spec §5/§4.5):旧任务 total=0 → 回落「规则命中」meter 现状口径
+  const coverageQuery = useBidScoreCoverage(enabled ? taskId : null);
+  const coverage = coverageQuery.data ?? null;
   const feedback = useBidFeedback();
   // 规则名/类型映射(2026-10-30 用户反馈+原型对齐)——GET /rulepacks 联表:
   // 名称作问题卡标题,类型(det/engine)作灰 pill(原型 s5 头部三 pill 结构)。
@@ -970,33 +974,60 @@ export function ResultsView({ taskId }: { taskId?: string | null }) {
                       )}
                     </td>
                   </tr>
-                  <tr>
-                    <td>规则命中</td>
-                    <td className="r">
-                      <span className="meter">
-                        <i
-                          style={{
-                            width: `${ruleExec.total ? Math.round((ruleExec.hitRules / ruleExec.total) * 100) : 0}%`,
-                          }}
-                        />
-                      </span>
-                      <span className="num">
-                        {ruleExec.total
-                          ? Math.round(
-                              (ruleExec.hitRules / ruleExec.total) * 100,
-                            )
-                          : 0}
-                        %
-                      </span>
-                    </td>
-                    <td className="r" style={{ color: "var(--text-3)" }}>
-                      命中 {ruleExec.hitRules} / {ruleExec.total} 条
-                    </td>
-                  </tr>
+                  {(coverage?.total ?? 0) > 0 && coverage ? (
+                    <tr>
+                      <td>评分覆盖度</td>
+                      <td className="r">
+                        <span className="meter">
+                          <i
+                            style={{
+                              width: `${Math.round((coverage.covered / coverage.total) * 100)}%`,
+                            }}
+                          />
+                        </span>
+                        <span className="num">
+                          {Math.round(
+                            (coverage.covered / coverage.total) * 100,
+                          )}
+                          %
+                        </span>
+                      </td>
+                      <td className="r" style={{ color: "var(--text-3)" }}>
+                        评分办法 {coverage.total} 项已覆盖 {coverage.covered}
+                      </td>
+                    </tr>
+                  ) : (
+                    <tr>
+                      <td>规则命中</td>
+                      <td className="r">
+                        <span className="meter">
+                          <i
+                            style={{
+                              width: `${ruleExec.total ? Math.round((ruleExec.hitRules / ruleExec.total) * 100) : 0}%`,
+                            }}
+                          />
+                        </span>
+                        <span className="num">
+                          {ruleExec.total
+                            ? Math.round(
+                                (ruleExec.hitRules / ruleExec.total) * 100,
+                              )
+                            : 0}
+                          %
+                        </span>
+                      </td>
+                      <td className="r" style={{ color: "var(--text-3)" }}>
+                        命中 {ruleExec.hitRules} / {ruleExec.total} 条
+                      </td>
+                    </tr>
+                  )}
                 </tbody>
               </table>
               <div className="tbl-foot">
                 口径:待人工计未完成;静默跳过(on_missing_input=skip)不区分
+                {(coverage?.total ?? 0) > 0
+                  ? ";评分覆盖度 = 评分办法项相关字段与启用规则判定输入的交集,未覆盖不代表审错——规则包未设该维度规则"
+                  : ""}
               </div>
             </div>
           ) : null}

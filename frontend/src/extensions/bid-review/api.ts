@@ -106,6 +106,20 @@ export interface BidDiffOut {
   unchanged_count: number;
 }
 
+/** GET /tasks/{id}/score_coverage 行(B4 spec §5):评分办法项 × 启用规则 inputs 求交。 */
+export interface ScoreCoverageItem {
+  name: string;
+  max_score: number | null;
+  covered_by_rules: string[];
+}
+
+/** GET /tasks/{id}/score_coverage 响应(B4;total=0 = 旧任务未抽出评分项,前端回落「规则命中」meter)。 */
+export interface ScoreCoverageOut {
+  total: number;
+  covered: number;
+  items: ScoreCoverageItem[];
+}
+
 /** GET /tasks —— 任务列表(owner 过滤由后端完成;响应 {items: TaskOut[]},拆包返回)。 */
 export function listTasks(): Promise<TaskOut[]> {
   return request<{ items: TaskOut[] }>("/tasks").then((r) => r.items);
@@ -152,6 +166,11 @@ export function fetchTaskDiff(
   return request<BidDiffOut>(
     `/tasks/${taskId}/diff?prev=${encodeURIComponent(prevTaskId)}`,
   );
+}
+
+/** GET /tasks/{id}/score_coverage —— B4 评分覆盖度(/results 规则执行卡 meter 升级)。 */
+export function fetchScoreCoverage(taskId: string): Promise<ScoreCoverageOut> {
+  return request<ScoreCoverageOut>(`/tasks/${taskId}/score_coverage`);
 }
 
 /** GET /tasks/{id}/confirm —— 确认门(仅 UI):基线全量翻转 confirmed;
