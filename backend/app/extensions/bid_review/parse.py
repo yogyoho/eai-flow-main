@@ -244,6 +244,41 @@ def _parse_text_sync(data: bytes) -> list[dict]:
     return blocks
 
 
+def derive_parse_confidence(segs: list[dict]) -> dict:
+    """B3 解析置信(EAI-CUSTOM 2026-11-01,spec §5):文档级 confidence = 无损解析
+    字符占比——text/table 段为解析器直取(无损),ocr 段为图片转写(拉低占比)。
+    这是可解释的派生口径,非 OCR 引擎自报分数(builtin/openai-vision 两通道均不
+    回传分数,不伪造页级数字);low_conf_pages = OCR 空文本页段(识别失败,置信按
+    0 记,连续页合并区间);docx 内嵌图无页边界,失败张数走 parse_note。"""
+    lossless = sum(len(s.get("text") or "") for s in segs if s.get("kind") in ("text", "table"))
+    ocr = sum(len(s.get("text") or "") for s in segs if s.get("kind") == "ocr")
+    total = lossless + ocr
+    confidence = round(lossless / total, 2) if total > 0 else (0.0 if segs else None)
+
+    low_pages: list[dict] = []
+    failed_imgs = 0
+    run: tuple[int, int] | None = None  # (page_from, page_to) 连续空 OCR 页
+    for s in segs:
+        page = s.get("page")
+        if s.get("kind") == "ocr" and not (s.get("text") or "").strip():
+            if page is None:
+                failed_imgs += 1
+            else:
+                run = (run[0], page) if run else (page, page)
+            continue
+        if run:
+            low_pages.append({"page_from": run[0], "page_to": run[1], "confidence": 0.0, "note": "OCR 未产出文本"})
+            run = None
+    if run:
+        low_pages.append({"page_from": run[0], "page_to": run[1], "confidence": 0.0, "note": "OCR 未产出文本"})
+
+    return {
+        "confidence": confidence,
+        "low_conf_pages": low_pages,
+        "parse_note": f"{failed_imgs} 张内嵌图片 OCR 未产出文本" if failed_imgs else None,
+    }
+
+
 async def parse_raw(owner_id: str, task_id: str, entry: dict, ocr_fn) -> dict:
     """raw → segments.json + assets,返回更新后的清单项。CPU 段 to_thread 卸载,
     OCR 段按 OCR_CONCURRENCY 有界并发(扫描大 PDF 场景)。单图失败 → 空文本
@@ -307,7 +342,8 @@ async def parse_raw(owner_id: str, task_id: str, entry: dict, ocr_fn) -> dict:
     (ddir / "segments.json").write_text(json.dumps(segs, ensure_ascii=False), encoding="utf-8")
     chars = sum(len(s["text"]) for s in segs)
     pages = len({s["page"] for s in segs if s["page"] is not None})
-    return {**entry, "chars": chars, "pages": pages, "assets": len(assets), "status": "parsed"}
+    # B3:解析置信派生键(confidence/low_conf_pages/parse_note)随清单项进 engine_meta.docs
+    return {**entry, "chars": chars, "pages": pages, "assets": len(assets), "status": "parsed", **derive_parse_confidence(segs)}
 
 
 # ── 取数(worker._load_docs / routers 取数端点消费)───────────────────
