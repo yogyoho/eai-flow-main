@@ -3,8 +3,8 @@ import { cleanup, render, screen } from "@testing-library/react";
 import type { PropsWithChildren, ReactNode } from "react";
 
 // UX 重构 Plan 1 T3:侧栏流程化三条行为——
-// ① 审查闭环组按流程序排列(基准确认在复核工作台之前);
-// ② 三类计数徽标(任务总览进行中/基准确认 warn/复核工作台待复核)来自共享任务查询;
+// ① 审查闭环组按流程序排列(基准确认在人工复核之前);
+// ② 三类计数徽标(任务总览进行中/基准确认 warn/人工复核待复核)来自共享任务查询;
 // ③ URL 带 task_id 时侧栏渲染「当前任务」chip(id8+状态词)。
 // 徽标 span 会并入 link 的 accessible name,名字断言用 regex。
 // micro-B 回归门(tests/unit/app/bid-review-layout.dom.test.tsx)锁定 href/label
@@ -84,7 +84,7 @@ describe("bid-review layout 流程化(Plan 1)", () => {
   });
   afterEach(cleanup);
 
-  it("审查闭环组按流程序:基准确认排在复核工作台之前", () => {
+  it("审查闭环组按流程序:基准确认排在人工复核之前", () => {
     renderLayout();
     const links = screen
       .getAllByRole("link")
@@ -121,7 +121,7 @@ describe("bid-review layout 流程化(Plan 1)", () => {
     expect(baselineLink.textContent).toContain("1");
     expect(baselineLink.querySelector(".nav-cnt.warn")).not.toBeNull();
     expect(
-      screen.getByRole("link", { name: /复核工作台/ }).textContent,
+      screen.getByRole("link", { name: /人工复核/ }).textContent,
     ).toContain("5");
   });
 
@@ -167,7 +167,7 @@ describe("bid-review layout 流程化(Plan 1)", () => {
       screen.getByRole("link", { name: /基准确认/ }).getAttribute("href"),
     ).toBe("/bid-review/baseline?task_id=newest1");
     expect(
-      screen.getByRole("link", { name: /复核工作台/ }).getAttribute("href"),
+      screen.getByRole("link", { name: /人工复核/ }).getAttribute("href"),
     ).toBe("/bid-review/review?task_id=newest1");
     expect(
       screen.getByRole("link", { name: "规则库" }).getAttribute("href"),

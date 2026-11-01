@@ -77,15 +77,7 @@ const navItems: Array<{
     taskPage: "parsing",
   },
   {
-    // Plan7 (spec §4.5,裁定8):审查结果专屏,「审查工作台」退役
-    href: "/bid-review/results",
-    label: "审查结果",
-    icon: FileText,
-    pageId: "bid:page:results",
-    group: 0,
-    taskPage: "results",
-  },
-  {
+    // 基准确认(卡点)先于审查结果——审查须基线确认后才开始,菜单按流程序排列
     href: "/bid-review/baseline",
     label: "基准确认",
     icon: ClipboardCheck,
@@ -95,11 +87,20 @@ const navItems: Array<{
     taskPage: "baseline",
   },
   {
+    // Plan7 (spec §4.5,裁定8):审查结果专屏,「审查工作台」退役
+    href: "/bid-review/results",
+    label: "审查结果",
+    icon: FileText,
+    pageId: "bid:page:results",
+    group: 0,
+    taskPage: "results",
+  },
+  {
     // EAI-CUSTOM (2026-10-31 二期 spec §五 s6):need_human 队列复核;
     // 挂 bid:page:results(同治理域,先例=metrics 挂 bid:page:rules;
     // Plan7:workbench 退役后复核自 results 发起,随宿主权限)
     href: "/bid-review/review",
-    label: "复核工作台",
+    label: "人工复核",
     icon: UserCheck,
     pageId: "bid:page:results",
     group: 0,
