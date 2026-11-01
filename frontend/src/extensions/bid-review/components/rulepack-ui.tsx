@@ -19,6 +19,9 @@ export interface RuleStatsRow {
   /** React key(单规则包内=规则 id;跨规则包须带包限定前缀防碰撞)。 */
   key: string;
   rule: RulePackRule;
+  /** 判定算子(M5 §4.7,B5 回流):lte/gte/eq/and/all/set_eq,steps 链归一 "steps";
+   * 旧网关缺省 → 表列显示 —。 */
+  op?: string | null;
   stat: RuleStat;
 }
 
@@ -68,8 +71,15 @@ function CountCell({ value }: { value?: number }) {
   return <td className="r num">{value ?? "—"}</td>;
 }
 
-/** 规则 stats 表(规则库/效果看板两页同构,「列同规则库」契约单点;.tbl 八列)。 */
-export function RuleStatsTable({ rows }: { rows: RuleStatsRow[] }) {
+/** 规则 stats 表(规则库/效果看板两页同构,「列同规则库」契约单点;.tbl 九列,M5 加判定列)。
+ * onRuleClick 传入时规则 id 可点(规则库抽屉入口;看板不传)。 */
+export function RuleStatsTable({
+  rows,
+  onRuleClick,
+}: {
+  rows: RuleStatsRow[];
+  onRuleClick?: (id: string) => void;
+}) {
   return (
     <table className="tbl">
       <thead>
@@ -78,6 +88,7 @@ export function RuleStatsTable({ rows }: { rows: RuleStatsRow[] }) {
           <th>名称</th>
           <th>层级</th>
           <th>严重度</th>
+          <th>判定</th>
           <th>类型</th>
           <th className="r">命中</th>
           <th className="r">误报</th>
@@ -85,13 +96,24 @@ export function RuleStatsTable({ rows }: { rows: RuleStatsRow[] }) {
         </tr>
       </thead>
       <tbody>
-        {rows.map(({ key, rule, stat }) => {
+        {rows.map(({ key, rule, op, stat }) => {
           const sev = severityBrx(rule.severity);
           const pct = fpRatePercent(stat);
           return (
             <tr key={key}>
               <td className="mono">
-                {rule.id}
+                {onRuleClick ? (
+                  <button
+                    type="button"
+                    className="k"
+                    style={{ cursor: "pointer" }}
+                    onClick={() => onRuleClick(rule.id)}
+                  >
+                    {rule.id}
+                  </button>
+                ) : (
+                  <code className="k">{rule.id}</code>
+                )}
                 {pct !== null && isHighFp(stat) ? (
                   <span
                     className="pill pill-warn"
@@ -107,6 +129,9 @@ export function RuleStatsTable({ rows }: { rows: RuleStatsRow[] }) {
               </td>
               <td>
                 <span className={sev.cls}>{sev.label}</span>
+              </td>
+              <td>
+                <code className="k">{op ?? "—"}</code>
               </td>
               <td>
                 <code className="k">{TYPE_LABELS[rule.type] ?? rule.type}</code>

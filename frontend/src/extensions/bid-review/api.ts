@@ -70,6 +70,8 @@ export interface RulePackRule {
   layer: string;
   severity: string;
   type: string;
+  /** 判定算子(M5 §4.7 起回传):lte/gte/eq/and/all/set_eq,steps 链归一 "steps";旧网关缺省。 */
+  op?: string | null;
   /** 判定输入字段路径(routers 2026-10-30 起回传);det 规则 issue 无 doc/page 证据时前端回退展示。 */
   inputs?: string[];
 }

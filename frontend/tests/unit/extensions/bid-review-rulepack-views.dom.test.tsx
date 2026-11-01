@@ -13,21 +13,29 @@ import type { PropsWithChildren, ReactElement } from "react";
 // (#s10,/bid-review/metrics)。锁定六类行为:
 // ① 规则包头卡(name/version/stage-chip rule_count/enabled pill)与只读 Switch(disabled);
 // ② 规则表 .tbl:高误报(hit>0 且 fp/hit≥0.2)id 旁 pill-warn「误报 NN%」,stats 缺失显示
-//    「—」不显示 0(伪零纪律);③ .seg 类型过滤(替换 FilterPills);④ 看板四格 metric-strip
-//    = Σrule_count/Σfp/Σhit/Σadopted(跨规则包求和);⑤ 逐规则表按 fp 降序 + 高误报 FAIL
-//    名单(.pill-err,仅收入高误报规则);⑥ 零回流诚实态(FAIL 名单提示尚无数据,不伪造
-//    PASS)与 note-bar 诚实说明(独立评测端点未接入)。
+//    「—」不显示 0(伪零纪律);③ .seg 层级过滤(M5 §4.7:全部/L1 实质性/L3 一致性/高误报);
+// ④ 看板四格 metric-strip = Σrule_count/Σfp/Σhit/Σadopted(跨规则包求和);⑤ 逐规则表按
+//    fp 降序 + 高误报 FAIL 名单(.pill-err,仅收入高误报规则);⑥ 零回流诚实态(FAIL 名单
+//    提示尚无数据,不伪造 PASS)与 note-bar 诚实说明(独立评测端点未接入)。
+// M5(Plan10 §4.7/§4.8):判定算子列+规则五块抽屉(B5)+?rule= 深链;看板周趋势 6 柱 +
+// FAIL 归因 foot(B6)+ FAIL 行 → 规则库深链(互跳②)。
 const calls: Array<{ path: string }> = [];
 let packPayload: unknown;
+let responder: (path: string) => Response;
+let mockParams = new URLSearchParams();
 
 rs.mock("@/core/api/fetcher", () => ({
   fetch: async (path: string, _init?: RequestInit) => {
     calls.push({ path });
-    return new Response(JSON.stringify(packPayload), {
-      status: 200,
-      headers: { "Content-Type": "application/json" },
-    });
+    return responder(path);
   },
+}));
+
+rs.mock("next/navigation", () => ({
+  useParams: () => ({}),
+  usePathname: () => "/bid-review/rules",
+  useRouter: () => ({ push: rs.fn(), replace: rs.fn(), refresh: rs.fn() }),
+  useSearchParams: () => mockParams,
 }));
 
 // Radix Switch 在 happy-dom 下不稳定,且这里只断言 disabled/checked 契约,替身为 span
@@ -55,6 +63,7 @@ const PACK = {
       layer: "L1",
       severity: "fatal",
       type: "deterministic",
+      op: "lte",
     },
     {
       id: "R-002",
@@ -62,6 +71,7 @@ const PACK = {
       layer: "L1",
       severity: "major",
       type: "hybrid",
+      op: "steps",
     },
     {
       id: "R-003",
@@ -69,6 +79,7 @@ const PACK = {
       layer: "L3",
       severity: "minor",
       type: "semantic",
+      op: "gte",
     },
   ],
   stats: {
@@ -77,6 +88,85 @@ const PACK = {
   },
   enabled: true,
 };
+
+/** B5 五块明细夹具(GET /rulepacks/bid-review-core/rules;形状照 RuleExprOut)。 */
+const EXPRS = {
+  pack: { name: "bid-review-core", version: "1.0.0" },
+  items: [
+    {
+      id: "R-001",
+      name: "总价上限",
+      layer: "L1",
+      severity: "fatal",
+      type: "deterministic",
+      op: "lte",
+      precondition: "bid.total_price is not None",
+      expr_lines: ["bid.total_price lte tender.max_price"],
+      on_missing_input: "need_human",
+      message_tpl: "投标总价 {bid.total_price} 超过最高限价 {tender.max_price}",
+      fix_tpl: "调整报价不高于最高限价",
+      evidence: [],
+    },
+    {
+      id: "R-002",
+      name: "算术一致",
+      layer: "L1",
+      severity: "major",
+      type: "hybrid",
+      op: "steps",
+      precondition: null,
+      expr_lines: ["sum(bid.detail_rows[*].amount) == bid.subtotal", "bid.subtotal == bid.total_price"],
+      on_missing_input: "need_human",
+      message_tpl: "报价加总不一致",
+      fix_tpl: "以明细表为准重算",
+      evidence: [],
+    },
+  ],
+};
+
+/** B6 归因夹具(GET /metrics/fail_attribution)。 */
+const ATTR = {
+  items: [{ rule_id: "R-001", total: 4, reasons: [{ reason: "规则误判", count: 3 }, { reason: "证据错位", count: 1 }] }],
+};
+
+function week(start: string, fp: number, confirmed: number) {
+  return { week_start: start, fp, confirmed, rate: fp + confirmed > 0 ? Math.round((fp / (fp + confirmed)) * 1000) / 10 : null };
+}
+
+/** B6 趋势夹具:近 6 周,2 周有值。 */
+const TRENDS = {
+  weeks: [
+    week("2026-09-28", 0, 0),
+    week("2026-10-05", 2, 3),
+    week("2026-10-12", 1, 4),
+    week("2026-10-19", 0, 0),
+    week("2026-10-26", 0, 2),
+    week("2026-11-02", 0, 0),
+  ],
+};
+
+/** 全空周(伪零纪律:rate 全 null)。 */
+const TREND_EMPTY = {
+  weeks: Array.from({ length: 6 }, (_, i) => week(`2026-09-28`, 0, 0)).map((w, i) => ({
+    ...w,
+    week_start: `2026-09-${21 + i}`,
+  })),
+};
+
+function jsonRes(body: unknown, status = 200): Response {
+  return new Response(JSON.stringify(body), {
+    status,
+    headers: { "Content-Type": "application/json" },
+  });
+}
+
+/** 默认响应器:/rulepacks → 包清单;/rulepacks/{name}/rules → 五块;/metrics/* → B6。 */
+function defaultResponder(path: string): Response {
+  if (path.includes("/metrics/fail_attribution")) return jsonRes(ATTR);
+  if (path.includes("/metrics/trends")) return jsonRes(TRENDS);
+  if (path.endsWith("/rules")) return jsonRes(EXPRS);
+  return jsonRes(packPayload);
+}
 
 function renderView(ui: ReactElement) {
   const queryClient = new QueryClient({
@@ -98,6 +188,8 @@ describe("bid-review RulesView 原型重整(2026-10-30 #s9)", () => {
   beforeEach(() => {
     calls.length = 0;
     packPayload = { items: [PACK] };
+    responder = defaultResponder;
+    mockParams = new URLSearchParams();
   });
   afterEach(cleanup);
 
@@ -119,14 +211,46 @@ describe("bid-review RulesView 原型重整(2026-10-30 #s9)", () => {
     expect(screen.getByText(/规则启停走规则包版本发布/)).not.toBeNull();
   });
 
-  it(".seg 类型过滤:点 sem 只剩该类型规则", async () => {
+  it("M5 §4.7:判定算子列 + 点规则 id 开五块抽屉(B5)+ 修订走版本发布 foot", async () => {
+    renderView(<RulesView />);
+    await screen.findByText("bid-review-core");
+    await waitFor(() => expect(screen.getByText("判定")).not.toBeNull());
+    // 判定列:mono 算子(steps 链归一);规则 id 可点
+    expect(screen.getByText("steps")).not.toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "R-001" }));
+    // 抽屉五块 + EXPR 头带算子 + 版本发布 foot
+    expect(await screen.findByText("PRECONDITION")).not.toBeNull();
+    expect(screen.getByText("EXPR · lte")).not.toBeNull();
+    expect(screen.getByText("ON_MISSING_INPUT")).not.toBeNull();
+    expect(screen.getByText("MESSAGE_TPL")).not.toBeNull();
+    expect(screen.getByText("FIX_TPL")).not.toBeNull();
+    expect(screen.getByText(/修订须走规则包版本发布/)).not.toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "关闭" }));
+    await waitFor(() => expect(screen.queryByText("MESSAGE_TPL")).toBeNull());
+  });
+
+  it("M5 §4.7:?rule= 深链直达抽屉(s10 FAIL 行互跳②反向)", async () => {
+    mockParams = new URLSearchParams("rule=R-002");
+    renderView(<RulesView />);
+    expect(await screen.findByText("规则定义 · R-002")).not.toBeNull();
+    // 包加载后五块明细落定(抽屉先开、数据后至)
+    await waitFor(() => expect(screen.getByText("EXPR · steps")).not.toBeNull());
+    expect(screen.getByText("MESSAGE_TPL")).not.toBeNull();
+  });
+
+  it(".seg 层级过滤(M5):L1 实质性只剩 L1 规则;高误报段只剩高误报并出互跳链接", async () => {
     renderView(<RulesView />);
     await screen.findByText("bid-review-core");
     await waitFor(() => expect(screen.getByText("R-001")).not.toBeNull());
-    fireEvent.click(screen.getByRole("button", { name: "sem 1" }));
-    await waitFor(() => expect(screen.queryByText("R-001")).toBeNull());
-    expect(screen.queryByText("R-002")).toBeNull();
-    expect(screen.getByText("R-003")).not.toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "L1 实质性 2" }));
+    await waitFor(() => expect(screen.queryByText("R-003")).toBeNull());
+    expect(screen.getByText("R-001")).not.toBeNull();
+    expect(screen.getByText("R-002")).not.toBeNull();
+    // 高误报段:仅 R-001(30%);互跳①→ 看板 FAIL 名单锚点
+    fireEvent.click(screen.getByRole("button", { name: "高误报 1" }));
+    await waitFor(() => expect(screen.queryByText("R-002")).toBeNull());
+    const link = screen.getByText("查看 FAIL 名单").closest("a");
+    expect(link?.getAttribute("href")).toBe("/bid-review/metrics#fail-list");
   });
 });
 
