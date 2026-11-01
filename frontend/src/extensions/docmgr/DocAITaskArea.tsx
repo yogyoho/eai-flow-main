@@ -260,6 +260,14 @@ export function useDocAITask(params: {
   const userEditedRef = useRef(false);
   const selfApplyRef = useRef(false);
 
+  // EAI-CUSTOM (全文操作 M3顺手批, S-3): 卸载清理——流运行中卸载组件（关面板/切文档）
+  // abort 在途请求，后端不再白烧 tokens；与 useDocAIReview 同款清理成对落地。
+  useEffect(() => {
+    return () => {
+      abortRef.current?.abort();
+    };
+  }, []);
+
   const markUserEdited = useCallback(() => {
     if (!selfApplyRef.current) userEditedRef.current = true;
   }, []);
@@ -935,8 +943,12 @@ export function DocAITaskArea({
             </div>
             <button
               type="button"
+              // EAI-CUSTOM (全文操作 M3顺手批): 插入文末随 actionsDisabled 冻结（与逐节
+              // 四钮/批量条两钮对称，审查流运行中不再可插入）；禁用态样式沿用本文件
+              // 既有 disabled 类习语。
               onClick={() => onInsertSummary(task.summary!)}
-              className="text-primary mt-1.5 hover:underline"
+              disabled={actionsDisabled}
+              className="text-primary mt-1.5 hover:underline disabled:cursor-not-allowed disabled:opacity-40"
             >
               插入文末
             </button>

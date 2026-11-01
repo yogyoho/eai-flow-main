@@ -727,4 +727,98 @@ describe("useDocAIReview（审查任务通道）", () => {
     expect(st.entries.some((x) => x.finding.id === "e1")).toBe(true);
     expect(result.current.busy).toBe(false);
   });
+
+  // EAI-CUSTOM (全文操作 M3顺手批, S-7): 模型越界输出 severity "critical" —— 摄入点
+  // 归一 warn（镜像后端 _normalize_finding 降级），渲染不炸且落警告组（原 `!` 组样式
+  // 断言会渲染即抛 TypeError、条目静默不可见）。
+  test("S-7：未知 severity finding → 归一 warn 且落警告组（不炸渲染）", async () => {
+    const criticalFinding = {
+      id: "c1",
+      severity: "critical",
+      anchor: "概述",
+      excerpt: "越界档位样本",
+      problem: "severity 白名单外",
+      suggestion: "应归一为 warn",
+    };
+    globalThis.fetch = (async (input: RequestInfo | URL) => {
+      const url = urlOf(input);
+      if (url.includes("/ai/review")) {
+        return fakeNdjson([
+          { type: "section_start", index: 0, total: 1, title: "概述" },
+          { type: "finding", index: 0, finding: criticalFinding },
+          {
+            type: "done",
+            total: 1,
+            failed: [],
+            skipped: [],
+            summary: { error: 0, warn: 0, info: 0 },
+          },
+        ]);
+      }
+      return fakeOk();
+    }) as typeof fetch;
+    const ed = makeEditor();
+    const { result } = renderHook(() => useReview(makeEditorRef(ed)));
+    await act(async () => {
+      await result.current.startReview("consistency");
+    });
+    expect(result.current.state!.entries[0]!.finding.severity).toBe("warn");
+    // 组件渲染：不炸 + 落警告组（data-severity=warn），错误组不存在
+    const host = await render(<Harness initial={result.current.state!} />);
+    expect(host.querySelector('[data-severity="error"]')).toBeNull();
+    const warnGroup = host.querySelector('[data-severity="warn"]');
+    expect(warnGroup).not.toBeNull();
+    expect(warnGroup!.textContent).toContain("越界档位样本");
+  });
+
+  // EAI-CUSTOM (全文操作 M3顺手批, S-3): 卸载清理——流挂起（read 在 signal abort 时才
+  // 以真 AbortError 拒绝，沿负面④ mock 手法）时卸载组件 → mock 收到 abort（后端不再
+  // 白烧 tokens）。卸载后 hook 不再重渲，busy 断言只验挂起在途态。
+  test("S-3：unmount → 在途流 abort（mock 收到 abort；AbortError 不派 fail）", async () => {
+    let abortSeen = false;
+    globalThis.fetch = (async (
+      input: RequestInfo | URL,
+      init?: RequestInit,
+    ) => {
+      const url = urlOf(input);
+      if (url.includes("/ai/review")) {
+        const signal = init?.signal;
+        return {
+          ok: true,
+          body: {
+            getReader: () => ({
+              read: () =>
+                new Promise((_res, rej) => {
+                  signal?.addEventListener("abort", () => {
+                    abortSeen = true;
+                    const e = new Error("The user aborted a request.");
+                    e.name = "AbortError";
+                    rej(e);
+                  });
+                }),
+              cancel: () => undefined,
+            }),
+          },
+        } as unknown as Response;
+      }
+      return fakeOk();
+    }) as typeof fetch;
+    const ed = makeEditor();
+    const { result, unmount } = renderHook(() => useReview(makeEditorRef(ed)));
+    let running: Promise<void> | undefined;
+    await act(async () => {
+      running = result.current.startReview("consistency");
+    });
+    await act(async () => {
+      await new Promise<void>((resolve) => setTimeout(resolve, 25));
+    });
+    // 流挂起在途：busy 为真、mock 尚未收到 abort
+    expect(result.current.busy).toBe(true);
+    expect(abortSeen).toBe(false);
+    await act(async () => {
+      unmount();
+      await running;
+    });
+    expect(abortSeen).toBe(true);
+  });
 });

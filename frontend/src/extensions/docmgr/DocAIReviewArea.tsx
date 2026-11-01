@@ -65,9 +65,6 @@ export interface DocAIReviewState {
 export type DocAIReviewAction =
   | DocAIReviewEvent
   | { type: "start"; reviewType: string }
-  // EAI-CUSTOM (全文操作 M2, 同 DocAITaskArea 终审 I-2a 教训): retry 重开事件闸门——
-  // done/finish 后 running 已是 false，不重开则守卫会吞掉重试的在途事件。
-  | { type: "restart" }
   | { type: "finish" }
   // EAI-CUSTOM (全文操作 M2): 流异常中断的收官动作——与 done 不同，failed/skipped/
   // total/summary 原样保留（mid-stream section_error 已入册的失败节不得被清空）。
@@ -100,8 +97,6 @@ export function reviewReducer(
 ): DocAIReviewState | null {
   if (action.type === "reset") return null;
   if (action.type === "start") return initialReviewState(action.reviewType);
-  if (action.type === "restart")
-    return state ? { ...state, running: true, message: undefined } : state;
   if (action.type === "finish")
     return state ? { ...state, running: false } : state;
   if (action.type === "fail")
@@ -197,6 +192,23 @@ export function reviewReducer(
   }
 }
 
+// ── 摄入归一（S-7） ──────────────────────────────────────────────────
+
+// EAI-CUSTOM (全文操作 M3顺手批, S-7): 摄入点归一——severity ∉ {error, warn, info} 一律
+// 降级 "warn"（镜像后端 _normalize_finding 降级行为），单点修复分组渲染/非空断言/计数
+// 三方。wire 数据不经 TS 类型守卫，运行时越界（模型自造 "critical" 等）照收须归一；
+// 缺失/非字符串 severity 同白名单外处理。
+const KNOWN_SEVERITIES = new Set<string>(["error", "warn", "info"]);
+
+export function normalizeReviewEvent(
+  event: DocAIReviewAction,
+): DocAIReviewAction {
+  if (event.type !== "finding") return event;
+  const raw = (event.finding as { severity?: unknown }).severity;
+  if (typeof raw === "string" && KNOWN_SEVERITIES.has(raw)) return event;
+  return { ...event, finding: { ...event.finding, severity: "warn" } };
+}
+
 // ── 审查通道 hook ────────────────────────────────────────────────────
 
 // 与 DocAITaskArea 同款 CSRF 读取（该模块私有常量，不跨文件导出）。
@@ -221,6 +233,14 @@ export function useDocAIReview(params: {
   const snapshotRef = useRef<unknown[] | null>(null);
   const userEditedRef = useRef(false);
   const selfApplyRef = useRef(false);
+
+  // EAI-CUSTOM (全文操作 M3顺手批, S-3): 卸载清理——流运行中卸载组件（关面板/切文档）
+  // abort 在途请求，后端不再白烧 tokens；与 useDocAITask 同款清理成对落地。
+  useEffect(() => {
+    return () => {
+      abortRef.current?.abort();
+    };
+  }, []);
 
   const markUserEdited = useCallback(() => {
     if (!selfApplyRef.current) userEditedRef.current = true;
@@ -322,7 +342,8 @@ export function useDocAIReview(params: {
             content: cleanContent,
             model_name: params.modelName ?? undefined,
           },
-          (event) => dispatch(event),
+          // EAI-CUSTOM (全文操作 M3顺手批, S-7): 事件分发前归一 severity（摄入点单点修复）。
+          (event) => dispatch(normalizeReviewEvent(event)),
           controller.signal,
         );
       } catch (e) {
@@ -495,13 +516,20 @@ function FindingsCard({
   onDismiss: (id: string) => void;
 }) {
   const { finding, fixed } = entry;
+  // EAI-CUSTOM (全文操作 M3顺手批, S-7): 组样式读取改可回退（原 `!` 断言遇白名单外
+  // severity 渲染即抛 TypeError）——摄入点已归一 warn，此处 ?? 兜底 warn 组样式为
+  // 双层防御（历史缓存/手改 state 里的 raw 越界条目仍不炸）。
+  const accent =
+    SEVERITY_GROUPS.find((g) => g.severity === finding.severity)?.accent ??
+    SEVERITY_GROUPS.find((g) => g.severity === "warn")?.accent ??
+    "";
   // scrollToAnchor 返 false（或编辑器未就绪由回调返 false）→ 按钮转禁用态。
   const [locateFailed, setLocateFailed] = useState(false);
   return (
     <div
       className={cn(
         "border-border/60 bg-background rounded-lg border border-l-2 p-2",
-        SEVERITY_GROUPS.find((g) => g.severity === finding.severity)!.accent,
+        accent,
       )}
     >
       {fixed ? (

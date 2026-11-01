@@ -5,6 +5,7 @@ import {
   type DocAIReviewAction,
   type DocAIReviewState,
   initialReviewState,
+  normalizeReviewEvent,
   reviewReducer,
 } from "@/extensions/docmgr/DocAIReviewArea";
 
@@ -240,25 +241,30 @@ describe("reviewReducer（审查任务区状态机）", () => {
     expect(s.total).toBe(2);
   });
 
-  test("total 不缩水（restart 用例）：restart 重开事件闸门且保留累计", () => {
+  // EAI-CUSTOM (全文操作 M3顺手批, S-7): 未知 severity 摄入归一——wire 数据不经 TS
+  // 守卫，severity ∉ {error, warn, info} 一律降级 "warn"（镜像后端 _normalize_finding），
+  // 单点修复分组渲染/非空断言/计数三方。
+  test("S-7 摄入归一：未知 severity critical → warn 且经 reducer 正常入册", () => {
+    const raw = {
+      ...mkFinding("f1"),
+      severity: "critical",
+    } as unknown as DocAIFinding;
+    const evt = normalizeReviewEvent({
+      type: "finding",
+      index: 0,
+      finding: raw,
+    });
+    if (evt.type !== "finding") throw new Error("unexpected non-finding");
+    expect(evt.finding.severity).toBe("warn");
+    // 归一后走 reducer 正常入册（warn 档分组/计数可读）
     let s = run(s0(), {
       type: "section_start",
       index: 0,
-      total: 3,
+      total: 1,
       title: "一",
     });
-    s = run(s, { type: "finding", index: 0, finding: mkFinding("f1") });
-    s = run(s, { type: "done", total: 3, failed: [], skipped: [] });
-    expect(s.running).toBe(false);
-    // 重开：running 复活、累计不丢
-    s = run(s, { type: "restart" });
-    expect(s.running).toBe(true);
-    expect(s.total).toBe(3);
-    expect(s.entries.length).toBe(1);
-    // 闸门已重开：后续流事件（小 total）不再缩水分母
-    s = run(s, { type: "section_start", index: 1, total: 1, title: "二" });
-    expect(s.total).toBe(3);
-    expect(s.audited).toEqual([0, 1]);
+    s = run(s, evt);
+    expect(s.entries[0]!.finding.severity).toBe("warn");
   });
 
   test("running 闸门：done/finish 后拒收在途流事件", () => {

@@ -294,6 +294,7 @@ function Harness({
     onRejectSection?: (i: number) => void;
     onRestoreSection?: (i: number) => void;
     onCancel?: () => void;
+    onInsertSummary?: (content: string) => void;
   };
   getSectionText?: (anchor: string) => string;
 }) {
@@ -324,7 +325,7 @@ function Harness({
         spies?.onRestoreSection?.(i);
         dispatch({ type: "restore_section", index: i });
       }}
-      onInsertSummary={() => undefined}
+      onInsertSummary={(content) => spies?.onInsertSummary?.(content)}
       onCancel={() => {
         spies?.onCancel?.();
       }}
@@ -339,6 +340,13 @@ const twoSectionState = (): DocAITaskState => ({
   running: false,
   total: 2,
   sections: [readySection, { index: 1, title: "第二节", status: "applied" }],
+});
+
+const summaryState = (): DocAITaskState => ({
+  ...initialTaskState("summary"),
+  running: false,
+  sections: [],
+  summary: "本文总结了给排水设计要点。",
 });
 
 describe("DocAITaskArea（工单）", () => {
@@ -449,6 +457,34 @@ describe("DocAITaskArea（工单）", () => {
     await click(buttonByText(host, "接受"));
     await click(applyAll);
     expect(applied).toEqual([]);
+  });
+
+  // EAI-CUSTOM (全文操作 M3顺手批): 插入文末钮接入 actionsDisabled 冻结——审查流运行中
+  // 不得插入摘要（与逐节四钮/批量条两钮对称）；缺省行为不变。
+  test("summary 卡：actionsDisabled → 插入文末禁用且不触发 onInsertSummary；缺省可点", async () => {
+    const inserted: string[] = [];
+    const disabledHost = await render(
+      <Harness
+        initial={summaryState()}
+        actionsDisabled={true}
+        spies={{ onInsertSummary: (c) => inserted.push(c) }}
+      />,
+    );
+    const disabledBtn = buttonByText(disabledHost, "插入文末");
+    expect(disabledBtn.disabled).toBe(true);
+    await click(disabledBtn);
+    expect(inserted).toEqual([]);
+    // 对照：缺省 actionsDisabled → 可点击并回调携带 summary 全文
+    const host = await render(
+      <Harness
+        initial={summaryState()}
+        spies={{ onInsertSummary: (c) => inserted.push(c) }}
+      />,
+    );
+    const btn = buttonByText(host, "插入文末");
+    expect(btn.disabled).toBe(false);
+    await click(btn);
+    expect(inserted).toEqual(["本文总结了给排水设计要点。"]);
   });
 
   test("streaming 节 → 正在处理 计划行", async () => {
