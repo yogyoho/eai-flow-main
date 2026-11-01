@@ -9,6 +9,7 @@ import {
   ListChecks,
   Moon,
   Sun,
+  Table2,
   UserCheck,
 } from "lucide-react";
 import Link from "next/link";
@@ -106,6 +107,16 @@ const navItems: Array<{
     group: 0,
     badge: "reviewTodo",
     taskPage: "review",
+  },
+  {
+    // B9 (spec 2026-11-01 §1,原型 s7):响应偏离表——抽取期 LLM 逐条对照投影;
+    // 挂 bid:page:results(同 results 域,先例=review)
+    href: "/bid-review/deviations",
+    label: "响应偏离表",
+    icon: Table2,
+    pageId: "bid:page:results",
+    group: 0,
+    taskPage: "deviations",
   },
   {
     href: "/bid-review/rules",

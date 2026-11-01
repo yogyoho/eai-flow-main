@@ -93,6 +93,10 @@ describe("bid-review layout 子路由导航(micro-B 站内入口)", () => {
     expect(
       screen.getByRole("link", { name: "基准确认" }).getAttribute("href"),
     ).toBe("/bid-review/baseline");
+    // B9 (spec 2026-11-01 §1):响应偏离表专屏(原型 s7)
+    expect(
+      screen.getByRole("link", { name: "响应偏离表" }).getAttribute("href"),
+    ).toBe("/bid-review/deviations");
     expect(
       screen.getByRole("link", { name: "规则库" }).getAttribute("href"),
     ).toBe("/bid-review/rules");
@@ -105,10 +109,10 @@ describe("bid-review layout 子路由导航(micro-B 站内入口)", () => {
     renderLayout();
     expect(screen.queryByRole("link", { name: "规则库" })).toBeNull();
     expect(screen.queryByRole("link", { name: "任务总览" })).not.toBeNull();
-    expect(
-      screen.queryByRole("link", { name: "解析抽取" }),
-    ).not.toBeNull();
+    expect(screen.queryByRole("link", { name: "解析抽取" })).not.toBeNull();
     expect(screen.queryByRole("link", { name: "审查结果" })).not.toBeNull();
+    // B9:偏离表挂 bid:page:results,同域页不受 rules 拒绝影响
+    expect(screen.queryByRole("link", { name: "响应偏离表" })).not.toBeNull();
   });
 
   it("权限加载中 fail-open 全显(同 contract-price 先例)", () => {

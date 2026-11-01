@@ -6,7 +6,13 @@
  */
 import type { TaskOut } from "./types";
 
-export type TaskPage = "tasks" | "parsing" | "results" | "baseline" | "review";
+export type TaskPage =
+  | "tasks"
+  | "parsing"
+  | "results"
+  | "baseline"
+  | "review"
+  | "deviations";
 
 const PAGE_PATHS: Record<TaskPage, string> = {
   tasks: "/bid-review",
@@ -16,6 +22,8 @@ const PAGE_PATHS: Record<TaskPage, string> = {
   results: "/bid-review/results",
   baseline: "/bid-review/baseline",
   review: "/bid-review/review",
+  // B9 (spec 2026-11-01 §1):响应偏离表专屏
+  deviations: "/bid-review/deviations",
 };
 
 export function taskHref(page: TaskPage, taskId: string): string {
