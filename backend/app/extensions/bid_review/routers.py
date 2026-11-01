@@ -567,6 +567,57 @@ async def export_task_report(
     )
 
 
+# ── B7 版本 diff(spec §5)──────────────────────────────────────────
+
+
+@router.get("/tasks/{task_id}/diff")
+async def diff_task(
+    task_id: str,
+    prev: str,
+    db: AsyncSession = Depends(get_db),
+    owner_id: str = Depends(current_owner),
+):
+    """版本 diff(spec §5 B7):问题级三态 {added, removed, unchanged_count}。
+    匹配键 = dedup_key(rule_id+锚定字段路径——与引擎查重 crud.add_issue 同源语义,
+    重复命中共键合并,天然抗重跑抖动);空 dedup_key 永不匹配(按新增/消失计,
+    crud 契约里空键本就跳过查重)。added 带判定面字段供前端「新增问题列表」直渲,
+    removed 只带计数面三字段(消失问题详情在上一版任务);各自按 severity 降序
+    (致命在前)。prev 不存在或属他者 → 404(owner 隔离,不泄漏他者任务存在性)。
+    前端消费:/results 版本对比卡片(spec §4.5,轻量,不做 s8 整屏)。"""
+    _SEV_RANK = {"fatal": 0, "major": 1, "minor": 2, "info": 3}
+    task = await crud.get_task(db, task_id=task_id, owner_id=owner_id)
+    prev_task = await crud.get_task(db, task_id=prev, owner_id=owner_id)
+    if task is None or prev_task is None:
+        raise HTTPException(status_code=404, detail="任务不存在")
+    cur = await crud.list_issues(db, task_id=task_id, owner_id=owner_id)
+    old = await crud.list_issues(db, task_id=prev, owner_id=owner_id)
+    old_keys = {i.dedup_key for i in old if i.dedup_key}
+    cur_keys = {i.dedup_key for i in cur if i.dedup_key}
+    added = sorted(
+        (i for i in cur if not i.dedup_key or i.dedup_key not in old_keys),
+        key=lambda i: _SEV_RANK.get(i.severity, 9),
+    )
+    removed = sorted(
+        (i for i in old if not i.dedup_key or i.dedup_key not in cur_keys),
+        key=lambda i: _SEV_RANK.get(i.severity, 9),
+    )
+    return {
+        "added": [
+            {
+                "id": i.id,
+                "rule_id": i.rule_id,
+                "layer": i.layer,
+                "severity": i.severity,
+                "message": i.message,
+                "need_human": i.need_human,
+            }
+            for i in added
+        ],
+        "removed": [{"rule_id": i.rule_id, "severity": i.severity, "message": i.message} for i in removed],
+        "unchanged_count": len(cur_keys & old_keys),
+    }
+
+
 # ── 规则包端点 ────────────────────────────────────────────────────────
 
 
