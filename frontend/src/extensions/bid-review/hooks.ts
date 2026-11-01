@@ -16,6 +16,9 @@ import {
   feedbackIssue,
   fetchBaselines,
   getTask,
+  fetchBidTrends,
+  fetchFailAttribution,
+  fetchRuleExprs,
   listRulepacks,
   listTaskIssues,
   listTasks,
@@ -28,6 +31,9 @@ export const bidReviewKeys = {
   issues: (taskId: string) => ["bid-review", "issues", taskId] as const,
   baselines: (taskId: string) => ["bid-review", "baselines", taskId] as const,
   rulepacks: ["bid-review", "rulepacks"] as const,
+  ruleExprs: (name: string) => ["bid-review", "ruleExprs", name] as const,
+  failAttribution: ["bid-review", "failAttribution"] as const,
+  trends: ["bid-review", "trends"] as const,
 };
 
 /** GET /tasks/{id} —— 任务详情(taskId 为空时不发请求)。 */
@@ -138,4 +144,23 @@ export function useSelectedTask() {
   const taskId = paramId ?? list[0]?.id ?? null;
   const task = taskId ? list.find((t) => t.id === taskId) : undefined;
   return { taskId, task, isFallback: !paramId && taskId != null };
+}
+
+/** GET /rulepacks/{name}/rules(B5)——规则库抽屉数据源;RulesView 挂载即取(32 条小表)。 */
+export function useBidRuleExprs(name: string | null) {
+  return useQuery({
+    queryKey: bidReviewKeys.ruleExprs(name ?? ""),
+    queryFn: () => fetchRuleExprs(name ?? ""),
+    enabled: !!name,
+  });
+}
+
+/** GET /metrics/fail_attribution(B6)——看板 FAIL 归因 foot。 */
+export function useBidFailAttribution() {
+  return useQuery({ queryKey: bidReviewKeys.failAttribution, queryFn: fetchFailAttribution });
+}
+
+/** GET /metrics/trends(B6)——看板近 6 周误报率。 */
+export function useBidTrends() {
+  return useQuery({ queryKey: bidReviewKeys.trends, queryFn: fetchBidTrends });
 }

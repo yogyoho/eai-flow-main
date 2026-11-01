@@ -213,6 +213,53 @@ export function listRulepacks(): Promise<RulePackOut[]> {
   return request<{ items: RulePackOut[] }>("/rulepacks").then((r) => r.items);
 }
 
+/** GET /rulepacks/{name}/rules 行(B5 五块明细,routers.rulepack_rule_details)。 */
+export interface RuleExprOut {
+  id: string;
+  name: string;
+  layer: string;
+  severity: string;
+  type: string;
+  /** 判定算子:lte/gte/eq/and/all/set_eq;steps 链形态归一为 "steps"。 */
+  op: string | null;
+  precondition: string | null;
+  expr_lines: string[];
+  on_missing_input: string | null;
+  message_tpl: string;
+  fix_tpl: string;
+  evidence: string[];
+}
+
+/** GET /metrics/fail_attribution 行(B6:FAIL 规则误报原因聚合,次数降序)。 */
+export interface FailAttrItem {
+  rule_id: string;
+  total: number;
+  reasons: { reason: string; count: number }[];
+}
+
+/** GET /metrics/trends 行(B6:近 6 周误报率;rate null=该周无回流,伪零纪律)。 */
+export interface TrendWeek {
+  week_start: string;
+  fp: number;
+  confirmed: number;
+  rate: number | null;
+}
+
+/** GET /rulepacks/{name}/rules —— 规则定义五块明细(B5;当前单包 bid-review-core)。 */
+export function fetchRuleExprs(name: string): Promise<RuleExprOut[]> {
+  return request<{ items: RuleExprOut[] }>(`/rulepacks/${name}/rules`).then((r) => r.items);
+}
+
+/** GET /metrics/fail_attribution —— FAIL 规则误报原因聚合(B6,治理域全库口径)。 */
+export function fetchFailAttribution(): Promise<FailAttrItem[]> {
+  return request<{ items: FailAttrItem[] }>("/metrics/fail_attribution").then((r) => r.items);
+}
+
+/** GET /metrics/trends —— 近 6 周误报率(B6)。 */
+export function fetchBidTrends(): Promise<TrendWeek[]> {
+  return request<{ weeks: TrendWeek[] }>("/metrics/trends").then((r) => r.weeks);
+}
+
 // ── 报告导出(Task 21)────────────────────────────────────────────────
 
 /** GET /tasks/{id}/report?format=md —— 审查报告导出,返回 Blob(text/markdown;
