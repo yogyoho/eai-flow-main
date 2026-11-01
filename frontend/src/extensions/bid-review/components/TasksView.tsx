@@ -472,11 +472,13 @@ export function TasksView() {
         </div>
         <div>
           <h2>
-            任务工作台
+            任务总览
             {/* 选中任务号随页头标题(2026-10-31 用户定案,不进侧栏);Plan4 换业务号 */}
             <TaskTitleTag taskId={selectedId} bizNo={selectedTask?.biz_no} />
           </h2>
-          <div className="ph-sub">投标方案合规红线与一致性审查 · 全部任务</div>
+          <div className="ph-sub">
+            创建审查任务、跟踪进度——点入任务进入解析、基线、审查与复核
+          </div>
         </div>
         <div className="ph-actions">
           <button

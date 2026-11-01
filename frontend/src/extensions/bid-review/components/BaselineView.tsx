@@ -172,7 +172,7 @@ export function BaselineView({ taskId }: { taskId?: string | null }) {
             <TaskTitleTag taskId={taskId} bizNo={task?.biz_no} />
           </h2>
           <div className="ph-sub">
-            确认招标要求——未完成将不能开始审查 · 确认门仅工作台 UI,agent
+            逐条核对招标要求、评分办法与限价并确认——未确认不能开始审查,agent
             不可代确认
           </div>
         </div>

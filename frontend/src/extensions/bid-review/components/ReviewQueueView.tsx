@@ -183,9 +183,9 @@ export function ReviewQueueView({ taskId }: { taskId?: string | null }) {
             <UserCheck className="ic" />
           </div>
           <div>
-            <h2>人工复核工作台</h2>
+            <h2>人工复核</h2>
             <div className="ph-sub">
-              need_human 逐条处置——确认 / 误报回流 / 严重度调整
+              逐条处置待复核问题:确认 / 标误报 / 严重度调整 / 转待人工
             </div>
           </div>
         </div>
@@ -214,12 +214,13 @@ export function ReviewQueueView({ taskId }: { taskId?: string | null }) {
         </div>
         <div>
           <h2>
-            人工复核工作台
+            人工复核
             <TaskTitleTag taskId={taskId} bizNo={taskQuery.data?.biz_no} />
           </h2>
           <div className="ph-sub">
-            复核队列 {pendingCount} 项 · 已复核 {reviewedTotal}(维持{" "}
-            {maintained} / 误报 {fpTotal}) · 未判定 ≠ 通过 · 误报自动回流评测集
+            全量未复核问题逐条处置(标误报须选原因,自动回流评测集) · 未复核{" "}
+            {pendingCount} 项 · 已复核 {reviewedTotal}(维持 {maintained} / 误报{" "}
+            {fpTotal}) · 未判定 ≠ 通过
           </div>
         </div>
         <div className="ph-actions">

@@ -64,7 +64,8 @@ export function MetricsView() {
         <div>
           <h2>规则效果看板</h2>
           <p className="hd-sub">
-            人工复核回流 stats（hit/fp/adopted）· 逐规则按误报数降序
+            按人工复核回流统计规则命中与误报——高误报规则自动入 FAIL
+            名单，跟踪归因与周趋势
           </p>
         </div>
         <div className="ph-actions">
@@ -148,14 +149,26 @@ export function MetricsView() {
           <div className="card" style={{ marginBottom: 12 }}>
             <div className="card-hd">
               <h3>周趋势</h3>
-              <span className="hd-sub">近 6 周 · 误报率 = 误报 /(误报+维持)</span>
+              <span className="hd-sub">
+                近 6 周 · 误报率 = 误报 /(误报+维持)
+              </span>
             </div>
             {weeks.some((w) => w.rate != null) ? (
               <div style={{ padding: "12px 16px" }}>
-                <div className="trend" role="img" aria-label="近 6 周误报率柱状图">
+                <div
+                  className="trend"
+                  role="img"
+                  aria-label="近 6 周误报率柱状图"
+                >
                   {weeks.map((w) => {
-                    const maxRate = Math.max(...weeks.map((x) => x.rate ?? 0), 1);
-                    const h = w.rate == null ? 4 : Math.max(8, Math.round((w.rate / maxRate) * 96));
+                    const maxRate = Math.max(
+                      ...weeks.map((x) => x.rate ?? 0),
+                      1,
+                    );
+                    const h =
+                      w.rate == null
+                        ? 4
+                        : Math.max(8, Math.round((w.rate / maxRate) * 96));
                     return (
                       <div className="t-col" key={w.week_start}>
                         <div
@@ -163,7 +176,9 @@ export function MetricsView() {
                           style={{ height: h }}
                           title={`${w.week_start} 误报 ${w.fp} · 维持 ${w.confirmed}`}
                         />
-                        <div className="t-lb">{w.rate == null ? "—" : `${w.rate}%`}</div>
+                        <div className="t-lb">
+                          {w.rate == null ? "—" : `${w.rate}%`}
+                        </div>
                         <div className="t-wk">{w.week_start.slice(5)}</div>
                       </div>
                     );
@@ -177,14 +192,18 @@ export function MetricsView() {
                 </div>
               </div>
             ) : (
-              <div className="tbl-foot">尚无回流数据——周趋势随人工复核产生(标误报/维持即入桶)。</div>
+              <div className="tbl-foot">
+                尚无回流数据——周趋势随人工复核产生(标误报/维持即入桶)。
+              </div>
             )}
           </div>
 
           <div className="card" id="fail-list" style={{ marginBottom: 12 }}>
             <div className="card-hd">
               <h3>高误报 FAIL 名单</h3>
-              <span className="hd-sub">误报率 = 误报/命中 ≥ 20% 自动入榜 · 复核回流归因</span>
+              <span className="hd-sub">
+                误报率 = 误报/命中 ≥ 20% 自动入榜 · 复核回流归因
+              </span>
             </div>
             {failList.length === 0 ? (
               <div className="tbl-foot">
@@ -212,7 +231,10 @@ export function MetricsView() {
                       return (
                         <tr key={key}>
                           <td className="mono">
-                            <Link className="k" href={`/bid-review/rules?rule=${rule.id}`}>
+                            <Link
+                              className="k"
+                              href={`/bid-review/rules?rule=${rule.id}`}
+                            >
                               {rule.id}
                             </Link>
                           </td>

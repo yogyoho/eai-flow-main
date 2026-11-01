@@ -240,14 +240,6 @@ function str(v: unknown, fallback = ""): string {
   return JSON.stringify(v);
 }
 
-/** 日期段用连字符 yyyy-MM-dd(TasksView 同款;zh-CN toLocaleString 是斜杠)。 */
-function formatDate(s: string): string {
-  const d = new Date(s);
-  if (Number.isNaN(d.getTime())) return s;
-  const p = (n: number) => String(n).padStart(2, "0");
-  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}:${p(d.getSeconds())}`;
-}
-
 export function ResultsView({ taskId }: { taskId?: string | null }) {
   // 复核状态本地映射:confirm/severity 后端不落 issue 行(v1 缺口),刷新即失;
   // 误报经 apply_false_positive 落库 verdict=false_positive,重取后由服务端数据呈现。
@@ -602,7 +594,7 @@ export function ResultsView({ taskId }: { taskId?: string | null }) {
           </h2>
           <div className="ph-sub">
             {task
-              ? `${task.mode === "deep" ? "深度评审" : "快速审查"} · 创建于 ${formatDate(task.created_at)}${task.done_at ? ` · 用时 ${formatDuration(task.created_at, task.done_at)}` : ""}`
+              ? `合规红线与一致性审查结论,逐条问题含证据定位与复核入口 · ${task.mode === "deep" ? "深度评审" : "快速审查"}${task.done_at ? ` · 用时 ${formatDuration(task.created_at, task.done_at)}` : ""}`
               : "任务详情加载中…"}
           </div>
         </div>

@@ -19,9 +19,7 @@ import { useSearchParams } from "next/navigation";
 import { useState } from "react";
 
 import { Switch } from "@/components/ui/switch";
-import {
-  type RuleExprOut,
-} from "@/extensions/bid-review/api";
+import { type RuleExprOut } from "@/extensions/bid-review/api";
 import {
   type RuleStatsRow,
   RuleStatsTable,
@@ -49,14 +47,22 @@ export function RulesView() {
   // 层级 seg(M5):高误报段 = isHighFp(stats);deep link ?rule= 直开抽屉(s10 FAIL 行互跳②)
   const searchParams = useSearchParams();
   const [layer, setLayer] = useState<LayerFilter>("all");
-  const [drawerRule, setDrawerRule] = useState<string | null>(() => searchParams.get("rule"));
-  const exprQuery = useBidRuleExprs(drawerRule ? (rulepacksQuery.data?.[0]?.name ?? null) : null);
+  const [drawerRule, setDrawerRule] = useState<string | null>(() =>
+    searchParams.get("rule"),
+  );
+  const exprQuery = useBidRuleExprs(
+    drawerRule ? (rulepacksQuery.data?.[0]?.name ?? null) : null,
+  );
 
   // 生产单规则包(api 返回数组,沿用 data[0] 取包;多包聚合属效果看板职责)
   const pack = rulepacksQuery.data?.[0] ?? null;
   const packRules = pack?.rules ?? [];
   const matches = (r: (typeof packRules)[number]) =>
-    layer === "all" ? true : layer === "highfp" ? isHighFp(pack?.stats[r.id] ?? {}) : r.layer === layer;
+    layer === "all"
+      ? true
+      : layer === "highfp"
+        ? isHighFp(pack?.stats[r.id] ?? {})
+        : r.layer === layer;
   const rules = packRules.filter(matches);
   const packEnabled = pack?.enabled ?? false;
 
@@ -64,7 +70,11 @@ export function RulesView() {
     value,
     label: LAYER_LABELS[value],
     count: packRules.filter((r) =>
-      value === "all" ? true : value === "highfp" ? isHighFp(pack?.stats[r.id] ?? {}) : r.layer === value,
+      value === "all"
+        ? true
+        : value === "highfp"
+          ? isHighFp(pack?.stats[r.id] ?? {})
+          : r.layer === value,
     ).length,
   }));
 
@@ -82,7 +92,7 @@ export function RulesView() {
           <h2>规则库</h2>
           <p className="hd-sub">
             {pack
-              ? `规则包 ${pack.name} v${pack.version} · 共 ${pack.rule_count} 条 · 统计来自人工复核回流（误报/采纳）`
+              ? "查看规则定义与人工复核回流统计（误报/采纳）——本页只读，修订走规则包新版本发布"
               : "生产规则包清单与人工复核回流统计"}
           </p>
         </div>
@@ -172,7 +182,10 @@ export function RulesView() {
                     高误报段：误报率 ≥ 20% 且有命中的规则——先到看板确认 FAIL
                     归因，再决定是否修订。
                   </span>
-                  <Link href="/bid-review/metrics#fail-list" className="btn btn-sec btn-sm">
+                  <Link
+                    href="/bid-review/metrics#fail-list"
+                    className="btn btn-sec btn-sm"
+                  >
                     查看 FAIL 名单
                   </Link>
                 </div>
@@ -204,7 +217,11 @@ export function RulesView() {
       )}
 
       {drawerRule ? (
-        <RuleDrawer ruleId={drawerRule} query={exprQuery} onClose={() => setDrawerRule(null)} />
+        <RuleDrawer
+          ruleId={drawerRule}
+          query={exprQuery}
+          onClose={() => setDrawerRule(null)}
+        />
       ) : null}
     </div>
   );
@@ -222,18 +239,31 @@ function RuleDrawer({
 }) {
   const d = (query.data ?? []).find((x) => x.id === ruleId);
   return (
-    <div className="drawer-wrap open" role="dialog" aria-label={`规则定义 ${ruleId}`}>
+    <div
+      className="drawer-wrap open"
+      role="dialog"
+      aria-label={`规则定义 ${ruleId}`}
+    >
       <div className="drawer-scrim" onClick={onClose} />
       <div className="drawer" style={{ maxWidth: 560 }}>
         <div className="drawer-hd">
           <h3>规则定义 · {ruleId}</h3>
-          <button type="button" className="x" aria-label="关闭" onClick={onClose}>
+          <button
+            type="button"
+            className="x"
+            aria-label="关闭"
+            onClick={onClose}
+          >
             ✕
           </button>
         </div>
         {!d ? (
           <div className="note-bar">
-            <span>{query.isPending ? "规则定义加载中…" : "未找到该规则定义（规则包可能已更新）"}</span>
+            <span>
+              {query.isPending
+                ? "规则定义加载中…"
+                : "未找到该规则定义（规则包可能已更新）"}
+            </span>
           </div>
         ) : (
           <>
@@ -257,7 +287,9 @@ function RuleDrawer({
               <div className="expr-hd">FIX_TPL</div>
               <pre>{d.fix_tpl || "(无)"}</pre>
             </div>
-            <div className="tbl-foot">本页只读 · 修订须走规则包版本发布（新版本号 + 评测对照）</div>
+            <div className="tbl-foot">
+              本页只读 · 修订须走规则包版本发布（新版本号 + 评测对照）
+            </div>
           </>
         )}
       </div>

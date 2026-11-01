@@ -186,8 +186,9 @@ export function ParsingView({ taskId }: { taskId?: string | null }) {
             <TaskTitleTag taskId={taskId} bizNo={task?.biz_no} />
           </h2>
           <div className="ph-sub">
-            {identity ? `${identity} · ` : ""}
-            {task ? modeLabel : "任务详情加载中…"}
+            核对文档解析质量与基准字段抽取结果
+            {identity ? ` · ${identity}` : ""}
+            {task ? ` · ${modeLabel}` : " · 任务详情加载中…"}
           </div>
         </div>
         <div className="ph-actions">
