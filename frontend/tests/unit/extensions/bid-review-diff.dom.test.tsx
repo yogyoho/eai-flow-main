@@ -153,11 +153,18 @@ describe("DiffView(原型 s8)", () => {
     expect(row3005.querySelectorAll(".pill-orange").length).toBeGreaterThan(0);
   });
 
-  it("无 prev 参数:空态引导而非裸 404", async () => {
+  it("无 prev 参数:空态引导而非裸 404,标题仍带任务号(2026-11-01 用户)", async () => {
     setupRoutes();
     mocks.search = new URLSearchParams("task_id=t2");
     renderView();
     expect(screen.getByText(/未指定基准任务/)).toBeTruthy();
+    // 空态页头同样消费 TaskTitleTag(选中任务号不缺位;零选中 → tt-id 零渲染);
+    // biz_no 随任务查询异步落位 → waitFor(同 bug-3704 竞态)
+    await waitFor(() =>
+      expect(document.querySelector(".tt-id")?.textContent).toContain(
+        "TBR-CUR-0002",
+      ),
+    );
   });
 
   it("旧网关缺 fields/rules 键:诚实兜底不崩", async () => {

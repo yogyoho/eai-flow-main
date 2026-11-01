@@ -11,6 +11,7 @@
  * spec §4 non-goals——单级 prev 链,页头只呈现一条对比。
  */
 
+import { GitCompare } from "lucide-react";
 import { useSearchParams } from "next/navigation";
 import { useMemo } from "react";
 
@@ -69,8 +70,15 @@ export function DiffView() {
     return (
       <div className="screen on">
         <div className="page-head">
+          {/* 2026-11-01 用户:标题左侧加图标(与侧栏同源 GitCompare;先例=ResultsView ph-icon) */}
+          <div className="ph-icon">
+            <GitCompare className="ic" aria-hidden="true" />
+          </div>
           <div>
-            <h2>版本差异</h2>
+            <h2>
+              版本差异
+              <TaskTitleTag taskId={taskId} bizNo={curBiz} />
+            </h2>
             <p className="hd-sub">换版对比整屏</p>
           </div>
         </div>
@@ -88,6 +96,9 @@ export function DiffView() {
   return (
     <div className="screen on">
       <div className="page-head">
+        <div className="ph-icon">
+          <GitCompare className="ic" aria-hidden="true" />
+        </div>
         <div>
           <h2>
             版本差异

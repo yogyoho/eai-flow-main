@@ -52,7 +52,7 @@ const navItems: Array<{
   icon: typeof ListChecks;
   exact?: boolean;
   pageId: string;
-  group: 0 | 1;
+  group: 0 | 1 | 2;
   badge?: keyof SidebarBadges;
   // UX 重构 Plan 2 T2(spec §3.2):任务链页 href 携带 effective task_id;
   // 治理页不挂,保持裸路径。
@@ -111,12 +111,13 @@ const navItems: Array<{
   },
   {
     // B9 (spec 2026-11-01 §1,原型 s7):响应偏离表——抽取期 LLM 逐条对照投影;
-    // 挂 bid:page:results(同 results 域,先例=review)
+    // 挂 bid:page:results(同 results 域,先例=review)。2026-11-01 用户:与版本差异
+    // 同归「响应参照」组(组 1)
     href: "/bid-review/deviations",
     label: "响应偏离表",
     icon: Table2,
     pageId: "bid:page:results",
-    group: 0,
+    group: 1,
     taskPage: "deviations",
   },
   {
@@ -126,25 +127,25 @@ const navItems: Array<{
     label: "版本差异",
     icon: GitCompare,
     pageId: "bid:page:results",
-    group: 0,
+    group: 1,
   },
   {
     href: "/bid-review/rules",
     label: "规则库",
     icon: BookOpen,
     pageId: "bid:page:rules",
-    group: 1,
+    group: 2,
   },
   {
     href: "/bid-review/metrics",
     label: "规则效果",
     icon: Gauge,
     pageId: "bid:page:rules",
-    group: 1,
+    group: 2,
   },
 ];
 
-const GROUP_LABELS = ["审查闭环", "规则治理"];
+const GROUP_LABELS = ["审查闭环", "响应参照", "规则治理"];
 
 /** 未登录 → 复用 workspace 登录跳转(保留 returnPath);加载中给纯色底避免闪现。 */
 function StandaloneGate({ children }: { children: ReactNode }) {
@@ -253,7 +254,7 @@ function BidReviewLayoutContent({ children }: { children: ReactNode }) {
   const visibleItems = isLoading
     ? navItems
     : navItems.filter((n) => canPage(n.pageId));
-  const groups = [0, 1].map((g) => visibleItems.filter((n) => n.group === g));
+  const groups = [0, 1, 2].map((g) => visibleItems.filter((n) => n.group === g));
   // 徽标共享查询(与 TasksView 同 key 同缓存);数据未到时徽标不渲染(禁伪零)
   const { data: tasks } = useBidTasks();
   const badges = sidebarBadges(tasks ?? []);

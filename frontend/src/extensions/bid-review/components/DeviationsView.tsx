@@ -10,6 +10,7 @@
  * 解析不到(任务清单未含该侧文档)→ chip 降级为纯文本,不造假定位。
  */
 
+import { Table2 } from "lucide-react";
 import { useMemo, useState } from "react";
 
 import {
@@ -101,6 +102,10 @@ export function DeviationsView() {
   return (
     <div className="screen on">
       <div className="page-head">
+        {/* 2026-11-01 用户:标题左侧加图标(与侧栏同源 Table2;先例=ResultsView ph-icon) */}
+        <div className="ph-icon">
+          <Table2 className="ic" aria-hidden="true" />
+        </div>
         <div>
           <h2>
             响应偏离表
