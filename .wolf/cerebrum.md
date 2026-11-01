@@ -2883,3 +2883,21 @@ P3 item ① 裁决：**双工况 N=3 校核暂不默认开**，维持 SKILL 现�
 - extensions 登录契约:`POST /api/extensions/auth/login` 体为 `{username, password}`——username 字段吃 email 或工号(email 会 422 若错用 email 键名)。
 - gateway 的 8001 **不发布到 host**(compose 只 expose 内网);host 侧探活须走 nginx :2026 或 `docker exec deer-flow-nginx wget http://gateway:8001/health`。extensions PG 容器名=`eai-flow-postgres-ext`(CLAUDE.md 旧名 eai-docker-postgres-ext-1 已修)。
 - 前端测试断言 formatDate 输出一律 TZ 无关(正则 ^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$);本机 UTC+8/CI UTC 字面量必炸(Plan4 2026-10-31 实证)。
+
+- [2026-10-31] **新建任务形态=弹窗保留(裁定14,用户改定)**:spec §4.2 的 /bid-review/new 独立页方案被用户否决——「新建任务对话框与原型新建审查任务页是对应的,保持对话框对照原型完善」。弹窗内已补:基本信息组(项目/标段=裁定12可选覆盖位、招标编号mono)、评审模式卡、200MB单文件拒收、drop文案。规则包/模型selects与OCR承诺仍不迁(v1无后端能力/虚假承诺)。后续页化节奏继续,但 s2 不再有独立页。
+
+- [2026-10-31] **/parsing 呈现形态=原型 s3 扁平表(裁定15,用户纠正)**:ParsingView 首版抄了基准确认页的 gate1-card/fam-tabs/f-card 形态,用户原话「解析与字段抽取页实现的内容怎么跟基准确认页面一样,与原型完全不一样」并指原型 #extract 锚点。已重写为扁平表:解析质量 5 列(文件/页数/识别置信度/状态/说明)+OCR 兜底整行;基准字段抽取 5 列(字段路径/锚点/抽取值/形态/状态)+hd-right 三 pill+tbl-foot on_missing_input 注。
+
+## Do-Not-Repeat (2026-10-31 — 裁定15)
+- **勿再以「spec 优先于原型」推翻用户明示的原型对齐诉求**:用户逐页验收基准是原型 HTML(docs/designs/2026-10-30-bid-review-ui.html),spec 只是记录裁定的账本。规划时若原型与我的默认形态冲突,先问或先按原型,不要自行裁定「spec 描述的(迁自旧页)形态优先」。
+- bid-review 逐页重构铁律:**动手前先读原型对应 screen 的精确 markup**(grep id="sN" 定位),词汇对齐 bid-review.css 既有类(.card/.card-hd/.hd-sub/.hd-right/.meter/.pill-*/.num/.mono/.k/.tbl-foot),不要从别的页搬交互形态。
+
+## 2026-10-31 (Plan7 /results 拆分)
+- Decision: 裁定16(用户)——/results「资料完备性」卡删除:缺失字段在 /parsing 字段表+问题清单待确认组已可见,第三重复无操作入口。同类判定法:某卡若只是把两个既有视图 join 一遍且无独立操作,先问用户再留。
+- Learning: 复核页(nav /bid-review/review)pageId 挂 bid:page:results(先例:metrics 挂 bid:page:rules 的同治理域复用)——workbench 权限退役时必须同步,否则 canPage 隐藏复核页。
+- Learning: 后端 test_auth_me_permissions.py 与 auth-disabled-contract.spec.ts 均不逐条钉 bid:page:* 明细(行为型测试),改权限 id 无需动它们;真正引用面=permissions.yaml+roles_custom.yaml overlay。
+- Do-Not-Repeat: sonner 无 toast.push,用 toast.success/toast.error;next/link 禁 pointerEvents 方案用 aria-disabled+style 降级而非 disabled 属性(Link 不支持)。
+
+## Key Learnings (2026-11-01 Plan10)
+- rstest getByText 撞多元素:同 rule id 渲染在统计表+FAIL 表两处时断言要 scope(卡片 querySelector / findAllByText),别全局 getByText
+- 测试 describe 的 beforeEach 必须重置模块级 responder/mockParams——前一个 describe 的自定义 responder 会泄漏成顺序依赖

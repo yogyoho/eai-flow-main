@@ -20,7 +20,7 @@
 - Modify: `backend/app/extensions/bid_review/routers.py`(imports + `_rule_op` + list_rulepacks 投影 + 三端点)
 - Create: `backend/tests/test_bid_review_metrics.py`
 
-- [ ] **Step 1: 写失败测试** — 新建 `backend/tests/test_bid_review_metrics.py`(夹具照 test_bid_review_feedback.py:ASGITransport 子应用 + current_owner/get_db 双 override + 五张表定点建表):
+- [x] **Step 1: 写失败测试** — 新建 `backend/tests/test_bid_review_metrics.py`(夹具照 test_bid_review_feedback.py:ASGITransport 子应用 + current_owner/get_db 双 override + 五张表定点建表):
 
 ```python
 """M5 治理页 B5/B6 测试:规则定义五块明细 + list_rulepacks op 投影 + FAIL 归因 + 周趋势。
@@ -169,9 +169,9 @@ async def test_metrics_trends_b6(client, db):
     assert sum(1 for w in weeks if w["rate"] is None) == 4
 ```
 
-- [ ] **Step 2: 跑红** — `cd /d/eai/eai-flow-main/backend && PYTHONPATH=. uv run pytest tests/test_bid_review_metrics.py -v`;预期 404/KeyError FAIL。
+- [x] **Step 2: 跑红** — `cd /d/eai/eai-flow-main/backend && PYTHONPATH=. uv run pytest tests/test_bid_review_metrics.py -v`;预期 404/KeyError FAIL。
 
-- [ ] **Step 3: 实现** — routers.py 四处:
+- [x] **Step 3: 实现** — routers.py 四处:
 
 (a) imports:`from datetime import UTC, datetime` → `from datetime import UTC, datetime, timedelta`;models 行 → `from app.extensions.bid_review.models import ReviewFeedback, ReviewIssue, RulePackMeta`。
 
@@ -301,8 +301,8 @@ async def metrics_trends(db: AsyncSession = Depends(get_db), owner_id: str = Dep
     return {"weeks": weeks}
 ```
 
-- [ ] **Step 4: 跑绿** — 同命令 PASS;再 `PYTHONPATH=. uv run pytest tests/test_bid_review_feedback.py tests/test_bid_review_routers.py -v` 不回归。
-- [ ] **Step 5: 重启网关 + lint** — `docker compose -p eai-docker restart gateway`;`cd backend && make lint`(contract_price 外来 WIP 的 F401 不算);`git add app/extensions/bid_review/routers.py tests/test_bid_review_metrics.py && git commit -m "feat(bid-review): B5规则五块明细+B6 FAIL归因/周趋势端点(Plan10 T1,spec §4.7/§4.8)"`
+- [x] **Step 4: 跑绿** — 同命令 PASS;再 `PYTHONPATH=. uv run pytest tests/test_bid_review_feedback.py tests/test_bid_review_routers.py -v` 不回归。
+- [x] **Step 5: 重启网关 + lint** — `docker compose -p eai-docker restart gateway`;`cd backend && make lint`(contract_price 外来 WIP 的 F401 不算);`git add app/extensions/bid_review/routers.py tests/test_bid_review_metrics.py && git commit -m "feat(bid-review): B5规则五块明细+B6 FAIL归因/周趋势端点(Plan10 T1,spec §4.7/§4.8)"`
 
 ---
 
@@ -312,7 +312,7 @@ async def metrics_trends(db: AsyncSession = Depends(get_db), owner_id: str = Dep
 - Modify: `frontend/src/extensions/bid-review/api.ts`
 - Modify: `frontend/src/extensions/bid-review/hooks.ts`
 
-- [ ] **Step 1:** api.ts 规则包端点区(listRulepacks 之后)加:
+- [x] **Step 1:** api.ts 规则包端点区(listRulepacks 之后)加:
 
 ```ts
 /** GET /rulepacks/{name}/rules 行(B5 五块明细,routers.rulepack_rule_details)。 */
@@ -365,7 +365,7 @@ export function fetchBidTrends(): Promise<TrendWeek[]> {
 }
 ```
 
-- [ ] **Step 2:** hooks.ts — bidReviewKeys 加三键;import 增 fetchBidTrends/failAttribution fetchers;末尾加三 hook:
+- [x] **Step 2:** hooks.ts — bidReviewKeys 加三键;import 增 fetchBidTrends/failAttribution fetchers;末尾加三 hook:
 
 ```ts
   ruleExprs: (name: string) => ["bid-review", "ruleExprs", name] as const,
@@ -394,8 +394,8 @@ export function useBidTrends() {
 }
 ```
 
-- [ ] **Step 3: 跑绿** — `cd /d/eai/eai-flow-main/frontend && pnpm typecheck 2>&1 | grep "error TS" | grep -cv "contract-price"` 计数不增(基线 9 全在 contract-price)。
-- [ ] **Step 4: 提交** — `git add src/extensions/bid-review/api.ts src/extensions/bid-review/hooks.ts && git commit -m "feat(bid-review): B5/B6前端类型+fetchers+hooks(Plan10 T2)"`
+- [x] **Step 3: 跑绿** — `cd /d/eai/eai-flow-main/frontend && pnpm typecheck 2>&1 | grep "error TS" | grep -cv "contract-price"` 计数不增(基线 9 全在 contract-price)。
+- [x] **Step 4: 提交** — `git add src/extensions/bid-review/api.ts src/extensions/bid-review/hooks.ts && git commit -m "feat(bid-review): B5/B6前端类型+fetchers+hooks(Plan10 T2)"`
 
 ---
 
@@ -407,7 +407,7 @@ export function useBidTrends() {
 - Modify: `frontend/src/app/bid-review/rules/page.tsx`(Suspense 包裹,useSearchParams 前置要求)
 - Test: `frontend/tests/unit/extensions/bid-review-rulepack-views.dom.test.tsx`
 
-- [ ] **Step 1: 写失败测试** — 测试文件改造 + 追加:
+- [x] **Step 1: 写失败测试** — 测试文件改造 + 追加:
   (a) 模块顶加 `let mockParams = new URLSearchParams();`,next/navigation mock 补 `useSearchParams: () => mockParams;`,beforeEach 重置 `mockParams = new URLSearchParams();`;
   (b) PACK 夹具三条规则各加 `op: "lte" | "steps" | "gte"`;responder 改按路径分流(rulepacks → packPayload,`/rules` → EXPRS,`/metrics/fail_attribution` → ATTR,`/metrics/trends` → TRENDS);
   (c) 既有「sem 1」type-seg 测试改写为层级 seg(点「L1 实质性」→ 仅 L1 规则);
@@ -445,9 +445,9 @@ export function useBidTrends() {
 
 (EXPRS 夹具 = `{pack:{name:"bid-review-core",version:"1.0.0"},items:[R-001 op lte precondition/expr_lines/message_tpl/fix_tpl 全量, R-002 op steps, R-003 op gte]}`,形状照 RuleExprOut。)
 
-- [ ] **Step 2: 跑红** — `pnpm test bid-review-rulepack-views`;预期 FAIL。
+- [x] **Step 2: 跑红** — `pnpm test bid-review-rulepack-views`;预期 FAIL。
 
-- [ ] **Step 3: 实现** —
+- [x] **Step 3: 实现** —
 
 (a) rulepack-ui.tsx:`RuleStatsRow` 加 `op?: string | null;`;RuleStatsTable props 加 `onRuleClick?: (id: string) => void;`;表头「严重度」后插 `<th>判定</th>`;行内对应位置插 `<td><code className="k">{row.op ?? "—"}</code></td>`;规则 id 单元格在 onRuleClick 存在时渲染为可点:
 
@@ -562,8 +562,8 @@ export default function BidRulesPage() {
 }
 ```
 
-- [ ] **Step 4: 跑绿** — `pnpm test bid-review-rulepack-views` PASS(含既有 metric-strip/FAIL 名单/零回流测试)。
-- [ ] **Step 5: 提交** — `git add src/extensions/bid-review/components/rulepack-ui.tsx src/extensions/bid-review/components/RulesView.tsx src/app/bid-review/rules/page.tsx tests/unit/extensions/bid-review-rulepack-views.dom.test.tsx && git commit -m "feat(bid-review): /rules层级seg+判定列+规则五块抽屉+高误报互跳/深链(Plan10 T3,spec §4.7)"`
+- [x] **Step 4: 跑绿** — `pnpm test bid-review-rulepack-views` PASS(含既有 metric-strip/FAIL 名单/零回流测试)。
+- [x] **Step 5: 提交** — `git add src/extensions/bid-review/components/rulepack-ui.tsx src/extensions/bid-review/components/RulesView.tsx src/app/bid-review/rules/page.tsx tests/unit/extensions/bid-review-rulepack-views.dom.test.tsx && git commit -m "feat(bid-review): /rules层级seg+判定列+规则五块抽屉+高误报互跳/深链(Plan10 T3,spec §4.7)"`
 
 ---
 
@@ -573,7 +573,7 @@ export default function BidRulesPage() {
 - Modify: `frontend/src/extensions/bid-review/components/MetricsView.tsx`
 - Test: `frontend/tests/unit/extensions/bid-review-rulepack-views.dom.test.tsx`
 
-- [ ] **Step 1: 写失败测试** — 追加:
+- [x] **Step 1: 写失败测试** — 追加:
 
 ```tsx
   it("M5 §4.8:周趋势 6 柱+回流闭环注+FAIL 归因 foot+FAIL 行深链规则库(互跳②)", async () => {
@@ -600,8 +600,8 @@ export default function BidRulesPage() {
 
 (ATTR 夹具 = `{items:[{rule_id:"R-001",total:4,reasons:[{reason:"规则误判",count:3},{reason:"证据错位",count:1}]}]}`;TRENDS = 6 周 2 周有值;TREND_EMPTY = 6 周 rate 全 null。FAIL 夹具规则 id 用夹具中实际 FAIL 的那条,R-001 按现夹具调整。)
 
-- [ ] **Step 2: 跑红** — `pnpm test bid-review-rulepack-views`;预期 FAIL。
-- [ ] **Step 3: 实现** — MetricsView.tsx:
+- [x] **Step 2: 跑红** — `pnpm test bid-review-rulepack-views`;预期 FAIL。
+- [x] **Step 3: 实现** — MetricsView.tsx:
   - import `Link`(next/link)+ `useBidFailAttribution, useBidTrends`(hooks)。
   - 组件内:`const attrQuery = useBidFailAttribution(); const trendQuery = useBidTrends();` + `const attrMap = new Map((attrQuery.data ?? []).map((a) => [a.rule_id, a]));`
   - FAIL 名单卡容器加 `id="fail-list"`,card-hd hd-sub 补「复核回流归因」。
@@ -660,17 +660,17 @@ export default function BidRulesPage() {
 
 (`const weeks = trendQuery.data ?? [];` 组件内先取。)
 
-- [ ] **Step 4: 跑绿** — `pnpm test bid-review-rulepack-views` PASS。
-- [ ] **Step 5: 提交** — `git add src/extensions/bid-review/components/MetricsView.tsx tests/unit/extensions/bid-review-rulepack-views.dom.test.tsx && git commit -m "feat(bid-review): /metrics FAIL锚点+归因foot+周趋势卡+行级互跳(Plan10 T4,spec §4.8)"`
+- [x] **Step 4: 跑绿** — `pnpm test bid-review-rulepack-views` PASS。
+- [x] **Step 5: 提交** — `git add src/extensions/bid-review/components/MetricsView.tsx tests/unit/extensions/bid-review-rulepack-views.dom.test.tsx && git commit -m "feat(bid-review): /metrics FAIL锚点+归因foot+周趋势卡+行级互跳(Plan10 T4,spec §4.8)"`
 
 ---
 
 ### Task 5: T5 收尾
 
-- [ ] **Step 1:** `cd /d/eai/eai-flow-main/frontend && pnpm exec prettier --write src/extensions/bid-review/components/MetricsView.tsx src/extensions/bid-review/components/RulesView.tsx src/extensions/bid-review/components/rulepack-ui.tsx src/extensions/bid-review/api.ts src/extensions/bid-review/hooks.ts tests/unit/extensions/bid-review-rulepack-views.dom.test.tsx`(增量单独 style commit)
-- [ ] **Step 2:** `pnpm test bid-review` 全量 0 fail;`pnpm lint` bid-review 范围 0 error;`pnpm typecheck` 非 contract-price 旧债 0 新增
-- [ ] **Step 3:** 后端 `PYTHONPATH=. uv run pytest tests/test_bid_review_metrics.py tests/test_bid_review_feedback.py -v` 复验;gateway 已重启
-- [ ] **Step 4:** plan 全部 `- [x]`;`.wolf/memory.md` + `.wolf/anatomy.md` 记账(RulesView/MetricsView 行数变化);提交 `git add -f ../docs/superpowers/plans/2026-11-01-bid-review-plan10-rules-metrics-m5.md ../.wolf/memory.md ../.wolf/anatomy.md && git commit -m "chore(bid-review): Plan10 收尾——计划勾选+wolf记账"`
+- [x] **Step 1:** `cd /d/eai/eai-flow-main/frontend && pnpm exec prettier --write src/extensions/bid-review/components/MetricsView.tsx src/extensions/bid-review/components/RulesView.tsx src/extensions/bid-review/components/rulepack-ui.tsx src/extensions/bid-review/api.ts src/extensions/bid-review/hooks.ts tests/unit/extensions/bid-review-rulepack-views.dom.test.tsx`(增量单独 style commit)
+- [x] **Step 2:** `pnpm test bid-review` 全量 0 fail;`pnpm lint` bid-review 范围 0 error;`pnpm typecheck` 非 contract-price 旧债 0 新增
+- [x] **Step 3:** 后端 `PYTHONPATH=. uv run pytest tests/test_bid_review_metrics.py tests/test_bid_review_feedback.py -v` 复验;gateway 已重启
+- [x] **Step 4:** plan 全部 `- [x]`;`.wolf/memory.md` + `.wolf/anatomy.md` 记账(RulesView/MetricsView 行数变化);提交 `git add -f ../docs/superpowers/plans/2026-11-01-bid-review-plan10-rules-metrics-m5.md ../.wolf/memory.md ../.wolf/anatomy.md && git commit -m "chore(bid-review): Plan10 收尾——计划勾选+wolf记账"`
 
 ---
 
