@@ -285,9 +285,9 @@ export function ParsingView({ taskId }: { taskId?: string | null }) {
                         ) : (
                           <span title="无损解析字符占比,非 OCR 引擎自报分数">
                             <span
-                              className={`meter${
-                                d.confidence < 0.7 ? "low" : ""
-                              }`}
+                              className={
+                                d.confidence < 0.7 ? "meter low" : "meter"
+                              }
                             >
                               <i
                                 style={{
