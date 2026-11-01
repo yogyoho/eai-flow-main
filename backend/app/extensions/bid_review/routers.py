@@ -26,7 +26,7 @@ CurrentUser.id 作 owner_id,全列表端点 owner 过滤。
 
 import asyncio
 import logging
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Response, UploadFile
 from fastapi.responses import FileResponse
@@ -37,7 +37,7 @@ from app.extensions.auth.middleware import require_permission
 from app.extensions.bid_review import crud, parse, worker
 from app.extensions.bid_review.engine.extract import apply_adjudications, detect_conflicts
 from app.extensions.bid_review.engine.labels import FIELD_LABELS
-from app.extensions.bid_review.models import RulePackMeta
+from app.extensions.bid_review.models import ReviewFeedback, ReviewIssue, RulePackMeta
 from app.extensions.bid_review.schemas import AdjudicateIn, FeedbackIn, IssueOut, TaskOut
 from app.extensions.database import get_db
 from app.extensions.schemas import CurrentUser
@@ -570,6 +570,14 @@ async def export_task_report(
 # ── 规则包端点 ────────────────────────────────────────────────────────
 
 
+def _rule_op(chk: dict) -> str | None:
+    """判定算子投影(B5,M5 §4.7):op 形态回白名单原值,steps 链形态归一 "steps"
+    (表列 mono 展示;加载器保证非 steps 必有 op)。"""
+    if "steps" in chk:
+        return "steps"
+    return chk.get("op")
+
+
 @router.get("/rulepacks")
 async def list_rulepacks(db: AsyncSession = Depends(get_db), owner_id: str = Depends(current_owner)):
     """规则包清单:加载生产规则包(engine/rulepacks/bid-review-core)+ DB stats 覆盖。"""
@@ -582,9 +590,110 @@ async def list_rulepacks(db: AsyncSession = Depends(get_db), owner_id: str = Dep
                 "version": pack.version,
                 "rule_count": len(pack.rules),
                 # 2026-10-30 前端工作台证据行回退:det 规则 issue 无 doc/page 证据(anchors.py 未落地),回退展示判定输入字段
-                "rules": [{"id": r.id, "name": r.name, "layer": r.layer, "severity": r.severity, "type": r.type, "inputs": list(r.inputs or [])} for r in pack.rules],
+                "rules": [{"id": r.id, "name": r.name, "layer": r.layer, "severity": r.severity, "type": r.type, "op": _rule_op(r.check or {}), "inputs": list(r.inputs or [])} for r in pack.rules],
                 "stats": dict(meta.stats or {}) if meta else {},
                 "enabled": bool(meta.enabled) if meta else True,
             }
         ]
     }
+
+
+@router.get("/rulepacks/{name}/rules")
+async def rulepack_rule_details(name: str, owner_id: str = Depends(current_owner)):
+    """规则定义五块明细(B5,M5 §4.7,治理页只读抽屉):PRECONDITION / EXPR /
+    ON_MISSING_INPUT / MESSAGE_TPL / FIX_TPL。EXPR 取 steps/all/values 链或
+    `left op right` 单式;on_missing_input 从包级 conventions 投影到每条。本页零写
+    路径——修订须走规则包版本发布;name 不匹配生产包 404(当前单包 bid-review-core)。"""
+    pack = worker.load_rulepack(worker.RULEPACK_PATH)
+    if name != pack.name:
+        raise HTTPException(status_code=404, detail=f"未知规则包 {name}")
+    items = []
+    for r in pack.rules:
+        chk = r.check or {}
+        if "steps" in chk:
+            expr_lines = [str(e) for e in chk.get("steps", [])]
+        elif "all" in chk:
+            expr_lines = [str(e) for e in chk.get("all", [])]
+        elif "values" in chk:
+            expr_lines = [str(e) for e in chk.get("values", [])]
+        else:
+            expr_lines = [f"{chk.get('left', '')} {chk.get('op', '')} {chk.get('right', '')}"]
+        items.append(
+            {
+                "id": r.id,
+                "name": r.name,
+                "layer": r.layer,
+                "severity": r.severity,
+                "type": r.type,
+                "op": _rule_op(chk),
+                "precondition": str(chk["precondition"]) if "precondition" in chk else None,
+                "expr_lines": expr_lines,
+                "on_missing_input": str(pack.conventions.get("on_missing_input") or "") or None,
+                "message_tpl": r.message_tpl,
+                "fix_tpl": r.fix_tpl,
+                "evidence": list(r.evidence or []),
+            }
+        )
+    return {"pack": {"name": pack.name, "version": pack.version}, "items": items}
+
+
+@router.get("/metrics/fail_attribution")
+async def metrics_fail_attribution(db: AsyncSession = Depends(get_db), owner_id: str = Depends(current_owner)):
+    """FAIL 归因(B6,M5 §4.8):false_positive 反馈经 ReviewIssue join 取 rule_id,
+    按规则聚合误报原因(note 首段「误报原因:X」折进约定,到首个分号止;无前缀 →
+    未归因,不伪造)。治理域口径同 GET /rulepacks:全库聚合,owner 仅作鉴权。"""
+    rows = (await db.execute(select(ReviewIssue.rule_id, ReviewFeedback.note).join(ReviewFeedback, ReviewFeedback.issue_id == ReviewIssue.id).where(ReviewFeedback.action == "false_positive"))).all()
+    agg: dict[str, dict[str, int]] = {}
+    for rule_id, note in rows:
+        reason = _fp_reason_of(note)
+        bucket = agg.setdefault(rule_id, {})
+        bucket[reason] = bucket.get(reason, 0) + 1
+    items = [
+        {
+            "rule_id": rid,
+            "total": sum(counts.values()),
+            "reasons": [{"reason": reason, "count": count} for reason, count in sorted(counts.items(), key=lambda kv: -kv[1])],
+        }
+        for rid, counts in sorted(agg.items(), key=lambda kv: -sum(kv[1].values()))
+    ]
+    return {"items": items}
+
+
+def _fp_reason_of(note: object) -> str:
+    """误报原因折 note 约定(工作台/结果页同口径):「误报原因:」后到首个分号止;
+    无前缀或空白 → 未归因。"""
+    s = str(note or "")
+    if s.startswith("误报原因:"):
+        return s[len("误报原因:") :].split(";")[0].strip() or "未归因"
+    return "未归因"
+
+
+@router.get("/metrics/trends")
+async def metrics_trends(db: AsyncSession = Depends(get_db), owner_id: str = Depends(current_owner)):
+    """近 6 周误报率趋势(B6,M5 §4.8):ReviewFeedback 按自然周(周一始)分桶,
+    周误报率 = false_positive / (false_positive + confirm);其余动作不进分母。
+    空周 rate=None——伪零纪律:无回流数据的周不给 0%。"""
+    fbs = (await db.execute(select(ReviewFeedback).where(ReviewFeedback.action.in_(("false_positive", "confirm"))))).scalars().all()
+    today = datetime.now(UTC).date()
+    this_monday = today - timedelta(days=today.weekday())
+    starts = [this_monday - timedelta(weeks=i) for i in range(5, -1, -1)]
+    buckets: dict = {s: [0, 0] for s in starts}
+    for fb in fbs:
+        d = fb.created_at.date() if fb.created_at is not None else None
+        if d is None:
+            continue
+        mon = d - timedelta(days=d.weekday())
+        if mon in buckets:
+            buckets[mon][0 if fb.action == "false_positive" else 1] += 1
+    weeks = []
+    for s in starts:
+        fp, confirmed = buckets[s]
+        weeks.append(
+            {
+                "week_start": s.isoformat(),
+                "fp": fp,
+                "confirmed": confirmed,
+                "rate": round(fp / (fp + confirmed) * 100, 1) if (fp + confirmed) > 0 else None,
+            }
+        )
+    return {"weeks": weeks}
