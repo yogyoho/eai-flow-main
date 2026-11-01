@@ -120,3 +120,42 @@ def test_junk_and_none_inputs():
     assert out == {"per_req": [], "extra": []}
     out = match_attachments(["垃圾", {"no": "E-1", "name": "授权书"}], ["垃圾", {"no": "E-1", "name": "授权书"}])
     assert out["per_req"][0]["status"] == "MATCHED"
+
+
+# ── build_checklist(端点投影原料) ─────────────────────────────────────
+
+from app.extensions.bid_review.engine.attachments import build_checklist  # noqa: E402
+
+
+def test_build_checklist_counts_and_refs():
+    reqs = [
+        _req(no="ATT-E-008", name="类似业绩证明", min_count=3, clause="第三章3.4"),
+        _req(no="ATT-F-001", name="投标函"),
+        _req(no="", name=" never-matched "),
+    ]
+    prov = [
+        _prov(no="ATT-E-008", name="类似业绩证明", page=118),
+        _prov(no="ATT-E-008", name="类似业绩证明", page=121),
+        _prov(no="ATT-F-001", name="附件1 投标函", page=2),
+        _prov(no="", name="企业宣传册", page=310),
+    ]
+    out = build_checklist(reqs, prov, bid_doc_id="bid.pdf")
+    assert out["counts"] == {"required": 3, "matched": 1, "partial": 1, "missing": 1, "extra": 1}
+    it008 = next(i for i in out["items"] if i["no"] == "ATT-E-008")
+    assert it008["status"] == "PARTIAL" and it008["found"] == 2 and it008["min_count"] == 3
+    assert it008["refs"] == [{"doc_id": "bid.pdf", "page": 118}, {"doc_id": "bid.pdf", "page": 121}]
+    assert it008["clause"] == "第三章3.4"
+    itf = next(i for i in out["items"] if i["no"] == "ATT-F-001")
+    assert itf["status"] == "MATCHED"
+    assert out["extra_items"] == [{"name": "企业宣传册", "doc_id": "bid.pdf", "page": 310}]
+
+
+def test_build_checklist_null_doc_and_empty():
+    out = build_checklist([], [], bid_doc_id=None)
+    assert out == {
+        "counts": {"required": 0, "matched": 0, "partial": 0, "missing": 0, "extra": 0},
+        "items": [],
+        "extra_items": [],
+    }
+    one = build_checklist([_req(no="X", name="营业执照")], [_prov(no="X", name="营业执照", page=5)], bid_doc_id=None)
+    assert one["items"][0]["refs"] == [{"doc_id": None, "page": 5}]

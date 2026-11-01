@@ -65,3 +65,34 @@ def match_attachments(requirements: Any, provided: Any) -> dict:
             status = "MATCHED"
         per_req.append({"req": r, "matched": hits, "found": found, "status": status})
     return {"per_req": per_req, "extra": [p for i, p in enumerate(prov) if i not in taken]}
+
+
+def build_checklist(requirements: Any, provided: Any, bid_doc_id: str | None = None) -> dict:
+    """核对表投影原料(spec §4):match_attachments 结果摊平成 items 行(refs 注入
+    bid 侧 doc_id——P1 refs=bid 侧首文档,调用方解析;解不到 → doc_id null,前端
+    chip 降级纯文本)。counts 单一事实源;extra 提供项只进 extra_items 不产 issue。"""
+    out = match_attachments(requirements, provided)
+    items = []
+    for e in out["per_req"]:
+        req = e["req"]
+        items.append(
+            {
+                "no": str(req.get("no") or ""),
+                "name": str(req.get("name") or ""),
+                "mandatory": req.get("mandatory"),
+                "min_count": req.get("min_count"),
+                "found": e["found"],
+                "status": e["status"],
+                "clause": req.get("clause"),
+                "refs": [{"doc_id": bid_doc_id, "page": p.get("page")} for p in e["matched"]],
+            }
+        )
+    counts = {
+        "required": len(items),
+        "matched": sum(1 for i in items if i["status"] == "MATCHED"),
+        "partial": sum(1 for i in items if i["status"] == "PARTIAL"),
+        "missing": sum(1 for i in items if i["status"] == "MISSING"),
+        "extra": len(out["extra"]),
+    }
+    extra_items = [{"name": str(p.get("name") or ""), "doc_id": bid_doc_id, "page": p.get("page")} for p in out["extra"]]
+    return {"counts": counts, "items": items, "extra_items": extra_items}
