@@ -258,6 +258,8 @@ describe("bid-review MetricsView 规则效果看板(2026-10-30 #s10)", () => {
   beforeEach(() => {
     calls.length = 0;
     packPayload = { items: [PACK] };
+    responder = defaultResponder;
+    mockParams = new URLSearchParams();
   });
   afterEach(cleanup);
 
@@ -304,5 +306,34 @@ describe("bid-review MetricsView 规则效果看板(2026-10-30 #s10)", () => {
     const row = screen.getByText("R-001").closest("tr");
     expect(row?.textContent).toContain("—");
     expect(screen.queryByText("FAIL")).toBeNull();
+  });
+
+  it("M5 §4.8:周趋势 6 柱 + 回流闭环注 + FAIL 归因 foot + FAIL 行深链规则库(互跳②)", async () => {
+    renderView(<MetricsView />);
+    await screen.findByText("规则效果看板");
+    // 周趋势卡:6 柱 + 回流闭环 note
+    expect(await screen.findByText("周趋势")).not.toBeNull();
+    await waitFor(() => expect(document.querySelectorAll(".t-col").length).toBe(6));
+    expect(screen.getByText(/回流闭环生效/)).not.toBeNull();
+    // FAIL 名单卡锚点(s9 高误报段互跳①落点)
+    const failCard = screen.getByText("高误报 FAIL 名单").closest(".card");
+    expect(failCard?.id).toBe("fail-list");
+    // 归因 foot:note 首段聚合句式(原型 s10);FAIL 行 → 规则库深链
+    expect(screen.getByText(/R-001 集中在「规则误判」\(3\/4\)/)).not.toBeNull();
+    // R-001 同时在逐规则统计表渲染,深链断言只在 FAIL 名单卡内找 <a>
+    const failLink = failCard?.querySelector("a.k");
+    expect(failLink?.getAttribute("href")).toBe("/bid-review/rules?rule=R-001");
+  });
+
+  it("M5 §4.8:无回流时趋势空态不画 0%(伪零纪律)", async () => {
+    packPayload = { items: [{ ...PACK, stats: {} }] };
+    responder = (path) => {
+      if (path.includes("/metrics/fail_attribution")) return jsonRes({ items: [] });
+      if (path.includes("/metrics/trends")) return jsonRes(TREND_EMPTY);
+      return jsonRes(packPayload);
+    };
+    renderView(<MetricsView />);
+    expect(await screen.findByText(/尚无回流数据——周趋势随人工复核产生/)).not.toBeNull();
+    expect(document.querySelectorAll(".t-col").length).toBe(0);
   });
 });

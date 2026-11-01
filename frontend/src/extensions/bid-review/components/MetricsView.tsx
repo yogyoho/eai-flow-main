@@ -8,8 +8,13 @@
  * 命中总数=Σhit/复核采纳=Σadopted,跨规则包求和)与逐规则 stats 表(按 fp 降序,
  * 列同规则库 = 共享 RuleStatsTable)全部来自人工复核回流(GET /rulepacks stats,
  * 复核「误报」动作自动回流);高误报规则(hit>0 且 fp/hit≥0.2)进 FAIL 名单(.pill-err)。
- * 原型 #s10 的评测样本/通过率/周趋势无数据源,不伪造,note-bar 说明数据来源。
+ * M5(§4.8):B6 两路——① FAIL 名单卡(id=fail-list,s9 高误报段互跳①落点)加归因
+ * foot(GET /metrics/fail_attribution,误报原因 top 聚合),FAIL 行深链 /rules?rule=
+ * (互跳②);② 周趋势卡(GET /metrics/trends 近 6 周误报率 6 柱,空周「—」不画 0%,
+ * 伪零纪律)+ 回流闭环 note。
  */
+
+import Link from "next/link";
 
 import {
   type RuleStatsRow,
@@ -17,11 +22,19 @@ import {
   fpRatePercent,
   isHighFp,
 } from "@/extensions/bid-review/components/rulepack-ui";
-import { useBidRulepacks } from "@/extensions/bid-review/hooks";
+import {
+  useBidFailAttribution,
+  useBidRulepacks,
+  useBidTrends,
+} from "@/extensions/bid-review/hooks";
 
 export function MetricsView() {
   const rulepacksQuery = useBidRulepacks();
+  const attrQuery = useBidFailAttribution();
+  const trendQuery = useBidTrends();
   const packs = rulepacksQuery.data ?? [];
+  const weeks = trendQuery.data ?? [];
+  const attrMap = new Map((attrQuery.data ?? []).map((a) => [a.rule_id, a]));
 
   const totals = { rules: 0, hit: 0, fp: 0, adopted: 0 };
   const rows: RuleStatsRow[] = [];
@@ -131,10 +144,47 @@ export function MetricsView() {
             )}
           </div>
 
+          {/* 周趋势(M5 §4.8,B6):近 6 周误报率 6 柱,空周「—」不画 0%(伪零纪律) */}
           <div className="card" style={{ marginBottom: 12 }}>
             <div className="card-hd">
+              <h3>周趋势</h3>
+              <span className="hd-sub">近 6 周 · 误报率 = 误报 /(误报+维持)</span>
+            </div>
+            {weeks.some((w) => w.rate != null) ? (
+              <div style={{ padding: "12px 16px" }}>
+                <div className="trend" role="img" aria-label="近 6 周误报率柱状图">
+                  {weeks.map((w) => {
+                    const maxRate = Math.max(...weeks.map((x) => x.rate ?? 0), 1);
+                    const h = w.rate == null ? 4 : Math.max(8, Math.round((w.rate / maxRate) * 96));
+                    return (
+                      <div className="t-col" key={w.week_start}>
+                        <div
+                          className="t-bar"
+                          style={{ height: h }}
+                          title={`${w.week_start} 误报 ${w.fp} · 维持 ${w.confirmed}`}
+                        />
+                        <div className="t-lb">{w.rate == null ? "—" : `${w.rate}%`}</div>
+                        <div className="t-wk">{w.week_start.slice(5)}</div>
+                      </div>
+                    );
+                  })}
+                </div>
+                <div className="note-bar" style={{ marginTop: 12 }}>
+                  <span>
+                    回流闭环生效:复核误报 → 自动归因 → 评测样本 →
+                    规则修订;「—」为无回流数据的周(不画 0%)。
+                  </span>
+                </div>
+              </div>
+            ) : (
+              <div className="tbl-foot">尚无回流数据——周趋势随人工复核产生(标误报/维持即入桶)。</div>
+            )}
+          </div>
+
+          <div className="card" id="fail-list" style={{ marginBottom: 12 }}>
+            <div className="card-hd">
               <h3>高误报 FAIL 名单</h3>
-              <span className="hd-sub">误报率 = 误报/命中 ≥ 20% 自动入榜</span>
+              <span className="hd-sub">误报率 = 误报/命中 ≥ 20% 自动入榜 · 复核回流归因</span>
             </div>
             {failList.length === 0 ? (
               <div className="tbl-foot">
@@ -143,41 +193,61 @@ export function MetricsView() {
                   : "暂无高误报规则"}
               </div>
             ) : (
-              <table className="tbl">
-                <thead>
-                  <tr>
-                    <th>规则</th>
-                    <th>名称</th>
-                    <th>层级</th>
-                    <th className="r">命中</th>
-                    <th className="r">误报</th>
-                    <th className="r">误报率</th>
-                    <th>判定</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {failList.map(({ key, rule, stat }) => {
-                    const pct = fpRatePercent(stat);
-                    return (
-                      <tr key={key}>
-                        <td className="mono">{rule.id}</td>
-                        <td>{rule.name}</td>
-                        <td>
-                          <span className="pill pill-main">{rule.layer}</span>
-                        </td>
-                        <td className="r num">{stat.hit}</td>
-                        <td className="r num">{stat.fp}</td>
-                        <td className="r num">
-                          {pct === null ? "—" : `${pct}%`}
-                        </td>
-                        <td>
-                          <span className="pill pill-err">FAIL</span>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
+              <>
+                <table className="tbl">
+                  <thead>
+                    <tr>
+                      <th>规则</th>
+                      <th>名称</th>
+                      <th>层级</th>
+                      <th className="r">命中</th>
+                      <th className="r">误报</th>
+                      <th className="r">误报率</th>
+                      <th>判定</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {failList.map(({ key, rule, stat }) => {
+                      const pct = fpRatePercent(stat);
+                      return (
+                        <tr key={key}>
+                          <td className="mono">
+                            <Link className="k" href={`/bid-review/rules?rule=${rule.id}`}>
+                              {rule.id}
+                            </Link>
+                          </td>
+                          <td>{rule.name}</td>
+                          <td>
+                            <span className="pill pill-main">{rule.layer}</span>
+                          </td>
+                          <td className="r num">{stat.hit}</td>
+                          <td className="r num">{stat.fp}</td>
+                          <td className="r num">
+                            {pct === null ? "—" : `${pct}%`}
+                          </td>
+                          <td>
+                            <span className="pill pill-err">FAIL</span>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+                {/* 归因 foot(M5 §4.8,B6):误报原因 top 聚合(原型 s10 句式) */}
+                <div className="tbl-foot">
+                  {(attrQuery.data ?? []).length > 0
+                    ? `FAIL 规则的误报样本已由复核回流自动归因:${failList
+                        .map(({ rule }) => {
+                          const a = attrMap.get(rule.id);
+                          const top = a?.reasons[0];
+                          return top
+                            ? `${rule.id} 集中在「${top.reason}」(${top.count}/${a.total})`
+                            : `${rule.id} 误报样本尚无归因(原因未填)`;
+                        })
+                        .join(" · ")}`
+                    : "FAIL 规则的误报样本尚无归因——复核标误报时请选原因(误报必填原因是回流数据质量的前提)。"}
+                </div>
+              </>
             )}
           </div>
 
