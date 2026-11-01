@@ -17,7 +17,7 @@
   "$defs": {
     "fix_op": {
       "type": "object",
-      "description": "可选 DocOperation；v1 仅 replace_section（模型给出整节修正文时才有）",
+      "description": "可选 DocOperation；v1 仅 replace_section（模型给出整节修正文时才有）；同一节至多一条 fix_op（服务端保证：多余 fix_op 剥离，仅保留最后一条）",
       "required": ["op", "anchor", "content"],
       "properties": {
         "op": { "const": "replace_section" },

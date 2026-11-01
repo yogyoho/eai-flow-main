@@ -245,6 +245,26 @@ class TestReviewStream:
         assert "fix_op" not in events[1]["finding"]
 
     @pytest.mark.asyncio
+    async def test_multi_fixed_section_last_wins(self, client, monkeypatch):
+        # 复审修5: 同节两条各带 fixed_section → 仅最后一条保留 fix_op（前条剥离，防整节替换互相覆盖的「已修复」假阳性）；
+        # finding 本体照常全发出，summary 按 severity 计数不受剥离影响
+        items = _finding_json(_ok("error", fixed_section="# 一\n\n第一条修正。"), _ok("warn", fixed_section="# 一\n\n第二条修正。"))
+        fake = FakeModel([items])
+        monkeypatch.setattr(AT, "create_chat_model", lambda **kw: fake)
+        events = await _events(client, {"thread_id": "t", "rel_path": "r", "review_type": "units", "content": "# A\n\nx\n"})
+        findings = [e["finding"] for e in events if e["type"] == "finding"]
+        assert len(findings) == 2
+        assert "fix_op" not in findings[0]
+        assert findings[1]["fix_op"] == {"op": "replace_section", "anchor": "A", "content": "# 一\n\n第二条修正。"}
+        assert events[-1]["summary"] == {"error": 1, "warn": 1, "info": 0}
+
+    def test_prompt_fix_hint_carries_dedup_rule(self):
+        # 复审修5: prompt 侧约束——同节多问题时只在最后一条带 fixed_section 且须一次性纳入全部修正
+        assert "最后一条" in AT._REVIEW_FIX_HINT
+        assert "fixed_section" in AT._REVIEW_FIX_HINT
+        assert "全部修正" in AT._REVIEW_FIX_HINT
+
+    @pytest.mark.asyncio
     async def test_structured_section_skipped_no_model_call(self, client, monkeypatch):
         fake = FakeModel([_finding_json(_ok())])
         monkeypatch.setattr(AT, "create_chat_model", lambda **kw: fake)

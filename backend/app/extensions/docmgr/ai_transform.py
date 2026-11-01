@@ -548,8 +548,11 @@ _REVIEW_RULES: dict[str, str] = {
 }
 
 # EAI-CUSTOM (全文操作 M2): fixed_section 鼓励语仅 consistency/units 注入；numbering/custom 的 prompt 不给该字段提示
+# EAI-CUSTOM (全文操作 M2 复审修5: I-2 同节多 fix_op last-write-wins): fix_op 是整节替换，同节多条带 fixed_section 时前端顺序
+# apply 后一条覆盖前一条（前条卡片仍显「已修复」=假阳性）→ prompt 约束同节多问题只在最后一条携带，且须一次性纳入全部修正
 _REVIEW_FIX_HINT = """
-   - 可选 "fixed_section"：仅当你确能给出该节的完整修正版 markdown 全文时提供；给不出完整修正节就不要提供该字段；只修问题本身，不要为改格式而改文"""
+   - 可选 "fixed_section"：仅当你确能给出该节的完整修正版 markdown 全文时提供；给不出完整修正节就不要提供该字段；只修问题本身，不要为改格式而改文
+   - 同一节存在多条问题时，只在最后一条给出 "fixed_section"，且该修正文必须一次性纳入本节全部修正，其余条目一律不带该字段"""
 
 _REVIEW_SECTION_PROMPT = """你是文档审校助手。下面是一篇文档中的一节，请只审查这一节中的「{focus}」问题。
 
@@ -769,10 +772,15 @@ async def ai_review(
                 logger.warning("docmgr ai_review section %s findings not parseable", i)
                 yield _ndjson({"type": "section_error", "index": i, "message": "本节审查输出无法解析，可稍后重试"})
                 continue
-            for n, item in enumerate(items):
-                finding = _normalize_finding(item, request.review_type, i, n, sec["title"])
-                if finding is None:
-                    continue
+            # EAI-CUSTOM (全文操作 M2 复审修5: I-2 同节多 fix_op last-write-wins): 防模型不遵 prompt——按节先批量归一再 yield，
+            # 同节 fix_op 多于一条时剥离除最后一条外的全部 fix_op（finding 本体照常发出 + warning 记剥离数；severity 计数不受影响）
+            normalized = [f for f in (_normalize_finding(item, request.review_type, i, n, sec["title"]) for n, item in enumerate(items)) if f is not None]
+            fix_idx = [k for k, f in enumerate(normalized) if "fix_op" in f]
+            if len(fix_idx) > 1:
+                for k in fix_idx[:-1]:
+                    del normalized[k]["fix_op"]
+                logger.warning("docmgr ai_review section %s: stripped %d extra fix_op(s), last one wins", i, len(fix_idx) - 1)
+            for finding in normalized:
                 summary[finding["severity"]] += 1
                 yield _ndjson({"type": "finding", "index": i, "finding": finding})
         # EAI-CUSTOM (全文操作 M2): summary 按 severity 实际发出（过滤后）条数计；total = 全量节数
