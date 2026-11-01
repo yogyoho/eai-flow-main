@@ -15,6 +15,7 @@ import {
   confirmTask,
   feedbackIssue,
   fetchBaselines,
+  fetchTaskDiff,
   getTask,
   fetchBidTrends,
   fetchFailAttribution,
@@ -29,6 +30,8 @@ export const bidReviewKeys = {
   tasks: ["bid-review", "tasks"] as const,
   task: (taskId: string) => ["bid-review", "task", taskId] as const,
   issues: (taskId: string) => ["bid-review", "issues", taskId] as const,
+  diff: (taskId: string, prevId: string) =>
+    ["bid-review", "diff", taskId, prevId] as const,
   baselines: (taskId: string) => ["bid-review", "baselines", taskId] as const,
   rulepacks: ["bid-review", "rulepacks"] as const,
   ruleExprs: (name: string) => ["bid-review", "ruleExprs", name] as const,
@@ -75,6 +78,19 @@ export function useBidIssues(taskId: string | null | undefined) {
     queryKey: bidReviewKeys.issues(taskId ?? ""),
     queryFn: () => listTaskIssues(taskId!),
     enabled: Boolean(taskId),
+  });
+}
+
+/** GET /tasks/{id}/diff?prev= —— B7 版本三态(spec §5):taskId/prevId 任一为空
+ * 不发请求(按钮未点开时传 null,懒加载)。 */
+export function useBidDiff(
+  taskId: string | null | undefined,
+  prevTaskId: string | null | undefined,
+) {
+  return useQuery({
+    queryKey: bidReviewKeys.diff(taskId ?? "", prevTaskId ?? ""),
+    queryFn: () => fetchTaskDiff(taskId!, prevTaskId!),
+    enabled: Boolean(taskId && prevTaskId),
   });
 }
 
@@ -157,7 +173,10 @@ export function useBidRuleExprs(name: string | null) {
 
 /** GET /metrics/fail_attribution(B6)——看板 FAIL 归因 foot。 */
 export function useBidFailAttribution() {
-  return useQuery({ queryKey: bidReviewKeys.failAttribution, queryFn: fetchFailAttribution });
+  return useQuery({
+    queryKey: bidReviewKeys.failAttribution,
+    queryFn: fetchFailAttribution,
+  });
 }
 
 /** GET /metrics/trends(B6)——看板近 6 周误报率。 */

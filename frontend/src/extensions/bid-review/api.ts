@@ -89,6 +89,23 @@ export interface RulePackOut {
 
 // ── 任务端点 ──────────────────────────────────────────────────────────
 
+/** GET /tasks/{id}/diff 行内新增问题(B7 spec §5:判定面字段,供对比卡直渲)。 */
+export interface DiffAdded {
+  id: string;
+  rule_id: string;
+  layer: string;
+  severity: string;
+  message: string;
+  need_human: boolean;
+}
+
+/** GET /tasks/{id}/diff?prev= 响应(B7 版本三态;匹配键=dedup_key)。 */
+export interface BidDiffOut {
+  added: DiffAdded[];
+  removed: { rule_id: string; severity: string; message: string }[];
+  unchanged_count: number;
+}
+
 /** GET /tasks —— 任务列表(owner 过滤由后端完成;响应 {items: TaskOut[]},拆包返回)。 */
 export function listTasks(): Promise<TaskOut[]> {
   return request<{ items: TaskOut[] }>("/tasks").then((r) => r.items);
@@ -103,13 +120,20 @@ export function listTasks(): Promise<TaskOut[]> {
 export function createTask(
   mode: "quick" | "deep",
   files: { tender: File[]; bid: File[] },
-  identity?: { project_name?: string | null; lot_name?: string | null; tender_no?: string | null },
+  identity?: {
+    project_name?: string | null;
+    lot_name?: string | null;
+    tender_no?: string | null;
+  },
 ): Promise<TaskOut> {
   const form = new FormData();
   form.set("mode", mode);
-  if (identity?.project_name?.trim()) form.set("project_name", identity.project_name.trim());
-  if (identity?.lot_name?.trim()) form.set("lot_name", identity.lot_name.trim());
-  if (identity?.tender_no?.trim()) form.set("tender_no", identity.tender_no.trim());
+  if (identity?.project_name?.trim())
+    form.set("project_name", identity.project_name.trim());
+  if (identity?.lot_name?.trim())
+    form.set("lot_name", identity.lot_name.trim());
+  if (identity?.tender_no?.trim())
+    form.set("tender_no", identity.tender_no.trim());
   for (const f of files.tender) form.append("tender_files", f);
   for (const f of files.bid) form.append("bid_files", f);
   return request<TaskOut>("/tasks", { method: "POST", body: form });
@@ -118,6 +142,16 @@ export function createTask(
 /** GET /tasks/{id} —— 任务详情(含 progress / engine_meta)。 */
 export function getTask(taskId: string): Promise<TaskOut> {
   return request<TaskOut>(`/tasks/${taskId}`);
+}
+
+/** GET /tasks/{id}/diff?prev= —— B7 版本三态(spec §5;/results 对比卡片)。 */
+export function fetchTaskDiff(
+  taskId: string,
+  prevTaskId: string,
+): Promise<BidDiffOut> {
+  return request<BidDiffOut>(
+    `/tasks/${taskId}/diff?prev=${encodeURIComponent(prevTaskId)}`,
+  );
 }
 
 /** GET /tasks/{id}/confirm —— 确认门(仅 UI):基线全量翻转 confirmed;
@@ -249,17 +283,23 @@ export interface TrendWeek {
 
 /** GET /rulepacks/{name}/rules —— 规则定义五块明细(B5;当前单包 bid-review-core)。 */
 export function fetchRuleExprs(name: string): Promise<RuleExprOut[]> {
-  return request<{ items: RuleExprOut[] }>(`/rulepacks/${name}/rules`).then((r) => r.items);
+  return request<{ items: RuleExprOut[] }>(`/rulepacks/${name}/rules`).then(
+    (r) => r.items,
+  );
 }
 
 /** GET /metrics/fail_attribution —— FAIL 规则误报原因聚合(B6,治理域全库口径)。 */
 export function fetchFailAttribution(): Promise<FailAttrItem[]> {
-  return request<{ items: FailAttrItem[] }>("/metrics/fail_attribution").then((r) => r.items);
+  return request<{ items: FailAttrItem[] }>("/metrics/fail_attribution").then(
+    (r) => r.items,
+  );
 }
 
 /** GET /metrics/trends —— 近 6 周误报率(B6)。 */
 export function fetchBidTrends(): Promise<TrendWeek[]> {
-  return request<{ weeks: TrendWeek[] }>("/metrics/trends").then((r) => r.weeks);
+  return request<{ weeks: TrendWeek[] }>("/metrics/trends").then(
+    (r) => r.weeks,
+  );
 }
 
 // ── 报告导出(Task 21)────────────────────────────────────────────────

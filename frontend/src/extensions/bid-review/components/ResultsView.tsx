@@ -60,6 +60,7 @@ import { formatDuration } from "@/extensions/bid-review/components/primitives";
 import { TaskStepper } from "@/extensions/bid-review/components/TaskStepper";
 import { TaskTitleTag } from "@/extensions/bid-review/components/TaskTitleTag";
 import {
+  useBidDiff,
   useBidFeedback,
   useBidIssues,
   useBidRulepacks,
@@ -282,10 +283,17 @@ export function ResultsView({ taskId }: { taskId?: string | null }) {
   const [batchReason, setBatchReason] = useState("");
   // EAI-CUSTOM 2026-10-30:定位原文弹层(证据 chip 点击触发,spec D6/D8)
   const [locate, setLocate] = useState<LocateTarget | null>(null);
+  // B7 版本对比卡(spec §4.5):prev_task_id 有值才出按钮;点开才拉 diff(懒加载)
+  const [diffOpen, setDiffOpen] = useState(false);
 
   const enabled = Boolean(taskId);
   const taskQuery = useBidTask(enabled ? taskId : null);
   const issuesQuery = useBidIssues(enabled ? taskId : null);
+  const task = taskQuery.data ?? null;
+  const diffQuery = useBidDiff(
+    diffOpen ? taskId : null,
+    diffOpen ? (taskQuery.data?.prev_task_id ?? null) : null,
+  );
   const feedback = useBidFeedback();
   // 规则名/类型映射(2026-10-30 用户反馈+原型对齐)——GET /rulepacks 联表:
   // 名称作问题卡标题,类型(det/engine)作灰 pill(原型 s5 头部三 pill 结构)。
@@ -304,7 +312,6 @@ export function ResultsView({ taskId }: { taskId?: string | null }) {
     return { names, types, inputs };
   }, [rulepacksQuery.data]);
 
-  const task = taskQuery.data ?? null;
   // 稳定空数组身份(useMemo 依赖 issues 的派生计算不随加载态每帧重算)
   const issues = useMemo(() => issuesQuery.data ?? [], [issuesQuery.data]);
   // "基准未确认"唯一可靠信号:deep 任务停在确认门(worker 落 awaiting_confirm)。
@@ -599,6 +606,16 @@ export function ResultsView({ taskId }: { taskId?: string | null }) {
           </div>
         </div>
         <div className="ph-actions">
+          {/* B7 版本对比(spec §4.5):有上一版本才出;点开行内卡片(懒拉 diff) */}
+          {task?.prev_task_id ? (
+            <button
+              type="button"
+              className="btn btn-sec btn-sm"
+              onClick={() => setDiffOpen((v) => !v)}
+            >
+              对比上一版本
+            </button>
+          ) : null}
           {/* 常驻(原型 s5):发起复核——出结果才可用,未完成置灰注因 */}
           {taskId ? (
             <Link
@@ -667,6 +684,72 @@ export function ResultsView({ taskId }: { taskId?: string | null }) {
 
       {/* 步骤条:共享件(Plan6 上移,canonical home=/parsing;M3 拆分前暂留) */}
       <TaskStepper task={task} />
+
+      {/* B7 版本对比卡(spec §4.5,轻量不做 s8 整屏):三态计数+新增问题列表;
+          匹配键=规则+锚定字段(dedup_key),消失问题详情在上一版任务 */}
+      {diffOpen && task?.prev_task_id ? (
+        <div className="card" style={{ marginBottom: 12 }}>
+          <div className="card-hd">
+            <h3>版本对比</h3>
+            <span className="hd-sub">
+              与上一版本逐问题对照(匹配键 = 规则 + 锚定字段)
+            </span>
+            <div className="hd-right">
+              <span className="pill pill-warn">
+                新增 {diffQuery.data?.added.length ?? "—"}
+              </span>
+              <span className="pill pill-gray">
+                消失 {diffQuery.data?.removed.length ?? "—"}
+              </span>
+              <span className="pill pill-ok">
+                未变 {diffQuery.data?.unchanged_count ?? "—"}
+              </span>
+            </div>
+          </div>
+          {diffQuery.isPending ? (
+            <div className="tbl-foot">对比加载中…</div>
+          ) : diffQuery.isError ? (
+            <div className="tbl-foot">
+              对比加载失败:{diffQuery.error.message}
+            </div>
+          ) : (
+            <>
+              {(diffQuery.data?.added.length ?? 0) === 0 ? (
+                <div className="tbl-foot">本版本无新增问题</div>
+              ) : (
+                <table className="tbl">
+                  <thead>
+                    <tr>
+                      <th>规则</th>
+                      <th>严重度</th>
+                      <th>问题</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {diffQuery.data!.added.map((a) => {
+                      const sp = sevPillBrx(a.severity);
+                      return (
+                        <tr key={a.id}>
+                          <td className="mono">{a.rule_id}</td>
+                          <td>
+                            <span className={cn("pill", sp.cls)}>
+                              {sp.label}
+                            </span>
+                          </td>
+                          <td>{renderIssueMessage(a.message)}</td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              )}
+              <div className="tbl-foot">
+                按「规则 + 锚定字段」匹配三态;消失问题详情见上一版本任务
+              </div>
+            </>
+          )}
+        </div>
+      ) : null}
 
       {/* 基准未确认:确认门注记(确认前工作台只读);确认后状态离开即移除 */}
       {baselineUnconfirmed ? (

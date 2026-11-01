@@ -246,4 +246,76 @@ describe("bid-review ResultsView 证据管线(EAI-CUSTOM 2026-10-30)", () => {
     const labels = screen.getAllByText(/已复核 · /).map((el) => el.textContent);
     expect(labels).toEqual(["已复核 · 维持违规", "已复核 · 误报"]);
   });
+
+  it("B7 版本对比:prev_task_id 显按钮,点开拉 diff 卡——三态计数+新增问题列表(spec §4.5)", async () => {
+    const TASK_PREV = { ...TASK, prev_task_id: "t0" };
+    responder = (path) => {
+      if (path.endsWith("/tasks/t1/issues")) return jsonRes({ items: [ISSUE] });
+      if (path.endsWith("/tasks/t1")) return jsonRes(TASK_PREV);
+      if (path.includes("/tasks/t1/diff"))
+        return jsonRes({
+          added: [
+            {
+              id: "a1",
+              rule_id: "L3-005",
+              layer: "L3",
+              severity: "major",
+              message: "工期表述不一致",
+              need_human: false,
+            },
+          ],
+          removed: [
+            { rule_id: "L1-009", severity: "fatal", message: "旧版总价超限价" },
+          ],
+          unchanged_count: 2,
+        });
+      return jsonRes({}, 404);
+    };
+    renderWorkbench();
+    await screen.findByText("审查结果");
+    // 任务详情异步落位(prev_task_id 驱动按钮,先等 task 数据)
+    await screen.findByText(/用时 11m 32s/);
+    // 按钮常驻(prev_task_id 才渲染),未点开不发 diff 请求
+    const btn = screen.getByRole("button", { name: "对比上一版本" });
+    expect(calls.filter((c) => c.path.includes("/diff")).length).toBe(0);
+    fireEvent.click(btn);
+    await waitFor(() => {
+      expect(
+        calls.some(
+          (c) =>
+            c.path.includes("/tasks/t1/diff") && c.path.includes("prev=t0"),
+        ),
+      ).toBe(true);
+    });
+    // 三态计数 + 新增问题列表(rule_id+severity pill+message)
+    await waitFor(() => {
+      expect(document.body.textContent).toContain("工期表述不一致");
+    });
+    expect(document.body.textContent).toContain("新增 1");
+    expect(document.body.textContent).toContain("消失 1");
+    expect(document.body.textContent).toContain("未变 2");
+    const diffCard = screen.getByText("版本对比").closest(".card");
+    expect(diffCard?.textContent).toContain("L3-005");
+    // 行内 sev pill(major→pill-orange 主要);hd-right 首个 pill-warn=新增计数
+    expect(diffCard?.querySelector("tbody .pill-orange")?.textContent).toBe(
+      "主要",
+    );
+    expect(diffCard?.querySelector(".pill-warn")?.textContent).toContain(
+      "新增",
+    );
+    // tbl-foot:消失问题详情在上一版任务
+    expect(diffCard?.textContent).toContain("上一版本任务");
+  });
+
+  it("无 prev_task_id:不渲染对比按钮,不发 diff 请求", async () => {
+    responder = (path) => {
+      if (path.endsWith("/tasks/t1/issues")) return jsonRes({ items: [ISSUE] });
+      if (path.endsWith("/tasks/t1")) return jsonRes(TASK);
+      return jsonRes({}, 404);
+    };
+    renderWorkbench();
+    await screen.findByText("审查结果");
+    expect(screen.queryByRole("button", { name: "对比上一版本" })).toBeNull();
+    expect(calls.filter((c) => c.path.includes("/diff")).length).toBe(0);
+  });
 });
