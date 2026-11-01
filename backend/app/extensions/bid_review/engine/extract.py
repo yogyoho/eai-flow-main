@@ -326,6 +326,24 @@ def compute_score_coverage(scoring_items: list, rules) -> dict:
     }
 
 
+def deviation_counts(items: list | None) -> dict:
+    """B9 响应偏离表(spec 2026-11-01 §1.2)counts 服务端算(单一事实源):
+    tender_items=kind≠extra(增项不在招标清单)/bid_items=kind≠missing(漏项无响应);
+    negative/missing/extra 按 kind 直计。非 dict 项丢弃;kind 缺失项计入两侧不落类别。"""
+    counts = {"tender_items": 0, "bid_items": 0, "negative": 0, "missing": 0, "extra": 0}
+    for item in items or []:
+        if not isinstance(item, dict):
+            continue
+        kind = item.get("kind")
+        if kind != "extra":
+            counts["tender_items"] += 1
+        if kind != "missing":
+            counts["bid_items"] += 1
+        if kind in ("negative", "missing", "extra"):
+            counts[kind] += 1
+    return counts
+
+
 def build_extract_prompt(docs: list[dict], field_paths: list[str]) -> str:
     """结构化提取 prompt 骨架(设计文档素材转录:逐锚点抽字段,只输出 field_dictionary 路径,缺字段显式 null,禁止编造;
     FIELD_TYPE_CONTRACTS 命中的路径附带类型契约说明,防工期/质保类 *_text 字段回流原始文本)。

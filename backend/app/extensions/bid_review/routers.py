@@ -35,7 +35,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.extensions.auth.middleware import require_permission
 from app.extensions.bid_review import crud, parse, worker
-from app.extensions.bid_review.engine.extract import apply_adjudications, compute_score_coverage, detect_conflicts
+from app.extensions.bid_review.engine.extract import apply_adjudications, compute_score_coverage, deviation_counts, detect_conflicts
 from app.extensions.bid_review.engine.labels import FIELD_LABELS
 from app.extensions.bid_review.models import ReviewFeedback, ReviewIssue, RulePackMeta
 from app.extensions.bid_review.schemas import AdjudicateIn, FeedbackIn, IssueOut, TaskOut
@@ -646,6 +646,33 @@ async def task_score_coverage(
         return {"total": 0, "covered": 0, "items": []}
     pack = worker.load_rulepack(worker.RULEPACK_PATH)
     return compute_score_coverage(raw_items, pack.rules)
+
+
+@router.get("/tasks/{task_id}/deviations")
+async def task_deviations(
+    task_id: str,
+    db: AsyncSession = Depends(get_db),
+    owner_id: str = Depends(current_owner),
+):
+    """响应偏离表(spec 2026-11-01 §1.2 B9):基线 fields["deviation.items"] 投影
+    (抽取期 LLM 逐条对照招标↔投标)。基线每行携带同全量快照 → 按 item 名跨行
+    去重(B4 手法);counts 服务端算单一事实源。旧任务/未抽出 → 零投影(counts 全
+    0 + items 空,前端空态引导「本任务抽取时未包含偏离维度」)。"""
+    task = await crud.get_task(db, task_id=task_id, owner_id=owner_id)
+    if task is None:
+        raise HTTPException(status_code=404, detail="任务不存在")
+    baselines = await crud.list_baselines(db, task_id=task_id, owner_id=owner_id)
+    items: list[dict] = []
+    seen_names: set[str] = set()
+    for row in baselines:
+        for item in (row.payload or {}).get("fields", {}).get("deviation.items") or []:
+            if not isinstance(item, dict):
+                continue
+            name = str(item.get("item") or "").strip()
+            if name and name not in seen_names:
+                seen_names.add(name)
+                items.append(item)
+    return {"counts": deviation_counts(items), "items": items}
 
 
 @router.post("/tasks/{task_id}/retry", response_model=TaskOut)
