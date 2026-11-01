@@ -97,6 +97,10 @@ describe("bid-review layout 子路由导航(micro-B 站内入口)", () => {
     expect(
       screen.getByRole("link", { name: "响应偏离表" }).getAttribute("href"),
     ).toBe("/bid-review/deviations");
+    // B10 (spec 2026-11-01 §2):版本差异整屏(原型 s8)——双参数页,裸路径
+    expect(
+      screen.getByRole("link", { name: "版本差异" }).getAttribute("href"),
+    ).toBe("/bid-review/diff");
     expect(
       screen.getByRole("link", { name: "规则库" }).getAttribute("href"),
     ).toBe("/bid-review/rules");

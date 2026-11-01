@@ -5,6 +5,7 @@ import {
   ClipboardCheck,
   FileText,
   Gauge,
+  GitCompare,
   Layers,
   ListChecks,
   Moon,
@@ -117,6 +118,15 @@ const navItems: Array<{
     pageId: "bid:page:results",
     group: 0,
     taskPage: "deviations",
+  },
+  {
+    // B10 (spec 2026-11-01 §2,原型 s8):版本差异整屏——需 task_id+prev 双参数,
+    // taskHref 只带 task_id,故不挂 taskPage(裸路径 → 页内空态引导从任务总览发起)
+    href: "/bid-review/diff",
+    label: "版本差异",
+    icon: GitCompare,
+    pageId: "bid:page:results",
+    group: 0,
   },
   {
     href: "/bid-review/rules",
