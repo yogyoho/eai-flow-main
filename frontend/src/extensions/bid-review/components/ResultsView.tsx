@@ -327,8 +327,23 @@ export function ResultsView({ taskId }: { taskId?: string | null }) {
   const docs = (Array.isArray(rawDocs) ? rawDocs : []).filter(isRecord);
 
   // 误报判定:服务端落库 verdict 优先,本地 recorded 兜底(重取落定前的瞬态一致)。
+  // 服务端 review_state(B2,spec §4.5)→ 动作语义反向映射;会话内动作优先覆盖,
+  // 刷新后 refetch 落定——进度计数与行级标签刷新不丢(旧实现维持数仅本地会话内)。
+  const stateAction = (s?: string): FeedbackAction | undefined =>
+    s === "maintained"
+      ? "confirm"
+      : s === "false_positive"
+        ? "false_positive"
+        : s === "severity_changed"
+          ? "severity_change"
+          : s === "deferred"
+            ? "need_human"
+            : undefined;
+  const actionOf = (i: IssueOut): FeedbackAction | undefined =>
+    reviewed[i.id] ?? stateAction(i.review_state);
+
   const isFp = (i: IssueOut) =>
-    i.verdict === "false_positive" || reviewed[i.id] === "false_positive";
+    actionOf(i) === "false_positive" || i.verdict === "false_positive";
 
   // 汇总分级(与 worker.summarize_issues 同口径:severity 各级排除 need_human,
   // 待人工单列;api 层不透出 summary,客户端复算)。
@@ -346,12 +361,10 @@ export function ResultsView({ taskId }: { taskId?: string | null }) {
   ).length;
   const fatalUnhandled = summary.fatal - fatalFp;
 
-  // 复核进度(误报=服务端+本地并集;维持仅本地会话内)
+  // 复核进度(§4.5 B2:服务端 review_state + 会话内覆盖;误报含旧 verdict 兜底)
   const fpCount = issues.filter(isFp).length;
-  const confirmCount = issues.filter(
-    (i) => reviewed[i.id] === "confirm",
-  ).length;
-  const reviewedTotal = fpCount + confirmCount;
+  const confirmCount = issues.filter((i) => actionOf(i) === "confirm").length;
+  const reviewedTotal = issues.filter((i) => actionOf(i) != null).length;
 
   // 规则执行(2026-10-30 原型 s5 左列补齐):按规则包 type 分组——deterministic
   // 一组,semantic/hybrid 并入语义组(与 worker 进度文案「det+sem/hyb」同口径)。
@@ -999,9 +1012,9 @@ export function ResultsView({ taskId }: { taskId?: string | null }) {
               pageItems.map((i, idx) => {
                 const absIdx = (safePage - 1) * PAGE_SIZE + idx;
                 const sp = sevPillBrx(i.severity);
-                const reviewedAction = reviewed[i.id];
-                // need_human 标记不算复核完成(待人工项须可继续 确认/误报 闭环——
-                // 后端 confirm 会清 need_human 旗标,EAI-CUSTOM 2026-10-30)
+                // need_human(含服务端 deferred)不算复核完成(待人工项须可继续
+                // 确认/误报 闭环——后端 confirm 会清 need_human 旗标)
+                const reviewedAction = actionOf(i);
                 const doneState =
                   (reviewedAction != null && reviewedAction !== "need_human") ||
                   i.verdict === "false_positive";
@@ -1072,7 +1085,11 @@ export function ResultsView({ taskId }: { taskId?: string | null }) {
                               )}
                               style={{ height: 18, fontSize: 11 }}
                             >
-                              {isFp(i) ? "已复核 · 误报" : "已复核 · 维持违规"}
+                              {isFp(i)
+                                ? "已复核 · 误报"
+                                : reviewedAction === "severity_change"
+                                  ? "已复核 · 严重度调整"
+                                  : "已复核 · 维持违规"}
                             </span>
                           ) : (
                             <label className="iss-ckw">

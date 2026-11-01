@@ -85,7 +85,13 @@ const CONTENT = {
   page: 3,
   seq: 2,
   segments: [
-    { seq: 2, page: 3, kind: "text", text: "投标总价:¥9,000,000", asset_id: null },
+    {
+      seq: 2,
+      page: 3,
+      kind: "text",
+      text: "投标总价:¥9,000,000",
+      asset_id: null,
+    },
     { seq: 3, page: 3, kind: "table", text: "| 项目 | 金额 |", asset_id: null },
   ],
 };
@@ -134,9 +140,7 @@ describe("bid-review ResultsView 证据管线(EAI-CUSTOM 2026-10-30)", () => {
     expect(screen.getByText(/用时/)?.textContent).toContain("11m 32s");
     // 常驻按钮:发起复核 → /bid-review/review?task_id=t1(status=done 可用)
     const review = screen.getByRole("link", { name: "发起复核" });
-    expect(review.getAttribute("href")).toBe(
-      "/bid-review/review?task_id=t1",
-    );
+    expect(review.getAttribute("href")).toBe("/bid-review/review?task_id=t1");
     // 常驻按钮:刷新
     expect(screen.getByRole("button", { name: "刷新" })).toBeTruthy();
     // 资料完备性卡已删(裁定 16,2026-10-31 用户:与 /parsing 缺失列+待确认组重复)
@@ -145,8 +149,7 @@ describe("bid-review ResultsView 证据管线(EAI-CUSTOM 2026-10-30)", () => {
 
   it("证据 chip 点击 → content?page= 定位弹层渲染命中窗口", async () => {
     responder = (path) => {
-      if (path.includes("/docs/bid.pdf/content"))
-        return jsonRes(CONTENT);
+      if (path.includes("/docs/bid.pdf/content")) return jsonRes(CONTENT);
       if (path.endsWith("/tasks/t1/issues")) return jsonRes({ items: [ISSUE] });
       if (path.endsWith("/tasks/t1")) return jsonRes(TASK);
       return jsonRes({}, 404);
@@ -163,7 +166,9 @@ describe("bid-review ResultsView 证据管线(EAI-CUSTOM 2026-10-30)", () => {
         ),
       ).toBe(true),
     );
-    expect(await screen.findByRole("dialog", { name: "定位原文" })).toBeTruthy();
+    expect(
+      await screen.findByRole("dialog", { name: "定位原文" }),
+    ).toBeTruthy();
     expect(screen.getAllByText("投标总价:¥9,000,000").length).toBeGreaterThan(
       0,
     );
@@ -172,7 +177,8 @@ describe("bid-review ResultsView 证据管线(EAI-CUSTOM 2026-10-30)", () => {
 
   it("content 404 → 未定位到原文如实呈现", async () => {
     responder = (path) => {
-      if (path.includes("/docs/bid.pdf/content")) return jsonRes({ detail: "未定位到原文" }, 404);
+      if (path.includes("/docs/bid.pdf/content"))
+        return jsonRes({ detail: "未定位到原文" }, 404);
       if (path.endsWith("/tasks/t1/issues")) return jsonRes({ items: [ISSUE] });
       if (path.endsWith("/tasks/t1")) return jsonRes(TASK);
       return jsonRes({}, 404);
@@ -185,7 +191,8 @@ describe("bid-review ResultsView 证据管线(EAI-CUSTOM 2026-10-30)", () => {
 
   it("待人工按钮 → POST feedback action=need_human", async () => {
     responder = (path) => {
-      if (path.endsWith("/feedback")) return jsonRes({ ...ISSUE, verdict: "need_human", need_human: true });
+      if (path.endsWith("/feedback"))
+        return jsonRes({ ...ISSUE, verdict: "need_human", need_human: true });
       if (path.endsWith("/tasks/t1/issues")) return jsonRes({ items: [ISSUE] });
       if (path.endsWith("/tasks/t1")) return jsonRes(TASK);
       return jsonRes({}, 404);
@@ -203,5 +210,40 @@ describe("bid-review ResultsView 证据管线(EAI-CUSTOM 2026-10-30)", () => {
         note: "",
       });
     });
+  });
+
+  it("复核进度读服务端 review_state(B2,spec §4.5):刷新不丢,行级标签随投影出现", async () => {
+    responder = (path) => {
+      if (path.endsWith("/tasks/t1/issues"))
+        return jsonRes({
+          items: [
+            { ...ISSUE, id: "i1", review_state: "maintained" },
+            {
+              ...ISSUE,
+              id: "i2",
+              rule_id: "L1-010",
+              review_state: "false_positive",
+            },
+            {
+              ...ISSUE,
+              id: "i3",
+              rule_id: "L1-011",
+              review_state: "unresolved",
+            },
+          ],
+        });
+      if (path.endsWith("/tasks/t1")) return jsonRes(TASK);
+      return jsonRes({}, 404);
+    };
+    renderWorkbench();
+    await screen.findAllByText("投标总价超出招标控制价");
+    // 复核进度卡:已复核 2/3 · 维持 1 · 误报 1(全来自服务端投影,无本地动作)
+    const card = screen.getByText("复核进度").closest(".card");
+    expect(card?.textContent).toMatch(/已复核\s*2\s*\/\s*3/);
+    expect(card?.textContent).toMatch(/维持\s*1/);
+    expect(card?.textContent).toMatch(/误报\s*1/);
+    // 行级标签:三条同 fixture,按渲染序断言——i1 维持违规、i2 误报、i3 无标签
+    const labels = screen.getAllByText(/已复核 · /).map((el) => el.textContent);
+    expect(labels).toEqual(["已复核 · 维持违规", "已复核 · 误报"]);
   });
 });
