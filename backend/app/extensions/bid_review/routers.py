@@ -577,6 +577,23 @@ async def export_task_report(
 # ── B7 版本 diff(spec §5)──────────────────────────────────────────
 
 
+_SEV_RANK = {"fatal": 0, "major": 1, "minor": 2, "info": 3}
+
+
+def _rule_verdicts(issues: list) -> dict[str, dict]:
+    """问题按 rule_id 归并(B10 spec §2.1):present=存在 verdict≠false_positive 的问题;
+    severity=其中最严(_SEV_RANK 小者优先)。仅误报的 rule_id 不入结果(并集=非误报并集)。"""
+    by_rule: dict[str, list] = {}
+    for i in issues:
+        if (i.verdict or "") == "false_positive":
+            continue
+        by_rule.setdefault(i.rule_id, []).append(i)
+    return {
+        rid: {"present": True, "severity": min((r.severity for r in rows), key=lambda s: _SEV_RANK.get(s, 9))}
+        for rid, rows in by_rule.items()
+    }
+
+
 @router.get("/tasks/{task_id}/diff")
 async def diff_task(
     task_id: str,
@@ -590,8 +607,8 @@ async def diff_task(
     crud 契约里空键本就跳过查重)。added 带判定面字段供前端「新增问题列表」直渲,
     removed 只带计数面三字段(消失问题详情在上一版任务);各自按 severity 降序
     (致命在前)。prev 不存在或属他者 → 404(owner 隔离,不泄漏他者任务存在性)。
-    前端消费:/results 版本对比卡片(spec §4.5,轻量,不做 s8 整屏)。"""
-    _SEV_RANK = {"fatal": 0, "major": 1, "minor": 2, "info": 3}
+    前端消费:/results 版本对比卡片(spec §4.5,轻量)+ s8 整屏 /diff(spec
+    2026-11-01 B10:扩展 fields/rules 两键,既有三键原样=向后兼容)。"""
     task = await crud.get_task(db, task_id=task_id, owner_id=owner_id)
     prev_task = await crud.get_task(db, task_id=prev, owner_id=owner_id)
     if task is None or prev_task is None:
@@ -608,6 +625,28 @@ async def diff_task(
         (i for i in old if not i.dedup_key or i.dedup_key not in cur_keys),
         key=lambda i: _SEV_RANK.get(i.severity, 9),
     )
+    # B10 fields(§2.1):两版基线首行 fields 快照逐路径机械对比,值不同才列
+    # (JSON-safe !=);label 取 FIELD_LABELS,未收录回退原路径。单侧无基线 →
+    # 不比(空表):null 在此语义是「未抽取」,冒充「旧版没有」= 造假差异。
+    cur_baselines = await crud.list_baselines(db, task_id=task_id, owner_id=owner_id)
+    prev_baselines = await crud.list_baselines(db, task_id=prev, owner_id=owner_id)
+    cur_fields = (cur_baselines[0].payload or {}).get("fields", {}) if cur_baselines else {}
+    prev_fields = (prev_baselines[0].payload or {}).get("fields", {}) if prev_baselines else {}
+    field_rows = [
+        {"path": p, "label": FIELD_LABELS.get(p, p), "prev": prev_fields.get(p), "cur": cur_fields.get(p)}
+        for p in sorted(set(prev_fields) | set(cur_fields))
+        if prev_fields.get(p) != cur_fields.get(p)
+    ] if cur_baselines and prev_baselines else []
+    # B10 rules(§2.1):两版问题按 rule_id 归并(_rule_verdicts 剔误报),并集;
+    # 有变化者(present 或 severity 不同)排前,余按 rule_id 稳定排序。
+    prev_rules = _rule_verdicts(old)
+    cur_rules = _rule_verdicts(cur)
+    absent = {"present": False, "severity": None}
+    rule_rows = [
+        {"rule_id": rid, "prev": prev_rules.get(rid, absent), "cur": cur_rules.get(rid, absent)}
+        for rid in sorted(set(prev_rules) | set(cur_rules))
+    ]
+    rule_rows.sort(key=lambda r: (0 if r["prev"] != r["cur"] else 1, r["rule_id"]))
     return {
         "added": [
             {
@@ -622,6 +661,8 @@ async def diff_task(
         ],
         "removed": [{"rule_id": i.rule_id, "severity": i.severity, "message": i.message} for i in removed],
         "unchanged_count": len(cur_keys & old_keys),
+        "fields": field_rows,
+        "rules": rule_rows,
     }
 
 
