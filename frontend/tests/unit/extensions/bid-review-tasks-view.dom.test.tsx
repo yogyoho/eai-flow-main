@@ -483,4 +483,60 @@ describe("bid-review TasksView 选中任务体征契约门(Plan2 2026-10-31)", (
       true,
     );
   });
+
+  // B10 版本链入口(spec 2026-11-01 §2.3):?prev=<task_id> 深链 → 新建对话框
+  // 自动打开且「对比基准任务」预选; ResultsView「换版重审」即走此通道。
+  it("?prev= 深链:自动打开新建对话框并预选对比基准任务", async () => {
+    responder = (path) => {
+      if (path.endsWith("/tasks")) {
+        return jsonRes({
+          items: [TASK, { ...TASK, id: "t2", status: "running" }],
+        });
+      }
+      return jsonRes({}, 404);
+    };
+    searchParams = new URLSearchParams("prev=t1");
+    renderTasks();
+    // 对话框自动打开(无需点新建按钮)
+    await screen.findByRole("dialog", { name: "新建审查任务" });
+    const sel = screen.getByLabelText("对比基准任务") as HTMLSelectElement;
+    // 预选值在 done 任务选项落位后才可见(tasksQuery 异步) → waitFor
+    await waitFor(() => expect(sel.value).toBe("t1"));
+    // 选项只含 done 任务(t2 running 不入列);首项为「不对比」空位
+    const optVals = Array.from(sel.options).map((o) => o.value);
+    expect(optVals).toContain("");
+    expect(optVals).toContain("t1");
+    expect(optVals).not.toContain("t2");
+    expect(sel.options[0]?.textContent).toContain("不对比");
+  });
+
+  it("对话框:对比基准任务随 FormData 提交,留空不发", async () => {
+    responder = (path, init) => {
+      if (init?.method === "POST") {
+        return jsonRes({ ...TASK, id: "t-new" });
+      }
+      if (path.endsWith("/tasks")) {
+        return jsonRes({
+          items: [TASK, { ...TASK, id: "t0", biz_no: "TBR-20261028-0001" }],
+        });
+      }
+      return jsonRes({}, 404);
+    };
+    renderTasks();
+    await screen.findByTitle("t0");
+    fireEvent.click(screen.getByRole("button", { name: "新建审查任务" }));
+    fireEvent.change(screen.getByLabelText("选择招标文件"), {
+      target: { files: [new File(["T"], "t.txt", { type: "text/plain" })] },
+    });
+    fireEvent.change(screen.getByLabelText("选择投标文件"), {
+      target: { files: [new File(["B"], "b.txt", { type: "text/plain" })] },
+    });
+    // 默认「不对比」→ 创建成功后 prev_task_id 不出现在 FormData
+    fireEvent.click(screen.getByRole("button", { name: "创建任务" }));
+    await waitFor(() => {
+      const post = calls.find((c) => c.init?.method === "POST");
+      expect(post).toBeTruthy();
+      expect((post?.init?.body as FormData).get("prev_task_id")).toBeNull();
+    });
+  });
 });

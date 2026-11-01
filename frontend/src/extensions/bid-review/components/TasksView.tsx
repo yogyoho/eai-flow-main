@@ -31,8 +31,8 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Info, ListChecks, Plus, RefreshCw, X } from "lucide-react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 
 import { createTask } from "@/extensions/bid-review/api";
@@ -375,6 +375,8 @@ export function TasksView() {
   const [lotName, setLotName] = useState("");
   const [tenderNo, setTenderNo] = useState("");
   const [fileError, setFileError] = useState<string | null>(null);
+  // B10 版本链(spec 2026-11-01 §2.3):对比基准任务;空串=不对比
+  const [prevTaskId, setPrevTaskId] = useState("");
 
   const tasksQuery = useBidTasks();
 
@@ -383,7 +385,12 @@ export function TasksView() {
       mode: "quick" | "deep";
       tender: File[];
       bid: File[];
-      identity: { project_name: string; lot_name: string; tender_no: string };
+      identity: {
+        project_name: string;
+        lot_name: string;
+        tender_no: string;
+        prev_task_id: string;
+      };
     }) =>
       createTask(
         input.mode,
@@ -415,12 +422,25 @@ export function TasksView() {
     setProjectName("");
     setLotName("");
     setTenderNo("");
+    setPrevTaskId("");
     setFileError(null);
     setTenderFiles([]);
     setBidFiles([]);
     createMutation.reset();
     setDialogOpen(true);
   };
+
+  // B10 版本链入口(spec §2.3):?prev=<task_id> 深链(审查结果「换版重审」跳来)
+  // → 自动打开新建对话框并预选基准;只吃一次(取消后再开走按钮,不重复预选)。
+  const prevParam = useSearchParams().get("prev") ?? "";
+  const prevConsumed = useRef(false);
+  useEffect(() => {
+    if (!prevParam || prevConsumed.current) return;
+    prevConsumed.current = true;
+    openDialog();
+    setPrevTaskId(prevParam);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- openDialog 稳定读 setters,仅 prevParam 触发
+  }, [prevParam]);
 
   // Esc 关闭(沿原 Radix Dialog 行为)
   useEffect(() => {
@@ -860,6 +880,33 @@ export function TasksView() {
                   aria-label="招标编号"
                 />
               </div>
+              {/* B10 版本链(spec §2.3):选基准任务 → 新任务与其逐问题对照,
+                  版本差异整屏(/bid-review/diff)可看字段级变更;仅 done 可作基准 */}
+              <div className="frm-row">
+                <label>对比基准任务</label>
+                <div>
+                  <select
+                    className="inp"
+                    style={{ width: "100%" }}
+                    value={prevTaskId}
+                    aria-label="对比基准任务"
+                    onChange={(e) => setPrevTaskId(e.target.value)}
+                  >
+                    <option value="">不对比（全新任务）</option>
+                    {(tasksQuery.data ?? [])
+                      .filter((t) => t.status === "done")
+                      .map((t) => (
+                        <option key={t.id} value={t.id}>
+                          {t.biz_no ?? t.id.slice(0, 8)}
+                          {t.project_name ? ` · ${t.project_name}` : ""}
+                        </option>
+                      ))}
+                  </select>
+                  <div className="frm-help">
+                    选基准后自动逐问题对照新旧两版;仅供对照,不影响本任务审查口径。
+                  </div>
+                </div>
+              </div>
               <div className="frm-row">
                 <label>
                   评审模式<span className="must">*</span>
@@ -948,6 +995,7 @@ export function TasksView() {
                       project_name: projectName,
                       lot_name: lotName,
                       tender_no: tenderNo,
+                      prev_task_id: prevTaskId,
                     },
                   })
                 }

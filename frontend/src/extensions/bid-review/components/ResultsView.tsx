@@ -620,6 +620,15 @@ export function ResultsView({ taskId }: { taskId?: string | null }) {
               对比上一版本
             </button>
           ) : null}
+          {/* B10 版本链(spec 2026-11-01 §2.3):换版重审=以本任务为基准发起新审查,
+              跳任务总览深链自动开对话框并预选基准 */}
+          <Link
+            href={`/bid-review?prev=${taskId}`}
+            className="btn btn-sec btn-sm"
+            title="以本任务为对比基准,上传新版投标文件发起新审查"
+          >
+            换版重审
+          </Link>
           {/* 常驻(原型 s5):发起复核——出结果才可用,未完成置灰注因 */}
           {taskId ? (
             <Link
@@ -699,6 +708,13 @@ export function ResultsView({ taskId }: { taskId?: string | null }) {
               与上一版本逐问题对照(匹配键 = 规则 + 锚定字段)
             </span>
             <div className="hd-right">
+              {/* B10 (spec §2.2):整屏入口——行内卡只做三态速览,字段级差异看 /diff */}
+              <Link
+                href={`/bid-review/diff?task_id=${taskId}&prev=${task.prev_task_id}`}
+                className="btn btn-txt btn-sm"
+              >
+                查看整屏
+              </Link>
               <span className="pill pill-warn">
                 新增 {diffQuery.data?.added.length ?? "—"}
               </span>

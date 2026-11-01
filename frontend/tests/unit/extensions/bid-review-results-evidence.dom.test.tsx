@@ -305,6 +305,15 @@ describe("bid-review ResultsView 证据管线(EAI-CUSTOM 2026-10-30)", () => {
     );
     // tbl-foot:消失问题详情在上一版任务
     expect(diffCard?.textContent).toContain("上一版本任务");
+    // B10 版本链入口(spec 2026-11-01 §2):卡头「查看整屏」→ /diff 整屏(双参数)
+    const fullLink = screen.getByRole("link", { name: "查看整屏" });
+    expect(fullLink.getAttribute("href")).toBe(
+      "/bid-review/diff?task_id=t1&prev=t0",
+    );
+    // 页头「换版重审」→ /bid-review?prev= 深链(TasksView 自动开对话框预选基准)
+    expect(screen.getByRole("link", { name: "换版重审" }).getAttribute("href")).toBe(
+      "/bid-review?prev=t1",
+    );
   });
 
   it("无 prev_task_id:不渲染对比按钮,不发 diff 请求", async () => {
