@@ -47,9 +47,11 @@ async def create_task(
     project_name: str | None = None,
     lot_name: str | None = None,
     tender_no: str | None = None,
+    prev_task_id: str | None = None,
 ) -> ReviewTask:
     # 裁定12+14(EAI-CUSTOM 2026-10-31):身份字段=弹窗可选覆盖位;None 落列,
     # worker 抽取回填仅填 NULL 列(人工手填优先,见 worker 回填守卫)。
+    # prev_task_id(B10 版本链,spec 2026-11-01 §2.3):路由层先校验存在+属主才传入。
     task = ReviewTask(
         owner_id=owner_id,
         mode=mode,
@@ -57,6 +59,7 @@ async def create_task(
         project_name=project_name,
         lot_name=lot_name,
         tender_no=tender_no,
+        prev_task_id=prev_task_id,
     )
     session.add(task)
     await session.commit()

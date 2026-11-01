@@ -104,6 +104,7 @@ async def create_task(
     project_name: str = Form(""),
     lot_name: str = Form(""),
     tender_no: str = Form(""),
+    prev_task_id: str = Form(""),
     db: AsyncSession = Depends(get_db),
     owner_id: str = Depends(current_owner),
 ):
@@ -116,6 +117,11 @@ async def create_task(
     空串归 None(=引擎抽取回填位,worker 仅填 NULL 列)。"""
     if mode not in ("quick", "deep"):
         raise HTTPException(status_code=422, detail="mode 仅支持 quick|deep")
+    # B10 版本链(spec 2026-11-01 §2.3):先校验基准任务存在+属主,后建任务(防孤儿)。
+    # ≠自身 422 不设:新任务 id 服务端生成且校验先于建任务,prev==self 必落 404,422 不可达。
+    prev_norm = prev_task_id.strip() or None
+    if prev_norm is not None and await crud.get_task(db, task_id=prev_norm, owner_id=owner_id) is None:
+        raise HTTPException(status_code=404, detail="基准任务不存在")
     task = await crud.create_task(
         db,
         owner_id=owner_id,
@@ -123,6 +129,7 @@ async def create_task(
         project_name=project_name.strip() or None,
         lot_name=lot_name.strip() or None,
         tender_no=tender_no.strip() or None,
+        prev_task_id=prev_norm,
     )
     entries: list[dict] = []
     for f in tender_files or []:
