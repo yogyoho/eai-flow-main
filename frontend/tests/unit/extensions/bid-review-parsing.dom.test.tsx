@@ -144,7 +144,7 @@ describe("bid-review ParsingView /parsing 归拢专屏(Plan6 spec §4.3)", () =>
       return jsonRes({}, 404);
     };
     renderParsing();
-    await screen.findByText("解析与字段抽取");
+    await screen.findByText("解析抽取");
     // 任务详情异步后到:h2 同步渲染,先等数据落位再断言
     await waitFor(() => {
       expect(bodyHas("TBR-20261031-0001")).toBe(true);
@@ -163,7 +163,7 @@ describe("bid-review ParsingView /parsing 归拢专屏(Plan6 spec §4.3)", () =>
       return jsonRes({}, 404);
     };
     renderParsing();
-    await screen.findByText("解析与字段抽取");
+    await screen.findByText("解析抽取");
     await waitFor(() => {
       expect(bodyHas("基线已生成,等待人工确认")).toBe(true);
     });
@@ -183,7 +183,7 @@ describe("bid-review ParsingView /parsing 归拢专屏(Plan6 spec §4.3)", () =>
       return jsonRes({}, 404);
     };
     renderParsing();
-    await screen.findByText("解析与字段抽取");
+    await screen.findByText("解析抽取");
     await waitFor(() => {
       expect(bodyHas("b.pdf")).toBe(true);
     });
@@ -222,7 +222,7 @@ describe("bid-review ParsingView /parsing 归拢专屏(Plan6 spec §4.3)", () =>
       return jsonRes({}, 404);
     };
     renderParsing();
-    await screen.findByText("解析与字段抽取");
+    await screen.findByText("解析抽取");
     await waitFor(() => {
       expect(bodyHas("tender.max_price")).toBe(true);
     });
@@ -323,7 +323,7 @@ describe("bid-review ParsingView /parsing 归拢专屏(Plan6 spec §4.3)", () =>
       return jsonRes({}, 404);
     };
     renderParsing();
-    await screen.findByText("解析与字段抽取");
+    await screen.findByText("解析抽取");
     await waitFor(() => {
       expect(bodyHas("d1.pdf")).toBe(true);
     });
@@ -361,7 +361,7 @@ describe("bid-review ParsingView /parsing 归拢专屏(Plan6 spec §4.3)", () =>
       return jsonRes({}, 404);
     };
     renderParsing();
-    await screen.findByText("解析与字段抽取");
+    await screen.findByText("解析抽取");
     await waitFor(() => {
       expect(bodyHas("审查失败:引擎连接超时")).toBe(true);
     });
@@ -370,7 +370,7 @@ describe("bid-review ParsingView /parsing 归拢专屏(Plan6 spec §4.3)", () =>
 
   it("taskId=null:未指定任务降级", async () => {
     renderParsing(null);
-    await screen.findByText("解析与字段抽取");
+    await screen.findByText("解析抽取");
     expect(bodyHas("未指定任务")).toBe(true);
     expect(calls.length).toBe(0);
   });

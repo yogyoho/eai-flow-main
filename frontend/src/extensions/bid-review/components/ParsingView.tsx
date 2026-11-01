@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * 解析与字段抽取专屏(原型 s3;spec §4.3,UX 重构 Plan6)。
+ * 解析抽取专屏(原型 s3;spec §4.3,UX 重构 Plan6)。
  * EAI-CUSTOM (2026-10-31): 归拢散落 4 处的解析只读信息——
  * ① 页头四元组(业务号=TaskTitleTag · 项目/标段 · 模式)+ 待基准确认 pill
  *   (状态驱动,awaiting_confirm 才显);
@@ -154,7 +154,7 @@ export function ParsingView({ taskId }: { taskId?: string | null }) {
             <Layers className="ic" />
           </div>
           <div>
-            <h2>解析与字段抽取</h2>
+            <h2>解析抽取</h2>
             <div className="ph-sub">引擎解析与基准快照的只读归拢视图</div>
           </div>
         </div>
@@ -182,7 +182,7 @@ export function ParsingView({ taskId }: { taskId?: string | null }) {
         </div>
         <div>
           <h2>
-            解析与字段抽取
+            解析抽取
             <TaskTitleTag taskId={taskId} bizNo={task?.biz_no} />
           </h2>
           <div className="ph-sub">

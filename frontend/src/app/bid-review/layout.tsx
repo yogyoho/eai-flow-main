@@ -68,9 +68,9 @@ const navItems: Array<{
     taskPage: "tasks",
   },
   {
-    // UX 重构 Plan6 (spec §4.3):解析与字段抽取归拢专屏(原型 s3)
+    // UX 重构 Plan6 (spec §4.3):解析抽取归拢专屏(原型 s3)
     href: "/bid-review/parsing",
-    label: "解析与字段抽取",
+    label: "解析抽取",
     icon: Layers,
     pageId: "bid:page:parsing",
     group: 0,
