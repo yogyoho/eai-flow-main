@@ -33,6 +33,7 @@ import { Info, ListChecks, Plus, RefreshCw, X } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
+import { toast } from "sonner";
 
 import { createTask } from "@/extensions/bid-review/api";
 import { formatDuration } from "@/extensions/bid-review/components/primitives";
@@ -40,6 +41,7 @@ import { TaskTitleTag } from "@/extensions/bid-review/components/TaskTitleTag";
 import {
   bidReviewKeys,
   useBidIssues,
+  useBidRetryTask,
   useBidTasks,
   useSelectedTask,
 } from "@/extensions/bid-review/hooks";
@@ -226,10 +228,11 @@ function VerdictCell({ task }: { task: TaskOut }) {
  * 操作列状态分派(spec §4.1;D3-A 裁决:行点击仅选中,跳转走操作列)。
  * awaiting_confirm → 去基准确认(baseline);done → 查看结果(/results,
  * Plan7 拆分后正名);在途 → 查看进度(/parsing 归拢专屏,Plan6
- * spec §4.3);failed 的「重试解析」挂账 B8,落地前不渲染链接。链接
- * stopPropagation——行 onClick 是选中,不得被操作列触发。
+ * spec §4.3);failed → 重试解析(B8:POST retry,后端回 created 后台直推,
+ * 已解析条目不重复跑 OCR)。按钮 stopPropagation——行 onClick 是选中。
  */
 function ActionCell({ task }: { task: TaskOut }) {
+  const retry = useBidRetryTask();
   const link = (href: string, label: string) => (
     <Link
       href={href}
@@ -247,9 +250,20 @@ function ActionCell({ task }: { task: TaskOut }) {
   }
   if (task.status === "failed") {
     return (
-      <span className="unmapped-cell" title="重试端点(B8)落地前不提供">
-        —
-      </span>
+      <button
+        type="button"
+        className="btn btn-txt btn-sm"
+        disabled={retry.isPending}
+        onClick={(e) => {
+          e.stopPropagation();
+          retry.mutate(task.id, {
+            onError: (err) =>
+              toast.error(err instanceof Error ? err.message : "重试提交失败"),
+          });
+        }}
+      >
+        重试解析
+      </button>
     );
   }
   return link(taskHref("parsing", task.id), "查看进度");

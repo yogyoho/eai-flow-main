@@ -180,6 +180,12 @@ export function confirmTask(taskId: string): Promise<TaskOut> {
   return request<TaskOut>(`/tasks/${taskId}/confirm`, { method: "POST" });
 }
 
+/** POST /tasks/{id}/retry —— B8 重试解析(spec §4.1 操作列):仅 failed 可重试,
+ * 别的形态 409、他者 404;后端回 created 后台直推(raw 条目幂等只补失败文档)。 */
+export function retryTask(taskId: string): Promise<TaskOut> {
+  return request<TaskOut>(`/tasks/${taskId}/retry`, { method: "POST" });
+}
+
 // ── 基线读端点(EAI-CUSTOM 2026-10-30 分期建议一期 s3/s4)─────────────
 
 /** GET /tasks/{id}/baselines 行:_write_baselines 落库形——每行同全量 fields

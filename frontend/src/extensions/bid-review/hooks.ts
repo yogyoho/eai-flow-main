@@ -24,6 +24,7 @@ import {
   listRulepacks,
   listTaskIssues,
   listTasks,
+  retryTask,
   type FeedbackBody,
 } from "./api";
 
@@ -150,6 +151,19 @@ export function useBidConfirmTask() {
       void qc.invalidateQueries({ queryKey: bidReviewKeys.task(taskId) });
       void qc.invalidateQueries({ queryKey: bidReviewKeys.tasks });
       void qc.invalidateQueries({ queryKey: bidReviewKeys.issues(taskId) });
+    },
+  });
+}
+
+/** POST /tasks/{id}/retry —— B8 重试解析(任务列表操作列 failed);成功后失效
+ * 任务列表与该任务详情(状态回 created,列表行即转在途)。 */
+export function useBidRetryTask() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (taskId: string) => retryTask(taskId),
+    onSuccess: (_data, taskId) => {
+      void qc.invalidateQueries({ queryKey: bidReviewKeys.tasks });
+      void qc.invalidateQueries({ queryKey: bidReviewKeys.task(taskId) });
     },
   });
 }

@@ -1,6 +1,12 @@
 import { afterEach, beforeEach, describe, expect, it, rs } from "@rstest/core";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import {
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from "@testing-library/react";
 import type { PropsWithChildren } from "react";
 
 // micro-A 2026-10-29 回归门:行级致命数与卡片的数据源=后端 GET /tasks 每任务聚合
@@ -218,9 +224,7 @@ describe("bid-review TasksView 选中任务体征契约门(Plan2 2026-10-31)", (
     };
     renderTasks();
     await screen.findByTitle("t2");
-    await waitFor(() =>
-      expect(statValue("问题总数")).toBe("2"),
-    );
+    await waitFor(() => expect(statValue("问题总数")).toBe("2"));
     // 处理中任务:行级 —(半程快照不得冒充统计),判定也不产生;项目列与结果无关照常真值
     expect(fatalCell("t2")?.textContent?.trim()).toBe("—");
     expect(verdictCell("t2")?.textContent?.trim()).toBe("—");
@@ -276,7 +280,7 @@ describe("bid-review TasksView 选中任务体征契约门(Plan2 2026-10-31)", (
     expect(calls.some((c) => c.path.includes("/issues"))).toBe(false);
   });
 
-  it("操作列分派:待确认→去基准确认 / done→查看结果 / 在途→查看进度 / failed 不渲染", async () => {
+  it("操作列分派:待确认→去基准确认 / done→查看结果 / 在途→查看进度 / failed→重试解析(B8)", async () => {
     responder = (path) => {
       if (path.endsWith("/tasks")) {
         return jsonRes({
@@ -287,6 +291,9 @@ describe("bid-review TasksView 选中任务体征契约门(Plan2 2026-10-31)", (
             { ...TASK, id: "t4", status: "failed" },
           ],
         });
+      }
+      if (path === "/api/extensions/bid-review/tasks/t4/retry") {
+        return jsonRes({ ...TASK, id: "t4", status: "created", error: null });
       }
       return jsonRes({}, 404);
     };
@@ -307,10 +314,21 @@ describe("bid-review TasksView 选中任务体征契约门(Plan2 2026-10-31)", (
     expect(linkOf("t3")?.getAttribute("href")).toBe(
       "/bid-review/parsing?task_id=t3",
     );
-    expect(linkOf("t4")).toBeNull();
-    expect(rowOf("t4")?.querySelector("td:last-child")?.textContent).toContain(
-      "—",
-    );
+    // B8:failed 行出「重试解析」按钮,点击 POST /tasks/{id}/retry(spec §4.1)
+    const retryBtn = rowOf("t4")?.querySelector(
+      "td:last-child button",
+    ) as HTMLButtonElement | null;
+    expect(retryBtn?.textContent?.trim()).toBe("重试解析");
+    fireEvent.click(retryBtn!);
+    await waitFor(() => {
+      expect(
+        calls.some(
+          (c) =>
+            c.path === "/api/extensions/bid-review/tasks/t4/retry" &&
+            c.init?.method === "POST",
+        ),
+      ).toBe(true);
+    });
   });
 
   it("行点击=选中(router.replace ?task_id),选中行高亮 tr.on", async () => {
@@ -361,7 +379,9 @@ describe("bid-review TasksView 选中任务体征契约门(Plan2 2026-10-31)", (
     expect(cellAt("t1", 6)?.textContent?.trim()).toBe("—");
     expect(cellAt("t1", 7)?.textContent?.trim()).toBe("—");
     expect(statValue("审查用时")).toBe("—");
-    expect(document.querySelector(".page-head h2")?.textContent).toContain("t1");
+    expect(document.querySelector(".page-head h2")?.textContent).toContain(
+      "t1",
+    );
   });
 
   it("搜索命中业务号与项目名(客户端过滤,foot 计数跟随)", async () => {
@@ -455,9 +475,7 @@ describe("bid-review TasksView 选中任务体征契约门(Plan2 2026-10-31)", (
     fireEvent.change(screen.getByLabelText("选择招标文件"), {
       target: { files: [big] },
     });
-    expect(screen.getByRole("alert").textContent).toContain(
-      "超过 200MB 上限",
-    );
+    expect(screen.getByRole("alert").textContent).toContain("超过 200MB 上限");
     expect(screen.queryByTitle("huge.bin")).toBeNull();
     // 招标侧被拒收=空 → 创建门保持关闭
     expect(screen.getByRole("button", { name: "创建任务" })).toHaveProperty(
