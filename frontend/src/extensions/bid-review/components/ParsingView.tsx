@@ -7,8 +7,9 @@
  *   (状态驱动,awaiting_confirm 才显);
  * ② 六步步骤条+引擎进度行(共享 TaskStepper,canonical home 在此);
  * ③ 解析质量卡 = 原型 s3 扁平 5 列表(文件/页数/识别置信度/状态/说明)+ OCR
- *   兜底整行;B3 页级置信未落地 → 置信格「—」诚实降级,OCR 注记走兜底行,
- *   不伪造页码区间/置信数字;
+ *   兜底整行;B3 已落地(spec §5):置信格=meter 条+百分比(文档级=无损解析
+ *   字符占比,<0.7 .low,旧任务 null→「—」诚实降级),低置信页 pill 进 hd-right,
+ *   docx 内嵌图失败张数走 parse_note 进说明列,口径注在表尾;
  * ④ 基准字段抽取卡 = 原型 s3 扁平表+说明列(字段路径/说明/锚点/抽取值/形态/
  *   状态;2026-10-31 用户要求:说明列=labels 中文名,无 label 段翻译
  *   bid.total_price→投标.总价)+hd-right 三 pill(已抽取/冲突/缺失)+
@@ -109,6 +110,16 @@ export function ParsingView({ taskId }: { taskId?: string | null }) {
     ? (task.engine_meta.docs as DocMeta[])
     : [];
   const totalPages = docs.reduce((s, d) => s + (d.pages ?? 0), 0);
+  // B3 低置信页 pill:Σ low_conf_pages 区间页数(docx 内嵌图失败走 parse_note,不计页)
+  const lowConfPages = docs.reduce(
+    (s, d) =>
+      s +
+      (d.low_conf_pages ?? []).reduce(
+        (n, r) => n + (r.page_to - r.page_from + 1),
+        0,
+      ),
+    0,
+  );
 
   // 派生(与 BaselineView 同公式;冲突只读展示,裁定在基准确认页)
   const conflictPaths = useMemo(() => {
@@ -227,7 +238,12 @@ export function ParsingView({ taskId }: { taskId?: string | null }) {
           <span className="hd-sub">
             {docs.length} 个文件 · {totalPages} 页
           </span>
-          {/* 低置信页 pill:B3 页级置信落地后接入(hd-right) */}
+          {/* B3 低置信页 pill(spec §5):OCR 未产出文本页段计数 */}
+          {lowConfPages > 0 ? (
+            <div className="hd-right">
+              <span className="pill pill-warn">低置信 {lowConfPages} 页</span>
+            </div>
+          ) : null}
         </div>
         <div style={{ overflowX: "auto" }}>
           <table className="tbl">
@@ -257,12 +273,33 @@ export function ParsingView({ taskId }: { taskId?: string | null }) {
                       <td className="r num">
                         {(d.pages ?? 0) > 0 ? d.pages : "—"}
                       </td>
-                      {/* B3 页级置信未落地:不冒充数字,「—」+悬停说明 */}
-                      <td
-                        style={{ color: "var(--text-3)" }}
-                        title="页级识别置信度待引擎 B3 能力落地后提供"
-                      >
-                        —
+                      {/* B3 置信格:meter 条+百分比;<0.7 .low;null=旧任务诚实降级 */}
+                      <td>
+                        {d.confidence == null ? (
+                          <span
+                            style={{ color: "var(--text-3)" }}
+                            title="旧任务未含解析置信数据"
+                          >
+                            —
+                          </span>
+                        ) : (
+                          <span title="无损解析字符占比,非 OCR 引擎自报分数">
+                            <span
+                              className={`meter${
+                                d.confidence < 0.7 ? "low" : ""
+                              }`}
+                            >
+                              <i
+                                style={{
+                                  width: `${Math.round(d.confidence * 100)}%`,
+                                }}
+                              />
+                            </span>
+                            <span className="num">
+                              {Math.round(d.confidence * 100)}%
+                            </span>
+                          </span>
+                        )}
                       </td>
                       <td>
                         <span
@@ -276,7 +313,12 @@ export function ParsingView({ taskId }: { taskId?: string | null }) {
                         </span>
                       </td>
                       <td style={{ color: "var(--text-3)" }}>
-                        {d.kind === "docx" ? "docx 无页边界" : "—"}
+                        {[
+                          d.kind === "docx" ? "docx 无页边界" : null,
+                          d.parse_note ?? null,
+                        ]
+                          .filter(Boolean)
+                          .join(" · ") || "—"}
                       </td>
                     </tr>
                   ))}
@@ -309,6 +351,11 @@ export function ParsingView({ taskId }: { taskId?: string | null }) {
           onPrev={() => setDocPage(docSafe - 1)}
           onNext={() => setDocPage(docSafe + 1)}
         />
+        {/* B3 口径注(spec §5;置 Pager 后,首 .tbl-foot 留给分页) */}
+        <div className="tbl-foot">
+          识别置信度 = 无损解析字符占比(正文/表格直取无损,OCR 转写拉低)——非 OCR
+          引擎自报分数;低置信页 = OCR 未产出文本的扫描页
+        </div>
       </div>
 
       {/* ── 基准字段抽取(原型 s3:扁平 5 列表+hd-right 三 pill;裁定 15)── */}

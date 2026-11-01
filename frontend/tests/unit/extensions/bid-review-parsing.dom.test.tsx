@@ -201,7 +201,7 @@ describe("bid-review ParsingView /parsing 归拢专屏(Plan6 spec §4.3)", () =>
     const txtCells = rows[0]!.querySelectorAll("td");
     expect(txtCells[0]?.textContent).toBe("t.txt");
     expect(txtCells[1]?.textContent?.trim()).toBe("—"); // text 无页
-    expect(txtCells[2]?.textContent?.trim()).toBe("—"); // B3 未落地,不冒充置信
+    expect(txtCells[2]?.textContent?.trim()).toBe("—"); // 旧任务缺 B3 键,「—」诚实降级
     expect(txtCells[3]?.textContent?.trim()).toBe("完成");
     const pdfCells = rows[1]!.querySelectorAll("td");
     expect(pdfCells[1]?.textContent?.trim()).toBe("12");
@@ -346,6 +346,99 @@ describe("bid-review ParsingView /parsing 归拢专屏(Plan6 spec §4.3)", () =>
     // 字段表下一页 → 第二页 2 行(两表页状态互不影响)
     fireEvent.click(screen.getAllByRole("button", { name: "下一页" })[1]!);
     expect(fields.querySelectorAll("tbody tr").length).toBe(2);
+  });
+
+  it("B3 解析置信:meter/百分比+低置信页 pill+parse_note(spec §5)", async () => {
+    const docs0 = TASK.engine_meta.docs as Array<Record<string, unknown>>;
+    const TASK_B3 = {
+      ...TASK,
+      engine_meta: {
+        docs: [
+          {
+            ...docs0[0]!,
+            confidence: 1.0,
+            low_conf_pages: [],
+            parse_note: null,
+          },
+          {
+            ...docs0[1]!,
+            confidence: 0.5,
+            low_conf_pages: [
+              {
+                page_from: 3,
+                page_to: 4,
+                confidence: 0.0,
+                note: "OCR 未产出文本",
+              },
+              {
+                page_from: 7,
+                page_to: 7,
+                confidence: 0.0,
+                note: "OCR 未产出文本",
+              },
+            ],
+            parse_note: null,
+          },
+          {
+            doc_id: "c.docx",
+            role: "bid",
+            kind: "docx",
+            chars: 500,
+            status: "parsed",
+            pages: 0,
+            assets: 2,
+            confidence: 0.9,
+            low_conf_pages: [],
+            parse_note: "2 张内嵌图片 OCR 未产出文本",
+          },
+        ],
+      },
+    };
+    responder = (path) => {
+      if (path.endsWith("/tasks/t1")) return jsonRes(TASK_B3);
+      if (path.endsWith("/tasks/t1/baselines")) return jsonRes(BASELINES);
+      return jsonRes({}, 404);
+    };
+    renderParsing();
+    await screen.findByText("解析抽取");
+    await waitFor(() => {
+      expect(bodyHas("c.docx")).toBe(true);
+    });
+    const quality = document.querySelectorAll(".card")[0]!;
+    const rows = [...quality.querySelectorAll("tbody tr")];
+    // 3 文档行 + 2 OCR 兜底行(b.pdf assets=3,c.docx assets=2)
+    expect(rows.length).toBe(5);
+    // 置信格:meter 条(宽度=confidence)+ 百分比数字;≥0.7 无 .low
+    const okCells = rows[0]!.querySelectorAll("td");
+    const okMeter = okCells[2]!.querySelector(".meter");
+    expect(okMeter).not.toBeNull();
+    expect(okMeter!.className).not.toContain("low");
+    expect(okMeter!.querySelector("i")?.getAttribute("style")).toContain(
+      "100%",
+    );
+    expect(okCells[2]!.textContent).toContain("100%");
+    // <0.7:meter.low(second-500 色)
+    const lowCells = rows[1]!.querySelectorAll("td");
+    const lowMeter = lowCells[2]!.querySelector(".meter");
+    expect(lowMeter!.className).toContain("low");
+    expect(lowMeter!.querySelector("i")?.getAttribute("style")).toContain(
+      "50%",
+    );
+    expect(lowCells[2]!.textContent).toContain("50%");
+    // docx:说明列 = 无页边界注 + parse_note
+    const docxCells = rows[2]!.querySelectorAll("td");
+    expect(docxCells[2]!.textContent).toContain("90%");
+    expect(docxCells[4]!.textContent).toContain("docx 无页边界");
+    expect(docxCells[4]!.textContent).toContain("2 张内嵌图片 OCR 未产出文本");
+    // hd-right 低置信页 pill:Σ 区间页数(2+1=3)
+    expect(quality.querySelector(".hd-right")?.textContent).toContain(
+      "低置信 3 页",
+    );
+    // tbl-foot 口径注(Pager 之后,不抢首 .tbl-foot)
+    const feet = [...quality.querySelectorAll(".tbl-foot")].map(
+      (f) => f.textContent ?? "",
+    );
+    expect(feet.some((t) => t.includes("无损解析字符占比"))).toBe(true);
   });
 
   it("failed:引擎错误 errbar", async () => {

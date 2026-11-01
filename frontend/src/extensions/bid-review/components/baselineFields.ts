@@ -6,6 +6,14 @@
 import { type BidBaselineRow } from "@/extensions/bid-review/api";
 import { type PillTone } from "@/extensions/contract-price/components/ui/bits";
 
+/** B3 低置信页段(spec §5):OCR 空文本页合并区间,置信按 0 记。 */
+export interface LowConfPage {
+  page_from: number;
+  page_to: number;
+  confidence?: number;
+  note?: string;
+}
+
 export interface DocMeta {
   doc_id?: string;
   role?: string;
@@ -16,6 +24,11 @@ export interface DocMeta {
   status?: string;
   /** v1 旧任务(上传即解码纯文本直存)遗留字段,仅用于字符数回退估算。 */
   text?: string;
+  /** B3 解析置信(spec §5):文档级=无损解析字符占比;null/缺省=旧任务无数据。 */
+  confidence?: number | null;
+  low_conf_pages?: LowConfPage[];
+  /** docx 内嵌图 OCR 失败张数注记(无页边界,不进 low_conf_pages)。 */
+  parse_note?: string | null;
 }
 
 export const KIND_LABEL: Record<string, string> = {
