@@ -75,6 +75,29 @@ export function BaselineView({ taskId }: { taskId?: string | null }) {
   ).length;
   const conflictCands = rows[0]?.candidates ?? {};
 
+  // L2 P1 附件双卡(spec 2026-11-02 §5):基线快照直读,只读摘要;改错走「基准字段
+  // 对照」字段卡既有 adjudicate 通道(两字段已在字段字典,自动出现在字段表)。
+  const attachReqs = useMemo(
+    () =>
+      (rows[0]?.fields["tender.attachment_requirements"] as
+        | Array<{
+            no?: string;
+            name?: string;
+            mandatory?: string | null;
+            min_count?: number | null;
+            clause?: string | null;
+          }>
+        | undefined) ?? [],
+    [rows],
+  );
+  const attachIdx = useMemo(
+    () =>
+      (rows[0]?.fields["bid.attachment_index"] as
+        | Array<{ no?: string; name?: string; page?: number | null }>
+        | undefined) ?? [],
+    [rows],
+  );
+
   // 字段族计数(全快照口径,不随筛选变;Plan8 §4.4 按 themeOf 业务主题分组);
   // 检索只过滤当前族展示
   const allRows = useMemo(() => fieldRows(rows[0], labels), [rows, labels]);
@@ -303,6 +326,80 @@ export function BaselineView({ taskId }: { taskId?: string | null }) {
                 {(rows[0]?.materials_hash ?? "").slice(0, 12) || "—"}
               </code>
             </div>
+            {/* ── L2 P1 附件要求卡(tender)/附件清单卡(bid 只读,spec §5);
+                空数组 → 卡不渲染(任务未抽出该维度时不装空壳) ── */}
+            {attachReqs.length > 0 ? (
+              <div className="card">
+                <div className="card-hd">
+                  <h3>附件要求</h3>
+                  <span className="hd-sub">
+                    招标方要求随附材料 {attachReqs.length} 项 ·
+                    核对与份数见审查结果页
+                  </span>
+                </div>
+                <table className="tbl">
+                  <thead>
+                    <tr>
+                      <th>编号</th>
+                      <th>附件名称</th>
+                      <th>强制</th>
+                      <th>份数</th>
+                      <th>条款</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {attachReqs.map((a, i) => (
+                      <tr key={`${a.no}-${i}`}>
+                        <td className="mono">{a.no || "—"}</td>
+                        <td>{a.name}</td>
+                        <td>
+                          {a.mandatory === "★" || a.mandatory === "必需"
+                            ? "必需"
+                            : a.mandatory || "—"}
+                        </td>
+                        <td>{a.min_count ?? "—"}</td>
+                        <td className="mono">{a.clause || "—"}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+                <div className="tbl-foot">
+                  改错请到上方「基准字段对照」字段卡裁决
+                  （tender.attachment_requirements）。
+                </div>
+              </div>
+            ) : null}
+            {attachIdx.length > 0 ? (
+              <div className="card">
+                <div className="card-hd">
+                  <h3>投标附件清单</h3>
+                  <span className="hd-sub">
+                    投标方提供 {attachIdx.length} 项 · 只读
+                  </span>
+                </div>
+                <table className="tbl">
+                  <thead>
+                    <tr>
+                      <th>编号</th>
+                      <th>附件名称</th>
+                      <th>起始页</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {attachIdx.map((a, i) => (
+                      <tr key={`${a.no}-${i}`}>
+                        <td className="mono">{a.no || "—"}</td>
+                        <td>{a.name}</td>
+                        <td>{a.page ?? "—"}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+                <div className="tbl-foot">
+                  改错请到上方「基准字段对照」字段卡裁决（bid.attachment_index）。
+                </div>
+              </div>
+            ) : null}
             {/* ── 冲突裁定卡(二期 spec §1.5):多候选 radio + 采纳 → adjudicate;已裁定转pill ── */}
             {conflictPaths.length > 0 ? (
               <div

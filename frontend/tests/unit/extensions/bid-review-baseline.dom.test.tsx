@@ -391,3 +391,79 @@ describe("bid-review BaselineView 二期冲突裁定(EAI-CUSTOM 2026-10-31)", ()
     });
   });
 });
+
+// ── L2 P1 附件双卡(EAI-CUSTOM 2026-11-02 spec §5):基线快照直读只读摘要 ──
+
+/** 快照首行注入附件两字段(每行同全量快照,BaselineView 只读 rows[0]);
+ * 裁决仍走字段卡通道,双卡零交互。 */
+const ATTACH_BASELINES = [
+  {
+    ...BASELINES[0]!,
+    fields: {
+      "tender.max_price": 8000000,
+      "tender.attachment_requirements": [
+        {
+          no: "ATT-E-008",
+          name: "类似业绩证明",
+          clause: "第三章3.4",
+          mandatory: "★",
+          min_count: 3,
+        },
+        {
+          no: "ATT-F-001",
+          name: "投标函",
+          clause: null,
+          mandatory: "必需",
+          min_count: null,
+        },
+      ],
+      "bid.attachment_index": [
+        { no: "ATT-E-008", name: "类似业绩证明", page: 118, pages: null },
+      ],
+    },
+    provenance: {},
+  },
+  BASELINES[1]!,
+];
+
+describe("bid-review BaselineView L2 P1 附件双卡(EAI-CUSTOM 2026-11-02)", () => {
+  beforeEach(() => {
+    calls.length = 0;
+    responder = () => jsonRes({});
+  });
+
+  afterEach(() => {
+    cleanup();
+  });
+
+  it("附件要求/投标附件清单双卡:基线快照直读渲染(要求 2 项/清单 1 项/起始页)", async () => {
+    responder = (path) => {
+      if (path.endsWith("/baselines"))
+        return jsonRes({ items: ATTACH_BASELINES });
+      if (path.endsWith("/tasks/t1")) return jsonRes(TASK("done"));
+      return jsonRes({}, 404);
+    };
+    renderBaseline();
+
+    expect(await screen.findByText("附件要求")).toBeTruthy();
+    // 同名条目在两卡各一份(要求卡 + 清单卡)→ findAll 恰 2
+    expect(screen.getAllByText("类似业绩证明").length).toBe(2);
+    expect(screen.getByText("投标附件清单")).toBeTruthy();
+    expect(screen.getByText("第三章3.4")).toBeTruthy();
+    expect(screen.getByText("118")).toBeTruthy(); // 起始页列
+  });
+
+  it("无附件字段的任务:两卡零渲染(不装空壳)", async () => {
+    responder = (path) => {
+      if (path.endsWith("/baselines")) return jsonRes({ items: BASELINES });
+      if (path.endsWith("/tasks/t1")) return jsonRes(TASK("done"));
+      return jsonRes({}, 404);
+    };
+    renderBaseline();
+
+    // 基线快照已到(折叠注可见)但无附件维度 → 双卡不渲染
+    expect(await screen.findByText(/已由引擎交叉校验通过/)).toBeTruthy();
+    expect(screen.queryByText("附件要求")).toBeNull();
+    expect(screen.queryByText("投标附件清单")).toBeNull();
+  });
+});
