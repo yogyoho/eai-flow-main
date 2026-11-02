@@ -461,11 +461,21 @@ async def list_task_issues(task_id: str, db: AsyncSession = Depends(get_db), own
         raise HTTPException(status_code=404, detail="任务不存在")
     issues = await crud.list_issues(db, task_id=task_id, owner_id=owner_id)
     states = await crud.latest_feedback_actions(db, [i.id for i in issues])
+    grouping = _cross_layer_group(issues)  # L2 P2 跨层实体去重(现算,不落库)
+    items = []
+    for i in issues:
+        out = _with_review_state(i, states)
+        g = grouping.get(i.id)
+        if g:
+            out.grouped_into = g["grouped_into"]
+            out.related_issues = g["related"]
+        items.append(out)
     return {
-        "items": [_with_review_state(i, states) for i in issues],
+        "items": items,
         # 汇总分级(A12 T14 集成约束①,与 worker progress.summary 共用 summarize_issues
         # 同一口径):正式违规计数(fatal/major/minor/info)不含 need_human 条目,待人工
         # 单列;条目不删——items 仍全量返回(工作台待人工格与 verdict 过滤消费)。
+        # L2 P2(D8):口径不变——grouped 行仍计入 summary(前端隐藏由展示层负责)。
         "summary": worker.summarize_issues(issues),
     }
 
