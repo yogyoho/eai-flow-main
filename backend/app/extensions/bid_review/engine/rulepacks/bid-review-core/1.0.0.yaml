@@ -577,3 +577,37 @@ rules:
     fix_tpl: "按招标设备清单逐项核对型号规格,不一致处按招标要求更正"
     confidence_gate: 0.75
     enabled: true
+  # ── L2 完整性层 P1(spec 2026-11-02 §3):附件清单核对两规则;算子 att_check/
+  # att_count 镜像 set_eq 专用分支先例;字段缺失走 need_human 既有链路 ──
+  - id: L2-020
+    name: 附件清单逐项对照
+    layer: L2
+    type: deterministic
+    applies_to: ["*"]
+    inputs: [tender.attachment_requirements, bid.attachment_index]
+    check:
+      op: att_check
+      left: tender.attachment_requirements
+      right: bid.attachment_index
+    severity: fatal
+    evidence: [A-TENDER-NOTICE, A-BOQ]
+    message_tpl: "附件缺失：{missing}"
+    fix_tpl: "补齐缺失附件并在投标文件附件清单中按编号顺序编排：{missing}"
+    confidence_gate: 1.0
+    enabled: true
+  - id: L2-024
+    name: 附件份数达标
+    layer: L2
+    type: deterministic
+    applies_to: ["*"]
+    inputs: [tender.attachment_requirements, bid.attachment_index]
+    check:
+      op: att_count
+      left: tender.attachment_requirements
+      right: bid.attachment_index
+    severity: major
+    evidence: [A-TENDER-NOTICE, A-BOQ]
+    message_tpl: "附件份数不足：{insufficient}"
+    fix_tpl: "按要求份数补齐附件或附情况说明：{insufficient}"
+    confidence_gate: 1.0
+    enabled: true
