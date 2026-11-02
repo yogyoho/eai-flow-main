@@ -13,10 +13,11 @@ from pathlib import Path
 import yaml
 
 from app.extensions.bid_review.engine.anchors import anchor_rule_paths
+from app.extensions.bid_review.engine.attachments import match_attachments
 from app.extensions.bid_review.engine.expr import ExprError, RulePackError, eval_expr, fields_used, validate_expr
 
 _OPS = {"lte": operator.le, "gte": operator.ge, "eq": operator.eq}
-_KNOWN_OPS = {*_OPS, "and", "all", "set_eq"}  # steps 形态无 op 键,单独判
+_KNOWN_OPS = {*_OPS, "and", "all", "set_eq", "att_check", "att_count"}  # steps 形态无 op 键,单独判;att_* = L2 P1 附件核对(spec 2026-11-02 §3)
 _UNIT_CN = {"day": "天", "month": "个月", "week": "周", "percent": "%"}
 
 
@@ -224,6 +225,29 @@ def run_det_rule(rule: Rule, fields: dict) -> list[dict]:
             miss, extra = sorted(rhs - lhs, key=str), sorted(lhs - rhs, key=str)
             if miss or extra:
                 issues.append(_issue(rule, fields, {"missing": miss, "extra": extra}))
+        elif chk["op"] in ("att_check", "att_count"):  # L2 P1 附件核对(spec 2026-11-02 §3):镜像 set_eq 专用分支,复用 match_attachments
+            reqs, prov = _val(chk["left"], fields), _val(chk["right"], fields)
+            if not isinstance(reqs, list) or not isinstance(prov, list):
+                issues.append(_need_human(rule, "附件字段缺失或类型非法(need_human)"))
+            else:
+                out = match_attachments(reqs, prov)
+
+                def _label(r: dict) -> str:
+                    no = str(r.get("no") or "").strip()
+                    return f"{no} {r.get('name')}" if no else str(r.get("name") or "")
+
+                if chk["op"] == "att_check":
+                    miss = [_label(r["req"]) for r in out["per_req"] if r["status"] == "MISSING"]
+                    if miss:
+                        issues.append(_issue(rule, fields, {"missing": miss}))
+                else:
+                    ins = [
+                        f"{_label(r['req'])}: 要求{r['req'].get('min_count')}份/提供{r['found']}份"
+                        for r in out["per_req"]
+                        if r["status"] == "PARTIAL"
+                    ]
+                    if ins:
+                        issues.append(_issue(rule, fields, {"insufficient": ins}))
         elif chk["op"] in _OPS:
             lhs, rhs = _val(chk["left"], fields), _val(chk["right"], fields)
             if not _OPS[chk["op"]](lhs, rhs):

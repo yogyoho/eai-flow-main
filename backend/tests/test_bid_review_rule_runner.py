@@ -4,7 +4,7 @@ from pathlib import Path
 import pytest
 
 from app.extensions.bid_review.engine.expr import validate_expr
-from app.extensions.bid_review.engine.rule_runner import RulePackError, load_rulepack, run_det_rule
+from app.extensions.bid_review.engine.rule_runner import Rule, RulePackError, load_rulepack, run_det_rule
 
 PACK = str(Path(__file__).resolve().parent.parent / "app" / "extensions" / "bid_review" / "engine" / "rulepacks" / "bid-review-core" / "1.0.0.yaml")
 
@@ -183,3 +183,74 @@ def test_attach_evidence_from_provenance():
     assert ev[0] == {"doc_id": "bid.docx", "page": 3, "section_path": "bid.total_price", "text": "总价100万"}
     assert ev[1]["page"] is None  # docx 无页码诚实 null
     assert attach_evidence(issues, rule, None) is issues and issues[0]["evidence"]  # 原地回填,空 provenance 不动
+
+
+# ── L2 P1:att_check / att_count 专用分支(spec 2026-11-02 §3,镜像 set_eq 先例) ──
+
+ATT_REQS = [
+    {"no": "A-1", "name": "投标函", "mandatory": "★", "min_count": None},
+    {"no": "A-2", "name": "业绩证明", "mandatory": "★", "min_count": 3},
+    {"no": "", "name": "不出席也行", "mandatory": "建议", "min_count": None},
+]
+ATT_PROV = [
+    {"no": "A-1", "name": "投标函", "page": 2},
+    {"no": "A-2", "name": "业绩证明", "page": 118},
+    {"no": "A-2", "name": "业绩证明", "page": 121},
+    {"no": "", "name": "企业宣传册", "page": 310},
+]
+ATT_FIELDS = {"tender.attachment_requirements": ATT_REQS, "bid.attachment_index": ATT_PROV}
+
+
+def _att_rule(op, rid=None):
+    return Rule(
+        id=rid or ("L2-020" if op == "att_check" else "L2-024"),
+        name="附件",
+        layer="L2",
+        type="deterministic",
+        applies_to=["*"],
+        inputs=["tender.attachment_requirements", "bid.attachment_index"],
+        check={"op": op, "left": "tender.attachment_requirements", "right": "bid.attachment_index"},
+        severity="fatal" if op == "att_check" else "major",
+        evidence=[],
+        message_tpl="附件问题:{missing}{insufficient}",
+        fix_tpl=None,
+        confidence_gate=0.0,
+        enabled=True,
+    )
+
+
+def test_att_check_reports_missing_only():
+    """att_check 只列 MISSING req(编号+名称);PARTIAL/MATCHED 不进 message。"""
+    issues = run_det_rule(_att_rule("att_check"), ATT_FIELDS)
+    assert len(issues) == 1
+    assert issues[0]["verdict"] == "violation"
+    assert "不出席也行" in issues[0]["message"]
+    assert "业绩证明" not in issues[0]["message"]  # PARTIAL 不进 att_check
+
+
+def test_att_check_all_matched_no_issue():
+    fields = {
+        "tender.attachment_requirements": [{"no": "A-1", "name": "投标函"}],
+        "bid.attachment_index": [{"no": "A-1", "name": "投标函", "page": 2}],
+    }
+    assert run_det_rule(_att_rule("att_check"), fields) == []
+
+
+def test_att_count_reports_partial_only():
+    issues = run_det_rule(_att_rule("att_count"), ATT_FIELDS)
+    assert len(issues) == 1
+    assert "业绩证明" in issues[0]["message"]
+    assert "3" in issues[0]["message"] and "2" in issues[0]["message"]  # 要求3份/提供2份
+
+
+def test_att_ops_missing_field_need_human():
+    """字段缺失 → need_human(既有链路,run_det_rule 层直验)。"""
+    issues = run_det_rule(_att_rule("att_check"), {})
+    assert len(issues) == 1 and issues[0]["need_human"] is True
+
+
+def test_att_ops_whitelisted_at_load():
+    """载入期白名单放行 att_check/att_count;规则包 Task 5 落地后 L2 层两规则可加载。"""
+    pack = load_rulepack(PACK)
+    ops = {r.id: r.check.get("op") for r in pack.rules if r.layer == "L2"}
+    assert ops == {"L2-020": "att_check", "L2-024": "att_count"}
