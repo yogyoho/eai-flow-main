@@ -9,6 +9,6 @@ model_script:
 expect_issues:
   - rule_id: L1-013
     severity: fatal
-    contains: ["★1"]
+    contains: ["实质性条款", "★1", "响应偏离"]
 expect_absent: []
 strict: false

@@ -6,6 +6,6 @@ fields:
 expect_issues:
   - rule_id: L1-002
     severity: fatal
-    contains: ["资质等级"]
+    contains: ["资质等级一级", "资质等级三级"]
 expect_absent: []
 strict: false
