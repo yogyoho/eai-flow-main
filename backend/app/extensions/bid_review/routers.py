@@ -35,6 +35,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.extensions.auth.middleware import require_permission
 from app.extensions.bid_review import crud, parse, worker
+from app.extensions.bid_review.engine.attachments import build_checklist
 from app.extensions.bid_review.engine.extract import apply_adjudications, compute_score_coverage, deviation_counts, detect_conflicts
 from app.extensions.bid_review.engine.labels import FIELD_LABELS
 from app.extensions.bid_review.models import ReviewFeedback, ReviewIssue, RulePackMeta
@@ -721,6 +722,49 @@ async def task_deviations(
                 seen_names.add(name)
                 items.append(item)
     return {"counts": deviation_counts(items), "items": items}
+
+
+@router.get("/tasks/{task_id}/attachment_checklist")
+async def task_attachment_checklist(
+    task_id: str,
+    db: AsyncSession = Depends(get_db),
+    owner_id: str = Depends(current_owner),
+):
+    """附件核对表(L2 P1 spec 2026-11-02 §4):基线 fields tender.attachment_requirements
+    × bid.attachment_index 经 engine.attachments.build_checklist 两级精确匹配投影
+    (现算不落库,先例=/deviations /score_coverage)。要求按 (no,name) 跨行去重,提供项
+    逐行收集;refs 注入 bid 侧首 doc_id(engine_meta.docs role=bid;解不到 → null,前端
+    chip 降级纯文本)。零投影(旧任务无附件维度)→ counts 全 0 + items [](诚实空态)。"""
+    task = await crud.get_task(db, task_id=task_id, owner_id=owner_id)
+    if task is None:
+        raise HTTPException(status_code=404, detail="任务不存在")
+    baselines = await crud.list_baselines(db, task_id=task_id, owner_id=owner_id)
+    reqs: list[dict] = []
+    seen_req: set[tuple[str, str]] = set()
+    provided: list[dict] = []
+    for row in baselines:
+        fields = (row.payload or {}).get("fields", {})
+        for item in fields.get("tender.attachment_requirements") or []:
+            if isinstance(item, dict):
+                key = (str(item.get("no") or "").strip(), str(item.get("name") or "").strip())
+                if key not in seen_req:
+                    seen_req.add(key)
+                    reqs.append(item)
+        for item in fields.get("bid.attachment_index") or []:
+            if isinstance(item, dict):
+                provided.append(item)
+    if not reqs:
+        return {
+            "counts": {"required": 0, "matched": 0, "partial": 0, "missing": 0, "extra": 0},
+            "items": [],
+            "extra_items": [],
+        }
+    docs = (task.engine_meta or {}).get("docs") or []
+    bid_doc = next(
+        (str(d.get("doc_id")) for d in docs if isinstance(d, dict) and d.get("role") == "bid" and d.get("doc_id")),
+        None,
+    )
+    return build_checklist(reqs, provided, bid_doc_id=bid_doc)
 
 
 @router.post("/tasks/{task_id}/retry", response_model=TaskOut)
