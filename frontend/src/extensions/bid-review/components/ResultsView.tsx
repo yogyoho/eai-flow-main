@@ -60,6 +60,7 @@ import { formatDuration } from "@/extensions/bid-review/components/primitives";
 import { TaskStepper } from "@/extensions/bid-review/components/TaskStepper";
 import { TaskTitleTag } from "@/extensions/bid-review/components/TaskTitleTag";
 import {
+  useBidAttachmentChecklist,
   useBidDiff,
   useBidFeedback,
   useBidIssues,
@@ -242,6 +243,18 @@ function str(v: unknown, fallback = ""): string {
   return JSON.stringify(v);
 }
 
+/** 核对状态 → pill(MATCHED ok / PARTIAL warn / MISSING err;L2 P1 spec 2026-11-02 §5)。 */
+function checklistPill(status: string): { label: string; cls: string } {
+  switch (status) {
+    case "MATCHED":
+      return { label: "已提供", cls: "pill pill-ok" };
+    case "PARTIAL":
+      return { label: "份数不足", cls: "pill pill-warn" };
+    default:
+      return { label: "缺失", cls: "pill pill-err" };
+  }
+}
+
 export function ResultsView({ taskId }: { taskId?: string | null }) {
   // 复核状态本地映射:confirm/severity 后端不落 issue 行(v1 缺口),刷新即失;
   // 误报经 apply_false_positive 落库 verdict=false_positive,重取后由服务端数据呈现。
@@ -298,6 +311,15 @@ export function ResultsView({ taskId }: { taskId?: string | null }) {
   // B4 评分覆盖度(spec §5/§4.5):旧任务 total=0 → 回落「规则命中」meter 现状口径
   const coverageQuery = useBidScoreCoverage(enabled ? taskId : null);
   const coverage = coverageQuery.data ?? null;
+  // L2 P1 附件核对表(spec 2026-11-02 §4/§5):零投影 → 诚实空态卡
+  const checklistQuery = useBidAttachmentChecklist(enabled ? taskId : null);
+  const checklist = checklistQuery.data ?? null;
+  const clItems = useMemo(() => {
+    const rank = { MISSING: 0, PARTIAL: 1, MATCHED: 2 } as const;
+    return [...(checklist?.items ?? [])].sort(
+      (a, b) => rank[a.status] - rank[b.status],
+    );
+  }, [checklist]);
   const feedback = useBidFeedback();
   // 规则名/类型映射(2026-10-30 用户反馈+原型对齐)——GET /rulepacks 联表:
   // 名称作问题卡标题,类型(det/engine)作灰 pill(原型 s5 头部三 pill 结构)。
@@ -1044,6 +1066,156 @@ export function ResultsView({ taskId }: { taskId?: string | null }) {
                 {(coverage?.total ?? 0) > 0
                   ? ";评分覆盖度 = 评分办法项相关字段与启用规则判定输入的交集,未覆盖不代表审错——规则包未设该维度规则"
                   : ""}
+              </div>
+            </div>
+          ) : null}
+
+          {/* ── L2 P1 附件核对表卡(spec 2026-11-02 §5):五格 counts + 明细(pill 映射/
+              页码 chip 复用 DocLocate role=bid 首文档)/EXTRA info 灰行不进问题数 ── */}
+          {checklist && checklist.counts.required > 0 ? (
+            <div className="card">
+              <div className="card-hd">
+                <h3>附件核对表</h3>
+                <span className="hd-sub">
+                  招标要求 {checklist.counts.required} 项 ·
+                  两级精确匹配(编号/名称)
+                </span>
+              </div>
+              <div className="metric-strip">
+                <div className="metric-cell">
+                  <div className="m-lb">要求附件</div>
+                  <div className="m-v">{checklist.counts.required}</div>
+                </div>
+                <div className="metric-cell">
+                  <div className="m-lb">已提供</div>
+                  <div className="m-v">{checklist.counts.matched}</div>
+                </div>
+                <div className="metric-cell warn">
+                  <div className="m-lb">份数不足</div>
+                  <div className="m-v">{checklist.counts.partial}</div>
+                </div>
+                <div className="metric-cell err">
+                  <div className="m-lb">缺失</div>
+                  <div className="m-v">{checklist.counts.missing}</div>
+                </div>
+                <div className="metric-cell">
+                  <div className="m-lb">多余附件</div>
+                  <div className="m-v">{checklist.counts.extra}</div>
+                </div>
+              </div>
+              <table className="tbl">
+                <thead>
+                  <tr>
+                    <th>#</th>
+                    <th>要求附件</th>
+                    <th>强制</th>
+                    <th>份数</th>
+                    <th>提供情况</th>
+                    <th>页码</th>
+                    <th>状态</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {clItems
+                    .filter((it) => it.status !== "MATCHED" || it.found > 0)
+                    .map((it, i) => {
+                      const pill = checklistPill(it.status);
+                      const first = it.refs[0];
+                      return (
+                        <tr key={`${it.no}-${it.name}-${i}`}>
+                          <td className="num">{i + 1}</td>
+                          <td>
+                            {it.no ? (
+                              <span className="mono">{it.no} </span>
+                            ) : null}
+                            {it.name}
+                            {it.clause ? (
+                              <span className="hd-sub">（{it.clause}）</span>
+                            ) : null}
+                          </td>
+                          <td>
+                            {it.mandatory === "★" || it.mandatory === "必需"
+                              ? "必需"
+                              : it.mandatory || "—"}
+                          </td>
+                          <td>
+                            {it.min_count
+                              ? `${it.found}/${it.min_count}`
+                              : it.found}
+                          </td>
+                          <td>
+                            {it.found > 0 ? `已提供 ${it.found} 份` : "未提供"}
+                          </td>
+                          <td>
+                            {first && first.doc_id && taskId ? (
+                              <button
+                                type="button"
+                                className="src-chip"
+                                onClick={() =>
+                                  setLocate({
+                                    docId: first.doc_id as string,
+                                    page: first.page,
+                                    quote: "",
+                                  })
+                                }
+                              >
+                                {first.doc_id}
+                                {first.page != null ? ` p.${first.page}` : ""}
+                              </button>
+                            ) : (
+                              "—"
+                            )}
+                          </td>
+                          <td>
+                            <span className={pill.cls}>{pill.label}</span>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  {checklist.extra_items.map((ex, i) => (
+                    <tr key={`extra-${i}`} className="unmapped-row">
+                      <td className="num">+</td>
+                      <td className="unmapped-cell">{ex.name}</td>
+                      <td>—</td>
+                      <td>—</td>
+                      <td>招标要求外</td>
+                      <td>
+                        {ex.doc_id && taskId ? (
+                          <button
+                            type="button"
+                            className="src-chip"
+                            onClick={() =>
+                              setLocate({
+                                docId: ex.doc_id as string,
+                                page: ex.page,
+                                quote: "",
+                              })
+                            }
+                          >
+                            {ex.doc_id}
+                            {ex.page != null ? ` p.${ex.page}` : ""}
+                          </button>
+                        ) : (
+                          "—"
+                        )}
+                      </td>
+                      <td>
+                        <span className="pill pill-gray">多余</span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+              <div className="tbl-foot">
+                口径：EXTRA 多余附件仅提示不判错不进问题数；MATCHED
+                全提供项默认收起，缺失/份数不足优先展示（L2-020/L2-024
+                规则组）。
+              </div>
+            </div>
+          ) : checklist && checklist.counts.required === 0 ? (
+            <div className="card">
+              <div className="tbl-foot">
+                本任务抽取时未包含附件要求维度——重新抽取后即可生成附件核对表（旧任务无此数据，不回填）。
               </div>
             </div>
           ) : null}

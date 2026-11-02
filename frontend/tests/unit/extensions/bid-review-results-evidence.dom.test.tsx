@@ -311,9 +311,9 @@ describe("bid-review ResultsView 证据管线(EAI-CUSTOM 2026-10-30)", () => {
       "/bid-review/diff?task_id=t1&prev=t0",
     );
     // 页头「换版重审」→ /bid-review?prev= 深链(TasksView 自动开对话框预选基准)
-    expect(screen.getByRole("link", { name: "换版重审" }).getAttribute("href")).toBe(
-      "/bid-review?prev=t1",
-    );
+    expect(
+      screen.getByRole("link", { name: "换版重审" }).getAttribute("href"),
+    ).toBe("/bid-review?prev=t1");
   });
 
   it("无 prev_task_id:不渲染对比按钮,不发 diff 请求", async () => {
@@ -424,5 +424,108 @@ describe("bid-review ResultsView 证据管线(EAI-CUSTOM 2026-10-30)", () => {
     expect(await screen.findByText("规则命中")).toBeTruthy();
     expect(screen.queryByText("评分覆盖度")).toBeNull();
     expect(document.body.textContent).toContain("命中 1 / 2 条");
+  });
+});
+
+// ── L2 P1 附件核对表卡(EAI-CUSTOM 2026-11-02 spec §5)──
+
+const CHECKLIST = {
+  counts: { required: 3, matched: 1, partial: 1, missing: 1, extra: 1 },
+  items: [
+    {
+      no: "ATT-E-008",
+      name: "类似业绩证明",
+      mandatory: "★",
+      min_count: 3,
+      found: 2,
+      status: "PARTIAL",
+      clause: "第三章3.4",
+      refs: [{ doc_id: "bid.pdf", page: 118 }],
+    },
+    {
+      no: "ATT-G-002",
+      name: "安全生产许可证",
+      mandatory: "★",
+      min_count: null,
+      found: 0,
+      status: "MISSING",
+      clause: null,
+      refs: [],
+    },
+    {
+      no: "ATT-F-001",
+      name: "投标函",
+      mandatory: "★",
+      min_count: null,
+      found: 1,
+      status: "MATCHED",
+      clause: null,
+      refs: [{ doc_id: "bid.pdf", page: 2 }],
+    },
+  ],
+  extra_items: [{ name: "企业宣传册", doc_id: "bid.pdf", page: 310 }],
+};
+
+describe("bid-review ResultsView L2 P1 附件核对表(EAI-CUSTOM 2026-11-02)", () => {
+  beforeEach(() => {
+    calls.length = 0;
+    responder = () => jsonRes({});
+  });
+
+  afterEach(() => {
+    cleanup();
+  });
+
+  it("附件核对表卡:五格/排序 MISSING 前/pill 映射/EXTRA 灰行/页码 chip", async () => {
+    responder = (path) => {
+      if (path.endsWith("/tasks/t1/attachment_checklist"))
+        return jsonRes(CHECKLIST);
+      if (path.endsWith("/tasks/t1/issues")) return jsonRes({ items: [ISSUE] });
+      if (path.endsWith("/tasks/t1")) return jsonRes(TASK);
+      return jsonRes({}, 404);
+    };
+    renderWorkbench();
+    await waitFor(() => expect(screen.getByText("附件核对表")).toBeTruthy());
+    // pill 映射(卡内作用域断言——metric-strip m-lb 与 pill 同文案,裸 getByText 会撞):
+    // MISSING→pill-err 缺失;PARTIAL→pill-warn 份数不足
+    const card = screen.getByText("附件核对表").closest(".card");
+    expect(card?.querySelector(".pill-err")?.textContent).toBe("缺失");
+    expect(card?.querySelector(".pill-warn")?.textContent).toBe("份数不足");
+    // MISSING 行排最前(MISSING<PARTIAL<MATCHED);份数 cell found/min_count
+    const missRow = screen
+      .getByText("安全生产许可证")
+      .closest("tr") as HTMLElement;
+    const partRow = screen
+      .getByText("类似业绩证明")
+      .closest("tr") as HTMLElement;
+    const rows = Array.from(partRow.parentElement?.children ?? []);
+    expect(rows.indexOf(missRow)).toBeLessThan(rows.indexOf(partRow));
+    expect(missRow.querySelectorAll(".pill-err").length).toBeGreaterThan(0);
+    expect(partRow.textContent).toContain("2/3");
+    // EXTRA 灰行不产 issue:多余 pill + 页码 chip(bid 首文档页码)
+    expect(screen.getByText("企业宣传册").closest("tr")?.textContent).toContain(
+      "p.310",
+    );
+    expect(screen.getByText("多余")).toBeTruthy();
+    // 五格 counts 直出
+    expect(card?.querySelectorAll(".metric-cell").length).toBe(5);
+  });
+
+  it("零投影:counts.required=0 → 诚实空态引导", async () => {
+    responder = (path) => {
+      if (path.endsWith("/tasks/t1/attachment_checklist"))
+        return jsonRes({
+          counts: { required: 0, matched: 0, partial: 0, missing: 0, extra: 0 },
+          items: [],
+          extra_items: [],
+        });
+      if (path.endsWith("/tasks/t1/issues")) return jsonRes({ items: [ISSUE] });
+      if (path.endsWith("/tasks/t1")) return jsonRes(TASK);
+      return jsonRes({}, 404);
+    };
+    renderWorkbench();
+    await waitFor(() =>
+      expect(screen.getByText(/本任务抽取时未包含附件要求维度/)).toBeTruthy(),
+    );
   });
 });
