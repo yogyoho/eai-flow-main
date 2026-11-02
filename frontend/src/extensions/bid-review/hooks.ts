@@ -14,6 +14,7 @@ import {
   adjudicateBaseline,
   confirmTask,
   feedbackIssue,
+  fetchAttachmentChecklist,
   fetchBaselines,
   fetchDeviations,
   fetchTaskDiff,
@@ -39,6 +40,8 @@ export const bidReviewKeys = {
     ["bid-review", "scoreCoverage", taskId] as const,
   deviations: (taskId: string) =>
     ["bid-review", "deviations", taskId] as const,
+  attachmentChecklist: (taskId: string) =>
+    ["bid-review", "attachment-checklist", taskId] as const,
   baselines: (taskId: string) => ["bid-review", "baselines", taskId] as const,
   rulepacks: ["bid-review", "rulepacks"] as const,
   ruleExprs: (name: string) => ["bid-review", "ruleExprs", name] as const,
@@ -117,6 +120,16 @@ export function useBidDeviations(taskId: string | null | undefined) {
   return useQuery({
     queryKey: bidReviewKeys.deviations(taskId ?? ""),
     queryFn: () => fetchDeviations(taskId!),
+    enabled: Boolean(taskId),
+  });
+}
+
+/** GET /tasks/{id}/attachment_checklist —— L2 P1 附件核对表(spec 2026-11-02 §4);
+ * 旧任务零投影(counts 全 0 + items 空),调用方据此渲染诚实空态。 */
+export function useBidAttachmentChecklist(taskId: string | null | undefined) {
+  return useQuery({
+    queryKey: bidReviewKeys.attachmentChecklist(taskId ?? ""),
+    queryFn: () => fetchAttachmentChecklist(taskId!),
     enabled: Boolean(taskId),
   });
 }

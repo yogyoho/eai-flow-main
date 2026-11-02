@@ -165,6 +165,44 @@ export interface ScoreCoverageOut {
   items: ScoreCoverageItem[];
 }
 
+/** GET /tasks/{id}/attachment_checklist ref(L2 P1 spec §4;doc_id=bid 侧首文档,解不到 null → chip 纯文本)。 */
+export interface BidAttachmentRef {
+  doc_id: string | null;
+  page: number | null;
+}
+
+/** GET /tasks/{id}/attachment_checklist 行(要求项;P1 三态,UNKNOWN 由 need_human 兜底不进表)。 */
+export interface BidChecklistItem {
+  no: string;
+  name: string;
+  mandatory: string | null;
+  min_count: number | null;
+  found: number;
+  status: "MATCHED" | "PARTIAL" | "MISSING";
+  clause: string | null;
+  refs: BidAttachmentRef[];
+}
+
+/** 未被任何要求匹配的提供项(EXTRA——info 行提示,不产 issue 不进问题数)。 */
+export interface BidChecklistExtra {
+  name: string;
+  doc_id: string | null;
+  page: number | null;
+}
+
+/** GET /tasks/{id}/attachment_checklist 响应;零投影 → counts 全 0 + items [](旧任务无附件维度)。 */
+export interface BidAttachmentChecklistOut {
+  counts: {
+    required: number;
+    matched: number;
+    partial: number;
+    missing: number;
+    extra: number;
+  };
+  items: BidChecklistItem[];
+  extra_items: BidChecklistExtra[];
+}
+
 /** GET /tasks —— 任务列表(owner 过滤由后端完成;响应 {items: TaskOut[]},拆包返回)。 */
 export function listTasks(): Promise<TaskOut[]> {
   return request<{ items: TaskOut[] }>("/tasks").then((r) => r.items);
@@ -225,6 +263,15 @@ export function fetchScoreCoverage(taskId: string): Promise<ScoreCoverageOut> {
 /** GET /tasks/{id}/deviations —— B9 响应偏离表(spec 2026-11-01 §1.2)。 */
 export function fetchDeviations(taskId: string): Promise<BidDeviationsOut> {
   return request<BidDeviationsOut>(`/tasks/${taskId}/deviations`);
+}
+
+/** GET /tasks/{id}/attachment_checklist —— L2 P1 附件核对表(spec 2026-11-02 §4)。 */
+export function fetchAttachmentChecklist(
+  taskId: string,
+): Promise<BidAttachmentChecklistOut> {
+  return request<BidAttachmentChecklistOut>(
+    `/tasks/${taskId}/attachment_checklist`,
+  );
 }
 
 /** GET /tasks/{id}/confirm —— 确认门(仅 UI):基线全量翻转 confirmed;
