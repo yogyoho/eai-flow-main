@@ -268,6 +268,18 @@ COMP_FIELDS = {
         {"no": "3-9", "name": "完税证明", "page": 40},  # 引用父号,归属不了 → 分组失败
     ],
 }
+COMP2_REQS = [
+    {"no": "3", "name": "资格审查文件", "mandatory": "★", "min_count": None, "sub_items": [{"no": "3.1", "name": "营业执照"}, {"no": "3.2", "name": "资质证书"}]},
+    {"no": "4", "name": "技术文件", "mandatory": "★", "min_count": None, "sub_items": [{"no": "4.1", "name": "安全生产许可证"}, {"no": "4.2", "name": "业绩合同"}]},
+]
+COMP2_FIELDS = {
+    "tender.attachment_requirements": COMP2_REQS,
+    "bid.attachment_index": [
+        {"no": "3-1", "name": "营业执照", "page": 5},
+        {"no": "3-9", "name": "完税证明", "page": 40},  # 引用父号 3,归属不了 → "3" 分组失败
+        {"no": "4-9", "name": "验收报告", "page": 55},  # 引用父号 4,归属不了 → "4" 分组失败
+    ],
+}
 
 
 def test_att_check_unknown_degrades_need_human():
@@ -293,3 +305,17 @@ def test_att_issue_entity_keys_default_empty():
 
     iss = _issue(_att_rule("att_check"), {}, {"missing": ["x"]})
     assert iss["entity_keys"] == []
+
+
+def test_att_unknown_issues_unique_dedup_keys():
+    """两个复合件同时分组失败 → 各自 need_human 的 dedup_key 按实体键派生(审查 I-1):
+    彼此 distinct 且各含实体键——同附件跨重跑仍归并,异附件不再互吞。"""
+    issues = run_det_rule(_att_rule("att_check"), COMP2_FIELDS)
+    assert len(issues) == 2
+    keys = {i["dedup_key"] for i in issues}
+    assert keys == {"L2-020|-|attachment:3", "L2-020|-|attachment:4"}
+
+
+def test_att_count_ignores_unknown():
+    """att_count 对 UNKNOWN 行零 issue(审查 M-1):UNKNOWN 归 att_check 的 need_human 通道,钳位分工。"""
+    assert run_det_rule(_att_rule("att_count"), COMP_FIELDS) == []

@@ -254,6 +254,7 @@ def run_det_rule(rule: Rule, fields: dict) -> list[dict]:
                     for r in unknown:  # 分组失败降 need_human,禁强行 PARTIAL/MISSING(spec §7)
                         nh = _need_human(rule, f"复合附件「{_label(r['req'])}」子件无法自动分组,需人工核对")
                         nh["entity_keys"] = [_entity_key(r["req"])]
+                        nh["dedup_key"] = f"{rule.id}|-|{_entity_key(r['req'])}"  # 审查 I-1:按实体键派生,多复合件不再互吞
                         issues.append(nh)
                 else:
                     partial = [r for r in out["per_req"] if r["status"] == "PARTIAL"]
