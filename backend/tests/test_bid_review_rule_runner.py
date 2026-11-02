@@ -254,3 +254,42 @@ def test_att_ops_whitelisted_at_load():
     pack = load_rulepack(PACK)
     ops = {r.id: r.check.get("op") for r in pack.rules if r.layer == "L2"}
     assert ops == {"L2-020": "att_check", "L2-024": "att_count"}
+
+
+# ── L2 P2:UNKNOWN→need_human + 实体键(spec 2026-11-02 §7 挂账行) ──
+
+COMP_REQS = [
+    {"no": "3", "name": "资格审查文件", "mandatory": "★", "min_count": None, "sub_items": [{"no": "3.1", "name": "营业执照"}, {"no": "3.2", "name": "资质证书"}]},
+]
+COMP_FIELDS = {
+    "tender.attachment_requirements": COMP_REQS,
+    "bid.attachment_index": [
+        {"no": "3-1", "name": "营业执照", "page": 5},
+        {"no": "3-9", "name": "完税证明", "page": 40},  # 引用父号,归属不了 → 分组失败
+    ],
+}
+
+
+def test_att_check_unknown_degrades_need_human():
+    """分组失败 → 父行产 need_human(禁强行 PARTIAL/MISSING);不进 missing 列表。"""
+    issues = run_det_rule(_att_rule("att_check"), COMP_FIELDS)
+    assert len(issues) == 1
+    assert issues[0]["need_human"] is True
+    assert issues[0]["verdict"] == "need_human"
+    assert "资格审查文件" in issues[0]["message"]
+
+
+def test_att_issues_carry_entity_keys():
+    """att issue 携带实体键 attachment:{no};无 no 用 name 通道。"""
+    issues = run_det_rule(_att_rule("att_check"), ATT_FIELDS)
+    assert issues[0]["entity_keys"] == ["attachment:name:不出席也行"]  # 只 MISSING 的是无编号件(A-2 是 PARTIAL 不进 att_check)
+    nh = run_det_rule(_att_rule("att_check"), COMP_FIELDS)
+    assert nh[0]["entity_keys"] == ["attachment:3"]
+
+
+def test_att_issue_entity_keys_default_empty():
+    """非 att 算子 issue 也带 entity_keys=[](形状统一,worker 透传零分支)。"""
+    from app.extensions.bid_review.engine.rule_runner import _issue
+
+    iss = _issue(_att_rule("att_check"), {}, {"missing": ["x"]})
+    assert iss["entity_keys"] == []

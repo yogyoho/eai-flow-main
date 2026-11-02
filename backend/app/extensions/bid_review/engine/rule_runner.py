@@ -13,7 +13,7 @@ from pathlib import Path
 import yaml
 
 from app.extensions.bid_review.engine.anchors import anchor_rule_paths
-from app.extensions.bid_review.engine.attachments import match_attachments
+from app.extensions.bid_review.engine.attachments import match_attachments, normalize_name
 from app.extensions.bid_review.engine.expr import ExprError, RulePackError, eval_expr, fields_used, validate_expr
 
 _OPS = {"lte": operator.le, "gte": operator.ge, "eq": operator.eq}
@@ -156,6 +156,7 @@ def _issue(rule: Rule, fields: dict, extra: dict, env: dict | None = None) -> di
         "message": msg,
         "fix": rule.fix_tpl,
         "evidence": [],
+        "entity_keys": [],
         "source": "engine",
         "dedup_key": f"{rule.id}|-|{msg[:40]}",
     }
@@ -172,9 +173,16 @@ def _need_human(rule: Rule, msg: str) -> dict:
         "message": msg,
         "fix": rule.fix_tpl,
         "evidence": [],
+        "entity_keys": [],
         "source": "engine",
         "dedup_key": f"{rule.id}|-|missing",
     }
+
+
+def _entity_key(req: dict) -> str:
+    """附件实体键(L2 P2 D6):no 优先,无 no 用归一名称通道——跨层去重的归并依据。"""
+    no = str(req.get("no") or "").strip()
+    return f"attachment:{no}" if no else f"attachment:name:{normalize_name(req.get('name'))}"
 
 
 def attach_evidence(issues: list[dict], rule: Rule, provenance: dict | None = None) -> list[dict]:
@@ -225,7 +233,7 @@ def run_det_rule(rule: Rule, fields: dict) -> list[dict]:
             miss, extra = sorted(rhs - lhs, key=str), sorted(lhs - rhs, key=str)
             if miss or extra:
                 issues.append(_issue(rule, fields, {"missing": miss, "extra": extra}))
-        elif chk["op"] in ("att_check", "att_count"):  # L2 P1 附件核对(spec 2026-11-02 §3):镜像 set_eq 专用分支,复用 match_attachments
+        elif chk["op"] in ("att_check", "att_count"):  # L2 P1 附件核对(spec 2026-11-02 §3);P2:UNKNOWN→need_human+实体键(§7)
             reqs, prov = _val(chk["left"], fields), _val(chk["right"], fields)
             if not isinstance(reqs, list) or not isinstance(prov, list):
                 issues.append(_need_human(rule, "附件字段缺失或类型非法(need_human)"))
@@ -237,17 +245,26 @@ def run_det_rule(rule: Rule, fields: dict) -> list[dict]:
                     return f"{no} {r.get('name')}" if no else str(r.get("name") or "")
 
                 if chk["op"] == "att_check":
-                    miss = [_label(r["req"]) for r in out["per_req"] if r["status"] == "MISSING"]
+                    miss = [r for r in out["per_req"] if r["status"] == "MISSING"]
+                    unknown = [r for r in out["per_req"] if r["status"] == "UNKNOWN"]
                     if miss:
-                        issues.append(_issue(rule, fields, {"missing": miss}))
+                        iss = _issue(rule, fields, {"missing": [_label(r["req"]) for r in miss]})
+                        iss["entity_keys"] = [_entity_key(r["req"]) for r in miss]
+                        issues.append(iss)
+                    for r in unknown:  # 分组失败降 need_human,禁强行 PARTIAL/MISSING(spec §7)
+                        nh = _need_human(rule, f"复合附件「{_label(r['req'])}」子件无法自动分组,需人工核对")
+                        nh["entity_keys"] = [_entity_key(r["req"])]
+                        issues.append(nh)
                 else:
-                    ins = [
-                        f"{_label(r['req'])}: 要求{r['req'].get('min_count')}份/提供{r['found']}份"
-                        for r in out["per_req"]
-                        if r["status"] == "PARTIAL"
-                    ]
-                    if ins:
-                        issues.append(_issue(rule, fields, {"insufficient": ins}))
+                    partial = [r for r in out["per_req"] if r["status"] == "PARTIAL"]
+                    if partial:
+                        iss = _issue(
+                            rule,
+                            fields,
+                            {"insufficient": [f"{_label(r['req'])}: 要求{r['req'].get('min_count')}份/提供{r['found']}份" for r in partial]},
+                        )
+                        iss["entity_keys"] = [_entity_key(r["req"]) for r in partial]
+                        issues.append(iss)
         elif chk["op"] in _OPS:
             lhs, rhs = _val(chk["left"], fields), _val(chk["right"], fields)
             if not _OPS[chk["op"]](lhs, rhs):
