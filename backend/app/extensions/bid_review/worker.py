@@ -15,28 +15,29 @@ str,A12 T14 约束②);逐规则隔离扩展到 sem/hyb(模型不可用/接线�
 T9 先例);done 帧 progress 增 durations(各阶段耗时)与 summary(汇总分级,A12 T14
 约束①:正式违规计数不含 need_human 条目,待人工单列,routers issues API 共用
 summarize_issues 同一口径)。
+金标准重构(2026-11-03,spec §4):审查分派循环(det/sem 分派、None 剥离、逐规则隔离)移
+共享核 engine/eval_core.evaluate_fields(EAI-CUSTOM)——worker/评测器同源一把尺;本模块保
+进度上报(crud.set_status)与条目落库(crud.add_issue),_wrap_model_fn 保兼容别名。
 """
 
 from __future__ import annotations
 
 import asyncio
-import inspect
 import json
 import logging
 import os
 import re
 import time
 from pathlib import Path
-from types import SimpleNamespace
 from typing import Any
 
 from sqlalchemy import delete, select, text, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.extensions.bid_review import crud
+from app.extensions.bid_review.engine.eval_core import _content_to_str, evaluate_fields, wrap_model_fn
 from app.extensions.bid_review.engine.extract import ExtractFn, ExtractNotConfigured, apply_adjudications, build_baseline
-from app.extensions.bid_review.engine.llm_runner import run_sem_rule
-from app.extensions.bid_review.engine.rule_runner import _need_human, attach_evidence, load_rulepack, run_det_rule
+from app.extensions.bid_review.engine.rule_runner import load_rulepack
 from app.extensions.bid_review.models import BaselinePackage, ReviewTask
 from app.extensions.database import get_session_factory
 
@@ -55,38 +56,11 @@ class ModelNotConfigured(RuntimeError):
     """生产 sem/hyb 裁决模型未接线的显式缺口(ExtractNotConfigured 同款先例)。"""
 
 
-# ── 模型接线(Task 14;A12 T14 约束②归一在 worker 侧,engine._call_model 不改)────
+# ── 模型接线(Task 14;A12 T14 约束②归一原在 worker 侧,金标准重构(2026-11-03,spec §4)
+#    实现移 engine.eval_core 共享核,此处保兼容别名,engine._call_model 不改)──────────
 
 
-def _content_to_str(content) -> str:
-    """response.content 归一为 str:LangChain 分块 list 形态(list 时拼接各 text 部件;
-    str 项直取,dict 项取 text 键)——不归一则 check_schema 两试皆败→整规则静默空产出。"""
-    if isinstance(content, str):
-        return content
-    if isinstance(content, list):
-        parts: list[str] = []
-        for chunk in content:
-            if isinstance(chunk, str):
-                parts.append(chunk)
-            elif isinstance(chunk, dict) and isinstance(chunk.get("text"), str):
-                parts.append(chunk["text"])
-        return "".join(parts)
-    return str(content) if content is not None else ""
-
-
-def _wrap_model_fn(model_fn):
-    """模型接线包装层:调注入的 raw model_fn(同步/异步 callable 均可),把
-    response.content 归一为 str 后以带 .content 的轻量响应对象回交引擎(契约与
-    llm_runner._call_model 的 getattr(response, "content") 对齐)。"""
-
-    async def _wrapped(messages):
-        response = model_fn(messages)
-        if inspect.isawaitable(response):
-            response = await response
-        raw = getattr(response, "content", response)
-        return SimpleNamespace(content=_content_to_str(raw))
-
-    return _wrapped
+_wrap_model_fn = wrap_model_fn  # 兼容别名(金标准重构,原实现移 eval_core)
 
 
 def _resolve_model_name() -> str | None:
@@ -342,31 +316,24 @@ async def _run_review_stage(db: AsyncSession, task: ReviewTask, fields: dict, ow
     接线失败(ModelNotConfigured)——降级 need_human 条目,兄弟规则照常,禁整任务崩;
     crud.add_issue 的 DB 异常不在本包裹内,基础设施失败仍走既有失败链。
     None 值字段先剥离——det 求值器不容 None(比较算子会 TypeError),剥离后两通路统一走
-    need_human 约定(on_missing_input=need_human);sem 侧同口径(None 字段=缺字段)。"""
+    need_human 约定(on_missing_input=need_human);sem 侧同口径(None 字段=缺字段)。
+    金标准重构(2026-11-03,spec §4,EAI-CUSTOM):分派逻辑移 eval_core 共享核(worker/评测器同源)。"""
+    # EAI-CUSTOM(2026-11-03 金标准 spec §4):分派循环移共享核 eval_core.evaluate_fields
+    # ——worker 保进度上报(on_progress→crud.set_status)与条目落库(crud.add_issue),
+    # 评测器与 worker 消费同一段分派代码(金标准禁复制=两把尺子,必然漂移说谎)。
     pack = load_rulepack(RULEPACK_PATH)
     det_fields = {k: v for k, v in fields.items() if v is not None}
-    rules = [r for r in pack.rules if r.enabled]
-    total = max(len(rules), 1)
-    written = 0
-    model_fn = _wrap_model_fn(model_fn or _default_model_fn())
+    wrapped_model = _wrap_model_fn(model_fn or _default_model_fn())
     docs = _load_docs(task)
     materials = _collect_materials(docs)
     docs_text = _collect_docs_text(docs)
-    for i, rule in enumerate(rules, start=1):
+
+    async def _progress(i: int, total: int, rule) -> None:
         await crud.set_status(db, task, "running", progress={"stage": "review", "pct": int(i * 100 / total), "msg": f"{rule.id}({i}/{total})"})
-        try:
-            if rule.type == "deterministic":
-                issues = attach_evidence(run_det_rule(rule, det_fields), rule, provenance)
-            else:  # semantic|hybrid
-                issues = await run_sem_rule(rule, det_fields, materials, model_fn, docs_text)
-        except Exception as exc:  # noqa: BLE001
-            # 逐规则异常隔离(fix-round 评审项,Task 14 扩展到 sem/hyb):run_det_rule 只把
-            # KeyError 转 need_human;求值意外(str/float 比较 TypeError)与模型侧故障
-            # (ModelNotConfigured/端点异常)在此统一降级 need_human,不把整条审查任务经
-            # _infra_fail 重试 3 次打 failed。
-            logger.warning("bid_review task %s rule %s crashed, downgraded to need_human: %r", task.id, rule.id, exc)
-            issues = [_need_human(rule, f"规则执行异常 {exc!r}(逐规则隔离降级 need_human)")]
-        for issue in issues:
+
+    issues = await evaluate_fields(pack, det_fields, model_fn=wrapped_model, materials=materials, docs_text=docs_text, provenance=provenance, on_progress=_progress)
+    written = 0
+    for issue in issues:
             row = await crud.add_issue(
                 db,
                 task_id=task.id,
