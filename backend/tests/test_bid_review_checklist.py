@@ -69,7 +69,7 @@ async def _mk_baseline(db, task_id: str, fields: dict) -> models.BaselinePackage
 
 @pytest.mark.asyncio
 async def test_checklist_projection_dedup_and_refs(db, client):
-    """真投影:要求跨行 (no,name) 去重;counts 五格;refs 注 bid 侧首 doc_id。"""
+    """真投影:要求跨行 (no,name) 去重;counts 六格;refs 注 bid 侧首 doc_id。"""
     t = await crud.create_task(db, owner_id="u1")
     t.engine_meta = {"docs": [{"doc_id": "tender.pdf", "role": "tender"}, {"doc_id": "bid.pdf", "role": "bid"}]}
     await db.commit()
@@ -154,3 +154,4 @@ async def test_endpoint_composite_unknown_passthrough(db, client):
     assert body["counts"]["unknown"] == 1
     assert body["items"][0]["status"] == "UNKNOWN"
     assert body["items"][0]["sub_results"][0]["name"] == "营业执照"
+    assert body["extra_items"] == []

@@ -748,11 +748,7 @@ async def task_attachment_checklist(
             if isinstance(item, dict):
                 provided.append(item)
     if not reqs:
-        return {
-            "counts": {"required": 0, "matched": 0, "partial": 0, "missing": 0, "unknown": 0, "extra": 0},
-            "items": [],
-            "extra_items": [],
-        }
+        return build_checklist([], [], bid_doc_id=None)
     docs = (task.engine_meta or {}).get("docs") or []
     bid_doc = next(
         (str(d.get("doc_id")) for d in docs if isinstance(d, dict) and d.get("role") == "bid" and d.get("doc_id")),

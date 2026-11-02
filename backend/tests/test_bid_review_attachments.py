@@ -263,6 +263,7 @@ def test_build_checklist_unknown_and_sub_results():
     out = build_checklist(reqs, prov, bid_doc_id="投标文件.docx")
     assert out["counts"]["unknown"] == 1
     assert out["counts"]["required"] == 2
+    assert out["counts"]["extra"] == 0
     assert out["items"][0]["sub_results"] == [{"no": "3.1", "name": "营业执照", "found": 0, "status": "MISSING"}]
     assert out["items"][1]["sub_results"] == []
 
@@ -279,6 +280,7 @@ def test_malformed_sub_items_falls_back_to_flat():
     assert it["found"] == 1
     assert it["sub_results"] == []
     assert out["counts"]["unknown"] == 0
+    assert out["counts"]["extra"] == 0
 
 
 def test_composite_sub_dot_form_sole_channel():
