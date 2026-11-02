@@ -1,0 +1,10 @@
+case: E-2-l1-009-within-max
+desc: 达标负例——投标总价恰等于最高限价(op lte 边界=达,「总价=限价」不是超限) → L1-009 不报
+fields:
+  bid.total_price: 1000000.0
+  tender.max_price: 1000000.0
+  bid.price_includes_tax: true
+  tender.price_includes_tax: true
+expect_issues: []
+expect_absent: [L1-009]
+strict: false

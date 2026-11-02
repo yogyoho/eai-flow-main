@@ -1,0 +1,19 @@
+case: L2-020-unknown-group-failure
+desc: 复合件提供项引用父号(3-9 完税证明)却归属不了任何子件 → 分组失败父行 UNKNOWN → L2-020 need_human(禁强行 MISSING/PARTIAL;shapes 照 test_composite_group_failure_unknown 夹具)
+fields:
+  tender.attachment_requirements:
+    - {'no': "3", name: 资格审查文件, sub_items: [{'no': "3.1", name: 营业执照}, {'no': "3.2", name: 资质证书}]}
+  bid.attachment_index:
+    - {'no': "3-1", name: 营业执照}
+    - {'no': "3-9", name: 完税证明}
+expect_issues:
+  - rule_id: L2-020
+    severity: fatal
+    verdict: "need_human"
+    contains: ["无法自动分组", "资格审查文件"]
+    entity: "attachment:3"
+expect_absent: []
+strict: true
+checklist:
+  unknown_count: 1
+  status_by_no: {"3": "UNKNOWN"}

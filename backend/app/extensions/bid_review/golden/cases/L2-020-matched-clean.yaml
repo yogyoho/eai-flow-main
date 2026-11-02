@@ -1,0 +1,15 @@
+case: L2-020-matched-clean
+desc: E-1/E-2 全命中 → 零 L2 条目(P1 全达标回归,strict 钉任何 att_check/att_count 误报);checklist 钉双 MATCHED
+fields:
+  tender.attachment_requirements:
+    - {'no': E-1, name: 业绩合同, mandatory: true}
+    - {'no': E-2, name: 中标通知书, mandatory: true}
+  bid.attachment_index:
+    - {'no': E-1, name: 业绩合同}
+    - {'no': E-2, name: 中标通知书}
+expect_issues: []
+expect_absent: [L2-020, L2-024]
+strict: true
+checklist:
+  unknown_count: 0
+  status_by_no: {"E-1": "MATCHED", "E-2": "MATCHED"}

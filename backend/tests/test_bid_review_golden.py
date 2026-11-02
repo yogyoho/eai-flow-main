@@ -98,6 +98,34 @@ def test_case_name_must_match_canonical_regex(tmp_path):
         loader.load_case(p)
 
 
+def test_loader_rejects_non_str_nested_keys(tmp_path):
+    """bug-3938 类守卫(T6 挂账):裸 `no` 嵌套键被 PyYAML 解析为布尔 False,
+    materials_hash 的 json.dumps(sort_keys=True) 对 str/bool 键会 TypeError——加载期即拒,
+    报错点名字段路径+加引号修法。"""
+    p = tmp_path / "bad7.yaml"
+    p.write_text(
+        "case: L2-020-guard\ndesc: x\n"
+        "fields:\n"
+        "  tender.attachment_requirements:\n"
+        "    - {no: E-1, name: 业绩合同}\n"  # 键 no 裸写 → False
+        "expect_issues: []\n",
+        encoding="utf-8",
+    )
+    with pytest.raises(ValueError, match="tender.attachment_requirements.*非字符串.*加引号"):
+        loader.load_case(p)
+
+
+def test_loader_accepts_quoted_no_keys(tmp_path):
+    """守卫不误伤:加引号的 'no' 键(题库既定写法)照常加载。"""
+    p = tmp_path / "L2-020-ok-no.yaml"  # 正例须全 loader 校验通过:命名也须合法(stem==case)
+    p.write_text(
+        "case: L2-020-ok-no\ndesc: x\nfields:\n  tender.attachment_requirements:\n    - {'no': E-1, name: 业绩合同}\nexpect_issues: []\n",
+        encoding="utf-8",
+    )
+    c = loader.load_case(p)
+    assert c.fields["tender.attachment_requirements"][0]["no"] == "E-1"
+
+
 # ── T3 golden runner:diff 引擎(verdict 分桶消化/expect_absent/strict/checklist;spec §6/§7)──
 
 _SAMPLE = CASES_DIR / "L1-009-over-max-price.yaml"
@@ -264,7 +292,7 @@ def test_scripted_model_routes_by_rule_card_header():
 
 
 # ---- 回归门:逐题参数化 + 覆盖率地板 ----
-# 每批次任务扩此表;收尾任务改为 == 全 34 条(pack ids 精确相等)。批A=L1 全集(rulepack 实有 17 条;L1-004/017/018/020 不存在);批B+=L3 全集 15 条(L3-011/015/017 不存在;L2 两规则 T9)
+# 批C 起覆盖率翻全集(L1 全集 17 + L3 全集 15 + L2 全集 2 = pack 34 条精确相等;L1-004/017/018/020、L3-011/015/017 不存在)
 EXPECTED_COVERAGE = {
     "L1-001",
     "L1-002",
@@ -283,6 +311,8 @@ EXPECTED_COVERAGE = {
     "L1-016",
     "L1-019",
     "L1-021",
+    "L2-020",
+    "L2-024",
     "L3-001",
     "L3-002",
     "L3-003",
@@ -321,12 +351,12 @@ def test_rule_coverage_floor():
 
 
 def test_coverage_complete_marker():
-    """收尾后(EXPECTED_COVERAGE == pack 全集)此测试钉死精确相等;现阶段跳过。"""
+    """批C 收口:EXPECTED_COVERAGE、pack 全集、题库实 coverage 三方精确相等——漏建(题库漏规则)与多建(表与文件漂移)双方向即红。"""
     pack = load_rulepack(PACK)
-    if EXPECTED_COVERAGE != {r.id for r in pack.rules}:
-        pytest.skip("题库未收满,精确相等断言待收尾任务启用")
+    pack_ids = {r.id for r in pack.rules}
+    assert EXPECTED_COVERAGE == pack_ids
     covered = {e.rule_id for c in loader.load_cases() for e in c.expect_issues}
-    assert covered == {r.id for r in pack.rules}
+    assert covered == pack_ids
 
 
 # ---- report + CLI ----
@@ -392,6 +422,16 @@ def test_cli_main_failure_paths(capsys, monkeypatch):
 
 # ---- 全管线冒烟(spec §8):钉接线,不钉 LLM ----
 SMOKE = CASES_DIR.parent / "smoke"
+
+
+def test_fields_from_stub_unknown_key(tmp_path):
+    """T6 挂账守卫:stub 键名笔误原本被「请求路径∩stub 键」过滤静默丢弃=抽取层假绿,
+    现加载期对照 known_field_paths 大声报错。"""
+    (tmp_path / "docs").mkdir()
+    (tmp_path / "docs" / "tender.md").write_text("x", encoding="utf-8")
+    (tmp_path / "extract_stub.yaml").write_text("bid.total_pricee: 1.0\n", encoding="utf-8")
+    with pytest.raises(ValueError, match="疑似键名笔误"):
+        _fields_from_stub(tmp_path)
 
 
 def test_smoke_docs_fixture_and_stub_extract():

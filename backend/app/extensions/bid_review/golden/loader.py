@@ -24,6 +24,21 @@ def known_field_paths(pack=None) -> set[str]:
     return paths
 
 
+def _reject_non_str_keys(value, path: str, fname: str) -> None:
+    """字段值内嵌映射键须全为 str(EAI-CUSTOM 2026-11-03,bug-3938 类;T6 审查挂账守卫):
+    YAML 1.1 把裸 `no`/`off` 解析为布尔——{False: ...} 落库后 materials_hash 的
+    json.dumps(sort_keys=True) 对 str/bool 键排序直接 TypeError。递归下钻 dict/list,
+    报错点名字段路径与加引号修法。"""
+    if isinstance(value, dict):
+        for k, v in value.items():
+            if not isinstance(k, str):
+                raise ValueError(f"字段 {path} 的嵌套映射键含非字符串(实为 {type(k).__name__}):YAML 1.1 把裸 no/off 等解析为布尔,键须加引号 'no'(bug-3938)(file: {fname})")
+            _reject_non_str_keys(v, path, fname)
+    elif isinstance(value, list):
+        for item in value:
+            _reject_non_str_keys(item, path, fname)
+
+
 def load_case(path: str | Path, pack=None) -> GoldenCase:
     fname = Path(path).name
     data = yaml.safe_load(Path(path).read_text(encoding="utf-8"))
@@ -37,6 +52,8 @@ def load_case(path: str | Path, pack=None) -> GoldenCase:
     bad = [k for k in (data.get("fields") or {}) if k not in allowed]
     if bad:
         raise ValueError(f"未知字段路径(rulepack inputs ∪ 投影路径之外): {bad}(file: {fname})")
+    for fpath, fval in (data.get("fields") or {}).items():
+        _reject_non_str_keys(fval, fpath, fname)
     expects = [
         Expectation(
             rule_id=str(e["rule_id"]),

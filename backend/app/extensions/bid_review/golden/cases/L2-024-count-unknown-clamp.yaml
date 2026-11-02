@@ -1,0 +1,14 @@
+case: L2-024-count-unknown-clamp
+desc: 复合件分组失败(孤儿 3-9)父行 UNKNOWN → att_count 钳位:即便子件有 PARTIAL 缺口(3.1 要求2份供1份),UNKNOWN 行也不入 insufficient,L2-024 零条目(strict 钉;若引擎误把 UNKNOWN 计份数即红)
+fields:
+  tender.attachment_requirements:
+    - {'no': "3", name: 资格审查文件, sub_items: [{'no': "3.1", name: 营业执照, min_count: 2}, {'no': "3.2", name: 资质证书}]}
+  bid.attachment_index:
+    - {'no': "3-1", name: 营业执照}
+    - {'no': "3-9", name: 完税证明}
+expect_issues: []
+expect_absent: []
+strict: true
+checklist:
+  unknown_count: 1
+  status_by_no: {"3": "UNKNOWN"}

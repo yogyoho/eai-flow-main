@@ -1,0 +1,8 @@
+case: E-1-l1-005-validity-satisfied
+desc: 达标负例——投标有效期恰等于招标要求 90 天(op gte 边界=达) → L1-009 不该报的「近似但不报」形态,L1-005 不报
+fields:
+  bid.validity_days: 90
+  tender.required_validity_days: 90
+expect_issues: []
+expect_absent: [L1-005]
+strict: false

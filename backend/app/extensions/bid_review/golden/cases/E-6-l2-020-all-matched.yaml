@@ -1,0 +1,13 @@
+case: E-6-l2-020-all-matched
+desc: 达标负例——附件全齐备且份数达标(E-1 min_count=2 供 2 份编号通道双命中;E-2 无编号仅名称归一全等命中) → L2-020/L2-024 均不报
+fields:
+  tender.attachment_requirements:
+    - {'no': E-1, name: 业绩合同, min_count: 2}
+    - {'no': E-2, name: 中标通知书}
+  bid.attachment_index:
+    - {'no': E-1, name: 业绩合同}
+    - {'no': E-1, name: 业绩合同}
+    - {name: 中标通知书}
+expect_issues: []
+expect_absent: [L2-020, L2-024]
+strict: false

@@ -1,0 +1,11 @@
+case: E-5-l3-016-version-consistent
+desc: 达标负例——版本出现处(页眉/封面/正文)与文档最终版本全部一致(op:all 全达标零违例行) → L3-016 不报
+fields:
+  bid.document_version: "V3.2"
+  bid.version_tag_occurrences:
+    - {where: 页眉, value: "V3.2"}
+    - {where: 封面, value: "V3.2"}
+    - {where: 正文, value: "V3.2"}
+expect_issues: []
+expect_absent: [L3-016]
+strict: false

@@ -12,7 +12,7 @@ import yaml
 from app.extensions.bid_review.engine.attachments import build_checklist
 from app.extensions.bid_review.engine.eval_core import evaluate_fields, wrap_model_fn
 from app.extensions.bid_review.engine.rule_runner import RulePack, load_rulepack
-from app.extensions.bid_review.golden.loader import RULEPACK_PATH
+from app.extensions.bid_review.golden.loader import RULEPACK_PATH, known_field_paths
 from app.extensions.bid_review.golden.schema import CaseResult, GoldenCase
 
 _QUIET = json.dumps(
@@ -131,6 +131,8 @@ def _fields_from_stub(smoke_dir):
         if p.exists():
             docs.append({"doc_id": name, "role": role, "text": p.read_text(encoding="utf-8")})
     stub = yaml.safe_load((d / "extract_stub.yaml").read_text(encoding="utf-8"))
+    if unknown := sorted(set(stub) - known_field_paths()):  # T6 审查挂账守卫:未知键原本被静默丢弃=抽取层假绿,加载期即大声报(疑似键名笔误)
+        raise ValueError(f"extract_stub 含未知字段路径(rulepack inputs ∪ 投影路径之外,疑似键名笔误): {unknown}(dir: {d})")
     payload = build_baseline(docs, lambda _docs, _paths: {k: v for k, v in stub.items() if k in set(_paths)})
     return payload["fields"]
 

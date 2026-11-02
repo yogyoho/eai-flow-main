@@ -1,0 +1,17 @@
+case: L2-024-count-insufficient
+desc: 附件 E-1 要求 2 份实供 1 份 → PARTIAL → L2-024 major 份数不足(att_check 侧 PARTIAL 非 MISSING 不产条目,strict 钉单规则触发)
+fields:
+  tender.attachment_requirements:
+    - {'no': E-1, name: 中标通知书, min_count: 2}
+  bid.attachment_index:
+    - {'no': E-1, name: 中标通知书}
+expect_issues:
+  - rule_id: L2-024
+    severity: major
+    contains: ["份数不足", "要求2份", "提供1份"]
+    entity: "E-1"
+expect_absent: []
+strict: true
+checklist:
+  unknown_count: 0
+  status_by_no: {"E-1": "PARTIAL"}

@@ -1,0 +1,8 @@
+case: E-3-l1-015-warranty-equal
+desc: 达标负例——质保期恰等于招标下限 24 个月({value,unit} normalize_unit 归一后 gte 边界=达) → L1-015 不报
+fields:
+  bid.warranty_period: {value: 24, unit: month}
+  tender.min_warranty_period: {value: 24, unit: month}
+expect_issues: []
+expect_absent: [L1-015]
+strict: false

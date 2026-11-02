@@ -1,0 +1,18 @@
+case: L2-020-missing-attachment
+desc: 招标要求 E-1/E-2 两附件,投标仅提供 E-1 → L2-020 fatal MISSING(缺 E-2);checklist 钉平铺行状态(build_checklist items 为 {no,status,...} 平铺行)
+fields:
+  tender.attachment_requirements:
+    - {'no': E-1, name: 业绩合同, mandatory: true}
+    - {'no': E-2, name: 中标通知书, mandatory: true}
+  bid.attachment_index:
+    - {'no': E-1, name: 业绩合同}
+expect_issues:
+  - rule_id: L2-020
+    severity: fatal
+    contains: ["附件缺失", "E-2", "中标通知书"]
+    entity: "E-2"
+expect_absent: []
+strict: true
+checklist:
+  unknown_count: 0
+  status_by_no: {"E-1": "MATCHED", "E-2": "MISSING"}

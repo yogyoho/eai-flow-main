@@ -1,0 +1,7 @@
+case: E-4-l1-019-no-alternative
+desc: 达标负例——备选报价列表显式为空(count==0 达标;显式空列表而非缺字段,钉「空=合规」语义而非 need_human 降级) → L1-019 不报
+fields:
+  bid.alternative_price_offers: []
+expect_issues: []
+expect_absent: [L1-019]
+strict: false
