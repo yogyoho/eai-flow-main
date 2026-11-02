@@ -35,6 +35,9 @@
  * 报告导出(Task 21)行为原样保留:仅 done 可导出,GET report?format=md →
  * Blob→createObjectURL 下载 .md(tests/unit/extensions/bid-review-workbench-export.
  * dom.test.tsx 锁定)。
+ * 2026-11-02 L2 P2(spec §5 增量):附件核对表增 UNKNOWN「需人工」格+明细子件行,
+ * 问题卡增「关联问题」chip(严重度中文标签),issues 基表过滤 grouped 行——
+ * 可见口径与后端全量 summary 并存(口径注见复核进度 tbl-foot)。
  */
 
 import { AlertTriangle, BarChart3, Layers } from "lucide-react";
@@ -1368,6 +1371,8 @@ export function ResultsView({ taskId }: { taskId?: string | null }) {
                 const showHumanDivider =
                   i.need_human &&
                   !(absIdx > 0 && ordered[absIdx - 1]?.need_human);
+                // L2 P2 关联问题(跨层去重折叠的原行)
+                const rel = i.related_issues ?? [];
                 return (
                   <Fragment key={i.id}>
                     {showHumanDivider ? (
@@ -1442,13 +1447,13 @@ export function ResultsView({ taskId }: { taskId?: string | null }) {
                           {renderIssueMessage(i.message)}
                         </div>
                         {/* L2 P2 跨层去重:本行已并入更强同实体问题,关联原行折叠在此 */}
-                        {(i.related_issues?.length ?? 0) > 0 ? (
+                        {rel.length > 0 ? (
                           <div className="hd-sub">
-                            关联问题 {i.related_issues!.length}:
-                            {i
-                              .related_issues!.map(
+                            关联问题 {rel.length}:
+                            {rel
+                              .map(
                                 (r) =>
-                                  `[${r.rule_id} ${r.severity}] ${r.message}`,
+                                  `[${r.rule_id} ${sevPillBrx(r.severity).label}] ${r.message}`,
                               )
                               .join(";")}
                           </div>

@@ -358,6 +358,7 @@ export function BaselineView({ taskId }: { taskId?: string | null }) {
                             <div className="hd-sub">
                               子件:
                               {a.sub_items
+                                .filter(Boolean)
                                 .map((s) =>
                                   s
                                     ? `${s.no ? `${s.no} ` : ""}${s.name ?? ""}`

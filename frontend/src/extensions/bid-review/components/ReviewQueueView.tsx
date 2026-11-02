@@ -77,21 +77,25 @@ export function ReviewQueueView({ taskId }: { taskId?: string | null }) {
   const [seg, setSeg] = useState<SevFilter>("human");
   const inSeg = (i: IssueOut, s: SevFilter) =>
     s === "all" ? true : s === "human" ? i.need_human : i.severity === s;
+  // L2 P2 跨层去重:grouped 行隐藏,与 ResultsView 同一可见口径(实体裁决走 keep 卡)
+  const issues = useMemo(
+    () => (issuesQuery.data ?? []).filter((i) => !i.grouped_into),
+    [issuesQuery.data],
+  );
   const queue = useMemo(
     () =>
-      (issuesQuery.data ?? []).filter(
+      issues.filter(
         (i) =>
           (handled[i.id] ?? i.review_state ?? "unresolved") === "unresolved" &&
           inSeg(i, seg),
       ),
-    [issuesQuery.data, handled, seg],
+    [issues, handled, seg],
   );
   const [idx, setIdx] = useState(0);
   const safeIdx = queue.length === 0 ? 0 : Math.min(idx, queue.length - 1);
   const current = queue[safeIdx] ?? null;
 
   // 复核进度注/页脚计数(M4 §4.6):已复核=全量-未复核;维持/误报并入 handled
-  const issues = issuesQuery.data ?? [];
   const pendingCount = useMemo(
     () =>
       issues.filter(
