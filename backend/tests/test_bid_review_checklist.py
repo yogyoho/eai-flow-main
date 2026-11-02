@@ -79,7 +79,7 @@ async def test_checklist_projection_dedup_and_refs(db, client):
     assert r.status_code == 200
     body = r.json()
     # 提供项逐行收集 → 份数翻倍(2 行 × 2 份业绩):PARTIAL(2/3)→ 实际 found=4 ≥ 3 → MATCHED
-    assert body["counts"] == {"required": 2, "matched": 2, "partial": 0, "missing": 0, "extra": 2}
+    assert body["counts"] == {"required": 2, "matched": 2, "partial": 0, "missing": 0, "unknown": 0, "extra": 2}
     it = next(i for i in body["items"] if i["no"] == "ATT-E-008")
     assert it["status"] == "MATCHED" and it["found"] == 4
     assert it["refs"] == [
@@ -99,7 +99,7 @@ async def test_checklist_single_row_full_flow(db, client):
     await _mk_baseline(db, t.id, FIELDS)
     r = await client.get(f"/api/extensions/bid-review/tasks/{t.id}/attachment_checklist")
     body = r.json()
-    assert body["counts"] == {"required": 2, "matched": 1, "partial": 1, "missing": 0, "extra": 1}
+    assert body["counts"] == {"required": 2, "matched": 1, "partial": 1, "missing": 0, "unknown": 0, "extra": 1}
     it = next(i for i in body["items"] if i["no"] == "ATT-E-008")
     assert it["status"] == "PARTIAL" and it["found"] == 2 and it["min_count"] == 3 and it["clause"] == "第三章3.4"
     assert it["refs"] == [{"doc_id": None, "page": 118}, {"doc_id": None, "page": 121}]
@@ -126,3 +126,31 @@ async def test_checklist_zero_projection(db, client):
 async def test_checklist_ghost_404(client):
     r = await client.get("/api/extensions/bid-review/tasks/ghost/attachment_checklist")
     assert r.status_code == 404
+
+
+COMP_FIELDS = {
+    "tender.attachment_requirements": [
+        {
+            "no": "3",
+            "name": "资格审查文件",
+            "clause": "第三章3.1",
+            "mandatory": "★",
+            "min_count": None,
+            "sub_items": [{"no": "3.1", "name": "营业执照"}],
+        },
+    ],
+    "bid.attachment_index": [{"no": "3-9", "name": "完税证明", "page": 40, "pages": None}],
+}
+
+
+@pytest.mark.asyncio
+async def test_endpoint_composite_unknown_passthrough(db, client):
+    """端点透传 counts.unknown + items[].sub_results(build_checklist 原样出)。"""
+    t = await crud.create_task(db, owner_id="u1")
+    await _mk_baseline(db, t.id, COMP_FIELDS)
+    r = await client.get(f"/api/extensions/bid-review/tasks/{t.id}/attachment_checklist")
+    assert r.status_code == 200
+    body = r.json()
+    assert body["counts"]["unknown"] == 1
+    assert body["items"][0]["status"] == "UNKNOWN"
+    assert body["items"][0]["sub_results"][0]["name"] == "营业执照"

@@ -138,7 +138,7 @@ def test_build_checklist_counts_and_refs():
         _prov(no="", name="企业宣传册", page=310),
     ]
     out = build_checklist(reqs, prov, bid_doc_id="bid.pdf")
-    assert out["counts"] == {"required": 3, "matched": 1, "partial": 1, "missing": 1, "extra": 1}
+    assert out["counts"] == {"required": 3, "matched": 1, "partial": 1, "missing": 1, "unknown": 0, "extra": 1}
     it008 = next(i for i in out["items"] if i["no"] == "ATT-E-008")
     assert it008["status"] == "PARTIAL" and it008["found"] == 2 and it008["min_count"] == 3
     assert it008["refs"] == [{"doc_id": "bid.pdf", "page": 118}, {"doc_id": "bid.pdf", "page": 121}]
@@ -151,7 +151,7 @@ def test_build_checklist_counts_and_refs():
 def test_build_checklist_null_doc_and_empty():
     out = build_checklist([], [], bid_doc_id=None)
     assert out == {
-        "counts": {"required": 0, "matched": 0, "partial": 0, "missing": 0, "extra": 0},
+        "counts": {"required": 0, "matched": 0, "partial": 0, "missing": 0, "unknown": 0, "extra": 0},
         "items": [],
         "extra_items": [],
     }
@@ -248,3 +248,46 @@ def test_flat_and_composite_mixed_pool_no_steal():
     assert out["per_req"][0]["status"] == "MATCHED"
     assert out["per_req"][1]["status"] == "MATCHED"
     assert out["extra"] == []
+
+
+# ── L2 P2:核对表投影 UNKNOWN/sub_results + 复合门加固 ──────────────────
+
+
+def test_build_checklist_unknown_and_sub_results():
+    """投影:UNKNOWN 进 counts.unknown;复合行带 sub_results;平件 sub_results=[]。"""
+    reqs = [
+        {"no": "3", "name": "资格审查文件", "sub_items": [{"no": "3.1", "name": "营业执照"}]},
+        {"no": "A-1", "name": "投标函"},
+    ]
+    prov = [{"no": "3-9", "name": "完税证明", "page": 40}, {"no": "A-1", "name": "投标函", "page": 2}]
+    out = build_checklist(reqs, prov, bid_doc_id="投标文件.docx")
+    assert out["counts"]["unknown"] == 1
+    assert out["counts"]["required"] == 2
+    assert out["items"][0]["sub_results"] == [{"no": "3.1", "name": "营业执照", "found": 0, "status": "MISSING"}]
+    assert out["items"][1]["sub_results"] == []
+
+
+def test_malformed_sub_items_falls_back_to_flat():
+    """sub_items 非 dict 列表(LLM 脏值,如字符串)→ 不认复合件,平件编号通道命中,
+    不得落进复合通道产出「MATCHED,found=0」矛盾态(或不连通名孤儿误判 UNKNOWN)。"""
+    out = build_checklist(
+        [{"no": "F-1", "name": "资质证书", "sub_items": "F-1 资质证书"}],
+        [{"no": "F-1", "name": "资质证书", "page": 5}],
+    )
+    it = out["items"][0]
+    assert it["status"] == "MATCHED"
+    assert it["found"] == 1
+    assert it["sub_results"] == []
+    assert out["counts"]["unknown"] == 0
+
+
+def test_composite_sub_dot_form_sole_channel():
+    """{父号}.{序} 点式通道独立成立:子件自身 no 为空(①通道死)、名称完全不同
+    (③通道死),仅靠位置点式命中;父行不得 UNKNOWN/MISSING。"""
+    req = {"no": "3", "name": "资格审查文件", "sub_items": [{"no": "", "name": "完全不同的名称"}]}
+    prov = [{"no": "3.1", "name": "另一名称", "page": 7}]
+    e = match_attachments([req], prov)["per_req"][0]
+    assert e["found"] == 1
+    assert e["sub_results"][0]["status"] == "MATCHED"
+    assert e["status"] == "MATCHED"
+    assert match_attachments([req], prov)["extra"] == []

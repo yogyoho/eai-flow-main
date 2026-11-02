@@ -39,15 +39,26 @@ def _status_for(found: int, min_count: int) -> str:
     return "MATCHED"
 
 
+def _sub_items(req: dict) -> list[dict] | None:
+    """复合门(加固):仅当 sub_items 是非空列表且每项皆 dict 才认复合件,返回该列表;
+    否则 None → 一律走平件匹配(LLM 脏值如字符串/混入非 dict 不得误入复合通道,防
+    「MATCHED,found=0」矛盾态)。三处门位与 _match_composite 共用本判定,防门判漂移。"""
+    raw = req.get("sub_items")
+    if not isinstance(raw, list) or not raw or not all(isinstance(s, dict) for s in raw):
+        return None
+    return raw
+
+
 def _match_composite(req: dict, prov: list[dict], taken: set[int]) -> dict:
     """复合附件子件归组(L2 P2,spec 2026-11-02 §7 挂账行,EAI-CUSTOM):子件从
-    「未被其它 req 两级匹配取走」的池独立归组(三通道:no 全等 / {父号}-{序} /
-    {父号}.{序} / 名称归一全等)。提供项引用了父件(no 以 {父号}+分隔符开头,或名称
+    「未被其它 req 两级匹配取走」的池独立归组,三通道按 D2 编号:① no 全等;
+    ② {父号}-{序} 或 {父号}.{序}(1-based,序=子件在 sub_items 中的位置);
+    ③ 名称归一全等。提供项引用了父件(no 以 {父号}+分隔符开头,或名称
     含父名)却归属不了任何子件 → 分组失败,父行 UNKNOWN(禁强行 PARTIAL)。
     零引用(什么都没提供)→ 诚实 MISSING,不算分组失败。
     归属成功与引用父件的孤儿项都就地写入 taken(调用方共享的占用池),既防后续
     req 偷项,也不进 extra(孤儿项归组进父件,交由 UNKNOWN 行人工复核)。"""
-    subs = [s for s in (req.get("sub_items") or []) if isinstance(s, dict)]
+    subs = _sub_items(req) or []
     parent_no = str(req.get("no") or "").strip()
     parent_nm = normalize_name(req.get("name"))
     sub_results = []
@@ -88,16 +99,17 @@ def match_attachments(requirements: Any, provided: Any) -> dict:
     """两级精确匹配,贪心一对一:① no 全等(双方非空) ② normalize_name 全等。
     同一 req 可命中多份提供项(份数语义:min_count>1 且 found<min_count → PARTIAL)。
     状态:found==0→MISSING;否则见上;未匹配提供项→extra。
-    P2 复合附件(spec 2026-11-02 §7):带非空 sub_items 的 req 跳过两级主匹配,
-    子件独立归组(_match_composite);父行状态 = UNKNOWN > MISSING > PARTIAL >
-    MATCHED 上卷,found=子件命中数之和,父级 min_count 忽略。"""
+    P2 复合附件(spec 2026-11-02 §7):带非空 sub_items(非空列表且每项皆 dict,
+    见 _sub_items)的 req 跳过两级主匹配,子件独立归组(_match_composite);父行
+    状态 = UNKNOWN > MISSING > PARTIAL > MATCHED 上卷,found=子件命中数之和,
+    父级 min_count 忽略。"""
     reqs = [r for r in (requirements or []) if isinstance(r, dict)]
     prov = [p for p in (provided or []) if isinstance(p, dict)]
     taken: set[int] = set()
     matched: list[list[int]] = [[] for _ in reqs]
     # ① 编号精确(双方非空;O(n²) 对几十行清单足够);复合 req 不参与,防父名/父号偷走子件
     for ri, r in enumerate(reqs):
-        if r.get("sub_items"):
+        if _sub_items(r):
             continue
         no = str(r.get("no") or "").strip()
         if not no:
@@ -108,10 +120,10 @@ def match_attachments(requirements: Any, provided: Any) -> dict:
                 matched[ri].append(i)
     # ② 规范化名称全等(非包含);引用复合父号的提供项(如 "3-1")保留给复合件
     #    归组,平件名称通道不得凭同名偷走(spec §7 平件/复合件互不偷项)
-    comp_parent_nos = [str(r.get("no") or "").strip() for r in reqs if r.get("sub_items")]
+    comp_parent_nos = [str(r.get("no") or "").strip() for r in reqs if _sub_items(r)]
     comp_parent_nos = [n for n in comp_parent_nos if n]
     for ri, r in enumerate(reqs):
-        if r.get("sub_items"):
+        if _sub_items(r):
             continue
         nm = normalize_name(r.get("name"))
         if not nm:
@@ -127,7 +139,7 @@ def match_attachments(requirements: Any, provided: Any) -> dict:
 
     per_req = []
     for ri, r in enumerate(reqs):
-        if r.get("sub_items"):
+        if _sub_items(r):
             comp = _match_composite(r, prov, taken)
             found = sum(s["found"] for s in comp["sub_results"])
             worst = min((s["status"] for s in comp["sub_results"]), key=lambda st: _SUB_STATUS_ORDER[st], default="MATCHED")
@@ -147,7 +159,8 @@ def match_attachments(requirements: Any, provided: Any) -> dict:
 def build_checklist(requirements: Any, provided: Any, bid_doc_id: str | None = None) -> dict:
     """核对表投影原料(spec §4):match_attachments 结果摊平成 items 行(refs 注入
     bid 侧 doc_id——P1 refs=bid 侧首文档,调用方解析;解不到 → doc_id null,前端
-    chip 降级纯文本)。counts 单一事实源;extra 提供项只进 extra_items 不产 issue。"""
+    chip 降级纯文本)。counts 单一事实源;extra 提供项只进 extra_items 不产 issue。
+    P2:复合行带 sub_results,分组失败行 status=UNKNOWN 进 counts.unknown。"""
     out = match_attachments(requirements, provided)
     items = []
     for e in out["per_req"]:
@@ -162,6 +175,7 @@ def build_checklist(requirements: Any, provided: Any, bid_doc_id: str | None = N
                 "status": e["status"],
                 "clause": req.get("clause"),
                 "refs": [{"doc_id": bid_doc_id, "page": p.get("page")} for p in e["matched"]],
+                "sub_results": e.get("sub_results") or [],
             }
         )
     counts = {
@@ -169,6 +183,7 @@ def build_checklist(requirements: Any, provided: Any, bid_doc_id: str | None = N
         "matched": sum(1 for i in items if i["status"] == "MATCHED"),
         "partial": sum(1 for i in items if i["status"] == "PARTIAL"),
         "missing": sum(1 for i in items if i["status"] == "MISSING"),
+        "unknown": sum(1 for i in items if i["status"] == "UNKNOWN"),
         "extra": len(out["extra"]),
     }
     extra_items = [{"name": str(p.get("name") or ""), "doc_id": bid_doc_id, "page": p.get("page")} for p in out["extra"]]
