@@ -63,6 +63,11 @@ class IssueOut(ORMBase):
     dedup_key: str
     need_human: bool = False
     confidence: float = 1.0
+    # EAI-CUSTOM(L2 P2):附件实体键(落库);grouped_into/related_issues 为投影现算
+    # (list_task_issues 跨层去重,先例=deviations/checklist 不落库),旧网关缺省。
+    entity_keys: list = []
+    grouped_into: str | None = None
+    related_issues: list = []
     # B2 复核落库投影(EAI-CUSTOM 2026-10-31 Plan9 spec §4.6):该 issue 最新一条
     # 复核反馈动作映射的复核态,unresolved|maintained|false_positive|severity_changed|
     # deferred;无反馈=unresolved。verdict 表达不了 maintained/severity_changed

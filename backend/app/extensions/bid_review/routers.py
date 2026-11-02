@@ -420,6 +420,41 @@ def _with_review_state(issue, states: dict[str, str]) -> IssueOut:
     return out
 
 
+_SEV_RANK = {"fatal": 0, "major": 1, "minor": 2, "info": 3}
+_LAYER_RANK = {"L1": 0, "L2": 1, "L3": 2}
+
+
+def _cross_layer_group(issues: list) -> dict[str, dict]:
+    """跨层实体去重投影(L2 P2,spec 2026-11-02 §7 挂账行,EAI-CUSTOM;现算不落库,
+    先例=deviations/attachment_checklist):同一实体键(entity_keys 交集)且跨 ≥2 层的
+    violation(非 need_human)归并——keep most_severe(并列取层序 L1>L2>L3,再取
+    created_at 稳定),其余行标 grouped_into=keep.id,keep 行带 related_issues 摘要。
+    条目不删:items 仍全量返回(前端隐藏 grouped 行),summary 口径不变。
+    need_human 不参与归并(待人工必须可见)。多实体键行按键名字序迭代保稳定。"""
+    info: dict[str, dict] = {}
+    keyed: dict[str, list] = {}
+    for i in issues:
+        if getattr(i, "verdict", "") != "violation" or getattr(i, "need_human", False):
+            continue
+        for k in getattr(i, "entity_keys", None) or []:
+            keyed.setdefault(k, []).append(i)
+    for key in sorted(keyed):
+        group = keyed[key]
+        layers = {getattr(i, "layer", "") for i in group}
+        if len(layers) < 2 or len({i.id for i in group}) < 2:
+            continue
+        ranked = sorted(group, key=lambda i: (_SEV_RANK.get(getattr(i, "severity", ""), 9), _LAYER_RANK.get(getattr(i, "layer", ""), 9), getattr(i, "created_at", "")))
+        keep = ranked[0]
+        for i in ranked[1:]:
+            if i.id == keep.id:
+                continue
+            info.setdefault(i.id, {"grouped_into": None, "related": []})["grouped_into"] = keep.id
+            kentry = info.setdefault(keep.id, {"grouped_into": None, "related": []})
+            if all(r["id"] != i.id for r in kentry["related"]):
+                kentry["related"].append({"id": i.id, "rule_id": i.rule_id, "layer": i.layer, "severity": i.severity, "message": i.message})
+    return info
+
+
 @router.get("/tasks/{task_id}/issues")
 async def list_task_issues(task_id: str, db: AsyncSession = Depends(get_db), owner_id: str = Depends(current_owner)):
     if await crud.get_task(db, task_id=task_id, owner_id=owner_id) is None:

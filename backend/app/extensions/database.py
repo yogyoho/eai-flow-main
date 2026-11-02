@@ -952,6 +952,8 @@ async def migrate_db() -> None:
         await conn.execute(text("ALTER TABLE tlt_translation_tasks ADD COLUMN IF NOT EXISTS draft_blocks_original JSONB"))
         await conn.execute(text("ALTER TABLE tlt_translation_tasks ADD COLUMN IF NOT EXISTS draft_edited_at TIMESTAMP"))
         await conn.execute(text("ALTER TABLE tlt_translation_tasks ADD COLUMN IF NOT EXISTS draft_edited_by UUID"))
+        # EAI-CUSTOM (bid-review L2 P2): 问题实体键列(create_all 不 ALTER 已有表,幂等加列)
+        await conn.execute(text("ALTER TABLE bid_review_issues ADD COLUMN IF NOT EXISTS entity_keys JSONB"))
         # EAI-CUSTOM (bug-1791807358242): KB 子表 FK 改 ON DELETE CASCADE——delete_kb 只清 documents,
         # 缺省 NO ACTION 的扩展子表(tlt_translation_tasks/scrap_drafts)会让删 KB 撞 FK IntegrityError 500。
         # 幂等重建约束(同 report_projects_workflow_id_fkey 先例)。约束名按建表来源:

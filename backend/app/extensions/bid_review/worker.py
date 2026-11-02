@@ -382,6 +382,7 @@ async def _run_review_stage(db: AsyncSession, task: ReviewTask, fields: dict, ow
                 clause_id=_issue_get(issue, "clause_id"),
                 need_human=bool(_issue_get(issue, "need_human")),
                 confidence=_issue_confidence(issue),
+                entity_keys=list(_issue_get(issue, "entity_keys") or []),
             )
             if row is not None:
                 written += 1

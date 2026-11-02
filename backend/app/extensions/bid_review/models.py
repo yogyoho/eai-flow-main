@@ -71,6 +71,7 @@ class ReviewIssue(Base):
     message: Mapped[str] = mapped_column(Text)
     fix: Mapped[str] = mapped_column(Text, default="")
     evidence: Mapped[list] = mapped_column(JSON, default=list)  # [{doc_id,page,section_path,text}]
+    entity_keys: Mapped[list] = mapped_column(JSON, default=list)  # EAI-CUSTOM(L2 P2):附件实体键 attachment:{no|name:归一名};跨层去重投影依据
     dedup_key: Mapped[str] = mapped_column(String(256), index=True)
     need_human: Mapped[bool] = mapped_column(Boolean, default=False)
     confidence: Mapped[float] = mapped_column(Float, default=1.0)
