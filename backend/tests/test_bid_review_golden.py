@@ -9,7 +9,7 @@ import pytest
 from app.extensions.bid_review.engine.rule_runner import load_rulepack
 from app.extensions.bid_review.golden import loader
 from app.extensions.bid_review.golden.report import build_report, render_markdown
-from app.extensions.bid_review.golden.runner import _QUIET, _scripted_model, run_case
+from app.extensions.bid_review.golden.runner import _QUIET, _fields_from_stub, _scripted_model, run_case, run_smoke_dir
 from app.extensions.bid_review.golden.schema import ChecklistExpect, Expectation, GoldenCase
 
 PACK = str(Path(__file__).resolve().parent.parent / "app" / "extensions" / "bid_review" / "engine" / "rulepacks" / "bid-review-core" / "1.0.0.yaml")
@@ -354,3 +354,19 @@ def test_cli_main_failure_paths(capsys, monkeypatch):
     monkeypatch.setattr(cli_main, "run_all", _fake_run_all)
     assert cli_main.main(["--report", "md"]) == 1
     assert "FAIL" in capsys.readouterr().out
+
+
+# ---- 全管线冒烟(spec §8):钉接线,不钉 LLM ----
+SMOKE = CASES_DIR.parent / "smoke"
+
+
+def test_smoke_docs_fixture_and_stub_extract():
+    fields = _fields_from_stub(SMOKE / "smoke-1-basic")
+    assert fields.get("bid.total_price") == 1000001.0
+
+
+@pytest.mark.asyncio
+async def test_smoke_pipeline_end_to_end():
+    pack = load_rulepack(PACK)
+    res = await run_smoke_dir(SMOKE / "smoke-1-basic", pack)
+    assert res.ok, res.diff_lines

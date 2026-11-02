@@ -1,0 +1,8 @@
+case: L1-009-smoke-basic
+desc: 全管线冒烟:docs→stub 抽取→规则→L1-009 fatal + L2-020 附件缺失 E-2
+fields: {}
+expect_issues:
+  - {rule_id: L1-009, severity: fatal, contains: ["1,000,001"]}
+  - {rule_id: L2-020, severity: fatal, contains: ["E-2"]}
+expect_absent: []
+strict: false

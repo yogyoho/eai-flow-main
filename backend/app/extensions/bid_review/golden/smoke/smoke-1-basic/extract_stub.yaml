@@ -1,0 +1,11 @@
+bid.total_price: 1000001.0
+tender.max_price: 1000000.0
+bid.price_includes_tax: true
+tender.price_includes_tax: true
+# 键 no 必须引号包裹:YAML 1.1 把裸 no 解析为布尔 False,YAML 键混 str/bool 会让 materials_hash 的
+# json.dumps(sort_keys=True) 直接 TypeError(str/bool 键不可比较)。
+tender.attachment_requirements:
+  - {'no': E-1, name: 业绩合同, min_count: 1}
+  - {'no': E-2, name: 中标通知书, min_count: 1}
+bid.attachment_index:
+  - {'no': E-1, name: 业绩合同, pages: [12, 18]}

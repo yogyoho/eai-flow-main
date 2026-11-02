@@ -5,6 +5,9 @@
 路由 model_script;缺省回安静 full 应答(零条目;hyb 候选被 full 驳回→零产出)。"""
 
 import json
+from pathlib import Path
+
+import yaml
 
 from app.extensions.bid_review.engine.attachments import build_checklist
 from app.extensions.bid_review.engine.eval_core import evaluate_fields, wrap_model_fn
@@ -113,3 +116,31 @@ async def run_case(case: GoldenCase, pack: RulePack | None = None) -> CaseResult
 async def run_all(cases: list[GoldenCase], pack: RulePack | None = None) -> list[CaseResult]:
     pack = pack or load_rulepack(RULEPACK_PATH)
     return [await run_case(c, pack) for c in cases]
+
+
+def _fields_from_stub(smoke_dir):
+    """冒烟题字段构造(EAI-CUSTOM 2026-11-03 spec §8):docs 目录 md 文件 → docs 列表;
+    extract_stub.yaml 平映射充当 extract_fn(docs, field_paths)——stub 过滤到「请求路径∩stub 键」
+    钉住抽取层接线(build_baseline 只收已知路径,其余显式 null);LLM 不进 CI 门。"""
+    from app.extensions.bid_review.engine.extract import build_baseline
+
+    d = Path(smoke_dir)
+    docs = []
+    for name, role in (("tender.md", "tender"), ("bid.md", "bid")):
+        p = d / "docs" / name
+        if p.exists():
+            docs.append({"doc_id": name, "role": role, "text": p.read_text(encoding="utf-8")})
+    stub = yaml.safe_load((d / "extract_stub.yaml").read_text(encoding="utf-8"))
+    payload = build_baseline(docs, lambda _docs, _paths: {k: v for k, v in stub.items() if k in set(_paths)})
+    return payload["fields"]
+
+
+async def run_smoke_dir(smoke_dir, pack: RulePack | None = None) -> CaseResult:
+    """冒烟题 = build_baseline(extract_stub) 产字段 → 复用 run_case 同一断言核(spec §8:
+    钉 docs→抽取→规则全管线接线;题文件名=case id 同名,loader stem 校验的既定契约)。"""
+    from app.extensions.bid_review.golden.loader import load_case
+
+    pack = pack or load_rulepack(RULEPACK_PATH)
+    case = load_case(Path(smoke_dir) / "L1-009-smoke-basic.yaml", pack)
+    case.fields = _fields_from_stub(smoke_dir)
+    return await run_case(case, pack)
