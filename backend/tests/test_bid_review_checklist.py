@@ -113,7 +113,7 @@ async def test_checklist_zero_projection(db, client):
     r = await client.get(f"/api/extensions/bid-review/tasks/{t.id}/attachment_checklist")
     assert r.status_code == 200
     assert r.json() == {
-        "counts": {"required": 0, "matched": 0, "partial": 0, "missing": 0, "extra": 0},
+        "counts": {"required": 0, "matched": 0, "partial": 0, "missing": 0, "unknown": 0, "extra": 0},
         "items": [],
         "extra_items": [],
     }

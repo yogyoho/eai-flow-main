@@ -749,7 +749,7 @@ async def task_attachment_checklist(
                 provided.append(item)
     if not reqs:
         return {
-            "counts": {"required": 0, "matched": 0, "partial": 0, "missing": 0, "extra": 0},
+            "counts": {"required": 0, "matched": 0, "partial": 0, "missing": 0, "unknown": 0, "extra": 0},
             "items": [],
             "extra_items": [],
         }
