@@ -36,7 +36,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.extensions.auth.middleware import require_permission
 from app.extensions.bid_review import crud, parse, worker
 from app.extensions.bid_review.engine.attachments import build_checklist
-from app.extensions.bid_review.engine.extract import apply_adjudications, compute_score_coverage, deviation_counts, detect_conflicts
+from app.extensions.bid_review.engine.extract import apply_adjudications, compute_score_coverage, detect_conflicts, deviation_counts
 from app.extensions.bid_review.engine.labels import FIELD_LABELS
 from app.extensions.bid_review.models import ReviewFeedback, ReviewIssue, RulePackMeta
 from app.extensions.bid_review.schemas import AdjudicateIn, FeedbackIn, IssueOut, TaskOut
@@ -589,10 +589,7 @@ def _rule_verdicts(issues: list) -> dict[str, dict]:
         if (i.verdict or "") == "false_positive":
             continue
         by_rule.setdefault(i.rule_id, []).append(i)
-    return {
-        rid: {"present": True, "severity": min((r.severity for r in rows), key=lambda s: _SEV_RANK.get(s, 9))}
-        for rid, rows in by_rule.items()
-    }
+    return {rid: {"present": True, "severity": min((r.severity for r in rows), key=lambda s: _SEV_RANK.get(s, 9))} for rid, rows in by_rule.items()}
 
 
 @router.get("/tasks/{task_id}/diff")
@@ -633,20 +630,17 @@ async def diff_task(
     prev_baselines = await crud.list_baselines(db, task_id=prev, owner_id=owner_id)
     cur_fields = (cur_baselines[0].payload or {}).get("fields", {}) if cur_baselines else {}
     prev_fields = (prev_baselines[0].payload or {}).get("fields", {}) if prev_baselines else {}
-    field_rows = [
-        {"path": p, "label": FIELD_LABELS.get(p, p), "prev": prev_fields.get(p), "cur": cur_fields.get(p)}
-        for p in sorted(set(prev_fields) | set(cur_fields))
-        if prev_fields.get(p) != cur_fields.get(p)
-    ] if cur_baselines and prev_baselines else []
+    field_rows = (
+        [{"path": p, "label": FIELD_LABELS.get(p, p), "prev": prev_fields.get(p), "cur": cur_fields.get(p)} for p in sorted(set(prev_fields) | set(cur_fields)) if prev_fields.get(p) != cur_fields.get(p)]
+        if cur_baselines and prev_baselines
+        else []
+    )
     # B10 rules(§2.1):两版问题按 rule_id 归并(_rule_verdicts 剔误报),并集;
     # 有变化者(present 或 severity 不同)排前,余按 rule_id 稳定排序。
     prev_rules = _rule_verdicts(old)
     cur_rules = _rule_verdicts(cur)
     absent = {"present": False, "severity": None}
-    rule_rows = [
-        {"rule_id": rid, "prev": prev_rules.get(rid, absent), "cur": cur_rules.get(rid, absent)}
-        for rid in sorted(set(prev_rules) | set(cur_rules))
-    ]
+    rule_rows = [{"rule_id": rid, "prev": prev_rules.get(rid, absent), "cur": cur_rules.get(rid, absent)} for rid in sorted(set(prev_rules) | set(cur_rules))]
     rule_rows.sort(key=lambda r: (0 if r["prev"] != r["cur"] else 1, r["rule_id"]))
     return {
         "added": [

@@ -3,7 +3,7 @@ match_attachments 两级精确匹配(①编号精确双方非空 ②规范化名
 防「报价表」吞「分项报价表」),贪心一对一;found==0→MISSING,min_count 且
 found<min_count→PARTIAL,否则 MATCHED;未匹配提供项→extra。"""
 
-from app.extensions.bid_review.engine.attachments import normalize_name, match_attachments
+from app.extensions.bid_review.engine.attachments import match_attachments, normalize_name
 
 
 def _req(no="", name="", min_count=None, **kw):
@@ -42,8 +42,7 @@ def test_normalize_junk_inputs():
 
 
 def test_match_by_no_exact():
-    out = match_attachments([_req(no="ATT-E-008", name="类似业绩证明")],
-                            [_prov(no="ATT-E-008", name="业绩合同扫描件", page=118)])
+    out = match_attachments([_req(no="ATT-E-008", name="类似业绩证明")], [_prov(no="ATT-E-008", name="业绩合同扫描件", page=118)])
     assert out["per_req"][0]["status"] == "MATCHED"
     assert out["per_req"][0]["found"] == 1
     assert out["extra"] == []
@@ -109,8 +108,7 @@ def test_min_count_null_treated_as_one():
 
 
 def test_unmatched_provided_is_extra():
-    out = match_attachments([_req(no="D-1", name="投标函")],
-                            [_prov(no="D-1", name="投标函", page=1), _prov(no="", name="企业宣传册", page=310)])
+    out = match_attachments([_req(no="D-1", name="投标函")], [_prov(no="D-1", name="投标函", page=1), _prov(no="", name="企业宣传册", page=310)])
     assert out["per_req"][0]["status"] == "MATCHED"
     assert out["extra"] == [{"no": "", "name": "企业宣传册", "page": 310}]
 
