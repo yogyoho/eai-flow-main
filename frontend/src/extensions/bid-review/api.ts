@@ -171,16 +171,23 @@ export interface BidAttachmentRef {
   page: number | null;
 }
 
-/** GET /tasks/{id}/attachment_checklist 行(要求项;P1 三态,UNKNOWN 由 need_human 兜底不进表)。 */
+/** GET /tasks/{id}/attachment_checklist 行(要求项;P1 三态 + P2 UNKNOWN(子件分组失败→需人工))。 */
 export interface BidChecklistItem {
   no: string;
   name: string;
   mandatory: string | null;
   min_count: number | null;
   found: number;
-  status: "MATCHED" | "PARTIAL" | "MISSING";
+  status: "MATCHED" | "PARTIAL" | "MISSING" | "UNKNOWN";
   clause: string | null;
   refs: BidAttachmentRef[];
+  /** 复合附件子件核对(P2);平件恒 []。 */
+  sub_results: Array<{
+    no: string;
+    name: string;
+    found: number;
+    status: "MATCHED" | "PARTIAL" | "MISSING";
+  }>;
 }
 
 /** 未被任何要求匹配的提供项(EXTRA——info 行提示,不产 issue 不进问题数)。 */
@@ -197,6 +204,7 @@ export interface BidAttachmentChecklistOut {
     matched: number;
     partial: number;
     missing: number;
+    unknown: number;
     extra: number;
   };
   items: BidChecklistItem[];
@@ -265,7 +273,7 @@ export function fetchDeviations(taskId: string): Promise<BidDeviationsOut> {
   return request<BidDeviationsOut>(`/tasks/${taskId}/deviations`);
 }
 
-/** GET /tasks/{id}/attachment_checklist —— L2 P1 附件核对表(spec 2026-11-02 §4)。 */
+/** GET /tasks/{id}/attachment_checklist —— L2 P1+P2 附件核对表(P2 加 UNKNOWN 态+sub_results;spec 2026-11-02 §4)。 */
 export function fetchAttachmentChecklist(
   taskId: string,
 ): Promise<BidAttachmentChecklistOut> {

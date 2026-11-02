@@ -57,6 +57,16 @@ export interface IssueOut {
   confidence: number;
   /** B2 复核投影(unresolved|maintained|false_positive|severity_changed|deferred);旧网关缺省。 */
   review_state?: string;
+  /** EAI-CUSTOM(L2 P2):实体键(落库)/跨层去重投影(grouped_into+related,现算);旧网关缺省。 */
+  entity_keys?: string[];
+  grouped_into?: string | null;
+  related_issues?: Array<{
+    id: string;
+    rule_id: string;
+    layer: string;
+    severity: string;
+    message: string;
+  }>;
   created_at: string;
 }
 
