@@ -426,7 +426,7 @@ SMOKE = CASES_DIR.parent / "smoke"
 
 def test_fields_from_stub_unknown_key(tmp_path):
     """T6 挂账守卫:stub 键名笔误原本被「请求路径∩stub 键」过滤静默丢弃=抽取层假绿,
-    现加载期对照 known_field_paths 大声报错。"""
+    现 _fields_from_stub 构造冒烟字段时(冒烟接线期,非 loader 加载期)对照 known_field_paths 大声报错。"""
     (tmp_path / "docs").mkdir()
     (tmp_path / "docs" / "tender.md").write_text("x", encoding="utf-8")
     (tmp_path / "extract_stub.yaml").write_text("bid.total_pricee: 1.0\n", encoding="utf-8")

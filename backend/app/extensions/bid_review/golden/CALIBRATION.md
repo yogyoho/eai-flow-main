@@ -101,7 +101,7 @@ rulepack L2 实有 2 条(L2-020/L2-024,均 det,零 model_script);E 族命名按 
 | L2-020-missing-attachment | 引擎对 | att_check MISSING 聚合单条(missing 列表顿号连接),entity_keys=[attachment:E-2];checklist 平铺行 status_by_no 双行钉(MATCHED/MISSING) |
 | L2-020-matched-clean | 引擎对 | 全命中零 L2 条目;strict 钉任何 att_* 误报;checklist 双 MATCHED |
 | L2-020-unknown-group-failure | 引擎对 | 孤儿引用父号(3-9)归属不了子件 → 父行 UNKNOWN → expect 显式 verdict: need_human(verdict 分桶,降级不冒充命中);「零引用=诚实 MISSING」对照面由 attachments 单测钉,金标准取分组失败形态;checklist unknown_count=1 |
-| L2-020-subitems-three-channel | 引擎对 | 三子件各由唯一通道命中——①no 全等(H-1-1)/②父号点序(H-1.2,①③双死)/③名称归一(X-999 无关号,①②双死);任一通道断 → 父行 MISSING/UNKNOWN 被 strict+checklist 双捕;shapes 照 test_bid_review_attachments.py 夹具 |
+| L2-020-subitems-three-channel | 引擎对 | 三子件各由唯一通道命中且三通道互斥——①no 全等(H-1-11,②③双死)/②父号点序(H-1.2,①③双死)/③名称归一(X-999 无关号,①②双死);任一通道断 → 父行 MISSING/UNKNOWN 被 strict+checklist 双捕(① 原用 H-1-1 会撞 ② idx=1 位置兜底形态 H-1-1,影子命中假绿,审查修复改 H-1-11);shapes 照 test_bid_review_attachments.py 夹具 |
 | L2-024-count-insufficient | 引擎对 | min_count=2 供1 → PARTIAL;消息「要求2份/提供1份」计算值入 contains 钉;att_check 侧 PARTIAL 非 MISSING 不产条目(strict 钉单规则触发) |
 | L2-024-count-unknown-clamp | 引擎对 | 分组失败父行 UNKNOWN → att_count 零条目(钳位);即便子件有 PARTIAL 缺口(3.1 要求2份供1份)也不入 insufficient——strict 空期望钉:引擎若误把 UNKNOWN 计份数即红 |
 | L2-020-cross-dedup-severity | 引擎对 | 同实体键 attachment:E-1 同触 L2-020 fatal(行2 MISSING)+L2-024 major(行1 PARTIAL)——单行 MISSING/PARTIAL 状态互斥,同实体双规则只能经同名两行要求构造(行1 min_count=2 贪心取走唯一一份);端点 related_issues 归并(_cross_layer_group 须跨≥2 层,L2-020+L2-024 同层不归并)不在纯函数断言面,由 test_bid_review_grouping 钉;checklist status_by_no 同 no 双行取首行(PARTIAL) |
@@ -116,6 +116,6 @@ rulepack L2 实有 2 条(L2-020/L2-024,均 det,零 model_script);E 族命名按 
 ## 批C守卫与备忘(T6 审查挂账落地的两道闸 + 覆盖率收口)
 
 1. **loader 嵌套键守卫**(loader.py `_reject_non_str_keys`):字段值递归下钻 dict/list,嵌套映射键非 str(裸 `no` → False,bug-3938 类;下游 materials_hash 的 json.dumps(sort_keys=True) 会 TypeError)加载期即拒,报错点名字段路径+加引号修法;钉测 `test_loader_rejects_non_str_nested_keys` + 正例对照 `test_loader_accepts_quoted_no_keys`。
-2. **stub 未知键守卫**(runner.py `_fields_from_stub`):stub 键对照 loader `known_field_paths()`,未知键(疑似笔误)大声报错,不再被「请求路径∩stub 键」过滤静默丢弃(假绿);钉测 `test_fields_from_stub_unknown_key`。既有 smoke-1-basic stub 全键已知,守卫不误伤。
+2. **stub 未知键守卫**(runner.py `_fields_from_stub`):stub 键对照 loader `known_field_paths()`,未知键(疑似笔误)在 `_fields_from_stub` 构造冒烟字段时大声报错(冒烟接线期,非 loader 加载期),不再被「请求路径∩stub 键」过滤静默丢弃(假绿);钉测 `test_fields_from_stub_unknown_key`。既有 smoke-1-basic stub 全键已知,守卫不误伤。
 3. **覆盖率收口**:EXPECTED_COVERAGE 增 L2-020/L2-024(全 34 ids);`test_coverage_complete_marker` 去 skip 分支——EXPECTED_COVERAGE、pack 全集、题库实 coverage 三方精确相等(漏建/多建双方向即红)。
 4. **L2 建库备忘**:`'no'` 键一律加引号(守卫前是 bug-3938 静默炸 materials_hash,守卫后是加载期报错);数字形 no 值("3"/"3.1"/"3-1")同样须引号防 PyYAML 转 int/float;复合件 shapes 照 test_bid_review_attachments.py 夹具;checklist status_by_no 同 no 多行时取首行(items 平铺序);UNKNOWN 行 need_human 被 strict 容忍不进余量,其断言走 expect_issues 显式 verdict: need_human。
