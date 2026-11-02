@@ -157,3 +157,94 @@ def test_build_checklist_null_doc_and_empty():
     }
     one = build_checklist([_req(no="X", name="营业执照")], [_prov(no="X", name="营业执照", page=5)], bid_doc_id=None)
     assert one["items"][0]["refs"] == [{"doc_id": None, "page": 5}]
+
+
+# ── L2 P2:复合附件子件分组(spec 2026-11-02 §7 挂账行) ──
+
+
+def test_composite_matched_by_sub_channels():
+    """子件三通道命中:no 全等 / {父号}-{序} / {父号}.{序} → 父行 MATCHED。"""
+    req = {
+        "no": "3",
+        "name": "资格审查文件",
+        "sub_items": [
+            {"no": "3.1", "name": "营业执照"},
+            {"no": "", "name": "资质证书"},
+        ],
+    }
+    prov = [
+        {"no": "3.1", "name": "营业执照", "page": 5},
+        {"no": "3-2", "name": "资质证书", "page": 9},
+    ]
+    e = match_attachments([req], prov)["per_req"][0]
+    assert e["status"] == "MATCHED"
+    assert e["found"] == 2
+    assert [s["status"] for s in e["sub_results"]] == ["MATCHED", "MATCHED"]
+
+
+def test_composite_missing_sub_rolls_up():
+    """一子件缺 → 父行 MISSING(非 UNKNOWN);sub_results 指认缺口。"""
+    req = {
+        "no": "3",
+        "name": "资格审查文件",
+        "sub_items": [
+            {"no": "3.1", "name": "营业执照"},
+            {"no": "3.2", "name": "资质证书"},
+        ],
+    }
+    prov = [{"no": "3-1", "name": "营业执照", "page": 5}]
+    e = match_attachments([req], prov)["per_req"][0]
+    assert e["status"] == "MISSING"
+    assert e["found"] == 1
+    assert [s["status"] for s in e["sub_results"]] == ["MATCHED", "MISSING"]
+
+
+def test_composite_group_failure_unknown():
+    """提供项引用父号(no 前缀)却归属不了任何子件 → 父行 UNKNOWN,禁强行 PARTIAL/MISSING。"""
+    req = {
+        "no": "3",
+        "name": "资格审查文件",
+        "sub_items": [
+            {"no": "3.1", "name": "营业执照"},
+            {"no": "3.2", "name": "资质证书"},
+        ],
+    }
+    prov = [
+        {"no": "3-1", "name": "营业执照", "page": 5},
+        {"no": "3-9", "name": "完税证明", "page": 40},
+    ]
+    e = match_attachments([req], prov)["per_req"][0]
+    assert e["status"] == "UNKNOWN"
+    assert e["found"] == 1  # 可归属部分仍计数
+    assert match_attachments([req], prov)["extra"] == []  # 完税证明归组进父件,不再计 extra
+
+
+def test_composite_zero_reference_is_missing_not_unknown():
+    """完全没提供(零引用)→ 诚实 MISSING,不算分组失败。"""
+    req = {"no": "3", "name": "资格审查文件", "sub_items": [{"no": "3.1", "name": "营业执照"}]}
+    e = match_attachments([req], [])["per_req"][0]
+    assert e["status"] == "MISSING"
+
+
+def test_composite_orphan_by_parent_name():
+    """无父号时名称命中父名却归属不了子件 → UNKNOWN。"""
+    req = {"no": "", "name": "资格审查文件", "sub_items": [{"no": "", "name": "营业执照"}]}
+    prov = [{"no": "", "name": "资格审查文件（合并版）", "page": 7}]
+    e = match_attachments([req], prov)["per_req"][0]
+    assert e["status"] == "UNKNOWN"
+
+
+def test_flat_and_composite_mixed_pool_no_steal():
+    """平件两级贪心先行,复合件只从剩余池归组;互不偷项。"""
+    reqs = [
+        {"no": "A-1", "name": "营业执照"},  # 平件,名称与 3 的子件同名
+        {"no": "3", "name": "资格审查文件", "sub_items": [{"no": "3.1", "name": "营业执照"}]},
+    ]
+    prov = [
+        {"no": "A-1", "name": "营业执照", "page": 2},
+        {"no": "3-1", "name": "营业执照", "page": 5},
+    ]
+    out = match_attachments(reqs, prov)
+    assert out["per_req"][0]["status"] == "MATCHED"
+    assert out["per_req"][1]["status"] == "MATCHED"
+    assert out["extra"] == []

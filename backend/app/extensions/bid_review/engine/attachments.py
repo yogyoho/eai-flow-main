@@ -1,7 +1,7 @@
 """L2 P1 附件清单匹配器(spec 2026-11-02 §2,EAI-CUSTOM):招标要求集 × 投标
 提供集两级精确匹配。covers() 是子串语义不复用(spec §7)——名称通道要求归一后
 **全等**,非包含,防「报价表」吞「分项报价表」;贪心一对一,一份提供项只归属
-一个 req(先编号后名称)。纯函数,pytest 全覆盖(test_bid_review_attachments.py)。"""
+一个 req(先编号后名称)。P2 复合附件:带 sub_items 的 req 子件独立归组,分组失败降 UNKNOWN(spec §7)。纯函数,pytest 全覆盖(test_bid_review_attachments.py)。"""
 
 import re
 from typing import Any
@@ -22,16 +22,83 @@ def normalize_name(value: Any) -> str:
     return t.rstrip(":：..。")
 
 
+_SUB_STATUS_ORDER = {"UNKNOWN": 0, "MISSING": 1, "PARTIAL": 2, "MATCHED": 3}
+
+
+def _refs_parent(parent_no: str, p_no: str) -> bool:
+    """p_no 是否以「{parent_no}+分隔符(- – — . 、)」开头,即引用复合附件父件。"""
+    return bool(parent_no and p_no and re.match(rf"^{re.escape(parent_no)}[-–—.、]", p_no))
+
+
+def _status_for(found: int, min_count: int) -> str:
+    """单项状态:0 份 MISSING;min_count>1 且不足 PARTIAL;其余 MATCHED。"""
+    if found == 0:
+        return "MISSING"
+    if min_count > 1 and found < min_count:
+        return "PARTIAL"
+    return "MATCHED"
+
+
+def _match_composite(req: dict, prov: list[dict], taken: set[int]) -> dict:
+    """复合附件子件归组(L2 P2,spec 2026-11-02 §7 挂账行,EAI-CUSTOM):子件从
+    「未被其它 req 两级匹配取走」的池独立归组(三通道:no 全等 / {父号}-{序} /
+    {父号}.{序} / 名称归一全等)。提供项引用了父件(no 以 {父号}+分隔符开头,或名称
+    含父名)却归属不了任何子件 → 分组失败,父行 UNKNOWN(禁强行 PARTIAL)。
+    零引用(什么都没提供)→ 诚实 MISSING,不算分组失败。
+    归属成功与引用父件的孤儿项都就地写入 taken(调用方共享的占用池),既防后续
+    req 偷项,也不进 extra(孤儿项归组进父件,交由 UNKNOWN 行人工复核)。"""
+    subs = [s for s in (req.get("sub_items") or []) if isinstance(s, dict)]
+    parent_no = str(req.get("no") or "").strip()
+    parent_nm = normalize_name(req.get("name"))
+    sub_results = []
+    for idx, s in enumerate(subs, start=1):
+        s_no = str(s.get("no") or "").strip()
+        s_nm = normalize_name(s.get("name"))
+        hits = 0
+        for i, p in enumerate(prov):
+            if i in taken:
+                continue
+            p_no = str(p.get("no") or "").strip()
+            hit = (s_no and p_no == s_no) or (s_nm and normalize_name(p.get("name")) == s_nm)
+            if not hit and parent_no and p_no:
+                hit = p_no == f"{parent_no}-{idx}" or p_no == f"{parent_no}.{idx}"
+            if hit:
+                taken.add(i)
+                hits += 1
+        try:
+            s_min = int(s.get("min_count") or 0)
+        except (TypeError, ValueError):
+            s_min = 0
+        sub_results.append({"no": s_no, "name": str(s.get("name") or ""), "found": hits, "status": _status_for(hits, s_min)})
+    orphan = False
+    for i, p in enumerate(prov):
+        if i in taken:
+            continue
+        p_no = str(p.get("no") or "").strip()
+        refs_parent = _refs_parent(parent_no, p_no)
+        if not refs_parent and parent_nm:
+            refs_parent = parent_nm in normalize_name(p.get("name"))
+        if refs_parent:
+            orphan = True
+            taken.add(i)
+    return {"sub_results": sub_results, "orphan": orphan}
+
+
 def match_attachments(requirements: Any, provided: Any) -> dict:
     """两级精确匹配,贪心一对一:① no 全等(双方非空) ② normalize_name 全等。
     同一 req 可命中多份提供项(份数语义:min_count>1 且 found<min_count → PARTIAL)。
-    状态:found==0→MISSING;否则见上;未匹配提供项→extra。"""
+    状态:found==0→MISSING;否则见上;未匹配提供项→extra。
+    P2 复合附件(spec 2026-11-02 §7):带非空 sub_items 的 req 跳过两级主匹配,
+    子件独立归组(_match_composite);父行状态 = UNKNOWN > MISSING > PARTIAL >
+    MATCHED 上卷,found=子件命中数之和,父级 min_count 忽略。"""
     reqs = [r for r in (requirements or []) if isinstance(r, dict)]
     prov = [p for p in (provided or []) if isinstance(p, dict)]
     taken: set[int] = set()
     matched: list[list[int]] = [[] for _ in reqs]
-    # ① 编号精确(双方非空;O(n²) 对几十行清单足够)
+    # ① 编号精确(双方非空;O(n²) 对几十行清单足够);复合 req 不参与,防父名/父号偷走子件
     for ri, r in enumerate(reqs):
+        if r.get("sub_items"):
+            continue
         no = str(r.get("no") or "").strip()
         if not no:
             continue
@@ -39,31 +106,41 @@ def match_attachments(requirements: Any, provided: Any) -> dict:
             if i not in taken and str(p.get("no") or "").strip() == no:
                 taken.add(i)
                 matched[ri].append(i)
-    # ② 规范化名称全等(非包含)
+    # ② 规范化名称全等(非包含);引用复合父号的提供项(如 "3-1")保留给复合件
+    #    归组,平件名称通道不得凭同名偷走(spec §7 平件/复合件互不偷项)
+    comp_parent_nos = [str(r.get("no") or "").strip() for r in reqs if r.get("sub_items")]
+    comp_parent_nos = [n for n in comp_parent_nos if n]
     for ri, r in enumerate(reqs):
+        if r.get("sub_items"):
+            continue
         nm = normalize_name(r.get("name"))
         if not nm:
             continue
         for i, p in enumerate(prov):
-            if i not in taken and normalize_name(p.get("name")) == nm:
+            if i in taken:
+                continue
+            if any(_refs_parent(pn, str(p.get("no") or "").strip()) for pn in comp_parent_nos):
+                continue
+            if normalize_name(p.get("name")) == nm:
                 taken.add(i)
                 matched[ri].append(i)
 
     per_req = []
     for ri, r in enumerate(reqs):
+        if r.get("sub_items"):
+            comp = _match_composite(r, prov, taken)
+            found = sum(s["found"] for s in comp["sub_results"])
+            worst = min((s["status"] for s in comp["sub_results"]), key=lambda st: _SUB_STATUS_ORDER[st], default="MATCHED")
+            status = "UNKNOWN" if comp["orphan"] else worst
+            per_req.append({"req": r, "matched": [], "found": found, "status": status, "sub_results": comp["sub_results"]})
+            continue
         hits = [prov[i] for i in matched[ri]]
         found = len(hits)
         try:
             min_count = int(r.get("min_count") or 0)
         except (TypeError, ValueError):
             min_count = 0
-        if found == 0:
-            status = "MISSING"
-        elif min_count > 1 and found < min_count:
-            status = "PARTIAL"
-        else:
-            status = "MATCHED"
-        per_req.append({"req": r, "matched": hits, "found": found, "status": status})
+        per_req.append({"req": r, "matched": hits, "found": found, "status": _status_for(found, min_count)})
     return {"per_req": per_req, "extra": [p for i, p in enumerate(prov) if i not in taken]}
 
 
