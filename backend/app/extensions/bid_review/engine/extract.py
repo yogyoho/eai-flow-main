@@ -46,6 +46,9 @@ FIELD_DICTIONARY: frozenset[str] = frozenset(
         "tender.scoring_items",
         # B9 响应偏离表(spec 2026-11-01 §1.1):抽取期 LLM 逐条对照招标要求↔投标响应
         "deviation.items",
+        # L2 P1 附件清单核对(spec 2026-11-02 §1):招标要求集/投标提供集,两级精确匹配原料
+        "tender.attachment_requirements",
+        "bid.attachment_index",
     }
 )
 
@@ -82,6 +85,17 @@ FIELD_TYPE_CONTRACTS["deviation.items"] = (
     "逐条列出招标要求与投标响应对照(一致项也列,kind=match);missing=招标有而投标未响应(漏项,severity=fatal);"
     "extra=投标自行增报招标清单外(severity=major);negative=负偏离(劣于要求,severity=主要major/次要minor);"
     "positive=正偏离(优于要求);tender_req/bid_response/evidence.quote 只抄材料原文,禁止编造;没有可比对条目时给空数组。"
+)
+# L2 P1 附件契约(spec 2026-11-02 §1):招标要求集只从「投标文件格式/组成」及资格
+# 审查条款逐条抄录;投标侧从附件清单/目录/附件标题逐条抄录。无编号填空串。
+FIELD_TYPE_CONTRACTS["tender.attachment_requirements"] = (
+    '[{no:"附件编号或空串", name:"附件名称", clause:"要求出处条款号", '
+    'mandatory:"★|必需|建议", min_count:最少份数数字或null, year_span:年份数字或null}]。'
+    "只从招标文件的投标文件组成/格式条款及资格审查条款逐条抄录附件要求,禁止编造;无编号填空串。"
+)
+FIELD_TYPE_CONTRACTS["bid.attachment_index"] = (
+    '[{no:"附件编号或空串", name:"附件名称", page:起始页码数字, pages:页数数字或null}]。'
+    "从投标文件的附件清单/目录/附件标题逐条抄录,禁止编造。"
 )
 
 # 提取函数契约:docs(解析后文档列表 {doc_id, role, text})+ field_paths →

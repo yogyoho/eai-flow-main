@@ -310,3 +310,22 @@ def test_deviation_items_field_contract():
     assert labels.FIELD_LABELS["deviation.items"] == "响应偏离表"
     prompt = extract_mod.build_extract_prompt(FAKE_DOCS, ["deviation.items"])
     assert any(ln.startswith("- deviation.items") and "类型:" in ln for ln in prompt.splitlines()), "prompt 字段行缺类型契约"
+
+
+def test_attachment_fields_contract():
+    """L2 P1 附件清单核对(spec 2026-11-02 §1):附件两字段入字典(进抽取请求)+类型
+    契约(原文只抄不编)+中文名(字段卡展示)。"""
+    from app.extensions.bid_review.engine import extract as extract_mod
+    from app.extensions.bid_review.engine import labels
+
+    assert "tender.attachment_requirements" in extract_mod.collect_field_paths()
+    assert "bid.attachment_index" in extract_mod.collect_field_paths()
+    req_c = extract_mod.FIELD_TYPE_CONTRACTS["tender.attachment_requirements"]
+    assert all(k in req_c for k in ("no", "name", "clause", "mandatory", "min_count", "禁止编造"))
+    bid_c = extract_mod.FIELD_TYPE_CONTRACTS["bid.attachment_index"]
+    assert all(k in bid_c for k in ("no", "name", "page", "pages", "禁止编造"))
+    assert labels.FIELD_LABELS["tender.attachment_requirements"] == "附件要求"
+    assert labels.FIELD_LABELS["bid.attachment_index"] == "投标附件清单"
+    prompt = extract_mod.build_extract_prompt(FAKE_DOCS, ["tender.attachment_requirements", "bid.attachment_index"])
+    assert any(ln.startswith("- tender.attachment_requirements") and "类型:" in ln for ln in prompt.splitlines())
+    assert any(ln.startswith("- bid.attachment_index") and "类型:" in ln for ln in prompt.splitlines())
