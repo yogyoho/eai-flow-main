@@ -420,7 +420,6 @@ def _with_review_state(issue, states: dict[str, str]) -> IssueOut:
     return out
 
 
-_SEV_RANK = {"fatal": 0, "major": 1, "minor": 2, "info": 3}
 _LAYER_RANK = {"L1": 0, "L2": 1, "L3": 2}
 
 
@@ -430,7 +429,8 @@ def _cross_layer_group(issues: list) -> dict[str, dict]:
     violation(非 need_human)归并——keep most_severe(并列取层序 L1>L2>L3,再取
     created_at 稳定),其余行标 grouped_into=keep.id,keep 行带 related_issues 摘要。
     条目不删:items 仍全量返回(前端隐藏 grouped 行),summary 口径不变。
-    need_human 不参与归并(待人工必须可见)。多实体键行按键名字序迭代保稳定。"""
+    need_human 不参与归并(待人工必须可见)。多实体键行按键名字序迭代保稳定。
+    多键行 grouped_into 取按名字序最后命中键的 keep(确定性 last-wins)。"""
     info: dict[str, dict] = {}
     keyed: dict[str, list] = {}
     for i in issues:

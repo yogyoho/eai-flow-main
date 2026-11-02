@@ -152,8 +152,11 @@ async def add_issue(
         for item in evidence or []:
             if item not in merged:
                 merged.append(item)
-        if len(merged) != len(existing.evidence or []):
+        # L2 P2(EAI-CUSTOM):实体键同样并集去重(排序稳定),与 evidence 共用同一 dirty-commit 窗口
+        merged_keys = sorted(set(list(existing.entity_keys or []) + list(entity_keys or [])))
+        if len(merged) != len(existing.evidence or []) or merged_keys != list(existing.entity_keys or []):
             existing.evidence = merged  # 重新赋值以标记 JSON 列 dirty
+            existing.entity_keys = merged_keys  # 同上
             await session.commit()
             await session.refresh(existing)
         return existing
