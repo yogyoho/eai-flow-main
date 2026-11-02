@@ -1,0 +1,13 @@
+case: L1-009-over-max-price
+desc: 投标总价超最高限价 1 元 → L1-009 fatal
+fields:
+  bid.total_price: 1000001.0
+  tender.max_price: 1000000.0
+  bid.price_includes_tax: true
+  tender.price_includes_tax: true
+expect_issues:
+  - rule_id: L1-009
+    severity: fatal
+    contains: ["1,000,001"]
+expect_absent: []
+strict: false
