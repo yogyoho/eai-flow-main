@@ -1,0 +1,15 @@
+case: A-1-clean-price
+desc: 干净基线——价格族(L1-009/010)全达标,期望零 violation(A 家族 FP 探针;detail_rows 行键按 rulepack 契约=amount)
+fields:
+  bid.total_price: 980000.0
+  tender.max_price: 1000000.0
+  bid.price_includes_tax: true
+  tender.price_includes_tax: true
+  bid.detail_rows:
+    - {name: 设备A, qty: 2, price: 400000.0, amount: 800000.0}
+    - {name: 设备B, qty: 1, price: 180000.0, amount: 180000.0}
+  bid.subtotal: 980000.0
+  bid.total_price_words: "玖拾捌万元整"
+expect_issues: []
+expect_absent: []
+strict: true

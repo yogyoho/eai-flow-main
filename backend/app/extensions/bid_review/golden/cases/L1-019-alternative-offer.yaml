@@ -1,0 +1,10 @@
+case: L1-019-alternative-offer
+desc: 出现备选报价方案 → L1-019 violation(一标一价,替代报价即违规)
+fields:
+  bid.alternative_price_offers: ["备选方案一:消防系统采用B品牌,报价下浮3%"]
+expect_issues:
+  - rule_id: L1-019
+    severity: fatal
+    contains: ["备选方案一"]
+expect_absent: []
+strict: false

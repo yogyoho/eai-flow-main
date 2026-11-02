@@ -56,8 +56,13 @@ rules:
     inputs: [tender.boq_items, bid.boq_items]
     check:
       op: set_eq
-      left: "codes(tender.boq_items)"
-      right: "codes(bid.boq_items)"
+      # EAI-CUSTOM(2026-11-03 金标准批A校准,buglog 由 controller 记):left/right 依 set_eq
+      # 渲染契约对调——rule_runner set_eq 恒为 {missing}=right−left、{extra}=left−right
+      # (L3-007「仅技术标出现 {missing}」实测同款);原声明 left=tender/right=bid 使真漏项
+      # (tender−bid)落 {extra}、投标自附项(bid−tender)落 {missing},消息与事实相反。
+      # 对调后 漏项=tender−bid ✓ 增项=bid−tender ✓;红先证据=golden/cases/L1-011-boq-missing-item.yaml。
+      left: "codes(bid.boq_items)"
+      right: "codes(tender.boq_items)"
       # allow_extra/allow_missing 仅声明意图;求值器为严格 set_eq,改值不生效
       allow_extra: false
       allow_missing: false

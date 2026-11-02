@@ -1,0 +1,11 @@
+case: L1-002-qual-level-low
+desc: 投标资质等级低于要求 → L1-002 violation
+fields:
+  bid.qual_levels: ["资质等级三级"]
+  tender.required_qual_level: "资质等级一级"
+expect_issues:
+  - rule_id: L1-002
+    severity: fatal
+    contains: ["资质等级"]
+expect_absent: []
+strict: false

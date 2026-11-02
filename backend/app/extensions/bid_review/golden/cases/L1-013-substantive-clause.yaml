@@ -1,0 +1,14 @@
+case: L1-013-substantive-clause
+desc: 实质性条款 ★1 响应偏离,scripted 模型判 partial → L1-013 violation(severity 以 rulepack fatal 为准)
+fields:
+  tender.substantive_clauses:
+    - {id: "★1", text: "工期不得超过 180 日历天"}
+    - {id: "★2", text: "须为原厂投标"}
+model_script:
+  L1-013: '{"verdicts": [{"clause_id": "★1", "verdict": "partial", "confidence": 0.9, "reason": "响应偏离", "evidence": [{"doc_id": "bid.pdf", "page": 3, "text": "工期 200 日历天"}]}]}'
+expect_issues:
+  - rule_id: L1-013
+    severity: fatal
+    contains: ["★1"]
+expect_absent: []
+strict: false

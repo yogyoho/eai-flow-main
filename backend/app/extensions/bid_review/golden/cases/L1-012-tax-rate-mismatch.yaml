@@ -1,0 +1,12 @@
+case: L1-012-tax-rate-mismatch
+desc: 报价汇总表税率 9% 与招标要求 13% 不一致 → L1-012 violation
+fields:
+  bid.tax_rate_occurrences:
+    - {where: 报价汇总表, value: 0.09}
+  tender.tax_rate: 0.13
+expect_issues:
+  - rule_id: L1-012
+    severity: fatal
+    contains: ["税率 0.09(报价汇总表)"]
+expect_absent: []
+strict: false

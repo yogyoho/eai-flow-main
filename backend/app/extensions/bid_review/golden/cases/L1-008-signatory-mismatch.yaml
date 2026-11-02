@@ -1,0 +1,12 @@
+case: L1-008-signatory-mismatch
+desc: 授权书签用人与投标函签署人不一致 → L1-008 violation(授权书存在性达标,单因触发)
+fields:
+  bid.authorization_letter_present: true
+  bid.authorization_signatory: "李四"
+  bid.bid_letter_signatory: "张三"
+expect_issues:
+  - rule_id: L1-008
+    severity: fatal
+    contains: ["授权书签用人 李四", "投标函签署人 张三"]
+expect_absent: []
+strict: false

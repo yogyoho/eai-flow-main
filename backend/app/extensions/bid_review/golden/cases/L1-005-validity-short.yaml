@@ -1,0 +1,11 @@
+case: L1-005-validity-short
+desc: 投标有效期 60 天低于招标要求 90 天 → L1-005 violation
+fields:
+  bid.validity_days: 60
+  tender.required_validity_days: 90
+expect_issues:
+  - rule_id: L1-005
+    severity: fatal
+    contains: ["投标有效期 60 天"]
+expect_absent: []
+strict: false

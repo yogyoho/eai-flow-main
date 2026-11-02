@@ -1,0 +1,14 @@
+case: A-3-clean-mixed
+desc: 干净基线——有效期/质保/保证金/声明函族(L1-005/006/015/021)全达标,期望零 violation(A 家族 FP 探针;声明函清单外自附额外项不算违规=all-in 语义钉)
+fields:
+  bid.validity_days: 90
+  tender.required_validity_days: 90
+  bid.warranty_period: {value: 24, unit: month}
+  tender.min_warranty_period: {value: 24, unit: month}
+  bid.deposit_amount: 100000.0
+  tender.deposit_required: 100000.0
+  tender.required_declarations: ["DECL-NDA", "DECL-INT"]
+  bid.declaration_letter_codes: ["DECL-NDA", "DECL-INT", "DECL-EXTRA"]
+expect_issues: []
+expect_absent: []
+strict: true

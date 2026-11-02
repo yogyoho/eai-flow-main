@@ -1,0 +1,11 @@
+case: L1-015-warranty-short
+desc: 质保 12 个月低于招标要求 24 个月 → L1-015 violation({value,unit} 结构 normalize_unit 月×30)
+fields:
+  bid.warranty_period: {value: 12, unit: month}
+  tender.min_warranty_period: {value: 24, unit: month}
+expect_issues:
+  - rule_id: L1-015
+    severity: fatal
+    contains: ["质保期 12个月"]
+expect_absent: []
+strict: false

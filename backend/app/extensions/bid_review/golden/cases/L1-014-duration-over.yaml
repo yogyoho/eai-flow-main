@@ -1,0 +1,11 @@
+case: L1-014-duration-over
+desc: 承诺工期 200 天超过招标最高 180 天 → L1-014 violation(原始数值按天归一)
+fields:
+  bid.duration_main_text: 200
+  tender.max_duration: 180
+expect_issues:
+  - rule_id: L1-014
+    severity: fatal
+    contains: ["承诺工期 200"]
+expect_absent: []
+strict: false

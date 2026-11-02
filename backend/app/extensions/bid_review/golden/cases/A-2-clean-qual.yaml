@@ -1,0 +1,12 @@
+case: A-2-clean-qual
+desc: 干净基线——资质族(L1-001/002)全达标,期望零 violation(A 家族 FP 探针)
+fields:
+  bid.qual_levels: ["资质等级一级"]
+  tender.required_qual_level: "资质等级一级"
+  bid.entity.license_valid_until: "2027-12-31"
+  tender.bid_deadline: "2026-06-30"
+  bid.entity.business_scope: "钢结构工程;机电设备安装工程"
+  tender.bid_scope: "钢结构工程"
+expect_issues: []
+expect_absent: []
+strict: true

@@ -1,0 +1,13 @@
+case: L1-001-license-scope
+desc: 执照有效期早于投标截止(经营范围覆盖,单因触发)→ L1-001 violation
+fields:
+  bid.entity.license_valid_until: "2026-01-01"
+  tender.bid_deadline: "2026-06-30"
+  bid.entity.business_scope: "钢结构工程;机电设备安装工程"
+  tender.bid_scope: "钢结构工程"
+expect_issues:
+  - rule_id: L1-001
+    severity: fatal
+    contains: ["营业执照有效期 2026-01-01"]
+expect_absent: []
+strict: false

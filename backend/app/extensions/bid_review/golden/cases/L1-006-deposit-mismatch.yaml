@@ -1,0 +1,11 @@
+case: L1-006-deposit-mismatch
+desc: 保证金 5 万与招标要求 10 万不一致 → L1-006 violation(money 渲染钉语义)
+fields:
+  bid.deposit_amount: 50000.0
+  tender.deposit_required: 100000.0
+expect_issues:
+  - rule_id: L1-006
+    severity: fatal
+    contains: ["¥50,000.00", "¥100,000.00"]
+expect_absent: []
+strict: false

@@ -1,0 +1,15 @@
+case: L1-010-price-sum-mismatch
+desc: 明细行算术错(1×180000 填 90000)致明细合计≠合价;总价与大写一致,单因触发 → L1-010 violation
+fields:
+  bid.detail_rows:
+    - {name: 设备A, qty: 2, price: 400000.0, amount: 800000.0}
+    - {name: 设备B, qty: 1, price: 180000.0, amount: 90000.0}
+  bid.subtotal: 980000.0
+  bid.total_price: 980000.0
+  bid.total_price_words: "玖拾捌万元整"
+expect_issues:
+  - rule_id: L1-010
+    severity: fatal
+    contains: ["报价加总不一致", "玖拾捌万元整"]
+expect_absent: []
+strict: false

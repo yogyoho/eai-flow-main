@@ -1,0 +1,13 @@
+case: L1-003-performance-short
+desc: 类似业绩数量不足 det 粗筛命中,scripted 模型确认 partial → L1-003 violation(major)
+fields:
+  bid.similar_performances: ["华鑫水泥5000t/d熟料线总承包工程"]
+  tender.min_similar_performance_count: 2
+model_script:
+  L1-003: '{"verdicts": [{"clause_id": "PERF-1", "verdict": "partial", "confidence": 0.9, "reason": "业绩数量不足", "evidence": [{"doc_id": "bid.pdf", "page": 12, "text": "类似业绩证明附表"}]}]}'
+expect_issues:
+  - rule_id: L1-003
+    severity: major
+    contains: ["类似业绩", "业绩数量不足"]
+expect_absent: []
+strict: false

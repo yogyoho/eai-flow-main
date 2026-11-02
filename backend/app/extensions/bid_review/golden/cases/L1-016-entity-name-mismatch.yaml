@@ -1,0 +1,13 @@
+case: L1-016-entity-name-mismatch
+desc: 授权书主体名缺「制造」二字 → L1-016 violation(主体全文档一致,逐处 occurrences)
+fields:
+  bid.entity.license_name: "华信重工机械制造有限公司"
+  bid.entity_name_occurrences:
+    - {where: 封面, value: "华信重工机械制造有限公司"}
+    - {where: 法定代表人授权书, value: "华信重工机械有限公司"}
+expect_issues:
+  - rule_id: L1-016
+    severity: fatal
+    contains: ["华信重工机械有限公司(法定代表人授权书)"]
+expect_absent: []
+strict: false

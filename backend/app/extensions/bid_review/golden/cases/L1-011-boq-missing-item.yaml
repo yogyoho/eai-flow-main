@@ -1,0 +1,16 @@
+case: L1-011-boq-missing-item
+desc: 投标清单漏招标清单项 BM-003 → L1-011 violation(set_eq 漏项)
+fields:
+  tender.boq_items:
+    - {code: BM-001, name: 土方开挖}
+    - {code: BM-002, name: 混凝土浇筑}
+    - {code: BM-003, name: 钢结构安装}
+  bid.boq_items:
+    - {code: BM-001, name: 土方开挖}
+    - {code: BM-002, name: 混凝土浇筑}
+expect_issues:
+  - rule_id: L1-011
+    severity: fatal
+    contains: ["漏项 BM-003"]
+expect_absent: []
+strict: false

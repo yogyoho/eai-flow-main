@@ -264,7 +264,26 @@ def test_scripted_model_routes_by_rule_card_header():
 
 
 # ---- 回归门:逐题参数化 + 覆盖率地板 ----
-EXPECTED_COVERAGE = {"L1-009"}  # 每批次任务扩此表;收尾任务改为 == 全 34 条(pack ids 精确相等)
+# 每批次任务扩此表;收尾任务改为 == 全 34 条(pack ids 精确相等)。批A=L1 全集(rulepack 实有 17 条;L1-004/017/018/020 不存在)
+EXPECTED_COVERAGE = {
+    "L1-001",
+    "L1-002",
+    "L1-003",
+    "L1-005",
+    "L1-006",
+    "L1-007",
+    "L1-008",
+    "L1-009",
+    "L1-010",
+    "L1-011",
+    "L1-012",
+    "L1-013",
+    "L1-014",
+    "L1-015",
+    "L1-016",
+    "L1-019",
+    "L1-021",
+}
 
 
 @pytest.mark.parametrize("path", sorted(CASES_DIR.glob("*.yaml")), ids=lambda p: p.stem)
