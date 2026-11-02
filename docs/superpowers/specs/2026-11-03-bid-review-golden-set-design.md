@@ -29,7 +29,7 @@
 | `acceptable_rule_ids` 等价规则集 | **采纳** | 同一事实允许多条规则命中（业绩数量不足 = L1-003 或 L2-024），任一命中算 TP，避免规则实现细节污染指标；schema + 匹配器各 +1 字段（等价 id 不计入覆盖率地板） |
 | entity 实体级匹配 | **采纳** | L2 同规则逐实体报（每附件一条），期望不带 entity 时消费歧义；期望加 entity 子串过滤 entity_keys+message |
 | 匹配器打分 / 匈牙利一对一 | **不采纳（过重）** | 每题问题数 ≤3，逐期望消化已足够；匈牙利匹配留给题库上规模后 |
-| state 代价矩阵加权 F1 | **不采纳（过重）** | verdict 不符已在 diff 单列可见（期望按 verdict→severity→contains→missing 梯度归类，错哪个维度一眼可见）；四态混淆矩阵随 L2 专项题自然产出 |
+| state 代价矩阵加权 F1 | **不采纳（过重）** | verdict 不符已在 diff 单列可见（期望按 verdict→entity→severity→contains→missing 梯度归类，错哪个维度一眼可见）；四态混淆矩阵随 L2 专项题自然产出 |
 | 归因标签体系（EXTRACT_MISS 等 9 类） | **部分采纳** | oracle 模式下无解析层，归因收敛为 CASEResult 四类 diff 本身（missing=漏报 / unexpected=误报 / absent_violations=误抑制面 / checklist_diff=投影错）；report 加类别分布计数，不另造标签体系 |
 | 四态判定决策表（标注口径唯一） | **采纳** | 写入 CALIBRATION.md 头部作裁决依据（检索确认不存在→MISSING / 不足→PARTIAL / 齐备→PRESENT / 分组或解析失败→UNKNOWN） |
 | zero_hit / precision<0.5 死规则告警 | **采纳 zero_hit** | CLI 成绩单加 zero_hit 列（有题引用但四类计数全 0 = 死规则或题失效）；precision 告警随线上 metrics 阶段 |
@@ -123,7 +123,8 @@ checklist:                             # 可选：L2 题附加核对表投影期
 
 - **默认 `strict: false`（宽松定向）**：断言 ①expect_issues 逐条命中（rule_id+severity+contains 全对才算命中）②expect_absent 零报。期望外 issue 忽略——一题字段喂全部 34 条规则，严格模式要求把顺带触发的问题全部标注，标注成本 ×34 题。
 - **`strict: true`（L2 专项题用）**：任何期望外 issue 都算 diff。L2 题字段面小完全可控，配得起严格模式；L2 是去重/分组/四态机制的主战场，严格才有牙。
-- 判定顺序：先按 rule_id（∪ acceptable_rule_ids）匹配 expect_issues（多对多：同 rule_id 多条 issue 时按 entity+severity+contains 逐一消化；未命中时期望按「verdict→severity→contains→missing」梯度归类，diff 行直接指出错的是哪个维度），再查 expect_absent，最后 strict 模式数余量。
+- 判定顺序：先按 rule_id（∪ acceptable_rule_ids）匹配 expect_issues（多对多：同 rule_id 多条 issue 时按 entity+severity+contains 逐一消化；未命中时期望按「verdict→entity→severity→contains→missing」梯度归类，diff 行直接指出错的是哪个维度），再查 expect_absent，最后 strict 模式数余量。
+  - **落地勘误（2026-11-03，T3 质量审查）**：实际梯度为五层「verdict→**entity**→severity→contains→missing」——entity 级不符（实体对但 severity/关键词错）不应误报成「关键词未命中」，故在 verdict 与 severity 之间插 entity 层；每层恰差一维，单调性由钉测验证。
 
 ## 7. 评测核调用与双出口
 
