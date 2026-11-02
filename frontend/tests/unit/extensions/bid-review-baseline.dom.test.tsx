@@ -456,6 +456,8 @@ describe("bid-review BaselineView L2 P1 附件双卡(EAI-CUSTOM 2026-11-02)", ()
     expect(
       screen.getByText(/子件:E-1 业绩合同 \/ E-2 中标通知书/),
     ).toBeTruthy();
+    // 平件(ATT-F-001 无 sub_items)不再产第二条子件注
+    expect(screen.getAllByText(/子件:/).length).toBe(1);
     expect(screen.getByText("投标附件清单")).toBeTruthy();
     expect(screen.getByText("第三章3.4")).toBeTruthy();
     expect(screen.getByText("118")).toBeTruthy(); // 起始页列

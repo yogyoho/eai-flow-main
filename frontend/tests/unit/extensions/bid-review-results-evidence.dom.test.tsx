@@ -636,7 +636,7 @@ describe("bid-review ResultsView L2 P2 子件分组+跨层去重(EAI-CUSTOM 2026
     responder = (path) => {
       if (path.endsWith("/tasks/t1")) return jsonRes(TASK);
       if (path.endsWith("/issues")) return jsonRes({ items: [] });
-      if (path.endsWith("/rulepacks")) return jsonRes([]);
+      if (path.endsWith("/rulepacks")) return jsonRes({ items: [] });
       if (path.includes("/attachment_checklist")) return jsonRes(P2_CHECKLIST);
       if (path.includes("/score_coverage"))
         return jsonRes({ total: 0, covered: 0, items: [] });
@@ -675,7 +675,7 @@ describe("bid-review ResultsView L2 P2 子件分组+跨层去重(EAI-CUSTOM 2026
       if (path.endsWith("/tasks/t1")) return jsonRes(TASK);
       if (path.endsWith("/issues"))
         return jsonRes({ items: P2_ISSUES, summary: {} });
-      if (path.endsWith("/rulepacks")) return jsonRes([]);
+      if (path.endsWith("/rulepacks")) return jsonRes({ items: [] });
       if (path.includes("/attachment_checklist"))
         return jsonRes({
           counts: {
