@@ -476,7 +476,7 @@ describe("bid-review ResultsView L2 P1 附件核对表(EAI-CUSTOM 2026-11-02)", 
     cleanup();
   });
 
-  it("附件核对表卡:五格/排序 MISSING 前/pill 映射/EXTRA 灰行/页码 chip", async () => {
+  it("附件核对表卡:六格/排序 MISSING 前/pill 映射/EXTRA 灰行/页码 chip", async () => {
     responder = (path) => {
       if (path.endsWith("/tasks/t1/attachment_checklist"))
         return jsonRes(CHECKLIST);
@@ -507,8 +507,8 @@ describe("bid-review ResultsView L2 P1 附件核对表(EAI-CUSTOM 2026-11-02)", 
       "p.310",
     );
     expect(screen.getByText("多余")).toBeTruthy();
-    // 五格 counts 直出
-    expect(card?.querySelectorAll(".metric-cell").length).toBe(5);
+    // 六格 counts 直出(L2 P2 增需人工格;旧夹具无 unknown → ?? 0 兜底仍为六格)
+    expect(card?.querySelectorAll(".metric-cell").length).toBe(6);
   });
 
   it("零投影:counts.required=0 → 诚实空态引导", async () => {

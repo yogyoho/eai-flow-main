@@ -84,6 +84,7 @@ export function BaselineView({ taskId }: { taskId?: string | null }) {
             no?: string;
             name?: string;
             mandatory?: string | null;
+            sub_items?: Array<{ no?: string; name?: string } | null>;
             min_count?: number | null;
             clause?: string | null;
           }>
@@ -351,7 +352,21 @@ export function BaselineView({ taskId }: { taskId?: string | null }) {
                     {attachReqs.map((a, i) => (
                       <tr key={`${a.no}-${i}`}>
                         <td className="mono">{a.no || "—"}</td>
-                        <td>{a.name}</td>
+                        <td>
+                          {a.name}
+                          {a.sub_items?.length ? (
+                            <div className="hd-sub">
+                              子件:
+                              {a.sub_items
+                                .map((s) =>
+                                  s
+                                    ? `${s.no ? `${s.no} ` : ""}${s.name ?? ""}`
+                                    : "",
+                                )
+                                .join(" / ")}
+                            </div>
+                          ) : null}
+                        </td>
                         <td>
                           {a.mandatory === "★" || a.mandatory === "必需"
                             ? "必需"

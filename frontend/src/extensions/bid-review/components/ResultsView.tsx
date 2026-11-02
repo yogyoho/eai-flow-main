@@ -51,6 +51,7 @@ import { toast } from "sonner";
 
 import { ClipboardSafeStreamdown } from "@/components/ai-elements/streamdown";
 import {
+  type BidChecklistItem,
   type FeedbackAction,
   type LocateTarget,
   exportReport,
@@ -243,13 +244,15 @@ function str(v: unknown, fallback = ""): string {
   return JSON.stringify(v);
 }
 
-/** 核对状态 → pill(MATCHED ok / PARTIAL warn / MISSING err;L2 P1 spec 2026-11-02 §5)。 */
+/** 核对状态 → pill(MATCHED ok / PARTIAL warn / MISSING err / UNKNOWN gray=需人工;L2 P1 spec 2026-11-02 §5 + L2 P2)。 */
 function checklistPill(status: string): { label: string; cls: string } {
   switch (status) {
     case "MATCHED":
       return { label: "已提供", cls: "pill pill-ok" };
     case "PARTIAL":
       return { label: "份数不足", cls: "pill pill-warn" };
+    case "UNKNOWN":
+      return { label: "需人工", cls: "pill pill-gray" };
     default:
       return { label: "缺失", cls: "pill pill-err" };
   }
@@ -315,7 +318,14 @@ export function ResultsView({ taskId }: { taskId?: string | null }) {
   const checklistQuery = useBidAttachmentChecklist(enabled ? taskId : null);
   const checklist = checklistQuery.data ?? null;
   const clItems = useMemo(() => {
-    const rank = { MISSING: 0, PARTIAL: 1, MATCHED: 2 } as const;
+    // rank 显式按 status 联合类型收窄(联合类型扩员时 tsc 编译期报错,而非静默 NaN):
+    // UNKNOWN 次于 MISSING(分组失败,待人工)
+    const rank: Record<BidChecklistItem["status"], number> = {
+      MISSING: 0,
+      UNKNOWN: 1,
+      PARTIAL: 2,
+      MATCHED: 3,
+    };
     return [...(checklist?.items ?? [])].sort(
       (a, b) => rank[a.status] - rank[b.status],
     );
@@ -339,7 +349,12 @@ export function ResultsView({ taskId }: { taskId?: string | null }) {
   }, [rulepacksQuery.data]);
 
   // 稳定空数组身份(useMemo 依赖 issues 的派生计算不随加载态每帧重算)
-  const issues = useMemo(() => issuesQuery.data ?? [], [issuesQuery.data]);
+  // L2 P2 跨层去重:grouped 行(已被更强同实体问题归并)由展示层隐藏,
+  // summary 随之只计可见——与后端全量 summary 并存,口径注见 tbl-foot。
+  const issues = useMemo(
+    () => (issuesQuery.data ?? []).filter((i) => !i.grouped_into),
+    [issuesQuery.data],
+  );
   // "基准未确认"唯一可靠信号:deep 任务停在确认门(worker 落 awaiting_confirm)。
   const baselineUnconfirmed = task?.status === "awaiting_confirm";
   // 计划 Task 17 Step 2:确认前 workbench 只读。
@@ -1070,7 +1085,7 @@ export function ResultsView({ taskId }: { taskId?: string | null }) {
             </div>
           ) : null}
 
-          {/* ── L2 P1 附件核对表卡(spec 2026-11-02 §5):五格 counts + 明细(pill 映射/
+          {/* ── L2 P1 附件核对表卡(spec 2026-11-02 §5;L2 P2 增需人工格):六格 counts + 明细(pill 映射/
               页码 chip 复用 DocLocate role=bid 首文档)/EXTRA info 灰行不进问题数 ── */}
           {checklist && checklist.counts.required > 0 ? (
             <div className="card">
@@ -1097,6 +1112,10 @@ export function ResultsView({ taskId }: { taskId?: string | null }) {
                 <div className="metric-cell err">
                   <div className="m-lb">缺失</div>
                   <div className="m-v">{checklist.counts.missing}</div>
+                </div>
+                <div className="metric-cell">
+                  <div className="m-lb">需人工</div>
+                  <div className="m-v">{checklist.counts.unknown ?? 0}</div>
                 </div>
                 <div className="metric-cell">
                   <div className="m-lb">多余附件</div>
@@ -1129,6 +1148,17 @@ export function ResultsView({ taskId }: { taskId?: string | null }) {
                               <span className="mono">{it.no} </span>
                             ) : null}
                             {it.name}
+                            {(it.sub_results?.length ?? 0) > 0 ? (
+                              <div className="hd-sub">
+                                子件:
+                                {(it.sub_results ?? [])
+                                  .map(
+                                    (s) =>
+                                      `${s.no ? `${s.no} ` : ""}${s.name} ${s.found > 0 ? "✓" : "✗"}`,
+                                  )
+                                  .join(" · ")}
+                              </div>
+                            ) : null}
                             {it.clause ? (
                               <span className="hd-sub">（{it.clause}）</span>
                             ) : null}
@@ -1144,7 +1174,11 @@ export function ResultsView({ taskId }: { taskId?: string | null }) {
                               : it.found}
                           </td>
                           <td>
-                            {it.found > 0 ? `已提供 ${it.found} 份` : "未提供"}
+                            {it.status === "UNKNOWN"
+                              ? "无法自动分组"
+                              : it.found > 0
+                                ? `已提供 ${it.found} 份`
+                                : "未提供"}
                           </td>
                           <td>
                             {first && first.doc_id && taskId ? (
@@ -1246,7 +1280,10 @@ export function ResultsView({ taskId }: { taskId?: string | null }) {
                 待人工 <b className="num">{summary.need_human}</b>
               </span>
             </div>
-            <div className="tbl-foot">误报项不进报告正文,自动回流评测集</div>
+            <div className="tbl-foot">
+              误报项不进报告正文,自动回流评测集;跨层归并(grouped)行不重复展示——前端计数为可见行口径,后端
+              summary 为全量口径(L2 P2)
+            </div>
           </div>
         </div>
 
@@ -1404,6 +1441,18 @@ export function ResultsView({ taskId }: { taskId?: string | null }) {
                         <div className="iss-verdict" title={i.message}>
                           {renderIssueMessage(i.message)}
                         </div>
+                        {/* L2 P2 跨层去重:本行已并入更强同实体问题,关联原行折叠在此 */}
+                        {(i.related_issues?.length ?? 0) > 0 ? (
+                          <div className="hd-sub">
+                            关联问题 {i.related_issues!.length}:
+                            {i
+                              .related_issues!.map(
+                                (r) =>
+                                  `[${r.rule_id} ${r.severity}] ${r.message}`,
+                              )
+                              .join(";")}
+                          </div>
+                        ) : null}
                         {evList.length > 0 ||
                         evFields.length > 0 ||
                         i.clause_id ||
