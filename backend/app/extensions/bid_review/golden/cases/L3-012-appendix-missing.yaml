@@ -1,0 +1,12 @@
+case: L3-012-appendix-missing
+desc: 正文引用「拟投入主要施工设备表」未随卷提交(已随卷附件不产条目) → L3-012 violation
+fields:
+  bid.appendix_references:
+    - {name: 投标保证金缴纳凭证, present: true}
+    - {name: 拟投入主要施工设备表, present: false}
+expect_issues:
+  - rule_id: L3-012
+    severity: major
+    contains: ["正文引用附件 拟投入主要施工设备表 未随卷提交"]
+expect_absent: []
+strict: false

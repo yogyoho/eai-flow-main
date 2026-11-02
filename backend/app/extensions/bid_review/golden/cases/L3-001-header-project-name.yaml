@@ -1,0 +1,12 @@
+case: L3-001-header-project-name
+desc: 页眉项目名多「利用」二字与招标项目名不一致 → L3-001 violation(编号一致性 deferred,code 为声明输入须供齐避开 need_human)
+fields:
+  tender.project_identity.name: "横城煤矿二号井瓦斯抽采利用工程"
+  tender.project_identity.code: "HZ-2026-019"
+  bid.header_footer.project_name: "横城煤矿二号井瓦斯抽采综合利用工程"
+expect_issues:
+  - rule_id: L3-001
+    severity: major
+    contains: ["页眉项目名 横城煤矿二号井瓦斯抽采综合利用工程", "横城煤矿二号井瓦斯抽采利用工程"]
+expect_absent: []
+strict: false

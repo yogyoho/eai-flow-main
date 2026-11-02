@@ -1,0 +1,12 @@
+case: L3-010-boq-unit-mismatch
+desc: 清单项 TL-012 计量单位 招标立方米/投标平方米(达标行不产条目) → L3-010 violation
+fields:
+  bid.boq_unit_checks:
+    - {code: TL-011, matched: true, tender_unit: 立方米, bid_unit: 立方米}
+    - {code: TL-012, matched: false, tender_unit: 立方米, bid_unit: 平方米}
+expect_issues:
+  - rule_id: L3-010
+    severity: major
+    contains: ["清单项 TL-012 数量/单位不一致", "立方米", "平方米"]
+expect_absent: []
+strict: false

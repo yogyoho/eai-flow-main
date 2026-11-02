@@ -61,3 +61,32 @@ L1-009 复用既有 L1-009-over-max-price.yaml,未新建。除下表「标注对
 4. **日期值一律加引号**:PyYAML 把裸 `2026-01-01` 转 datetime.date,与 str 混比会 TypeError→逐规则隔离降级 need_human(假阴性)。
 5. **A 族 strict 语义实测**:未供 inputs 的规则全部落 need_human(not counted),供齐且 PASS 也不产出——A 族只需保证「供齐的族全 PASS、供不齐的族宁缺勿错」。
 6. **命名字**:loader `_NAME_RE` 要求 `^[A-Z0-9]+-[0-9]+-[a-z0-9-]+$`,A 族计划草名 A-clean-l1-* 不合法(第二段须数字),本批落地为 A-1/A-2/A-3-。
+
+## 批B(L3×15)裁决表
+
+rulepack 实有 L3=15 条(计划标题 16 与文件不符,以文件为准;L3-011/015/017 不存在;det 13 条 + hyb 2 条)。
+全部为「引擎对」:期望按引擎现输出起草,逐处 diff 后与 rulepack 触发语义逐字核对一致;零引擎修复,rulepack 未动。
+
+| case | 裁决 | 结论/bug编号 |
+|---|---|---|
+| L3-001-header-project-name | 引擎对 | 页眉名多「利用」二字单因触发;声明 inputs 的 tender.project_identity.code 虽不入 check 表达式也须供齐(缺字段两段检查:表达式段通过后仍查 inputs 段),缺则整规则 need_human 假阴性 |
+| L3-002-tenderee-name-mention | 引擎对 | op:all 逐出现;达标出现处(投标函)不产条目、违例出现处(承诺函)单条;消息措辞「与招标公告…不一致」系 message_tpl 原文 |
+| L3-003-entity-license-whitelist | 引擎对 | and 两条件:署名≠执照名 False、执照名在白名单内 True → 单因触发;消息含「疑似简称/错别字」尾缀 |
+| L3-004-old-project-residue | 引擎对 | hyb 粗筛 count≠0 产候选 → scripted partial → violation(major);占位符剥离后消息「残留旧项目名: (非本项目) (OLD-PRJ-1: reason)」,contains 钉规则关键词+scripted reason 子串(同批A L1-003 钉法);白名单外模型驳回(full)场景由安静应答默认覆盖 |
+| L3-005-duration-triple-mismatch | 引擎对 | normalize_unit 归一:进度表 18个月=540天达标、承诺函 12个月=360天违例,单因触发;工期字段须数值或 {value,unit} 结构,裸中文文本(如 "18个月")float 强转失败 raise KeyError→need_human,勿入题 |
+| L3-006-amount-occurrence-mismatch | 引擎对 | op:all 逐出现;:money 渲染 ¥48,000,000.00/¥98,000,000.00 入 contains 钉值 |
+| L3-007-personnel-set-eq | 引擎对 | set_eq 双向差集钉死渲染契约:left=commercial/right=technical → missing=right−left=「仅技术标出现」、extra=left−right=「仅商务标出现」,消息与声明语义一致(L1-011 转置类回归守;声明本批未动) |
+| L3-008-device-model-mismatch | 引擎对 | hyb 粗筛非空产候选 → scripted partial → violation;占位符剥离后残双空格(「招标 / 投标 (明细 )」)为 _render_message 既定行为,contains 钉词避开空白区 |
+| L3-009-schedule-completion-conflict | 引擎对 | steps 双条件;开工≤竣工达标、竣工≠承诺函竣工违例,单因触发;ISO 日期串加引号 |
+| L3-010-boq-unit-mismatch | 引擎对 | op:all 逐行 matched==True;TL-011 达标不产条目、TL-012 单位不符单条 |
+| L3-012-appendix-missing | 引擎对 | op:all 逐行 present==True;已随卷附件不产条目 |
+| L3-013-toc-section-missing | 引擎对 | all-in 差集(投标自附章节不算违规);缺「8」单条 |
+| L3-014-doc-date-after-deadline | 引擎对 | steps 双条件;投标函日期达标、承诺函 2026-07-02 晚于截止违例,单因触发 |
+| L3-016-version-tag-mismatch | 引擎对 | op:all 逐出现;页眉达标不产条目、封面 V3.0≠V3.2 单条 |
+| L3-018-currency-occurrence-mismatch | 引擎对 | op:all 逐出现;报价表达标不产条目、承诺函「美元」单条 |
+
+## 批B运行时行为备忘(建库时实测,T9 建库者直接受益)
+
+1. **声明 inputs ≠ check 表达式字段**:run_det_rule 缺字段检查分两段(表达式字段段 → inputs 段),表达式全供齐但 inputs 有缺席仍 need_human——L3-001 的 project_identity.code、L3-004/008 的白名单与招标设备清单均属「死但必须供」字段。
+2. **op:all 逐行判,每违例行各产一条 issue**(本批 cases 均单违例行,单条期望即绿;达标行零产出)。若钉多违例行须逐条 expect 并以 contains/entity 消歧。
+3. **hyb 占位符剥离的空白残留**:message_tpl 含字段占位符时 _render_message 剥占位符为空格再尾缀「 (clause_id: reason)」,消息会出现双空格——contains 钉规则关键词+reason 子串最稳,勿钉空白区。

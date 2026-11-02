@@ -1,0 +1,13 @@
+case: L3-016-version-tag-mismatch
+desc: 封面版本标识 V3.0 与文档最终版本 V3.2 不一致(页眉出现处达标不产条目) → L3-016 violation
+fields:
+  bid.document_version: "V3.2"
+  bid.version_tag_occurrences:
+    - {where: 页眉, value: "V3.2"}
+    - {where: 封面, value: "V3.0"}
+expect_issues:
+  - rule_id: L3-016
+    severity: major
+    contains: ["版本标识 V3.0(封面)", "V3.2"]
+expect_absent: []
+strict: false

@@ -1,0 +1,12 @@
+case: L3-014-doc-date-after-deadline
+desc: 承诺函落款 2026-07-02 晚于投标截止 2026-06-30(投标函日期达标,单因触发;ISO 日期串加引号) → L3-014 violation
+fields:
+  tender.bid_deadline: "2026-06-30"
+  bid.bid_letter_date: "2026-06-29"
+  bid.commitment_letter_date: "2026-07-02"
+expect_issues:
+  - rule_id: L3-014
+    severity: major
+    contains: ["文件日期晚于投标截止 2026-06-30", "承诺函 2026-07-02"]
+expect_absent: []
+strict: false

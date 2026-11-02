@@ -1,0 +1,12 @@
+case: L3-009-schedule-completion-conflict
+desc: 进度表竣工 2026-08-30 与承诺函竣工 2026-09-15 不一致(开工≤竣工达标,单因触发;ISO 日期串加引号) → L3-009 violation
+fields:
+  bid.schedule_start_date: "2026-03-01"
+  bid.schedule_end_date: "2026-08-30"
+  bid.commitment_completion_date: "2026-09-15"
+expect_issues:
+  - rule_id: L3-009
+    severity: major
+    contains: ["竣工 2026-08-30", "承诺函竣工 2026-09-15"]
+expect_absent: []
+strict: false

@@ -1,0 +1,13 @@
+case: L3-002-tenderee-name-mention
+desc: 承诺函招标人名称漏「能源」二字 → L3-002 violation(逐出现 op:all;达标出现处不产条目)
+fields:
+  tender.tenderee_name: "华信能源集团有限公司"
+  bid.tenderee_name_mentions:
+    - {where: 投标函, value: "华信能源集团有限公司"}
+    - {where: 承诺函, value: "华信控股集团有限公司"}
+expect_issues:
+  - rule_id: L3-002
+    severity: major
+    contains: ["招标人名称 华信控股集团有限公司(承诺函)", "华信能源集团有限公司"]
+expect_absent: []
+strict: false

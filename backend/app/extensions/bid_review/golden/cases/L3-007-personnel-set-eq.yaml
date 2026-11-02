@@ -1,0 +1,15 @@
+case: L3-007-personnel-set-eq
+desc: 技术标多一名、商务标多一名(双向差集,钉 set_eq 渲染契约 missing=right−left=仅技术标 / extra=left−right=仅商务标,L1-011 转置类回归守) → L3-007 violation
+fields:
+  bid.personnel_commercial:
+    - {code: "510104198803042217", name: 李建军}
+    - {code: "510102199201190028", name: 王晓峰}
+  bid.personnel_technical:
+    - {code: "510104198803042217", name: 李建军}
+    - {code: "510105198710220316", name: 张永强}
+expect_issues:
+  - rule_id: L3-007
+    severity: major
+    contains: ["仅技术标出现 510105198710220316", "仅商务标出现 510102199201190028"]
+expect_absent: []
+strict: false

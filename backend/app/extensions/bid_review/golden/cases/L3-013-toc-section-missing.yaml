@@ -1,0 +1,11 @@
+case: L3-013-toc-section-missing
+desc: 目录缺招标要求的第八章(投标自附章节不算违规,all-in 语义) → L3-013 violation
+fields:
+  tender.required_sections: ["3", "8"]
+  bid.toc_section_codes: ["1", "2", "3", "4", "5", "6", "7"]
+expect_issues:
+  - rule_id: L3-013
+    severity: major
+    contains: ["目录缺少招标要求的章节:8"]
+expect_absent: []
+strict: false

@@ -1,0 +1,13 @@
+case: L3-006-amount-occurrence-mismatch
+desc: 承诺函金额 4800 万与报价总价 9800 万不一致(报价汇总表出现处达标不产条目) → L3-006 violation(:money 渲染钉值)
+fields:
+  bid.total_price: 98000000.0
+  bid.amount_occurrences:
+    - {where: 报价汇总表, value: 98000000.0}
+    - {where: 承诺函, value: 48000000.0}
+expect_issues:
+  - rule_id: L3-006
+    severity: major
+    contains: ["¥48,000,000.00(承诺函)", "¥98,000,000.00"]
+expect_absent: []
+strict: false

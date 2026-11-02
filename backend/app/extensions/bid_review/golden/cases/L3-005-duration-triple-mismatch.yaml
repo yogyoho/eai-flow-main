@@ -1,0 +1,12 @@
+case: L3-005-duration-triple-mismatch
+desc: 正文 540 天 / 进度表 18 个月(=540 天达标)/ 承诺函 12 个月(=360 天不一致) → L3-005 violation(normalize_unit 归一后单因触发;工期字段须数值或 {value,unit} 结构,裸文本数值化失败降 need_human)
+fields:
+  bid.duration_main_text: 540
+  bid.duration_schedule: {value: 18, unit: month}
+  bid.duration_commitment_letter: {value: 12, unit: month}
+expect_issues:
+  - rule_id: L3-005
+    severity: major
+    contains: ["工期不一致", "进度表 18个月", "承诺函 12个月"]
+expect_absent: []
+strict: false

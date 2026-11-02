@@ -1,0 +1,13 @@
+case: L3-018-currency-occurrence-mismatch
+desc: 承诺函以美元表述金额与招标要求人民币不一致(报价汇总表出现处达标不产条目) → L3-018 violation
+fields:
+  tender.currency: 人民币
+  bid.currency_occurrences:
+    - {where: 报价汇总表, value: 人民币}
+    - {where: 承诺函, value: 美元}
+expect_issues:
+  - rule_id: L3-018
+    severity: major
+    contains: ["币种 美元(承诺函)", "人民币"]
+expect_absent: []
+strict: false

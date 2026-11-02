@@ -1,0 +1,14 @@
+case: L3-008-device-model-mismatch
+desc: 抽取层逐型号比对产出不一致明细,hyb 粗筛非空产候选,scripted 模型确认 partial → L3-008 violation
+fields:
+  bid.device_model_mismatches: ["主通风机 FBCDZ-8-No.20A:投标为 FBCDZ-8-No.20"]
+  tender.device_models: ["FBCDZ-8-No.20A"]
+  bid.device_models: ["FBCDZ-8-No.20"]
+model_script:
+  L3-008: '{"verdicts": [{"clause_id": "DEV-8-1", "verdict": "partial", "confidence": 0.9, "reason": "主通风机型号与招标清单不一致", "evidence": [{"doc_id": "bid.pdf", "page": 21, "text": "设备明细表主通风机型号行"}]}]}'
+expect_issues:
+  - rule_id: L3-008
+    severity: major
+    contains: ["设备型号不一致", "主通风机型号与招标清单不一致"]
+expect_absent: []
+strict: false

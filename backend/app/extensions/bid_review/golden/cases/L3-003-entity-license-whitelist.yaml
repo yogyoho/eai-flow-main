@@ -1,0 +1,12 @@
+case: L3-003-entity-license-whitelist
+desc: 投标函署名「华信重工」与执照全称不一致(执照名在白名单内,单因触发) → L3-003 violation
+fields:
+  bid.entity.license_name: "华信重工机械制造有限公司"
+  bid.entity.name_in_bid_letter: "华信重工"
+  project.entity_whitelist.names: ["华信重工机械制造有限公司", "华信能源集团有限公司"]
+expect_issues:
+  - rule_id: L3-003
+    severity: major
+    contains: ["投标主体 华信重工 与执照名 华信重工机械制造有限公司"]
+expect_absent: []
+strict: false
