@@ -259,3 +259,35 @@ def test_scripted_model_routes_by_rule_card_header():
     )
     assert m([{"role": "user", "content": "规则:L1-013 质保期"}]) == "x"
     assert m([{"role": "user", "content": "规则:L9-999 其他规则卡"}]) == _QUIET
+
+
+# ---- 回归门:逐题参数化 + 覆盖率地板 ----
+EXPECTED_COVERAGE = {"L1-009"}  # 每批次任务扩此表;收尾任务改为 == 全 34 条(pack ids 精确相等)
+
+
+@pytest.mark.parametrize("path", sorted(CASES_DIR.glob("*.yaml")), ids=lambda p: p.stem)
+@pytest.mark.asyncio
+async def test_golden_case(path):
+    pack = load_rulepack(PACK)
+    res = await run_case(loader.load_case(path, pack), pack)
+    assert res.ok, "\n".join(res.diff_lines)
+
+
+def test_rule_coverage_floor():
+    pack = load_rulepack(PACK)
+    # 只数主 rule_id;acceptable_rule_ids 是等价别名,不计地板(防靠别名凑覆盖,spec §1.5)
+    covered = {e.rule_id for c in loader.load_cases() for e in c.expect_issues}
+    pack_ids = {r.id for r in pack.rules}
+    missing_floor = EXPECTED_COVERAGE - covered
+    assert not missing_floor, f"覆盖率地板未达成: {sorted(missing_floor)}"
+    unknown = covered - pack_ids
+    assert not unknown, f"题库引用了不存在的规则: {sorted(unknown)}"
+
+
+def test_coverage_complete_marker():
+    """收尾后(EXPECTED_COVERAGE == pack 全集)此测试钉死精确相等;现阶段跳过。"""
+    pack = load_rulepack(PACK)
+    if EXPECTED_COVERAGE != {r.id for r in pack.rules}:
+        pytest.skip("题库未收满,精确相等断言待收尾任务启用")
+    covered = {e.rule_id for c in loader.load_cases() for e in c.expect_issues}
+    assert covered == {r.id for r in pack.rules}
