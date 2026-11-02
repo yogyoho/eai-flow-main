@@ -181,8 +181,8 @@ export interface BidChecklistItem {
   status: "MATCHED" | "PARTIAL" | "MISSING" | "UNKNOWN";
   clause: string | null;
   refs: BidAttachmentRef[];
-  /** 复合附件子件核对(P2);平件恒 []。 */
-  sub_results: Array<{
+  /** 复合附件子件核对(P2);平件恒 [];旧网关缺省 → 消费方 `?? []` 兜底。 */
+  sub_results?: Array<{
     no: string;
     name: string;
     found: number;
@@ -204,7 +204,8 @@ export interface BidAttachmentChecklistOut {
     matched: number;
     partial: number;
     missing: number;
-    unknown: number;
+    /** P2 UNKNOWN 计数(子件分组失败→需人工);旧网关缺省 → 消费方 `?? 0` 兜底。 */
+    unknown?: number;
     extra: number;
   };
   items: BidChecklistItem[];
