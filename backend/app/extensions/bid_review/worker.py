@@ -317,12 +317,13 @@ async def _run_review_stage(db: AsyncSession, task: ReviewTask, fields: dict, ow
     crud.add_issue 的 DB 异常不在本包裹内,基础设施失败仍走既有失败链。
     None 值字段先剥离——det 求值器不容 None(比较算子会 TypeError),剥离后两通路统一走
     need_human 约定(on_missing_input=need_human);sem 侧同口径(None 字段=缺字段)。
-    金标准重构(2026-11-03,spec §4,EAI-CUSTOM):分派逻辑移 eval_core 共享核(worker/评测器同源)。"""
+    金标准重构(2026-11-03,spec §4,EAI-CUSTOM):分派逻辑移 eval_core 共享核(worker/评测器同源)。
+    注记(EAI-CUSTOM):分派改整包缓冲后逐条落库(原逐规则边评边写);kill 丢当阶段条目由重跑+add_issue 幂等兜底——金标准 spec §4 定版。"""
     # EAI-CUSTOM(2026-11-03 金标准 spec §4):分派循环移共享核 eval_core.evaluate_fields
     # ——worker 保进度上报(on_progress→crud.set_status)与条目落库(crud.add_issue),
     # 评测器与 worker 消费同一段分派代码(金标准禁复制=两把尺子,必然漂移说谎)。
+    # None 剥离由 eval_core 统一承担(原 worker 侧 det_fields 预剥离已移除,勿双重剥离)。
     pack = load_rulepack(RULEPACK_PATH)
-    det_fields = {k: v for k, v in fields.items() if v is not None}
     wrapped_model = _wrap_model_fn(model_fn or _default_model_fn())
     docs = _load_docs(task)
     materials = _collect_materials(docs)
@@ -331,28 +332,28 @@ async def _run_review_stage(db: AsyncSession, task: ReviewTask, fields: dict, ow
     async def _progress(i: int, total: int, rule) -> None:
         await crud.set_status(db, task, "running", progress={"stage": "review", "pct": int(i * 100 / total), "msg": f"{rule.id}({i}/{total})"})
 
-    issues = await evaluate_fields(pack, det_fields, model_fn=wrapped_model, materials=materials, docs_text=docs_text, provenance=provenance, on_progress=_progress)
+    issues = await evaluate_fields(pack, fields, model_fn=wrapped_model, materials=materials, docs_text=docs_text, provenance=provenance, on_progress=_progress)
     written = 0
     for issue in issues:
-            row = await crud.add_issue(
-                db,
-                task_id=task.id,
-                owner_id=owner_id,
-                rule_id=str(_issue_get(issue, "rule_id") or "?"),
-                layer=str(_issue_get(issue, "layer") or ""),
-                severity=str(_issue_get(issue, "severity") or ""),
-                verdict=str(_issue_get(issue, "verdict") or ""),
-                message=str(_issue_get(issue, "message") or ""),
-                fix=str(_issue_get(issue, "fix") or ""),
-                evidence=list(_issue_get(issue, "evidence") or []),
-                dedup_key=str(_issue_get(issue, "dedup_key") or ""),
-                clause_id=_issue_get(issue, "clause_id"),
-                need_human=bool(_issue_get(issue, "need_human")),
-                confidence=_issue_confidence(issue),
-                entity_keys=list(_issue_get(issue, "entity_keys") or []),
-            )
-            if row is not None:
-                written += 1
+        row = await crud.add_issue(
+            db,
+            task_id=task.id,
+            owner_id=owner_id,
+            rule_id=str(_issue_get(issue, "rule_id") or "?"),
+            layer=str(_issue_get(issue, "layer") or ""),
+            severity=str(_issue_get(issue, "severity") or ""),
+            verdict=str(_issue_get(issue, "verdict") or ""),
+            message=str(_issue_get(issue, "message") or ""),
+            fix=str(_issue_get(issue, "fix") or ""),
+            evidence=list(_issue_get(issue, "evidence") or []),
+            dedup_key=str(_issue_get(issue, "dedup_key") or ""),
+            clause_id=_issue_get(issue, "clause_id"),
+            need_human=bool(_issue_get(issue, "need_human")),
+            confidence=_issue_confidence(issue),
+            entity_keys=list(_issue_get(issue, "entity_keys") or []),
+        )
+        if row is not None:
+            written += 1
     return written
 
 

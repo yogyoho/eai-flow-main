@@ -77,3 +77,116 @@ async def test_on_progress_reports_each_rule():
     ids = [r for _, _, r in seen]
     assert len(seen) == sum(1 for r in pack.rules if r.enabled)
     assert ids[0] and ids[-1]  # 逐规则推进
+
+
+# ── 最小 inline 包(F2/F3 专用;test_bid_review_worker_sem.py _TMP_RULEPACK 惯例):
+# 产线 34 规则包内容会漂移,sem 分派/进度/disabled 契约用最小包锁定——1 det + 1 sem + 1 disabled。
+_EVAL_TMP_RULEPACK = """\
+conventions:
+  on_missing_input: need_human
+rules:
+  - id: ED-001
+    name: 测试总价不超限价
+    layer: L1
+    type: deterministic
+    applies_to: ["*"]
+    inputs: [bid.total_price, tender.max_price]
+    check:
+      op: lte
+      left: bid.total_price
+      right: tender.max_price
+    severity: fatal
+    evidence: []
+    message_tpl: "投标总价 {bid.total_price:money} 超过最高限价 {tender.max_price:money}"
+    fix_tpl: 复核报价汇总
+    confidence_gate: 1.0
+    enabled: true
+  - id: ES-001
+    name: 测试实质性条款逐条响应
+    layer: L1
+    type: semantic
+    applies_to: ["*"]
+    inputs: [tender.substantive_clauses]
+    check:
+      per_clause: true
+      verdict_set: [full, partial, none, unclear]
+      steps: []
+    severity: major
+    evidence: []
+    message_tpl: "实质性条款 {clause_id} 响应为 {verdict}:{reason}"
+    fix_tpl: 逐条补实质性响应
+    confidence_gate: 0.75
+    enabled: true
+  - id: EX-001
+    name: 禁用规则不得进分派
+    layer: L2
+    type: semantic
+    applies_to: ["*"]
+    inputs: [x.anything]
+    check:
+      per_clause: true
+      verdict_set: [full, partial, none, unclear]
+      steps: []
+    severity: minor
+    evidence: []
+    message_tpl: "禁用规则 {clause_id}"
+    fix_tpl: 无
+    confidence_gate: 0.75
+    enabled: false
+"""
+
+# sem 应答(verdict 须在 check.verdict_set 内;partial→violation 映射见 llm_runner.VERDICT_TO_ISSUE。
+# 证据带逐字摘录使 docs_text 位置加载性:错位则七道第2道证据对齐失配翻 need_human 旗,
+# 故 F2 以 need_human=False 钉死 docs_text 传参顺序)
+_SEM_RESP = json.dumps({"verdicts": [{"clause_id": "c1", "verdict": "partial", "confidence": 0.9, "reason": "响应偏离招标要求", "evidence": [{"doc_id": "d.pdf", "page": 1, "text": "条款c1原文摘录"}]}]}, ensure_ascii=False)
+_MATERIALS = "待审材料哨兵 MATERIALS_SENTINEL_T1 独一无二"
+_DOCS_TEXT = {"d.pdf": {1: "证据正文哨兵 DOCS_SENTINEL_T1 ★ 条款c1原文摘录"}}
+
+
+def _mini_pack(tmp_path):
+    p = tmp_path / "mini-pack.yaml"
+    p.write_text(_EVAL_TMP_RULEPACK, encoding="utf-8")
+    return load_rulepack(p)
+
+
+@pytest.mark.asyncio
+async def test_sem_dispatch_partial_maps_to_violation_and_args_ordered(tmp_path):
+    """F2:sem 分支真断言(现有产线包测试 sem 全走安静 full,分派错序/传参错位抓不住):
+    partial→violation 映射、rule_id 浮出、materials/docs_text 位置传参哨兵、det 分支零模型
+    调用、disabled 规则不进分派。"""
+    pack = _mini_pack(tmp_path)
+    calls: list[str] = []
+    cards: list[str] = []
+    table = {"ES-001": _SEM_RESP, "EX-001": _SEM_RESP}  # EX-001 若误进分派,partial 应答必浮条目被抓
+
+    def model(messages):
+        card = messages[0]["content"]
+        cards.append(card)
+        rid = next((r for r in table if f"规则:{r} " in card), "?")
+        calls.append(rid)
+        return table[rid]
+
+    fields = {"bid.total_price": 100.0, "tender.max_price": 200.0, "tender.substantive_clauses": ["条款c1原文摘录"]}
+    issues = await evaluate_fields(pack, fields, model_fn=wrap_model_fn(model), materials=_MATERIALS, docs_text=_DOCS_TEXT)
+    assert calls == ["ES-001"], f"仅 sem 规则应调模型(det 干净零调用/disabled 不分派),实际 {calls}"
+    assert _MATERIALS in cards[0], "materials 须原样注入规则卡待审材料段(错位即字典 repr)"
+    sem = [i for i in issues if i["rule_id"] == "ES-001"]
+    assert len(sem) == 1 and sem[0]["verdict"] == "violation" and not sem[0]["need_human"], "partial→violation;need_human=False 钉死 docs_text 位置(错位则证据对齐失配翻旗)"
+    assert sem[0]["severity"] == "major" and sem[0]["clause_id"] == "c1"
+    assert all(i["rule_id"] != "EX-001" for i in issues), "disabled 规则不得产出条目"
+
+
+@pytest.mark.asyncio
+async def test_progress_skips_disabled_and_sequence_is_dense(tmp_path):
+    """F3:进度契约——enabled=false 规则不出现;序号恰为 1..n 连续无重复;total 恒等于 enabled 数。"""
+    pack = _mini_pack(tmp_path)
+    seen: list[tuple[int, int, str]] = []
+
+    async def cb(i, total, rule):
+        seen.append((i, total, rule.id))
+
+    await evaluate_fields(pack, {}, model_fn=wrap_model_fn(_quiet_model()), on_progress=cb)
+    enabled = [r.id for r in pack.rules if r.enabled]
+    assert [rid for _, _, rid in seen] == enabled, "disabled 规则不进分派,顺序=包内声明序"
+    assert [i for i, _, _ in seen] == list(range(1, len(enabled) + 1)), "序号恰为 1..n 连续无重复"
+    assert {t for _, t, _ in seen} == {len(enabled)}, "total 恒等于 enabled 数"
