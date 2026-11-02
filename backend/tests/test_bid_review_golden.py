@@ -7,8 +7,8 @@ import pytest
 
 from app.extensions.bid_review.engine.rule_runner import load_rulepack
 from app.extensions.bid_review.golden import loader
-from app.extensions.bid_review.golden.runner import run_case
-from app.extensions.bid_review.golden.schema import Expectation, GoldenCase
+from app.extensions.bid_review.golden.runner import _QUIET, _scripted_model, run_case
+from app.extensions.bid_review.golden.schema import ChecklistExpect, Expectation, GoldenCase
 
 PACK = str(Path(__file__).resolve().parent.parent / "app" / "extensions" / "bid_review" / "engine" / "rulepacks" / "bid-review-core" / "1.0.0.yaml")
 CASES_DIR = Path(__file__).resolve().parent.parent / "app" / "extensions" / "bid_review" / "golden" / "cases"
@@ -202,3 +202,60 @@ async def test_entity_disambiguation_filters_per_entity_issues():
     )
     res = await run_case(e9, pack=pack)
     assert not res.ok
+    assert any("entity" in ln for ln in res.diff_lines)  # F2:仅 entity 不符须单列,不得误报「关键词未命中」
+
+
+@pytest.mark.asyncio
+async def test_duplicate_expectation_requires_distinct_issue():
+    c = loader.load_case(_SAMPLE)
+    c.expect_issues.append(Expectation(rule_id="L1-009", severity="fatal", contains=["1,000,001"]))  # 同特征期望×2,引擎只出一条
+    res = await run_case(c, pack=_pack())
+    assert not res.ok
+    assert res.hits.get("L1-009") == 1  # 第二个期望不得重复记账同一实例(hits 不自增=正确)
+    assert any("命中数不足" in ln for ln in res.diff_lines)
+
+
+@pytest.mark.asyncio
+async def test_verdict_mismatch_tier_state_mismatch():
+    c = loader.load_case(_SAMPLE)
+    c.expect_issues[0].verdict = "need_human"  # 实际 violation:severity+contains 全对,仅态判错
+    res = await run_case(c, pack=_pack())
+    assert not res.ok
+    assert any("verdict 不符" in ln for ln in res.diff_lines)
+
+
+@pytest.mark.asyncio
+async def test_checklist_expectation_flat_rows():
+    pack = _pack()
+
+    def _cl_case(status_by_no, unknown_count=0):
+        return GoldenCase(
+            case="T8-checklist",
+            desc="checklist 期望对平铺 items 行(no 键直取;非嵌套 req.no,flat-row 契约钉死)",
+            fields=dict(_L2_FIELDS),
+            expect_issues=[],
+            expect_absent=[],
+            checklist=ChecklistExpect(unknown_count=unknown_count, status_by_no=status_by_no),
+        )
+
+    ok_res = await run_case(_cl_case({"E-1": "MATCHED"}), pack=pack)
+    assert ok_res.ok and ok_res.checklist_diff == []
+    bad = await run_case(_cl_case({"E-2": "MATCHED"}), pack=pack)  # E-2 实际 MISSING
+    assert not bad.ok and any("E-2" in ln for ln in bad.diff_lines)
+    unk = await run_case(_cl_case({}, unknown_count=1), pack=pack)  # 实际 counts.unknown=0
+    assert not unk.ok and any("counts.unknown" in ln for ln in unk.diff_lines)
+
+
+def test_scripted_model_routes_by_rule_card_header():
+    m = _scripted_model(  # F6:钉住跨文件耦合——llm_runner.build_rule_card 卡头「规则:<id>」格式
+        GoldenCase(
+            case="T7-script-route",
+            desc="scripted model_fn 按规则卡「规则:<id>」路由,未命中表走安静应答",
+            fields={},
+            expect_issues=[],
+            expect_absent=[],
+            model_script={"L1-013": "x"},
+        )
+    )
+    assert m([{"role": "user", "content": "规则:L1-013 质保期"}]) == "x"
+    assert m([{"role": "user", "content": "规则:L9-999 其他规则卡"}]) == _QUIET

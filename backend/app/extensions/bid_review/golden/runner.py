@@ -36,9 +36,14 @@ def _rule_pool(expect, issues: list[dict]) -> list[dict]:
     return [i for i in issues if i["rule_id"] in ids]
 
 
+def _entity_ok(expect, i: dict) -> bool:
+    """entity 子串对 entity_keys+message(spec §1.5);空 entity 恒过。"""
+    return not expect.entity or expect.entity in " ".join([*(i.get("entity_keys") or []), str(i.get("message") or "")])
+
+
 def _issue_matches(expect, i: dict) -> bool:
-    """entity(子串对 entity_keys+message) + severity + contains 全对才算命中(spec §1.5)。"""
-    if expect.entity and expect.entity not in " ".join([*(i.get("entity_keys") or []), str(i.get("message") or "")]):
+    """entity + severity + contains 全对才算命中(spec §1.5)。"""
+    if not _entity_ok(expect, i):
         return False
     if expect.severity and i.get("severity") != expect.severity:
         return False
@@ -46,7 +51,7 @@ def _issue_matches(expect, i: dict) -> bool:
 
 
 def _status_for(expect, issues: list[dict]) -> str:
-    """命中 | verdict | severity | contains | missing——判定梯度:每级只差一个维度,
+    """命中 | verdict | entity | severity | contains | missing——判定梯度:每级只差一个维度,
     diff 行直接指出错的是哪个维度(verdict 不符=state mismatch 单列可见,spec §1.5)。"""
     pool = _rule_pool(expect, issues)
     ok = [i for i in pool if i.get("verdict") == expect.verdict]
@@ -54,6 +59,8 @@ def _status_for(expect, issues: list[dict]) -> str:
         return "命中"
     if any(_issue_matches(expect, i) for i in pool):
         return "verdict"  # 规则/实体/关键词全对但态判错(state mismatch)
+    if any(i.get("verdict") == expect.verdict and (not expect.severity or i.get("severity") == expect.severity) and all(kw in str(i.get("message") or "") for kw in expect.contains) and not _entity_ok(expect, i) for i in pool):
+        return "entity"  # 仅实体不符(verdict/severity/关键词全对,质量审查 F2:不得误报「关键词未命中」)
     if any(i.get("verdict") == expect.verdict and expect.severity and i.get("severity") == expect.severity for i in pool):
         return "contains"
     if any(i.get("verdict") == expect.verdict for i in pool):
@@ -75,8 +82,12 @@ async def run_case(case: GoldenCase, pack: RulePack | None = None) -> CaseResult
                     consumed.add(idx)
                     hits[e.rule_id] = hits.get(e.rule_id, 0) + 1
                     break
+            else:
+                # 质量审查 F1:_status_for 在 pool 上判「命中」不区分已消化实例;无未被消费的同特征
+                # 条目=重复期望假绿,必须补 diff 行(首方括号 token=rule_id,T5 fn 解析依赖该格式)
+                missing.append(f"期望未命中[{e.rule_id} {e.severity} {e.verdict}] 命中数不足(无未被消化的同特征条目): contains={e.contains}")
             continue
-        tag = {"missing": "未命中", "verdict": "verdict 不符(state mismatch)", "severity": "severity 不符", "contains": "关键词未命中"}[st]
+        tag = {"missing": "未命中", "verdict": "verdict 不符(state mismatch)", "entity": "entity 不符(实体不匹配)", "severity": "severity 不符", "contains": "关键词未命中"}[st]
         missing.append(f"期望未命中[{e.rule_id} {e.severity} {e.verdict}] {tag}: contains={e.contains}")
     absent = [f"不应报而报[{rid}](expect_absent): {next((i['message'][:60] for i in issues if i['rule_id'] == rid), '')}" for rid in case.expect_absent if any(i["rule_id"] == rid and i.get("verdict") == "violation" for i in issues)]
     unexpected: list[str] = []
