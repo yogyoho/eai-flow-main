@@ -1,12 +1,14 @@
 """金标准回归门(金标准 spec §7)+loader/runner/report 单测。题库=人工标注答案,
 diff 即回归;快照式自动生成被 spec 明确否决(把 bug 固化成标准)。"""
 
+import json
 from pathlib import Path
 
 import pytest
 
 from app.extensions.bid_review.engine.rule_runner import load_rulepack
 from app.extensions.bid_review.golden import loader
+from app.extensions.bid_review.golden.report import build_report, render_markdown
 from app.extensions.bid_review.golden.runner import _QUIET, _scripted_model, run_case
 from app.extensions.bid_review.golden.schema import ChecklistExpect, Expectation, GoldenCase
 
@@ -291,3 +293,41 @@ def test_coverage_complete_marker():
         pytest.skip("题库未收满,精确相等断言待收尾任务启用")
     covered = {e.rule_id for c in loader.load_cases() for e in c.expect_issues}
     assert covered == {r.id for r in pack.rules}
+
+
+# ---- report + CLI ----
+
+
+def test_report_counts_and_markdown():
+    from app.extensions.bid_review.golden.schema import CaseResult
+
+    results = [
+        CaseResult(case="a", desc="", strict=False, ok=True, missing=[], unexpected=[], absent_violations=[], checklist_diff=[], hits={"L1-009": 1}),
+        CaseResult(case="b", desc="", strict=False, ok=False, missing=["期望未命中[L1-009 fatal violation] 未命中: contains=['x']"], unexpected=[], absent_violations=["不应报而报[L1-011]"], checklist_diff=[]),
+    ]
+    rep = build_report(results)
+    assert rep["total"] == 2 and rep["failed"] == 1
+    assert rep["per_rule"]["L1-009"]["tp"] == 1 and rep["per_rule"]["L1-009"]["fn"] == 1
+    assert rep["per_rule"]["L1-011"]["absent_fp"] == 1
+    md = render_markdown(rep)
+    assert "| 规则 | TP | FN | 误报(absent) |" in md and "L1-009" in md and "FAIL" in md
+
+
+def test_report_zero_hit_flag():
+    """有题引用但四类计数全 0 → zero_hit 死规则告警(spec §1.5)。"""
+    from app.extensions.bid_review.golden.schema import CaseResult, Expectation, GoldenCase
+
+    res = CaseResult(case="a", desc="", strict=False, ok=True, missing=[], unexpected=[], absent_violations=[], checklist_diff=[])
+    c = GoldenCase(case="a", desc="", fields={}, expect_issues=[Expectation(rule_id="L1-001", severity="fatal")], expect_absent=[])
+    rep = build_report([res], [c])
+    assert rep["per_rule"]["L1-001"]["zero_hit"] is True
+
+
+def test_cli_main_exit_codes(tmp_path, capsys):
+    from app.extensions.bid_review.golden.__main__ import main
+
+    out = tmp_path / "rep.json"
+    rc = main(["--report", "md", "--out", str(out)])
+    assert rc == 0 and out.exists()
+    data = json.loads(out.read_text(encoding="utf-8"))
+    assert data["total"] >= 1
