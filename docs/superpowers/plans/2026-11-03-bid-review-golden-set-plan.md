@@ -316,6 +316,8 @@ class Expectation:
     severity: str
     contains: list[str] = field(default_factory=list)
     verdict: str = "violation"  # violation | need_human | unclear
+    entity: str = ""            # 实体消歧子串(对 entity_keys+message;L2 逐实体多条时必带,spec §1.5)
+    acceptable_rule_ids: list[str] = field(default_factory=list)  # 等价规则集:任一命中算 TP(不计覆盖率地板,spec §1.5)
 
 
 @dataclass
@@ -347,6 +349,7 @@ class CaseResult:
     unexpected: list[str]        # strict 下期望外 violation
     absent_violations: list[str] # expect_absent 违例
     checklist_diff: list[str]
+    hits: dict[str, int] = field(default_factory=dict)  # {rule_id: 命中数}(成绩单 tp 来源)
     n_issues: int = 0
 
     @property
@@ -399,6 +402,8 @@ def load_case(path: str | Path, pack=None) -> GoldenCase:
             severity=str(e.get("severity") or ""),
             contains=[str(x) for x in (e.get("contains") or [])],
             verdict=str(e.get("verdict") or "violation"),
+            entity=str(e.get("entity") or ""),
+            acceptable_rule_ids=[str(x) for x in (e.get("acceptable_rule_ids") or [])],
         )
         for e in (data.get("expect_issues") or [])
     ]
@@ -514,6 +519,43 @@ async def test_expect_absent_and_severity_mismatch():
     c2.expect_issues[0].severity = "minor"  # 实际 fatal
     res2 = await run_case(c2, pack)
     assert any("severity" in m for m in res2.diff_lines)
+
+
+@pytest.mark.asyncio
+async def test_acceptable_rule_ids_any_hit_counts():
+    """等价规则集(spec §1.5):主 id 无触发、等价 id 命中 → 算 TP。"""
+    from app.extensions.bid_review.golden.schema import Expectation, GoldenCase
+    pack = load_rulepack(PACK)
+    fields = {"bid.total_price": 1000001.0, "tender.max_price": 1000000.0, "bid.price_includes_tax": True, "tender.price_includes_tax": True}
+    c = GoldenCase(case="mech-acceptable", desc="", fields=fields,
+                   expect_issues=[Expectation(rule_id="L2-024", severity="fatal", contains=["1,000,001"], acceptable_rule_ids=["L1-009"])],
+                   expect_absent=[], strict=False)
+    res = await run_case(c, pack)
+    assert res.ok and res.hits.get("L2-024") == 1, res.diff_lines
+
+
+@pytest.mark.asyncio
+async def test_entity_disambiguation_filters_per_entity_issues():
+    """实体消歧(spec §1.5):entity 子串不匹配的条目不能顶替命中。"""
+    from app.extensions.bid_review.golden.schema import Expectation, GoldenCase
+    pack = load_rulepack(PACK)
+    fields = {
+        "tender.attachment_requirements": [
+            {"no": "E-1", "name": "业绩合同", "min_count": 1},
+            {"no": "E-2", "name": "中标通知书", "min_count": 1},
+        ],
+        "bid.attachment_index": [{"no": "E-1", "name": "业绩合同", "pages": [1, 2]}],
+    }
+    c = GoldenCase(case="mech-entity", desc="", fields=fields,
+                   expect_issues=[Expectation(rule_id="L2-020", severity="fatal", contains=["E-2"], entity="E-2")],
+                   expect_absent=[], strict=False)
+    res = await run_case(c, pack)
+    assert res.ok, res.diff_lines
+    c2 = GoldenCase(case="mech-entity2", desc="", fields=fields,
+                    expect_issues=[Expectation(rule_id="L2-020", severity="fatal", contains=["E-2"], entity="E-9")],
+                    expect_absent=[], strict=False)
+    res2 = await run_case(c2, pack)
+    assert not res2.ok  # E-9 条目不存在 → 期望必须 miss(entity 过滤生效)
 ```
 
 - [ ] **Step 2: 跑失败**（ModuleNotFoundError: runner）。
@@ -553,18 +595,33 @@ def _scripted_model(case: GoldenCase):
     return model
 
 
+def _rule_pool(expect, issues: list[dict]) -> list[dict]:
+    ids = {expect.rule_id, *expect.acceptable_rule_ids}
+    return [i for i in issues if i["rule_id"] in ids]
+
+
+def _issue_matches(expect, i: dict) -> bool:
+    """entity(子串对 entity_keys+message) + severity + contains 全对才算命中(spec §1.5)。"""
+    if expect.entity and expect.entity not in " ".join([*(i.get("entity_keys") or []), str(i.get("message") or "")]):
+        return False
+    if expect.severity and i.get("severity") != expect.severity:
+        return False
+    return all(kw in str(i.get("message") or "") for kw in expect.contains)
+
+
 def _status_for(expect, issues: list[dict]) -> str:
-    """命中 | missing | severity | contains"""
-    pool = [i for i in issues if i["rule_id"] == expect.rule_id and i.get("verdict") == expect.verdict]
-    for i in pool:
-        if expect.severity and i.get("severity") != expect.severity:
-            continue
-        if all(kw in str(i.get("message") or "") for kw in expect.contains):
-            return "命中"
-    if any(i.get("severity") == expect.severity and all(kw in str(i.get("message") or "") for kw in expect.contains) for i in pool) is False and any(all(kw in str(i.get("message") or "") for kw in expect.contains) for i in pool):
-        return "severity"
-    if any(i.get("severity") == expect.severity for i in pool):
+    """命中 | verdict | severity | contains | missing——判定梯度:每级只差一个维度,
+    diff 行直接指出错的是哪个维度(verdict 不符=state mismatch 单列可见,spec §1.5)。"""
+    pool = _rule_pool(expect, issues)
+    ok = [i for i in pool if i.get("verdict") == expect.verdict]
+    if any(_issue_matches(expect, i) for i in ok):
+        return "命中"
+    if any(_issue_matches(expect, i) for i in pool):
+        return "verdict"  # 规则/实体/关键词全对但态判错(state mismatch)
+    if any(i.get("verdict") == expect.verdict and expect.severity and i.get("severity") == expect.severity for i in pool):
         return "contains"
+    if any(i.get("verdict") == expect.verdict for i in pool):
+        return "severity"
     return "missing"
 
 
@@ -573,15 +630,17 @@ async def run_case(case: GoldenCase, pack: RulePack | None = None) -> CaseResult
     issues = await evaluate_fields(pack, case.fields, model_fn=wrap_model_fn(_scripted_model(case)))
     missing: list[str] = []
     consumed: set[int] = set()
+    hits: dict[str, int] = {}
     for e in case.expect_issues:
         st = _status_for(e, issues)
         if st == "命中":
             for idx, i in enumerate(issues):
-                if idx not in consumed and i["rule_id"] == e.rule_id and i.get("verdict") == e.verdict and i.get("severity") == e.severity and all(kw in str(i.get("message") or "") for kw in e.contains):
+                if idx not in consumed and i["rule_id"] in {e.rule_id, *e.acceptable_rule_ids} and _issue_matches(e, i) and i.get("verdict") == e.verdict:
                     consumed.add(idx)
+                    hits[e.rule_id] = hits.get(e.rule_id, 0) + 1
                     break
             continue
-        tag = {"missing": "未命中", "severity": "severity 不符(实际见明细)", "contains": "关键词未命中"}[st]
+        tag = {"missing": "未命中", "verdict": "verdict 不符(state mismatch)", "severity": "severity 不符", "contains": "关键词未命中"}[st]
         missing.append(f"期望未命中[{e.rule_id} {e.severity} {e.verdict}] {tag}: contains={e.contains}")
     absent = [f"不应报而报[{rid}](expect_absent): {next((i['message'][:60] for i in issues if i['rule_id'] == rid), '')}" for rid in case.expect_absent if any(i["rule_id"] == rid and i.get("verdict") == "violation" for i in issues)]
     unexpected: list[str] = []
@@ -601,7 +660,7 @@ async def run_case(case: GoldenCase, pack: RulePack | None = None) -> CaseResult
             if got != want:
                 cl_diff.append(f"checklist[{no}].status 实际 {got} ≠ 期望 {want}")
     ok = not (missing or unexpected or absent or cl_diff)
-    return CaseResult(case=case.case, desc=case.desc, strict=case.strict, ok=ok, missing=missing, unexpected=unexpected, absent_violations=absent, checklist_diff=cl_diff, n_issues=len(issues))
+    return CaseResult(case=case.case, desc=case.desc, strict=case.strict, ok=ok, missing=missing, unexpected=unexpected, absent_violations=absent, checklist_diff=cl_diff, hits=hits, n_issues=len(issues))
 
 
 async def run_all(cases: list[GoldenCase], pack: RulePack | None = None) -> list[CaseResult]:
@@ -609,7 +668,7 @@ async def run_all(cases: list[GoldenCase], pack: RulePack | None = None) -> list
     return [await run_case(c, pack) for c in cases]
 ```
 
-实现注记：`_status_for`/消化循环若与测试断言冲突，以「命中=verdict+severity+contains 全对」语义为准调实现，**不得放松测试**。
+实现注记：命中语义 =「规则 ∈ 主 id ∪ acceptable_rule_ids + verdict + entity + severity + contains 全对」；`_status_for`/消化循环若与测试断言冲突，以此语义为准调实现，**不得放松测试**。
 
 - [ ] **Step 4: runner 测试绿**（4 过）+ loader 测试仍绿。
 
@@ -643,6 +702,7 @@ async def test_golden_case(path):
 
 def test_rule_coverage_floor():
     pack = load_rulepack(PACK)
+    # 只数主 rule_id;acceptable_rule_ids 是等价别名,不计地板(防靠别名凑覆盖,spec §1.5)
     covered = {e.rule_id for c in loader.load_cases() for e in c.expect_issues}
     pack_ids = {r.id for r in pack.rules}
     missing_floor = EXPECTED_COVERAGE - covered
@@ -687,15 +747,24 @@ from app.extensions.bid_review.golden.report import build_report, render_markdow
 def test_report_counts_and_markdown():
     from app.extensions.bid_review.golden.schema import CaseResult
     results = [
-        CaseResult(case="a", desc="", strict=False, ok=True, missing=[], unexpected=[], absent_violations=[], checklist_diff=[]),
+        CaseResult(case="a", desc="", strict=False, ok=True, missing=[], unexpected=[], absent_violations=[], checklist_diff=[], hits={"L1-009": 1}),
         CaseResult(case="b", desc="", strict=False, ok=False, missing=["期望未命中[L1-009 fatal violation] 未命中: contains=['x']"], unexpected=[], absent_violations=["不应报而报[L1-011]"], checklist_diff=[]),
     ]
     rep = build_report(results)
     assert rep["total"] == 2 and rep["failed"] == 1
-    assert rep["per_rule"]["L1-009"]["fn"] == 1
+    assert rep["per_rule"]["L1-009"]["tp"] == 1 and rep["per_rule"]["L1-009"]["fn"] == 1
     assert rep["per_rule"]["L1-011"]["absent_fp"] == 1
     md = render_markdown(rep)
     assert "| 规则 | TP | FN | 误报(absent) |" in md and "L1-009" in md and "FAIL" in md
+
+
+def test_report_zero_hit_flag():
+    """有题引用但四类计数全 0 → zero_hit 死规则告警(spec §1.5)。"""
+    from app.extensions.bid_review.golden.schema import CaseResult, Expectation, GoldenCase
+    res = CaseResult(case="a", desc="", strict=False, ok=True, missing=[], unexpected=[], absent_violations=[], checklist_diff=[])
+    c = GoldenCase(case="a", desc="", fields={}, expect_issues=[Expectation(rule_id="L1-001", severity="fatal")], expect_absent=[])
+    rep = build_report([res], [c])
+    assert rep["per_rule"]["L1-001"]["zero_hit"] is True
 
 
 def test_cli_main_exit_codes(tmp_path, capsys):
@@ -718,9 +787,11 @@ unexpected=strict 期望外。"""
 from app.extensions.bid_review.golden.schema import CaseResult
 
 
-def build_report(results: list[CaseResult]) -> dict:
+def build_report(results: list[CaseResult], cases: list[GoldenCase] | None = None) -> dict:
     per: dict[str, dict] = {}
     for r in results:
+        for rid, n in (r.hits or {}).items():  # tp 来自 runner 消化命中计数
+            per.setdefault(rid, {"tp": 0, "fn": 0, "absent_fp": 0, "unexpected": 0})["tp"] += n
         for line in r.missing:
             rid = line.split("[", 1)[1].split("]", 1)[0].split()[0]
             per.setdefault(rid, {"tp": 0, "fn": 0, "absent_fp": 0, "unexpected": 0})["fn"] += 1
@@ -730,15 +801,21 @@ def build_report(results: list[CaseResult]) -> dict:
         for line in r.unexpected:
             rid = line.split("[", 1)[1].split("]", 1)[0].split()[0]
             per.setdefault(rid, {"tp": 0, "fn": 0, "absent_fp": 0, "unexpected": 0})["unexpected"] += 1
-    covered_tp = [rid for r in results if r.ok for line in []]  # 占位防误用;tp 由 hit 计数填
+    referenced: set[str] = set()
+    for c in cases or []:
+        referenced.update(e.rule_id for e in c.expect_issues)
+        referenced.update(c.expect_absent)
+    for rid in referenced:
+        m = per.setdefault(rid, {"tp": 0, "fn": 0, "absent_fp": 0, "unexpected": 0})
+        m["zero_hit"] = (m["tp"] + m["fn"] + m["absent_fp"] + m["unexpected"]) == 0  # 死规则/题失效告警(spec §1.5 采纳)
     return {"total": len(results), "failed": sum(1 for r in results if not r.ok), "per_rule": per, "results": [r.__dict__ for r in results]}
 
 
 def render_markdown(rep: dict) -> str:
-    lines = ["# 金标准成绩单", "", f"题数 {rep['total']} | 失败 {rep['failed']}", "", "| 规则 | TP | FN | 误报(absent) | 期望外(strict) |", "|---|---|---|---|---|"]
+    lines = ["# 金标准成绩单", "", f"题数 {rep['total']} | 失败 {rep['failed']}", "", "| 规则 | TP | FN | 误报(absent) | 期望外(strict) | zero_hit |", "|---|---|---|---|---|---|"]
     for rid in sorted(rep["per_rule"]):
         m = rep["per_rule"][rid]
-        lines.append(f"| {rid} | {m['tp']} | {m['fn']} | {m['absent_fp']} | {m['unexpected']} |")
+        lines.append(f"| {rid} | {m['tp']} | {m['fn']} | {m['absent_fp']} | {m['unexpected']} | {m.get('zero_hit', '')} |")
     lines.append("")
     for r in rep["results"]:
         mark = "PASS" if r["ok"] else "FAIL"
@@ -746,7 +823,7 @@ def render_markdown(rep: dict) -> str:
     return "\n".join(lines) + "\n"
 ```
 
-tp 填法（替换占位行）：build_report 追加第二遍——对每 case 的 expect_issues 命中数需 runner 回传。**约定：CaseResult 增字段 `hits: dict[str, int]`（Task 3 的 dataclass 加 `hits: dict = field(default_factory=dict)`，run_case 消化循环里 `res hits[e.rule_id] += 1`），build_report 里 `per[rid]["tp"] += r.hits.get(rid, 0)`。** 测试相应补 `hits` 断言。（此为本任务的 Task 3 回改点，改动≤3 行。）
+tp 来源：`CaseResult.hits`（Task 2 schema 已定义，Task 3 run_case 消化命中时累计）在 build_report 开头并入 `tp`；`zero_hit` 需要 cases 里的引用关系（expect_issues ∪ expect_absent），故 CLI 传 `build_report(results, cases)`。
 
 `__main__.py`：
 
@@ -773,7 +850,7 @@ def main(argv=None) -> int:
         print(f"题库加载失败: {exc}", file=sys.stderr)
         return 1
     results = asyncio.run(run_all(cases))
-    rep = build_report(results)
+    rep = build_report(results, cases)
     print(render_markdown(rep))
     if args.out:
         from pathlib import Path
@@ -925,6 +1002,16 @@ git commit -m "feat(bid-review): 全管线冒烟 smoke-1-basic——docs 夹具+
 流程(spec §9):每题①按 trigger 表构造最小字段 → ②跑引擎取现输出起草 expect_issues →
 ③逐处 diff 裁决:引擎对→修标注 / 标注对→修引擎 bug(buglog 记录,此处记编号与结论) →
 ④入库后该题必须绿。裁决格式:`| case | 裁决 | 结论/bug编号 |`
+
+## 四态判定决策表(L2 专项题裁决依据,口径唯一,spec §1.5 采纳)
+
+| 事实 | 金标准态 |
+|---|---|
+| 检索过且确认不存在 | MISSING |
+| 存在但子件/份数不足 | PARTIAL |
+| 存在且齐备 | MATCHED(PRESENT) |
+| 解析失败/分组失败/语义低置信 | UNKNOWN(引擎侧=need_human) |
+| 抽取失败被误判为缺失 | 标注错误示范,不入库(记录进培训集) |
 ```
 
 - [ ] **Step 1: 逐题建 YAML**。完整样例两道（其余按表+同构）：
@@ -987,6 +1074,28 @@ severity 以该规则 yaml 实际 `severity` 为准（起草时从 rulepack 读�
 
 （表计 17 行 + L1-009 样例 = 18……实现者注意：L1 全集 = 上表并集去重共 **20 个 id**，缺漏以 rulepack 实际 L1 id 清单为准——`{r.id for r in pack.rules if r.layer=="L1"}`，逐个建题，禁漏。）
 
+**A 家族干净基线 ×3**（`A-clean-l1-price.yaml` / `A-clean-l1-qual.yaml` / `A-clean-l1-mixed.yaml`；`strict: true` + `expect_issues: []` → 任何 violation 即红，need_human 不计余量，sem/hyb 默认安静应答天然零产出——FP 探针，spec §1.5/§5.5）。样例：
+
+```yaml
+case: A-clean-l1-price
+desc: 干净基线——价格族全达标,期望零 violation(A 家族 FP 探针)
+fields:
+  bid.total_price: 980000.0
+  tender.max_price: 1000000.0
+  bid.price_includes_tax: true
+  tender.price_includes_tax: true
+  bid.detail_rows:
+    - {name: 设备A, qty: 2, price: 400000.0, total: 800000.0}
+    - {name: 设备B, qty: 1, price: 180000.0, total: 180000.0}
+  bid.subtotal: 980000.0
+  bid.total_price_words: "玖拾捌万元整"
+expect_issues: []
+expect_absent: []
+strict: true
+```
+
+（steps 表达式以 rulepack check 为准起草；校准时 A 题若红，逐条裁决是引擎误报还是字段夹具不达标——这正是 A 族的价值。）
+
 - [ ] **Step 2: 校准循环** —— 每题：`PYTHONPATH=. uv run python -c "import asyncio,json;from app.extensions.bid_review.golden.loader import load_case;from app.extensions.bid_review.golden.runner import run_case;from app.extensions.bid_review.engine.rule_runner import load_rulepack;print(json.dumps([i for i in asyncio.run(run_case(load_case('<path>'),load_rulepack()) and [] ) ] ))"` 不可用时直接写临时脚本跑 `evaluate_fields` 打印 issues → 起草 expect → 裁决 → 改 YAML。裁决逐题记入 CALIBRATION.md；真 bug 走 buglog 并在题库外修（不得为过题改生产代码——**金标准独立性铁律**：只有"标注错"才改 YAML，"引擎错"须先修引擎再让题绿）。
 - [ ] **Step 3: EXPECTED_COVERAGE 扩表** —— 测试文件里并入 L1 全 20 id；`pytest tests/test_bid_review_golden.py` 全绿。
 - [ ] **Step 4: Commit**
@@ -1029,7 +1138,7 @@ git commit -m "test(bid-review): 金标准批B——L3 层 16 题入库校准(�
 
 ---
 
-### Task 9: 建库批 C —— L2 专项 strict 题 + 误报抑制题
+### Task 9: 建库批 C —— L2 专项 strict 题 + E 族达标负例（×6）
 
 **Files:**
 - Create: `golden/cases/L2-*.yaml`（≥8）+ `golden/cases/FP-suppress-*.yaml`（≥2）
@@ -1046,10 +1155,14 @@ L2 专项题清单（全部 `strict: true`；strict 断言=期望内消化后**�
 7. `L2-cross-dedup-keep-most-severe.yaml` —— 同一附件实体同触 L2-020(fatal) 与 L2-024(major)：expect_issues 断 L2-020 fatal 命中；list 端点投影的 related_issues 不在 runner 断言面（纯函数面），checklist 断言 unknown_count=0
 8. `L2-020-flat-no-subnote.yaml` —— 平件（无 sub_items）无 UNKNOWN、无子件注（P2 回归）
 
-误报抑制题（非 strict；expect_issues 尽量空、expect_absent 点名）：
+E 族达标负例 ×6（非 strict；expect_issues 尽量空、expect_absent 点名——「近似但不该报」；E 与 B 等量级才不虚高精确率，spec §1.5/§5.5）：
 
-9. `FP-suppress-l1-005-valid.yaml` —— validity 满足 → expect_absent: [L1-005]
-10. `FP-suppress-l1-009-within-max.yaml` —— 总价=限价 → expect_absent: [L1-009]
+9. `E-l1-005-validity-satisfied.yaml` —— validity=要求 → expect_absent: [L1-005]
+10. `E-l1-009-within-max.yaml` —— 总价=限价 → expect_absent: [L1-009]
+11. `E-l1-015-warranty-equal.yaml` —— 质保=下限 → expect_absent: [L1-015]
+12. `E-l1-019-no-alternative.yaml` —— 备选报价为空 → expect_absent: [L1-019]
+13. `E-l3-016-version-consistent.yaml` —— 版本出现处全一致 → expect_absent: [L3-016]
+14. `E-l2-020-all-matched.yaml` —— 附件全齐备 → expect_absent: [L2-020, L2-024]
 
 （P2 语义细节以 `backend/tests/test_bid_review_attachments.py`/`test_bid_review_grouping.py` 既有断言为连线事实；sub_items 字段形状照抄该处夹具。）
 
@@ -1057,7 +1170,7 @@ L2 专项题清单（全部 `strict: true`；strict 断言=期望内消化后**�
 
 ```bash
 git add backend/app/extensions/bid_review/golden/cases backend/app/extensions/bid_review/golden/CALIBRATION.md backend/tests/test_bid_review_golden.py
-git commit -m "test(bid-review): 金标准批C——L2 专项 strict 题(四态/子件三通道/去重 keep most_severe/钳位)+误报抑制题,覆盖率翻全集精确相等"
+git commit -m "test(bid-review): 金标准批C——L2 专项 strict 题(四态/子件三通道/去重 keep most_severe/钳位)+E 族达标负例×6,覆盖率翻全集精确相等"
 ```
 
 ---
@@ -1072,6 +1185,6 @@ git commit -m "test(bid-review): 金标准批C——L2 专项 strict 题(四态/
 
 ## Self-Review 结论（已跑）
 
-1. **Spec 覆盖**：§3 目录→File Structure；§4→T1；§5→T2；§6→T3（verdict 分桶/strict 只数 violation = spec §6 歧关裁定）；§7→T3/T4/T5；§8→T6；§9→T7-9 Step 0/2；§10→T4 地板+T9 精确相等+T10；§11→loader fail-fast/runner 隔离透传/CLI exit——全覆盖。
+1. **Spec 覆盖**：§3 目录→File Structure；§4→T1；§5→T2；§6→T3（verdict 分桶/strict 只数 violation = spec §6 歧关裁定）；§7→T3/T4/T5；§8→T6；§9→T7-9 Step 0/2；§10→T4 地板+T9 精确相等+T10；§11→loader fail-fast/runner 隔离透传/CLI exit；§1.5 对照采纳→T2(entity/acceptable/hits 字段)+T3(梯度判定+两机制测试)+T5(zero_hit)+T7(A 族×3+CALIBRATION 四态决策表)+T9(E 族×6)——全覆盖。
 2. **占位符扫描**：T1 Step 3 两处「原文搬入」是既有代码的移动而非新写占位（源行号已给）；T7 表 `？` 项为"起草时从 rulepack 读"的显式指令而非 TBD；其余步骤均含完整内容。
-3. **类型一致性**：`CaseResult.hits`（T5 引入）需 T3 dataclass 同步加字段——已写进 T5 实现注记（Task 3 回改点 ≤3 行）；`run_smoke_dir`/`_fields_from_stub` 命名前后一致；`EXPECTED_COVERAGE` 生命周期（T4 地板→T7/8/9 扩表→T9 翻精确）闭环。
+3. **类型一致性**：`CaseResult.hits` 已在 T2 schema 定义、T3 run_case 累计、T5 build_report 消费（无回改点）；`_rule_pool`/`_issue_matches`/`_status_for` 命名前后一致；`run_smoke_dir`/`_fields_from_stub` 命名前后一致；`build_report(results, cases)` 签名与 `__main__` 调用一致；`EXPECTED_COVERAGE` 生命周期（T4 地板→T7/8/9 扩表→T9 翻精确）闭环；覆盖率地板只数主 rule_id（acceptable_rule_ids 不计——schema 注释+T4 注释+spec §5.5 三处一致）。

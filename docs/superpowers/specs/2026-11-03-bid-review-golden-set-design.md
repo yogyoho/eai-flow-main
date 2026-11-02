@@ -7,7 +7,7 @@
 
 **做**：字段层声明式题库（34 条规则每条 ≥1 题 + L2 专项 strict 题 + 定向误报抑制题）、全管线冒烟 1-2 题（stub extract，钉接线不钉 LLM）、独立评测核（与生产同一分派逻辑）、pytest 回归门、CLI 成绩单（markdown+JSON）、半自动建库校准流程与记录。
 
-**不做**（挂账）：gates 阈值红线（先观测拿基线，属后继阶段）｜规则效果页前端展示成绩单｜复核回流自动转正管道（先手工：feedback 导出→手工出题）｜真题录制/灌入工具｜字段级置信门禁｜真 LLM 冒烟进 CI（提供手工命令）。
+**不做**（挂账）：gates 阈值红线（先观测拿基线，属后继阶段）｜规则效果页前端展示成绩单｜复核回流自动转正管道（先手工：feedback 导出→手工出题）｜真题录制/灌入工具｜字段级置信门禁｜真 LLM 冒烟进 CI（提供手工命令）｜评测集治理三件（dev/test 分离、tender_hash 腐化标记 stale、季度轮换 20%）——触发条件：题库 >100 条或多人标注｜双人独立标注 + Kappa≥0.75 质量门（当前单标注+引擎草稿仲裁够用）｜统计显著性回归（McNemar/bootstrap CI + baseline 版本化）——接 gates 时一并上｜扩容至 100 条按 A/B/C/D/E 配比（本版 ~50 条已锁结构，扩充方向由归因分布驱动）。
 
 ## 1. 用户决策记录
 
@@ -17,6 +17,25 @@
 | 覆盖面 | 全 34 条规则每条 ≥1 题；L2 两条另加专项题（四态/子件分组/跨层去重/UNKNOWN→need_human） |
 | 门槛形态 | pytest 回归门（不符即红）+ CLI 成绩单（信息型）；阈值红线后置 |
 | 架构 | 声明式题库 + 独立评测器 + 双出口；复核回流作为灌题渠道二（手工） |
+
+## 1.5 外部设计对照与采纳裁决（2026-11-03）
+
+对照一份三层归因评测设计（抽取/判定/呈现分层指标、oracle/e2e 双跑、100 条配比、匹配器打分、state 代价矩阵、统计显著性门禁、数据集治理）。逐条裁决：
+
+| 提案要点 | 裁决 | 理由 |
+|---|---|---|
+| oracle/e2e 双跑归因 | **架构已天然成立，术语对齐** | 本 spec「字段层为主」= 其 oracle 模式（字段夹具 = 金标准抽取，判定层在给定抽取下评）；冒烟题 = e2e(stub)。真抽取 e2e 与「两套数字相减归因解析层」随挂账的 e2e 阶段落地 |
+| 题库家族配比 A/B/C/D/E | **采纳结构** | A 干净基线 ×3、B 单点注入 = 34 规则题、C 四态 = L2 专项 strict、D 交叉去重含于 C、E 达标负例 2→6（E 与 B 等量级出现，否则精确率虚高——采纳其配比原则）；扩到 100 条挂账 |
+| `acceptable_rule_ids` 等价规则集 | **采纳** | 同一事实允许多条规则命中（业绩数量不足 = L1-003 或 L2-024），任一命中算 TP，避免规则实现细节污染指标；schema + 匹配器各 +1 字段（等价 id 不计入覆盖率地板） |
+| entity 实体级匹配 | **采纳** | L2 同规则逐实体报（每附件一条），期望不带 entity 时消费歧义；期望加 entity 子串过滤 entity_keys+message |
+| 匹配器打分 / 匈牙利一对一 | **不采纳（过重）** | 每题问题数 ≤3，逐期望消化已足够；匈牙利匹配留给题库上规模后 |
+| state 代价矩阵加权 F1 | **不采纳（过重）** | verdict 不符已在 diff 单列可见（期望按 verdict→severity→contains→missing 梯度归类，错哪个维度一眼可见）；四态混淆矩阵随 L2 专项题自然产出 |
+| 归因标签体系（EXTRACT_MISS 等 9 类） | **部分采纳** | oracle 模式下无解析层，归因收敛为 CASEResult 四类 diff 本身（missing=漏报 / unexpected=误报 / absent_violations=误抑制面 / checklist_diff=投影错）；report 加类别分布计数，不另造标签体系 |
+| 四态判定决策表（标注口径唯一） | **采纳** | 写入 CALIBRATION.md 头部作裁决依据（检索确认不存在→MISSING / 不足→PARTIAL / 齐备→PRESENT / 分组或解析失败→UNKNOWN） |
+| zero_hit / precision<0.5 死规则告警 | **采纳 zero_hit** | CLI 成绩单加 zero_hit 列（有题引用但四类计数全 0 = 死规则或题失效）；precision 告警随线上 metrics 阶段 |
+| gates 阈值表 + McNemar/bootstrap | **维持挂账** | 与原决策一致：先观测拿基线；`--out` JSON 已具 baseline 版本化雏形 |
+| dev/test 分离、Kappa 双人标注、防泄漏、腐化监控、回流闭环 | **挂账** | 单标注 + 引擎草稿仲裁 + CALIBRATION 记录满足 v1；触发条件见 §0 |
+| L4 专属指标族 | **N/A** | 本引擎无 L4 层（rulepack 34 条 = L1/L2/L3） |
 
 ## 2. 现状工程事实（设计依据）
 
@@ -76,6 +95,8 @@ expect_issues:                         # 应报：rule_id + severity + message �
   - rule_id: L2-020
     severity: fatal
     contains: ["E-2", "中标通知书"]
+    entity: "E-2"                      # 可选：实体消歧子串（同规则逐实体多条时必带）
+    acceptable_rule_ids: []            # 可选：等价规则集（任一命中即算命中）
 expect_absent: [L1-005]                # 定向误报抑制：点名规则不得报
 strict: false                          # 断言模式，见 §6
 checklist:                             # 可选：L2 题附加核对表投影期望
@@ -85,12 +106,24 @@ checklist:                             # 可选：L2 题附加核对表投影期
 - `fields` 校验：loader 校验顶层键 ⊆ rulepack 全部规则 `inputs` 并集 ∪ 投影端点已知路径（attachment_checklist / score_coverage / deviations 消费的字段）——拼错字段路径→加载报错，防"夹具拼错→规则零输入→永不触发"的假题。
 - sem/hybrid 规则的题可带 `model_script:`（映射 `{<rule_id>: <应答JSON>}`，评测核按 rule_id 取用，构成确定性 scripted model_fn）；含 sem/hybrid 题而缺 script → loader 报错。
 - message 断言用 `contains` 关键词而非全文等值（message_tpl 措辞允许演进；rule_id+severity+关键词已足够钉住语义）。
+- `entity`（可选）：实体消歧子串，对 issue 的 `entity_keys` + `message` 匹配——L2 同规则逐实体多条（每附件一条）时期望必须点名实体，否则逐期望消化有歧义。
+- `acceptable_rule_ids`（可选）：等价规则集——同一事实允许多条规则命中（业绩数量不足 = L1-003 或 L2-024），任一命中即算命中；等价 id 不计入覆盖率地板（防「靠别名凑覆盖」）。
+
+## 5.5 题库家族配比（对照裁决后定版，~50 条）
+
+| 家族 | 数量 | 内容 | 断言形态 |
+|---|---|---|---|
+| A 干净基线 | 3 | 输入齐备全达标（L1 价格族/资质证照族/混合族各 1），期望零 violation——FP 探针 | `strict: true` + `expect_issues: []` |
+| B 单点注入 | 34 | 每规则 ≥1 题触发（批 A/批 B） | 非严格定向 |
+| C 四态/机制专项 | 8 | L2 strict：缺失/PARTIAL/齐备+UNKNOWN 降级/子件三通道/去重 keep most_severe/钳位 | `strict: true` |
+| D 交叉去重 | （含于 C） | keep most_severe + expect_absent 抑制断言 | strict |
+| E 达标负例 | 6 | 「近似但不该报」：L1-005/L1-009/L1-015 达标、L1-019 备选为空、L3-016 版本一致、L2 全齐备 | `expect_absent` 点名 |
 
 ## 6. 断言模式（已批准的取舍）
 
 - **默认 `strict: false`（宽松定向）**：断言 ①expect_issues 逐条命中（rule_id+severity+contains 全对才算命中）②expect_absent 零报。期望外 issue 忽略——一题字段喂全部 34 条规则，严格模式要求把顺带触发的问题全部标注，标注成本 ×34 题。
 - **`strict: true`（L2 专项题用）**：任何期望外 issue 都算 diff。L2 题字段面小完全可控，配得起严格模式；L2 是去重/分组/四态机制的主战场，严格才有牙。
-- 判定顺序：先按 rule_id 匹配 expect_issues（多对多：同 rule_id 多条 issue 时按 severity+contains 逐一消化），再查 expect_absent，最后 strict 模式数余量。
+- 判定顺序：先按 rule_id（∪ acceptable_rule_ids）匹配 expect_issues（多对多：同 rule_id 多条 issue 时按 entity+severity+contains 逐一消化；未命中时期望按「verdict→severity→contains→missing」梯度归类，diff 行直接指出错的是哪个维度），再查 expect_absent，最后 strict 模式数余量。
 
 ## 7. 评测核调用与双出口
 
