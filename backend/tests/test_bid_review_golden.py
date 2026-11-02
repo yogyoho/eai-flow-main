@@ -331,3 +331,26 @@ def test_cli_main_exit_codes(tmp_path, capsys):
     assert rc == 0 and out.exists()
     data = json.loads(out.read_text(encoding="utf-8"))
     assert data["total"] >= 1
+
+
+def test_cli_main_failure_paths(capsys, monkeypatch):
+    from app.extensions.bid_review.golden import __main__ as cli_main
+    from app.extensions.bid_review.golden.schema import CaseResult
+
+    def _boom():
+        raise ValueError("boom")
+
+    # 加载失败 → stderr + rc 1(patch 目标=__main__ 的 import 本名 load_cases,非 loader 模块属性)
+    monkeypatch.setattr(cli_main, "load_cases", _boom)
+    assert cli_main.main(["--report", "md"]) == 1
+    assert "题库加载失败" in capsys.readouterr().err
+    # 有题失败 → rc 1(成绩单仍输出;main 走 asyncio.run(run_all(cases)),fake 须回协程)
+    bad = CaseResult(case="x", desc="", strict=False, ok=False, missing=["期望未命中[L1-009 fatal violation] 未命中: contains=[]"], unexpected=[], absent_violations=[], checklist_diff=[])
+
+    async def _fake_run_all(cases, pack=None):
+        return [bad]
+
+    monkeypatch.setattr(cli_main, "load_cases", lambda: [])
+    monkeypatch.setattr(cli_main, "run_all", _fake_run_all)
+    assert cli_main.main(["--report", "md"]) == 1
+    assert "FAIL" in capsys.readouterr().out
