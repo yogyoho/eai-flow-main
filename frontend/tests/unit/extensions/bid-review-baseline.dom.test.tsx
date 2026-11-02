@@ -408,6 +408,10 @@ const ATTACH_BASELINES = [
           clause: "第三章3.4",
           mandatory: "★",
           min_count: 3,
+          sub_items: [
+            { no: "E-1", name: "业绩合同" },
+            { no: "E-2", name: "中标通知书" },
+          ],
         },
         {
           no: "ATT-F-001",
@@ -448,6 +452,10 @@ describe("bid-review BaselineView L2 P1 附件双卡(EAI-CUSTOM 2026-11-02)", ()
     expect(await screen.findByText("附件要求")).toBeTruthy();
     // 同名条目在两卡各一份(要求卡 + 清单卡)→ findAll 恰 2
     expect(screen.getAllByText("类似业绩证明").length).toBe(2);
+    // L2 P2 子件注(要求卡行内 hd-sub;" / " 连接,filter(Boolean))
+    expect(
+      screen.getByText(/子件:E-1 业绩合同 \/ E-2 中标通知书/),
+    ).toBeTruthy();
     expect(screen.getByText("投标附件清单")).toBeTruthy();
     expect(screen.getByText("第三章3.4")).toBeTruthy();
     expect(screen.getByText("118")).toBeTruthy(); // 起始页列

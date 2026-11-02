@@ -529,3 +529,178 @@ describe("bid-review ResultsView L2 P1 附件核对表(EAI-CUSTOM 2026-11-02)", 
     );
   });
 });
+
+// ── L2 P2 附件子件分组 + 跨层去重(EAI-CUSTOM 2026-11-02 spec §7)──
+
+const P2_CHECKLIST = {
+  counts: {
+    required: 2,
+    matched: 1,
+    partial: 0,
+    missing: 0,
+    unknown: 1,
+    extra: 0,
+  },
+  items: [
+    {
+      no: "3",
+      name: "资格审查文件",
+      mandatory: "★",
+      min_count: null,
+      found: 1,
+      status: "UNKNOWN",
+      clause: "第三章3.1",
+      refs: [],
+      sub_results: [
+        { no: "3.1", name: "营业执照", found: 1, status: "MATCHED" },
+        { no: "3.2", name: "资质证书", found: 0, status: "MISSING" },
+      ],
+    },
+    {
+      no: "A-1",
+      name: "投标函",
+      mandatory: "★",
+      min_count: null,
+      found: 1,
+      status: "MATCHED",
+      clause: null,
+      refs: [],
+      sub_results: [],
+    },
+  ],
+  extra_items: [],
+};
+
+const P2_ISSUES = [
+  {
+    id: "i1",
+    task_id: "t1",
+    rule_id: "L2-020",
+    layer: "L2",
+    severity: "fatal",
+    verdict: "violation",
+    clause_id: null,
+    message: "缺少附件 A-2",
+    fix: "",
+    evidence: [],
+    dedup_key: "k1",
+    need_human: false,
+    confidence: 1,
+    review_state: "unresolved",
+    created_at: "2026-11-02T00:00:00Z",
+    entity_keys: ["attachment:A-2"],
+    grouped_into: null,
+    related_issues: [
+      {
+        id: "i2",
+        rule_id: "L3-005",
+        layer: "L3",
+        severity: "minor",
+        message: "业绩证明表述不一致",
+      },
+    ],
+  },
+  {
+    id: "i2",
+    task_id: "t1",
+    rule_id: "L3-005",
+    layer: "L3",
+    severity: "minor",
+    verdict: "violation",
+    clause_id: null,
+    message: "业绩证明表述不一致",
+    fix: "",
+    evidence: [],
+    dedup_key: "k2",
+    need_human: false,
+    confidence: 1,
+    review_state: "unresolved",
+    created_at: "2026-11-02T00:01:00Z",
+    entity_keys: ["attachment:A-2"],
+    grouped_into: "i1",
+    related_issues: [],
+  },
+];
+
+describe("bid-review ResultsView L2 P2 子件分组+跨层去重(EAI-CUSTOM 2026-11-02)", () => {
+  beforeEach(() => {
+    calls.length = 0;
+    responder = () => jsonRes({});
+  });
+
+  afterEach(() => {
+    cleanup();
+  });
+
+  it("附件核对表:UNKNOWN→需人工 pill+第六格 counts+子件明细行", async () => {
+    responder = (path) => {
+      if (path.endsWith("/tasks/t1")) return jsonRes(TASK);
+      if (path.endsWith("/issues")) return jsonRes({ items: [] });
+      if (path.endsWith("/rulepacks")) return jsonRes([]);
+      if (path.includes("/attachment_checklist")) return jsonRes(P2_CHECKLIST);
+      if (path.includes("/score_coverage"))
+        return jsonRes({ total: 0, covered: 0, items: [] });
+      if (path.includes("/docs/") && path.includes("/content"))
+        return jsonRes({ segments: [] });
+      return jsonRes({}, 404);
+    };
+    renderWorkbench();
+
+    // 需人工文本恰两处:UNKNOWN 行 pill(pill-gray)+ metric-strip 第六格
+    // 标签 → getAllByText 消歧,断言其一为 pill-gray(不弱化为裸 truthy)
+    const human = await screen.findAllByText("需人工");
+    expect(human.length).toBe(2);
+    expect(
+      human.filter((el) => el.className.includes("pill-gray")).length,
+    ).toBe(1);
+    // 子件明细行(✓/✗ 随 sub_results.found," · " 连接)
+    expect(
+      screen.getByText(/子件:3.1 营业执照 ✓ · 3.2 资质证书 ✗/),
+    ).toBeTruthy();
+    // UNKNOWN 提供情况如实呈现「无法自动分组」
+    expect(screen.getByText("无法自动分组")).toBeTruthy();
+    // 第六格:卡内 metric-strip 需人工值 = counts.unknown(按标签定位取值,
+    // 裸 querySelector(".metric-cell .m-v") 只会命中第一格)
+    const card = screen.getByText("附件核对表").closest(".card");
+    const cells = Array.from(card?.querySelectorAll(".metric-cell") ?? []);
+    expect(cells.length).toBe(6);
+    const unknownCell = cells.find(
+      (c) => c.querySelector(".m-lb")?.textContent === "需人工",
+    );
+    expect(unknownCell?.querySelector(".m-v")?.textContent).toBe("1");
+  });
+
+  it("问题清单:grouped 行隐藏,keep 卡渲染关联问题 chip", async () => {
+    responder = (path) => {
+      if (path.endsWith("/tasks/t1")) return jsonRes(TASK);
+      if (path.endsWith("/issues"))
+        return jsonRes({ items: P2_ISSUES, summary: {} });
+      if (path.endsWith("/rulepacks")) return jsonRes([]);
+      if (path.includes("/attachment_checklist"))
+        return jsonRes({
+          counts: {
+            required: 0,
+            matched: 0,
+            partial: 0,
+            missing: 0,
+            unknown: 0,
+            extra: 0,
+          },
+          items: [],
+          extra_items: [],
+        });
+      if (path.includes("/score_coverage"))
+        return jsonRes({ total: 0, covered: 0, items: [] });
+      if (path.includes("/docs/") && path.includes("/content"))
+        return jsonRes({ segments: [] });
+      return jsonRes({}, 404);
+    };
+    renderWorkbench();
+
+    // keep 卡(L2-020)可见并带关联 chip(次要 = sevPillBrx minor 中文标签);
+    // grouped 行(L3-005 独立卡)由展示层隐藏——独立 message 全文不出现
+    expect(await screen.findByText(/关联问题 1/)).toBeTruthy();
+    expect(screen.getByText(/L3-005 次要\] 业绩证明表述不一致/)).toBeTruthy();
+    expect(screen.queryByText(/^业绩证明表述不一致$/)).toBeNull();
+  });
+});
