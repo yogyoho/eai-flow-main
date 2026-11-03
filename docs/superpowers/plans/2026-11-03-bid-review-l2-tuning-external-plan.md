@@ -24,7 +24,7 @@
 - Modify: `backend/app/extensions/bid_review/engine/attachments.py`(:40 常量退役/:60 两参/:76/:171 门)
 - Modify: `backend/tests/test_bid_review_attachments.py`(:346 seam 迁移)
 
-- [ ] **Step 2.1: 先写测试** `backend/tests/test_bid_review_tuning.py`
+- [x] **Step 2.1: 先写测试** `backend/tests/test_bid_review_tuning.py`
 
 ```python
 """tuning loader 单测(L2 调参外置 spec 2026-11-03 §4)。seam=monkeypatch _FILE+_cache。"""
@@ -81,7 +81,7 @@ def test_bool_rejected(isolated_tuning: Path) -> None:
     assert tun.get("evidence_top_k") == 3  # bool 是 int 子类,显式拒
 ```
 
-- [ ] **Step 2.2: 实现 loader** `backend/app/extensions/bid_review/engine/tuning.py`
+- [x] **Step 2.2: 实现 loader** `backend/app/extensions/bid_review/engine/tuning.py`
 
 ```python
 """bid_review 引擎可调参数(EAI-CUSTOM,L2 调参外置 spec 2026-11-03 §1):
@@ -150,9 +150,9 @@ def get(key: str) -> float | int:
     return _load()[key]
 ```
 
-- [ ] **Step 2.3: 验红→验绿** 先跑测试(模块不存在收集失败=红)→落 loader→`PYTHONPATH=. uv run pytest tests/test_bid_review_tuning.py -v` 5 passed。
+- [x] **Step 2.3: 验红→验绿** 先跑测试(模块不存在收集失败=红)→落 loader→`PYTHONPATH=. uv run pytest tests/test_bid_review_tuning.py -v` 5 passed。
 
-- [ ] **Step 2.4: yaml 默认文件** `engine/dicts/tuning.yaml`
+- [x] **Step 2.4: yaml 默认文件** `engine/dicts/tuning.yaml`
 
 ```yaml
 # bid_review 引擎调参(L2 调参外置 spec 2026-11-03 §2;默认值=引擎现状,改此文件即生效,
@@ -162,7 +162,7 @@ evidence_min_sim: 0.30    # 负证据 closest 滤噪下限
 evidence_top_k: 3         # closest 最多条数
 ```
 
-- [ ] **Step 2.5: attachments.py 接线**——import 块加 `from . import tuning`;:40 `NEAR_MISS_GATE = 0.75` 删除(常量退役);:60 滤噪+截断改:
+- [x] **Step 2.5: attachments.py 接线**——import 块加 `from . import tuning`;:40 `NEAR_MISS_GATE = 0.75` 删除(常量退役);:60 滤噪+截断改:
 
 ```python
         "closest": [
@@ -174,7 +174,7 @@ evidence_top_k: 3         # closest 最多条数
 
 :76 与 :171 门判定改 `if cands and cands[0][0] >= float(tuning.get("near_miss_gate")):`(:171 行尾注释「门判定用 raw ratio,与平件门同规」保留);:56/:162/:187 文档串中 NEAR_MISS_GATE 措辞改 `near_miss_gate(tuning)`;相关行加 EAI-CUSTOM 注释引用 spec 日期+§。
 
-- [ ] **Step 2.6: :346 seam 迁移** `backend/tests/test_bid_review_attachments.py`——原 `monkeypatch.setattr(att, "NEAR_MISS_GATE", 0.90)` 改:
+- [x] **Step 2.6: :346 seam 迁移** `backend/tests/test_bid_review_attachments.py`——原 `monkeypatch.setattr(att, "NEAR_MISS_GATE", 0.90)` 改:
 
 ```python
     tuning_yaml = tmp_path / "tuning.yaml"
@@ -185,11 +185,11 @@ evidence_top_k: 3         # closest 最多条数
 
 (测试文件头部补 `from app.extensions.bid_review.engine import tuning as tun`;docstring 同步措辞;若该测试函数无 tmp_path 参数则补 fixture 参数。)
 
-- [ ] **Step 2.7: 全绿** `cd backend && PYTHONPATH=. uv run pytest tests/test_bid_review_tuning.py tests/test_bid_review_attachments.py tests/test_bid_review_rule_runner.py -v` 全过;tuning 5 新 + attachments 40(1 迁移)+ rule_runner 23。
+- [x] **Step 2.7: 全绿** `cd backend && PYTHONPATH=. uv run pytest tests/test_bid_review_tuning.py tests/test_bid_review_attachments.py tests/test_bid_review_rule_runner.py -v` 全过;tuning 5 新 + attachments 40(1 迁移)+ rule_runner 23。
 
-- [ ] **Step 2.8: golden CLI 零翻红** golden 跑批 52/52 exit 0(默认零翻红;命令同前切片)。
+- [x] **Step 2.8: golden CLI 零翻红** golden 跑批 52/52 exit 0(默认零翻红;命令同前切片)。
 
-- [ ] **Step 2.9: ruff + commit** `cd backend && uv run ruff check app/extensions/bid_review/engine/tuning.py app/extensions/bid_review/engine/attachments.py tests/test_bid_review_tuning.py tests/test_bid_review_attachments.py && uv run ruff format --check <同四文件>`;commit(显式路径):
+- [x] **Step 2.9: ruff + commit** `cd backend && uv run ruff check app/extensions/bid_review/engine/tuning.py app/extensions/bid_review/engine/attachments.py tests/test_bid_review_tuning.py tests/test_bid_review_attachments.py && uv run ruff format --check <同四文件>`;commit(显式路径):
 
 ```bash
 git add backend/app/extensions/bid_review/engine/tuning.py backend/app/extensions/bid_review/engine/dicts/tuning.yaml backend/app/extensions/bid_review/engine/attachments.py backend/tests/test_bid_review_tuning.py backend/tests/test_bid_review_attachments.py
@@ -198,10 +198,10 @@ git commit -m "feat(bid-review): L2-tuning① 引擎调参外置——engine/dic
 
 ### Task 3: 全量验证收尾
 
-- [ ] **Step 3.1**: bid_review 全家 pytest(基线 368 passed/6 skipped → +5=373/6)。
-- [ ] **Step 3.2**: 门移位演示数字记录(gate 0.90 时 sim0.83 候选不降级 MISSING 保留,负证据仍在)。
-- [ ] **Step 3.3**: spec 状态落定+plan 勾选 commit;controller push 重试至 `0\t0`。
-- [ ] **Step 3.4**: .wolf/memory+cerebrum、auto-memory、终报。
+- [x] **Step 3.1**: bid_review 全家 pytest(基线 368 passed/6 skipped → +5=373/6)。
+- [x] **Step 3.2**: 门移位演示数字记录(gate 0.90 时 sim0.83 候选不降级 MISSING 保留,负证据仍在)。
+- [x] **Step 3.3**: spec 状态落定+plan 勾选 commit;controller push 重试至 `0\t0`。
+- [x] **Step 3.4**: .wolf/memory+cerebrum、auto-memory、终报。
 
 ---
 
