@@ -17,7 +17,7 @@
 - Create: `frontend/src/extensions/bid-review/components/checklist-display.ts`
 - Test: `frontend/tests/unit/extensions/bid-review-checklist-display.test.ts`
 
-- [ ] **Step 1.1: 先写测试**(node env,平铺命名对齐既有 `bid-review-*` 系列)
+- [x] **Step 1.1: 先写测试**(node env,平铺命名对齐既有 `bid-review-*` 系列)
 
 ```ts
 import { describe, expect, test } from "@rstest/core";
@@ -73,9 +73,9 @@ describe("nearMissHintLines", () => {
 });
 ```
 
-- [ ] **Step 1.2: 验红** `cd frontend && pnpm test -- tests/unit/extensions/bid-review-checklist-display.test.ts`(或 `pnpm exec rstest <file>`——模块不存在,收集期失败即红)。
+- [x] **Step 1.2: 验红** `cd frontend && pnpm test -- tests/unit/extensions/bid-review-checklist-display.test.ts`(或 `pnpm exec rstest <file>`——模块不存在,收集期失败即红)。
 
-- [ ] **Step 1.3: 实现**
+- [x] **Step 1.3: 实现**
 
 ```ts
 /**
@@ -110,9 +110,9 @@ export function nearMissHintLines(
 
 注: `BidNegativeEvidence` 类型本任务先在 api.ts 声明(Task 2 Step 2.1 的类型块提前到本任务一起落,否则模块编译不过)——即 **Step 2.1 提前到 Task 1 执行**,Task 2 只做 ResultsView 接线。
 
-- [ ] **Step 1.4: 验绿** 同命令,`8 passed`。
-- [ ] **Step 1.5: prettier 定域** `cd frontend && pnpm exec prettier --write src/extensions/bid-review/components/checklist-display.ts tests/unit/extensions/bid-review-checklist-display.test.ts src/extensions/bid-review/api.ts`(**只准对这三个文件**,禁全仓 format:write——工作树有大量他人 WIP)。
-- [ ] **Step 1.6: Commit**(显式路径)
+- [x] **Step 1.4: 验绿** 同命令,`8 passed`。
+- [x] **Step 1.5: prettier 定域** `cd frontend && pnpm exec prettier --write src/extensions/bid-review/components/checklist-display.ts tests/unit/extensions/bid-review-checklist-display.test.ts src/extensions/bid-review/api.ts`(**只准对这三个文件**,禁全仓 format:write——工作树有大量他人 WIP)。
+- [x] **Step 1.6: Commit**(显式路径)
 
 ```bash
 git add frontend/src/extensions/bid-review/components/checklist-display.ts frontend/tests/unit/extensions/bid-review-checklist-display.test.ts frontend/src/extensions/bid-review/api.ts
@@ -124,7 +124,7 @@ git commit -m "feat(bid-review): L2-P3.3① 核对表纯展示函数+类型四�
 **Files:**
 - Modify: `frontend/src/extensions/bid-review/components/ResultsView.tsx`(:50-53 import 块 / :1144 pill / :1154-1165 子件行 / :1180 文案;行号以现场为准,先读再改)
 
-- [ ] **Step 2.1: import**——api import 块之后加(checklist-display 是 sibling 子路径,按字母序排 `@/extensions/bid-review/components/...` 在 `@/extensions/bid-review/api` 之后):
+- [x] **Step 2.1: import**——api import 块之后加(checklist-display 是 sibling 子路径,按字母序排 `@/extensions/bid-review/components/...` 在 `@/extensions/bid-review/api` 之后):
 
 ```tsx
 import {
@@ -133,7 +133,7 @@ import {
 } from "@/extensions/bid-review/components/checklist-display";
 ```
 
-- [ ] **Step 2.2: pill 分流**(:1144 `const pill = checklistPill(it.status);`):
+- [x] **Step 2.2: pill 分流**(:1144 `const pill = checklistPill(it.status);`):
 
 ```tsx
                       const pill =
@@ -142,7 +142,7 @@ import {
                           : checklistPill(it.status);
 ```
 
-- [ ] **Step 2.3: 子件 marker + 负证据 hint 行**(:1154-1165 与 clause 行之后)。子件 join 的 marker 换 `subItemMarker(s)`;clause `</span>` 条件块**之后**追加两段(P3.3 §2:hint 统一排 clause 后):
+- [x] **Step 2.3: 子件 marker + 负证据 hint 行**(:1154-1165 与 clause 行之后)。子件 join 的 marker 换 `subItemMarker(s)`;clause `</span>` 条件块**之后**追加两段(P3.3 §2:hint 统一排 clause 后):
 
 ```tsx
                             {it.unknown_reason === "near_miss"
@@ -163,7 +163,7 @@ import {
                               ))}
 ```
 
-- [ ] **Step 2.4: UNKNOWN 文案分流**(:1180):
+- [x] **Step 2.4: UNKNOWN 文案分流**(:1180):
 
 ```tsx
                             {it.status === "UNKNOWN"
@@ -175,13 +175,13 @@ import {
                                 : "未提供"}
 ```
 
-- [ ] **Step 2.5: 定域 prettier + lint**(三规则同 Step 1.5 域,ResultsView 替换 api.ts):
+- [x] **Step 2.5: 定域 prettier + lint**(三规则同 Step 1.5 域,ResultsView 替换 api.ts):
 
 ```bash
 cd frontend && pnpm exec prettier --check src/extensions/bid-review/components/ResultsView.tsx src/extensions/bid-review/components/checklist-display.ts tests/unit/extensions/bid-review-checklist-display.test.ts src/extensions/bid-review/api.ts && pnpm exec eslint src/extensions/bid-review/components/ResultsView.tsx src/extensions/bid-review/components/checklist-display.ts
 ```
 
-- [ ] **Step 2.6: Commit**
+- [x] **Step 2.6: Commit**
 
 ```bash
 git add frontend/src/extensions/bid-review/components/ResultsView.tsx
@@ -190,10 +190,10 @@ git commit -m "feat(bid-review): L2-P3.3② 核对表卡接线——UNKNOWN 文�
 
 ### Task 3: 全量验证收尾
 
-- [ ] **Step 3.1**: `cd frontend && pnpm check`(lint+typecheck 全仓——存量债如实报告,只须「无新增」;用 `git stash` 不行(他人 WIP),改用: 对照 HEAD 版本跑同命令比对新增告警,或直接报告全量输出并标注新增项)。
-- [ ] **Step 3.2**: `cd frontend && pnpm test` 全量单测绿(存量零翻红)。
-- [ ] **Step 3.3**: 零后端核 `git diff 25eddf61c..HEAD --stat -- backend/` 输出为空。
-- [ ] **Step 3.4**: 向 controller 报告(数字+偏差),controller push+收尾。
+- [x] **Step 3.1**: `cd frontend && pnpm check`(lint+typecheck 全仓——存量债如实报告,只须「无新增」;用 `git stash` 不行(他人 WIP),改用: 对照 HEAD 版本跑同命令比对新增告警,或直接报告全量输出并标注新增项)。
+- [x] **Step 3.2**: `cd frontend && pnpm test` 全量单测绿(存量零翻红)。
+- [x] **Step 3.3**: 零后端核 `git diff 25eddf61c..HEAD --stat -- backend/` 输出为空。
+- [x] **Step 3.4**: 向 controller 报告(数字+偏差),controller push+收尾。
 
 ---
 
@@ -216,7 +216,7 @@ git commit -m "feat(bid-review): L2-P3.3② 核对表卡接线——UNKNOWN 文�
 
 ## Task 2 补遗（Task 1 质量审查 Minor 清偿,2026-11-03;与 Task 2 同 commit）
 
-- [ ] **C1(Minor-1 防御分支钉)**: bid-review-checklist-display.test.ts 的 `describe("subItemMarker")` 内追加:
+- [x] **C1(Minor-1 防御分支钉)**: bid-review-checklist-display.test.ts 的 `describe("subItemMarker")` 内追加:
 
 ```ts
   test("MATCHED 且 found=0 → ✗(防御性复核钉,审查 Minor-1)", () => {
@@ -224,7 +224,7 @@ git commit -m "feat(bid-review): L2-P3.3② 核对表卡接线——UNKNOWN 文�
   });
 ```
 
-- [ ] **C2(Minor-2 舍入钉)**: `describe("nearMissHintLines")` 内追加（0.856 无 FP tie 边,就近舍入 vs 截断可分辨）:
+- [x] **C2(Minor-2 舍入钉)**: `describe("nearMissHintLines")` 内追加（0.856 无 FP tie 边,就近舍入 vs 截断可分辨）:
 
 ```ts
   test("sim 0.856 → 86%(就近舍入钉,审查 Minor-2)", () => {
@@ -238,7 +238,7 @@ git commit -m "feat(bid-review): L2-P3.3② 核对表卡接线——UNKNOWN 文�
   });
 ```
 
-- [ ] **C3(附加 label 钉)**: 同 describe 内追加:
+- [x] **C3(附加 label 钉)**: 同 describe 内追加:
 
 ```ts
   test("no 有值 name 空串 → label 只含 no(审查附加)", () => {
@@ -252,7 +252,7 @@ git commit -m "feat(bid-review): L2-P3.3② 核对表卡接线——UNKNOWN 文�
   });
 ```
 
-- [ ] **C4(Minor-3 挂账备案,零代码)**: c0 在场但 no/name 双空串 → 「近似候选「无近似候选记录」相似度 83%」自相矛盾文案——审查判定病态数据(engine closest 恒有 name)可接受,行为不改须重过 spec,本切片不动;记录备查。
+- [x] **C4(Minor-3 挂账备案,零代码)**: c0 在场但 no/name 双空串 → 「近似候选「无近似候选记录」相似度 83%」自相矛盾文案——审查判定病态数据(engine closest 恒有 name)可接受,行为不改须重过 spec,本切片不动;记录备查。
 
 Task 1 模块测试数随补遗 **8→11**;Task 2 Step 2.5 后补跑 `pnpm exec rstest tests/unit/extensions/bid-review-checklist-display.test.ts` 期望 **11 passed**。
 

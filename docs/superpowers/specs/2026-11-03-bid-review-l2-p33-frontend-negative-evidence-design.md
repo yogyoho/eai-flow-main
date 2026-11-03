@@ -1,6 +1,6 @@
 # L2 P3.3 前端核对表卡负证据/子行 near-miss 展示 设计
 
-> 日期: 2026-11-03 ｜ 状态: 待审
+> 日期: 2026-11-03 ｜ 状态: 已落地（25eddf61c..9bbc33197 推送 origin/main-dev-fork）
 > 前置: P3(平件负证据,dd7005561..52cfcb4ce) §0 挂账 + P3.2(复合子行门,a9a01210e..3a0edbba4) §8 挂账首项
 > 性质: **纯前端切片**——后端投影 `build_checklist` 已透传两级 `unknown_reason`/`negative_evidence`(attachments.py:250 实证),零后端改动。
 
