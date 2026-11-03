@@ -50,3 +50,38 @@ def test_bad_yaml_falls_back(isolated_tuning: Path) -> None:
 def test_bool_rejected(isolated_tuning: Path) -> None:
     isolated_tuning.write_text("evidence_top_k: true\n", encoding="utf-8")
     assert tun.get("evidence_top_k") == 3  # bool 是 int 子类,显式拒
+
+
+def test_synonym_defaults_when_file_missing(isolated_tuning: Path) -> None:
+    assert tun.synonym_groups() == (
+        ("营业执照", "企业法人营业执照"),
+        ("审计报告", "年度审计报告"),
+    )
+
+
+def test_synonym_override_replaces_section(isolated_tuning: Path) -> None:
+    isolated_tuning.write_text(
+        "evidence_top_k: 5\nsynonyms:\n  - [中标通知书, 招标中标通知书]\n  - [资质证书, 资质证明文件, 资质文件]\n",
+        encoding="utf-8",
+    )
+    assert tun.synonym_groups() == (
+        ("中标通知书", "招标中标通知书"),
+        ("资质证书", "资质证明文件", "资质文件"),
+    )
+    assert tun.get("evidence_top_k") == 5  # 数字键与 synonyms 节互不干扰
+
+
+def test_synonym_bad_groups_dropped(isolated_tuning: Path) -> None:
+    isolated_tuning.write_text(
+        "synonyms:\n  - [营业执照, 企业法人营业执照]\n  - [只有一项]\n  - [混合, 123, true]\n  - 不是列表\n",
+        encoding="utf-8",
+    )
+    assert tun.synonym_groups() == (("营业执照", "企业法人营业执照"),)
+
+
+def test_synonym_section_not_a_list_falls_back(isolated_tuning: Path) -> None:
+    isolated_tuning.write_text('synonyms: "oops"\n', encoding="utf-8")
+    assert tun.synonym_groups() == (
+        ("营业执照", "企业法人营业执照"),
+        ("审计报告", "年度审计报告"),
+    )

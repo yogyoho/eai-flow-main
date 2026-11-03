@@ -18,16 +18,14 @@ _PREFIX_RE = re.compile(r"^附件[\d一二三四五六七八九十]+(?:[-–—]
 # L2 P3 同义词组(spec 2026-11-03 §3.1,EAI-CUSTOM):首元素=规范形;子串替换,
 # 组内最长变体优先(防部分重叠吞字)。副本/复印件/回执/正本等方向不明变体**不入表**
 # ——折叠进等值通道=静默升级 MATCHED,它们由 near-miss 门降 UNKNOWN 交人工。
-# ponytail: 模块常量起步,>20 组外置 engine/dicts/synonyms.yaml。
-_SYNONYM_GROUPS: tuple[tuple[str, ...], ...] = (
-    ("营业执照", "企业法人营业执照"),
-    ("审计报告", "年度审计报告"),
-)
+# L2 同义词外置(spec 2026-11-03,EAI-CUSTOM):组表外置 tuning.yaml synonyms: 节
+# (loader 逐组校验,节坏回落默认两组),模块常量退役。
 
 
 def _fold_synonyms(t: str) -> str:
-    """组内变体子串替换到规范形;单遍按声明序,现数据组间无耦合(规范形不含他组变体)。"""
-    for group in _SYNONYM_GROUPS:
+    """组内变体子串替换到规范形;单遍按声明序,组间耦合行为未定义(规范形不含他组变体)。
+    mtime 缓存命中零盘 IO,stat µs 级——O(n²) 调用面实测前不优化(ponytail)。"""
+    for group in tuning.synonym_groups():
         for variant in sorted(group[1:], key=len, reverse=True):
             if variant in t:
                 t = t.replace(variant, group[0])

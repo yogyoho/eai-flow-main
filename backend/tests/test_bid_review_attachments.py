@@ -49,6 +49,19 @@ def test_normalize_synonym_folds_variants():
     assert normalize_name("2024年度审计报告及财务报表") == "2024审计报告及财务报表"
 
 
+def test_synonym_groups_yaml_override_end_to_end(monkeypatch, tmp_path):
+    """同义词外置端到端(L2 同义词外置 spec 2026-11-03 §3):yaml 自定义组经
+    normalize_name 折叠;且证整节替换(默认组被换掉,非合并)。"""
+    from app.extensions.bid_review.engine import tuning as tun
+
+    tuning_yaml = tmp_path / "tuning.yaml"
+    tuning_yaml.write_text("synonyms:\n  - [履约保函, 履约保证函]\n", encoding="utf-8")
+    monkeypatch.setattr(tun, "_FILE", tuning_yaml)
+    monkeypatch.setattr(tun, "_cache", None)
+    assert normalize_name("履约保证函") == "履约保函"
+    assert normalize_name("企业法人营业执照") == "企业法人营业执照"  # 整节替换
+
+
 def test_normalize_copy_suffixes_not_folded():
     """副本/复印件/回执/正本不入同义词表——方向不明变体走 near-miss 门降 UNKNOWN,
     不得经等值通道静默升级 MATCHED(spec §2 决策)。"""
