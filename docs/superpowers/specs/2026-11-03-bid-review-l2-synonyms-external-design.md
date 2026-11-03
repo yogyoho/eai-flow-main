@@ -1,6 +1,6 @@
 # L2 同义词 YAML 外置 设计
 
-> 日期: 2026-11-03 ｜ 状态: 已批（用户「继续」,按控制器推荐 4 裁决）
+> 日期: 2026-11-03 ｜ 状态: 已落地（21b69c401..5bf517f81 推送 origin/main-dev-fork）
 > 前置: L2-tuning 已落地（b6d4c548e）——tuning spec §6 承诺的同文件 `synonyms:` 节本切片兑现
 > 范围: 后端 bid_review 扩展内,零上游/harness 改动
 

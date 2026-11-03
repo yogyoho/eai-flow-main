@@ -13,7 +13,7 @@
 
 ### Task 1: 文档
 
-- [ ] spec + plan 落盘提交。
+- [x] spec + plan 落盘提交。
 
 ### Task 2: loader 扩展 + yaml 节 + 接线 + 测试(TDD)
 
@@ -24,7 +24,7 @@
 - Modify: `backend/tests/test_bid_review_tuning.py`(+4)
 - Modify: `backend/tests/test_bid_review_attachments.py`(+1 端到端)
 
-- [ ] **Step 2.1: 先写测试** tuning 追加:
+- [x] **Step 2.1: 先写测试** tuning 追加:
 
 ```python
 def test_synonym_defaults_when_file_missing(isolated_tuning: Path) -> None:
@@ -85,9 +85,9 @@ def test_synonym_groups_yaml_override_end_to_end(monkeypatch, tmp_path):
     assert normalize_name("企业法人营业执照") == "企业法人营业执照"  # 整节替换
 ```
 
-- [ ] **Step 2.2: 验红** `PYTHONPATH=. uv run pytest tests/test_bid_review_tuning.py -x -q` → AttributeError: synonym_groups。
+- [x] **Step 2.2: 验红** `PYTHONPATH=. uv run pytest tests/test_bid_review_tuning.py -x -q` → AttributeError: synonym_groups。
 
-- [ ] **Step 2.3: loader 实现**——tuning.py 三处改:
+- [x] **Step 2.3: loader 实现**——tuning.py 三处改:
 
 模块真源 + 缓存形状扩三元组:
 
@@ -126,7 +126,7 @@ def synonym_groups() -> tuple[tuple[str, ...], ...]:
 
 docstring 头注同步（「同文件 synonyms: 节留给同义词外置切片」→「synonyms: 节已外置」+校验语义一句）。
 
-- [ ] **Step 2.4: yaml 节** tuning.yaml 尾部追加+头注更新:
+- [x] **Step 2.4: yaml 节** tuning.yaml 尾部追加+头注更新:
 
 ```yaml
 synonyms:                            # 每组首元素=规范形,余为变体;组内最长变体优先
@@ -136,7 +136,7 @@ synonyms:                            # 每组首元素=规范形,余为变体;�
                                      # 空节/坏组回落模块默认;整节替换语义(改节=换全表)。
 ```
 
-- [ ] **Step 2.5: attachments.py 接线**——:22-25 `_SYNONYM_GROUPS` 常量删除,:16-19 注释改（外置声明+ponytail 注更新为「已外置 tuning.yaml synonyms: 节」）:
+- [x] **Step 2.5: attachments.py 接线**——:22-25 `_SYNONYM_GROUPS` 常量删除,:16-19 注释改（外置声明+ponytail 注更新为「已外置 tuning.yaml synonyms: 节」）:
 
 ```python
 def _fold_synonyms(t: str) -> str:
@@ -150,11 +150,11 @@ def _fold_synonyms(t: str) -> str:
     return t
 ```
 
-- [ ] **Step 2.6: 验绿** tuning 9 测(5 存量+4 新)+attachments 41(40+1 端到端)全过。
+- [x] **Step 2.6: 验绿** tuning 9 测(5 存量+4 新)+attachments 41(40+1 端到端)全过。
 
-- [ ] **Step 2.7: 全家+golden+ruff** family 378/6;golden 52/52;`ruff check`+`ruff format` 四文件。
+- [x] **Step 2.7: 全家+golden+ruff** family 378/6;golden 52/52;`ruff check`+`ruff format` 四文件。
 
-- [ ] **Step 2.8: commit**(显式路径)
+- [x] **Step 2.8: commit**(显式路径)
 
 ```bash
 git add backend/app/extensions/bid_review/engine/tuning.py backend/app/extensions/bid_review/engine/dicts/tuning.yaml backend/app/extensions/bid_review/engine/attachments.py backend/tests/test_bid_review_tuning.py backend/tests/test_bid_review_attachments.py
@@ -163,9 +163,9 @@ git commit -m "feat(bid-review): L2-synonyms① 同义词外置——tuning.yaml
 
 ### Task 3: 全量验证收尾
 
-- [ ] **Step 3.1**: bid_review 全家 pytest(预期 378/6)。
-- [ ] **Step 3.2**: spec 状态落定+plan 勾选 commit;push 重试至 `0\t0`。
-- [ ] **Step 3.3**: .wolf/memory+cerebrum、auto-memory、终报。
+- [x] **Step 3.1**: bid_review 全家 pytest(预期 378/6)。
+- [x] **Step 3.2**: spec 状态落定+plan 勾选 commit;push 重试至 `0\t0`。
+- [x] **Step 3.3**: .wolf/memory+cerebrum、auto-memory、终报。
 
 ---
 
