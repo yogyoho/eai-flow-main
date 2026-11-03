@@ -38,6 +38,31 @@ def test_normalize_junk_inputs():
     assert normalize_name("   ") == ""
 
 
+# ── L2 P3:同义词归一(spec 2026-11-03 §3.1) ───────────────────────────
+
+
+def test_normalize_synonym_folds_variants():
+    """同义词组折叠到规范形(组首元素);子串语义,组内最长变体优先。"""
+    assert normalize_name("企业法人营业执照") == "营业执照"
+    assert normalize_name("附件一、企业法人营业执照：") == "营业执照"
+    assert normalize_name("年度审计报告") == "审计报告"
+    assert normalize_name("2024年度审计报告及财务报表") == "2024审计报告及财务报表"
+
+
+def test_normalize_copy_suffixes_not_folded():
+    """副本/复印件/回执/正本不入同义词表——方向不明变体走 near-miss 门降 UNKNOWN,
+    不得经等值通道静默升级 MATCHED(spec §2 决策)。"""
+    assert normalize_name("营业执照副本") == "营业执照副本"
+    assert normalize_name("中标通知书回执") == "中标通知书回执"
+
+
+def test_synonym_variant_matches_via_name_channel():
+    """招标「营业执照」vs 投标「企业法人营业执照」:折叠后通道②等值命中 MATCHED。"""
+    out = match_attachments([_req(no="A-1", name="营业执照")], [_prov(no="", name="企业法人营业执照", page=9)])
+    assert out["per_req"][0]["status"] == "MATCHED"
+    assert out["extra"] == []
+
+
 # ── match_attachments:编号匹配 ───────────────────────────────────────
 
 

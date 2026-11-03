@@ -1,0 +1,13 @@
+case: L2-020-synonym-name-match
+desc: 同义词归一——招标「营业执照」vs 投标「企业法人营业执照」,折叠后名称通道②等值命中 MATCHED → 零 L2 条目(变体不假缺失;strict FP 探针,E 族形态)
+fields:
+  tender.attachment_requirements:
+    - {'no': "A-1", name: 营业执照, mandatory: true}
+  bid.attachment_index:
+    - {'no': "", name: 企业法人营业执照}
+expect_issues: []
+expect_absent: [L2-020, L2-024]
+strict: true
+checklist:
+  unknown_count: 0
+  status_by_no: {"A-1": "MATCHED"}

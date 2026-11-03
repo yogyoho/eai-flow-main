@@ -11,6 +11,23 @@ _FULLWIDTH = {0x3000: 0x20, **{0xFF01 + i: 0x21 + i for i in range(94)}}
 # 「附件N」「附件N-M」(阿拉伯/中文数字)序号前缀 + 紧随分隔符
 _PREFIX_RE = re.compile(r"^附件[\d一二三四五六七八九十]+(?:[-–—][\d一二三四五六七八九十]+)?[、..::．]?\s*")
 
+# L2 P3 同义词组(spec 2026-11-03 §3.1,EAI-CUSTOM):首元素=规范形;子串替换,
+# 组内最长变体优先(防部分重叠吞字)。副本/复印件/回执/正本等方向不明变体**不入表**
+# ——折叠进等值通道=静默升级 MATCHED,它们由 near-miss 门降 UNKNOWN 交人工。
+# ponytail: 模块常量起步,>20 组外置 engine/dicts/synonyms.yaml。
+_SYNONYM_GROUPS: tuple[tuple[str, ...], ...] = (
+    ("营业执照", "企业法人营业执照"),
+    ("审计报告", "年度审计报告"),
+)
+
+
+def _fold_synonyms(t: str) -> str:
+    for group in _SYNONYM_GROUPS:
+        for variant in sorted(group[1:], key=len, reverse=True):
+            if variant in t:
+                t = t.replace(variant, group[0])
+    return t
+
 
 def normalize_name(value: Any) -> str:
     """全半角归一/去空白/剥「附件N」序号前缀/去尾冒号(spec §2)。非字符串 → 空串。"""
@@ -19,7 +36,7 @@ def normalize_name(value: Any) -> str:
     t = value.strip().translate(_FULLWIDTH)
     t = re.sub(r"\s+", "", t)
     t = _PREFIX_RE.sub("", t)
-    return t.rstrip(":：..。")
+    return _fold_synonyms(t.rstrip(":：..。"))
 
 
 _SUB_STATUS_ORDER = {"UNKNOWN": 0, "MISSING": 1, "PARTIAL": 2, "MATCHED": 3}

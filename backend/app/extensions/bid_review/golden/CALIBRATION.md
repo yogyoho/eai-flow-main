@@ -119,3 +119,12 @@ rulepack L2 实有 2 条(L2-020/L2-024,均 det,零 model_script);E 族命名按 
 2. **stub 未知键守卫**(runner.py `_fields_from_stub`):stub 键对照 loader `known_field_paths()`,未知键(疑似笔误)在 `_fields_from_stub` 构造冒烟字段时大声报错(冒烟接线期,非 loader 加载期),不再被「请求路径∩stub 键」过滤静默丢弃(假绿);钉测 `test_fields_from_stub_unknown_key`。既有 smoke-1-basic stub 全键已知,守卫不误伤。
 3. **覆盖率收口**:EXPECTED_COVERAGE 增 L2-020/L2-024(全 34 ids);`test_coverage_complete_marker` 去 skip 分支——EXPECTED_COVERAGE、pack 全集、题库实 coverage 三方精确相等(漏建/多建双方向即红)。
 4. **L2 建库备忘**:`'no'` 键一律加引号(守卫前是 bug-3938 静默炸 materials_hash,守卫后是加载期报错);数字形 no 值("3"/"3.1"/"3-1")同样须引号防 PyYAML 转 int/float;复合件 shapes 照 test_bid_review_attachments.py 夹具;checklist status_by_no 同 no 多行时取首行(items 平铺序);UNKNOWN 行 need_human 被 strict 容忍不进余量,其断言走 expect_issues 显式 verdict: need_human。
+
+## 批D(L2-P3 负证据+同义词归一)裁决表
+
+spec docs/superpowers/specs/2026-11-03-bid-review-l2-p3-negative-evidence-synonym-design.md(05d32c92f);引擎能力增强切片——新行为用新题钉,既有 49 题零翻红为回归证据(金标准铁律)。
+
+| case | 裁决 | 结论 |
+|---|---|---|
+| L2-020-synonym-name-match | red-first→引擎增强 | 落库先红(变体名双通道落空→fatal MISSING→strict FP 探针红);normalize_name 同义词折叠(_SYNONYM_GROUPS 子串替换,组内最长变体优先)后通道② MATCHED→绿;副本/复印件/回执不入表(方向不明,走 near-miss 门降 UNKNOWN) |
+
