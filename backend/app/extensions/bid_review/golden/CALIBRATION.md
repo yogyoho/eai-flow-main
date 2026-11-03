@@ -127,4 +127,7 @@ spec docs/superpowers/specs/2026-11-03-bid-review-l2-p3-negative-evidence-synony
 | case | 裁决 | 结论 |
 |---|---|---|
 | L2-020-synonym-name-match | red-first→引擎增强 | 落库先红(变体名双通道落空→fatal MISSING→strict FP 探针红);normalize_name 同义词折叠(_SYNONYM_GROUPS 子串替换,组内最长变体优先)后通道② MATCHED→绿;副本/复印件/回执不入表(方向不明,走 near-miss 门降 UNKNOWN) |
+| L2-020-near-miss-unknown | red-first→引擎增强 | 落库先红(现状两级精确双落空→fatal MISSING,expect verdict need_human 不符);_near_miss_pass 门(0.75,SequenceMatcher × extra 池)后 UNKNOWN(near_miss)→need_human→绿;门限标定:中标通知书 vs 回执≈0.83 入门/中标通知书 vs 业绩合同≈0.0 门外(单测 monkeypatch 钉阈值真实生效);Task 3 将补强 contains「近似候选」 |
+
+3. **P3 负证据备忘**:negative_evidence={channels,pool,closest(top3,≥0.30)} 双写面——per_req(rule_runner 消费)+items(端点透传);分组失败行 evidence=None/unknown_reason=grouping,与 near_miss 不混用;复合子行 v1 只记证据不改状态(P3.2 挂账)。
 

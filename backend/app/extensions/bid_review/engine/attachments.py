@@ -3,6 +3,7 @@
 **全等**,非包含,防「报价表」吞「分项报价表」;贪心一对一,一份提供项只归属
 一个 req(先编号后名称)。P2 复合附件:带 sub_items 的 req 子件独立归组,分组失败降 UNKNOWN(spec §7)。纯函数,pytest 全覆盖(test_bid_review_attachments.py)。"""
 
+import difflib
 import re
 from typing import Any
 
@@ -22,11 +23,58 @@ _SYNONYM_GROUPS: tuple[tuple[str, ...], ...] = (
 
 
 def _fold_synonyms(t: str) -> str:
+    """组内变体子串替换到规范形;单遍按声明序,现数据组间无耦合(规范形不含他组变体)。"""
     for group in _SYNONYM_GROUPS:
         for variant in sorted(group[1:], key=len, reverse=True):
             if variant in t:
                 t = t.replace(variant, group[0])
     return t
+
+
+# L2 P3 近似命中门(spec 2026-11-03 §3.2,EAI-CUSTOM):平件 MISSING 行 × extra 池
+# SequenceMatcher 相似度,≥门限降 UNKNOWN(near_miss)——归一化变体不得直接 fatal
+# 缺失,交人工;真缺失仍 MISSING 但携带负证据佐证。标定:「中标通知书」vs
+# 「中标通知书回执」ratio≈0.83 须入门,跨附件名对(中标通知书 vs 业绩合同)≈0.0
+# 须门外;金标准 L2-020-near-miss 题 + 单测(含 monkeypatch 阈值生效钉)双向锁。
+NEAR_MISS_GATE = 0.75
+
+
+def _sim_cands(nm: str, pool: list[dict]) -> list[tuple[float, dict]]:
+    """候选相似度降序;nm 或候选名归一为空则不参与(与通道②空名跳过同语义)。"""
+    if not nm:
+        return []
+    return sorted(
+        ((difflib.SequenceMatcher(None, nm, normalize_name(p.get("name"))).ratio(), p) for p in pool if normalize_name(p.get("name"))),
+        key=lambda t: t[0],
+        reverse=True,
+    )
+
+
+def _evidence(channels: list[str], pool: list[dict], cands: list[tuple[float, dict]]) -> dict:
+    """行级负证据(spec §3.3):channels=实际尝试通道,pool=未占用提供项数,
+    closest=相似度 top-3(≥0.30 滤噪)。"""
+    return {
+        "channels": channels,
+        "pool": len(pool),
+        "closest": [{"no": str(p.get("no") or ""), "name": str(p.get("name") or ""), "sim": round(s, 4)} for s, p in cands[:3] if s >= 0.30],
+    }
+
+
+def _near_miss_pass(per_req: list[dict], extra: list[dict]) -> None:
+    """就地降级扫描(spec §3.2):只读 extra 池不回写占用;复合父行(sub_results 在场)
+    与 found>0 行跳过;req 名归一为空不进门,保持 MISSING。"""
+    for e in per_req:
+        if e.get("sub_results") is not None or e["found"] > 0:
+            continue
+        req = e["req"]
+        no = str(req.get("no") or "").strip()
+        nm = normalize_name(req.get("name"))
+        channels = (["no"] if no else []) + (["name"] if nm else [])
+        cands = _sim_cands(nm, extra)
+        e["negative_evidence"] = _evidence(channels, extra, cands)
+        if cands and cands[0][0] >= NEAR_MISS_GATE:
+            e["status"] = "UNKNOWN"
+            e["unknown_reason"] = "near_miss"
 
 
 def normalize_name(value: Any) -> str:
@@ -109,6 +157,18 @@ def _match_composite(req: dict, prov: list[dict], taken: set[int]) -> dict:
         if refs_parent:
             orphan = True
             taken.add(i)
+    # L2 P3 (spec 2026-11-03 §3.3,EAI-CUSTOM):子行 MISSING 只记负证据,不改状态
+    # (P3.2 子行状态门挂账——子件走 taken 池,改命中语义会扰动占用记账);
+    # 证据池=orphan 归组后仍未占用者;父行 negative_evidence=None(分组失败是
+    # 另一种证据形态,不混用)。
+    untaken = [p for i, p in enumerate(prov) if i not in taken]
+    for s in sub_results:
+        if s["status"] == "MISSING":
+            s["negative_evidence"] = _evidence(
+                (["no"] if s.get("no") else []) + (["name"] if normalize_name(s.get("name")) else []),
+                untaken,
+                _sim_cands(normalize_name(s.get("name")), untaken),
+            )
     return {"sub_results": sub_results, "orphan": orphan}
 
 
@@ -119,7 +179,9 @@ def match_attachments(requirements: Any, provided: Any) -> dict:
     P2 复合附件(spec 2026-11-02 §7):带非空 sub_items(非空列表且每项皆 dict,
     见 _sub_items)的 req 跳过两级主匹配,子件独立归组(_match_composite);父行
     状态 = UNKNOWN > MISSING > PARTIAL > MATCHED 上卷,found=子件命中数之和,
-    父级 min_count 忽略。"""
+    父级 min_count 忽略。
+    P3 (spec 2026-11-03):平件 found==0 行经 _near_miss_pass——近似候选 sim≥
+    NEAR_MISS_GATE 降 UNKNOWN(near_miss),负证据(negative_evidence)一律记录。"""
     reqs = [r for r in (requirements or []) if isinstance(r, dict)]
     prov = [p for p in (provided or []) if isinstance(p, dict)]
     taken: set[int] = set()
@@ -160,8 +222,10 @@ def match_attachments(requirements: Any, provided: Any) -> dict:
             comp = _match_composite(r, prov, taken)
             found = sum(s["found"] for s in comp["sub_results"])
             worst = min((s["status"] for s in comp["sub_results"]), key=lambda st: _SUB_STATUS_ORDER[st], default="MATCHED")
-            status = "UNKNOWN" if comp["orphan"] else worst
-            per_req.append({"req": r, "matched": [], "found": found, "status": status, "sub_results": comp["sub_results"]})
+            if comp["orphan"]:
+                per_req.append({"req": r, "matched": [], "found": found, "status": "UNKNOWN", "unknown_reason": "grouping", "negative_evidence": None, "sub_results": comp["sub_results"]})
+            else:
+                per_req.append({"req": r, "matched": [], "found": found, "status": worst, "negative_evidence": None, "sub_results": comp["sub_results"]})
             continue
         hits = [prov[i] for i in matched[ri]]
         found = len(hits)
@@ -170,14 +234,17 @@ def match_attachments(requirements: Any, provided: Any) -> dict:
         except (TypeError, ValueError):
             min_count = 0
         per_req.append({"req": r, "matched": hits, "found": found, "status": _status_for(found, min_count)})
-    return {"per_req": per_req, "extra": [p for i, p in enumerate(prov) if i not in taken]}
+    extra = [p for i, p in enumerate(prov) if i not in taken]
+    _near_miss_pass(per_req, extra)  # L2 P3:近似命中降 UNKNOWN+行级负证据(spec 2026-11-03 §3.2,EAI-CUSTOM)
+    return {"per_req": per_req, "extra": extra}
 
 
 def build_checklist(requirements: Any, provided: Any, bid_doc_id: str | None = None) -> dict:
     """核对表投影原料(spec §4):match_attachments 结果摊平成 items 行(refs 注入
     bid 侧 doc_id——P1 refs=bid 侧首文档,调用方解析;解不到 → doc_id null,前端
     chip 降级纯文本)。counts 单一事实源;extra 提供项只进 extra_items 不产 issue。
-    P2:复合行带 sub_results,分组失败行 status=UNKNOWN 进 counts.unknown。"""
+    P2:复合行带 sub_results,分组失败行 status=UNKNOWN 进 counts.unknown。
+    P3:行级 unknown_reason/negative_evidence 透传,counts.unknown 含 near_miss 降级。"""
     out = match_attachments(requirements, provided)
     items = []
     for e in out["per_req"]:
@@ -193,6 +260,8 @@ def build_checklist(requirements: Any, provided: Any, bid_doc_id: str | None = N
                 "clause": req.get("clause"),
                 "refs": [{"doc_id": bid_doc_id, "page": p.get("page")} for p in e["matched"]],
                 "sub_results": e.get("sub_results") or [],
+                "unknown_reason": e.get("unknown_reason"),
+                "negative_evidence": e.get("negative_evidence"),
             }
         )
     counts = {

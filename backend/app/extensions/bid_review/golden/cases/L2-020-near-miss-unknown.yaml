@@ -1,0 +1,18 @@
+case: L2-020-near-miss-unknown
+desc: 平件近似命中——招标「中标通知书」vs 投标「中标通知书回执」(方向不明变体),两级精确双落空但近似候选 sim≈0.83≥门限 → UNKNOWN(near_miss) → L2-020 need_human(变体不得直接 fatal 缺失;spec 2026-11-03 §3.2)
+fields:
+  tender.attachment_requirements:
+    - {'no': "E-2", name: 中标通知书, mandatory: true}
+  bid.attachment_index:
+    - {'no': "", name: 中标通知书回执}
+expect_issues:
+  - rule_id: L2-020
+    severity: fatal
+    verdict: "need_human"
+    contains: ["E-2", "中标通知书"]
+    entity: "E-2"
+expect_absent: []
+strict: true
+checklist:
+  unknown_count: 1
+  status_by_no: {"E-2": "UNKNOWN"}
