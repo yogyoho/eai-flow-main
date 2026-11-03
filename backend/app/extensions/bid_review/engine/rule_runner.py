@@ -267,6 +267,17 @@ def run_det_rule(rule: Rule, fields: dict) -> list[dict]:
                                 nh["entity_keys"] = [_entity_key(s)]
                                 nh["dedup_key"] = f"{rule.id}|-|{_entity_key(s)}"  # 按子行实体键派生(I-1 同规)
                                 issues.append(nh)
+                            # L2 混合态子件枚举(spec 2026-11-03 §1,EAI-CUSTOM):混合成因
+                            # 父行(子近似+子真缺失)的真缺失子件逐个独立 need_human——
+                            # P3.2 起仅近似子件成话,真缺失子件 issue 面零可见;与近似
+                            # 子件同构点名,dedup 按子行实体键。纯增量,既有消息零改。
+                            for s in r.get("sub_results") or []:
+                                if s.get("status") != "MISSING":
+                                    continue
+                                nh = _need_human(rule, f"复合附件「{_label(r['req'])}」子件「{_label(s)}」缺失,需人工核对")
+                                nh["entity_keys"] = [_entity_key(s)]
+                                nh["dedup_key"] = f"{rule.id}|-|{_entity_key(s)}"  # 按子行实体键派生(I-1/P3.2 同规)
+                                issues.append(nh)
                             if r.get("unknown_reason") == "grouping":  # 孤儿+子近似并存:两因各自成话
                                 nh = _need_human(rule, f"复合附件「{_label(r['req'])}」子件无法自动分组,需人工核对")
                                 nh["entity_keys"] = [_entity_key(r["req"])]

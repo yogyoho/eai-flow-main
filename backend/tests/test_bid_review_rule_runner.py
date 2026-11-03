@@ -399,3 +399,33 @@ def test_att_check_orphan_and_sub_near_miss_both_messages():
     assert sub_msg["dedup_key"] == "L2-020|-|attachment:3.2"
     grp_msg = next(i for i in issues if "无法自动分组" in i["message"])
     assert grp_msg["dedup_key"] == "L2-020|-|attachment:3"
+
+
+# ── L2 混合态:子近似+子真缺失 issue 面枚举(spec 2026-11-03 §4) ──────────────────
+
+SUB_MIXED_FIELDS = {
+    "tender.attachment_requirements": [{"no": "3", "name": "资格审查文件", "mandatory": "★", "min_count": None, "sub_items": [{"no": "3.1", "name": "营业执照"}, {"no": "3.2", "name": "中标通知书"}, {"no": "3.3", "name": "完税证明"}]}],
+    "bid.attachment_index": [
+        {"no": "3-1", "name": "营业执照", "page": 5},
+        {"no": "", "name": "中标通知书回执", "page": 40},  # 3.2 近似(sim≈0.83≥门)
+        # 3.3 完税证明:池内零近似 → 真缺失
+    ],
+}
+
+
+def test_att_check_mixed_parent_missing_subs_enumerated():
+    """L2 混合态(spec 2026-11-03 §1):混合父行(子近似+子真缺失)——近似子件候选话术
+    不变,真缺失子件逐个独立 need_human 点名父件+子件;dedup 按子行实体键互异。
+    纯 near_miss 父行不多发已由 test_att_check_sub_near_miss_message_names_subitem
+    len==1 钉住(spec §4)。"""
+    issues = run_det_rule(_att_rule("att_check"), SUB_MIXED_FIELDS)
+    assert len(issues) == 2
+    near = next(i for i in issues if "近似候选" in i["message"])
+    assert near["dedup_key"] == "L2-020|-|attachment:3.2"
+    miss = next(i for i in issues if "缺失" in i["message"])
+    assert miss["need_human"] is True
+    assert "资格审查文件" in miss["message"]
+    assert "3.3" in miss["message"]
+    assert "完税证明" in miss["message"]
+    assert miss["entity_keys"] == ["attachment:3.3"]
+    assert miss["dedup_key"] == "L2-020|-|attachment:3.3"
