@@ -524,7 +524,7 @@ def test_composite_sub_partial_not_gated():
     assert "unknown_reason" not in s
     assert "negative_evidence" not in s
     assert e["status"] == "PARTIAL"
-    assert e.get("unknown_reason") is None
+    assert e["unknown_reason"] is None
 
 
 def test_composite_mixed_cause_parent_near_miss_stamp():

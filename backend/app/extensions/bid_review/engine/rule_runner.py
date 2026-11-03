@@ -252,8 +252,8 @@ def run_det_rule(rule: Rule, fields: dict) -> list[dict]:
                         iss["entity_keys"] = [_entity_key(r["req"]) for r in miss]
                         issues.append(iss)
                     for r in unknown:  # UNKNOWN 降 need_human,禁强行 PARTIAL/MISSING(spec §7)
-                        # P3/P3.2 成因分流(spec 2026-11-03 §2,EAI-CUSTOM):行形状异构
-                        # (旧数据缺键/grouping 行 evidence=None),消费一律 .get();
+                        # P3/P3.2 成因分流(spec 2026-11-03 §2,EAI-CUSTOM):行种类异构
+                        # (平件/复合/grouping 三形态,键随形态有无)+引擎演进防漂移,消费一律 .get();
                         # 子行近似→逐子行 need_human 点名父件+子件+候选,grouping 孤儿另发,
                         # 两因不互吞;平件/grouping 措辞与 P3 逐字节一致(golden contains 回归面)。
                         subs_nm = [s for s in (r.get("sub_results") or []) if s.get("unknown_reason") == "near_miss"]

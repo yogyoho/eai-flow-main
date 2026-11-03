@@ -395,3 +395,7 @@ def test_att_check_orphan_and_sub_near_miss_both_messages():
     assert any("近似候选" in i["message"] for i in issues)
     assert any("无法自动分组" in i["message"] for i in issues)
     assert all(i["need_human"] is True for i in issues)
+    sub_msg = next(i for i in issues if "近似候选" in i["message"])
+    assert sub_msg["dedup_key"] == "L2-020|-|attachment:3.2"
+    grp_msg = next(i for i in issues if "无法自动分组" in i["message"])
+    assert grp_msg["dedup_key"] == "L2-020|-|attachment:3"

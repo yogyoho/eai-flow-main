@@ -133,5 +133,5 @@ spec docs/superpowers/specs/2026-11-03-bid-review-l2-p3-negative-evidence-synony
 | L2-020-subitem-near-miss-unknown | 中间态落红(Task1 引擎后):父行 near_miss 误入平件分支→消息「无近似候选记录」,contains 缺「子件」「3.2」;Task2 三分支收口 | 2026-11-03 P3.2 Task1 |
 | L2-020-subitem-near-miss-unknown | contains 断言转绿:三分支后消息点名「3.2 中标通知书」+「近似候选」+0.83;既有 51 题零翻红 | 2026-11-03 P3.2 Task2 |
 
-**批D 备忘——P3 负证据**:negative_evidence={channels,pool,closest(top3,≥0.30)} 双写面——per_req(rule_runner 消费)+items(端点透传);分组失败行 evidence=None/unknown_reason=grouping,与 near_miss 不混用;复合子行 v1 只记证据不改状态(P3.2 挂账)。
+**批D 备忘——P3 负证据**:negative_evidence={channels,pool,closest(top3,≥0.30)} 双写面——per_req(rule_runner 消费)+items(端点透传);分组失败行 evidence=None/unknown_reason=grouping,与 near_miss 不混用;复合子行 P3.2 已同入近似门(见本批 2026-11-03 三行)。
 
