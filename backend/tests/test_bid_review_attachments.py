@@ -450,7 +450,7 @@ def test_composite_sub_near_miss_gate_threshold_honored(monkeypatch):
     assert [s["status"] for s in e["sub_results"]] == ["MATCHED", "MISSING"]
     assert "unknown_reason" not in e["sub_results"][1]
     assert e["status"] == "MISSING"
-    assert e.get("unknown_reason") is None
+    assert e["unknown_reason"] is None
 
 
 def test_composite_orphan_and_sub_near_miss_coexist():
@@ -504,3 +504,49 @@ def test_build_checklist_sub_row_p32_keys_passthrough():
     assert sub["negative_evidence"]["closest"][0]["sim"] >= 0.75
     assert out["counts"]["unknown"] == 1
     assert out["counts"]["missing"] == 0
+
+
+def test_composite_sub_partial_not_gated():
+    """P3.2 门前置钉:子件 min_count=2 且 found=1(PARTIAL)不入门——池内虽有门内候选
+    (营业执照副本 sim≈0.8),保持 PARTIAL、无 unknown_reason/负证据(与平件 found>0 跳过对偶)。"""
+    req = {
+        "no": "3",
+        "name": "资格审查文件",
+        "sub_items": [{"no": "3.1", "name": "营业执照", "min_count": 2}],
+    }
+    prov = [
+        {"no": "3-1", "name": "营业执照", "page": 5},
+        {"no": "X-7", "name": "营业执照副本", "page": 40},  # 位置/名称通道外,留池;sim≈0.8 门内
+    ]
+    e = match_attachments([req], prov)["per_req"][0]
+    s = e["sub_results"][0]
+    assert s["status"] == "PARTIAL"
+    assert "unknown_reason" not in s
+    assert "negative_evidence" not in s
+    assert e["status"] == "PARTIAL"
+    assert e.get("unknown_reason") is None
+
+
+def test_composite_mixed_cause_parent_near_miss_stamp():
+    """混合成因钉(审查 Minor-2):子 A near_miss + 子 B 真缺失并存 → 父行 UNKNOWN
+    unknown_reason="near_miss";A UNKNOWN 带证据,B 保持 MISSING 带证据——
+    子级真缺面在 checklist sub_results(issue 面子件枚举已挂账,见 spec §8)。"""
+    req = {
+        "no": "3",
+        "name": "资格审查文件",
+        "sub_items": [
+            {"no": "3.1", "name": "营业执照"},
+            {"no": "3.2", "name": "中标通知书"},
+            {"no": "3.3", "name": "资质证书"},
+        ],
+    }
+    prov = [
+        {"no": "3-1", "name": "营业执照", "page": 5},
+        {"no": "X-7", "name": "中标通知书回执", "page": 40},
+    ]
+    e = match_attachments([req], prov)["per_req"][0]
+    assert e["status"] == "UNKNOWN"
+    assert e["unknown_reason"] == "near_miss"
+    assert [s["status"] for s in e["sub_results"]] == ["MATCHED", "UNKNOWN", "MISSING"]
+    assert e["sub_results"][1]["unknown_reason"] == "near_miss"
+    assert e["sub_results"][2]["negative_evidence"]["pool"] == 1

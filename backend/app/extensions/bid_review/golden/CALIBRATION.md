@@ -129,8 +129,9 @@ spec docs/superpowers/specs/2026-11-03-bid-review-l2-p3-negative-evidence-synony
 | L2-020-synonym-name-match | red-first→引擎增强 | 落库先红(变体名双通道落空→fatal MISSING→strict FP 探针红);normalize_name 同义词折叠(_SYNONYM_GROUPS 子串替换,组内最长变体优先)后通道② MATCHED→绿;副本/复印件/回执不入表(方向不明,走 near-miss 门降 UNKNOWN) |
 | L2-020-near-miss-unknown | red-first→引擎增强 | 落库先红(现状两级精确双落空→fatal MISSING,expect verdict need_human 不符);_near_miss_pass 门(0.75,SequenceMatcher × extra 池)后 UNKNOWN(near_miss)→need_human→绿;门限标定:中标通知书 vs 回执≈0.83 入门/中标通知书 vs 业绩合同≈0.0 门外(单测 monkeypatch 钉阈值真实生效);Task 3 将补强 contains「近似候选」 |
 | (L2-020-near-miss-unknown 补强) | 引擎对+题补强 | att_check UNKNOWN 按 unknown_reason 分流措辞——near_miss 带「近似候选」+相似度,grouping 维持原文(golden 分组失败题 contains 依赖回归面);entity/dedup 键两形态同构(I-1);contains 补「近似候选」钉措辞;落红证据:分流前 message 硬编码「无法自动分组」,「近似候选」断言红 |
-| L2-020-subitem-near-miss-unknown | red-first 落红(引擎变更前):子行 MISSING→父行 MISSING→L2-020 fatal violation,期望 need_human | 2026-11-03 P3.2 Task1 |
+| L2-020-subitem-near-miss-unknown | red-first 落红(引擎变更前):子行 MISSING→父行 MISSING→L2-020 fatal violation,期望 need_human;连坐: red 窗口期 test_cli_main_exit_codes 同红(CLI rc=1),非回归 | 2026-11-03 P3.2 Task1 |
 | L2-020-subitem-near-miss-unknown | 中间态落红(Task1 引擎后):父行 near_miss 误入平件分支→消息「无近似候选记录」,contains 缺「子件」「3.2」;Task2 三分支收口 | 2026-11-03 P3.2 Task1 |
+| L2-020-subitem-near-miss-unknown | contains 断言转绿:三分支后消息点名「3.2 中标通知书」+「近似候选」+0.83;既有 51 题零翻红 | 2026-11-03 P3.2 Task2 |
 
 **批D 备忘——P3 负证据**:negative_evidence={channels,pool,closest(top3,≥0.30)} 双写面——per_req(rule_runner 消费)+items(端点透传);分组失败行 evidence=None/unknown_reason=grouping,与 near_miss 不混用;复合子行 v1 只记证据不改状态(P3.2 挂账)。
 

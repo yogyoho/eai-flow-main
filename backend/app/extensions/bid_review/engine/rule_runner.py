@@ -252,19 +252,40 @@ def run_det_rule(rule: Rule, fields: dict) -> list[dict]:
                         iss["entity_keys"] = [_entity_key(r["req"]) for r in miss]
                         issues.append(iss)
                     for r in unknown:  # UNKNOWN 降 need_human,禁强行 PARTIAL/MISSING(spec §7)
-                        # P3 成因分流(spec 2026-11-03 §3.4,EAI-CUSTOM):缺键向后兼容→grouping;
-                        # 消费用 .get()——行形状异构(旧数据缺键/grouping 行 evidence=None),直取会 KeyError/AttributeError
-                        if r.get("unknown_reason") == "near_miss":
+                        # P3/P3.2 成因分流(spec 2026-11-03 §2,EAI-CUSTOM):行形状异构
+                        # (旧数据缺键/grouping 行 evidence=None),消费一律 .get();
+                        # 子行近似→逐子行 need_human 点名父件+子件+候选,grouping 孤儿另发,
+                        # 两因不互吞;平件/grouping 措辞与 P3 逐字节一致(golden contains 回归面)。
+                        subs_nm = [s for s in (r.get("sub_results") or []) if s.get("unknown_reason") == "near_miss"]
+                        if subs_nm:
+                            for s in subs_nm:
+                                cands = (s.get("negative_evidence") or {}).get("closest") or []
+                                c0 = cands[0] if cands else {}
+                                cand_txt = f"{c0.get('no', '')} {c0.get('name', '')}".strip() or "无近似候选记录"
+                                sim_txt = f"(相似度 {c0['sim']:.2f})" if c0.get("sim") is not None else ""
+                                nh = _need_human(rule, f"复合附件「{_label(r['req'])}」子件「{_label(s)}」未精确命中,近似候选「{cand_txt}」{sim_txt},需人工核对")
+                                nh["entity_keys"] = [_entity_key(s)]
+                                nh["dedup_key"] = f"{rule.id}|-|{_entity_key(s)}"  # 按子行实体键派生(I-1 同规)
+                                issues.append(nh)
+                            if r.get("unknown_reason") == "grouping":  # 孤儿+子近似并存:两因各自成话
+                                nh = _need_human(rule, f"复合附件「{_label(r['req'])}」子件无法自动分组,需人工核对")
+                                nh["entity_keys"] = [_entity_key(r["req"])]
+                                nh["dedup_key"] = f"{rule.id}|-|{_entity_key(r['req'])}"
+                                issues.append(nh)
+                        elif r.get("unknown_reason") == "near_miss":
                             cands = (r.get("negative_evidence") or {}).get("closest") or []
                             c0 = cands[0] if cands else {}
                             cand_txt = f"{c0.get('no', '')} {c0.get('name', '')}".strip() or "无近似候选记录"
                             sim_txt = f"(相似度 {c0['sim']:.2f})" if c0.get("sim") is not None else ""
                             nh = _need_human(rule, f"附件「{_label(r['req'])}」未精确命中,近似候选「{cand_txt}」{sim_txt},需人工核对")
+                            nh["entity_keys"] = [_entity_key(r["req"])]
+                            nh["dedup_key"] = f"{rule.id}|-|{_entity_key(r['req'])}"
+                            issues.append(nh)
                         else:
                             nh = _need_human(rule, f"复合附件「{_label(r['req'])}」子件无法自动分组,需人工核对")
-                        nh["entity_keys"] = [_entity_key(r["req"])]
-                        nh["dedup_key"] = f"{rule.id}|-|{_entity_key(r['req'])}"  # 审查 I-1:按实体键派生,多行不再互吞
-                        issues.append(nh)
+                            nh["entity_keys"] = [_entity_key(r["req"])]
+                            nh["dedup_key"] = f"{rule.id}|-|{_entity_key(r['req'])}"
+                            issues.append(nh)
                 else:
                     partial = [r for r in out["per_req"] if r["status"] == "PARTIAL"]
                     if partial:

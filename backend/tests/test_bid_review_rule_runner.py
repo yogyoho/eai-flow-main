@@ -347,3 +347,51 @@ def test_att_check_grouping_wording_unchanged():
     issues = run_det_rule(_att_rule("att_check"), COMP_FIELDS)
     assert issues[0]["need_human"] is True
     assert "无法自动分组" in issues[0]["message"]
+
+
+# ── L2 P3.2:复合子行 near-miss 分流(spec 2026-11-03 §2) ──────────────────
+
+SUB_NEAR_FIELDS = {
+    "tender.attachment_requirements": [{"no": "3", "name": "资格审查文件", "mandatory": "★", "min_count": None, "sub_items": [{"no": "3.1", "name": "营业执照"}, {"no": "3.2", "name": "中标通知书"}]}],
+    "bid.attachment_index": [
+        {"no": "3-1", "name": "营业执照", "page": 5},
+        {"no": "", "name": "中标通知书回执", "page": 40},  # 不引用父号,留池;sim≈0.83≥0.75
+    ],
+}
+
+SUB_NEAR_ORPHAN_FIELDS = {
+    "tender.attachment_requirements": [{"no": "3", "name": "资格审查文件", "mandatory": "★", "min_count": None, "sub_items": [{"no": "3.1", "name": "营业执照"}, {"no": "3.2", "name": "中标通知书"}]}],
+    "bid.attachment_index": [
+        {"no": "3-1", "name": "营业执照", "page": 5},
+        {"no": "3-9", "name": "完税证明", "page": 39},  # 引用父号,归属不了 → 孤儿
+        {"no": "X-7", "name": "中标通知书回执", "page": 40},
+    ],
+}
+
+
+def test_att_check_sub_near_miss_message_names_subitem():
+    """P3.2:子行 near_miss → need_human 点名父件+子件+候选;dedup 按子行实体键
+    (I-1 同规);不得走 grouping 话术,不得渲染「无近似候选记录」(候选在场)。"""
+    issues = run_det_rule(_att_rule("att_check"), SUB_NEAR_FIELDS)
+    assert len(issues) == 1
+    assert issues[0]["need_human"] is True
+    assert issues[0]["verdict"] == "need_human"
+    assert "子件" in issues[0]["message"]
+    assert "3.2" in issues[0]["message"]
+    assert "中标通知书" in issues[0]["message"]
+    assert "近似候选" in issues[0]["message"]
+    assert "0.83" in issues[0]["message"]  # .2f 渲染钉(fixture ratio≈0.8333 确定性)
+    assert "无法自动分组" not in issues[0]["message"]
+    assert "无近似候选记录" not in issues[0]["message"]
+    assert issues[0]["entity_keys"] == ["attachment:3.2"]
+    assert issues[0]["dedup_key"] == "L2-020|-|attachment:3.2"
+
+
+def test_att_check_orphan_and_sub_near_miss_both_messages():
+    """孤儿+子近似并存:子近似消息+grouping 消息各自成话,dedup 键互异不互吞。"""
+    issues = run_det_rule(_att_rule("att_check"), SUB_NEAR_ORPHAN_FIELDS)
+    assert len(issues) == 2
+    assert {i["dedup_key"] for i in issues} == {"L2-020|-|attachment:3.2", "L2-020|-|attachment:3"}
+    assert any("近似候选" in i["message"] for i in issues)
+    assert any("无法自动分组" in i["message"] for i in issues)
+    assert all(i["need_human"] is True for i in issues)
