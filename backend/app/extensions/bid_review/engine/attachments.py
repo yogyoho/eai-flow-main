@@ -1,7 +1,8 @@
 """L2 P1 附件清单匹配器(spec 2026-11-02 §2,EAI-CUSTOM):招标要求集 × 投标
 提供集两级精确匹配。covers() 是子串语义不复用(spec §7)——名称通道要求归一后
 **全等**,非包含,防「报价表」吞「分项报价表」;贪心一对一,一份提供项只归属
-一个 req(先编号后名称)。P2 复合附件:带 sub_items 的 req 子件独立归组,分组失败降 UNKNOWN(spec §7)。纯函数,pytest 全覆盖(test_bid_review_attachments.py)。"""
+一个 req(先编号后名称)。P2 复合附件:带 sub_items 的 req 子件独立归组,分组失败降 UNKNOWN(spec §7)。
+P3.2:子行 MISSING 同入近似门降 UNKNOWN,父行上卷+unknown_reason 戳记(spec 2026-11-03)。纯函数,pytest 全覆盖(test_bid_review_attachments.py)。"""
 
 import difflib
 import re
@@ -157,18 +158,20 @@ def _match_composite(req: dict, prov: list[dict], taken: set[int]) -> dict:
         if refs_parent:
             orphan = True
             taken.add(i)
-    # L2 P3 (spec 2026-11-03 §3.3,EAI-CUSTOM):子行 MISSING 只记负证据,不改状态
-    # (P3.2 子行状态门挂账——子件走 taken 池,改命中语义会扰动占用记账);
-    # 证据池=orphan 归组后仍未占用者;父行 negative_evidence=None(分组失败是
-    # 另一种证据形态,不混用)。
+    # L2 P3 (spec 2026-11-03 §3.3,EAI-CUSTOM):子行 MISSING 记负证据;P3.2 (spec
+    # 2026-11-03 §1.1,EAI-CUSTOM):同入近似门——sim≥NEAR_MISS_GATE 降 UNKNOWN(near_miss),
+    # 父行经 _SUB_STATUS_ORDER 上卷。只读后处理不回写 taken,占用记账零触碰;
+    # 真缺失(门外)仍 MISSING。证据池=orphan 归组后仍未占用者;父行
+    # negative_evidence=None(分组失败是另一种证据形态,不混用)。
     untaken = [p for i, p in enumerate(prov) if i not in taken]
     for s in sub_results:
         if s["status"] == "MISSING":
-            s["negative_evidence"] = _evidence(
-                (["no"] if s.get("no") else []) + (["name"] if normalize_name(s.get("name")) else []),
-                untaken,
-                _sim_cands(normalize_name(s.get("name")), untaken),
-            )
+            channels = (["no"] if s.get("no") else []) + (["name"] if normalize_name(s.get("name")) else [])
+            cands = _sim_cands(normalize_name(s.get("name")), untaken)
+            if cands and cands[0][0] >= NEAR_MISS_GATE:  # 门判定用 raw ratio,与平件门同规
+                s["status"] = "UNKNOWN"
+                s["unknown_reason"] = "near_miss"
+            s["negative_evidence"] = _evidence(channels, untaken, cands)
     return {"sub_results": sub_results, "orphan": orphan}
 
 
@@ -181,7 +184,9 @@ def match_attachments(requirements: Any, provided: Any) -> dict:
     状态 = UNKNOWN > MISSING > PARTIAL > MATCHED 上卷,found=子件命中数之和,
     父级 min_count 忽略。
     P3 (spec 2026-11-03):平件 found==0 行经 _near_miss_pass——近似候选 sim≥
-    NEAR_MISS_GATE 降 UNKNOWN(near_miss),负证据(negative_evidence)一律记录。"""
+    NEAR_MISS_GATE 降 UNKNOWN(near_miss),负证据(negative_evidence)一律记录。
+    P3.2 (spec 2026-11-03):复合子行 MISSING 同入近似门降 UNKNOWN(near_miss),
+    父行上卷 UNKNOWN 并带 unknown_reason 戳记(orphan 优先 grouping)。"""
     reqs = [r for r in (requirements or []) if isinstance(r, dict)]
     prov = [p for p in (provided or []) if isinstance(p, dict)]
     taken: set[int] = set()
@@ -225,7 +230,10 @@ def match_attachments(requirements: Any, provided: Any) -> dict:
             if comp["orphan"]:
                 per_req.append({"req": r, "matched": [], "found": found, "status": "UNKNOWN", "unknown_reason": "grouping", "negative_evidence": None, "sub_results": comp["sub_results"]})
             else:
-                per_req.append({"req": r, "matched": [], "found": found, "status": worst, "negative_evidence": None, "sub_results": comp["sub_results"]})
+                # L2 P3.2 (spec 2026-11-03 §1.2,EAI-CUSTOM):父行戳记=子行 near_miss 传播,
+                # 供投影/att_check 分流消费;orphan 优先 grouping 不被覆盖(孤儿是父级事实)。
+                sub_nm = any(s.get("unknown_reason") == "near_miss" for s in comp["sub_results"])
+                per_req.append({"req": r, "matched": [], "found": found, "status": worst, "unknown_reason": "near_miss" if sub_nm else None, "negative_evidence": None, "sub_results": comp["sub_results"]})
             continue
         hits = [prov[i] for i in matched[ri]]
         found = len(hits)

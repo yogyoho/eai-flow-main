@@ -370,9 +370,10 @@ def test_near_miss_empty_name_short_circuit():
     assert e["negative_evidence"] == {"channels": ["no"], "pool": 1, "closest": []}
 
 
-def test_composite_sub_row_evidence_only_no_status_change():
-    """复合子行 MISSING 只记负证据,状态与父行上卷不变(P3.2 状态门挂账);
-    父行零引用诚实 MISSING、negative_evidence=None;子证据池=orphan 归组后未占用者。"""
+def test_composite_sub_row_near_miss_downgrades():
+    """P3.2:复合子行 MISSING 同入近似门——sim≥0.75 → 子行 UNKNOWN(near_miss),
+    父行经 _SUB_STATUS_ORDER 上卷 UNKNOWN 且 unknown_reason="near_miss";
+    子行负证据仍在;父行 negative_evidence=None(证据在子行,父级不混用)。"""
     req = {
         "no": "3",
         "name": "资格审查文件",
@@ -383,11 +384,13 @@ def test_composite_sub_row_evidence_only_no_status_change():
         {"no": "X-7", "name": "中标通知书回执", "page": 40},  # 不引用父号 3 → 不 orphan,留池
     ]
     e = match_attachments([req], prov)["per_req"][0]
-    assert [s["status"] for s in e["sub_results"]] == ["MATCHED", "MISSING"]
-    assert e["status"] == "MISSING"
-    assert e["negative_evidence"] is None
+    assert [s["status"] for s in e["sub_results"]] == ["MATCHED", "UNKNOWN"]
+    assert e["sub_results"][1]["unknown_reason"] == "near_miss"
     assert e["sub_results"][1]["negative_evidence"]["closest"][0]["name"] == "中标通知书回执"
     assert e["sub_results"][1]["negative_evidence"]["pool"] == 1
+    assert e["status"] == "UNKNOWN"
+    assert e["unknown_reason"] == "near_miss"
+    assert e["negative_evidence"] is None
 
 
 def test_grouping_failure_row_has_no_negative_evidence():
@@ -429,3 +432,75 @@ def test_near_miss_pool_excludes_taken_candidates():
     assert e["negative_evidence"]["pool"] == 0
     assert e["negative_evidence"]["closest"] == []
     assert "unknown_reason" not in e
+
+
+def test_composite_sub_near_miss_gate_threshold_honored(monkeypatch):
+    """门限是模块常量:调高后子行回落 MISSING、父行 MISSING(阈值真实生效,非恒降级);
+    父行形状归一——unknown_reason 键在场且为 None(P3.2 §1.2)。"""
+    import app.extensions.bid_review.engine.attachments as att
+
+    monkeypatch.setattr(att, "NEAR_MISS_GATE", 0.90)
+    req = {
+        "no": "3",
+        "name": "资格审查文件",
+        "sub_items": [{"no": "3.1", "name": "营业执照"}, {"no": "3.2", "name": "中标通知书"}],
+    }
+    prov = [{"no": "3-1", "name": "营业执照", "page": 5}, {"no": "X-7", "name": "中标通知书回执", "page": 40}]
+    e = att.match_attachments([req], prov)["per_req"][0]
+    assert [s["status"] for s in e["sub_results"]] == ["MATCHED", "MISSING"]
+    assert "unknown_reason" not in e["sub_results"][1]
+    assert e["status"] == "MISSING"
+    assert e.get("unknown_reason") is None
+
+
+def test_composite_orphan_and_sub_near_miss_coexist():
+    """孤儿(3-9)与子行近似(X-7)并存:父行戳 grouping(孤儿是父级事实,不被覆盖),
+    子行各自 near_miss——两因各自成话的引擎侧前提(P3.2 §1.2 优先级裁决)。"""
+    req = {
+        "no": "3",
+        "name": "资格审查文件",
+        "sub_items": [{"no": "3.1", "name": "营业执照"}, {"no": "3.2", "name": "中标通知书"}],
+    }
+    prov = [
+        {"no": "3-1", "name": "营业执照", "page": 5},
+        {"no": "3-9", "name": "完税证明", "page": 39},
+        {"no": "X-7", "name": "中标通知书回执", "page": 40},
+    ]
+    e = match_attachments([req], prov)["per_req"][0]
+    assert e["status"] == "UNKNOWN"
+    assert e["unknown_reason"] == "grouping"
+    assert e["sub_results"][1]["status"] == "UNKNOWN"
+    assert e["sub_results"][1]["unknown_reason"] == "near_miss"
+    assert e["sub_results"][1]["negative_evidence"]["pool"] == 1  # 3-9 归孤儿池,X-7 才在证据池
+
+
+def test_composite_sub_empty_name_short_circuit():
+    """子件名归一为空 → _sim_cands 空 → 不进门,保持 MISSING;证据 channels 只记 no。"""
+    req = {
+        "no": "3",
+        "name": "资格审查文件",
+        "sub_items": [{"no": "3.1", "name": "营业执照"}, {"no": "3.2", "name": "  "}],
+    }
+    prov = [{"no": "3-1", "name": "营业执照", "page": 5}, {"no": "X-7", "name": "中标通知书回执", "page": 40}]
+    e = match_attachments([req], prov)["per_req"][0]
+    s = e["sub_results"][1]
+    assert s["status"] == "MISSING"
+    assert s["negative_evidence"] == {"channels": ["no"], "pool": 1, "closest": []}
+
+
+def test_build_checklist_sub_row_p32_keys_passthrough():
+    """投影:子行 UNKNOWN(near_miss) 键原样透传(sub_results 不触碰);counts.unknown
+    收父行,missing 不收(P3.2 §3 零改动证明的测试面)。"""
+    req = {
+        "no": "3",
+        "name": "资格审查文件",
+        "sub_items": [{"no": "3.1", "name": "营业执照"}, {"no": "3.2", "name": "中标通知书"}],
+    }
+    prov = [{"no": "3-1", "name": "营业执照", "page": 5}, {"no": "X-7", "name": "中标通知书回执", "page": 40}]
+    out = build_checklist([req], prov, bid_doc_id="bid.pdf")
+    sub = out["items"][0]["sub_results"][1]
+    assert sub["status"] == "UNKNOWN"
+    assert sub["unknown_reason"] == "near_miss"
+    assert sub["negative_evidence"]["closest"][0]["sim"] >= 0.75
+    assert out["counts"]["unknown"] == 1
+    assert out["counts"]["missing"] == 0

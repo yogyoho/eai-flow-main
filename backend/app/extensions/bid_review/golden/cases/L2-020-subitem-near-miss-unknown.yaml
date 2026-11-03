@@ -1,0 +1,19 @@
+case: L2-020-subitem-near-miss-unknown
+desc: 复合子件近似命中——父件「资格审查文件」子件 3.2「中标通知书」vs 池内「中标通知书回执」(no 留空避开 _refs_parent 孤儿池),子行 sim≈0.83≥门限 → 子行 UNKNOWN(near_miss) → 父行上卷 UNKNOWN → L2-020 need_human 点名父件+子件+候选(P3.2;spec 2026-11-03 §5)
+fields:
+  tender.attachment_requirements:
+    - {'no': "3", name: 资格审查文件, mandatory: true, sub_items: [{'no': "3.1", name: 营业执照}, {'no': "3.2", name: 中标通知书}]}
+  bid.attachment_index:
+    - {'no': "3-1", name: 营业执照}
+    - {'no': "", name: 中标通知书回执}
+expect_issues:
+  - rule_id: L2-020
+    severity: fatal
+    verdict: "need_human"
+    contains: ["子件", "3.2", "中标通知书", "近似候选"]
+    entity: "3.2"
+expect_absent: [L2-024]
+strict: true
+checklist:
+  unknown_count: 1
+  status_by_no: {"3": "UNKNOWN"}
