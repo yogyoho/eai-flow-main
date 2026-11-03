@@ -207,6 +207,13 @@ git commit -m "feat(bid-review): L2-P3.3② 核对表卡接线——UNKNOWN 文�
 6. 行号是写作时点快照,先读现场再改;结构与 spec §2 冲突时以 spec 为准并报告。
 7. 测试跑数如实报告;pnpm test 全量若存量红,区分「本切片引入」与「既有」(对照 HEAD 基线),既有红如实上报不修。
 
+## Task 1 补遗（执行期控制器裁决,2026-11-03）
+
+- **R-1(计划 bug 承认)**: 计划 Task 1 Step 1.3 的 `subItemMarker` 实现片段 `return s.found > 0 ? "✓" : "✗";` 与计划**自带测试**（PARTIAL+found=1→✗）矛盾——实现者按 TDD 以测试为真值源改为 `return s.status === "MATCHED" && s.found > 0 ? "✓" : "✗";`（与 spec §2 裁决2「命中✓否则✗」一致;PARTIAL 可 found>0 但非全命中）。**此偏离合规**;旧 UI 的 `found>0` marker 是 P2 时代粗糙行为,本切片按 spec 收紧。审查者按此版本审。
+- **注**: 全仓 `pnpm test` 存在他人 WIP 的既有失败（task-form-dialog.dom.test.tsx act() 噪音等）——Task 3 验证必须对照 HEAD 基线区分「本切片引入」与「既有」。
+
+---
+
 ## Self-Review(已跑)
 
 1. spec 覆盖: §1 类型→Step 1.3(提前);§2 五点→Steps 2.2-2.4(pill/文案/hint/marker;grouping 维持现状=不渲染,接线零代码);§4→Step 1.1(8 测);§5→Task 3;§3 零 CSS=无步骤,验收含。
