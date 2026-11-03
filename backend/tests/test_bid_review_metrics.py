@@ -18,7 +18,7 @@ from app.extensions.bid_review import crud, models
 from app.extensions.bid_review import routers as R
 from app.extensions.database import Base, get_db
 
-_KNOWN_OPS = {"lte", "gte", "eq", "and", "all", "set_eq", "att_check", "att_count", "steps"}  # att_* = L2 P1(spec 2026-11-02 §3)
+_KNOWN_OPS = {"lte", "gte", "eq", "and", "all", "set_eq", "att_check", "att_count", "att_missing_rows", "steps"}  # att_* = L2 P1(spec 2026-11-02 §3)+L2-021 指纹通道(spec 2026-11-04)
 
 
 @pytest_asyncio.fixture

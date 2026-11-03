@@ -617,3 +617,26 @@ rules:
     fix_tpl: "按要求份数补齐附件或附情况说明：{insufficient}"
     confidence_gate: 1.0
     enabled: true
+  # ── L2 指纹通道(spec 2026-11-04 §2.4,EAI-CUSTOM):L2-021 hyb——粗筛出 MISSING 行
+  # 候选,指纹字典(external)+verdict_gloss 经 run_sem_rule 合并进卡,模型逐候选确认;
+  # 永不自动 MATCHED(full 驳回/unclear 待人工),UNKNOWN 行零发声(L2-020 面已覆盖)──
+  - id: L2-021
+    name: 附件类型指纹核对
+    layer: L2
+    type: hybrid
+    applies_to: ["*"]
+    inputs: [tender.attachment_requirements, bid.attachment_index]
+    check:
+      op: att_missing_rows
+      left: tender.attachment_requirements
+      right: bid.attachment_index
+      candidate_tpl: "附件「{missing}」未见于投标提供清单"
+      fingerprints: external
+      verdict_set: [full, partial, none, unclear]
+      verdict_gloss: "full=材料中确认无此类附件特征,驳回候选(真缺失已由 L2-020 报告);partial=疑似以其它名称提供,在 reason 给出疑似别名与证据;none=避免使用(语义同 full 时一律用 full);unclear=材料不足以判定转待人工"
+    severity: major
+    evidence: [A-BID-DOC]
+    message_tpl: "附件「{clause_id}」疑似以其它名称提供(类型指纹命中):{reason}"
+    fix_tpl: "核对材料中疑似文件,补正附件清单条目名称或补充缺失附件"
+    confidence_gate: 0.75
+    enabled: true

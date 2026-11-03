@@ -131,12 +131,16 @@ def test_full_pack_loads():
     for r in pack.rules:
         by_type.setdefault(r.type, []).append(r.id)
     assert len(by_type.get("deterministic", [])) == 29, "L1 det 14 + L3 det 13 + L2 det 2(L2-020/024,spec 2026-11-02) = 29"
-    assert len(by_type.get("hybrid", [])) == 4, "L1 hyb 003/007 + L3 hyb 004/008 = 4"
+    assert len(by_type.get("hybrid", [])) == 5, "L1 hyb 003/007 + L3 hyb 004/008 + L2-021 指纹通道(spec 2026-11-04) = 5"
     assert len(by_type.get("semantic", [])) == 1, "L1-013 唯一 sem 规则"
     for r in pack.rules:
         if r.type == "hybrid":
-            assert r.check.get("det_expr"), f"{r.id} hybrid 缺 det_expr(粗筛永不触发)"
-            validate_expr(str(r.check["det_expr"]))
+            # L2-021 为 op 型粗筛(att_missing_rows,spec 2026-11-04 §2.3 门=det_expr 或 op),
+            # 例外放行;其余 hyb 仍须带 det_expr。
+            if not (r.check.get("det_expr") or r.check.get("op")):
+                raise AssertionError(f"{r.id} hybrid 缺 det_expr/op(粗筛永不触发)")
+            if r.check.get("det_expr"):
+                validate_expr(str(r.check["det_expr"]))
 
 
 def test_det_rules_empty_fields_need_human_no_exprerror():
@@ -250,10 +254,11 @@ def test_att_ops_missing_field_need_human():
 
 
 def test_att_ops_whitelisted_at_load():
-    """载入期白名单放行 att_check/att_count;规则包 Task 5 落地后 L2 层两规则可加载。"""
+    """载入期白名单放行 att_check/att_count/att_missing_rows;L2 层三规则(L2-020/024 det
+    + L2-021 hyb 指纹通道,spec 2026-11-04)可加载。"""
     pack = load_rulepack(PACK)
     ops = {r.id: r.check.get("op") for r in pack.rules if r.layer == "L2"}
-    assert ops == {"L2-020": "att_check", "L2-024": "att_count"}
+    assert ops == {"L2-020": "att_check", "L2-024": "att_count", "L2-021": "att_missing_rows"}
 
 
 # ── L2 P2:UNKNOWN→need_human + 实体键(spec 2026-11-02 §7 挂账行) ──
@@ -399,6 +404,75 @@ def test_att_check_orphan_and_sub_near_miss_both_messages():
     assert sub_msg["dedup_key"] == "L2-020|-|attachment:3.2"
     grp_msg = next(i for i in issues if "无法自动分组" in i["message"])
     assert grp_msg["dedup_key"] == "L2-020|-|attachment:3"
+
+
+# ── L2-021 指纹通道:att_missing_rows 粗筛(spec 2026-11-04 §2.1) ──────────────────
+
+FP_MISS_FIELDS = {
+    "tender.attachment_requirements": [
+        {"no": "5", "name": "安全生产许可证", "mandatory": "★", "min_count": None},
+        {"no": "6", "name": "社保缴纳证明", "mandatory": "★", "min_count": None},
+    ],
+    "bid.attachment_index": [{"no": "", "name": "业绩合同", "page": 9}],
+}
+
+
+def _fp_rule(**check_extra):
+    check = {"op": "att_missing_rows", "left": "tender.attachment_requirements", "right": "bid.attachment_index", **check_extra}
+    return Rule(
+        id="L2-021",
+        name="附件类型指纹核对",
+        layer="L2",
+        type="hybrid",
+        applies_to=["*"],
+        inputs=["tender.attachment_requirements", "bid.attachment_index"],
+        check=check,
+        severity="major",
+        evidence=[],
+        message_tpl="附件「{clause_id}」疑似以其它名称提供(类型指纹命中):{reason}",
+        fix_tpl=None,
+        confidence_gate=0.75,
+        enabled=True,
+    )
+
+
+def test_att_missing_rows_per_row_candidates():
+    """L2-021 粗筛(spec 2026-11-04 §2.1):MISSING 行逐行 violation 候选,candidate_tpl
+    渲染候选消息(message_tpl 是 sem 侧 {clause_id} 契约,两相分离),entity/dedup 按行实体键。"""
+    issues = run_det_rule(_fp_rule(candidate_tpl="附件「{missing}」未见于投标提供清单"), FP_MISS_FIELDS)
+    assert len(issues) == 2
+    assert all(i["verdict"] == "violation" for i in issues)
+    assert "安全生产许可证" in issues[0]["message"]
+    assert "社保缴纳证明" in issues[1]["message"]
+    assert "{" not in issues[0]["message"]  # 无占位残留
+    assert issues[0]["entity_keys"] == ["attachment:5"]
+    assert issues[1]["entity_keys"] == ["attachment:6"]
+    assert issues[0]["dedup_key"] != issues[1]["dedup_key"]
+
+
+def test_att_missing_rows_no_tpl_falls_back():
+    """无 candidate_tpl → 默认候选消息,同样逐行。"""
+    issues = run_det_rule(_fp_rule(), FP_MISS_FIELDS)
+    assert len(issues) == 2
+    assert "安全生产许可证" in issues[0]["message"]
+    assert "{" not in issues[0]["message"]
+
+
+def test_att_missing_rows_unknown_rows_silent():
+    """UNKNOWN 行零发声(spec §2.1):近似行已有 L2-020 need_human 面,双规则重复=噪音。"""
+    assert run_det_rule(_fp_rule(), SUB_NEAR_FIELDS) == []
+
+
+def test_att_missing_rows_whitelisted_at_load(tmp_path):
+    """算子入白名单:含 candidate_tpl 的规则包可载入(load_rulepack 不拒)。"""
+    good = tmp_path / "good.yaml"
+    good.write_text(
+        "rules:\n- id: L2-021\n  name: 指纹\n  layer: L2\n  type: hybrid\n  severity: major\n"
+        "  applies_to: ['*']\n  inputs: [a, b]\n  check: {op: att_missing_rows, left: a, right: b, candidate_tpl: \"附件「{missing}」x\"}\n"
+        "  evidence: []\n  message_tpl: m\n  fix_tpl: f\n  confidence_gate: 1.0\n  enabled: true\n",
+        encoding="utf-8",
+    )
+    assert load_rulepack(str(good)).rules[0].id == "L2-021"
 
 
 # ── L2 混合态:子近似+子真缺失 issue 面枚举(spec 2026-11-03 §4) ──────────────────

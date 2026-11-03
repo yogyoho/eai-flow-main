@@ -497,3 +497,80 @@ async def test_hyb_op_left_right_numeric_expr_none_unclear_survives():
     issues = await run_sem_rule(rule, fields=HYB_FIELDS, materials="…", model_fn=_fake(json.dumps(unclear)), docs_text=DOCS)
     assert issues[0]["numeric_expr"] is None, "hybrid 一律不派生 numeric_expr"
     assert issues[0]["verdict"] == "unclear" and issues[0]["need_human"] is True, "unclear=need_human 存活出管线"
+
+
+# ── L2-021 指纹通道(spec 2026-11-04 §2.3):op 型 hyb 候选门 + 指纹字典合并进卡 ──
+# 粗筛门修复前只认 det_expr → op 型 hybrid(att_missing_rows)fail-open 纯 sem,
+# 候选段永不生成,§4.4「先 det 粗筛,候选进 LLM 判定」对 op 型规则断链;
+# 既有 4 条 hyb 全带 det_expr,门放宽(det_expr 或 op 二选一)零既有影响。
+
+FP_RULE = {
+    "id": "L2-021",
+    "name": "附件类型指纹核对",
+    "layer": "L2",
+    "type": "hybrid",
+    "severity": "major",
+    "confidence_gate": 0.75,
+    "enabled": True,
+    "applies_to": ["*"],
+    "inputs": ["tender.attachment_requirements", "bid.attachment_index"],
+    "check": {
+        "op": "att_missing_rows",
+        "left": "tender.attachment_requirements",
+        "right": "bid.attachment_index",
+        "candidate_tpl": "附件「{missing}」未见于投标提供清单",
+        "fingerprints": "external",
+        "verdict_set": ["full", "partial", "none", "unclear"],
+    },
+    "evidence": [],
+    "message_tpl": "附件「{clause_id}」疑似以其它名称提供(类型指纹命中):{reason}",
+    "fix_tpl": "核对材料中疑似文件",
+}
+
+FP_FIELDS = {
+    "tender.attachment_requirements": [{"no": "5", "name": "安全生产许可证", "mandatory": "★", "min_count": None}],
+    "bid.attachment_index": [{"no": "", "name": "业绩合同", "page": 9}],
+}
+
+FP_FULL = {"verdicts": [{"clause_id": "5", "verdict": "full", "confidence": 0.9, "reason": "材料确认无此类附件特征", "evidence": [{"doc_id": "bid.pdf", "page": 9, "text": "业绩合同"}]}]}
+
+
+def _isolate_fp_dict(tmp_path, monkeypatch):
+    """指纹字典 seam 隔离(仿 fingerprints 单测 monkeypatch _FILE+_cache):不依赖仓内种子字典内容。"""
+    from app.extensions.bid_review.engine import fingerprints as fp
+
+    f = tmp_path / "fingerprints.yaml"
+    f.write_text("营业执照: [统一社会信用代码, 注册资本]\n", encoding="utf-8")
+    monkeypatch.setattr(fp, "_FILE", f)
+    monkeypatch.setattr(fp, "_cache", None)
+
+
+@pytest.mark.asyncio
+async def test_att_missing_rows_hyb_op_gate_reaches_candidate_card(tmp_path, monkeypatch):
+    """op 型 hyb(无 det_expr)粗筛门放行:att_missing_rows 候选注入规则卡交模型确认;
+    full 驳回候选 → 零条目零产出。"""
+    _isolate_fp_dict(tmp_path, monkeypatch)
+    fake = _CountingFake(json.dumps(FP_FULL))
+    issues = await run_sem_rule(FP_RULE, fields=FP_FIELDS, materials="…", model_fn=fake, docs_text=DOCS)
+    assert fake.calls == 1, "op 型规则粗筛命中须有模型确认调用"
+    assert "det 粗筛候选" in fake.prompts[0], "候选段进卡(修复前 op 型规则 fail-open 纯 sem,候选段永不生成)"
+    assert "安全生产许可证" in fake.prompts[0], "候选行名进卡"
+    assert issues == [], "full=驳回候选,零条目"
+
+
+@pytest.mark.asyncio
+async def test_fingerprint_marker_merges_into_card(tmp_path, monkeypatch):
+    """check.fingerprints==external → loader 产物合并进 check → 判定标准 dump 整卡可见(spec §2.3)。"""
+    _isolate_fp_dict(tmp_path, monkeypatch)
+    fake = _CountingFake(json.dumps(FP_FULL))
+    await run_sem_rule(FP_RULE, fields=FP_FIELDS, materials="…", model_fn=fake, docs_text=DOCS)
+    assert "统一社会信用代码" in fake.prompts[0], "指纹关键词组进卡"
+
+
+@pytest.mark.asyncio
+async def test_no_fingerprint_marker_zero_injection(tmp_path, monkeypatch):
+    """无 marker → check 原样零注入:既有规则卡文本不含指纹字典内容(spec §2.3)。"""
+    _isolate_fp_dict(tmp_path, monkeypatch)
+    fake = _CountingFake(json.dumps(GOOD))
+    await run_sem_rule(HYB, fields=HYB_FIELDS, materials="…", model_fn=fake, docs_text=DOCS)
+    assert "统一社会信用代码" not in fake.prompts[0], "无 marker 规则零注入"

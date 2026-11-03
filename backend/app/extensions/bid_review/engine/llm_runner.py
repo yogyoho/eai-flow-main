@@ -167,7 +167,10 @@ def _hyb_det_prefilter(rule, fields):
     if isinstance(rule, Rule):
         rule = dataclasses.asdict(rule)
     check = rule.get("check") or {}
-    if not rule.get("type") == "hybrid" or not check.get("det_expr"):
+    # 门=det_expr 或 op(spec 2026-11-04 §2.3,EAI-CUSTOM):op 型 hybrid(L2-021
+    # att_missing_rows)同样走 det 粗筛出候选;修复前只认 det_expr → op 型规则 fail-open
+    # 纯 sem,候选段永不生成,§4.4 断链。既有 4 条 hyb 全带 det_expr,放宽零既有影响。
+    if not rule.get("type") == "hybrid" or not (check.get("det_expr") or check.get("op")):
         return None
     try:
         det_issues = list(run_det_rule(_to_det_rule(rule), fields) or [])
@@ -215,6 +218,15 @@ async def run_sem_rule(rule, fields, materials, model_fn, docs_text, model_name=
     schema 弃时候选降级 need_human 产出并注明"模型确认失败",禁止静默消失。"""
     if isinstance(rule, Rule):
         rule = dataclasses.asdict(rule)
+
+    # L2-021 指纹字典外置合并(spec 2026-11-04 §2.3,EAI-CUSTOM):marker 显式
+    # (check.fingerprints=="external"),入口归一后单点合并——prefilter 与卡片共用同一
+    # rule dict,build_rule_card dump 整个 check → 字典+verdict_gloss 自然进卡,零 runner 侧改动。
+    chk0 = rule.get("check") or {}
+    if chk0.get("fingerprints") == "external":
+        from . import fingerprints
+
+        rule = {**rule, "check": {**chk0, "fingerprints": fingerprints.load()}}
 
     passthrough: list[dict[str, Any]] = []
     candidates: list[dict[str, Any]] = []
