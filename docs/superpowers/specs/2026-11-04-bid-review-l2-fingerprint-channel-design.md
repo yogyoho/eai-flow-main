@@ -1,6 +1,6 @@
 # L2 指纹通道(L2-021 附件类型指纹核对) 设计
 
-> 日期: 2026-11-04 ｜ 状态: 已落地
+> 日期: 2026-11-04 ｜ 状态: 已落地(本切片全量,含实现)
 > 前置: P3/P3.2/P3.3+L2-tuning/L2-synonyms/L2-混合态已落地;本切片=二期桶 A 项(裁决见会话 2026-11-04,B 立项另议)
 > 范围: 后端 bid_review 扩展内,零上游/harness 改动;前端零改动(issue 卡通用渲染,L1-013 先例)
 
@@ -53,6 +53,11 @@ violation **永不自动 MATCHED**;⑤新规则 L2-021 进规则包+金标准 3 
 prefilter 与卡片共用同一 rule dict(att_missing_rows 对多余键惰性);marker 显式(`external`),
 不搞隐式魔法。build_rule_card 的判定标准 dump 整个 check → 字典+verdict_gloss 自然进卡。
 
+**粗筛门放宽(实现期发现,落地修订)**:`_hyb_det_prefilter` 原门只认 `det_expr` → op 型 hybrid
+(L2-021 无 det_expr)fail-open 纯 sem,**候选段永不生成**,§4.4「先 det 粗筛,候选进 LLM 判定」
+对 op 型规则断链。修法:门=`det_expr 或 op` 二选一(既有 4 条 hyb 全带 det_expr,放宽零既有影响);
+llm_verify +1 门测试钉住(候选段进卡)。
+
 ### 2.4 规则 L2-021(rulepacks/bid-review-core/1.0.0.yaml)
 
 ```yaml
@@ -92,23 +97,26 @@ prefilter 与卡片共用同一 rule dict(att_missing_rows 对多余键惰性);m
   零产出;无 MISSING 行的题零候选 → 零模型调用;
 - 既有消息/算子零改(att 族门加员不影响既有两算子);golden CLI 52→55。
 
-## 4. 测试(+11)
+## 4. 测试(落地实况:+13 新 + 4 转入门更新)
 
-- rule_runner +3:att_missing_rows 逐行候选(entity/dedup 按行)/UNKNOWN 行零发声/白名单载入;
-- fingerprints 新文件 +3:缺文件 {} / 合法载入 / 坏条目丢弃+坏文件 {};
-- llm_verify +2:marker 合并进卡片文本(关键词+候选消息在场)/无 marker 零注入;
+- rule_runner +4:att_missing_rows 逐行候选(candidate_tpl/entity/dedup)/缺省 tpl 回落/UNKNOWN 行零发声/白名单载入;
+- fingerprints 新文件 +3:缺文件 {} / 合法载入 / 坏条目整组丢弃(tuning 同规,落地修订:组内任一坏条目整组丢弃,半组静默保留会误导运维)+坏文件 {};
+- llm_verify +3:op 型 hyb 粗筛门放行(候选段进卡)/marker 合并进卡/无 marker 零注入;
 - golden +3 题(model_script 路由 L2-021):partial 确认命中(疑似别名+证据)/full 驳回零条目
-  (L2-020 MISSING 仍在)/unclear 转待人工。
+  (L2-020 MISSING 仍在)/unclear 转待人工;
+- 转入门随包更新 4 处(先例同款):full_pack_loads(hyb 4→5,op 型例外放行)/att_ops 白名单
+  L2 三规则/metrics 测试本地 _KNOWN_OPS 副本加员/EXPECTED_COVERAGE 加 L2-021(L2 全集 2→3)。
 
-## 5. 验收
+## 5. 验收(落地实测)
 
-1. `PYTHONPATH=. uv run pytest tests/test_bid_review_rule_runner.py tests/test_bid_review_fingerprints.py tests/test_bid_review_llm_verify.py` 全绿(预期 24+3/3/39+2);
-2. bid_review 全家 pytest(预期 379+8=387/6);
-3. golden CLI **55/55** exit 0(52 存量零翻红);
-4. ruff 触碰文件全绿;diff 仅 engine(rule_runner/llm_runner/fingerprints/dicts)+rulepack+golden cases+tests+docs。
+1. `PYTHONPATH=. uv run pytest tests/test_bid_review_rule_runner.py tests/test_bid_review_fingerprints.py tests/test_bid_review_llm_verify.py` 全绿(实测 29+3/3/42;计划 24+3/3/39+2 的偏差=混合态窗口 rule_runner 已 28 基线+本切片 +1 无 tpl 回落测试+llm_verify 门测试);
+2. bid_review 全家 pytest(实测 **392 passed / 6 skipped**;=379 基线+rule_runner 4+fingerprints 3+llm_verify 3+golden 参数化 3);
+3. golden CLI **55/55** exit 0(52 存量零翻红,结构性缺省安静 full 应答兑现);
+4. ruff 触碰 8 文件全绿;diff 仅 engine(rule_runner/llm_runner/fingerprints/dicts)+rulepack+golden cases+tests+docs。
 
 ## 6. 挂账
 
+- **候选→确认条目 entity_keys 继承(golden case 1 实测发现)**:candidate 段只给模型 {verdict,message},无 join key 回传实体 → sem 确认产物不继承 det 候选 entity_keys;跨层去重/证据定位要继承需先设计 join key(候选注入 id+模型回显,或 message 前缀索引)——独立小切片;
 - UNKNOWN 行指纹扫描(裁决③ v1 收敛)——真实误报案例驱动;
 - stray none verdict 的语义偏(§2.4)——观测;
 - 指纹确认条目前端深化(证据跳转已通用,暂无专用卡);
