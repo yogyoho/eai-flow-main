@@ -319,3 +319,30 @@ def test_att_unknown_issues_unique_dedup_keys():
 def test_att_count_ignores_unknown():
     """att_count 对 UNKNOWN 行零 issue(审查 M-1):UNKNOWN 归 att_check 的 need_human 通道,钳位分工。"""
     assert run_det_rule(_att_rule("att_count"), COMP_FIELDS) == []
+
+
+# ── L2 P3:UNKNOWN 成因分流措辞(spec 2026-11-03 §3.4) ──────────────────
+
+NEAR_FIELDS = {
+    "tender.attachment_requirements": [{"no": "E-2", "name": "中标通知书", "mandatory": "★", "min_count": None}],
+    "bid.attachment_index": [{"no": "", "name": "中标通知书回执", "page": 40}],
+}
+
+
+def test_att_check_near_miss_message_mentions_candidate():
+    """near_miss UNKNOWN → need_human,措辞带近似候选;entity/dedup 沿用实体键(I-1)。"""
+    issues = run_det_rule(_att_rule("att_check"), NEAR_FIELDS)
+    assert len(issues) == 1
+    assert issues[0]["need_human"] is True
+    assert issues[0]["verdict"] == "need_human"
+    assert "近似候选" in issues[0]["message"]
+    assert "中标通知书回执" in issues[0]["message"]
+    assert issues[0]["entity_keys"] == ["attachment:E-2"]
+    assert issues[0]["dedup_key"] == "L2-020|-|attachment:E-2"
+
+
+def test_att_check_grouping_wording_unchanged():
+    """回归面:分组失败措辞不变(golden L2-020-unknown-group-failure contains 依赖)。"""
+    issues = run_det_rule(_att_rule("att_check"), COMP_FIELDS)
+    assert issues[0]["need_human"] is True
+    assert "无法自动分组" in issues[0]["message"]

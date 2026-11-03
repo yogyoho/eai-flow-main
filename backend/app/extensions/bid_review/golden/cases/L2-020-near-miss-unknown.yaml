@@ -9,7 +9,7 @@ expect_issues:
   - rule_id: L2-020
     severity: fatal
     verdict: "need_human"
-    contains: ["E-2", "中标通知书"]
+    contains: ["近似候选", "E-2", "中标通知书"]
     entity: "E-2"
 expect_absent: []
 strict: true

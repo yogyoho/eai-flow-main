@@ -251,10 +251,19 @@ def run_det_rule(rule: Rule, fields: dict) -> list[dict]:
                         iss = _issue(rule, fields, {"missing": [_label(r["req"]) for r in miss]})
                         iss["entity_keys"] = [_entity_key(r["req"]) for r in miss]
                         issues.append(iss)
-                    for r in unknown:  # 分组失败降 need_human,禁强行 PARTIAL/MISSING(spec §7)
-                        nh = _need_human(rule, f"复合附件「{_label(r['req'])}」子件无法自动分组,需人工核对")
+                    for r in unknown:  # UNKNOWN 降 need_human,禁强行 PARTIAL/MISSING(spec §7)
+                        # P3 成因分流(spec 2026-11-03 §3.4,EAI-CUSTOM):缺键向后兼容→grouping;
+                        # 消费用 .get()——平件 MATCHED/PARTIAL 行无 negative_evidence 键,直取会 KeyError
+                        if r.get("unknown_reason") == "near_miss":
+                            cands = (r.get("negative_evidence") or {}).get("closest") or []
+                            c0 = cands[0] if cands else {}
+                            cand_txt = f"{c0.get('no', '')} {c0.get('name', '')}".strip() or "无近似候选记录"
+                            sim_txt = f"(相似度 {c0['sim']:.2f})" if c0.get("sim") is not None else ""
+                            nh = _need_human(rule, f"附件「{_label(r['req'])}」未精确命中,近似候选「{cand_txt}」{sim_txt},需人工核对")
+                        else:
+                            nh = _need_human(rule, f"复合附件「{_label(r['req'])}」子件无法自动分组,需人工核对")
                         nh["entity_keys"] = [_entity_key(r["req"])]
-                        nh["dedup_key"] = f"{rule.id}|-|{_entity_key(r['req'])}"  # 审查 I-1:按实体键派生,多复合件不再互吞
+                        nh["dedup_key"] = f"{rule.id}|-|{_entity_key(r['req'])}"  # 审查 I-1:按实体键派生,多行不再互吞
                         issues.append(nh)
                 else:
                     partial = [r for r in out["per_req"] if r["status"] == "PARTIAL"]
