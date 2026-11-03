@@ -214,6 +214,50 @@ git commit -m "feat(bid-review): L2-P3.3② 核对表卡接线——UNKNOWN 文�
 
 ---
 
+## Task 2 补遗（Task 1 质量审查 Minor 清偿,2026-11-03;与 Task 2 同 commit）
+
+- [ ] **C1(Minor-1 防御分支钉)**: bid-review-checklist-display.test.ts 的 `describe("subItemMarker")` 内追加:
+
+```ts
+  test("MATCHED 且 found=0 → ✗(防御性复核钉,审查 Minor-1)", () => {
+    expect(subItemMarker({ status: "MATCHED", found: 0 })).toBe("✗");
+  });
+```
+
+- [ ] **C2(Minor-2 舍入钉)**: `describe("nearMissHintLines")` 内追加（0.856 无 FP tie 边,就近舍入 vs 截断可分辨）:
+
+```ts
+  test("sim 0.856 → 86%(就近舍入钉,审查 Minor-2)", () => {
+    expect(
+      nearMissHintLines({
+        channels: [],
+        pool: 1,
+        closest: [{ no: "", name: "回执", sim: 0.856 }],
+      }),
+    ).toEqual(["未精确命中 · 近似候选「回执」相似度 86%（待人工核对）"]);
+  });
+```
+
+- [ ] **C3(附加 label 钉)**: 同 describe 内追加:
+
+```ts
+  test("no 有值 name 空串 → label 只含 no(审查附加)", () => {
+    expect(
+      nearMissHintLines({
+        channels: [],
+        pool: 1,
+        closest: [{ no: "3-2", name: "", sim: 0.8 }],
+      }),
+    ).toEqual(["未精确命中 · 近似候选「3-2」相似度 80%（待人工核对）"]);
+  });
+```
+
+- [ ] **C4(Minor-3 挂账备案,零代码)**: c0 在场但 no/name 双空串 → 「近似候选「无近似候选记录」相似度 83%」自相矛盾文案——审查判定病态数据(engine closest 恒有 name)可接受,行为不改须重过 spec,本切片不动;记录备查。
+
+Task 1 模块测试数随补遗 **8→11**;Task 2 Step 2.5 后补跑 `pnpm exec rstest tests/unit/extensions/bid-review-checklist-display.test.ts` 期望 **11 passed**。
+
+---
+
 ## Self-Review(已跑)
 
 1. spec 覆盖: §1 类型→Step 1.3(提前);§2 五点→Steps 2.2-2.4(pill/文案/hint/marker;grouping 维持现状=不渲染,接线零代码);§4→Step 1.1(8 测);§5→Task 3;§3 零 CSS=无步骤,验收含。
