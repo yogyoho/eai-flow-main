@@ -59,6 +59,10 @@ import {
   type LocateTarget,
   exportReport,
 } from "@/extensions/bid-review/api";
+import {
+  nearMissHintLines,
+  subItemMarker,
+} from "@/extensions/bid-review/components/checklist-display";
 import { DocLocateModal } from "@/extensions/bid-review/components/DocLocateModal";
 import { formatDuration } from "@/extensions/bid-review/components/primitives";
 import { TaskStepper } from "@/extensions/bid-review/components/TaskStepper";
@@ -1141,7 +1145,11 @@ export function ResultsView({ taskId }: { taskId?: string | null }) {
                   {clItems
                     .filter((it) => it.status !== "MATCHED" || it.found > 0)
                     .map((it, i) => {
-                      const pill = checklistPill(it.status);
+                      const pill =
+                        it.status === "UNKNOWN" &&
+                        it.unknown_reason === "near_miss"
+                          ? { label: "近似待核", cls: "pill pill-orange" }
+                          : checklistPill(it.status);
                       const first = it.refs[0];
                       return (
                         <tr key={`${it.no}-${it.name}-${i}`}>
@@ -1157,7 +1165,7 @@ export function ResultsView({ taskId }: { taskId?: string | null }) {
                                 {(it.sub_results ?? [])
                                   .map(
                                     (s) =>
-                                      `${s.no ? `${s.no} ` : ""}${s.name} ${s.found > 0 ? "✓" : "✗"}`,
+                                      `${s.no ? `${s.no} ` : ""}${s.name} ${subItemMarker(s)}`,
                                   )
                                   .join(" · ")}
                               </div>
@@ -1165,6 +1173,30 @@ export function ResultsView({ taskId }: { taskId?: string | null }) {
                             {it.clause ? (
                               <span className="hd-sub">（{it.clause}）</span>
                             ) : null}
+                            {it.unknown_reason === "near_miss"
+                              ? nearMissHintLines(it.negative_evidence).map(
+                                  (h, hi) => (
+                                    <div
+                                      className="hd-sub"
+                                      key={`pnm-${it.no}-${hi}`}
+                                    >
+                                      {h}
+                                    </div>
+                                  ),
+                                )
+                              : null}
+                            {(it.sub_results ?? [])
+                              .filter((s) => s.status === "UNKNOWN")
+                              .map((s, si) => (
+                                <div
+                                  className="hd-sub"
+                                  key={`snm-${it.no}-${si}`}
+                                >
+                                  {`${s.no ? `${s.no} ` : ""}${s.name}: `}
+                                  {nearMissHintLines(s.negative_evidence)[0] ??
+                                    "未精确命中（待人工核对）"}
+                                </div>
+                              ))}
                           </td>
                           <td>
                             {it.mandatory === "★" || it.mandatory === "必需"
@@ -1178,7 +1210,9 @@ export function ResultsView({ taskId }: { taskId?: string | null }) {
                           </td>
                           <td>
                             {it.status === "UNKNOWN"
-                              ? "无法自动分组"
+                              ? it.unknown_reason === "near_miss"
+                                ? "未精确命中"
+                                : "无法自动分组"
                               : it.found > 0
                                 ? `已提供 ${it.found} 份`
                                 : "未提供"}
