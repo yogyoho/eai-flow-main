@@ -339,11 +339,16 @@ def test_near_miss_downgrades_to_unknown_with_evidence():
     assert 0.75 <= ev["closest"][0]["sim"] <= 1.0
 
 
-def test_near_miss_gate_threshold_honored(monkeypatch):
-    """门限是模块常量:调高后同一夹具回落 MISSING(阈值真实生效,非恒降级)。"""
+def test_near_miss_gate_threshold_honored(monkeypatch, tmp_path):
+    """门限 tuning 可调(L2 调参外置 spec 2026-11-03 §4):yaml 调高 0.90 后同一
+    夹具回落 MISSING(阈值真实生效,非恒降级;真 loader 端到端)。"""
     import app.extensions.bid_review.engine.attachments as att
+    from app.extensions.bid_review.engine import tuning as tun
 
-    monkeypatch.setattr(att, "NEAR_MISS_GATE", 0.90)
+    tuning_yaml = tmp_path / "tuning.yaml"
+    tuning_yaml.write_text("near_miss_gate: 0.90\n", encoding="utf-8")
+    monkeypatch.setattr(tun, "_FILE", tuning_yaml)
+    monkeypatch.setattr(tun, "_cache", None)
     out = att.match_attachments([_req(no="E-2", name="中标通知书")], [_prov(no="", name="中标通知书回执", page=40)])
     e = out["per_req"][0]
     assert e["status"] == "MISSING"
@@ -434,12 +439,17 @@ def test_near_miss_pool_excludes_taken_candidates():
     assert "unknown_reason" not in e
 
 
-def test_composite_sub_near_miss_gate_threshold_honored(monkeypatch):
-    """门限是模块常量:调高后子行回落 MISSING、父行 MISSING(阈值真实生效,非恒降级);
+def test_composite_sub_near_miss_gate_threshold_honored(monkeypatch, tmp_path):
+    """门限 tuning 可调(L2 调参外置 spec 2026-11-03 §4):yaml 调高 0.90 后子行回落
+    MISSING、父行 MISSING(阈值真实生效,非恒降级;真 loader 端到端);
     父行形状归一——unknown_reason 键在场且为 None(P3.2 §1.2)。"""
     import app.extensions.bid_review.engine.attachments as att
+    from app.extensions.bid_review.engine import tuning as tun
 
-    monkeypatch.setattr(att, "NEAR_MISS_GATE", 0.90)
+    tuning_yaml = tmp_path / "tuning.yaml"
+    tuning_yaml.write_text("near_miss_gate: 0.90\n", encoding="utf-8")
+    monkeypatch.setattr(tun, "_FILE", tuning_yaml)
+    monkeypatch.setattr(tun, "_cache", None)
     req = {
         "no": "3",
         "name": "资格审查文件",

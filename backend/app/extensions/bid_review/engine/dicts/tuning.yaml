@@ -1,0 +1,5 @@
+# bid_review 引擎调参(L2 调参外置 spec 2026-11-03 §2;默认值=引擎现状,改此文件即生效,
+# gateway 进程 mtime 缓存热感知;非法值逐键回落默认)。synonyms: 节留给同义词外置切片。
+near_miss_gate: 0.75      # 近似门:池内 sim≥此值 → UNKNOWN(near_miss)
+evidence_min_sim: 0.30    # 负证据 closest 滤噪下限
+evidence_top_k: 3         # closest 最多条数

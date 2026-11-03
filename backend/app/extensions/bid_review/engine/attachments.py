@@ -8,6 +8,8 @@ import difflib
 import re
 from typing import Any
 
+from . import tuning
+
 # 全角 ASCII(！-～)与表意空格 → 半角
 _FULLWIDTH = {0x3000: 0x20, **{0xFF01 + i: 0x21 + i for i in range(94)}}
 # 「附件N」「附件N-M」(阿拉伯/中文数字)序号前缀 + 紧随分隔符
@@ -36,8 +38,9 @@ def _fold_synonyms(t: str) -> str:
 # SequenceMatcher 相似度,≥门限降 UNKNOWN(near_miss)——归一化变体不得直接 fatal
 # 缺失,交人工;真缺失仍 MISSING 但携带负证据佐证。标定:「中标通知书」vs
 # 「中标通知书回执」ratio≈0.83 须入门,跨附件名对(中标通知书 vs 业绩合同)≈0.0
-# 须门外;金标准 L2-020-near-miss 题 + 单测(含 monkeypatch 阈值生效钉)双向锁。
-NEAR_MISS_GATE = 0.75
+# 须门外;金标准 L2-020-near-miss 题 + 单测(含 tuning 覆盖生效钉)双向锁。
+# L2 调参外置(spec 2026-11-03 §1,EAI-CUSTOM):门限/滤噪/截断三参外置
+# engine/dicts/tuning.yaml,NEAR_MISS_GATE 常量退役——读 tuning.get,缺文件/坏值回落默认。
 
 
 def _sim_cands(nm: str, pool: list[dict]) -> list[tuple[float, dict]]:
@@ -53,11 +56,12 @@ def _sim_cands(nm: str, pool: list[dict]) -> list[tuple[float, dict]]:
 
 def _evidence(channels: list[str], pool: list[dict], cands: list[tuple[float, dict]]) -> dict:
     """行级负证据(spec §3.3):channels=实际尝试通道,pool=未占用提供项数,
-    closest=相似度 top-3(≥0.30 滤噪)。"""
+    closest=相似度 top evidence_top_k(≥evidence_min_sim 滤噪;均 tuning 可调,
+    L2 调参外置 spec 2026-11-03 §2,EAI-CUSTOM)。"""
     return {
         "channels": channels,
         "pool": len(pool),
-        "closest": [{"no": str(p.get("no") or ""), "name": str(p.get("name") or ""), "sim": round(s, 4)} for s, p in cands[:3] if s >= 0.30],
+        "closest": [{"no": str(p.get("no") or ""), "name": str(p.get("name") or ""), "sim": round(s, 4)} for s, p in cands[: int(tuning.get("evidence_top_k"))] if s >= float(tuning.get("evidence_min_sim"))],
     }
 
 
@@ -73,7 +77,7 @@ def _near_miss_pass(per_req: list[dict], extra: list[dict]) -> None:
         channels = (["no"] if no else []) + (["name"] if nm else [])
         cands = _sim_cands(nm, extra)
         e["negative_evidence"] = _evidence(channels, extra, cands)
-        if cands and cands[0][0] >= NEAR_MISS_GATE:
+        if cands and cands[0][0] >= float(tuning.get("near_miss_gate")):
             e["status"] = "UNKNOWN"
             e["unknown_reason"] = "near_miss"
 
@@ -159,7 +163,7 @@ def _match_composite(req: dict, prov: list[dict], taken: set[int]) -> dict:
             orphan = True
             taken.add(i)
     # L2 P3 (spec 2026-11-03 §3.3,EAI-CUSTOM):子行 MISSING 记负证据;P3.2 (spec
-    # 2026-11-03 §1.1,EAI-CUSTOM):同入近似门——sim≥NEAR_MISS_GATE 降 UNKNOWN(near_miss),
+    # 2026-11-03 §1.1,EAI-CUSTOM):同入近似门——sim≥near_miss_gate(tuning) 降 UNKNOWN(near_miss),
     # 父行经 _SUB_STATUS_ORDER 上卷。只读后处理不回写 taken,占用记账零触碰;
     # 真缺失(门外)仍 MISSING。证据池=orphan 归组后仍未占用者;父行
     # negative_evidence=None(分组失败是另一种证据形态,不混用)。
@@ -168,7 +172,7 @@ def _match_composite(req: dict, prov: list[dict], taken: set[int]) -> dict:
         if s["status"] == "MISSING":
             channels = (["no"] if s.get("no") else []) + (["name"] if normalize_name(s.get("name")) else [])
             cands = _sim_cands(normalize_name(s.get("name")), untaken)
-            if cands and cands[0][0] >= NEAR_MISS_GATE:  # 门判定用 raw ratio,与平件门同规
+            if cands and cands[0][0] >= float(tuning.get("near_miss_gate")):  # 门判定用 raw ratio,与平件门同规
                 s["status"] = "UNKNOWN"
                 s["unknown_reason"] = "near_miss"
             s["negative_evidence"] = _evidence(channels, untaken, cands)
@@ -184,7 +188,7 @@ def match_attachments(requirements: Any, provided: Any) -> dict:
     状态 = UNKNOWN > MISSING > PARTIAL > MATCHED 上卷,found=子件命中数之和,
     父级 min_count 忽略。
     P3 (spec 2026-11-03):平件 found==0 行经 _near_miss_pass——近似候选 sim≥
-    NEAR_MISS_GATE 降 UNKNOWN(near_miss),负证据(negative_evidence)一律记录。
+    near_miss_gate(tuning) 降 UNKNOWN(near_miss),负证据(negative_evidence)一律记录。
     P3.2 (spec 2026-11-03):复合子行 MISSING 同入近似门降 UNKNOWN(near_miss),
     父行上卷 UNKNOWN 并带 unknown_reason 戳记(orphan 优先 grouping)。"""
     reqs = [r for r in (requirements or []) if isinstance(r, dict)]
