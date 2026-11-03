@@ -513,6 +513,21 @@ def test_composite_mixed_cause_parent_near_miss_stamp():
 
 - [ ] **B1(审查 Minor-5)**: CALIBRATION 批D 备忘段「复合子行 v1 只记证据不改状态(P3.2 挂账)」已陈旧——改为「复合子行 P3.2 已同入近似门(见本批 2026-11-03 三行)」。
 
+- [ ] **B2(Task 2 质量审查 Minor-2,断言统一)**: tests/test_bid_review_attachments.py `test_composite_sub_partial_not_gated` 末行 `assert e.get("unknown_reason") is None` 改为 `assert e["unknown_reason"] is None`(引擎非 orphan 复合父行恒写该键,与 A1 钉法统一;子行上的 `"unknown_reason" not in s` / `"negative_evidence" not in s` 两断言**不动**——缺席钉正是其意图)。
+
+- [ ] **B3(Task 2 质量审查 Minor-3,注释归因校正)**: rule_runner.py 三分支注释块中「行形状异构(旧数据缺键/grouping 行 evidence=None),消费一律 .get();」改为「行种类异构(平件/复合/grouping 三形态,键随形态有无)+引擎演进防漂移,消费一律 .get();」——EAI-CUSTOM 头与 spec 引用行不动;**f-string 各行禁碰**(golden contains 回归面)。
+
+- [ ] **B4(Task 2 质量审查 Minor-1,配对钉)**: tests/test_bid_review_rule_runner.py `test_att_check_orphan_and_sub_near_miss_both_messages` 在 dedup 键集合断言后追加配对断言:
+
+```python
+    sub_msg = next(i for i in issues if "近似候选" in i["message"])
+    assert sub_msg["dedup_key"] == "L2-020|-|attachment:3.2"
+    grp_msg = next(i for i in issues if "无法自动分组" in i["message"])
+    assert grp_msg["dedup_key"] == "L2-020|-|attachment:3"
+```
+
+(消息↔键双向钉死,防配对错位回归。)
+
 ---
 
 ## Self-Review(已跑)
