@@ -130,5 +130,5 @@ spec docs/superpowers/specs/2026-11-03-bid-review-l2-p3-negative-evidence-synony
 | L2-020-near-miss-unknown | red-first→引擎增强 | 落库先红(现状两级精确双落空→fatal MISSING,expect verdict need_human 不符);_near_miss_pass 门(0.75,SequenceMatcher × extra 池)后 UNKNOWN(near_miss)→need_human→绿;门限标定:中标通知书 vs 回执≈0.83 入门/中标通知书 vs 业绩合同≈0.0 门外(单测 monkeypatch 钉阈值真实生效);Task 3 将补强 contains「近似候选」 |
 | (L2-020-near-miss-unknown 补强) | 引擎对+题补强 | att_check UNKNOWN 按 unknown_reason 分流措辞——near_miss 带「近似候选」+相似度,grouping 维持原文(golden 分组失败题 contains 依赖回归面);entity/dedup 键两形态同构(I-1);contains 补「近似候选」钉措辞;落红证据:分流前 message 硬编码「无法自动分组」,「近似候选」断言红 |
 
-3. **P3 负证据备忘**:negative_evidence={channels,pool,closest(top3,≥0.30)} 双写面——per_req(rule_runner 消费)+items(端点透传);分组失败行 evidence=None/unknown_reason=grouping,与 near_miss 不混用;复合子行 v1 只记证据不改状态(P3.2 挂账)。
+**批D 备忘——P3 负证据**:negative_evidence={channels,pool,closest(top3,≥0.30)} 双写面——per_req(rule_runner 消费)+items(端点透传);分组失败行 evidence=None/unknown_reason=grouping,与 near_miss 不混用;复合子行 v1 只记证据不改状态(P3.2 挂账)。
 

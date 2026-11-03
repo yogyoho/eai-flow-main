@@ -253,7 +253,7 @@ def run_det_rule(rule: Rule, fields: dict) -> list[dict]:
                         issues.append(iss)
                     for r in unknown:  # UNKNOWN 降 need_human,禁强行 PARTIAL/MISSING(spec §7)
                         # P3 成因分流(spec 2026-11-03 §3.4,EAI-CUSTOM):缺键向后兼容→grouping;
-                        # 消费用 .get()——平件 MATCHED/PARTIAL 行无 negative_evidence 键,直取会 KeyError
+                        # 消费用 .get()——行形状异构(旧数据缺键/grouping 行 evidence=None),直取会 KeyError/AttributeError
                         if r.get("unknown_reason") == "near_miss":
                             cands = (r.get("negative_evidence") or {}).get("closest") or []
                             c0 = cands[0] if cands else {}

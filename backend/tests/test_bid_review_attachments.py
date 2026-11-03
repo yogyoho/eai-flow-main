@@ -413,3 +413,19 @@ def test_build_checklist_p3_keys_passthrough():
     assert it["negative_evidence"]["closest"][0]["sim"] >= 0.75
     assert out["counts"]["unknown"] == 1
     assert out["counts"]["missing"] == 0
+
+
+def test_near_miss_pool_excludes_taken_candidates():
+    """占用候选排除钉(Task 2 审查 Minor-4):候选被另一 req 精确命中后不在 extra 池——
+    败者 pool=0/closest=[],且不得被已占用候选降级(伪疑点禁令,贪心一对一契约)。"""
+    out = match_attachments(
+        [_req(no="A-1", name="中标通知书"), _req(no="B-1", name="中标通知书回执")],
+        [_prov(no="", name="中标通知书回执", page=40)],
+    )
+    by = {e["req"]["no"]: e for e in out["per_req"]}
+    assert by["B-1"]["status"] == "MATCHED"
+    e = by["A-1"]
+    assert e["status"] == "MISSING"
+    assert e["negative_evidence"]["pool"] == 0
+    assert e["negative_evidence"]["closest"] == []
+    assert "unknown_reason" not in e

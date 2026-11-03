@@ -337,6 +337,7 @@ def test_att_check_near_miss_message_mentions_candidate():
     assert issues[0]["verdict"] == "need_human"
     assert "近似候选" in issues[0]["message"]
     assert "中标通知书回执" in issues[0]["message"]
+    assert "0.83" in issues[0]["message"]  # .2f 渲染钉(fixture ratio≈0.8333 确定性)
     assert issues[0]["entity_keys"] == ["attachment:E-2"]
     assert issues[0]["dedup_key"] == "L2-020|-|attachment:E-2"
 
