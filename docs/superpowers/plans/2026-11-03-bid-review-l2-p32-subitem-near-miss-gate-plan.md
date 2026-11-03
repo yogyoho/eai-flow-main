@@ -451,6 +451,70 @@ git diff 52cfcb4ce..HEAD -- backend/app/extensions/bid_review/engine/attachments
 
 ---
 
+## Task 2 补遗（Task 1 双审 Minor 清偿,2026-11-03 质量审查 Minor-1/2/3/6;与 Task 2 同 commit）
+
+- [ ] **A1(Minor-3 断言收紧)**: tests/test_bid_review_attachments.py 阈值钉中 `assert e.get("unknown_reason") is None` 改为 `assert e["unknown_reason"] is None`(缺席即 KeyError,真钉形状归一)。
+
+- [ ] **A2(Minor-6 PARTIAL 前置钉)**: attachments 测试文件尾追加:
+
+```python
+def test_composite_sub_partial_not_gated():
+    """P3.2 门前置钉:子件 min_count=2 且 found=1(PARTIAL)不入门——池内虽有门内候选
+    (营业执照副本 sim≈0.8),保持 PARTIAL、无 unknown_reason/负证据(与平件 found>0 跳过对偶)。"""
+    req = {
+        "no": "3",
+        "name": "资格审查文件",
+        "sub_items": [{"no": "3.1", "name": "营业执照", "min_count": 2}],
+    }
+    prov = [
+        {"no": "3-1", "name": "营业执照", "page": 5},
+        {"no": "X-7", "name": "营业执照副本", "page": 40},  # 位置/名称通道外,留池;sim≈0.8 门内
+    ]
+    e = match_attachments([req], prov)["per_req"][0]
+    s = e["sub_results"][0]
+    assert s["status"] == "PARTIAL"
+    assert "unknown_reason" not in s
+    assert "negative_evidence" not in s
+    assert e["status"] == "PARTIAL"
+    assert e.get("unknown_reason") is None
+```
+
+- [ ] **A3(Minor-2 混合态钉;枚举已挂账 spec §8)**: attachments 测试文件尾追加:
+
+```python
+def test_composite_mixed_cause_parent_near_miss_stamp():
+    """混合成因钉(审查 Minor-2):子 A near_miss + 子 B 真缺失并存 → 父行 UNKNOWN
+    unknown_reason="near_miss";A UNKNOWN 带证据,B 保持 MISSING 带证据——
+    子级真缺面在 checklist sub_results(issue 面子件枚举已挂账,见 spec §8)。"""
+    req = {
+        "no": "3",
+        "name": "资格审查文件",
+        "sub_items": [
+            {"no": "3.1", "name": "营业执照"},
+            {"no": "3.2", "name": "中标通知书"},
+            {"no": "3.3", "name": "资质证书"},
+        ],
+    }
+    prov = [
+        {"no": "3-1", "name": "营业执照", "page": 5},
+        {"no": "X-7", "name": "中标通知书回执", "page": 40},
+    ]
+    e = match_attachments([req], prov)["per_req"][0]
+    assert e["status"] == "UNKNOWN"
+    assert e["unknown_reason"] == "near_miss"
+    assert [s["status"] for s in e["sub_results"]] == ["MATCHED", "UNKNOWN", "MISSING"]
+    assert e["sub_results"][1]["unknown_reason"] == "near_miss"
+    assert e["sub_results"][2]["negative_evidence"]["pool"] == 1
+```
+
+- [ ] **A4(Minor-1 连坐注记)**: Task 2 的 CALIBRATION 编辑(Step 2.6)同时把批D 行2 尾部补一句: `;连坐: red 窗口期 test_cli_main_exit_codes 同红(CLI rc=1),非回归`。
+
+## Task 3 补遗
+
+- [ ] **B1(审查 Minor-5)**: CALIBRATION 批D 备忘段「复合子行 v1 只记证据不改状态(P3.2 挂账)」已陈旧——改为「复合子行 P3.2 已同入近似门(见本批 2026-11-03 三行)」。
+
+---
+
 ## Self-Review(已跑)
 
 1. **Spec 覆盖**: §1.1→Task1 Step1.5(a);§1.2→Step1.5(b);§2→Task2 Step2.3;§3→Task1 `test_build_checklist_sub_row_p32_keys_passthrough`;§4 零改动(无任务触碰 att_count,守护钉 `test_att_count_ignores_unknown` 在场);§5→Task1 Step1.1/1.2;§6→各验证步;§7→Task3。

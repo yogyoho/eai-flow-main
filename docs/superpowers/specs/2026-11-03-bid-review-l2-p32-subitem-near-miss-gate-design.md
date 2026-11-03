@@ -139,3 +139,5 @@ att_count 只数 **PARTIAL 父行**（rule_runner :269-277),不读子行。子�
 - 前端核对表卡子行 near-miss 展示（与 P3 平件负证据展示并轨,独立 UI 切片）。
 - 阈值可配置 / 同义词 YAML 外置 / 指纹通道与 L0-L5 抽取管线（沿用 P3 spec §0 原判）。
 - 子行 negative_evidence.channels 缺位置通道元数据（cosmetic,同 P3）。
+- 混合成因父行（子 A near_miss + 子 B 真缺失）的 issue 面子件枚举——Task 1 质量审查 Minor-2 裁决挂账:att_check 的 miss 消息**历来只点名父件**（`_label(r["req"])`）不点子件,子级真缺面在 checklist sub_results;P3.2 把该父行 fatal→need_human 本就是升级哲学,不额外改消息格式。引擎语义由混合态钉测锁定（计划 Task 2 补遗 A3）。
+- 子行证据池时点性（req 处理时点取池,后续 req 精确命中/孤儿吸收候选可致先前子行 closest 引用过期;UNKNOWN 本身仍真实）——审查 Minor-4,现实影响低,记录备查。
