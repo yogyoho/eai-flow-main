@@ -171,7 +171,7 @@ export interface BidAttachmentRef {
   page: number | null;
 }
 
-/** GET /tasks/{id}/attachment_checklist 行(要求项;P1 三态 + P2 UNKNOWN(子件分组失败→需人工))。 */
+/** GET /tasks/{id}/attachment_checklist 行(要求项;P1 三态 + P2 UNKNOWN + P3/P3.2 行级 unknown_reason/negative_evidence)。 */
 export interface BidChecklistItem {
   no: string;
   name: string;
@@ -181,13 +181,26 @@ export interface BidChecklistItem {
   status: "MATCHED" | "PARTIAL" | "MISSING" | "UNKNOWN";
   clause: string | null;
   refs: BidAttachmentRef[];
-  /** 复合附件子件核对(P2);平件恒 [];旧网关缺省 → 消费方 `?? []` 兜底。 */
+  /** 复合附件子件核对(P2);平件恒 [];旧网关缺省 → 消费方 `?? []` 兜底。P3.2:子行可 UNKNOWN(near_miss 门)+行级证据。 */
   sub_results?: Array<{
     no: string;
     name: string;
     found: number;
-    status: "MATCHED" | "PARTIAL" | "MISSING";
+    status: "MATCHED" | "PARTIAL" | "MISSING" | "UNKNOWN";
+    unknown_reason?: "near_miss" | "grouping" | null;
+    negative_evidence?: BidNegativeEvidence | null;
   }>;
+  /** P3/P3.2 行级降级成因(near_miss=近似待核 / grouping=无法自动分组);投影恒写键值可 null,旧网关 undefined。 */
+  unknown_reason?: "near_miss" | "grouping" | null;
+  /** P3/P3.2 行级负证据(引擎 _evidence:channels/pool/closest top-3≥0.30);复合父行恒 null(证据在子行),旧网关 undefined。 */
+  negative_evidence?: BidNegativeEvidence | null;
+}
+
+/** P3/P3.2 行级负证据(引擎 _evidence);旧网关缺键 → 消费方 `??` 兜底。 */
+export interface BidNegativeEvidence {
+  channels: string[];
+  pool: number;
+  closest: Array<{ no: string; name: string; sim: number }>;
 }
 
 /** 未被任何要求匹配的提供项(EXTRA——info 行提示,不产 issue 不进问题数)。 */
