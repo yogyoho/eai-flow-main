@@ -113,7 +113,7 @@ att_count 只数 **PARTIAL 父行**（rule_runner :269-277),不读子行。子�
 - expect: L2-020 fatal verdict `need_human`, message `contains: ["子件", "3.2", "中标通知书", "近似候选"]`; `expect_absent: [L2-024]`; checklist `unknown_count: 1`, `status_by_no: {"3": "UNKNOWN"}`。
 - red-first 证据: 现引擎子行 MISSING → 父行 MISSING → L2-020 fatal violation,与期望背离,落红后归档 CALIBRATION 批D。
 
-既有 49 题（含 P3 两题）零翻红预期: group-failure 题（subs 皆命中,纯孤儿）与 three-channel 题（subs 皆命中）均无 MISSING 子行,门不触发。
+既有 51 题（49+P3 两题）零翻红预期: group-failure 题（subs 皆命中,纯孤儿）与 three-channel 题（subs 皆命中）均无 MISSING 子行,门不触发;P3.2 落地后全量 52 题。
 
 ## 6. 测试计划
 
@@ -124,11 +124,11 @@ att_count 只数 **PARTIAL 父行**（rule_runner :269-277),不读子行。子�
 `test_bid_review_rule_runner.py`:
 - 新增: 子近似消息钉（need_human / 「子件」「3.2」「近似候选」「0.83」渲染 / entity_keys=attachment:3.2 / dedup_key）；孤儿+子近似双话术钉（两条 issue,dedup 键互异）；grouping 话术原样钉（既有,应零改动通过）。
 
-金标准 CLI: 50 题（49+1）total / failed 0 / exit 0;模块测试数口径按 cerebrum 三数核。
+金标准 CLI: 52 题（51+1）total / failed 0 / exit 0;模块测试数口径按 cerebrum 三数核（cases/*.yaml 数 = CLI total = pytest 参数化数,当前 51→52）。
 
 ## 7. 验收标准
 
-1. 金标准 50 题零翻红,新题 red-first 且落红证据入 CALIBRATION 批D。
+1. 金标准 52 题零翻红（既有 51 不动）,新题 red-first 且落红证据入 CALIBRATION 批D。
 2. 平件/grouping 两分支措辞逐字节不变（既有双钉测试通过即证）。
 3. 子行门不触碰 `taken`: 全测试文件 grep 无新增 taken 写入;占用排除语义由既有 `test_near_miss_pool_excludes_taken_candidates` 守护。
 4. ruff check+format 干净;bid_review 全家 + golden CLI 绿。
