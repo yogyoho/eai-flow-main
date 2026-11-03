@@ -1,6 +1,6 @@
 # L2 混合态真缺失子件 issue 面枚举 设计
 
-> 日期: 2026-11-03 ｜ 状态: 已落地
+> 日期: 2026-11-03 ｜ 状态: 已落地(e671c9ba3..575be1f81 推送 origin/main-dev-fork)
 > 前置: P3.2 已落地(本项是其 §8 挂账 :142 的兑付;L2-tuning/L2-synonyms 已落地)
 > 范围: 后端 bid_review 扩展内,零上游/harness 改动
 
