@@ -1,6 +1,6 @@
 # evidence.page 契约修复(页码契约三层) 设计
 
-> 日期: 2026-11-04 ｜ 状态: 设计定稿(六裁决已批)
+> 日期: 2026-11-04 ｜ 状态: 已落地(本切片全量,含 R3 活体回采)
 > 前置: 围栏容错切片回采新发现 §4-①(剥壳后暴露,模型确认层复活最后拦路石)
 > 范围: engine/verify.py check_schema 页码容忍 + engine/llm_runner.py 提示契约 + worker.py _collect_docs_text 真分页;align_evidence 零改
 
@@ -36,16 +36,30 @@ null/缺省语义 = 未锚定 → 对齐层落 page 1(v1 未分页文档的真�
 6. 活体验证:R3 新建走查任务(prev_task_id 挂 7c6aec02;done 任务 retry 409),
    期望 L2-021/L1-013 确认段首次活体存活 + entity join 确认路径首证。
 
-## 3. 验收口径
+## 3. 验收(落地实测)
 
-1. llm_verify +2(page 容忍/垃圾拒绝)先红后绿;
-2. worker +3(无标记/有标记切分/散文本归属)先红后绿;
-3. bid_review 全家 pytest 精确计数全绿 exit 0;golden CLI 55/55 零翻红
-   (golden runner docs_text="" 走 eval_core 缺省,不经 _collect_docs_text,不受影响);
-4. ruff 触碰文件绿;gateway 重启后 R3 活体采证。
+1. llm_verify **48** 全绿(46+2;page 容忍先红,垃圾拒绝为守卫绿);
+2. worker +3(无标记守卫绿/标记切分红/散文本归属红)全绿;
+3. bid_review 全家 pytest **403 passed / 0 failed** exit 0(claimer 单测一次 flaky 单跑即绿,
+   bug-3967 挂账观测,全家未复现);golden CLI **55/55** 零翻红 exit 0;
+4. ruff 触碰文件绿(format 修 llm_verify 1 文件);
+5. **R3 活体回采**(任务 72e4bf6c,版本链挂 7c6aec02,quick 模式):
+   - **确认段零 schema_discard**:R3 窗口仅 1 次 not_json retry(attempt=2 过),R2 为多次 discard——重试死循环灭;
+   - **L1-013 出 nh=f 确认行**:evidence 全 page=1 按契约填 → 对齐通关 → need_human 清除(全七道过);
+   - **null 页过 schema 存活**:L1-013 nh=t 行 evidence 含 `page: null`,verdict=violation 照常落库(R2 同形态直接 discard);
+   - **诚实降级不静默采信**:L2-021 C2 引 page=9(.md 无标记整篇挂 page 1)→ 对齐失配 → nh=t,条目与实体保留;
+   - **echo 合规延续**:L2-021 双候选 C1/C2 id 均被模型回显;C1(★附件2 全缺)确认违规 nh=f——
+     **entity join 确认路径首次活体观测**(挂账项兑现);
+   - summary `{fatal:3, major:3, need_human:32}` 与 DB nh=f 行精确一致(R2 的口径不一致未复现);
+   - 429 未复现(本轮配额内)。
 
-## 4. 挂账
+## 4. 挂账与回采残留
 
-- 模型引文恰好含 `[[p.N]]` 字面量时对齐相似度略降(边缘,±0.9 阈下可容忍,不处理);
-- entity join 确认路径首证依赖 R3 模型行为,若仍未见继续挂账观测;
-- 429 免费档限流(运维决定,非本切片)。
+- **P1 重复执行/双快照重复条目**(队列②,未动):L1-013/L2-021/L2-020/L2-024 仍见同规则多行
+  (两份执行/快照,det 行+确认行与真重复混杂),dedup_key 因 clause/evidence 差异不合并;
+  R3 summary 口径已一致,该挂账缩窄为「重复行合并」单点;
+- **P2 抽取形状契约**(队列③,未动):L1-016/L3-018 `求值期字段缺失 'e.value'/'c.value'`
+  need_human 行仍在(标量形状未修);
+- 模型引文恰好含 `[[p.N]]` 字面量时对齐相似度略降(边缘,不处理);
+- 429 免费档限流(运维决定,非本切片);
+- L1-003 确认行 nh=t(confidence 门槛按设计转人工,R2 同形态,持续观测)。
