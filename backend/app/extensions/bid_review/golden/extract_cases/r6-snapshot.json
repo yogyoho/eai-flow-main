@@ -1,0 +1,253 @@
+{
+ "source": "R6 live task 2ab0cc25-aadb-4f81-9d02-1af9baf42730",
+ "frozen_at": "2026-11-04",
+ "fields": {
+  "bid.subtotal": null,
+  "bid.boq_items": null,
+  "bid.detail_rows": null,
+  "bid.qual_levels": null,
+  "bid.total_price": 980000,
+  "deviation.items": [
+   {
+    "item": "附件2 安全生产许可证",
+    "kind": "missing",
+    "evidence": {
+     "page": null,
+     "role": "tender",
+     "quote": "★附件2 安全生产许可证"
+    },
+    "severity": "fatal",
+    "tender_req": "★附件2 安全生产许可证",
+    "bid_response": null
+   },
+   {
+    "item": "附件4 社会保险缴纳证明",
+    "kind": "negative",
+    "evidence": {
+     "page": null,
+     "role": "bid",
+     "quote": "附件A 社会保险参保证明 …………… 第 9 页"
+    },
+    "severity": "minor",
+    "tender_req": "附件4 社会保险缴纳证明（近三个月）",
+    "bid_response": "附件A 社会保险参保证明"
+   },
+   {
+    "item": "业绩合同数量要求",
+    "kind": "negative",
+    "evidence": {
+     "page": null,
+     "role": "tender",
+     "quote": "不少于 2 份"
+    },
+    "severity": "major",
+    "tender_req": "不少于 2 份",
+    "bid_response": "1 份"
+   }
+  ],
+  "tender.currency": "人民币",
+  "tender.tax_rate": null,
+  "tender.bid_scope": null,
+  "tender.boq_items": null,
+  "tender.max_price": 1000000,
+  "bid.device_models": null,
+  "bid.validity_days": null,
+  "bid.deposit_amount": null,
+  "bid.bid_letter_date": null,
+  "bid.boq_unit_checks": [],
+  "bid.warranty_period": {
+   "unit": "month",
+   "value": 24
+  },
+  "tender.bid_deadline": null,
+  "tender.max_duration": {
+   "unit": "day",
+   "value": 180
+  },
+  "bid.attachment_index": [
+   {
+    "no": "1",
+    "name": "营业执照",
+    "page": 1,
+    "pages": null
+   },
+   {
+    "no": "3",
+    "name": "业绩合同",
+    "page": 5,
+    "pages": null
+   },
+   {
+    "no": "A",
+    "name": "社会保险参保证明",
+    "page": 9,
+    "pages": null
+   }
+  ],
+  "bid.document_version": null,
+  "tender.device_models": null,
+  "tender.scoring_items": [
+   {
+    "name": "技术方案",
+    "max_score": 40,
+    "related_paths": [
+     "bid.duration_main_text",
+     "bid.warranty_period",
+     "bid.device_models"
+    ]
+   },
+   {
+    "name": "商务报价",
+    "max_score": 40,
+    "related_paths": [
+     "bid.total_price",
+     "bid.price_includes_tax",
+     "bid.currency_occurrences"
+    ]
+   },
+   {
+    "name": "同类业绩",
+    "max_score": 20,
+    "related_paths": [
+     "bid.similar_performances"
+    ]
+   }
+  ],
+  "tender.tenderee_name": null,
+  "bid.duration_schedule": null,
+  "bid.schedule_end_date": null,
+  "bid.toc_section_codes": null,
+  "bid.total_price_words": null,
+  "bid.amount_occurrences": [
+   {
+    "value": "980,000 元",
+    "where": "投标总价行"
+   },
+   {
+    "value": "1,000,000 元",
+    "where": "最高限价行"
+   }
+  ],
+  "bid.duration_main_text": {
+   "unit": "day",
+   "value": 180
+  },
+  "bid.price_includes_tax": true,
+  "bid.appendix_references": [
+   {
+    "name": "营业执照（副本）",
+    "present": true
+   },
+   {
+    "name": "安全生产许可证",
+    "present": false
+   },
+   {
+    "name": "业绩合同",
+    "present": true
+   },
+   {
+    "name": "社会保险缴纳证明（近三个月）",
+    "present": true
+   }
+  ],
+  "bid.entity.license_name": null,
+  "bid.personnel_technical": null,
+  "bid.schedule_start_date": null,
+  "tender.deposit_required": null,
+  "bid.bid_letter_signatory": null,
+  "bid.currency_occurrences": [
+   {
+    "value": "人民币",
+    "where": "投标总价行"
+   },
+   {
+    "value": "人民币",
+    "where": "最高限价行"
+   }
+  ],
+  "bid.old_project_mentions": null,
+  "bid.personnel_commercial": null,
+  "bid.similar_performances": [
+   "附件3 业绩合同 第5页"
+  ],
+  "bid.tax_rate_occurrences": null,
+  "tender.required_sections": null,
+  "bid.entity.business_scope": null,
+  "tender.price_includes_tax": true,
+  "bid.commitment_letter_date": null,
+  "bid.tenderee_name_mentions": null,
+  "tender.min_warranty_period": {
+   "unit": "month",
+   "value": 24
+  },
+  "tender.required_qual_level": null,
+  "tender.substantive_clauses": [
+   "★附件1 营业执照（副本）",
+   "★附件2 安全生产许可证",
+   "附件3 业绩合同不少于2份",
+   "工期180日历天",
+   "质保期24个月",
+   "最高限价人民币1,000,000元（含税）"
+  ],
+  "bid.authorization_signatory": null,
+  "bid.device_model_mismatches": null,
+  "bid.entity_name_occurrences": [
+   {
+    "value": "某某科技有限公司",
+    "where": "附件A 社会保险参保证明节选"
+   }
+  ],
+  "bid.missing_signature_pages": null,
+  "bid.version_tag_occurrences": null,
+  "bid.alternative_price_offers": null,
+  "bid.declaration_letter_codes": null,
+  "tender.project_identity.code": "TB-2026-ZX-018",
+  "tender.project_identity.name": "某数据中心机电设备采购项目",
+  "tender.required_declarations": null,
+  "bid.entity.name_in_bid_letter": null,
+  "tender.required_validity_days": null,
+  "bid.commitment_completion_date": null,
+  "bid.duration_commitment_letter": null,
+  "bid.entity.license_valid_until": null,
+  "bid.header_footer.project_name": "某数据中心机电设备采购项目",
+  "project.entity_whitelist.names": null,
+  "tender.attachment_requirements": [
+   {
+    "no": "1",
+    "name": "营业执照（副本）",
+    "clause": "投标文件组成",
+    "mandatory": "★",
+    "min_count": 1,
+    "year_span": null
+   },
+   {
+    "no": "2",
+    "name": "安全生产许可证",
+    "clause": "投标文件组成",
+    "mandatory": "★",
+    "min_count": 1,
+    "year_span": null
+   },
+   {
+    "no": "3",
+    "name": "业绩合同",
+    "clause": "投标文件组成",
+    "mandatory": "",
+    "min_count": 2,
+    "year_span": 3
+   },
+   {
+    "no": "4",
+    "name": "社会保险缴纳证明（近三个月）",
+    "clause": "投标文件组成",
+    "mandatory": "",
+    "min_count": 1,
+    "year_span": null
+   }
+  ],
+  "bid.authorization_letter_present": null,
+  "tender.project_identity.lot_section": null,
+  "tender.min_similar_performance_count": 2
+ }
+}

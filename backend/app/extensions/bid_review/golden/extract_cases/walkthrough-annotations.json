@@ -1,0 +1,184 @@
+{
+  "meta": {
+    "name": "walkthrough-pair",
+    "docs": [
+      "walkthrough-tender.md",
+      "walkthrough-bid.md"
+    ],
+    "snapshot": "r6-snapshot.json",
+    "baseline_pass_rate": 1.0,
+    "note": "标注=人工读原文真值(spec 2026-11-04 B立项 §3,独立于模型输出);baseline_pass_rate 首标后只升不降——翻红=回归证据,标注错改标注/引擎错先修引擎。"
+  },
+  "checks": [
+    {
+      "path": "tender.max_price",
+      "kind": "value",
+      "expect": 1000000
+    },
+    {
+      "path": "tender.currency",
+      "kind": "value",
+      "expect": "人民币"
+    },
+    {
+      "path": "bid.total_price",
+      "kind": "value",
+      "expect": 980000
+    },
+    {
+      "path": "tender.max_duration",
+      "kind": "value",
+      "expect": {
+        "value": 180,
+        "unit": "day"
+      }
+    },
+    {
+      "path": "tender.min_warranty_period",
+      "kind": "value",
+      "expect": {
+        "value": 24,
+        "unit": "month"
+      }
+    },
+    {
+      "path": "bid.duration_main_text",
+      "kind": "value",
+      "expect": {
+        "value": 180,
+        "unit": "day"
+      }
+    },
+    {
+      "path": "bid.warranty_period",
+      "kind": "value",
+      "expect": {
+        "value": 24,
+        "unit": "month"
+      }
+    },
+    {
+      "path": "bid.price_includes_tax",
+      "kind": "value",
+      "expect": true
+    },
+    {
+      "path": "tender.price_includes_tax",
+      "kind": "value",
+      "expect": true
+    },
+    {
+      "path": "tender.min_similar_performance_count",
+      "kind": "value",
+      "expect": 2
+    },
+    {
+      "path": "tender.project_identity.code",
+      "kind": "value",
+      "expect": "TB-2026-ZX-018"
+    },
+    {
+      "path": "tender.project_identity.name",
+      "kind": "value",
+      "expect": "某数据中心机电设备采购项目"
+    },
+    {
+      "path": "tender.attachment_requirements",
+      "kind": "count",
+      "expect": 4
+    },
+    {
+      "path": "tender.scoring_items",
+      "kind": "count",
+      "expect": 3
+    },
+    {
+      "path": "bid.attachment_index",
+      "kind": "count",
+      "expect": 3
+    },
+    {
+      "path": "bid.similar_performances",
+      "kind": "count",
+      "expect": 1
+    },
+    {
+      "path": "bid.appendix_references",
+      "kind": "count",
+      "expect": 4
+    },
+    {
+      "path": "tender.attachment_requirements",
+      "kind": "contains",
+      "expect": {
+        "name": "安全生产许可证",
+        "mandatory": "★",
+        "min_count": 1
+      }
+    },
+    {
+      "path": "tender.attachment_requirements",
+      "kind": "contains",
+      "expect": {
+        "name": "业绩合同",
+        "min_count": 2,
+        "year_span": 3
+      }
+    },
+    {
+      "path": "bid.attachment_index",
+      "kind": "contains",
+      "expect": {
+        "no": "A",
+        "name": "社会保险参保证明",
+        "page": 9
+      }
+    },
+    {
+      "path": "bid.appendix_references",
+      "kind": "contains",
+      "expect": {
+        "name": "安全生产许可证",
+        "present": false
+      }
+    },
+    {
+      "path": "bid.appendix_references",
+      "kind": "contains",
+      "expect": {
+        "name": "营业执照（副本）",
+        "present": true
+      }
+    },
+    {
+      "path": "tender.substantive_clauses",
+      "kind": "contains",
+      "expect": "★附件2 安全生产许可证"
+    },
+    {
+      "path": "bid.currency_occurrences",
+      "kind": "contains",
+      "expect": {
+        "value": "人民币"
+      }
+    },
+    {
+      "path": "bid.amount_occurrences",
+      "kind": "shape",
+      "expect": {
+        "min_len": 1,
+        "keys": [
+          "value",
+          "where"
+        ]
+      }
+    },
+    {
+      "path": "bid.entity_name_occurrences",
+      "kind": "contains",
+      "expect": {
+        "value": "某某科技有限公司"
+      }
+    }
+  ]
+}
