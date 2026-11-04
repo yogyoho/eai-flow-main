@@ -1,6 +1,6 @@
 # claimer 双跑缺陷修复(重复行根因) 设计
 
-> 日期: 2026-11-04 ｜ 状态: 设计定稿(六裁决已批)
+> 日期: 2026-11-04 ｜ 状态: 已落地(R4 活体证实,impl f07b2b92f)
 > 前置: 页码契约切片 R3 活体回采取证(bug-3973)
 > 范围: worker.py `_claim_next` + `boot_recovery`;分派核/落库/规则包零改
 
@@ -46,5 +46,18 @@
 
 ## 4. 挂账
 
-- R4 若仍见重复行 ⇒ 本根因判定有遗漏,回炉;
+- ~~R4 若仍见重复行 ⇒ 本根因判定有遗漏,回炉~~(R4 全绿,未触发);
 - 抽取成本减半红利随 R4 顺带收割,不单独立账。
+
+## 5. R4 活体实测(任务 e1fe76f4,链 72e4bf6c,2026-11-04)
+
+| 断言 | 结果 |
+|---|---|
+| 单管线 durations | parsing 0.078s + extracting 59.7s + review 28.3s,单序列(旧双跑为两套) |
+| issues 单批次 | 30 条写入跨度 **0.25s**(20:22:51.73→51.99;旧 R1 双 pass 相隔 ~24min) |
+| done 后零迟到写入 | 0 条晚于 task.updated_at 20:22:52 |
+| 同规则重复行 | 0(③查询空) |
+| 日志单 pass | 窗口内 "baseline extraction"×1 + "sem/hyb using model"×1 + prefilter 单序列;**claimer 对该任务零 claim**(直推 0.078s 先于 5s 轮询领走,CAS 只领 created 生效) |
+| 严重度分布 | fatal violation×2 确认 + major violation×1 确认 + 27 need_human,合计 30 条 |
+
+结论:routers 直推路径 claimer 不再劫持,确定性双跑根除;重复行结构性消灭(新任务)。
