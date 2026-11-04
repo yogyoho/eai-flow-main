@@ -117,6 +117,27 @@ def test_check_schema_tolerates_prose_wrapped_json():
     assert err is None and verdicts[0]["clause_id"] == "★1"
 
 
+def test_check_schema_page_null_and_digit_string_tolerated():
+    """page=null/缺省/数字字符串放行(数字串就地转 int)——v1 未分页文档页码无真值,
+    模型回 null/缺省→未锚定落 page 1;"3"字符串→转 int(spec 2026-11-04 evidence-page 裁决②③)。"""
+    entries = [
+        {"clause_id": "★1", "verdict": "none", "confidence": 0.9, "reason": "r", "evidence": [{"doc_id": "t", "page": None, "text": "x"}]},
+        {"clause_id": "★2", "verdict": "partial", "confidence": 0.9, "reason": "r", "evidence": [{"doc_id": "t", "page": "3", "text": "x"}]},
+        {"clause_id": "★3", "verdict": "full", "confidence": 0.9, "reason": "r", "evidence": [{"doc_id": "t", "text": "x"}]},
+    ]
+    verdicts, err = check_schema({"verdicts": entries})
+    assert err is None
+    assert verdicts[1]["evidence"][0]["page"] == 3  # 数字串转 int,对齐层拿真 int
+
+
+def test_check_schema_page_garbage_rejected():
+    """垃圾页码(非数字字符串/浮点/bool/0)照拒快速失败,留清晰报错(spec 裁决②)。"""
+    for bad in ("第9页", 1.5, True, 0):
+        entry = {"clause_id": "★1", "verdict": "none", "confidence": 0.9, "reason": "r", "evidence": [{"doc_id": "t", "page": bad, "text": "x"}]}
+        _, err = check_schema({"verdicts": [entry]})
+        assert err is not None and "page" in err, f"page={bad!r} 应拒"
+
+
 # ── 第2道 证据对齐 ────────────────────────────────────────────
 
 

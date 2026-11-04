@@ -106,8 +106,14 @@ def check_schema(raw, verdict_set=None):
             if not isinstance(ev, dict) or not isinstance(ev.get("doc_id"), str) or not ev.get("doc_id"):
                 return None, f"verdicts[{i}].evidence[{j}].doc_id 必须为非空字符串"
             page = ev.get("page")
-            if isinstance(page, bool) or not isinstance(page, int) or page < 1:
-                return None, f"verdicts[{i}].evidence[{j}].page 必须为正整数"
+            # EAI-CUSTOM(spec 2026-11-04 evidence-page 裁决②③):页码容忍——数字字符串就地转
+            # int(模型现实输出形态);null/缺省=未锚定放行(对齐层 page or 0 落 page 1,v1
+            # 未分页文档真值);垃圾类型(非数字串/浮点/bool)照拒快速失败。
+            if isinstance(page, str) and page.strip().isdigit():
+                page = int(page.strip())
+                ev["page"] = page
+            if page is not None and (isinstance(page, bool) or not isinstance(page, int) or page < 1):
+                return None, f"verdicts[{i}].evidence[{j}].page 必须为正整数/可空/数字字符串"
             if "text" in ev and not isinstance(ev.get("text"), str):
                 return None, f"verdicts[{i}].evidence[{j}].text 必须为字符串"
         severity = entry.get("severity")

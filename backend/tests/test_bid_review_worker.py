@@ -458,3 +458,32 @@ async def test_advance_task_backfill_skips_manual_overrides(db):
     assert task.project_name == "人工填写项目"
     assert task.lot_name == "抽取到的标段"
     assert task.tender_no == "抽取到的编号"
+
+
+# ── _collect_docs_text 真分页(spec 2026-11-04 evidence-page 裁决①④)──────────
+
+
+def test_collect_docs_text_unpaginated_whole_on_page1():
+    """无 [[p.N]] 标记(text-kind 整篇未分页)→ 现状 {1: 全文} 不变。"""
+    from app.extensions.bid_review.worker import _collect_docs_text
+
+    docs = [{"doc_id": "a.md", "role": "bid", "text": "整篇无标记文本"}]
+    assert _collect_docs_text(docs) == {"a.md": {1: "整篇无标记文本"}}
+
+
+def test_collect_docs_text_marked_split_real_pages():
+    """带 [[p.N]] 标记(PDF 材料)→ 按标记切真分页,模型引页码对齐真页文本。"""
+    from app.extensions.bid_review.worker import _collect_docs_text
+
+    text = "[[p.1]]\n第一页内容\n[[p.5]]\n第五页内容"
+    docs = [{"doc_id": "t.pdf", "role": "tender", "text": text}]
+    assert _collect_docs_text(docs) == {"t.pdf": {1: "\n第一页内容\n", 5: "\n第五页内容"}}
+
+
+def test_collect_docs_text_leading_text_joins_first_marked_page():
+    """首标记前散文本(docx 表格段等无页 segment)并入首标记页,±1 容差下无害。"""
+    from app.extensions.bid_review.worker import _collect_docs_text
+
+    text = "散头表格文本\n[[p.2]]\n第二页"
+    docs = [{"doc_id": "t.docx", "role": "tender", "text": text}]
+    assert _collect_docs_text(docs) == {"t.docx": {2: "散头表格文本\n\n第二页"}}

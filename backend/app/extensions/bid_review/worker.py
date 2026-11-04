@@ -124,11 +124,33 @@ def _collect_materials(docs: list[dict]) -> str:
     return "\n\n".join(f"[{d['doc_id']}]\n{d['text']}" for d in docs)
 
 
+_PAGE_MARKER_RE = re.compile(r"\[\[p\.(\d+)\]\]")
+
+
 def _collect_docs_text(docs: list[dict]) -> dict:
-    """证据对齐取材(verify.align_evidence 契约 {doc_id: {page: text}}):v1 文档无分页
-    (routers 上传时解码纯文本直存),整篇挂 page 1;页容差 ±1 覆盖 page≤2 锚点,更远
-    页码证据对不上 → 七道第2道降级 need_human(§4.6 表),不静默采信。"""
-    return {d["doc_id"]: {1: d["text"]} for d in docs}
+    """证据对齐取材(verify.align_evidence 契约 {doc_id: {page: text}})。
+    EAI-CUSTOM(spec 2026-11-04 evidence-page 裁决①④):材料文本带 [[p.N]] 标记
+    (parse._load_docs 对有页 segment 注入,PDF 常态)→ 按标记切真分页,模型引页码
+    对齐真页文本;无标记(text-kind 整篇未分页)→ 整篇挂 page 1(v1 现状不变);
+    首标记前散文本(docx 表格段等无页 segment)并入首标记页(±1 页容差下无害)。
+    引用页码超出 ±1 容差照旧对齐失配 → 降级 need_human(§4.6 表),不静默采信。"""
+    out: dict = {}
+    for d in docs:
+        body = d.get("text") or ""
+        parts = _PAGE_MARKER_RE.split(body)
+        if len(parts) == 1:
+            out[d["doc_id"]] = {1: body}
+            continue
+        pages: dict = {}
+        leading = parts[0]  # parts: [前导, n1, seg1, n2, seg2, ...]
+        for k in range(1, len(parts), 2):
+            page_no = int(parts[k])
+            seg = parts[k + 1]
+            if k == 1 and leading:
+                seg = leading + seg
+            pages[page_no] = pages.get(page_no, "") + seg
+        out[d["doc_id"]] = pages
+    return out
 
 
 # ── 汇总分级(Task 14;A12 T14 约束①,worker 与 routers 共用)────────────
