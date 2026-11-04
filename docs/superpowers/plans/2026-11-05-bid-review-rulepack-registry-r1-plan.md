@@ -23,8 +23,8 @@
 - Create: `backend/app/extensions/bid_review/engine/registry.py`
 - Create: `backend/tests/test_bid_review_registry.py`
 
-- [ ] **Step 2.1 先写测试**(红): 宇宙锚定(71 路径硬编码列表=改造前 collect_field_paths 输出)+与 collect_field_paths 相等+consumed_by 抽查+A-BID-DOC 回归+severity 白名单正反例+CONTRACTS/shape 集合 ⊆ 宇宙+投影字段声明齐+load 拒载(未知锚/越层 severity/非点路径 input)。
-- [ ] **Step 2.2 实现** `registry.py`:
+- [x] **Step 2.1 先写测试**(红): 宇宙锚定(71 路径硬编码列表=改造前 collect_field_paths 输出)+与 collect_field_paths 相等+consumed_by 抽查+A-BID-DOC 回归+severity 白名单正反例+CONTRACTS/shape 集合 ⊆ 宇宙+投影字段声明齐+load 拒载(未知锚/越层 severity/非点路径 input)。
+- [x] **Step 2.2 实现** `registry.py`:
 
 ```python
 """规则包注册表——跨源索引+lint(EAI-CUSTOM 2026-11-05 R1,spec 裁决②③修正版)。
@@ -117,7 +117,7 @@ def lint_rules(rules) -> list[str]:
 
 CLI(`__main__`,consumed_by 反查): 无参打全表,带参打单字段。
 
-- [ ] **Step 2.3 验绿**。
+- [x] **Step 2.3 验绿**。
 
 ### Task 3: load_rulepack 硬校验 + A-BID-DOC 注册
 
@@ -125,7 +125,7 @@ CLI(`__main__`,consumed_by 反查): 无参打全表,带参打单字段。
 - Modify: `backend/app/extensions/bid_review/engine/rule_runner.py`(load_rulepack 收尾)
 - Modify: `backend/app/extensions/bid_review/engine/anchors.py`(ANCHOR_REGISTRY 增 A-BID-DOC)
 
-- [ ] **Step 3.1 测试先行**(Task 2.1 已含拒载三例+A-BID-DOC 回归,此处实现):
+- [x] **Step 3.1 测试先行**(Task 2.1 已含拒载三例+A-BID-DOC 回归,此处实现):
 
 ```python
 # load_rulepack return 前追加:
@@ -148,14 +148,14 @@ anchors.py 投标侧区块加:
     },
 ```
 
-- [ ] **Step 3.2 验绿**: 新套件全绿+golden 55/55。
+- [x] **Step 3.2 验绿**: 新套件全绿+golden 55/55。
 
 ### Task 4: FIELD_DICTIONARY 退役
 
 **Files:**
 - Modify: `backend/app/extensions/bid_review/engine/extract.py`
 
-- [ ] **Step 4.1**: 先 grep FIELD_DICTIONARY 全部消费面确认只有 collect_field_paths(若有其他消费面,逐个核对宇宙语义)。替换字面量为派生(字面量注释块整体删除,留退役说明):
+- [x] **Step 4.1**: 先 grep FIELD_DICTIONARY 全部消费面确认只有 collect_field_paths(若有其他消费面,逐个核对宇宙语义)。替换字面量为派生(字面量注释块整体删除,留退役说明):
 
 ```python
 from app.extensions.bid_review.engine.registry import universe as _registry_universe
@@ -167,15 +167,15 @@ FIELD_DICTIONARY: frozenset[str] = frozenset(_registry_universe())
 ```
 
 `_RULEPACK_DIR` 删除(registry.RULEPACK_DIR 接管),collect_field_paths() 改 `return list(universe())` 一行委托(yaml import 若再无使用则删,ruff 把关)。
-- [ ] **Step 4.2 验绿**: test_bid_review_extract 全绿(prompt 骨架转录+materials_hash 零变化)+M0 快照 26/26。
+- [x] **Step 4.2 验绿**: test_bid_review_extract 全绿(prompt 骨架转录+materials_hash 零变化)+M0 快照 26/26。
 
 ### Task 5: 全量验证
 
-- [ ] golden 55/55 零翻红;全家 pytest 精确计数(422+新增)全绿;ruff 触碰文件;collect_field_paths() 逐位=71 路径(测试锚定)。
+- [x] golden 55/55 零翻红;全家 pytest 精确计数(422+新增)全绿;ruff 触碰文件;collect_field_paths() 逐位=71 路径(测试锚定)。
 
 ### Task 6: 收尾
 
-- [ ] spec 状态+plan 勾选 commit;push 重试至 `0\t0`;wolf(buglog A-BID-DOC 静默丢锚=id 3985/memory/cerebrum)+anatomy+auto-memory;终报。
+- [x] spec 状态+plan 勾选 commit;push 重试至 `0\t0`;wolf(buglog A-BID-DOC 静默丢锚=id 3985/memory/cerebrum)+anatomy+auto-memory;终报。
 
 ---
 
