@@ -1,6 +1,6 @@
 # 抽取形状契约(occurrence/count 列表字段) 设计
 
-> 日期: 2026-11-04 ｜ 状态: 设计定稿(六裁决已批)
+> 日期: 2026-11-04 ｜ 状态: 已落地(R5 发现+R6 修正活体证实,impl b569e3d76+a9bfb9c82)
 > 前置: R4 活体取证(baselines 实读 + R2/R4 issue 症状对照)
 > 范围: extract.py 出口归一 + 提示契约扩容;eval/rule_runner/规则包零改
 
@@ -49,4 +49,21 @@
 
 - boq_items/detail_rows/scoring_items 等复杂行结构字段只有提示契约无出口闸(形状
   多态,闸会误杀合法行),留观察;
-- R5 若 L3-018 仍哑 → 闸语义有漏,回炉。
+- ~~R5 若 L3-018 仍哑 → 闸语义有漏,回炉~~(R5 触发:闸错包附件项致 L3-012 残根,
+  行形异构分治修正 a9bfb9c82,R6 证实闭环);
+- L1-016 license_name 等抽取召回缺口(模型漏抽)非形状问题,诚实降级,不挂账修复。
+
+## 5. R5/R6 活体实测(2026-11-04)
+
+**R5**(89e56ef9,初版闸 b569e3d76):主恢复证实——currency_occurrences/amount
+合规对象列表,L3-018「求值期字段缺失」消失翻干净 pass;**发现闸缺陷**:
+appendix_references 被错包 {value,where}(契约文本同错),L3-012 残根
+`求值期字段缺失 'a.present'`——occurrence 行形并非同构,10 条 op:all 实为三型。
+
+**R5 修正**(a9bfb9c82):注册表三型分治——occurrence{value,where}×6(闸+契约)/
+标量码×7(declarations/sections 入 LIST 型,防 `d in [...]` 假违例)/契约only×2
+(appendix{name,present}+boq{code,units,matched},逐字段契约无闸)。
+
+**R6**(2ab0cc25,修正后):**三家族全恢复**——L3-012 哑降级→真违例「安全生产
+许可证 未随卷提交」;L1-003 字段缺失→真违例+模型确认回显(count() 家族 hyb 管线
+全通);L3-018 保持干净 pass;零形状炸残留。抽取成本红利延续:extracting 29.5s。
