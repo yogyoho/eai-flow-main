@@ -1,6 +1,6 @@
 # 围栏容错 JSON 解析(fence-tolerant check_schema) 设计
 
-> 日期: 2026-11-04 ｜ 状态: 设计定版(实施中)
+> 日期: 2026-11-04 ｜ 状态: 已落地(本切片全量,含实现+活体回采)
 > 前置: 真实数据走查(任务 5318d0d9,2026-11-04)发现 P0——生产模型确认面 0% 存活
 > 范围: engine/verify.py `check_schema` 单点 + llm_verify +2;规则包/前端零改
 
@@ -34,13 +34,29 @@ det 层不受影响(走查 5 条 L2 issue 全对),死的只是模型确认段。
 ⑤修复后用 `/tasks/{id}/retry` 重跑走查补采 echo 遵从率+entity join 确认路径活体证据;
 ⑥bug-3971 随修复入账。
 
-## 2. 验收
+## 2. 验收(落地实测)
 
-1. llm_verify 新 2 测先红后绿(围栏/prose 包裹均过 schema);
-2. bid_review 全家 pytest 精确计数(基线 396+2=398 口径);
-3. golden CLI 55/55 exit 0(scripted 纯 JSON,确认非依赖);
-4. retry 走查任务:L2-021 模型确认段活体观测(echo 遵从/entity 继承/partial 别名路径);
-5. ruff 触碰文件绿。
+1. llm_verify **46** 全绿(44+2;围栏/prose 先红后绿);
+2. bid_review 全家 pytest **398 passed / 0 failed** exit 0;
+3. golden CLI **55/55** exit 0;
+4. **活体回采**(R2 任务 7c6aec02,版本链挂 5318d0d9,gateway 重启后):围栏容错生效
+   ——schema 报错从 `not_json: Expecting value…char 2` 前进到内容级
+   (`evidence[0].page 必须为正整数`);L1-003 出现 `(C1: …)` 候选 id 回显确认条目
+   =**echo 遵从率首证 >0**;done,fatal 1/major 2/need_human 27(R1 为 31);
+5. ruff 触碰文件绿(impl commit 见 push 批次)。
+
+## 4. 回采新发现(剥壳后暴露的第二层,入队列非本切片)
+
+- **P1 evidence.page 契约 vs text-kind 文档**:模型对 .md(无页码)回不出正整数页,
+  L2-021/L1-003/L1-013 确认段死在 `page 必须为正整数` 重试循环——模型确认层复活的
+  最后一块拦路石(下一切片首推);
+- **P1 重复执行/双快照重复条目**:同规则两行(两份字段快照,如 L2-020 fatal×2),
+  dedup_key 因 clause/evidence 差异未合并;summary fatal=1 与 DB fatal violation=2 口径
+  不一致——需 worker 取证;
+- **P2 抽取形状契约**:L1-016/L3-018 crash `'int' object is not iterable`、L1-003
+  prefilter skip `object of type 'int' has no len()`——抽取回标量而规则吃列表;
+- **观测**:entity join 确认路径仍未观测到(L2-021 确认死在 page 契约,非 join 问题);
+  L1-003 回显条目 verdict=violation+need_human=t(confidence 门槛按设计转待人工)。
 
 ## 3. 挂账
 
