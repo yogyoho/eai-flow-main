@@ -121,6 +121,71 @@ def test_prompt_carries_duration_type_contract():
         assert "{value" in line and "禁止原文文本" in line, f"{path} 缺 {{value,unit}}-or-number 类型契约: {line}"
 
 
+# ── 列表字段形状契约(spec 2026-11-04 extract-shape 裁决②)──────────────
+
+
+def _fields_via_baseline(raw: dict) -> dict:
+    return build_baseline(FAKE_DOCS, extract_fn=lambda docs, paths: raw)["fields"]
+
+
+def test_occurrence_plain_value_list_wrapped():
+    # R4 实锤:occurrence 字段回纯值列表 → {value, where:null} 包装(裁决②-2);where=null 由页码契约对齐层容忍兜底
+    f = _fields_via_baseline({"bid.currency_occurrences": ["人民币", "美元"]})
+    assert f["bid.currency_occurrences"] == [{"value": "人民币", "where": None}, {"value": "美元", "where": None}]
+
+
+def test_occurrence_scalar_listified_and_wrapped():
+    # R2 症状族:标量直回 → 单项 listify+包装(裁决②-1+②-2)
+    f = _fields_via_baseline({"bid.amount_occurrences": 980000})
+    assert f["bid.amount_occurrences"] == [{"value": 980000, "where": None}]
+
+
+def test_occurrence_dict_items_kept():
+    # 已合规形状(对象列表)原样透传,不二次加工
+    good = [{"value": "人民币", "where": "报价表"}, {"value": "人民币"}]
+    f = _fields_via_baseline({"bid.currency_occurrences": good})
+    assert f["bid.currency_occurrences"] == good
+
+
+def test_list_path_scalar_listified():
+    # count() 型字段标量直回 → 单项 listify(裁决②-1)
+    f = _fields_via_baseline({"bid.similar_performances": "业绩A"})
+    assert f["bid.similar_performances"] == ["业绩A"]
+
+
+def test_garbage_shapes_become_null():
+    # dict 冒充列表 / bool 标量 = 垃圾 → None 走字段缺失 need_human(裁决②-3,零编造)
+    f = _fields_via_baseline({"bid.old_project_mentions": {"a": 1}, "bid.missing_signature_pages": True})
+    assert f["bid.old_project_mentions"] is None
+    assert f["bid.missing_signature_pages"] is None
+
+
+def test_field_type_contracts_cover_list_paths():
+    # 裁决①双层之提示层:15 路径全部进 FIELD_TYPE_CONTRACTS(:369 渲染机制自动进 prompt)
+    from app.extensions.bid_review.engine.extract import FIELD_TYPE_CONTRACTS
+
+    expected = {
+        "bid.amount_occurrences",
+        "bid.appendix_references",
+        "bid.boq_unit_checks",
+        "bid.currency_occurrences",
+        "bid.entity_name_occurrences",
+        "bid.tax_rate_occurrences",
+        "bid.tenderee_name_mentions",
+        "bid.version_tag_occurrences",
+        "tender.required_declarations",
+        "tender.required_sections",
+        "bid.alternative_price_offers",
+        "bid.similar_performances",
+        "bid.missing_signature_pages",
+        "bid.old_project_mentions",
+        "bid.device_model_mismatches",
+    }
+    assert expected <= set(FIELD_TYPE_CONTRACTS)
+    prompt = build_extract_prompt(FAKE_DOCS, collect_field_paths())
+    assert "禁止纯值列表" in prompt and "对象列表" in prompt
+
+
 # ── 抽取 v2(EAI-CUSTOM 2026-10-30,spec D5/D7):provenance + 分片 ──────
 
 
@@ -195,6 +260,7 @@ def test_materials_hash_ignores_provenance():
 
 
 # ── 二期(EAI-CUSTOM 2026-10-30 spec §1.1/§二):多候选 / 置信 / 冲突 / quote 核验 / 裁定合并 ──
+
 
 def test_normalize_candidates_filters_and_caps():
     paths = {"bid.total_price"}

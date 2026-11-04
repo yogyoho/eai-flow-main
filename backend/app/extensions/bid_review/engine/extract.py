@@ -72,9 +72,7 @@ FIELD_TYPE_CONTRACTS: dict[str, str] = {
 # B4 评分覆盖度(spec §5):评分办法项结构契约——related_paths 只允许从「待抽取字段路径」
 # 清单里选(与规则 inputs 同源,覆盖求交才有意义);项目级主观评分维度查不到对应字段就别硬选。
 FIELD_TYPE_CONTRACTS["tender.scoring_items"] = (
-    '[{name:"评分项名称", max_score:分数数字, related_paths:[与该项相关的字段路径]}] 数组;'
-    "逐项列出评分办法的全部评分项;related_paths 只从待抽取字段路径清单里选真实相关的,"
-    "没有就不给;禁止编造评分项。"
+    '[{name:"评分项名称", max_score:分数数字, related_paths:[与该项相关的字段路径]}] 数组;逐项列出评分办法的全部评分项;related_paths 只从待抽取字段路径清单里选真实相关的,没有就不给;禁止编造评分项。'
 )
 # B9 响应偏离表(spec 2026-11-01 §1.1):逐条对照契约——五值 kind 对应前端五色 pill;
 # missing=漏项(致命),extra=擅自增项(主要);原文只抄不编。
@@ -93,10 +91,42 @@ FIELD_TYPE_CONTRACTS["tender.attachment_requirements"] = (
     'mandatory:"★|必需|建议", min_count:最少份数数字或null, year_span:年份数字或null}]。'
     "只从招标文件的投标文件组成/格式条款及资格审查条款逐条抄录附件要求,禁止编造;无编号填空串。"
 )
-FIELD_TYPE_CONTRACTS["bid.attachment_index"] = (
-    '[{no:"附件编号或空串", name:"附件名称", page:起始页码数字, pages:页数数字或null}]。'
-    "从投标文件的附件清单/目录/附件标题逐条抄录,禁止编造。"
+FIELD_TYPE_CONTRACTS["bid.attachment_index"] = '[{no:"附件编号或空串", name:"附件名称", page:起始页码数字, pages:页数数字或null}]。从投标文件的附件清单/目录/附件标题逐条抄录,禁止编造。'
+
+# 列表字段形状契约(spec 2026-11-04 extract-shape 裁决①③):occurrence 型规则端预期
+# [{value, where}] 对象列表(op:all 量词逐项取 .value/.where),count() 型预期纯值列表。
+# R4 实锤:模型常态回纯值列表(["人民币"])/标量(980000)→ 求值期缺 c.value/crash →
+# 10+5 条规则哑 need_human(召回白丢)。双层治理:①normalize_fields 出口归一闸(下方
+# _normalize_list_shape);②本契约进 prompt(build_extract_prompt :渲染机制自动带上)。
+OCCURRENCE_PATHS: frozenset[str] = frozenset(
+    {
+        "bid.amount_occurrences",
+        "bid.appendix_references",
+        "bid.boq_unit_checks",
+        "bid.currency_occurrences",
+        "bid.entity_name_occurrences",
+        "bid.tax_rate_occurrences",
+        "bid.tenderee_name_mentions",
+        "bid.version_tag_occurrences",
+        "tender.required_declarations",
+        "tender.required_sections",
+    }
 )
+LIST_PATHS: frozenset[str] = frozenset(
+    {
+        "bid.alternative_price_offers",
+        "bid.similar_performances",
+        "bid.missing_signature_pages",
+        "bid.old_project_mentions",
+        "bid.device_model_mismatches",
+    }
+)
+_OCCURRENCE_CONTRACT = '[{value:"原文值", where:"出现位置(页码/章节/表名)"}] 对象列表;逐处 occurrence 一项,禁止纯值列表(如 ["人民币"] 应写 [{"value":"人民币","where":"报价表"}]),禁止标量。'
+_LIST_CONTRACT = "字符串列表;同类条目逐项一项;禁止标量/数字/对象(数量、单个名称都须包成数组)。"
+for _p in OCCURRENCE_PATHS:
+    FIELD_TYPE_CONTRACTS[_p] = _OCCURRENCE_CONTRACT
+for _p in LIST_PATHS:
+    FIELD_TYPE_CONTRACTS[_p] = _LIST_CONTRACT
 
 # 提取函数契约:docs(解析后文档列表 {doc_id, role, text})+ field_paths →
 # {"fields": {路径: 值}, "provenance": {路径: {doc_id, page, quote}}}(EAI-CUSTOM
@@ -249,13 +279,49 @@ def verify_quotes(provenance: dict, docs: list[dict]) -> dict[str, bool]:
     return verified
 
 
+def _normalize_list_shape(path: str, value: Any) -> Any:
+    """列表字段出口形状归一(spec 2026-11-04 extract-shape 裁决②):三条无损/降级规则,
+    零编造——①标量(非 bool)→[标量];②occurrence 路径纯值项→{value, where:null} 包装
+    (dict 项原样保留,bool/list/None 项丢弃,空结果置 None);③其余垃圾(dict 冒充列表/
+    bool 标量等)→None 走字段缺失 need_human。where=null 由页码契约对齐层(bug-3972)
+    null 容忍兜底;未注册路径不经过本闸(passthrough 现状不变)。"""
+    if value is None:
+        return None
+    if path in OCCURRENCE_PATHS:
+        if isinstance(value, bool):
+            return None
+        if isinstance(value, str | int | float):
+            value = [value]
+        if isinstance(value, list):
+            items = []
+            for item in value:
+                if isinstance(item, dict):
+                    items.append(item)
+                elif isinstance(item, str | int | float):
+                    items.append({"value": item, "where": None})
+            return items or None
+        return None
+    if path in LIST_PATHS:
+        if isinstance(value, bool):
+            return None
+        if isinstance(value, str | int | float):
+            return [value]
+        if isinstance(value, list):
+            return value or None
+        return None
+    return value
+
+
 def normalize_fields(raw: dict, known_paths: list[str] | set[str]) -> dict[str, Any]:
-    """归一提取结果:仅接受 field_dictionary 已知路径(非字典路径丢弃);缺路径显式补 null;dict/list/标量透传。"""
+    """归一提取结果:仅接受 field_dictionary 已知路径(非字典路径丢弃);缺路径显式补 null;
+    dict/list/标量透传;列表注册路径形状归一(_normalize_list_shape,spec 2026-11-04
+    extract-shape 裁决②——occurrence/count 字段纯值/标量回流在出口拦平,求值期不再
+    形状炸成哑 need_human)。"""
     fields: dict[str, Any] = {}
     for path in known_paths:
         value = raw.get(path)
         if value is None or isinstance(value, str | int | float | bool | dict | list):
-            fields[path] = value
+            fields[path] = _normalize_list_shape(path, value)
         else:
             fields[path] = None  # 非 JSON 安全类型(set/datetime 等)不允许出提取层,置 null 防序列化漂移
     return fields
@@ -318,11 +384,7 @@ def compute_score_coverage(scoring_items: list, rules) -> dict:
     路径 → 该项未覆盖(诚实:映射不来就别装覆盖);非 dict 项与无名项丢弃,不进
     计数。rules 取鸭子类型(id/inputs/enabled),便于测试与规则包形态演进。
     """
-    rule_inputs = [
-        (str(getattr(r, "id", "?")), {p for p in getattr(r, "inputs", []) or [] if isinstance(p, str)})
-        for r in rules
-        if getattr(r, "enabled", True)
-    ]
+    rule_inputs = [(str(getattr(r, "id", "?")), {p for p in getattr(r, "inputs", []) or [] if isinstance(p, str)}) for r in rules if getattr(r, "enabled", True)]
     items_out: list[dict] = []
     for item in scoring_items:
         if not isinstance(item, dict):
