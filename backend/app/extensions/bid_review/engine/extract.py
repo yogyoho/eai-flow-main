@@ -100,16 +100,13 @@ FIELD_TYPE_CONTRACTS["bid.attachment_index"] = '[{no:"附件编号或空串", na
 # _normalize_list_shape);②本契约进 prompt(build_extract_prompt :渲染机制自动带上)。
 OCCURRENCE_PATHS: frozenset[str] = frozenset(
     {
+        # 行形 {value, where}(规则 cond 逐项取 .value,R5 验证形状合规)
         "bid.amount_occurrences",
-        "bid.appendix_references",
-        "bid.boq_unit_checks",
         "bid.currency_occurrences",
         "bid.entity_name_occurrences",
         "bid.tax_rate_occurrences",
         "bid.tenderee_name_mentions",
         "bid.version_tag_occurrences",
-        "tender.required_declarations",
-        "tender.required_sections",
     }
 )
 LIST_PATHS: frozenset[str] = frozenset(
@@ -119,8 +116,17 @@ LIST_PATHS: frozenset[str] = frozenset(
         "bid.missing_signature_pages",
         "bid.old_project_mentions",
         "bid.device_model_mismatches",
+        # 纯标量码列表(op:all cond 逐项 `d in [...]` 直接比对,无 .value)——R5 修正:
+        # 若错入 occurrence 闸会被包成 {value} dict,`in` 比对必假违例
+        "tender.required_declarations",
+        "tender.required_sections",
     }
 )
+# 行形异构字段(spec R5 修正):闸不适用(occurrence 包装与规则行形不符——appendix 读
+# .present、boq 读 .matched,错包反而造出求值期缺失/假违例),只给逐字段契约;部分行
+# 缺键仍走逐规则隔离 need_human(诚实降级),见 spec §4 挂账。
+FIELD_TYPE_CONTRACTS["bid.appendix_references"] = '[{name:"附件名", present:true|false 是否随卷提交}] 对象列表;present 必填布尔,从正文引用与附件清单逐条对照;禁止纯值列表/标量。'
+FIELD_TYPE_CONTRACTS["bid.boq_unit_checks"] = '[{code:"清单项编号", tender_unit:"招标单位", bid_unit:"投标单位", matched:true|false}] 对象列表;matched 必填布尔,逐清单项对照数量/单位口径;禁止纯值列表/标量。'
 _OCCURRENCE_CONTRACT = '[{value:"原文值", where:"出现位置(页码/章节/表名)"}] 对象列表;逐处 occurrence 一项,禁止纯值列表(如 ["人民币"] 应写 [{"value":"人民币","where":"报价表"}]),禁止标量。'
 _LIST_CONTRACT = "字符串列表;同类条目逐项一项;禁止标量/数字/对象(数量、单个名称都须包成数组)。"
 for _p in OCCURRENCE_PATHS:

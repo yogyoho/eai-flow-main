@@ -182,8 +182,24 @@ def test_field_type_contracts_cover_list_paths():
         "bid.device_model_mismatches",
     }
     assert expected <= set(FIELD_TYPE_CONTRACTS)
+    assert "present" in FIELD_TYPE_CONTRACTS["bid.appendix_references"], "appendix 行形 {name,present} 须逐字段契约(R5 修正)"
+    assert "matched" in FIELD_TYPE_CONTRACTS["bid.boq_unit_checks"], "boq 行形 {code,units,matched} 须逐字段契约(R5 修正)"
     prompt = build_extract_prompt(FAKE_DOCS, collect_field_paths())
     assert "禁止纯值列表" in prompt and "对象列表" in prompt
+
+
+def test_scalar_code_list_stays_plain():
+    # R5 修正守卫:required_declarations/required_sections 是纯标量码列表(op:all cond 逐项
+    # `d in [...]` 直接比对),不得被 occurrence 闸包成 {value} dict——错包必产假违例
+    f = _fields_via_baseline({"tender.required_declarations": ["A-1", "A-2"], "tender.required_sections": ["第三章"]})
+    assert f["tender.required_declarations"] == ["A-1", "A-2"]
+    assert f["tender.required_sections"] == ["第三章"]
+
+
+def test_heterogeneous_row_paths_passthrough():
+    # R5 修正守卫:appendix_references(行形 {name,present})不进闸——裸串不得被包成 {value,where}
+    f = _fields_via_baseline({"bid.appendix_references": ["附件A"]})
+    assert f["bid.appendix_references"] == ["附件A"]
 
 
 # ── 抽取 v2(EAI-CUSTOM 2026-10-30,spec D5/D7):provenance + 分片 ──────
