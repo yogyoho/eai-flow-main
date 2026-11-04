@@ -534,16 +534,19 @@ async def _read_attempts(task_id: str, factory=None) -> int:
 
 
 async def boot_recovery(factory=None) -> int:
-    """启动时把遗留 running/parsing 任务重置为 extracting(计划口径 running→extracting;
-    fix-round 补 parsing——它是 claim 领取标记,进程死亡窗口会遗留,一并断点续跑):
-    claimer 以 extracting 入口断点续跑(重放基线+det,基线写前清旧行保证幂等)。"""
+    """启动时把遗留在途任务重置为 created,交 claimer 完整入口幂等重跑。
+    EAI-CUSTOM(bug-3973,spec 2026-11-04 claimer-double-run 裁决①):三态
+    parsing/extracting/running 一并重置——parsing 是 claim 领取标记、extracting/running
+    是正常管线在途态,进程死亡窗口都会遗留;旧口径重置 extracting 依赖 claimer 的
+    extracting 领取分支,该分支已删(无双跑修复后 claim 只领 created)。重跑幂等:
+    parse 跳过已解析条目/基线写前清旧行/add_issue upsert。"""
     factory = factory or get_session_factory()
     async with factory() as db:
-        result = await db.execute(update(ReviewTask).where(ReviewTask.status.in_(["running", "parsing"])).values(status="extracting"))
+        result = await db.execute(update(ReviewTask).where(ReviewTask.status.in_(["running", "parsing", "extracting"])).values(status="created"))
         await db.commit()
         n = result.rowcount or 0
         if n:
-            logger.info("bid_review boot recovery: %d in-flight task(s) reset to extracting", n)
+            logger.info("bid_review boot recovery: %d in-flight task(s) reset to created", n)
         return n
 
 
@@ -552,32 +555,33 @@ async def boot_recovery(factory=None) -> int:
 
 async def _claim_next(factory=None) -> tuple[str, str] | None:
     """领取一个待审任务(FOR UPDATE SKIP LOCKED 防多进程争抢,translation 先例;
-    锁子句按 dialect 注入,sqlite 测试方言无该语法):
-    created→parsing(领取标记,完整管线入口)或 extracting(boot recovery 断点续跑入口)。
-    返回 (task_id, entry),entry=领取后实际状态(parsing|extracting),与 advance_task
-    的已持有入口对齐——claimer 不再回传 "created",否则守卫二次置换零命中早退,
-    任务死锁 parsing(fix-round 评审缺陷)。created 条件置换校验 rowcount,零命中=已被
-    routers 直推并发领走,放弃本次领取防双跑;无任务返回 None。"""
+    锁子句按 dialect 注入,sqlite 测试方言无该语法):created→parsing(领取标记,
+    完整管线入口)。返回 (task_id, entry),entry=领取后实际状态(恒 parsing),与
+    advance_task 的已持有入口对齐——claimer 不回传 "created",否则守卫二次置换
+    零命中早退,任务死锁 parsing(fix-round 评审缺陷)。created 条件置换校验
+    rowcount,零命中=已被 routers 直推并发领走,放弃本次领取防双跑;无任务返回 None。
+    EAI-CUSTOM(bug-3973,spec 2026-11-04 claimer-double-run 裁决①):只领 created——
+    旧实现把 extracting 并入领取(为 boot-recovery 孤儿设计)却无 CAS,POLL_SECONDS=5s
+    轮询横跨 routers 直推 ~91s 抽取窗口,把在途任务确定性领成双管线(重复行根因);
+    孤儿改由 boot_recovery 三态重置 created 统一走本入口。"""
     factory = factory or get_session_factory()
     async with factory() as db:
         lock = " FOR UPDATE SKIP LOCKED" if db.bind.dialect.name == "postgresql" else ""
-        row = (await db.execute(text(f"SELECT id, status FROM bid_review_tasks WHERE status IN ('created','extracting') ORDER BY created_at LIMIT 1{lock}"))).first()
+        row = (await db.execute(text(f"SELECT id FROM bid_review_tasks WHERE status = 'created' ORDER BY created_at LIMIT 1{lock}"))).first()
         if row is None:
             return None
-        task_id, status = str(row[0]), str(row[1])
-        if status == "created":
-            marked = await db.execute(text("UPDATE bid_review_tasks SET status='parsing' WHERE id = :id AND status = 'created'"), {"id": task_id})
-            await db.commit()
-            if not (marked.rowcount or 0):
-                return None  # 状态已被并发方移动(直推已领),本侧退出防双跑
-            return task_id, "parsing"
+        task_id = str(row[0])
+        marked = await db.execute(text("UPDATE bid_review_tasks SET status='parsing' WHERE id = :id AND status = 'created'"), {"id": task_id})
         await db.commit()
-        return task_id, "extracting"
+        if not (marked.rowcount or 0):
+            return None  # 状态已被并发方移动(直推已领),本侧退出防双跑
+        return task_id, "parsing"
 
 
 async def _run_claimed(task_id: str, entry: str) -> str:
     """claimer 侧执行:独立短会话;docs 由 _load_docs 装载;entry 为 _claim_next 给出的
-    已持有入口(parsing=新建领取,extracting=断点续跑);deep 模式停确认门,quick 直跑
+    已持有入口(bug-3973 后恒 parsing=新建领取;entry='extracting' 断点续跑参数保留
+    兼容但 claimer 不再产生,spec 2026-11-04 裁决②);deep 模式停确认门,quick 直跑
     到 done。"""
     factory = get_session_factory()
     async with factory() as db:
@@ -598,7 +602,7 @@ async def _run_claimed(task_id: str, entry: str) -> str:
 
 
 async def bid_review_claimer_loop(stop: asyncio.Event | None = None) -> None:
-    """常驻 claimer(SLOTS=1):领取 created/extracting → advance 管线;空闲 poll;
+    """常驻 claimer(SLOTS=1):领取 created → advance 管线;空闲 poll;
     基础设施失败按 attempts 指数退避(封顶 BACKOFF_CAP_SECONDS)后重投再领。"""
     stop = stop or asyncio.Event()
     logger.info("bid_review claimer loop started (poll=%.1fs, slots=%d)", POLL_SECONDS, SLOTS)
@@ -633,7 +637,7 @@ async def bid_review_claimer_loop(stop: asyncio.Event | None = None) -> None:
 
 
 async def start_bid_review_worker() -> asyncio.Task:
-    """lifespan 入口:boot recovery(running→extracting)+ 单槽 claimer 循环(D18)。"""
+    """lifespan 入口:boot recovery(在途三态→created,bug-3973 口径)+ 单槽 claimer 循环(D18)。"""
     await boot_recovery()
     stop = asyncio.Event()
 

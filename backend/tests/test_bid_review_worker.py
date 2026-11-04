@@ -256,14 +256,15 @@ async def test_resume_confirmed_runs_det_and_done(db, tmp_rulepack):
 
 
 @pytest.mark.asyncio
-async def test_boot_recovery_resets_running_to_extracting(db):
-    """boot recovery:running→extracting(计划口径),幂等;claimer 以 extracting 入口断点续跑。"""
+async def test_boot_recovery_resets_running_to_created(db):
+    """boot recovery:running→created(bug-3973 口径 2026-11-04):claimer 只领 created,
+    孤儿断点续跑改走 created→parsing 完整入口幂等重跑;幂等再跑零命中。"""
     t = await crud.create_task(db, owner_id="u1")
     await crud.set_status(db, t, "running")
     factory = async_sessionmaker(db.bind, class_=AsyncSession, expire_on_commit=False)
     assert await boot_recovery(factory) == 1
     await db.refresh(t)
-    assert t.status == "extracting"
+    assert t.status == "created"
     assert await boot_recovery(factory) == 0  # 幂等:再跑零命中
 
 
@@ -309,6 +310,22 @@ async def test_claim_next_and_run_claimed_process_created_task(claim_env, tmp_ru
         row = await crud.get_task(s, task_id, "u1")
         assert row.status == "done"
         assert {i.rule_id for i in await crud.list_issues(s, task_id=task_id, owner_id="u1")} == {"T1-001", "T1-002"}
+
+
+@pytest.mark.asyncio
+async def test_claim_next_skips_extracting_task(claim_env, monkeypatch):
+    """bug-3973 回归门:extracting 是正常管线在途态(routers 直推抽取窗口 ~91s),
+    claimer 不得领取——旧实现无 CAS 并入领取,POLL_SECONDS=5s 轮询把在途任务
+    领成双管线(确定性双跑/重复行根因)。_claim_next 只领 created。"""
+    from app.extensions.bid_review import worker
+
+    monkeypatch.setattr(worker, "get_session_factory", lambda: claim_env)
+    task_id = await _mk_docs_task(claim_env)
+    async with claim_env() as s:
+        t = await crud.get_task(s, task_id, "u1")
+        await crud.set_status(s, t, "extracting")
+
+    assert await worker._claim_next(claim_env) is None, "extracting 在途任务不得被 claim(双跑根因门)"
 
 
 @pytest.mark.asyncio
@@ -403,15 +420,33 @@ async def test_claimer_loop_requeue_reaches_terminal_failed(claim_env, tmp_rulep
 
 
 @pytest.mark.asyncio
-async def test_boot_recovery_resets_parsing_to_extracting(db):
-    """fix-round 评审项:parsing 是 claim 领取标记,进程死亡窗口会遗留 parsing 任务——
-    boot recovery 与 running 一并重置 extracting(断点续跑),claim 领取态不留死态。"""
+async def test_boot_recovery_resets_parsing_to_created(db):
+    """fix-round 评审项+parsing 是 claim 领取标记:进程死亡窗口会遗留 parsing 任务——
+    boot recovery 重置 created(bug-3973 口径,claimer 只领 created),领取态不留死态。"""
     t = await crud.create_task(db, owner_id="u1")
     await crud.set_status(db, t, "parsing")
     factory = async_sessionmaker(db.bind, class_=AsyncSession, expire_on_commit=False)
     assert await boot_recovery(factory) == 1
     await db.refresh(t)
-    assert t.status == "extracting"
+    assert t.status == "created"
+
+
+@pytest.mark.asyncio
+async def test_boot_recovery_resets_all_inflight_to_created(db):
+    """bug-3973 回归门:boot recovery 把 parsing/extracting/running 三态孤儿统一重置
+    created——extracting 也是正常管线在途态(routers 直推抽取窗口),进程死亡同样会
+    遗留;孤儿走完整入口幂等重跑(parse 跳过已解析/基线先清旧/add_issue upsert)。"""
+    rows = []
+    for st in ("parsing", "extracting", "running"):
+        t = await crud.create_task(db, owner_id="u1")
+        await crud.set_status(db, t, st)
+        rows.append(t)
+    factory = async_sessionmaker(db.bind, class_=AsyncSession, expire_on_commit=False)
+    assert await boot_recovery(factory) == 3
+    for t in rows:
+        await db.refresh(t)
+        assert t.status == "created", f"{t.status} 态孤儿应重置 created"
+    assert await boot_recovery(factory) == 0  # 幂等:再跑零命中
 
 
 @pytest.mark.asyncio
