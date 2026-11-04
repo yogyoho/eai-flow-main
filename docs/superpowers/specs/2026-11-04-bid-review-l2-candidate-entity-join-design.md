@@ -1,6 +1,6 @@
 # L2 候选→确认条目 entity 继承(join key) 设计
 
-> 日期: 2026-11-04 ｜ 状态: 已批准(六裁决,会话 2026-11-04)
+> 日期: 2026-11-04 ｜ 状态: 已落地(本切片全量,含实现)
 > 前置: L2-指纹通道已落地(其 §6 挂账首位=本切片;bug-3966)
 > 范围: llm_runner.py 为主 + golden case 1 回填 + llm_verify +2;规则包/规则引擎/前端零改
 
@@ -34,14 +34,15 @@ hyb 候选段指令,不污染全局模板);⑥llm_verify +2(回显继承/自造 
 - llm_verify 既有候选段断言字符串("det 粗筛候选"/"驳回候选"/"unclear")指令改写中保留;
 - prompt_version 断言仅存在性,升版零翻红。
 
-## 3. 验收
+## 3. 验收(落地实测)
 
-1. llm_verify 42→44 全绿;
-2. bid_review 全家 pytest **394/6**(392+2);
-3. golden CLI **55/55** exit 0(case 1 entity 钉恢复=端到端验证);
+1. llm_verify 44 全绿(42+2);
+2. bid_review 全家 pytest **394/6**(实测 393 passed+1 flaky claimer 计时型单跑绿=394 口径);
+3. golden CLI **55/55** exit 0(case 1 entity 钉恢复=join key 端到端验证);
 4. ruff 触碰文件全绿;diff 仅 llm_runner+golden case 1+llm_verify+docs。
 
 ## 4. 挂账
 
 - 真实模型对「回显候选 id」遵从率——观测(不回显=丢实体=现状,无回归);
+- worker claimer 计时型测试偶发(claimer_loop 单跑恒绿)——观测,与引擎无关;
 - gateway 重启总挂账不变。
