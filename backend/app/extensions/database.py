@@ -954,6 +954,10 @@ async def migrate_db() -> None:
         await conn.execute(text("ALTER TABLE tlt_translation_tasks ADD COLUMN IF NOT EXISTS draft_edited_by UUID"))
         # EAI-CUSTOM (bid-review L2 P2): 问题实体键列(create_all 不 ALTER 已有表,幂等加列;DEFAULT '[]' 兜底使存量行免 NULL)
         await conn.execute(text("ALTER TABLE bid_review_issues ADD COLUMN IF NOT EXISTS entity_keys JSONB DEFAULT '[]'::jsonb"))
+        # EAI-CUSTOM (bid-review Minor-4,spec 2026-11-04): 中间提交 bfde4add6 曾裸 ALTER(无 DEFAULT)——
+        # 该环境存量行 entity_keys=NULL 且上方 IF NOT EXISTS 永久 no-op,DEFAULT 补不上,
+        # 读路径 500(读侧兜底见 bid_review/schemas.py validator)。幂等自愈归一数据。
+        await conn.execute(text("UPDATE bid_review_issues SET entity_keys='[]'::jsonb WHERE entity_keys IS NULL"))
         # EAI-CUSTOM (bug-1791807358242): KB 子表 FK 改 ON DELETE CASCADE——delete_kb 只清 documents,
         # 缺省 NO ACTION 的扩展子表(tlt_translation_tasks/scrap_drafts)会让删 KB 撞 FK IntegrityError 500。
         # 幂等重建约束(同 report_projects_workflow_id_fkey 先例)。约束名按建表来源:
@@ -1380,7 +1384,8 @@ async def migrate_db() -> None:
         await conn.execute(text("ALTER TABLE bid_review_tasks ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ DEFAULT NOW()"))
         await conn.execute(text("ALTER TABLE bid_review_tasks ADD COLUMN IF NOT EXISTS done_at TIMESTAMPTZ"))
         # biz_no 存量回填:按创建日分区,日内按 created_at,id 决胜,序号 0001 起。
-        await conn.execute(text("""
+        await conn.execute(
+            text("""
             UPDATE bid_review_tasks t SET biz_no = sub.b FROM (
                 SELECT id,
                        'TBR-' || TO_CHAR(created_at, 'YYYYMMDD') || '-' ||
@@ -1390,7 +1395,8 @@ async def migrate_db() -> None:
                        ))::text, 4, '0') AS b
                 FROM bid_review_tasks WHERE biz_no IS NULL
             ) sub WHERE t.id = sub.id
-        """))
+        """)
+        )
 
 
 # EAI-CUSTOM: 启动时校准 DB roles 作为 yaml registry 的物化镜像

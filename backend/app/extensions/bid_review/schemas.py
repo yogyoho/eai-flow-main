@@ -7,7 +7,7 @@ schema 校验(故 IssueOut.verdict 保持普通 str,不做枚举收窄)。
 
 from datetime import datetime
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, field_validator
 
 
 class ORMBase(BaseModel):
@@ -74,6 +74,15 @@ class IssueOut(ORMBase):
     # (confirm/severity_change 不改 verdict),故单独投影。
     review_state: str = "unresolved"
     created_at: datetime
+
+    @field_validator("entity_keys", mode="before")
+    @classmethod
+    def _entity_keys_null_to_empty(cls, v):
+        # EAI-CUSTOM(Minor-4,spec 2026-11-04):跑过中间提交 bfde4add6 裸 ALTER 的
+        # 环境存量行 entity_keys=NULL(IF NOT EXISTS no-op 补不上 DEFAULT)→
+        # model_validate ValidationError → issues 端点 500;读路径 None→[] 兜底
+        # (写侧 crud/worker 本就 or [] 兜底,此处补齐读侧)。部署即愈,零运维。
+        return [] if v is None else v
 
 
 class BaselineOut(ORMBase):
