@@ -1,6 +1,6 @@
 # Minor-4 NULL entity_keys 病理修复 设计
 
-> 日期: 2026-11-04 ｜ 状态: 设计定版(实施中)
+> 日期: 2026-11-04 ｜ 状态: 已落地(本切片全量,含实现)
 > 前置: L2-P2 终审 Minor-4 挂账(2026-11-02);gateway 已重启(2026-11-04 08:20)
 > 范围: schemas.py + database.py 各一处 + 新 schema 测试;引擎/规则包/前端零改
 
@@ -30,12 +30,12 @@ field_validator(Annotated 全局版是给多字段复用的,此处一处);③evi
 (百~千行级表扫描可忽略);⑤新 test_bid_review_schemas.py 两测(NULL→[]/透传),
 bootstrap SQL 文本不断言(脆);⑥全家 pytest 精确计数+golden 55/55 零翻红+活库复测+ruff。
 
-## 2. 验收
+## 2. 验收(落地实测)
 
-1. 新 schema 测试 2 绿(先红后绿);
-2. bid_review 全家 pytest 精确计数(基线 394/6 + 2 = 396/6 口径,claimer flaky 见 bug-3967);
-3. golden CLI 55/55 exit 0(触碰面不涉引擎,跑一遍是确认);
-4. 活库复测 0 NULL 不变;ruff 触碰文件绿。
+1. 新 schema 测试 2 绿(先红后绿,NULL 测红=活体病理复现 ValidationError);
+2. bid_review 全家 pytest **396 passed / 0 failed** exit 0(glob 28 文件;基线 394+新 2,claimer flaky 未触发);
+3. golden CLI **55/55** exit 0;
+4. 活库复测 0 NULL 不变;ruff 触碰文件绿(impl commit 5e2fc9fe7)。
 
 ## 3. 挂账
 
