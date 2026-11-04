@@ -574,3 +574,27 @@ async def test_no_fingerprint_marker_zero_injection(tmp_path, monkeypatch):
     fake = _CountingFake(json.dumps(GOOD))
     await run_sem_rule(HYB, fields=HYB_FIELDS, materials="…", model_fn=fake, docs_text=DOCS)
     assert "统一社会信用代码" not in fake.prompts[0], "无 marker 规则零注入"
+
+
+# ── L2 候选→确认条目 entity 继承(spec 2026-11-04 candidate-entity-join §1) ──
+# 修复前:候选段只给模型 {verdict,message} 无 id,模型回条与 det 候选无 join key,
+# _verdict_to_issue 产物零 entity_keys → 跨层重复投影/持久化合并进不去(bug-3966)。
+
+
+@pytest.mark.asyncio
+async def test_candidate_entity_inherited_on_echoed_cand_id(tmp_path, monkeypatch):
+    """模型回显候选 id(C1)→ 确认条目继承 det 候选 entity_keys(spec 2026-11-04 §1)。"""
+    _isolate_fp_dict(tmp_path, monkeypatch)
+    resp = {"verdicts": [{"clause_id": "C1", "verdict": "partial", "confidence": 0.9, "reason": "疑似改名提供", "evidence": [{"doc_id": "t.pdf", "page": 5, "text": "★ 投标工期不得超 180 日历天"}]}]}
+    issues = await run_sem_rule(FP_RULE, fields=FP_FIELDS, materials="…", model_fn=_fake(json.dumps(resp)), docs_text=DOCS)
+    assert issues and issues[0]["verdict"] == "violation"
+    assert issues[0]["entity_keys"] == ["attachment:5"], "候选实体经 join key 继承到确认条目"
+
+
+@pytest.mark.asyncio
+async def test_candidate_entity_dropped_when_clause_id_not_echoed(tmp_path, monkeypatch):
+    """模型自造 clause_id 查不回候选 → 无 entity_keys(=现状,弱而非坏)。"""
+    _isolate_fp_dict(tmp_path, monkeypatch)
+    resp = {"verdicts": [{"clause_id": "自造-1", "verdict": "partial", "confidence": 0.9, "reason": "疑似改名提供", "evidence": [{"doc_id": "t.pdf", "page": 5, "text": "★ 投标工期不得超 180 日历天"}]}]}
+    issues = await run_sem_rule(FP_RULE, fields=FP_FIELDS, materials="…", model_fn=_fake(json.dumps(resp)), docs_text=DOCS)
+    assert issues and not issues[0].get("entity_keys"), "join 不中不硬造实体"
