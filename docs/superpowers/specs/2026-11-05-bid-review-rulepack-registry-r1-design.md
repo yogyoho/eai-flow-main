@@ -16,7 +16,7 @@
 
 - **裁决②修正**:registry 落 **python 索引层 `engine/registry.py`,不建 fields.yaml**——取证显示三类源各自已是单源(pack inputs/ANCHOR_REGISTRY/FIELD_TYPE_CONTRACTS 各一份),yaml 主副本=第三份账本零去重价值;真正缺的是跨源机器校验+consumed_by 反查。fields.yaml 等第二规则包出现再议。
 - **裁决③修正**:anchors.py 保持代码单源(运行时消费方),R1 只加「包 evidence ⊆ ANCHOR_REGISTRY」硬校验;yaml 化无第二消费者不建。
-- **enums 不建 yaml**:severity 3 值+layer 3 值,收敛为 loader 常量白名单:**L1{fatal,major} L2{fatal,major} L3{major,minor}**(L1 major=业绩达标特例,L3 禁 fatal=一致性层不否决)。
+- **enums 不建 yaml**:severity 3 值+layer 3 值,收敛为 loader 常量白名单:**L1{fatal,major} L2{fatal,major,minor} L3{major,minor}**(L1 major=业绩达标特例、禁 minor=否决层无提示级;L3 禁 fatal=一致性层不否决;L2 三档全放行——实施取证修正:eval_core 夹具 EX-001 L2/minor 为既有合法语义)。
 
 ## 2. R1 交付物
 

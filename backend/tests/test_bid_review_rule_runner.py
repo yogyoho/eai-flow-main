@@ -468,7 +468,7 @@ def test_att_missing_rows_whitelisted_at_load(tmp_path):
     good = tmp_path / "good.yaml"
     good.write_text(
         "rules:\n- id: L2-021\n  name: 指纹\n  layer: L2\n  type: hybrid\n  severity: major\n"
-        "  applies_to: ['*']\n  inputs: [a, b]\n  check: {op: att_missing_rows, left: a, right: b, candidate_tpl: \"附件「{missing}」x\"}\n"
+        "  applies_to: ['*']\n  inputs: [tender.attachment_requirements, bid.attachment_index]\n  check: {op: att_missing_rows, left: tender.attachment_requirements, right: bid.attachment_index, candidate_tpl: \"附件「{missing}」x\"}\n"
         "  evidence: []\n  message_tpl: m\n  fix_tpl: f\n  confidence_gate: 1.0\n  enabled: true\n",
         encoding="utf-8",
     )

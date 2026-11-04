@@ -90,6 +90,13 @@ def load_rulepack(path: str | Path) -> RulePack:
                 enabled=bool(raw.get("enabled", True)),
             )
         )
+    # 语义 lint(EAI-CUSTOM 2026-11-05 R1,spec §2.2):evidence 锚已注册/severity 层
+    # 白名单/inputs 点路径——违规拒载(bug-3985:未注册锚曾静默丢证据区)。
+    from app.extensions.bid_review.engine.registry import lint_rules
+
+    problems = lint_rules(rules)
+    if problems:
+        raise RulePackError("规则包语义校验失败(拒载):\n" + "\n".join(problems))
     return RulePack(name=p.parent.name, version=p.stem, conventions=dict(data.get("conventions", {})), rules=rules)
 
 

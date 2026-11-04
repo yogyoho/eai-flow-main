@@ -5,54 +5,14 @@ from __future__ import annotations
 import hashlib
 import json
 from collections.abc import Callable
-from pathlib import Path
 from typing import Any
 
-import yaml
+from app.extensions.bid_review.engine.registry import universe as _registry_universe
 
-# field_dictionary 锚点基准(M1 七条规则 inputs 转录,与 skills/public/bid-proposal-review/references/rules-det-subset.yaml 同源)。
-# 字段路径是规则↔引擎↔评测三方唯一契约(设计文档 §6.2):改动须三处同步(规则包 inputs / 本表 / 评测金标准 schema)。
-FIELD_DICTIONARY: frozenset[str] = frozenset(
-    {
-        # L1-009 总价不超限价
-        "bid.total_price",
-        "tender.max_price",
-        "bid.price_includes_tax",
-        "tender.price_includes_tax",
-        # L1-010 报价算术一致性
-        "bid.detail_rows",
-        "bid.subtotal",
-        "bid.total_price_words",
-        # L1-011 清单一致性
-        "tender.boq_items",
-        "bid.boq_items",
-        # L3-001 项目名称/编号一致(编号 bid 侧字段 v2 定,当前仅作提取输入)
-        "tender.project_identity.name",
-        "tender.project_identity.code",
-        # B1 裁定12(2026-10-31):标段抽取回填 task.lot_name(任务列表「项目/标段」列)
-        "tender.project_identity.lot_section",
-        "bid.header_footer.project_name",
-        # L3-003 投标人主体一致
-        "bid.entity.license_name",
-        "bid.entity.name_in_bid_letter",
-        "project.entity_whitelist.names",
-        # L3-005 工期三处一致
-        "bid.duration_main_text",
-        "bid.duration_schedule",
-        "bid.duration_commitment_letter",
-        # L3-006 金额全文一致
-        "bid.amount_occurrences",
-        # B4 评分覆盖度(spec §5):评分办法项清单,项携带 related_paths 供覆盖求交
-        "tender.scoring_items",
-        # B9 响应偏离表(spec 2026-11-01 §1.1):抽取期 LLM 逐条对照招标要求↔投标响应
-        "deviation.items",
-        # L2 P1 附件清单核对(spec 2026-11-02 §1):招标要求集/投标提供集,两级精确匹配原料
-        "tender.attachment_requirements",
-        "bid.attachment_index",
-    }
-)
-
-_RULEPACK_DIR = Path(__file__).parent / "rulepacks" / "bid-review-core"
+# 字段宇宙单一事实源=registry(EAI-CUSTOM 2026-11-05 R1 裁决②修正):旧 24 路径字面量退役
+# (M1 七条规则转录残遗,47/68 规则 inputs 不在其中),改为 registry.universe 派生(包 inputs ∪
+# 锚点路径 ∪ 投影字段)——与 collect_field_paths() 同源,消除「字典说有/包说没有」漂移。
+FIELD_DICTIONARY: frozenset[str] = frozenset(_registry_universe())
 
 # 工期/质保类字段的类型契约(fix-round L1-014/L1-015/L3-005):normalize_unit 只吃 {value,unit}
 # 结构或天数数值;*_text 命名字段若回流原始文本("540日历天")会在求值期强转失败。契约原为规则包
@@ -151,15 +111,9 @@ class ExtractNotConfigured(RuntimeError):
 
 
 def collect_field_paths() -> list[str]:
-    """收集基准提取请求路径 = 内置 field_dictionary ∪ 规则包(rulepacks/bid-review-core/*.yaml)全部 inputs;排序保证稳定。"""
-    paths = set(FIELD_DICTIONARY)
-    for pack_path in sorted(_RULEPACK_DIR.glob("*.yaml")):
-        pack = yaml.safe_load(pack_path.read_text(encoding="utf-8")) or {}
-        for rule in pack.get("rules") or []:
-            for path in rule.get("inputs") or []:
-                if isinstance(path, str):
-                    paths.add(path)
-    return sorted(paths)
+    """收集基准提取请求路径(EAI-CUSTOM 2026-11-05 R1 起委托 registry.universe():
+    包 inputs ∪ 锚点路径 ∪ 投影字段;排序稳定)。"""
+    return _registry_universe()
 
 
 _CANDIDATE_MAX = 8  # 单路径候选上限(防幻觉刷屏;超出截断,冲突判定不受影响)
