@@ -40,6 +40,7 @@ _INJECTION_RE = re.compile("|".join(f"(?:{p})" for p in _INJECTION_PATTERNS), re
 
 _WS_RE = re.compile(r"\s+")
 _PLACEHOLDER_RE = re.compile(r"\{[^{}]*\}")
+_JSON_FENCE_RE = re.compile(r"```(?:json)?\s*(.*?)\s*```", re.DOTALL)
 
 
 def _norm(text: str) -> str:
@@ -61,13 +62,31 @@ def injection_guard(text: str) -> bool:
     return hit is None
 
 
+def _loads_lenient(raw: str):
+    """围栏容错三级降级(spec 2026-11-04,bug-3971):直接 loads → 剥 ``` 围栏 →
+    首{末}切片。生产模型(agnes-2.5-Flash)实测每回包 `\n\n```json … ``` 包壳,
+    裸 loads 于 char 2 全灭致模型确认层 0% 存活(走查 5318d0d9);纯 JSON 输入走
+    第 1 级零行为变化。全败返回 None。"""
+    for cand in (
+        raw,
+        *(_JSON_FENCE_RE.findall(raw) or []),
+        raw[raw.find("{") : raw.rfind("}") + 1] if "{" in raw and "}" in raw else "",
+    ):
+        if not cand:
+            continue
+        try:
+            return json.loads(cand)
+        except (TypeError, ValueError):
+            continue
+    return None
+
+
 def check_schema(raw, verdict_set=None):
     """第1道(raw 层,由 llm_runner 驱动重试):模型原始输出 → (verdicts, None) 或 (None, 错误)。"""
     vs = set(verdict_set or DEFAULT_VERDICT_SET)
-    try:
-        data = json.loads(raw) if isinstance(raw, str) else raw
-    except (TypeError, ValueError) as exc:
-        return None, f"not_json: {exc}"
+    data = raw if not isinstance(raw, str) else _loads_lenient(raw)
+    if data is None:
+        return None, "not_json: 围栏容错三级降级后仍不可解析"
     if not isinstance(data, dict) or not isinstance(data.get("verdicts"), list) or not data["verdicts"]:
         return None, "schema: 需要非空 verdicts 列表"
     for i, entry in enumerate(data["verdicts"]):

@@ -103,6 +103,20 @@ def test_check_schema_ok_and_rejects():
         assert got is None and err, bad
 
 
+def test_check_schema_tolerates_fenced_json():
+    """生产模型(agnes-2.5-Flash)回包 ```json 围栏包壳 → 剥壳后过 schema(spec 2026-11-04;走查 5318d0d9 P0)。"""
+    fenced = f"\n\n```json\n{json.dumps(GOOD)}\n```"
+    verdicts, err = check_schema(fenced, RULE["check"]["verdict_set"])
+    assert err is None and verdicts[0]["clause_id"] == "★1"
+
+
+def test_check_schema_tolerates_prose_wrapped_json():
+    """prose 包裹(围栏+前后寒暄)→ 首{末}切片兜底过 schema(spec 2026-11-04 三级第3级)。"""
+    wrapped = f"好的，以下是审查结果：\n\n```json\n{json.dumps(GOOD)}\n```\n\n请查收。"
+    verdicts, err = check_schema(wrapped, RULE["check"]["verdict_set"])
+    assert err is None and verdicts[0]["clause_id"] == "★1"
+
+
 # ── 第2道 证据对齐 ────────────────────────────────────────────
 
 
