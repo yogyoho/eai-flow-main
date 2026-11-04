@@ -72,6 +72,10 @@
 2. 每 M:全家 pytest 精确计数全绿+golden 55 零翻红+ruff 绿+活体回采;
 3. 指标演进:M0 基线入档后,M1-M5 每 M 报告抽取分变化,只升不降。
 
+### §5+ M0 活体实测(2026-11-04)
+
+**双层指标语义**(首测即确立):快照地板(SNAPSHOT floor)=冻结 R6 快照 vs 标注集,**26/26=1.0**,确定性,只锁代码回归(normalize/shape/评分器);活体测量(live)=容器内 `--live` 单跑,**19/26=0.7308**——LLM 采样方差大(同 docs 的 R6 任务曾全中)。漏抽 7 项:tender.currency=null、bid.similar_performances=null、bid.appendix_references=[](空列表非 4 行)、attachment_requirements 的 min_count/year_span 细节(安全生产许可证行 min_count=null、业绩合同 year_span=null)。**结论=方差是 B 立项的一等公民问题**,漏抽清单即 M1 两段抽取+提示契约的靶子;活体基线 0.7308 记档,只升不降。
+
 ## 7. 挂账
 
 - L1/L3 规则包扩族(设计稿尾②)——独立队列,不在本立项;

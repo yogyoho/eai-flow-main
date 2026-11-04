@@ -7,6 +7,11 @@
     ],
     "snapshot": "r6-snapshot.json",
     "baseline_pass_rate": 1.0,
+    "live_pass_rate": {
+      "value": 0.7308,
+      "measured_at": "2026-11-04",
+      "note": "--live 容器内单跑实测;LLM 采样方差大(同 R6 任务曾全中),快照地板 1.0 只锁代码回归,此值=抽取质量基线,M1+ 只升不降"
+    },
     "note": "标注=人工读原文真值(spec 2026-11-04 B立项 §3,独立于模型输出);baseline_pass_rate 首标后只升不降——翻红=回归证据,标注错改标注/引擎错先修引擎。"
   },
   "checks": [
