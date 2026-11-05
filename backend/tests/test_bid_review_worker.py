@@ -707,3 +707,97 @@ async def test_m2_default_section_fn_seam(monkeypatch, db, tmp_rulepack):
     assert calls == [["3", "5"]]
     payload = await _first_payload(db, t.id)
     assert payload["fields"]["bid.section_tree"][0]["offset_flag"] is True
+
+
+# ── B立项 M3 表格段(spec 2026-11-04 §5,2026-11-05)──────────────────────────────
+
+
+def _m3_extract(with_boq=True):
+    """M3 测试提取器:全路径 None + 可选招标 BOQ 行(有行才触发表格段)。"""
+
+    def _extract(d, p):
+        boq = [{"code": "1.1", "name": "挖土方"}, {"code": "1.2", "name": "砌筑"}]
+        return {**{k: None for k in p}, "tender.boq_items": boq} if with_boq else {k: None for k in p}
+
+    return _extract
+
+
+@pytest.mark.asyncio
+async def test_m3_tables_merged_and_hash_recomputed(db, tmp_rulepack):
+    """表格段成功:双键落 fields、required 服务端回填、materials_hash 与 merge 后 fields 一致。"""
+    from app.extensions.bid_review.engine.extract import materials_hash
+
+    t = await crud.create_task(db, owner_id="u1")
+    docs = [{"doc_id": "b.pdf", "role": "bid", "text": "x"}]
+
+    def _tables_fn(docs, tender_rows):
+        assert tender_rows == [{"code": "1.1", "name": "挖土方"}, {"code": "1.2", "name": "砌筑"}]
+        return {"boq_rows": [{"id": "1.1", "name": "挖土方", "unit": "m3", "qty": 100, "price": 50}], "table_cells": [{"value": "100万", "page": 12}]}
+
+    await advance_task(db, t.id, owner_id="u1", docs=docs, extract_fn=_m3_extract(), wait_confirm=True, tables_fn=_tables_fn)
+    payload = await _first_payload(db, t.id)
+    rows = payload["fields"]["bid.boq_rows"]
+    cells = payload["fields"]["bid.table_cells"]
+    assert rows and rows[0]["required"] is True and rows[0]["id"] == "1.1"
+    assert cells and cells[0]["value"] == "100万" and cells[0]["page"] == 12
+    assert payload["materials_hash"] == materials_hash(payload["fields"])
+
+
+@pytest.mark.asyncio
+async def test_m3_table_stage_failure_isolated_absent_keys(db, tmp_rulepack):
+    """表格段抛错=双键缺席不落键(行为=现状),基线照常交付。"""
+    t = await crud.create_task(db, owner_id="u1")
+
+    def _boom(*a):
+        raise RuntimeError("tables stage boom")
+
+    docs = [{"doc_id": "b.pdf", "role": "bid", "text": "x"}]
+    await advance_task(db, t.id, owner_id="u1", docs=docs, extract_fn=_m3_extract(), wait_confirm=True, tables_fn=_boom)
+    payload = await _first_payload(db, t.id)
+    assert "bid.boq_rows" not in payload["fields"]
+    assert "bid.table_cells" not in payload["fields"]
+
+
+@pytest.mark.asyncio
+async def test_m3_zero_tables_lands_empty_lists(db, tmp_rulepack):
+    """表格段成功零行:双键各落 [](ran+zero ≠ 缺席,口径区分)。"""
+    t = await crud.create_task(db, owner_id="u1")
+    docs = [{"doc_id": "b.pdf", "role": "bid", "text": "x"}]
+    await advance_task(db, t.id, owner_id="u1", docs=docs, extract_fn=_m3_extract(), wait_confirm=True, tables_fn=lambda *a: {"boq_rows": [], "table_cells": []})
+    payload = await _first_payload(db, t.id)
+    assert payload["fields"]["bid.boq_rows"] == []
+    assert payload["fields"]["bid.table_cells"] == []
+
+
+@pytest.mark.asyncio
+async def test_m3_no_boq_signal_skips_stage_without_model(db, tmp_rulepack):
+    """招标/投标 BOQ 均缺(null)→ 表格段整体跳过,生产 _default_tables_fn 不触(无模型依赖)。"""
+    t = await crud.create_task(db, owner_id="u1")
+    docs = [{"doc_id": "b.pdf", "role": "bid", "text": "x"}]
+    await advance_task(db, t.id, owner_id="u1", docs=docs, extract_fn=_m3_extract(False), wait_confirm=True, tables_fn=None)
+    payload = await _first_payload(db, t.id)
+    assert "bid.boq_rows" not in payload["fields"]
+    assert "bid.table_cells" not in payload["fields"]
+
+
+@pytest.mark.asyncio
+async def test_m3_default_tables_fn_seam(monkeypatch, db, tmp_rulepack):
+    """缺省接线走 worker._default_tables_fn(monkeypatch seam,生产=create_chat_model)。"""
+    from app.extensions.bid_review import worker
+
+    calls = []
+
+    def _fake_default():
+        def _fn(docs, tender_rows):
+            calls.append(tender_rows)
+            return {"boq_rows": [{"id": "9.9", "name": "自附项"}], "table_cells": []}
+
+        return _fn
+
+    monkeypatch.setattr(worker, "_default_tables_fn", _fake_default)
+    t = await crud.create_task(db, owner_id="u1")
+    docs = [{"doc_id": "b.pdf", "role": "bid", "text": "x"}]
+    await advance_task(db, t.id, owner_id="u1", docs=docs, extract_fn=_m3_extract(), wait_confirm=True)
+    assert calls == [[{"code": "1.1", "name": "挖土方"}, {"code": "1.2", "name": "砌筑"}]]
+    payload = await _first_payload(db, t.id)
+    assert payload["fields"]["bid.boq_rows"][0]["required"] is False  # 9.9 不在招标 codes

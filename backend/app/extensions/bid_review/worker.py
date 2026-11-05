@@ -36,7 +36,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.extensions.bid_review import crud
 from app.extensions.bid_review.engine.eval_core import _content_to_str, evaluate_fields, wrap_model_fn
-from app.extensions.bid_review.engine.extract import ExtractFn, ExtractNotConfigured, apply_adjudications, build_attachments_baseline, build_baseline, build_sections_baseline, materials_hash
+from app.extensions.bid_review.engine.extract import ExtractFn, ExtractNotConfigured, apply_adjudications, build_attachments_baseline, build_baseline, build_sections_baseline, build_tables_baseline, materials_hash
 from app.extensions.bid_review.engine.rule_runner import load_rulepack
 from app.extensions.bid_review.models import BaselinePackage, ReviewTask
 from app.extensions.database import get_session_factory
@@ -347,6 +347,37 @@ def _default_section_fn():
     return _fn
 
 
+def _default_tables_fn():
+    """表格段生产接线(B立项 M3,spec §5):同款模型+单 prompt 双路径+两试解析;契约
+    (docs, tender_rows) → {"boq_rows": [...], "table_cells": [...]}。无可用模型返回
+    None → 表格段缺席(诚实降级,首段照跑);本函数同步(经 asyncio.to_thread 卸载,
+    禁事件循环直跑)。测试 seam:monkeypatch 本模块函数注入 fake(worker 测试同惯例)。"""
+    name = _resolve_model_name()
+    if not name:
+        return None
+    from app.extensions.bid_review.engine.extract import build_tables_prompt
+    from deerflow.models.factory import create_chat_model
+
+    model = create_chat_model(name)
+    logger.info("bid_review tables stage using model %s", name)
+
+    def _fn(docs, tender_rows) -> dict:
+        prompt = build_tables_prompt(docs, tender_rows)
+        messages = [{"role": "user", "content": prompt}]
+        last_err: Exception | None = None
+        for attempt in (1, 2):
+            response = model.invoke(messages)
+            raw = _content_to_str(getattr(response, "content", ""))
+            try:
+                return _parse_json_object(raw)
+            except ValueError as exc:
+                last_err = exc
+                logger.warning("bid_review tables parse retry attempt=%d err=%s", attempt, exc)
+        raise RuntimeError(f"表格提取两试未获有效 JSON({last_err})") from last_err
+
+    return _fn
+
+
 # ── 状态机推进 ────────────────────────────────────────────────────────
 
 
@@ -453,6 +484,7 @@ async def advance_task(
     model_fn=None,
     attachments_fn=None,
     section_fn=None,
+    tables_fn=None,
 ) -> ReviewTask:
     """状态机单步推进:parsing→extracting→基线落库→wait_confirm ? awaiting_confirm :
     running→review(det+sem/hyb)→done。
@@ -542,6 +574,26 @@ async def advance_task(
                     payload = {**payload, "fields": fields, "materials_hash": materials_hash(fields)}
             except Exception as exc:  # noqa: BLE001  章节段失败隔离:基线照常交付
                 logger.warning("bid_review sections stage skipped err=%s", exc)
+    # B立项 M3 表格段(spec 2026-11-04 §5,2026-11-05):门=招标/投标 BOQ 任一非空
+    # (无清单信号不烧配额;旧测试零模型调用);单 prompt 双路径 boq_rows+table_cells
+    # (裁决①,配额零增);失败/无模型=双缺席不落键(行为=现状);成功(含 0 行)双键
+    # 独立落 [](各含零独立);required 由 normalize_boq_rows 服务端按招标 codes 回填
+    # (模型禁报,设计 §4.5 必填口径唯一来自招标侧)。
+    if bool(fields.get("tender.boq_items")) or bool(fields.get("bid.boq_items")):
+        if tables_fn is None:
+            tables_fn = _default_tables_fn()
+        if tables_fn is not None:
+            try:
+                tables = await asyncio.to_thread(
+                    build_tables_baseline,
+                    docs,
+                    tables_fn,
+                    fields.get("tender.boq_items"),
+                )
+                fields = {**fields, "bid.boq_rows": tables["boq_rows"], "bid.table_cells": tables["table_cells"]}
+                payload = {**payload, "fields": fields, "materials_hash": materials_hash(fields)}
+            except Exception as exc:  # noqa: BLE001  表格段失败隔离:基线照常交付
+                logger.warning("bid_review tables stage skipped err=%s", exc)
     meta = dict(task.engine_meta or {})
     meta["materials_hash"] = payload["materials_hash"]
     task.engine_meta = meta  # 重新赋值以标记 JSON 列 dirty
