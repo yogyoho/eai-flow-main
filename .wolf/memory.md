@@ -28544,3 +28544,60 @@
 |------|--------|---------|---------|--------|
 | 20:50 | 活体回采收官:walkthrough双文档经worker.advance_task生产管线单跑(新scripts/bid_review_live_full.py,sqlite内存五表),抽取分21/26=0.8077>0.7308只升不降达成;crosscheck四指标活体值落annotations meta.live_run(live_pass_rate 0.7308→0.8077);M2-M4门信号本轮未触发=方差诚实缺席;M5 plan挂账勾选 | backend/scripts/bid_review_live_full.py + walkthrough-annotations.json + M5 plan | 成功(烧配额一次) | ~15k |
 | 20:52 | Docker引擎500复现修复:wsl -t docker-desktop+杀DD进程重启+杀wslservice三步叠加,引擎复活全容器自愈;记bug-4027 | Docker Desktop/wsl | 成功 | ~2k |
+| 20:30 | Created C:/Users/admin/.claude/projects/D--eai-eai-flow-main/memory/bid-review-live-recapture-landed.md | — | ~453 |
+| 20:30 | Edited C:/Users/admin/.claude/projects/D--eai-eai-flow-main/memory/MEMORY.md | 1→2 lines | ~82 |
+| 20:31 | Session end: 2 writes across 2 files (bid-review-live-recapture-landed.md, MEMORY.md) | 2 reads | ~573 tok |
+| 20:33 | Session end: 2 writes across 2 files (bid-review-live-recapture-landed.md, MEMORY.md) | 2 reads | ~573 tok |
+| 20:50 | Created docs/superpowers/plans/2026-11-05-bid-review-alignment-gaps-plan.md | — | ~6787 |
+| 20:52 | Edited backend/app/extensions/bid_review/worker.py | modified _prune_rules_for_mode() | ~151 |
+| 20:52 | Edited backend/app/extensions/bid_review/worker.py | modified or() | ~81 |
+| 20:54 | Edited backend/tests/test_bid_review_worker.py | modified test_advance_quick_det_run_to_done() | ~577 |
+| 20:55 | Edited backend/tests/test_bid_review_worker.py | modified _mk_docs_task() | ~36 |
+| 20:55 | Edited backend/tests/test_bid_review_worker.py | modified test_resume_confirmed_runs_det_and_done() | ~99 |
+| 20:55 | Edited backend/tests/test_bid_review_worker.py | 5→5 lines | ~73 |
+| 20:55 | Edited backend/tests/test_bid_review_worker.py | modified _mk_docs_task() | ~63 |
+| 20:56 | Edited backend/tests/test_bid_review_worker.py | 13→14 lines | ~222 |
+| 21:03 | Edited backend/tests/test_bid_review_worker_sem.py | 3→4 lines | ~72 |
+| 21:04 | Edited backend/app/extensions/bid_review/engine/extract.py | modified _covered_max_score() | ~208 |
+| 21:04 | Edited backend/app/extensions/bid_review/engine/extract.py | 7→9 lines | ~106 |
+| 21:09 | Edited backend/app/extensions/bid_review/crud.py | modified list_task_feedback() | ~227 |
+| 21:09 | Edited backend/app/extensions/bid_review/routers.py | modified _feedback_summary() | ~841 |
+| 21:09 | Edited backend/app/extensions/bid_review/routers.py | modified isinstance() | ~258 |
+
+## Session: 2026-11-05 21:16
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 21:19 | Edited backend/tests/test_bid_review_mcp.py | inline fix | ~21 |
+| 21:19 | Edited backend/tests/test_bid_review_mcp.py | 7 → 11 | ~9 |
+| 21:20 | Edited backend/tests/test_bid_review_mcp.py | modified test_unknown_tool() | ~750 |
+| 21:20 | Edited backend/app/extensions/bid_review/mcp.py | 11→16 lines | ~292 |
+| 21:21 | Edited backend/app/extensions/bid_review/mcp.py | modified Tool() | ~457 |
+| 21:21 | Edited backend/app/extensions/bid_review/mcp.py | modified _run_router() | ~879 |
+| 21:26 | Edited backend/tests/test_bid_review_worker.py | modified test_apply_rule_overrides_semantics() | ~643 |
+| 21:26 | Edited backend/app/extensions/bid_review/models.py | modified CUSTOM() | ~104 |
+| 21:26 | Edited backend/app/extensions/bid_review/worker.py | modified _apply_rule_overrides() | ~137 |
+| 21:27 | Edited backend/app/extensions/bid_review/worker.py | 1→4 lines | ~95 |
+| 21:27 | Edited backend/app/extensions/bid_review/worker.py | inline fix | ~25 |
+| 21:27 | Edited backend/app/extensions/bid_review/crud.py | modified get_or_create_rulepack_meta() | ~212 |
+| 21:27 | Edited backend/app/extensions/bid_review/routers.py | inline fix | ~30 |
+| 21:27 | Edited backend/app/extensions/bid_review/routers.py | modified rulepack_rule_details() | ~232 |
+| 21:27 | Edited backend/app/extensions/bid_review/routers.py | modified set_rule_enabled() | ~399 |
+| 21:28 | Edited backend/app/extensions/bid_review/schemas.py | modified AdjudicateIn() | ~113 |
+| 21:28 | Edited backend/app/extensions/database.py | modified CUSTOM() | ~148 |
+| 21:29 | Edited backend/tests/test_bid_review_routers.py | 2→2 lines | ~27 |
+| 21:30 | Edited backend/tests/test_bid_review_routers.py | inline fix | ~25 |
+| 21:38 | Edited backend/app/extensions/bid_review/parse.py | 5→7 lines | ~80 |
+| 21:38 | Edited backend/app/extensions/bid_review/parse.py | 7→9 lines | ~129 |
+| 21:38 | Edited backend/app/extensions/bid_review/parse.py | 2→2 lines | ~45 |
+| 21:41 | Edited backend/app/extensions/bid_review/parse.py | modified detect_kind() | ~96 |
+| 21:41 | Edited backend/app/extensions/bid_review/parse.py | 2→3 lines | ~32 |
+| 21:41 | Edited backend/app/extensions/bid_review/parse.py | modified _parse_xlsx_sync() | ~354 |
+| 21:41 | Edited backend/app/extensions/bid_review/parse.py | 7→12 lines | ~191 |
+| 21:41 | Edited backend/app/extensions/bid_review/parse.py | 3→5 lines | ~74 |
+| 21:44 | Edited backend/app/extensions/bid_review/parse.py | modified endswith() | ~59 |
+| 21:44 | Edited backend/app/extensions/bid_review/parse.py | 1→3 lines | ~54 |
+| 21:44 | Edited backend/app/extensions/bid_review/parse.py | modified _blocks_for_bytes() | ~586 |
+| 21:44 | Edited backend/app/extensions/bid_review/parse.py | 3→5 lines | ~91 |
+| 21:44 | Edited backend/app/extensions/bid_review/parse.py | 4→4 lines | ~100 |
+| 21:56 | 对齐审计9缺口收口slice:①quick层裁剪②covered_max_score③复核耗时真数据⑩偏离表入报告⑧MCP四工具⑨enabled切换④docx rows⑤xlsx⑦图片⑥zip;全家570/6/0;9 commits推0	0 | worker/extract/routers/crud/mcp/parse/models/schemas/database+8测试文件 | done | ~95k |

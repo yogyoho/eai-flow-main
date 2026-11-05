@@ -5305,7 +5305,7 @@
       "error_message": "family run: test_issues_endpoint_grouping_wiring summary == 精确字典缺 rules_total/unknown_ratio",
       "file": "backend/tests/test_bid_review_grouping.py",
       "root_cause": "M5 summarize_issues additive 两新键(rules_total/unknown_ratio)后,四处精确等值断言只修了三处,grouping 处漏网(全量 sweep grep '\"need_human\": [0-9]' 后补齐)",
-      "fix": "断言补 'rules_total': None, 'unknown_ratio': None 两键;教训:改共享函数契约时 grep 全测试面同款断言再动手",
+      "fix": "断言补 'rules_total': None, 'unknown_ratio': None 两键;教训:改共享函数契约时 grep 全测试面同款断言再动手 | 2026-11-05 对齐审计 slice 再发 3 处(routers 复核耗时占位断言/routers MCP==7 锁/metrics rule_details 键集锁)——加键/改语义后须 grep 断言面(精确等值+键集+len 锁)一并改",
       "tags": [
         "bid-review",
         "m5",
@@ -5314,7 +5314,7 @@
         "summary"
       ],
       "related_bugs": [],
-      "occurrences": 1,
+      "occurrences": 4,
       "last_seen": "2026-11-05"
     },
     {
@@ -5481,6 +5481,198 @@
       "related_bugs": [],
       "occurrences": 2,
       "last_seen": "2026-11-05"
+    },
+    {
+      "id": "bug-4028",
+      "timestamp": "2026-11-05T12:55:08.765Z",
+      "error_message": "Incorrect value in code",
+      "file": "backend/tests/test_bid_review_worker.py",
+      "root_cause": "Had \"建一个带上传文档(engine_meta.docs,worker._load_docs 取数源)的",
+      "fix": "Changed to \"quick\"",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-11-05T12:55:08.765Z"
+    },
+    {
+      "id": "bug-4029",
+      "timestamp": "2026-11-05T13:09:15.523Z",
+      "error_message": "Function not marked async",
+      "file": "backend/app/extensions/bid_review/crud.py",
+      "root_cause": "Function uses await but wasn't declared async",
+      "fix": "Added async modifier",
+      "tags": [
+        "auto-detected",
+        "async-fix",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-11-05T13:09:15.523Z"
+    },
+    {
+      "id": "bug-4030",
+      "timestamp": "2026-11-05T13:09:47.095Z",
+      "error_message": "Significant refactor of ",
+      "file": "backend/app/extensions/bid_review/routers.py",
+      "root_cause": "4 lines replaced/restructured",
+      "fix": "Rewrote 41→65 lines (4 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-11-05T13:09:47.095Z"
+    },
+    {
+      "id": "bug-4031",
+      "timestamp": "2026-11-05T13:20:58.034Z",
+      "error_message": "Significant refactor of ",
+      "file": "backend/app/extensions/bid_review/mcp.py",
+      "root_cause": "2 lines replaced/restructured",
+      "fix": "Rewrote 11→16 lines (2 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-11-05T13:20:58.034Z"
+    },
+    {
+      "id": "bug-4032",
+      "timestamp": "2026-11-05T13:21:25.457Z",
+      "error_message": "Missing await",
+      "file": "backend/app/extensions/bid_review/mcp.py",
+      "root_cause": "Async call without await — returned Promise instead of value",
+      "fix": "Added await to async call",
+      "tags": [
+        "auto-detected",
+        "async-fix",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-11-05T13:21:25.457Z"
+    },
+    {
+      "id": "bug-4033",
+      "timestamp": "2026-11-05T13:26:09.095Z",
+      "error_message": "Function not marked async",
+      "file": "backend/tests/test_bid_review_worker.py",
+      "root_cause": "Function uses await but wasn't declared async",
+      "fix": "Added async modifier",
+      "tags": [
+        "auto-detected",
+        "async-fix",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-11-05T13:26:09.095Z"
+    },
+    {
+      "id": "bug-4034",
+      "timestamp": "2026-11-05T13:27:04.197Z",
+      "error_message": "Missing await",
+      "file": "backend/app/extensions/bid_review/worker.py",
+      "root_cause": "Async call without await — returned Promise instead of value",
+      "fix": "Added await to async call",
+      "tags": [
+        "auto-detected",
+        "async-fix",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-11-05T13:27:04.197Z"
+    },
+    {
+      "id": "bug-4035",
+      "timestamp": "2026-11-05T13:27:17.873Z",
+      "error_message": "Function not marked async",
+      "file": "backend/app/extensions/bid_review/crud.py",
+      "root_cause": "Function uses await but wasn't declared async",
+      "fix": "Added async modifier",
+      "tags": [
+        "auto-detected",
+        "async-fix",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-11-05T13:27:17.873Z"
+    },
+    {
+      "id": "bug-4036",
+      "timestamp": "2026-11-05T13:27:24.581Z",
+      "error_message": "Wrong reference: TaskOut should be RuleEnabledIn",
+      "file": "backend/app/extensions/bid_review/routers.py",
+      "root_cause": "Used \"TaskOut\" instead of \"RuleEnabledIn\"",
+      "fix": "Changed TaskOut → RuleEnabledIn",
+      "tags": [
+        "auto-detected",
+        "wrong-reference",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-11-05T13:27:24.581Z"
+    },
+    {
+      "id": "bug-4037",
+      "timestamp": "2026-11-05T13:27:38.108Z",
+      "error_message": "Missing await",
+      "file": "backend/app/extensions/bid_review/routers.py",
+      "root_cause": "Async call without await — returned Promise instead of value",
+      "fix": "Added await to async call | Also: \"enabled\": bool(r.enabled) and overrides.get(r.id, True),; @router.post(\"/rulepacks/{name}/rules/{rule_id}/enabled\")",
+      "tags": [
+        "auto-detected",
+        "async-fix",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 2,
+      "last_seen": "2026-11-05T13:27:56.281Z"
+    },
+    {
+      "id": "bug-4038",
+      "timestamp": "2026-11-05T13:29:58.013Z",
+      "error_message": "Incorrect value in code",
+      "file": "backend/tests/test_bid_review_routers.py",
+      "root_cause": "Had \"复核耗时\"",
+      "fix": "Changed to \"人工复核:未复核\"",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-11-05T13:29:58.013Z"
+    },
+    {
+      "id": "bug-4039",
+      "timestamp": "2026-11-05T13:38:31.304Z",
+      "error_message": "Incorrect value in code",
+      "file": "backend/app/extensions/bid_review/parse.py",
+      "root_cause": "Had \"asset_id\"",
+      "fix": "Changed to \"rows\"",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-11-05T13:38:31.304Z"
     }
   ]
 }

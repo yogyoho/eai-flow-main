@@ -1,6 +1,6 @@
 # 对齐审计残留 9 缺口收口实施计划
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [x]`) syntax for tracking.
 
 **Goal:** 兑付 2026-11-05 对齐审计(3 只读代理证据核对,记录在 auto-memory `bid-review-alignment-audit-2026-11-05`)的全部 9 项真缺口——P0 行为三件(quick 层裁剪/score_coverage 名实/复核耗时占位)+ P1 接口面三件(MCP 四端点触达/规则 enabled 切换/偏离表入报告)+ P1 解析面三件(docx 表结构化/xlsx 入口/zip+图片直传)。
 
@@ -29,13 +29,13 @@
 
 ### Task 1: 计划预提交
 
-- [ ] **Step 1:** `git add -f docs/superpowers/plans/2026-11-05-bid-review-alignment-gaps-plan.md && git commit -m "docs(bid-review): 对齐审计9缺口收口计划——十裁决(quick层裁剪/score_coverage事实键/feedback真耗时/MCP直调router/DB override/解析三入口)"`
+- [x] **Step 1:** `git add -f docs/superpowers/plans/2026-11-05-bid-review-alignment-gaps-plan.md && git commit -m "docs(bid-review): 对齐审计9缺口收口计划——十裁决(quick层裁剪/score_coverage事实键/feedback真耗时/MCP直调router/DB override/解析三入口)"`
 
 ### Task 2: quick 层裁剪(P0①)
 
 **Files:** worker.py;tests/test_bid_review_worker.py
 
-- [ ] **Step 1: 失败测试**
+- [x] **Step 1: 失败测试**
 
 ```python
 class TestQuickLayerPrune:
@@ -66,7 +66,7 @@ class TestQuickLayerPrune:
         assert rules_total == l1_det  # unknown_ratio 分母诚实
 ```
 
-- [ ] **Step 2: 红** → **Step 3: 实现**(worker.py `_run_review_stage` 上方加纯函数+接线):
+- [x] **Step 2: 红** → **Step 3: 实现**(worker.py `_run_review_stage` 上方加纯函数+接线):
 
 ```python
 def _prune_rules_for_mode(pack, mode: str):
@@ -84,7 +84,7 @@ def _prune_rules_for_mode(pack, mode: str):
 
 **Files:** engine/extract.py;tests/test_bid_review_score_coverage.py
 
-- [ ] **Step 1: 失败测试**
+- [x] **Step 1: 失败测试**
 
 ```python
 def test_covered_max_score_numeric_and_none():
@@ -103,7 +103,7 @@ def test_covered_max_score_numeric_and_none():
     assert out3["covered_max_score"] is None  # 无 covered
 ```
 
-- [ ] **Step 2: 红** → **Step 3: 实现**(extract.py compute_score_coverage 尾部):
+- [x] **Step 2: 红** → **Step 3: 实现**(extract.py compute_score_coverage 尾部):
 
 ```python
     scores: list[float] = []
@@ -129,7 +129,7 @@ docstring 尾加一行「覆盖度审计面——交集即设计意图(B4 原文
 
 **Files:** crud.py;routers.py;tests/test_bid_review_score_coverage.py(report 端点测试所在,镜像其夹具)
 
-- [ ] **Step 1: 失败测试**(夹具照该文件既有 FastAPI+sqlite 成语;需 task done + issues + baseline(payload 含 deviation.items)+ feedback 数条)
+- [x] **Step 1: 失败测试**(夹具照该文件既有 FastAPI+sqlite 成语;需 task done + issues + baseline(payload 含 deviation.items)+ feedback 数条)
 
 ```python
 async def test_report_review_duration_and_deviations(client_with_db, seeded_done_task):
@@ -156,7 +156,7 @@ def test_render_report_md_feedback_shapes():
     assert "≥1.5h" in s and "下界" in s
 ```
 
-- [ ] **Step 2: 红** → **Step 3: 实现**:
+- [x] **Step 2: 红** → **Step 3: 实现**:
   - crud.py 加 `list_task_feedback(db, task_id, owner_id)`:`select(ReviewFeedback).join(ReviewIssue, ReviewFeedback.issue_id == ReviewIssue.id).where(ReviewIssue.task_id == task_id, ReviewFeedback.owner_id == owner_id).order_by(ReviewFeedback.created_at)`。
   - routers.py 加纯函数:
 
@@ -180,7 +180,7 @@ def _feedback_summary(feedback: list) -> str:
 
 **Files:** mcp.py;tests/test_bid_review_mcp.py
 
-- [ ] **Step 1: 失败测试**(镜像该文件既有 handler 测试成语; monkeypatch `_run_in_db` 或用其既有通路)
+- [x] **Step 1: 失败测试**(镜像该文件既有 handler 测试成语; monkeypatch `_run_in_db` 或用其既有通路)
 
 ```python
 @pytest.mark.asyncio
@@ -199,7 +199,7 @@ async def test_four_read_tools_reach_router_endpoints(monkeypatch):
         assert payload["success"] is False and "404" in payload["message"]
 ```
 
-- [ ] **Step 2: 红** → **Step 3: 实现**(mcp.py:TOOLS 增四条目+四 handler,同一模式):
+- [x] **Step 2: 红** → **Step 3: 实现**(mcp.py:TOOLS 增四条目+四 handler,同一模式):
 
 ```python
 async def _call_router(fn, **kwargs) -> list[TextContent]:
@@ -221,7 +221,7 @@ async def _call_router(fn, **kwargs) -> list[TextContent]:
 
 **Files:** models.py;database.py(幂等 ALTER);routers.py;worker.py;tests/test_bid_review_registry.py 或 routers 测试文件+test_bid_review_worker.py
 
-- [ ] **Step 1: 失败测试**
+- [x] **Step 1: 失败测试**
 
 ```python
 async def test_rule_enabled_toggle_and_worker_apply(client_with_db, ...):
@@ -243,7 +243,7 @@ async def test_toggle_unknown_rule_404(client_with_db):
     assert r.status_code == 404
 ```
 
-- [ ] **Step 2: 红** → **Step 3: 实现**:
+- [x] **Step 2: 红** → **Step 3: 实现**:
   - models.py RulePackMeta 增 `rule_overrides: Mapped[dict] = mapped_column(JSON, default=dict)  # {rule_id: bool} 对齐审计⑨ 2026-11-05`;
   - database.py 幂等 ALTER 块照 933/943 行既有成语补一条(`ALTER TABLE bid_review_rulepacks ADD COLUMN IF NOT EXISTS rule_overrides JSONB`/sqlite 方言分支按既有块形态);
   - routers.py:
@@ -271,7 +271,7 @@ async def set_rule_enabled(name: str, rule_id: str, body: RuleEnabledIn, db: Asy
 
 **Files:** parse.py;tests/test_bid_review_parse.py
 
-- [ ] **Step 1: 失败测试**
+- [x] **Step 1: 失败测试**
 
 ```python
 @pytest.mark.asyncio
@@ -293,13 +293,13 @@ async def test_docx_table_rows_structured(base, ocr_ok):
     assert "| 项目 | 数量 |" in tbl[0]["text"]  # text 形态不变(模型提示词通路)
 ```
 
-- [ ] **Step 2: 红** → **Step 3: 实现**(`_parse_docx_sync` tbl 分支收 `row_cells` 列表并随块带出;`parse_raw` 333 行 table seg 增 `"rows": b.get("rows")`)→ **Step 4: 绿** → **Step 5: commit** `git add backend/app/extensions/bid_review/parse.py backend/tests/test_bid_review_parse.py && git commit -m "feat(bid-review): 对齐审计④docx表结构化——seg.rows新键(text管道行兼容;模型通路零改动;解析产物可审计)"`
+- [x] **Step 2: 红** → **Step 3: 实现**(`_parse_docx_sync` tbl 分支收 `row_cells` 列表并随块带出;`parse_raw` 333 行 table seg 增 `"rows": b.get("rows")`)→ **Step 4: 绿** → **Step 5: commit** `git add backend/app/extensions/bid_review/parse.py backend/tests/test_bid_review_parse.py && git commit -m "feat(bid-review): 对齐审计④docx表结构化——seg.rows新键(text管道行兼容;模型通路零改动;解析产物可审计)"`
 
 ### Task 8: xlsx 入口(P1⑤)
 
 **Files:** parse.py;tests/test_bid_review_parse.py
 
-- [ ] **Step 1: 失败测试**
+- [x] **Step 1: 失败测试**
 
 ```python
 def _make_xlsx() -> bytes:
@@ -329,7 +329,7 @@ async def test_xlsx_sheets_to_table_blocks(base, ocr_ok):
     assert tbl[0]["rows"][0] == ["项目", "数量"]
 ```
 
-- [ ] **Step 2: 红** → **Step 3: 实现**(parse.py:`detect_kind` 增 xlsx/image/zip 三分支(一次落齐 Task 8/9 的 kind 面);`_parse_xlsx_sync(data)`:
+- [x] **Step 2: 红** → **Step 3: 实现**(parse.py:`detect_kind` 增 xlsx/image/zip 三分支(一次落齐 Task 8/9 的 kind 面);`_parse_xlsx_sync(data)`:
 
 ```python
 def _parse_xlsx_sync(data: bytes) -> list[dict]:
@@ -362,7 +362,7 @@ def _parse_xlsx_sync(data: bytes) -> list[dict]:
 
 **Files:** parse.py;tests/test_bid_review_parse.py
 
-- [ ] **Step 1: 失败测试**
+- [x] **Step 1: 失败测试**
 
 ```python
 def _make_zip() -> bytes:
@@ -404,7 +404,7 @@ async def test_image_direct_upload_ocr(base, ocr_ok):
     assert any(s.get("kind") == "text" and "OCR[scan.png]" in (s.get("text") or "") for s in out["segments"])
 ```
 
-- [ ] **Step 2: 红** → **Step 3: 实现**(parse.py):
+- [x] **Step 2: 红** → **Step 3: 实现**(parse.py):
 
 ```python
 _IMAGE_EXTS = (".png", ".jpg", ".jpeg", ".gif", ".bmp", ".webp")
@@ -450,10 +450,10 @@ def _blocks_for_bytes(name: str, data: bytes) -> list[dict]:
 
 ### Task 10: 全量验证+收官
 
-- [ ] **Step 1: 全家门禁** `cd backend && PYTHONPATH=. uv run pytest tests/ -k bid_review -q`(后台;期望 553+新增全绿 0 failed);golden 59 零翻红 + M0 26/26 快照(含在全家);universe 78 不动(registry 锁);ruff check --fix + format 改动文件 → 重跑受影响测试
-- [ ] **Step 2:** push 重试至 `git rev-list --left-right --count origin/main-dev-fork...main-dev-fork` = `0\t0`
-- [ ] **Step 3:** wolf(memory+buglog 若 bug)+ anatomy(新函数/端点注记)+ plan 勾选 docs commit(`git add -f`)
-- [ ] **Step 4:** auto-memory `bid-review-alignment-gaps-landed.md` + MEMORY.md 索引;终报+队列下一项+「继续」收尾
+- [x] **Step 1: 全家门禁** `cd backend && PYTHONPATH=. uv run pytest tests/ -k bid_review -q`(后台;期望 553+新增全绿 0 failed);golden 59 零翻红 + M0 26/26 快照(含在全家);universe 78 不动(registry 锁);ruff check --fix + format 改动文件 → 重跑受影响测试
+- [x] **Step 2:** push 重试至 `git rev-list --left-right --count origin/main-dev-fork...main-dev-fork` = `0\t0`
+- [x] **Step 3:** wolf(memory+buglog 若 bug)+ anatomy(新函数/端点注记)+ plan 勾选 docs commit(`git add -f`)
+- [x] **Step 4:** auto-memory `bid-review-alignment-gaps-landed.md` + MEMORY.md 索引;终报+队列下一项+「继续」收尾
 
 ## 挂账(显式)
 
@@ -461,3 +461,11 @@ def _blocks_for_bytes(name: str, data: bytes) -> list[dict]:
 - zip 内嵌图片 OCR 的 doc_id 归属粒度(seg.source 记名,asset 级溯源挂账)
 - score_coverage 得分预估语义(若产品侧真要预估,另立 spec——本计划裁决②显式拒绝编造)
 - 报告 html 导出(既有 422 白名单,属 M4+ 范围)
+
+
+## 收官记档(2026-11-05)
+
+- 全部 10 Task 落地,全家门禁 570 passed / 6 skipped / 0 failed(golden 零翻红,M0 快照不动,universe 不动),9 commits(caeafcf71..f3113dddc)推 origin 0	0。
+- 实施偏plan:⑦图片直传并入 Task 8(独立提交原子性——detect_kind 新 kind 不可半程);Task 9 即纯 zip。
+- 新增挂账:zip 内 PDF 扫描页 OCR(跨成员页号冲突,现落诚实占位段,需扫描件单独上传)。
+- 既有挂账不变:openpyxl 晋升 base deps / zip 内图片 asset 级溯源 / score 预估另立 spec / html 导出 M4+。
