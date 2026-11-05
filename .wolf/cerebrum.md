@@ -511,6 +511,10 @@ fixture 策略: 全节点 template_text=null(不发明招标内容), 真文渲�
 3. **landing Galaxy 动画调度 = 永久不适配**(用户定案): 落地页已由 landing-new 替代上游 landing，断言的 hero.tsx 不在渲染路径。
 教训: 上游"结构契约"测试 skip 前先查挂载链——本例 host/deep-link 组件文件都在但从未被挂载(死代码)，恢复挂载即恢复契约。
 
+- (2026-11-05) PyPI 与 github 443 同源间歇断连:在线 `uv lock` 会**无限挂死**(零输出零超时),先 taskkill uv.exe 再 `uv lock --offline`(所需包已在锁/缓存时秒解);只有锁新增版本才真需要网络。
+- (2026-11-05) pyproject.toml 文本切 [project] dependencies 块须用行首 `
+]` 作边界——`"uvicorn[standard]"` 这类 extras 括号会把「首个 ]」切片提前截断(test_bid_review_deps 首版踩中)。
+
 ## Do-Not-Repeat
 - 2026-11-05(活体回采):烧配额/长跑批的输出**禁止过 tail 管道**——tail 只留尾部,评分头/错误头静默丢失且配额已烧;一律重定向落文件(> file 2> err)后按需 grep。
 

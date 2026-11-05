@@ -5673,6 +5673,70 @@
       "related_bugs": [],
       "occurrences": 1,
       "last_seen": "2026-11-05T13:38:31.304Z"
+    },
+    {
+      "id": "bug-4040",
+      "timestamp": "2026-11-05T14:25:42.164Z",
+      "error_message": "Incorrect value in code",
+      "file": "backend/app/extensions/bid_review/parse.py",
+      "root_cause": "Had \"asset_id\"",
+      "fix": "Changed to \"rows\"",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-11-05T14:25:42.164Z"
+    },
+    {
+      "id": "bug-4041",
+      "timestamp": "2026-11-05T14:26:02.755Z",
+      "error_message": "Missing await",
+      "file": "backend/tests/test_bid_review_parse.py",
+      "root_cause": "Async call without await — returned Promise instead of value",
+      "fix": "Added await to async call",
+      "tags": [
+        "auto-detected",
+        "async-fix",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-11-05T14:26:02.755Z"
+    },
+    {
+      "id": "bug-4042",
+      "timestamp": "2026-11-05T14:39:26.978Z",
+      "error_message": "Significant refactor of ",
+      "file": "docs/superpowers/plans/2026-11-05-bid-review-loose-ends-plan.md",
+      "root_cause": "6 lines replaced/restructured",
+      "fix": "Rewrote 12→18 lines (6 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "md"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-11-05T14:39:26.978Z"
+    },
+    {
+      "id": "bug-4043",
+      "timestamp": "2026-11-05T14:40:05.675Z",
+      "error_message": "Significant refactor of ",
+      "file": "C:/Users/admin/.claude/projects/D--eai-eai-flow-main/memory/bid-review-alignment-gaps-landed.md",
+      "root_cause": "2 lines replaced/restructured",
+      "fix": "Rewrote 3→3 lines (2 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "md"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-11-05T14:40:05.675Z"
     }
   ]
 }

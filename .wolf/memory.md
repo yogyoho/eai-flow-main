@@ -28601,3 +28601,22 @@
 | 21:44 | Edited backend/app/extensions/bid_review/parse.py | 3→5 lines | ~91 |
 | 21:44 | Edited backend/app/extensions/bid_review/parse.py | 4→4 lines | ~100 |
 | 21:56 | 对齐审计9缺口收口slice:①quick层裁剪②covered_max_score③复核耗时真数据⑩偏离表入报告⑧MCP四工具⑨enabled切换④docx rows⑤xlsx⑦图片⑥zip;全家570/6/0;9 commits推0	0 | worker/extract/routers/crud/mcp/parse/models/schemas/database+8测试文件 | done | ~95k |
+| 22:04 | Created C:/Users/admin/.claude/projects/D--eai-eai-flow-main/memory/bid-review-alignment-gaps-landed.md | — | ~607 |
+| 22:05 | Session end: 33 writes across 12 files (test_bid_review_mcp.py, mcp.py, test_bid_review_worker.py, models.py, worker.py) | 6 reads | ~25047 tok |
+
+## Session: 2026-11-05 22:18
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 22:20 | Created docs/superpowers/plans/2026-11-05-bid-review-loose-ends-plan.md | — | ~662 |
+| 22:20 | Created backend/tests/test_bid_review_deps.py | — | ~179 |
+| 22:21 | Edited backend/pyproject.toml | expanded (+6 lines) | ~128 |
+| 22:25 | Edited backend/app/extensions/bid_review/parse.py | inline fix | ~34 |
+| 22:25 | Edited backend/app/extensions/bid_review/parse.py | 2→4 lines | ~87 |
+| 22:26 | Edited backend/tests/test_bid_review_parse.py | modified test_zip_embedded_image_ocr_seg_has_source() | ~266 |
+| 22:27 | Edited docs/superpowers/plans/2026-11-05-bid-review-loose-ends-plan.md | 3→3 lines | ~112 |
+| 22:27 | Session end: 7 writes across 5 files (2026-11-05-bid-review-loose-ends-plan.md, test_bid_review_deps.py, pyproject.toml, parse.py, test_bid_review_parse.py) | 4 reads | ~7317 tok |
+| 22:34 | Edited backend/tests/test_bid_review_deps.py | 3→4 lines | ~60 |
+| 22:39 | Edited docs/superpowers/plans/2026-11-05-bid-review-loose-ends-plan.md | expanded (+6 lines) | ~289 |
+| 22:39 | 挂账小件包落地:①openpyxl晋升base deps(uv lock在线挂死→--offline 299ms)+②zip内图片ocr seg补source锚;572/0;b5abcebe8+9e2f4de8e已推0	0 | backend/pyproject.toml,parse.py | done | ~30k |
+| 22:40 | Edited C:/Users/admin/.claude/projects/D--eai-eai-flow-main/memory/bid-review-alignment-gaps-landed.md | 3→3 lines | ~83 |

@@ -1,7 +1,7 @@
 # anatomy.md
 
-> Auto-maintained by OpenWolf. Last scanned: 2026-11-05T12:24:42.805Z
-> Files: 12 tracked | Anatomy hits: 0 | Misses: 0
+> Auto-maintained by OpenWolf. Last scanned: 2026-11-05T14:40:05.660Z
+> Files: 21 tracked | Anatomy hits: 0 | Misses: 0
 
 ## ../../00 工作目录/02 项目策划/马宁/应急指挥/bid-run/
 
@@ -323,8 +323,9 @@
 
 ## C:/Users/admin/.claude/projects/D--eai-eai-flow-main/memory/
 
-- `bid-review-r2-rule-families-landed.md` (~522 tok)
-- `MEMORY.md` (~3673 tok)
+- `bid-review-alignment-gaps-landed.md` — bid-review 对齐审计 9 缺口收口落地(2026-11-05) (~630 tok)
+- `bid-review-live-recapture-landed.md` (~453 tok)
+- `MEMORY.md` (~3712 tok)
 
 ## C:/Users/admin/.gstack/
 
@@ -427,6 +428,7 @@
 
 ## backend/
 
+- `pyproject.toml` — LangGraph-based AI agent system with sandbox execution capabilities (~1893 tok)
 
 ## backend/.deer-flow/
 
@@ -628,6 +630,7 @@
 
 ## backend/app/extensions/
 
+- `database.py` — Database connection and session management for extensions module. (~28110 tok)
 
 ## backend/app/extensions/app_center/
 
@@ -640,9 +643,17 @@
 
 ## backend/app/extensions/bid_review/
 
+- `crud.py` — bid_review CRUD —— 全部查询函数带 owner_id 过滤(仓库惯例:router 层从 auth (~3156 tok)
+- `mcp.py` — bid_review MCP server(Task 11)——十一工具供对话 agent 调用,**无确认门**。 (~5498 tok)
+- `models.py` — 投标审查子系统 ORM(五张表;新表走 create_all,无需 alembic)。 (~1544 tok)
+- `parse.py` — 投标审查文档解析层(EAI-CUSTOM 2026-10-30,spec: bid-review evidence pipeline §2/D1/D4/D6/D8)。 (~5836 tok)
+- `routers.py` — bid_review 工作台 API(Task 10)——8 端点(设计文档 §4.7),挂 gateway (~13745 tok)
+- `schemas.py` — bid_review Pydantic 请求/响应模型(照 contract_price/schemas.py 惯例)。 (~1042 tok)
+- `worker.py` — bid_review worker(Task 9)——状态机推进 + claimer 循环 + gateway 生命周期入口。 (~11919 tok)
 
 ## backend/app/extensions/bid_review/engine/
 
+- `extract.py` — 基准字段提取:解析后文档文本 → field_snapshot(+materials_hash);LLM 提取函数可注入(translation worker `TranslateFn` 惯例)。 (~10319 tok)
 
 ## backend/app/extensions/bid_review/engine/dicts/
 
@@ -655,10 +666,6 @@
 
 ## backend/app/extensions/bid_review/golden/cases/
 
-- `L2-022-required-row-no-price.yaml` (~137 tok)
-- `L2-023-blank-attachment.yaml` (~112 tok)
-- `L3-019-cluster-unsure.yaml` (~111 tok)
-- `L3-020-empty-section.yaml` (~128 tok)
 
 ## backend/app/extensions/bid_review/golden/extract_cases/
 
@@ -914,7 +921,6 @@
 
 ## backend/scripts/
 
-- `bid_review_live_full.py` — 活体全链路回采(EAI-CUSTOM 2026-11-05,M5/R2+ 挂账「活体回采」,plan (~1308 tok)
 
 ## backend/scripts/bid_seed_samples.py
 
@@ -927,8 +933,12 @@
 
 ## backend/tests/
 
-- `test_bid_review_golden.py` — 金标准回归门(金标准 spec §7)+loader/runner/report 单测。题库=人工标注答案, (~4679 tok)
-- `test_bid_review_rule_runner.py` — test_load_and_validate, test_unknown_operator_rejected, test_run_l1_009_violation_and_need_human, te (~6159 tok)
+- `test_bid_review_deps.py` — bid-review 入口依赖安全网:parse.py 直导入 openpyxl,但历史上仅经 (~184 tok)
+- `test_bid_review_mcp.py` — Task 11 测试:bid_review MCP 十一工具——直接调 handle_call(不过 stdio);_run_in_db (~2134 tok)
+- `test_bid_review_parse.py` — bid_review 解析层测试(EAI-CUSTOM 2026-10-30,spec §2/§4.1)。 (~3312 tok)
+- `test_bid_review_routers.py` — Task 10 测试:bid_review 8 端点——httpx ASGITransport + 独立 FastAPI 子应用挂 router; (~9501 tok)
+- `test_bid_review_worker_sem.py` — Task 14 测试:worker 集成 sem/hyb 规则 + 汇总分级(A12 T14 集成约束验收)。 (~4844 tok)
+- `test_bid_review_worker.py` — Task 9 测试:bid_review worker——状态机推进(advance_task)+ boot recovery + (~13433 tok)
 
 ## backend/tests/ (QA 2026-10-28 增补)
 
@@ -1016,9 +1026,8 @@
 
 ## docs/superpowers/plans/
 
-- `2026-11-05-bid-review-crosscheck-m5-plan.md` — B立项 M5 交叉自检+质量门禁(§八三检 + §十指标)实施计划 (~3163 tok)
-- `2026-11-05-bid-review-live-recapture-plan.md` — 活体回采(M5/R2+ 挂账)实施计划 (~651 tok)
-- `2026-11-05-bid-review-r2-rule-families-plan.md` — R2+ 规则族补齐(M1-M5 悬空字段接入规则消费)实施计划 (~3618 tok)
+- `2026-11-05-bid-review-alignment-gaps-plan.md` — 对齐审计残留 9 缺口收口实施计划 (~6362 tok)
+- `2026-11-05-bid-review-loose-ends-plan.md` — bid-review 挂账小件包 Implementation Plan(2026-11-05) (~704 tok)
 
 ## docs/superpowers/plans/2026-09-13-coal-mine-tunneling-regulation-v2.md
 
