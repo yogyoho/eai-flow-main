@@ -28437,3 +28437,28 @@
 | 12:51 | Session end: 20 writes across 6 files (test_bid_review_registry.py, registry.py, test_bid_review_tables_extract.py, extract.py, worker.py) | 4 reads | ~8083 tok |
 | 13:05 | B立项M3表格/清单行落地: registry 75/71 + boq_rows(required服务端回填)+table_cells 临时契约 + worker tables段 | registry.py extract.py worker.py tests×3 | 全家501/0 golden零翻红 M0 26/26 ruff绿 | ~28k |
 | 12:54 | Created C:/Users/admin/.claude/projects/D--eai-eai-flow-main/memory/bid-review-extract-engine-m3-landed.md | — | ~448 |
+| 12:57 | Session end: 21 writes across 7 files (test_bid_review_registry.py, registry.py, test_bid_review_tables_extract.py, extract.py, worker.py) | 6 reads | ~8563 tok |
+| 13:01 | Created docs/superpowers/plans/2026-11-05-bid-review-cluster-layer-m4-plan.md | — | ~2198 |
+| 13:02 | Edited backend/tests/test_bid_review_registry.py | 2→4 lines | ~36 |
+| 13:02 | Edited backend/tests/test_bid_review_registry.py | test_anchored_75() → test_anchored_77() | ~303 |
+| 13:03 | Edited backend/app/extensions/bid_review/engine/registry.py | 3→7 lines | ~167 |
+| 13:05 | Created backend/tests/test_bid_review_clusters.py | — | ~1434 |
+| 13:07 | Edited backend/tests/test_bid_review_clusters.py | 3→3 lines | ~70 |
+| 13:08 | Edited backend/tests/test_bid_review_clusters.py | modified test_suspect_band_without_corroboration_separate() | ~42 |
+| 13:08 | Edited backend/tests/test_bid_review_clusters.py | "某数据中心一期工程" → "某园区市政道路工程" | ~36 |
+| 13:08 | Created backend/app/extensions/bid_review/engine/clusters.py | — | ~632 |
+| 13:08 | Edited backend/app/extensions/bid_review/engine/extract.py | modified normalize_performance_entries() | ~370 |
+| 13:09 | Edited backend/app/extensions/bid_review/engine/extract.py | expanded (+10 lines) | ~183 |
+| 13:09 | Edited backend/app/extensions/bid_review/engine/extract.py | modified build_performance_prompt() | ~426 |
+| 13:11 | Edited backend/app/extensions/bid_review/worker.py | added 1 import(s) | ~93 |
+| 13:11 | Edited backend/app/extensions/bid_review/worker.py | modified def() | ~375 |
+| 13:11 | Edited backend/app/extensions/bid_review/worker.py | 2→3 lines | ~19 |
+| 13:12 | Edited backend/app/extensions/bid_review/worker.py | modified is() | ~312 |
+| 13:12 | Edited backend/tests/test_bid_review_worker.py | modified _m4_extract() | ~1312 |
+| 13:17 | Session end: 38 writes across 10 files (test_bid_review_registry.py, registry.py, test_bid_review_tables_extract.py, extract.py, worker.py) | 6 reads | ~16728 tok |
+| 13:19 | Session end: 38 writes across 10 files (test_bid_review_registry.py, registry.py, test_bid_review_tables_extract.py, extract.py, worker.py) | 7 reads | ~16728 tok |
+| 13:21 | Edited backend/tests/test_bid_review_worker.py | modified 15s() | ~127 |
+| 14:20 | B立项M4条目聚类落地: performance_entries富行段+clusters.py确定性聚类三通道+worker perf段;claimer预算修bug-4013 | clusters.py extract.py worker.py registry.py tests×3 | 门禁跑中 | ~32k |
+| 13:24 | Session end: 39 writes across 10 files (test_bid_review_registry.py, registry.py, test_bid_review_tables_extract.py, extract.py, worker.py) | 8 reads | ~16855 tok |
+| 14:35 | M4官方门禁522/0(+21);收官docs commit | - | green | - |
+| 13:26 | Created C:/Users/admin/.claude/projects/D--eai-eai-flow-main/memory/bid-review-extract-engine-m4-landed.md | — | ~446 |

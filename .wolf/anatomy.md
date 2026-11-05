@@ -1,7 +1,7 @@
 # anatomy.md
 
-> Auto-maintained by OpenWolf. Last scanned: 2026-11-05T04:54:00.487Z
-> Files: 11 tracked | Anatomy hits: 0 | Misses: 0
+> Auto-maintained by OpenWolf. Last scanned: 2026-11-05T05:26:43.209Z
+> Files: 17 tracked | Anatomy hits: 0 | Misses: 0
 
 ## ../../00 工作目录/02 项目策划/马宁/应急指挥/bid-run/
 
@@ -326,6 +326,7 @@
 - `bid-review-extract-engine-m1-landed.md` (~386 tok)
 - `bid-review-extract-engine-m2-landed.md` (~429 tok)
 - `bid-review-extract-engine-m3-landed.md` (~443 tok)
+- `bid-review-extract-engine-m4-landed.md` (~441 tok)
 
 ## C:/Users/admin/.gstack/
 
@@ -644,6 +645,7 @@
 
 ## backend/app/extensions/bid_review/engine/
 
+- `clusters.py` — 业绩条目确定性聚类(B立项 M4,spec §5,2026-11-05):纯服务端零 LLM。 (~632 tok)
 
 ## backend/app/extensions/bid_review/engine/dicts/
 
@@ -923,12 +925,15 @@
 
 ## backend/tests/
 
+- `clusters.py` — bid_review 业绩条目确定性聚类(M4)——三通道:归一化名全等快路径/ratio≥0.80+佐证(甲方/金额/日期)/嫌疑带[0.60,0.80)+佐证→ok=false UNKNOWN;纯服务端零 LLM,SIM_MERGE/SIM_SUSPECT 常量。 (~900 tok)
+- `test_bid_review_clusters.py` — B立项 M4 条目聚类单测(spec §5,2026-11-05):业绩富行归一闸 + clusters.py 确定性聚类三通道 + prompt/baseline。 (~1435 tok)
+- `test_bid_review_clusters.py` — M4 单测:normalize_performance_entries 闸+cluster 三通道(快路径/佐证并组/嫌疑带/无佐证不并/嫌疑不转正)+prompt/baseline(ratio 断言经 SequenceMatcher 实测锚定)。 (~1500 tok)
 - `test_bid_review_extract.py` — bid_review engine/extract.py 基准提取单测:shape/materials_hash 稳定 + null 显式保留 + 非字典路径丢弃 + prompt 骨架转录。 (~5510 tok)
-- `test_bid_review_registry.py` — 规则包注册表测试(spec 2026-11-05 R1 §2.6):宇宙锚定/反查/lint/拒载/投影声明。 (~2240 tok)
+- `test_bid_review_registry.py` — 规则包注册表测试(spec 2026-11-05 R1 §2.6):宇宙锚定/反查/lint/拒载/投影声明。 (~2316 tok)
 - `test_bid_review_sections_extract.py` — M2 章节层契约+归一闸+prompt/baseline 单测(spec 2026-11-04 §5,2026-11-05)。 (~1046 tok)
 - `test_bid_review_tables_extract.py` — M3 表格/清单行:boq_rows 归一闸(required 服务端回填∈招标codes/qty-price 非负闸)+table_cells 临时契约闸+build_tables_prompt 单 prompt 双路径+baseline 两键独立归一(spec §5,2026-11-05)。 (~1100 tok)
 - `test_bid_review_tables_extract.py` — B立项 M3 表格/清单行抽取单测(spec §5,2026-11-05):boq_rows 行级归一闸(required 服务端回填)+ table_cells 临时契约闸 + prompt/bas (~1424 tok)
-- `test_bid_review_worker.py` — Task 9 测试:bid_review worker——状态机推进(advance_task)+ boot recovery + (~9321 tok)
+- `test_bid_review_worker.py` — Task 9 测试:bid_review worker——状态机推进(advance_task)+ boot recovery + (~10509 tok)
 
 ## backend/tests/ (QA 2026-10-28 增补)
 
@@ -1016,6 +1021,7 @@
 
 ## docs/superpowers/plans/
 
+- `2026-11-05-bid-review-cluster-layer-m4-plan.md` — B立项 M4 条目聚类(业绩富行抽取 + 确定性聚类)实施计划 (~2061 tok)
 - `2026-11-05-bid-review-section-layer-m2-plan.md` — B立项 M2 章节层(section_tree + page_offset)实施计划 (~4113 tok)
 - `2026-11-05-bid-review-table-layer-m3-plan.md` — B立项 M3 表格/清单行(boq_rows 行级 + table_cells)实施计划 (~1709 tok)
 

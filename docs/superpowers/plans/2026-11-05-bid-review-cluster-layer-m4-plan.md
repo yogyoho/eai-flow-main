@@ -26,20 +26,20 @@
 
 ### Task 1: 计划预提交
 
-- [ ] **Step 1:** `git add -f docs/superpowers/plans/2026-11-05-bid-review-cluster-layer-m4-plan.md && git commit -m "docs(bid-review): B立项M4条目聚类计划——业绩富行第二段+纯服务端确定性聚类(≥0.80三通道+ok=false UNKNOWN)+人员挂账R2+七裁决"`
+- [x] **Step 1:** `git add -f docs/superpowers/plans/2026-11-05-bid-review-cluster-layer-m4-plan.md && git commit -m "docs(bid-review): B立项M4条目聚类计划——业绩富行第二段+纯服务端确定性聚类(≥0.80三通道+ok=false UNKNOWN)+人员挂账R2+七裁决"`
 
 ### Task 2: 注册表 +2(universe 77)
 
 **Files:** registry.py;tests/test_bid_review_registry.py
 
-- [ ] **Step 1: 失败测试**——EXPECTED_UNIVERSE 插 `"bid.performance_entries"`/`"bid.performance_groups"`(old_project_mentions 之后 personnel_commercial 之前,performance<personnel 因 'f'<'s'),len==77(71+len(SECOND_STAGE_FIELDS)=77,**实测非脑算**——cerebrum M3 坑);second_stage 断言 6 键;首段排除断言补两路径。
-- [ ] **Step 2: 红** → **Step 3: 实现**(SECOND_STAGE_FIELDS 追加两描述条目)→ **Step 4: 绿**(先 `python -c "from app.extensions.bid_review.engine import registry; print(len(registry.universe()))"` 实测)→ **Step 5: commit**
+- [x] **Step 1: 失败测试**——EXPECTED_UNIVERSE 插 `"bid.performance_entries"`/`"bid.performance_groups"`(old_project_mentions 之后 personnel_commercial 之前,performance<personnel 因 'f'<'s'),len==77(71+len(SECOND_STAGE_FIELDS)=77,**实测非脑算**——cerebrum M3 坑);second_stage 断言 6 键;首段排除断言补两路径。
+- [x] **Step 2: 红** → **Step 3: 实现**(SECOND_STAGE_FIELDS 追加两描述条目)→ **Step 4: 绿**(先 `python -c "from app.extensions.bid_review.engine import registry; print(len(registry.universe()))"` 实测)→ **Step 5: commit**
 
 ### Task 3: 契约 + normalize_performance_entries 闸 + clusters.py 聚类纯函数
 
 **Files:** extract.py;clusters.py(新建);tests/test_bid_review_clusters.py(新建)
 
-- [ ] **Step 1: 失败测试**
+- [x] **Step 1: 失败测试**
 
 ```python
 class TestNormalizePerfEntries:
@@ -82,7 +82,7 @@ class TestCluster:
         assert cluster_performance_entries([]) == []
 ```
 
-- [ ] **Step 2: 红** → **Step 3: 实现**(extract.py 契约+闸;clusters.py 三通道贪心)
+- [x] **Step 2: 红** → **Step 3: 实现**(extract.py 契约+闸;clusters.py 三通道贪心)
 
 ```python
 FIELD_TYPE_CONTRACTS["bid.performance_entries"] = (
@@ -98,13 +98,13 @@ FIELD_TYPE_CONTRACTS["bid.performance_groups"] = (
 # 佐证=_client_eq|_amount_eq|_date_eq;贪心:逐条目对既有组首成员判定三通道。
 ```
 
-- [ ] **Step 4: 绿**( suspect 阈值带以实测 ratio 锚定断言)→ **Step 5: commit**
+- [x] **Step 4: 绿**( suspect 阈值带以实测 ratio 锚定断言)→ **Step 5: commit**
 
 ### Task 4: build_performance_prompt + build_performance_baseline
 
 **Files:** extract.py;tests/test_bid_review_clusters.py
 
-- [ ] **Step 1: 失败测试**
+- [x] **Step 1: 失败测试**
 
 ```python
 def test_perf_prompt_contains_contract_and_rules():
@@ -119,13 +119,13 @@ def test_perf_baseline_none_signal():
     assert build_performance_baseline([], lambda docs: None) == []
 ```
 
-- [ ] **Step 2: 红** → **Step 3: 实现**(M3 tables 同款;裸 list 退路)→ **Step 4: 绿** → **Step 5: commit**
+- [x] **Step 2: 红** → **Step 3: 实现**(M3 tables 同款;裸 list 退路)→ **Step 4: 绿** → **Step 5: commit**
 
 ### Task 5: worker perf 段(抽取+聚类落双键)
 
 **Files:** worker.py;tests/test_bid_review_worker.py
 
-- [ ] **Step 1: 失败测试**(镜像 M3 五测试:_m4_extract 设 bid.similar_performances;merged 双键+hash;失败双缺席;零行双 [];无信号跳过零模型;default seam monkeypatch)
+- [x] **Step 1: 失败测试**(镜像 M3 五测试:_m4_extract 设 bid.similar_performances;merged 双键+hash;失败双缺席;零行双 [];无信号跳过零模型;default seam monkeypatch)
 
 ```python
 def _m4_extract(with_perf=True):
@@ -144,19 +144,19 @@ async def test_m4_perf_merged_and_hash_recomputed(...):
     assert payload["materials_hash"] == materials_hash(payload["fields"])
 ```
 
-- [ ] **Step 2: 红** → **Step 3: 实现**(import + `_default_perf_entries_fn` + `perf_entries_fn=None` kwarg + M3 块后 perf 块:to_thread build_performance_baseline → cluster_performance_entries → 双键落)→ **Step 4: 绿** → **Step 5: commit**
+- [x] **Step 2: 红** → **Step 3: 实现**(import + `_default_perf_entries_fn` + `perf_entries_fn=None` kwarg + M3 块后 perf 块:to_thread build_performance_baseline → cluster_performance_entries → 双键落)→ **Step 4: 绿** → **Step 5: commit**
 
 ### Task 6: 全量验证
 
-- [ ] **Step 1:** `cd backend && PYTHONPATH=. uv run pytest tests/ -k bid_review -q`(后台;期望全绿,预计 ~520)
-- [ ] **Step 2:** golden 55+M0 26/26 含在全家内(零翻红);首段 71 锁(registry)
-- [ ] **Step 3:** ruff check --fix + format 改动文件 → 重跑受影响测试
+- [x] **Step 1:** `cd backend && PYTHONPATH=. uv run pytest tests/ -k bid_review -q`(后台;期望全绿,预计 ~520)
+- [x] **Step 2:** golden 55+M0 26/26 含在全家内(零翻红);首段 71 锁(registry)
+- [x] **Step 3:** ruff check --fix + format 改动文件 → 重跑受影响测试
 
 ### Task 7: 收官
 
-- [ ] **Step 1:** push 重试至 `0\t0`
-- [ ] **Step 2:** wolf(memory;buglog 若 bug)+ anatomy(extract.py/worker.py/新 clusters.py/新测试条目)+ plan 勾选 docs commit(`git add -f`)
-- [ ] **Step 3:** auto-memory `bid-review-extract-engine-m4-landed.md` + MEMORY.md 索引;终报以队列下一项(M5 交叉自检+指标)+「继续」收尾
+- [x] **Step 1:** push 重试至 `0\t0`
+- [x] **Step 2:** wolf(memory;buglog 若 bug)+ anatomy(extract.py/worker.py/新 clusters.py/新测试条目)+ plan 勾选 docs commit(`git add -f`)
+- [x] **Step 3:** auto-memory `bid-review-extract-engine-m4-landed.md` + MEMORY.md 索引;终报以队列下一项(M5 交叉自检+指标)+「继续」收尾
 
 ### 挂账(显式)
 

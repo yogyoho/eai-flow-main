@@ -2966,3 +2966,4 @@ LLM 结构化抽取(bid-review build_baseline)单跑采样方差大: 同 docs+mo
 ### severity 层白名单以既有夹具语义为准 (2026-11-05)
 spec 假设 L2{fatal,major},eval_core 夹具 EX-001 证明 L2/minor 是既有合法语义——政策先取证再定:终版 L1{fatal,major} L2{fatal,major,minor} L3{major,minor}。
 - 2026-11-05 M3 universe 计数:新 SECOND_STAGE_FIELDS 落地时 EXPECTED_UNIVERSE 数 = 71 首段 + len(SECOND_STAGE_FIELDS),不是上一档+1 的脑算(M3 曾写 74 实为 75);改前先 `python -c "from app.extensions.bid_review.engine import registry; print(len(registry.universe()))"` 实测再锚测试。
+- 2026-11-05 difflib 阈值带测试:嫌疑带断言串必须先跑 SequenceMatcher 实测 ratio 再写断言(直觉串「一期/二期」实为 0.889≥0.80 不在嫌疑带;「道路/管网」0.7778 才在带内)——中文串 ratio 不可脑算。

@@ -5021,6 +5021,216 @@
       ],
       "occurrences": 1,
       "last_seen": "2026-11-05T10:59:12"
+    },
+    {
+      "id": "bug-3997",
+      "timestamp": "2026-11-05T03:58:45.254Z",
+      "error_message": "Incorrect value in code",
+      "file": "backend/tests/test_bid_review_registry.py",
+      "root_cause": "Had \"bid.similar_performances\"",
+      "fix": "Changed to \"bid.section_tree\"",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-11-05T03:58:45.254Z"
+    },
+    {
+      "id": "bug-3998",
+      "timestamp": "2026-11-05T04:07:28.146Z",
+      "error_message": "Wrong reference: materials_hash should be build_sections_baseline",
+      "file": "backend/app/extensions/bid_review/worker.py",
+      "root_cause": "Used \"materials_hash\" instead of \"build_sections_baseline\"",
+      "fix": "Changed materials_hash → build_sections_baseline",
+      "tags": [
+        "auto-detected",
+        "wrong-reference",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-11-05T04:07:28.146Z"
+    },
+    {
+      "id": "bug-3999",
+      "timestamp": "2026-11-05T04:07:51.229Z",
+      "error_message": "Missing await",
+      "file": "backend/app/extensions/bid_review/worker.py",
+      "root_cause": "Async call without await — returned Promise instead of value",
+      "fix": "Added await to async call",
+      "tags": [
+        "auto-detected",
+        "async-fix",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-11-05T04:07:51.229Z"
+    },
+    {
+      "id": "bug-4000",
+      "timestamp": "2026-11-05T04:09:31.675Z",
+      "error_message": "Incorrect value in code",
+      "file": "backend/app/extensions/bid_review/engine/registry.py",
+      "root_cause": "Had \",toc_page:目录标注页码或null,body_page:正文标题所在物理页或null,is",
+      "fix": "Changed to \",toc_page:目录标注页码或null,'",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-11-05T04:09:31.675Z"
+    },
+    {
+      "id": "bug-4001",
+      "timestamp": "2026-11-05T04:37:16.923Z",
+      "error_message": "Incorrect value in code",
+      "file": "backend/tests/test_bid_review_registry.py",
+      "root_cause": "Had \"bid.boq_unit_checks\"",
+      "fix": "Changed to \"bid.boq_rows\"",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 2,
+      "last_seen": "2026-11-05T04:37:28.335Z"
+    },
+    {
+      "id": "bug-4002",
+      "timestamp": "2026-11-05T04:46:22.213Z",
+      "error_message": "Wrong reference: materials_hash should be build_tables_baseline",
+      "file": "backend/app/extensions/bid_review/worker.py",
+      "root_cause": "Used \"materials_hash\" instead of \"build_tables_baseline\"",
+      "fix": "Changed materials_hash → build_tables_baseline",
+      "tags": [
+        "auto-detected",
+        "wrong-reference",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-11-05T04:46:22.213Z"
+    },
+    {
+      "id": "bug-4003",
+      "timestamp": "2026-11-05T04:46:59.590Z",
+      "error_message": "Missing await",
+      "file": "backend/app/extensions/bid_review/worker.py",
+      "root_cause": "Async call without await — returned Promise instead of value",
+      "fix": "Added await to async call",
+      "tags": [
+        "auto-detected",
+        "async-fix",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-11-05T04:46:59.590Z"
+    },
+    {
+      "id": "bug-4004",
+      "timestamp": "2026-11-05T04:47:12.389Z",
+      "error_message": "Wrong reference: contracts should be str",
+      "file": "backend/app/extensions/bid_review/engine/extract.py",
+      "root_cause": "Used \"contracts\" instead of \"str\"",
+      "fix": "Changed contracts → str",
+      "tags": [
+        "auto-detected",
+        "wrong-reference",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-11-05T04:47:12.389Z"
+    },
+    {
+      "id": "bug-4005",
+      "timestamp": "2026-11-05T04:48:12.558Z",
+      "error_message": "Function not marked async",
+      "file": "backend/tests/test_bid_review_worker.py",
+      "root_cause": "Function uses await but wasn't declared async",
+      "fix": "Added async modifier",
+      "tags": [
+        "auto-detected",
+        "async-fix",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-11-05T04:48:12.558Z"
+    },
+    {
+      "id": "bug-4006",
+      "timestamp": "2026-11-05T05:07:59.065Z",
+      "error_message": "Incorrect value in code",
+      "file": "backend/tests/test_bid_review_clusters.py",
+      "root_cause": "Had \"某数据中心一期工程\"",
+      "fix": "Changed to \"某园区市政道路工程\"",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 3,
+      "last_seen": "2026-11-05T05:08:19.425Z"
+    },
+    {
+      "id": "bug-4007",
+      "timestamp": "2026-11-05T05:12:00.366Z",
+      "error_message": "Missing await",
+      "file": "backend/app/extensions/bid_review/worker.py",
+      "root_cause": "Async call without await — returned Promise instead of value",
+      "fix": "Added await to async call",
+      "tags": [
+        "auto-detected",
+        "async-fix",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-11-05T05:12:00.366Z"
+    },
+    {
+      "id": "bug-4008",
+      "timestamp": "2026-11-05T05:12:31.196Z",
+      "error_message": "Function not marked async",
+      "file": "backend/tests/test_bid_review_worker.py",
+      "root_cause": "Function uses await but wasn't declared async",
+      "fix": "Added async modifier",
+      "tags": [
+        "auto-detected",
+        "async-fix",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-11-05T05:12:31.196Z"
+    },
+    {
+      "id": "bug-4013",
+      "timestamp": "2026-11-05",
+      "error_message": "test_claimer_loop_processes_created_task_to_done 间歇失败:满载全家跑(165s)时 100x0.05ms=5s 轮询预算内未到 done,单跑/小批跑绿",
+      "file": "backend/tests/test_bid_review_worker.py",
+      "root_cause": "claimer 轮询断言预算 5s 在 Windows 满载下边际不足;advance_task 本身亚秒(stub extract 无第二段信号,各段全跳),非死锁回归",
+      "fix": "轮询预算 100→300 次(5s→15s),仍有限可抓死锁;M4 两次全家跑触发后修",
+      "tags": [
+        "flaky",
+        "claimer",
+        "test-budget",
+        "bid-review",
+        "timing"
+      ],
+      "related_bugs": [],
+      "occurrences": 2,
+      "last_seen": "2026-11-05"
     }
   ]
 }
