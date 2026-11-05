@@ -5,6 +5,8 @@
   docx 无页边界(D8):segment.page 恒 None,定位走 quote 片段窗口。
 - pdf → PyMuPDF 逐页:文本层非空页直取(真页码);空文本层页(扫描页)渲染位图 → OCR,
   位图落 assets 备预览(盖章核对)。
+- xlsx → openpyxl 每 sheet 一个 table 块(rows 双键,sheet 名注记;对齐审计⑤ 2026-11-05)。
+- 独立图片(png/jpg/gif/bmp)→ 整图走 OCR 通路(对齐审计⑦ 2026-11-05)。
 - 其他 → UTF-8 文本(v1 既有行为),按 ~2500 字符切段,page=None。
 
 OCR 引擎伴随系统设置(spec §3):default_ocr_engine=builtin → eai-flow-ocr HTTP
@@ -36,6 +38,7 @@ OCR_SERVICE_URL = os.getenv("OCR_SERVICE_URL", "http://eai-flow-ocr:8010")
 # 扫描 PDF 逐页 OCR 并发上限(500 页扫描件串行会拖 20min+;4 并发已够压)
 OCR_CONCURRENCY = 4
 _TEXT_SEG_CHARS = 2500
+_XLSX_MAX_ROWS = 500  # 每 sheet 行数上限(超大清单防 blocks 膨胀;截断在 text 侧自然呈现)
 
 _A_BLIP = "{http://schemas.openxmlformats.org/drawingml/2006/main}blip"
 _R_EMBED = "{http://schemas.openxmlformats.org/officeDocument/2006/relationships}embed"
@@ -48,6 +51,10 @@ def detect_kind(filename: str) -> str:
         return "docx"
     if lower.endswith(".pdf"):
         return "pdf"
+    if lower.endswith(".xlsx"):
+        return "xlsx"
+    if "." in lower and lower.rsplit(".", 1)[-1] in _MIME:
+        return "image"
     return "text"
 
 
@@ -231,6 +238,35 @@ def _parse_pdf_sync(data: bytes) -> tuple[list[dict], dict[int, bytes]]:
     return blocks, scans
 
 
+def _parse_xlsx_sync(data: bytes) -> list[dict]:
+    """xlsx → 每 sheet 一个 table 块(rows 二维数组 + |a|b| 拍平文本,docx 表④同款
+    双键;对齐审计⑤ 2026-11-05 新入口)。openpyxl 守卫式导入(缺依赖 → ValueError
+    per-file 隔离,不炸任务);data_only=True 取公式计算值,read_only 流式读;
+    sheet 名注记进 text 首行(模型与人工都能定位来源页);每 sheet 上限
+    _XLSX_MAX_ROWS 行。"""
+    try:
+        from openpyxl import load_workbook
+    except ModuleNotFoundError as e:  # pragma: no cover - 容器实测 3.1.5 在位
+        raise ValueError("xlsx 解析需 openpyxl(缺依赖按单文件失败隔离)") from e
+
+    blocks: list[dict] = []
+    wb = load_workbook(io.BytesIO(data), data_only=True, read_only=True)
+    try:
+        for ws in wb.worksheets:
+            rows: list[list[str]] = []
+            for row in ws.iter_rows(values_only=True):
+                rows.append(["" if c is None else str(c).strip().replace("\n", " ") for c in row])
+                if len(rows) >= _XLSX_MAX_ROWS:
+                    break
+            if not rows:
+                continue
+            text = "\n".join("| " + " | ".join(cells) + " |" for cells in rows)
+            blocks.append({"kind": "table", "text": f"[sheet: {ws.title}]\n{text}", "rows": rows})
+    finally:
+        wb.close()
+    return blocks
+
+
 def _parse_text_sync(data: bytes) -> list[dict]:
     """UTF-8 文本(v1 既有行为)→ ~2500 字符段(换行边界断),page=None。"""
     text = data.decode("utf-8", "replace")
@@ -297,6 +333,11 @@ async def parse_raw(owner_id: str, task_id: str, entry: dict, ocr_fn) -> dict:
         scans: dict[int, bytes] = {}
     elif kind == "pdf":
         blocks, scans = await asyncio.to_thread(_parse_pdf_sync, data)
+    elif kind == "xlsx":  # 对齐审计⑤(2026-11-05)
+        blocks, scans = await asyncio.to_thread(_parse_xlsx_sync, data), {}
+    elif kind == "image":  # 对齐审计⑦(2026-11-05):独立图片直传,走既有 ocr_fn 通路
+        ext = str(entry.get("doc_id") or "").rsplit(".", 1)[-1].lower()
+        blocks, scans = [{"kind": "image", "blob": data, "ext": ext if ext in _MIME else "png"}], {}
     else:
         blocks, scans = await asyncio.to_thread(_parse_text_sync, data), {}
 

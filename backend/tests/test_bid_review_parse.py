@@ -173,3 +173,66 @@ async def test_docx_table_rows_structured(base, ocr_ok):
     await parse.parse_raw("u1", "t-tbl", entry, ocr_ok)
     seg = next(s for s in parse.load_segments("u1", "t-tbl", entry["slug"]) if s["kind"] == "table")
     assert seg["rows"][1] == ["工期", "180天", "150天 换行归一"]
+
+
+def test_detect_kind_xlsx_and_image():
+    """对齐审计⑤⑦(2026-11-05):新入口探测——xlsx 与图片扩展名。"""
+    assert parse.detect_kind("报价表.xlsx") == "xlsx"
+    assert parse.detect_kind("scan.PDF") == "pdf"
+    assert parse.detect_kind("stamp.png") == "image"
+    assert parse.detect_kind("stamp.JPG") == "image"
+    assert parse.detect_kind("notes.txt") == "text"
+    assert parse.detect_kind("noext") == "text"
+
+
+@pytest.mark.asyncio
+async def test_xlsx_sheets_to_table_blocks(base, ocr_ok):
+    """对齐审计⑤(2026-11-05):xlsx 每 sheet 一个 table 块(rows 双键同 docx 表);
+    sheet 名注记进 text 首行。"""
+    from openpyxl import Workbook
+
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "报价"
+    ws.append(["项目", "金额"])
+    ws.append(["设备", "100万"])
+    ws2 = wb.create_sheet("备注")
+    ws2.append(["只有一行"])
+    buf = io.BytesIO()
+    wb.save(buf)
+
+    entry = parse.save_raw("u1", "t-xlsx", "bid", "报价表.xlsx", buf.getvalue())
+    assert entry["kind"] == "xlsx"
+    out = await parse.parse_raw("u1", "t-xlsx", entry, ocr_ok)
+    assert out["status"] == "parsed" and out["assets"] == 0 and out["pages"] == 0
+    segs = [s for s in parse.load_segments("u1", "t-xlsx", entry["slug"]) if s["kind"] == "table"]
+    assert len(segs) == 2
+    assert segs[0]["rows"] == [["项目", "金额"], ["设备", "100万"]]
+    assert segs[0]["text"].startswith("[sheet: 报价]")
+    assert segs[1]["rows"] == [["只有一行"]]
+
+
+@pytest.mark.asyncio
+async def test_xlsx_row_cap_truncates():
+    """500 行/sheet 上限:截断不炸,rows 长度=500(超大清单防 blocks 膨胀)。"""
+    from openpyxl import Workbook
+
+    wb = Workbook()
+    ws = wb.active
+    for i in range(600):
+        ws.append([str(i)])
+    buf = io.BytesIO()
+    wb.save(buf)
+    blocks = parse._parse_xlsx_sync(buf.getvalue())
+    assert len(blocks) == 1 and len(blocks[0]["rows"]) == parse._XLSX_MAX_ROWS
+
+
+@pytest.mark.asyncio
+async def test_image_upload_ocrs_to_segment(base, ocr_ok):
+    """对齐审计⑦(2026-11-05):独立图片直传 → OCR 文本段 + asset 落盘。"""
+    entry = parse.save_raw("u1", "t-img", "bid", "stamp.png", _PNG)
+    assert entry["kind"] == "image"
+    out = await parse.parse_raw("u1", "t-img", entry, ocr_ok)
+    assert out["status"] == "parsed" and out["assets"] == 1
+    segs = parse.load_segments("u1", "t-img", entry["slug"])
+    assert segs[0]["kind"] == "ocr" and segs[0]["text"].startswith("OCR[asset-")
