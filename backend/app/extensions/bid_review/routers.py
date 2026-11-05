@@ -549,13 +549,27 @@ def _fmt_evidence(evidence: list) -> str:
     return ";".join(parts) if parts else "无"
 
 
-def _render_report_md(task, issues: list) -> str:
+def _feedback_summary(feedback: list) -> str:
+    """对齐审计③(2026-11-05):复核耗时真数据落位(「待补充」假占位删除)。
+    0 条=未复核;1 条=1 次动作;≥2 条=首末动作跨度(下界——中间空档不计,
+    无从知晓复核是否连续,标 ≥ 不造假)。"""
+    stamps = [f.created_at for f in feedback if getattr(f, "created_at", None)]
+    if not stamps:
+        return "人工复核:未复核"
+    if len(stamps) == 1:
+        return f"人工复核:1 次动作(首条 {stamps[0]:%Y-%m-%d %H:%M} UTC)"
+    span_h = (max(stamps) - min(stamps)).total_seconds() / 3600
+    return f"人工复核:≥{span_h:.1f}h(首末动作跨度,下界;{len(stamps)} 次动作)"
+
+
+def _render_report_md(task, issues: list, feedback: list | None = None, deviations: dict | None = None) -> str:
     """审查报告 md 渲染(plan Task 21 Step 1 契约,报告呈现形态以 plan 原文为准):
-    首行免责声明 → 任务元信息(含复核耗时占位——人工复核耗时统计 v1 未接入)→
+    首行免责声明 → 任务元信息(复核耗时=feedback 真聚合,对齐审计③ 2026-11-05)→
     可提交判定提示行(措辞照 ui-spec §3.5 照抄;口径=正式 fatal 违规:severity=fatal
     且 verdict=violation 且非 need_human——人工误报与待人工条目不计入命中红线)→
     按 severity 四档分节,每条含规则 ID/证据(doc+page)/修复建议;need_human 条目
-    不删除,按 severity 归节并标注【待人工】;false_positive 人工误报不进正文。"""
+    不删除,按 severity 归节并标注【待人工】;false_positive 人工误报不进正文;
+    尾部响应偏离表节(对齐审计⑩:counts+逐条,同 /deviations 投影口径)。"""
     issues = [i for i in issues if i.verdict != "false_positive"]
     fatal_hits = [i for i in issues if i.severity == "fatal" and i.verdict == "violation" and not i.need_human]
     now = datetime.now(UTC).strftime("%Y-%m-%d %H:%M UTC")
@@ -567,7 +581,7 @@ def _render_report_md(task, issues: list) -> str:
         f"- 任务 ID:{task.id}",
         f"- 任务状态:{task.status}",
         f"- 审查模式:{task.mode}",
-        "- 复核耗时:待补充(人工复核耗时统计未接入,占位)",
+        _feedback_summary(feedback or []),
         f"- 生成时间:{now}",
         "",
         "## 可提交判定",
@@ -589,6 +603,16 @@ def _render_report_md(task, issues: list) -> str:
                 f"- 修复建议:{_oneline(i.fix) or '无'}",
                 "",
             ]
+    # 对齐审计⑩(2026-11-05):响应偏离表节(deviations={counts, items},同 /deviations 端点口径)
+    counts = (deviations or {}).get("counts") or {}
+    items = (deviations or {}).get("items") or []
+    lines += [f"## 响应偏离表(缺失 {counts.get('missing', 0)} · 增项 {counts.get('extra', 0)} · 负偏离 {counts.get('negative', 0)})", ""]
+    if not items:
+        lines += ["无记录(本任务抽取时未包含偏离维度或未检出偏离项)。", ""]
+    else:
+        for d in items:
+            lines.append(f"- {_oneline(str(d.get('item') or ''))}:{d.get('kind') or '?'}(招标:{_oneline(str(d.get('tender_value') or '无'))} ↔ 投标:{_oneline(str(d.get('bid_value') or '无'))})")
+        lines.append("")
     return "\n".join(lines).rstrip() + "\n"
 
 
@@ -613,8 +637,21 @@ async def export_task_report(
     if task.status != "done":
         raise HTTPException(status_code=409, detail=f"任务未完成(当前 {task.status}):仅 done 可导出报告,半程数据不构成审查结论")
     issues = await crud.list_issues(db, task_id=task_id, owner_id=owner_id)
+    feedback = await crud.list_task_feedback(db, task_id=task_id, owner_id=owner_id)  # 对齐审计③
+    # 对齐审计⑩:偏离投影同 /deviations 端点先例(基线跨行按 item 名去重,counts 服务端算)
+    baselines = await crud.list_baselines(db, task_id=task_id, owner_id=owner_id)
+    dev_items: list[dict] = []
+    seen_names: set[str] = set()
+    for row in baselines:
+        for item in (row.payload or {}).get("fields", {}).get("deviation.items") or []:
+            if not isinstance(item, dict):
+                continue
+            name = str(item.get("item") or "").strip()
+            if name and name not in seen_names:
+                seen_names.add(name)
+                dev_items.append(item)
     return Response(
-        content=_render_report_md(task, issues),
+        content=_render_report_md(task, issues, feedback=feedback, deviations={"counts": deviation_counts(dev_items), "items": dev_items}),
         media_type="text/markdown; charset=utf-8",
         headers={"Content-Disposition": f'attachment; filename="bid-review-report-{task_id[:8]}.md"'},
     )
@@ -959,6 +996,7 @@ async def metrics_trends(db: AsyncSession = Depends(get_db), owner_id: str = Dep
             }
         )
     return {"weeks": weeks}
+
 
 @router.get("/metrics/extraction")
 async def metrics_extraction(db: AsyncSession = Depends(get_db), owner_id: str = Depends(current_owner)):

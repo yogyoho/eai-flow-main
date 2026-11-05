@@ -219,9 +219,7 @@ async def latest_feedback_actions(session: AsyncSession, issue_ids: list[str]) -
     """
     if not issue_ids:
         return {}
-    result = await session.execute(
-        select(ReviewFeedback).where(ReviewFeedback.issue_id.in_(issue_ids)).order_by(ReviewFeedback.created_at, ReviewFeedback.id)
-    )
+    result = await session.execute(select(ReviewFeedback).where(ReviewFeedback.issue_id.in_(issue_ids)).order_by(ReviewFeedback.created_at, ReviewFeedback.id))
     latest: dict[str, str] = {}
     for fb in result.scalars():
         latest[fb.issue_id] = fb.action
@@ -245,6 +243,21 @@ async def record_feedback(
     await session.commit()
     await session.refresh(fb)
     return fb
+
+
+async def list_task_feedback(session: AsyncSession, task_id: str, owner_id: str) -> list[ReviewFeedback]:
+    """任务级复核动作(feedback 表无 task_id 列,JOIN issues 取归属——不加列不迁移,
+    对齐审计③ 2026-11-05)。created_at 升序:复核耗时聚合方按序取首末动作。"""
+    rows = (
+        (
+            await session.execute(
+                select(ReviewFeedback).join(ReviewIssue, ReviewFeedback.issue_id == ReviewIssue.id).where(ReviewIssue.task_id == task_id, ReviewFeedback.owner_id == owner_id).order_by(ReviewFeedback.created_at, ReviewFeedback.id)
+            )
+        )
+        .scalars()
+        .all()
+    )
+    return list(rows)
 
 
 # --- RulePackMeta ------------------------------------------------------------

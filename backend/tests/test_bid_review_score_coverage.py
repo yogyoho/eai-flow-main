@@ -5,6 +5,8 @@
 或全未知 → 该项未覆盖(诚实:映射不来就别装覆盖)。夹具照 test_bid_review_diff.py。
 """
 
+from datetime import UTC
+
 import httpx
 import pytest
 import pytest_asyncio
@@ -159,3 +161,102 @@ def test_covered_max_score_numeric_and_none():
     assert out2["covered_max_score"] is None
     out3 = compute_score_coverage([{"name": "x", "related_paths": ["p"]}], [_FakeRule("L2-x", ["other"])])
     assert out3["covered_max_score"] is None  # 无 covered
+
+
+# ── 对齐审计③⑩(2026-11-05):报告复核耗时真数据 + 偏离表节 ────────────────────
+
+
+def test_feedback_summary_shapes():
+    """裁决③三形态:0 条=未复核;1 条=1 次动作;≥2 条=首末动作跨度(下界)。"""
+    from datetime import datetime
+
+    from app.extensions.bid_review.routers import _feedback_summary
+
+    assert _feedback_summary([]) == "人工复核:未复核"
+    one = [type("F", (), {"created_at": datetime(2026, 11, 5, 10, 0, tzinfo=UTC)})()]
+    assert "1 次动作" in _feedback_summary(one)
+    two = one + [type("F", (), {"created_at": datetime(2026, 11, 5, 11, 30, tzinfo=UTC)})()]
+    s = _feedback_summary(two)
+    assert "≥1.5h" in s and "下界" in s
+
+
+@pytest.mark.asyncio
+async def test_report_review_duration_and_deviations(client, db):
+    """端到端:「待补充」假占位删除;feedback 真耗时落元信息行;偏离表节渲染 counts+逐条。"""
+    from datetime import datetime
+
+    t = await crud.create_task(db, owner_id="u1")
+    t.status = "done"
+    await db.commit()
+    issue = await crud.add_issue(
+        db,
+        task_id=t.id,
+        owner_id="u1",
+        rule_id="L1-009",
+        layer="L1",
+        severity="fatal",
+        verdict="violation",
+        message="总价超限价",
+        fix="复核报价",
+        dedup_key="k1",
+    )
+    db.add(
+        models.ReviewFeedback(
+            issue_id=issue.id,
+            owner_id="u1",
+            action="confirm",
+            created_at=datetime(2026, 11, 5, 10, 0, tzinfo=UTC),
+        )
+    )
+    db.add(
+        models.ReviewFeedback(
+            issue_id=issue.id,
+            owner_id="u1",
+            action="false_positive",
+            created_at=datetime(2026, 11, 5, 11, 30, tzinfo=UTC),
+        )
+    )
+    db.add(
+        models.BaselinePackage(
+            task_id=t.id,
+            kind="tender",
+            payload={
+                "fields": {
+                    "deviation.items": [
+                        {"item": "工期", "kind": "deviation", "tender_value": "180天", "bid_value": "150天"},
+                    ]
+                }
+            },
+        )
+    )
+    await db.commit()
+    r = await client.get(f"/api/extensions/bid-review/tasks/{t.id}/report")
+    assert r.status_code == 200
+    md = r.text
+    assert "待补充" not in md
+    assert "人工复核:" in md and "≥1.5h" in md
+    assert "响应偏离" in md and "工期" in md and "180天" in md
+
+
+@pytest.mark.asyncio
+async def test_report_no_feedback_no_deviations(client, db):
+    """空态:未复核 + 响应偏离无记录(不假装有数据)。"""
+    t = await crud.create_task(db, owner_id="u1")
+    t.status = "done"
+    await db.commit()
+    await crud.add_issue(
+        db,
+        task_id=t.id,
+        owner_id="u1",
+        rule_id="L1-001",
+        layer="L1",
+        severity="info",
+        verdict="need_human",
+        message="缺字段",
+        dedup_key="k2",
+    )
+    r = await client.get(f"/api/extensions/bid-review/tasks/{t.id}/report")
+    assert r.status_code == 200
+    md = r.text
+    assert "人工复核:未复核" in md
+    assert "响应偏离" in md and "无记录" in md
