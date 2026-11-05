@@ -62,6 +62,12 @@ dependencies = [
     # clustering is numpy-only (see scripts/clustering/).
     "xlsxwriter>=3.2.0",
     "e2b-code-interpreter>=2.8.1",
+    # bid_review parse.py imports openpyxl directly for the xlsx upload entry
+    # (guarded import degrades to per-file ValueError). It only reached the
+    # runtime transitively via deerflow-harness -> markitdown[all,xlsx]; a
+    # markitdown extras shuffle would silently kill the xlsx entry, so the app
+    # declares its own import the same way it does for starlette / extension-api.
+    "openpyxl>=3.1.5,<4",
 ]
 
 [project.optional-dependencies]
