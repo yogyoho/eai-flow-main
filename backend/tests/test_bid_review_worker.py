@@ -111,10 +111,10 @@ _DOCS = [{"doc_id": "b.pdf", "role": "bid", "text": "x"}]
 _FIELDS = {"bid.total_price": 2000000, "tender.max_price": 1000000, "bid.price_includes_tax": True, "tender.price_includes_tax": True}
 
 
-async def _mk_docs_task(factory) -> str:
-    """建一个带上传文档(engine_meta.docs,worker._load_docs 取数源)的 quick 任务。"""
+async def _mk_docs_task(factory, mode: str = "quick") -> str:
+    """建一个带上传文档(engine_meta.docs,worker._load_docs 取数源)的任务。"""
     async with factory() as s:
-        t = await crud.create_task(s, owner_id="u1")
+        t = await crud.create_task(s, owner_id="u1", mode=mode)
         t.engine_meta = {"docs": _DOCS}
         await s.commit()
         return t.id
@@ -192,7 +192,8 @@ async def test_advance_created_to_awaiting_confirm(db):
 @pytest.mark.asyncio
 async def test_advance_quick_det_run_to_done(db, tmp_rulepack):
     """wait_confirm=False 快审直跑:parsing→extracting→基线→running→det→done;
-    命中规则产 violation(message_tpl money 渲染),缺字段规则产 need_human。"""
+    对齐审计①(2026-11-05):quick 层裁剪只跑 L1 det——T1-001 violation 照产,
+    T1-002(L3 det)不入 quick(全量行为见 test_advance_deep_full_rules)。"""
     t = await crud.create_task(db, owner_id="u1")
     docs = [{"doc_id": "b.pdf", "role": "bid", "text": "x"}]
     fields = {"bid.total_price": 2000000, "tender.max_price": 1000000, "bid.price_includes_tax": True, "tender.price_includes_tax": True}
@@ -206,9 +207,29 @@ async def test_advance_quick_det_run_to_done(db, tmp_rulepack):
     by_rule = {i.rule_id: i for i in issues}
     assert by_rule["T1-001"].verdict == "violation"
     assert by_rule["T1-001"].message == "投标总价 ¥2,000,000.00 超过最高限价 ¥1,000,000.00"
-    assert by_rule["T1-002"].verdict == "need_human"
+    assert "T1-002" not in by_rule  # quick 层裁剪:L3 det 不入 quick
     assert task.progress["pct"] == 100
     assert task.engine_meta.get("materials_hash")
+
+
+@pytest.mark.asyncio
+async def test_advance_deep_full_rules_det_and_need_human(db, tmp_rulepack):
+    """deep 全量对照(对齐审计①补位):mode=deep 规则层零裁剪——T1-001 violation +
+    T1-002(L3 det)need_human 双规则照旧;wait_confirm=False 直跑不停门。"""
+    t = await crud.create_task(db, owner_id="u1")
+    t.mode = "deep"
+    await db.commit()
+    docs = [{"doc_id": "b.pdf", "role": "bid", "text": "x"}]
+    fields = {"bid.total_price": 2000000, "tender.max_price": 1000000}
+
+    def _extract(d, p):
+        return {**{k: None for k in p}, **fields}
+
+    task = await advance_task(db, t.id, owner_id="u1", docs=docs, extract_fn=_extract, wait_confirm=False)
+    assert task.status == "done"
+    by_rule = {i.rule_id: i for i in await crud.list_issues(db, task_id=t.id, owner_id="u1")}
+    assert by_rule["T1-001"].verdict == "violation"
+    assert by_rule["T1-002"].verdict == "need_human"
 
 
 @pytest.mark.asyncio
@@ -245,6 +266,8 @@ async def test_rule_crash_isolated_to_need_human(db, crash_rulepack):
 async def test_resume_confirmed_runs_det_and_done(db, tmp_rulepack):
     """确认门续跑:awaiting_confirm →(confirm 后)resume_confirmed →running→det→done。"""
     t = await crud.create_task(db, owner_id="u1")
+    t.mode = "deep"  # 对齐审计①:全量规则面(本测试验证 L3 det need_human)
+    await db.commit()
     docs = [{"doc_id": "t.pdf", "role": "tender", "text": "x"}]
     fields = {"bid.total_price": 500, "tender.max_price": 1000, "bid.price_includes_tax": True, "tender.price_includes_tax": True}
     await advance_task(db, t.id, owner_id="u1", docs=docs, extract_fn=lambda d, p: {**{k: None for k in p}, **fields}, wait_confirm=True)
@@ -299,6 +322,7 @@ async def test_claim_next_and_run_claimed_process_created_task(claim_env, tmp_ru
 
     monkeypatch.setattr(worker, "get_session_factory", lambda: claim_env)
     _stub_extract(monkeypatch, _FIELDS)
+    # quick 任务(claimer 生产常态):对齐审计①后 quick 只跑 L1 det → 条目恰 {T1-001}
     task_id = await _mk_docs_task(claim_env)
 
     claimed = await worker._claim_next(claim_env)
@@ -309,7 +333,7 @@ async def test_claim_next_and_run_claimed_process_created_task(claim_env, tmp_ru
     async with claim_env() as s:
         row = await crud.get_task(s, task_id, "u1")
         assert row.status == "done"
-        assert {i.rule_id for i in await crud.list_issues(s, task_id=task_id, owner_id="u1")} == {"T1-001", "T1-002"}
+        assert {i.rule_id for i in await crud.list_issues(s, task_id=task_id, owner_id="u1")} == {"T1-001"}
 
 
 @pytest.mark.asyncio
@@ -1011,3 +1035,40 @@ def test_summary_unknown_ratio():
     s2 = summarize_issues(issues)
     assert s2["unknown_ratio"] is None and s2["rules_total"] is None
     assert summarize_issues(issues, rules_total=0)["unknown_ratio"] is None
+
+
+# ── 对齐审计缺口①(2026-11-05):quick 层裁剪——设计承诺「只跑 L1 det」───────────
+
+
+class TestQuickLayerPrune:
+    """quick 语义=快审(省时省配额)非降级审查:规则层裁到 L1 det,M1-M5 抽取段不动,
+    deep 逐位不变;_prune_rules_for_mode 纯函数不改 pack.rules。"""
+
+    def test_quick_prunes_to_l1_det(self):
+        from app.extensions.bid_review.engine.rule_runner import load_rulepack
+        from app.extensions.bid_review.worker import RULEPACK_PATH, _prune_rules_for_mode
+
+        pack = load_rulepack(RULEPACK_PATH)
+        full = len(pack.rules)
+        quick = _prune_rules_for_mode(pack, "quick")
+        assert all(r.layer == "L1" and r.type == "deterministic" for r in quick)
+        assert 0 < len(quick) < full  # L1 det 是真子集(现包 L1 det 14 条)
+        assert _prune_rules_for_mode(pack, "deep") is pack.rules  # deep 原样
+        assert len(pack.rules) == full  # 纯函数无副作用
+
+    @pytest.mark.asyncio
+    async def test_review_stage_quick_rules_total_reflects_prune(self, db, tmp_rulepack):
+        """rules_total=裁剪后分母(unknown_ratio 诚实);written 只含 L1 det 规则条目。"""
+        from app.extensions.bid_review.worker import _run_review_stage
+
+        t = await crud.create_task(db, owner_id="u1")
+        t.mode = "quick"
+        t.engine_meta = {"docs": _DOCS}
+        await db.commit()
+        written, rules_total = await _run_review_stage(db, t, {}, "u1")
+        assert rules_total == 1  # tmp 包 2 条(T1-001 L1 det + T1-002 L3 det)→ quick 留 1
+        t.mode = "deep"
+        await db.commit()
+        written2, rules_total2 = await _run_review_stage(db, t, {}, "u1")
+        assert rules_total2 == 2  # deep 全量
+        assert written2 >= written  # deep 至少不亏条目

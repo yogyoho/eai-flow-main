@@ -475,6 +475,15 @@ async def _write_baselines(
     await db.commit()
 
 
+def _prune_rules_for_mode(pack, mode: str) -> list:
+    """quick 层裁剪(对齐审计缺口①,2026-11-05):设计承诺 quick=只跑 L1 det。
+    纯函数返回新列表,不改 pack.rules;deep/未知 mode 原样全量。
+    M1-M5 抽取段不动——裁剪只在规则分派层,rules_total 自然取裁剪后分母。"""
+    if mode == "quick":
+        return [r for r in pack.rules if r.layer == "L1" and r.type == "deterministic"]
+    return pack.rules
+
+
 async def _run_review_stage(db: AsyncSession, task: ReviewTask, fields: dict, owner_id: str, model_fn=None, provenance: dict | None = None) -> tuple[int, int]:
     """审查阶段(Task 14):按 rule.type 分派——deterministic→run_det_rule(既有 det
     通路;attach_evidence 回填 provenance 证据,EAI-CUSTOM 2026-10-30)/
@@ -492,6 +501,9 @@ async def _run_review_stage(db: AsyncSession, task: ReviewTask, fields: dict, ow
     # 评测器与 worker 消费同一段分派代码(金标准禁复制=两把尺子,必然漂移说谎)。
     # None 剥离由 eval_core 统一承担(原 worker 侧 det_fields 预剥离已移除,勿双重剥离)。
     pack = load_rulepack(RULEPACK_PATH)
+    # 对齐审计缺口①(2026-11-05):quick 只跑 L1 det(设计承诺);rules_total 尾部
+    # len(pack.rules) 自然取裁剪后分母,summary.unknown_ratio 诚实。
+    pack.rules = _prune_rules_for_mode(pack, task.mode)
     wrapped_model = _wrap_model_fn(model_fn or _default_model_fn())
     docs = _load_docs(task)
     materials = _collect_materials(docs)

@@ -10,6 +10,7 @@ done 帧 progress 记录各阶段耗时;基准确认门语义不破(deep 停 awa
 测试环境沿 test_bid_review_worker.py 先例:sqlite+aiosqlite 内存库定点建 bid_review
 五张表;规则包 monkeypatch 成 tmp_path 最小包(不依赖生产 1.0.0.yaml 内容);模型以
 fake 同步 callable 注入(advance_task/resume_confirmed 的 model_fn 参数)。
+对齐审计①(2026-11-05):sem/hyb 仅 deep 跑——本文件任务一律 mode="deep"。
 """
 
 from __future__ import annotations
@@ -162,7 +163,7 @@ async def test_quick_sem_rule_produces_persisted_issue(db, sem_rulepack):
     fatal 严重度);hyb det 通过零候选零模型调用(调用序列仅 S1-001)。"""
     calls: list[str] = []
     model = _fake_model({"S1-001": _vd({"clause_id": "★1", "verdict": "none", "confidence": 0.9, "reason": "未实质性响应", "evidence": [_EV]})}, calls)
-    t = await crud.create_task(db, owner_id="u1")
+    t = await crud.create_task(db, owner_id="u1", mode="deep")
 
     def _extract(d, p):
         return {**{k: None for k in p}, **_FIELDS_CLEAN}
@@ -189,7 +190,7 @@ async def test_hyb_candidate_confirmed_by_model(db, sem_rulepack):
         },
         calls,
     )
-    t = await crud.create_task(db, owner_id="u1")
+    t = await crud.create_task(db, owner_id="u1", mode="deep")
 
     def _extract(d, p):
         return {**{k: None for k in p}, **_FIELDS_HYB_HIT}
@@ -213,7 +214,7 @@ async def test_hyb_unclear_need_human_survives_pipeline(db, sem_rulepack):
         },
         [],
     )
-    t = await crud.create_task(db, owner_id="u1")
+    t = await crud.create_task(db, owner_id="u1", mode="deep")
 
     def _extract(d, p):
         return {**{k: None for k in p}, **_FIELDS_HYB_HIT}
@@ -237,7 +238,7 @@ async def test_summary_grades_need_human_separately(db, sem_rulepack):
         {"S1-001": _vd({"clause_id": "★1", "verdict": "unclear", "confidence": 0.9, "reason": "材料不足", "evidence": [_EV]})},
         [],
     )
-    t = await crud.create_task(db, owner_id="u1")
+    t = await crud.create_task(db, owner_id="u1", mode="deep")
 
     def _extract(d, p):
         return {**{k: None for k in p}, **_FIELDS_FATAL}
@@ -280,7 +281,7 @@ async def test_content_chunk_list_normalized_to_str(db, sem_rulepack):
     chunk_a = '{"verdicts": [{"clause_id": "★1", "verdict": "none", "confidence": 0.9,'
     chunk_b = ' "reason": "未实质性响应", "evidence": [{"doc_id": "b.pdf", "page": 1, "text": "业绩A 中标通知书"}]}]}'
     model = _fake_model({"S1-001": [{"type": "text", "text": chunk_a}, {"type": "text", "text": chunk_b}]}, [])
-    t = await crud.create_task(db, owner_id="u1")
+    t = await crud.create_task(db, owner_id="u1", mode="deep")
 
     def _extract(d, p):
         return {**{k: None for k in p}, **_FIELDS_CLEAN}
@@ -299,7 +300,7 @@ async def test_model_crash_isolated_to_need_human(db, sem_rulepack):
     """T9 先例(9cda4828b)扩展到 sem:模型不可用/接线失败(抛异常)该规则降级
     need_human 条目,兄弟 det 规则照常产出(fatal violation),任务照常 done(禁整任务崩)。"""
     model = _fake_model({"S1-001": RuntimeError("model endpoint down")}, [])
-    t = await crud.create_task(db, owner_id="u1")
+    t = await crud.create_task(db, owner_id="u1", mode="deep")
 
     def _extract(d, p):
         return {**{k: None for k in p}, **_FIELDS_FATAL}
@@ -320,7 +321,7 @@ async def test_default_model_gap_degrades_sem_rule_not_crash(db, sem_rulepack, m
 
     monkeypatch.setattr("deerflow.config.get_app_config", lambda: SimpleNamespace(models=[]))
     monkeypatch.delenv("EAI_BID_REVIEW_MODEL", raising=False)
-    t = await crud.create_task(db, owner_id="u1")
+    t = await crud.create_task(db, owner_id="u1", mode="deep")
 
     def _extract(d, p):
         return {**{k: None for k in p}, **_FIELDS_CLEAN}
@@ -338,7 +339,7 @@ async def test_model_fatal_not_downgraded_and_dedup_merged(db, sem_rulepack):
     entry = {"clause_id": "★1", "verdict": "none", "confidence": 0.9, "reason": "未实质性响应", "severity": "minor", "evidence": [_EV]}
     entry2 = {**entry, "evidence": [{"doc_id": "b.pdf", "page": 2, "text": "实质性条款响应表"}]}
     model = _fake_model({"S1-001": _vd(entry, entry2)}, [])
-    t = await crud.create_task(db, owner_id="u1")
+    t = await crud.create_task(db, owner_id="u1", mode="deep")
 
     def _extract(d, p):
         return {**{k: None for k in p}, **_FIELDS_CLEAN}
@@ -383,7 +384,7 @@ async def test_quick_done_progress_records_stage_durations(db, sem_rulepack):
     """quick 直跑 done 帧:progress.durations 记录 parsing/extracting/review 各阶段耗时
     (数值、≥0);summary 与落库条目同口径。"""
     model = _fake_model({"S1-001": _vd({"clause_id": "★1", "verdict": "full", "confidence": 0.95, "reason": "已完整响应", "evidence": [_EV]})}, [])
-    t = await crud.create_task(db, owner_id="u1")
+    t = await crud.create_task(db, owner_id="u1", mode="deep")
 
     def _extract(d, p):
         return {**{k: None for k in p}, **_FIELDS_CLEAN}
