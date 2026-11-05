@@ -25,6 +25,10 @@ OpenWolf's learning memory. Updated automatically as the AI learns from interact
 - [2026-08-21] geological-report 用户交互铁律：数据收集必须用 ask_clarification fields 渲染中文填写表单（label=中文名+单位），绝不向用户展示/索要 JSON 或英文键名；面向用户术语一律"数据项"不说"字段"；缺项清单译成中文按类别分组呈现。适用于所有面向非 IT 用户的技能。
 
 ## Key Learnings
+- [2026-11-03] bid-review 金标准口径三数：`cases/*.yaml` 文件数 = CLI `total`；pytest 里参数化 `test_golden_case[...]` 数与之相等；模块总 passed 还含基建/coverage 守卫测（现 82=51 题+31 基建）。写计划/汇报时别混用「题数」与「测试数」——L2-P3 计划就因混写 51/82 被实现者当笔误纠正。
+- [2026-11-03] plan 参考代码与自带测试矛盾时的裁决先例（L2-P3 Task 2）：复合父行补显式 `negative_evidence: None` 键取测试侧（直取键访问会 KeyError），宁可计划片段多一键也不要 per_req 面形状异构。延续 [2026-11-02] bug-3904 同款教训。
+- [2026-11-03] PyYAML(YAML 1.1) 把未引号键 `no` 解析成布尔 False（bug-3938）：任何含 `{no: ...}` 结构的 YAML 夹具（golden cases/extract_stub）都会变成 {False: ...} 混合键，下游 json.dumps(sort_keys=True) 直接 TypeError。**写 YAML 夹具时 no 键一律加引号** `"no":`。同类雷：`on`/`off`/`yes`/`true` 等裸词键。
+- [2026-11-02] bid-review L2-P2 计划的「参考实现草图」与自己 TDD 测试有 3 处分歧（bug-3904）：复合件消费项不并入 taken→extra 泄漏；孤儿名通道要**包含**（父名 in 归一名）不要全等（「父名（合并版）」）；平件名称通道须跳过引用复合父号的提供项（3-1 营业执照 会被同名平件偷走）。教训：plan 里的参考代码也要对照测试逐条心跑——tests 是规范，sketch 是近似，照抄必挂。
 - [2026-10-30] docmgr 编辑器画布硬编码浅色：PersonalBlockNoteEditor 无任何 dark 处理（仅 :434 code block 有 light 覆盖），强制翻 html.dark 会出现「白底白字」伪影——面板 token 组件正常变暗、画布不变，别误判成回归。docmgr 页面按仅浅色验收。
 - [2026-10-30] 后端 ai/transform 的 `sections` 是 split_sections **桶下标**（可选前导节 +1 偏移，空文本标题计序但不输出）；BlockNote 块下标与之相差前置块数+1，混用会被 `0<=i<len` 过滤静默 no-op（done total:0 假完成）。前端统一走 `computeHeadings().section`（bug-3700，docmgr 面板 v2）。
 - [2026-10-30] rstest *.dom.test.tsx + React 19: createRoot().render() 是异步提交（宏任务调度），断言前必须 await act(async () => { root.render(...) }) + 文件头 IS_REACT_ACT_ENVIRONMENT=true；await Promise.resolve() 一个微任务不够 → DOM 全空（bug-3310）。repo 惯例见 tests/unit/docmgr/slash-menu.dom.test.tsx。另: 测试文件也在 eslint 管辖——() => {} 触发 no-empty-function（用 () => undefined），as 断言优先 ! 形态（non-nullable-type-assertion-style）。
@@ -358,6 +362,8 @@ OpenWolf's learning memory. Updated automatically as the AI learns from interact
 '))与「第N章…(整行短)」题式——行文交叉引用(第二章"技术指标"，如有…)嵌长段内不会被 ^…$ 短行匹配误升格。预处理属维护侧临时步骤, 不进技能。
 - **仓库级技能产物落盘会"激活"技能脚本测试的隐式依赖 (2026-09-10, T7 回归):** references/depth_targets.json 此前不存在=build_output 深度门静默跳过, 测试在此前提下写; 基线一落盘, 门带表格行进 lint 报告, 按全文表格解析的测试 helper(_lint_flagged_values)立刻多吃一行空串值。教训: 技能脚本测试 helper 解析报告必须按节头(
 - [2026-09-28] eia 语料 fulltext 命名: 3 份 `{slug}-fulltext.txt` + 1 份无前缀 `fulltext.txt`（高头窑矿区总体规划修编环评→slug gaotaoyao, 规划环评体裁）; 挖掘脚本统一做无前缀兜底解析（table_extract 内联/llm_extract.resolve_fulltext）。
+- [2026-11-05] 不变量门禁测试>点测试:M1负证据100%门禁(先写门禁后实现)真翻红抓到存量缺口(复合父行MISSING负证据硬编码None),点测试全绿多年未觉。模式:全称量词断言(MISSING⇒negative_evidence非None)遍历多场景,翻红=修实现不改断言。
+
 ## )截断自锁, 不依赖"后继节不存在"; 新增仓库级产物=变更了所有读该目录测试的运行环境。
 - **Windows GBK 控制台 code-review-graph post-commit hook 对中文 commit message 崩溃 (2026-09-10):** hook 读 git 子进程输出未显式 UTF-8 → UnicodeDecodeError(线程内, 不影响提交本身); bug-3241 记录。中文 commit 照写, 忽略该噪音(或平台侧修 hook 编码)。
 
@@ -504,6 +510,10 @@ fixture 策略: 全节点 template_text=null(不发明招标内容), 真文渲�
 教训: 上游"结构契约"测试 skip 前先查挂载链——本例 host/deep-link 组件文件都在但从未被挂载(死代码)，恢复挂载即恢复契约。
 
 ## Do-Not-Repeat
+
+- 2026-11-02 前端 rstest 过滤:`pnpm test -- <file>` 不过滤会跑全量套件(且踩 scheduled-task-form-dialog 既有竞态);单文件用 `npx rstest run <path>`。
+- 2026-11-02 后端 `make lint` 含 `ruff format --check .`,但全树已有 33 文件 format 债务——勿对无关文件跑 ruff format,只 format 自己改的文件(全量 format 会吞进无关 churn)。
+
 - 2026-10-31 对齐原型时禁止"顺手美化":原型页就是样式契约,原样照抄(页头任务号=纯 h2 正文,不 mono、不弱化;用户走查指出偏差)。brx 域选中/激活态底色一律 `--main-100`(侧栏激活项同款);`--main-10` 是 #fbfaff 近白,白底上作高亮=隐身(bug-3707)。
 （2026-07-17 session）
 
@@ -2901,3 +2911,56 @@ P3 item ① 裁决：**双工况 N=3 校核暂不默认开**，维持 SKILL 现�
 ## Key Learnings (2026-11-01 Plan10)
 - rstest getByText 撞多元素:同 rule id 渲染在统计表+FAIL 表两处时断言要 scope(卡片 querySelector / findAllByText),别全局 getByText
 - 测试 describe 的 beforeEach 必须重置模块级 responder/mockParams——前一个 describe 的自定义 responder 会泄漏成顺序依赖
+
+## 2026-11-02
+- 前端 tsconfig `noImplicitAny: false`——联合类型扩宽后,字面量对象映射的索引(rank[key] 类)tsc 静默放过、运行时 undefined(bid-review L2-P2 实测: BidChecklistItem.status +UNKNOWN 后 ResultsView rank 映射变 NaN 不报错)。扩宽 union 必须全仓 grep 旧状态的字面量 map/switch,勿信 typecheck。
+## 2026-11-03 (bid-review L2 P3.2)
+
+- 子代理 shell 无 $CLAUDE_JOB_DIR(仅主会话有)——给子代理的计划里写 --out $CLAUDE_JOB_DIR/... 会踩空; 派发时改 $TEMP 或明示"仓库外任意临时路径"。(P3.2 Task 1 实测, Task 2 起已在派发词预防)
+- walrus assert keys := {...} 有语法风险(部分 Python 版本 SyntaxError)且绑定值无复用时多余——计划内测试代码写直接断言(集合比较)更稳。(P3.2 Task 2 派发前控制器裁决, 实现者按裁决偏离被 spec 审判为合规)
+
+## 2026-11-03 (bid-review L2 P3.3)
+
+- **Key Learning**: rstest 全量验证勿用 `tail -N` 截断管道——失败 JSON 块会整段丢失导致漏数;先 tee/重定向全量日志再 grep 统计(testPath uniq + summary failedTests)。
+- **Key Learning**: 子代理 API 429 配额耗尽时,控制器可亲自代审(读真实 diff 核查清单)并直跑验证命令,deviation 如实记录;审查独立性由已完成的独立 spec 审查兜底。
+
+## 2026-11-03 (bid-review L2-tuning)
+
+- **Key Learning**: 引擎 monkeypatch 模块常量迁移到配置 loader 时,先 grep 全测试文件再动——同一常量 seam 在测试套里常有多个孪生测试(NEAR_MISS_GATE 就有平件+复合子行两处),只迁一处全家跑批才暴露。
+
+- 2026-11-03 兑付挂账切片先 grep 既有钉测再定新测数——「不多发」向常已被既有 len 断言钉住(L2-混合态:设计表 +2 实落 +1,纯 near_miss 场景 len==1 已有专测)
+
+## Key Learnings 追加(2026-11-04 L2-指纹窗口)
+- golden scripted 模型应答:schema 校验对**所有** verdict(含 full)要求 evidence 非空数组(doc_id+page>=1)——scripted full 应答不带证据会被 schema 拒并触发重试/候选降级,金题与测试夹具一律带证据
+- sem 确认产物(_verdict_to_issue)无 entity_keys/dedup_key(候选段无 join key 回传)——det 候选实体过模型确认即丢;跨层去重要实体继承须先设计 join key(挂账)
+- 新增规则包规则的转入门四处联动:EXPECTED_COVERAGE(golden.py)、metrics 测试本地 _KNOWN_OPS 副本、full_pack_loads 类型计数、att_ops L2 ops dict——漏一处即红,先例同款更新
+- fingerprints/tuning 字典校验语义:组内任一坏条目**整组丢弃**(tuning._norm_groups 同规),半组静默保留会误导运维以为指纹完整
+
+- (2026-11-04 entity join)join key 设计范式:候选注入稳定 id+模型回显=det→sem 跨阶段实体传递的唯一可靠通道;位置对齐/message 匹配均脆;查不回降级=现状(弱而非坏)是跨阶段 join 的标准兜底
+
+## Key Learnings 追加(2026-11-04)
+- ALTER 加列必须带 DEFAULT,且同切片补幂等 UPDATE backfill:`ADD COLUMN IF NOT EXISTS ... DEFAULT` 对已存在裸列**永久 no-op**(PG 不回填存量行),裸 ALTER 污染不可自愈;读路径 pydantic validator None→[] 是第二道兜底(bug-3970 Minor-4 先例)。
+
+## Key Learnings 追加(2026-11-04)
+- 生产模型集成必须在 parse 边界围栏容错:agnes-2.5-Flash 恒回 \n\n\`\`\`json 包壳(json.loads 于 char 2 全灭,bug-3971);围栏容错落 check_schema 单点(三级降级),不动调用侧。
+- text-kind(.md)文档无真实页码——evidence.page 契约(正整数)对 text 类文档是确认段拦路石(待修);抽取形状契约(规则吃列表/抽取回标量)已见 3 起 crash/skip,同队列。
+
+## Key Learnings 追加(2026-11-04 页码契约)
+- 材料里的 [[p.N]] 标记是模型页码引用的锚——docs_text({doc_id:{page:text}})必须按标记切真分页,整篇挂 page1 会让页码>2 的确认全灭(对齐失配降级);校验侧容忍与提示侧契约必须同片给(单改校验,模型仍不知填什么)。
+- v1 未分页文档契约=page 固定填 1;模型引错页照旧诚实降级 need_human,不静默采信——容忍≠放水。
+
+### 2026-11-04 claimer 双跑(bug-3980)
+- **领取态纪律**:任务 worker 的 claimer 领取集只能含「未开始」态且必须带 CAS(条件 UPDATE+rowcount);任何在途态(extracting/running)进领取集且无 CAS=POLL 轮询期确定性双跑,不是竞态是必然。boot-recovery 孤儿统一重置到「未开始」态走完整入口幂等重跑(parse 跳过已解析/基线先清旧/upsert),不要为孤儿开专用领取入口。
+- **重复行根因排查法**:先查 issues.created_at 分布(单批次 vs 多簇),再对 gateway.log 时间窗数 'sem/hyb using model' 出现次数(1=单管线,2=双跑),最后才读 claim 代码——取证顺序从数据到日志到代码,零模型配额。
+
+### 2026-11-04 抽取形状契约(bug-3981)
+- **列表字段行形必须逐字段核实**,不许从规则类型(op:all)推断同构——本项目 op:all 十字段实为四行形({value,where}/{name,present}/{code,tender_unit,bid_unit,matched}/纯标量码)。归一闸按行形分型注册,错型包装=造出求值期缺失或假违例,比不闸更糟。
+- **活体回采是闸类修复的唯一真验收**:golden 喂正确形状测不出闸缺陷;R5 活体当场揭穿初版闸错包附件项。闸/契约类切片一律排活体轮。
+
+### LLM 抽取单跑方差 (2026-11-04, bug-3984)
+LLM 结构化抽取(bid-review build_baseline)单跑采样方差大: 同 docs+model 两次运行可差 7/26 检查项(0.73 vs 1.0)。回归门必须建在确定性快照(冻结输出)上, 活体单跑分数只能作质量基线记录(只升不降), 不能作硬回归门; 比较两次活体结果前先想到方差, 别急着改代码/降基线。
+
+### 全家 pytest 口径 = bid-review 家族,非整个 backend (2026-11-05)
+「全家精确计数」指 `pytest tests/ -k bid_review`(R1 后 440/0),不是整个 tests/(3.6 万项,309 个无关域失败=外来 WIP 禁碰)。跑错口径白烧 68 分钟。
+### severity 层白名单以既有夹具语义为准 (2026-11-05)
+spec 假设 L2{fatal,major},eval_core 夹具 EX-001 证明 L2/minor 是既有合法语义——政策先取证再定:终版 L1{fatal,major} L2{fatal,major,minor} L3{major,minor}。

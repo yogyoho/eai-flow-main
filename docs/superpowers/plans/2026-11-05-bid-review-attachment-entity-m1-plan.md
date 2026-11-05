@@ -15,7 +15,7 @@
 
 ### Task 1: 文档预提交
 
-- [ ] spec 状态无需改(B立项设计 APPROVED 已含 §4);本 plan `git add -f` 显式路径 commit。
+- [x] spec 状态无需改(B立项设计 APPROVED 已含 §4);本 plan `git add -f` 显式路径 commit。
 
 ### Task 2: registry 第二段字段域
 
@@ -23,8 +23,8 @@
 - Modify: `backend/app/extensions/bid_review/engine/registry.py`
 - Modify: `backend/tests/test_bid_review_registry.py`
 
-- [ ] **Step 2.1 测试先行**(红): EXPECTED_UNIVERSE 71→72(插入 "bid.attachments" 于 bid.attachment_index 后);新增断言:`registry.SECOND_STAGE_FIELDS == {"bid.attachments"}`、`collect_field_paths() == 71 路径列表(=universe−second_stage,首段 prompt 零变化锚点)`、`"bid.attachments" not in collect_field_paths()`。原 test_equals_collect_field_paths 改为 `set(collect_field_paths()) == set(universe()) - set(SECOND_STAGE_FIELDS)`。
-- [ ] **Step 2.2 实现**:
+- [x] **Step 2.1 测试先行**(红): EXPECTED_UNIVERSE 71→72(插入 "bid.attachments" 于 bid.attachment_index 后);新增断言:`registry.SECOND_STAGE_FIELDS == {"bid.attachments"}`、`collect_field_paths() == 71 路径列表(=universe−second_stage,首段 prompt 零变化锚点)`、`"bid.attachments" not in collect_field_paths()`。原 test_equals_collect_field_paths 改为 `set(collect_field_paths()) == set(universe()) - set(SECOND_STAGE_FIELDS)`。
+- [x] **Step 2.2 实现**:
 
 ```python
 # 第二段抽取字段域(B立项 M1,spec §4):首段 prompt 不含(collect_field_paths 剔除),
@@ -43,7 +43,7 @@ def collect_field_paths() -> list[str]:
 ```
 
 (import `SECOND_STAGE_FIELDS as SECOND_STAGE_FIELDS`;FIELD_DICTIONARY 保持 universe 派生 72)
-- [ ] **Step 2.3 验绿**: registry+extract 套件绿。
+- [x] **Step 2.3 验绿**: registry+extract 套件绿。
 
 ### Task 3: 指纹字典补 6 类(裁决④)
 
@@ -51,8 +51,8 @@ def collect_field_paths() -> list[str]:
 - Modify: `backend/app/extensions/bid_review/engine/dicts/fingerprints.yaml`
 - Modify: `backend/tests/test_bid_review_fingerprints.py`
 
-- [ ] **Step 3.1 测试先行**(红): `load()` 键数 ≥14;6 新键各自非空词组;词组无单字泛词(每词 ≥2 字)。
-- [ ] **Step 3.2 yaml 追加**(运维即改零代码,内容自证词避泛词):
+- [x] **Step 3.1 测试先行**(红): `load()` 键数 ≥14;6 新键各自非空词组;词组无单字泛词(每词 ≥2 字)。
+- [x] **Step 3.2 yaml 追加**(运维即改零代码,内容自证词避泛词):
 
 ```yaml
 保证金回单:
@@ -86,7 +86,7 @@ def collect_field_paths() -> list[str]:
   - 制造商名称
 ```
 
-- [ ] **Step 3.3 验绿**。
+- [x] **Step 3.3 验绿**。
 
 ### Task 4: ATTACHMENT_ENTITY 契约 + 归一闸
 
@@ -94,8 +94,8 @@ def collect_field_paths() -> list[str]:
 - Modify: `backend/app/extensions/bid_review/engine/extract.py`
 - Create: `backend/tests/test_bid_review_attachments_extract.py`
 
-- [ ] **Step 4.1 测试先行**(红): `normalize_attachment_entities(raw, doc_ids, fp_types)`——①合法行(name 非空 str+pages 非空 int 列表)过,norm_name 服务端算,anchor.text 有则 text_hash 服务端算(sha1 折叠文本);②缺 name/缺 pages/空 name 行丢弃(零编造);③type_fingerprint ∉ fp_types → None(unknown 不猜);④fingerprint_conf 非 0~1 float → None;⑤is_empty_text 非 bool → None;⑥anchor 非 dict 或 doc_id ∉ doc_ids → anchor=None;⑦非 list/空 → []。
-- [ ] **Step 4.2 实现**(extract.py):
+- [x] **Step 4.1 测试先行**(红): `normalize_attachment_entities(raw, doc_ids, fp_types)`——①合法行(name 非空 str+pages 非空 int 列表)过,norm_name 服务端算,anchor.text 有则 text_hash 服务端算(sha1 折叠文本);②缺 name/缺 pages/空 name 行丢弃(零编造);③type_fingerprint ∉ fp_types → None(unknown 不猜);④fingerprint_conf 非 0~1 float → None;⑤is_empty_text 非 bool → None;⑥anchor 非 dict 或 doc_id ∉ doc_ids → anchor=None;⑦非 list/空 → []。
+- [x] **Step 4.2 实现**(extract.py):
 
 ```python
 # 附件实体契约(B立项 M1,spec §4,裁决③:ocr_conf/logical_page 现解析层无此数据不发;
@@ -146,15 +146,15 @@ def normalize_attachment_entities(raw: Any, doc_ids: set[str], fp_types: set[str
 ```
 
 (import normalize_name 自 attachments——attachments.py 不 import extract,无环)
-- [ ] **Step 4.3 验绿**。
+- [x] **Step 4.3 验绿**。
 
 ### Task 5: 实体段 prompt + baseline 组装
 
 **Files:**
 - Modify: `backend/app/extensions/bid_review/engine/extract.py`
 
-- [ ] **Step 5.1 测试先行**(红): `build_attachments_prompt(docs, requirements, index_rows, fp_hints)`——含清单行 JSON/指纹词表/[[p.N]] 锚点说明/铁律四条(禁编造/缺给空数组);输出契约即 FIELD_TYPE_CONTRACTS["bid.attachments"]。`build_attachments_baseline(docs, extract_fn, requirements, index_rows)`——fake extract_fn 返回 {"attachments":[...]} → normalize_attachment_entities 产物;返回 None=提取未配置/失败;doc_ids/fp_types 组装正确。
-- [ ] **Step 5.2 实现**:
+- [x] **Step 5.1 测试先行**(红): `build_attachments_prompt(docs, requirements, index_rows, fp_hints)`——含清单行 JSON/指纹词表/[[p.N]] 锚点说明/铁律四条(禁编造/缺给空数组);输出契约即 FIELD_TYPE_CONTRACTS["bid.attachments"]。`build_attachments_baseline(docs, extract_fn, requirements, index_rows)`——fake extract_fn 返回 {"attachments":[...]} → normalize_attachment_entities 产物;返回 None=提取未配置/失败;doc_ids/fp_types 组装正确。
+- [x] **Step 5.2 实现**:
 
 ```python
 def build_attachments_prompt(docs: list[dict], requirements: Any, index_rows: Any, fp_hints: dict) -> str:
@@ -188,7 +188,7 @@ def build_attachments_baseline(docs: list[dict], extract_fn, requirements: Any, 
 ```
 
 (extract_fn 契约:= (docs, requirements, index_rows, fp_hints) → {"attachments": [...]} 或裸 list;normalize 前 `raw = raw.get("attachments") if isinstance(raw, dict) else raw`)
-- [ ] **Step 5.3 验绿**。
+- [x] **Step 5.3 验绿**。
 
 ### Task 6: worker 第二段编排 + merge
 
@@ -196,8 +196,8 @@ def build_attachments_baseline(docs: list[dict], extract_fn, requirements: Any, 
 - Modify: `backend/app/extensions/bid_review/worker.py`
 - Modify: `backend/tests/test_bid_review_worker.py`
 
-- [ ] **Step 6.1 测试先行**(红): advance_task(…, attachments_fn=fake)——①fake 返回合法实体列表 → 基线 fields 含 bid.attachments、materials_hash 与 merge 后 fields 一致;②fake 抛 RuntimeError → 基线照常落库(无 bid.attachments 键,行为=现状);③fake 返回 [] → fields["bid.attachments"]==[];④缺省 attachments_fn=None → 生产 `_default_attachments_fn` 接线,现有测试不传该参全绿(签名默认参数,调用面零改)。
-- [ ] **Step 6.2 实现**(worker.py):
+- [x] **Step 6.1 测试先行**(红): advance_task(…, attachments_fn=fake)——①fake 返回合法实体列表 → 基线 fields 含 bid.attachments、materials_hash 与 merge 后 fields 一致;②fake 抛 RuntimeError → 基线照常落库(无 bid.attachments 键,行为=现状);③fake 返回 [] → fields["bid.attachments"]==[];④缺省 attachments_fn=None → 生产 `_default_attachments_fn` 接线,现有测试不传该参全绿(签名默认参数,调用面零改)。
+- [x] **Step 6.2 实现**(worker.py):
 
 ```python
 def _default_attachments_fn():
@@ -245,7 +245,7 @@ advance_task 签名增 `attachments_fn=None`;:437 build_baseline 后、_write_ba
 ```
 
 (import build_attachments_baseline/materials_hash 自 engine.extract)
-- [ ] **Step 6.3 验绿**: worker 套件绿。
+- [x] **Step 6.3 验绿**: worker 套件绿。
 
 ### Task 7: L2-021 实体级指纹通道
 
@@ -253,8 +253,8 @@ advance_task 签名增 `attachments_fn=None`;:437 build_baseline 后、_write_ba
 - Modify: `backend/app/extensions/bid_review/engine/llm_runner.py`
 - Modify: `backend/tests/test_bid_review_fingerprints.py`
 
-- [ ] **Step 7.1 测试先行**(红): `_entity_fingerprint_summary(fields)`——fields["bid.attachments"] 实体行 → [{"name","type_fingerprint","is_empty_text"}](缺键/None fields → []);run_sem_rule fingerprints=="external" merge 时 fields 有实体 → check._entities 注入(经 fake model_fn 捕获 messages[0] 断言卡文本含实体名,沿用 test_bid_review_llm_verify fake 模式)。
-- [ ] **Step 7.2 实现**(llm_runner.py :230 merge 处):
+- [x] **Step 7.1 测试先行**(红): `_entity_fingerprint_summary(fields)`——fields["bid.attachments"] 实体行 → [{"name","type_fingerprint","is_empty_text"}](缺键/None fields → []);run_sem_rule fingerprints=="external" merge 时 fields 有实体 → check._entities 注入(经 fake model_fn 捕获 messages[0] 断言卡文本含实体名,沿用 test_bid_review_llm_verify fake 模式)。
+- [x] **Step 7.2 实现**(llm_runner.py :230 merge 处):
 
 ```python
     if chk0.get("fingerprints") == "external":
@@ -277,18 +277,18 @@ def _entity_fingerprint_summary(fields: dict) -> list[dict]:
     ]
 ```
 
-- [ ] **Step 7.3 验绿**。
+- [x] **Step 7.3 验绿**。
 
 ### Task 8: 负证据 100% 门禁(不变量测试)
 
 **Files:**
 - Modify: `backend/tests/test_bid_review_checklist.py`
 
-- [ ] **Step 8.1**: 不变量测试——合成场景遍历(平件 MISSING±近似候选/复合子行 MISSING/群组失败 UNKNOWN 豁免):`build_checklist` 输出 items+sub_results 中 **status=="MISSING" ⇒ negative_evidence is not None**(spec §三「L5 是 MISSING 前置条件」;grouping 失败行 negative_evidence=None 合法,:167 既有语义)。翻红=匹配器负证据缺口,修匹配器不改断言。
+- [x] **Step 8.1**: 不变量测试——合成场景遍历(平件 MISSING±近似候选/复合子行 MISSING/群组失败 UNKNOWN 豁免):`build_checklist` 输出 items+sub_results 中 **status=="MISSING" ⇒ negative_evidence is not None**(spec §三「L5 是 MISSING 前置条件」;grouping 失败行 negative_evidence=None 合法,:167 既有语义)。翻红=匹配器负证据缺口,修匹配器不改断言。
 
 ### Task 9: 全量验证 + 收尾
 
-- [ ] 全家 `pytest tests/ -k bid_review`(440+新增)全绿;golden 55/55 零翻红;M0 快照 26/26;ruff 触碰文件;commit;push 重试至 `0\t0`;wolf(buglog 若 bug/memory/cerebrum)+anatomy+auto-memory。
+- [x] 全家 `pytest tests/ -k bid_review`(440+新增)全绿;golden 55/55 零翻红;M0 快照 26/26;ruff 触碰文件;commit;push 重试至 `0\t0`;wolf(buglog 若 bug/memory/cerebrum)+anatomy+auto-memory。
 - [ ] **活体回采(独立步骤,烧配额一次)**:gateway 重启 → `python -m app.extensions.bid_review.golden.extract --live` 单跑报分 vs 活体基线 0.7308 只升不降;实体段表现(attachments 实体数/指纹命中率)记档 spec §6。此步可中断后续跑,不阻塞 commit。
 
 ---
