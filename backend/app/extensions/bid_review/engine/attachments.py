@@ -174,7 +174,15 @@ def _match_composite(req: dict, prov: list[dict], taken: set[int]) -> dict:
                 s["status"] = "UNKNOWN"
                 s["unknown_reason"] = "near_miss"
             s["negative_evidence"] = _evidence(channels, untaken, cands)
-    return {"sub_results": sub_results, "orphan": orphan}
+    # M1 负证据 100% 门禁(spec 2026-11-04 §三,2026-11-05):复合父行真 MISSING(非 orphan
+    # 分组失败)同平件口径记负证据(名称通道,证据池=归组后未占用者);grouping UNKNOWN
+    # 不混用(分组失败是另一种证据形态,既有语义)。
+    worst = min((s["status"] for s in sub_results), key=lambda st: _SUB_STATUS_ORDER[st], default="MATCHED")
+    parent_neg = None
+    if not orphan and worst == "MISSING":
+        cands = _sim_cands(parent_nm, untaken)
+        parent_neg = _evidence(["name"] if parent_nm else [], untaken, cands)
+    return {"sub_results": sub_results, "orphan": orphan, "parent_negative_evidence": parent_neg}
 
 
 def match_attachments(requirements: Any, provided: Any) -> dict:
@@ -235,7 +243,7 @@ def match_attachments(requirements: Any, provided: Any) -> dict:
                 # L2 P3.2 (spec 2026-11-03 §1.2,EAI-CUSTOM):父行戳记=子行 near_miss 传播,
                 # 供投影/att_check 分流消费;orphan 优先 grouping 不被覆盖(孤儿是父级事实)。
                 sub_nm = any(s.get("unknown_reason") == "near_miss" for s in comp["sub_results"])
-                per_req.append({"req": r, "matched": [], "found": found, "status": worst, "unknown_reason": "near_miss" if sub_nm else None, "negative_evidence": None, "sub_results": comp["sub_results"]})
+                per_req.append({"req": r, "matched": [], "found": found, "status": worst, "unknown_reason": "near_miss" if sub_nm else None, "negative_evidence": comp.get("parent_negative_evidence"), "sub_results": comp["sub_results"]})
             continue
         hits = [prov[i] for i in matched[ri]]
         found = len(hits)

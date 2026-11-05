@@ -200,6 +200,16 @@ def _degrade_candidate_to_need_human(rule, det_issue) -> dict[str, Any]:
     }
 
 
+def _entity_fingerprint_summary(fields: dict | None) -> list[dict]:
+    """附件实体指纹摘要(B立项 M1,spec 2026-11-04 §4 消费面,2026-11-05):实体行投影
+    {name,type_fingerprint,is_empty_text} 进规则卡 check._entities;缺席/空 → []
+    (卡不带该节=行为现状)。"""
+    rows = (fields or {}).get("bid.attachments")
+    if not isinstance(rows, list):
+        return []
+    return [{"name": r.get("name"), "type_fingerprint": r.get("type_fingerprint"), "is_empty_text": r.get("is_empty_text")} for r in rows if isinstance(r, dict) and r.get("name")]
+
+
 async def _call_model(model_fn: Callable, messages):
     """调用注入的 model_fn;同步/异步 callable 均支持,统一取 .content。"""
     response = model_fn(messages)
@@ -223,11 +233,18 @@ async def run_sem_rule(rule, fields, materials, model_fn, docs_text, model_name=
     # L2-021 指纹字典外置合并(spec 2026-11-04 §2.3,EAI-CUSTOM):marker 显式
     # (check.fingerprints=="external"),入口归一后单点合并——prefilter 与卡片共用同一
     # rule dict,build_rule_card dump 整个 check → 字典+verdict_gloss 自然进卡,零 runner 侧改动。
+    # M1 实体级通道(spec 2026-11-04 §4,2026-11-05):fields.bid.attachments 实体行摘要
+    # (_entities)同步进卡——实体 type_fingerprint 直连,join key 通道序不动(裁决⑤);
+    # 缺席/空实体不注键,行为=现状。
     chk0 = rule.get("check") or {}
     if chk0.get("fingerprints") == "external":
         from . import fingerprints
 
-        rule = {**rule, "check": {**chk0, "fingerprints": fingerprints.load()}}
+        merged_chk = {**chk0, "fingerprints": fingerprints.load()}
+        entities = _entity_fingerprint_summary(fields)
+        if entities:
+            merged_chk["_entities"] = entities
+        rule = {**rule, "check": merged_chk}
 
     passthrough: list[dict[str, Any]] = []
     candidates: list[dict[str, Any]] = []

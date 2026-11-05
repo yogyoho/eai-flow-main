@@ -13,12 +13,14 @@ from app.extensions.bid_review.engine.extract import (
 )
 from app.extensions.bid_review.engine.rule_runner import RulePackError, load_rulepack
 
-# 改造前 collect_field_paths() 输出(2026-11-05 R1 取证,71 路径)——零行为锚点,逐位锁定。
+# 宇宙(2026-11-05 R1 取证 71 路径 + M1 实体段 bid.attachments = 72)——逐位锁定。
+# 首段 prompt 路径 = EXPECTED_UNIVERSE − SECOND_STAGE_FIELDS = 71,与 R1 改造前逐位相等(M0 零翻红锚点)。
 EXPECTED_UNIVERSE = [
     "bid.alternative_price_offers",
     "bid.amount_occurrences",
     "bid.appendix_references",
     "bid.attachment_index",
+    "bid.attachments",
     "bid.authorization_letter_present",
     "bid.authorization_signatory",
     "bid.bid_letter_date",
@@ -114,11 +116,21 @@ def _synthetic_rule(rid: str, layer: str, severity: str) -> dict:
 
 
 class TestUniverse:
-    def test_anchored_71(self):
+    def test_anchored_72(self):
+        assert len(EXPECTED_UNIVERSE) == 72
         assert registry.universe() == EXPECTED_UNIVERSE
 
-    def test_equals_collect_field_paths(self):
-        assert registry.universe() == collect_field_paths()
+    def test_second_stage_fields(self):
+        # M1(spec §4):第二段字段域——进 universe(契约一致性域)但剔除出首段 prompt
+        assert set(registry.SECOND_STAGE_FIELDS) == {"bid.attachments"}
+
+    def test_collect_field_paths_excludes_second_stage(self):
+        # 首段 prompt 71 路径逐位=R1 改造前(M0 快照零翻红锚点)
+        assert collect_field_paths() == [p for p in EXPECTED_UNIVERSE if p not in registry.SECOND_STAGE_FIELDS]
+        assert "bid.attachments" not in collect_field_paths()
+
+    def test_first_stage_equals_universe_minus_second_stage(self):
+        assert set(collect_field_paths()) == set(registry.universe()) - set(registry.SECOND_STAGE_FIELDS)
 
 
 class TestConsumedBy:

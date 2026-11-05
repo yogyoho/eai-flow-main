@@ -56,9 +56,17 @@ def anchor_paths() -> set[str]:
     return {p for a in ANCHOR_REGISTRY.values() for p in a.get("paths", [])}
 
 
+# 第二段抽取字段域(B立项 M1,spec §4,2026-11-05):进 universe(契约一致性域/lint 域)
+# 但 collect_field_paths 剔除——首段 prompt 不含;R2+ 起新第二段路径(M2 section_tree/M3
+# table_cells)加此处即可,universe 与首段拆分自动跟随。
+SECOND_STAGE_FIELDS: dict[str, str] = {
+    "bid.attachments": "附件实体层(M1):[{no,name,pages:[起,止],type_fingerprint,fingerprint_conf,is_empty_text,anchor{doc_id,page,pages,text,text_hash}}] 对象列表;逐实体一项,缺 name/pages 的行无效(零编造)",
+}
+
+
 def universe() -> list[str]:
-    """抽取请求字段宇宙(=改造前 collect_field_paths() 输出,逐位相等是零行为门)。"""
-    return sorted(pack_inputs() | anchor_paths() | set(PROJECTION_FIELDS))
+    """抽取请求字段宇宙 = 包 inputs ∪ 锚点路径 ∪ 投影字段 ∪ 第二段域。"""
+    return sorted(pack_inputs() | anchor_paths() | set(PROJECTION_FIELDS) | set(SECOND_STAGE_FIELDS))
 
 
 def consumed_by(path: str) -> dict[str, list[str]]:

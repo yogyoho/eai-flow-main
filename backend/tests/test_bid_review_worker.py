@@ -522,3 +522,100 @@ def test_collect_docs_text_leading_text_joins_first_marked_page():
     text = "散头表格文本\n[[p.2]]\n第二页"
     docs = [{"doc_id": "t.docx", "role": "tender", "text": text}]
     assert _collect_docs_text(docs) == {"t.docx": {2: "散头表格文本\n\n第二页"}}
+
+
+# ── B立项 M1 附件实体第二段(spec 2026-11-04 §4,2026-11-05)──────────────────────
+
+_M1_INDEX_ROW = {"no": "1", "name": "营业执照副本", "page": 3, "pages": 2}
+
+
+def _m1_extract(index_rows=None):
+    """M1 测试提取器:全路径 None + 可选附件清单行(有清单行才触发实体段)。"""
+
+    def _extract(d, p):
+        return {**{k: None for k in p}, "bid.attachment_index": index_rows} if index_rows else {k: None for k in p}
+
+    return _extract
+
+
+async def _first_payload(db, task_id):
+    rows = await crud.list_baselines(db, task_id=task_id, owner_id="u1")
+    return rows[0].payload
+
+
+@pytest.mark.asyncio
+async def test_m1_entities_merged_and_hash_recomputed(db, tmp_rulepack):
+    """实体段成功:fields 增 bid.attachments 键、materials_hash 与 merge 后 fields 一致。"""
+    from app.extensions.bid_review.engine.extract import materials_hash
+
+    t = await crud.create_task(db, owner_id="u1")
+    docs = [{"doc_id": "b.pdf", "role": "bid", "text": "x"}]
+    fake_ent = {"name": "营业执照副本", "pages": [3, 4]}
+
+    def _att_fn(docs, requirements, index_rows, fp_hints):
+        assert isinstance(fp_hints, dict) and fp_hints
+        assert index_rows == [_M1_INDEX_ROW]
+        return {"attachments": [fake_ent]}
+
+    await advance_task(db, t.id, owner_id="u1", docs=docs, extract_fn=_m1_extract([_M1_INDEX_ROW]), wait_confirm=True, attachments_fn=_att_fn)
+    payload = await _first_payload(db, t.id)
+    ents = payload["fields"]["bid.attachments"]
+    assert ents and ents[0]["name"] == "营业执照副本" and ents[0]["norm_name"]
+    assert payload["materials_hash"] == materials_hash(payload["fields"])
+
+
+@pytest.mark.asyncio
+async def test_m1_entity_stage_failure_isolated_absent_key(db, tmp_rulepack):
+    """实体段抛错=缺席不落键(行为=现状),基线照常交付。"""
+    t = await crud.create_task(db, owner_id="u1")
+
+    def _boom(*a):
+        raise RuntimeError("entity stage boom")
+
+    docs = [{"doc_id": "b.pdf", "role": "bid", "text": "x"}]
+    await advance_task(db, t.id, owner_id="u1", docs=docs, extract_fn=_m1_extract([_M1_INDEX_ROW]), wait_confirm=True, attachments_fn=_boom)
+    payload = await _first_payload(db, t.id)
+    assert "bid.attachments" not in payload["fields"]
+
+
+@pytest.mark.asyncio
+async def test_m1_zero_entities_lands_empty_list(db, tmp_rulepack):
+    """实体段成功零实体:落 [] 键(ran+zero ≠ 缺席,口径区分)。"""
+    t = await crud.create_task(db, owner_id="u1")
+    docs = [{"doc_id": "b.pdf", "role": "bid", "text": "x"}]
+    await advance_task(db, t.id, owner_id="u1", docs=docs, extract_fn=_m1_extract([_M1_INDEX_ROW]), wait_confirm=True, attachments_fn=lambda *a: {"attachments": []})
+    payload = await _first_payload(db, t.id)
+    assert payload["fields"]["bid.attachments"] == []
+
+
+@pytest.mark.asyncio
+async def test_m1_no_checklist_rows_skips_stage_without_model(db, tmp_rulepack):
+    """清单行缺(null)→ 实体段整体跳过,生产 _default_attachments_fn 不触(无模型依赖)。"""
+    t = await crud.create_task(db, owner_id="u1")
+    docs = [{"doc_id": "b.pdf", "role": "bid", "text": "x"}]
+    await advance_task(db, t.id, owner_id="u1", docs=docs, extract_fn=_m1_extract(None), wait_confirm=True, attachments_fn=None)
+    payload = await _first_payload(db, t.id)
+    assert "bid.attachments" not in payload["fields"]
+
+
+@pytest.mark.asyncio
+async def test_m1_default_attachments_fn_seam(monkeypatch, db, tmp_rulepack):
+    """缺省接线走 worker._default_attachments_fn(monkeypatch seam,生产=create_chat_model)。"""
+    from app.extensions.bid_review import worker
+
+    calls = []
+
+    def _fake_default():
+        def _fn(docs, requirements, index_rows, fp_hints):
+            calls.append(index_rows)
+            return {"attachments": [{"name": "授权委托书", "pages": [5, 5]}]}
+
+        return _fn
+
+    monkeypatch.setattr(worker, "_default_attachments_fn", _fake_default)
+    t = await crud.create_task(db, owner_id="u1")
+    docs = [{"doc_id": "b.pdf", "role": "bid", "text": "x"}]
+    await advance_task(db, t.id, owner_id="u1", docs=docs, extract_fn=_m1_extract([_M1_INDEX_ROW]), wait_confirm=True)
+    assert calls == [[_M1_INDEX_ROW]]
+    payload = await _first_payload(db, t.id)
+    assert payload["fields"]["bid.attachments"][0]["name"] == "授权委托书"

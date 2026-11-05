@@ -36,7 +36,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.extensions.bid_review import crud
 from app.extensions.bid_review.engine.eval_core import _content_to_str, evaluate_fields, wrap_model_fn
-from app.extensions.bid_review.engine.extract import ExtractFn, ExtractNotConfigured, apply_adjudications, build_baseline
+from app.extensions.bid_review.engine.extract import ExtractFn, ExtractNotConfigured, apply_adjudications, build_attachments_baseline, build_baseline, materials_hash
 from app.extensions.bid_review.engine.rule_runner import load_rulepack
 from app.extensions.bid_review.models import BaselinePackage, ReviewTask
 from app.extensions.database import get_session_factory
@@ -285,6 +285,37 @@ def _default_extract_fn() -> ExtractFn:
     return _fn
 
 
+def _default_attachments_fn():
+    """实体段生产接线(B立项 M1,spec §4):同款模型+单 prompt+两试解析;契约
+    (docs, requirements, index_rows, fp_hints) → dict。无可用模型返回 None → 实体段
+    缺席(诚实降级,首段照跑);本函数同步(经 asyncio.to_thread 卸载,禁事件循环直跑)。
+    测试 seam:monkeypatch 本模块函数注入 fake(worker 测试同 _stub_extract 惯例)。"""
+    name = _resolve_model_name()
+    if not name:
+        return None
+    from app.extensions.bid_review.engine.extract import build_attachments_prompt
+    from deerflow.models.factory import create_chat_model
+
+    model = create_chat_model(name)
+    logger.info("bid_review attachments entity stage using model %s", name)
+
+    def _fn(docs, requirements, index_rows, fp_hints) -> dict:
+        prompt = build_attachments_prompt(docs, requirements, index_rows, fp_hints)
+        messages = [{"role": "user", "content": prompt}]
+        last_err: Exception | None = None
+        for attempt in (1, 2):
+            response = model.invoke(messages)
+            raw = _content_to_str(getattr(response, "content", ""))
+            try:
+                return _parse_json_object(raw)
+            except ValueError as exc:
+                last_err = exc
+                logger.warning("bid_review attachments parse retry attempt=%d err=%s", attempt, exc)
+        raise RuntimeError(f"附件实体提取两试未获有效 JSON({last_err})") from last_err
+
+    return _fn
+
+
 # ── 状态机推进 ────────────────────────────────────────────────────────
 
 
@@ -389,6 +420,7 @@ async def advance_task(
     *,
     entry: str = "created",
     model_fn=None,
+    attachments_fn=None,
 ) -> ReviewTask:
     """状态机单步推进:parsing→extracting→基线落库→wait_confirm ? awaiting_confirm :
     running→review(det+sem/hyb)→done。
@@ -436,6 +468,27 @@ async def advance_task(
     # ——to_thread 卸载防堵环;fake 同步 fn 在线程内语义不变(测试不受影响)。
     payload = await asyncio.to_thread(build_baseline, docs, extract_fn)
     fields = payload["fields"]
+    # B立项 M1 附件实体第二段(spec 2026-11-04 §4,2026-11-05):锚定清单行——清单行缺
+    # (null/空)→ 整段跳过(无锚可定位,诚实缺席);失败/无模型=缺席不落键(行为=现状);
+    # 成功(含 0 实体)落 [] 并重算 materials_hash(det 零漂移门口径不变,meta/基线行
+    # 自动携带 merge 后快照)。
+    if bool(fields.get("tender.attachment_requirements")) or bool(fields.get("bid.attachment_index")):
+        if attachments_fn is None:
+            attachments_fn = _default_attachments_fn()
+        if attachments_fn is not None:
+            try:
+                entities = await asyncio.to_thread(
+                    build_attachments_baseline,
+                    docs,
+                    attachments_fn,
+                    fields.get("tender.attachment_requirements"),
+                    fields.get("bid.attachment_index"),
+                )
+                if isinstance(entities, list):
+                    fields = {**fields, "bid.attachments": entities}
+                    payload = {**payload, "fields": fields, "materials_hash": materials_hash(fields)}
+            except Exception as exc:  # noqa: BLE001  实体段失败隔离:基线照常交付
+                logger.warning("bid_review attachments entity stage skipped err=%s", exc)
     meta = dict(task.engine_meta or {})
     meta["materials_hash"] = payload["materials_hash"]
     task.engine_meta = meta  # 重新赋值以标记 JSON 列 dirty

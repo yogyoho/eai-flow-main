@@ -573,3 +573,54 @@ def test_composite_mixed_cause_parent_near_miss_stamp():
     assert [s["status"] for s in e["sub_results"]] == ["MATCHED", "UNKNOWN", "MISSING"]
     assert e["sub_results"][1]["unknown_reason"] == "near_miss"
     assert e["sub_results"][2]["negative_evidence"]["pool"] == 1
+
+
+# ── 负证据 100% 门禁(B立项 M1,spec 2026-11-04 §三,2026-11-05)──────────
+
+
+def _walk_missing(entries):
+    out = []
+    for e in entries or []:
+        if isinstance(e, dict) and e.get("status") == "MISSING":
+            out.append(e)
+        for s in (e.get("sub_results") if isinstance(e, dict) else None) or []:
+            if isinstance(s, dict) and s.get("status") == "MISSING":
+                out.append(s)
+    return out
+
+
+def test_negative_evidence_invariant_all_missing_rows():
+    """不变量门禁(M1):每个 MISSING 行(平件+复合子行,匹配输出与投影两侧)必带
+    negative_evidence——「L5 负证据是 MISSING 的前置条件」;UNKNOWN(群组失败/近似)豁免。
+    翻红=匹配器负证据缺口,修匹配器不改断言。"""
+    scenarios = [
+        # ① 平件零候选:两行全 MISSING
+        ([_req(no="A-1", name="营业执照"), _req(no="A-2", name="审计报告")], []),
+        # ② 平件含近似候选(近似行可能 UNKNOWN;B-2 必 MISSING)
+        ([_req(no="B-1", name="业绩合同"), _req(no="B-2", name="社保缴纳证明")], [_prov(no="", name="类似工程业绩合同复印件", page=88)]),
+        # ③ 复合一子件缺:父 MISSING + 子行 MISSING
+        (
+            [{"no": "3", "name": "资格审查文件", "sub_items": [{"no": "3.1", "name": "营业执照"}, {"no": "3.2", "name": "资质证书"}]}],
+            [_prov(no="3-1", name="营业执照", page=5)],
+        ),
+        # ④ 复合整缺:父 MISSING + 两子行 MISSING
+        (
+            [{"no": "4", "name": "财务状况", "sub_items": [{"no": "4.1", "name": "审计报告"}, {"no": "4.2", "name": "纳税证明"}]}],
+            [],
+        ),
+        # ⑤ min_count 不足:PARTIAL(豁免,无 MISSING 下界)
+        ([_req(no="C-1", name="业绩合同", min_count=3)], [_prov(no="C-1", name="业绩合同", page=10)]),
+    ]
+    min_missing = [2, 1, 1, 2, 0]
+    total = 0
+    for i, (reqs, prov) in enumerate(scenarios):
+        matched = match_attachments(reqs, prov)
+        rows = _walk_missing(matched["per_req"])
+        assert len(rows) >= min_missing[i], f"场景{i} MISSING 行数 {len(rows)} < 下界 {min_missing[i]}"
+        total += len(rows)
+        for row in rows:
+            assert row.get("negative_evidence") is not None, f"场景{i} MISSING 行缺负证据: {row.get('name')}"
+        checklist = build_checklist(reqs, prov, bid_doc_id="bid.pdf")
+        for row in _walk_missing(checklist.get("items")):
+            assert row.get("negative_evidence") is not None, f"场景{i} 投影 MISSING 行缺负证据: {row.get('name')}"
+    assert total >= 6
