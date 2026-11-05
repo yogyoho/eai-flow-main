@@ -1,7 +1,7 @@
-"""bid_review MCP server(Task 11)——七工具供对话 agent 调用,**无确认门**。
+"""bid_review MCP server(Task 11)——十一工具供对话 agent 调用,**无确认门**。
 
 照 contract_price/mcp.py 模式:裸 mcp.server.Server + _run_in_db 短连接引擎,只读为主
-(feedback 为唯一写通道,且不触基线确认)。七工具:
+(feedback 为唯一写通道,且不触基线确认)。十一工具:
   bid_review_start(mode, tender_doc_note, bid_doc_note)  建任务,返回任务 id+工作台链接
   bid_review_status(task_id)                             状态+progress
   bid_review_issues(task_id, severity?, layer?)          问题列表(可过滤)
@@ -9,6 +9,11 @@
   bid_review_feedback(issue_id, action, new_severity?, note?)  复核反馈(误报回流同工作台语义)
   bid_review_baseline_get(task_id)                       基线只读(不提供 confirm)
   bid_review_rulepacks()                                 规则包清单
+  bid_review_diff(task_id, prev)                         两版问题/字段/规则差异(B10)
+  bid_review_deviations(task_id)                         响应偏离表(counts+items)
+  bid_review_score_coverage(task_id)                     评分覆盖度交集投影
+  bid_review_report(task_id)                             done 任务报告 markdown 全文
+(后四只读,handler 直调 routers 端点函数零逻辑复制——对齐审计⑧ 2026-11-05)
 
 鉴权边界(translation/mcp.py R7 同款):stdio 子进程无用户身份 → 七工具一律按服务级
 owner(MCP_OWNER)隔离——工作台 UI 建的任务对 MCP 不可见,反之亦然;基线人工确认门
@@ -124,6 +129,33 @@ TOOLS: dict[str, Tool] = {
         name="bid_review_rulepacks",
         description="列出规则包(名称/版本/规则清单/误报-认可统计),供 agent 向用户解释审查口径。",
         inputSchema={"type": "object", "properties": {}},
+    ),
+    "bid_review_diff": Tool(
+        name="bid_review_diff",
+        description="对比两版审查任务(当前 task_id vs 上一版 prev):问题三态 added/removed/unchanged_count + 字段差异 fields + 规则裁决 rules。",
+        inputSchema={
+            "type": "object",
+            "properties": {
+                "task_id": {"type": "string", "description": "当前版任务 id"},
+                "prev": {"type": "string", "description": "上一版任务 id"},
+            },
+            "required": ["task_id", "prev"],
+        },
+    ),
+    "bid_review_deviations": Tool(
+        name="bid_review_deviations",
+        description="拉取某任务的响应偏离表:缺失/增项/负偏离计数(counts)与逐项招标值↔投标值对照(items)。旧任务无偏离维度 → 计数全 0 + 空列表。",
+        inputSchema={"type": "object", "properties": {"task_id": {"type": "string"}}, "required": ["task_id"]},
+    ),
+    "bid_review_score_coverage": Tool(
+        name="bid_review_score_coverage",
+        description="评分覆盖度:基线评分办法项 × 规则包 inputs 交集逐项投影(total/covered/items);covered_max_score 为 covered 项分值合计(不可数值化 → null)。",
+        inputSchema={"type": "object", "properties": {"task_id": {"type": "string"}}, "required": ["task_id"]},
+    ),
+    "bid_review_report": Tool(
+        name="bid_review_report",
+        description="导出某已完成(done)任务的审查报告 markdown 全文(免责声明+可提交判定+分节问题+复核耗时+响应偏离表);未完成任务 409 拒绝,半程数据不构成审查结论。",
+        inputSchema={"type": "object", "properties": {"task_id": {"type": "string"}}, "required": ["task_id"]},
     ),
 }
 
@@ -352,6 +384,74 @@ async def _handle_rulepacks(arguments: dict) -> list[TextContent]:
     )
 
 
+async def _run_router(fn) -> tuple[str | None, object]:
+    """四输出工具直调 routers 端点函数的公共壳(零逻辑复制,对齐审计⑧ 2026-11-05):
+    HTTPException(404 不存在 / 409 状态门 / 422 白名单)→ (f"{code}: {detail}", None),
+    agent 面映射 success:false 而非裸异常;其余 → (None, 结果)。"""
+    from fastapi import HTTPException
+
+    try:
+        return None, await _run_in_db(fn)
+    except HTTPException as e:
+        return f"{e.status_code}: {e.detail}", None
+
+
+async def _handle_diff(arguments: dict) -> list[TextContent]:
+    from app.extensions.bid_review.routers import diff_task
+
+    task_id, prev = str(arguments.get("task_id") or ""), str(arguments.get("prev") or "")
+
+    async def _q(session):
+        return await diff_task(task_id=task_id, prev=prev, db=session, owner_id=MCP_OWNER)
+
+    err, out = await _run_router(_q)
+    if err:
+        return _ok({"success": False, "message": err})
+    return _ok({"success": True, "task_id": task_id, "prev": prev, "diff": out, "workbench_url": WORKBENCH_URL})
+
+
+async def _handle_deviations(arguments: dict) -> list[TextContent]:
+    from app.extensions.bid_review.routers import task_deviations
+
+    task_id = str(arguments.get("task_id") or "")
+
+    async def _q(session):
+        return await task_deviations(task_id=task_id, db=session, owner_id=MCP_OWNER)
+
+    err, out = await _run_router(_q)
+    if err:
+        return _ok({"success": False, "message": err})
+    return _ok({"success": True, "task_id": task_id, "counts": out["counts"], "items": out["items"], "workbench_url": WORKBENCH_URL})
+
+
+async def _handle_score_coverage(arguments: dict) -> list[TextContent]:
+    from app.extensions.bid_review.routers import task_score_coverage
+
+    task_id = str(arguments.get("task_id") or "")
+
+    async def _q(session):
+        return await task_score_coverage(task_id=task_id, db=session, owner_id=MCP_OWNER)
+
+    err, out = await _run_router(_q)
+    if err:
+        return _ok({"success": False, "message": err})
+    return _ok({"success": True, "task_id": task_id, **out, "workbench_url": WORKBENCH_URL})
+
+
+async def _handle_report(arguments: dict) -> list[TextContent]:
+    from app.extensions.bid_review.routers import export_task_report
+
+    task_id = str(arguments.get("task_id") or "")
+
+    async def _q(session):
+        return await export_task_report(task_id=task_id, format="md", db=session, owner_id=MCP_OWNER)
+
+    err, resp = await _run_router(_q)
+    if err:
+        return _ok({"success": False, "message": err})
+    return _ok({"success": True, "task_id": task_id, "report_md": resp.body.decode("utf-8"), "workbench_url": WORKBENCH_URL})
+
+
 _HANDLERS = {
     "bid_review_start": _handle_start,
     "bid_review_status": _handle_status,
@@ -360,6 +460,10 @@ _HANDLERS = {
     "bid_review_feedback": _handle_feedback,
     "bid_review_baseline_get": _handle_baseline_get,
     "bid_review_rulepacks": _handle_rulepacks,
+    "bid_review_diff": _handle_diff,
+    "bid_review_deviations": _handle_deviations,
+    "bid_review_score_coverage": _handle_score_coverage,
+    "bid_review_report": _handle_report,
 }
 
 

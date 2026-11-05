@@ -1,4 +1,4 @@
-"""Task 11 测试:bid_review MCP 七工具——直接调 handle_call(不过 stdio);_run_in_db
+"""Task 11 测试:bid_review MCP 十一工具——直接调 handle_call(不过 stdio);_run_in_db
 打桩注入测试 session(plan 夹具方式);断言绝无 confirm 工具(基线确认门仅工作台 UI)。
 
 偏离 plan 字面:MCP stdio 子进程无用户身份(translation/mcp.py R7 同款边界),七工具一律
@@ -58,7 +58,7 @@ async def test_tools_readonly_and_no_confirm(db, patched_run_in_db):
     t = await crud.create_task(db, owner_id=mcp.MCP_OWNER)
     out = _out(await mcp.handle_call("bid_review_status", {"task_id": t.id}))
     assert out["status"] == "created"
-    assert len(mcp.TOOLS) == 7
+    assert len(mcp.TOOLS) == 11
     assert not any("confirm" in n for n in mcp.TOOLS), "MCP 绝不暴露确认门"
 
 
@@ -111,3 +111,48 @@ async def test_baseline_get_readonly_and_rulepacks(db, patched_run_in_db):
 async def test_unknown_tool(db, patched_run_in_db):
     out = await mcp.handle_call("nonexistent", {})
     assert "Unknown tool" in out[0].text
+
+
+@pytest.mark.asyncio
+async def test_four_output_tools_diff_deviations_coverage_report(db, patched_run_in_db):
+    """对齐审计⑧(2026-11-05):diff/deviations/score_coverage/report 四输出端点补进
+    MCP 面——agent 可直读全部产出,不再只触工作台。handler 直调 router 端点函数
+    (零逻辑复制);HTTPException(404/409)映射 success:false;仍只读、无确认门。"""
+    prev = await crud.create_task(db, owner_id=mcp.MCP_OWNER)
+    cur = await crud.create_task(db, owner_id=mcp.MCP_OWNER)
+    for tid, rule, key in ((cur.id, "L1-009", "k1"), (cur.id, "L1-010", "k2"), (prev.id, "L1-009", "k1")):
+        await crud.add_issue(db, task_id=tid, owner_id=mcp.MCP_OWNER, rule_id=rule, layer="L1", severity="fatal", verdict="violation", message="m", dedup_key=key)
+    db.add(
+        models.BaselinePackage(
+            task_id=cur.id,
+            kind="tender",
+            payload={
+                "fields": {
+                    "deviation.items": [{"item": "工期", "kind": "negative", "tender_value": "180天", "bid_value": "150天"}],
+                    "tender.scoring_items": [{"name": "方案", "max_score": 10}],
+                    "materials_hash": "h",
+                }
+            },
+        )
+    )
+    await db.commit()
+
+    diff = _out(await mcp.handle_call("bid_review_diff", {"task_id": cur.id, "prev": prev.id}))
+    assert diff["success"] is True
+    assert diff["diff"]["unchanged_count"] == 1 and [a["rule_id"] for a in diff["diff"]["added"]] == ["L1-010"]
+    assert {"fields", "rules"} <= set(diff["diff"]), "B10 扩展两键原样透出"
+    miss = _out(await mcp.handle_call("bid_review_diff", {"task_id": "nope", "prev": prev.id}))
+    assert miss["success"] is False and "404" in miss["message"]
+
+    dev = _out(await mcp.handle_call("bid_review_deviations", {"task_id": cur.id}))
+    assert dev["success"] is True and dev["counts"]["negative"] == 1 and dev["items"][0]["item"] == "工期"
+
+    cov = _out(await mcp.handle_call("bid_review_score_coverage", {"task_id": cur.id}))
+    assert cov["success"] is True and cov["total"] == 1 and "covered_max_score" in cov
+
+    t = await crud.get_task(db, task_id=cur.id, owner_id=mcp.MCP_OWNER)
+    await crud.set_status(db, t, "done")
+    rep = _out(await mcp.handle_call("bid_review_report", {"task_id": cur.id}))
+    assert rep["success"] is True and "L1-010" in rep["report_md"] and "响应偏离" in rep["report_md"]
+    half = _out(await mcp.handle_call("bid_review_report", {"task_id": prev.id}))
+    assert half["success"] is False and "409" in half["message"], "未完成任务 409 同 HTTP 口径"
