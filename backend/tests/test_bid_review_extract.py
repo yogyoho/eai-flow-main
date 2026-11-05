@@ -196,6 +196,20 @@ def test_scalar_code_list_stays_plain():
     assert f["tender.required_sections"] == ["第三章"]
 
 
+def test_toc_section_codes_governed_as_scalar_list():
+    # M2 裁决④(spec §5,2026-11-05):L3-013 消费面治理缺口——toc_section_codes 原不在
+    # 任何形状集合(passthrough 无闸),入 LIST_PATHS 对齐 required_sections 同款待遇:
+    # 有效串列表 passthrough / scalar 回流拦平 / bool·dict 垃圾 → None need_human
+    f = _fields_via_baseline({"bid.toc_section_codes": ["1", "3-1"]})
+    assert f["bid.toc_section_codes"] == ["1", "3-1"]
+    f = _fields_via_baseline({"bid.toc_section_codes": "3"})
+    assert f["bid.toc_section_codes"] == ["3"]
+    f = _fields_via_baseline({"bid.toc_section_codes": True})
+    assert f["bid.toc_section_codes"] is None
+    f = _fields_via_baseline({"bid.toc_section_codes": {"a": 1}})
+    assert f["bid.toc_section_codes"] is None
+
+
 def test_heterogeneous_row_paths_passthrough():
     # R5 修正守卫:appendix_references(行形 {name,present})不进闸——裸串不得被包成 {value,where}
     f = _fields_via_baseline({"bid.appendix_references": ["附件A"]})

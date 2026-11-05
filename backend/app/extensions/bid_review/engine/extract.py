@@ -91,6 +91,9 @@ LIST_PATHS: frozenset[str] = frozenset(
         # 若错入 occurrence 闸会被包成 {value} dict,`in` 比对必假违例
         "tender.required_declarations",
         "tender.required_sections",
+        # M2 裁决④(spec §5,2026-11-05):L3-013 消费面治理缺口——原不在任何形状集合
+        # (passthrough 无闸),入此对齐 required_sections 同款待遇
+        "bid.toc_section_codes",
     }
 )
 # 行形异构字段(spec R5 修正):闸不适用(occurrence 包装与规则行形不符——appendix 读
