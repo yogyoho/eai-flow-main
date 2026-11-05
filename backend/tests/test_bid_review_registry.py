@@ -13,7 +13,7 @@ from app.extensions.bid_review.engine.extract import (
 )
 from app.extensions.bid_review.engine.rule_runner import RulePackError, load_rulepack
 
-# 宇宙(2026-11-05 R1 取证 71 路径 + M1 实体段 bid.attachments + M2 章节段 bid.section_tree = 73)——逐位锁定。
+# 宇宙(2026-11-05 R1 取证 71 路径 + M1 实体段 bid.attachments + M2 章节段 bid.section_tree + M3 表格段 bid.boq_rows/bid.table_cells = 75)——逐位锁定。
 # 首段 prompt 路径 = EXPECTED_UNIVERSE − SECOND_STAGE_FIELDS = 71,与 R1 改造前逐位相等(M0 零翻红锚点)。
 EXPECTED_UNIVERSE = [
     "bid.alternative_price_offers",
@@ -26,6 +26,7 @@ EXPECTED_UNIVERSE = [
     "bid.bid_letter_date",
     "bid.bid_letter_signatory",
     "bid.boq_items",
+    "bid.boq_rows",
     "bid.boq_unit_checks",
     "bid.commitment_completion_date",
     "bid.commitment_letter_date",
@@ -56,6 +57,7 @@ EXPECTED_UNIVERSE = [
     "bid.section_tree",
     "bid.similar_performances",
     "bid.subtotal",
+    "bid.table_cells",
     "bid.tax_rate_occurrences",
     "bid.tenderee_name_mentions",
     "bid.toc_section_codes",
@@ -117,19 +119,21 @@ def _synthetic_rule(rid: str, layer: str, severity: str) -> dict:
 
 
 class TestUniverse:
-    def test_anchored_73(self):
-        assert len(EXPECTED_UNIVERSE) == 73
+    def test_anchored_75(self):
+        assert len(EXPECTED_UNIVERSE) == 75
         assert registry.universe() == EXPECTED_UNIVERSE
 
     def test_second_stage_fields(self):
-        # M1(spec §4)+ M2(spec §5):第二段字段域——进 universe(契约一致性域)但剔除出首段 prompt
-        assert set(registry.SECOND_STAGE_FIELDS) == {"bid.attachments", "bid.section_tree"}
+        # M1(spec §4)+ M2(spec §5)+ M3(spec §5):第二段字段域——进 universe(契约一致性域)但剔除出首段 prompt
+        assert set(registry.SECOND_STAGE_FIELDS) == {"bid.attachments", "bid.section_tree", "bid.boq_rows", "bid.table_cells"}
 
     def test_collect_field_paths_excludes_second_stage(self):
         # 首段 prompt 71 路径逐位=R1 改造前(M0 快照零翻红锚点)
         assert collect_field_paths() == [p for p in EXPECTED_UNIVERSE if p not in registry.SECOND_STAGE_FIELDS]
         assert "bid.attachments" not in collect_field_paths()
         assert "bid.section_tree" not in collect_field_paths()
+        assert "bid.boq_rows" not in collect_field_paths()
+        assert "bid.table_cells" not in collect_field_paths()
 
     def test_first_stage_equals_universe_minus_second_stage(self):
         assert set(collect_field_paths()) == set(registry.universe()) - set(registry.SECOND_STAGE_FIELDS)
