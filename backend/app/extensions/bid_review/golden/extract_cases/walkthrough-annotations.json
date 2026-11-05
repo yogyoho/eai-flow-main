@@ -8,11 +8,51 @@
     "snapshot": "r6-snapshot.json",
     "baseline_pass_rate": 1.0,
     "live_pass_rate": {
-      "value": 0.7308,
-      "measured_at": "2026-11-04",
-      "note": "--live 容器内单跑实测;LLM 采样方差大(同 R6 任务曾全中),快照地板 1.0 只锁代码回归,此值=抽取质量基线,M1+ 只升不降"
+      "value": 0.8077,
+      "measured_at": "2026-11-05",
+      "note": "--live 容器内单跑实测(21/26;2026-11-04 首测 19/26=0.7308);LLM 采样方差大(同 R6 任务曾全中),快照地板 1.0 只锁代码回归,此值=抽取质量基线,M1+ 只升不降"
     },
-    "note": "标注=人工读原文真值(spec 2026-11-04 B立项 §3,独立于模型输出);baseline_pass_rate 首标后只升不降——翻红=回归证据,标注错改标注/引擎错先修引擎。"
+    "note": "标注=人工读原文真值(spec 2026-11-04 B立项 §3,独立于模型输出);baseline_pass_rate 首标后只升不降——翻红=回归证据,标注错改标注/引擎错先修引擎。",
+    "live_run": {
+      "measured_at": "2026-11-05",
+      "method": "backend/scripts/bid_review_live_full.py(worker.advance_task 生产管线全链路,sqlite 内存库,烧配额)",
+      "score": {
+        "total": 26,
+        "passed": 21,
+        "pass_rate": 0.8077
+      },
+      "score_fails": [
+        "tender.currency",
+        "bid.similar_performances",
+        "tender.attachment_requirements(附件1 细节)",
+        "bid.attachment_index(附件1 细节)",
+        "bid.entity_name_occurrences"
+      ],
+      "stages": {
+        "m1_attachments": {
+          "n": 0
+        },
+        "m2_sections": {
+          "n": 0
+        },
+        "m3_tables": {
+          "boq_rows": 0,
+          "table_cells": 0
+        },
+        "m4_performance": {
+          "entries": 0,
+          "groups": 0
+        }
+      },
+      "crosscheck": {
+        "declarations_missing": [],
+        "declarations_extra": [],
+        "page_offset_flag": false,
+        "copy_conflicts": [],
+        "core_success_rate": 0.25
+      },
+      "note": "第二跑为正式记录(第一跑评分头被宿主 tail 截断弃档,仅残段值 m1 n=1);方差实录:两跑 M1 实体数 1→0、本轮 M2-M4 门信号未触发=诚实缺席(现状口径);R2+ 新四规则本轮零输入→零违例(need_human 通路,符合裁决⑤)"
+    }
   },
   "checks": [
     {
