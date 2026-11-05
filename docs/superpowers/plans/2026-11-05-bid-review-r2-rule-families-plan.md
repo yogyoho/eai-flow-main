@@ -4,7 +4,7 @@
 
 **Goal:** 新增 4 条 deterministic 规则(L2-022/L2-023/L3-019/L3-020),消费 M1-M5 落地后零规则消费的七个字段路径中的五个(tender.required_fields+bid.boq_rows / bid.attachments / bid.performance_groups / bid.section_tree),零引擎/求值器/golden/universe 改动。
 
-**Architecture:** 纯 yaml 追加(1.0.0.yaml 就地,L2 家族先例)+ 新测试文件。DSL 既有算子已够(`!=`/`or`/null 字面量/`op:all` 逐行 issue),零 expr.py/rule_runner.py 改动。零翻红论证(取证定案):golden 55 个案 fields 无第二段键 → 新规则 inputs 缺失 → `_need_human`(verdict=need_human≠violation)→ strict 案不炸(strict 只数期望外 violation);smoke stub 无第二段键同;universe 77 不变(inputs ⊆ 既有宇宙)。
+**Architecture:** 纯 yaml 追加(1.0.0.yaml 就地,L2 家族先例)+ 新测试文件。DSL 既有算子已够(`!=`/`or`/null 字面量/`op:all` 逐行 issue),零 expr.py/rule_runner.py 改动。零翻红论证(取证定案):golden 55 个案 fields 无第二段键 → 新规则 inputs 缺失 → `_need_human`(verdict=need_human≠violation)→ strict 案不炸(strict 只数期望外 violation);smoke stub 无第二段键同;~~universe 77 不变~~ **见裁决⑤修正:universe 77→78 by design**。
 
 **Tech Stack:** Python 3.12, pytest, ruff;改动面=1 个 yaml + 1 个新测试文件 + 1 处既有计数断言。
 
@@ -14,7 +14,9 @@
 
 ## 七裁决(2026-11-05,取证后定案)
 
-1. **纯 det 追加,零引擎改动**(裁决基座):DSL 白名单已含 `!=`/`or`/`null` 字面量/`op:all`(target/var/cond 逐行 issue,行 dict 入 env,message 可渲染 var 属性——L3-006 先例);dedup_key=`{rule_id}|-|{msg[:40]}` 消息含行号/组号/标题→逐行天然不撞(L3-006 同款)。expr.py/rule_runner.py/eval_core.py/golden/tuning.yaml/fingerprints 全不动。
+> **裁决⑤修正(实施中实锤,2026-11-05):** 计划原文断言「universe 77 不变」——**错**。consumed_by 空结果≠在宇宙:tender.required_fields 此前从未进任何 pack inputs/锚点/投影,本就不在宇宙;L2-022 inputs 声明使其**首次入宇宙 77→78(by design)**,首段 prompt 71→72(EXPECTED_UNIVERSE 逐位插入、test_anchored_77→78、det 计数锁 29→33 同步)。**顺带修复 M3 潜在缺口**:该路径此前从未被抽取,worker M3 段只能以 `tender.boq_items` 全清单码回填 required(语义漂移,违设计 §4.5 铁律);本次 `build_tables_baseline` 加 `required_codes` 参(向后兼容)+ worker 传参修正,铁律口径兑现——已抽取时必填=required_fields 码集,未抽取退回 BOQ codes 现状口径。附:LIST_PATHS 入闸(纯码列表,required_declarations 同款)+ labels 补录。**连带(实施中实锤二):** golden 覆盖率三方精确锁(test_coverage_complete_marker:EXPECTED_COVERAGE==pack_ids==题库实 coverage)强制每条新规则 ≥1 题——计划原文「golden 增题挂账」不够,本次即配 4 题(strict 各钉违例+对位干净行),题库 55→59;另 test_att_ops_whitelisted_at_load 的 L2 ops 全集锁同步纳入 L2-022/023(op:all)。
+
+1. **纯 det 追加,零引擎改动**(裁决基座):DSL 白名单已含 `!=`/`or`/`null` 字面量/`op:all`(target/var/cond 逐行 issue,行 dict 入 env,message 可渲染 var 属性——L3-006 先例);dedup_key=`{rule_id}|-|{msg[:40]}` 消息含行号/组号/标题→逐行天然不撞(L3-006 同款)。expr.py/rule_runner.py/eval_core.py/golden/tuning.yaml/fingerprints 全不动。(build_tables_baseline 签名扩展属裁决⑤修正的 worker 接线,非规则求值引擎改动)
 2. **四规则定案**(null 安全统一用「!= True」形态:operator.ne 下仅值恰为 True 时判 False,False 与 None 双双通过):
    - **L2-022 必填清单行未报价**(消费 tender.required_fields+bid.boq_rows):`cond: "r.required != True or r.price != null"`,severity **fatal**(未对必填项报价=废标级,与 L2-020 fatal 同向;**qty 不判**——费率/总价行无数量合法,单价缺失才是无歧义违例);消息含行号+名称。
    - **L2-023 附件实体内容空白**(消费 bid.attachments):`cond: "a.is_empty_text != True"`,severity **major**(文本量启发是近似,图表型章节/扫描件可能误标,人工裁决兜底)。

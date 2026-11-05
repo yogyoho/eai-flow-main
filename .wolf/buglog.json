@@ -5316,6 +5316,153 @@
       "related_bugs": [],
       "occurrences": 1,
       "last_seen": "2026-11-05"
+    },
+    {
+      "id": "bug-4019",
+      "timestamp": "2026-11-05T10:40:49.818Z",
+      "error_message": "Null/undefined access in ",
+      "file": "backend/app/extensions/bid_review/engine/rulepacks/bid-review-core/1.0.0.yaml",
+      "root_cause": "Property access on potentially null/undefined value",
+      "fix": "Added null safety (optional chaining or null check)",
+      "tags": [
+        "auto-detected",
+        "null-safety",
+        "yaml"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-11-05T10:40:49.818Z"
+    },
+    {
+      "id": "bug-4020",
+      "timestamp": "2026-11-05T10:50:25.483Z",
+      "error_message": "Incorrect value in code",
+      "file": "backend/tests/test_bid_review_registry.py",
+      "root_cause": "Had \"tender.required_qual_level\"",
+      "fix": "Changed to \"tender.required_fields\"",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-11-05T10:50:25.483Z"
+    },
+    {
+      "id": "bug-4021",
+      "timestamp": "2026-11-05T10:50:32.040Z",
+      "error_message": "Significant refactor of ",
+      "file": "backend/tests/test_bid_review_registry.py",
+      "root_cause": "2 lines replaced/restructured",
+      "fix": "Rewrote 3→4 lines (2 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-11-05T10:50:32.040Z"
+    },
+    {
+      "id": "bug-4022",
+      "timestamp": "2026-11-05T10:51:11.672Z",
+      "error_message": "Significant refactor of ",
+      "file": "backend/app/extensions/bid_review/engine/extract.py",
+      "root_cause": "2 lines replaced/restructured",
+      "fix": "Rewrote 13→18 lines (2 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-11-05T10:51:11.672Z"
+    },
+    {
+      "id": "bug-4023",
+      "timestamp": "2026-11-05T10:51:29.719Z",
+      "error_message": "Incorrect value in code",
+      "file": "backend/tests/test_bid_review_rule_runner.py",
+      "root_cause": "Had \"L1 det 14 + L3 det 13 + L2 det 2(L2-020/024,spec ",
+      "fix": "Changed to \"L1 det 14 + L3 det 15(+L3-019/020) + L2 det 4(L2-",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-11-05T10:51:29.719Z"
+    },
+    {
+      "id": "bug-4024",
+      "timestamp": "2026-11-05T10:51:59.932Z",
+      "error_message": "Missing await",
+      "file": "backend/tests/test_bid_review_worker.py",
+      "root_cause": "Async call without await — returned Promise instead of value",
+      "fix": "Added await to async call",
+      "tags": [
+        "auto-detected",
+        "async-fix",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-11-05T10:51:59.932Z"
+    },
+    {
+      "id": "bug-4025",
+      "timestamp": "2026-11-05T10:54:09.923Z",
+      "error_message": "Wrong reference: inputs should be universe",
+      "file": "docs/superpowers/plans/2026-11-05-bid-review-r2-rule-families-plan.md",
+      "root_cause": "Used \"inputs\" instead of \"universe\"",
+      "fix": "Changed inputs → universe",
+      "tags": [
+        "auto-detected",
+        "wrong-reference",
+        "md"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-11-05T10:54:09.923Z"
+    },
+    {
+      "id": "bug-4026",
+      "timestamp": "2026-11-05",
+      "error_message": "L2-022 加入规则包后 registry.universe() == 78,plan 裁决⑤断言 universe 77 不变翻红",
+      "file": "backend/tests/test_bid_review_registry.py; backend/app/extensions/bid_review/engine/extract.py; backend/app/extensions/bid_review/worker.py",
+      "root_cause": "consumed_by 空结果≠在宇宙:tender.required_fields 从未进任何 pack inputs/锚点/投影,plan 误判其已在 77 宇宙。顺带暴露 M3 潜在缺口——该路径从未被抽取,worker M3 段 required 回填只能用 tender.boq_items 全清单码(语义漂移,违设计 §4.5 必填口径唯一来自招标侧铁律)",
+      "fix": "EXPECTED_UNIVERSE 逐位插入 tender.required_fields 77→78;test_anchored_77→78;LIST_PATHS 入闸(纯码列表)+labels 补录;build_tables_baseline 加 required_codes 参(向后兼容,非空时铁律用它,缺省退回 BOQ codes);worker M3 传参补第4参;det 计数锁 29→33(L1 14+L3 15+L2 4)",
+      "tags": [
+        "bid_review",
+        "universe",
+        "consumed_by",
+        "m3",
+        "required_fields",
+        "r2-rule-families"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-11-05"
+    },
+    {
+      "id": "bug-4027",
+      "timestamp": "2026-11-05T11:00:18.640Z",
+      "error_message": "Significant refactor of ",
+      "file": "backend/tests/test_bid_review_rule_runner.py",
+      "root_cause": "3 lines replaced/restructured",
+      "fix": "Rewrote 6→12 lines (3 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-11-05T11:00:18.640Z"
     }
   ]
 }

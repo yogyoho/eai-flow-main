@@ -28482,3 +28482,47 @@
 | 14:06 | Edited backend/app/extensions/bid_review/worker.py | modified resume_confirmed() | ~180 |
 | 14:06 | Edited backend/app/extensions/bid_review/worker.py | 4→4 lines | ~104 |
 | 13:50 | B立项M5交叉自检+质量门禁落地——crosscheck.py四件(声明双向/页偏移/正副本/核心字段率)+worker段+summary指标+GET /metrics/extraction+负证据门禁;universe/M0/golden零触碰 | backend/app/extensions/bid_review/{engine/crosscheck.py,worker.py,routers.py,engine/}+tests×4 | 全家538/0(+16)+golden零翻红+M0 26/26 | ~9k |
+
+## Session: 2026-11-05 14:26
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 14:27 | Created C:/Users/admin/.claude/projects/D--eai-eai-flow-main/memory/bid-review-extract-engine-m5-landed.md | — | ~812 |
+| 14:27 | Edited C:/Users/admin/.claude/projects/D--eai-eai-flow-main/memory/MEMORY.md | 1→2 lines | ~82 |
+| 14:29 | Session end: 2 writes across 2 files (bid-review-extract-engine-m5-landed.md, MEMORY.md) | 3 reads | ~1399 tok |
+| 18:38 | Created docs/superpowers/plans/2026-11-05-bid-review-r2-rule-families-plan.md | — | ~3629 |
+| 18:39 | Created backend/tests/test_bid_review_rule_families.py | — | ~1792 |
+| 18:40 | Edited backend/app/extensions/bid_review/engine/rulepacks/bid-review-core/1.0.0.yaml | expanded (+78 lines) | ~901 |
+
+## Session: 2026-11-05 18:45
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 18:49 | Edited backend/tests/test_bid_review_rule_families.py | added 1 import(s) | ~25 |
+| 18:50 | Edited backend/tests/test_bid_review_rule_families.py | modified test_new_rules_need_human_on_legacy_baseline() | ~26 |
+| 18:50 | Edited backend/tests/test_bid_review_rule_families.py | 1→3 lines | ~53 |
+| 18:50 | Edited backend/tests/test_bid_review_registry.py | 2→2 lines | ~94 |
+| 18:50 | Edited backend/tests/test_bid_review_registry.py | 2→3 lines | ~42 |
+| 18:50 | Edited backend/tests/test_bid_review_registry.py | test_anchored_77() → test_anchored_78() | ~59 |
+| 18:50 | Edited backend/tests/test_bid_review_registry.py | inline fix | ~23 |
+| 18:50 | Edited backend/app/extensions/bid_review/engine/extract.py | 5→8 lines | ~94 |
+| 18:50 | Edited backend/app/extensions/bid_review/engine/labels.py | 1→2 lines | ~35 |
+| 18:51 | Edited backend/app/extensions/bid_review/engine/extract.py | modified build_tables_baseline() | ~324 |
+| 18:51 | Edited backend/app/extensions/bid_review/worker.py | modified is() | ~172 |
+| 18:51 | Edited backend/tests/test_bid_review_rule_runner.py | inline fix | ~43 |
+| 18:51 | Edited backend/tests/test_bid_review_worker.py | modified test_m3_required_fields_backfill_iron_rule() | ~293 |
+| 18:54 | Edited docs/superpowers/plans/2026-11-05-bid-review-r2-rule-families-plan.md | inline fix | ~92 |
+| 18:54 | Edited docs/superpowers/plans/2026-11-05-bid-review-r2-rule-families-plan.md | 3→5 lines | ~238 |
+| 18:55 | Edited backend/tests/test_bid_review_registry.py | 1→3 lines | ~70 |
+| 18:56 | R2+ 规则族补齐 TDD:四 det 规则(yaml 39条)+universe 77→78 修正(bug-4026)+M3 required_fields 铁律接线+det 锁 29→33+plan 裁决⑤修正 | 1.0.0.yaml/extract.py/worker.py/labels.py/4测试/plan | 单测全绿,ruff 绿,全家门禁后台跑 | ~45000 |
+| 18:59 | Created backend/app/extensions/bid_review/golden/cases/L2-022-required-row-no-price.yaml | — | ~137 |
+| 18:59 | Created backend/app/extensions/bid_review/golden/cases/L2-023-blank-attachment.yaml | — | ~111 |
+| 18:59 | Created backend/app/extensions/bid_review/golden/cases/L3-019-cluster-unsure.yaml | — | ~111 |
+| 18:59 | Created backend/app/extensions/bid_review/golden/cases/L3-020-empty-section.yaml | — | ~128 |
+| 19:00 | Edited backend/tests/test_bid_review_golden.py | 2→2 lines | ~46 |
+| 19:00 | Edited backend/tests/test_bid_review_golden.py | 3→5 lines | ~20 |
+| 19:00 | Edited backend/tests/test_bid_review_golden.py | 3→5 lines | ~17 |
+| 19:00 | Edited backend/tests/test_bid_review_rule_runner.py | modified test_att_ops_whitelisted_at_load() | ~140 |
+| 19:01 | Edited backend/app/extensions/bid_review/golden/cases/L2-023-blank-attachment.yaml | 2→2 lines | ~44 |
+| 19:03 | Edited docs/superpowers/plans/2026-11-05-bid-review-r2-rule-families-plan.md | inline fix | ~209 |
+| 19:04 | Session end: 26 writes across 13 files (test_bid_review_rule_families.py, test_bid_review_registry.py, extract.py, labels.py, worker.py) | 10 reads | ~30912 tok |
