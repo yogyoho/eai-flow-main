@@ -640,3 +640,81 @@ rules:
     fix_tpl: "核对材料中疑似文件,补正附件清单条目名称或补充缺失附件"
     confidence_gate: 0.75
     enabled: true
+  # ── R2+ 规则族补齐(EAI-CUSTOM 2026-11-05,plan docs/superpowers/plans/2026-11-05-bid-review-r2-rule-families-plan.md):
+  # 四条 det 消费 M1-M5 悬空字段(取证:registry.consumed_by 七路径 rules 全空)。
+  # null 安全统一「!= True」形态:operator.ne 下仅值恰为 True 时判 False,False/None 双双通过。
+  # ID: L2 家族 EAI-native 空闲号;L3-019/020 越过素材④未转录空洞(015/017)防未来转录碰撞。
+  - id: L2-022
+    name: 必填清单行未报价
+    layer: L2
+    type: deterministic
+    applies_to: ["*"]
+    inputs: [tender.required_fields, bid.boq_rows]
+    # required 服务端按 tender.required_fields 回填(M3 铁律:必填口径唯一来自招标侧);
+    # 只判单价缺失(费率行无数量合法,qty 不判);必填行完全缺席=L1-011 set_eq 领域不重复报告。
+    check:
+      op: all
+      target: bid.boq_rows
+      var: r
+      cond: "r.required != True or r.price != null"
+    severity: fatal
+    evidence: [A-TENDER-BOQ, A-BOQ]
+    message_tpl: "必填清单行 {r.id}({r.name})未报单价,需按招标清单补报"
+    fix_tpl: "按招标清单逐项核对必填行报价,缺价行补齐单价与合价"
+    confidence_gate: 1.0
+    enabled: true
+  - id: L2-023
+    name: 附件实体内容空白
+    layer: L2
+    type: deterministic
+    applies_to: ["*"]
+    inputs: [bid.attachments]
+    # is_empty_text=M1 文本量启发近似(图表型文件可能误标)→ major 人工裁决兜底,不判 fatal。
+    check:
+      op: all
+      target: bid.attachments
+      var: a
+      cond: "a.is_empty_text != True"
+    severity: major
+    evidence: [A-BID-DOC]
+    message_tpl: "附件「{a.name}」内容为空(疑似空白/无效扫描件),需补有效文件"
+    fix_tpl: "核对该附件扫描件,空白或无效的重新扫描上传有效版本"
+    confidence_gate: 1.0
+    enabled: true
+  - id: L3-019
+    name: 业绩条目聚类存疑
+    layer: L3
+    type: deterministic
+    applies_to: ["*"]
+    inputs: [bid.performance_groups]
+    # M4 UNKNOWN 语义的规则面:ok=false(疑似同项待人工,禁强行 PARTIAL)必须在 issue 流可见,
+    # 不得被误读为通过;组员明细在 payload.bid.performance_groups 可查,消息只点名组号。
+    check:
+      op: all
+      target: bid.performance_groups
+      var: g
+      cond: "g.ok != False"
+    severity: major
+    evidence: [A-PERF-DOCS]
+    message_tpl: "类似业绩条目组 {g.group_id} 疑似同项重复,需人工确认是否重复凑数"
+    fix_tpl: "人工核对该组业绩条目,重复的删除或更正为不同项目业绩"
+    confidence_gate: 1.0
+    enabled: true
+  - id: L3-020
+    name: 章节正文空缺
+    layer: L3
+    type: deterministic
+    applies_to: ["*"]
+    inputs: [bid.section_tree]
+    # is_empty=M2 文本量启发近似(图表型章节可能误标)→ major 人工裁决兜底。
+    check:
+      op: all
+      target: bid.section_tree
+      var: s
+      cond: "s.is_empty != True"
+    severity: major
+    evidence: [A-TOC, A-MAIN-TEXT]
+    message_tpl: "章节「{s.title}」正文内容为空或过简,需补全章节内容"
+    fix_tpl: "补齐该章节实质性内容,空章节在评标中可能被认定未实质响应"
+    confidence_gate: 1.0
+    enabled: true

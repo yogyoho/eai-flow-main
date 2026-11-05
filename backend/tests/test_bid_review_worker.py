@@ -804,6 +804,24 @@ async def test_m3_default_tables_fn_seam(monkeypatch, db, tmp_rulepack):
     assert payload["fields"]["bid.boq_rows"][0]["required"] is False  # 9.9 不在招标 codes
 
 
+@pytest.mark.asyncio
+async def test_m3_required_fields_backfill_iron_rule(db, tmp_rulepack):
+    """R2+(2026-11-05 裁决⑤修正):tender.required_fields 已抽取时 required 回填铁律用它
+    (仅必填码=True),未抽取退回招标 BOQ codes 现状口径(向后兼容)。"""
+    t = await crud.create_task(db, owner_id="u1")
+    docs = [{"doc_id": "b.pdf", "role": "bid", "text": "x"}]
+
+    def _extract(d, p):
+        base = {k: None for k in p}
+        base["tender.boq_items"] = [{"code": "1.1", "name": "挖土方"}, {"code": "1.2", "name": "砌筑"}]
+        base["tender.required_fields"] = ["1.1"]  # 招标侧仅 1.1 必填
+        return base
+
+    await advance_task(db, t.id, owner_id="u1", docs=docs, extract_fn=_extract, wait_confirm=True, tables_fn=lambda *a: {"boq_rows": [{"id": "1.1", "name": "挖土方"}, {"id": "1.2", "name": "砌筑"}], "table_cells": []})
+    rows = (await _first_payload(db, t.id))["fields"]["bid.boq_rows"]
+    assert {r["id"]: r["required"] for r in rows} == {"1.1": True, "1.2": False}
+
+
 # ── B立项 M4 业绩条目段(spec 2026-11-04 §5,2026-11-05)───────────────────────────
 
 

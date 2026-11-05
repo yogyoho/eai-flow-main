@@ -13,8 +13,10 @@ from app.extensions.bid_review.engine.extract import (
 )
 from app.extensions.bid_review.engine.rule_runner import RulePackError, load_rulepack
 
-# 宇宙(2026-11-05 R1 取证 71 路径 + M1 实体段 bid.attachments + M2 章节段 bid.section_tree + M3 表格段 bid.boq_rows/bid.table_cells + M4 业绩聚类 bid.performance_entries/bid.performance_groups = 77)——逐位锁定。
-# 首段 prompt 路径 = EXPECTED_UNIVERSE − SECOND_STAGE_FIELDS = 71,与 R1 改造前逐位相等(M0 零翻红锚点)。
+# 宇宙(2026-11-05 R1 取证 71 路径 + M1 实体段 bid.attachments + M2 章节段 bid.section_tree + M3 表格段
+# bid.boq_rows/bid.table_cells + M4 业绩聚类 bid.performance_entries/bid.performance_groups = 77
+# + R2+ 规则族 L2-022 inputs 声明 tender.required_fields = 78)——逐位锁定。
+# 首段 prompt 路径 = EXPECTED_UNIVERSE − SECOND_STAGE_FIELDS = 72(R1 改造前 71 + R2+ 新增 1)。
 EXPECTED_UNIVERSE = [
     "bid.alternative_price_offers",
     "bid.amount_occurrences",
@@ -86,6 +88,7 @@ EXPECTED_UNIVERSE = [
     "tender.project_identity.lot_section",
     "tender.project_identity.name",
     "tender.required_declarations",
+    "tender.required_fields",  # R2+ L2-022 必填清单行未报价(plan 2026-11-05 规则族补齐)
     "tender.required_qual_level",
     "tender.required_sections",
     "tender.required_validity_days",
@@ -121,8 +124,9 @@ def _synthetic_rule(rid: str, layer: str, severity: str) -> dict:
 
 
 class TestUniverse:
-    def test_anchored_77(self):
-        assert len(EXPECTED_UNIVERSE) == 77
+    def test_anchored_78(self):
+        # 77→78(R2+ L2-022 inputs 声明 tender.required_fields 首次入宇宙,裁决⑤修正)
+        assert len(EXPECTED_UNIVERSE) == 78
         assert registry.universe() == EXPECTED_UNIVERSE
 
     def test_second_stage_fields(self):
@@ -130,7 +134,7 @@ class TestUniverse:
         assert set(registry.SECOND_STAGE_FIELDS) == {"bid.attachments", "bid.section_tree", "bid.boq_rows", "bid.table_cells", "bid.performance_entries", "bid.performance_groups"}
 
     def test_collect_field_paths_excludes_second_stage(self):
-        # 首段 prompt 71 路径逐位=R1 改造前(M0 快照零翻红锚点)
+        # 首段 prompt 72 路径逐位=R1 改造前 71 + R2+ tender.required_fields(M0 快照锚点随宇宙扩容)
         assert collect_field_paths() == [p for p in EXPECTED_UNIVERSE if p not in registry.SECOND_STAGE_FIELDS]
         assert "bid.attachments" not in collect_field_paths()
         assert "bid.section_tree" not in collect_field_paths()

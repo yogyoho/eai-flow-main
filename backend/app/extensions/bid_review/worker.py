@@ -443,7 +443,9 @@ async def _get_task_any(db: AsyncSession, task_id: str) -> ReviewTask | None:
     return result.scalar_one_or_none()
 
 
-async def _write_baselines(db: AsyncSession, task_id: str, docs: list[dict], fields: dict, materials_hash: str, provenance: dict | None = None, candidates: dict | None = None, fields_conf: dict | None = None, crosscheck: dict | None = None) -> None:
+async def _write_baselines(
+    db: AsyncSession, task_id: str, docs: list[dict], fields: dict, materials_hash: str, provenance: dict | None = None, candidates: dict | None = None, fields_conf: dict | None = None, crosscheck: dict | None = None
+) -> None:
     """基线落库(kind 按 docs role 拆,计划口径);每行携带全量 fields 快照 + 本行 doc_id
     (确认门 UI 逐份核对同一快照)。EAI-CUSTOM(2026-10-30 抽取 v2):payload 增
     provenance(逐字段出处 {doc_id,page,quote},字段抽取层产物;det 求值不消费)。
@@ -631,7 +633,8 @@ async def advance_task(
     # (无清单信号不烧配额;旧测试零模型调用);单 prompt 双路径 boq_rows+table_cells
     # (裁决①,配额零增);失败/无模型=双缺席不落键(行为=现状);成功(含 0 行)双键
     # 独立落 [](各含零独立);required 由 normalize_boq_rows 服务端按招标 codes 回填
-    # (模型禁报,设计 §4.5 必填口径唯一来自招标侧)。
+    # (模型禁报,设计 §4.5 必填口径唯一来自招标侧;R2+ 2026-11-05:tender.required_fields
+    # 已入宇宙被抽取时必填口径铁律改用之,未抽取退回 BOQ codes 现状口径)。
     if bool(fields.get("tender.boq_items")) or bool(fields.get("bid.boq_items")):
         if tables_fn is None:
             tables_fn = _default_tables_fn()
@@ -642,6 +645,7 @@ async def advance_task(
                     docs,
                     tables_fn,
                     fields.get("tender.boq_items"),
+                    fields.get("tender.required_fields"),
                 )
                 fields = {**fields, "bid.boq_rows": tables["boq_rows"], "bid.table_cells": tables["table_cells"]}
                 payload = {**payload, "fields": fields, "materials_hash": materials_hash(fields)}

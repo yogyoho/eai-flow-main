@@ -27,6 +27,7 @@ FIELD_LABELS: dict[str, str] = {
     "tender.min_warranty_period": "最短质保期要求",
     "tender.min_similar_performance_count": "类似业绩数量要求",
     "tender.required_declarations": "必备承诺函",
+    "tender.required_fields": "招标必填字段/清单行",  # R2+ L2-022 消费(plan 2026-11-05)
     "tender.required_sections": "必备章节",
     "tender.substantive_clauses": "实质性条款",
     "tender.tenderee_name": "招标人名称",

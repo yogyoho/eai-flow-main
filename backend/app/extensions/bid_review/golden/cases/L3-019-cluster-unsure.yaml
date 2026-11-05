@@ -1,0 +1,12 @@
+case: L3-019-cluster-unsure
+desc: R2+ 规则族补齐——业绩聚类 ok=false(M4 UNKNOWN 语义的规则面,存疑≠通过)→ L3-019 major;ok=true 组不判
+fields:
+  bid.performance_groups:
+    - {group_id: G1, ok: false, members: [{name: 一期, client: 甲方公司}]}
+    - {group_id: G2, ok: true, members: [{name: 二期, client: 乙方公司}]}
+expect_issues:
+  - rule_id: L3-019
+    severity: major
+    contains: ["G1"]
+expect_absent: []
+strict: true

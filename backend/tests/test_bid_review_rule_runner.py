@@ -130,7 +130,7 @@ def test_full_pack_loads():
     by_type = {}
     for r in pack.rules:
         by_type.setdefault(r.type, []).append(r.id)
-    assert len(by_type.get("deterministic", [])) == 29, "L1 det 14 + L3 det 13 + L2 det 2(L2-020/024,spec 2026-11-02) = 29"
+    assert len(by_type.get("deterministic", [])) == 33, "L1 det 14 + L3 det 15(+L3-019/020) + L2 det 4(L2-020/022/023/024,R2+ 规则族补齐 2026-11-05) = 33"
     assert len(by_type.get("hybrid", [])) == 5, "L1 hyb 003/007 + L3 hyb 004/008 + L2-021 指纹通道(spec 2026-11-04) = 5"
     assert len(by_type.get("semantic", [])) == 1, "L1-013 唯一 sem 规则"
     for r in pack.rules:
@@ -254,11 +254,17 @@ def test_att_ops_missing_field_need_human():
 
 
 def test_att_ops_whitelisted_at_load():
-    """载入期白名单放行 att_check/att_count/att_missing_rows;L2 层三规则(L2-020/024 det
-    + L2-021 hyb 指纹通道,spec 2026-11-04)可加载。"""
+    """载入期白名单放行 att_check/att_count/att_missing_rows;L2 层三 att 规则(L2-020/024 det
+    + L2-021 hyb 指纹通道,spec 2026-11-04)可加载;R2+ 2026-11-05 增 L2-022/023(op:all 逐行)。"""
     pack = load_rulepack(PACK)
     ops = {r.id: r.check.get("op") for r in pack.rules if r.layer == "L2"}
-    assert ops == {"L2-020": "att_check", "L2-024": "att_count", "L2-021": "att_missing_rows"}
+    assert ops == {
+        "L2-020": "att_check",
+        "L2-024": "att_count",
+        "L2-021": "att_missing_rows",
+        "L2-022": "all",
+        "L2-023": "all",
+    }
 
 
 # ── L2 P2:UNKNOWN→need_human + 实体键(spec 2026-11-02 §7 挂账行) ──

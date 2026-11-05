@@ -94,6 +94,9 @@ LIST_PATHS: frozenset[str] = frozenset(
         # M2 裁决④(spec §5,2026-11-05):L3-013 消费面治理缺口——原不在任何形状集合
         # (passthrough 无闸),入此对齐 required_sections 同款待遇
         "bid.toc_section_codes",
+        # R2+ 规则族补齐(2026-11-05,裁决⑤修正):L2-022 inputs 声明使该路径首次入宇宙
+        # (顺带修复 M3 潜在缺口——必填口径此前从未进抽取请求);纯码列表同 required_declarations 待遇
+        "tender.required_fields",
     }
 )
 # 行形异构字段(spec R5 修正):闸不适用(occurrence 包装与规则行形不符——appendix 读
@@ -738,10 +741,12 @@ def build_tables_prompt(docs: list[dict], tender_rows: Any) -> str:
     )
 
 
-def build_tables_baseline(docs: list[dict], tables_fn, tender_rows: Any) -> dict[str, list[dict]]:
+def build_tables_baseline(docs: list[dict], tables_fn, tender_rows: Any, required_codes: Any = None) -> dict[str, list[dict]]:
     """表格段提取(B立项 M3):返回 {"boq_rows": [...], "table_cells": [...]};
     tables_fn 契约 = (docs, tender_rows) → {"boq_rows": [...], "table_cells": [...]} 或裸 list;
-    两键独立归一,单键缺席/坏形落 [](诚实降级);抛错向上由 worker 隔离(失败=双缺席)。"""
+    两键独立归一,单键缺席/坏形落 [](诚实降级);抛错向上由 worker 隔离(失败=双缺席)。
+    R2+(2026-11-05 裁决⑤修正):required_codes=招标必填码列表(tender.required_fields,
+    纯码串列表)非空时必填口径铁律用它;缺省/空退回 tender_rows codes(现状口径,向后兼容)。"""
     raw = tables_fn(docs, tender_rows)
     if isinstance(raw, dict):
         raw_rows, raw_cells = raw.get("boq_rows"), raw.get("table_cells")
@@ -749,7 +754,10 @@ def build_tables_baseline(docs: list[dict], tables_fn, tender_rows: Any) -> dict
         raw_rows, raw_cells = raw, None  # 裸 list 按 boq_rows 处理(单数组退路)
     else:
         raw_rows, raw_cells = None, None
-    tender_codes = [str(r.get("code") or "") for r in tender_rows] if isinstance(tender_rows, list) else []
+    if isinstance(required_codes, list) and required_codes:
+        tender_codes = [str(c).strip() for c in required_codes]
+    else:
+        tender_codes = [str(r.get("code") or "") for r in tender_rows] if isinstance(tender_rows, list) else []
     return {"boq_rows": normalize_boq_rows(raw_rows, tender_codes), "table_cells": normalize_table_cells(raw_cells)}
 
 
