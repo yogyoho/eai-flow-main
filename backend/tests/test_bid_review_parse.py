@@ -140,3 +140,36 @@ async def test_docs_from_entries_page_markers_and_sharding(base, ocr_ok):
     out2 = await parse.parse_raw("u1", "t1", entry2, ocr_ok)
     pieces2 = parse.docs_from_entries("u1", "t1", [out2])
     assert len(pieces2) == 1 and "[[p." not in pieces2[0]["text"]
+
+
+def _make_docx_table() -> bytes:
+    import docx as docx_lib
+
+    d = docx_lib.Document()
+    d.add_paragraph("表前段落")
+    tbl = d.add_table(rows=2, cols=3)
+    tbl.cell(0, 0).text = "项目"
+    tbl.cell(0, 1).text = "招标"
+    tbl.cell(0, 2).text = "投标"
+    tbl.cell(1, 0).text = "工期"
+    tbl.cell(1, 1).text = "180天"
+    tbl.cell(1, 2).text = "150天\n换行归一"
+    buf = io.BytesIO()
+    d.save(buf)
+    return buf.getvalue()
+
+
+@pytest.mark.asyncio
+async def test_docx_table_rows_structured(base, ocr_ok):
+    """对齐审计④(2026-11-05):docx 表格不再只有 |a|b| 拍平文本——块与 seg 带 rows
+    二维数组;text 键原样保留,模型通路零改动。"""
+    data = _make_docx_table()
+    blocks = parse._parse_docx_sync(data)
+    table = next(b for b in blocks if b["kind"] == "table")
+    assert table["rows"] == [["项目", "招标", "投标"], ["工期", "180天", "150天 换行归一"]]
+    assert table["text"].startswith("| 项目 | 招标 | 投标 |"), "文本键原样兼容"
+
+    entry = parse.save_raw("u1", "t-tbl", "bid", "b.docx", data)
+    await parse.parse_raw("u1", "t-tbl", entry, ocr_ok)
+    seg = next(s for s in parse.load_segments("u1", "t-tbl", entry["slug"]) if s["kind"] == "table")
+    assert seg["rows"][1] == ["工期", "180天", "150天 换行归一"]

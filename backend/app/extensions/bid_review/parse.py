@@ -174,7 +174,9 @@ def _parse_docx_sync(data: bytes) -> list[dict]:
     """docx → 流序块(p=段落文本/图,tbl=表格行文本,图只挑出不解析)。
 
     纯 CPU 段;OCR 在 parse_raw 的 async 段做。返回块:
-    {kind: "text"|"table", text} | {kind: "image", blob, ext}。
+    {kind: "text"|"table", text} | {kind: "table", text, rows} | {kind: "image", blob, ext}。
+    table 块另带 rows 二维数组(对齐审计④,2026-11-05——|a|b| 拍平文本仅供模型通路,
+    结构化消费方走 rows;两键并存零互斥)。
     """
     import docx as docx_lib
     from docx.table import Table
@@ -199,11 +201,13 @@ def _parse_docx_sync(data: bytes) -> list[dict]:
                 blocks.append({"kind": "text", "text": text})
         elif local == "tbl":
             rows: list[str] = []
+            row_cells: list[list[str]] = []
             for row in Table(child, document).rows:
                 cells = [c.text.strip().replace("\n", " ") for c in row.cells]
                 rows.append("| " + " | ".join(cells) + " |")
+                row_cells.append(cells)
             if rows:
-                blocks.append({"kind": "table", "text": "\n".join(rows)})
+                blocks.append({"kind": "table", "text": "\n".join(rows), "rows": row_cells})
     return blocks
 
 
@@ -331,7 +335,7 @@ async def parse_raw(owner_id: str, task_id: str, entry: dict, ocr_fn) -> dict:
         if b["kind"] == "text":
             seg = {"seq": seq, "page": b.get("page"), "kind": "text", "text": b["text"], "asset_id": None}
         elif b["kind"] == "table":
-            seg = {"seq": seq, "page": None, "kind": "table", "text": b["text"], "asset_id": None}
+            seg = {"seq": seq, "page": None, "kind": "table", "text": b["text"], "rows": b.get("rows"), "asset_id": None}
         else:  # image | scan
             seg = {"seq": seq, "page": b.get("page"), "kind": "ocr", "text": (ocr_by_idx.get(i) or "").strip(), "asset_id": b["asset_id"]}
         segs.append(seg)
