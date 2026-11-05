@@ -260,3 +260,54 @@ async def test_report_no_feedback_no_deviations(client, db):
     md = r.text
     assert "人工复核:未复核" in md
     assert "响应偏离" in md and "无记录" in md
+
+
+# ── 评分涉险面(score-risk spec 2026-11-05,挂账「score 预估另立 spec」兑付)──────
+
+
+def test_derive_score_risk_sum_names_and_unresolved():
+    """涉险上界三键:violation 规则命中项 max_score 合计+列名;unclear/待人工 →
+    unresolved 列名不进合计;violation 优先于 unresolved(互斥)。"""
+    from app.extensions.bid_review.engine.extract import derive_score_risk
+
+    cov = {
+        "items": [
+            {"name": "价格分", "max_score": 50, "covered_by_rules": ["L1-009"]},
+            {"name": "工期分", "max_score": "10", "covered_by_rules": ["T2-001"]},
+            {"name": "方案分", "max_score": None, "covered_by_rules": []},
+        ]
+    }
+    out = derive_score_risk(cov, {"L1-009", "T2-001"}, set())
+    assert out == {"at_risk_max_score": 60.0, "at_risk_item_names": ["价格分", "工期分"], "unresolved_item_names": []}
+    out2 = derive_score_risk(cov, set(), {"T2-001"})
+    assert out2 == {"at_risk_max_score": 0.0, "at_risk_item_names": [], "unresolved_item_names": ["工期分"]}
+
+
+def test_derive_score_risk_zero_none_and_uncovered_violation():
+    """真零/伪零纪律:无涉险项 → 0.0(真零);违规规则未覆盖任何项 → 0.0 空名;
+    涉险项 max_score 全不可数值化 → None(诚实不可估,不凑 0)。"""
+    from app.extensions.bid_review.engine.extract import derive_score_risk
+
+    cov = {"items": [{"name": "售后分", "max_score": None, "covered_by_rules": ["T3-001"]}]}
+    assert derive_score_risk(cov, set(), set())["at_risk_max_score"] == 0.0
+    assert derive_score_risk(cov, {"L1-999"}, set())["at_risk_item_names"] == []
+    assert derive_score_risk(cov, {"T3-001"}, set())["at_risk_max_score"] is None
+
+
+@pytest.mark.asyncio
+async def test_endpoint_risk_keys_enrichment(client, db):
+    """端点接线:基线评分项 + 三种 verdict issues → 三键派生;active violation 涉险、
+    unclear → unresolved、false_positive 不进;compute 本体键(total/covered/covered_max_score)
+    原样保留。空评分项短路保持旧形状全等(R5)。"""
+    t = await crud.create_task(db, owner_id="u1")
+    await _mk_baseline(db, t.id, [{"name": "价格分", "max_score": 50, "related_paths": ["tender.max_price"]}])
+    await crud.add_issue(db, task_id=t.id, owner_id="u1", rule_id="L1-009", layer="L1", severity="fatal", verdict="violation", message="超限价", dedup_key="k1", need_human=False)
+    await crud.add_issue(db, task_id=t.id, owner_id="u1", rule_id="L1-010", layer="L1", severity="major", verdict="violation", message="加总不符", dedup_key="k2", need_human=False)
+    await crud.add_issue(db, task_id=t.id, owner_id="u1", rule_id="L1-013", layer="L1", severity="major", verdict="unclear", message="材料存疑", dedup_key="k3", need_human=True)
+    await crud.add_issue(db, task_id=t.id, owner_id="u1", rule_id="L1-009", layer="L1", severity="minor", verdict="false_positive", message="误报", dedup_key="k4", need_human=False)
+    r = await client.get(f"/api/extensions/bid-review/tasks/{t.id}/score_coverage")
+    assert r.status_code == 200
+    body = r.json()
+    assert body["total"] == 1 and body["covered"] == 1 and body["covered_max_score"] == 50.0  # 本体键原样
+    assert body["at_risk_max_score"] == 50.0 and body["at_risk_item_names"] == ["价格分"]
+    assert body["unresolved_item_names"] == []  # L1-013 未覆盖价格分(related_paths 交集空),不硬凑

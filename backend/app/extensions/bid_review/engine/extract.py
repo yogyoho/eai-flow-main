@@ -581,6 +581,34 @@ def _covered_max_score(items_out: list[dict]) -> float | None:
     return sum(scores) if scores else None
 
 
+def derive_score_risk(coverage_out: dict, violation_rule_ids: set[str], unresolved_rule_ids: set[str]) -> dict:
+    """评分涉险面(score-risk spec 2026-11-05,挂账「score 预估另立 spec」兑付):
+    涉险**上界**三事实键,非预计扣分——引擎不知评分细则裁量矩阵,任何「预计扣 N 分」
+    都是编造(对齐审计裁决②原文);可诚实给出的是「这些分处于风险中」。
+
+    归因链可审计:违规规则 id ∩ item.covered_by_rules 非空 → 该项涉险(与覆盖度
+    同源交集,不靠语义猜);一条违规命中多项全计(保守上界)。violation 优先于
+    unresolved(互斥)。unclear/待人工规则命中项 → unresolved(不可估面,显式列出,
+    不凑数)。伪零/真零纪律:无涉险项 → at_risk_max_score=0.0(真零事实:无活跃
+    违规威胁任何评分项);涉险项全不可数值化 → None(诚实不可估,与 covered_max_score
+    同型);消费方措辞纪律:涉险/风险上限,禁用「预计得分/预估扣分」。"""
+    at_risk_names: list[str] = []
+    unresolved_names: list[str] = []
+    scores: list[float] = []
+    for item in coverage_out.get("items") or []:
+        covered = set(item.get("covered_by_rules") or [])
+        if covered & violation_rule_ids:
+            at_risk_names.append(str(item.get("name") or ""))
+            try:
+                scores.append(float(item.get("max_score")))
+            except (TypeError, ValueError):
+                pass  # 不可数值化:名字仍列,数值不凑
+        elif covered & unresolved_rule_ids:
+            unresolved_names.append(str(item.get("name") or ""))
+    at_risk = (sum(scores) if scores else None) if at_risk_names else 0.0
+    return {"at_risk_max_score": at_risk, "at_risk_item_names": at_risk_names, "unresolved_item_names": unresolved_names}
+
+
 def deviation_counts(items: list | None) -> dict:
     """B9 响应偏离表(spec 2026-11-01 §1.2)counts 服务端算(单一事实源):
     tender_items=kind≠extra(增项不在招标清单)/bid_items=kind≠missing(漏项无响应);

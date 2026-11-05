@@ -37,7 +37,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.extensions.auth.middleware import require_permission
 from app.extensions.bid_review import crud, parse, worker
 from app.extensions.bid_review.engine.attachments import build_checklist
-from app.extensions.bid_review.engine.extract import apply_adjudications, compute_score_coverage, detect_conflicts, deviation_counts
+from app.extensions.bid_review.engine.extract import apply_adjudications, compute_score_coverage, derive_score_risk, detect_conflicts, deviation_counts
 from app.extensions.bid_review.engine.labels import FIELD_LABELS
 from app.extensions.bid_review.models import BaselinePackage, ReviewFeedback, ReviewIssue, RulePackMeta
 from app.extensions.bid_review.schemas import AdjudicateIn, FeedbackIn, IssueOut, RuleEnabledIn, TaskOut
@@ -838,7 +838,12 @@ async def task_score_coverage(
     评分办法项由抽取层落 baseline fields.tender.scoring_items(项携带
     related_paths,限定字段字典路径);基线每行携带同全量快照 → 逐行收集后按
     name 去重。旧任务/未抽出评分项 → {total:0, covered:0, items:[]}(前端据此
-    回落「规则命中」meter 现状口径,spec §4.5 line 117)。"""
+    回落「规则命中」meter 现状口径,spec §4.5 line 117;空短路形状字节不变,
+    score-risk spec R4/R5)。
+    评分涉险面(score-risk spec 2026-11-05):本体键之上派生 at_risk_max_score /
+    at_risk_item_names / unresolved_item_names 三事实键——涉险**上界**非预计扣分
+    (引擎不知评分裁量矩阵,拒绝编造);归因链=违规规则 id ∩ covered_by_rules,
+    与覆盖度同源交集。MCP bid_review_score_coverage **out 透传自动浮出。"""
     task = await crud.get_task(db, task_id=task_id, owner_id=owner_id)
     if task is None:
         raise HTTPException(status_code=404, detail="任务不存在")
@@ -855,7 +860,12 @@ async def task_score_coverage(
     if not raw_items:
         return {"total": 0, "covered": 0, "items": []}
     pack = worker.load_rulepack(worker.RULEPACK_PATH)
-    return compute_score_coverage(raw_items, pack.rules)
+    out = compute_score_coverage(raw_items, pack.rules)
+    issues = await crud.list_issues(db, task_id=task_id, owner_id=owner_id)
+    violation_rule_ids = {i.rule_id for i in issues if i.verdict == "violation" and not i.need_human}
+    unresolved_rule_ids = {i.rule_id for i in issues if i.verdict != "false_positive" and (i.need_human or i.verdict == "unclear")}
+    out.update(derive_score_risk(out, violation_rule_ids, unresolved_rule_ids))
+    return out
 
 
 @router.get("/tasks/{task_id}/deviations")
