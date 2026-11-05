@@ -36,6 +36,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.extensions.bid_review import crud
 from app.extensions.bid_review.engine.clusters import cluster_performance_entries
+from app.extensions.bid_review.engine.crosscheck import annotate_page_offset, run_crosscheck
 from app.extensions.bid_review.engine.eval_core import _content_to_str, evaluate_fields, wrap_model_fn
 from app.extensions.bid_review.engine.extract import (
     ExtractFn,
@@ -437,12 +438,14 @@ async def _get_task_any(db: AsyncSession, task_id: str) -> ReviewTask | None:
     return result.scalar_one_or_none()
 
 
-async def _write_baselines(db: AsyncSession, task_id: str, docs: list[dict], fields: dict, materials_hash: str, provenance: dict | None = None, candidates: dict | None = None, fields_conf: dict | None = None) -> None:
+async def _write_baselines(db: AsyncSession, task_id: str, docs: list[dict], fields: dict, materials_hash: str, provenance: dict | None = None, candidates: dict | None = None, fields_conf: dict | None = None, crosscheck: dict | None = None) -> None:
     """基线落库(kind 按 docs role 拆,计划口径);每行携带全量 fields 快照 + 本行 doc_id
     (确认门 UI 逐份核对同一快照)。EAI-CUSTOM(2026-10-30 抽取 v2):payload 增
     provenance(逐字段出处 {doc_id,page,quote},字段抽取层产物;det 求值不消费)。
     EAI-CUSTOM(2026-10-30 二期 spec §1.1/§二):payload 增 candidates(多候选快照,
     冲突判定原料)+ fields_conf({conf,verified},置信投影)。
+    EAI-CUSTOM(2026-11-05 B立项 M5):payload 增 crosscheck(交叉自检报告,纯服务端
+    派生,非字段路径——universe/M0/golden 零触碰)。
     写前清旧行——boot recovery 断点续跑(extracting 入口)重放基线时幂等,不产生重复行。"""
     await db.execute(delete(BaselinePackage).where(BaselinePackage.task_id == task_id))
     await db.commit()
@@ -458,6 +461,7 @@ async def _write_baselines(db: AsyncSession, task_id: str, docs: list[dict], fie
                     "provenance": provenance or {},
                     "candidates": candidates or {},
                     "fields_conf": fields_conf or {},
+                    "crosscheck": crosscheck or {},
                 },
             )
         )
@@ -652,10 +656,22 @@ async def advance_task(
                 payload = {**payload, "fields": fields, "materials_hash": materials_hash(fields)}
             except Exception as exc:  # noqa: BLE001  业绩段失败隔离:基线照常交付
                 logger.warning("bid_review performance stage skipped err=%s", exc)
+    # B立项 M5 交叉自检段(spec 2026-11-04 §5,2026-11-05):纯服务端零 LLM,无条件
+    # 跑(免费,无信号门控);失败隔离(警告后无 crosscheck 键,基线照常交付);产出
+    # 落 payload["crosscheck"](非字段路径——universe/M0/golden 零触碰,materials_
+    # hash 不含本报告);页偏移命中时 fields_conf 对 page-bearing provenance 路径
+    # 注记 page_offset:true(不覆盖 conf/verified,gate 自动消费挂账 R2+)。
+    try:
+        cross = run_crosscheck(fields, payload.get("candidates"))
+        payload = {**payload, "crosscheck": cross}
+        if cross.get("page_offset", {}).get("flag"):
+            payload = {**payload, "fields_conf": annotate_page_offset(payload.get("fields_conf"), payload.get("provenance"), cross["page_offset"])}
+    except Exception as exc:  # noqa: BLE001  交叉自检失败隔离:基线照常交付
+        logger.warning("bid_review crosscheck stage skipped err=%s", exc)
     meta = dict(task.engine_meta or {})
     meta["materials_hash"] = payload["materials_hash"]
     task.engine_meta = meta  # 重新赋值以标记 JSON 列 dirty
-    await _write_baselines(db, task_id, docs, fields, payload["materials_hash"], payload.get("provenance"), payload.get("candidates"), payload.get("fields_conf"))
+    await _write_baselines(db, task_id, docs, fields, payload["materials_hash"], payload.get("provenance"), payload.get("candidates"), payload.get("fields_conf"), payload.get("crosscheck"))
 
     # B1 抽取回填(裁定12:项目/标段/编号从投标文件抽):基线落库后同处写 task 三列;
     # 仅收标量(str/int/float),dict/list 等结构化值不回填(伪零纪律:抽不到保持

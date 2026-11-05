@@ -896,3 +896,84 @@ async def test_m4_default_perf_fn_seam(monkeypatch, db, tmp_rulepack):
     payload = await _first_payload(db, t.id)
     groups = payload["fields"]["bid.performance_groups"]
     assert len(groups) == 1 and groups[0]["ok"] is True  # 全等名快路径并组
+
+
+# ── B立项 M5 交叉自检段(spec 2026-11-04 §5,2026-11-05)───────────────────────────
+
+
+def _m5_extract(offset=False):
+    """M5 测试提取器:全路径 None + 可选(声明双向字段 / 页偏移章节行 / 带页出处总价)。"""
+
+    def _extract(d, p):
+        fields = {k: None for k in p}
+        raw = {"fields": fields}
+        if offset:
+            fields["bid.section_tree"] = [{"code": "1", "title": "商务偏差", "toc_page": 3, "body_page": 10, "offset": 7, "offset_flag": True}]
+            fields["bid.total_price"] = "1000万"
+            raw["provenance"] = {"bid.total_price": {"doc_id": "b.pdf", "page": 10, "quote": "投标总价:1000万元"}}
+        fields["tender.required_declarations"] = ["A-DECL-1"]
+        fields["bid.declaration_letter_codes"] = ["A-DECL-1", "A-DECL-X"]
+        return raw
+
+    return _extract
+
+
+@pytest.mark.asyncio
+async def test_m5_crosscheck_landed_hash_untouched_and_conf_annotated(db, tmp_rulepack):
+    """交叉自检段:payload["crosscheck"] 四键齐落(页偏移命中+声明双向);materials_hash
+    不触及(crosscheck 不进 fields);fields_conf 对 page-bearing provenance 路径注记。
+    章节行走 M2 seam 注入(section_tree 是第二段路径,首段归一会剥外部注入)。"""
+    from app.extensions.bid_review.engine.extract import materials_hash
+
+    def _extract(d, p):
+        fields = {k: None for k in p}
+        fields["bid.toc_section_codes"] = ["3"]
+        fields["tender.required_sections"] = ["5"]
+        fields["tender.required_declarations"] = ["A-DECL-1"]
+        fields["bid.declaration_letter_codes"] = ["A-DECL-1", "A-DECL-X"]
+        fields["bid.total_price"] = "1000万"
+        return {"fields": fields, "provenance": {"bid.total_price": {"doc_id": "b.pdf", "page": 10, "quote": "投标总价:1000万元"}}}
+
+    def _section_fn(docs, toc_codes, required_sections):
+        return {"sections": [{"title": "商务偏差", "toc_page": 3, "body_page": 20}]}
+
+    t = await crud.create_task(db, owner_id="u1")
+    docs = [{"doc_id": "b.pdf", "role": "bid", "text": "x"}]
+    await advance_task(db, t.id, owner_id="u1", docs=docs, extract_fn=_extract, wait_confirm=True, section_fn=_section_fn)
+    payload = await _first_payload(db, t.id)
+    cc = payload["crosscheck"]
+    assert set(cc) == {"declarations", "page_offset", "copy_conflicts", "core_success_rate"}
+    assert cc["declarations"] == {"missing": [], "extra": ["A-DECL-X"]}
+    assert cc["page_offset"]["flag"] is True and cc["page_offset"]["max_abs_offset"] == 17
+    assert payload["fields_conf"]["bid.total_price"]["page_offset"] is True  # page=10 非 null
+    assert payload["materials_hash"] == materials_hash(payload["fields"])
+
+
+@pytest.mark.asyncio
+async def test_m5_crosscheck_failure_isolated_absent_key(monkeypatch, db, tmp_rulepack):
+    """交叉自检抛错=无 crosscheck 键(行为=现状),基线照常交付。"""
+    from app.extensions.bid_review import worker
+
+    def _boom(*a):
+        raise RuntimeError("crosscheck boom")
+
+    monkeypatch.setattr(worker, "run_crosscheck", _boom)
+    t = await crud.create_task(db, owner_id="u1")
+    docs = [{"doc_id": "b.pdf", "role": "bid", "text": "x"}]
+    await advance_task(db, t.id, owner_id="u1", docs=docs, extract_fn=_m5_extract(), wait_confirm=True)
+    payload = await _first_payload(db, t.id)
+    assert payload.get("crosscheck") == {}  # 写层键恒在:失败落空 dict=未产出(与成功空壳四键齐区分)
+
+
+@pytest.mark.asyncio
+async def test_m5_empty_fields_lands_empty_shell(db, tmp_rulepack):
+    """全 None 字段:crosscheck 空壳照落(诚实零值;无条件跑=无信号门控)。"""
+    t = await crud.create_task(db, owner_id="u1")
+    docs = [{"doc_id": "b.pdf", "role": "bid", "text": "x"}]
+    await advance_task(db, t.id, owner_id="u1", docs=docs, extract_fn=_m5_extract(offset=False), wait_confirm=True)
+    payload = await _first_payload(db, t.id)
+    cc = payload["crosscheck"]
+    assert cc["declarations"] == {"missing": [], "extra": ["A-DECL-X"]}  # 声明字段恒非 null
+    assert cc["page_offset"]["flag"] is False
+    assert cc["copy_conflicts"] == []
+    assert cc["core_success_rate"] == 0.0
