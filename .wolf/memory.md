@@ -28653,3 +28653,11 @@
 | 01:06 | Edited backend/app/extensions/bid_review/routers.py | modified get_doc_content() | ~464 |
 | 01:06 | Edited backend/tests/test_bid_review_routers.py | 6→7 lines | ~90 |
 | 00:40 | zip扫描页OCR挂账兑付:scan块自带blob+job名source前缀+content端点?source=池内消歧,占位段废除 | parse.py/routers.py/test_bid_review_parse.py/test_bid_review_routers.py/spec | 580/6/0 golden零翻红 eb4857e00 | ~28k || 01:11 | Edited C:/Users/admin/.claude/projects/D--eai-eai-flow-main/memory/bid-review-alignment-gaps-landed.md | inline fix | ~134 |
+| 01:13 | Session end: 8 writes across 5 files (test_bid_review_parse.py, test_bid_review_routers.py, parse.py, routers.py, bid-review-alignment-gaps-landed.md) | 4 reads | ~37281 tok |
+| 01:47 | Created backend/tests/test_bid_review_live_variance.py | — | ~432 |
+| 01:48 | Created backend/scripts/bid_review_live_variance.py | — | ~1631 |
+| 01:48 | Created backend/app/extensions/bid_review/golden/extract_cases/variance-tender.md | — | ~160 |
+| 01:48 | Created backend/app/extensions/bid_review/golden/extract_cases/variance-bid.md | — | ~264 |
+| 01:49 | Created docs/superpowers/plans/2026-11-06-bid-review-m2m4-variance-plan.md | — | ~703 |
+| 01:49 | Edited backend/scripts/bid_review_live_variance.py | expanded (+8 lines) | ~116 |
+| 01:30 | M2-M4活体方差回采harness落地:方差夹具对(五段门全开)+N跑脚本(_variance/_field_fps测量核TDD 3测) | scripts/bid_review_live_variance.py/variance-{tender,bid}.md/test/plan | 583/6/0零配额,烧配额跑待用户点头 | ~22k |
