@@ -515,6 +515,9 @@ fixture 策略: 全节点 template_text=null(不发明招标内容), 真文渲�
 - (2026-11-05) pyproject.toml 文本切 [project] dependencies 块须用行首 `
 ]` 作边界——`"uvicorn[standard]"` 这类 extras 括号会把「首个 ]」切片提前截断(test_bid_review_deps 首版踩中)。
 
+- [2026-11-06] bid_review zip 扫描页测试:同内容扫描页 PNG 走 asset 内容寻址会共享同一 asset_id(合法去重),断言勿锁「asset 互异」——消歧证明用 OCR job 名(source#page-N)而非 asset_id。
+- [2026-11-06] content 端点不传 source 的整页窗口跨成员混段是既有歧义(spec R3 保留),断言「首个命中」而非「全池同源」;?source= 传入才池内收窄。
+
 ## Do-Not-Repeat
 - 2026-11-05(活体回采):烧配额/长跑批的输出**禁止过 tail 管道**——tail 只留尾部,评分头/错误头静默丢失且配额已烧;一律重定向落文件(> file 2> err)后按需 grep。
 
