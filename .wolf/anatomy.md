@@ -1,7 +1,7 @@
 # anatomy.md
 
-> Auto-maintained by OpenWolf. Last scanned: 2026-11-05T05:26:43.209Z
-> Files: 17 tracked | Anatomy hits: 0 | Misses: 0
+> Auto-maintained by OpenWolf. Last scanned: 2026-11-05T06:06:22.007Z
+> Files: 21 tracked | Anatomy hits: 0 | Misses: 0
 
 ## ../../00 工作目录/02 项目策划/马宁/应急指挥/bid-run/
 
@@ -642,10 +642,12 @@
 
 ## backend/app/extensions/bid_review/
 
+- `worker.py` — bid_review worker(Task 9)——状态机推进 + claimer 循环 + gateway 生命周期入口。M5:crosscheck 段(perf 后无条件跑/失败隔离/payload.crosscheck+fields_conf 注记)/_write_baselines 增 crosscheck 键/summarize_issues 增 rules_total+unknown_ratio/_run_review_stage 返回 (written,rules_total)。 (~12000 tok)
 
 ## backend/app/extensions/bid_review/engine/
 
 - `clusters.py` — 业绩条目确定性聚类(B立项 M4,spec §5,2026-11-05):纯服务端零 LLM。 (~632 tok)
+- `crosscheck.py` — B立项 M5 交叉自检(纯服务端零 LLM,spec 2026-11-04 §5 M5 行,2026-11-05)。 (~1075 tok)
 
 ## backend/app/extensions/bid_review/engine/dicts/
 
@@ -928,6 +930,9 @@
 - `clusters.py` — bid_review 业绩条目确定性聚类(M4)——三通道:归一化名全等快路径/ratio≥0.80+佐证(甲方/金额/日期)/嫌疑带[0.60,0.80)+佐证→ok=false UNKNOWN;纯服务端零 LLM,SIM_MERGE/SIM_SUSPECT 常量。 (~900 tok)
 - `test_bid_review_clusters.py` — B立项 M4 条目聚类单测(spec §5,2026-11-05):业绩富行归一闸 + clusters.py 确定性聚类三通道 + prompt/baseline。 (~1435 tok)
 - `test_bid_review_clusters.py` — M4 单测:normalize_performance_entries 闸+cluster 三通道(快路径/佐证并组/嫌疑带/无佐证不并/嫌疑不转正)+prompt/baseline(ratio 断言经 SequenceMatcher 实测锚定)。 (~1500 tok)
+- `crosscheck.py` — bid_review 交叉自检纯函数(M5,spec §5)——四件:声明↔实体双向(missing 强 MISSING/extra 提示补清单不判 MISSING)/页偏移 flag(消费 M2 offset_flag)/copy_conflicts(candidates 跨文档≥2 doc_ids 多值)/core_success_rate(CORE_FIELDS 8 条);annotate_page_offset 给 fields_conf 注记 page_offset:true 不覆盖 conf/verified;非字段路径 universe/M0/golden 零触碰。 (~800 tok)
+- `test_bid_review_crosscheck.py` — M5 单测+负证据门禁(spec §5,2026-11-05):声明双向/页偏移/正副本冲突/核心字段成功率 + annotate 两态 + TestNegativeEvidenceCoverageGate(平件/复合父行/复合子行 MISSING 一律带负证据,walk 全树断言)。 (~1400 tok)
+- `test_bid_review_crosscheck.py` — B立项 M5 交叉自检纯函数测试(spec 2026-11-04 §5 M5 行,2026-11-05)。 (~914 tok)
 - `test_bid_review_extract.py` — bid_review engine/extract.py 基准提取单测:shape/materials_hash 稳定 + null 显式保留 + 非字典路径丢弃 + prompt 骨架转录。 (~5510 tok)
 - `test_bid_review_registry.py` — 规则包注册表测试(spec 2026-11-05 R1 §2.6):宇宙锚定/反查/lint/拒载/投影声明。 (~2316 tok)
 - `test_bid_review_sections_extract.py` — M2 章节层契约+归一闸+prompt/baseline 单测(spec 2026-11-04 §5,2026-11-05)。 (~1046 tok)
@@ -1022,6 +1027,7 @@
 ## docs/superpowers/plans/
 
 - `2026-11-05-bid-review-cluster-layer-m4-plan.md` — B立项 M4 条目聚类(业绩富行抽取 + 确定性聚类)实施计划 (~2061 tok)
+- `2026-11-05-bid-review-crosscheck-m5-plan.md` — B立项 M5 交叉自检+质量门禁(§八三检 + §十指标)实施计划 (~3082 tok)
 - `2026-11-05-bid-review-section-layer-m2-plan.md` — B立项 M2 章节层(section_tree + page_offset)实施计划 (~4113 tok)
 - `2026-11-05-bid-review-table-layer-m3-plan.md` — B立项 M3 表格/清单行(boq_rows 行级 + table_cells)实施计划 (~1709 tok)
 

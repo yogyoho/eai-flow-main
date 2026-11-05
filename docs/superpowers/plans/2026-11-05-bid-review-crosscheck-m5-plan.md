@@ -29,13 +29,13 @@
 
 ### Task 1: 计划预提交
 
-- [ ] **Step 1:** `git add -f docs/superpowers/plans/2026-11-05-bid-review-crosscheck-m5-plan.md && git commit -m "docs(bid-review): B立项M5交叉自检计划——纯服务端三检+§十指标投影+负证据门禁七裁决"`
+- [x] **Step 1:** `git add -f docs/superpowers/plans/2026-11-05-bid-review-crosscheck-m5-plan.md && git commit -m "docs(bid-review): B立项M5交叉自检计划——纯服务端三检+§十指标投影+负证据门禁七裁决"`
 
 ### Task 2: crosscheck.py 纯函数 + 契约测试
 
 **Files:** engine/crosscheck.py(新建);tests/test_bid_review_crosscheck.py(新建)
 
-- [ ] **Step 1: 失败测试**
+- [x] **Step 1: 失败测试**
 
 ```python
 # tests/test_bid_review_crosscheck.py
@@ -100,13 +100,13 @@ class TestAnnotatePageOffset:
         assert annotate_page_offset(None, None, None) in (None, {})
 ```
 
-- [ ] **Step 2: 红** → **Step 3: 实现**(crosscheck.py:run_crosscheck 分派四私有函数+annotate_page_offset+CORE_FIELDS 常量;声明比较 str.strip 归一)→ **Step 4: 绿** → **Step 5: commit**(`feat(bid-review): B立项M5交叉自检——crosscheck.py纯函数(声明双向/页偏移/正副本candidates/核心字段成功率)+fields_conf页偏移注记`)
+- [x] **Step 2: 红** → **Step 3: 实现**(crosscheck.py:run_crosscheck 分派四私有函数+annotate_page_offset+CORE_FIELDS 常量;声明比较 str.strip 归一)→ **Step 4: 绿** → **Step 5: commit**(`feat(bid-review): B立项M5交叉自检——crosscheck.py纯函数(声明双向/页偏移/正副本candidates/核心字段成功率)+fields_conf页偏移注记`)
 
 ### Task 3: worker crosscheck 段 + baselines 持久化
 
 **Files:** worker.py;tests/test_bid_review_worker.py
 
-- [ ] **Step 1: 失败测试**(镜像 M3/M4 段测试:merged(payload["crosscheck"] 四键齐+materials_hash 不变——crosscheck 不进 fields;页偏移 fixture(section_tree offset_flag=True+provenance page 3)→fields_conf 注记 page_offset:true;失败隔离(crosscheck_fn 注入 raise→无键);零字段→crosscheck 空壳键照落)
+- [x] **Step 1: 失败测试**(镜像 M3/M4 段测试:merged(payload["crosscheck"] 四键齐+materials_hash 不变——crosscheck 不进 fields;页偏移 fixture(section_tree offset_flag=True+provenance page 3)→fields_conf 注记 page_offset:true;失败隔离(crosscheck_fn 注入 raise→无键);零字段→crosscheck 空壳键照落)
 
 ```python
 async def test_m5_crosscheck_landed_and_hash_untouched(...):
@@ -120,13 +120,13 @@ async def test_m5_crosscheck_landed_and_hash_untouched(...):
     assert payload["materials_hash"] == materials_hash(payload["fields"])  # crosscheck 不进 fields
 ```
 
-- [ ] **Step 2: 红** → **Step 3: 实现**:worker perf 段后加 crosscheck 段(try/except 隔离;`run_crosscheck(fields, payload.get("candidates"))`→`payload={**payload,"crosscheck":...}`;flag 命中→`annotate_page_offset(payload.get("fields_conf"), payload.get("provenance"), ...)`);`_write_baselines` 增 `crosscheck: dict | None = None` 参数,payload dict 增 `"crosscheck": crosscheck or {}`,advance_task 调用传 `payload.get("crosscheck")` → **Step 4: 绿** → **Step 5: commit**(`feat(bid-review): B立项M5 worker交叉自检段——payload.crosscheck落库+fields_conf页偏移注记+hash不触及`)
+- [x] **Step 2: 红** → **Step 3: 实现**:worker perf 段后加 crosscheck 段(try/except 隔离;`run_crosscheck(fields, payload.get("candidates"))`→`payload={**payload,"crosscheck":...}`;flag 命中→`annotate_page_offset(payload.get("fields_conf"), payload.get("provenance"), ...)`);`_write_baselines` 增 `crosscheck: dict | None = None` 参数,payload dict 增 `"crosscheck": crosscheck or {}`,advance_task 调用传 `payload.get("crosscheck")` → **Step 4: 绿** → **Step 5: commit**(`feat(bid-review): B立项M5 worker交叉自检段——payload.crosscheck落库+fields_conf页偏移注记+hash不触及`)
 
 ### Task 4: summary §十指标(unknown_ratio+rules_total)
 
 **Files:** worker.py;tests/test_bid_review_worker.py
 
-- [ ] **Step 1: 失败测试**
+- [x] **Step 1: 失败测试**
 
 ```python
 def test_summary_unknown_ratio():
@@ -138,13 +138,13 @@ def test_summary_unknown_ratio():
     assert summarize_issues(issues, rules_total=0)["unknown_ratio"] is None  # 伪零纪律
 ```
 
-- [ ] **Step 2: 红** → **Step 3: 实现**:summarize_issues 加 `rules_total=None` 参数+两新键;`_run_review_stage` 返回 `(written, len(pack.rules))`;advance_task/resume_confirmed 两调用点改绑 `written, rules_total = ...` 并把 rules_total 传 summarize_issues → **Step 4: 绿** → **Step 5: commit**(`feat(bid-review): B立项M5 §十指标——summary.unknown_ratio+rules_total(伪零纪律;routers调用零改动)`)
+- [x] **Step 2: 红** → **Step 3: 实现**:summarize_issues 加 `rules_total=None` 参数+两新键;`_run_review_stage` 返回 `(written, len(pack.rules))`;advance_task/resume_confirmed 两调用点改绑 `written, rules_total = ...` 并把 rules_total 传 summarize_issues → **Step 4: 绿** → **Step 5: commit**(`feat(bid-review): B立项M5 §十指标——summary.unknown_ratio+rules_total(伪零纪律;routers调用零改动)`)
 
 ### Task 5: GET /metrics/extraction 聚合端点
 
 **Files:** routers.py;tests/test_bid_review_metrics.py
 
-- [ ] **Step 1: 失败测试**
+- [x] **Step 1: 失败测试**
 
 ```python
 async def test_metrics_extraction_aggregates_latest(...):
@@ -161,13 +161,13 @@ async def test_metrics_extraction_empty(...):
     assert body["tasks"] == 0 and body["core_success_rate_avg"] is None
 ```
 
-- [ ] **Step 2: 红** → **Step 3: 实现**(select(BaselinePackage) 全库 order_by created_at asc;dict 按 task_id 后写覆盖=最新;五聚合;口径注释同 fail_attribution「全库聚合,owner 仅作鉴权」)→ **Step 4: 绿** → **Step 5: commit**(`feat(bid-review): B立项M5 GET /metrics/extraction——最新基线crosscheck五聚合(伪零纪律)`)
+- [x] **Step 2: 红** → **Step 3: 实现**(select(BaselinePackage) 全库 order_by created_at asc;dict 按 task_id 后写覆盖=最新;五聚合;口径注释同 fail_attribution「全库聚合,owner 仅作鉴权」)→ **Step 4: 绿** → **Step 5: commit**(`feat(bid-review): B立项M5 GET /metrics/extraction——最新基线crosscheck五聚合(伪零纪律)`)
 
 ### Task 6: 负证据覆盖门禁 + 全量验证
 
 **Files:** tests/test_bid_review_crosscheck.py(追加)
 
-- [ ] **Step 1: 门禁测试**(§十 pytest 套件成员——负证据覆盖 100% 回归锁;夹具经 attachments.att_check 全链路,逐行断言三种 MISSING 形态都带非 null negative_evidence)
+- [x] **Step 1: 门禁测试**(§十 pytest 套件成员——负证据覆盖 100% 回归锁;夹具经 attachments.att_check 全链路,逐行断言三种 MISSING 形态都带非 null negative_evidence)
 
 ```python
 class TestNegativeEvidenceCoverageGate:
@@ -182,13 +182,13 @@ class TestNegativeEvidenceCoverageGate:
 
 (实现时按 test_bid_review_attachments.py 既有夹具同构落;断言点:①平件 per_req MISSING 行 ②`_composite` 返回 parent_negative_evidence ③子行 sub_results MISSING。若既有测试已全覆盖三形态,本 Task 收缩为一条汇总断言并注明。)
 
-- [ ] **Step 2: 绿** → **Step 3: 全量验证** `cd backend && PYTHONPATH=. uv run pytest tests/ -k bid_review -q`(后台;期望全绿,预计 ~546);golden 55+M0 26/26 含在全家(零翻红);71 首段锁+universe 77 不动(registry 测试锁);ruff check --fix + format 改动文件→重跑受影响测试
+- [x] **Step 2: 绿** → **Step 3: 全量验证** `cd backend && PYTHONPATH=. uv run pytest tests/ -k bid_review -q`(后台;期望全绿,预计 ~546);golden 55+M0 26/26 含在全家(零翻红);71 首段锁+universe 77 不动(registry 测试锁);ruff check --fix + format 改动文件→重跑受影响测试
 
 ### Task 7: 收官
 
-- [ ] **Step 1:** push 重试至 `0\t0`
-- [ ] **Step 2:** wolf(memory;buglog 若 bug)+ anatomy(crosscheck.py/新测试/routers/worker 条目)+ plan 勾选 docs commit(`git add -f`)
-- [ ] **Step 3:** auto-memory `bid-review-extract-engine-m5-landed.md` + MEMORY.md 索引;终报 = **B立项五段全收官总结**+队列下一项(挂账池:活体回采/R2+ 规则族/§八§十原文复核)+「继续」收尾
+- [x] **Step 1:** push 重试至 `0\t0`
+- [x] **Step 2:** wolf(memory;buglog 若 bug)+ anatomy(crosscheck.py/新测试/routers/worker 条目)+ plan 勾选 docs commit(`git add -f`)
+- [x] **Step 3:** auto-memory `bid-review-extract-engine-m5-landed.md` + MEMORY.md 索引;终报 = **B立项五段全收官总结**+队列下一项(挂账池:活体回采/R2+ 规则族/§八§十原文复核)+「继续」收尾
 
 ### 挂账(显式)
 

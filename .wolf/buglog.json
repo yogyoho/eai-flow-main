@@ -5231,6 +5231,91 @@
       "related_bugs": [],
       "occurrences": 2,
       "last_seen": "2026-11-05"
+    },
+    {
+      "id": "bug-4014",
+      "timestamp": "2026-11-05T06:05:29.777Z",
+      "error_message": "Significant refactor of ",
+      "file": "backend/app/extensions/bid_review/worker.py",
+      "root_cause": "2 lines replaced/restructured",
+      "fix": "Rewrote 16→21 lines (2 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-11-05T06:05:29.777Z"
+    },
+    {
+      "id": "bug-4015",
+      "timestamp": "2026-11-05T06:05:43.442Z",
+      "error_message": "Wrong reference: int should be tuple",
+      "file": "backend/app/extensions/bid_review/worker.py",
+      "root_cause": "Used \"int\" instead of \"tuple\"",
+      "fix": "Changed int → tuple",
+      "tags": [
+        "auto-detected",
+        "wrong-reference",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-11-05T06:05:43.442Z"
+    },
+    {
+      "id": "bug-4016",
+      "timestamp": "2026-11-05T06:05:56.722Z",
+      "error_message": "Wrong return value",
+      "file": "backend/app/extensions/bid_review/worker.py",
+      "root_cause": "Was returning: written",
+      "fix": "Now returns: written, len(pack.rules)",
+      "tags": [
+        "auto-detected",
+        "return-value",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-11-05T06:05:56.723Z"
+    },
+    {
+      "id": "bug-4017",
+      "timestamp": "2026-11-05",
+      "error_message": "family run: test_metrics_extraction_aggregates_latest_baseline assert 0.5 == 0.75",
+      "file": "backend/app/extensions/bid_review/routers.py + tests/test_bid_review_metrics.py",
+      "root_cause": "同刻双基线行 created_at 相同→order_by(created_at,id) 中 id=uuid4 无插入序,『最新行胜』靠随机 uuid 定序不稳定;生产批次间必有时间差故仅测试假象",
+      "fix": "测试显式回拨首行 created_at 模拟真实先后;端点语义(asc 后写覆盖=最新)保留,同批同刻行 payload 本就同快照无影响",
+      "tags": [
+        "bid-review",
+        "m5",
+        "ordering",
+        "created_at-tie",
+        "uuid",
+        "test-only"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-11-05"
+    },
+    {
+      "id": "bug-4018",
+      "timestamp": "2026-11-05",
+      "error_message": "family run: test_issues_endpoint_grouping_wiring summary == 精确字典缺 rules_total/unknown_ratio",
+      "file": "backend/tests/test_bid_review_grouping.py",
+      "root_cause": "M5 summarize_issues additive 两新键(rules_total/unknown_ratio)后,四处精确等值断言只修了三处,grouping 处漏网(全量 sweep grep '\"need_human\": [0-9]' 后补齐)",
+      "fix": "断言补 'rules_total': None, 'unknown_ratio': None 两键;教训:改共享函数契约时 grep 全测试面同款断言再动手",
+      "tags": [
+        "bid-review",
+        "m5",
+        "additive-contract",
+        "exact-dict-assert",
+        "summary"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-11-05"
     }
   ]
 }

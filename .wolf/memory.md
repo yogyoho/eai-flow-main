@@ -28462,3 +28462,23 @@
 | 13:24 | Session end: 39 writes across 10 files (test_bid_review_registry.py, registry.py, test_bid_review_tables_extract.py, extract.py, worker.py) | 8 reads | ~16855 tok |
 | 14:35 | M4官方门禁522/0(+21);收官docs commit | - | green | - |
 | 13:26 | Created C:/Users/admin/.claude/projects/D--eai-eai-flow-main/memory/bid-review-extract-engine-m4-landed.md | — | ~446 |
+| 13:28 | Session end: 40 writes across 11 files (test_bid_review_registry.py, registry.py, test_bid_review_tables_extract.py, extract.py, worker.py) | 9 reads | ~17333 tok |
+| 13:29 | Session end: 40 writes across 11 files (test_bid_review_registry.py, registry.py, test_bid_review_tables_extract.py, extract.py, worker.py) | 10 reads | ~17333 tok |
+
+## Session: 2026-11-05 13:47
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 13:55 | Created docs/superpowers/plans/2026-11-05-bid-review-crosscheck-m5-plan.md | — | ~3287 |
+| 13:57 | Created backend/tests/test_bid_review_crosscheck.py | — | ~914 |
+| 13:57 | Created backend/app/extensions/bid_review/engine/crosscheck.py | — | ~1075 |
+| 14:00 | Edited backend/app/extensions/bid_review/worker.py | added 1 import(s) | ~62 |
+| 14:01 | Edited backend/app/extensions/bid_review/worker.py | modified get() | ~277 |
+| 14:01 | Edited backend/app/extensions/bid_review/worker.py | modified _write_baselines() | ~416 |
+| 14:01 | Edited backend/app/extensions/bid_review/worker.py | inline fix | ~54 |
+| 14:05 | Edited backend/app/extensions/bid_review/worker.py | modified summarize_issues() | ~325 |
+| 14:05 | Edited backend/app/extensions/bid_review/worker.py | inline fix | ~46 |
+| 14:05 | Edited backend/app/extensions/bid_review/worker.py | 3→4 lines | ~44 |
+| 14:06 | Edited backend/app/extensions/bid_review/worker.py | modified resume_confirmed() | ~180 |
+| 14:06 | Edited backend/app/extensions/bid_review/worker.py | 4→4 lines | ~104 |
+| 13:50 | B立项M5交叉自检+质量门禁落地——crosscheck.py四件(声明双向/页偏移/正副本/核心字段率)+worker段+summary指标+GET /metrics/extraction+负证据门禁;universe/M0/golden零触碰 | backend/app/extensions/bid_review/{engine/crosscheck.py,worker.py,routers.py,engine/}+tests×4 | 全家538/0(+16)+golden零翻红+M0 26/26 | ~9k |
