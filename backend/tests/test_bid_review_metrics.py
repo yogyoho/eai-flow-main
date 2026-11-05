@@ -168,6 +168,10 @@ async def test_metrics_extraction_aggregates_latest_baseline(client, db):
             payload={"crosscheck": {"core_success_rate": 0.5, "page_offset": {"flag": False}, "copy_conflicts": [], "declarations": {"missing": [], "extra": []}}},
         )
     )
+    # 同刻双行 created_at 相同→asc 序不稳定(uuid 无插入序);生产批次间必有时间差,
+    # 测试显式回拨首行模拟真实先后(端点语义=created_at 最新行胜)。
+    await db.execute(update(models.BaselinePackage).where(models.BaselinePackage.task_id == t1.id).values(created_at=datetime.now(UTC).replace(tzinfo=None) - timedelta(hours=1)))
+    await db.commit()
     db.add(
         models.BaselinePackage(
             task_id=t1.id,

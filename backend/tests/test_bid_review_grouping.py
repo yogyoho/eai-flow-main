@@ -143,4 +143,4 @@ async def test_issues_endpoint_grouping_wiring(db, client):
     assert items["L2-020"]["related_issues"][0]["rule_id"] == "L3-005"
     assert items["L2-024"]["grouped_into"] is None and items["L2-024"]["related_issues"] == []
     assert len(body["items"]) == 3  # 条目不删(D8)
-    assert body["summary"] == {"fatal": 1, "major": 1, "minor": 1, "info": 0, "need_human": 0}  # 口径不变
+    assert body["summary"] == {"fatal": 1, "major": 1, "minor": 1, "info": 0, "need_human": 0, "rules_total": None, "unknown_ratio": None}  # 口径不变;M5 两新键 additive(None)
