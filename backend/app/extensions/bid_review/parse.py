@@ -39,6 +39,8 @@ OCR_SERVICE_URL = os.getenv("OCR_SERVICE_URL", "http://eai-flow-ocr:8010")
 OCR_CONCURRENCY = 4
 _TEXT_SEG_CHARS = 2500
 _XLSX_MAX_ROWS = 500  # 每 sheet 行数上限(超大清单防 blocks 膨胀;截断在 text 侧自然呈现)
+_ZIP_MAX_FILES = 20  # zip 材料包文件数上限(对齐审计⑥)
+_ZIP_MAX_UNCOMPRESSED = 200 * 1024 * 1024  # 解压总量上限,ZipInfo.file_size 解压前预检
 
 _A_BLIP = "{http://schemas.openxmlformats.org/drawingml/2006/main}blip"
 _R_EMBED = "{http://schemas.openxmlformats.org/officeDocument/2006/relationships}embed"
@@ -53,6 +55,8 @@ def detect_kind(filename: str) -> str:
         return "pdf"
     if lower.endswith(".xlsx"):
         return "xlsx"
+    if lower.endswith(".zip"):
+        return "zip"
     if "." in lower and lower.rsplit(".", 1)[-1] in _MIME:
         return "image"
     return "text"
@@ -267,6 +271,53 @@ def _parse_xlsx_sync(data: bytes) -> list[dict]:
     return blocks
 
 
+def _blocks_for_bytes(filename: str, data: bytes) -> list[dict]:
+    """单成员字节 → 块(按扩展名分派;zip 成员与独立上传共用,对齐审计⑥ 2026-11-05)。
+    zip 内 PDF 扫描页转诚实占位段(跨成员页号冲突+定位契约按单文档页码,OCR 挂账);
+    嵌套 zip 显式拒绝(否则二进制走文本通路产 mojibake)。"""
+    kind = detect_kind(filename)
+    if kind == "docx":
+        return _parse_docx_sync(data)
+    if kind == "pdf":
+        blocks, scans = _parse_pdf_sync(data)
+        if scans:
+            blocks = [{"kind": "text", "text": f"[第 {b['page']} 页为扫描页:zip 内 PDF 暂不支持扫描页 OCR,请单独上传该 PDF]"} if b["kind"] == "scan" else b for b in blocks]
+        return blocks
+    if kind == "xlsx":
+        return _parse_xlsx_sync(data)
+    if kind == "zip":
+        raise ValueError(f"嵌套 zip 不支持: {filename}")
+    if kind == "image":
+        ext = filename.rsplit(".", 1)[-1].lower()
+        return [{"kind": "image", "blob": data, "ext": ext if ext in _MIME else "png"}]
+    return _parse_text_sync(data)
+
+
+def _unzip_blocks(data: bytes) -> list[dict]:
+    """zip 材料包安全解包(对齐审计⑥,2026-11-05):文件数 ≤_ZIP_MAX_FILES;解压总量
+    ≤_ZIP_MAX_UNCOMPRESSED(ZipInfo.file_size 解压前预检,不落盘不炸内存);成员名
+    拒绝对路径与 ..(zip-slip)。逐成员 _blocks_for_bytes 分派,块附 source=成员名
+    (seg 透传,证据定位可见来源文件)。违规 → ValueError per-file 隔离。"""
+    import zipfile
+
+    out: list[dict] = []
+    with zipfile.ZipFile(io.BytesIO(data)) as zf:
+        members = [i for i in zf.infolist() if not i.is_dir()]
+        if len(members) > _ZIP_MAX_FILES:
+            raise ValueError(f"zip 内文件数 {len(members)} 超上限 {_ZIP_MAX_FILES}")
+        total = sum(i.file_size for i in members)
+        if total > _ZIP_MAX_UNCOMPRESSED:
+            raise ValueError(f"zip 解压总量 {total} 字节超上限 {_ZIP_MAX_UNCOMPRESSED}")
+        for info in members:
+            name = info.filename
+            parts = name.replace("\\", "/").split("/")
+            if name.startswith("/") or ".." in parts:
+                raise ValueError(f"zip 内不安全路径: {name}")
+            for b in _blocks_for_bytes(name, zf.read(info)):
+                out.append({**b, "source": name})
+    return out
+
+
 def _parse_text_sync(data: bytes) -> list[dict]:
     """UTF-8 文本(v1 既有行为)→ ~2500 字符段(换行边界断),page=None。"""
     text = data.decode("utf-8", "replace")
@@ -335,6 +386,8 @@ async def parse_raw(owner_id: str, task_id: str, entry: dict, ocr_fn) -> dict:
         blocks, scans = await asyncio.to_thread(_parse_pdf_sync, data)
     elif kind == "xlsx":  # 对齐审计⑤(2026-11-05)
         blocks, scans = await asyncio.to_thread(_parse_xlsx_sync, data), {}
+    elif kind == "zip":  # 对齐审计⑥(2026-11-05):材料包解包逐成员解析
+        blocks, scans = await asyncio.to_thread(_unzip_blocks, data), {}
     elif kind == "image":  # 对齐审计⑦(2026-11-05):独立图片直传,走既有 ocr_fn 通路
         ext = str(entry.get("doc_id") or "").rsplit(".", 1)[-1].lower()
         blocks, scans = [{"kind": "image", "blob": data, "ext": ext if ext in _MIME else "png"}], {}
@@ -374,9 +427,9 @@ async def parse_raw(owner_id: str, task_id: str, entry: dict, ocr_fn) -> dict:
 
     for i, b in enumerate(prepared):
         if b["kind"] == "text":
-            seg = {"seq": seq, "page": b.get("page"), "kind": "text", "text": b["text"], "asset_id": None}
+            seg = {"seq": seq, "page": b.get("page"), "kind": "text", "text": b["text"], "source": b.get("source"), "asset_id": None}
         elif b["kind"] == "table":
-            seg = {"seq": seq, "page": None, "kind": "table", "text": b["text"], "rows": b.get("rows"), "asset_id": None}
+            seg = {"seq": seq, "page": None, "kind": "table", "text": b["text"], "rows": b.get("rows"), "source": b.get("source"), "asset_id": None}
         else:  # image | scan
             seg = {"seq": seq, "page": b.get("page"), "kind": "ocr", "text": (ocr_by_idx.get(i) or "").strip(), "asset_id": b["asset_id"]}
         segs.append(seg)

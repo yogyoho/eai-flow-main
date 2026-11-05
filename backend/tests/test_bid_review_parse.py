@@ -236,3 +236,55 @@ async def test_image_upload_ocrs_to_segment(base, ocr_ok):
     assert out["status"] == "parsed" and out["assets"] == 1
     segs = parse.load_segments("u1", "t-img", entry["slug"])
     assert segs[0]["kind"] == "ocr" and segs[0]["text"].startswith("OCR[asset-")
+
+
+@pytest.mark.asyncio
+async def test_zip_members_parsed_with_source(monkeypatch, base, ocr_ok):
+    """对齐审计⑥(2026-11-05):zip 材料包逐成员解析——文本/xlsx 各自成段,
+    seg.source 锚定成员名;zip-slip/文件数/解压总量/嵌套 zip 一律拒绝。"""
+    import zipfile
+
+    from openpyxl import Workbook
+
+    wb = Workbook()
+    ws = wb.active
+    ws.append(["项目", "金额"])
+    ws.append(["设备", "100万"])
+    xbuf = io.BytesIO()
+    wb.save(xbuf)
+    zbuf = io.BytesIO()
+    with zipfile.ZipFile(zbuf, "w") as zf:
+        zf.writestr("docs/说明.txt", "投标说明正文")
+        zf.writestr("docs/报价.xlsx", xbuf.getvalue())
+    entry = parse.save_raw("u1", "t-zip", "bid", "材料包.zip", zbuf.getvalue())
+    assert entry["kind"] == "zip"
+    out = await parse.parse_raw("u1", "t-zip", entry, ocr_ok)
+    assert out["status"] == "parsed"
+    segs = parse.load_segments("u1", "t-zip", entry["slug"])
+    txt = next(s for s in segs if s["kind"] == "text")
+    tbl = next(s for s in segs if s["kind"] == "table")
+    assert txt["text"] == "投标说明正文" and txt["source"] == "docs/说明.txt"
+    assert tbl["rows"][1] == ["设备", "100万"] and tbl["source"] == "docs/报价.xlsx"
+
+    evil = io.BytesIO()
+    with zipfile.ZipFile(evil, "w") as zf:
+        zf.writestr("../escape.txt", "x")
+    with pytest.raises(ValueError, match="不安全路径"):
+        parse._unzip_blocks(evil.getvalue())
+    many = io.BytesIO()
+    with zipfile.ZipFile(many, "w") as zf:
+        for i in range(21):
+            zf.writestr(f"f{i}.txt", "x")
+    with pytest.raises(ValueError, match="超上限"):
+        parse._unzip_blocks(many.getvalue())
+    nested = io.BytesIO()
+    with zipfile.ZipFile(nested, "w") as zf:
+        zf.writestr("inner.zip", zbuf.getvalue())
+    with pytest.raises(ValueError, match="嵌套"):
+        parse._unzip_blocks(nested.getvalue())
+    monkeypatch.setattr(parse, "_ZIP_MAX_UNCOMPRESSED", 10)
+    small = io.BytesIO()
+    with zipfile.ZipFile(small, "w") as zf:
+        zf.writestr("a.txt", "x" * 100)
+    with pytest.raises(ValueError, match="超上限"):
+        parse._unzip_blocks(small.getvalue())
