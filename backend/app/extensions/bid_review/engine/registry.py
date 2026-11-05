@@ -68,6 +68,10 @@ SECOND_STAGE_FIELDS: dict[str, str] = {
     "逐行一项,从投标报价清单逐行提取;清单没有的行不编造;数量单价只引用原文数字;required 由服务端按招标 BOQ codes 回填,模型禁报",
     "bid.table_cells": '单元格层(M3,临时契约 R2+ 演进):[{table_no:"表格编号或标题",page:所在页或null,row_label:"行表头",col_label:"列表头",value:"单元格原文"}] 对象列表;'
     "逐单元格一项,只提取与报价/工期/人员等关键承诺相关的表格;空单元格跳过(零编造)",
+    "bid.performance_entries": '业绩条目富行(M4,spec §5):[{name:"项目名称",client:"甲方/招标人名称",amount:合同金额或null,date:"竣工/签约日期或null",page:所在页或null}] 对象列表;'
+    "逐条业绩一项,从类似业绩证明(中标通知书/合同/验收)提取;证明里没有的字段给 null(零编造)",
+    "bid.performance_groups": '业绩聚类(M4,服务端产物,模型禁生成):[{group_id:"G1..",ok:true|false 确认同项去重组/疑似同项待人工(UNKNOWN,禁强行 PARTIAL),members:[原始条目]}] 对象列表;'
+    "由 clusters.py 按(项目名 ≥0.80+甲方/金额/日期佐证)确定性聚类生成",
 }
 
 
