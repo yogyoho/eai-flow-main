@@ -623,6 +623,7 @@ async def test_m1_default_attachments_fn_seam(monkeypatch, db, tmp_rulepack):
 
 # ── B立项 M2 章节段(spec 2026-11-04 §5,2026-11-05)──────────────────────────────
 
+
 def _m2_extract(with_toc=True):
     """M2 测试提取器:全路径 None + 可选目录章节码(有码才触发章节段)。"""
 

@@ -61,7 +61,9 @@ def anchor_paths() -> set[str]:
 # table_cells)加此处即可,universe 与首段拆分自动跟随。
 SECOND_STAGE_FIELDS: dict[str, str] = {
     "bid.attachments": "附件实体层(M1):[{no,name,pages:[起,止],type_fingerprint,fingerprint_conf,is_empty_text,anchor{doc_id,page,pages,text,text_hash}}] 对象列表;逐实体一项,缺 name/pages 的行无效(零编造)",
-    "bid.section_tree": "章节结构层(M2,spec §5):[{code:\"章节编码或空串\",title:\"章节标题\",toc_page:目录标注页码或null,body_page:正文标题所在物理页或null,is_empty:true|false 该节正文是否为空(文本量启发)] 对象列表;逐节一项,缺 title 的行无效(零编造);offset 由服务端按 body_page-toc_page 计算,模型禁报",
+    "bid.section_tree": '章节结构层(M2,spec §5):[{code:"章节编码或空串",title:"章节标题",toc_page:目录标注页码或null,'
+    "body_page:正文标题所在物理页或null,is_empty:true|false 该节正文是否为空(文本量启发)] 对象列表;"
+    "逐节一项,缺 title 的行无效(零编造);offset 由服务端按 body_page-toc_page 计算,模型禁报",
 }
 
 
