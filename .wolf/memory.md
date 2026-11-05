@@ -28631,3 +28631,10 @@
 | 22:56 | Edited backend/app/extensions/bid_review/routers.py | 5→8 lines | ~163 |
 | 22:56 | Edited backend/app/extensions/bid_review/routers.py | 8→7 lines | ~134 |
 | 23:00 | M4+挂账兑付:报告html导出(_render_report_html全转义+attachment;_fatal_hits口径共享;白名单md|html);573/0 | routers.py | done | ~35k |
+| 23:01 | Edited C:/Users/admin/.claude/projects/D--eai-eai-flow-main/memory/bid-review-alignment-gaps-landed.md | inline fix | ~93 |
+| 23:02 | Session end: 20 writes across 9 files (2026-11-05-bid-review-loose-ends-plan.md, test_bid_review_deps.py, pyproject.toml, parse.py, test_bid_review_parse.py) | 4 reads | ~10994 tok |
+| 23:10 | Created docs/superpowers/specs/2026-11-05-bid-review-score-risk-spec.md | — | ~600 |
+| 23:11 | Edited backend/app/extensions/bid_review/routers.py | expanded (+10 lines) | ~521 |
+| 23:11 | Edited backend/app/extensions/bid_review/routers.py | inline fix | ~44 |
+| 23:12 | Edited backend/app/extensions/bid_review/engine/extract.py | modified _covered_max_score() | ~499 |
+| 23:17 | score预估挂账兑付:评分涉险面derive_score_risk三事实键(涉险上界非预计扣分);576/0 | extract.py,routers.py | done | ~30k |

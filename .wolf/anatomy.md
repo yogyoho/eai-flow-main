@@ -1,7 +1,7 @@
 # anatomy.md
 
-> Auto-maintained by OpenWolf. Last scanned: 2026-11-05T14:56:20.799Z
-> Files: 22 tracked | Anatomy hits: 0 | Misses: 0
+> Auto-maintained by OpenWolf. Last scanned: 2026-11-05T15:12:34.288Z
+> Files: 23 tracked | Anatomy hits: 0 | Misses: 0
 
 ## ../../00 工作目录/02 项目策划/马宁/应急指挥/bid-run/
 
@@ -323,7 +323,7 @@
 
 ## C:/Users/admin/.claude/projects/D--eai-eai-flow-main/memory/
 
-- `bid-review-alignment-gaps-landed.md` — bid-review 对齐审计 9 缺口收口落地(2026-11-05) (~630 tok)
+- `bid-review-alignment-gaps-landed.md` — bid-review 对齐审计 9 缺口收口落地(2026-11-05) (~655 tok)
 - `bid-review-live-recapture-landed.md` (~453 tok)
 - `MEMORY.md` (~3712 tok)
 
@@ -647,13 +647,13 @@
 - `mcp.py` — bid_review MCP server(Task 11)——十一工具供对话 agent 调用,**无确认门**。 (~5498 tok)
 - `models.py` — 投标审查子系统 ORM(五张表;新表走 create_all,无需 alembic)。 (~1544 tok)
 - `parse.py` — 投标审查文档解析层(EAI-CUSTOM 2026-10-30,spec: bid-review evidence pipeline §2/D1/D4/D6/D8)。 (~5836 tok)
-- `routers.py` — bid_review 工作台 API(Task 10)——8 端点(设计文档 §4.7),挂 gateway (~15021 tok)
+- `routers.py` — bid_review 工作台 API(Task 10)——8 端点(设计文档 §4.7),挂 gateway (~15203 tok)
 - `schemas.py` — bid_review Pydantic 请求/响应模型(照 contract_price/schemas.py 惯例)。 (~1042 tok)
 - `worker.py` — bid_review worker(Task 9)——状态机推进 + claimer 循环 + gateway 生命周期入口。 (~11919 tok)
 
 ## backend/app/extensions/bid_review/engine/
 
-- `extract.py` — 基准字段提取:解析后文档文本 → field_snapshot(+materials_hash);LLM 提取函数可注入(translation worker `TranslateFn` 惯例)。 (~10319 tok)
+- `extract.py` — 基准字段提取:解析后文档文本 → field_snapshot(+materials_hash);LLM 提取函数可注入(translation worker `TranslateFn` 惯例)。 (~10708 tok)
 
 ## backend/app/extensions/bid_review/engine/dicts/
 
@@ -1038,6 +1038,7 @@
 ## docs/superpowers/specs/
 
 - `2026-11-05-bid-review-html-export-spec.md` — bid-review 报告 HTML 导出 Spec(2026-11-05) (~472 tok)
+- `2026-11-05-bid-review-score-risk-spec.md` — bid-review 评分涉险面(score 预估)Spec(2026-11-05) (~563 tok)
 
 ## docs/superpowers/specs/2026-09-13-coal-mine-tunneling-regulation-v2-design.md
 
