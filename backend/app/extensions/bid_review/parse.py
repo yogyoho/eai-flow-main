@@ -15,7 +15,7 @@ OCR 引擎伴随系统设置(spec §3):default_ocr_engine=builtin → eai-flow-o
 
 存储(spec §4.1,目录钉死 {base}/users/{owner}/bid_review/{task_id}/):
   raw/{role}__{slug}.bin   上传原始字节(上传请求内快速落盘,重活全在 parsing 阶段)
-  docs/{slug}/segments.json  [{"seq","page","kind","text","asset_id"}]
+  docs/{slug}/segments.json  [{"seq","page","kind","text","rows","source","asset_id"}](source=zip 成员名,非 zip 入口为 null)
   assets/{asset_id}.{ext}    原图(预览按需取)
 engine_meta.docs 只存清单(doc_id/role/kind/pages/chars/assets/status),全文不上 wire(D6)。
 """
@@ -431,7 +431,9 @@ async def parse_raw(owner_id: str, task_id: str, entry: dict, ocr_fn) -> dict:
         elif b["kind"] == "table":
             seg = {"seq": seq, "page": None, "kind": "table", "text": b["text"], "rows": b.get("rows"), "source": b.get("source"), "asset_id": None}
         else:  # image | scan
-            seg = {"seq": seq, "page": b.get("page"), "kind": "ocr", "text": (ocr_by_idx.get(i) or "").strip(), "asset_id": b["asset_id"]}
+            # 对齐审计⑥补遗(挂账小件包):zip 内嵌图片的 OCR seg 同样锚 source 成员名,
+            # 与 text/table 对称;独立图片直传为 None。
+            seg = {"seq": seq, "page": b.get("page"), "kind": "ocr", "text": (ocr_by_idx.get(i) or "").strip(), "source": b.get("source"), "asset_id": b["asset_id"]}
         segs.append(seg)
         seq += 1
 

@@ -236,6 +236,24 @@ async def test_image_upload_ocrs_to_segment(base, ocr_ok):
     assert out["status"] == "parsed" and out["assets"] == 1
     segs = parse.load_segments("u1", "t-img", entry["slug"])
     assert segs[0]["kind"] == "ocr" and segs[0]["text"].startswith("OCR[asset-")
+    assert segs[0]["source"] is None  # 独立直传无 zip 成员名,伪零(None)非空串
+
+
+@pytest.mark.asyncio
+async def test_zip_embedded_image_ocr_seg_has_source(monkeypatch, base, ocr_ok):
+    """挂账小件包②(2026-11-05):zip 内 docx 嵌图的 OCR seg 补 source=成员名,
+    与 text/table seg 对称——asset 级溯源缺了成员名,证据锚就断在包层面。"""
+    import zipfile
+
+    zbuf = io.BytesIO()
+    with zipfile.ZipFile(zbuf, "w") as zf:
+        zf.writestr("docs/盖章页.docx", _make_docx())
+    entry = parse.save_raw("u1", "t-zipimg", "bid", "附件包.zip", zbuf.getvalue())
+    out = await parse.parse_raw("u1", "t-zipimg", entry, ocr_ok)
+    assert out["status"] == "parsed"
+    segs = parse.load_segments("u1", "t-zipimg", entry["slug"])
+    ocr = next(s for s in segs if s["kind"] == "ocr")
+    assert ocr["source"] == "docs/盖章页.docx" and ocr["asset_id"]
 
 
 @pytest.mark.asyncio
