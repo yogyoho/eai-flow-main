@@ -25,6 +25,8 @@ OpenWolf's learning memory. Updated automatically as the AI learns from interact
 - [2026-08-21] geological-report 用户交互铁律：数据收集必须用 ask_clarification fields 渲染中文填写表单（label=中文名+单位），绝不向用户展示/索要 JSON 或英文键名；面向用户术语一律"数据项"不说"字段"；缺项清单译成中文按类别分组呈现。适用于所有面向非 IT 用户的技能。
 
 ## Key Learnings
+- bid_review 规则包加规则时三锁同改(2026-11-05 R2+ 实锤):①EXPECTED_UNIVERSE(registry 测试逐位硬列表)+test_anchored_N ②golden 三方精确锁 test_coverage_complete_marker(EXPECTED_COVERAGE==pack_ids==题库实 coverage,新规则缺题即红)③test_att_ops_whitelisted_at_load 的 L2 ops 全集锁+test_full_pack_loads det 计数锁。grep "== N" 只能抓计数锁,集合相等锁要 grep EXPECTED/ops。
+
 - [2026-11-03] bid-review 金标准口径三数：`cases/*.yaml` 文件数 = CLI `total`；pytest 里参数化 `test_golden_case[...]` 数与之相等；模块总 passed 还含基建/coverage 守卫测（现 82=51 题+31 基建）。写计划/汇报时别混用「题数」与「测试数」——L2-P3 计划就因混写 51/82 被实现者当笔误纠正。
 - [2026-11-03] plan 参考代码与自带测试矛盾时的裁决先例（L2-P3 Task 2）：复合父行补显式 `negative_evidence: None` 键取测试侧（直取键访问会 KeyError），宁可计划片段多一键也不要 per_req 面形状异构。延续 [2026-11-02] bug-3904 同款教训。
 - [2026-11-03] PyYAML(YAML 1.1) 把未引号键 `no` 解析成布尔 False（bug-3938）：任何含 `{no: ...}` 结构的 YAML 夹具（golden cases/extract_stub）都会变成 {False: ...} 混合键，下游 json.dumps(sort_keys=True) 直接 TypeError。**写 YAML 夹具时 no 键一律加引号** `"no":`。同类雷：`on`/`off`/`yes`/`true` 等裸词键。
@@ -510,6 +512,10 @@ fixture 策略: 全节点 template_text=null(不发明招标内容), 真文渲�
 教训: 上游"结构契约"测试 skip 前先查挂载链——本例 host/deep-link 组件文件都在但从未被挂载(死代码)，恢复挂载即恢复契约。
 
 ## Do-Not-Repeat
+- 2026-11-05(活体回采):烧配额/长跑批的输出**禁止过 tail 管道**——tail 只留尾部,评分头/错误头静默丢失且配额已烧;一律重定向落文件(> file 2> err)后按需 grep。
+
+- 2026-11-05(bug-4026):consumed_by 空结果≠在宇宙——consumed_by 只报消费者不查成员资格;断言「路径在宇宙」前先查 registry.universe()。给规则声明新 inputs 会扩宇宙,凡有 universe 逐位锚测试必同步。
+
 - 2026-11-05 anatomy.md 批量注记:锚必须用行首前缀(如 `- \`extract.py\` `),裸 `find("engine/extract.py")` 会命中 test_bid_review_extract.py 行描述里的同串,注记贴错行(已修正;M2 记档)。
 
 - 2026-11-02 前端 rstest 过滤:`pnpm test -- <file>` 不过滤会跑全量套件(且踩 scheduled-task-form-dialog 既有竞态);单文件用 `npx rstest run <path>`。

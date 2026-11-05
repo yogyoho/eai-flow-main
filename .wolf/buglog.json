@@ -5463,6 +5463,24 @@
       "related_bugs": [],
       "occurrences": 1,
       "last_seen": "2026-11-05T11:00:18.640Z"
+    },
+    {
+      "id": "bug-4027",
+      "timestamp": "2026-11-05",
+      "error_message": "docker CLI/compose 全部 500: request returned 500 Internal Server Error for API route .../pipe/dockerDesktopLinuxEngine(v1.51/v1.52 均拒)",
+      "file": "Docker Desktop(wsl2 backend)",
+      "root_cause": "docker-desktop 发行版假活(dockerd 楔死)+com.docker.backend 进程 10/29 起老化;仅 wsl -t docker-desktop 或仅重启 DD 不足以愈",
+      "fix": "三步叠加(记忆 wsl2-vm-wedge-recovery 修法复验+扩展):wsl -t docker-desktop → 杀 Docker Desktop+com.docker.backend 全进程并重启 DD.exe → 杀 wslservice(PID 停留 Stopped 后由 wsl 命令按需拉起)→ 引擎复活全容器自愈(restart 策略)",
+      "tags": [
+        "docker",
+        "engine-500",
+        "wsl",
+        "wedge",
+        "recovery"
+      ],
+      "related_bugs": [],
+      "occurrences": 2,
+      "last_seen": "2026-11-05"
     }
   ]
 }

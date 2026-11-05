@@ -1,7 +1,7 @@
 # anatomy.md
 
-> Auto-maintained by OpenWolf. Last scanned: 2026-11-05T11:03:18.773Z
-> Files: 7 tracked | Anatomy hits: 0 | Misses: 0
+> Auto-maintained by OpenWolf. Last scanned: 2026-11-05T12:24:42.805Z
+> Files: 12 tracked | Anatomy hits: 0 | Misses: 0
 
 ## ../../00 工作目录/02 项目策划/马宁/应急指挥/bid-run/
 
@@ -323,6 +323,8 @@
 
 ## C:/Users/admin/.claude/projects/D--eai-eai-flow-main/memory/
 
+- `bid-review-r2-rule-families-landed.md` (~522 tok)
+- `MEMORY.md` (~3673 tok)
 
 ## C:/Users/admin/.gstack/
 
@@ -912,6 +914,7 @@
 
 ## backend/scripts/
 
+- `bid_review_live_full.py` — 活体全链路回采(EAI-CUSTOM 2026-11-05,M5/R2+ 挂账「活体回采」,plan (~1308 tok)
 
 ## backend/scripts/bid_seed_samples.py
 
@@ -1013,6 +1016,8 @@
 
 ## docs/superpowers/plans/
 
+- `2026-11-05-bid-review-crosscheck-m5-plan.md` — B立项 M5 交叉自检+质量门禁(§八三检 + §十指标)实施计划 (~3163 tok)
+- `2026-11-05-bid-review-live-recapture-plan.md` — 活体回采(M5/R2+ 挂账)实施计划 (~651 tok)
 - `2026-11-05-bid-review-r2-rule-families-plan.md` — R2+ 规则族补齐(M1-M5 悬空字段接入规则消费)实施计划 (~3618 tok)
 
 ## docs/superpowers/plans/2026-09-13-coal-mine-tunneling-regulation-v2.md

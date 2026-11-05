@@ -196,4 +196,4 @@ class TestNegativeEvidenceCoverageGate:
 - 页偏移注记进 verify 第4道 gate→need_human 自动降级(R2+;动规则语义翻 golden)
 - issue 级结构化负证据上浮→metrics 端点可算负证据覆盖率(R2+;动 issue 契约)
 - CORE_FIELDS 清单以 spec §十原文校准(R2+)
-- 活体回采(`--live`,抽取分 ≥0.7308 只升不降;记 crosscheck 四指标活体值)
+- [x] 活体回采(**2026-11-05 已兑付**:walkthrough 双文档经 worker.advance_task 生产管线全链路单跑(scripts/bid_review_live_full.py),抽取分 **21/26=0.8077 > 0.7308** 只升不降达成;crosscheck 四指标活体值:declarations missing/extra=[]、page_offset flag=false、copy_conflicts=[]、core_success_rate=0.25;第二段门信号本轮未触发=诚实缺席;详见 annotations meta.live_run;plan docs/superpowers/plans/2026-11-05-bid-review-live-recapture-plan.md)
