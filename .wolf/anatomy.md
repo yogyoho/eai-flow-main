@@ -1,7 +1,7 @@
 # anatomy.md
 
-> Auto-maintained by OpenWolf. Last scanned: 2026-11-05T02:51:18.304Z
-> Files: 11 tracked | Anatomy hits: 0 | Misses: 0
+> Auto-maintained by OpenWolf. Last scanned: 2026-11-05T04:09:31.650Z
+> Files: 8 tracked | Anatomy hits: 0 | Misses: 0
 
 ## ../../00 工作目录/02 项目策划/马宁/应急指挥/bid-run/
 
@@ -323,7 +323,7 @@
 
 ## C:/Users/admin/.claude/projects/D--eai-eai-flow-main/memory/
 
-- `bid-review-rulepack-registry-r1-landed.md` (~454 tok)
+- `bid-review-extract-engine-m1-landed.md` (~386 tok)
 
 ## C:/Users/admin/.gstack/
 
@@ -639,19 +639,15 @@
 
 ## backend/app/extensions/bid_review/
 
-- `worker.py` — bid_review worker(Task 9)——状态机推进 + claimer 循环 + gateway 生命周期入口。 (~10500 tok);M1:advance_task 增 attachments_fn 实体第二段(清单行锚定门/缺席不落键)+_default_attachments_fn
-- `engine/extract.py` — 抽取管线(prompt/normalize/闸/build_baseline);M1 增 bid.attachments 实体契约+normalize_attachment_entities+build_attachments_prompt/baseline;collect_field_paths=universe−第二段域(71 逐位) (~8900 tok)
+- `worker.py` — bid_review worker(Task 9)——状态机推进 + claimer 循环 + gateway 生命周期入口。 (~9727 tok) +M2章节段(门=toc/required非空/seam=_default_section_fn/缺席语义/materials_hash重算)|
 
 ## backend/app/extensions/bid_review/engine/
 
-- `attachments.py` — L2 P1 附件清单匹配器(spec 2026-11-02 §2,EAI-CUSTOM):招标要求集 × 投标 (~3772 tok)
-- `extract.py` — 基准字段提取:解析后文档文本 → field_snapshot(+materials_hash);LLM 提取函数可注入(translation worker `TranslateFn` 惯例)。 (~6938 tok)
-- `llm_runner.py` — sem/hyb 规则执行:规则卡 prompt 构造 + 模型调用 + 七道校验管线(设计文档 §4.5/§4.6)。 (~3796 tok)
-- `registry.py` — 规则包注册表——跨源索引+lint(EAI-CUSTOM 2026-11-05 R1,spec 裁决②③修正版)。 (~1246 tok)
+- `extract.py` — 基准字段提取:解析后文档文本 → field_snapshot(+materials_hash);LLM 提取函数可注入(translation worker `TranslateFn` 惯例)。 (~7870 tok) +M2:normalize_section_tree闸(offset服务端算/|差|>5→offset_flag)+build_sections_prompt/baseline+toc_section_codes入LIST_PATHS|
+- `registry.py` — 规则包注册表——跨源索引+lint(EAI-CUSTOM 2026-11-05 R1,spec 裁决②③修正版)。 (~1314 tok)
 
 ## backend/app/extensions/bid_review/engine/dicts/
 
-- `fingerprints.yaml` — 附件类型指纹字典(L2 指纹通道 spec 2026-11-04 §2.2,EAI-CUSTOM) (~223 tok)
 
 ## backend/app/extensions/bid_review/engine/rulepacks/bid-review-core/
 
@@ -928,10 +924,9 @@
 
 ## backend/tests/
 
-- `test_bid_review_attachments_extract.py` — 附件实体归一闸单测(B立项 M1,spec 2026-11-04 §4):零编造/指纹白名单/服务端哈希。 (~1510 tok)
-- `test_bid_review_fingerprints.py` — 指纹字典 loader 单测(L2 指纹通道 spec 2026-11-04 §2.2)。seam=monkeypatch _FILE+_cache。 (~476 tok)
-- `test_bid_review_attachments_extract.py` — 附件实体归一闸+实体段 prompt/baseline 单测(B立项 M1,spec 2026-11-04 §4):零编造/服务端哈希/指纹白名单 (~1400 tok)
-- `test_bid_review_registry.py` — 规则包注册表测试(spec 2026-11-05 R1 §2.6):宇宙锚定/反查/lint/拒载/投影声明。 (~2126 tok)
+- `test_bid_review_extract.py` — bid_review engine/extract.py 基准提取单测:shape/materials_hash 稳定 + null 显式保留 + 非字典路径丢弃 + prompt 骨架转录。 (~5510 tok)
+- `test_bid_review_registry.py` — 规则包注册表测试(spec 2026-11-05 R1 §2.6):宇宙锚定/反查/lint/拒载/投影声明。 (~2168 tok)
+- `test_bid_review_sections_extract.py` — M2 章节层契约+归一闸+prompt/baseline 单测(spec 2026-11-04 §5,2026-11-05)。 (~1046 tok)
 
 ## backend/tests/ (QA 2026-10-28 增补)
 
@@ -1019,7 +1014,7 @@
 
 ## docs/superpowers/plans/
 
-- `2026-11-05-bid-review-attachment-entity-m1-plan.md` — B 立项 M1:附件实体层 实施计划 (~3326 tok)
+- `2026-11-05-bid-review-section-layer-m2-plan.md` — B立项 M2 章节层(section_tree + page_offset)实施计划 (~4113 tok)
 
 ## docs/superpowers/plans/2026-09-13-coal-mine-tunneling-regulation-v2.md
 

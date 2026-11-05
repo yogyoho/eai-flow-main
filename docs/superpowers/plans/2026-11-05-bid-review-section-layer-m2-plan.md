@@ -29,7 +29,7 @@
 **Files:**
 - Commit: `docs/superpowers/plans/2026-11-05-bid-review-section-layer-m2-plan.md`
 
-- [ ] **Step 1: git add -f + commit**(docs/superpowers 在 .gitignore,必须 -f;显式路径,禁 add -A)
+- [x] **Step 1: git add -f + commit**(docs/superpowers 在 .gitignore,必须 -f;显式路径,禁 add -A)
 
 ```bash
 git -C /d/eai/eai-flow-main add -f docs/superpowers/plans/2026-11-05-bid-review-section-layer-m2-plan.md
@@ -43,7 +43,7 @@ git -C /d/eai/eai-flow-main commit -m "docs(bid-review): B立项M2章节层计�
 - Modify: `backend/app/extensions/bid_review/engine/extract.py`(LIST_PATHS)
 - Test: `backend/tests/test_bid_review_registry.py`
 
-- [ ] **Step 1: 写失败测试**——registry 测试改 4 处:EXPECTED_UNIVERSE 72→73(插入 `"bid.section_tree"`,sorted 序在 `bid.rules_snapshot` 前);`anchored_73` len==73;`second_stage_fields` 断言 `set(...) == {"bid.attachments", "bid.section_tree"}`;`first_stage_equals_universe_minus_second_stage` 已按 SECOND_STAGE_FIELDS 派生自动跟随,补一行 `assert "bid.section_tree" not in collect_field_paths()`。
+- [x] **Step 1: 写失败测试**——registry 测试改 4 处:EXPECTED_UNIVERSE 72→73(插入 `"bid.section_tree"`,sorted 序在 `bid.rules_snapshot` 前);`anchored_73` len==73;`second_stage_fields` 断言 `set(...) == {"bid.attachments", "bid.section_tree"}`;`first_stage_equals_universe_minus_second_stage` 已按 SECOND_STAGE_FIELDS 派生自动跟随,补一行 `assert "bid.section_tree" not in collect_field_paths()`。
 
 ```python
 # TestUniverse 改造锚(替换既有 72 断言)
@@ -63,12 +63,12 @@ def test_toc_section_codes_in_list_paths() -> None:
     assert normalize_fields({"bid.toc_section_codes": ["1", "3-1"]}, {k: None for k in collect_field_paths()})["bid.toc_section_codes"] == ["1", "3-1"]
 ```
 
-- [ ] **Step 2: 跑测试确认红**
+- [x] **Step 2: 跑测试确认红**
 
 Run: `cd backend && PYTHONPATH=. uv run pytest tests/test_bid_review_registry.py -k TestUniverse -v && PYTHONPATH=. uv run pytest tests/test_bid_review_extract.py -k toc_section -v`
 Expected: FAIL(universe 72 / key absent)
 
-- [ ] **Step 3: 最小实现**
+- [x] **Step 3: 最小实现**
 
 registry.py(追加,不改既有条目):
 ```python
@@ -82,9 +82,9 @@ SECOND_STAGE_FIELDS["bid.section_tree"] = (
 
 extract.py LIST_PATHS 集合追加一行 `"bid.toc_section_codes",`(带注释:L3-013 消费面,M2 裁决④)。
 
-- [ ] **Step 4: 跑测试确认绿**(registry 全文件+extract 相关)
+- [x] **Step 4: 跑测试确认绿**(registry 全文件+extract 相关)
 
-- [ ] **Step 5: commit** `git add backend/app/extensions/bid_review/engine/registry.py backend/app/extensions/bid_review/engine/extract.py backend/tests/test_bid_review_registry.py backend/tests/test_bid_review_extract.py`
+- [x] **Step 5: commit** `git add backend/app/extensions/bid_review/engine/registry.py backend/app/extensions/bid_review/engine/extract.py backend/tests/test_bid_review_registry.py backend/tests/test_bid_review_extract.py`
 
 ### Task 3: bid.section_tree 契约 + normalize_section_tree 归一闸
 
@@ -92,7 +92,7 @@ extract.py LIST_PATHS 集合追加一行 `"bid.toc_section_codes",`(带注释:L3
 - Modify: `backend/app/extensions/bid_review/engine/extract.py`
 - Test: `backend/tests/test_bid_review_sections_extract.py`(新建)
 
-- [ ] **Step 1: 写失败测试**(新建文件,镜像 test_bid_review_attachments_extract.py 风格)
+- [x] **Step 1: 写失败测试**(新建文件,镜像 test_bid_review_attachments_extract.py 风格)
 
 ```python
 """M2 章节层契约+归一闸单测(spec 2026-11-04 §5,2026-11-05)。"""
@@ -146,9 +146,9 @@ class TestNormalizeSectionTree:
         assert rows[0]["code"] == "3" and rows[0]["title"] == "技术 方案"
 ```
 
-- [ ] **Step 2: 跑测试确认红**(ImportError)
+- [x] **Step 2: 跑测试确认红**(ImportError)
 
-- [ ] **Step 3: 最小实现**——extract.py,`normalize_attachment_entities` 之后追加:
+- [x] **Step 3: 最小实现**——extract.py,`normalize_attachment_entities` 之后追加:
 
 ```python
 FIELD_TYPE_CONTRACTS["bid.section_tree"] = (
@@ -190,12 +190,12 @@ def normalize_section_tree(raw: Any) -> list[dict]:
     return out
 ```
 
-- [ ] **Step 4: 跑测试确认绿**
+- [x] **Step 4: 跑测试确认绿**
 
 Run: `PYTHONPATH=. uv run pytest tests/test_bid_review_sections_extract.py -v`
 Expected: PASS
 
-- [ ] **Step 5: commit**
+- [x] **Step 5: commit**
 
 ### Task 4: build_sections_prompt + build_sections_baseline
 
@@ -203,7 +203,7 @@ Expected: PASS
 - Modify: `backend/app/extensions/bid_review/engine/extract.py`
 - Test: `backend/tests/test_bid_review_sections_extract.py`
 
-- [ ] **Step 1: 写失败测试**(追加到同文件)
+- [x] **Step 1: 写失败测试**(追加到同文件)
 
 ```python
 class TestPromptAndBaseline:
@@ -233,9 +233,9 @@ class TestPromptAndBaseline:
         assert build_sections_baseline([], lambda *a: None, None, None) == []
 ```
 
-- [ ] **Step 2: 跑测试确认红**
+- [x] **Step 2: 跑测试确认红**
 
-- [ ] **Step 3: 最小实现**(build_attachments_baseline 之后追加,镜像 M1)
+- [x] **Step 3: 最小实现**(build_attachments_baseline 之后追加,镜像 M1)
 
 ```python
 def build_sections_prompt(docs: list[dict], toc_codes: Any, required_sections: Any) -> str:
@@ -268,7 +268,7 @@ def build_sections_baseline(docs: list[dict], section_fn, toc_codes: Any, requir
     return normalize_section_tree(raw)
 ```
 
-- [ ] **Step 4: 跑测试确认绿;commit**
+- [x] **Step 4: 跑测试确认绿;commit**
 
 ### Task 5: worker 章节段编排
 
@@ -276,7 +276,7 @@ def build_sections_baseline(docs: list[dict], section_fn, toc_codes: Any, requir
 - Modify: `backend/app/extensions/bid_review/worker.py`
 - Test: `backend/tests/test_bid_review_worker.py`
 
-- [ ] **Step 1: 写失败测试**(追加 M2 块,镜像 M1 五测试;docs 必须非空——_write_baselines 每 doc 一行)
+- [x] **Step 1: 写失败测试**(追加 M2 块,镜像 M1 五测试;docs 必须非空——_write_baselines 每 doc 一行)
 
 ```python
 class TestM2SectionStage:
@@ -311,9 +311,9 @@ class TestM2SectionStage:
 
 (实现时镜像 `_m1_extract`/`_first_payload` 辅助;seed_ctx 既有 fixture。)
 
-- [ ] **Step 2: 跑测试确认红**
+- [x] **Step 2: 跑测试确认红**
 
-- [ ] **Step 3: 最小实现**——worker.py:
+- [x] **Step 3: 最小实现**——worker.py:
 
 import 行补 `build_sections_baseline`;`_default_section_fn()` 镜像 `_default_attachments_fn`(sync invoke + 两试 `_parse_json_object` + 无模型 None);`advance_task` 签名补 keyword-only `section_fn=None`;M1 块之后追加:
 
@@ -340,19 +340,19 @@ import 行补 `build_sections_baseline`;`_default_section_fn()` 镜像 `_default
                 logger.warning("bid_review sections stage skipped err=%s", exc)
 ```
 
-- [ ] **Step 4: 跑测试确认绿;commit**
+- [x] **Step 4: 跑测试确认绿;commit**
 
 ### Task 6: 全量验证
 
-- [ ] **Step 1: 全家精确计数**(后台跑,>2min):`cd backend && PYTHONPATH=. uv run pytest tests/ -k bid_review -q` — 期望全绿零 fail(精确数=运行输出,预计 ~484)
-- [ ] **Step 2: golden 零翻红**:`PYTHONPATH=. uv run pytest tests/test_bid_review_golden.py tests/test_bid_review_golden_extract.py -q` — 55 题+M0 快照 26/26 全绿
-- [ ] **Step 3: ruff**:`make lint` 或 `ruff check --fix app/extensions/bid_review tests/test_bid_review_* && ruff format app/extensions/bid_review tests/test_bid_review_*` 后重跑受影响测试
+- [x] **Step 1: 全家精确计数**(后台跑,>2min):`cd backend && PYTHONPATH=. uv run pytest tests/ -k bid_review -q` — 期望全绿零 fail(精确数=运行输出,预计 ~484)
+- [x] **Step 2: golden 零翻红**:`PYTHONPATH=. uv run pytest tests/test_bid_review_golden.py tests/test_bid_review_golden_extract.py -q` — 55 题+M0 快照 26/26 全绿
+- [x] **Step 3: ruff**:`make lint` 或 `ruff check --fix app/extensions/bid_review tests/test_bid_review_* && ruff format app/extensions/bid_review tests/test_bid_review_*` 后重跑受影响测试
 
 ### Task 7: 收官(commit→push→wolf→memory→报告)
 
-- [ ] **Step 1: feat commit**(显式路径:registry.py extract.py worker.py 三个测试文件);push 重试至 `git rev-list --left-right --count origin/main-dev-fork...main-dev-fork` 打印 `0	0`
-- [ ] **Step 2: wolf**(buglog 若 bug/memory/cerebrum)+ anatomy(extract.py/worker.py desc 增量+新测试文件条目)+ plan 勾选 docs commit(`git add -f`)
-- [ ] **Step 3: auto-memory** `bid-review-extract-engine-m2-landed.md` + MEMORY.md 索引行;终报以队列下一项(M3 表格/清单行)+「继续」收尾
+- [x] **Step 1: feat commit**(显式路径:registry.py extract.py worker.py 三个测试文件);push 重试至 `git rev-list --left-right --count origin/main-dev-fork...main-dev-fork` 打印 `0	0`
+- [x] **Step 2: wolf**(buglog 若 bug/memory/cerebrum)+ anatomy(extract.py/worker.py desc 增量+新测试文件条目)+ plan 勾选 docs commit(`git add -f`)
+- [x] **Step 3: auto-memory** `bid-review-extract-engine-m2-landed.md` + MEMORY.md 索引行;终报以队列下一项(M3 表格/清单行)+「继续」收尾
 
 ### 活体回采(独立步骤,烧配额一次,可中断后续跑,不阻塞 commit)
 

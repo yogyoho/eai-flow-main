@@ -28384,3 +28384,24 @@
 
 | Time | Action | File(s) | Outcome | ~Tokens |
 |------|--------|---------|---------|--------|
+| 11:10 | Created C:/Users/admin/.claude/projects/D--eai-eai-flow-main/memory/bid-review-extract-engine-m1-landed.md | — | ~382 |
+| 11:12 | Session end: 1 writes across 1 files (bid-review-extract-engine-m1-landed.md) | 1 reads | ~409 tok |
+| 11:14 | Session end: 1 writes across 1 files (bid-review-extract-engine-m1-landed.md) | 1 reads | ~409 tok |
+| 11:21 | Session end: 1 writes across 1 files (bid-review-extract-engine-m1-landed.md) | 2 reads | ~409 tok |
+| 11:56 | Created docs/superpowers/plans/2026-11-05-bid-review-section-layer-m2-plan.md | — | ~4387 |
+| 11:58 | Edited backend/tests/test_bid_review_registry.py | 2→2 lines | ~51 |
+| 11:58 | Edited backend/tests/test_bid_review_registry.py | 2→3 lines | ~25 |
+| 11:58 | Edited backend/tests/test_bid_review_registry.py | test_anchored_72() → test_anchored_73() | ~196 |
+| 11:59 | Edited backend/tests/test_bid_review_extract.py | modified test_scalar_code_list_stays_plain() | ~324 |
+| 12:00 | Edited backend/app/extensions/bid_review/engine/registry.py | 3→4 lines | ~130 |
+| 12:00 | Edited backend/app/extensions/bid_review/engine/extract.py | 5→8 lines | ~102 |
+| 12:01 | Created backend/tests/test_bid_review_sections_extract.py | — | ~1046 |
+| 12:02 | Edited backend/app/extensions/bid_review/engine/extract.py | modified normalize_section_tree() | ~508 |
+| 12:03 | Edited backend/app/extensions/bid_review/engine/extract.py | modified build_sections_prompt() | ~474 |
+| 12:07 | Edited backend/app/extensions/bid_review/worker.py | inline fix | ~55 |
+| 12:07 | Edited backend/app/extensions/bid_review/worker.py | modified def() | ~393 |
+| 12:07 | Edited backend/app/extensions/bid_review/worker.py | 3→4 lines | ~24 |
+| 12:07 | Edited backend/app/extensions/bid_review/worker.py | modified is() | ~368 |
+| 12:09 | Edited backend/app/extensions/bid_review/engine/registry.py | 1→3 lines | ~69 |
+| 12:11 | Session end: 16 writes across 8 files (bid-review-extract-engine-m1-landed.md, 2026-11-05-bid-review-section-layer-m2-plan.md, test_bid_review_registry.py, test_bid_review_extract.py, registry.py) | 4 reads | ~10187 tok |
+| 12:14 | B立项M2章节层落地:section_tree第二段(universe73/首段71)+toc_section_codes入LIST_PATHS+offset服务端算/|差|>5→offset_flag+worker章节段门/seam/缺席语义;全家484/0+golden零翻红+M0快照26/26 | extract.py/registry.py/worker.py/test_bid_review_sections_extract.py | done | ~6200 |
