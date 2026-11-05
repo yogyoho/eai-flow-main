@@ -36,7 +36,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.extensions.bid_review import crud
 from app.extensions.bid_review.engine.eval_core import _content_to_str, evaluate_fields, wrap_model_fn
-from app.extensions.bid_review.engine.extract import ExtractFn, ExtractNotConfigured, apply_adjudications, build_attachments_baseline, build_baseline, materials_hash
+from app.extensions.bid_review.engine.extract import ExtractFn, ExtractNotConfigured, apply_adjudications, build_attachments_baseline, build_baseline, build_sections_baseline, materials_hash
 from app.extensions.bid_review.engine.rule_runner import load_rulepack
 from app.extensions.bid_review.models import BaselinePackage, ReviewTask
 from app.extensions.database import get_session_factory
@@ -316,6 +316,37 @@ def _default_attachments_fn():
     return _fn
 
 
+def _default_section_fn():
+    """章节段生产接线(B立项 M2,spec §5):同款模型+单 prompt+两试解析;契约
+    (docs, toc_codes, required_sections) → dict。无可用模型返回 None → 章节段
+    缺席(诚实降级,首段照跑);本函数同步(经 asyncio.to_thread 卸载,禁事件循环直跑)。
+    测试 seam:monkeypatch 本模块函数注入 fake(worker 测试同 _stub_extract 惯例)。"""
+    name = _resolve_model_name()
+    if not name:
+        return None
+    from app.extensions.bid_review.engine.extract import build_sections_prompt
+    from deerflow.models.factory import create_chat_model
+
+    model = create_chat_model(name)
+    logger.info("bid_review sections stage using model %s", name)
+
+    def _fn(docs, toc_codes, required_sections) -> dict:
+        prompt = build_sections_prompt(docs, toc_codes, required_sections)
+        messages = [{"role": "user", "content": prompt}]
+        last_err: Exception | None = None
+        for attempt in (1, 2):
+            response = model.invoke(messages)
+            raw = _content_to_str(getattr(response, "content", ""))
+            try:
+                return _parse_json_object(raw)
+            except ValueError as exc:
+                last_err = exc
+                logger.warning("bid_review sections parse retry attempt=%d err=%s", attempt, exc)
+        raise RuntimeError(f"章节提取两试未获有效 JSON({last_err})") from last_err
+
+    return _fn
+
+
 # ── 状态机推进 ────────────────────────────────────────────────────────
 
 
@@ -421,6 +452,7 @@ async def advance_task(
     entry: str = "created",
     model_fn=None,
     attachments_fn=None,
+    section_fn=None,
 ) -> ReviewTask:
     """状态机单步推进:parsing→extracting→基线落库→wait_confirm ? awaiting_confirm :
     running→review(det+sem/hyb)→done。
@@ -489,6 +521,27 @@ async def advance_task(
                     payload = {**payload, "fields": fields, "materials_hash": materials_hash(fields)}
             except Exception as exc:  # noqa: BLE001  实体段失败隔离:基线照常交付
                 logger.warning("bid_review attachments entity stage skipped err=%s", exc)
+    # B立项 M2 章节段(spec 2026-11-04 §5,2026-11-05):门=toc/required 任一非空
+    # (无章节信号不烧配额;旧测试零模型调用);失败/无模型=缺席不落键(行为=现状);
+    # 成功(含 0 行)落 [] 并重算 materials_hash(同 M1 口径,meta/基线行自动携带
+    # merge 后快照)。offset/offset_flag 由 normalize_section_tree 服务端算。
+    if bool(fields.get("bid.toc_section_codes")) or bool(fields.get("tender.required_sections")):
+        if section_fn is None:
+            section_fn = _default_section_fn()
+        if section_fn is not None:
+            try:
+                sections = await asyncio.to_thread(
+                    build_sections_baseline,
+                    docs,
+                    section_fn,
+                    fields.get("bid.toc_section_codes"),
+                    fields.get("tender.required_sections"),
+                )
+                if isinstance(sections, list):
+                    fields = {**fields, "bid.section_tree": sections}
+                    payload = {**payload, "fields": fields, "materials_hash": materials_hash(fields)}
+            except Exception as exc:  # noqa: BLE001  章节段失败隔离:基线照常交付
+                logger.warning("bid_review sections stage skipped err=%s", exc)
     meta = dict(task.engine_meta or {})
     meta["materials_hash"] = payload["materials_hash"]
     task.engine_meta = meta  # 重新赋值以标记 JSON 列 dirty

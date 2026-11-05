@@ -619,3 +619,90 @@ async def test_m1_default_attachments_fn_seam(monkeypatch, db, tmp_rulepack):
     assert calls == [[_M1_INDEX_ROW]]
     payload = await _first_payload(db, t.id)
     assert payload["fields"]["bid.attachments"][0]["name"] == "授权委托书"
+
+
+# ── B立项 M2 章节段(spec 2026-11-04 §5,2026-11-05)──────────────────────────────
+
+def _m2_extract(with_toc=True):
+    """M2 测试提取器:全路径 None + 可选目录章节码(有码才触发章节段)。"""
+
+    def _extract(d, p):
+        return {**{k: None for k in p}, "bid.toc_section_codes": ["3", "5"]} if with_toc else {k: None for k in p}
+
+    return _extract
+
+
+@pytest.mark.asyncio
+async def test_m2_sections_merged_and_hash_recomputed(db, tmp_rulepack):
+    """章节段成功:fields 增 bid.section_tree 键、materials_hash 与 merge 后 fields 一致。"""
+    from app.extensions.bid_review.engine.extract import materials_hash
+
+    t = await crud.create_task(db, owner_id="u1")
+    docs = [{"doc_id": "b.pdf", "role": "bid", "text": "x"}]
+
+    def _sec_fn(docs, toc_codes, required):
+        assert toc_codes == ["3", "5"]
+        return {"sections": [{"title": "技术方案", "toc_page": 10, "body_page": 12}]}
+
+    await advance_task(db, t.id, owner_id="u1", docs=docs, extract_fn=_m2_extract(), wait_confirm=True, section_fn=_sec_fn)
+    payload = await _first_payload(db, t.id)
+    rows = payload["fields"]["bid.section_tree"]
+    assert rows and rows[0]["title"] == "技术方案" and rows[0]["offset"] == 2 and rows[0]["offset_flag"] is False
+    assert payload["materials_hash"] == materials_hash(payload["fields"])
+
+
+@pytest.mark.asyncio
+async def test_m2_section_stage_failure_isolated_absent_key(db, tmp_rulepack):
+    """章节段抛错=缺席不落键(行为=现状),基线照常交付。"""
+    t = await crud.create_task(db, owner_id="u1")
+
+    def _boom(*a):
+        raise RuntimeError("section stage boom")
+
+    docs = [{"doc_id": "b.pdf", "role": "bid", "text": "x"}]
+    await advance_task(db, t.id, owner_id="u1", docs=docs, extract_fn=_m2_extract(), wait_confirm=True, section_fn=_boom)
+    payload = await _first_payload(db, t.id)
+    assert "bid.section_tree" not in payload["fields"]
+
+
+@pytest.mark.asyncio
+async def test_m2_zero_sections_lands_empty_list(db, tmp_rulepack):
+    """章节段成功零行:落 [] 键(ran+zero ≠ 缺席,口径区分)。"""
+    t = await crud.create_task(db, owner_id="u1")
+    docs = [{"doc_id": "b.pdf", "role": "bid", "text": "x"}]
+    await advance_task(db, t.id, owner_id="u1", docs=docs, extract_fn=_m2_extract(), wait_confirm=True, section_fn=lambda *a: {"sections": []})
+    payload = await _first_payload(db, t.id)
+    assert payload["fields"]["bid.section_tree"] == []
+
+
+@pytest.mark.asyncio
+async def test_m2_no_section_signal_skips_stage_without_model(db, tmp_rulepack):
+    """目录码缺(null)→ 章节段整体跳过,生产 _default_section_fn 不触(无模型依赖)。"""
+    t = await crud.create_task(db, owner_id="u1")
+    docs = [{"doc_id": "b.pdf", "role": "bid", "text": "x"}]
+    await advance_task(db, t.id, owner_id="u1", docs=docs, extract_fn=_m2_extract(False), wait_confirm=True, section_fn=None)
+    payload = await _first_payload(db, t.id)
+    assert "bid.section_tree" not in payload["fields"]
+
+
+@pytest.mark.asyncio
+async def test_m2_default_section_fn_seam(monkeypatch, db, tmp_rulepack):
+    """缺省接线走 worker._default_section_fn(monkeypatch seam,生产=create_chat_model)。"""
+    from app.extensions.bid_review import worker
+
+    calls = []
+
+    def _fake_default():
+        def _fn(docs, toc_codes, required):
+            calls.append(toc_codes)
+            return {"sections": [{"title": "商务偏差", "toc_page": 3, "body_page": 20}]}
+
+        return _fn
+
+    monkeypatch.setattr(worker, "_default_section_fn", _fake_default)
+    t = await crud.create_task(db, owner_id="u1")
+    docs = [{"doc_id": "b.pdf", "role": "bid", "text": "x"}]
+    await advance_task(db, t.id, owner_id="u1", docs=docs, extract_fn=_m2_extract(), wait_confirm=True)
+    assert calls == [["3", "5"]]
+    payload = await _first_payload(db, t.id)
+    assert payload["fields"]["bid.section_tree"][0]["offset_flag"] is True
