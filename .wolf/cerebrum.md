@@ -510,6 +510,7 @@ fixture 策略: 全节点 template_text=null(不发明招标内容), 真文渲�
 教训: 上游"结构契约"测试 skip 前先查挂载链——本例 host/deep-link 组件文件都在但从未被挂载(死代码)，恢复挂载即恢复契约。
 
 ## Do-Not-Repeat
+- 2026-11-05 anatomy.md 批量注记:锚必须用行首前缀(如 `- \`extract.py\` `),裸 `find("engine/extract.py")` 会命中 test_bid_review_extract.py 行描述里的同串,注记贴错行(已修正;M2 记档)。
 
 - 2026-11-02 前端 rstest 过滤:`pnpm test -- <file>` 不过滤会跑全量套件(且踩 scheduled-task-form-dialog 既有竞态);单文件用 `npx rstest run <path>`。
 - 2026-11-02 后端 `make lint` 含 `ruff format --check .`,但全树已有 33 文件 format 债务——勿对无关文件跑 ruff format,只 format 自己改的文件(全量 format 会吞进无关 churn)。
