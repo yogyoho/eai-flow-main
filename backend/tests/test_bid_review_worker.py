@@ -342,7 +342,8 @@ async def test_claimer_loop_processes_created_task_to_done(claim_env, tmp_rulepa
     stop = asyncio.Event()
     loop_task = asyncio.create_task(worker.bid_review_claimer_loop(stop))
     done = False
-    for _ in range(100):
+    # 300×0.05=15s(原 100 次=5s 在满载 Windows 上间歇超时,bug-4013):仍有限,死锁照样抓
+    for _ in range(300):
         await asyncio.sleep(0.05)
         async with claim_env() as s:
             row = await crud.get_task(s, task_id, "u1")
@@ -801,3 +802,97 @@ async def test_m3_default_tables_fn_seam(monkeypatch, db, tmp_rulepack):
     assert calls == [[{"code": "1.1", "name": "挖土方"}, {"code": "1.2", "name": "砌筑"}]]
     payload = await _first_payload(db, t.id)
     assert payload["fields"]["bid.boq_rows"][0]["required"] is False  # 9.9 不在招标 codes
+
+
+# ── B立项 M4 业绩条目段(spec 2026-11-04 §5,2026-11-05)───────────────────────────
+
+
+def _m4_extract(with_perf=True):
+    """M4 测试提取器:全路径 None + 可选业绩串列表(非空才触发业绩段)。"""
+
+    def _extract(d, p):
+        perf = ["某园区市政道路工程", "某园区市政管网工程"]
+        return {**{k: None for k in p}, "bid.similar_performances": perf} if with_perf else {k: None for k in p}
+
+    return _extract
+
+
+@pytest.mark.asyncio
+async def test_m4_perf_merged_clustered_and_hash_recomputed(db, tmp_rulepack):
+    """业绩段成功:双键落 fields、聚类服务端执行、materials_hash 与 merge 后 fields 一致。"""
+    from app.extensions.bid_review.engine.extract import materials_hash
+
+    t = await crud.create_task(db, owner_id="u1")
+    docs = [{"doc_id": "b.pdf", "role": "bid", "text": "x"}]
+
+    def _perf_fn(docs):
+        return {"performance_entries": [{"name": "某园区市政道路工程", "client": "某集团"}, {"name": "某园区市政管网工程", "client": "某集团"}]}
+
+    await advance_task(db, t.id, owner_id="u1", docs=docs, extract_fn=_m4_extract(), wait_confirm=True, perf_entries_fn=_perf_fn)
+    payload = await _first_payload(db, t.id)
+    entries = payload["fields"]["bid.performance_entries"]
+    groups = payload["fields"]["bid.performance_groups"]
+    assert len(entries) == 2
+    assert len(groups) == 1 and groups[0]["ok"] is False and len(groups[0]["members"]) == 2  # 嫌疑带并组人工
+    assert payload["materials_hash"] == materials_hash(payload["fields"])
+
+
+@pytest.mark.asyncio
+async def test_m4_perf_stage_failure_isolated_absent_keys(db, tmp_rulepack):
+    """业绩段抛错=双键缺席不落键(行为=现状),基线照常交付。"""
+    t = await crud.create_task(db, owner_id="u1")
+
+    def _boom(*a):
+        raise RuntimeError("performance stage boom")
+
+    docs = [{"doc_id": "b.pdf", "role": "bid", "text": "x"}]
+    await advance_task(db, t.id, owner_id="u1", docs=docs, extract_fn=_m4_extract(), wait_confirm=True, perf_entries_fn=_boom)
+    payload = await _first_payload(db, t.id)
+    assert "bid.performance_entries" not in payload["fields"]
+    assert "bid.performance_groups" not in payload["fields"]
+
+
+@pytest.mark.asyncio
+async def test_m4_zero_performances_lands_empty_lists(db, tmp_rulepack):
+    """业绩段成功零条:双键各落 [](ran+zero ≠ 缺席,口径区分)。"""
+    t = await crud.create_task(db, owner_id="u1")
+    docs = [{"doc_id": "b.pdf", "role": "bid", "text": "x"}]
+    await advance_task(db, t.id, owner_id="u1", docs=docs, extract_fn=_m4_extract(), wait_confirm=True, perf_entries_fn=lambda docs: {"performance_entries": []})
+    payload = await _first_payload(db, t.id)
+    assert payload["fields"]["bid.performance_entries"] == []
+    assert payload["fields"]["bid.performance_groups"] == []
+
+
+@pytest.mark.asyncio
+async def test_m4_no_perf_signal_skips_stage_without_model(db, tmp_rulepack):
+    """首段业绩串缺(null)→ 业绩段整体跳过,生产 _default_perf_entries_fn 不触(无模型依赖)。"""
+    t = await crud.create_task(db, owner_id="u1")
+    docs = [{"doc_id": "b.pdf", "role": "bid", "text": "x"}]
+    await advance_task(db, t.id, owner_id="u1", docs=docs, extract_fn=_m4_extract(False), wait_confirm=True, perf_entries_fn=None)
+    payload = await _first_payload(db, t.id)
+    assert "bid.performance_entries" not in payload["fields"]
+    assert "bid.performance_groups" not in payload["fields"]
+
+
+@pytest.mark.asyncio
+async def test_m4_default_perf_fn_seam(monkeypatch, db, tmp_rulepack):
+    """缺省接线走 worker._default_perf_entries_fn(monkeypatch seam,生产=create_chat_model)。"""
+    from app.extensions.bid_review import worker
+
+    calls = []
+
+    def _fake_default():
+        def _fn(docs):
+            calls.append(docs)
+            return {"performance_entries": [{"name": "某数据中心EPC"}, {"name": "某数据中心EPC", "client": "某集团"}]}
+
+        return _fn
+
+    monkeypatch.setattr(worker, "_default_perf_entries_fn", _fake_default)
+    t = await crud.create_task(db, owner_id="u1")
+    docs = [{"doc_id": "b.pdf", "role": "bid", "text": "x"}]
+    await advance_task(db, t.id, owner_id="u1", docs=docs, extract_fn=_m4_extract(), wait_confirm=True)
+    assert len(calls) == 1
+    payload = await _first_payload(db, t.id)
+    groups = payload["fields"]["bid.performance_groups"]
+    assert len(groups) == 1 and groups[0]["ok"] is True  # 全等名快路径并组

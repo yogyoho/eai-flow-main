@@ -349,10 +349,7 @@ FIELD_TYPE_CONTRACTS["bid.performance_entries"] = (
     "逐条业绩一项,从类似业绩证明(中标通知书/合同/验收证明)提取([[p.N]] 标记对照);证明里没有的字段给 null;禁止编造;无业绩给空数组。"
 )
 
-FIELD_TYPE_CONTRACTS["bid.performance_groups"] = (
-    '[{"group_id":"G1..","ok":true|false,"members":[原始条目]}] 对象列表;服务端聚类产物(模型禁生成):'
-    "ok=true=确认同项去重组,ok=false=疑似同项待人工(UNKNOWN,禁强行 PARTIAL)。"
-)
+FIELD_TYPE_CONTRACTS["bid.performance_groups"] = '[{"group_id":"G1..","ok":true|false,"members":[原始条目]}] 对象列表;服务端聚类产物(模型禁生成):ok=true=确认同项去重组,ok=false=疑似同项待人工(UNKNOWN,禁强行 PARTIAL)。'
 
 
 def normalize_section_tree(raw: Any) -> list[dict]:
