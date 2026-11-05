@@ -58,9 +58,7 @@ class TestNormalizeBoqRows:
         assert normalize_boq_rows(None, ["1"]) == []
         assert normalize_boq_rows("junk", ["1"]) == []
         # tender_codes=None(招标侧无信号)→ 行保留,required 全 False
-        assert normalize_boq_rows([{"id": "1", "name": "A"}], None) == [
-            {"id": "1", "name": "A", "unit": "", "qty": None, "price": None, "required": False}
-        ]
+        assert normalize_boq_rows([{"id": "1", "name": "A"}], None) == [{"id": "1", "name": "A", "unit": "", "qty": None, "price": None, "required": False}]
 
 
 class TestNormalizeTableCells:
@@ -89,7 +87,6 @@ class TestPromptAndBaseline:
         prompt = build_tables_prompt(
             docs,
             [{"code": "1.1", "name": "挖土方"}, {"code": "1.2"}],
-            ["bid.boq_rows", "bid.table_cells"],
         )
         assert "表格定位器" in prompt
         assert "逐单元格" in prompt

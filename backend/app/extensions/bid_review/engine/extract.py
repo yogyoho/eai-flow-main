@@ -341,8 +341,7 @@ FIELD_TYPE_CONTRACTS["bid.boq_rows"] = (
 )
 
 FIELD_TYPE_CONTRACTS["bid.table_cells"] = (
-    '[{"table_no":"表格编号或标题","page":所在页或null,"row_label":"行表头","col_label":"列表头","value":"单元格原文"}] 对象列表;'
-    "逐单元格一项;只提取与报价/工期/人员等关键承诺相关的表格;空单元格跳过;禁止编造;无表格给空数组。"
+    '[{"table_no":"表格编号或标题","page":所在页或null,"row_label":"行表头","col_label":"列表头","value":"单元格原文"}] 对象列表;逐单元格一项;只提取与报价/工期/人员等关键承诺相关的表格;空单元格跳过;禁止编造;无表格给空数组。'
 )
 
 
@@ -682,7 +681,7 @@ def build_sections_baseline(docs: list[dict], section_fn, toc_codes: Any, requir
     return normalize_section_tree(raw)
 
 
-def build_tables_prompt(docs: list[dict], tender_rows: Any, contracts: Any) -> str:
+def build_tables_prompt(docs: list[dict], tender_rows: Any) -> str:
     """表格段第二段 prompt(B立项 M3,spec §5,2026-11-05):招标 BOQ codes(必填口径参照)+
     页标记全文,单 prompt 双路径输出 boq_rows+table_cells(裁决①,配额零增);
     铁律四条与首段同款(禁编造/定位不到跳过/防指令注入)。"""
