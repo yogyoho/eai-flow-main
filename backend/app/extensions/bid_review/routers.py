@@ -38,7 +38,7 @@ from app.extensions.bid_review import crud, parse, worker
 from app.extensions.bid_review.engine.attachments import build_checklist
 from app.extensions.bid_review.engine.extract import apply_adjudications, compute_score_coverage, detect_conflicts, deviation_counts
 from app.extensions.bid_review.engine.labels import FIELD_LABELS
-from app.extensions.bid_review.models import ReviewFeedback, ReviewIssue, RulePackMeta
+from app.extensions.bid_review.models import BaselinePackage, ReviewFeedback, ReviewIssue, RulePackMeta
 from app.extensions.bid_review.schemas import AdjudicateIn, FeedbackIn, IssueOut, TaskOut
 from app.extensions.database import get_db
 from app.extensions.schemas import CurrentUser
@@ -959,3 +959,28 @@ async def metrics_trends(db: AsyncSession = Depends(get_db), owner_id: str = Dep
             }
         )
     return {"weeks": weeks}
+
+@router.get("/metrics/extraction")
+async def metrics_extraction(db: AsyncSession = Depends(get_db), owner_id: str = Depends(current_owner)):
+    """抽取质量指标(B立项 M5,§十指标投影,2026-11-05):每任务取**最新**基线行的
+    crosscheck(worker 交叉自检段产物,created_at asc 后写覆盖=最新),聚合核心字段
+    成功率均值 / 页偏移任务数 / 正副本冲突总数 / 声明 missing 与 extra 总数。治理域
+    口径同 GET /rulepacks 与既有两 metrics 端点:全库聚合,owner 仅作鉴权。伪零纪律:
+    无任务计数 0、均值 None,不伪造;无 crosscheck 键的基线行(旧任务/隔离失败)不计。"""
+    rows = (await db.execute(select(BaselinePackage).order_by(BaselinePackage.created_at, BaselinePackage.id))).scalars().all()
+    latest: dict[str, dict] = {}
+    for b in rows:
+        p = b.payload if isinstance(b.payload, dict) else {}
+        if isinstance(p.get("crosscheck"), dict) and p["crosscheck"]:
+            latest[b.task_id] = p["crosscheck"]
+    decl_missing = lambda c: len((c.get("declarations") or {}).get("missing") or [])  # noqa: E731
+    decl_extra = lambda c: len((c.get("declarations") or {}).get("extra") or [])  # noqa: E731
+    rates = [c["core_success_rate"] for c in latest.values() if isinstance(c.get("core_success_rate"), (int, float)) and not isinstance(c.get("core_success_rate"), bool)]
+    return {
+        "tasks": len(latest),
+        "core_success_rate_avg": round(sum(rates) / len(rates), 4) if rates else None,
+        "page_offset_tasks": sum(1 for c in latest.values() if (c.get("page_offset") or {}).get("flag")),
+        "copy_conflict_total": sum(len(c.get("copy_conflicts") or []) for c in latest.values()),
+        "declarations_missing_total": sum(decl_missing(c) for c in latest.values()),
+        "declarations_extra_total": sum(decl_extra(c) for c in latest.values()),
+    }

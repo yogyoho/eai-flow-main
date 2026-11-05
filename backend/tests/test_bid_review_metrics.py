@@ -151,3 +151,44 @@ async def test_metrics_trends_b6(client, db):
     back_monday = (back.date() - timedelta(days=back.date().weekday())).isoformat()
     assert by_start[back_monday]["fp"] == 1 and by_start[back_monday]["rate"] == 100.0
     assert sum(1 for w in weeks if w["rate"] is None) == 4
+
+
+# ── B立项 M5 §十指标投影:GET /metrics/extraction(2026-11-05)────────────────────
+
+
+@pytest.mark.asyncio
+async def test_metrics_extraction_aggregates_latest_baseline(client, db):
+    """每任务取最新基线行的 crosscheck(asc 后写覆盖=最新),五聚合;无 crosscheck 键
+    的基线不计;治理域口径同 /rulepacks:全库聚合,owner 仅作鉴权。"""
+    t1 = await crud.create_task(db, owner_id="u1")
+    db.add(
+        models.BaselinePackage(
+            task_id=t1.id,
+            kind="bid",
+            payload={"crosscheck": {"core_success_rate": 0.5, "page_offset": {"flag": False}, "copy_conflicts": [], "declarations": {"missing": [], "extra": []}}},
+        )
+    )
+    db.add(
+        models.BaselinePackage(
+            task_id=t1.id,
+            kind="bid",
+            payload={"crosscheck": {"core_success_rate": 0.75, "page_offset": {"flag": True}, "copy_conflicts": [{"path": "p"}], "declarations": {"missing": ["x"], "extra": ["y", "z"]}}},
+        )
+    )
+    t2 = await crud.create_task(db, owner_id="u1")
+    db.add(models.BaselinePackage(task_id=t2.id, kind="bid", payload={"fields": {}}))  # 无 crosscheck 键→不计
+    await db.commit()
+    body = (await client.get("/api/extensions/bid-review/metrics/extraction")).json()
+    assert body["tasks"] == 1
+    assert body["core_success_rate_avg"] == 0.75  # 最新行,非均值两行
+    assert body["page_offset_tasks"] == 1
+    assert body["copy_conflict_total"] == 1
+    assert body["declarations_missing_total"] == 1
+    assert body["declarations_extra_total"] == 2
+
+
+@pytest.mark.asyncio
+async def test_metrics_extraction_empty_db_pseudo_zero(client):
+    """伪零纪律:无任务→计数 0、均值 None,不伪造。"""
+    body = (await client.get("/api/extensions/bid-review/metrics/extraction")).json()
+    assert body == {"tasks": 0, "core_success_rate_avg": None, "page_offset_tasks": 0, "copy_conflict_total": 0, "declarations_missing_total": 0, "declarations_extra_total": 0}
