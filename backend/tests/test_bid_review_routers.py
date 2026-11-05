@@ -203,7 +203,7 @@ async def test_issues_list_summary_grades_need_human_separately(client, db):
     assert r.status_code == 200
     body = r.json()
     assert len(body["items"]) == 3, "need_human 条目仍在清单(单列不删除,待人工格消费)"
-    assert body["summary"] == {"fatal": 1, "major": 0, "minor": 1, "info": 0, "need_human": 1}, "致命计数不含 need_human 条目(fatal sem 条目入待人工)"
+    assert body["summary"] == {"fatal": 1, "major": 0, "minor": 1, "info": 0, "need_human": 1, "rules_total": None, "unknown_ratio": None}, "致命计数不含 need_human 条目(fatal sem 条目入待人工);M5 两新键 additive(None)"
 
 
 # ── micro-A 2026-10-29:GET /tasks 每任务问题计数(致命数/待人工填实的数据源)──
@@ -582,7 +582,7 @@ async def test_resume_merges_adjudications(db, monkeypatch):
 
     async def fake_review(db_, task, fields, owner_id, model_fn=None, provenance=None):
         captured["fields"] = fields
-        return 0
+        return 0, 0  # M5:_run_review_stage 契约=(落库数, 规则总数)
 
     monkeypatch.setattr(worker, "_run_review_stage", fake_review)
     await worker.resume_confirmed(db, t.id, "u1")

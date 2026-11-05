@@ -246,7 +246,9 @@ async def test_summary_grades_need_human_separately(db, sem_rulepack):
     assert task.status == "done"
     issues = await crud.list_issues(db, task_id=t.id, owner_id="u1")
     assert {(i.rule_id, i.need_human) for i in issues} == {("D1-001", False), ("S1-001", True)}, "条目不删:正式违规与待人工条目都落库"
-    assert task.progress["summary"] == {"fatal": 1, "major": 0, "minor": 0, "info": 0, "need_human": 1}, "致命计数不含 need_human 条目(sem fatal 条目入待人工,不入 fatal)"
+    summary = task.progress["summary"]
+    assert {k: summary[k] for k in ("fatal", "major", "minor", "info", "need_human")} == {"fatal": 1, "major": 0, "minor": 0, "info": 0, "need_human": 1}, "致命计数不含 need_human 条目(sem fatal 条目入待人工,不入 fatal)"
+    assert summary["rules_total"] >= 2 and isinstance(summary["unknown_ratio"], float), "M5 §十指标:rules_total+unknown_ratio 随 done 帧落(progress.summary)"
 
 
 def test_summarize_issues_accepts_orm_and_dict():
@@ -263,6 +265,8 @@ def test_summarize_issues_accepts_orm_and_dict():
         "minor": 1,
         "info": 1,
         "need_human": 1,
+        "rules_total": None,  # M5 §十指标(默认 None=routers 既有调用零改动,伪零纪律)
+        "unknown_ratio": None,
     }
 
 

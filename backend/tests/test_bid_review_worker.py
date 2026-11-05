@@ -977,3 +977,19 @@ async def test_m5_empty_fields_lands_empty_shell(db, tmp_rulepack):
     assert cc["page_offset"]["flag"] is False
     assert cc["copy_conflicts"] == []
     assert cc["core_success_rate"] == 0.0
+
+
+# ── B立项 M5 §十指标:summary.unknown_ratio+rules_total(裁决⑤b)──────────────────
+
+
+def test_summary_unknown_ratio():
+    """rules_total 给定→unknown_ratio=need_human/rules_total(4 位);routers 既有调用
+    零改动(None=伪零纪律);既有排序计数语义不动。"""
+    from app.extensions.bid_review.worker import summarize_issues
+
+    issues = [{"severity": "fatal", "need_human": False}, {"severity": "info", "need_human": True}]
+    s = summarize_issues(issues, rules_total=8)
+    assert s["rules_total"] == 8 and s["unknown_ratio"] == 0.125
+    s2 = summarize_issues(issues)
+    assert s2["unknown_ratio"] is None and s2["rules_total"] is None
+    assert summarize_issues(issues, rules_total=0)["unknown_ratio"] is None

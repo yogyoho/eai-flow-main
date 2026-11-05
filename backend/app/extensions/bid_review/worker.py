@@ -172,13 +172,16 @@ def _issue_get(issue, name):
     return issue.get(name) if isinstance(issue, dict) else getattr(issue, name, None)
 
 
-def summarize_issues(issues) -> dict:
+def summarize_issues(issues, rules_total: int | None = None) -> dict:
     """汇总分级(A12 T14 集成约束①):正式违规清单/致命计数不含 need_human 条目——
     fatal/major/minor/info 仅计 need_human=False 的正式违规,need_human 条目单列待人工
     计数(工作台 GateMetricsRow 待人工格口径),**不是删除**(条目仍全量落库、issues
     API 仍全量返回)。排序 fatal→major→minor→info(key 序即序)。worker 落
     progress.summary 与 issues 列表 API summary 共用本实现,两侧口径一致;接受 ORM 行
-    与引擎 dict 双形态,未知严重度按 info 兜底。"""
+    与引擎 dict 双形态,未知严重度按 info 兜底。
+    EAI-CUSTOM(2026-11-05 B立项 M5 §十指标):rules_total 给定→增 rules_total/
+    unknown_ratio(=need_human/rules_total,4 位;None 或 0→ratio=None 伪零纪律:
+    无规则总数不报 0%)。既有调用零改动(默认 None→两键 None,additive)。"""
     summary = {s: 0 for s in SEVERITY_ORDER}
     summary["need_human"] = 0
     for issue in issues or []:
@@ -187,6 +190,8 @@ def summarize_issues(issues) -> dict:
         else:
             sev = str(_issue_get(issue, "severity") or "")
             summary[sev if sev in summary else "info"] += 1
+    summary["rules_total"] = rules_total
+    summary["unknown_ratio"] = round(summary["need_human"] / rules_total, 4) if isinstance(rules_total, int) and rules_total > 0 else None
     return summary
 
 
@@ -468,7 +473,7 @@ async def _write_baselines(db: AsyncSession, task_id: str, docs: list[dict], fie
     await db.commit()
 
 
-async def _run_review_stage(db: AsyncSession, task: ReviewTask, fields: dict, owner_id: str, model_fn=None, provenance: dict | None = None) -> int:
+async def _run_review_stage(db: AsyncSession, task: ReviewTask, fields: dict, owner_id: str, model_fn=None, provenance: dict | None = None) -> tuple[int, int]:
     """审查阶段(Task 14):按 rule.type 分派——deterministic→run_det_rule(既有 det
     通路;attach_evidence 回填 provenance 证据,EAI-CUSTOM 2026-10-30)/
     semantic|hybrid→run_sem_rule(model_fn 经 _wrap_model_fn 注入,content 归一
@@ -515,7 +520,8 @@ async def _run_review_stage(db: AsyncSession, task: ReviewTask, fields: dict, ow
         )
         if row is not None:
             written += 1
-    return written
+    # B立项 M5 §十指标:返回 (落库数, 规则总数)——unknown_ratio 分母由调用方进 summary。
+    return written, len(pack.rules)
 
 
 async def advance_task(
@@ -695,9 +701,9 @@ async def advance_task(
         return await crud.set_status(db, task, "awaiting_confirm", progress={"stage": "confirm_gate", "pct": 40, "msg": "基线已生成,等待人工确认(确认门仅工作台 UI)"})
     t2 = time.perf_counter()
     await crud.set_status(db, task, "running", progress={"stage": "review", "pct": 40, "msg": "规则审查执行中(det+sem/hyb)"})
-    await _run_review_stage(db, task, fields, owner_id, model_fn, payload.get("provenance"))
+    _, rules_total = await _run_review_stage(db, task, fields, owner_id, model_fn, payload.get("provenance"))
     durations["review"] = time.perf_counter() - t2
-    summary = summarize_issues(await crud.list_issues(db, task_id=task_id, owner_id=owner_id))
+    summary = summarize_issues(await crud.list_issues(db, task_id=task_id, owner_id=owner_id), rules_total=rules_total)
     return await crud.set_status(db, task, "done", progress=_done_progress(durations, summary))
 
 
@@ -722,9 +728,9 @@ async def resume_confirmed(db: AsyncSession, task_id: str, owner_id: str, model_
     durations: dict[str, float] = {}
     t2 = time.perf_counter()
     await crud.set_status(db, task, "running", progress={"stage": "review", "pct": 40, "msg": "人工确认完成,规则审查执行中(det+sem/hyb)"})
-    await _run_review_stage(db, task, fields, owner_id, model_fn, provenance)
+    _, rules_total = await _run_review_stage(db, task, fields, owner_id, model_fn, provenance)
     durations["review"] = time.perf_counter() - t2
-    summary = summarize_issues(await crud.list_issues(db, task_id=task_id, owner_id=owner_id))
+    summary = summarize_issues(await crud.list_issues(db, task_id=task_id, owner_id=owner_id), rules_total=rules_total)
     return await crud.set_status(db, task, "done", progress=_done_progress(durations, summary))
 
 
