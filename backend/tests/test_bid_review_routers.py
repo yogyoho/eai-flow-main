@@ -376,17 +376,44 @@ async def test_report_gate_rejects_non_done_task(client, db):
 
 
 @pytest.mark.asyncio
-async def test_report_rejects_html_format_and_other_owner(client, db):
-    """format 白名单:html 导出属 M4 不做(422,禁静默降级 md);他人任务 404(owner
-    过滤同既有端点);format 缺省=md 可用(状态门:须 done 才可导)。"""
+async def test_report_format_gates_and_other_owner(client, db):
+    """format 白名单:html 已兑付(M4+ 挂账,2026-11-05 spec)——done 后 200 text/html +
+    attachment .html;未知格式(pdf)仍 422 禁静默降级;他人任务 404(owner 过滤同既有
+    端点);format 缺省=md 可用(状态门:须 done 才可导)。"""
     t = await crud.create_task(db, owner_id="u1")
     other = await crud.create_task(db, owner_id="u2")
-    assert (await client.get(f"/api/extensions/bid-review/tasks/{t.id}/report", params={"format": "html"})).status_code == 422
+    assert (await client.get(f"/api/extensions/bid-review/tasks/{t.id}/report", params={"format": "pdf"})).status_code == 422
     assert (await client.get(f"/api/extensions/bid-review/tasks/{other.id}/report")).status_code == 404
     # 半程任务缺省 format 也先撞状态门(409),翻转 done 后缺省=md 可用
     assert (await client.get(f"/api/extensions/bid-review/tasks/{t.id}/report")).status_code == 409
     await crud.set_status(db, t, "done")
     assert (await client.get(f"/api/extensions/bid-review/tasks/{t.id}/report")).status_code == 200
+    r = await client.get(f"/api/extensions/bid-review/tasks/{t.id}/report", params={"format": "html"})
+    assert r.status_code == 200
+    assert r.headers["content-type"].startswith("text/html")
+    disp = r.headers.get("content-disposition", "")
+    assert "attachment" in disp and ".html" in disp, "html 报告强制下载(gateway XSS 姿态)"
+
+
+@pytest.mark.asyncio
+async def test_report_html_content_parity_and_escaping(client, db):
+    """M4+ 挂账兑付(2026-11-05 spec R4):html 与 md 内容对等——免责声明/可提交判定/
+    severity 分节/【待人工】/偏离表全节;false_positive 不进正文;动态文本全量转义
+    (<script> 注入不得原样出现,R2)。"""
+    t = await crud.create_task(db, owner_id="u1")
+    await crud.add_issue(db, task_id=t.id, owner_id="u1", rule_id="L1-009", layer="L1", severity="fatal", verdict="violation", message='总价超限<script>alert("x")</script>', fix="整改报价", evidence=[], dedup_key="k1", need_human=False)
+    await crud.add_issue(db, task_id=t.id, owner_id="u1", rule_id="L3-002", layer="L3", severity="major", verdict="unclear", message="工期存疑", fix="核实", evidence=[], dedup_key="k2", need_human=True)
+    await crud.add_issue(db, task_id=t.id, owner_id="u1", rule_id="L1-001", layer="L1", severity="minor", verdict="false_positive", message="误报条目", fix="无", evidence=[], dedup_key="k3", need_human=False)
+    await crud.set_status(db, t, "done")
+    r = await client.get(f"/api/extensions/bid-review/tasks/{t.id}/report", params={"format": "html"})
+    assert r.status_code == 200
+    body = r.text
+    assert "免责声明" in body and "可提交判定" in body
+    assert "命中致命红线 1 项,建议整改后重新审查。" in body
+    assert "【待人工】" in body and "L3-002" in body
+    assert "响应偏离表" in body
+    assert "误报条目" not in body, "false_positive 不进正文"
+    assert "<script>alert" not in body and "&lt;script&gt;alert" in body, "动态文本必须转义(R2)"
 
 
 def test_mcp_tools_expose_no_confirm_gate():

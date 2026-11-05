@@ -15,8 +15,8 @@
   GET  /issues/{id}            问题详情(owner 过滤)
   POST /issues/{id}/feedback   复核反馈(写 ReviewFeedback + RulePackMeta.stats 回流;
                                false_positive 走误报回流 verdict/need_human 落库 + fp_samples)
-  GET  /tasks/{id}/report      审查报告导出 ?format=md(Task 21;首行免责声明+可提交判定
-                               提示行+severity 分节;html 导出属 M4 不做,422)
+  GET  /tasks/{id}/report      审查报告导出 ?format=md|html(Task 21;首行免责声明+可提交判定
+                               提示行+severity 分节;html=M4+ 挂账兑付 2026-11-05,未知格式 422)
   GET  /rulepacks              规则包清单(生产规则包 + DB stats)
 
 owner 隔离:模块级 ``current_owner`` 依赖(必须模块级函数,dependency_overrides 才能打桩),
@@ -25,6 +25,7 @@ CurrentUser.id 作 owner_id,全列表端点 owner 过滤。
 """
 
 import asyncio
+import html
 import logging
 from datetime import UTC, datetime, timedelta
 
@@ -562,6 +563,87 @@ def _feedback_summary(feedback: list) -> str:
     return f"人工复核:≥{span_h:.1f}h(首末动作跨度,下界;{len(stamps)} 次动作)"
 
 
+def _fatal_hits(issues: list) -> list:
+    """可提交判定口径(双渲染器共享,防漂移;spec 2026-11-05 R4):正式 fatal 违规=
+    severity=fatal 且 verdict=violation 且非 need_human——人工误报与待人工条目不计入命中红线。"""
+    return [i for i in issues if i.severity == "fatal" and i.verdict == "violation" and not i.need_human]
+
+
+def _esc(v) -> str:
+    """html 报告动态文本全量转义(spec R2);None 归空串。"""
+    return html.escape(str(v if v is not None else ""))
+
+
+def _render_report_html(task, issues: list, feedback: list | None = None, deviations: dict | None = None) -> str:
+    """审查报告 html 渲染(M4+ 挂账兑付,spec 2026-11-05):与 _render_report_md 内容
+    对等(R4,口径共享 _fatal_hits),全动态文本经 _esc(R2);单文件内联样式、无外部
+    资源,配 Content-Disposition attachment 强制下载(gateway XSS 姿态)。"""
+    issues = [i for i in issues if i.verdict != "false_positive"]
+    fatal_hits = _fatal_hits(issues)
+    now = datetime.now(UTC).strftime("%Y-%m-%d %H:%M UTC")
+    tid = _esc(task.id[:8])
+    meta_lines = [
+        f"任务 ID:{_esc(task.id)}",
+        f"任务状态:{_esc(task.status)}",
+        f"审查模式:{_esc(task.mode)}",
+        _esc(_feedback_summary(feedback or [])),
+        f"生成时间:{_esc(now)}",
+    ]
+    gate_txt = f"命中致命红线 {len(fatal_hits)} 项,建议整改后重新审查。" if fatal_hits else "未命中致命红线,可进入人工终审。"
+    parts = [
+        "<!doctype html>",
+        '<html lang="zh"><head><meta charset="utf-8">',
+        f"<title>投标审查报告 {tid}</title>",
+        "<style>",
+        "body{font-family:system-ui,-apple-system,'Segoe UI',sans-serif;max-width:860px;margin:2rem auto;padding:0 1rem;line-height:1.6;color:#111}",
+        ".disclaimer{color:#666;border-left:3px solid #ccc;padding-left:.8rem}",
+        ".meta{list-style:none;padding-left:0;color:#444;font-size:.95rem}",
+        ".hit{color:#b91c1c;font-weight:600}.ok{color:#166534;font-weight:600}",
+        "article.issue{border:1px solid #ddd;border-radius:6px;padding:.5rem .9rem;margin:.5rem 0}",
+        "article.issue h3{margin:.2rem 0;font-size:1rem}",
+        ".tag{display:inline-block;border-radius:4px;padding:0 .45rem;font-size:.8rem;color:#fff}",
+        ".sev-fatal{background:#b91c1c}.sev-major{background:#d97706}.sev-minor{background:#6b7280}.sev-info{background:#2563eb}",
+        ".kv{color:#444;margin:.15rem 0}",
+        "h2{border-bottom:1px solid #eee;padding-bottom:.2rem;margin-top:1.6rem}",
+        "@media print{body{margin:0}}",
+        "</style></head><body>",
+        f'<p class="disclaimer">免责声明:{_esc(REPORT_DISCLAIMER)}</p>',
+        f"<h1>投标审查报告 {tid}</h1>",
+        '<ul class="meta">' + "".join(f"<li>{m}</li>" for m in meta_lines) + "</ul>",
+        f'<h2>可提交判定</h2><p class="{"hit" if fatal_hits else "ok"}">{_esc(gate_txt)}</p>',
+    ]
+    for sev in ("fatal", "major", "minor", "info"):
+        rows = [i for i in issues if i.severity == sev]
+        parts.append(f"<h2>{_esc(SEVERITY_LABELS[sev])}({sev})——{len(rows)} 项</h2>")
+        if not rows:
+            parts.append("<p>无</p>")
+            continue
+        for i in rows:
+            parts.append(
+                '<article class="issue">'
+                f'<span class="tag sev-{_esc(sev)}">{_esc(sev)}</span>'
+                f"<h3>{_esc('【待人工】' if i.need_human else '')}{_esc(i.rule_id)} {_esc(_oneline(i.message))}</h3>"
+                f'<p class="kv">判定:{_esc(i.verdict)}</p>'
+                f'<p class="kv">证据:{_esc(_fmt_evidence(list(i.evidence or [])))}</p>'
+                f'<p class="kv">修复建议:{_esc(_oneline(i.fix)) or "无"}</p>'
+                "</article>"
+            )
+    # 响应偏离表节:同 md 渲染器口径(deviations={counts, items})
+    counts = (deviations or {}).get("counts") or {}
+    items = (deviations or {}).get("items") or []
+    parts.append(f"<h2>响应偏离表(缺失 {_esc(counts.get('missing', 0))} · 增项 {_esc(counts.get('extra', 0))} · 负偏离 {_esc(counts.get('negative', 0))})</h2>")
+    if not items:
+        parts.append("<p>无记录(本任务抽取时未包含偏离维度或未检出偏离项)。</p>")
+    else:
+        parts.append(
+            "<ul>"
+            + "".join(f"<li>{_esc(_oneline(str(d.get('item') or '')))}:{_esc(d.get('kind') or '?')}(招标:{_esc(_oneline(str(d.get('tender_value') or '无')))} ↔ 投标:{_esc(_oneline(str(d.get('bid_value') or '无')))})</li>" for d in items)
+            + "</ul>"
+        )
+    parts.append("</body></html>")
+    return "\n".join(parts)
+
+
 def _render_report_md(task, issues: list, feedback: list | None = None, deviations: dict | None = None) -> str:
     """审查报告 md 渲染(plan Task 21 Step 1 契约,报告呈现形态以 plan 原文为准):
     首行免责声明 → 任务元信息(复核耗时=feedback 真聚合,对齐审计③ 2026-11-05)→
@@ -571,7 +653,7 @@ def _render_report_md(task, issues: list, feedback: list | None = None, deviatio
     不删除,按 severity 归节并标注【待人工】;false_positive 人工误报不进正文;
     尾部响应偏离表节(对齐审计⑩:counts+逐条,同 /deviations 投影口径)。"""
     issues = [i for i in issues if i.verdict != "false_positive"]
-    fatal_hits = [i for i in issues if i.severity == "fatal" and i.verdict == "violation" and not i.need_human]
+    fatal_hits = _fatal_hits(issues)  # 口径共享(spec 2026-11-05 R4,防双渲染器漂移)
     now = datetime.now(UTC).strftime("%Y-%m-%d %H:%M UTC")
     lines = [
         f"> 免责声明:{REPORT_DISCLAIMER}",
@@ -625,12 +707,13 @@ async def export_task_report(
 ):
     """审查报告导出(plan Task 21):format=md 返回 markdown 文本(首行免责声明、
     可提交判定提示行、按 severity 分节、每条含规则 ID/证据/修复建议、复核耗时占位);
-    format 白名单只收 md——html 导出属 M4,422 拒绝不静默降级;owner 过滤同既有端点,
-    Content-Disposition attachment 供浏览器直接下载。状态门(QUAL 修复):仅 done 可导,
-    半程任务 409——基于空/半程 issue 集算出的可提交判定行不得冒充审查结论流出到
-    非 UI 消费方(与 WorkbenchView 前端 done 门同口径)。"""
-    if format != "md":
-        raise HTTPException(status_code=422, detail="format 仅支持 md(html 导出属 M4)")
+    format=html 返回单文件 HTML(M4+ 挂账兑付,spec 2026-11-05:原生渲染全转义 +
+    attachment 强制下载,内容与 md 对等);未知格式 422 拒绝不静默降级;owner 过滤同
+    既有端点,Content-Disposition attachment 供浏览器直接下载。状态门(QUAL 修复):
+    仅 done 可导,半程任务 409——基于空/半程 issue 集算出的可提交判定行不得冒充审查
+    结论流出到非 UI 消费方(与 WorkbenchView 前端 done 门同口径)。"""
+    if format not in ("md", "html"):
+        raise HTTPException(status_code=422, detail="format 仅支持 md|html")
     task = await crud.get_task(db, task_id=task_id, owner_id=owner_id)
     if task is None:
         raise HTTPException(status_code=404, detail="任务不存在")
@@ -650,10 +733,12 @@ async def export_task_report(
             if name and name not in seen_names:
                 seen_names.add(name)
                 dev_items.append(item)
+    deviations = {"counts": deviation_counts(dev_items), "items": dev_items}
+    render = _render_report_md if format == "md" else _render_report_html
     return Response(
-        content=_render_report_md(task, issues, feedback=feedback, deviations={"counts": deviation_counts(dev_items), "items": dev_items}),
-        media_type="text/markdown; charset=utf-8",
-        headers={"Content-Disposition": f'attachment; filename="bid-review-report-{task_id[:8]}.md"'},
+        content=render(task, issues, feedback=feedback, deviations=deviations),
+        media_type="text/markdown; charset=utf-8" if format == "md" else "text/html; charset=utf-8",
+        headers={"Content-Disposition": f'attachment; filename="bid-review-report-{task_id[:8]}.{format}"'},
     )
 
 
