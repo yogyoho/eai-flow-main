@@ -1,7 +1,7 @@
 # anatomy.md
 
-> Auto-maintained by OpenWolf. Last scanned: 2026-11-05T04:09:31.650Z
-> Files: 8 tracked | Anatomy hits: 0 | Misses: 0
+> Auto-maintained by OpenWolf. Last scanned: 2026-11-05T04:54:00.487Z
+> Files: 11 tracked | Anatomy hits: 0 | Misses: 0
 
 ## ../../00 工作目录/02 项目策划/马宁/应急指挥/bid-run/
 
@@ -324,6 +324,8 @@
 ## C:/Users/admin/.claude/projects/D--eai-eai-flow-main/memory/
 
 - `bid-review-extract-engine-m1-landed.md` (~386 tok)
+- `bid-review-extract-engine-m2-landed.md` (~429 tok)
+- `bid-review-extract-engine-m3-landed.md` (~443 tok)
 
 ## C:/Users/admin/.gstack/
 
@@ -639,12 +641,9 @@
 
 ## backend/app/extensions/bid_review/
 
-- `worker.py` — bid_review worker(Task 9)——状态机推进 + claimer 循环 + gateway 生命周期入口。 (~9727 tok) +M2章节段(门=toc/required非空/seam=_default_section_fn/缺席语义/materials_hash重算)|
 
 ## backend/app/extensions/bid_review/engine/
 
-- `extract.py` — 基准字段提取:解析后文档文本 → field_snapshot(+materials_hash);LLM 提取函数可注入(translation worker `TranslateFn` 惯例)。 (~7870 tok) +M2:normalize_section_tree闸(offset服务端算/|差|>5→offset_flag)+build_sections_prompt/baseline+toc_section_codes入LIST_PATHS|
-- `registry.py` — 规则包注册表——跨源索引+lint(EAI-CUSTOM 2026-11-05 R1,spec 裁决②③修正版)。 (~1314 tok)
 
 ## backend/app/extensions/bid_review/engine/dicts/
 
@@ -925,8 +924,11 @@
 ## backend/tests/
 
 - `test_bid_review_extract.py` — bid_review engine/extract.py 基准提取单测:shape/materials_hash 稳定 + null 显式保留 + 非字典路径丢弃 + prompt 骨架转录。 (~5510 tok)
-- `test_bid_review_registry.py` — 规则包注册表测试(spec 2026-11-05 R1 §2.6):宇宙锚定/反查/lint/拒载/投影声明。 (~2168 tok)
+- `test_bid_review_registry.py` — 规则包注册表测试(spec 2026-11-05 R1 §2.6):宇宙锚定/反查/lint/拒载/投影声明。 (~2240 tok)
 - `test_bid_review_sections_extract.py` — M2 章节层契约+归一闸+prompt/baseline 单测(spec 2026-11-04 §5,2026-11-05)。 (~1046 tok)
+- `test_bid_review_tables_extract.py` — M3 表格/清单行:boq_rows 归一闸(required 服务端回填∈招标codes/qty-price 非负闸)+table_cells 临时契约闸+build_tables_prompt 单 prompt 双路径+baseline 两键独立归一(spec §5,2026-11-05)。 (~1100 tok)
+- `test_bid_review_tables_extract.py` — B立项 M3 表格/清单行抽取单测(spec §5,2026-11-05):boq_rows 行级归一闸(required 服务端回填)+ table_cells 临时契约闸 + prompt/bas (~1424 tok)
+- `test_bid_review_worker.py` — Task 9 测试:bid_review worker——状态机推进(advance_task)+ boot recovery + (~9321 tok)
 
 ## backend/tests/ (QA 2026-10-28 增补)
 
@@ -1015,6 +1017,7 @@
 ## docs/superpowers/plans/
 
 - `2026-11-05-bid-review-section-layer-m2-plan.md` — B立项 M2 章节层(section_tree + page_offset)实施计划 (~4113 tok)
+- `2026-11-05-bid-review-table-layer-m3-plan.md` — B立项 M3 表格/清单行(boq_rows 行级 + table_cells)实施计划 (~1709 tok)
 
 ## docs/superpowers/plans/2026-09-13-coal-mine-tunneling-regulation-v2.md
 

@@ -28405,3 +28405,35 @@
 | 12:09 | Edited backend/app/extensions/bid_review/engine/registry.py | 1→3 lines | ~69 |
 | 12:11 | Session end: 16 writes across 8 files (bid-review-extract-engine-m1-landed.md, 2026-11-05-bid-review-section-layer-m2-plan.md, test_bid_review_registry.py, test_bid_review_extract.py, registry.py) | 4 reads | ~10187 tok |
 | 12:14 | B立项M2章节层落地:section_tree第二段(universe73/首段71)+toc_section_codes入LIST_PATHS+offset服务端算/|差|>5→offset_flag+worker章节段门/seam/缺席语义;全家484/0+golden零翻红+M0快照26/26 | extract.py/registry.py/worker.py/test_bid_review_sections_extract.py | done | ~6200 |
+| 12:16 | Created C:/Users/admin/.claude/projects/D--eai-eai-flow-main/memory/bid-review-extract-engine-m2-landed.md | — | ~428 |
+| 12:17 | Session end: 17 writes across 9 files (bid-review-extract-engine-m1-landed.md, 2026-11-05-bid-review-section-layer-m2-plan.md, test_bid_review_registry.py, test_bid_review_extract.py, registry.py) | 5 reads | ~10645 tok |
+| 12:23 | Session end: 17 writes across 9 files (bid-review-extract-engine-m1-landed.md, 2026-11-05-bid-review-section-layer-m2-plan.md, test_bid_review_registry.py, test_bid_review_extract.py, registry.py) | 6 reads | ~10645 tok |
+| 12:33 | Created docs/superpowers/plans/2026-11-05-bid-review-table-layer-m3-plan.md | — | ~1823 |
+
+## Session: 2026-11-05 12:35
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 12:37 | Edited backend/tests/test_bid_review_registry.py | 2→2 lines | ~62 |
+| 12:37 | Edited backend/tests/test_bid_review_registry.py | 2→3 lines | ~20 |
+| 12:37 | Edited backend/tests/test_bid_review_registry.py | 2→3 lines | ~22 |
+| 12:37 | Edited backend/tests/test_bid_review_registry.py | test_anchored_73() → test_anchored_74() | ~250 |
+| 12:38 | Edited backend/app/extensions/bid_review/engine/registry.py | 4→8 lines | ~176 |
+| 12:41 | Created backend/tests/test_bid_review_tables_extract.py | — | ~1347 |
+| 12:42 | Edited backend/app/extensions/bid_review/engine/extract.py | expanded (+11 lines) | ~208 |
+| 12:43 | Edited backend/app/extensions/bid_review/engine/extract.py | modified normalize_boq_rows() | ~702 |
+| 12:43 | Edited backend/app/extensions/bid_review/engine/extract.py | modified build_tables_prompt() | ~590 |
+| 12:44 | Edited backend/tests/test_bid_review_tables_extract.py | modified test_non_list_returns_empty() | ~111 |
+| 12:44 | Edited backend/tests/test_bid_review_tables_extract.py | modified test_drops_blank_value_and_bad_page() | ~162 |
+| 12:45 | Edited backend/tests/test_bid_review_tables_extract.py | 5→6 lines | ~70 |
+| 12:46 | Edited backend/app/extensions/bid_review/worker.py | inline fix | ~61 |
+| 12:46 | Edited backend/app/extensions/bid_review/worker.py | modified def() | ~384 |
+| 12:46 | Edited backend/app/extensions/bid_review/worker.py | 1→2 lines | ~12 |
+| 12:46 | Edited backend/app/extensions/bid_review/worker.py | modified is() | ~346 |
+| 12:47 | Edited backend/app/extensions/bid_review/engine/extract.py | inline fix | ~20 |
+| 12:47 | Edited backend/tests/test_bid_review_tables_extract.py | 5→4 lines | ~37 |
+| 12:47 | Edited backend/app/extensions/bid_review/worker.py | inline fix | ~16 |
+| 12:48 | Edited backend/tests/test_bid_review_worker.py | modified _m3_extract() | ~1319 |
+| 12:51 | Session end: 20 writes across 6 files (test_bid_review_registry.py, registry.py, test_bid_review_tables_extract.py, extract.py, worker.py) | 4 reads | ~8083 tok |
+| 13:05 | B立项M3表格/清单行落地: registry 75/71 + boq_rows(required服务端回填)+table_cells 临时契约 + worker tables段 | registry.py extract.py worker.py tests×3 | 全家501/0 golden零翻红 M0 26/26 ruff绿 | ~28k |
+| 12:54 | Created C:/Users/admin/.claude/projects/D--eai-eai-flow-main/memory/bid-review-extract-engine-m3-landed.md | — | ~448 |

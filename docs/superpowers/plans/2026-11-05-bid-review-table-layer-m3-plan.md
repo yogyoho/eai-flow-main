@@ -26,20 +26,20 @@
 
 ### Task 1: 计划预提交
 
-- [ ] **Step 1:** `git -C /d/eai/eai-flow-main add -f docs/superpowers/plans/2026-11-05-bid-review-table-layer-m3-plan.md && git commit -m "docs(bid-review): B立项M3表格层计划——boq_rows行级+table_cells最小形状一段双路径+required服务端回填(招标侧唯一口径)+七裁决"`
+- [x] **Step 1:** `git -C /d/eai/eai-flow-main add -f docs/superpowers/plans/2026-11-05-bid-review-table-layer-m3-plan.md && git commit -m "docs(bid-review): B立项M3表格层计划——boq_rows行级+table_cells最小形状一段双路径+required服务端回填(招标侧唯一口径)+七裁决"`
 
 ### Task 2: 注册表 SECOND_STAGE_FIELDS +2(universe 74)
 
 **Files:** registry.py;tests/test_bid_review_registry.py
 
-- [ ] **Step 1: 失败测试**——EXPECTED_UNIVERSE 72→…:插 `"bid.boq_rows"`(bid.boq_items 之后 boq_unit_checks 之前)与 `"bid.table_cells"`(subtotal 之后 tax_rate_occurrences 之前),len==74;`second_stage_fields` 断言 4 键;首段排除断言补两路径。
-- [ ] **Step 2: 红** → **Step 3: 实现**(SECOND_STAGE_FIELDS 追加两描述条目)→ **Step 4: 绿** → **Step 5: commit**
+- [x] **Step 1: 失败测试**——EXPECTED_UNIVERSE 72→…:插 `"bid.boq_rows"`(bid.boq_items 之后 boq_unit_checks 之前)与 `"bid.table_cells"`(subtotal 之后 tax_rate_occurrences 之前),len==74;`second_stage_fields` 断言 4 键;首段排除断言补两路径。
+- [x] **Step 2: 红** → **Step 3: 实现**(SECOND_STAGE_FIELDS 追加两描述条目)→ **Step 4: 绿** → **Step 5: commit**
 
 ### Task 3: 契约 + normalize_boq_rows / normalize_table_cells 闸
 
 **Files:** extract.py;tests/test_bid_review_tables_extract.py(新建)
 
-- [ ] **Step 1: 失败测试**
+- [x] **Step 1: 失败测试**
 
 ```python
 def test_normalize_boq_rows_backfills_required():
@@ -63,7 +63,7 @@ def test_normalize_table_cells_drops_blank_value():
     assert normalize_table_cells(None) == [] and normalize_table_cells("junk") == []
 ```
 
-- [ ] **Step 2: 红** → **Step 3: 实现**(extract.py,normalize_section_tree 之后;FIELD_TYPE_CONTRACTS 两契约)
+- [x] **Step 2: 红** → **Step 3: 实现**(extract.py,normalize_section_tree 之后;FIELD_TYPE_CONTRACTS 两契约)
 
 ```python
 FIELD_TYPE_CONTRACTS["bid.boq_rows"] = (
@@ -85,13 +85,13 @@ def normalize_table_cells(raw: Any) -> list[dict]:
     否则 null;零规则消费(R2+ 就位后演进契约)。"""
 ```
 
-- [ ] **Step 4: 绿** → **Step 5: commit**
+- [x] **Step 4: 绿** → **Step 5: commit**
 
 ### Task 4: build_tables_prompt + build_tables_baseline(单 prompt 双路径)
 
 **Files:** extract.py;tests/test_bid_review_tables_extract.py
 
-- [ ] **Step 1: 失败测试**(prompt 含两契约+tender 清单+[[p.、铁律;baseline 解包双键各自归一,None 信号→双空 dict)
+- [x] **Step 1: 失败测试**(prompt 含两契约+tender 清单+[[p.、铁律;baseline 解包双键各自归一,None 信号→双空 dict)
 
 ```python
 def test_tables_baseline_two_paths():
@@ -105,26 +105,26 @@ def test_tables_baseline_none_signal():
     assert build_tables_baseline([], lambda *a: None, None) == {"boq_rows": [], "table_cells": []}
 ```
 
-- [ ] **Step 2: 红** → **Step 3: 实现** → **Step 4: 绿** → **Step 5: commit**
+- [x] **Step 2: 红** → **Step 3: 实现** → **Step 4: 绿** → **Step 5: commit**
 
 ### Task 5: worker tables 段
 
 **Files:** worker.py;tests/test_bid_review_worker.py
 
-- [ ] **Step 1: 失败测试**(镜像 M1/M2 五测试:_m3_extract 设 tender.boq_items;merged 两键+hash 一致;失败双缺席;零行双 [];无信号跳过零模型;default seam monkeypatch)
-- [ ] **Step 2: 红** → **Step 3: 实现**(import + `_default_tables_fn` + `tables_fn=None` kwarg + M2 块后追加 tables 块)→ **Step 4: 绿** → **Step 5: commit**
+- [x] **Step 1: 失败测试**(镜像 M1/M2 五测试:_m3_extract 设 tender.boq_items;merged 两键+hash 一致;失败双缺席;零行双 [];无信号跳过零模型;default seam monkeypatch)
+- [x] **Step 2: 红** → **Step 3: 实现**(import + `_default_tables_fn` + `tables_fn=None` kwarg + M2 块后追加 tables 块)→ **Step 4: 绿** → **Step 5: commit**
 
 ### Task 6: 全量验证
 
-- [ ] **Step 1:** `cd backend && PYTHONPATH=. uv run pytest tests/ -k bid_review -q`(后台;期望全绿,预计 ~505)
-- [ ] **Step 2:** golden 55+M0 快照 26/26 含在全家内(零翻红)
-- [ ] **Step 3:** ruff check --fix + format 改动文件 → 重跑受影响测试
+- [x] **Step 1:** `cd backend && PYTHONPATH=. uv run pytest tests/ -k bid_review -q`(后台;期望全绿,预计 ~505)
+- [x] **Step 2:** golden 55+M0 快照 26/26 含在全家内(零翻红)
+- [x] **Step 3:** ruff check --fix + format 改动文件 → 重跑受影响测试
 
 ### Task 7: 收官
 
-- [ ] **Step 1:** push 重试至 `0\t0`
-- [ ] **Step 2:** wolf(memory;buglog 若 bug)+ anatomy(extract.py/worker.py 注记+新测试文件条目)+ plan 勾选 docs commit(`git add -f`)
-- [ ] **Step 3:** auto-memory `bid-review-extract-engine-m3-landed.md` + MEMORY.md 索引;终报以队列下一项(M4 条目聚类)+「继续」收尾
+- [x] **Step 1:** push 重试至 `0\t0`
+- [x] **Step 2:** wolf(memory;buglog 若 bug)+ anatomy(extract.py/worker.py 注记+新测试文件条目)+ plan 勾选 docs commit(`git add -f`)
+- [x] **Step 3:** auto-memory `bid-review-extract-engine-m3-landed.md` + MEMORY.md 索引;终报以队列下一项(M4 条目聚类)+「继续」收尾
 
 ### 活体回采(独立步骤,烧配额一次,不阻塞 commit)
 

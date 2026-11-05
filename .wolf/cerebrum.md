@@ -2965,3 +2965,4 @@ LLM 结构化抽取(bid-review build_baseline)单跑采样方差大: 同 docs+mo
 「全家精确计数」指 `pytest tests/ -k bid_review`(R1 后 440/0),不是整个 tests/(3.6 万项,309 个无关域失败=外来 WIP 禁碰)。跑错口径白烧 68 分钟。
 ### severity 层白名单以既有夹具语义为准 (2026-11-05)
 spec 假设 L2{fatal,major},eval_core 夹具 EX-001 证明 L2/minor 是既有合法语义——政策先取证再定:终版 L1{fatal,major} L2{fatal,major,minor} L3{major,minor}。
+- 2026-11-05 M3 universe 计数:新 SECOND_STAGE_FIELDS 落地时 EXPECTED_UNIVERSE 数 = 71 首段 + len(SECOND_STAGE_FIELDS),不是上一档+1 的脑算(M3 曾写 74 实为 75);改前先 `python -c "from app.extensions.bid_review.engine import registry; print(len(registry.universe()))"` 实测再锚测试。
