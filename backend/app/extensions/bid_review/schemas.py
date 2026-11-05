@@ -107,3 +107,10 @@ class AdjudicateIn(BaseModel):
     path: str
     value: object = None  # JSON 安全类型闸在端点做(BaseModel 不预设 union 丢 list/dict)
     note: str = ""
+
+
+class RuleEnabledIn(BaseModel):
+    """规则级启用开关请求体(对齐审计⑨,2026-11-05):落 DB rule_overrides,
+    与 yaml enabled 相与生效。"""
+
+    enabled: bool

@@ -294,3 +294,15 @@ async def add_rulepack_stats(
     await session.commit()
     await session.refresh(meta)
     return meta
+
+
+async def get_or_create_rulepack_meta(session: AsyncSession, name: str, version: str | None = None) -> RulePackMeta:
+    """按 name 取/建规则包元数据(规则 enabled 切换端点用,对齐审计⑨ 2026-11-05);
+    与 add_rulepack_stats 的 upsert 并存:本函数不带 stats 语义,纯元数据行。"""
+    meta = (await session.execute(select(RulePackMeta).where(RulePackMeta.name == name))).scalar_one_or_none()
+    if meta is None:
+        meta = RulePackMeta(name=name, version=version or "0.0.0", stats={}, enabled=True, rule_overrides={})
+        session.add(meta)
+        await session.commit()
+        await session.refresh(meta)
+    return meta

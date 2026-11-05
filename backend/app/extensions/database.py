@@ -958,6 +958,10 @@ async def migrate_db() -> None:
         # 该环境存量行 entity_keys=NULL 且上方 IF NOT EXISTS 永久 no-op,DEFAULT 补不上,
         # 读路径 500(读侧兜底见 bid_review/schemas.py validator)。幂等自愈归一数据。
         await conn.execute(text("UPDATE bid_review_issues SET entity_keys='[]'::jsonb WHERE entity_keys IS NULL"))
+        # EAI-CUSTOM (bid-review 对齐审计⑨,2026-11-05): 规则级启用开关列(create_all 不 ALTER
+        # 已有表,幂等加列;DEFAULT '{}' 回填存量行,NULL 自愈同 entity_keys 先例)
+        await conn.execute(text("ALTER TABLE bid_review_rulepacks ADD COLUMN IF NOT EXISTS rule_overrides JSONB DEFAULT '{}'::jsonb"))
+        await conn.execute(text("UPDATE bid_review_rulepacks SET rule_overrides='{}'::jsonb WHERE rule_overrides IS NULL"))
         # EAI-CUSTOM (bug-1791807358242): KB 子表 FK 改 ON DELETE CASCADE——delete_kb 只清 documents,
         # 缺省 NO ACTION 的扩展子表(tlt_translation_tasks/scrap_drafts)会让删 KB 撞 FK IntegrityError 500。
         # 幂等重建约束(同 report_projects_workflow_id_fkey 先例)。约束名按建表来源:

@@ -341,8 +341,8 @@ async def test_report_md_disclaimer_sections_and_per_issue_fields(client, db):
     assert "大写口径误报" not in body
     # 可提交判定提示行(fatal violation=1 → 命中红线措辞照 ui-spec §3.5)
     assert "命中致命红线 1 项,建议整改后重新审查" in body
-    # 复核耗时占位
-    assert "复核耗时" in body
+    # 复核耗时真数据(对齐审计③ 2026-11-05:「待补充」假占位删除;本任务无 feedback → 未复核)
+    assert "人工复核:未复核" in body
 
 
 @pytest.mark.asyncio
@@ -394,7 +394,7 @@ def test_mcp_tools_expose_no_confirm_gate():
     基线确认门仅工作台 UI,agent 不可代确认(设计文档 §4.3/§4.8)。"""
     from app.extensions.bid_review import mcp
 
-    assert len(mcp.TOOLS) == 7
+    assert len(mcp.TOOLS) == 11  # 对齐审计⑧:四只读输出工具(diff/deviations/score_coverage/report)
     assert all("confirm" not in name for name in mcp.TOOLS), "MCP 绝不暴露确认门"
     assert all("confirm" not in name for name in mcp._HANDLERS), "handler 表同样不得有 confirm 类"
 
@@ -636,3 +636,28 @@ async def test_creator_names_with_users_table(db):
     await db.commit()
     names = await crud.creator_names(db, [uid, "u-not-exist"])
     assert names == {uid: "张工"}
+
+
+@pytest.mark.asyncio
+async def test_set_rule_enabled_toggle_404_and_read_projection(client, db):
+    """对齐审计⑨(2026-11-05):POST /rulepacks/{name}/rules/{rule_id}/enabled 落 DB
+    rule_overrides(yaml 源文件不动);未知规则/未知包 404;GET rule_details 逐条投影
+    生效 enabled(yaml ∧ override)。"""
+    from sqlalchemy import select
+
+    from app.extensions.bid_review.engine.rule_runner import load_rulepack
+
+    pack = load_rulepack(worker.RULEPACK_PATH)
+    rid = pack.rules[0].id
+    base = "/api/extensions/bid-review"
+    r = await client.post(f"{base}/rulepacks/{pack.name}/rules/{rid}/enabled", json={"enabled": False})
+    assert r.status_code == 200 and r.json()["success"] is True and r.json()["rule_overrides"][rid] is False
+    meta = (await db.execute(select(models.RulePackMeta).where(models.RulePackMeta.name == pack.name))).scalar_one()
+    assert meta.rule_overrides[rid] is False
+    r2 = await client.post(f"{base}/rulepacks/{pack.name}/rules/{rid}/enabled", json={"enabled": True})
+    assert r2.status_code == 200 and r2.json()["rule_overrides"][rid] is True
+    assert (await client.post(f"{base}/rulepacks/{pack.name}/rules/NOPE/enabled", json={"enabled": False})).status_code == 404
+    assert (await client.post(f"{base}/rulepacks/other-pack/rules/{rid}/enabled", json={"enabled": False})).status_code == 404
+    det = await client.get(f"{base}/rulepacks/{pack.name}/rules")
+    item = next(i for i in det.json()["items"] if i["id"] == rid)
+    assert item["enabled"] is True

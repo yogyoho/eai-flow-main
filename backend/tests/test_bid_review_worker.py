@@ -1072,3 +1072,46 @@ class TestQuickLayerPrune:
         written2, rules_total2 = await _run_review_stage(db, t, {}, "u1")
         assert rules_total2 == 2  # deep 全量
         assert written2 >= written  # deep 至少不亏条目
+
+
+class TestRuleEnabledOverrides:
+    """对齐审计⑨(2026-11-05):规则级启用开关——DB rule_overrides ∧ yaml enabled
+    相与(override 只能关不能开 yaml 关的规则);运行时零 yaml 改写;meta 缺行 =
+    全启用零行为变化。"""
+
+    def test_apply_rule_overrides_semantics(self):
+        from types import SimpleNamespace
+
+        from app.extensions.bid_review.worker import _apply_rule_overrides
+
+        r1 = SimpleNamespace(id="A", enabled=True)
+        r2 = SimpleNamespace(id="B", enabled=True)
+        r3 = SimpleNamespace(id="C", enabled=False)  # yaml 关
+        rules = [r1, r2, r3]
+        assert _apply_rule_overrides(rules, {}) == [r1, r2]  # 空表零变化;yaml 关恒剔除
+        assert _apply_rule_overrides(rules, {"A": False}) == [r2]  # override 关
+        assert _apply_rule_overrides(rules, {"A": True}) == [r1, r2]  # override 开=维持
+        assert _apply_rule_overrides(rules, {"C": True}) == [r1, r2]  # override 救不回 yaml 关
+
+    @pytest.mark.asyncio
+    async def test_review_stage_honors_db_overrides(self, db, tmp_rulepack):
+        """_run_review_stage 读 RulePackMeta.rule_overrides 相与:override 关 T1-001 →
+        deep 也只剩 1 条;清空 override → 恢复全量 2 条。"""
+        from sqlalchemy import select
+
+        from app.extensions.bid_review.engine.rule_runner import load_rulepack
+        from app.extensions.bid_review.models import RulePackMeta
+        from app.extensions.bid_review.worker import RULEPACK_PATH, _run_review_stage
+
+        pack = load_rulepack(RULEPACK_PATH)
+        t = await crud.create_task(db, owner_id="u1", mode="deep")
+        t.engine_meta = {"docs": _DOCS}
+        db.add(RulePackMeta(name=pack.name, version=pack.version, stats={}, enabled=True, rule_overrides={"T1-001": False}))
+        await db.commit()
+        _, rules_total = await _run_review_stage(db, t, {}, "u1")
+        assert rules_total == 1  # deep 本应 2,T1-001 被 DB override 关掉
+        meta = (await db.execute(select(RulePackMeta).where(RulePackMeta.name == pack.name))).scalar_one()
+        meta.rule_overrides = {}
+        await db.commit()
+        _, rules_total2 = await _run_review_stage(db, t, {}, "u1")
+        assert rules_total2 == 2

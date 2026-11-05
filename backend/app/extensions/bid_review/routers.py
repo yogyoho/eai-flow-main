@@ -39,7 +39,7 @@ from app.extensions.bid_review.engine.attachments import build_checklist
 from app.extensions.bid_review.engine.extract import apply_adjudications, compute_score_coverage, detect_conflicts, deviation_counts
 from app.extensions.bid_review.engine.labels import FIELD_LABELS
 from app.extensions.bid_review.models import BaselinePackage, ReviewFeedback, ReviewIssue, RulePackMeta
-from app.extensions.bid_review.schemas import AdjudicateIn, FeedbackIn, IssueOut, TaskOut
+from app.extensions.bid_review.schemas import AdjudicateIn, FeedbackIn, IssueOut, RuleEnabledIn, TaskOut
 from app.extensions.database import get_db
 from app.extensions.schemas import CurrentUser
 
@@ -898,14 +898,17 @@ async def list_rulepacks(db: AsyncSession = Depends(get_db), owner_id: str = Dep
 
 
 @router.get("/rulepacks/{name}/rules")
-async def rulepack_rule_details(name: str, owner_id: str = Depends(current_owner)):
+async def rulepack_rule_details(name: str, db: AsyncSession = Depends(get_db), owner_id: str = Depends(current_owner)):
     """规则定义五块明细(B5,M5 §4.7,治理页只读抽屉):PRECONDITION / EXPR /
     ON_MISSING_INPUT / MESSAGE_TPL / FIX_TPL。EXPR 取 steps/all/values 链或
     `left op right` 单式;on_missing_input 从包级 conventions 投影到每条。本页零写
-    路径——修订须走规则包版本发布;name 不匹配生产包 404(当前单包 bid-review-core)。"""
+    路径——修订须走规则包版本发布;name 不匹配生产包 404(当前单包 bid-review-core)。
+    enabled 投影生效态(yaml ∧ DB override,对齐审计⑨ 2026-11-05)。"""
     pack = worker.load_rulepack(worker.RULEPACK_PATH)
     if name != pack.name:
         raise HTTPException(status_code=404, detail=f"未知规则包 {name}")
+    meta = (await db.execute(select(RulePackMeta).where(RulePackMeta.name == pack.name))).scalar_one_or_none()
+    overrides = dict(meta.rule_overrides or {}) if meta else {}
     items = []
     for r in pack.rules:
         chk = r.check or {}
@@ -931,9 +934,30 @@ async def rulepack_rule_details(name: str, owner_id: str = Depends(current_owner
                 "message_tpl": r.message_tpl,
                 "fix_tpl": r.fix_tpl,
                 "evidence": list(r.evidence or []),
+                "enabled": bool(r.enabled) and overrides.get(r.id, True),
             }
         )
     return {"pack": {"name": pack.name, "version": pack.version}, "items": items}
+
+
+@router.post("/rulepacks/{name}/rules/{rule_id}/enabled")
+async def set_rule_enabled(name: str, rule_id: str, body: RuleEnabledIn, db: AsyncSession = Depends(get_db), owner_id: str = Depends(current_owner)):
+    """规则级启用开关(对齐审计⑨,2026-11-05):落 DB RulePackMeta.rule_overrides
+    {rule_id: bool} 而非改写 yaml(git 跟踪源文件禁运行时改写);生效语义 =
+    yaml enabled ∧ DB override(worker._apply_rule_overrides 相与),下次审查跑批
+    生效。未知规则/未知包 404。"""
+    pack = worker.load_rulepack(worker.RULEPACK_PATH)
+    if name != pack.name:
+        raise HTTPException(status_code=404, detail=f"未知规则包 {name}")
+    if rule_id not in {r.id for r in pack.rules}:
+        raise HTTPException(status_code=404, detail=f"未知规则 {rule_id}")
+    meta = await crud.get_or_create_rulepack_meta(db, pack.name, version=pack.version)
+    overrides = dict(meta.rule_overrides or {})
+    overrides[rule_id] = body.enabled
+    meta.rule_overrides = overrides  # 重新赋值以标记 JSON 列 dirty
+    await db.commit()
+    await db.refresh(meta)
+    return {"success": True, "rule_id": rule_id, "enabled": body.enabled, "rule_overrides": overrides}
 
 
 @router.get("/metrics/fail_attribution")

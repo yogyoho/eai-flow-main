@@ -89,7 +89,7 @@ async def test_rulepack_rule_details_b5(client):
     items = body["items"]
     assert len(items) >= 20, "生产包 32 规则,投影缺一条都是断供"
     by_id = {i["id"]: i for i in items}
-    assert all(set(i) == {"id", "name", "layer", "severity", "type", "op", "precondition", "expr_lines", "on_missing_input", "message_tpl", "fix_tpl", "evidence"} for i in items)
+    assert all(set(i) == {"id", "name", "layer", "severity", "type", "op", "precondition", "expr_lines", "on_missing_input", "message_tpl", "fix_tpl", "evidence", "enabled"} for i in items)  # enabled=生效态投影(对齐审计⑨)
     assert all(i["op"] in _KNOWN_OPS for i in items), "op 只允许白名单算子或 steps 归一"
     # op 形态代表:L1-009(lte)单表达式;steps 形态代表:L1-010(三步加总链)
     lte_rule = by_id["L1-009"]

@@ -86,6 +86,9 @@ class RulePackMeta(Base):
     version: Mapped[str] = mapped_column(String(16))
     stats: Mapped[dict] = mapped_column(JSON, default=dict)  # {rule_id: {hit, fp, adopted}}
     enabled: Mapped[bool] = mapped_column(Boolean, default=True)
+    # EAI-CUSTOM(对齐审计⑨,2026-11-05):规则级启用开关 {rule_id: bool},与 yaml enabled
+    # 相与(worker._apply_rule_overrides);运行时零 yaml 改写(git 跟踪源文件)
+    rule_overrides: Mapped[dict] = mapped_column(JSON, default=dict)
 
 
 class ReviewFeedback(Base):

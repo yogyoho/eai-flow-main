@@ -50,7 +50,7 @@ from app.extensions.bid_review.engine.extract import (
     materials_hash,
 )
 from app.extensions.bid_review.engine.rule_runner import load_rulepack
-from app.extensions.bid_review.models import BaselinePackage, ReviewTask
+from app.extensions.bid_review.models import BaselinePackage, ReviewTask, RulePackMeta
 from app.extensions.database import get_session_factory
 
 logger = logging.getLogger(__name__)
@@ -484,6 +484,14 @@ def _prune_rules_for_mode(pack, mode: str) -> list:
     return pack.rules
 
 
+def _apply_rule_overrides(rules: list, overrides: dict) -> list:
+    """DB 规则开关 ∧ yaml enabled(对齐审计⑨,2026-11-05):纯函数过滤——override
+    False 剔除;override True/缺省保留;yaml enabled=False 恒剔除(顺带修正
+    load_rulepack 读入不滤的历史债,修订仍须走规则包版本发布)。overrides 空表 =
+    仅 yaml 过滤,既有行为零变化。"""
+    return [r for r in rules if r.enabled and overrides.get(r.id, True)]
+
+
 async def _run_review_stage(db: AsyncSession, task: ReviewTask, fields: dict, owner_id: str, model_fn=None, provenance: dict | None = None) -> tuple[int, int]:
     """审查阶段(Task 14):按 rule.type 分派——deterministic→run_det_rule(既有 det
     通路;attach_evidence 回填 provenance 证据,EAI-CUSTOM 2026-10-30)/
@@ -504,6 +512,9 @@ async def _run_review_stage(db: AsyncSession, task: ReviewTask, fields: dict, ow
     # 对齐审计缺口①(2026-11-05):quick 只跑 L1 det(设计承诺);rules_total 尾部
     # len(pack.rules) 自然取裁剪后分母,summary.unknown_ratio 诚实。
     pack.rules = _prune_rules_for_mode(pack, task.mode)
+    # 对齐审计⑨(2026-11-05):DB 规则开关 ∧ yaml enabled;meta 缺行 = 全启用零变化。
+    meta = (await db.execute(select(RulePackMeta).where(RulePackMeta.name == pack.name))).scalar_one_or_none()
+    pack.rules = _apply_rule_overrides(pack.rules, dict(meta.rule_overrides or {}) if meta else {})
     wrapped_model = _wrap_model_fn(model_fn or _default_model_fn())
     docs = _load_docs(task)
     materials = _collect_materials(docs)
