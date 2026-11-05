@@ -54,7 +54,7 @@ def test_coverage_drops_junk_and_disabled_rules():
 
 
 def test_coverage_empty():
-    assert compute_score_coverage([], []) == {"total": 0, "covered": 0, "items": []}
+    assert compute_score_coverage([], []) == {"total": 0, "covered": 0, "covered_max_score": None, "items": []}  # 对齐审计②新键
 
 
 # ── 端点 ──────────────────────────────────────────────────────────────
@@ -141,3 +141,21 @@ async def test_endpoint_no_scoring_items_zero_projection(client, db):
 async def test_endpoint_task_not_found_404(client):
     r = await client.get("/api/extensions/bid-review/tasks/ghost/score_coverage")
     assert r.status_code == 404
+
+
+def test_covered_max_score_numeric_and_none():
+    """对齐审计②(2026-11-05):covered_max_score=covered 项 max_score 可数值化合计;
+    「高」等不可转跳过;无可转/无 covered → None(伪零纪律)。"""
+    items = [
+        {"name": "价格分", "max_score": 50, "related_paths": ["tender.max_price"]},
+        {"name": "技术分", "max_score": "30.5", "related_paths": ["tender.max_price"]},
+        {"name": "垃圾分", "max_score": "高", "related_paths": ["tender.max_price"]},
+    ]
+    rules = [_FakeRule("L1-009", ["tender.max_price"])]
+    out = compute_score_coverage(items, rules)
+    assert out["covered"] == 3
+    assert out["covered_max_score"] == 80.5  # 50+30.5;「高」跳过
+    out2 = compute_score_coverage([{"name": "x", "max_score": "高", "related_paths": ["p"]}], rules)
+    assert out2["covered_max_score"] is None
+    out3 = compute_score_coverage([{"name": "x", "related_paths": ["p"]}], [_FakeRule("L2-x", ["other"])])
+    assert out3["covered_max_score"] is None  # 无 covered

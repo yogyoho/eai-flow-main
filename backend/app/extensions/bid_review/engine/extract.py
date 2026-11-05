@@ -545,6 +545,8 @@ def compute_score_coverage(scoring_items: list, rules) -> dict:
     inputs 的交集非空即覆盖——映射可审计,不靠语义猜。related_paths 缺失/全未知
     路径 → 该项未覆盖(诚实:映射不来就别装覆盖);非 dict 项与无名项丢弃,不进
     计数。rules 取鸭子类型(id/inputs/enabled),便于测试与规则包形态演进。
+    覆盖度审计面——交集即设计意图(B4 原文),非得分预估;covered_max_score 是
+    covered 项 max_score 数值合计的事实键(对齐审计②,2026-11-05)。
     """
     rule_inputs = [(str(getattr(r, "id", "?")), {p for p in getattr(r, "inputs", []) or [] if isinstance(p, str)}) for r in rules if getattr(r, "enabled", True)]
     items_out: list[dict] = []
@@ -560,8 +562,23 @@ def compute_score_coverage(scoring_items: list, rules) -> dict:
     return {
         "total": len(items_out),
         "covered": sum(1 for i in items_out if i["covered_by_rules"]),
+        # 对齐审计②(2026-11-05):覆盖度审计面,非得分预估——covered_max_score 是
+        # covered 项 max_score 可数值化合计的事实键(无一可转/无 covered → None,伪零)。
+        "covered_max_score": _covered_max_score(items_out),
         "items": items_out,
     }
+
+
+def _covered_max_score(items_out: list[dict]) -> float | None:
+    scores: list[float] = []
+    for i in items_out:
+        if not i["covered_by_rules"] or i["max_score"] is None:
+            continue
+        try:
+            scores.append(float(i["max_score"]))
+        except (TypeError, ValueError):
+            continue  # 不可数值化跳过,不炸整体
+    return sum(scores) if scores else None
 
 
 def deviation_counts(items: list | None) -> dict:
