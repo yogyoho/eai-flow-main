@@ -489,6 +489,91 @@ async def test_doc_content_and_asset_endpoints(client, db, tmp_path, monkeypatch
 
 
 @pytest.mark.asyncio
+async def test_doc_content_source_disambiguation_for_zip(client, db, tmp_path, monkeypatch):
+    """zip 扫描页 OCR 挂账兑付(2026-11-06):多成员 zip 的 ?source= 消歧——命中与
+    窗口都限制在成员池内;不传 source 既有行为(首个命中)不变;非 zip 文档传
+    source → 池空 404「未定位到原文」(锚不存在即未定位)。"""
+    import io as _io
+    import zipfile as _zipfile
+
+    import fitz
+
+    from app.extensions.bid_review import parse
+
+    async def _ocr(name: str, data: bytes, mime: str) -> str:
+        return "扫描页转写"
+
+    monkeypatch.setattr(parse, "task_dir", lambda owner, task: tmp_path / owner / task)
+
+    def _pdf(tag: str) -> bytes:
+        d = fitz.open()
+        p = d.new_page()
+        p.insert_text((72, 72), f"page one of {tag}")
+        d.new_page()  # 空文本层 → 扫描页
+        return d.tobytes()
+
+    zbuf = _io.BytesIO()
+    with _zipfile.ZipFile(zbuf, "w") as zf:
+        zf.writestr("docs/a.pdf", _pdf("alpha"))
+        zf.writestr("docs/b.pdf", _pdf("beta"))
+    r = await client.post(
+        "/api/extensions/bid-review/tasks",
+        data={"mode": "quick"},
+        files=[("tender_files", ("pack.zip", zbuf.getvalue(), "application/zip"))],
+    )
+    assert r.status_code == 200
+    tid = r.json()["id"]
+    t = await crud.get_task(db, task_id=tid, owner_id="u1")
+    entry = t.engine_meta["docs"][0]
+    out = await parse.parse_raw("u1", tid, entry, _ocr)
+    meta = dict(t.engine_meta)
+    meta["docs"] = [out]
+    t.engine_meta = meta
+    await db.commit()
+
+    base = f"/api/extensions/bid-review/tasks/{tid}/docs/pack.zip/content"
+    # 不传 source:既有行为字节不变(首个命中 = a.pdf 的页 1;整页窗口跨成员混段
+    # 是既有歧义,source= 传入时才池内收窄)
+    r = await client.get(base, params={"page": 1})
+    assert r.status_code == 200
+    body = r.json()
+    assert body["segments"] and body["segments"][0]["source"] == "docs/a.pdf"
+    assert "alpha" in body["segments"][0]["text"]
+
+    # ?source=b:命中 b.pdf 的页 1,窗口不跨成员
+    r = await client.get(base, params={"page": 1, "source": "docs/b.pdf"})
+    assert r.status_code == 200
+    body = r.json()
+    assert body["segments"] and all(s.get("source") == "docs/b.pdf" for s in body["segments"])
+    assert any("beta" in s["text"] for s in body["segments"])
+
+    # quote+source 同样池内命中:b.pdf 的扫描页 ocr 段(页号撞车消歧)
+    r = await client.get(base, params={"quote": "扫描页转写", "source": "docs/b.pdf"})
+    assert r.status_code == 200
+    segs = r.json()["segments"]
+    assert all(s.get("source") == "docs/b.pdf" for s in segs)
+    assert any(s["kind"] == "ocr" and s["page"] == 2 for s in segs)
+
+    # 非 zip 文档传 source → 池空 404(诚实未定位)
+    r = await client.post(
+        "/api/extensions/bid-review/tasks",
+        data={"mode": "quick"},
+        files=[("tender_files", ("solo.pdf", _pdf("solo"), "application/pdf"))],
+    )
+    assert r.status_code == 200
+    tid2 = r.json()["id"]
+    t2 = await crud.get_task(db, task_id=tid2, owner_id="u1")
+    e2 = t2.engine_meta["docs"][0]
+    out2 = await parse.parse_raw("u1", tid2, e2, _ocr)
+    meta2 = dict(t2.engine_meta)
+    meta2["docs"] = [out2]
+    t2.engine_meta = meta2
+    await db.commit()
+    r = await client.get(f"/api/extensions/bid-review/tasks/{tid2}/docs/solo.pdf/content", params={"page": 1, "source": "docs/a.pdf"})
+    assert r.status_code == 404 and "未定位到原文" in r.json()["detail"]
+
+
+@pytest.mark.asyncio
 async def test_list_baselines_endpoint(client, db):
     """EAI-CUSTOM 2026-10-30 分期建议一期(s3/s4,ui-gaps spec §二):基线行级
     HTTP 读端点——payload 投影 fields/provenance + kind/doc_id/confirmed;

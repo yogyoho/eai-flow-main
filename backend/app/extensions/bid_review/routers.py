@@ -293,13 +293,16 @@ async def get_doc_content(
     doc_id: str,
     quote: str = "",
     page: int | None = None,
+    source: str = "",
     db: AsyncSession = Depends(get_db),
     owner_id: str = Depends(current_owner),
 ):
     """溯源定位窗口:证据 chip「定位原文」取数端点。docx 无页边界(D8)走 quote 片段
     命中段 ±10 条窗口;pdf 优先 ?page= 直取整页(真页码),quote 兜底定位。片段匹配
     忽略全部空白(PDF 抽取换行/OCR 断行与模型引用常不一致)。只回窗口不回整本(D6:
-    几百页文档全文不上面);未命中 404,前端如实呈现「未定位到原文」。"""
+    几百页文档全文不上面);未命中 404,前端如实呈现「未定位到原文」。
+    source=zip 成员名(zip 扫描页 OCR 兑付 2026-11-06):先按成员过滤候选池,命中与
+    窗口都池内计算(跨成员页号撞车消歧);缺省不传 → 池=全部,行为不变。"""
     task = await crud.get_task(db, task_id=task_id, owner_id=owner_id)
     if task is None:
         raise HTTPException(status_code=404, detail="任务不存在")
@@ -309,19 +312,20 @@ async def get_doc_content(
     segs = parse.load_segments(owner_id, task_id, str(entry.get("slug") or ""))
     if not segs:
         raise HTTPException(status_code=404, detail="文档尚未解析完成")
+    pool = [s for s in segs if s.get("source") == source] if source else segs
     hit = None
     if page is not None:
-        hit = next((s for s in segs if s.get("page") == page), None)
+        hit = next((s for s in pool if s.get("page") == page), None)
     elif quote:
         q = "".join(quote.split())
         if q:
-            hit = next((s for s in segs if q in "".join(str(s.get("text") or "").split())), None)
+            hit = next((s for s in pool if q in "".join(str(s.get("text") or "").split())), None)
     if hit is None:
         raise HTTPException(status_code=404, detail="未定位到原文")
     if hit.get("page") is not None:
-        win = [s for s in segs if s.get("page") == hit["page"]]
+        win = [s for s in pool if s.get("page") == hit["page"]]
     else:
-        win = parse.excerpt_window(segs, int(hit["seq"] or 0))
+        win = parse.excerpt_window(pool, int(hit["seq"] or 0))
     return {
         "doc": {k: entry.get(k) for k in ("doc_id", "role", "kind", "pages", "chars", "assets", "status")},
         "page": hit.get("page"),

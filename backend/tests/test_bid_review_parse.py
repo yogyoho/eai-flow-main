@@ -42,14 +42,24 @@ def _make_docx() -> bytes:
     return buf.getvalue()
 
 
-def _make_pdf() -> bytes:
+def _make_pdf(text: str = "hello pdf page one") -> bytes:
     import fitz
 
     doc = fitz.open()
     p1 = doc.new_page()
-    p1.insert_text((72, 72), "hello pdf page one")
+    p1.insert_text((72, 72), text)
     doc.new_page()  # 空文本层页 → 扫描页
     return doc.tobytes()
+
+
+def _make_zip(*members: tuple[str, bytes]) -> bytes:
+    import zipfile
+
+    zbuf = io.BytesIO()
+    with zipfile.ZipFile(zbuf, "w") as zf:
+        for name, data in members:
+            zf.writestr(name, data)
+    return zbuf.getvalue()
 
 
 @pytest.mark.asyncio
@@ -306,3 +316,51 @@ async def test_zip_members_parsed_with_source(monkeypatch, base, ocr_ok):
         zf.writestr("a.txt", "x" * 100)
     with pytest.raises(ValueError, match="超上限"):
         parse._unzip_blocks(small.getvalue())
+
+
+@pytest.mark.asyncio
+async def test_zip_pdf_scan_page_ocrs_with_true_page(base, ocr_ok):
+    """zip 扫描页 OCR 挂账兑付(2026-11-06):zip 内 PDF 扫描页走既有 OCR 通路,
+    seg 页号=成员内真页码(不做全局偏移),source 锚成员名;占位段废除。"""
+    entry = parse.save_raw("u1", "t-zipscan", "bid", "材料包.zip", _make_zip(("docs/scan.pdf", _make_pdf())))
+    out = await parse.parse_raw("u1", "t-zipscan", entry, ocr_ok)
+    assert out["status"] == "parsed" and out["assets"] == 1
+    segs = parse.load_segments("u1", "t-zipscan", entry["slug"])
+    text = next(s for s in segs if s["kind"] == "text")
+    assert text["page"] == 1 and text["source"] == "docs/scan.pdf"
+    ocr = next(s for s in segs if s["kind"] == "ocr")
+    assert ocr["page"] == 2 and ocr["source"] == "docs/scan.pdf" and ocr["asset_id"]
+    assert ocr["text"] == "OCR[docs/scan.pdf#page-2.png]"  # job 名带 source 前缀(R2)
+    assert not any("暂不支持" in (s.get("text") or "") for s in segs), "占位段废除"
+
+
+@pytest.mark.asyncio
+async def test_zip_two_pdf_members_scan_page_collision(base, ocr_ok):
+    """跨成员页号撞车:两个 PDF 成员各有扫描页 2 → 两条 ocr seg 同页号、
+    source 各归其主、OCR 文本各自锚定成员(job 名前缀),锚=(source,page) 无歧义。"""
+    zbuf = _make_zip(("docs/a.pdf", _make_pdf("page one of alpha")), ("docs/b.pdf", _make_pdf("page one of beta")))
+    entry = parse.save_raw("u1", "t-zipcol", "bid", "双包.zip", zbuf)
+    out = await parse.parse_raw("u1", "t-zipcol", entry, ocr_ok)
+    assert out["status"] == "parsed" and out["assets"] == 2
+    segs = parse.load_segments("u1", "t-zipcol", entry["slug"])
+    texts = sorted(s["text"] for s in segs if s["kind"] == "text")
+    assert texts == ["page one of alpha", "page one of beta"]
+    ocrs = {s["source"]: s for s in segs if s["kind"] == "ocr"}
+    assert set(ocrs) == {"docs/a.pdf", "docs/b.pdf"}
+    assert all(s["page"] == 2 for s in ocrs.values())
+    assert ocrs["docs/a.pdf"]["text"] == "OCR[docs/a.pdf#page-2.png]"
+    assert ocrs["docs/b.pdf"]["text"] == "OCR[docs/b.pdf#page-2.png]"
+
+
+@pytest.mark.asyncio
+async def test_zip_pdf_scan_ocr_failure_isolated(base):
+    """R4 失败隔离继承:zip 扫描页 OCR 失败 → 空文本 ocr seg + asset 保留,不炸任务。"""
+
+    async def bad_ocr(name: str, data: bytes, mime: str) -> str:
+        return ""
+
+    entry = parse.save_raw("u1", "t-zipfail", "bid", "包.zip", _make_zip(("docs/s.pdf", _make_pdf())))
+    out = await parse.parse_raw("u1", "t-zipfail", entry, bad_ocr)
+    assert out["status"] == "parsed"
+    ocr = next(s for s in parse.load_segments("u1", "t-zipfail", entry["slug"]) if s["kind"] == "ocr")
+    assert ocr["text"] == "" and ocr["asset_id"] and ocr["source"] == "docs/s.pdf"

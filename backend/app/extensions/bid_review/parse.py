@@ -273,16 +273,16 @@ def _parse_xlsx_sync(data: bytes) -> list[dict]:
 
 def _blocks_for_bytes(filename: str, data: bytes) -> list[dict]:
     """单成员字节 → 块(按扩展名分派;zip 成员与独立上传共用,对齐审计⑥ 2026-11-05)。
-    zip 内 PDF 扫描页转诚实占位段(跨成员页号冲突+定位契约按单文档页码,OCR 挂账);
-    嵌套 zip 显式拒绝(否则二进制走文本通路产 mojibake)。"""
+    zip 内 PDF 扫描页走既有 OCR 通路(挂账兑付 2026-11-06):扫描块自带 blob 进
+    parse_raw scan 分支,页号=成员内真页码、不做全局偏移;嵌套 zip 显式拒绝
+    (否则二进制走文本通路产 mojibake)。"""
     kind = detect_kind(filename)
     if kind == "docx":
         return _parse_docx_sync(data)
     if kind == "pdf":
         blocks, scans = _parse_pdf_sync(data)
-        if scans:
-            blocks = [{"kind": "text", "text": f"[第 {b['page']} 页为扫描页:zip 内 PDF 暂不支持扫描页 OCR,请单独上传该 PDF]"} if b["kind"] == "scan" else b for b in blocks]
-        return blocks
+        # 扫描块携带自己的 PNG(独立上传路径 parse_raw 直调 _parse_pdf_sync,不经过本函数)
+        return [{**b, "blob": scans[b["page"]]} if b["kind"] == "scan" else b for b in blocks]
     if kind == "xlsx":
         return _parse_xlsx_sync(data)
     if kind == "zip":
@@ -408,12 +408,14 @@ async def parse_raw(owner_id: str, task_id: str, entry: dict, ocr_fn) -> dict:
             prepared.append({**b, "asset_id": aid})
             jobs[len(prepared) - 1] = (f"asset-{aid}.{b['ext']}", b["blob"], _MIME.get(b["ext"], "image/png"))
         elif b["kind"] == "scan":
-            png = scans[b["page"]]
+            png = b["blob"] if "blob" in b else scans[b["page"]]
             aid = _asset_id(png)
             _write_asset(base, aid, "png", png)
             assets.append({"asset_id": aid, "ext": "png"})
             prepared.append({**b, "asset_id": aid})
-            jobs[len(prepared) - 1] = (f"page-{b['page']}.png", png, "image/png")
+            # zip 成员扫描页 job 名带 source 前缀:跨成员页号撞车时日志/转写可追溯(R2)
+            src = b.get("source")
+            jobs[len(prepared) - 1] = (f"{src}#page-{b['page']}.png" if src else f"page-{b['page']}.png", png, "image/png")
         else:
             prepared.append(b)
 
