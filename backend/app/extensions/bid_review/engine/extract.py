@@ -49,10 +49,14 @@ FIELD_TYPE_CONTRACTS["deviation.items"] = (
 )
 # L2 P1 附件契约(spec 2026-11-02 §1):招标要求集只从「投标文件格式/组成」及资格
 # 审查条款逐条抄录;投标侧从附件清单/目录/附件标题逐条抄录。无编号填空串。
+# C-11 src→severity(P1-β批一 Task 4,spec 整合版 §862-867,EAI-CUSTOM):行带 src 来源
+# 枚举,运行层按行覆盖 miss/partial 违规严重度(rule_runner._src_severity;A-β1-③)。
 FIELD_TYPE_CONTRACTS["tender.attachment_requirements"] = (
     '[{no:"附件编号或空串", name:"附件名称", clause:"要求出处条款号", '
-    'mandatory:"★|必需|建议", min_count:最少份数数字或null, year_span:年份数字或null}]。'
-    "只从招标文件的投标文件组成/格式条款及资格审查条款逐条抄录附件要求,禁止编造;无编号填空串。"
+    'mandatory:"★|必需|建议", min_count:最少份数数字或null, year_span:年份数字或null, '
+    'src:"要求来源或空串:★/必需条款=tender_mandatory;招标一般要求=tender_required;'
+    '法规强制材料(如资格审查法定件)=regulation;企业模板惯例件=internal_template;逻辑必要件=logical_necessary"}]。'
+    "只从招标文件的投标文件组成/格式条款及资格审查条款逐条抄录附件要求,禁止编造;无编号填空串;无法判定来源时 src 填空串。"
 )
 FIELD_TYPE_CONTRACTS["bid.attachment_index"] = '[{no:"附件编号或空串", name:"附件名称", page:起始页码数字, pages:页数数字或null}]。从投标文件的附件清单/目录/附件标题逐条抄录,禁止编造。'
 # 附件实体契约(B立项 M1,spec §4,2026-11-05;裁决③:ocr_conf/logical_page 现解析层无此数据

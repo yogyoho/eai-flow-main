@@ -186,6 +186,18 @@ def _need_human(rule: Rule, msg: str) -> dict:
     }
 
 
+# C-11 附件要求行 src→severity 覆盖(spec 整合版 :862-867,EAI-CUSTOM P1-β批一;裁决 A-β1-③:
+# regulation 二义按保守侧 fatal;多行合并 issue 取映射最严档;未知/空 src 行不参与覆盖
+# ——缺省=规则默认,golden 存量夹具(无 src)零回归;_need_human 产物不覆盖)。
+_SRC_SEVERITY = {"tender_mandatory": "fatal", "tender_required": "major", "regulation": "fatal", "internal_template": "minor", "logical_necessary": "major"}
+_SEVERITY_ORDER = ["info", "minor", "major", "fatal"]
+
+
+def _src_severity(rows, default: str) -> str:
+    mapped = [_SRC_SEVERITY[str(r.get("src") or "").strip()] for r in rows or [] if str(r.get("src") or "").strip() in _SRC_SEVERITY]
+    return max(mapped, key=_SEVERITY_ORDER.index) if mapped else default
+
+
 def _entity_key(req: dict) -> str:
     """附件实体键(L2 P2 D6):no 优先,无 no 用归一名称通道——跨层去重的归并依据。"""
     no = str(req.get("no") or "").strip()
@@ -257,6 +269,7 @@ def run_det_rule(rule: Rule, fields: dict) -> list[dict]:
                     if miss:
                         iss = _issue(rule, fields, {"missing": [_label(r["req"]) for r in miss]})
                         iss["entity_keys"] = [_entity_key(r["req"]) for r in miss]
+                        iss["severity"] = _src_severity([r["req"] for r in miss], rule.severity)  # C-11 行源覆盖(A-β1-③)
                         issues.append(iss)
                     for r in unknown:  # UNKNOWN 降 need_human,禁强行 PARTIAL/MISSING(spec §7)
                         # P3/P3.2 成因分流(spec 2026-11-03 §2,EAI-CUSTOM):行种类异构
@@ -319,6 +332,7 @@ def run_det_rule(rule: Rule, fields: dict) -> list[dict]:
                         iss["message"] = _tpl(cand_tpl, {**fields, "missing": label})
                         iss["dedup_key"] = f"{rule.id}|-|{iss['message'][:40]}"
                         iss["entity_keys"] = [_entity_key(r["req"])]
+                        iss["severity"] = _src_severity([r["req"]], rule.severity)  # C-11 单行源覆盖(A-β1-③)
                         issues.append(iss)
                 else:
                     partial = [r for r in out["per_req"] if r["status"] == "PARTIAL"]
@@ -329,6 +343,7 @@ def run_det_rule(rule: Rule, fields: dict) -> list[dict]:
                             {"insufficient": [f"{_label(r['req'])}: 要求{r['req'].get('min_count')}份/提供{r['found']}份" for r in partial]},
                         )
                         iss["entity_keys"] = [_entity_key(r["req"]) for r in partial]
+                        iss["severity"] = _src_severity([r["req"] for r in partial], rule.severity)  # C-11 行源覆盖(A-β1-③)
                         issues.append(iss)
         elif chk["op"] in _OPS:
             lhs, rhs = _val(chk["left"], fields), _val(chk["right"], fields)
