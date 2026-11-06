@@ -128,7 +128,8 @@ def derive_joins(fields: dict) -> dict:
     """三个换算字段的服务端派生(纯函数返回新 dict):
     - boq_unit_checks[].matched = normalize_unit_name(tender_unit)==normalize_unit_name(bid_unit)(两侧单位齐才落键);
     - appendix_references[].present = 附件名与 bid.attachments/bid.attachment_index 归一双向子串命中(有来源才落键);
-    - device_model_mismatches = tender.device_models×bid.device_models 归一双向差集(两侧非空才派生,可派生时整体覆盖含 [])。
+    - device_model_mismatches = tender.device_models×bid.device_models 归一双向差集(两侧非空才派生,可派生时整体覆盖含 [];
+      两侧不齐→显式 null(need_human 通路)——模型自产串无论派生与否一律丢弃)。
     模型自产的 matched/present/mismatches 一律丢弃重建(禁模型换算)。"""
     out = dict(fields)
     rows = out.get("bid.boq_unit_checks")
@@ -166,6 +167,8 @@ def derive_joins(fields: dict) -> dict:
             new_rows.append(r)
         out["bid.appendix_references"] = new_rows
 
+    out.pop("bid.device_model_mismatches", None)  # 换算禁令:模型自产串无条件丢弃(两侧不齐也不落模型值)
+
     def _model_list(v):
         if isinstance(v, str) and v.strip():
             return [v.strip()]
@@ -175,16 +178,20 @@ def derive_joins(fields: dict) -> dict:
 
     ts, bs = _model_list(out.get("tender.device_models")), _model_list(out.get("bid.device_models"))
     if ts and bs:
+
         def _nm(s: str) -> str:
             return " ".join(s.translate(_FW_MAP).split()).lower()
+
         t_norms, b_norms = {_nm(x) for x in ts}, {_nm(x) for x in bs}
         mism = [f"{m}:投标型号未见于招标清单" for m in bs if _nm(m) not in t_norms]
         mism += [f"{m}:招标要求型号未见于投标文件" for m in ts if _nm(m) not in b_norms]
         out["bid.device_model_mismatches"] = mism
+    else:
+        out["bid.device_model_mismatches"] = None  # 两侧不齐→显式 null(与 normalize_fields 缺省一致,=need_human 通路)
     return out
 
 
-_OCCURRENCE_CONTRACT ='[{value:"原文值", where:"出现位置(页码/章节/表名)"}] 对象列表;逐处 occurrence 一项,禁止纯值列表(如 ["人民币"] 应写 [{"value":"人民币","where":"报价表"}]),禁止标量。'
+_OCCURRENCE_CONTRACT = '[{value:"原文值", where:"出现位置(页码/章节/表名)"}] 对象列表;逐处 occurrence 一项,禁止纯值列表(如 ["人民币"] 应写 [{"value":"人民币","where":"报价表"}]),禁止标量。'
 _LIST_CONTRACT = "字符串列表;同类条目逐项一项;禁止标量/数字/对象(数量、单个名称都须包成数组)。"
 for _p in OCCURRENCE_PATHS:
     FIELD_TYPE_CONTRACTS[_p] = _OCCURRENCE_CONTRACT

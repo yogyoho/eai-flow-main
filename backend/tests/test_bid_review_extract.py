@@ -221,11 +221,15 @@ def test_heterogeneous_row_paths_passthrough():
 
 def test_derive_boq_unit_matched_recomputed():
     # matched 服务端按行内 tender_unit/bid_unit 归一比对回填;模型自产 matched 一律丢弃
-    f = _fields_via_baseline({"bid.boq_unit_checks": [
-        {"code": "B1", "tender_unit": "米", "bid_unit": "m", "matched": False},   # 归一后相等→True(模型假值被覆盖)
-        {"code": "B2", "tender_unit": "米", "bid_unit": "毫米", "matched": True},  # 不等→False(模型假值被覆盖)
-        {"code": "B3", "tender_unit": "套", "bid_unit": None},                    # 缺侧→不落键(need_human 通路)
-    ]})
+    f = _fields_via_baseline(
+        {
+            "bid.boq_unit_checks": [
+                {"code": "B1", "tender_unit": "米", "bid_unit": "m", "matched": False},  # 归一后相等→True(模型假值被覆盖)
+                {"code": "B2", "tender_unit": "米", "bid_unit": "毫米", "matched": True},  # 不等→False(模型假值被覆盖)
+                {"code": "B3", "tender_unit": "套", "bid_unit": None},  # 缺侧→不落键(need_human 通路)
+            ]
+        }
+    )
     rows = f["bid.boq_unit_checks"]
     assert rows[0]["matched"] is True
     assert rows[1]["matched"] is False
@@ -251,17 +255,21 @@ def test_derive_appendix_present_joined():
 
 def test_derive_device_mismatches_computed():
     # mismatches=tender×bid 归一集合双向差集;任一侧缺失→不派生(保持缺席=UNKNOWN)
-    f = _fields_via_baseline({
-        "tender.device_models": ["FBCDZ-8-No.20A", "KDK-400"],
-        "bid.device_models": ["FBCDZ-8-No.20", "KDK-400"],
-        "bid.device_model_mismatches": ["模型自产串:假"],
-    })
+    f = _fields_via_baseline(
+        {
+            "tender.device_models": ["FBCDZ-8-No.20A", "KDK-400"],
+            "bid.device_models": ["FBCDZ-8-No.20", "KDK-400"],
+            "bid.device_model_mismatches": ["模型自产串:假"],
+        }
+    )
     assert f["bid.device_model_mismatches"] == [
         "FBCDZ-8-No.20:投标型号未见于招标清单",
         "FBCDZ-8-No.20A:招标要求型号未见于投标文件",
     ]
     f2 = _fields_via_baseline({"bid.device_models": ["X-1"]})
     assert f2["bid.device_model_mismatches"] is None  # 缺招标侧→不派生
+    f3 = _fields_via_baseline({"bid.device_model_mismatches": ["模型自产串:假"]})  # 两侧全缺:模型自产串无条件丢弃→None(need_human 通路)
+    assert f3["bid.device_model_mismatches"] is None
 
 
 # ── 抽取 v2(EAI-CUSTOM 2026-10-30,spec D5/D7):provenance + 分片 ──────
