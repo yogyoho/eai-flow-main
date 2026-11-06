@@ -525,6 +525,8 @@ async def _run_review_stage(db: AsyncSession, task: ReviewTask, fields: dict, ow
             need_human=bool(_issue_get(issue, "need_human")),
             confidence=_issue_confidence(issue),
             entity_keys=list(_issue_get(issue, "entity_keys") or []),
+            semantic_verdict=_issue_get(issue, "semantic_verdict"),
+            state=_issue_get(issue, "state"),
         )
         if row is not None:
             written += 1

@@ -37,3 +37,10 @@ def test_entity_keys_list_passthrough():
     """正常列表透传零改写(兜底不侵蚀既有值)。"""
     out = IssueOut.model_validate(_ORMIssue(["attachment:5"]))
     assert out.entity_keys == ["attachment:5"]
+
+
+def test_issue_out_exposes_semantic_verdict_and_state():
+    from app.extensions.bid_review.schemas import IssueOut
+
+    assert "semantic_verdict" in IssueOut.model_fields
+    assert "state" in IssueOut.model_fields

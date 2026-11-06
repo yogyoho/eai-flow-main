@@ -66,7 +66,12 @@ class ReviewIssue(Base):
     rule_id: Mapped[str] = mapped_column(String(10), index=True)
     layer: Mapped[str] = mapped_column(String(2))
     severity: Mapped[str] = mapped_column(String(8))  # fatal|major|minor|info
-    verdict: Mapped[str] = mapped_column(String(20))  # violation|need_human|unclear;人工复核回写(false_positive 等,A8)也落本列
+    verdict: Mapped[str] = mapped_column(String(20))  # violation|need_human|unclear;人工复核回写(false_positive 等,A8)也落本列;值域迁 PASS/FAIL/UNKNOWN/ERROR/SKIP=P1-β 挂账(C-08)
+    # C-08 枚举三拆(EAI-CUSTOM 2026-11-06):引擎 raw 语义四值 full|partial|none|unclear
+    # (sem/hyb 专属,det 规则 NULL)与 state_map 分层业务态(L1 MATCHED…/L2 PRESENT…);
+    # 模型禁编业务态,state 恒由后处理派生。
+    semantic_verdict: Mapped[str | None] = mapped_column(String(16), nullable=True)
+    state: Mapped[str | None] = mapped_column(String(24), nullable=True)
     clause_id: Mapped[str | None] = mapped_column(String(64), nullable=True)
     message: Mapped[str] = mapped_column(Text)
     fix: Mapped[str] = mapped_column(Text, default="")

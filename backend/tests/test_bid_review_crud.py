@@ -149,3 +149,17 @@ async def test_set_status_done_at(db):
     assert done1 is not None
     t = await crud.set_status(db, t, "done")  # 重放幂等
     assert t.done_at == done1
+
+
+@pytest.mark.asyncio
+async def test_add_issue_persists_semantic_verdict_and_state(db):
+    """C-08 三拆落库:semantic_verdict/state 两列显式 kwargs 透传 crud.add_issue。"""
+    t = await crud.create_task(db, owner_id="u1")
+    row = await crud.add_issue(
+        db, task_id=t.id, owner_id="u1", rule_id="L2-025", layer="L2", severity="major",
+        verdict="unclear", message="复合附件分组失败", dedup_key="L2-025|-|k1",
+        semantic_verdict="unclear", state="UNKNOWN",
+    )
+    await db.refresh(row)
+    assert row.semantic_verdict == "unclear"
+    assert row.state == "UNKNOWN"

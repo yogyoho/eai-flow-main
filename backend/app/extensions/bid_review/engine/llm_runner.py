@@ -44,6 +44,17 @@ SCHEMA_HINT = json.dumps(
 # 模型 verdict → 引擎 issue verdict(§4.6 语义映射;full=干净条款不产问题)
 VERDICT_TO_ISSUE = {"partial": "violation", "none": "violation", "unclear": "unclear"}
 
+# C-08 枚举三拆(EAI-CUSTOM 2026-11-06,整合版规格 §3.3 裁决):模型只输出 raw 语义值,
+# state 由 state_map 后处理派生(模型禁编业务态);七键全表=与规格 semantic_verdict 枚举
+# [full, partial, none, unclear, consistent, inconsistent, not_applicable] 对齐,v1 模型
+# 只产前四值。verdict 值域迁 PASS/FAIL/... = P1-β 挂账(破 CALIBRATION 冻结面)。
+_STATE_MAP: dict[str, dict[str, str]] = {
+    "L1": {"full": "MATCHED", "partial": "PARTIAL", "none": "MISSING", "unclear": "UNKNOWN", "consistent": "MATCHED", "inconsistent": "PARTIAL", "not_applicable": "MATCHED"},
+    "L2": {"full": "PRESENT", "partial": "PARTIAL", "none": "MISSING", "unclear": "UNKNOWN", "consistent": "PRESENT", "inconsistent": "PARTIAL", "not_applicable": "PRESENT"},
+    "L3": {"full": "CONSISTENT", "partial": "INCONSISTENT", "none": "INCONSISTENT", "unclear": "UNKNOWN", "consistent": "CONSISTENT", "inconsistent": "INCONSISTENT", "not_applicable": "CONSISTENT"},
+    "L4": {"full": "NONE", "partial": "RISK", "none": "RISK", "unclear": "UNKNOWN", "consistent": "NONE", "inconsistent": "RISK", "not_applicable": "NONE"},
+}
+
 # check.op → 表达式比较符(仅可确定性重算的三种比较;set_eq/and/all/steps 形态不派生)
 _OP_TO_COMPARATOR = {"lte": "<=", "gte": ">=", "eq": "=="}
 
@@ -124,6 +135,8 @@ def _verdict_to_issue(rule, entry) -> dict[str, Any]:
         "severity": entry.get("severity") or rule.get("severity"),
         "model_severity": entry.get("severity"),  # 模型侧原值留痕,normalize_severity 据此记冲突
         "verdict": VERDICT_TO_ISSUE.get(verdict, "unclear"),
+        "semantic_verdict": verdict,  # C-08:raw 四值原样留痕(收敛映射另见上键)
+        "state": _STATE_MAP.get(str(rule.get("layer") or ""), {}).get(verdict),  # 分层业务态,v1 det 规则不产本键
         "clause_id": entry.get("clause_id"),
         "confidence": entry.get("confidence"),
         "message": _render_message(rule, entry),

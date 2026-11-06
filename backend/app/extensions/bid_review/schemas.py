@@ -66,6 +66,9 @@ class IssueOut(ORMBase):
     # EAI-CUSTOM(L2 P2):附件实体键(落库);grouped_into/related_issues 为投影现算
     # (list_task_issues 跨层去重,先例=deviations/checklist 不落库),旧网关缺省。
     entity_keys: list = []
+    # EAI-CUSTOM(C-08 枚举三拆 2026-11-06):引擎 raw 语义四值+分层业务态;det/旧网关=None
+    semantic_verdict: str | None = None
+    state: str | None = None
     grouped_into: str | None = None
     related_issues: list = []
     # B2 复核落库投影(EAI-CUSTOM 2026-10-31 Plan9 spec §4.6):该 issue 最新一条

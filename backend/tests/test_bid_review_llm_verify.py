@@ -633,3 +633,24 @@ async def test_candidate_entity_dropped_when_clause_id_not_echoed(tmp_path, monk
     resp = {"verdicts": [{"clause_id": "自造-1", "verdict": "partial", "confidence": 0.9, "reason": "疑似改名提供", "evidence": [{"doc_id": "t.pdf", "page": 5, "text": "★ 投标工期不得超 180 日历天"}]}]}
     issues = await run_sem_rule(FP_RULE, fields=FP_FIELDS, materials="…", model_fn=_fake(json.dumps(resp)), docs_text=DOCS)
     assert issues and not issues[0].get("entity_keys"), "join 不中不硬造实体"
+
+
+def test_sem_issue_carries_raw_semantic_verdict_and_state():
+    """C-08 三拆(EAI-CUSTOM 2026-11-06):模型 raw 四值原样落 semantic_verdict,
+    state 按 state_map 分层枚举派生;verdict 收敛值不破 CALIBRATION。"""
+    from app.extensions.bid_review.engine import llm_runner
+
+    rule = {"id": "L1-003", "layer": "L1", "severity": "major", "type": "semantic", "message_tpl": "{clause_id}:{reason}", "check": {}}
+    issue = llm_runner._verdict_to_issue(rule, {"clause_id": "C-1", "verdict": "partial", "reason": "部分响应", "evidence": []})
+    assert issue["semantic_verdict"] == "partial"
+    assert issue["state"] == "PARTIAL"  # L1 state_map: partial→PARTIAL
+    assert issue["verdict"] == "violation"  # 收敛映射不动(CALIBRATION 冻结面)
+
+    rule_l2 = {"id": "L2-025", "layer": "L2", "severity": "major", "type": "semantic", "message_tpl": "{clause_id}:{reason}", "check": {}}
+    issue_l2 = llm_runner._verdict_to_issue(rule_l2, {"clause_id": "C-2", "verdict": "unclear", "reason": "材料不足", "evidence": []})
+    assert issue_l2["semantic_verdict"] == "unclear"
+    assert issue_l2["state"] == "UNKNOWN"
+    assert issue_l2["need_human"] is True
+
+    rule_x = {"id": "X-1", "layer": "L9", "severity": "minor", "type": "semantic", "message_tpl": "{clause_id}:{reason}", "check": {}}
+    assert llm_runner._verdict_to_issue(rule_x, {"clause_id": "c", "verdict": "full", "reason": "", "evidence": []})["state"] is None

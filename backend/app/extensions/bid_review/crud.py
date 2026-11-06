@@ -132,6 +132,8 @@ async def add_issue(
     need_human: bool = False,
     confidence: float = 1.0,
     entity_keys: list | None = None,
+    semantic_verdict: str | None = None,
+    state: str | None = None,
 ) -> ReviewIssue | None:
     """按 (task_id, dedup_key) 去重:已存在则 evidence 并集合并(重复条目跳过),
     不新建行、不覆盖已有字段;task 不属于该 owner 时返回 None。
@@ -170,6 +172,8 @@ async def add_issue(
         fix=fix,
         evidence=list(evidence or []),
         entity_keys=list(entity_keys or []),
+        semantic_verdict=semantic_verdict,
+        state=state,
         dedup_key=dedup_key,
         clause_id=clause_id,
         need_human=need_human,
