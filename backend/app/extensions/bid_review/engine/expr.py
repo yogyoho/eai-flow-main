@@ -17,7 +17,7 @@ class RulePackError(ExprError):
 
 
 _BIN = {"<=": operator.le, ">=": operator.ge, "==": operator.eq, "!=": operator.ne, "<": operator.lt, ">": operator.gt, "in": lambda a, b: a in (b or [])}
-_FUNCS = {"normalize_unit", "number_to_words", "months_ago", "codes", "covers", "keywords", "sum", "count", "contains_any", "imply", "all_equal"}
+_FUNCS = {"normalize_unit", "number_to_words", "months_ago", "codes", "covers", "keywords", "sum", "count", "contains_any", "imply", "all_equal", "close"}
 _QUANT = {"all", "any", "every", "exists"}
 _FORM2 = {"all": "all", "any": "any", "every": "all", "exists": "any"}
 # 引号串整体成单 token(评审修正 A5/A6 实测:引号逐字符成 token 会撕裂 CJK 字面量,如 covers(x, '本次投标及签署'))
@@ -64,9 +64,17 @@ class _P:
         return n
 
     def _cmp(self):
-        n = self._atom()
+        n = self._term()
         while self.peek() in _BIN:
-            n = (self.eat(), n, self._atom())
+            n = (self.eat(), n, self._term())
+        return n
+
+    def _term(self):
+        # 乘法项层(P1-β批一):* 结合级高于比较、低于括号;左结合链
+        n = self._atom()
+        while self.peek() == "*":
+            self.eat()
+            n = ("mul", n, self._atom())
         return n
 
     def _atom(self):
@@ -239,6 +247,22 @@ def _months_ago(deadline, months):
     return date(y, mo, min(d.day, 28)).isoformat()
 
 
+def _mul(a, b):
+    # A-β1-①:非数值/None → KeyError(need_human 通路),禁 TypeError 逃逸(run_det_rule 只捕 KeyError)
+    try:
+        return float(a) * float(b)
+    except (TypeError, ValueError) as exc:
+        raise KeyError(f"乘法无法数值化 {a!r}*{b!r}") from exc
+
+
+def _close(a, b, tol):
+    # 容差比较(A-β1-②:float 误差 ~1e-6 << 0.01,Decimal 挂 β批二)
+    try:
+        return abs(float(a) - float(b)) <= float(tol)
+    except (TypeError, ValueError) as exc:
+        raise KeyError(f"close 无法数值化 {a!r}/{b!r}/{tol!r}") from exc
+
+
 _BUILTIN = {
     "normalize_unit": _normalize_unit,
     "number_to_words": _number_to_words,
@@ -251,6 +275,7 @@ _BUILTIN = {
     "contains_any": lambda hay, needles: any(str(n) in str(hay or "") for n in (needles or [])),
     "imply": lambda a, b: (not a) or bool(b),
     "all_equal": lambda *vals: len({str(v) for v in vals}) <= 1,
+    "close": _close,
 }
 
 
@@ -279,6 +304,8 @@ def _eval(n, fields, env):
         if base is None:
             raise KeyError(n[1])
         return [row.get(n[2]) for row in (base or []) if isinstance(row, dict)]
+    if k == "mul":
+        return _mul(_eval(n[1], fields, env), _eval(n[2], fields, env))
     if k == "and":
         return _eval(n[1], fields, env) and _eval(n[2], fields, env)
     if k == "or":
@@ -303,6 +330,6 @@ def _eval(n, fields, env):
     raise ExprError(f"未知节点 {k}")
 
 
-def eval_expr(expr: str, fields: dict, env: dict | None = None):
+def eval_expr(expr: str, fields: dict | None = None, env: dict | None = None):
     """求值;env 为量词 var 绑定(Task 5 结构级 all 把行 dict 以 var 名并入 env,复用同一字段解析语义)。"""
-    return _eval(parse(expr), fields, env or {})
+    return _eval(parse(expr), fields or {}, env or {})
