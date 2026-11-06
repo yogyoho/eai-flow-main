@@ -1,6 +1,6 @@
 # 投标方案审查：整合版规格书对齐审计与裁决回写
 
-> 日期：2026-11-06。状态：PROPOSED（W1~W5 编号迁移随 P0 实施计划落地；W6~W8 为永久裁决记录）。
+> 日期：2026-11-06。状态：LANDED（W1~W5 已随 2026-11-06 P0 计划落地：43ae36f98 / 886824d42 / de028f020；W6~W8 为永久裁决记录）；quick 层裁剪已由并发会话兑付（commit ec77631ef，_prune_rules_for_mode + worker 测试）。
 > 审计来源：两轮共 6 只读代理证据核对（2026-11-05 vs 头脑风暴素材稿；2026-11-06 vs 整合版规格书全 17 章）。
 > 规格书：`D:\knowbase\技术知识库\投标方案审查_整合版.md`（v1.0-integrated，10 片段 A-H 合并，22 条冲突裁决 C-01~C-22，规则 90 条，fields/anchors/enums 全注册表，24 注入算子，分阶段门禁）。
 > 仓库正式设计稿：`docs/designs/2026-10-29-bid-review-design.md`（= 素材片段 A 的裁剪落位，P1-P6 裁决）。
@@ -8,7 +8,7 @@
 ## 0. 结论速览
 
 - **整合版 = 目标规格书**。仓库实现 ≈ 其「阶段一 + 阶段二前半」的提前实现：五阶段 worker 主链、双引擎、七道校验、基准确认门、金标准回归（55 案 + bootstrap CI + MVP 档门禁 + 单条 fatal 零召回硬门）、M5 治理看板全部在场。
-- **规则覆盖 39/90**（L1=17/29，L2=5/26，L3=17/25，L4=0/10）。
+- **规则覆盖 39/90**（W1~W5 迁移后 L1=17/29，L2=6/26，L3=16/25，L4=0/10）。
 - **唯一阻断性冲突：仓库 5 条规则与整合版同号不同义**（L2-021/022/023、L3-019/020），破坏 C-01/C-02「B 编号为基线」裁决——任何规则扩展工作前必须先落本文件 §3 的编号迁移。
 - 已兑付动态：11-05 审计 P0 之③复核耗时真聚合（routers.py:558）、⑨enabled 切换端点（:1042）、⑩偏离表入导出（:658/692）、score_coverage 正名+derive_score_risk 涉险面——均已由并发会话落地。
 - 大面积空白区：规格 §12 安全合规、§13 非功能（建议平台级立项，不在本模块内单打）；评测规模化项（holdout/自然集/24 算子仅实装 3）。
@@ -26,10 +26,10 @@
 
 | 章 | 主题 | 判定 | 关键差异 |
 |---|---|---|---|
-| §1 | 定位/两档模式/免责 | 🟡 | deep 确认门✅免责✅；quick 无规则子集裁剪（规格 13.5 与仓库设计稿 §1 双承诺双未做）；报告版本清单缺 |
+| §1 | 定位/两档模式/免责 | 🟡 | deep 确认门✅免责✅；quick 层裁剪已落地（commit ec77631ef，`worker.py:478`，rules_total 取裁剪后分母）；报告版本清单缺 |
 | §2 | 总体架构 | 🟡 | 五阶段主链一致；独立 Verifier 模块化/知识检索/灰度 shadow/双模型交叉缺 |
 | §3 | 数据模型 | 🟡 | 四实体对齐；verdict/state/semantic_verdict 三拆、gate_status 四态、severity 四档、Anchor logical_page/bbox/ocr_conf、Field type/unit/confidence 缺 |
-| §4 | 规则体系 | ❌→🟡 | 覆盖 39/90；5 条同号不同义（§3 迁移）；主责矩阵/方向互斥/L2\|ATT 去重键模板缺 |
+| §4 | 规则体系 | ❌→🟡 | 覆盖 39/90；5 条同号不同义已迁移（§3.1 LANDED 2026-11-06）；主责矩阵/方向互斥/L2\|ATT 去重键模板缺 |
 | §5 | 端到端流程 | 🟡 | 主流程对齐；解析广度❌（xlsx/zip/OFD/章节兜底/text_hash）；招标抽取 6/38 字段；门禁 gate_status 判定式未落 |
 | §6 | 注册表 | 🟡 | 命名同源但仓库走别名集；抽取器配置化❌；lint 端点❌；boq_unit_checks 等 3 处 LLM 派生布尔违反规格 L2233「禁模型换算」禁令 |
 | §7 | 语义 Prompt | ✅🟡 | 铁律 1-7 落地（无证据不出结论硬校验/unclear→need_human/禁心算）；第 8 条防泄露缺；12 道后处理 vs 现七道 |
@@ -58,7 +58,8 @@
 | W4 | L3-019 业绩条目聚类存疑（det major） | 无同义规格规则（最近亲：L2-025 复合附件配套「分组失败→UNKNOWN」子路径） | **L3-026**（段尾扩展） | 保持 L3/major | 重复凑数检测为 EAI 独有判定；规格 L2-025 落地时本规则作为其分组子通道复用，届时评估并归 |
 | W5 | L3-020 章节正文空缺（det major） | L2-015 占位符与空章节检测（det major） | **L2-015**（层归属 L3→L2） | 保持 major | 业务同义（空章节/待补充/模板残留）；规格 L2-051 草稿残留为文档级姊妹规则（full_text 命中）后续补；层移动不改变门禁行为（L2 major 不阻断，与 L3 major 等价） |
 
-迁移连带影响（P0 plan 的施工清单）：`1.0.0.yaml` 五条 id/name/layer；`test_bid_review_golden.py` EXPECTED_COVERAGE 精确相等清单；golden/cases 引用旧 ID 的题（改名不改编题断言语义）；CALIBRATION.md 引用；registry 宇宙清单；包头注释条数修正（32→迁移后实际数）；DB rule_overrides 旧 ID 残行无害（默认回落 yaml enabled）记一条迁移注记。
+迁移连带影响（P0 plan 的施工清单）：`1.0.0.yaml` 五条 id/name/layer；`test_bid_review_golden.py` EXPECTED_COVERAGE 精确相等清单；golden/cases 引用旧 ID 的题（改名不改编题断言语义）；CALIBRATION.md 引用；registry 宇宙清单；包头注释条数修正（32→迁移后实际数）；DB rule_overrides 旧键处置见下方修正注记。
+DB 注记（质量审查 Important-1 修正，2026-11-06）：**轮换使旧 override 键语义翻转，非无害回落**——迁移前入库的 `L2-022`/`L2-023` 键现指向不同规则（旧 022=必填报价→现 022=附件空白；旧 023=附件空白→现 023=指纹）：任何早于 commit 43ae36f98 的库在启用逐规则 enabled 开关前必须先清空或重映射这两键；L2-021/L3-019/L3-020 旧键才真回落 yaml enabled。2026-11-06 实测 dev ext 库 `bid_review_rulepacks` 尚无 rule_overrides 列（models.py 已声明、迁移未跑）=现网零残键，该列迁移落地时须带旧键重映射；另 8 行 bid_review_issues 历史 rule_id=L2-021 成孤儿 ID（规格已接受不迁移）。
 
 迁移后对规格缺口的影响：L2 覆盖 5→6（新增 L2-015 位），L3 17→16（L3-019/020 腾出的规格位 L3-019 单价×数量、L3-020 大写小写进入待建清单——注意规格 L3-020 标注「被 L1-010 抑制」，仓库 L1-010 第 3 步 number_to_words 已覆盖其判定，无需独立实现，照规格抑制关系记 absent 即可）。
 
@@ -95,7 +96,7 @@
 ## 5. P0 清单（本批实施范围）
 
 1. **W1~W5 编号迁移**（§3.1 施工清单）——一切规则扩展的前置。
-2. **quick 模式层裁剪**：mode=quick 时规则集过滤为 layer==L1 且 type==deterministic（仓库设计稿 §1 与规格 13.5 双承诺；现为 39 条恒全跑）。
+2. ~~quick 模式层裁剪~~ → 已兑付 ec77631ef（2026-11-06 并发会话，对齐审计①）。
 3. **换算禁令修复**（规格 L2233 违反点）：bid.boq_unit_checks[].matched、bid.appendix_references[].present、bid.device_model_mismatches 由抽取 LLM 产出 → 改 extract.py 代码派生（字段名与行形不变，规则零改动；golden extract 注记与 r6 快照连带核对）。
 4. （P1 前置）枚举三拆 alias、MATCHED→PRESENT 归一、CALIBRATION 裁决表回写整合版侧。
 
