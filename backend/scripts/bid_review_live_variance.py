@@ -111,10 +111,21 @@ async def main() -> int:
     docs = [{"doc_id": name, "role": role, "text": (_CASES / name).read_text(encoding="utf-8")} for name, role in names]
 
     runs: list[dict] = []
+    failed: list[dict] = []
     for i in range(1, args.runs + 1):
         print(f"[variance] run {i}/{args.runs} start", file=sys.stderr, flush=True)
-        runs.append(await _run_once(docs, i))
+        # 单跑失败=方差数据点,记档继续不杀脚本(bug-4086:extract两试JSON失败曾 terminate 全脚本)
+        try:
+            runs.append(await _run_once(docs, i))
+        except Exception as e:  # noqa: BLE001 — 运维脚本,失败类型不枚举
+            failed.append({"run": i, "error": f"{type(e).__name__}: {e}"})
+            print(f"[variance] run {i}/{args.runs} FAILED: {e}", file=sys.stderr, flush=True)
+            continue
         print(f"[variance] run {i}/{args.runs} done in {runs[-1]['seconds']}s", file=sys.stderr, flush=True)
+
+    if not runs:  # 全灭:输出最小JSON恒exit 0(判读在调用方,bug-4086)
+        print(json.dumps({"docs": args.docs, "runs": args.runs, "ok": False, "failed_runs": failed}, ensure_ascii=False))
+        return 0
 
     stage_var = _variance([_flatten(r["stages"]) for r in runs])
     fp_keys = sorted({k for r in runs for k in r["field_fps"]})
@@ -131,6 +142,8 @@ async def main() -> int:
     out = {
         "docs": args.docs,
         "runs": args.runs,
+        "ok_runs": len(runs),
+        "failed_runs": failed,  # 全留痕:单跑崩溃本身就是稳定性数据(bug-4086)
         "stage_variance": stage_var,
         "field_variance": fp_var,
         "flapped_stage_keys": flapped,
