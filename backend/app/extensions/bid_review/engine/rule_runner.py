@@ -186,7 +186,7 @@ def _need_human(rule: Rule, msg: str) -> dict:
     }
 
 
-# C-11 附件要求行 src→severity 覆盖(spec 整合版 :862-867,EAI-CUSTOM P1-β批一;裁决 A-β1-③:
+# C-11 附件要求行 src→severity 覆盖(整合版(D:\knowbase\技术知识库\投标方案审查_整合版.md)C-11 节,EAI-CUSTOM P1-β批一;裁决 A-β1-③:
 # regulation 二义按保守侧 fatal;多行合并 issue 取映射最严档;未知/空 src 行不参与覆盖
 # ——缺省=规则默认,golden 存量夹具(无 src)零回归;_need_human 产物不覆盖)。
 _SRC_SEVERITY = {"tender_mandatory": "fatal", "tender_required": "major", "regulation": "fatal", "internal_template": "minor", "logical_necessary": "major"}

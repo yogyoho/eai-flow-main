@@ -19,6 +19,11 @@ def test_mul_left_assoc_chain():
 def test_mul_close_tolerance_band():
     assert eval_expr("close(0.1 * 3, 0.3, 0.01)") is True  # float 误差 ~5.5e-17 << 0.01
     assert eval_expr("close(100.0, 100.5, 0.01)") is False
+    # ≤ 精确边界钉(spec「≤tol 在带内」):用二进制可精确表示的值钉 diff==tol——
+    # 勿用 1.01/0.01 这类字面量(1.01-1.0=0.010000000000000009,float 噪声越带,非边界样本)
+    assert eval_expr("close(1.0, 1.5, 0.5)") is True  # diff == tol 精确边界内(spec「≤」)
+    assert eval_expr("close(1.0, 1.5000001, 0.5)") is False  # diff > tol 即出带
+    assert eval_expr("close(1.0, 1.01, 0.01)") is False  # 1.01 float 表示噪声使 diff 略超 tol(Decimal 迁移前既定行为)
 
 
 def test_wildcard_path_unaffected():

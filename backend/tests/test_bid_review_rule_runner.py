@@ -157,6 +157,16 @@ def test_det_rules_empty_fields_need_human_no_exprerror():
         assert issues[0]["rule_id"] == rule.id and issues[0]["source"] == "engine"
 
 
+def test_l3019_missing_amount_key_degrades_to_need_human():
+    """1.0.0.yaml L3-019 注释对存量线程的承诺钉测:行缺 amount 键(旧线程存量字段)
+    → KeyError → 整规则 need_human 诚实降级,禁 TypeError 逃逸/误报 violation。"""
+    pack = load_rulepack(PACK)
+    rule = next(r for r in pack.rules if r.id == "L3-019")
+    issues = run_det_rule(rule, {"bid.boq_rows": [{"id": "R1", "qty": 3, "price": 100}]})
+    assert len(issues) == 1 and issues[0]["verdict"] == "need_human" and issues[0]["need_human"] is True
+    assert "r.amount" in issues[0]["message"]  # 缺键点名(求值期字段缺失 'r.amount')
+
+
 def test_attach_evidence_from_provenance():
     """EAI-CUSTOM 2026-10-30(spec D7/D9):provenance ∩ rule.inputs 回填 evidence;
     dedup_key 不含证据(旧问题不因补证据重发);无 provenance 维持 []。"""

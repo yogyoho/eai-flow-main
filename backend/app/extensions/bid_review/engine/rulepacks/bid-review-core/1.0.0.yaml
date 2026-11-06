@@ -40,7 +40,7 @@ rules:
         - "sum(bid.detail_rows[*].amount) == bid.subtotal"
         - "bid.subtotal == bid.total_price"
         - "number_to_words(bid.total_price) == bid.total_price_words"
-      # tolerance 仅接受 0.00(精确相等);求值器不实现容差
+      # 求值器 check 级 tolerance 仅接受 0.00;显式容差走 close() 内建(L3-019 先例)
       tolerance: 0.00
     severity: fatal
     evidence: [A-PRICE-DETAIL, A-PRICE-SHEET]

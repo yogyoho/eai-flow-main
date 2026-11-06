@@ -84,7 +84,14 @@ rulepack 实有 L3=15 条(计划标题 16 与文件不符,以文件为准;L3-011
 | L3-014-doc-date-after-deadline | 引擎对 | steps 双条件;投标函日期达标、承诺函 2026-07-02 晚于截止违例,单因触发 |
 | L3-016-version-tag-mismatch | 引擎对 | op:all 逐出现;页眉达标不产条目、封面 V3.0≠V3.2 单条 |
 | L3-018-currency-occurrence-mismatch | 引擎对 | op:all 逐出现;报价表达标不产条目、承诺函「美元」单条 |
-| L3-019-price-qty-amount | 引擎对 | 行乘算 close 容差 0.01;任一分量 null 行跳过;与 L1-010 纵向加总链不重叠 |
+
+## 批P1-β1(P1-β批一)裁决表
+
+rulepack 现 L3=17:det 15+hyb 2;本批新增 L3-019 行乘算(单价×数量=合价),单独立表(批B 表保持历史快照 15 行)。
+
+| case | 裁决 | 结论/bug编号 |
+|---|---|---|
+| L3-019-price-qty-amount | 引擎对 | 行乘算 close 容差 0.01;任一分量 null 行跳过;与 L1-010 纵向加总链不重叠;校准证据:BOQ-02 超差单条 violation(¥100.00×3 ≠ ¥250.00);BOQ-01 相符/BOQ-03 全 null 行零产出 |
 
 ## 批B运行时行为备忘(建库时实测,T9 建库者直接受益)
 

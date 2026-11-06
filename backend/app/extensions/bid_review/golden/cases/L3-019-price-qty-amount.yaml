@@ -8,6 +8,6 @@ fields:
 expect_issues:
   - rule_id: L3-019
     severity: major
-    contains: ["BOQ-02", "单价×数量与合价不一致"]
+    contains: ["BOQ-02", "单价×数量与合价不一致", "¥250.00"]
 expect_absent: []
-strict: false
+strict: true

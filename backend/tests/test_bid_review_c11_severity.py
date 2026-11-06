@@ -13,7 +13,9 @@ PACK = "app/extensions/bid_review/engine/rulepacks/bid-review-core/1.0.0.yaml"
 
 def _att_rule(op="att_check"):
     pack = load_rulepack(PACK)
-    return next(r for r in pack.rules if r.check.get("op") == op)
+    cands = [r for r in pack.rules if r.check.get("op") == op]
+    assert len(cands) == 1, f"op={op} 规则应唯一(防未来扩包静默取首): {[r.id for r in cands]}"
+    return cands[0]
 
 
 def _fields(reqs, prov=None):

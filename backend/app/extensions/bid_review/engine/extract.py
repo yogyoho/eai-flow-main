@@ -49,7 +49,7 @@ FIELD_TYPE_CONTRACTS["deviation.items"] = (
 )
 # L2 P1 附件契约(spec 2026-11-02 §1):招标要求集只从「投标文件格式/组成」及资格
 # 审查条款逐条抄录;投标侧从附件清单/目录/附件标题逐条抄录。无编号填空串。
-# C-11 src→severity(P1-β批一 Task 4,spec 整合版 §862-867,EAI-CUSTOM):行带 src 来源
+# C-11 src→severity(P1-β批一 Task 4,整合版(D:\knowbase\技术知识库\投标方案审查_整合版.md)C-11 节,EAI-CUSTOM):行带 src 来源
 # 枚举,运行层按行覆盖 miss/partial 违规严重度(rule_runner._src_severity;A-β1-③)。
 FIELD_TYPE_CONTRACTS["tender.attachment_requirements"] = (
     '[{no:"附件编号或空串", name:"附件名称", clause:"要求出处条款号", '
