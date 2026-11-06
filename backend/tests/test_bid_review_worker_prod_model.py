@@ -121,13 +121,13 @@ def test_extract_fn_retries_once_on_garbage(config_models, monkeypatch):
     assert fn([], ["bid.total_price"]) == {"fields": {"bid.total_price": 1}, "provenance": {}, "candidates": {}, "confidence": {}} and calls["n"] == 2
 
 
-def test_extract_fn_double_garbage_raises(config_models, monkeypatch):
-    model, calls = _fake_llm(["垃圾一", "垃圾二"])
+def test_extract_fn_triple_garbage_raises(config_models, monkeypatch):
+    model, calls = _fake_llm(["垃圾一", "垃圾二", "垃圾三"])
     monkeypatch.setattr("deerflow.models.factory.create_chat_model", lambda name: model)
     fn = worker._default_extract_fn()
-    with pytest.raises(RuntimeError, match="两试未获有效 JSON"):
+    with pytest.raises(RuntimeError, match="三试未获有效 JSON"):
         fn([], ["bid.total_price"])
-    assert calls["n"] == 2  # 两试即止,不无限重试(infra 链管外层重投)
+    assert calls["n"] == 3  # 三试即止,不无限重试(infra 链管外层重投;bug-4086 加固三试共享核)
 
 
 def test_extract_fn_no_models_raises_not_configured(config_models):

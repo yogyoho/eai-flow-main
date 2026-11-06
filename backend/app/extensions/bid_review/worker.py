@@ -112,9 +112,13 @@ def _default_model_fn():
     return _fn
 
 
+_TRAILING_COMMA_RE = re.compile(r",\s*([}\]])")
+
+
 def _parse_json_object(text: str) -> dict:
     """模型输出 → JSON dict(容 ```json 围栏与前后杂文:取首 { 至末 } 切片);
-    解析失败或非 dict 抛 ValueError(调用方重试)。"""
+    尾逗号宽松修复一次(活体方差观测 2026-11-06:tables 分片小输出尾部逗号是
+    高频死因,bug-4086 血亲);仍失败或非 dict 抛 ValueError(调用方重试)。"""
     s = text.strip()
     if s.startswith("```"):
         s = re.sub(r"^```[a-zA-Z0-9_-]*\s*", "", s)
@@ -122,10 +126,38 @@ def _parse_json_object(text: str) -> dict:
     start, end = s.find("{"), s.rfind("}")
     if start < 0 or end <= start:
         raise ValueError(f"模型输出不含 JSON 对象: {text[:120]!r}")
-    payload = json.loads(s[start : end + 1])
+    snippet = s[start : end + 1]
+    try:
+        payload = json.loads(snippet)
+    except json.JSONDecodeError:
+        payload = json.loads(_TRAILING_COMMA_RE.sub(r"\1", snippet))  # 尾逗号修复,再炸照抛
     if not isinstance(payload, dict):
         raise ValueError(f"模型输出 JSON 非对象: {type(payload).__name__}")
     return payload
+
+
+def _invoke_json(model, prompt: str, noun: str) -> dict:
+    """分片 prompt → JSON dict 共享调用核(五段 DRY,替换各自的两试循环):
+    三试解析;第 2/3 试回灌上轮原始输出(assistant 轮)+ 纠错 user 轮;输出未以
+    } 收尾时记疑似截断(bug-4086 活体:大分片 char 12k+ 截断型双败)。仍失败抛
+    RuntimeError({noun}三试未获有效 JSON)。"""
+    messages: list[dict] = [{"role": "user", "content": prompt}]
+    last_err: Exception | None = None
+    for attempt in (1, 2, 3):
+        response = model.invoke(messages)
+        raw = _content_to_str(getattr(response, "content", ""))
+        if not raw.rstrip().endswith("}"):
+            logger.warning("bid_review %s output looks truncated(len=%d)", noun, len(raw))
+        try:
+            return _parse_json_object(raw)
+        except ValueError as exc:
+            last_err = exc
+            logger.warning("bid_review %s parse retry attempt=%d err=%s", noun, attempt, exc)
+            messages = messages + [
+                {"role": "assistant", "content": raw},
+                {"role": "user", "content": "上一次输出不是合法 JSON。请重新输出完整、合法的 JSON 对象：不要任何解释文字，不要截断，所有键用双引号，不要尾逗号。"},
+            ]
+    raise RuntimeError(f"{noun}三试未获有效 JSON({last_err})") from last_err
 
 
 # ── sem/hyb 材料装配(v1 纯文本直存契约)──────────────────────────────
@@ -240,7 +272,8 @@ def _default_extract_fn() -> ExtractFn:
     """生产 LLM 基准提取接线(translation worker create_chat_model 同款先例):
     shard_docs 贪心装箱(≤SHARD_CHARS/prompt,几百页大文档不进单 prompt——spec D5)
     → 逐分片 build_extract_prompt → 同步 invoke(advance_task 以 asyncio.to_thread
-    卸载本函数,禁在事件循环直跑)→ _parse_json_object 解析,坏输出重试 1 次,仍失败抛
+    卸载本函数,禁在事件循环直跑)→ _parse_json_object 解析,坏输出纠错重试至多 2 次
+    (_invoke_json 三试共享核,bug-4086 加固),仍失败抛
     RuntimeError → _infra_fail 失败链(≤3 次重投,终态 failed 落因),绝不静默假交付。
     分片 merge 首个非 null 采纳,不回填(conflict 不覆盖非 null——spec D7);provenance
     同法合并。单分片仍失败重试整片;无可用模型抛 ExtractNotConfigured。"""
@@ -258,17 +291,7 @@ def _default_extract_fn() -> ExtractFn:
     logger.info("bid_review baseline extraction using model %s", name)
 
     def _invoke_shard(prompt: str) -> dict:
-        messages = [{"role": "user", "content": prompt}]
-        last_err: Exception | None = None
-        for attempt in (1, 2):
-            response = model.invoke(messages)
-            raw = _content_to_str(getattr(response, "content", ""))
-            try:
-                return _parse_json_object(raw)
-            except ValueError as exc:
-                last_err = exc
-                logger.warning("bid_review extract parse retry attempt=%d err=%s", attempt, exc)
-        raise RuntimeError(f"基准提取两试未获有效 JSON({last_err})") from last_err
+        return _invoke_json(model, prompt, "基准提取")
 
     def _fn(docs: list[dict], field_paths: list[str]) -> dict:
         merged: dict[str, Any] = {}
@@ -303,7 +326,7 @@ def _default_extract_fn() -> ExtractFn:
 
 
 def _default_attachments_fn():
-    """实体段生产接线(B立项 M1,spec §4):同款模型+单 prompt+两试解析;契约
+    """实体段生产接线(B立项 M1,spec §4):同款模型+单 prompt+三试纠错解析(_invoke_json 共享核);契约
     (docs, requirements, index_rows, fp_hints) → dict。无可用模型返回 None → 实体段
     缺席(诚实降级,首段照跑);本函数同步(经 asyncio.to_thread 卸载,禁事件循环直跑)。
     测试 seam:monkeypatch 本模块函数注入 fake(worker 测试同 _stub_extract 惯例)。"""
@@ -318,23 +341,13 @@ def _default_attachments_fn():
 
     def _fn(docs, requirements, index_rows, fp_hints) -> dict:
         prompt = build_attachments_prompt(docs, requirements, index_rows, fp_hints)
-        messages = [{"role": "user", "content": prompt}]
-        last_err: Exception | None = None
-        for attempt in (1, 2):
-            response = model.invoke(messages)
-            raw = _content_to_str(getattr(response, "content", ""))
-            try:
-                return _parse_json_object(raw)
-            except ValueError as exc:
-                last_err = exc
-                logger.warning("bid_review attachments parse retry attempt=%d err=%s", attempt, exc)
-        raise RuntimeError(f"附件实体提取两试未获有效 JSON({last_err})") from last_err
+        return _invoke_json(model, prompt, "附件实体提取")
 
     return _fn
 
 
 def _default_section_fn():
-    """章节段生产接线(B立项 M2,spec §5):同款模型+单 prompt+两试解析;契约
+    """章节段生产接线(B立项 M2,spec §5):同款模型+单 prompt+三试纠错解析(_invoke_json 共享核);契约
     (docs, toc_codes, required_sections) → dict。无可用模型返回 None → 章节段
     缺席(诚实降级,首段照跑);本函数同步(经 asyncio.to_thread 卸载,禁事件循环直跑)。
     测试 seam:monkeypatch 本模块函数注入 fake(worker 测试同 _stub_extract 惯例)。"""
@@ -349,23 +362,13 @@ def _default_section_fn():
 
     def _fn(docs, toc_codes, required_sections) -> dict:
         prompt = build_sections_prompt(docs, toc_codes, required_sections)
-        messages = [{"role": "user", "content": prompt}]
-        last_err: Exception | None = None
-        for attempt in (1, 2):
-            response = model.invoke(messages)
-            raw = _content_to_str(getattr(response, "content", ""))
-            try:
-                return _parse_json_object(raw)
-            except ValueError as exc:
-                last_err = exc
-                logger.warning("bid_review sections parse retry attempt=%d err=%s", attempt, exc)
-        raise RuntimeError(f"章节提取两试未获有效 JSON({last_err})") from last_err
+        return _invoke_json(model, prompt, "章节提取")
 
     return _fn
 
 
 def _default_tables_fn():
-    """表格段生产接线(B立项 M3,spec §5):同款模型+单 prompt 双路径+两试解析;契约
+    """表格段生产接线(B立项 M3,spec §5):同款模型+单 prompt 双路径+三试纠错解析(_invoke_json 共享核);契约
     (docs, tender_rows) → {"boq_rows": [...], "table_cells": [...]}。无可用模型返回
     None → 表格段缺席(诚实降级,首段照跑);本函数同步(经 asyncio.to_thread 卸载,
     禁事件循环直跑)。测试 seam:monkeypatch 本模块函数注入 fake(worker 测试同惯例)。"""
@@ -380,23 +383,13 @@ def _default_tables_fn():
 
     def _fn(docs, tender_rows) -> dict:
         prompt = build_tables_prompt(docs, tender_rows)
-        messages = [{"role": "user", "content": prompt}]
-        last_err: Exception | None = None
-        for attempt in (1, 2):
-            response = model.invoke(messages)
-            raw = _content_to_str(getattr(response, "content", ""))
-            try:
-                return _parse_json_object(raw)
-            except ValueError as exc:
-                last_err = exc
-                logger.warning("bid_review tables parse retry attempt=%d err=%s", attempt, exc)
-        raise RuntimeError(f"表格提取两试未获有效 JSON({last_err})") from last_err
+        return _invoke_json(model, prompt, "表格提取")
 
     return _fn
 
 
 def _default_perf_entries_fn():
-    """业绩富行段生产接线(B立项 M4,spec §5):同款模型+单 prompt+两试解析;契约
+    """业绩富行段生产接线(B立项 M4,spec §5):同款模型+单 prompt+三试纠错解析(_invoke_json 共享核);契约
     (docs) → {"performance_entries": [...]}。无可用模型返回 None → 业绩段缺席
     (诚实降级,首段照跑);本函数同步(经 asyncio.to_thread 卸载,禁事件循环直跑)。
     测试 seam:monkeypatch 本模块函数注入 fake(worker 测试同惯例)。"""
@@ -411,17 +404,7 @@ def _default_perf_entries_fn():
 
     def _fn(docs) -> dict:
         prompt = build_performance_prompt(docs)
-        messages = [{"role": "user", "content": prompt}]
-        last_err: Exception | None = None
-        for attempt in (1, 2):
-            response = model.invoke(messages)
-            raw = _content_to_str(getattr(response, "content", ""))
-            try:
-                return _parse_json_object(raw)
-            except ValueError as exc:
-                last_err = exc
-                logger.warning("bid_review performance parse retry attempt=%d err=%s", attempt, exc)
-        raise RuntimeError(f"业绩提取两试未获有效 JSON({last_err})") from last_err
+        return _invoke_json(model, prompt, "业绩提取")
 
     return _fn
 
