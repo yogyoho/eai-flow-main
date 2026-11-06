@@ -703,9 +703,9 @@ rules:
     fix_tpl: "人工核对该组业绩条目,重复的删除或更正为不同项目业绩"
     confidence_gate: 1.0
     enabled: true
-  - id: L3-020
+  - id: L2-015
     name: 章节正文空缺
-    layer: L3
+    layer: L2
     type: deterministic
     applies_to: ["*"]
     inputs: [bid.section_tree]

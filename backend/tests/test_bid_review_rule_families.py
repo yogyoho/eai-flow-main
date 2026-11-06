@@ -17,7 +17,7 @@ from app.extensions.bid_review.engine.rule_runner import load_rulepack, run_det_
 
 PACK = str(Path(__file__).resolve().parent.parent / "app" / "extensions" / "bid_review" / "engine" / "rulepacks" / "bid-review-core" / "1.0.0.yaml")
 
-NEW_IDS = {"L2-022", "L2-041", "L3-020", "L3-026"}
+NEW_IDS = {"L2-015", "L2-022", "L2-041", "L3-026"}
 
 _QUIET = json.dumps(
     {"verdicts": [{"clause_id": "quiet", "verdict": "full", "confidence": 1.0, "reason": "安静应答", "evidence": []}]},
@@ -92,11 +92,11 @@ class TestL3026ClusterUnsure:
         assert run_det_rule(rule, {})[0]["verdict"] == "need_human"
 
 
-class TestL3020EmptySection:
-    """L3-020 章节正文空缺(bid.section_tree;major;is_empty=None 不判)。"""
+class TestL2015EmptySection:
+    """L2-015 章节正文空缺(整合版对齐 W5 层归位 L3→L2,原 EAI L3-020;bid.section_tree;major;is_empty=None 不判)。"""
 
     def test_empty_section_violation(self):
-        rule = _rules()["L3-020"]
+        rule = _rules()["L2-015"]
         fields = {
             "bid.section_tree": [
                 {"code": "3", "title": "施工组织设计", "toc_page": 3, "body_page": 20, "is_empty": True, "offset": 17, "offset_flag": True},

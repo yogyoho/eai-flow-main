@@ -1,11 +1,11 @@
-case: L3-020-empty-section
-desc: R2+ 规则族补齐——章节正文 is_empty=true(M2 章节层)→ L3-020 major;非空章节不判
+case: L2-015-empty-section
+desc: R2+ 规则族补齐——章节正文 is_empty=true(M2 章节层)→ L2-015 major;非空章节不判
 fields:
   bid.section_tree:
     - {code: "3", title: 施工组织设计, toc_page: 3, body_page: 20, is_empty: true, offset: 17, offset_flag: true}
     - {code: "4", title: 质量管理, toc_page: 30, body_page: 40, is_empty: false, offset: 10, offset_flag: true}
 expect_issues:
-  - rule_id: L3-020
+  - rule_id: L2-015
     severity: major
     contains: ["施工组织设计"]
 expect_absent: []
