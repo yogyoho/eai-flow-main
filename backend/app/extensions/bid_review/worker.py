@@ -426,6 +426,21 @@ async def _get_task_any(db: AsyncSession, task_id: str) -> ReviewTask | None:
     return result.scalar_one_or_none()
 
 
+def _normalize_attachment_status(fields: dict) -> dict:
+    """C-05 入库归一(EAI-CUSTOM 2026-11-06,整合版规格 §3.3 裁决):入库快照的
+    bid.attachments[].status 与 bid.attachment_index[].status MATCHED → PRESENT
+    (规格 L2 枚举);引擎内存态不改——浅拷贝顶层+重建两列表,调用方 fields 原对象
+    不被改(review 段照旧)。MATCHED 保留为清单视图别名(build_checklist/golden
+    scorer/fixtures 不动,CALIBRATION 注记);引擎判定只认实体身份不认行 status,
+    resume 复跑安全。"""
+    out = dict(fields)
+    for key in ("bid.attachments", "bid.attachment_index"):
+        rows = out.get(key)
+        if isinstance(rows, list):
+            out[key] = [{**r, "status": "PRESENT"} if isinstance(r, dict) and r.get("status") == "MATCHED" else r for r in rows]
+    return out
+
+
 async def _write_baselines(
     db: AsyncSession, task_id: str, docs: list[dict], fields: dict, materials_hash: str, provenance: dict | None = None, candidates: dict | None = None, fields_conf: dict | None = None, crosscheck: dict | None = None
 ) -> None:
@@ -436,7 +451,10 @@ async def _write_baselines(
     冲突判定原料)+ fields_conf({conf,verified},置信投影)。
     EAI-CUSTOM(2026-11-05 B立项 M5):payload 增 crosscheck(交叉自检报告,纯服务端
     派生,非字段路径——universe/M0/golden 零触碰)。
+    EAI-CUSTOM(2026-11-06 C-05 整合版规格 §3.3):入库快照归一——bid.attachments/
+    attachment_index 行 status MATCHED→PRESENT(L2 枚举),仅快照面,内存态零触碰。
     写前清旧行——boot recovery 断点续跑(extracting 入口)重放基线时幂等,不产生重复行。"""
+    fields = _normalize_attachment_status(fields)  # C-05 入库归一:入库快照 PRESENT,内存态不动
     await db.execute(delete(BaselinePackage).where(BaselinePackage.task_id == task_id))
     await db.commit()
     for doc in docs:

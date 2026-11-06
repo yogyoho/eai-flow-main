@@ -1115,3 +1115,28 @@ class TestRuleEnabledOverrides:
         await db.commit()
         _, rules_total2 = await _run_review_stage(db, t, {}, "u1")
         assert rules_total2 == 2
+
+
+# ── C-05 入库归一(整合版规格 §3.3 裁决,2026-11-06):快照 MATCHED→PRESENT 单点边界 ──
+
+
+@pytest.mark.asyncio
+async def test_write_baselines_normalizes_matched_to_present(db):
+    """C-05(EAI-CUSTOM 2026-11-06):入库快照 bid.attachments/attachment_index 的
+    MATCHED → PRESENT;引擎内存态(fields 原对象)不得被改。"""
+    from app.extensions.bid_review import worker
+
+    t = await crud.create_task(db, owner_id="u1")
+    fields = {
+        "bid.attachments": [{"no": "1", "name": "营业执照", "status": "MATCHED"}],
+        "bid.attachment_index": [{"no": "1", "name": "营业执照", "status": "MATCHED"}],
+        "tender.attachment_requirements": [{"no": "1", "name": "营业执照", "mandatory": "★"}],
+    }
+    snapshot = fields["bid.attachments"][0]
+    await worker._write_baselines(db, t.id, [{"doc_id": "bid.pdf", "role": "bid"}], fields, "h" * 16)
+    rows = await crud.list_baselines(db, task_id=t.id, owner_id="u1")
+    stored = rows[0].payload["fields"]
+    assert stored["bid.attachments"][0]["status"] == "PRESENT"
+    assert stored["bid.attachment_index"][0]["status"] == "PRESENT"
+    assert stored["tender.attachment_requirements"][0].get("status") is None  # 只动两容器
+    assert snapshot["status"] == "MATCHED"  # 调用方内存对象不被改(引用同一 dict)
