@@ -218,9 +218,10 @@ class ExtractNotConfigured(RuntimeError):
 
 
 def collect_field_paths() -> list[str]:
-    """首段提取请求路径 = universe − 第二段域(EAI-CUSTOM 2026-11-05 M1,spec §4;排序稳定;
-    71 路径逐位=M1 改造前,M0 快照零翻红锚点——第二段实体路径走 build_attachments_baseline)。"""
-    return sorted(set(_registry_universe()) - set(_SECOND_STAGE_FIELDS))
+    """首段提取请求路径 = universe − 第二段域 − 服务端派生域(EAI-CUSTOM 2026-11-05 M1,spec §4;排序稳定;
+    71 路径=R2+ 后 72−device_model_mismatches 服务端派生退出请求(整合版对齐 P0③ 2026-11-06;宇宙/注册表 78 不变);
+    M0 快照零翻红锚点——第二段实体路径走 build_attachments_baseline)。"""
+    return sorted(set(_registry_universe()) - set(_SECOND_STAGE_FIELDS) - set(SERVER_DERIVED_PATHS))
 
 
 _CANDIDATE_MAX = 8  # 单路径候选上限(防幻觉刷屏;超出截断,冲突判定不受影响)

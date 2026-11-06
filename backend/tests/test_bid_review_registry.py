@@ -9,6 +9,7 @@ from app.extensions.bid_review.engine.extract import (
     FIELD_TYPE_CONTRACTS,
     LIST_PATHS,
     OCCURRENCE_PATHS,
+    SERVER_DERIVED_PATHS,
     collect_field_paths,
 )
 from app.extensions.bid_review.engine.rule_runner import RulePackError, load_rulepack
@@ -16,7 +17,7 @@ from app.extensions.bid_review.engine.rule_runner import RulePackError, load_rul
 # 宇宙(2026-11-05 R1 取证 71 路径 + M1 实体段 bid.attachments + M2 章节段 bid.section_tree + M3 表格段
 # bid.boq_rows/bid.table_cells + M4 业绩聚类 bid.performance_entries/bid.performance_groups = 77
 # + R2+ 规则族 L2-041 inputs 声明 tender.required_fields = 78)——逐位锁定。
-# 首段 prompt 路径 = EXPECTED_UNIVERSE − SECOND_STAGE_FIELDS = 72(R1 改造前 71 + R2+ 新增 1)。
+# 首段 prompt 路径 = EXPECTED_UNIVERSE − SECOND_STAGE_FIELDS − SERVER_DERIVED_PATHS = 71(R2+ 后 72−device_model_mismatches 服务端派生,整合版对齐 P0③)。
 EXPECTED_UNIVERSE = [
     "bid.alternative_price_offers",
     "bid.amount_occurrences",
@@ -134,8 +135,9 @@ class TestUniverse:
         assert set(registry.SECOND_STAGE_FIELDS) == {"bid.attachments", "bid.section_tree", "bid.boq_rows", "bid.table_cells", "bid.performance_entries", "bid.performance_groups"}
 
     def test_collect_field_paths_excludes_second_stage(self):
-        # 首段 prompt 72 路径逐位=R1 改造前 71 + R2+ tender.required_fields(M0 快照锚点随宇宙扩容)
-        assert collect_field_paths() == [p for p in EXPECTED_UNIVERSE if p not in registry.SECOND_STAGE_FIELDS]
+        # 首段 prompt 71 路径逐位=R2+ 后 72−device_model_mismatches 服务端派生(M0 快照锚点随宇宙扩容)
+        assert collect_field_paths() == [p for p in EXPECTED_UNIVERSE if p not in registry.SECOND_STAGE_FIELDS and p not in SERVER_DERIVED_PATHS]
+        assert "bid.device_model_mismatches" not in collect_field_paths()  # 服务端派生(禁模型换算 P0③)
         assert "bid.attachments" not in collect_field_paths()
         assert "bid.section_tree" not in collect_field_paths()
         assert "bid.boq_rows" not in collect_field_paths()
@@ -144,7 +146,7 @@ class TestUniverse:
         assert "bid.performance_groups" not in collect_field_paths()
 
     def test_first_stage_equals_universe_minus_second_stage(self):
-        assert set(collect_field_paths()) == set(registry.universe()) - set(registry.SECOND_STAGE_FIELDS)
+        assert set(collect_field_paths()) == set(registry.universe()) - set(registry.SECOND_STAGE_FIELDS) - set(SERVER_DERIVED_PATHS)
 
 
 class TestConsumedBy:

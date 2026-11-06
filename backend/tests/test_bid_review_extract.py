@@ -283,6 +283,13 @@ def test_derive_device_mismatches_computed():
     assert f3["bid.device_model_mismatches"] is None
 
 
+def test_collect_field_paths_excludes_server_derived():
+    # device_model_mismatches 改服务端派生,不再进提取请求(宇宙/注册表 78 不变,仅请求面收窄)
+    assert "bid.device_model_mismatches" not in collect_field_paths()
+    assert "bid.boq_unit_checks" in collect_field_paths()  # 行仍由模型抄录,布尔服务端回填
+    assert "bid.appendix_references" in collect_field_paths()
+
+
 # ── 抽取 v2(EAI-CUSTOM 2026-10-30,spec D5/D7):provenance + 分片 ──────
 
 
