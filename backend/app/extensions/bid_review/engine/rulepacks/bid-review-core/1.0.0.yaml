@@ -1,4 +1,4 @@
-# bid-review-core 子系统规则包 v1.0.0(canonical,39 条;整合版编号对齐 2026-11-06)——技能 references/rules-det-subset.yaml 为其 M1 七条副本分发
+# bid-review-core 子系统规则包 v1.0.0(canonical,40 条;整合版编号对齐 2026-11-06)——技能 references/rules-det-subset.yaml 为其 M1 七条副本分发
 # 转录口径(Task 18,2026-10-29):素材④全量规则包会话记录本仓不可达,按设计文档 §6.3 v1 清单+素材②元模型重写 check;
 # 格式基准=§6.4 L1-009;severity 依层级赋予(L1=否决项红线→fatal,L3=一致性→major;唯 L1-003 业绩达标=major,
 # 与 test_bid_review_llm_verify 夹具同值),素材②规则表可达后逐条对账。M1 七条(L1-009/010/011+L3-001/003/005/006)原样保留不回退。
@@ -701,6 +701,26 @@ rules:
     evidence: [A-PERF-DOCS]
     message_tpl: "类似业绩条目组 {g.group_id} 疑似同项重复,需人工确认是否重复凑数"
     fix_tpl: "人工核对该组业绩条目,重复的删除或更正为不同项目业绩"
+    confidence_gate: 1.0
+    enabled: true
+  - id: L3-019
+    name: 清单行单价×数量=合价
+    layer: L3
+    type: deterministic
+    applies_to: ["*"]
+    inputs: [bid.boq_rows]
+    # P1-β批一(spec L3-019 :891,容差≤0.01):行内乘算;任一分量 null 跳过(费率行/未填
+    # 合价合法,不误报);全分量齐且乘算超差才 violation;与 L1-010 不重叠(纵向加总链 vs
+    # 行内乘算,实体不同);存量线程字段缺 amount 键 → KeyError → need_human 诚实降级
+    check:
+      op: all
+      target: bid.boq_rows
+      var: r
+      cond: "r.price == null or r.qty == null or r.amount == null or close(r.price * r.qty, r.amount, 0.01)"
+    severity: major
+    evidence: [A-BOQ]
+    message_tpl: "清单项 {r.id} 单价×数量与合价不一致:{r.price:money}×{r.qty} ≠ {r.amount:money}"
+    fix_tpl: "逐行复核报价清单单价、数量与合价的乘算关系,修正算术错误"
     confidence_gate: 1.0
     enabled: true
   - id: L2-015

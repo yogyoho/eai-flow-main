@@ -130,7 +130,7 @@ def test_full_pack_loads():
     by_type = {}
     for r in pack.rules:
         by_type.setdefault(r.type, []).append(r.id)
-    assert len(by_type.get("deterministic", [])) == 33, "L1 det 14 + L3 det 14 + L2 det 5(L2-020/022/024/041 + L2-015 章节空缺层归位) = 33;编号对齐 2026-11-06"
+    assert len(by_type.get("deterministic", [])) == 34, "L1 det 14 + L3 det 15(L3-019 行乘算,P1-β批一)+ L2 det 5(L2-020/022/024/041 + L2-015 章节空缺层归位) = 34;编号对齐 2026-11-06"
     assert len(by_type.get("hybrid", [])) == 5, "L1 hyb 003/007 + L3 hyb 004/008 + L2-023 指纹通道(整合版对齐 W1) = 5"
     assert len(by_type.get("semantic", [])) == 1, "L1-013 唯一 sem 规则"
     for r in pack.rules:

@@ -1,0 +1,13 @@
+case: L3-019-price-qty-amount
+desc: 行 BOQ-02 单价×数量(100×3=300)与合价 250 不一致 → violation;BOQ-01 乘算相符与 BOQ-03 缺分量行均跳过
+fields:
+  bid.boq_rows:
+    - {id: BOQ-01, name: 土方开挖, unit: m3, qty: 10, price: 50, amount: 500}
+    - {id: BOQ-02, name: 混凝土浇筑, unit: m3, qty: 3, price: 100, amount: 250}
+    - {id: BOQ-03, name: 费率项, unit: 项, qty: null, price: null, amount: null}
+expect_issues:
+  - rule_id: L3-019
+    severity: major
+    contains: ["BOQ-02", "单价×数量与合价不一致"]
+expect_absent: []
+strict: false
