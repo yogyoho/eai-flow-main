@@ -6,6 +6,7 @@ import json
 import pytest
 
 from app.extensions.bid_review.engine.extract import (
+    FIELD_TYPE_CONTRACTS,
     ExtractNotConfigured,
     apply_adjudications,
     build_baseline,
@@ -17,6 +18,7 @@ from app.extensions.bid_review.engine.extract import (
     normalize_confidence,
     verify_quotes,
 )
+from app.extensions.bid_review.engine.registry import SECOND_STAGE_FIELDS
 
 FAKE_DOCS = [
     {"doc_id": "tender.pdf", "role": "tender", "text": "最高限价…"},
@@ -517,12 +519,9 @@ def test_normalize_boq_rows_amount_field():
     assert rows[0]["amount"] == 300.5  # 字符串数值化
     assert rows[1]["amount"] is None  # null 保 null
     assert rows[2]["amount"] is None  # 缺键保 None
-    assert all(isinstance(r["amount"], (int, float)) and not isinstance(r["amount"], bool) or r["amount"] is None for r in rows)
+    assert len(rows) == 3
 
 
 def test_boq_rows_contract_has_amount():
-    from app.extensions.bid_review.engine.extract import FIELD_TYPE_CONTRACTS
-    from app.extensions.bid_review.engine.registry import SECOND_STAGE_FIELDS
-
-    assert "amount" in FIELD_TYPE_CONTRACTS["bid.boq_rows"]
-    assert "amount" in SECOND_STAGE_FIELDS["bid.boq_rows"]
+    assert '"amount":' in FIELD_TYPE_CONTRACTS["bid.boq_rows"]
+    assert "amount:合价金额或null" in SECOND_STAGE_FIELDS["bid.boq_rows"]

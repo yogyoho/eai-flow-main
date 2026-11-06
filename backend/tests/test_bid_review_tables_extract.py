@@ -50,11 +50,15 @@ class TestNormalizeBoqRows:
         assert normalize_boq_rows([{"id": "1", "name": "A", "qty": None}], [])[0]["qty"] is None
 
     def test_amount_numericization_gate(self):
-        # P1-β Task 2:amount 与 qty/price 同 _num 闸(bool/负数→None),另收纯数字串(L3-019 operand)
+        # P1-β Task 2:amount 与 qty/price 同 _num 闸(bool/负数→None),另收 float() 可解析数字串(L3-019 operand)
         assert normalize_boq_rows([{"id": "1", "name": "A", "amount": True}], [])[0]["amount"] is None
         assert normalize_boq_rows([{"id": "1", "name": "A", "amount": -0.01}], [])[0]["amount"] is None
         assert normalize_boq_rows([{"id": "1", "name": "A", "amount": "abc"}], [])[0]["amount"] is None
         assert normalize_boq_rows([{"id": "1", "name": "A", "amount": 300}], [])[0]["amount"] == 300  # 数值直收
+        # isfinite 负证据门禁(M5 惯例):json.loads 默认接受 NaN/Infinity 字面量,此处是
+        # NaN 不入 L3-019 乘法比较的唯一防线
+        assert normalize_boq_rows([{"id": "1", "name": "A", "amount": "nan"}], [])[0]["amount"] is None
+        assert normalize_boq_rows([{"id": "1", "name": "A", "amount": float("inf")}], [])[0]["amount"] is None
 
     def test_id_or_name_alone_survives(self):
         rows = normalize_boq_rows([{"id": "1.1"}, {"name": "只有名"}], [])
