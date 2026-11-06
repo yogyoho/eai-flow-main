@@ -17,7 +17,7 @@ from app.extensions.bid_review.engine.rule_runner import load_rulepack, run_det_
 
 PACK = str(Path(__file__).resolve().parent.parent / "app" / "extensions" / "bid_review" / "engine" / "rulepacks" / "bid-review-core" / "1.0.0.yaml")
 
-NEW_IDS = {"L2-022", "L2-041", "L3-019", "L3-020"}
+NEW_IDS = {"L2-022", "L2-041", "L3-020", "L3-026"}
 
 _QUIET = json.dumps(
     {"verdicts": [{"clause_id": "quiet", "verdict": "full", "confidence": 1.0, "reason": "安静应答", "evidence": []}]},
@@ -71,11 +71,11 @@ class TestL2022BlankAttachment:
         assert run_det_rule(_rules()["L2-022"], {})[0]["verdict"] == "need_human"
 
 
-class TestL3019ClusterUnsure:
-    """L3-019 业绩条目聚类存疑(bid.performance_groups;major;M4 UNKNOWN 的规则面)。"""
+class TestL3026ClusterUnsure:
+    """L3-026 业绩条目聚类存疑(整合版对齐 W4 段尾扩展,原 EAI L3-019;bid.performance_groups;major;M4 UNKNOWN 的规则面)。"""
 
     def test_ok_false_group_violation(self):
-        rule = _rules()["L3-019"]
+        rule = _rules()["L3-026"]
         fields = {
             "bid.performance_groups": [
                 {"group_id": "G1", "ok": False, "members": [{"name": "一期", "client": "甲"}]},
@@ -87,7 +87,7 @@ class TestL3019ClusterUnsure:
         assert "G1" in issues[0]["message"]
 
     def test_all_ok_or_missing(self):
-        rule = _rules()["L3-019"]
+        rule = _rules()["L3-026"]
         assert run_det_rule(rule, {"bid.performance_groups": [{"group_id": "G1", "ok": True, "members": []}]}) == []
         assert run_det_rule(rule, {})[0]["verdict"] == "need_human"
 

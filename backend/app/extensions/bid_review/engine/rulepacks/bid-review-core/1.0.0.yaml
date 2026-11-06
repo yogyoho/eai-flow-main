@@ -684,7 +684,7 @@ rules:
     fix_tpl: "核对该附件扫描件,空白或无效的重新扫描上传有效版本"
     confidence_gate: 1.0
     enabled: true
-  - id: L3-019
+  - id: L3-026
     name: 业绩条目聚类存疑
     layer: L3
     type: deterministic
