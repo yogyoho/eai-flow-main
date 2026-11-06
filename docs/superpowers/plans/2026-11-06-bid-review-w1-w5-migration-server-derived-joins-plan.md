@@ -383,7 +383,7 @@ git commit -m "fix(bid-review): 整合版编号对齐W5收官——L3-020章节�
 
 - [ ] **Step 2: DB 残行迁移注记落 §3.1 尾**
 
-在 §3.1 迁移连带影响段末追加一行: 「DB 注记: `RulePackMeta.rule_overrides` JSON 中旧 ID 键(021/022/023/019/020)语义=enabled 覆盖,残键对新 ID 无效(默认回落 yaml enabled=true),无害;如需清理走既有 enabled 端点重设,不迁移 JSON。」（核对用: `docker exec deer-flow-postgres psql -U agentflow -d agentflow -c "SELECT name, rule_overrides FROM bid_review_rule_pack_metas;"` —— 表名/列名以 `backend/app/extensions/bid_review/models.py` 中 RulePackMeta `__tablename__` 为准，只读核实，不改数据。）
+在 §3.1 迁移连带影响段末追加一行: 「DB 注记(质量审查 Important-1 修正,2026-11-06):**轮换使旧 override 键语义翻转,非无害回落**——迁移前入库的 `L2-022`/`L2-023` 键现指向不同规则(旧 022=必填报价→现 022=附件空白;旧 023=附件空白→现 023=指纹):任何早于 commit 43ae36f98 的库在启用逐规则 enabled 开关前必须先清空或重映射这两键;L2-021/L3-019/L3-020 旧键才真回落 yaml enabled。2026-11-06 实测 dev ext 库 `bid_review_rulepacks` 尚无 rule_overrides 列(models.py 已声明、迁移未跑)=现网零残键,该列迁移落地时须带旧键重映射;另 8 行 bid_review_issues 历史 rule_id=L2-021 成孤儿 ID(规格已接受不迁移)。」（核对用: `docker exec eai-flow-postgres-ext psql -U agentflow -d agentflow -c "\d bid_review_rulepacks"` —— 表名/列名以 `backend/app/extensions/bid_review/models.py` 中 RulePackMeta `__tablename__` 为准，只读核实，不改数据。）
 
 - [ ] **Step 3: Commit + wolf/记忆记档**
 
