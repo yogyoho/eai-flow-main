@@ -64,8 +64,8 @@ SECOND_STAGE_FIELDS: dict[str, str] = {
     "bid.section_tree": '章节结构层(M2,spec §5):[{code:"章节编码或空串",title:"章节标题",toc_page:目录标注页码或null,'
     "body_page:正文标题所在物理页或null,is_empty:true|false 该节正文是否为空(文本量启发)] 对象列表;"
     "逐节一项,缺 title 的行无效(零编造);offset 由服务端按 body_page-toc_page 计算,模型禁报",
-    "bid.boq_rows": '清单行级(M3,spec §5):[{id:"清单项编号",name:"项目名称",unit:"单位",qty:数量或null,price:单价或null}] 对象列表;'
-    "逐行一项,从投标报价清单逐行提取;清单没有的行不编造;数量单价只引用原文数字;required 由服务端按招标 BOQ codes 回填,模型禁报",
+    "bid.boq_rows": '清单行级(M3,spec §5):[{id:"清单项编号",name:"项目名称",unit:"单位",qty:数量或null,price:单价或null,amount:合价金额或null}] 对象列表;'
+    "逐行一项,从投标报价清单逐行提取;清单没有的行不编造;数量单价合价只引用原文数字;required 由服务端按招标 BOQ codes 回填,模型禁报",
     "bid.table_cells": '单元格层(M3,临时契约 R2+ 演进):[{table_no:"表格编号或标题",page:所在页或null,row_label:"行表头",col_label:"列表头",value:"单元格原文"}] 对象列表;'
     "逐单元格一项,只提取与报价/工期/人员等关键承诺相关的表格;空单元格跳过(零编造)",
     "bid.performance_entries": '业绩条目富行(M4,spec §5):[{name:"项目名称",client:"甲方/招标人名称",amount:合同金额或null,date:"竣工/签约日期或null",page:所在页或null}] 对象列表;'

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import math
 from collections.abc import Callable
 from typing import Any
 
@@ -429,9 +430,8 @@ FIELD_TYPE_CONTRACTS["bid.section_tree"] = (
 )
 
 FIELD_TYPE_CONTRACTS["bid.boq_rows"] = (
-    '[{"id":"清单项编号","name":"项目名称","unit":"单位","qty":数量或null,"price":单价或null}] 对象列表;'
-    "逐行一项,从投标报价清单逐行提取([[p.N]] 标记对照);清单没有的行不编造;"
-    "数量单价只引用原文数字,不心算;required 由服务端回填禁止输出;无清单给空数组。"
+    '[{"id":"清单项编号","name":"项目名称","unit":"单位","qty":数量或null,"price":单价或null,"amount":合价金额或null}] 对象列表;'
+    "逐行一项,从投标报价清单逐行提取;清单没有的行不编造;数量单价合价只引用原文数字;required 由服务端按招标 BOQ codes 回填,模型禁报"
 )
 
 FIELD_TYPE_CONTRACTS["bid.table_cells"] = (
@@ -482,7 +482,9 @@ def normalize_section_tree(raw: Any) -> list[dict]:
 
 def normalize_boq_rows(raw: Any, tender_codes: Any) -> list[dict]:
     """清单行级归一闸(B立项 M3,spec §5,2026-11-05):id/name 双空丢行零编造;
-    qty/price 收 int/float 非 bool ≥0 否则 None;id/unit strip、name 保内部空格(M1 先例);
+    qty/price 收 int/float 非 bool ≥0 否则 None;amount 同 _num 闸(bool/负数→None)另收
+    纯数字串(P1-β Task 2 2026-11-06,L3-019 单价×数量=合价 operand;qty/price 行为不动);
+    id/unit strip、name 保内部空格(M1 先例);
     required 服务端回填=(id ∈ 招标 codes)——模型偷报的 required 键丢弃重算
     (设计 §4.5:必填口径唯一来自招标侧)。"""
 
@@ -490,6 +492,16 @@ def normalize_boq_rows(raw: Any, tender_codes: Any) -> list[dict]:
         if isinstance(v, bool) or not isinstance(v, (int, float)) or v < 0:
             return None
         return v
+
+    def _amount(v: Any) -> int | float | None:
+        if isinstance(v, str):
+            try:
+                v = float(v)
+            except ValueError:
+                return None
+        if isinstance(v, float) and not math.isfinite(v):
+            return None
+        return _num(v)
 
     codes = {str(c).strip() for c in tender_codes} if isinstance(tender_codes, list) else set()
     out: list[dict] = []
@@ -509,6 +521,7 @@ def normalize_boq_rows(raw: Any, tender_codes: Any) -> list[dict]:
                 "unit": unit.strip() if isinstance(unit, str) else "",
                 "qty": _num(row.get("qty")),
                 "price": _num(row.get("price")),
+                "amount": _amount(row.get("amount")),
                 "required": rid_s in codes,
             }
         )

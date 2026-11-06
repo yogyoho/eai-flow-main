@@ -49,16 +49,23 @@ class TestNormalizeBoqRows:
         assert normalize_boq_rows([{"id": "1", "name": "A", "qty": 3.5}], [])[0]["qty"] == 3.5
         assert normalize_boq_rows([{"id": "1", "name": "A", "qty": None}], [])[0]["qty"] is None
 
+    def test_amount_numericization_gate(self):
+        # P1-β Task 2:amount 与 qty/price 同 _num 闸(bool/负数→None),另收纯数字串(L3-019 operand)
+        assert normalize_boq_rows([{"id": "1", "name": "A", "amount": True}], [])[0]["amount"] is None
+        assert normalize_boq_rows([{"id": "1", "name": "A", "amount": -0.01}], [])[0]["amount"] is None
+        assert normalize_boq_rows([{"id": "1", "name": "A", "amount": "abc"}], [])[0]["amount"] is None
+        assert normalize_boq_rows([{"id": "1", "name": "A", "amount": 300}], [])[0]["amount"] == 300  # 数值直收
+
     def test_id_or_name_alone_survives(self):
         rows = normalize_boq_rows([{"id": "1.1"}, {"name": "只有名"}], [])
         assert len(rows) == 2
-        assert rows[0] == {"id": "1.1", "name": "", "unit": "", "qty": None, "price": None, "required": False}
+        assert rows[0] == {"id": "1.1", "name": "", "unit": "", "qty": None, "price": None, "amount": None, "required": False}
 
     def test_non_list_returns_empty(self):
         assert normalize_boq_rows(None, ["1"]) == []
         assert normalize_boq_rows("junk", ["1"]) == []
         # tender_codes=None(招标侧无信号)→ 行保留,required 全 False
-        assert normalize_boq_rows([{"id": "1", "name": "A"}], None) == [{"id": "1", "name": "A", "unit": "", "qty": None, "price": None, "required": False}]
+        assert normalize_boq_rows([{"id": "1", "name": "A"}], None) == [{"id": "1", "name": "A", "unit": "", "qty": None, "price": None, "amount": None, "required": False}]
 
 
 class TestNormalizeTableCells:

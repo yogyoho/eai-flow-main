@@ -12,6 +12,7 @@ from app.extensions.bid_review.engine.extract import (
     build_extract_prompt,
     collect_field_paths,
     detect_conflicts,
+    normalize_boq_rows,
     normalize_candidates,
     normalize_confidence,
     verify_quotes,
@@ -499,3 +500,29 @@ def test_attachment_fields_contract():
     prompt = extract_mod.build_extract_prompt(FAKE_DOCS, ["tender.attachment_requirements", "bid.attachment_index"])
     assert any(ln.startswith("- tender.attachment_requirements") and "类型:" in ln for ln in prompt.splitlines())
     assert any(ln.startswith("- bid.attachment_index") and "类型:" in ln for ln in prompt.splitlines())
+
+
+# ── B立项 M3 boq_rows 契约扩 amount 合价键(P1-β Task 2,2026-11-06;L3-019 operand)──
+
+
+def test_normalize_boq_rows_amount_field():
+    rows = normalize_boq_rows(
+        [
+            {"id": "B1", "name": "x", "unit": "m3", "qty": 3, "price": 100, "amount": "300.50"},
+            {"id": "B2", "name": "y", "unit": "项", "qty": None, "price": None, "amount": None},
+            {"id": "B3", "name": "z"},
+        ],
+        None,
+    )
+    assert rows[0]["amount"] == 300.5  # 字符串数值化
+    assert rows[1]["amount"] is None  # null 保 null
+    assert rows[2]["amount"] is None  # 缺键保 None
+    assert all(isinstance(r["amount"], (int, float)) and not isinstance(r["amount"], bool) or r["amount"] is None for r in rows)
+
+
+def test_boq_rows_contract_has_amount():
+    from app.extensions.bid_review.engine.extract import FIELD_TYPE_CONTRACTS
+    from app.extensions.bid_review.engine.registry import SECOND_STAGE_FIELDS
+
+    assert "amount" in FIELD_TYPE_CONTRACTS["bid.boq_rows"]
+    assert "amount" in SECOND_STAGE_FIELDS["bid.boq_rows"]
