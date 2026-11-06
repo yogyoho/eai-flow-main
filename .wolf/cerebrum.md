@@ -25,6 +25,9 @@ OpenWolf's learning memory. Updated automatically as the AI learns from interact
 - [2026-08-21] geological-report 用户交互铁律：数据收集必须用 ask_clarification fields 渲染中文填写表单（label=中文名+单位），绝不向用户展示/索要 JSON 或英文键名；面向用户术语一律"数据项"不说"字段"；缺项清单译成中文按类别分组呈现。适用于所有面向非 IT 用户的技能。
 
 ## Key Learnings
+- [2026-11-06] 对齐审计类缺口立档后、开工前必须重新 grep 核实是否已被并发会话兑付——quick 层裁剪立档当天即被 ec77631ef 兑付(11-05 四项同款先例);计划编写以当日 grep 为准,不以存档结论为准。
+- [2026-11-06] 规则 ID 轮换迁移使 DB rule_overrides 旧键语义翻转(旧 022/023 键迁移后指向不同规则=错规则开关,非无害回落);任何早于轮换 commit 的库启用逐规则开关前须清空/重映射,列迁移落地须带旧键重映射(规格 §3.1 注记)。
+- [2026-11-06] derive_joins 类服务端派生函数的输入模型字段须按 R4「模型常态回标量」防御:任何 `for item in out.get(p) or []` 迭代前先 isinstance((list,tuple)) 守卫(标量 int 会 TypeError 炸整条一阶段基线,违诚实降级教义,bug-4083)。
 - bid_review 规则包加规则时三锁同改(2026-11-05 R2+ 实锤):①EXPECTED_UNIVERSE(registry 测试逐位硬列表)+test_anchored_N ②golden 三方精确锁 test_coverage_complete_marker(EXPECTED_COVERAGE==pack_ids==题库实 coverage,新规则缺题即红)③test_att_ops_whitelisted_at_load 的 L2 ops 全集锁+test_full_pack_loads det 计数锁。grep "== N" 只能抓计数锁,集合相等锁要 grep EXPECTED/ops。
 
 - [2026-11-03] bid-review 金标准口径三数：`cases/*.yaml` 文件数 = CLI `total`；pytest 里参数化 `test_golden_case[...]` 数与之相等；模块总 passed 还含基建/coverage 守卫测（现 82=51 题+31 基建）。写计划/汇报时别混用「题数」与「测试数」——L2-P3 计划就因混写 51/82 被实现者当笔误纠正。

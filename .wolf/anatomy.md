@@ -1,7 +1,7 @@
 # anatomy.md
 
-> Auto-maintained by OpenWolf. Last scanned: 2026-11-05T17:49:45.670Z
-> Files: 29 tracked | Anatomy hits: 0 | Misses: 0
+> Auto-maintained by OpenWolf. Last scanned: 2026-11-06T04:34:54.374Z
+> Files: 23 tracked | Anatomy hits: 0 | Misses: 0
 
 ## ../../00 工作目录/02 项目策划/马宁/应急指挥/bid-run/
 
@@ -323,9 +323,7 @@
 
 ## C:/Users/admin/.claude/projects/D--eai-eai-flow-main/memory/
 
-- `bid-review-alignment-gaps-landed.md` — bid-review 对齐审计 9 缺口收口落地(2026-11-05) (~694 tok)
-- `bid-review-live-recapture-landed.md` (~453 tok)
-- `MEMORY.md` (~3712 tok)
+- `bid-review-alignment-audit-2026-11-05.md` (~545 tok)
 
 ## C:/Users/admin/.gstack/
 
@@ -428,7 +426,6 @@
 
 ## backend/
 
-- `pyproject.toml` — LangGraph-based AI agent system with sandbox execution capabilities (~1893 tok)
 
 ## backend/.deer-flow/
 
@@ -630,7 +627,6 @@
 
 ## backend/app/extensions/
 
-- `database.py` — Database connection and session management for extensions module. (~28110 tok)
 
 ## backend/app/extensions/app_center/
 
@@ -643,34 +639,37 @@
 
 ## backend/app/extensions/bid_review/
 
-- `crud.py` — bid_review CRUD —— 全部查询函数带 owner_id 过滤(仓库惯例:router 层从 auth (~3156 tok)
-- `mcp.py` — bid_review MCP server(Task 11)——十一工具供对话 agent 调用,**无确认门**。 (~5498 tok)
-- `models.py` — 投标审查子系统 ORM(五张表;新表走 create_all,无需 alembic)。 (~1544 tok)
-- `parse.py` — 投标审查文档解析层(EAI-CUSTOM 2026-10-30,spec: bid-review evidence pipeline §2/D1/D4/D6/D8)。 (~5889 tok)
-- `routers.py` — bid_review 工作台 API(Task 10)——8 端点(设计文档 §4.7),挂 gateway (~15261 tok)
-- `schemas.py` — bid_review Pydantic 请求/响应模型(照 contract_price/schemas.py 惯例)。 (~1042 tok)
-- `worker.py` — bid_review worker(Task 9)——状态机推进 + claimer 循环 + gateway 生命周期入口。 (~11919 tok)
 
 ## backend/app/extensions/bid_review/engine/
 
-- `extract.py` — 基准字段提取:解析后文档文本 → field_snapshot(+materials_hash);LLM 提取函数可注入(translation worker `TranslateFn` 惯例)。 (~10708 tok)
+- `anchors.py` — A-* 锚点注册表(EAI-CUSTOM 2026-10-30 二期,spec §三)。 (~1509 tok)
+- `extract.py` — 基准字段提取:解析后文档文本 → field_snapshot(+materials_hash);LLM 提取函数可注入(translation worker `TranslateFn` 惯例)。 (~11960 tok)
+- `labels.py` — 字段中文名映射(EAI-CUSTOM 2026-10-30 二期,spec §四;ui-gaps spec 提案 A②并入)。 (~1092 tok)
+- `llm_runner.py` — sem/hyb 规则执行:规则卡 prompt 构造 + 模型调用 + 七道校验管线(设计文档 §4.5/§4.6)。 (~3788 tok)
+- `rule_runner.py` — 规则包加载 + det 执行(canonical;技能内 eval_det.py 为其无量词子集副本)。 (~4483 tok)
 
 ## backend/app/extensions/bid_review/engine/dicts/
 
 
 ## backend/app/extensions/bid_review/engine/rulepacks/bid-review-core/
 
+- `1.0.0.yaml` — bid-review-core 子系统规则包 v1.0.0(canonical,39 条;整合版编号对齐 2026-11-06)——技能 references/rules-det-subset.yam (~7219 tok)
 
 ## backend/app/extensions/bid_review/golden/
 
 
 ## backend/app/extensions/bid_review/golden/cases/
 
+- `L2-015-empty-section.yaml` (~128 tok)
+- `L2-022-blank-attachment.yaml` (~112 tok)
+- `L2-023-fp-confirm-partial.yaml` (~216 tok)
+- `L2-023-fp-reject-full.yaml` (~195 tok)
+- `L2-023-fp-unclear.yaml` (~180 tok)
+- `L2-041-required-row-no-price.yaml` (~137 tok)
+- `L3-026-cluster-unsure.yaml` (~111 tok)
 
 ## backend/app/extensions/bid_review/golden/extract_cases/
 
-- `variance-bid.md` — 某数据中心机电设备采购项目 投标文件 (~247 tok)
-- `variance-tender.md` — 某数据中心机电设备采购项目 招标文件 (~150 tok)
 
 ## backend/app/extensions/bid_review/golden/smoke/smoke-1-basic/
 
@@ -923,7 +922,6 @@
 
 ## backend/scripts/
 
-- `bid_review_live_variance.py` — M2-M4 活体方差回采(EAI-CUSTOM 2026-11-06,挂账「M2-M4 方差缺席」兑付)。 (~1648 tok)
 
 ## backend/scripts/bid_seed_samples.py
 
@@ -936,13 +934,13 @@
 
 ## backend/tests/
 
-- `test_bid_review_deps.py` — bid-review 入口依赖安全网:parse.py 直导入 openpyxl,但历史上仅经 (~184 tok)
-- `test_bid_review_live_variance.py` — M2-M4 活体方差回采脚本纯函数测试(EAI-CUSTOM 2026-11-06)。 (~432 tok)
-- `test_bid_review_mcp.py` — Task 11 测试:bid_review MCP 十一工具——直接调 handle_call(不过 stdio);_run_in_db (~2134 tok)
-- `test_bid_review_parse.py` — bid_review 解析层测试(EAI-CUSTOM 2026-10-30,spec §2/§4.1)。 (~4116 tok)
-- `test_bid_review_routers.py` — Task 10 测试:bid_review 8 端点——httpx ASGITransport + 独立 FastAPI 子应用挂 router; (~10941 tok)
-- `test_bid_review_worker_sem.py` — Task 14 测试:worker 集成 sem/hyb 规则 + 汇总分级(A12 T14 集成约束验收)。 (~4844 tok)
-- `test_bid_review_worker.py` — Task 9 测试:bid_review worker——状态机推进(advance_task)+ boot recovery + (~13433 tok)
+- `test_bid_review_extract.py` — bid_review engine/extract.py 基准提取单测:shape/materials_hash 稳定 + null 显式保留 + 非字典路径丢弃 + prompt 骨架转录。 (~6335 tok)
+- `test_bid_review_golden.py` — 金标准回归门(金标准 spec §7)+loader/runner/report 单测。题库=人工标注答案, (~4682 tok)
+- `test_bid_review_llm_verify.py` — Task 13 单测:llm_runner 规则卡 prompt + verify 七道校验管线(模型经 model_fn 注入 fake,七道逐道独立断言)。 (~8230 tok)
+- `test_bid_review_metrics.py` — M5 治理页 B5/B6 测试:规则定义五块明细 + list_rulepacks op 投影 + FAIL 归因 + 周趋势。 (~2735 tok)
+- `test_bid_review_registry.py` — 规则包注册表测试(spec 2026-11-05 R1 §2.6):宇宙锚定/反查/lint/拒载/投影声明。 (~2467 tok)
+- `test_bid_review_rule_families.py` — R2+ 规则族补齐测试(2026-11-05):四条 det 规则消费 M1-M5 悬空字段。 (~1888 tok)
+- `test_bid_review_rule_runner.py` — test_load_and_validate, test_unknown_operator_rejected, test_run_l1_009_violation_and_need_human, te (~6177 tok)
 
 ## backend/tests/ (QA 2026-10-28 增补)
 
@@ -1030,9 +1028,7 @@
 
 ## docs/superpowers/plans/
 
-- `2026-11-05-bid-review-alignment-gaps-plan.md` — 对齐审计残留 9 缺口收口实施计划 (~6362 tok)
-- `2026-11-05-bid-review-loose-ends-plan.md` — bid-review 挂账小件包 Implementation Plan(2026-11-05) (~704 tok)
-- `2026-11-06-bid-review-m2m4-variance-plan.md` — M2-M4 活体方差回采实施计划(2026-11-06) (~659 tok)
+- `2026-11-06-bid-review-w1-w5-migration-server-derived-joins-plan.md` — bid-review P0：W1~W5 规则编号迁移 + 服务端派生 join（换算禁令）实施计划 (~7117 tok)
 
 ## docs/superpowers/plans/2026-09-13-coal-mine-tunneling-regulation-v2.md
 
@@ -1042,9 +1038,7 @@
 
 ## docs/superpowers/specs/
 
-- `2026-11-05-bid-review-html-export-spec.md` — bid-review 报告 HTML 导出 Spec(2026-11-05) (~472 tok)
-- `2026-11-05-bid-review-score-risk-spec.md` — bid-review 评分涉险面(score 预估)Spec(2026-11-05) (~563 tok)
-- `2026-11-06-bid-review-zip-scan-ocr-spec.md` — bid-review zip 内 PDF 扫描页 OCR Spec(2026-11-06) (~521 tok)
+- `2026-11-06-bid-review-integrated-spec-alignment.md` — 投标方案审查：整合版规格书对齐审计与裁决回写 (~2031 tok)
 
 ## docs/superpowers/specs/2026-09-13-coal-mine-tunneling-regulation-v2-design.md
 

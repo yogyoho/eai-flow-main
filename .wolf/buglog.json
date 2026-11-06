@@ -5737,6 +5737,682 @@
       "related_bugs": [],
       "occurrences": 1,
       "last_seen": "2026-11-05T14:40:05.675Z"
+    },
+    {
+      "id": "bug-4044",
+      "timestamp": "2026-11-05T14:52:51.449Z",
+      "error_message": "Significant refactor of ",
+      "file": "backend/tests/test_bid_review_routers.py",
+      "root_cause": "4 lines replaced/restructured",
+      "fix": "Rewrote 12→39 lines (4 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-11-05T14:52:51.449Z"
+    },
+    {
+      "id": "bug-4045",
+      "timestamp": "2026-11-05T14:56:03.758Z",
+      "error_message": "Significant refactor of ",
+      "file": "backend/app/extensions/bid_review/routers.py",
+      "root_cause": "3 lines replaced/restructured",
+      "fix": "Rewrote 5→8 lines (3 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-11-05T14:56:03.758Z"
+    },
+    {
+      "id": "bug-4046",
+      "timestamp": "2026-11-05T15:11:38.455Z",
+      "error_message": "Significant refactor of ",
+      "file": "backend/app/extensions/bid_review/routers.py",
+      "root_cause": "2 lines replaced/restructured",
+      "fix": "Rewrote 22→32 lines (2 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-11-05T15:11:38.455Z"
+    },
+    {
+      "id": "bug-4047",
+      "timestamp": "2026-11-05T17:04:29.592Z",
+      "error_message": "Significant refactor of ",
+      "file": "backend/tests/test_bid_review_parse.py",
+      "root_cause": "2 lines replaced/restructured",
+      "fix": "Rewrote 8→18 lines (2 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-11-05T17:04:29.592Z"
+    },
+    {
+      "id": "bug-4048",
+      "timestamp": "2026-11-05T17:04:49.976Z",
+      "error_message": "Missing await",
+      "file": "backend/tests/test_bid_review_parse.py",
+      "root_cause": "Async call without await — returned Promise instead of value",
+      "fix": "Added await to async call",
+      "tags": [
+        "auto-detected",
+        "async-fix",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-11-05T17:04:49.976Z"
+    },
+    {
+      "id": "bug-4049",
+      "timestamp": "2026-11-05T17:05:16.541Z",
+      "error_message": "Function not marked async",
+      "file": "backend/tests/test_bid_review_routers.py",
+      "root_cause": "Function uses await but wasn't declared async",
+      "fix": "Added async modifier",
+      "tags": [
+        "auto-detected",
+        "async-fix",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-11-05T17:05:16.541Z"
+    },
+    {
+      "id": "bug-4050",
+      "timestamp": "2026-11-05T17:06:00.749Z",
+      "error_message": "Significant refactor of ",
+      "file": "backend/app/extensions/bid_review/parse.py",
+      "root_cause": "2 lines replaced/restructured",
+      "fix": "Rewrote 7→9 lines (2 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-11-05T17:06:00.749Z"
+    },
+    {
+      "id": "bug-4051",
+      "timestamp": "2026-11-06T01:28:26.838Z",
+      "error_message": "Significant refactor of ",
+      "file": "docs/superpowers/plans/2026-11-06-bid-review-w1-w5-migration-server-derived-joins-plan.md",
+      "root_cause": "3 lines replaced/restructured",
+      "fix": "Rewrote 7→26 lines (3 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "md"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-11-06T01:28:26.838Z"
+    },
+    {
+      "id": "bug-4052",
+      "timestamp": "2026-11-06T01:28:31.142Z",
+      "error_message": "Incorrect value in code",
+      "file": "docs/superpowers/plans/2026-11-06-bid-review-w1-w5-migration-server-derived-joins-plan.md",
+      "root_cause": "Had `test_collect_field_paths_excludes_server_derived`",
+      "fix": "Changed to `test_bid_review_registry.py`",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "md"
+      ],
+      "related_bugs": [],
+      "occurrences": 2,
+      "last_seen": "2026-11-06T01:28:34.894Z"
+    },
+    {
+      "id": "bug-4053",
+      "timestamp": "2026-11-06T01:38:26.410Z",
+      "error_message": "Wrong reference: 021 should be 023",
+      "file": "backend/app/extensions/bid_review/engine/rulepacks/bid-review-core/1.0.0.yaml",
+      "root_cause": "Used \"021\" instead of \"023\"",
+      "fix": "Changed 021 → 023",
+      "tags": [
+        "auto-detected",
+        "wrong-reference",
+        "yaml"
+      ],
+      "related_bugs": [],
+      "occurrences": 3,
+      "last_seen": "2026-11-06T01:38:31.293Z"
+    },
+    {
+      "id": "bug-4054",
+      "timestamp": "2026-11-06T01:38:36.494Z",
+      "error_message": "Significant refactor of ",
+      "file": "backend/app/extensions/bid_review/engine/rulepacks/bid-review-core/1.0.0.yaml",
+      "root_cause": "2 lines replaced/restructured",
+      "fix": "Rewrote 4→6 lines (2 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "yaml"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-11-06T01:38:36.495Z"
+    },
+    {
+      "id": "bug-4055",
+      "timestamp": "2026-11-06T01:38:56.844Z",
+      "error_message": "Incorrect value in code",
+      "file": "backend/tests/test_bid_review_rule_families.py",
+      "root_cause": "Had \"L2-023\"",
+      "fix": "Changed to \"L2-041\"",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 7,
+      "last_seen": "2026-11-06T01:39:13.942Z"
+    },
+    {
+      "id": "bug-4056",
+      "timestamp": "2026-11-06T01:40:56.839Z",
+      "error_message": "Incorrect value in code",
+      "file": "backend/tests/test_bid_review_rule_runner.py",
+      "root_cause": "Had \"L2-021\"",
+      "fix": "Changed to \"L2-023\"",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-11-06T01:40:56.839Z"
+    },
+    {
+      "id": "bug-4057",
+      "timestamp": "2026-11-06T01:40:59.378Z",
+      "error_message": "Wrong reference: 021 should be 023",
+      "file": "backend/tests/test_bid_review_rule_runner.py",
+      "root_cause": "Used \"021\" instead of \"023\"",
+      "fix": "Changed 021 → 023",
+      "tags": [
+        "auto-detected",
+        "wrong-reference",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 2,
+      "last_seen": "2026-11-06T01:41:18.279Z"
+    },
+    {
+      "id": "bug-4058",
+      "timestamp": "2026-11-06T01:41:41.407Z",
+      "error_message": "Wrong reference: 021 should be 023",
+      "file": "backend/tests/test_bid_review_llm_verify.py",
+      "root_cause": "Used \"021\" instead of \"023\"",
+      "fix": "Changed 021 → 023",
+      "tags": [
+        "auto-detected",
+        "wrong-reference",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-11-06T01:41:41.407Z"
+    },
+    {
+      "id": "bug-4059",
+      "timestamp": "2026-11-06T01:41:44.379Z",
+      "error_message": "Wrong reference: 022 should be 041",
+      "file": "backend/tests/test_bid_review_registry.py",
+      "root_cause": "Used \"022\" instead of \"041\"",
+      "fix": "Changed 022 → 041",
+      "tags": [
+        "auto-detected",
+        "wrong-reference",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-11-06T01:41:44.379Z"
+    },
+    {
+      "id": "bug-4060",
+      "timestamp": "2026-11-06T01:41:47.441Z",
+      "error_message": "Wrong reference: 022 should be 041",
+      "file": "backend/app/extensions/bid_review/engine/labels.py",
+      "root_cause": "Used \"022\" instead of \"041\"",
+      "fix": "Changed 022 → 041",
+      "tags": [
+        "auto-detected",
+        "wrong-reference",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-11-06T01:41:47.441Z"
+    },
+    {
+      "id": "bug-4061",
+      "timestamp": "2026-11-06T01:41:50.516Z",
+      "error_message": "Wrong reference: 022 should be 041",
+      "file": "backend/app/extensions/bid_review/engine/extract.py",
+      "root_cause": "Used \"022\" instead of \"041\"",
+      "fix": "Changed 022 → 041",
+      "tags": [
+        "auto-detected",
+        "wrong-reference",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-11-06T01:41:50.516Z"
+    },
+    {
+      "id": "bug-4062",
+      "timestamp": "2026-11-06T01:41:53.956Z",
+      "error_message": "Wrong reference: 021 should be 023",
+      "file": "backend/app/extensions/bid_review/engine/anchors.py",
+      "root_cause": "Used \"021\" instead of \"023\"",
+      "fix": "Changed 021 → 023",
+      "tags": [
+        "auto-detected",
+        "wrong-reference",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-11-06T01:41:53.956Z"
+    },
+    {
+      "id": "bug-4063",
+      "timestamp": "2026-11-06T01:41:57.548Z",
+      "error_message": "Wrong reference: 021 should be 023",
+      "file": "backend/app/extensions/bid_review/engine/llm_runner.py",
+      "root_cause": "Used \"021\" instead of \"023\"",
+      "fix": "Changed 021 → 023",
+      "tags": [
+        "auto-detected",
+        "wrong-reference",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-11-06T01:41:57.548Z"
+    },
+    {
+      "id": "bug-4064",
+      "timestamp": "2026-11-06T01:42:00.492Z",
+      "error_message": "Wrong reference: 021 should be 023",
+      "file": "backend/app/extensions/bid_review/engine/rule_runner.py",
+      "root_cause": "Used \"021\" instead of \"023\"",
+      "fix": "Changed 021 → 023",
+      "tags": [
+        "auto-detected",
+        "wrong-reference",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-11-06T01:42:00.493Z"
+    },
+    {
+      "id": "bug-4065",
+      "timestamp": "2026-11-06T01:42:53.218Z",
+      "error_message": "Wrong reference: 021 should be 023",
+      "file": "backend/app/extensions/bid_review/golden/cases/L2-023-fp-reject-full.yaml",
+      "root_cause": "Used \"021\" instead of \"023\"",
+      "fix": "Changed 021 → 023",
+      "tags": [
+        "auto-detected",
+        "wrong-reference",
+        "yaml"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-11-06T01:42:53.218Z"
+    },
+    {
+      "id": "bug-4066",
+      "timestamp": "2026-11-06T01:42:55.932Z",
+      "error_message": "Wrong reference: 021 should be 023",
+      "file": "backend/app/extensions/bid_review/golden/cases/L2-023-fp-confirm-partial.yaml",
+      "root_cause": "Used \"021\" instead of \"023\"",
+      "fix": "Changed 021 → 023",
+      "tags": [
+        "auto-detected",
+        "wrong-reference",
+        "yaml"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-11-06T01:42:55.932Z"
+    },
+    {
+      "id": "bug-4067",
+      "timestamp": "2026-11-06T01:42:58.461Z",
+      "error_message": "Wrong reference: 021 should be 023",
+      "file": "backend/app/extensions/bid_review/golden/cases/L2-023-fp-unclear.yaml",
+      "root_cause": "Used \"021\" instead of \"023\"",
+      "fix": "Changed 021 → 023",
+      "tags": [
+        "auto-detected",
+        "wrong-reference",
+        "yaml"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-11-06T01:42:58.461Z"
+    },
+    {
+      "id": "bug-4068",
+      "timestamp": "2026-11-06T01:43:01.293Z",
+      "error_message": "Wrong reference: 023 should be 022",
+      "file": "backend/app/extensions/bid_review/golden/cases/L2-022-blank-attachment.yaml",
+      "root_cause": "Used \"023\" instead of \"022\"",
+      "fix": "Changed 023 → 022",
+      "tags": [
+        "auto-detected",
+        "wrong-reference",
+        "yaml"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-11-06T01:43:01.293Z"
+    },
+    {
+      "id": "bug-4069",
+      "timestamp": "2026-11-06T01:43:05.030Z",
+      "error_message": "Wrong reference: 022 should be 041",
+      "file": "backend/app/extensions/bid_review/golden/cases/L2-041-required-row-no-price.yaml",
+      "root_cause": "Used \"022\" instead of \"041\"",
+      "fix": "Changed 022 → 041",
+      "tags": [
+        "auto-detected",
+        "wrong-reference",
+        "yaml"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-11-06T01:43:05.030Z"
+    },
+    {
+      "id": "bug-4070",
+      "timestamp": "2026-11-06T01:46:10.406Z",
+      "error_message": "Wrong reference: 021 should be 023",
+      "file": "backend/tests/test_bid_review_metrics.py",
+      "root_cause": "Used \"021\" instead of \"023\"",
+      "fix": "Changed 021 → 023",
+      "tags": [
+        "auto-detected",
+        "wrong-reference",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-11-06T01:46:10.406Z"
+    },
+    {
+      "id": "bug-4071",
+      "timestamp": "2026-11-06T02:21:39.325Z",
+      "error_message": "Incorrect value in code",
+      "file": "docs/superpowers/plans/2026-11-06-bid-review-w1-w5-migration-server-derived-joins-plan.md",
+      "root_cause": "Had `RulePackMeta.rule_overrides`",
+      "fix": "Changed to `L2-022`",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "md"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-11-06T02:21:39.325Z"
+    },
+    {
+      "id": "bug-4072",
+      "timestamp": "2026-11-06T02:27:43.560Z",
+      "error_message": "Wrong reference: 019 should be 026",
+      "file": "backend/app/extensions/bid_review/engine/rulepacks/bid-review-core/1.0.0.yaml",
+      "root_cause": "Used \"019\" instead of \"026\"",
+      "fix": "Changed 019 → 026",
+      "tags": [
+        "auto-detected",
+        "wrong-reference",
+        "yaml"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-11-06T02:27:43.560Z"
+    },
+    {
+      "id": "bug-4073",
+      "timestamp": "2026-11-06T02:28:11.811Z",
+      "error_message": "Wrong reference: 019 should be 026",
+      "file": "backend/app/extensions/bid_review/golden/cases/L3-026-cluster-unsure.yaml",
+      "root_cause": "Used \"019\" instead of \"026\"",
+      "fix": "Changed 019 → 026",
+      "tags": [
+        "auto-detected",
+        "wrong-reference",
+        "yaml"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-11-06T02:28:11.811Z"
+    },
+    {
+      "id": "bug-4074",
+      "timestamp": "2026-11-06T02:28:43.846Z",
+      "error_message": "Incorrect value in code",
+      "file": "backend/tests/test_bid_review_golden.py",
+      "root_cause": "Had \"L3-019\"",
+      "fix": "Changed to \"L3-026\"",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-11-06T02:28:43.846Z"
+    },
+    {
+      "id": "bug-4075",
+      "timestamp": "2026-11-06T02:28:46.515Z",
+      "error_message": "Wrong reference: 019 should be 026",
+      "file": "backend/tests/test_bid_review_golden.py",
+      "root_cause": "Used \"019\" instead of \"026\"",
+      "fix": "Changed 019 → 026",
+      "tags": [
+        "auto-detected",
+        "wrong-reference",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-11-06T02:28:46.516Z"
+    },
+    {
+      "id": "bug-4076",
+      "timestamp": "2026-11-06T02:28:49.031Z",
+      "error_message": "Incorrect value in code",
+      "file": "backend/tests/test_bid_review_rule_families.py",
+      "root_cause": "Had \"L3-019\"",
+      "fix": "Changed to \"L3-020\"",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 4,
+      "last_seen": "2026-11-06T02:28:56.415Z"
+    },
+    {
+      "id": "bug-4077",
+      "timestamp": "2026-11-06T02:28:58.920Z",
+      "error_message": "Incorrect value in code",
+      "file": "backend/tests/test_bid_review_rule_runner.py",
+      "root_cause": "Had \"L1 det 14 + L3 det 15(+L3-019/020) + L2 det 4(L2-",
+      "fix": "Changed to \"L1 det 14 + L3 det 15(+L3-026/020) + L2 det 4(L2-",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-11-06T02:28:58.920Z"
+    },
+    {
+      "id": "bug-4078",
+      "timestamp": "2026-11-06T02:43:38.088Z",
+      "error_message": "Incorrect value in code",
+      "file": "backend/tests/test_bid_review_golden.py",
+      "root_cause": "Had \"L3-020\"",
+      "fix": "Changed to \"L2-015\"",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-11-06T02:43:38.088Z"
+    },
+    {
+      "id": "bug-4079",
+      "timestamp": "2026-11-06T02:43:54.450Z",
+      "error_message": "Incorrect value in code",
+      "file": "backend/tests/test_bid_review_rule_families.py",
+      "root_cause": "Had \"L2-022\"",
+      "fix": "Changed to \"L2-015\"",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-11-06T02:43:54.450Z"
+    },
+    {
+      "id": "bug-4080",
+      "timestamp": "2026-11-06T02:44:11.216Z",
+      "error_message": "Incorrect value in code",
+      "file": "backend/tests/test_bid_review_rule_runner.py",
+      "root_cause": "Had \"L1 det 14 + L3 det 15(+L3-026/020) + L2 det 4(L2-",
+      "fix": "Changed to \"L1 det 14 + L3 det 14 + L2 det 5(L2-020/022/024/0",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-11-06T02:44:11.216Z"
+    },
+    {
+      "id": "bug-4081",
+      "timestamp": "2026-11-06T03:12:01.897Z",
+      "error_message": "Incorrect value in code",
+      "file": "C:/Users/admin/.claude/projects/D--eai-eai-flow-main/memory/bid-review-alignment-audit-2026-11-05.md",
+      "root_cause": "Had \"bid_review 双规格对齐审计(11-05素材稿+11-06整合版90条)——主链对齐,规则",
+      "fix": "Changed to \"bid_review 双规格对齐审计——W1-W5编号迁移已落地(5条同号不同义清零),quick",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "md"
+      ],
+      "related_bugs": [],
+      "occurrences": 2,
+      "last_seen": "2026-11-06T03:12:23.810Z"
+    },
+    {
+      "id": "bug-4082",
+      "timestamp": "2026-11-06T03:23:33.234Z",
+      "error_message": "Significant refactor of ",
+      "file": "backend/app/extensions/bid_review/engine/extract.py",
+      "root_cause": "2 lines replaced/restructured",
+      "fix": "Rewrote 6→86 lines (2 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-11-06T03:23:33.234Z"
+    },
+    {
+      "id": "bug-4083",
+      "timestamp": "2026-11-06T04:15:21.512Z",
+      "error_message": "derive_joins TypeError: int object is not iterable——bid.attachment_index 标量(模型常态回标量R4类)炸一阶段基线",
+      "file": "backend/app/extensions/bid_review/engine/extract.py",
+      "root_cause": "sources循环 for item in out.get(p) or [] 无类型守卫;5 or []→5→TypeError;改动前该输入走att_*消费方non-list→need_human优雅降级",
+      "fix": "751c5909f:守卫src=out.get(p);isinstance(src,(list,tuple))才迭代+诚实降级注释+标量不落present键测试(红TypeError→绿);同commit带公里→km别名+二段来源docstring注",
+      "tags": [
+        "bid_review",
+        "derive_joins",
+        "honest-degradation",
+        "R4-scalar",
+        "crash"
+      ],
+      "related_bugs": [
+        "bug-4013"
+      ],
+      "occurrences": 1,
+      "last_seen": "2026-11-06T04:15:21.513Z"
+    },
+    {
+      "id": "bug-4084",
+      "timestamp": "2026-11-06T04:22:42.560Z",
+      "error_message": "Significant refactor of ",
+      "file": "backend/tests/test_bid_review_registry.py",
+      "root_cause": "2 lines replaced/restructured",
+      "fix": "Rewrote 3→4 lines (2 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-11-06T04:22:42.560Z"
+    },
+    {
+      "id": "bug-4085",
+      "timestamp": "2026-11-06T04:23:25.110Z",
+      "error_message": "Wrong return value",
+      "file": "backend/app/extensions/bid_review/engine/extract.py",
+      "root_cause": "Was returning: sorted(set(_registry_universe()) - set(_SECOND_STA",
+      "fix": "Now returns: sorted(set(_registry_universe()) - set(_SECOND_STA",
+      "tags": [
+        "auto-detected",
+        "return-value",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-11-06T04:23:25.110Z"
     }
   ]
 }
