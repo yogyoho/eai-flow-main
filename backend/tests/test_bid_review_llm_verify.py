@@ -534,13 +534,13 @@ async def test_hyb_op_left_right_numeric_expr_none_unclear_survives():
     assert issues[0]["verdict"] == "unclear" and issues[0]["need_human"] is True, "unclear=need_human 存活出管线"
 
 
-# ── L2-021 指纹通道(spec 2026-11-04 §2.3):op 型 hyb 候选门 + 指纹字典合并进卡 ──
+# ── L2-023 指纹通道(spec 2026-11-04 §2.3):op 型 hyb 候选门 + 指纹字典合并进卡 ──
 # 粗筛门修复前只认 det_expr → op 型 hybrid(att_missing_rows)fail-open 纯 sem,
 # 候选段永不生成,§4.4「先 det 粗筛,候选进 LLM 判定」对 op 型规则断链;
 # 既有 4 条 hyb 全带 det_expr,门放宽(det_expr 或 op 二选一)零既有影响。
 
 FP_RULE = {
-    "id": "L2-021",
+    "id": "L2-023",
     "name": "附件类型指纹核对",
     "layer": "L2",
     "type": "hybrid",

@@ -15,7 +15,7 @@ from app.extensions.bid_review.engine.rule_runner import RulePackError, load_rul
 
 # 宇宙(2026-11-05 R1 取证 71 路径 + M1 实体段 bid.attachments + M2 章节段 bid.section_tree + M3 表格段
 # bid.boq_rows/bid.table_cells + M4 业绩聚类 bid.performance_entries/bid.performance_groups = 77
-# + R2+ 规则族 L2-022 inputs 声明 tender.required_fields = 78)——逐位锁定。
+# + R2+ 规则族 L2-041 inputs 声明 tender.required_fields = 78)——逐位锁定。
 # 首段 prompt 路径 = EXPECTED_UNIVERSE − SECOND_STAGE_FIELDS = 72(R1 改造前 71 + R2+ 新增 1)。
 EXPECTED_UNIVERSE = [
     "bid.alternative_price_offers",
@@ -88,7 +88,7 @@ EXPECTED_UNIVERSE = [
     "tender.project_identity.lot_section",
     "tender.project_identity.name",
     "tender.required_declarations",
-    "tender.required_fields",  # R2+ L2-022 必填清单行未报价(plan 2026-11-05 规则族补齐)
+    "tender.required_fields",  # R2+ L2-041 必填清单行未报价(plan 2026-11-05 规则族补齐)
     "tender.required_qual_level",
     "tender.required_sections",
     "tender.required_validity_days",
@@ -125,7 +125,7 @@ def _synthetic_rule(rid: str, layer: str, severity: str) -> dict:
 
 class TestUniverse:
     def test_anchored_78(self):
-        # 77→78(R2+ L2-022 inputs 声明 tender.required_fields 首次入宇宙,裁决⑤修正)
+        # 77→78(R2+ L2-041 inputs 声明 tender.required_fields 首次入宇宙,裁决⑤修正)
         assert len(EXPECTED_UNIVERSE) == 78
         assert registry.universe() == EXPECTED_UNIVERSE
 

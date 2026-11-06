@@ -9,7 +9,7 @@ det issue 证据 chips 更丰满;注册表同时是 20 个锚名的唯一语义�
 三方同步契约:规则包 evidence 锚名 / 本表 / labels.FIELD_LABELS——新增锚名
 须先落本表;registry.lint_rules(load_rulepack 硬拒载,EAI-CUSTOM 2026-11-05 R1)
 使未注册锚名从「resolve 静默跳过」升级为「加载期拒载」(bug-3985:静默跳过
-曾让 L2-021 的 A-BID-DOC 证据区悄悄丢)。
+曾让 L2-023 的 A-BID-DOC 证据区悄悄丢)。
 """
 
 from __future__ import annotations
@@ -124,8 +124,8 @@ ANCHOR_REGISTRY: dict[str, dict] = {
     },
     "A-TOC": {"label": "投标文件目录", "paths": ["bid.toc_section_codes"]},
     # ── 投标侧:附件 ──────────────────────────────────────────────────
-    # bug-3985(2026-11-05 R1):L2-021 唯一 evidence 此前未注册,anchor_rule_paths
-    # 静默跳过=证据区悄悄丢;paths 与 L2-021 inputs 同域=零行为,M1 附件实体落地后扩。
+    # bug-3985(2026-11-05 R1):L2-023 唯一 evidence 此前未注册,anchor_rule_paths
+    # 静默跳过=证据区悄悄丢;paths 与 L2-023 inputs 同域=零行为,M1 附件实体落地后扩。
     "A-BID-DOC": {
         "label": "投标文件附件区域",
         "paths": ["tender.attachment_requirements", "bid.attachment_index"],

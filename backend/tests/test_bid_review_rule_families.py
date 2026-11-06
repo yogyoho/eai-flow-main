@@ -17,7 +17,7 @@ from app.extensions.bid_review.engine.rule_runner import load_rulepack, run_det_
 
 PACK = str(Path(__file__).resolve().parent.parent / "app" / "extensions" / "bid_review" / "engine" / "rulepacks" / "bid-review-core" / "1.0.0.yaml")
 
-NEW_IDS = {"L2-022", "L2-023", "L3-019", "L3-020"}
+NEW_IDS = {"L2-022", "L2-041", "L3-019", "L3-020"}
 
 _QUIET = json.dumps(
     {"verdicts": [{"clause_id": "quiet", "verdict": "full", "confidence": 1.0, "reason": "安静应答", "evidence": []}]},
@@ -29,11 +29,11 @@ def _rules():
     return {r.id: r for r in load_rulepack(PACK).rules}
 
 
-class TestL2022RequiredRowPrice:
-    """L2-022 必填清单行未报价(tender.required_fields+bid.boq_rows;fatal;qty 不判)。"""
+class TestL2041RequiredRowPrice:
+    """L2-041 必填清单行未报价(整合版对齐 W3,原 EAI L2-022;fatal=EAI 上调 C-11;tender.required_fields+bid.boq_rows;qty 不判)。"""
 
     def test_required_row_missing_price_violation(self):
-        rule = _rules()["L2-022"]
+        rule = _rules()["L2-041"]
         fields = {
             "tender.required_fields": ["BOQ-1", "BOQ-2"],
             "bid.boq_rows": [
@@ -48,19 +48,19 @@ class TestL2022RequiredRowPrice:
         assert "BOQ-1" in issues[0]["message"] and "设备采购" in issues[0]["message"]
 
     def test_pass_and_missing_inputs(self):
-        rule = _rules()["L2-022"]
+        rule = _rules()["L2-041"]
         ok = {"tender.required_fields": ["B1"], "bid.boq_rows": [{"id": "B1", "name": "x", "unit": "", "qty": 1, "price": 9.9, "required": True}]}
         assert run_det_rule(rule, ok) == []
         assert run_det_rule(rule, {"tender.required_fields": ["B1"]})[0]["verdict"] == "need_human"
 
 
-class TestL2023BlankAttachment:
-    """L2-023 附件实体内容空白(bid.attachments;major;None 不判)。"""
+class TestL2022BlankAttachment:
+    """L2-022 附件实体内容空白(整合版对齐 W2,原 EAI L2-023;bid.attachments;major;None 不判)。"""
 
     _ATT = {"no": "A", "name": "营业执照", "norm_name": "营业执照", "pages": [1, 2], "type_fingerprint": "license", "fingerprint_conf": 0.9, "is_empty_text": True, "anchor": {}}
 
     def test_blank_and_none_pass(self):
-        rule = _rules()["L2-023"]
+        rule = _rules()["L2-022"]
         fields = {"bid.attachments": [dict(self._ATT), dict(self._ATT, no="B", name="业绩合同", is_empty_text=False)]}
         issues = run_det_rule(rule, fields)
         assert len(issues) == 1 and issues[0]["verdict"] == "violation" and issues[0]["severity"] == "major"
@@ -68,7 +68,7 @@ class TestL2023BlankAttachment:
         assert run_det_rule(rule, {"bid.attachments": [dict(self._ATT, is_empty_text=None)]}) == []
 
     def test_missing_input_need_human(self):
-        assert run_det_rule(_rules()["L2-023"], {})[0]["verdict"] == "need_human"
+        assert run_det_rule(_rules()["L2-022"], {})[0]["verdict"] == "need_human"
 
 
 class TestL3019ClusterUnsure:
@@ -127,7 +127,7 @@ class TestGoldenFaceInsurance:
 class TestFamilyWiring:
     def test_universe_unchanged_and_consumption_wired(self):
         # 裁决⑤修正(实施中实锤):tender.required_fields 原不在宇宙(consumed_by 空结果≠在宇宙),
-        # L2-022 inputs 声明使其首次入宇宙 77→78(by design,顺带修复 M3 必填口径从未抽取的潜在缺口)
+        # L2-041(原 EAI L2-022)inputs 声明使其首次入宇宙 77→78(by design,顺带修复 M3 必填口径从未抽取的潜在缺口)
         assert len(universe()) == 78
         for path in ("tender.required_fields", "bid.boq_rows", "bid.attachments", "bid.performance_groups", "bid.section_tree"):
             assert consumed_by(path)["rules"], f"{path} 仍零规则消费"

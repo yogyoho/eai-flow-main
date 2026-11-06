@@ -130,12 +130,12 @@ def test_full_pack_loads():
     by_type = {}
     for r in pack.rules:
         by_type.setdefault(r.type, []).append(r.id)
-    assert len(by_type.get("deterministic", [])) == 33, "L1 det 14 + L3 det 15(+L3-019/020) + L2 det 4(L2-020/022/023/024,R2+ 规则族补齐 2026-11-05) = 33"
-    assert len(by_type.get("hybrid", [])) == 5, "L1 hyb 003/007 + L3 hyb 004/008 + L2-021 指纹通道(spec 2026-11-04) = 5"
+    assert len(by_type.get("deterministic", [])) == 33, "L1 det 14 + L3 det 15(+L3-019/020) + L2 det 4(L2-020/022/024/041,R2+ 规则族补齐 2026-11-05) = 33"
+    assert len(by_type.get("hybrid", [])) == 5, "L1 hyb 003/007 + L3 hyb 004/008 + L2-023 指纹通道(spec 2026-11-04) = 5"
     assert len(by_type.get("semantic", [])) == 1, "L1-013 唯一 sem 规则"
     for r in pack.rules:
         if r.type == "hybrid":
-            # L2-021 为 op 型粗筛(att_missing_rows,spec 2026-11-04 §2.3 门=det_expr 或 op),
+            # L2-023 为 op 型粗筛(att_missing_rows,spec 2026-11-04 §2.3 门=det_expr 或 op),
             # 例外放行;其余 hyb 仍须带 det_expr。
             if not (r.check.get("det_expr") or r.check.get("op")):
                 raise AssertionError(f"{r.id} hybrid 缺 det_expr/op(粗筛永不触发)")
@@ -255,15 +255,15 @@ def test_att_ops_missing_field_need_human():
 
 def test_att_ops_whitelisted_at_load():
     """载入期白名单放行 att_check/att_count/att_missing_rows;L2 层三 att 规则(L2-020/024 det
-    + L2-021 hyb 指纹通道,spec 2026-11-04)可加载;R2+ 2026-11-05 增 L2-022/023(op:all 逐行)。"""
+    + L2-023 hyb 指纹通道,spec 2026-11-04)可加载;R2+ 2026-11-05 增 L2-022/041(op:all 逐行)。"""
     pack = load_rulepack(PACK)
     ops = {r.id: r.check.get("op") for r in pack.rules if r.layer == "L2"}
     assert ops == {
         "L2-020": "att_check",
         "L2-024": "att_count",
-        "L2-021": "att_missing_rows",
+        "L2-023": "att_missing_rows",
+        "L2-041": "all",
         "L2-022": "all",
-        "L2-023": "all",
     }
 
 
@@ -412,7 +412,7 @@ def test_att_check_orphan_and_sub_near_miss_both_messages():
     assert grp_msg["dedup_key"] == "L2-020|-|attachment:3"
 
 
-# ── L2-021 指纹通道:att_missing_rows 粗筛(spec 2026-11-04 §2.1) ──────────────────
+# ── L2-023 指纹通道:att_missing_rows 粗筛(spec 2026-11-04 §2.1) ──────────────────
 
 FP_MISS_FIELDS = {
     "tender.attachment_requirements": [
@@ -426,7 +426,7 @@ FP_MISS_FIELDS = {
 def _fp_rule(**check_extra):
     check = {"op": "att_missing_rows", "left": "tender.attachment_requirements", "right": "bid.attachment_index", **check_extra}
     return Rule(
-        id="L2-021",
+        id="L2-023",
         name="附件类型指纹核对",
         layer="L2",
         type="hybrid",
@@ -443,7 +443,7 @@ def _fp_rule(**check_extra):
 
 
 def test_att_missing_rows_per_row_candidates():
-    """L2-021 粗筛(spec 2026-11-04 §2.1):MISSING 行逐行 violation 候选,candidate_tpl
+    """L2-023 粗筛(spec 2026-11-04 §2.1):MISSING 行逐行 violation 候选,candidate_tpl
     渲染候选消息(message_tpl 是 sem 侧 {clause_id} 契约,两相分离),entity/dedup 按行实体键。"""
     issues = run_det_rule(_fp_rule(candidate_tpl="附件「{missing}」未见于投标提供清单"), FP_MISS_FIELDS)
     assert len(issues) == 2
@@ -473,12 +473,12 @@ def test_att_missing_rows_whitelisted_at_load(tmp_path):
     """算子入白名单:含 candidate_tpl 的规则包可载入(load_rulepack 不拒)。"""
     good = tmp_path / "good.yaml"
     good.write_text(
-        "rules:\n- id: L2-021\n  name: 指纹\n  layer: L2\n  type: hybrid\n  severity: major\n"
+        "rules:\n- id: L2-023\n  name: 指纹\n  layer: L2\n  type: hybrid\n  severity: major\n"
         "  applies_to: ['*']\n  inputs: [tender.attachment_requirements, bid.attachment_index]\n  check: {op: att_missing_rows, left: tender.attachment_requirements, right: bid.attachment_index, candidate_tpl: \"附件「{missing}」x\"}\n"
         "  evidence: []\n  message_tpl: m\n  fix_tpl: f\n  confidence_gate: 1.0\n  enabled: true\n",
         encoding="utf-8",
     )
-    assert load_rulepack(str(good)).rules[0].id == "L2-021"
+    assert load_rulepack(str(good)).rules[0].id == "L2-023"
 
 
 # ── L2 混合态:子近似+子真缺失 issue 面枚举(spec 2026-11-03 §4) ──────────────────

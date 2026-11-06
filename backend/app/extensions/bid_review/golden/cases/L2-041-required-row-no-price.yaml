@@ -1,12 +1,12 @@
-case: L2-022-required-row-no-price
-desc: R2+ 规则族补齐首题——必填清单行(服务端 required=True,M3 铁律由 tender.required_fields 回填)无单价 → L2-022 fatal;自附行(required=False)不判
+case: L2-041-required-row-no-price
+desc: R2+ 规则族补齐首题——必填清单行(服务端 required=True,M3 铁律由 tender.required_fields 回填)无单价 → L2-041 fatal;自附行(required=False)不判
 fields:
   tender.required_fields: [BOQ-1]
   bid.boq_rows:
     - {id: BOQ-1, name: 设备采购, unit: 套, qty: 2, price: null, required: true}
     - {id: X-9, name: 自附行, unit: 批, qty: 1, price: null, required: false}
 expect_issues:
-  - rule_id: L2-022
+  - rule_id: L2-041
     severity: fatal
     contains: ["BOQ-1", "设备采购"]
 expect_absent: []

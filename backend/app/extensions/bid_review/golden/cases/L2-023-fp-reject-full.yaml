@@ -1,0 +1,16 @@
+case: L2-023-fp-reject-full
+desc: 指纹驳回零条目——同字段场景,scripted 模型 full(材料确认无此类附件特征)驳回候选 → L2-023 零产出;L2-020 真缺失 MISSING 仍在场(判定层分工:真缺失归 L2-020,指纹通道永不自动 MATCHED)
+fields:
+  tender.attachment_requirements:
+    - {'no': "5", name: 安全生产许可证, mandatory: "★", min_count: null}
+  bid.attachment_index:
+    - {'no': "", name: 业绩合同, page: 9}
+model_script:
+  L2-023: '{"verdicts": [{"clause_id": "安全生产许可证", "verdict": "full", "confidence": 0.9, "reason": "材料中确认无此类附件特征,真缺失", "evidence": [{"doc_id": "bid.pdf", "page": 9, "text": "投标附件清单"}]}]}'
+expect_issues:
+  - rule_id: L2-020
+    severity: fatal
+    contains: ["附件缺失", "安全生产许可证"]
+    entity: "attachment:5"
+expect_absent: [L2-023]
+strict: false

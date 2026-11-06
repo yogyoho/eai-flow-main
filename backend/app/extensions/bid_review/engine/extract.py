@@ -94,7 +94,7 @@ LIST_PATHS: frozenset[str] = frozenset(
         # M2 裁决④(spec §5,2026-11-05):L3-013 消费面治理缺口——原不在任何形状集合
         # (passthrough 无闸),入此对齐 required_sections 同款待遇
         "bid.toc_section_codes",
-        # R2+ 规则族补齐(2026-11-05,裁决⑤修正):L2-022 inputs 声明使该路径首次入宇宙
+        # R2+ 规则族补齐(2026-11-05,裁决⑤修正):L2-041 inputs 声明使该路径首次入宇宙(整合版编号对齐 2026-11-06,原 EAI L2-022)
         # (顺带修复 M3 潜在缺口——必填口径此前从未进抽取请求);纯码列表同 required_declarations 待遇
         "tender.required_fields",
     }

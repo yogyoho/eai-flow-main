@@ -17,7 +17,7 @@ from app.extensions.bid_review.engine.attachments import match_attachments, norm
 from app.extensions.bid_review.engine.expr import ExprError, RulePackError, eval_expr, fields_used, validate_expr
 
 _OPS = {"lte": operator.le, "gte": operator.ge, "eq": operator.eq}
-_KNOWN_OPS = {*_OPS, "and", "all", "set_eq", "att_check", "att_count", "att_missing_rows"}  # steps 形态无 op 键,单独判;att_* = L2 P1 附件核对(spec 2026-11-02 §3)+L2-021 指纹通道(spec 2026-11-04 §2.1)
+_KNOWN_OPS = {*_OPS, "and", "all", "set_eq", "att_check", "att_count", "att_missing_rows"}  # steps 形态无 op 键,单独判;att_* = L2 P1 附件核对(spec 2026-11-02 §3)+L2-023 指纹通道(spec 2026-11-04 §2.1)
 _UNIT_CN = {"day": "天", "month": "个月", "week": "周", "percent": "%"}
 
 
@@ -240,7 +240,7 @@ def run_det_rule(rule: Rule, fields: dict) -> list[dict]:
             miss, extra = sorted(rhs - lhs, key=str), sorted(lhs - rhs, key=str)
             if miss or extra:
                 issues.append(_issue(rule, fields, {"missing": miss, "extra": extra}))
-        elif chk["op"] in ("att_check", "att_count", "att_missing_rows"):  # L2 P1 附件核对(spec 2026-11-02 §3);P2:UNKNOWN→need_human+实体键(§7);L2-021 粗筛(spec 2026-11-04 §2.1)
+        elif chk["op"] in ("att_check", "att_count", "att_missing_rows"):  # L2 P1 附件核对(spec 2026-11-02 §3);P2:UNKNOWN→need_human+实体键(§7);L2-023 粗筛(spec 2026-11-04 §2.1)
             reqs, prov = _val(chk["left"], fields), _val(chk["right"], fields)
             if not isinstance(reqs, list) or not isinstance(prov, list):
                 issues.append(_need_human(rule, "附件字段缺失或类型非法(need_human)"))
@@ -305,7 +305,7 @@ def run_det_rule(rule: Rule, fields: dict) -> list[dict]:
                             nh["dedup_key"] = f"{rule.id}|-|{_entity_key(r['req'])}"
                             issues.append(nh)
                 elif chk["op"] == "att_missing_rows":
-                    # L2-021 指纹通道粗筛(spec 2026-11-04 §2.1,EAI-CUSTOM):MISSING 行逐行
+                    # L2-023 指纹通道粗筛(spec 2026-11-04 §2.1,EAI-CUSTOM):MISSING 行逐行
                     # violation 候选,交 hyb 规则卡模型确认(永不自动 MATCHED);UNKNOWN 行零
                     # 发声——近似行已有 L2-020 need_human 面,双规则重复=噪音。candidate_tpl
                     # 与 message_tpl 分离:候选消息用 {missing} 行标签,sem 侧终稿消息用

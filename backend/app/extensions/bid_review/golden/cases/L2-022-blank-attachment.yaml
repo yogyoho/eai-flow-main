@@ -1,11 +1,11 @@
-case: L2-023-blank-attachment
-desc: R2+ 规则族补齐——附件实体 is_empty_text=true(空白/无效扫描件)→ L2-023 major;非空白附件不判
+case: L2-022-blank-attachment
+desc: R2+ 规则族补齐——附件实体 is_empty_text=true(空白/无效扫描件)→ L2-022 major;非空白附件不判
 fields:
   bid.attachments:
     - {'no': A, name: 营业执照, pages: [1, 2], is_empty_text: true, anchor: {}}
     - {'no': B, name: 业绩合同, pages: [3, 4], is_empty_text: false, anchor: {}}
 expect_issues:
-  - rule_id: L2-023
+  - rule_id: L2-022
     severity: major
     contains: ["营业执照"]
 expect_absent: []

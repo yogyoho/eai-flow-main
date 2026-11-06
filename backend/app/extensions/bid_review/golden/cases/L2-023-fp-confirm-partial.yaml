@@ -1,0 +1,16 @@
+case: L2-023-fp-confirm-partial
+desc: 指纹确认命中——招标要求「安全生产许可证」,提供清单仅有无关文件 → att_missing_rows 粗筛出 MISSING 行候选,scripted 模型回显候选 id C1 并 partial 确认疑似以其它名称提供 → L2-023 violation(类型指纹命中消息+候选实体继承,join key 端到端)
+fields:
+  tender.attachment_requirements:
+    - {'no': "5", name: 安全生产许可证, mandatory: "★", min_count: null}
+  bid.attachment_index:
+    - {'no': "", name: 业绩合同, page: 9}
+model_script:
+  L2-023: '{"verdicts": [{"clause_id": "C1", "verdict": "partial", "confidence": 0.9, "reason": "材料中发现名为「安全资格证书」的文件,内容含许可证编号/发证机关等安全生产许可证特征,疑似以其它名称提供", "evidence": [{"doc_id": "bid.pdf", "page": 9, "text": "安全资格证书"}]}]}'
+expect_issues:
+  - rule_id: L2-023
+    severity: major
+    contains: ["疑似以其它名称提供", "安全资格证书"]
+    entity: "attachment:5"
+expect_absent: []
+strict: false
