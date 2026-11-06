@@ -216,6 +216,54 @@ def test_heterogeneous_row_paths_passthrough():
     assert f["bid.appendix_references"] == ["附件A"]
 
 
+# ── 服务端派生 join(整合版对齐 P0③,2026-11-06;D:\knowbase 规格书 L2233 禁模型换算)──
+
+
+def test_derive_boq_unit_matched_recomputed():
+    # matched 服务端按行内 tender_unit/bid_unit 归一比对回填;模型自产 matched 一律丢弃
+    f = _fields_via_baseline({"bid.boq_unit_checks": [
+        {"code": "B1", "tender_unit": "米", "bid_unit": "m", "matched": False},   # 归一后相等→True(模型假值被覆盖)
+        {"code": "B2", "tender_unit": "米", "bid_unit": "毫米", "matched": True},  # 不等→False(模型假值被覆盖)
+        {"code": "B3", "tender_unit": "套", "bid_unit": None},                    # 缺侧→不落键(need_human 通路)
+    ]})
+    rows = f["bid.boq_unit_checks"]
+    assert rows[0]["matched"] is True
+    assert rows[1]["matched"] is False
+    assert "matched" not in rows[2]
+
+
+def test_derive_appendix_present_joined():
+    # present 服务端按附件名归一双向子串 join(attachments 优先,attachment_index 兜底);无来源不落键
+    fields = {
+        "bid.appendix_references": [
+            {"name": "营业执照（副本）", "present": False},  # 模型假值被覆盖
+            {"name": "安全生产许可证"},
+        ],
+        "bid.attachment_index": [{"no": "1", "name": "营业执照", "page": 1, "pages": None}],
+    }
+    f = _fields_via_baseline(fields)
+    rows = f["bid.appendix_references"]
+    assert rows[0]["present"] is True
+    assert rows[1]["present"] is False
+    f2 = _fields_via_baseline({"bid.appendix_references": [{"name": "营业执照"}]})
+    assert "present" not in f2["bid.appendix_references"][0]
+
+
+def test_derive_device_mismatches_computed():
+    # mismatches=tender×bid 归一集合双向差集;任一侧缺失→不派生(保持缺席=UNKNOWN)
+    f = _fields_via_baseline({
+        "tender.device_models": ["FBCDZ-8-No.20A", "KDK-400"],
+        "bid.device_models": ["FBCDZ-8-No.20", "KDK-400"],
+        "bid.device_model_mismatches": ["模型自产串:假"],
+    })
+    assert f["bid.device_model_mismatches"] == [
+        "FBCDZ-8-No.20:投标型号未见于招标清单",
+        "FBCDZ-8-No.20A:招标要求型号未见于投标文件",
+    ]
+    f2 = _fields_via_baseline({"bid.device_models": ["X-1"]})
+    assert f2["bid.device_model_mismatches"] is None  # 缺招标侧→不派生
+
+
 # ── 抽取 v2(EAI-CUSTOM 2026-10-30,spec D5/D7):provenance + 分片 ──────
 
 

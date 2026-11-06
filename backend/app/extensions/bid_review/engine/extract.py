@@ -102,9 +102,89 @@ LIST_PATHS: frozenset[str] = frozenset(
 # 行形异构字段(spec R5 修正):闸不适用(occurrence 包装与规则行形不符——appendix 读
 # .present、boq 读 .matched,错包反而造出求值期缺失/假违例),只给逐字段契约;部分行
 # 缺键仍走逐规则隔离 need_human(诚实降级),见 spec §4 挂账。
-FIELD_TYPE_CONTRACTS["bid.appendix_references"] = '[{name:"附件名", present:true|false 是否随卷提交}] 对象列表;present 必填布尔,从正文引用与附件清单逐条对照;禁止纯值列表/标量。'
-FIELD_TYPE_CONTRACTS["bid.boq_unit_checks"] = '[{code:"清单项编号", tender_unit:"招标单位", bid_unit:"投标单位", matched:true|false}] 对象列表;matched 必填布尔,逐清单项对照数量/单位口径;禁止纯值列表/标量。'
-_OCCURRENCE_CONTRACT = '[{value:"原文值", where:"出现位置(页码/章节/表名)"}] 对象列表;逐处 occurrence 一项,禁止纯值列表(如 ["人民币"] 应写 [{"value":"人民币","where":"报价表"}]),禁止标量。'
+# 换算禁令 P0③(2026-11-06):matched/present 改服务端 derive_joins 回填,模型只抄行;
+FIELD_TYPE_CONTRACTS["bid.appendix_references"] = '[{name:"附件名"}] 对象列表;只报正文引用到的附件名,present 由服务端按附件清单归一比对回填(禁模型换算,不产该键);禁止纯值列表/标量。'
+FIELD_TYPE_CONTRACTS["bid.boq_unit_checks"] = '[{code:"清单项编号", tender_unit:"招标单位", bid_unit:"投标单位"}] 对象列表;逐清单项抄录两侧计量单位原文,matched 由服务端归一比对回填(禁模型换算,不产该键);禁止纯值列表/标量。'
+# ── 服务端派生 join(整合版对齐 P0③,2026-11-06;D:\knowbase 规格书 L2233「禁模型换算」)──
+# boq_unit_checks[].matched / appendix_references[].present / device_model_mismatches 原由抽取
+# LLM 自产=换算禁令违例;改服务端派生,字段名与行形不变,规则零改动。无法判定不落键
+# (缺键→op:all 逐规则隔离 need_human 既有通路;UNKNOWN 不判通过铁律)。
+SERVER_DERIVED_PATHS: frozenset[str] = frozenset({"bid.device_model_mismatches"})
+
+_FW_MAP = str.maketrans(
+    "０１２３４５６７８９ＡＢＣＤＥＦＧＨＩＪＫＬＭＮＯＰＱＲＳＴＵＶＷＸＹＺａｂｃｄｅｆｇｈｉｊｋｌｍｎｏｐｑｒｓｔｕｖｗｘｙｚ",
+    "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz",
+)
+_UNIT_ALIASES = {"米": "m", "毫米": "mm", "厘米": "cm", "千米": "km", "平方米": "m2", "㎡": "m2", "立方米": "m3", "吨": "t", "千克": "kg", "公斤": "kg", "克": "g", "天": "day", "日": "day", "月": "month", "年": "year"}
+
+
+def normalize_unit_name(v: Any) -> str:
+    """清单计量单位归一(仅等值比对;不做量纲换算——mm≠m 口径不同=不一致,交人工)。"""
+    s = str(v or "").strip().translate(_FW_MAP).lower().strip()
+    return _UNIT_ALIASES.get(s, s)
+
+
+def derive_joins(fields: dict) -> dict:
+    """三个换算字段的服务端派生(纯函数返回新 dict):
+    - boq_unit_checks[].matched = normalize_unit_name(tender_unit)==normalize_unit_name(bid_unit)(两侧单位齐才落键);
+    - appendix_references[].present = 附件名与 bid.attachments/bid.attachment_index 归一双向子串命中(有来源才落键);
+    - device_model_mismatches = tender.device_models×bid.device_models 归一双向差集(两侧非空才派生,可派生时整体覆盖含 [])。
+    模型自产的 matched/present/mismatches 一律丢弃重建(禁模型换算)。"""
+    out = dict(fields)
+    rows = out.get("bid.boq_unit_checks")
+    if isinstance(rows, list):
+        new_rows = []
+        for r in rows:
+            if not isinstance(r, dict):
+                new_rows.append(r)
+                continue
+            r = {k: v for k, v in r.items() if k != "matched"}
+            t, b = r.get("tender_unit"), r.get("bid_unit")
+            if isinstance(t, str) and t.strip() and isinstance(b, str) and b.strip():
+                r["matched"] = normalize_unit_name(t) == normalize_unit_name(b)
+            new_rows.append(r)
+        out["bid.boq_unit_checks"] = new_rows
+    rows = out.get("bid.appendix_references")
+    if isinstance(rows, list):
+        sources = []
+        for p in ("bid.attachments", "bid.attachment_index"):
+            for item in out.get(p) or []:
+                if isinstance(item, dict) and isinstance(item.get("name"), str) and item["name"].strip():
+                    n = _normalize_name(item["name"])
+                    if n:
+                        sources.append(n)
+        new_rows = []
+        for r in rows:
+            if not isinstance(r, dict):
+                new_rows.append(r)
+                continue
+            r = {k: v for k, v in r.items() if k != "present"}
+            name = r.get("name")
+            if sources and isinstance(name, str) and name.strip():
+                n = _normalize_name(name)
+                r["present"] = bool(n) and any(n in s or s in n for s in sources)
+            new_rows.append(r)
+        out["bid.appendix_references"] = new_rows
+
+    def _model_list(v):
+        if isinstance(v, str) and v.strip():
+            return [v.strip()]
+        if isinstance(v, list):
+            return [str(x).strip() for x in v if isinstance(x, (str, int, float)) and str(x).strip()]
+        return None
+
+    ts, bs = _model_list(out.get("tender.device_models")), _model_list(out.get("bid.device_models"))
+    if ts and bs:
+        def _nm(s: str) -> str:
+            return " ".join(s.translate(_FW_MAP).split()).lower()
+        t_norms, b_norms = {_nm(x) for x in ts}, {_nm(x) for x in bs}
+        mism = [f"{m}:投标型号未见于招标清单" for m in bs if _nm(m) not in t_norms]
+        mism += [f"{m}:招标要求型号未见于投标文件" for m in ts if _nm(m) not in b_norms]
+        out["bid.device_model_mismatches"] = mism
+    return out
+
+
+_OCCURRENCE_CONTRACT ='[{value:"原文值", where:"出现位置(页码/章节/表名)"}] 对象列表;逐处 occurrence 一项,禁止纯值列表(如 ["人民币"] 应写 [{"value":"人民币","where":"报价表"}]),禁止标量。'
 _LIST_CONTRACT = "字符串列表;同类条目逐项一项;禁止标量/数字/对象(数量、单个名称都须包成数组)。"
 for _p in OCCURRENCE_PATHS:
     FIELD_TYPE_CONTRACTS[_p] = _OCCURRENCE_CONTRACT
@@ -681,6 +761,7 @@ def build_baseline(docs: list[dict], extract_fn: ExtractFn | None = None) -> dic
         raise TypeError(f"extract_fn 须返回 dict(字段路径→值 或 {{fields, provenance}}),得到 {type(raw).__name__}")
     fields_raw = raw.get("fields") if isinstance(raw.get("fields"), dict) else raw
     fields = normalize_fields(fields_raw, field_paths)
+    fields = derive_joins(fields)  # 换算禁令 P0③:服务端派生 join(模型不再自产三个换算布尔/串)
     doc_ids = {str(d.get("doc_id") or "doc") for d in docs}
     role_map = {str(d.get("role")): str(d.get("doc_id") or "doc") for d in docs if d.get("role")}
     provenance = normalize_provenance(raw.get("provenance"), field_paths, doc_ids, role_map)
