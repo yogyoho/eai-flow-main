@@ -115,7 +115,7 @@ _FW_MAP = str.maketrans(
     "０１２３４５６７８９ＡＢＣＤＥＦＧＨＩＪＫＬＭＮＯＰＱＲＳＴＵＶＷＸＹＺａｂｃｄｅｆｇｈｉｊｋｌｍｎｏｐｑｒｓｔｕｖｗｘｙｚ",
     "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz",
 )
-_UNIT_ALIASES = {"米": "m", "毫米": "mm", "厘米": "cm", "千米": "km", "平方米": "m2", "㎡": "m2", "立方米": "m3", "吨": "t", "千克": "kg", "公斤": "kg", "克": "g", "天": "day", "日": "day", "月": "month", "年": "year"}
+_UNIT_ALIASES = {"米": "m", "毫米": "mm", "厘米": "cm", "千米": "km", "公里": "km", "平方米": "m2", "㎡": "m2", "立方米": "m3", "吨": "t", "千克": "kg", "公斤": "kg", "克": "g", "天": "day", "日": "day", "月": "month", "年": "year"}
 
 
 def normalize_unit_name(v: Any) -> str:
@@ -127,7 +127,7 @@ def normalize_unit_name(v: Any) -> str:
 def derive_joins(fields: dict) -> dict:
     """三个换算字段的服务端派生(纯函数返回新 dict):
     - boq_unit_checks[].matched = normalize_unit_name(tender_unit)==normalize_unit_name(bid_unit)(两侧单位齐才落键);
-    - appendix_references[].present = 附件名与 bid.attachments/bid.attachment_index 归一双向子串命中(有来源才落键);
+    - appendix_references[].present = 附件名与 bid.attachments/bid.attachment_index 归一双向子串命中(有来源才落键)（bid.attachments 为二段字段,一段链实际来源=attachment_index;attachments 仅为防御性兜底扫描）;
     - device_model_mismatches = tender.device_models×bid.device_models 归一双向差集(两侧非空才派生,可派生时整体覆盖含 [];
       两侧不齐→显式 null(need_human 通路)——模型自产串无论派生与否一律丢弃)。
     模型自产的 matched/present/mismatches 一律丢弃重建(禁模型换算)。"""
@@ -149,7 +149,10 @@ def derive_joins(fields: dict) -> dict:
     if isinstance(rows, list):
         sources = []
         for p in ("bid.attachments", "bid.attachment_index"):
-            for item in out.get(p) or []:
+            src = out.get(p)
+            if not isinstance(src, (list, tuple)):
+                continue  # 标量/垃圾形状(模型常态回标量 R4 类)诚实降级——不炸整段基线
+            for item in src:
                 if isinstance(item, dict) and isinstance(item.get("name"), str) and item["name"].strip():
                     n = _normalize_name(item["name"])
                     if n:

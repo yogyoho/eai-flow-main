@@ -253,6 +253,17 @@ def test_derive_appendix_present_joined():
     assert "present" not in f2["bid.appendix_references"][0]
 
 
+def test_derive_appendix_present_scalar_source_no_crash():
+    # 模型常态回标量(R4类):attachment_index 标量不得炸 derive_joins——诚实降级,present 不落键
+    f = _fields_via_baseline(
+        {
+            "bid.appendix_references": [{"name": "营业执照"}],
+            "bid.attachment_index": 5,
+        }
+    )
+    assert "present" not in f["bid.appendix_references"][0]
+
+
 def test_derive_device_mismatches_computed():
     # mismatches=tender×bid 归一集合双向差集;任一侧缺失→不派生(保持缺席=UNKNOWN)
     f = _fields_via_baseline(
