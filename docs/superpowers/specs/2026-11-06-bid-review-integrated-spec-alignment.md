@@ -31,7 +31,7 @@
 | §3 | 数据模型 | 🟡 | 四实体对齐；verdict/state/semantic_verdict 三拆、gate_status 四态、severity 四档、Anchor logical_page/bbox/ocr_conf、Field type/unit/confidence 缺 |
 | §4 | 规则体系 | ❌→🟡 | 覆盖 39/90；5 条同号不同义已迁移（§3.1 LANDED 2026-11-06）；主责矩阵/方向互斥/L2\|ATT 去重键模板缺 |
 | §5 | 端到端流程 | 🟡 | 主流程对齐；解析广度❌（xlsx/zip/OFD/章节兜底/text_hash）；招标抽取 6/38 字段；门禁 gate_status 判定式未落 |
-| §6 | 注册表 | 🟡 | 命名同源但仓库走别名集；抽取器配置化❌；lint 端点❌；boq_unit_checks 等 3 处 LLM 派生布尔违反规格 L2233「禁模型换算」禁令 |
+| §6 | 注册表 | 🟡 | 命名同源但仓库走别名集；抽取器配置化❌；lint 端点❌；~~boq_unit_checks 等 3 处 LLM 派生布尔违反规格 L2233「禁模型换算」禁令~~ → 已兑付 derive_joins 服务端派生（2026-11-06，见 §5 第 3 条） |
 | §7 | 语义 Prompt | ✅🟡 | 铁律 1-7 落地（无证据不出结论硬校验/unclear→need_human/禁心算）；第 8 条防泄露缺；12 道后处理 vs 现七道 |
 | §8 | API | 🟡 | 主端点对齐；缺 rules lint/publish/rollback、bulk-feedback、Idempotency-Key、业务错误码体系；MCP=规格外扩展 |
 | §9 | 复核工作台 | 🟡 | 布局+四动作✅；快捷键/批量/fatal 逐条/断线恢复缺；角色视图❌ |
