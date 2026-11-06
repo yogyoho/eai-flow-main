@@ -135,3 +135,8 @@ spec docs/superpowers/specs/2026-11-03-bid-review-l2-p3-negative-evidence-synony
 
 **批D 备忘——P3 负证据**:negative_evidence={channels,pool,closest(top3,≥0.30)} 双写面——per_req(rule_runner 消费)+items(端点透传);分组失败行 evidence=None/unknown_reason=grouping,与 near_miss 不混用;复合子行 P3.2 已同入近似门(见本批 2026-11-03 三行)。
 
+## C-05/C-08 口径注记（2026-11-06，P1-α 落地）
+
+- **C-05**：入库快照 `bid.attachments[].status`/`bid.attachment_index[].status` 的 `MATCHED` 已归一为 **PRESENT**（规格 L2 枚举；`worker._normalize_attachment_status` 单点边界）。引擎内存态与判定不变；**MATCHED 保留为清单视图别名**——golden fixtures 的 `status_by_no` 钉值与 `build_checklist` 产出口径**不动**，本表既有行继续有效。
+- **C-08**：`bid_review_issues` 新增 `semantic_verdict`（引擎 raw 四值 full|partial|none|unclear，sem/hyb 专属）与 `state`（state_map 分层业务态）两列；`verdict` 收敛值（violation|need_human|unclear）与四态判定表**不变**。verdict 值域迁 PASS/FAIL/UNKNOWN/ERROR/SKIP 挂 P1-β（届时随规则扩包同批重标定本表）。
+

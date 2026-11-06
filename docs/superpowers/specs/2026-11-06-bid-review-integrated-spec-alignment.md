@@ -75,8 +75,8 @@ DB 注记（质量审查 Important-1 修正，2026-11-06）：**轮换使旧 ove
 
 | 裁决 | 仓库现状 | 处置 |
 |---|---|---|
-| C-05/C-22 | 附件状态 MATCHED 直接入库 | 视图层/入库前归一 PRESENT（MATCHED 保留为清单视图别名） |
-| C-08 | review_state 五态（复核口径） | 补 verdict（引擎五值）/semantic_verdict（full/partial/none/unclear）两字段，state 分层映射；review_state 保留为复核投影 |
+| C-05/C-22 | 附件状态 MATCHED 直接入库 | 视图层/入库前归一 PRESENT（MATCHED 保留为清单视图别名） → 已兑付（2026-11-06 P1-α：0f5cb6d68；入库 PRESENT+清单别名） |
+| C-08 | review_state 五态（复核口径） | 补 verdict（引擎五值）/semantic_verdict（full/partial/none/unclear）两字段，state 分层映射；review_state 保留为复核投影 → 已兑付（2026-11-06 P1-α：b08932b68；semantic_verdict+state 落库，verdict 值域迁 P1-β） |
 | C-09/C-18 | extract.py 用别名集（substantive_clauses/required_declarations/required_qual_level…） | 注册表真源名 + 加载期 alias 解析（规格 6.1 本就预期双命名并存，仓库已在 alias 侧，只差 alias 表显式化） |
 | C-16 | tender.bid_deadline | alias 到 tender.deadline |
 | C-21 | logical_page 无 | extract.py:57 已显式延后；解析层支持 logical_page 时一并落 |
@@ -98,11 +98,11 @@ DB 注记（质量审查 Important-1 修正，2026-11-06）：**轮换使旧 ove
 1. **W1~W5 编号迁移**（§3.1 施工清单）——一切规则扩展的前置。
 2. ~~quick 模式层裁剪~~ → 已兑付 ec77631ef（2026-11-06 并发会话，对齐审计①）。
 3. ~~换算禁令修复~~ → 已兑付（2026-11-06，P0 计划 2026-11-06-bid-review-w1-w5-migration-server-derived-joins-plan.md Task 5/6：derive_joins 服务端派生 c6f2762+d7a84b11+751c5909f；请求面排除 346acbb85，宇宙 78 不变仅请求面 71；离线快照 26/26 零翻红；诚实降级加固 bug-4083）。
-4. （P1 前置）枚举三拆 alias、MATCHED→PRESENT 归一、CALIBRATION 裁决表回写整合版侧。
+4. ~~（P1 前置）枚举三拆 alias、MATCHED→PRESENT 归一、CALIBRATION 裁决表回写整合版侧~~ → 已兑付（2026-11-06 P1-α，Task 2/3/4；verdict 值域迁移部分挂 P1-β）。
 
 ## 6. P1/P2 backlog（规格 §17 合并仓库实况）
 
-**P1**：L2 要件级/文件级规则包扩展 + L4 十条（C.2 YAML 现成）；解析广度（xlsx 表对象/zip/章节兜底）；抽取器配置化+lint 端点；评测规模化（24 算子实装/ATT 组门禁/holdout/自然集/双人标注）；漏报回流通道；错误码体系；MCP 三工具补齐；枚举三拆。
+**P1**：L2 要件级/文件级规则包扩展 + L4 十条（C.2 YAML 现成）；解析广度（xlsx 表对象/zip/章节兜底）；抽取器配置化+lint 端点；评测规模化（24 算子实装/ATT 组门禁/holdout/自然集/双人标注）；漏报回流通道；错误码体系；MCP 三工具补齐（枚举三拆已于 2026-11-06 P1-α 兑付，verdict 值域迁 P1-β）。
 **P2**：§12 安全合规与 §13 非功能（平台级立项）；角色视图五套；批量复核/快捷键/断线恢复；双模型交叉；灰度 shadow；增量审查；创新点七项（历史胜率双方一致不做）。
 **风险记档**：跳过「30 份真实文档评测」以 golden 合成件替代；未过规格上线门禁（fatal_recall≥0.97 档）带条件推进；golden 匹配权重 0.5/0.3/0.2 与规格 0.55/0.30/0.15 微差待对齐。
 
