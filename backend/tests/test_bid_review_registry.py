@@ -17,12 +17,14 @@ from app.extensions.bid_review.engine.rule_runner import RulePackError, load_rul
 # 宇宙(2026-11-05 R1 取证 71 路径 + M1 实体段 bid.attachments + M2 章节段 bid.section_tree + M3 表格段
 # bid.boq_rows/bid.table_cells + M4 业绩聚类 bid.performance_entries/bid.performance_groups = 77
 # + R2+ 规则族 L2-041 inputs 声明 tender.required_fields = 78
-# + P1-β批二续 文件级 L2-001/002/003 六路径 = 84)——逐位锁定。
-# 首段 prompt 路径 = EXPECTED_UNIVERSE − SECOND_STAGE_FIELDS − SERVER_DERIVED_PATHS = 77(批二续 71+6;前值 71=R2+ 后 72−device_model_mismatches 服务端派生,整合版对齐 P0③)。
+# + P1-β批二续 文件级 L2-001/002/003 六路径 = 84
+# + P1-β批二续 T2 文件级完好性 L2-004/050/051 三路径(archive_files/files/full_text;full_text 规格名全文域首入宇宙,plan 预算 86 偏差 +1)= 87)——逐位锁定。
+# 首段 prompt 路径 = EXPECTED_UNIVERSE − SECOND_STAGE_FIELDS − SERVER_DERIVED_PATHS = 79(87−6−2;T2 后 bid.full_text 入 SERVER_DERIVED_PATHS 禁模型抽取;前值 77=84−6−1)。
 EXPECTED_UNIVERSE = [
     "bid.alternative_price_offers",
     "bid.amount_occurrences",
     "bid.appendix_references",
+    "bid.archive_files",  # P1-β批二续 T2 L2-004 压缩包内文件(2026-11-07)
     "bid.attachment_index",
     "bid.attachments",
     "bid.authorization_letter_present",
@@ -51,6 +53,8 @@ EXPECTED_UNIVERSE = [
     "bid.entity.name_in_bid_letter",
     "bid.entity_name_occurrences",
     "bid.file_index",  # P1-β批二续 L2-001 投标文件索引(2026-11-07)
+    "bid.files",  # P1-β批二续 T2 L2-050 全量文件(2026-11-07)
+    "bid.full_text",  # P1-β批二续 T2 L2-051 规格名全文域,入 SERVER_DERIVED_PATHS 禁模型抽取(2026-11-07)
     "bid.header_footer.project_name",
     "bid.missing_signature_pages",
     "bid.old_project_mentions",
@@ -132,9 +136,9 @@ def _synthetic_rule(rid: str, layer: str, severity: str) -> dict:
 
 
 class TestUniverse:
-    def test_anchored_84(self):
-        # 78→84(P1-β批二续 文件级 L2-001/002/003 六路径入宇宙,2026-11-07;前值 77→78=R2+ 裁决⑤修正)
-        assert len(EXPECTED_UNIVERSE) == 84
+    def test_anchored_87(self):
+        # 84→87(P1-β批二续 T2 L2-004/050/051 三路径入宇宙,2026-11-07;bid.full_text 规格名首入宇宙,plan 预算 86 偏差 +1)
+        assert len(EXPECTED_UNIVERSE) == 87
         assert registry.universe() == EXPECTED_UNIVERSE
 
     def test_second_stage_fields(self):

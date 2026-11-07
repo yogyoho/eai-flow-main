@@ -133,9 +133,9 @@ def test_full_pack_loads():
     by_type = {}
     for r in pack.rules:
         by_type.setdefault(r.type, []).append(r.id)
-    assert len(by_type.get("deterministic", [])) == 38, (
-        "L1 13 + L2 10 + L3 15 = 38(批二续 +3 文件级 L2-001/002/003,P1-β批二续 2026-11-07;"
-        "前值 35=L1 13 + L3 15 + L2 7,L2-021 附件编号引用 P1-β批二;编号对齐 2026-11-07)"
+    assert len(by_type.get("deterministic", [])) == 41, (
+        "L1 13 + L2 13 + L3 15 = 41(批二续T2 +3 文件级完好性 L2-004/050/051,P1-β批二续 2026-11-07;"
+        "前值 38=L1 13 + L2 10 + L3 15,批二续T1 +3 文件级 L2-001/002/003)"
     )
     assert len(by_type.get("hybrid", [])) == 5, "L1 hyb 003/007 + L3 hyb 004/008 + L2-023 指纹通道(整合版对齐 W1) = 5"
     assert len(by_type.get("semantic", [])) == 1, "L1-013 唯一 sem 规则"
@@ -274,13 +274,17 @@ def test_att_ops_whitelisted_at_load():
     + L2-023 hyb 指纹通道,spec 2026-11-04)可加载;R2+ 2026-11-05 增 L2-022/041(op:all 逐行);
     整合版对齐 W5 层归位 2026-11-06 增 L2-015(op:all);W11 层归位 2026-11-07 增 L2-031(op:all,自 L1-021);
     P1-β批二 2026-11-07 增 L2-021(op:all,col 取列,W9 主责);
-    P1-β批二续 2026-11-07 增 L2-001/002/003(steps subset_of×2 + gte 册数下限,steps 形态无 op 键=None)。"""
+    P1-β批二续 2026-11-07 增 L2-001/002/003(steps subset_of×2 + gte 册数下限,steps 形态无 op 键=None);
+    P1-β批二续 T2 2026-11-07 增 L2-004/050(op:all 逐行完好性)+ L2-051(op:eq regex 草稿残留)。"""
     pack = load_rulepack(PACK)
     ops = {r.id: r.check.get("op") for r in pack.rules if r.layer == "L2"}
     assert ops == {
         "L2-001": None,
         "L2-002": "gte",
         "L2-003": None,
+        "L2-004": "all",
+        "L2-050": "all",
+        "L2-051": "eq",
         "L2-015": "all",
         "L2-020": "att_check",
         "L2-021": "all",

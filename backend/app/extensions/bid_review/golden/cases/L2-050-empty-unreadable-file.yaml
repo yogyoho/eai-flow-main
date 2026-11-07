@@ -1,0 +1,11 @@
+case: L2-050-empty-unreadable-file
+desc: 全量文件一行 readable:false → L2-050 major violation(op:all 逐行);MIME-扩展名一致性挂账(A-续-④)不产该键;strict 钉单规则零残留
+fields:
+  bid.files:
+    - {name: 业绩合同扫描件.pdf, size_bytes: 204800, readable: false}
+expect_issues:
+  - rule_id: L2-050
+    severity: major
+    contains: ["不可读"]
+expect_absent: []
+strict: true

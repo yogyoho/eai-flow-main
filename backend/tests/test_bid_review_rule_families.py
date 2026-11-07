@@ -128,9 +128,10 @@ class TestFamilyWiring:
     def test_universe_unchanged_and_consumption_wired(self):
         # 裁决⑤修正(实施中实锤):tender.required_fields 原不在宇宙(consumed_by 空结果≠在宇宙),
         # L2-041(原 EAI L2-022)inputs 声明使其首次入宇宙 77→78(by design,顺带修复 M3 必填口径从未抽取的潜在缺口);
-        # P1-β批二续 2026-11-07 文件级 L2-001/002/003 六路径入宇宙 78→84(by design)
-        assert len(universe()) == 84
-        for path in ("tender.required_fields", "bid.boq_rows", "bid.attachments", "bid.performance_groups", "bid.section_tree", "tender.file_composition", "bid.volume_index"):
+        # P1-β批二续 2026-11-07 文件级 L2-001/002/003 六路径入宇宙 78→84(by design);
+        # P1-β批二续 T2 2026-11-07 L2-004/050/051 三路径入宇宙 84→87(by design;bid.full_text 规格名全文域首入宇宙,plan 预算 86 偏差 +1)
+        assert len(universe()) == 87
+        for path in ("tender.required_fields", "bid.boq_rows", "bid.attachments", "bid.performance_groups", "bid.section_tree", "tender.file_composition", "bid.volume_index", "bid.archive_files", "bid.files", "bid.full_text"):
             assert consumed_by(path)["rules"], f"{path} 仍零规则消费"
         assert not consumed_by("bid.table_cells")["rules"]  # 临时契约挂账不动(裁决⑦)
 

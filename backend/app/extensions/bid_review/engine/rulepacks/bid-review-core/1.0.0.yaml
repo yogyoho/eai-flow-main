@@ -1,4 +1,4 @@
-# bid-review-core 子系统规则包 v1.0.0(canonical,44 条:det 38 / hyb 5 / sem 1;整合版编号对齐 2026-11-06)——技能 references/rules-det-subset.yaml 为其 M1 七条副本分发
+# bid-review-core 子系统规则包 v1.0.0(canonical,47 条:det 41 / hyb 5 / sem 1;整合版编号对齐 2026-11-06)——技能 references/rules-det-subset.yaml 为其 M1 七条副本分发
 # 转录口径(Task 18,2026-10-29):素材④全量规则包会话记录本仓不可达,按设计文档 §6.3 v1 清单+素材②元模型重写 check;
 # 格式基准=§6.4 L1-009;severity 依层级赋予(L1=否决项红线→fatal,L3=一致性→major;唯 L1-003 业绩达标=major,
 # 与 test_bid_review_llm_verify 夹具同值),素材②规则表可达后逐条对账。M1 七条(L1-009/010/011+L3-001/003/005/006)原样保留不回退。
@@ -817,5 +817,63 @@ rules:
     evidence: [A-MAIN-TEXT, A-TENDER-NOTICE]
     message_tpl: "电子标书要求文件未全部提供(加密标书/签章文件/清单源文件比对缺项)"
     fix_tpl: "按招标电子标书要求补齐加密标书、签章文件与清单源文件"
+    confidence_gate: 1.0
+    enabled: true
+  # ── P1-β批二续 Task2(2026-11-07):文件级完好性三规则 L2-004/050/051——spec §4.4 :838/:850/:851。
+  # L2-004 v1=零字节+可读+非加密,包损坏深度检测挂账(A-续-④ 同源);L2-050 v1=零字节+可读,
+  # MIME-扩展名一致性挂账(A-续-④,需映射表,W2 OCR 先例)。bid.archive_files/bid.files 对象列表
+  # 不进 LIST_PATHS/形状闸,逐字段契约见 extract.py;op:all 逐行 violation,entity_keys 自动取
+  # 行内 [f.name](rule_runner W9 匹配面)。bid.full_text 为规格名全文域(spec §4.4 L2-051 输入;
+  # 非模型可抽取路径,入 extract.SERVER_DERIVED_PATHS,抽取请求不含;派生接线挂账,接线前生产侧
+  # 诚实 need_human,golden/评测以 stub 直注)。L2-051 主责折叠 L3-016/L3-018——eval_core 聚合后
+  # _fold_issues_by_primary(A-续-⑤:草稿态全文下一致性职责让位主责,need_human 不折叠)。──
+  - id: L2-004
+    name: 压缩包可解且文件完好
+    layer: L2
+    type: deterministic
+    applies_to: ["*"]
+    inputs: [bid.archive_files]
+    check:
+      op: all
+      target: "bid.archive_files"
+      var: f
+      cond: "f.size_bytes > 0 and f.readable == True and f.encrypted == False"
+    severity: major
+    evidence: [A-MAIN-TEXT]
+    message_tpl: "压缩包内文件异常:{f.name}(零字节/损坏/加密不可读)"
+    fix_tpl: "重新打包投标文件压缩包,确保可解压且全部文件完好可读、无密码保护"
+    confidence_gate: 1.0
+    enabled: true
+  - id: L2-050
+    name: 空文件与不可读文件
+    layer: L2
+    type: deterministic
+    applies_to: ["*"]
+    inputs: [bid.files]
+    check:
+      op: all
+      target: "bid.files"
+      var: f
+      cond: "f.size_bytes > 0 and f.readable == True"
+    severity: major
+    evidence: [A-MAIN-TEXT]
+    message_tpl: "文件异常:{f.name}(零字节或不可读)"
+    fix_tpl: "替换零字节或损坏不可读的文件后重新生成投标文件"
+    confidence_gate: 1.0
+    enabled: true
+  - id: L2-051
+    name: 草稿与内部标记残留
+    layer: L2
+    type: deterministic
+    applies_to: ["*"]
+    inputs: [bid.full_text]
+    check:
+      op: eq
+      left: "regex(bid.full_text, '草稿|内部版|勿外传|待补充|TBD|XXX|略')"
+      right: false
+    severity: major
+    evidence: [A-MAIN-TEXT]
+    message_tpl: "投标文件全文命中草稿/内部版/勿外传/待补充/TBD 等标记残留词,疑为未定稿版本"
+    fix_tpl: "全文清除草稿/内部标记残留词,以最终送审版本重新生成投标文件"
     confidence_gate: 1.0
     enabled: true

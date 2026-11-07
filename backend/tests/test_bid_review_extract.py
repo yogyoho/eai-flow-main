@@ -233,6 +233,20 @@ def test_volume_specs_contract_declares_row_shape():
     assert "copies" in FIELD_TYPE_CONTRACTS["bid.volume_index"], "bid.volume_index 行形 {name,copies} 须逐字段契约"
 
 
+def test_archive_files_contract_declares_row_shape():
+    # P1-β批二续 Task2(2026-11-07):archive_files/files 对象列表不进 LIST_PATHS/形状闸,给逐字段契约
+    # (先例 volume_specs);files 的 MIME-扩展名一致性列挂账(A-续-④)须在契约文本声明不产该键
+    assert "size_bytes" in FIELD_TYPE_CONTRACTS["bid.archive_files"] and "encrypted" in FIELD_TYPE_CONTRACTS["bid.archive_files"], "bid.archive_files 行形 {name,size_bytes,readable,encrypted} 须逐字段契约"
+    assert "size_bytes" in FIELD_TYPE_CONTRACTS["bid.files"] and "readable" in FIELD_TYPE_CONTRACTS["bid.files"], "bid.files 行形 {name,size_bytes,readable} 须逐字段契约"
+    assert "MIME" in FIELD_TYPE_CONTRACTS["bid.files"], "files 契约须记 MIME 挂账(A-续-④)"
+
+
+def test_full_text_excluded_from_first_stage_request():
+    # P1-β批二续 Task2:bid.full_text 为规格名全文域(L2-051 输入,spec §4.4)——服务端派生域
+    # (P0③ 禁模型抽取同款姿态),不得进首段提取请求
+    assert "bid.full_text" not in collect_field_paths()
+
+
 def test_heterogeneous_row_paths_passthrough():
     # R5 修正守卫:appendix_references(行形 {name,present})不进闸——裸串不得被包成 {value,where}
     f = _fields_via_baseline({"bid.appendix_references": ["附件A"]})

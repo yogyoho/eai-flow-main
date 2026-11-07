@@ -167,3 +167,14 @@ rulepack 现 44 条(det 38 / hyb 5 / sem 1;L1 16 + L2 11 + L3 17);本批新增�
 | L2-002-volume-count-short | 引擎对 | gte 册数下限 count(bid.volume_index)=1 < count(tender.volume_specs)=2 单因触发;v1 只比册数(A-续-④),逐册份数对齐挂账抽取面成熟后;消息列表占位符顿号渲染,contains 钉「分册数」避开列表区 |
 | L2-003-electronic-files-missing | 引擎对 | subset_of 同 L2-001;加密标书/签章文件命中、清单源文件缺失单条 violation,strict 钉单规则零残留 |
 
+
+## 批P1-β2续 Task2(文件级完好性三规则+泛化折叠)裁决表
+
+rulepack 现 47 条(det 41 / hyb 5 / sem 1;L1 16 + L2 14 + L3 17);本批新增文件级完好性 L2-004/050/051(det major×3;bid.archive_files/bid.files 两条对象列表契约 + bid.full_text 规格名全文域)。bid.full_text 入 SERVER_DERIVED_PATHS(禁模型抽取 P0③ 同款姿态,生产侧诚实 need_human,派生接线挂账)→首段请求 79=87−6−2;宇宙 84→87——plan 预算 86 按 full_text 已在宇宙记账,实测其首入宇宙,偏差 +1 已记账。泛化折叠 `_fold_issues_by_primary`(A-续-⑤):primary definite violation 下折叠 folded 规则 violation,need_human 不动;与 W9 记账差异——W9 只落审计日志,本 helper 额外在 primary 条目落 `suppressed_by`(被折叠 dedup_key 列表,审计可反查)。全部「引擎对」,零引擎修复。
+
+| case | 裁决 | 结论/bug编号 |
+|---|---|---|
+| L2-004-archive-broken-row | 引擎对 | op:all 逐行完好性(零字节/损坏/加密不可读),entity_keys 取行内 name/no,正常行不判;strict 钉单规则零残留 |
+| L2-050-empty-unreadable-file | 引擎对 | op:all 同 L2-004 面(bid.files 全量文件,encrypted 列挂账 A-续-④ 不产);不可读行单条 violation |
+| L2-051-draft-marker-hit | 引擎对 | regex(bid.full_text, 草稿/内部版/勿外传/待补充/TBD 等)命中即 violation;字段缺失走 need_human 诚实面(SERVER_DERIVED 生产姿态) |
+| L3-016-l2051-folded | 引擎对 | 主责折叠联动:全文草稿残留+页眉版本不一致同面,L3-016 violation 被 L2-051 折叠移除(expect_issues 仅 L2-051),strict 钉零残留(先例 L3-012-w9-suppressed);L3-018 输入缺失走 need_human 不折叠(need_human 不动不变式) |

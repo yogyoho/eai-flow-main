@@ -1,0 +1,10 @@
+case: L2-051-draft-marker-hit
+desc: 全文含「草稿」残留词 → L2-051 major violation(regex 内建命中;left=right(false) 不成立即违例);strict 钉单规则零残留
+fields:
+  bid.full_text: 本投标文件为草稿版本,仅供内部评审使用
+expect_issues:
+  - rule_id: L2-051
+    severity: major
+    contains: ["草稿"]
+expect_absent: []
+strict: true

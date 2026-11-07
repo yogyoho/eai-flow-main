@@ -1,0 +1,13 @@
+case: L3-016-l2051-folded
+desc: A-续-⑤ 主责折叠联动——全文草稿残留(L2-051 violation)与页眉版本不一致(L3-016 violation)同面:L3-016 被主责折叠移除,expect_issues 仅 L2-051;strict 钉——折叠若失效,L3-016 即期望外 violation 直接翻红,绿=折叠零残留证明(先例 L3-012-w9-suppressed);L3-018 输入缺失走 need_human 不折叠(need_human 不动不变式)
+fields:
+  bid.full_text: 本投标文件为草稿版本,仅供内部评审使用
+  bid.document_version: V1.0
+  bid.version_tag_occurrences:
+    - {value: V2.0, where: 页眉}
+expect_issues:
+  - rule_id: L2-051
+    severity: major
+    contains: ["草稿"]
+expect_absent: []
+strict: true

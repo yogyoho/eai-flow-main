@@ -1,0 +1,12 @@
+case: L2-004-archive-broken-row
+desc: 压缩包两文件其一零字节→ L2-004 major violation(op:all 逐行,entity_keys 自动 [f.name]);正常行(size_bytes>0/可读/非加密)零发声;strict 钉单规则零残留
+fields:
+  bid.archive_files:
+    - {name: 投标函.pdf, size_bytes: 0, readable: true, encrypted: false}
+    - {name: 报价一览表.pdf, size_bytes: 102400, readable: true, encrypted: false}
+expect_issues:
+  - rule_id: L2-004
+    severity: major
+    contains: ["压缩包内文件"]
+expect_absent: []
+strict: true

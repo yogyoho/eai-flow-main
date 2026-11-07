@@ -122,11 +122,19 @@ FIELD_TYPE_CONTRACTS["bid.boq_unit_checks"] = '[{code:"清单项编号", tender_
 # (闸只吃纯串列表),给逐字段契约;L2-002 v1 只比册数下限(A-续-④),逐册份数对齐挂账抽取面成熟后。
 FIELD_TYPE_CONTRACTS["tender.volume_specs"] = '[{name:"分册名称", min_copies:"最少份数,数字"}] 对象列表;招标份数要求逐册一行;禁止纯值列表/标量。'
 FIELD_TYPE_CONTRACTS["bid.volume_index"] = '[{name:"分册名称(正本/副本 第X册)", copies:"实际份数,数字或null"}] 对象列表;投标分册封面逐册一行;禁止纯值列表/标量。'
+# 文件级完好性对象列表契约(P1-β批二续 Task2,2026-11-07;L2-004/050):对象列表不进 LIST_PATHS/形状闸
+# (闸只吃纯串列表),给逐字段契约;L2-004 v1=零字节+可读+非加密,包损坏深度检测挂账(A-续-④ 同源);
+# L2-050 v1=零字节+可读,MIME-扩展名一致性列挂账(A-续-④,需映射表,W2 OCR 先例)不产该键。
+FIELD_TYPE_CONTRACTS["bid.archive_files"] = '[{name:"文件名", size_bytes:"字节数,数字", readable:"是否可读,布尔", encrypted:"是否加密,布尔"}] 对象列表;压缩包内文件逐个一行;禁止纯值列表/标量。'
+FIELD_TYPE_CONTRACTS["bid.files"] = '[{name:"文件名", size_bytes:"字节数,数字", readable:"是否可读,布尔"}] 对象列表;全量文件逐个一行;MIME 与扩展名一致性列挂账(A-续-④)不产该键;禁止纯值列表/标量。'
 # ── 服务端派生 join(整合版对齐 P0③,2026-11-06;D:\knowbase 规格书 L2233「禁模型换算」)──
 # boq_unit_checks[].matched / appendix_references[].present / device_model_mismatches 原由抽取
 # LLM 自产=换算禁令违例;改服务端派生,字段名与行形不变,规则零改动。无法判定不落键
 # (缺键→op:all 逐规则隔离 need_human 既有通路;UNKNOWN 不判通过铁律)。
-SERVER_DERIVED_PATHS: frozenset[str] = frozenset({"bid.device_model_mismatches"})
+# bid.full_text(P1-β批二续 Task2,2026-11-07;L2-051 输入,spec §4.4 :851):规格名全文域——
+# 非模型可抽取路径(抽取请求不含,禁模型自产全文,P0③ 同款姿态),eval 时由服务端注入/派生
+# (派生接线挂账;接线前生产侧诚实 need_human,golden/评测以 stub 直注)。
+SERVER_DERIVED_PATHS: frozenset[str] = frozenset({"bid.device_model_mismatches", "bid.full_text"})
 
 _FW_MAP = str.maketrans(
     "０１２３４５６７８９ＡＢＣＤＥＦＧＨＩＪＫＬＭＮＯＰＱＲＳＴＵＶＷＸＹＺａｂｃｄｅｆｇｈｉｊｋｌｍｎｏｐｑｒｓｔｕｖｗｘｙｚ",
@@ -236,8 +244,8 @@ class ExtractNotConfigured(RuntimeError):
 
 def collect_field_paths() -> list[str]:
     """首段提取请求路径 = universe − 第二段域 − 服务端派生域(EAI-CUSTOM 2026-11-05 M1,spec §4;排序稳定;
-    77 路径=P1-β批二续后 宇宙84−第二段6−device_model_mismatches 服务端派生(2026-11-07 文件级 L2-001/002/003
-    六路径新入请求;前值 71=R2+ 后 72−派生退出,整合版对齐 P0③ 2026-11-06);
+    79 路径=P1-β批二续 T2 后 宇宙87−第二段6−服务端派生2(device_model_mismatches+bid.full_text 规格名全文域,
+    L2-051 输入禁模型抽取;前值 77=宇宙84−6−1,T1 文件级 L2-001/002/003 六路径,2026-11-07);
     M0 快照零翻红锚点——第二段实体路径走 build_attachments_baseline)。"""
     return sorted(set(_registry_universe()) - set(_SECOND_STAGE_FIELDS) - set(SERVER_DERIVED_PATHS))
 

@@ -227,3 +227,74 @@ def test_w9_suppress_folds_same_entity_l3012_only():
     msg_only = {"rule_id": "L3-012", "verdict": "violation", "entity_keys": ["无关锚"], "message": "L3-012 消息全文含「业绩合同」样板词"}
     out_msg = _suppress_l3012_by_l2021([_iss("L2-021", ["业绩合同"]), msg_only])
     assert len(out_msg) == 2, "⑥ 匹配面只认 entity_keys 结构化锚,message 全文含实体名不触发折叠"
+
+
+# ── 主责折叠泛化(A-续-⑤,P1-β批二续):primary definite violation 下折叠 folded 规则 violation ──
+
+
+def _fold_iss(rule_id, verdict="violation", need_human=None):
+    """折叠单测条目:Rule 全字段 kwargs 构造在产线包侧(dedup_key 仿 _issue 三层键;
+    need_human 缺省按 verdict 推,violation=False/其余=True,与 rule_runner 产物对齐)。"""
+    nh = (verdict != "violation") if need_human is None else need_human
+    return {"rule_id": rule_id, "verdict": verdict, "need_human": nh, "dedup_key": f"L{rule_id[1]}|{rule_id}|-", "message": f"{rule_id} msg"}
+
+
+def test_fold_by_primary_folds_l3016_l3018_and_records_suppressed_by():
+    """①L2-051 violation 存在 → 同面 L3-016/L3-018 violation 折叠移除,primary 条目落
+    suppressed_by(被折叠 dedup_key 审计面——与 W9 只落日志的记账差异点);他规则条目不动。"""
+    from app.extensions.bid_review.engine.eval_core import _fold_issues_by_primary
+
+    primary, l3016, l3018, other = _fold_iss("L2-051"), _fold_iss("L3-016"), _fold_iss("L3-018"), _fold_iss("L3-006")
+    out = _fold_issues_by_primary([primary, l3016, l3018, other], "L2-051", ("L3-016", "L3-018"))
+    assert [i["rule_id"] for i in out] == ["L2-051", "L3-006"], "仅 L3-016/L3-018 violation 折叠,primary 与他规则不动"
+    assert primary["suppressed_by"] == ["L3|L3-016|-", "L3|L3-018|-"], "primary 落 suppressed_by(被折叠 dedup_key 列表,审计可反查)"
+
+
+def test_fold_by_primary_keeps_folded_need_human():
+    """②folded 规则 need_human 保留(need_human 不动不变式),且未折叠不记账。"""
+    from app.extensions.bid_review.engine.eval_core import _fold_issues_by_primary
+
+    primary, l3016_nh = _fold_iss("L2-051"), _fold_iss("L3-016", verdict="need_human")
+    out = _fold_issues_by_primary([primary, l3016_nh], "L2-051", ("L3-016", "L3-018"))
+    assert [i["rule_id"] for i in out] == ["L2-051", "L3-016"] and out[1]["verdict"] == "need_human"
+    assert "suppressed_by" not in primary, "零折叠时 primary 不落 suppressed_by"
+
+
+def test_fold_by_primary_not_armed_by_primary_need_human():
+    """③L2-051 仅 need_human 不武装折叠(照抄 w9⑤ 钉形):L3-016 violation 保留。"""
+    from app.extensions.bid_review.engine.eval_core import _fold_issues_by_primary
+
+    primary_nh, l3016 = _fold_iss("L2-051", verdict="need_human"), _fold_iss("L3-016")
+    out = _fold_issues_by_primary([primary_nh, l3016], "L2-051", ("L3-016", "L3-018"))
+    assert len(out) == 2 and out[1]["verdict"] == "violation", "primary need_human 不武装,L3-016 violation 保留"
+
+
+def test_fold_by_primary_fast_path_noop():
+    """④零折叠快路径:primary 不在 → 原列表对象原样返回(W9 同款);primary 在但无 folded
+    violation → 零折叠原样返回。"""
+    from app.extensions.bid_review.engine.eval_core import _fold_issues_by_primary
+
+    issues = [_fold_iss("L3-016"), _fold_iss("L3-018", verdict="need_human")]
+    assert _fold_issues_by_primary(list(issues), "L2-051", ("L3-016", "L3-018")) == issues, "primary 不在 → 原样返回(零折叠)"
+
+    primary, other = _fold_iss("L2-051"), _fold_iss("L3-006")
+    pair = [primary, other]
+    assert _fold_issues_by_primary(pair, "L2-051", ("L3-016", "L3-018")) == pair, "无 folded violation → 原样返回(零折叠)"
+    assert "suppressed_by" not in primary
+
+
+@pytest.mark.asyncio
+async def test_fold_wired_after_aggregation_in_evaluate_fields():
+    """接线钉:evaluate_fields 聚合后单插入位(W9 行之后)——L2-051 violation 面上 L3-016
+    violation 被主责折叠,primary 带 suppressed_by;生产包全链路走同一段分派+折叠核。"""
+    pack = load_rulepack(PACK)
+    fields = {
+        "bid.full_text": "本投标文件为草稿版本,仅供内部评审使用",
+        "bid.document_version": "V1.0",
+        "bid.version_tag_occurrences": [{"value": "V2.0", "where": "页眉"}],
+    }
+    issues = await evaluate_fields(pack, fields, model_fn=wrap_model_fn(_quiet_model()))
+    assert any(i["rule_id"] == "L2-051" and i["verdict"] == "violation" for i in issues), "L2-051 regex 命中应出 violation"
+    assert not any(i["rule_id"] == "L3-016" for i in issues), "L3-016 violation 应被 L2-051 主责折叠移除"
+    prim = next(i for i in issues if i["rule_id"] == "L2-051")
+    assert prim.get("suppressed_by"), "primary 条目带 suppressed_by 记账(接线后端到端)"

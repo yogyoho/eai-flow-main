@@ -90,6 +90,32 @@ def _suppress_l3012_by_l2021(issues: list[dict]) -> list[dict]:
     return out
 
 
+def _fold_issues_by_primary(issues: list[dict], primary_rule_id: str, folded_rule_ids: tuple[str, ...]) -> list[dict]:
+    """主责折叠泛化(A-续-⑤,P1-β批二续):primary 存在 verdict=violation(definite)时,
+    折叠 folded 规则的 violation(need_human 不折叠,suppressed_by 记账同 W9)。rule 级折叠
+    无 entity 条件——W9 的 entity 交集是 L2-021/L3-012 特化,entity 级细化挂账。
+    与 W9 记账差异(plan Task 2 Step 2 规格):W9 折叠面只在审计日志记(suppressed_by 内标
+    本批不落 issue 流);本 helper 额外在 primary 条目上落 ``suppressed_by``(被折叠条目
+    dedup_key 列表,审计可反查谁吞了谁)。核心不变式同 W9:只折叠 violation,need_human
+    不动;primary 不在/无 definite violation 时零折叠快路径原样返回(W9 本体一行不动)。"""
+    primary_idx = [n for n, i in enumerate(issues) if i.get("rule_id") == primary_rule_id and i.get("verdict") == "violation" and not i.get("need_human")]
+    if not primary_idx:
+        return issues  # 零折叠快路径(primary 不在/仅 need_human 不武装),原样返回
+    folded = set(folded_rule_ids)
+    kept, folded_n = [], 0
+    for it in issues:
+        if it.get("rule_id") in folded and it.get("verdict") == "violation" and not it.get("need_human"):
+            folded_n += 1
+            key = it.get("dedup_key") or str(it.get("rule_id"))
+            for n in primary_idx:
+                issues[n].setdefault("suppressed_by", []).append(key)
+            continue
+        kept.append(it)
+    if folded_n:
+        logger.info("fold_by_primary %s -> %s: %d", primary_rule_id, list(folded_rule_ids), folded_n)
+    return kept
+
+
 async def evaluate_fields(
     pack: RulePack,
     fields: dict,
@@ -125,4 +151,7 @@ async def evaluate_fields(
             issues = [_need_human(rule, f"规则执行异常 {exc!r}(逐规则隔离降级 need_human)")]
         out.extend(issues)
     out = _suppress_l3012_by_l2021(out)  # W9 抑制联动(聚合循环后、return 前单插入,A-β2-⑦)
+    # L2-051 主责折叠(A-续-⑤,P1-β批二续):草稿/内部标记残留面上,版本/币种一致性(L3-016/018)
+    # violation 让位主责;L1-007→L2-030 折叠行 Task 3 加。
+    out = _fold_issues_by_primary(out, "L2-051", ("L3-016", "L3-018"))
     return out
