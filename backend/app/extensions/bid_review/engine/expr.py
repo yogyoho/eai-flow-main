@@ -4,8 +4,10 @@
 
 from __future__ import annotations
 
+import math
 import operator
 import re
+from decimal import Decimal
 
 
 class ExprError(ValueError):
@@ -312,7 +314,9 @@ _BUILTIN = {
     "codes": lambda rows: [r.get("code") for r in (rows or [])],
     "covers": lambda scope, need: str(need) in str(scope or ""),
     "keywords": lambda name: re.findall(r"[一-龥]{2,}", str(name or "")),
-    "sum": lambda vals: float(sum(v for v in (vals or []) if isinstance(v, (int, float)))),
+    # sum 累加迁 Decimal(str(v))(金额加总链浮点漂移,0.1+0.2=0.30000000000000004;A-β1-② 挂账部分兑付;float 出口对外契约不变):
+    # 过滤闸与 extract._num/_amount 门对齐——bool 是 int 子类(True 被当 1 计入)与 nan/inf(非金额)一并排除,非数值项静默跳过=既有语义
+    "sum": lambda vals: float(sum(Decimal(str(v)) for v in (vals or []) if isinstance(v, (int, float)) and not isinstance(v, bool) and math.isfinite(v))),
     "count": lambda vals: len(vals or []),
     "contains_any": lambda hay, needles: any(str(n) in str(hay or "") for n in (needles or [])),
     "imply": lambda a, b: (not a) or bool(b),

@@ -100,3 +100,9 @@ def test_or_empty_any_violation():
 def test_col_missing_key_rows():
     # M-3:缺键行产 None 条目(不静默丢行,行数守恒)
     assert eval_expr('col(bid.rows, "no")', {"bid.rows": [{"id": 1}, {"no": "A"}]}) == [None, "A"]
+
+
+def test_sum_decimal_accumulation():
+    # 浮点:0.1+0.2=0.30000000000000004;Decimal 累加=0.3 精确(金额加总链无漂移)
+    assert eval_expr("sum(bid.vals) == 0.3", {"bid.vals": [0.1, 0.2]}) is True
+    assert eval_expr("sum(bid.vals) == bid.total", {"bid.vals": [0.1] * 10, "bid.total": 1.0}) is True
