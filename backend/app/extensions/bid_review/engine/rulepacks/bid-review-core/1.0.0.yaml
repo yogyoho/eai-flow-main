@@ -1,4 +1,4 @@
-# bid-review-core 子系统规则包 v1.0.0(canonical,47 条:det 41 / hyb 5 / sem 1;整合版编号对齐 2026-11-06)——技能 references/rules-det-subset.yaml 为其 M1 七条副本分发
+# bid-review-core 子系统规则包 v1.0.0(canonical,50 条:det 44 / hyb 5 / sem 1;整合版编号对齐 2026-11-06)——技能 references/rules-det-subset.yaml 为其 M1 七条副本分发
 # 转录口径(Task 18,2026-10-29):素材④全量规则包会话记录本仓不可达,按设计文档 §6.3 v1 清单+素材②元模型重写 check;
 # 格式基准=§6.4 L1-009;severity 依层级赋予(L1=否决项红线→fatal,L3=一致性→major;唯 L1-003 业绩达标=major,
 # 与 test_bid_review_llm_verify 夹具同值),素材②规则表可达后逐条对账。M1 七条(L1-009/010/011+L3-001/003/005/006)原样保留不回退。
@@ -197,13 +197,16 @@ rules:
     layer: L1
     type: deterministic
     applies_to: ["*"]
-    inputs: [bid.deposit_amount, tender.deposit_required]
-    # 免缴场景(deposit_required=0)前置不成立=不适用
+    # A-续-③(P1-β批二续 Task3 2026-11-07,C-17 兑付):凭证缺失场景本条不适用(金额无从比对),
+    # L2-033(fatal)主责独报;present=None(清单缺失)同样不适用,L2-033 need_human 兜底。
+    # 金额比对 op/eq 检查体与 message/fix 零改动;precondition 字段须在 inputs(fields_used 同域)。
+    inputs: [bid.deposit_amount, tender.deposit_required, bid.deposit_receipt_present]
+    # 免缴场景(deposit_required=0)或凭证缺失(deposit_receipt_present!=True)前置不成立=不适用
     check:
       op: eq
       left: bid.deposit_amount
       right: tender.deposit_required
-      precondition: "tender.deposit_required > 0"
+      precondition: "tender.deposit_required > 0 and bid.deposit_receipt_present == True"
     severity: fatal
     evidence: [A-DEPOSIT, A-TENDER-NOTICE]
     message_tpl: "投标保证金 {bid.deposit_amount:money} 与招标要求 {tender.deposit_required:money} 不一致"
@@ -875,5 +878,62 @@ rules:
     evidence: [A-MAIN-TEXT]
     message_tpl: "投标文件全文命中草稿/内部版/勿外传/待补充/TBD 等标记残留词,疑为未定稿版本"
     fix_tpl: "全文清除草稿/内部标记残留词,以最终送审版本重新生成投标文件"
+    confidence_gate: 1.0
+    enabled: true
+  # ── P1-β批二续 Task3(2026-11-07):要件级三规则 L2-030/032/033——spec §4.4 :839/:841/:842。
+  # tender.signature_slots/bid.signature_slots 对象列表契约见 extract.py('no' 为签署位编号/名称)。
+  # L2-032 两件套存在性布尔由服务端派生(bid.attachment_index 名称归一匹配,extract.derive_joins;
+  # 模型自产一律丢弃——三键已入 SERVER_DERIVED_PATHS,清单缺失不落键→need_human 诚实降级,A-续-②);
+  # 授权委托书件主责留 repo 既有 L1-008(fatal,禁改检查体,A-续-②)。L1-006 precondition 同批兑付
+  # C-17(A-续-③,凭证缺失场景不适用,L2-033 主责独报)。L2-030 抑制面:eval_core 聚合后
+  # _fold_issues_by_primary(out,"L1-007",("L2-030",))(A-续-①:签章存在性+有效性主责 L1-007,
+  # §4.7.2 矩阵方向;rule 级折叠无 entity 条件,entity 级细化挂账)。──
+  - id: L2-030
+    name: 签署位齐全
+    layer: L2
+    type: deterministic
+    applies_to: ["*"]
+    inputs: [tender.signature_slots, bid.signature_slots]
+    check:
+      op: all
+      target: tender.signature_slots
+      var: t
+      cond: "t.no in col(bid.signature_slots, 'no')"
+    severity: fatal
+    evidence: [A-STAMP, A-BID-LETTER]
+    message_tpl: "招标要求签署位 {t.no}({t.name})在投标文件签署位清单中不存在"
+    fix_tpl: "按招标格式文件『签字盖章处』逐位核对,补齐缺失签署位并完成签章"
+    confidence_gate: 1.0
+    enabled: true
+  - id: L2-032
+    name: 法人身份与身份证件齐备
+    layer: L2
+    type: deterministic
+    applies_to: ["*"]
+    inputs: [bid.legal_id_proof_present, bid.id_copy_present]
+    check:
+      steps:
+        - "bid.legal_id_proof_present == True"
+        - "bid.id_copy_present == True"
+    severity: major
+    evidence: [A-BID-DOC]
+    message_tpl: "身份证明件缺失:法定代表人身份证明存在性 {bid.legal_id_proof_present},身份证复印件存在性 {bid.id_copy_present}"
+    fix_tpl: "补齐法定代表人身份证明与身份证复印件,附件清单逐件核对后重新上传"
+    confidence_gate: 1.0
+    enabled: true
+  - id: L2-033
+    name: 保证金缴纳凭证提供
+    layer: L2
+    type: deterministic
+    applies_to: ["*"]
+    inputs: [bid.deposit_receipt_present]
+    check:
+      op: eq
+      left: bid.deposit_receipt_present
+      right: true
+    severity: fatal
+    evidence: [A-DEPOSIT]
+    message_tpl: "投标保证金缴纳凭证缺失(附件清单未见保证金/保函/回单类凭证名称)"
+    fix_tpl: "按招标要求缴纳保证金并上传缴纳凭证(银行回单/保函),凭证名称与附件清单一致"
     confidence_gate: 1.0
     enabled: true

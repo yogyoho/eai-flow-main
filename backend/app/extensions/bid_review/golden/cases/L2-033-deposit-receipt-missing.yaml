@@ -1,0 +1,12 @@
+case: L2-033-deposit-receipt-missing
+desc: 保证金凭证缺失(present=false)+金额与要求同值 → 双规则面钉:L1-006 precondition 不适用零发声(A-续-③ 兑付 C-17,凭证缺失场景金额比对不武装)+ L2-033 fatal violation(C-17 主责独报);strict 钉两规则面——L1-006 若仍发声即期望外 violation 直接翻红
+fields:
+  bid.deposit_receipt_present: false
+  tender.deposit_required: 10000.0
+  bid.deposit_amount: 10000.0
+expect_issues:
+  - rule_id: L2-033
+    severity: fatal
+    contains: ["保证金"]
+expect_absent: []
+strict: true

@@ -178,3 +178,17 @@ rulepack 现 47 条(det 41 / hyb 5 / sem 1;L1 16 + L2 14 + L3 17);本批新增�
 | L2-050-empty-unreadable-file | 引擎对 | op:all 同 L2-004 面(bid.files 全量文件,encrypted 列挂账 A-续-④ 不产);不可读行单条 violation |
 | L2-051-draft-marker-hit | 引擎对 | regex(bid.full_text, 草稿/内部版/勿外传/待补充/TBD 等)命中即 violation;字段缺失走 need_human 诚实面(SERVER_DERIVED 生产姿态) |
 | L3-016-l2051-folded | 引擎对 | 主责折叠联动:全文草稿残留+页眉版本不一致同面,L3-016 violation 被 L2-051 折叠移除(expect_issues 仅 L2-051),strict 钉零残留(先例 L3-012-w9-suppressed);L3-018 输入缺失走 need_human 不折叠(need_human 不动不变式) |
+
+
+## 批P1-β2续 Task3(要件级三规则+L1-006 precondition+条件折叠)裁决表
+
+rulepack 现 50 条(det 44 / hyb 5 / sem 1;L1 16 + L2 17 + L3 17);本批新增要件级 L2-030(fatal)/L2-032(major)/L2-033(fatal),五条新路径(tender.signature_slots/bid.signature_slots 对象列表契约+三 presence 派生布尔 bid.legal_id_proof_present/bid.id_copy_present/bid.deposit_receipt_present)。三 presence 布尔服务端派生(bid.attachment_index 名称归一正则匹配,extract.derive_joins;入 SERVER_DERIVED_PATHS 禁模型自产 A-续-②,清单缺失不落键→need_human 诚实降级)→首段请求 81=92−6−5。宇宙 87→92——plan 预算 91 系 86 旧基线勘误(T2 实测 bid.full_text 入宇宙后基线 87,+5=92)。L1-006 precondition 兑付 C-17(A-续-③):「tender.deposit_required > 0 and bid.deposit_receipt_present == True」,金额比对检查体零改动。L1-007→L2-030 条件折叠(A-续-①):eval_core 聚合后 `_fold_issues_by_primary(out,"L1-007",("L2-030",))`,L1-007(hyb)definite violation 时 L2-030 让位,need_human 不折叠。全部「引擎对」,零引擎修复。
+
+**实施勘误(plan Step 6 原案不可达)**:L1-007 系本引擎首个 hyb primary 的折叠对——金标准面 docs_text 恒空,verify 第2道 evidence-misalignment 把一切 sem issue 降级 need_human=true(verdict 仍 violation),而 check_schema 铁律2 禁空证据,故 hyb primary 在金标准面永非 definite(A-续-⑤/T2 已钉的 helper 语义不动)→ plan 设想的「expect 仅 L1-007 strict 零残留」折叠面不可达。处置:L2-030-l1007-folded 改钉负向共存半边(两 issue 共存,strict),正向半边由 eval_core 管线级接线测试 test_fold_l1007_definite_primary_folds_l2030_in_pipeline 以 docs_text 注入钉死。连带勘误:L1-006-deposit-mismatch 旧题 fields 补 bid.deposit_receipt_present: true(precondition 兑付后凭证在才武装,fixture 随契约更新)。
+
+| case | 裁决 | 结论/bug编号 |
+|---|---|---|
+| L2-030-signature-slot-missing | 引擎对 | op:all col(bid.signature_slots,'no') 比对:招标两签署位(法人章/公章)投标一,「公章」行单条 fatal violation;L1-007 输入缺失走 need_human 不武装折叠(A-续-①),strict 钉单规则零残留;'no' 键引号(bug-3938 守卫) |
+| L2-032-id-pieces-missing | 引擎对 | steps 两件套存在性任一 False→violation(major);presence 布尔生产侧服务端派生(禁模型自产 A-续-②),golden 直注 stub(fields ⊆ pack inputs ∪ 投影,派生不进 golden 面);strict 钉单规则零残留 |
+| L2-033-deposit-receipt-missing | 引擎对 | 双规则面钉:凭证缺失(present=false)+金额同值——L1-006 precondition 不适用零发声(A-续-③ 兑付 C-17)+ L2-033 fatal 主责独报;strict 钉——L1-006 若仍发声即期望外 violation 翻红 |
+| L2-030-l1007-folded | 引擎对(plan 原案不可达,见上勘误) | 金标准面钉负向半边:金标准 docs_text 恒空 → verify 第2道使 L1-007 sem violation 必带 need_human → 非 definite → 折叠不武装 → L1-007 与 L2-030 两 fatal violation 共存,strict 钉无第三者;正向折叠半边(docs_text 注入→definite→折叠+suppressed_by)由 eval_core 管线级测试钉死 |

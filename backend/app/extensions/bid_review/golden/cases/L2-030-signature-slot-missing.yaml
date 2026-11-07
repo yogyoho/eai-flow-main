@@ -1,0 +1,14 @@
+case: L2-030-signature-slot-missing
+desc: 招标格式文件签署位两处(法人章/公章),投标实际签署位仅法人章一处 → L2-030 fatal violation(col 比对缺「公章」签署位);L1-007 输入缺失走 need_human 不武装折叠(A-续-①),strict 钉单规则零残留
+fields:
+  tender.signature_slots:
+    - {'no': 法人章, name: 法定代表人, page: 12}
+    - {'no': 公章, name: 投标人单位, page: 12}
+  bid.signature_slots:
+    - {'no': 法人章, name: 法定代表人, page: 12}
+expect_issues:
+  - rule_id: L2-030
+    severity: fatal
+    contains: ["签署位"]
+expect_absent: []
+strict: true

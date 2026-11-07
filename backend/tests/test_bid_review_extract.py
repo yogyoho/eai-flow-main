@@ -327,6 +327,51 @@ def test_collect_field_paths_excludes_server_derived():
     assert "bid.appendix_references" in collect_field_paths()
 
 
+def test_derive_presence_booleans_from_attachment_index():
+    # P1-β批二续 T3(A-续-②③,2026-11-07):三 presence 布尔服务端派生——bid.attachment_index
+    # 名称归一正则命中;「法定代表人身份证明」与「法人身份证明」互不为子串,两型各配 pattern
+    f = _fields_via_baseline(
+        {
+            "bid.attachment_index": [
+                {"no": "1", "name": "法定代表人身份证明"},
+                {"no": "2", "name": "身份证复印件"},
+                {"no": "3", "name": "保证金缴纳凭证（银行回单）"},
+            ]
+        }
+    )
+    assert f["bid.legal_id_proof_present"] is True
+    assert f["bid.id_copy_present"] is True
+    assert f["bid.deposit_receipt_present"] is True
+
+
+def test_derive_presence_booleans_no_hit_and_missing_list():
+    # 名称集无命中 → False(键在场,规则面 violation);清单缺失/垃圾形状 → 不落键(need_human 通路);
+    # 模型自产键在源头即弃(三键已入 SERVER_DERIVED_PATHS,normalize_fields 仅收 collect_field_paths)
+    f = _fields_via_baseline({"bid.attachment_index": [{"no": "1", "name": "营业执照"}]})
+    assert f["bid.legal_id_proof_present"] is False
+    assert f["bid.id_copy_present"] is False
+    assert f["bid.deposit_receipt_present"] is False
+    f2 = _fields_via_baseline({})
+    assert "bid.legal_id_proof_present" not in f2
+    assert "bid.id_copy_present" not in f2
+    assert "bid.deposit_receipt_present" not in f2
+    f3 = _fields_via_baseline({"bid.attachment_index": 5})  # 标量垃圾形状(R4 类)诚实降级不炸
+    assert "bid.deposit_receipt_present" not in f3
+    f4 = _fields_via_baseline({"bid.deposit_receipt_present": True})  # 模型自产:请求不含该路径,直弃
+    assert "bid.deposit_receipt_present" not in f4
+
+
+def test_presence_keys_server_derived_excluded_from_request():
+    # 三 presence 键在 SERVER_DERIVED_PATHS(禁模型自产,换算禁令同款)且不进首段提取请求
+    from app.extensions.bid_review.engine.extract import SERVER_DERIVED_PATHS
+
+    for k in ("bid.legal_id_proof_present", "bid.id_copy_present", "bid.deposit_receipt_present"):
+        assert k in SERVER_DERIVED_PATHS, f"{k} 应入服务端派生域"
+        assert k not in collect_field_paths(), f"{k} 不得进首段提取请求"
+    assert "tender.signature_slots" in collect_field_paths() and "bid.signature_slots" in collect_field_paths(), "slots 两路径照常进首段请求"
+    assert "no" in FIELD_TYPE_CONTRACTS["tender.signature_slots"] and "no" in FIELD_TYPE_CONTRACTS["bid.signature_slots"], "slots 行形 {no,name,page} 须逐字段契约"
+
+
 # ── 抽取 v2(EAI-CUSTOM 2026-10-30,spec D5/D7):provenance + 分片 ──────
 
 

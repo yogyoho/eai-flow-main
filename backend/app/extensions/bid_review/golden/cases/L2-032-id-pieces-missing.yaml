@@ -1,0 +1,11 @@
+case: L2-032-id-pieces-missing
+desc: 法人身份证明在场、身份证复印件缺失 → L2-032 major violation(steps 任一 False 即违例);presence 布尔生产侧由服务端从 bid.attachment_index 派生(禁模型自产,A-续-②),golden 为直注 stub——fields 键 ⊆ pack inputs ∪ 投影,派生不进 golden 面即可直接注布尔,strict 钉单规则零残留
+fields:
+  bid.legal_id_proof_present: true
+  bid.id_copy_present: false
+expect_issues:
+  - rule_id: L2-032
+    severity: major
+    contains: ["身份证"]
+expect_absent: []
+strict: true

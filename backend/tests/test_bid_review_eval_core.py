@@ -298,3 +298,62 @@ async def test_fold_wired_after_aggregation_in_evaluate_fields():
     assert not any(i["rule_id"] == "L3-016" for i in issues), "L3-016 violation 应被 L2-051 主责折叠移除"
     prim = next(i for i in issues if i["rule_id"] == "L2-051")
     assert prim.get("suppressed_by"), "primary 条目带 suppressed_by 记账(接线后端到端)"
+
+
+# ── L1-007→L2-030 条件折叠(A-续-①,P1-β批二续 Task3):签章位面上 L2-030 让位主责 ──
+
+
+def test_fold_l1007_folds_l2030_and_records_suppressed_by():
+    """A-续-①:L1-007 definite violation 存在 → 同面 L2-030 violation 折叠移除,
+    primary 条目落 suppressed_by(被折叠 dedup_key 审计面,同 L2-051 helper 契约)。"""
+    from app.extensions.bid_review.engine.eval_core import _fold_issues_by_primary
+
+    primary, l2030 = _fold_iss("L1-007"), _fold_iss("L2-030")
+    out = _fold_issues_by_primary([primary, l2030], "L1-007", ("L2-030",))
+    assert [i["rule_id"] for i in out] == ["L1-007"], "L2-030 violation 折叠,primary 保留"
+    assert primary["suppressed_by"] == [l2030["dedup_key"]], "primary 落 suppressed_by"
+
+
+def test_fold_l1007_need_human_keeps_l2030():
+    """L1-007 仅 need_human(存在性未定)不武装折叠:L2-030 violation 独立面保留,不记账。"""
+    from app.extensions.bid_review.engine.eval_core import _fold_issues_by_primary
+
+    primary_nh, l2030 = _fold_iss("L1-007", verdict="need_human"), _fold_iss("L2-030")
+    out = _fold_issues_by_primary([primary_nh, l2030], "L1-007", ("L2-030",))
+    assert len(out) == 2 and out[1]["rule_id"] == "L2-030" and out[1]["verdict"] == "violation"
+    assert "suppressed_by" not in primary_nh
+
+
+def test_fold_l1007_absent_keeps_l2030():
+    """L1-007 不在(签章页全齐零候选)→ 零折叠快路径,L2-030 violation 保留。"""
+    from app.extensions.bid_review.engine.eval_core import _fold_issues_by_primary
+
+    l2030 = _fold_iss("L2-030")
+    out = _fold_issues_by_primary([l2030], "L1-007", ("L2-030",))
+    assert out == [l2030], "primary 不在 → 原样返回,L2-030 violation 保留"
+
+
+@pytest.mark.asyncio
+async def test_fold_l1007_definite_primary_folds_l2030_in_pipeline():
+    """管线级正向半边(金标准面钉不到的半边):docs_text 注入使 L1-007 scripted 证据对齐
+    → definite violation(need_human=false)→ L2-030 violation 被主责折叠移除,
+    primary 落 suppressed_by。金标准面 docs_text 恒空 → verify 第2道把 sem issue 降级
+    need_human=true,故金标准只钉负向共存半边(L2-030-l1007-folded.yaml),正向在此钉死。"""
+    pack = load_rulepack(PACK)
+    fields = {
+        "bid.missing_signature_pages": ["第12页 缺少骑缝章"],
+        "tender.signature_slots": [
+            {"no": "法人章", "name": "法定代表人", "page": 12},
+            {"no": "公章", "name": "投标人单位", "page": 12},
+        ],
+        "bid.signature_slots": [{"no": "法人章", "name": "法定代表人", "page": 12}],
+    }
+    docs_text = {"bid.pdf": {12: "第12页未见骑缝章"}}
+    model_fn = wrap_model_fn(
+        _quiet_model({"L1-007": '{"verdicts": [{"clause_id": "SG-1", "verdict": "partial", "confidence": 0.9, "reason": "骑缝章缺失", "evidence": [{"doc_id": "bid.pdf", "page": 12, "text": "第12页未见骑缝章"}]}]}'}),
+    )
+    issues = await evaluate_fields(pack, fields, model_fn=model_fn, docs_text=docs_text)
+    l1007 = [i for i in issues if i["rule_id"] == "L1-007"]
+    assert len(l1007) == 1 and l1007[0]["verdict"] == "violation" and not l1007[0]["need_human"], f"证据对齐 → L1-007 definite violation: {l1007}"
+    assert not any(i["rule_id"] == "L2-030" for i in issues), "L2-030 violation 应被 definite L1-007 主责折叠移除"
+    assert l1007[0].get("suppressed_by"), "primary 落 suppressed_by(管线端到端)"

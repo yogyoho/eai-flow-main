@@ -18,8 +18,10 @@ from app.extensions.bid_review.engine.rule_runner import RulePackError, load_rul
 # bid.boq_rows/bid.table_cells + M4 业绩聚类 bid.performance_entries/bid.performance_groups = 77
 # + R2+ 规则族 L2-041 inputs 声明 tender.required_fields = 78
 # + P1-β批二续 文件级 L2-001/002/003 六路径 = 84
-# + P1-β批二续 T2 文件级完好性 L2-004/050/051 三路径(archive_files/files/full_text;full_text 规格名全文域首入宇宙,plan 预算 86 偏差 +1)= 87)——逐位锁定。
-# 首段 prompt 路径 = EXPECTED_UNIVERSE − SECOND_STAGE_FIELDS − SERVER_DERIVED_PATHS = 79(87−6−2;T2 后 bid.full_text 入 SERVER_DERIVED_PATHS 禁模型抽取;前值 77=84−6−1)。
+# + P1-β批二续 T2 文件级完好性 L2-004/050/051 三路径(archive_files/files/full_text;full_text 规格名全文域首入宇宙,plan 预算 86 偏差 +1)= 87
+# + P1-β批二续 T3 要件级 L2-030/032/033 五路径(signature_slots×2+三 presence 派生布尔;T2 实测 bid.full_text
+#   入宇宙后基线 87,plan 预算 91 系 86 旧基线,勘误 87+5=92)= 92)——逐位锁定。
+# 首段 prompt 路径 = EXPECTED_UNIVERSE − SECOND_STAGE_FIELDS − SERVER_DERIVED_PATHS = 81(92−6−5;T3 后三 presence 布尔入 SERVER_DERIVED_PATHS 禁模型自产;前值 79=87−6−2)。
 EXPECTED_UNIVERSE = [
     "bid.alternative_price_offers",
     "bid.amount_occurrences",
@@ -39,6 +41,7 @@ EXPECTED_UNIVERSE = [
     "bid.currency_occurrences",
     "bid.declaration_letter_codes",
     "bid.deposit_amount",
+    "bid.deposit_receipt_present",  # P1-β批二续 T3 L2-033 保证金凭证存在性(服务端派生,2026-11-07)
     "bid.detail_rows",
     "bid.device_model_mismatches",
     "bid.device_models",
@@ -56,6 +59,8 @@ EXPECTED_UNIVERSE = [
     "bid.files",  # P1-β批二续 T2 L2-050 全量文件(2026-11-07)
     "bid.full_text",  # P1-β批二续 T2 L2-051 规格名全文域,入 SERVER_DERIVED_PATHS 禁模型抽取(2026-11-07)
     "bid.header_footer.project_name",
+    "bid.id_copy_present",  # P1-β批二续 T3 L2-032 身份证复印件存在性(服务端派生,2026-11-07)
+    "bid.legal_id_proof_present",  # P1-β批二续 T3 L2-032 法人身份证明存在性(服务端派生,2026-11-07)
     "bid.missing_signature_pages",
     "bid.old_project_mentions",
     "bid.performance_entries",
@@ -67,6 +72,7 @@ EXPECTED_UNIVERSE = [
     "bid.schedule_end_date",
     "bid.schedule_start_date",
     "bid.section_tree",
+    "bid.signature_slots",  # P1-β批二续 T3 L2-030 投标实际签署位(2026-11-07)
     "bid.similar_performances",
     "bid.subtotal",
     "bid.table_cells",
@@ -104,6 +110,7 @@ EXPECTED_UNIVERSE = [
     "tender.required_sections",
     "tender.required_validity_days",
     "tender.scoring_items",
+    "tender.signature_slots",  # P1-β批二续 T3 L2-030 招标要求签署位(2026-11-07)
     "tender.substantive_clauses",
     "tender.tax_rate",
     "tender.tenderee_name",
@@ -136,9 +143,9 @@ def _synthetic_rule(rid: str, layer: str, severity: str) -> dict:
 
 
 class TestUniverse:
-    def test_anchored_87(self):
-        # 84→87(P1-β批二续 T2 L2-004/050/051 三路径入宇宙,2026-11-07;bid.full_text 规格名首入宇宙,plan 预算 86 偏差 +1)
-        assert len(EXPECTED_UNIVERSE) == 87
+    def test_anchored_92(self):
+        # 87→92(P1-β批二续 T3 L2-030/032/033 五路径入宇宙,2026-11-07;plan 预算 91 系 86 旧基线勘误,T2 实测 bid.full_text 入宇宙后基线 87)
+        assert len(EXPECTED_UNIVERSE) == 92
         assert registry.universe() == EXPECTED_UNIVERSE
 
     def test_second_stage_fields(self):

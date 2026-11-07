@@ -133,9 +133,9 @@ def test_full_pack_loads():
     by_type = {}
     for r in pack.rules:
         by_type.setdefault(r.type, []).append(r.id)
-    assert len(by_type.get("deterministic", [])) == 41, (
-        "L1 13 + L2 13 + L3 15 = 41(批二续T2 +3 文件级完好性 L2-004/050/051,P1-β批二续 2026-11-07;"
-        "前值 38=L1 13 + L2 10 + L3 15,批二续T1 +3 文件级 L2-001/002/003)"
+    assert len(by_type.get("deterministic", [])) == 44, (
+        "L1 13 + L2 16 + L3 15 = 44(批二续T3 +3 要件级 L2-030/032/033,P1-β批二续 2026-11-07;"
+        "前值 41=L1 13 + L2 13 + L3 15,批二续T2 +3 文件级完好性 L2-004/050/051)"
     )
     assert len(by_type.get("hybrid", [])) == 5, "L1 hyb 003/007 + L3 hyb 004/008 + L2-023 指纹通道(整合版对齐 W1) = 5"
     assert len(by_type.get("semantic", [])) == 1, "L1-013 唯一 sem 规则"
@@ -275,7 +275,9 @@ def test_att_ops_whitelisted_at_load():
     整合版对齐 W5 层归位 2026-11-06 增 L2-015(op:all);W11 层归位 2026-11-07 增 L2-031(op:all,自 L1-021);
     P1-β批二 2026-11-07 增 L2-021(op:all,col 取列,W9 主责);
     P1-β批二续 2026-11-07 增 L2-001/002/003(steps subset_of×2 + gte 册数下限,steps 形态无 op 键=None);
-    P1-β批二续 T2 2026-11-07 增 L2-004/050(op:all 逐行完好性)+ L2-051(op:eq regex 草稿残留)。"""
+    P1-β批二续 T2 2026-11-07 增 L2-004/050(op:all 逐行完好性)+ L2-051(op:eq regex 草稿残留);
+    P1-β批二续 T3 2026-11-07 增 L2-030(op:all col 取签署位列)+ L2-032(steps 两件套存在性,None)
+    + L2-033(op:eq 凭证存在性,C-17)。"""
     pack = load_rulepack(PACK)
     ops = {r.id: r.check.get("op") for r in pack.rules if r.layer == "L2"}
     assert ops == {
@@ -290,10 +292,26 @@ def test_att_ops_whitelisted_at_load():
         "L2-021": "all",
         "L2-024": "att_count",
         "L2-023": "att_missing_rows",
+        "L2-030": "all",
+        "L2-032": None,
+        "L2-033": "eq",
         "L2-041": "all",
         "L2-022": "all",
         "L2-031": "all",
     }
+
+
+def test_l2032_steps_any_false_violation_all_true_pass():
+    """P1-β批二续 T3(A-续-②):L2-032 两件套存在性 steps——任一 False → violation(major),
+    全 True → PASS 零发声;单边缺失字段 → need_human(on_missing_input 既有通路)。"""
+    pack = load_rulepack(PACK)
+    rule = {r.id: r for r in pack.rules}["L2-032"]
+    bad = run_det_rule(rule, {"bid.legal_id_proof_present": True, "bid.id_copy_present": False})
+    assert len(bad) == 1 and bad[0]["verdict"] == "violation" and bad[0]["severity"] == "major"
+    ok = run_det_rule(rule, {"bid.legal_id_proof_present": True, "bid.id_copy_present": True})
+    assert ok == [], "两件齐备 → PASS 零发声"
+    nh = run_det_rule(rule, {"bid.legal_id_proof_present": True})
+    assert len(nh) == 1 and nh[0]["verdict"] == "need_human"
 
 
 # ── L2 P2:UNKNOWN→need_human + 实体键(spec 2026-11-02 §7 挂账行) ──

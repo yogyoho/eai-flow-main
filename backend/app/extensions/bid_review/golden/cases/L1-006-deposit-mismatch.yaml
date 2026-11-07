@@ -1,8 +1,9 @@
 case: L1-006-deposit-mismatch
-desc: 保证金 5 万与招标要求 10 万不一致 → L1-006 violation(money 渲染钉语义)
+desc: 保证金 5 万与招标要求 10 万不一致 → L1-006 violation(money 渲染钉语义);P1-β批二续 T3 A-续-③ precondition 兑付 C-17 后需 bid.deposit_receipt_present=true 才武装(凭证在→金额比对主责生效)
 fields:
   bid.deposit_amount: 50000.0
   tender.deposit_required: 100000.0
+  bid.deposit_receipt_present: true
 expect_issues:
   - rule_id: L1-006
     severity: fatal

@@ -5,6 +5,7 @@ from __future__ import annotations
 import hashlib
 import json
 import math
+import re
 from collections.abc import Callable
 from typing import Any
 
@@ -127,6 +128,10 @@ FIELD_TYPE_CONTRACTS["bid.volume_index"] = '[{name:"分册名称(正本/副本 �
 # L2-050 v1=零字节+可读,MIME-扩展名一致性列挂账(A-续-④,需映射表,W2 OCR 先例)不产该键。
 FIELD_TYPE_CONTRACTS["bid.archive_files"] = '[{name:"文件名", size_bytes:"字节数,数字", readable:"是否可读,布尔", encrypted:"是否加密,布尔"}] 对象列表;压缩包内文件逐个一行;禁止纯值列表/标量。'
 FIELD_TYPE_CONTRACTS["bid.files"] = '[{name:"文件名", size_bytes:"字节数,数字", readable:"是否可读,布尔"}] 对象列表;全量文件逐个一行;MIME 与扩展名一致性列挂账(A-续-④)不产该键;禁止纯值列表/标量。'
+# 签署位对象列表契约(P1-β批二续 Task3,2026-11-07;L2-030):对象列表不进 LIST_PATHS/形状闸
+# (闸只吃纯串列表),给逐字段契约;no 为签署位编号/名称(L2-030 col(bid.signature_slots,'no') 比对列)。
+FIELD_TYPE_CONTRACTS["tender.signature_slots"] = '[{no:"签署位编号或名称", name:"签署方", page:"页码,数字或null"}] 对象列表;格式文件『签字盖章处』逐位一行;禁止纯值列表/标量。'
+FIELD_TYPE_CONTRACTS["bid.signature_slots"] = '[{no:"签署位编号或名称", name:"签署方", page:"页码,数字或null"}] 对象列表;实际签署位逐位一行;禁止纯值列表/标量。'
 # ── 服务端派生 join(整合版对齐 P0③,2026-11-06;D:\knowbase 规格书 L2233「禁模型换算」)──
 # boq_unit_checks[].matched / appendix_references[].present / device_model_mismatches 原由抽取
 # LLM 自产=换算禁令违例;改服务端派生,字段名与行形不变,规则零改动。无法判定不落键
@@ -134,7 +139,19 @@ FIELD_TYPE_CONTRACTS["bid.files"] = '[{name:"文件名", size_bytes:"字节数,�
 # bid.full_text(P1-β批二续 Task2,2026-11-07;L2-051 输入,spec §4.4 :851):规格名全文域——
 # 非模型可抽取路径(抽取请求不含,禁模型自产全文,P0③ 同款姿态),eval 时由服务端注入/派生
 # (派生接线挂账;接线前生产侧诚实 need_human,golden/评测以 stub 直注)。
-SERVER_DERIVED_PATHS: frozenset[str] = frozenset({"bid.device_model_mismatches", "bid.full_text"})
+# 三件套/凭证存在性布尔(P1-β批二续 Task3,2026-11-07;L2-032/033+L1-006 输入,A-续-②③):
+# legal_id_proof_present/id_copy_present/deposit_receipt_present 由 bid.attachment_index 名称
+# 归一匹配派生(derive_joins),模型自产一律丢弃(换算禁令同款);清单缺失/名称集空不落键
+# →need_human 诚实降级。
+SERVER_DERIVED_PATHS: frozenset[str] = frozenset(
+    {
+        "bid.device_model_mismatches",
+        "bid.full_text",
+        "bid.legal_id_proof_present",
+        "bid.id_copy_present",
+        "bid.deposit_receipt_present",
+    }
+)
 
 _FW_MAP = str.maketrans(
     "０１２３４５６７８９ＡＢＣＤＥＦＧＨＩＪＫＬＭＮＯＰＱＲＳＴＵＶＷＸＹＺａｂｃｄｅｆｇｈｉｊｋｌｍｎｏｐｑｒｓｔｕｖｗｘｙｚ",
@@ -150,12 +167,14 @@ def normalize_unit_name(v: Any) -> str:
 
 
 def derive_joins(fields: dict) -> dict:
-    """三个换算字段的服务端派生(纯函数返回新 dict):
+    """换算字段的服务端派生(纯函数返回新 dict):
     - boq_unit_checks[].matched = normalize_unit_name(tender_unit)==normalize_unit_name(bid_unit)(两侧单位齐才落键);
     - appendix_references[].present = 附件名与 bid.attachments/bid.attachment_index 归一双向子串命中(有来源才落键)（bid.attachments 为二段字段,一段链实际来源=attachment_index;attachments 仅为防御性兜底扫描）;
     - device_model_mismatches = tender.device_models×bid.device_models 归一双向差集(两侧非空才派生,可派生时整体覆盖含 [];
       两侧不齐→显式 null(need_human 通路)——模型自产串无论派生与否一律丢弃)。
-    模型自产的 matched/present/mismatches 一律丢弃重建(禁模型换算)。"""
+    - 三件套/凭证存在性布尔(A-续-②③,P1-β批二续):legal_id_proof_present/id_copy_present/deposit_receipt_present
+      = bid.attachment_index 名称归一正则命中(清单缺失/名称集空→不落键,need_human 通路)。
+    模型自产的 matched/present/mismatches/三 presence 一律丢弃重建(禁模型换算)。"""
     out = dict(fields)
     rows = out.get("bid.boq_unit_checks")
     if isinstance(rows, list):
@@ -194,6 +213,27 @@ def derive_joins(fields: dict) -> dict:
                 r["present"] = bool(n) and any(n in s or s in n for s in sources)
             new_rows.append(r)
         out["bid.appendix_references"] = new_rows
+
+    # 三件套/凭证存在性布尔(A-续-②③,P1-β批二续):bid.attachment_index 名称归一匹配
+    # 服务端派生,模型自产一律丢弃(换算禁令同款——三键已入 SERVER_DERIVED_PATHS,
+    # normalize_fields 仅收 collect_field_paths,模型键在源头即弃);清单缺失/名称集空
+    # →不落键,规则侧走 need_human 诚实降级(UNKNOWN 不判通过铁律)。
+    idx = out.get("bid.attachment_index")
+    names = []
+    if isinstance(idx, list):
+        for item in idx:
+            if isinstance(item, dict) and isinstance(item.get("name"), str) and item["name"].strip():
+                n = _normalize_name(item["name"])
+                if n:
+                    names.append(n)
+    if names:
+
+        def _any_name(patterns):
+            return any(re.search(p, n) for n in names for p in patterns)
+
+        out["bid.legal_id_proof_present"] = _any_name((r"法人身份证明", r"法定代表人身份证明"))
+        out["bid.id_copy_present"] = _any_name((r"身份证复印", r"身份证件"))
+        out["bid.deposit_receipt_present"] = _any_name((r"保证金", r"保函", r"回单"))
 
     out.pop("bid.device_model_mismatches", None)  # 换算禁令:模型自产串无条件丢弃(两侧不齐也不落模型值)
 
@@ -244,8 +284,9 @@ class ExtractNotConfigured(RuntimeError):
 
 def collect_field_paths() -> list[str]:
     """首段提取请求路径 = universe − 第二段域 − 服务端派生域(EAI-CUSTOM 2026-11-05 M1,spec §4;排序稳定;
-    79 路径=P1-β批二续 T2 后 宇宙87−第二段6−服务端派生2(device_model_mismatches+bid.full_text 规格名全文域,
-    L2-051 输入禁模型抽取;前值 77=宇宙84−6−1,T1 文件级 L2-001/002/003 六路径,2026-11-07);
+    81 路径=P1-β批二续 T3 后 宇宙92−第二段6−服务端派生5(device_model_mismatches+bid.full_text 规格名全文域
+    +三 presence 派生布尔 legal_id_proof/id_copy/deposit_receipt,禁模型自产换算禁令同款,2026-11-07;
+    前值 79=宇宙87−6−2,T2;77=宇宙84−6−1,T1 文件级 L2-001/002/003 六路径);
     M0 快照零翻红锚点——第二段实体路径走 build_attachments_baseline)。"""
     return sorted(set(_registry_universe()) - set(_SECOND_STAGE_FIELDS) - set(SERVER_DERIVED_PATHS))
 

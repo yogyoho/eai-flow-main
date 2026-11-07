@@ -152,6 +152,9 @@ async def evaluate_fields(
         out.extend(issues)
     out = _suppress_l3012_by_l2021(out)  # W9 抑制联动(聚合循环后、return 前单插入,A-β2-⑦)
     # L2-051 主责折叠(A-续-⑤,P1-β批二续):草稿/内部标记残留面上,版本/币种一致性(L3-016/018)
-    # violation 让位主责;L1-007→L2-030 折叠行 Task 3 加。
+    # violation 让位主责。
     out = _fold_issues_by_primary(out, "L2-051", ("L3-016", "L3-018"))
+    # L1-007 主责折叠(A-续-①,P1-β批二续 Task3):签章位存在性+有效性合并主责 L1-007(hyb)——
+    # L1-007 definite violation 时 L2-030 violation 让位;need_human 不折叠(L2-030 独立面保留)。
+    out = _fold_issues_by_primary(out, "L1-007", ("L2-030",))
     return out
