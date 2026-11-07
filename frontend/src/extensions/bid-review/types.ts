@@ -47,6 +47,7 @@ export interface IssueOut {
   rule_id: string;
   layer: string;
   severity: string;
+  /** 引擎五值 FAIL|PASS|UNKNOWN|ERROR|SKIP(后端 P1-β批三 C-08)+ 复核域 false_positive。 */
   verdict: string;
   clause_id: string | null;
   message: string;

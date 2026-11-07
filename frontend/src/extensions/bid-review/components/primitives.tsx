@@ -18,7 +18,8 @@ import { cn } from "@/lib/utils";
 
 // ── §2 状态 Pill 词汇映射(全视图统一)──────────────────────────────────
 // spec §2 配方:severity fatal→error / major→warn(文字深档由 Pill warn 档承担)/
-// minor→info / info→muted;verdict violation→error / pass→success / need_human→muted;
+// minor→info / info→muted;verdict FAIL→error / PASS→success / UNKNOWN·SKIP·false_positive→gray / ERROR→error
+// (P1-β批三 2026-11-07:引擎五值域 C-08,后端 engine/verdicts.py 唯一真相);
 // 任务状态词汇=后端 models.py:30(created|parsing|extracting|awaiting_confirm|
 // running|done|failed;勘误 2026-10-29:终态成功=done,completed 仅兼容别名)。
 // 与 TasksView.statusPill 同源(Task 12 本地版不动);三视图共用故随基元落此。
@@ -90,12 +91,18 @@ export function verdictPill(verdict: string): {
   label: string;
 } {
   switch (verdict) {
-    case "violation":
+    case "FAIL":
       return { tone: "error", label: "违规" };
-    case "pass":
+    case "PASS":
       return { tone: "success", label: "通过" };
-    case "need_human":
+    case "UNKNOWN":
       return { tone: "gray", label: "待人工" };
+    case "ERROR":
+      return { tone: "error", label: "执行异常" };
+    case "SKIP":
+      return { tone: "gray", label: "跳过" };
+    case "false_positive":
+      return { tone: "gray", label: "误报" };
     default:
       return { tone: "gray", label: verdict || "未知" };
   }

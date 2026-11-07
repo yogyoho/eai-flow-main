@@ -47,7 +47,7 @@ const issue = (id: string, over: Partial<Record<string, unknown>> = {}) => ({
   rule_id: `R-${id}`,
   layer: "semantic",
   severity: "major",
-  verdict: "need_human",
+  verdict: "UNKNOWN",
   clause_id: null,
   message: `字段缺失无法判定:bid.duration_main_text(on_missing_input=need_human)`,
   fix: "补齐工期表述后重跑",
@@ -195,7 +195,7 @@ describe("bid-review ReviewQueueView 复核工作台(EAI-CUSTOM 2026-10-31)", ()
         // 致命违规:不在默认段,「全部」段可达
         issue("i1", {
           severity: "fatal",
-          verdict: "violation",
+          verdict: "FAIL",
           need_human: false,
         }),
         // need_human:默认段唯一入队项

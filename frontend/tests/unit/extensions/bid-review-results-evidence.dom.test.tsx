@@ -54,7 +54,7 @@ const ISSUE = {
   rule_id: "L1-009",
   layer: "L1",
   severity: "fatal",
-  verdict: "violation",
+  verdict: "FAIL",
   clause_id: null,
   message: "投标总价超出招标控制价",
   fix: "下调总价至控制价以内",
@@ -192,7 +192,7 @@ describe("bid-review ResultsView 证据管线(EAI-CUSTOM 2026-10-30)", () => {
   it("待人工按钮 → POST feedback action=need_human", async () => {
     responder = (path) => {
       if (path.endsWith("/feedback"))
-        return jsonRes({ ...ISSUE, verdict: "need_human", need_human: true });
+        return jsonRes({ ...ISSUE, verdict: "UNKNOWN", need_human: true });
       if (path.endsWith("/tasks/t1/issues")) return jsonRes({ items: [ISSUE] });
       if (path.endsWith("/tasks/t1")) return jsonRes(TASK);
       return jsonRes({}, 404);
@@ -578,7 +578,7 @@ const P2_ISSUES = [
     rule_id: "L2-020",
     layer: "L2",
     severity: "fatal",
-    verdict: "violation",
+    verdict: "FAIL",
     clause_id: null,
     message: "缺少附件 A-2",
     fix: "",
@@ -606,7 +606,7 @@ const P2_ISSUES = [
     rule_id: "L3-005",
     layer: "L3",
     severity: "minor",
-    verdict: "violation",
+    verdict: "FAIL",
     clause_id: null,
     message: "业绩证明表述不一致",
     fix: "",

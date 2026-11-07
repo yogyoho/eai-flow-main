@@ -7,7 +7,7 @@ import type { PropsWithChildren } from "react";
 // ① advisory 分节:「竞争力建议(L4,advisory)」收 advisory.items,行只读;
 // ② N1 FP 过滤:advisory.items 里 verdict=="false_positive" 的行(API 面不过滤)
 //    不得当建议呈现——verdict/review_state/会话内三通道全滤(advisoryVisibleItems);
-// ③ 正式视图排 L4:L4 fatal violation 不入正式清单与客户端 summary →
+// ③ 正式视图排 L4:L4 fatal FAIL 不入正式清单与客户端 summary →
 //    verdict-band 仍「建议提交」(advisory 不影响提交判定);
 // ④ 空 advisory(旧网关缺键/滤空)→ 整节不渲染。
 const calls: Array<{ path: string; init?: RequestInit }> = [];
@@ -51,7 +51,7 @@ const FORMAL: IssueOut = {
   rule_id: "L1-009",
   layer: "L1",
   severity: "major",
-  verdict: "violation",
+  verdict: "FAIL",
   clause_id: null,
   message: "投标总价超出招标控制价",
   fix: "下调总价至控制价以内",
@@ -63,14 +63,14 @@ const FORMAL: IssueOut = {
   created_at: "2026-11-07T00:00:00Z",
 };
 
-// L4 fatal violation:若漏入正式清单/客户端 summary,verdict-band 会误翻红——本测钉死
+// L4 fatal FAIL:若漏入正式清单/客户端 summary,verdict-band 会误翻红——本测钉死
 const L4_OK: IssueOut = {
   ...FORMAL,
   id: "i2",
   rule_id: "L4-001",
   layer: "L4",
   severity: "fatal",
-  verdict: "violation",
+  verdict: "FAIL",
   message: "施工组织设计可增加BIM协同亮点",
   fix: "补充BIM协同章节提升技术分",
   dedup_key: "k2",
@@ -214,7 +214,7 @@ describe("bid-review ResultsView L4 advisory 分节(P1-β批二续 T5)", () => {
     ).toHaveLength(1);
     // N1:verdict=false_positive 的 L4 行不渲染(误报不当建议)
     expect(screen.queryByText("已判误报的建议条目")).toBeNull();
-    // verdict-band:L4 fatal violation 不入正式计数 → 仍「建议提交」
+    // verdict-band:L4 fatal FAIL 不入正式计数 → 仍「建议提交」
     expect(screen.getByText("建议提交")).not.toBeNull();
     expect(screen.queryByText("不建议提交")).toBeNull();
     // 折叠交互:收起后建议行隐藏,节头仍在

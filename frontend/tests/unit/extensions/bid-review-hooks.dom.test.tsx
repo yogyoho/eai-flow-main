@@ -33,7 +33,7 @@ const ISSUE = {
   rule_id: "L1-009",
   layer: "L1",
   severity: "fatal",
-  verdict: "violation",
+  verdict: "FAIL",
   clause_id: null,
   message: "投标总价超出招标控制价",
   fix: "下调总价至控制价以内",
