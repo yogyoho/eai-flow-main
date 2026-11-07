@@ -8,7 +8,7 @@
 
 **Tech Stack:** Python 3.12 / pytest / uv / 既有 rulepack YAML schema。
 
-**工作目录:** 全部命令在 `D:\eai\eai-flow-main\backend` 下执行;pytest 必须带 `tests/` 路径(`uv run pytest tests/ ...`)。基线:全家 `uv run pytest tests/ -k bid_review -q` = **596 passed, 6 skipped**(2026-11-07 实测,exit 0);golden CLI 60 题;宇宙 78;包 40 条(det 34 + hyb 5 + sem 1)。
+**工作目录:** 全部命令在 `D:\eai\eai-flow-main\backend` 下执行;pytest 必须带 `tests/` 路径(`uv run pytest tests/ ...`)。基线:全家 `uv run pytest tests/ -k bid_review -q` = **618 passed, 6 skipped**(β批一收官态;T1 后 624;另一后台跑曾报 596,系陈旧树,作废);golden CLI 60 题;宇宙 78;包 40 条(det 34 + hyb 5 + sem 1)。
 
 ---
 
@@ -154,7 +154,7 @@ def _col(rows, key):
 ```
 uv run pytest tests/test_bid_review_expr_operators2.py -q
 uv run pytest tests/test_bid_review_expr_mul_close.py tests/test_bid_review_rule_runner.py tests/test_bid_review_golden.py -q
-uv run pytest tests/ -k bid_review -q   # 596 基线不翻
+uv run pytest tests/ -k bid_review -q   # 618 基线不翻(T1 实测 618+6 新增=624)
 ```
 
 - [ ] **Step 6: Commit**
@@ -187,7 +187,7 @@ git commit -m "feat(bid-review): β批二引擎五件套——or(check-op层)/re
 
 ```
 uv run pytest tests/test_bid_review_golden.py tests/test_bid_review_registry.py tests/test_bid_review_rule_runner.py -q
-uv run pytest tests/ -k bid_review -q   # 596+T1 新增不翻;golden 计数不变(60 题)
+uv run pytest tests/ -k bid_review -q   # 624 不翻;golden 计数不变(60 题)
 ```
 
 - [ ] **Step 5: Commit**
