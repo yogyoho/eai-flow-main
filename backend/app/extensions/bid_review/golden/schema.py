@@ -1,7 +1,8 @@
 """金标准题库契约(EAI-CUSTOM 2026-11-03,spec §5/§6)。Expectation.verdict 缺省
-violation:need_human 类断言须显式 verdict: need_human——漏报判定按 verdict 分桶,
-引擎降级链(need_human)不冒充命中。strict 的「期望外」只数 verdict=violation
-(need_human 是引擎主动声明无法判定,不是错判;其断言走 expect_issues 显式期待)。"""
+violation(经 loader normalize_verdict 归一为 FAIL,P1-β批三五值域):need_human 类
+断言须显式 verdict——漏报判定按 verdict 分桶,引擎降级链(UNKNOWN+need_human 旗)
+不冒充命中。strict 的「期望外」只数 verdict=FAIL(UNKNOWN 是引擎主动声明无法判定,
+不是错判;其断言走 expect_issues 显式期待)。"""
 
 from dataclasses import dataclass, field
 
@@ -11,7 +12,7 @@ class Expectation:
     rule_id: str
     severity: str
     contains: list[str] = field(default_factory=list)
-    verdict: str = "violation"  # violation | need_human | unclear
+    verdict: str = "violation"  # 引擎五值 FAIL|PASS|UNKNOWN|ERROR|SKIP(批三);历史三值由 loader normalize_verdict 归一,夹具零改动(CALIBRATION 冻结面)
     entity: str = ""  # 实体消歧子串(对 entity_keys+message;L2 逐实体多条时必带,spec §1.5)
     acceptable_rule_ids: list[str] = field(default_factory=list)  # 等价规则集:任一命中算 TP(不计覆盖率地板,spec §1.5)
 

@@ -1,6 +1,6 @@
 """规则包加载 + det 执行(canonical;技能内 eval_det.py 为其无量词子集副本)。
 加载期白名单校验(未知算子/函数/非零 tolerance → RulePackError 拒载);
-执行期缺字段 → need_human,precondition 不成立 → [],判定失败 → violation + _tpl 渲染。
+执行期缺字段 → UNKNOWN,precondition 不成立 → [],判定失败 → FAIL(P1-β批三 五值域)+ _tpl 渲染。
 """
 
 from __future__ import annotations
@@ -17,6 +17,7 @@ import yaml
 from app.extensions.bid_review.engine.anchors import anchor_rule_paths
 from app.extensions.bid_review.engine.attachments import match_attachments, normalize_name
 from app.extensions.bid_review.engine.expr import ExprError, RulePackError, eval_expr, fields_used, validate_expr
+from app.extensions.bid_review.engine.verdicts import VERDICT_FAIL, VERDICT_UNKNOWN
 
 _OPS = {"lte": operator.le, "gte": operator.ge, "eq": operator.eq}
 _KNOWN_OPS = {*_OPS, "and", "or", "all", "set_eq", "att_check", "att_count", "att_missing_rows"}  # steps 形态无 op 键,单独判;att_* = L2 P1 附件核对(spec 2026-11-02 §3)+L2-023 指纹通道(spec 2026-11-04 §2.1);or = check-op 层析取(P1-β批二)
@@ -166,7 +167,7 @@ def _dedup_key(rule: Rule, entity: dict | None) -> str:
     有界截断:超 200 字符截断后接 ``#``+md5 前 12 位——models.dedup_key 为 String(256) 硬限,
     PG 不截断、超长直接 DataError 断整 run 持久化(I-1);200 预算 → 总长 ≈224 < 256,
     给 llm_runner "|confirm-failed" 组合留头寸;att_* 分支显式有界覆盖不受影响。仅正式
-    violation(_issue)携带;_need_human 非正式违规不带键。消费方对键做不透明串比较
+    FAIL(_issue)携带;_need_human 非正式违规不带键。消费方对键做不透明串比较
     (crud 查重/routers 版本 diff),换形不影响其逻辑。"""
     ent = json.dumps(entity, ensure_ascii=False, sort_keys=True, default=str) if entity else "-"
     if len(ent) > 200:
@@ -180,7 +181,7 @@ def _issue(rule: Rule, fields: dict, extra: dict, env: dict | None = None) -> di
         "rule_id": rule.id,
         "layer": rule.layer,
         "severity": rule.severity,
-        "verdict": "violation",
+        "verdict": VERDICT_FAIL,
         "need_human": False,
         "matched_expected": False,
         "message": msg,
@@ -192,12 +193,12 @@ def _issue(rule: Rule, fields: dict, extra: dict, env: dict | None = None) -> di
     }
 
 
-def _need_human(rule: Rule, msg: str) -> dict:
+def _need_human(rule: Rule, msg: str, verdict: str = VERDICT_UNKNOWN) -> dict:
     return {
         "rule_id": rule.id,
         "layer": rule.layer,
         "severity": rule.severity,
-        "verdict": "need_human",
+        "verdict": verdict,
         "need_human": True,
         "matched_expected": False,
         "message": msg,
@@ -247,7 +248,7 @@ def attach_evidence(issues: list[dict], rule: Rule, provenance: dict | None = No
 
 
 def run_det_rule(rule: Rule, fields: dict) -> list[dict]:
-    """单条 det 规则执行:缺字段 → need_human;precondition 不成立 → [];判定失败 → violation。"""
+    """单条 det 规则执行:缺字段 → UNKNOWN,precondition 不成立 → [],判定失败 → FAIL(P1-β批三 五值域)。"""
     exprs = _collect_exprs(rule.check)
     missing = sorted({p for e in exprs for p in fields_used(e) if p not in fields})
     if not missing:

@@ -44,14 +44,14 @@ class TestL2041RequiredRowPrice:
         }
         issues = run_det_rule(rule, fields)
         assert len(issues) == 1, f"必填行缺单价应恰好一条 issue(自附行不判): {issues}"
-        assert issues[0]["verdict"] == "violation" and issues[0]["severity"] == "fatal"
+        assert issues[0]["verdict"] == "FAIL" and issues[0]["severity"] == "fatal"
         assert "BOQ-1" in issues[0]["message"] and "设备采购" in issues[0]["message"]
 
     def test_pass_and_missing_inputs(self):
         rule = _rules()["L2-041"]
         ok = {"tender.required_fields": ["B1"], "bid.boq_rows": [{"id": "B1", "name": "x", "unit": "", "qty": 1, "price": 9.9, "required": True}]}
         assert run_det_rule(rule, ok) == []
-        assert run_det_rule(rule, {"tender.required_fields": ["B1"]})[0]["verdict"] == "need_human"
+        assert run_det_rule(rule, {"tender.required_fields": ["B1"]})[0]["verdict"] == "UNKNOWN"
 
 
 class TestL2022BlankAttachment:
@@ -63,12 +63,12 @@ class TestL2022BlankAttachment:
         rule = _rules()["L2-022"]
         fields = {"bid.attachments": [dict(self._ATT), dict(self._ATT, no="B", name="业绩合同", is_empty_text=False)]}
         issues = run_det_rule(rule, fields)
-        assert len(issues) == 1 and issues[0]["verdict"] == "violation" and issues[0]["severity"] == "major"
+        assert len(issues) == 1 and issues[0]["verdict"] == "FAIL" and issues[0]["severity"] == "major"
         assert "营业执照" in issues[0]["message"]
         assert run_det_rule(rule, {"bid.attachments": [dict(self._ATT, is_empty_text=None)]}) == []
 
     def test_missing_input_need_human(self):
-        assert run_det_rule(_rules()["L2-022"], {})[0]["verdict"] == "need_human"
+        assert run_det_rule(_rules()["L2-022"], {})[0]["verdict"] == "UNKNOWN"
 
 
 class TestL3026ClusterUnsure:
@@ -83,13 +83,13 @@ class TestL3026ClusterUnsure:
             ]
         }
         issues = run_det_rule(rule, fields)
-        assert len(issues) == 1 and issues[0]["verdict"] == "violation" and issues[0]["severity"] == "major"
+        assert len(issues) == 1 and issues[0]["verdict"] == "FAIL" and issues[0]["severity"] == "major"
         assert "G1" in issues[0]["message"]
 
     def test_all_ok_or_missing(self):
         rule = _rules()["L3-026"]
         assert run_det_rule(rule, {"bid.performance_groups": [{"group_id": "G1", "ok": True, "members": []}]}) == []
-        assert run_det_rule(rule, {})[0]["verdict"] == "need_human"
+        assert run_det_rule(rule, {})[0]["verdict"] == "UNKNOWN"
 
 
 class TestL2015EmptySection:
@@ -106,9 +106,9 @@ class TestL2015EmptySection:
         }
         issues = run_det_rule(rule, fields)
         assert len(issues) == 1, f"仅 is_empty=True 行成 issue: {issues}"
-        assert issues[0]["verdict"] == "violation" and issues[0]["severity"] == "major"
+        assert issues[0]["verdict"] == "FAIL" and issues[0]["severity"] == "major"
         assert "施工组织设计" in issues[0]["message"]
-        assert run_det_rule(rule, {})[0]["verdict"] == "need_human"
+        assert run_det_rule(rule, {})[0]["verdict"] == "UNKNOWN"
 
 
 class TestGoldenFaceInsurance:
@@ -121,7 +121,7 @@ class TestGoldenFaceInsurance:
         fields = {"bid.total_price": 100.0, "tender.max_price": 200.0, "bid.price_includes_tax": True, "tender.price_includes_tax": True}
         issues = await evaluate_fields(pack, fields, model_fn=model_fn)
         new = [i for i in issues if i["rule_id"] in NEW_IDS]
-        assert len(new) == 4 and all(i["verdict"] == "need_human" for i in new), f"新规则旧基线必须 need_human: {new}"
+        assert len(new) == 4 and all(i["verdict"] == "UNKNOWN" for i in new), f"新规则旧基线必须 UNKNOWN(need_human 旗): {new}"
 
 
 class TestFamilyWiring:

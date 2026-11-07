@@ -195,7 +195,7 @@ async def test_acceptable_rule_ids_any_hit_counts():
             "bid.price_includes_tax": True,
             "tender.price_includes_tax": True,
         },
-        expect_issues=[Expectation(rule_id="L2-024", severity="fatal", contains=["1,000,001"], acceptable_rule_ids=["L1-009"])],
+        expect_issues=[Expectation(rule_id="L2-024", severity="fatal", contains=["1,000,001"], acceptable_rule_ids=["L1-009"], verdict="FAIL")],
         expect_absent=[],
     )
     res = await run_case(c, pack=_pack())
@@ -219,7 +219,7 @@ async def test_entity_disambiguation_filters_per_entity_issues():
         case="T6-entity-hit",
         desc="entity 子串消歧:E-2 缺失断言命中 E-2 实体(entity_keys=attachment:E-2)",
         fields=dict(_L2_FIELDS),
-        expect_issues=[Expectation(rule_id="L2-020", severity="fatal", entity="E-2")],
+        expect_issues=[Expectation(rule_id="L2-020", severity="fatal", entity="E-2", verdict="FAIL")],
         expect_absent=[],
     )
     assert (await run_case(e2, pack=pack)).ok
@@ -227,7 +227,7 @@ async def test_entity_disambiguation_filters_per_entity_issues():
         case="T6-entity-miss",
         desc="entity 子串消歧:期望 E-9 无对应实体 → 必未命中(逐实体过滤生效)",
         fields=dict(_L2_FIELDS),
-        expect_issues=[Expectation(rule_id="L2-020", severity="fatal", entity="E-9")],
+        expect_issues=[Expectation(rule_id="L2-020", severity="fatal", entity="E-9", verdict="FAIL")],
         expect_absent=[],
     )
     res = await run_case(e9, pack=pack)
@@ -238,7 +238,7 @@ async def test_entity_disambiguation_filters_per_entity_issues():
 @pytest.mark.asyncio
 async def test_duplicate_expectation_requires_distinct_issue():
     c = loader.load_case(_SAMPLE)
-    c.expect_issues.append(Expectation(rule_id="L1-009", severity="fatal", contains=["1,000,001"]))  # 同特征期望×2,引擎只出一条
+    c.expect_issues.append(Expectation(rule_id="L1-009", severity="fatal", contains=["1,000,001"], verdict="FAIL"))  # 同特征期望×2,引擎只出一条
     res = await run_case(c, pack=_pack())
     assert not res.ok
     assert res.hits.get("L1-009") == 1  # 第二个期望不得重复记账同一实例(hits 不自增=正确)
@@ -248,7 +248,7 @@ async def test_duplicate_expectation_requires_distinct_issue():
 @pytest.mark.asyncio
 async def test_verdict_mismatch_tier_state_mismatch():
     c = loader.load_case(_SAMPLE)
-    c.expect_issues[0].verdict = "need_human"  # 实际 violation:severity+contains 全对,仅态判错
+    c.expect_issues[0].verdict = "UNKNOWN"  # 实际 FAIL:severity+contains 全对,仅态判错
     res = await run_case(c, pack=_pack())
     assert not res.ok
     assert any("verdict 不符" in ln for ln in res.diff_lines)

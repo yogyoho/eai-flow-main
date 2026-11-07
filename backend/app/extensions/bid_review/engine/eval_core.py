@@ -15,6 +15,7 @@ from types import SimpleNamespace
 
 from app.extensions.bid_review.engine.llm_runner import run_sem_rule
 from app.extensions.bid_review.engine.rule_runner import Rule, RulePack, _need_human, attach_evidence, run_det_rule
+from app.extensions.bid_review.engine.verdicts import VERDICT_ERROR, VERDICT_FAIL
 
 logger = logging.getLogger(__name__)
 
@@ -59,11 +60,11 @@ ProgressCB = Callable[[int, int, Rule], Awaitable[None]]
 
 def _suppress_l3012_by_l2021(issues: list[dict]) -> list[dict]:
     """W9 抑制联动(规格主责矩阵;P1-β批二 A-β2-⑦):L2-021 已报的引用缺失,同实体 L3-012
-    violation 折叠(suppressed_by 内标后移除,存在性归 L2 主责);L2-021 未覆盖的行照常出
+    FAIL 折叠(suppressed_by 内标后移除,存在性归 L2 主责);L2-021 未覆盖的行照常出
     L3-012。匹配只取结构化 entity_keys token(≥2 字符),message 全文禁入匹配面(样板词
-    自由重叠会误折叠全部 L3-012)。核心不变式:只折叠 violation,need_human 不动;
-    L2-021 无 violation 时零折叠。"""
-    l2021 = [i for i in issues if i.get("rule_id") == "L2-021" and i.get("verdict") == "violation"]
+    自由重叠会误折叠全部 L3-012)。核心不变式:只折叠 FAIL,need_human 不动;
+    L2-021 无 FAIL 时零折叠。"""
+    l2021 = [i for i in issues if i.get("rule_id") == "L2-021" and i.get("verdict") == VERDICT_FAIL]
     if not l2021:
         return issues
 
@@ -81,7 +82,7 @@ def _suppress_l3012_by_l2021(issues: list[dict]) -> list[dict]:
         keys |= _names(i)
     out, suppressed = [], 0
     for i in issues:
-        if i.get("rule_id") == "L3-012" and i.get("verdict") == "violation" and (_names(i) & keys):
+        if i.get("rule_id") == "L3-012" and i.get("verdict") == VERDICT_FAIL and (_names(i) & keys):
             suppressed += 1
             continue  # 折叠移除;suppressed_by 内标在审计日志面记(本批不落 issue 流)
         out.append(i)
@@ -91,20 +92,20 @@ def _suppress_l3012_by_l2021(issues: list[dict]) -> list[dict]:
 
 
 def _fold_issues_by_primary(issues: list[dict], primary_rule_id: str, folded_rule_ids: tuple[str, ...]) -> list[dict]:
-    """主责折叠泛化(A-续-⑤,P1-β批二续):primary 存在 verdict=violation(definite)时,
-    折叠 folded 规则的 violation(need_human 不折叠,suppressed_by 记账同 W9)。rule 级折叠
+    """主责折叠泛化(A-续-⑤,P1-β批二续):primary 存在 verdict=FAIL(definite)时,
+    折叠 folded 规则的 FAIL(need_human 不折叠,suppressed_by 记账同 W9)。rule 级折叠
     无 entity 条件——W9 的 entity 交集是 L2-021/L3-012 特化,entity 级细化挂账。
     与 W9 记账差异(plan Task 2 Step 2 规格):W9 折叠面只在审计日志记(suppressed_by 内标
     本批不落 issue 流);本 helper 额外在 primary 条目上落 ``suppressed_by``(被折叠条目
-    dedup_key 列表,审计可反查谁吞了谁)。核心不变式同 W9:只折叠 violation,need_human
-    不动;primary 不在/无 definite violation 时零折叠快路径原样返回(W9 本体一行不动)。"""
-    primary_idx = [n for n, i in enumerate(issues) if i.get("rule_id") == primary_rule_id and i.get("verdict") == "violation" and not i.get("need_human")]
+    dedup_key 列表,审计可反查谁吞了谁)。核心不变式同 W9:只折叠 FAIL,need_human
+    不动;primary 不在/无 definite FAIL 时零折叠快路径原样返回(W9 本体一行不动)。"""
+    primary_idx = [n for n, i in enumerate(issues) if i.get("rule_id") == primary_rule_id and i.get("verdict") == VERDICT_FAIL and not i.get("need_human")]
     if not primary_idx:
         return issues  # 零折叠快路径(primary 不在/仅 need_human 不武装),原样返回
     folded = set(folded_rule_ids)
     kept, folded_n = [], 0
     for it in issues:
-        if it.get("rule_id") in folded and it.get("verdict") == "violation" and not it.get("need_human"):
+        if it.get("rule_id") in folded and it.get("verdict") == VERDICT_FAIL and not it.get("need_human"):
             folded_n += 1
             key = it.get("dedup_key") or str(it.get("rule_id"))
             for n in primary_idx:
@@ -145,10 +146,11 @@ async def evaluate_fields(
             else:  # semantic|hybrid
                 issues = await run_sem_rule(rule, det_fields, materials, model_fn, docs_text)
         except Exception as exc:  # noqa: BLE001
-            # 逐规则异常隔离(worker 同款语义):run_det_rule 只把 KeyError 转 need_human;
-            # 求值意外与模型侧故障在此统一降级 need_human,不外溢单规则异常。
+            # 求值意外与模型侧故障(含 ModelNotConfigured)在此统一降级 ERROR
+            # (引擎五值域:基础设施故障≠数据不可判;缺字段类 UNKNOWN 走
+            # rule_runner._need_human 默认,P1-β批三),不外溢单规则异常。
             logger.warning("bid_review rule %s crashed, downgraded to need_human: %r", rule.id, exc)
-            issues = [_need_human(rule, f"规则执行异常 {exc!r}(逐规则隔离降级 need_human)")]
+            issues = [_need_human(rule, f"规则执行异常 {exc!r}(逐规则隔离降级 ERROR)", verdict=VERDICT_ERROR)]
         out.extend(issues)
     out = _suppress_l3012_by_l2021(out)  # W9 抑制联动(聚合循环后、return 前单插入,A-β2-⑦)
     # L2-051 主责折叠(A-续-⑤,P1-β批二续):草稿/内部标记残留面上,版本/币种一致性(L3-016/018)

@@ -32,11 +32,11 @@ def test_run_l1_009_violation_and_need_human():
     rule = {r.id: r for r in pack.rules}["L1-009"]
     bad = {"bid.total_price": 1000001.0, "tender.max_price": 1000000.0, "bid.price_includes_tax": True, "tender.price_includes_tax": True}
     issues = run_det_rule(rule, bad)
-    assert issues[0]["verdict"] == "violation" and issues[0]["severity"] == "fatal"
+    assert issues[0]["verdict"] == "FAIL" and issues[0]["severity"] == "fatal"
     assert "1,000,001" in issues[0]["message"]
     pre_false = {**bad, "bid.price_includes_tax": False, "tender.price_includes_tax": True}
     assert run_det_rule(rule, pre_false) == []
-    assert run_det_rule(rule, {"bid.total_price": 1.0})[0]["verdict"] == "need_human"
+    assert run_det_rule(rule, {"bid.total_price": 1.0})[0]["verdict"] == "UNKNOWN"
 
 
 def test_run_l3_006_structural_all_var_attr():
@@ -45,12 +45,12 @@ def test_run_l3_006_structural_all_var_attr():
     rule = {r.id: r for r in pack.rules}["L3-006"]
     fields = {"bid.total_price": 1000001.0, "bid.amount_occurrences": [{"where": "承诺函", "value": 900000.0}]}
     issues = run_det_rule(rule, fields)
-    assert issues and issues[0]["verdict"] == "violation"
+    assert issues and issues[0]["verdict"] == "FAIL"
     assert "900,000.00" in issues[0]["message"] and "承诺函" in issues[0]["message"]
     assert not re.search(r"\{[\w.]+(?::\w+)?\}", issues[0]["message"]), f"残留占位符: {issues[0]['message']}"
     ok = {**fields, "bid.amount_occurrences": [{"where": "承诺函", "value": 1000001.0}]}
     assert run_det_rule(rule, ok) == []
-    assert run_det_rule(rule, {"bid.total_price": 1.0})[0]["verdict"] == "need_human"
+    assert run_det_rule(rule, {"bid.total_price": 1.0})[0]["verdict"] == "UNKNOWN"
 
 
 def test_run_l3_006_empty_and_none_where_no_none_literal():
@@ -119,7 +119,7 @@ def test_text_typed_duration_fields_need_human_not_crash():
     ]
     for rid, fields in cases:
         issues = run_det_rule(rules[rid], fields)
-        assert len(issues) == 1 and issues[0]["verdict"] == "need_human" and issues[0]["need_human"] is True, f"{rid} 文本型工期/质保字段应 need_human,得 {issues}"
+        assert len(issues) == 1 and issues[0]["verdict"] == "UNKNOWN" and issues[0]["need_human"] is True, f"{rid} 文本型工期/质保字段应 UNKNOWN(need_human 旗),得 {issues}"
 
 
 def test_full_pack_loads():
@@ -159,7 +159,7 @@ def test_det_rules_empty_fields_need_human_no_exprerror():
     for rule in executable:
         issues = run_det_rule(rule, {})
         assert len(issues) == 1, f"{rule.id} 空 fields 应产 1 条 need_human,得 {issues}"
-        assert issues[0]["verdict"] == "need_human" and issues[0]["need_human"] is True, f"{rule.id} 空 fields 应 need_human"
+        assert issues[0]["verdict"] == "UNKNOWN" and issues[0]["need_human"] is True, f"{rule.id} 空 fields 应 UNKNOWN(need_human 旗)"
         assert issues[0]["rule_id"] == rule.id and issues[0]["source"] == "engine"
 
 
@@ -169,7 +169,7 @@ def test_l3019_missing_amount_key_degrades_to_need_human():
     pack = load_rulepack(PACK)
     rule = next(r for r in pack.rules if r.id == "L3-019")
     issues = run_det_rule(rule, {"bid.boq_rows": [{"id": "R1", "qty": 3, "price": 100}]})
-    assert len(issues) == 1 and issues[0]["verdict"] == "need_human" and issues[0]["need_human"] is True
+    assert len(issues) == 1 and issues[0]["verdict"] == "UNKNOWN" and issues[0]["need_human"] is True
     assert "r.amount" in issues[0]["message"]  # 缺键点名(求值期字段缺失 'r.amount')
 
 
@@ -243,7 +243,7 @@ def test_att_check_reports_missing_only():
     """att_check 只列 MISSING req(编号+名称);PARTIAL/MATCHED 不进 message。"""
     issues = run_det_rule(_att_rule("att_check"), ATT_FIELDS)
     assert len(issues) == 1
-    assert issues[0]["verdict"] == "violation"
+    assert issues[0]["verdict"] == "FAIL"
     assert "不出席也行" in issues[0]["message"]
     assert "业绩证明" not in issues[0]["message"]  # PARTIAL 不进 att_check
 
@@ -307,11 +307,11 @@ def test_l2032_steps_any_false_violation_all_true_pass():
     pack = load_rulepack(PACK)
     rule = {r.id: r for r in pack.rules}["L2-032"]
     bad = run_det_rule(rule, {"bid.legal_id_proof_present": True, "bid.id_copy_present": False})
-    assert len(bad) == 1 and bad[0]["verdict"] == "violation" and bad[0]["severity"] == "major"
+    assert len(bad) == 1 and bad[0]["verdict"] == "FAIL" and bad[0]["severity"] == "major"
     ok = run_det_rule(rule, {"bid.legal_id_proof_present": True, "bid.id_copy_present": True})
     assert ok == [], "两件齐备 → PASS 零发声"
     nh = run_det_rule(rule, {"bid.legal_id_proof_present": True})
-    assert len(nh) == 1 and nh[0]["verdict"] == "need_human"
+    assert len(nh) == 1 and nh[0]["verdict"] == "UNKNOWN"
 
 
 # ── L2 P2:UNKNOWN→need_human + 实体键(spec 2026-11-02 §7 挂账行) ──
@@ -345,7 +345,7 @@ def test_att_check_unknown_degrades_need_human():
     issues = run_det_rule(_att_rule("att_check"), COMP_FIELDS)
     assert len(issues) == 1
     assert issues[0]["need_human"] is True
-    assert issues[0]["verdict"] == "need_human"
+    assert issues[0]["verdict"] == "UNKNOWN"
     assert "资格审查文件" in issues[0]["message"]
 
 
@@ -392,7 +392,7 @@ def test_att_check_near_miss_message_mentions_candidate():
     issues = run_det_rule(_att_rule("att_check"), NEAR_FIELDS)
     assert len(issues) == 1
     assert issues[0]["need_human"] is True
-    assert issues[0]["verdict"] == "need_human"
+    assert issues[0]["verdict"] == "UNKNOWN"
     assert "近似候选" in issues[0]["message"]
     assert "中标通知书回执" in issues[0]["message"]
     assert "0.83" in issues[0]["message"]  # .2f 渲染钉(fixture ratio≈0.8333 确定性)
@@ -433,7 +433,7 @@ def test_att_check_sub_near_miss_message_names_subitem():
     issues = run_det_rule(_att_rule("att_check"), SUB_NEAR_FIELDS)
     assert len(issues) == 1
     assert issues[0]["need_human"] is True
-    assert issues[0]["verdict"] == "need_human"
+    assert issues[0]["verdict"] == "UNKNOWN"
     assert "子件" in issues[0]["message"]
     assert "3.2" in issues[0]["message"]
     assert "中标通知书" in issues[0]["message"]
@@ -494,7 +494,7 @@ def test_att_missing_rows_per_row_candidates():
     渲染候选消息(message_tpl 是 sem 侧 {clause_id} 契约,两相分离),entity/dedup 按行实体键。"""
     issues = run_det_rule(_fp_rule(candidate_tpl="附件「{missing}」未见于投标提供清单"), FP_MISS_FIELDS)
     assert len(issues) == 2
-    assert all(i["verdict"] == "violation" for i in issues)
+    assert all(i["verdict"] == "FAIL" for i in issues)
     assert "安全生产许可证" in issues[0]["message"]
     assert "社保缴纳证明" in issues[1]["message"]
     assert "{" not in issues[0]["message"]  # 无占位残留

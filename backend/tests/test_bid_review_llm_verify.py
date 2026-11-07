@@ -41,7 +41,7 @@ def _fake(content):
 
 
 def _issue(evidence, **kw):
-    base = {"rule_id": "L1-013", "evidence": evidence, "verdict": "violation"}
+    base = {"rule_id": "L1-013", "evidence": evidence, "verdict": "FAIL"}
     base.update(kw)
     return base
 
@@ -54,7 +54,7 @@ def test_rule_card_contains_iron_laws():
 @pytest.mark.asyncio
 async def test_sem_rule_good_path():
     issues = await run_sem_rule(RULE, fields={}, materials="…", model_fn=_fake(json.dumps(GOOD)), docs_text=DOCS)
-    assert issues[0]["verdict"] == "violation" and issues[0]["rule_id"] == "L1-013"
+    assert issues[0]["verdict"] == "FAIL" and issues[0]["rule_id"] == "L1-013"
     assert issues[0]["severity"] == "fatal"
     assert "{" not in issues[0]["message"], "渲染消息不得残留 {...} 占位符(Do-Not-Repeat)"
     assert issues[0]["engine_meta"]["prompt_version"]
@@ -180,15 +180,15 @@ def test_recompute_numeric_evaluator_error_returns_none():
 
 
 def test_run_seven_checks_numeric_refutes_model_false_positive():
-    issue = _issue(GOOD["verdicts"][0]["evidence"], verdict="violation", numeric_expr="bid.total_price <= tender.max_price")
+    issue = _issue(GOOD["verdicts"][0]["evidence"], verdict="FAIL", numeric_expr="bid.total_price <= tender.max_price")
     _, status = run_seven_checks(issue, RULE, DOCS, {"bid.total_price": 99.0, "tender.max_price": 100.0}, existing=[], evaluator=lambda expr, fields: "pass")
     assert status == "refuted", "确定性重算推翻模型误报 → 不产出"
 
 
 def test_run_seven_checks_numeric_confirms_violation_overrides_unclear():
-    issue = _issue(GOOD["verdicts"][0]["evidence"], verdict="unclear", numeric_expr="bid.total_price <= tender.max_price")
+    issue = _issue(GOOD["verdicts"][0]["evidence"], verdict="UNKNOWN", numeric_expr="bid.total_price <= tender.max_price")
     final, status = run_seven_checks(issue, RULE, DOCS, {}, existing=[], evaluator=lambda expr, fields: "violation")
-    assert status == "accepted" and final["verdict"] == "violation", "确定性结果覆盖模型结论"
+    assert status == "accepted" and final["verdict"] == "FAIL", "确定性结果覆盖模型结论"
 
 
 # ── 第4道 置信门 ──────────────────────────────────────────────
@@ -284,7 +284,7 @@ async def test_sem_rule_full_verdict_yields_no_issue():
 async def test_sem_rule_unclear_verdict_needs_human():
     unclear = {"verdicts": [{**GOOD["verdicts"][0], "verdict": "unclear", "confidence": 0.4}]}
     issues = await run_sem_rule(RULE, fields={}, materials="…", model_fn=_fake(json.dumps(unclear)), docs_text=DOCS)
-    assert issues[0]["verdict"] == "unclear" and issues[0]["need_human"] is True
+    assert issues[0]["verdict"] == "UNKNOWN" and issues[0]["need_human"] is True
 
 
 @pytest.mark.asyncio
@@ -310,7 +310,7 @@ async def test_sem_rule_dedup_merges_same_clause():
 async def test_hybrid_rule_without_det_expr_falls_through_to_sem():
     hyb = {**RULE, "type": "hybrid", "check": {**RULE["check"]}}
     issues = await run_sem_rule(hyb, fields={}, materials="…", model_fn=_fake(json.dumps(GOOD)), docs_text=DOCS)
-    assert issues[0]["verdict"] == "violation", "hyb 无 det 粗筛表达式 → fail-open 进语义管线"
+    assert issues[0]["verdict"] == "FAIL", "hyb 无 det 粗筛表达式 → fail-open 进语义管线"
 
 
 # ── 评审修复:规则表示契约归一(dict / Rule 数据类双向可达)────────
@@ -344,12 +344,12 @@ def _hyb_rule_dataclass():
 def test_hyb_det_prefilter_dict_rule_really_hits_run_det_rule():
     issues = _hyb_det_prefilter(HYB, HYB_FIELDS)
     assert issues, "dict 规则 det 粗筛必须真实命中 run_det_rule(修复前 AttributeError 被吞,永远静默跳过)"
-    assert issues[0]["verdict"] == "violation" and issues[0]["rule_id"] == "L1-003"
+    assert issues[0]["verdict"] == "FAIL" and issues[0]["rule_id"] == "L1-003"
 
 
 def test_hyb_det_prefilter_accepts_rule_dataclass():
     issues = _hyb_det_prefilter(_hyb_rule_dataclass(), HYB_FIELDS)
-    assert issues and issues[0]["verdict"] == "violation", "Rule 数据类直传粗筛同样可达"
+    assert issues and issues[0]["verdict"] == "FAIL", "Rule 数据类直传粗筛同样可达"
 
 
 # ── 评审修正 A12(修复轮 3,2026-10-29):hyb 语义结构性反转回正 ─────────
@@ -403,7 +403,7 @@ async def test_hyb_det_hit_candidate_confirmed_by_model_produces_issue():
     issues = await run_sem_rule(HYB, fields=HYB_FIELDS, materials="…", model_fn=fake, docs_text=DOCS)
     assert fake.calls == 1, "det 命中不再短路,候选交模型确认(修复前 det 命中即 return 短路终局)"
     assert "报价超过限价" in fake.prompts[0], "规则卡须含 det 粗筛候选摘录(build_rule_card 候选段)"
-    assert len(issues) == 1 and issues[0]["verdict"] == "violation" and issues[0]["rule_id"] == "L1-003"
+    assert len(issues) == 1 and issues[0]["verdict"] == "FAIL" and issues[0]["rule_id"] == "L1-003"
     assert issues[0]["numeric_expr"] is None, "hybrid 一律不派生 numeric_expr → 第3道不触发(结构性门)"
 
 
@@ -422,7 +422,7 @@ async def test_hyb_det_hit_model_unclear_need_human_survives_pipeline():
     修复前 det_expr 派生 numeric_expr 使第3道把 unclear 一并 refuted,零人工可见。"""
     unclear = {"verdicts": [{**GOOD["verdicts"][0], "verdict": "unclear", "confidence": 0.4}]}
     issues = await run_sem_rule(HYB, fields=HYB_FIELDS, materials="…", model_fn=_fake(json.dumps(unclear)), docs_text=DOCS)
-    assert len(issues) == 1 and issues[0]["verdict"] == "unclear" and issues[0]["need_human"] is True
+    assert len(issues) == 1 and issues[0]["verdict"] == "UNKNOWN" and issues[0]["need_human"] is True
 
 
 @pytest.mark.asyncio
@@ -440,7 +440,7 @@ async def test_hyb_schema_discard_degrades_candidates_to_need_human():
     (A12 边界补充:禁止静默消失——修复前 det 命中至少坐实,静默丢弃比修复前更退)。"""
     issues = await run_sem_rule(HYB, fields=HYB_FIELDS, materials="…", model_fn=_fake("不是JSON"), docs_text=DOCS)
     assert len(issues) == 1
-    assert issues[0]["verdict"] == "need_human" and issues[0]["need_human"] is True
+    assert issues[0]["verdict"] == "ERROR" and issues[0]["need_human"] is True  # 模型确认失败降级 ERROR(五值域 P1-β批三)
     assert "模型确认失败" in issues[0]["message"]
     assert issues[0]["numeric_expr"] is None
 
@@ -451,7 +451,7 @@ async def test_hyb_missing_field_need_human_passthrough_without_model_call():
     「任何输入字段缺失 → need_human Issue」);若仅有 need_human 条目而无违规命中,直接返回
     且不发模型调用(A12 边界补充)。"""
     issues = await run_sem_rule(HYB, fields={"bid.total_price": 101.0}, materials="…", model_fn=_forbidden_model, docs_text=DOCS)
-    assert len(issues) == 1 and issues[0]["verdict"] == "need_human" and issues[0]["need_human"] is True
+    assert len(issues) == 1 and issues[0]["verdict"] == "UNKNOWN" and issues[0]["need_human"] is True
     assert "字段缺失" in issues[0]["message"]
 
 
@@ -473,7 +473,7 @@ async def test_sem_rule_accepts_rule_dataclass():
         enabled=True,
     )
     issues = await run_sem_rule(rule, fields={}, materials="…", model_fn=_fake(json.dumps(GOOD)), docs_text=DOCS)
-    assert issues[0]["verdict"] == "violation" and issues[0]["rule_id"] == "L1-013", "load_rulepack 数据类直传 run_sem_rule 不得崩(入口表示归一为 dict)"
+    assert issues[0]["verdict"] == "FAIL" and issues[0]["rule_id"] == "L1-013", "load_rulepack 数据类直传 run_sem_rule 不得崩(入口表示归一为 dict)"
 
 
 # ── 评审修复(2026-10-29):第3道数值复核缺省路径契约断裂 ─────────
@@ -518,7 +518,7 @@ async def test_sem_op_left_right_recompute_confirms_violation_overrides_unclear(
     unclear = {"verdicts": [{**GOOD["verdicts"][0], "verdict": "unclear", "confidence": 0.9}]}
     issues = await run_sem_rule(rule, fields=HYB_FIELDS, materials="…", model_fn=_fake(json.dumps(unclear)), docs_text=DOCS)
     assert issues[0]["numeric_expr"] == "bid.total_price <= tender.max_price", "纯 sem numeric_expr 从 op-left-right 自动派生(不变)"
-    assert issues[0]["verdict"] == "violation", "确定性重算坐实违规,覆盖 unclear"
+    assert issues[0]["verdict"] == "FAIL", "确定性重算坐实违规,覆盖 unclear"
     assert issues[0]["need_human"] is False
 
 
@@ -531,7 +531,7 @@ async def test_hyb_op_left_right_numeric_expr_none_unclear_survives():
     unclear = {"verdicts": [{**GOOD["verdicts"][0], "verdict": "unclear", "confidence": 0.9}]}
     issues = await run_sem_rule(rule, fields=HYB_FIELDS, materials="…", model_fn=_fake(json.dumps(unclear)), docs_text=DOCS)
     assert issues[0]["numeric_expr"] is None, "hybrid 一律不派生 numeric_expr"
-    assert issues[0]["verdict"] == "unclear" and issues[0]["need_human"] is True, "unclear=need_human 存活出管线"
+    assert issues[0]["verdict"] == "UNKNOWN" and issues[0]["need_human"] is True, "unclear=need_human 存活出管线"
 
 
 # ── L2-023 指纹通道(spec 2026-11-04 §2.3):op 型 hyb 候选门 + 指纹字典合并进卡 ──
@@ -622,7 +622,7 @@ async def test_candidate_entity_inherited_on_echoed_cand_id(tmp_path, monkeypatc
     _isolate_fp_dict(tmp_path, monkeypatch)
     resp = {"verdicts": [{"clause_id": "C1", "verdict": "partial", "confidence": 0.9, "reason": "疑似改名提供", "evidence": [{"doc_id": "t.pdf", "page": 5, "text": "★ 投标工期不得超 180 日历天"}]}]}
     issues = await run_sem_rule(FP_RULE, fields=FP_FIELDS, materials="…", model_fn=_fake(json.dumps(resp)), docs_text=DOCS)
-    assert issues and issues[0]["verdict"] == "violation"
+    assert issues and issues[0]["verdict"] == "FAIL"
     assert issues[0]["entity_keys"] == ["attachment:5"], "候选实体经 join key 继承到确认条目"
 
 
@@ -644,7 +644,7 @@ def test_sem_issue_carries_raw_semantic_verdict_and_state():
     issue = llm_runner._verdict_to_issue(rule, {"clause_id": "C-1", "verdict": "partial", "reason": "部分响应", "evidence": []})
     assert issue["semantic_verdict"] == "partial"
     assert issue["state"] == "PARTIAL"  # L1 state_map: partial→PARTIAL
-    assert issue["verdict"] == "violation"  # 收敛映射不动(CALIBRATION 冻结面)
+    assert issue["verdict"] == "FAIL"  # 收敛映射值=FAIL(P1-β批三 五值域;CALIBRATION 冻结面经 loader normalize 保住)
 
     rule_l2 = {"id": "L2-025", "layer": "L2", "severity": "major", "type": "semantic", "message_tpl": "{clause_id}:{reason}", "check": {}}
     issue_l2 = llm_runner._verdict_to_issue(rule_l2, {"clause_id": "C-2", "verdict": "unclear", "reason": "材料不足", "evidence": []})

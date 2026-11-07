@@ -1,7 +1,7 @@
 """金标准评测核(EAI-CUSTOM 2026-11-03,spec §6/§7):case → evaluate_fields(共享
 分派核,禁复制循环)→ 期望对表 → CaseResult。判定顺序:expect_issues 按 rule_id
 分桶逐条消化(verdict 分桶,severity+contains 全对才算命中)→ expect_absent 查违例
-→ strict 只数期望外 verdict=violation。scripted model_fn:按规则卡「规则:<id>」
+→ strict 只数期望外 verdict=FAIL(引擎五值域 P1-β批三)。scripted model_fn:按规则卡「规则:<id>」
 路由 model_script;缺省回安静 full 应答(零条目;hyb 候选被 full 驳回→零产出)。"""
 
 import json
@@ -92,11 +92,11 @@ async def run_case(case: GoldenCase, pack: RulePack | None = None) -> CaseResult
             continue
         tag = {"missing": "未命中", "verdict": "verdict 不符(state mismatch)", "entity": "entity 不符(实体不匹配)", "severity": "severity 不符", "contains": "关键词未命中"}[st]
         missing.append(f"期望未命中[{e.rule_id} {e.severity} {e.verdict}] {tag}: contains={e.contains}")
-    absent = [f"不应报而报[{rid}](expect_absent): {next((i['message'][:60] for i in issues if i['rule_id'] == rid), '')}" for rid in case.expect_absent if any(i["rule_id"] == rid and i.get("verdict") == "violation" for i in issues)]
+    absent = [f"不应报而报[{rid}](expect_absent): {next((i['message'][:60] for i in issues if i['rule_id'] == rid), '')}" for rid in case.expect_absent if any(i["rule_id"] == rid and i.get("verdict") == "FAIL" for i in issues)]
     unexpected: list[str] = []
     if case.strict:
         for idx, i in enumerate(issues):
-            if idx in consumed or i.get("verdict") != "violation":
+            if idx in consumed or i.get("verdict") != "FAIL":
                 continue
             unexpected.append(f"期望外 violation[{i['rule_id']} {i['severity']}]: {str(i.get('message'))[:80]}")
     cl_diff: list[str] = []

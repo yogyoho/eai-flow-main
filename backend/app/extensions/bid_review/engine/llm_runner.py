@@ -16,6 +16,7 @@ from collections.abc import Callable
 from typing import Any
 
 from app.extensions.bid_review.engine.rule_runner import Rule, run_det_rule
+from app.extensions.bid_review.engine.verdicts import VERDICT_ERROR, VERDICT_FAIL, VERDICT_UNKNOWN
 from app.extensions.bid_review.engine.verify import DEFAULT_VERDICT_SET, check_schema, run_seven_checks
 
 logger = logging.getLogger(__name__)
@@ -41,13 +42,14 @@ SCHEMA_HINT = json.dumps(
     ensure_ascii=False,
 )
 
-# 模型 verdict → 引擎 issue verdict(§4.6 语义映射;full=干净条款不产问题)
-VERDICT_TO_ISSUE = {"partial": "violation", "none": "violation", "unclear": "unclear"}
+# 模型 verdict → 引擎 issue verdict(§4.6 语义映射;full=干净条款不产问题;P1-β批三 五值域)
+VERDICT_TO_ISSUE = {"partial": VERDICT_FAIL, "none": VERDICT_FAIL, "unclear": VERDICT_UNKNOWN}
 
 # C-08 枚举三拆(EAI-CUSTOM 2026-11-06,整合版规格 §3.3 裁决):模型只输出 raw 语义值,
 # state 由 state_map 后处理派生(模型禁编业务态);七键全表=与规格 semantic_verdict 枚举
 # [full, partial, none, unclear, consistent, inconsistent, not_applicable] 对齐,v1 模型
-# 只产前四值。verdict 值域迁 PASS/FAIL/... = P1-β 挂账(破 CALIBRATION 冻结面)。
+# 只产前四值。verdict 值域五值迁已兑付(P1-β批三;CALIBRATION 冻结面经 loader normalize_verdict
+# 别名保住,夹具零改动)。
 _STATE_MAP: dict[str, dict[str, str]] = {
     "L1": {"full": "MATCHED", "partial": "PARTIAL", "none": "MISSING", "unclear": "UNKNOWN", "consistent": "MATCHED", "inconsistent": "PARTIAL", "not_applicable": "MATCHED"},
     "L2": {"full": "PRESENT", "partial": "PARTIAL", "none": "MISSING", "unclear": "UNKNOWN", "consistent": "PRESENT", "inconsistent": "PARTIAL", "not_applicable": "PRESENT"},
@@ -134,7 +136,7 @@ def _verdict_to_issue(rule, entry) -> dict[str, Any]:
         "layer": rule.get("layer"),
         "severity": entry.get("severity") or rule.get("severity"),
         "model_severity": entry.get("severity"),  # 模型侧原值留痕,normalize_severity 据此记冲突
-        "verdict": VERDICT_TO_ISSUE.get(verdict, "unclear"),
+        "verdict": VERDICT_TO_ISSUE.get(verdict, VERDICT_UNKNOWN),
         "semantic_verdict": verdict,  # C-08:raw 四值原样留痕(收敛映射另见上键)
         "state": _STATE_MAP.get(str(rule.get("layer") or ""), {}).get(verdict),  # 分层业务态,v1 det 规则不产本键
         "clause_id": entry.get("clause_id"),
@@ -198,12 +200,12 @@ def _hyb_det_prefilter(rule, fields):
 def _degrade_candidate_to_need_human(rule, det_issue) -> dict[str, Any]:
     """A12 边界补充:模型确认失败(schema 重试后仍弃)时 det 候选降级 need_human 条目产出并注明
     "模型确认失败"——禁止静默消失(修复前 det 命中至少坐实,静默丢弃比修复前更退)。
-    继承候选的 rule_id/layer/severity/evidence/fix,verdict 翻为 need_human;numeric_expr 恒 None
-    (hybrid 不派生,第3道不得对降级条目再触发)。"""
+    继承候选的 rule_id/layer/severity/evidence/fix,verdict 翻为 ERROR(模型侧故障,五值域 P1-β批三);
+    numeric_expr 恒 None(hybrid 不派生,第3道不得对降级条目再触发)。"""
     base_msg = str(det_issue.get("message") or "det 粗筛命中候选")
     return {
         **det_issue,
-        "verdict": "need_human",
+        "verdict": VERDICT_ERROR,
         "need_human": True,
         "matched_expected": False,
         "message": f"{base_msg}(模型确认失败,降级待人工复核)",
@@ -265,7 +267,7 @@ async def run_sem_rule(rule, fields, materials, model_fn, docs_text, model_name=
         det_issues = _hyb_det_prefilter(rule, fields)
         if det_issues is not None:
             for di in det_issues:
-                if di.get("verdict") == "need_human" or di.get("need_human"):
+                if di.get("verdict") == VERDICT_UNKNOWN or di.get("need_human"):
                     passthrough.append(di)  # §4.4 det 铁律:缺字段 need_human 直接透传,不进模型确认
                 else:
                     candidates.append(di)

@@ -18,6 +18,8 @@ import json
 import logging
 import re
 
+from app.extensions.bid_review.engine.verdicts import VERDICT_FAIL
+
 logger = logging.getLogger(__name__)
 
 DEFAULT_VERDICT_SET = ("full", "partial", "none", "unclear")
@@ -277,9 +279,11 @@ def run_seven_checks(issue, rule, docs_text, fields, existing=None, evaluator=No
     if det == "pass":
         notes.append("确定性重算未复现违规,模型结论被推翻")
         return issue, "refuted"
-    if det == "violation" and issue.get("verdict") != "violation":
+    if det == "violation" and issue.get("verdict") != VERDICT_FAIL:
+        # 引擎五值域(P1-β批三):重算坐实违规 → 翻 FAIL;内部重算协议
+        # ("violation"/"pass" 注入契约)本身不动(裁决⑤)。
         notes.append("确定性重算坐实违规,覆盖模型结论")
-        issue["verdict"] = "violation"
+        issue["verdict"] = VERDICT_FAIL
         if not evidence_misaligned:
             issue["need_human"] = False  # 仅解除 unclear 兜底旗标,不动证据未对齐降级
 

@@ -26,8 +26,8 @@ def test_or_check_op_branch():
     )
     assert run_det_rule(rule, {"bid.warranty_period": 24}) == []  # 任一支成立(>=12)=过
     issues = run_det_rule(rule, {"bid.warranty_period": 6})
-    assert len(issues) == 1 and issues[0]["verdict"] == "violation"  # 全支不成立=violation
-    assert run_det_rule(rule, {})[0]["verdict"] == "need_human"  # 字段缺失=need_human
+    assert len(issues) == 1 and issues[0]["verdict"] == "FAIL"  # 全支不成立=FAIL
+    assert run_det_rule(rule, {})[0]["verdict"] == "UNKNOWN"  # 字段缺失=UNKNOWN(need_human 旗)
 
 
 def test_regex_operator():
@@ -94,7 +94,7 @@ def test_or_empty_any_violation():
         enabled=True,
     )
     issues = run_det_rule(rule, {})
-    assert len(issues) == 1 and issues[0]["verdict"] == "violation"
+    assert len(issues) == 1 and issues[0]["verdict"] == "FAIL"
 
 
 def test_col_missing_key_rows():

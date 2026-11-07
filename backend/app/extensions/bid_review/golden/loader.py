@@ -7,6 +7,7 @@ from pathlib import Path
 import yaml
 
 from app.extensions.bid_review.engine.rule_runner import load_rulepack
+from app.extensions.bid_review.engine.verdicts import normalize_verdict
 from app.extensions.bid_review.golden.schema import ChecklistExpect, Expectation, GoldenCase
 
 RULEPACK_PATH = str(Path(__file__).resolve().parent.parent / "engine" / "rulepacks" / "bid-review-core" / "1.0.0.yaml")
@@ -59,7 +60,7 @@ def load_case(path: str | Path, pack=None) -> GoldenCase:
             rule_id=str(e["rule_id"]),
             severity=str(e.get("severity") or ""),
             contains=[str(x) for x in (e.get("contains") or [])],
-            verdict=str(e.get("verdict") or "violation"),
+            verdict=normalize_verdict(str(e.get("verdict") or "violation")),
             entity=str(e.get("entity") or ""),
             acceptable_rule_ids=[str(x) for x in (e.get("acceptable_rule_ids") or [])],
         )
