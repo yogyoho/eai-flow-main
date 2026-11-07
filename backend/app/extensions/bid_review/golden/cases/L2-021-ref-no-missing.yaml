@@ -1,0 +1,16 @@
+case: L2-021-ref-no-missing
+desc: 正文引用附件编号「附件九」不在附件清单编号列(col 取列比对)→ L2-021 major violation;编号命中行与无编号行(空串)零发声;全行 present=true 故 L3-012 零发声(strict 钉单规则触发)
+fields:
+  bid.appendix_references:
+    - {name: 附名A, 'no': 附件一, present: true}
+    - {name: 附名B, 'no': 附件九, present: true}
+    - {name: 附名C, 'no': "", present: true}
+  bid.attachment_index:
+    - {'no': 附件一, name: 附名A, page: 12, pages: 3}
+    - {'no': 附件二, name: 附名B, page: 30, pages: 2}
+expect_issues:
+  - rule_id: L2-021
+    severity: major
+    contains: ["附件九", "不存在"]
+expect_absent: []
+strict: true

@@ -1,4 +1,4 @@
-# bid-review-core 子系统规则包 v1.0.0(canonical,40 条;整合版编号对齐 2026-11-06)——技能 references/rules-det-subset.yaml 为其 M1 七条副本分发
+# bid-review-core 子系统规则包 v1.0.0(canonical,41 条;整合版编号对齐 2026-11-06)——技能 references/rules-det-subset.yaml 为其 M1 七条副本分发
 # 转录口径(Task 18,2026-10-29):素材④全量规则包会话记录本仓不可达,按设计文档 §6.3 v1 清单+素材②元模型重写 check;
 # 格式基准=§6.4 L1-009;severity 依层级赋予(L1=否决项红线→fatal,L3=一致性→major;唯 L1-003 业绩达标=major,
 # 与 test_bid_review_llm_verify 夹具同值),素材②规则表可达后逐条对账。M1 七条(L1-009/010/011+L3-001/003/005/006)原样保留不回退。
@@ -469,6 +469,7 @@ rules:
     applies_to: ["*"]
     inputs: [bid.appendix_references]
     # 行形如 {name: 附件名, present: 是否随卷提交}
+    # W9:P1-β批二起存在性职责归 L2-021 主责(规格主责矩阵),同实体 L3-012 violation 被 eval_core 折叠(suppressed_by);L3-012 一致性职责独存,check 本体零改动。
     check:
       op: all
       target: "bid.appendix_references"
@@ -619,6 +620,27 @@ rules:
     evidence: [A-TENDER-NOTICE, A-BOQ]
     message_tpl: "附件份数不足：{insufficient}"
     fix_tpl: "按要求份数补齐附件或附情况说明：{insufficient}"
+    confidence_gate: 1.0
+    enabled: true
+  # ── W9(L2-021,整合版 P1-β批二 2026-11-07):附件编号与正文引用对应——存在性主责归本条
+  # (规格主责矩阵);同实体 L3-012 violation 由 eval_core 折叠(suppressed_by 审计日志面记账),
+  # L3-012 一致性职责独存。col(bid.attachment_index,'no') 取附件清单编号列(T1 五件套);
+  # no=null/'' 行跳过(无编号不可判,不可硬折算)。evidence 复用 L3-012 同款已注册锚。──
+  - id: L2-021
+    name: 附件编号与正文引用对应
+    layer: L2
+    type: deterministic
+    applies_to: ["*"]
+    inputs: [bid.appendix_references, bid.attachment_index]
+    check:
+      op: all
+      target: bid.appendix_references
+      var: r
+      cond: "r.no == null or r.no == '' or r.no in col(bid.attachment_index, 'no')"
+    severity: major
+    evidence: [A-MAIN-TEXT, A-BOQ]
+    message_tpl: "正文引用附件编号 {r.no}({r.name})在投标文件附件清单中不存在"
+    fix_tpl: "补齐引用编号对应的附件,或修正正文引用编号与附件清单一致"
     confidence_gate: 1.0
     enabled: true
   # ── L2 指纹通道(spec 2026-11-04 §2.4,EAI-CUSTOM;整合版编号对齐 W1→L2-023,2026-11-06):

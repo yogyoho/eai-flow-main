@@ -57,6 +57,39 @@ def wrap_model_fn(model_fn):
 ProgressCB = Callable[[int, int, Rule], Awaitable[None]]
 
 
+def _suppress_l3012_by_l2021(issues: list[dict]) -> list[dict]:
+    """W9 抑制联动(规格主责矩阵;P1-β批二 A-β2-⑦):L2-021 已报的引用缺失,同实体 L3-012
+    violation 折叠(suppressed_by 内标后移除,存在性归 L2 主责);L2-021 未覆盖的行照常出
+    L3-012。匹配只取结构化 entity_keys token(≥2 字符),message 全文禁入匹配面(样板词
+    自由重叠会误折叠全部 L3-012)。核心不变式:只折叠 violation,need_human 不动;
+    L2-021 无 violation 时零折叠。"""
+    l2021 = [i for i in issues if i.get("rule_id") == "L2-021" and i.get("verdict") == "violation"]
+    if not l2021:
+        return issues
+
+    def _names(i: dict) -> set[str]:
+        toks: set[str] = set()
+        for k in i.get("entity_keys") or []:
+            for part in str(k).replace(":", "|").split("|"):
+                p = part.strip().lower()
+                if len(p) >= 2:
+                    toks.add(p)
+        return toks
+
+    keys: set[str] = set()
+    for i in l2021:
+        keys |= _names(i)
+    out, suppressed = [], 0
+    for i in issues:
+        if i.get("rule_id") == "L3-012" and i.get("verdict") == "violation" and (_names(i) & keys):
+            suppressed += 1
+            continue  # 折叠移除;suppressed_by 内标在审计日志面记(本批不落 issue 流)
+        out.append(i)
+    if suppressed:
+        logger.info("W9 抑制:L2-021 主责下折叠 L3-012 violation %d 条", suppressed)
+    return out
+
+
 async def evaluate_fields(
     pack: RulePack,
     fields: dict,
@@ -91,4 +124,5 @@ async def evaluate_fields(
             logger.warning("bid_review rule %s crashed, downgraded to need_human: %r", rule.id, exc)
             issues = [_need_human(rule, f"规则执行异常 {exc!r}(逐规则隔离降级 need_human)")]
         out.extend(issues)
+    out = _suppress_l3012_by_l2021(out)  # W9 抑制联动(聚合循环后、return 前单插入,A-β2-⑦)
     return out

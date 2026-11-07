@@ -151,6 +151,16 @@ def _val(x, fields: dict):
     return x
 
 
+def _dedup_key(rule: Rule, entity: dict | None) -> str:
+    """A-β2-⑦(P1-β批二 2026-11-07):dedup_key 三层键 ``{layer}|{rule_id}|{k=v|...}``;
+    entity=行 var 环境 env(op:all 时为 {var: row}),无 env 用 "-"。仅正式 violation(_issue)
+    携带;_need_human 非正式违规不带键(spec 模板只覆盖 issue 级正式违规;att_* 分支的
+    按实体键显式覆盖为 I-1 既有修复,保持不动)。消费方对键做不透明串比较(crud 查重/
+    routers 版本 diff),换形不影响其逻辑。"""
+    ent = "|".join(f"{k}={v}" for k, v in sorted((entity or {}).items())) or "-"
+    return f"{rule.layer}|{rule.id}|{ent}"
+
+
 def _issue(rule: Rule, fields: dict, extra: dict, env: dict | None = None) -> dict:
     msg = _tpl(rule.message_tpl, {**fields, **extra}, env)
     return {
@@ -165,7 +175,7 @@ def _issue(rule: Rule, fields: dict, extra: dict, env: dict | None = None) -> di
         "evidence": [],
         "entity_keys": [],
         "source": "engine",
-        "dedup_key": f"{rule.id}|-|{msg[:40]}",
+        "dedup_key": _dedup_key(rule, env),
     }
 
 
@@ -182,7 +192,6 @@ def _need_human(rule: Rule, msg: str) -> dict:
         "evidence": [],
         "entity_keys": [],
         "source": "engine",
-        "dedup_key": f"{rule.id}|-|missing",
     }
 
 
@@ -249,7 +258,12 @@ def run_det_rule(rule: Rule, fields: dict) -> list[dict]:
             var = str(chk["var"])
             for row in _val(chk["target"], fields) or []:
                 if not eval_expr(str(chk["cond"]), fields, {var: row}):
-                    issues.append(_issue(rule, fields, {}, {var: row}))
+                    iss = _issue(rule, fields, {}, {var: row})
+                    # W9 匹配面(A-β2-⑦,P1-β批二):行级 entity_keys 取 name/no 结构化锚
+                    # (禁 message 全文——样板词自由重叠会误折叠全部 L3-012);其余行键不取。
+                    if isinstance(row, dict):
+                        iss["entity_keys"] = [row[k].strip() for k in ("name", "no") if isinstance(row.get(k), str) and row[k].strip()]
+                    issues.append(iss)
         elif chk["op"] == "set_eq":
             lhs, rhs = set(_val(chk["left"], fields) or []), set(_val(chk["right"], fields) or [])
             miss, extra = sorted(rhs - lhs, key=str), sorted(lhs - rhs, key=str)

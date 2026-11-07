@@ -1,0 +1,17 @@
+case: L3-012-w9-suppressed
+desc: W9 抑制联动(存在性归 L2-021 主责)——行A「业绩合同」无编号:L2-021 跳过不报、L3-012 violation 照常(反向钉:主责矩阵不吞一致性职责);行B「审计报告」编号「附件三」不在清单:L2-021 报、同实体 L3-012 被折叠;strict 钉——抑制若失效,行B 的 L3-012 即为期望外 violation 直接翻红,绿=折叠零残留的证明
+fields:
+  bid.appendix_references:
+    - {name: 业绩合同, 'no': "", present: false}
+    - {name: 审计报告, 'no': 附件三, present: false}
+  bid.attachment_index:
+    - {'no': E-1, name: 中标通知书}
+expect_issues:
+  - rule_id: L3-012
+    severity: major
+    contains: ["业绩合同"]
+  - rule_id: L2-021
+    severity: major
+    contains: ["附件三"]
+expect_absent: []
+strict: true

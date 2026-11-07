@@ -190,3 +190,31 @@ async def test_progress_skips_disabled_and_sequence_is_dense(tmp_path):
     assert [rid for _, _, rid in seen] == enabled, "disabled 规则不进分派,顺序=包内声明序"
     assert [i for i, _, _ in seen] == list(range(1, len(enabled) + 1)), "序号恰为 1..n 连续无重复"
     assert {t for _, t, _ in seen} == {len(enabled)}, "total 恒等于 enabled 数"
+
+
+# ── W9 抑制联动(P1-β批二 A-β2-⑦):L2-021 主责下同实体 L3-012 violation 折叠 ──
+
+
+def _iss(rule_id, entity_keys, verdict="violation"):
+    return {"rule_id": rule_id, "verdict": verdict, "entity_keys": entity_keys, "message": f"{rule_id} {entity_keys}"}
+
+
+def test_w9_suppress_folds_same_entity_l3012_only():
+    """W9 四断言:①同实体(业绩合同)L3-012 violation 被 L2-021 violation 折叠移除;
+    ②异实体(其他文件)L3-012 照常保留;③L3-012 need_human 不动;④无 L2-021 时原样返回。"""
+    from app.extensions.bid_review.engine.eval_core import _suppress_l3012_by_l2021
+
+    issues = [
+        _iss("L2-021", ["业绩合同"]),
+        _iss("L3-012", ["业绩合同"]),  # 同实体 → 折叠
+        _iss("L3-012", ["其他文件"]),  # 异实体 → 保留
+        _iss("L3-012", ["业绩合同"], verdict="need_human"),  # need_human 不动
+    ]
+    out = _suppress_l3012_by_l2021(issues)
+    assert len(out) == 3, "仅同实体 violation 折叠一条,L2-021 本体与其余条目不动"
+    l3 = [i for i in out if i["rule_id"] == "L3-012"]
+    assert [i["entity_keys"] for i in l3] == [["其他文件"], ["业绩合同"]]  # ①②折叠/保留
+    assert l3[1]["verdict"] == "need_human"  # ③ need_human 不动
+
+    no_l2021 = [_iss("L3-012", ["业绩合同"]), _iss("L3-012", ["其他文件"], verdict="need_human")]
+    assert _suppress_l3012_by_l2021(no_l2021) == no_l2021  # ④ 无 L2-021 → 原样返回(零折叠)

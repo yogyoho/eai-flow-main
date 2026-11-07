@@ -108,7 +108,9 @@ LIST_PATHS: frozenset[str] = frozenset(
 # .present、boq 读 .matched,错包反而造出求值期缺失/假违例),只给逐字段契约;部分行
 # 缺键仍走逐规则隔离 need_human(诚实降级),见 spec §4 挂账。
 # 换算禁令 P0③(2026-11-06):matched/present 改服务端 derive_joins 回填,模型只抄行;
-FIELD_TYPE_CONTRACTS["bid.appendix_references"] = '[{name:"附件名"}] 对象列表;只报正文引用到的附件名,present 由服务端按附件清单归一比对回填(禁模型换算,不产该键);禁止纯值列表/标量。'
+FIELD_TYPE_CONTRACTS["bid.appendix_references"] = (
+    '[{name:"附件名", no:"正文引用处标注的附件编号,无编号填空串"}] 对象列表;只报正文引用到的附件名,present 由服务端按附件清单归一比对回填(禁模型换算,不产该键);no 由服务端仅透传不校验;禁止纯值列表/标量。'
+)
 FIELD_TYPE_CONTRACTS["bid.boq_unit_checks"] = '[{code:"清单项编号", tender_unit:"招标单位", bid_unit:"投标单位"}] 对象列表;逐清单项抄录两侧计量单位原文,matched 由服务端归一比对回填(禁模型换算,不产该键);禁止纯值列表/标量。'
 # ── 服务端派生 join(整合版对齐 P0③,2026-11-06;D:\knowbase 规格书 L2233「禁模型换算」)──
 # boq_unit_checks[].matched / appendix_references[].present / device_model_mismatches 原由抽取

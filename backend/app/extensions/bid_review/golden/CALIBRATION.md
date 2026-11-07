@@ -93,6 +93,15 @@ rulepack 现 L3=17:det 15+hyb 2;本批新增 L3-019 行乘算(单价×数量=合
 |---|---|---|
 | L3-019-price-qty-amount | 引擎对 | 行乘算 close 容差 0.01;任一分量 null 行跳过;与 L1-010 纵向加总链不重叠;校准证据:BOQ-02 超差单条 violation(¥100.00×3 ≠ ¥250.00);BOQ-01 相符/BOQ-03 全 null 行零产出 |
 
+## 批P1-β2(P1-β批二)裁决表
+
+rulepack 现 41 条(L1 16 + L2 8 + L3 17);本批新增 L2-021 附件编号引用(det major,col 取附件清单编号列比对),配套 W9 抑制联动(eval_core 折叠同实体 L3-012 violation)与 dedup_key 三层键(A-β2-⑦)。
+
+| case | 裁决 | 结论/bug编号 |
+|---|---|---|
+| L2-021-ref-no-missing | 引擎对 | col(bid.attachment_index,'no') 编号列命中即过;no=null/'' 行跳过(无编号不可判);全行 present=true 使 L3-012 零发声,strict 钉唯编号不在清单行一条 violation |
+| L3-012-w9-suppressed | 引擎对 | 反向钉:无编号行 L2-021 不报、L3-012 照常(一致性职责独存);同实体行(编号不在清单)L2-021 报、L3-012 折叠——strict 证零残留(抑制失效即期望外 violation 翻红);匹配面=entity_keys 结构化 token(message 全文禁入);计划草名 W9-l3-012-suppressed 第二段非数字不合法(loader 正则),同批C E 族先例改规则前缀命名 |
+
 ## 批B运行时行为备忘(建库时实测,T9 建库者直接受益)
 
 1. **声明 inputs ≠ check 表达式字段**:run_det_rule 缺字段检查分两段(表达式字段段 → inputs 段),表达式全供齐但 inputs 有缺席仍 need_human——L3-001 的 project_identity.code、L3-004/008 的白名单与招标设备清单均属「死但必须供」字段。
