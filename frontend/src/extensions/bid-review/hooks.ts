@@ -82,12 +82,27 @@ export function useBidAdjudicate(taskId: string) {
   });
 }
 
-/** GET /tasks/{id}/issues —— 任务问题列表(taskId 为空时不发请求)。 */
+/** GET /tasks/{id}/issues —— 任务问题列表(taskId 为空时不发请求)。T5 起 queryFn
+ * 取响应整包,select 投影 items:消费方旧契约(IssueOut[])零改动;advisory 分节走
+ * {@link useBidAdvisory} 同 key 投影(同一响应只取一次,feedback invalidate 两投影同步刷新)。 */
 export function useBidIssues(taskId: string | null | undefined) {
   return useQuery({
     queryKey: bidReviewKeys.issues(taskId ?? ""),
     queryFn: () => listTaskIssues(taskId!),
     enabled: Boolean(taskId),
+    select: (d) => d.items,
+  });
+}
+
+/** GET /tasks/{id}/issues advisory 分节(P1-β批二续 T5,A-续-⑥):L4 竞争力建议,
+ * 与 useBidIssues 同 query key 同响应,select 投影 advisory;旧网关缺键 → null
+ * (整节不渲染)。false_positive 过滤在展示层(ResultsView.advisoryVisibleItems,N1)。 */
+export function useBidAdvisory(taskId: string | null | undefined) {
+  return useQuery({
+    queryKey: bidReviewKeys.issues(taskId ?? ""),
+    queryFn: () => listTaskIssues(taskId!),
+    enabled: Boolean(taskId),
+    select: (d) => d.advisory ?? null,
   });
 }
 

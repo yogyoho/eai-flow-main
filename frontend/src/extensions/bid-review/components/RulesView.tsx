@@ -12,6 +12,11 @@
  * 版本发布);s9↔s10 互跳——高误报段 → /metrics#fail-list;FAIL 行深链 ?rule= 直开抽屉。
  * 数据契约不变 = GET /rulepacks(RulePackOut + stats 人工复核回流);规则启停无写端点,
  * Switch 恒 disabled——启停走规则包版本发布,前端不提供开关。
+ * P1-β批二续 T5(A-续-⑥,2026-11-07):/rulepacks 升双包(bid-review-core 生产包 +
+ * bid-review-l4 advisory 包,后端序 core 在前)——单包 data[0] 取用改多包聚合:
+ * rules 拼接、stats 按规则归属包取、包头卡逐包渲染(l4 带 advisory pill)、规则表
+ * 按包分组加包名小节头(单包保持原 DOM);LAYER_FILTERS 加「L4 竞争力」档;
+ * 五块抽屉按规则所属包取 GET /rulepacks/{name}/rules(l4 包 T4 起可查)。
  */
 
 import Link from "next/link";
@@ -19,7 +24,11 @@ import { useSearchParams } from "next/navigation";
 import { useState } from "react";
 
 import { Switch } from "@/components/ui/switch";
-import { type RuleExprOut } from "@/extensions/bid-review/api";
+import {
+  ADVISORY_PACK_NAME,
+  type RuleExprOut,
+  type RulePackRule,
+} from "@/extensions/bid-review/api";
 import {
   type RuleStatsRow,
   RuleStatsTable,
@@ -30,8 +39,9 @@ import {
   useBidRulepacks,
 } from "@/extensions/bid-review/hooks";
 
-/** 层级过滤档(M5 §4.7,.seg):全部 + L1 实质性 + L3 一致性 + 高误报(误报率≥20% 且有命中)。 */
-const LAYER_FILTERS = ["all", "L1", "L3", "highfp"] as const;
+/** 层级过滤档(M5 §4.7,.seg;T5 加 L4 竞争力档):全部 + L1 实质性 + L3 一致性 +
+ * L4 竞争力 + 高误报(误报率≥20% 且有命中)。 */
+const LAYER_FILTERS = ["all", "L1", "L3", "L4", "highfp"] as const;
 
 type LayerFilter = (typeof LAYER_FILTERS)[number];
 
@@ -39,6 +49,7 @@ const LAYER_LABELS: Record<LayerFilter, string> = {
   all: "全部",
   L1: "L1 实质性",
   L3: "L3 一致性",
+  L4: "L4 竞争力",
   highfp: "高误报",
 };
 
@@ -50,21 +61,26 @@ export function RulesView() {
   const [drawerRule, setDrawerRule] = useState<string | null>(() =>
     searchParams.get("rule"),
   );
+
+  // 多包聚合(T5,A-续-⑥):/rulepacks 返回双包(后端序 core 生产包在前、l4 advisory
+  // 在后)——rules 拼接聚合,stats/五块抽屉按规则归属包取,不再 data[0] 单包取用。
+  const packs = rulepacksQuery.data ?? [];
+  const packRules = packs.flatMap((p) => p.rules);
+  const packOf = (ruleId: string) =>
+    packs.find((p) => p.rules.some((r) => r.id === ruleId)) ?? null;
+  const statsOf = (ruleId: string) => packOf(ruleId)?.stats[ruleId] ?? {};
+  // 抽屉按规则所属包查五块明细(l4 规则 → /rulepacks/bid-review-l4/rules,T4 起可查)
   const exprQuery = useBidRuleExprs(
-    drawerRule ? (rulepacksQuery.data?.[0]?.name ?? null) : null,
+    drawerRule ? (packOf(drawerRule)?.name ?? null) : null,
   );
 
-  // 生产单规则包(api 返回数组,沿用 data[0] 取包;多包聚合属效果看板职责)
-  const pack = rulepacksQuery.data?.[0] ?? null;
-  const packRules = pack?.rules ?? [];
-  const matches = (r: (typeof packRules)[number]) =>
+  const matches = (r: RulePackRule) =>
     layer === "all"
       ? true
       : layer === "highfp"
-        ? isHighFp(pack?.stats[r.id] ?? {})
+        ? isHighFp(statsOf(r.id))
         : r.layer === layer;
   const rules = packRules.filter(matches);
-  const packEnabled = pack?.enabled ?? false;
 
   const filterOptions = LAYER_FILTERS.map((value) => ({
     value,
@@ -73,16 +89,20 @@ export function RulesView() {
       value === "all"
         ? true
         : value === "highfp"
-          ? isHighFp(pack?.stats[r.id] ?? {})
+          ? isHighFp(statsOf(r.id))
           : r.layer === value,
     ).length,
   }));
 
-  const rows: RuleStatsRow[] = rules.map((rule) => ({
-    key: rule.id,
-    rule,
-    op: rule.op ?? null,
-    stat: pack?.stats[rule.id] ?? {},
+  // 规则表按包分组(包名标注=组小节头,单包保持原 DOM 不加头;key 带包限定前缀防跨包 id 碰撞)
+  const rowsByPack = packs.map((pack) => ({
+    pack,
+    rows: pack.rules.filter(matches).map((rule): RuleStatsRow => ({
+      key: `${pack.name}:${rule.id}`,
+      rule,
+      op: rule.op ?? null,
+      stat: pack.stats[rule.id] ?? {},
+    })),
   }));
 
   return (
@@ -91,7 +111,7 @@ export function RulesView() {
         <div>
           <h2>规则库</h2>
           <p className="hd-sub">
-            {pack
+            {packs.length > 0
               ? "查看规则定义与人工复核回流统计（误报/采纳）——本页只读，修订走规则包新版本发布"
               : "生产规则包清单与人工复核回流统计"}
           </p>
@@ -125,30 +145,38 @@ export function RulesView() {
         <div className="card">
           <div className="tbl-foot">规则包加载中…</div>
         </div>
-      ) : pack ? (
+      ) : packs.length > 0 ? (
         <>
-          {/* 规则包头卡：name / version / stage-chip rule_count / enabled pill + 只读 Switch */}
-          <div className="card" style={{ marginBottom: 12 }}>
-            <div className="card-hd">
-              <h3>{pack.name}</h3>
-              <span className="hd-sub">v{pack.version}</span>
-              <span className="stage-chip">
-                规则 <span className="cnt">{pack.rule_count}</span>
-              </span>
-              <span className={packEnabled ? "pill pill-ok" : "pill pill-gray"}>
-                {packEnabled ? "已启用" : "已停用"}
-              </span>
-              <div className="hd-right">
-                <span className="hd-sub">启用</span>
-                {/* 后端无规则启停写端点：Switch 只读展示，启停走规则包版本发布 */}
-                <Switch
-                  checked={packEnabled}
-                  disabled
-                  aria-label="规则包启用（只读）"
-                />
+          {/* 规则包头卡逐包渲染(T5 双包):name / version / advisory 标注(l4 包)/
+              stage-chip rule_count / enabled pill + 只读 Switch */}
+          {packs.map((pack) => (
+            <div className="card" style={{ marginBottom: 12 }} key={pack.name}>
+              <div className="card-hd">
+                <h3>{pack.name}</h3>
+                <span className="hd-sub">v{pack.version}</span>
+                {pack.name === ADVISORY_PACK_NAME ? (
+                  <span className="pill pill-gray">advisory</span>
+                ) : null}
+                <span className="stage-chip">
+                  规则 <span className="cnt">{pack.rule_count}</span>
+                </span>
+                <span
+                  className={pack.enabled ? "pill pill-ok" : "pill pill-gray"}
+                >
+                  {pack.enabled ? "已启用" : "已停用"}
+                </span>
+                <div className="hd-right">
+                  <span className="hd-sub">启用</span>
+                  {/* 后端无规则启停写端点：Switch 只读展示，启停走规则包版本发布 */}
+                  <Switch
+                    checked={pack.enabled}
+                    disabled
+                    aria-label={`规则包 ${pack.name} 启用（只读）`}
+                  />
+                </div>
               </div>
             </div>
-          </div>
+          ))}
 
           {packRules.length === 0 ? (
             <div className="card">
@@ -195,7 +223,39 @@ export function RulesView() {
                 {rules.length === 0 ? (
                   <div className="tbl-foot">该层级暂无规则</div>
                 ) : (
-                  <RuleStatsTable rows={rows} onRuleClick={setDrawerRule} />
+                  /* 规则表按包分组(T5):多包时每组加包名小节头(单包保持原 DOM);
+                     组序=后端包序(core 在前),组内空档不渲染 */
+                  rowsByPack.map(({ pack, rows: packRows }) =>
+                    packRows.length === 0 ? null : (
+                      <div key={pack.name}>
+                        {packs.length > 1 ? (
+                          <div
+                            style={{
+                              display: "flex",
+                              alignItems: "center",
+                              gap: 8,
+                              padding: "12px 16px 0",
+                            }}
+                          >
+                            <code className="k">{pack.name}</code>
+                            <span className="hd-sub">v{pack.version}</span>
+                            {pack.name === ADVISORY_PACK_NAME ? (
+                              <span
+                                className="pill pill-gray"
+                                style={{ height: 18, fontSize: 11 }}
+                              >
+                                advisory
+                              </span>
+                            ) : null}
+                          </div>
+                        ) : null}
+                        <RuleStatsTable
+                          rows={packRows}
+                          onRuleClick={setDrawerRule}
+                        />
+                      </div>
+                    ),
+                  )
                 )}
                 <div className="tbl-foot">
                   误报率 = 复核判误报次数 /

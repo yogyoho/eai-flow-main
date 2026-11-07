@@ -38,6 +38,11 @@
  * 2026-11-02 L2 P2(spec §5 增量):附件核对表增 UNKNOWN「需人工」格+明细子件行,
  * 问题卡增「关联问题」chip(严重度中文标签),issues 基表过滤 grouped 行——
  * 可见口径与后端全量 summary 并存(口径注见复核进度 tbl-foot)。
+ * P1-β批二续 T5(A-续-⑥,2026-11-07):L4 激活 advisory 面——issues 基表排除
+ * layer=="L4"(条目不删仍在 items,正式分节/客户端 summary/verdict-band 与后端
+ * summarize_issues 同口径排 L4);新增「竞争力建议(L4,advisory)」折叠节收
+ * advisory.items(useBidAdvisory 同源投影),已判误报行 advisoryVisibleItems
+ * 自滤(审查观察项 N1),行只读复用 .iss 词汇(AdvisoryRow)。
  */
 
 import { AlertTriangle, BarChart3, Layers } from "lucide-react";
@@ -68,6 +73,7 @@ import { formatDuration } from "@/extensions/bid-review/components/primitives";
 import { TaskStepper } from "@/extensions/bid-review/components/TaskStepper";
 import { TaskTitleTag } from "@/extensions/bid-review/components/TaskTitleTag";
 import {
+  useBidAdvisory,
   useBidAttachmentChecklist,
   useBidDiff,
   useBidFeedback,
@@ -239,6 +245,62 @@ function sevDotStyle(issue: IssueOut): CSSProperties {
   return { background: "var(--gray-400)" };
 }
 
+/**
+ * advisory 展示过滤(P1-β批二续 T5,审查观察项 N1):list_task_issues 的
+ * advisory.items 不过滤已判误报行(API 面全量诚实),展示面必须自滤——
+ * verdict=false_positive(落库)/ review_state=false_positive(复核投影)/
+ * 会话内已标误报(reviewed 映射),任一命中即不再当建议呈现。
+ * export 供单测钉住(过滤逻辑不许漂移)。
+ */
+export function advisoryVisibleItems(
+  items: IssueOut[],
+  reviewed?: Record<string, FeedbackAction>,
+): IssueOut[] {
+  return items.filter(
+    (i) =>
+      i.verdict !== "false_positive" &&
+      i.review_state !== "false_positive" &&
+      reviewed?.[i.id] !== "false_positive",
+  );
+}
+
+/** advisory 行(P1-β批二续 T5):复用 .iss 卡词汇(sevDot/sevPill/iss-rule/iss-title/
+ * iss-verdict/iss-fix),只读无复核动作——advisory=纯建议展示面,误报复核走复核
+ * 工作台(反馈归属 bid-review-l4),已判误报行经 {@link advisoryVisibleItems} 不入本列。 */
+function AdvisoryRow({ issue, name }: { issue: IssueOut; name?: string }) {
+  const sp = sevPillBrx(issue.severity);
+  return (
+    <div className="iss">
+      <div className="iss-hd">
+        <span className="dot" style={sevDotStyle(issue)} />
+        <span className="iss-rule">{issue.rule_id}</span>
+        {issue.need_human ? (
+          <span className="pill pill-warn">待人工</span>
+        ) : (
+          <span className={cn("pill", sp.cls)}>{sp.label}</span>
+        )}
+        <span className="iss-title" title={issue.message}>
+          {name ?? issue.message}
+        </span>
+      </div>
+      <div className="iss-bd">
+        <div className="iss-verdict" title={issue.message}>
+          {renderIssueMessage(issue.message)}
+        </div>
+        <div className="iss-ft">
+          {issue.fix ? (
+            <span className="iss-fix">
+              <b>建议</b> {issue.fix}
+            </span>
+          ) : (
+            <span className="iss-fix" />
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ── 工具 ────────────────────────────────────────────────────────────────
 
 const isRecord = (x: unknown): x is Record<string, unknown> =>
@@ -313,6 +375,8 @@ export function ResultsView({ taskId }: { taskId?: string | null }) {
   const enabled = Boolean(taskId);
   const taskQuery = useBidTask(enabled ? taskId : null);
   const issuesQuery = useBidIssues(enabled ? taskId : null);
+  // L4 advisory 分节(P1-β批二续 T5,A-续-⑥):与 issues 同源响应的 advisory 投影
+  const advisoryQuery = useBidAdvisory(enabled ? taskId : null);
   const task = taskQuery.data ?? null;
   const diffQuery = useBidDiff(
     diffOpen ? taskId : null,
@@ -358,10 +422,23 @@ export function ResultsView({ taskId }: { taskId?: string | null }) {
   // 稳定空数组身份(useMemo 依赖 issues 的派生计算不随加载态每帧重算)
   // L2 P2 跨层去重:grouped 行(已被更强同实体问题归并)由展示层隐藏,
   // summary 随之只计可见——与后端全量 summary 并存,口径注见 tbl-foot。
+  // T5(A-续-⑥):L4 行条目不删仍在 items,但正式视图排除(layer=="L4")——
+  // 客户端复算 summary/verdict-band 与后端 summarize_issues 同口径(排 L4),
+  // L4 条目改走 advisory 分节,避免正式分节双呈现与致命计数误入可提交判定。
   const issues = useMemo(
-    () => (issuesQuery.data ?? []).filter((i) => !i.grouped_into),
+    () =>
+      (issuesQuery.data ?? []).filter(
+        (i) => !i.grouped_into && i.layer !== "L4",
+      ),
     [issuesQuery.data],
   );
+  // advisory 条目:advisory.items 优先(N1:API 面不过滤已判误报,展示层自滤);
+  // 折叠态默认展开(与 verdict-band 同屏可见,可收起)。
+  const advisoryItems = advisoryVisibleItems(
+    advisoryQuery.data?.items ?? [],
+    reviewed,
+  );
+  const [advOpen, setAdvOpen] = useState(true);
   // "基准未确认"唯一可靠信号:deep 任务停在确认门(worker 落 awaiting_confirm)。
   const baselineUnconfirmed = task?.status === "awaiting_confirm";
   // 计划 Task 17 Step 2:确认前 workbench 只读。
@@ -1742,6 +1819,44 @@ export function ResultsView({ taskId }: { taskId?: string | null }) {
           </div>
         </div>
       </div>
+
+      {/* ── L4 竞争力建议 advisory 分节(P1-β批二续 T5,A-续-⑥):条目收
+          advisory.items,已判误报行经 advisoryVisibleItems 自滤(N1)——滤空
+          (含全误报/旧网关缺键)整节不渲染;纯建议面复用 .iss 行词汇,不设复核
+          动作(误报复核走复核工作台),不计正式问题数、不入可提交判定。 ── */}
+      {advisoryItems.length > 0 ? (
+        <div className="card" style={{ marginBottom: 12 }}>
+          <div className="card-hd">
+            <h3>竞争力建议(L4,advisory)</h3>
+            <span className="hd-sub">竞争力建议 · 不影响提交判定</span>
+            <span className="pill pill-gray">{advisoryItems.length}</span>
+            <div className="hd-right">
+              <button
+                type="button"
+                className="btn btn-sec btn-sm"
+                aria-expanded={advOpen}
+                onClick={() => setAdvOpen((v) => !v)}
+              >
+                {advOpen ? "收起" : "展开"}
+              </button>
+            </div>
+          </div>
+          {advOpen ? (
+            <div style={{ padding: "12px 14px 4px" }}>
+              {advisoryItems.map((i) => (
+                <AdvisoryRow
+                  key={i.id}
+                  issue={i}
+                  name={ruleMeta.names[i.rule_id]}
+                />
+              ))}
+            </div>
+          ) : null}
+          <div className="tbl-foot">
+            L4 竞争力包为纯建议面:不计正式问题数、不入可提交判定;已判误报条目不再呈现,误报复核在复核工作台处理。
+          </div>
+        </div>
+      ) : null}
 
       {/* ═══ 区段三(原型 s6):复核判定浮层 ═══ */}
       {/* 改严重度 modal(action=severity_change + new_severity) */}

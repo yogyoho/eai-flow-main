@@ -371,11 +371,32 @@ export function adjudicateBaseline(
 
 // ── 问题端点 ──────────────────────────────────────────────────────────
 
-/** GET /tasks/{id}/issues —— 任务问题列表({items: IssueOut[]},拆包返回)。 */
-export function listTaskIssues(taskId: string): Promise<IssueOut[]> {
-  return request<{ items: IssueOut[] }>(`/tasks/${taskId}/issues`).then(
-    (r) => r.items,
-  );
+/** L4 advisory 分节(P1-β批二续 T4/A-续-⑥,list_task_issues 响应 advisory 键):
+ * layer=="L4" 条目单列(total/by_severity 与 worker.summarize_issues 同口径)。
+ * 注意 N1:API 面不过滤已判误报行——verdict=="false_positive" 的行也在 items 里,
+ * 前端渲染 advisory 分节时必须自滤(ResultsView.advisoryVisibleItems)。 */
+export interface BidAdvisoryOut {
+  items: IssueOut[];
+  total: number;
+  by_severity: Record<string, number>;
+}
+
+/** GET /tasks/{id}/issues 响应整包:items 全量(条目不删,L4 行仍在——正式视图由
+ * 消费方按 layer 排除),advisory 单列同批 L4 条目;advisory 键旧网关缺省 → 消费方
+ * `??` 兜底。items/advisory 经 useBidIssues/useBidAdvisory 同 key select 投影消费。 */
+export interface BidTaskIssuesOut {
+  items: IssueOut[];
+  advisory?: BidAdvisoryOut | null;
+}
+
+/** L4 advisory 包名(backend routers.ADVISORY_PACK_NAME 同源):前端按名识别
+ * advisory 包(RulesView 包头标注 / 消费方排除正式执行面口径)。 */
+export const ADVISORY_PACK_NAME = "bid-review-l4";
+
+/** GET /tasks/{id}/issues —— 任务问题列表(响应整包;items 旧契约 IssueOut[] 由
+ * useBidIssues select 保持,advisory 分节走 useBidAdvisory 同源投影)。 */
+export function listTaskIssues(taskId: string): Promise<BidTaskIssuesOut> {
+  return request<BidTaskIssuesOut>(`/tasks/${taskId}/issues`);
 }
 
 /** POST /issues/{id}/feedback —— 复核三连(confirm/false_positive/severity_change;
