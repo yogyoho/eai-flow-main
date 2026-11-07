@@ -141,6 +141,7 @@ def sem_rulepack(monkeypatch, tmp_path):
     p = tmp_path / "pack.yaml"
     p.write_text(_TMP_RULEPACK, encoding="utf-8")
     monkeypatch.setattr("app.extensions.bid_review.worker.RULEPACK_PATH", p)
+    monkeypatch.setattr("app.extensions.bid_review.worker.ADVISORY_RULEPACK_PATH", None)  # A-续-⑥:tmp 包不吃真 L4
     return p
 
 
@@ -268,6 +269,8 @@ def test_summarize_issues_accepts_orm_and_dict():
         "need_human": 1,
         "rules_total": None,  # M5 §十指标(默认 None=routers 既有调用零改动,伪零纪律)
         "unknown_ratio": None,
+        # A-续-⑥(批二续 T4):L4 advisory 单列键(非 L4 面=零计数,additive)
+        "advisory": {"total": 0, "by_severity": {"fatal": 0, "major": 0, "minor": 0, "info": 0}},
     }
 
 

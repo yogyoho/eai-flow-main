@@ -33,6 +33,14 @@ from mcp.types import TextContent, Tool
 MCP_OWNER = "mcp-bid-review"  # stdio 无身份 → 服务级 owner(UI 任务互相隔离)
 WORKBENCH_URL = "/bid-review"
 RULEPACK_NAME = "bid-review-core"
+ADVISORY_PACK_NAME = "bid-review-l4"  # L4 advisory 包名(A-续-⑥)
+
+
+def _rulepack_name_for(rule_id: str) -> str:
+    """规则归属包名(A-续-⑥,P1-β批二续 T4;与 routers._rulepack_name_for 同口径):
+    L4 前缀 → advisory 包,其余归 core。"""
+    return ADVISORY_PACK_NAME if str(rule_id or "").startswith("L4-") else RULEPACK_NAME
+
 
 _FEEDBACK_ACTIONS = ("confirm", "false_positive", "severity_change")
 _SEVERITIES = ("fatal", "major", "minor", "info")
@@ -319,7 +327,7 @@ async def _handle_feedback(arguments: dict) -> list[TextContent]:
 
             await apply_false_positive(session, issue)
         elif action == "confirm":
-            await crud.add_rulepack_stats(session, RULEPACK_NAME, issue.rule_id, adopted=True)
+            await crud.add_rulepack_stats(session, _rulepack_name_for(issue.rule_id), issue.rule_id, adopted=True)
         return fb
 
     fb = await _run_in_db(_q)
@@ -354,19 +362,25 @@ async def _handle_baseline_get(arguments: dict) -> list[TextContent]:
 
 
 async def _handle_rulepacks(arguments: dict) -> list[TextContent]:
+    from pathlib import Path
+
     from sqlalchemy import select
 
     from app.extensions.bid_review.engine.rule_runner import load_rulepack
     from app.extensions.bid_review.models import RulePackMeta
-    from app.extensions.bid_review.worker import RULEPACK_PATH
+    from app.extensions.bid_review.worker import ADVISORY_RULEPACK_PATH, RULEPACK_PATH
 
-    pack = load_rulepack(RULEPACK_PATH)
+    # 双包各一 item(A-续-⑥,P1-β批二续 T4):core 生产包 + L4 advisory 包。
+    paths = [RULEPACK_PATH]
+    if ADVISORY_RULEPACK_PATH is not None and Path(ADVISORY_RULEPACK_PATH).exists():
+        paths.append(ADVISORY_RULEPACK_PATH)
+    packs = [load_rulepack(p) for p in paths]
 
     async def _q(session):
-        result = await session.execute(select(RulePackMeta).where(RulePackMeta.name == pack.name))
-        return result.scalar_one_or_none()
+        result = await session.execute(select(RulePackMeta).where(RulePackMeta.name.in_([p.name for p in packs])))
+        return {m.name: m for m in result.scalars().all()}
 
-    meta = await _run_in_db(_q)
+    metas = await _run_in_db(_q)
     return _ok(
         {
             "success": True,
@@ -376,9 +390,10 @@ async def _handle_rulepacks(arguments: dict) -> list[TextContent]:
                     "version": pack.version,
                     "rule_count": len(pack.rules),
                     "rules": [{"id": r.id, "name": r.name, "layer": r.layer, "severity": r.severity, "type": r.type} for r in pack.rules],
-                    "stats": dict(meta.stats or {}) if meta else {},
-                    "enabled": bool(meta.enabled) if meta else True,
+                    "stats": dict(metas[pack.name].stats or {}) if metas.get(pack.name) else {},
+                    "enabled": bool(metas[pack.name].enabled) if metas.get(pack.name) else True,
                 }
+                for pack in packs
             ],
         }
     )

@@ -56,6 +56,10 @@ from app.extensions.database import get_session_factory
 logger = logging.getLogger(__name__)
 
 RULEPACK_PATH = Path(__file__).parent / "engine" / "rulepacks" / "bid-review-core" / "1.0.0.yaml"
+# L4 竞争力 advisory 包(A-续-⑥,P1-β批二续 T4):并列常量,RULEPACK_PATH 单包语义不动
+# (三处 fixture 打桩点把本常量一并置 None=现状 core 单包行为);真值且文件存在时合包进
+# 单次 evaluate_fields。golden loader 自有 RULEPACK_PATH 零触碰(A-续-⑦ golden 冻结面)。
+ADVISORY_RULEPACK_PATH = Path(__file__).parent / "engine" / "rulepacks" / "bid-review-l4" / "1.0.0.yaml"
 POLL_SECONDS = float(os.environ.get("EAI_BID_REVIEW_POLL_SECONDS", "5"))
 SLOTS = 1  # 单槽:审查为重 LLM 任务,先串行;提并发再扩(translation D16 先例)
 MAX_INFRA_RETRIES = int(os.environ.get("EAI_BID_REVIEW_INFRA_RETRIES", "3"))
@@ -213,17 +217,31 @@ def summarize_issues(issues, rules_total: int | None = None) -> dict:
     与引擎 dict 双形态,未知严重度按 info 兜底。
     EAI-CUSTOM(2026-11-05 B立项 M5 §十指标):rules_total 给定→增 rules_total/
     unknown_ratio(=need_human/rules_total,4 位;None 或 0→ratio=None 伪零纪律:
-    无规则总数不报 0%)。既有调用零改动(默认 None→两键 None,additive)。"""
+    无规则总数不报 0%)。既有调用零改动(默认 None→两键 None,additive)。
+    EAI-CUSTOM(P1-β批二续 T4,A-续-⑥):增 advisory={total,by_severity} 单列 layer=="L4"
+    条目(counts_toward_bid_gate=false——L4 永不入正式 fatal/major/minor/info 计数与门禁)。"""
     summary = {s: 0 for s in SEVERITY_ORDER}
     summary["need_human"] = 0
+    # L4 advisory 单列(A-续-⑥,P1-β批二续 T4):正式 fatal/major/minor/info 计数排除
+    # layer=="L4"(counts_toward_bid_gate=false 的结构化消费);advisory 键单列 L4 条目
+    # (total + by_severity);need_human 口径照旧——L4 待人工条目仍入全局 need_human 单列。
+    advisory = {s: 0 for s in SEVERITY_ORDER}
+    advisory_total = 0
     for issue in issues or []:
+        sev = str(_issue_get(issue, "severity") or "")
+        if str(_issue_get(issue, "layer") or "") == "L4":
+            advisory_total += 1
+            advisory[sev if sev in advisory else "info"] += 1
+            if bool(_issue_get(issue, "need_human")):
+                summary["need_human"] += 1
+            continue
         if bool(_issue_get(issue, "need_human")):
             summary["need_human"] += 1
         else:
-            sev = str(_issue_get(issue, "severity") or "")
             summary[sev if sev in summary else "info"] += 1
     summary["rules_total"] = rules_total
     summary["unknown_ratio"] = round(summary["need_human"] / rules_total, 4) if isinstance(rules_total, int) and rules_total > 0 else None
+    summary["advisory"] = {"total": advisory_total, "by_severity": advisory}
     return summary
 
 
@@ -510,12 +528,26 @@ async def _run_review_stage(db: AsyncSession, task: ReviewTask, fields: dict, ow
     # 评测器与 worker 消费同一段分派代码(金标准禁复制=两把尺子,必然漂移说谎)。
     # None 剥离由 eval_core 统一承担(原 worker 侧 det_fields 预剥离已移除,勿双重剥离)。
     pack = load_rulepack(RULEPACK_PATH)
+    # L4 advisory 并列包合入(A-续-⑥,P1-β批二续 T4):ADVISORY_RULEPACK_PATH 真值且文件
+    # 存在时加载 l4 包,合一列表走**原单次** evaluate_fields(W9/主责折叠天然作用于合并面);
+    # quick 裁剪自动排 L4 全 sem/hyb;ADVISORY 为 None/不存在 = 现状 core 单包(fixture 打桩
+    # 语义)。rule_id 全局唯一由 lint 保证;RULEPACK_PATH 本体语义零触碰。
+    adv_pack = None
+    if ADVISORY_RULEPACK_PATH is not None and Path(ADVISORY_RULEPACK_PATH).exists():
+        adv_pack = load_rulepack(ADVISORY_RULEPACK_PATH)
+        pack.rules = list(pack.rules) + list(adv_pack.rules)
     # 对齐审计缺口①(2026-11-05):quick 只跑 L1 det(设计承诺);rules_total 尾部
-    # len(pack.rules) 自然取裁剪后分母,summary.unknown_ratio 诚实。
+    # len(pack.rules) 自然取裁剪后分母(合包后=Σ),summary.unknown_ratio 诚实。
     pack.rules = _prune_rules_for_mode(pack, task.mode)
     # 对齐审计⑨(2026-11-05):DB 规则开关 ∧ yaml enabled;meta 缺行 = 全启用零变化。
+    # 合包面 override 取两包 meta 行并集(rule_id 全局唯一,无碰撞;L4 包开关同语义生效)。
     meta = (await db.execute(select(RulePackMeta).where(RulePackMeta.name == pack.name))).scalar_one_or_none()
-    pack.rules = _apply_rule_overrides(pack.rules, dict(meta.rule_overrides or {}) if meta else {})
+    overrides = dict(meta.rule_overrides or {}) if meta else {}
+    if adv_pack is not None:
+        meta_adv = (await db.execute(select(RulePackMeta).where(RulePackMeta.name == adv_pack.name))).scalar_one_or_none()
+        if meta_adv is not None:
+            overrides.update(dict(meta_adv.rule_overrides or {}))
+    pack.rules = _apply_rule_overrides(pack.rules, overrides)
     wrapped_model = _wrap_model_fn(model_fn or _default_model_fn())
     docs = _load_docs(task)
     materials = _collect_materials(docs)

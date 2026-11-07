@@ -125,6 +125,7 @@ def tmp_rulepack(monkeypatch, tmp_path):
     p = tmp_path / "pack.yaml"
     p.write_text(_TMP_RULEPACK, encoding="utf-8")
     monkeypatch.setattr("app.extensions.bid_review.worker.RULEPACK_PATH", p)
+    monkeypatch.setattr("app.extensions.bid_review.worker.ADVISORY_RULEPACK_PATH", None)  # A-续-⑥:tmp 包不吃真 L4
     return p
 
 
@@ -172,6 +173,7 @@ def crash_rulepack(monkeypatch, tmp_path):
     p = tmp_path / "crash.yaml"
     p.write_text(_CRASH_RULEPACK, encoding="utf-8")
     monkeypatch.setattr("app.extensions.bid_review.worker.RULEPACK_PATH", p)
+    monkeypatch.setattr("app.extensions.bid_review.worker.ADVISORY_RULEPACK_PATH", None)  # A-续-⑥:tmp 包不吃真 L4
     return p
 
 

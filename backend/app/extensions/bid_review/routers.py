@@ -28,6 +28,7 @@ import asyncio
 import html
 import logging
 from datetime import UTC, datetime, timedelta
+from pathlib import Path
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Response, UploadFile
 from fastapi.responses import FileResponse
@@ -49,7 +50,14 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/extensions/bid-review", tags=["Bid Review"])
 
 RULEPACK_NAME = "bid-review-core"
+ADVISORY_PACK_NAME = "bid-review-l4"  # L4 advisory 包名(A-续-⑥;归属按 rule_id 前缀判定)
 FP_SAMPLES_CAP = 20  # 误报回流候选滚动上限(Task 16:stats[rule].fp_samples ≤20,最旧先出)
+
+
+def _rulepack_name_for(rule_id: str) -> str:
+    """规则归属包名(A-续-⑥,P1-β批二续 T4):L4 前缀 → advisory 包,其余归 core。
+    反馈统计(adopted/fp+fp_samples)按真实归属包入账,不混进 core 行。"""
+    return ADVISORY_PACK_NAME if str(rule_id or "").startswith("L4-") else RULEPACK_NAME
 
 
 async def current_owner(user: CurrentUser = Depends(require_permission("system:access"))) -> str:
@@ -390,8 +398,9 @@ async def apply_false_positive(db: AsyncSession, issue):
     issue.verdict = "false_positive"
     await db.commit()
     await db.refresh(issue)
-    await crud.add_rulepack_stats(db, RULEPACK_NAME, issue.rule_id, fp=True)
-    meta = (await db.execute(select(RulePackMeta).where(RulePackMeta.name == RULEPACK_NAME))).scalar_one_or_none()
+    pack_name = _rulepack_name_for(issue.rule_id)
+    await crud.add_rulepack_stats(db, pack_name, issue.rule_id, fp=True)
+    meta = (await db.execute(select(RulePackMeta).where(RulePackMeta.name == pack_name))).scalar_one_or_none()
     if meta is not None:
         stats = dict(meta.stats or {})
         entry = dict(stats.get(issue.rule_id) or {})
@@ -425,7 +434,7 @@ def _with_review_state(issue, states: dict[str, str]) -> IssueOut:
     return out
 
 
-_LAYER_RANK = {"L1": 0, "L2": 1, "L3": 2}
+_LAYER_RANK = {"L1": 0, "L2": 1, "L3": 2, "L4": 3}
 
 
 def _cross_layer_group(issues: list) -> dict[str, dict]:
@@ -435,11 +444,15 @@ def _cross_layer_group(issues: list) -> dict[str, dict]:
     created_at 稳定),其余行标 grouped_into=keep.id,keep 行带 related_issues 摘要。
     条目不删:items 仍全量返回(前端隐藏 grouped 行),summary 口径不变。
     need_human 不参与归并(待人工必须可见)。多实体键行按键名字序迭代保稳定。
-    多键行 grouped_into 取按名字序最后命中键的 keep(确定性 last-wins)。"""
+    多键行 grouped_into 取按名字序最后命中键的 keep(确定性 last-wins)。
+    L4 整体跳过(A-续-⑥,P1-β批二续 T4):advisory 不参与归并、不被 formal 折叠,
+    独立在 advisory 分节。"""
     info: dict[str, dict] = {}
     keyed: dict[str, list] = {}
     for i in issues:
         if getattr(i, "verdict", "") != "violation" or getattr(i, "need_human", False):
+            continue
+        if getattr(i, "layer", "") == "L4":
             continue
         for k in getattr(i, "entity_keys", None) or []:
             keyed.setdefault(k, []).append(i)
@@ -475,6 +488,10 @@ async def list_task_issues(task_id: str, db: AsyncSession = Depends(get_db), own
             out.grouped_into = g["grouped_into"]
             out.related_issues = g["related"]
         items.append(out)
+    # L4 advisory 分节(A-续-⑥,P1-β批二续 T4):条目不删——L4 行仍在 items 全量返回,
+    # advisory 单列同批条目(total/by_severity 复用 summarize_issues 同一口径)。
+    l4_issues = [i for i in issues if getattr(i, "layer", "") == "L4"]
+    adv = worker.summarize_issues(l4_issues)["advisory"]
     return {
         "items": items,
         # 汇总分级(A12 T14 集成约束①,与 worker progress.summary 共用 summarize_issues
@@ -482,6 +499,7 @@ async def list_task_issues(task_id: str, db: AsyncSession = Depends(get_db), own
         # 单列;条目不删——items 仍全量返回(工作台待人工格与 verdict 过滤消费)。
         # L2 P2(D8):口径不变——grouped 行仍计入 summary(前端隐藏由展示层负责)。
         "summary": worker.summarize_issues(issues),
+        "advisory": {"items": [_with_review_state(i, states) for i in l4_issues], "total": adv["total"], "by_severity": adv["by_severity"]},
     }
 
 
@@ -519,7 +537,7 @@ async def feedback_issue(issue_id: str, body: FeedbackIn, db: AsyncSession = Dep
         issue.verdict = "need_human"  # 不计规则包统计(非误报非认可;正式违规口径按 verdict 排除)
     elif body.action == "confirm":
         issue.need_human = False  # 待人工闭环:确认后不再挂待人工格(need_human_count 自然回落)
-        await crud.add_rulepack_stats(db, RULEPACK_NAME, issue.rule_id, adopted=True)
+        await crud.add_rulepack_stats(db, _rulepack_name_for(issue.rule_id), issue.rule_id, adopted=True)
     await db.refresh(issue)
     out = IssueOut.model_validate(issue)
     out.review_state = _REVIEW_ACTION_STATE.get(body.action, "unresolved")
@@ -569,8 +587,27 @@ def _feedback_summary(feedback: list) -> str:
 
 def _fatal_hits(issues: list) -> list:
     """可提交判定口径(双渲染器共享,防漂移;spec 2026-11-05 R4):正式 fatal 违规=
-    severity=fatal 且 verdict=violation 且非 need_human——人工误报与待人工条目不计入命中红线。"""
-    return [i for i in issues if i.severity == "fatal" and i.verdict == "violation" and not i.need_human]
+    severity=fatal 且 verdict=violation 且非 need_human——人工误报与待人工条目不计入命中红线。
+    L4 显式守卫(A-续-⑥,P1-β批二续 T4):advisory 层 counts_toward_bid_gate=false,永不
+    命中红线(lint 本已拒载 L4 fatal,守卫为消费 meta 契约的显式第二道闸)。"""
+    return [i for i in issues if i.severity == "fatal" and i.verdict == "violation" and not i.need_human and getattr(i, "layer", "") != "L4"]
+
+
+def _l4_advisory_cap() -> int:
+    """L4 advisory 报告尾节条数上限(A-续-⑥):从 l4 包 meta ``max_issues_per_report`` 读
+    (经 load_rulepack(ADVISORY_RULEPACK_PATH);常量 None/文件缺失/键缺失一律默认 10,
+    读失败不炸报告)。"""
+    try:
+        return int(worker.load_rulepack(worker.ADVISORY_RULEPACK_PATH).meta.get("max_issues_per_report") or 10)
+    except Exception:  # noqa: BLE001  advisory 面读失败降级默认值,报告主链零依赖
+        return 10
+
+
+def _l4_advisory_rows(issues: list) -> list:
+    """报告 advisory 尾节行(双渲染器共享,防漂移;A-续-⑥):调用方已滤 false_positive;
+    L4 行独立成节,正式 severity 分节不再重复呈现(advisory 不计正式问题数的呈现面),
+    条数按包 meta ``max_issues_per_report`` 封顶。"""
+    return [i for i in issues if getattr(i, "layer", "") == "L4"][: _l4_advisory_cap()]
 
 
 def _esc(v) -> str:
@@ -617,7 +654,7 @@ def _render_report_html(task, issues: list, feedback: list | None = None, deviat
         f'<h2>可提交判定</h2><p class="{"hit" if fatal_hits else "ok"}">{_esc(gate_txt)}</p>',
     ]
     for sev in ("fatal", "major", "minor", "info"):
-        rows = [i for i in issues if i.severity == sev]
+        rows = [i for i in issues if i.severity == sev and getattr(i, "layer", "") != "L4"]  # L4 独立 advisory 尾节(A-续-⑥)
         parts.append(f"<h2>{_esc(SEVERITY_LABELS[sev])}({sev})——{len(rows)} 项</h2>")
         if not rows:
             parts.append("<p>无</p>")
@@ -644,6 +681,23 @@ def _render_report_html(task, issues: list, feedback: list | None = None, deviat
             + "".join(f"<li>{_esc(_oneline(str(d.get('item') or '')))}:{_esc(d.get('kind') or '?')}(招标:{_esc(_oneline(str(d.get('tender_value') or '无')))} ↔ 投标:{_esc(_oneline(str(d.get('bid_value') or '无')))})</li>" for d in items)
             + "</ul>"
         )
+    # L4 advisory 独立尾节(A-续-⑥,P1-β批二续 T4;独立分节先例=上偏离表节):advisory
+    # 不入门禁不计正式计数,条数按包 meta max_issues_per_report 封顶。
+    adv_rows = _l4_advisory_rows(issues)
+    parts.append("<h2>竞争力建议(L4,advisory)</h2>")
+    if not adv_rows:
+        parts.append("<p>无</p>")
+    else:
+        for i in adv_rows:
+            parts.append(
+                '<article class="issue">'
+                f'<span class="tag sev-{_esc(i.severity or "info")}">{_esc(i.severity or "info")}</span>'
+                f"<h3>{_esc('【待人工】' if i.need_human else '')}{_esc(i.rule_id)} {_esc(_oneline(i.message))}</h3>"
+                f'<p class="kv">判定:{_esc(i.verdict)}</p>'
+                f'<p class="kv">证据:{_esc(_fmt_evidence(list(i.evidence or [])))}</p>'
+                f'<p class="kv">修复建议:{_esc(_oneline(i.fix)) or "无"}</p>'
+                "</article>"
+            )
     parts.append("</body></html>")
     return "\n".join(parts)
 
@@ -655,7 +709,8 @@ def _render_report_md(task, issues: list, feedback: list | None = None, deviatio
     且 verdict=violation 且非 need_human——人工误报与待人工条目不计入命中红线)→
     按 severity 四档分节,每条含规则 ID/证据(doc+page)/修复建议;need_human 条目
     不删除,按 severity 归节并标注【待人工】;false_positive 人工误报不进正文;
-    尾部响应偏离表节(对齐审计⑩:counts+逐条,同 /deviations 投影口径)。"""
+    尾部响应偏离表节(对齐审计⑩:counts+逐条,同 /deviations 投影口径);
+    最尾「竞争力建议(L4,advisory)」独立尾节(A-续-⑥,L4 不入正式分节,meta 封顶)。"""
     issues = [i for i in issues if i.verdict != "false_positive"]
     fatal_hits = _fatal_hits(issues)  # 口径共享(spec 2026-11-05 R4,防双渲染器漂移)
     now = datetime.now(UTC).strftime("%Y-%m-%d %H:%M UTC")
@@ -676,7 +731,7 @@ def _render_report_md(task, issues: list, feedback: list | None = None, deviatio
         "",
     ]
     for sev in ("fatal", "major", "minor", "info"):
-        rows = [i for i in issues if i.severity == sev]
+        rows = [i for i in issues if i.severity == sev and getattr(i, "layer", "") != "L4"]  # L4 独立 advisory 尾节(A-续-⑥)
         lines += [f"## {SEVERITY_LABELS[sev]}({sev})——{len(rows)} 项", ""]
         if not rows:
             lines += ["无", ""]
@@ -699,6 +754,21 @@ def _render_report_md(task, issues: list, feedback: list | None = None, deviatio
         for d in items:
             lines.append(f"- {_oneline(str(d.get('item') or ''))}:{d.get('kind') or '?'}(招标:{_oneline(str(d.get('tender_value') or '无'))} ↔ 投标:{_oneline(str(d.get('bid_value') or '无'))})")
         lines.append("")
+    # L4 advisory 独立尾节(A-续-⑥,P1-β批二续 T4;独立分节先例=上偏离表节):advisory
+    # 不入门禁不计正式计数,条数按包 meta max_issues_per_report 封顶。
+    adv_rows = _l4_advisory_rows(issues)
+    lines += ["## 竞争力建议(L4,advisory)", ""]
+    if not adv_rows:
+        lines += ["无", ""]
+    else:
+        for i in adv_rows:
+            lines += [
+                f"### {'【待人工】' if i.need_human else ''}{i.rule_id} {_oneline(i.message)}",
+                f"- 判定:{i.verdict}",
+                f"- 证据:{_fmt_evidence(list(i.evidence or []))}",
+                f"- 修复建议:{_oneline(i.fix) or '无'}",
+                "",
+            ]
     return "\n".join(lines).rstrip() + "\n"
 
 
@@ -978,11 +1048,14 @@ def _rule_op(chk: dict) -> str | None:
 
 @router.get("/rulepacks")
 async def list_rulepacks(db: AsyncSession = Depends(get_db), owner_id: str = Depends(current_owner)):
-    """规则包清单:加载生产规则包(engine/rulepacks/bid-review-core)+ DB stats 覆盖。"""
-    pack = worker.load_rulepack(worker.RULEPACK_PATH)
-    meta = (await db.execute(select(RulePackMeta).where(RulePackMeta.name == pack.name))).scalar_one_or_none()
-    return {
-        "items": [
+    """规则包清单(A-续-⑥ 双包):core 生产包 + L4 advisory 包,各带 DB stats 覆盖。"""
+    packs = [worker.load_rulepack(worker.RULEPACK_PATH)]
+    if worker.ADVISORY_RULEPACK_PATH is not None and Path(worker.ADVISORY_RULEPACK_PATH).exists():
+        packs.append(worker.load_rulepack(worker.ADVISORY_RULEPACK_PATH))
+    items = []
+    for pack in packs:
+        meta = (await db.execute(select(RulePackMeta).where(RulePackMeta.name == pack.name))).scalar_one_or_none()
+        items.append(
             {
                 "name": pack.name,
                 "version": pack.version,
@@ -992,8 +1065,20 @@ async def list_rulepacks(db: AsyncSession = Depends(get_db), owner_id: str = Dep
                 "stats": dict(meta.stats or {}) if meta else {},
                 "enabled": bool(meta.enabled) if meta else True,
             }
-        ]
-    }
+        )
+    return {"items": items}
+
+
+def _load_pack_by_name(name: str):
+    """按包名取包(A-续-⑥ 双包表):core + l4 两包内查名;未知名返回 None(调用方 404
+    语义不变)。"""
+    for path in (worker.RULEPACK_PATH, worker.ADVISORY_RULEPACK_PATH):
+        if path is None or not Path(path).exists():
+            continue
+        pack = worker.load_rulepack(path)
+        if pack.name == name:
+            return pack
+    return None
 
 
 @router.get("/rulepacks/{name}/rules")
@@ -1001,10 +1086,10 @@ async def rulepack_rule_details(name: str, db: AsyncSession = Depends(get_db), o
     """规则定义五块明细(B5,M5 §4.7,治理页只读抽屉):PRECONDITION / EXPR /
     ON_MISSING_INPUT / MESSAGE_TPL / FIX_TPL。EXPR 取 steps/all/values 链或
     `left op right` 单式;on_missing_input 从包级 conventions 投影到每条。本页零写
-    路径——修订须走规则包版本发布;name 不匹配生产包 404(当前单包 bid-review-core)。
+    路径——修订须走规则包版本发布;name 不匹配两包表(A-续-⑥)404。
     enabled 投影生效态(yaml ∧ DB override,对齐审计⑨ 2026-11-05)。"""
-    pack = worker.load_rulepack(worker.RULEPACK_PATH)
-    if name != pack.name:
+    pack = _load_pack_by_name(name)
+    if pack is None:
         raise HTTPException(status_code=404, detail=f"未知规则包 {name}")
     meta = (await db.execute(select(RulePackMeta).where(RulePackMeta.name == pack.name))).scalar_one_or_none()
     overrides = dict(meta.rule_overrides or {}) if meta else {}
@@ -1044,9 +1129,10 @@ async def set_rule_enabled(name: str, rule_id: str, body: RuleEnabledIn, db: Asy
     """规则级启用开关(对齐审计⑨,2026-11-05):落 DB RulePackMeta.rule_overrides
     {rule_id: bool} 而非改写 yaml(git 跟踪源文件禁运行时改写);生效语义 =
     yaml enabled ∧ DB override(worker._apply_rule_overrides 相与),下次审查跑批
-    生效。未知规则/未知包 404。"""
-    pack = worker.load_rulepack(worker.RULEPACK_PATH)
-    if name != pack.name:
+    生效。未知规则/未知包 404(包表=core+l4 两包,A-续-⑥;worker 合包面两包
+    override 均消费)。"""
+    pack = _load_pack_by_name(name)
+    if pack is None:
         raise HTTPException(status_code=404, detail=f"未知规则包 {name}")
     if rule_id not in {r.id for r in pack.rules}:
         raise HTTPException(status_code=404, detail=f"未知规则 {rule_id}")

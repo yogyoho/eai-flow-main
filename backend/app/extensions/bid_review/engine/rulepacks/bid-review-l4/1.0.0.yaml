@@ -4,10 +4,13 @@
 # registry.RULEPACK_DIR / golden RULEPACK_PATH / worker.RULEPACK_PATH / routers+mcp RULEPACK_NAME
 # 全部硬接线 bid-review-core 单包——本目录不被任何生产消费方扫描,不接线非配置开关而是目录隔离;
 # 激活面(worker 多包接线/advisory 独立分节/gate 排除/L4 不计正式问题数)挂批二续任务。
-# ── 包级 meta(激活任务的显式过滤契约锚,本批仅声明不消费)────────────────────────
-#   counts_toward_bid_gate: false   # L4 竞争力层永不入门禁(整合版 §15 二十四坑「L4 不入门禁」)
-#   max_issues_per_report: 10       # advisory 上限:每报告最多 10 条(卡数即上限)
-#   gate_effect: info               # 门禁效应=纯提示,不翻转 verdict 汇总
+# ── 包级 meta(P1-β批二续 T4 激活:注释声明升结构化块,load_rulepack 显式读,A-续-⑥)──
+# 消费点:worker summarize 排除 L4 出正式计数;routers _fatal_hits 显式守卫 + 报告尾节
+# 条数按 max_issues_per_report 封顶(消费方读不到本块时默认 10)。
+meta:
+  counts_toward_bid_gate: false   # L4 竞争力层永不入门禁(整合版 §15 二十四坑「L4 不入门禁」)
+  max_issues_per_report: 10       # advisory 上限:每报告最多 10 条(卡数即上限)
+  gate_effect: info               # 门禁效应=纯提示,不翻转 verdict 汇总
 # ── severity 映射(A-β2-③,C.2 原档→引擎层档)───────────────────────────────────
 # critical→major / high→major / medium→minor / info→info;L4 无 fatal(lint 直接拒载,见
 # registry.lint_rules C.1.4:竞争力层不否决,SEVERITY_BY_LAYER 白名单亦不含 fatal)。

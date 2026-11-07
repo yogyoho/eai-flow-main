@@ -9,7 +9,7 @@ import hashlib
 import json
 import operator
 import re
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 
 import yaml
@@ -46,6 +46,10 @@ class RulePack:
     version: str
     conventions: dict
     rules: list[Rule]
+    # 包级 meta(A-续-⑥,P1-β批二续 T4):L4 包 counts_toward_bid_gate/max_issues_per_report/
+    # gate_effect 的结构化消费契约;dataclass 默认字段须在尾部,core 包无 meta 键 → 空 dict
+    # (现有单测构造 RulePack(...) 走默认值零破坏)。
+    meta: dict = field(default_factory=dict)
 
 
 def _collect_exprs(chk: dict) -> list[str]:
@@ -99,7 +103,9 @@ def load_rulepack(path: str | Path) -> RulePack:
     problems = lint_rules(rules)
     if problems:
         raise RulePackError("规则包语义校验失败(拒载):\n" + "\n".join(problems))
-    return RulePack(name=p.parent.name, version=p.stem, conventions=dict(data.get("conventions", {})), rules=rules)
+    # meta 显式读(A-续-⑥):未知顶层键 load 期静默丢弃,meta 是激活任务的显式过滤契约锚,
+    # 必须显式透传,不得依赖通用透传(没有)。
+    return RulePack(name=p.parent.name, version=p.stem, conventions=dict(data.get("conventions", {})), rules=rules, meta=dict(data.get("meta") or {}))
 
 
 def _fmt(v, spec=""):
