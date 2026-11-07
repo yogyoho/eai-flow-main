@@ -55,7 +55,7 @@ class IssueOut(ORMBase):
     rule_id: str
     layer: str
     severity: str
-    verdict: str  # emission-only(A8)
+    verdict: str  # emission-only(A8);值域=引擎五值+复核域 false_positive(P1-β批三)
     clause_id: str | None = None
     message: str
     fix: str = ""

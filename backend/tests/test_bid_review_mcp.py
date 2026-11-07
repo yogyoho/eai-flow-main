@@ -79,7 +79,7 @@ async def test_start_creates_task_under_service_owner(db, patched_run_in_db):
 @pytest.mark.asyncio
 async def test_issues_issue_and_feedback(db, patched_run_in_db):
     t = await crud.create_task(db, owner_id=mcp.MCP_OWNER)
-    a = await crud.add_issue(db, task_id=t.id, owner_id=mcp.MCP_OWNER, rule_id="L1-009", layer="L1", severity="fatal", verdict="violation", message="超限价", fix="复核", evidence=[{"doc_id": "b.pdf", "page": 1}], dedup_key="k1")
+    a = await crud.add_issue(db, task_id=t.id, owner_id=mcp.MCP_OWNER, rule_id="L1-009", layer="L1", severity="fatal", verdict="FAIL", message="超限价", fix="复核", evidence=[{"doc_id": "b.pdf", "page": 1}], dedup_key="k1")
     issues = _out(await mcp.handle_call("bid_review_issues", {"task_id": t.id}))
     assert issues["count"] == 1 and issues["issues"][0]["id"] == a.id
     filtered = _out(await mcp.handle_call("bid_review_issues", {"task_id": t.id, "severity": "minor"}))
@@ -121,7 +121,7 @@ async def test_four_output_tools_diff_deviations_coverage_report(db, patched_run
     prev = await crud.create_task(db, owner_id=mcp.MCP_OWNER)
     cur = await crud.create_task(db, owner_id=mcp.MCP_OWNER)
     for tid, rule, key in ((cur.id, "L1-009", "k1"), (cur.id, "L1-010", "k2"), (prev.id, "L1-009", "k1")):
-        await crud.add_issue(db, task_id=tid, owner_id=mcp.MCP_OWNER, rule_id=rule, layer="L1", severity="fatal", verdict="violation", message="m", dedup_key=key)
+        await crud.add_issue(db, task_id=tid, owner_id=mcp.MCP_OWNER, rule_id=rule, layer="L1", severity="fatal", verdict="FAIL", message="m", dedup_key=key)
     db.add(
         models.BaselinePackage(
             task_id=cur.id,

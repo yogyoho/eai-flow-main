@@ -45,8 +45,8 @@ async def test_create_and_owner_isolation(db):
 @pytest.mark.asyncio
 async def test_issue_upsert_dedup(db):
     t = await crud.create_task(db, owner_id="u1")
-    a = await crud.add_issue(db, task_id=t.id, owner_id="u1", rule_id="L1-009", layer="L1", severity="fatal", verdict="violation", message="m", fix="f", evidence=[], dedup_key="L1-009|-|x")
-    b = await crud.add_issue(db, task_id=t.id, owner_id="u1", rule_id="L1-009", layer="L1", severity="fatal", verdict="violation", message="m", fix="f", evidence=[{"doc_id": "d", "page": 3}], dedup_key="L1-009|-|x")
+    a = await crud.add_issue(db, task_id=t.id, owner_id="u1", rule_id="L1-009", layer="L1", severity="fatal", verdict="FAIL", message="m", fix="f", evidence=[], dedup_key="L1-009|-|x")
+    b = await crud.add_issue(db, task_id=t.id, owner_id="u1", rule_id="L1-009", layer="L1", severity="fatal", verdict="FAIL", message="m", fix="f", evidence=[{"doc_id": "d", "page": 3}], dedup_key="L1-009|-|x")
     assert a.id == b.id, "同 dedup_key 合并且保留多证据"
     got = await crud.list_issues(db, task_id=t.id, owner_id="u1")
     assert len(got) == 1 and len(got[0].evidence) == 1
@@ -58,10 +58,10 @@ async def test_empty_dedup_key_never_merges(db):
     完整保留自己的 rule_id/verdict/message/evidence,不发生跨问题合并黑洞
     (旧行为:dedup_key 均为 "" 时第二条命中第一条,字段被静默丢弃只做证据并集)。"""
     t = await crud.create_task(db, owner_id="u1")
-    a = await crud.add_issue(db, task_id=t.id, owner_id="u1", rule_id="L1-009", layer="L1", severity="fatal", verdict="violation", message="m1", fix="f1", evidence=[], dedup_key="")
-    b = await crud.add_issue(db, task_id=t.id, owner_id="u1", rule_id="L2-001", layer="L2", severity="major", verdict="need_human", message="m2", fix="f2", evidence=[{"doc_id": "d", "page": 1}], dedup_key="")
+    a = await crud.add_issue(db, task_id=t.id, owner_id="u1", rule_id="L1-009", layer="L1", severity="fatal", verdict="FAIL", message="m1", fix="f1", evidence=[], dedup_key="")
+    b = await crud.add_issue(db, task_id=t.id, owner_id="u1", rule_id="L2-001", layer="L2", severity="major", verdict="UNKNOWN", message="m2", fix="f2", evidence=[{"doc_id": "d", "page": 1}], dedup_key="")
     assert a.id != b.id
-    assert b.rule_id == "L2-001" and b.verdict == "need_human" and b.message == "m2" and len(b.evidence) == 1
+    assert b.rule_id == "L2-001" and b.verdict == "UNKNOWN" and b.message == "m2" and len(b.evidence) == 1
     got = await crud.list_issues(db, task_id=t.id, owner_id="u1")
     assert len(got) == 2
 
@@ -71,8 +71,8 @@ async def test_issue_dedup_evidence_union_skips_duplicates(db):
     """evidence 并集去重:同一条证据重复提交不重复追加。"""
     t = await crud.create_task(db, owner_id="u1")
     ev = [{"doc_id": "d", "page": 3}]
-    await crud.add_issue(db, task_id=t.id, owner_id="u1", rule_id="L1-010", layer="L1", severity="major", verdict="violation", message="m", fix="f", evidence=ev, dedup_key="k2")
-    a = await crud.add_issue(db, task_id=t.id, owner_id="u1", rule_id="L1-010", layer="L1", severity="major", verdict="violation", message="m", fix="f", evidence=ev, dedup_key="k2")
+    await crud.add_issue(db, task_id=t.id, owner_id="u1", rule_id="L1-010", layer="L1", severity="major", verdict="FAIL", message="m", fix="f", evidence=ev, dedup_key="k2")
+    a = await crud.add_issue(db, task_id=t.id, owner_id="u1", rule_id="L1-010", layer="L1", severity="major", verdict="FAIL", message="m", fix="f", evidence=ev, dedup_key="k2")
     assert len(a.evidence) == 1
 
 
@@ -101,7 +101,7 @@ async def test_list_baselines_owner_scoped_and_confirm(db):
 @pytest.mark.asyncio
 async def test_record_feedback_owner_gate(db):
     t = await crud.create_task(db, owner_id="u1")
-    a = await crud.add_issue(db, task_id=t.id, owner_id="u1", rule_id="L1-009", layer="L1", severity="fatal", verdict="violation", message="m", fix="f", evidence=[], dedup_key="k1")
+    a = await crud.add_issue(db, task_id=t.id, owner_id="u1", rule_id="L1-009", layer="L1", severity="fatal", verdict="FAIL", message="m", fix="f", evidence=[], dedup_key="k1")
     fb = await crud.record_feedback(db, issue_id=a.id, owner_id="u1", action="false_positive", note="误报")
     assert fb is not None and fb.action == "false_positive"
     # 越权:他人 owner 无法对该 issue 记 feedback(owner 过滤走 task 联接)
@@ -157,7 +157,7 @@ async def test_add_issue_persists_semantic_verdict_and_state(db):
     t = await crud.create_task(db, owner_id="u1")
     row = await crud.add_issue(
         db, task_id=t.id, owner_id="u1", rule_id="L2-025", layer="L2", severity="major",
-        verdict="unclear", message="复合附件分组失败", dedup_key="L2-025|-|k1",
+        verdict="UNKNOWN", message="复合附件分组失败", dedup_key="L2-025|-|k1",
         semantic_verdict="unclear", state="UNKNOWN",
     )
     await db.refresh(row)

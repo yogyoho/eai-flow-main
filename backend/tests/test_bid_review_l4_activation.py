@@ -133,8 +133,8 @@ async def test_worker_merges_advisory_pack_full_chain(db, monkeypatch, tmp_path)
     assert task.status == "done"
     issues = await crud.list_issues(db, task_id=t.id, owner_id="u1")
     by_rule = {i.rule_id: i for i in issues}
-    assert by_rule["T1-001"].verdict == "violation" and by_rule["T1-001"].layer == "L1", "core 规则照常"
-    assert by_rule["L4-T01"].verdict == "violation" and by_rule["L4-T01"].layer == "L4", "合包后 L4 advisory 条目落库"
+    assert by_rule["T1-001"].verdict == "FAIL" and by_rule["T1-001"].layer == "L1", "core 规则照常"
+    assert by_rule["L4-T01"].verdict == "FAIL" and by_rule["L4-T01"].layer == "L4", "合包后 L4 advisory 条目落库"
     summary = task.progress["summary"]
     assert summary["advisory"]["total"] >= 1, "advisory 单列 L4 条目"
     assert summary["advisory"]["by_severity"]["major"] >= 1
@@ -169,8 +169,8 @@ async def test_advisory_missing_path_falls_back_to_core_only(db, monkeypatch, tm
 def test_fatal_hits_excludes_l4():
     """_fatal_hits 显式 L4 守卫(A-续-⑥):构造 L4 fatal violation 行不命中红线,
     同形 L1 行照常命中(守卫只针对 layer)。"""
-    l4_row = SimpleNamespace(severity="fatal", verdict="violation", need_human=False, layer="L4")
-    l1_row = SimpleNamespace(severity="fatal", verdict="violation", need_human=False, layer="L1")
+    l4_row = SimpleNamespace(severity="fatal", verdict="FAIL", need_human=False, layer="L4")
+    l1_row = SimpleNamespace(severity="fatal", verdict="FAIL", need_human=False, layer="L1")
     assert R._fatal_hits([l4_row]) == []
     assert R._fatal_hits([l1_row]) == [l1_row]
 
@@ -179,10 +179,10 @@ def test_cross_layer_group_skips_l4():
     """_cross_layer_group 整体跳过 L4(A-续-⑥):advisory 不参与归并、不被 formal 折叠
     ——同实体键 L4+L2 两 violation 不产生 grouped_into(无 L4 时 L2 单层不归并)。"""
     now = datetime.now(UTC)
-    l4 = SimpleNamespace(id="i1", verdict="violation", need_human=False, entity_keys=["attachment:A-2"], layer="L4", severity="major", rule_id="L4-001", message="m", created_at=now)
-    l2 = SimpleNamespace(id="i2", verdict="violation", need_human=False, entity_keys=["attachment:A-2"], layer="L2", severity="major", rule_id="L2-020", message="m", created_at=now)
+    l4 = SimpleNamespace(id="i1", verdict="FAIL", need_human=False, entity_keys=["attachment:A-2"], layer="L4", severity="major", rule_id="L4-001", message="m", created_at=now)
+    l2 = SimpleNamespace(id="i2", verdict="FAIL", need_human=False, entity_keys=["attachment:A-2"], layer="L2", severity="major", rule_id="L2-020", message="m", created_at=now)
     assert R._cross_layer_group([l4, l2]) == {}
-    l3 = SimpleNamespace(id="i3", verdict="violation", need_human=False, entity_keys=["attachment:A-2"], layer="L3", severity="minor", rule_id="L3-005", message="m", created_at=now)
+    l3 = SimpleNamespace(id="i3", verdict="FAIL", need_human=False, entity_keys=["attachment:A-2"], layer="L3", severity="minor", rule_id="L3-005", message="m", created_at=now)
     assert R._cross_layer_group([l2, l3]) != {}, "非 L4 跨层归并行为不回退"
 
 
@@ -194,8 +194,8 @@ async def test_list_task_issues_advisory_section(client, db):
     """list_task_issues 响应加 advisory={items,total,by_severity}:L4 行仍在 items 全量
     返回(条目不删),advisory 单列同批条目;正式 summary 不含 L4。"""
     t = await crud.create_task(db, owner_id="u1")
-    await crud.add_issue(db, task_id=t.id, owner_id="u1", rule_id="L1-009", layer="L1", severity="fatal", verdict="violation", message="超限价", fix="复核", evidence=[], dedup_key="k1")
-    await crud.add_issue(db, task_id=t.id, owner_id="u1", rule_id="L4-001", layer="L4", severity="major", verdict="violation", message="质保超额", fix="收口", evidence=[], dedup_key="k2")
+    await crud.add_issue(db, task_id=t.id, owner_id="u1", rule_id="L1-009", layer="L1", severity="fatal", verdict="FAIL", message="超限价", fix="复核", evidence=[], dedup_key="k1")
+    await crud.add_issue(db, task_id=t.id, owner_id="u1", rule_id="L4-001", layer="L4", severity="major", verdict="FAIL", message="质保超额", fix="收口", evidence=[], dedup_key="k2")
     r = await client.get(f"/api/extensions/bid-review/tasks/{t.id}/issues")
     assert r.status_code == 200
     body = r.json()
@@ -215,7 +215,7 @@ async def test_renderers_advisory_tail_section_capped(client, db):
     条数受包 meta max_issues_per_report=10 封顶(12 条 L4 → 恰 10 条)。"""
     t = await crud.create_task(db, owner_id="u1")
     for n in range(1, 13):
-        await crud.add_issue(db, task_id=t.id, owner_id="u1", rule_id=f"L4-9{n:02d}", layer="L4", severity="major", verdict="violation", message=f"建议{n:02d}号", fix="收口", evidence=[], dedup_key=f"L4-9{n:02d}|-|k{n}")
+        await crud.add_issue(db, task_id=t.id, owner_id="u1", rule_id=f"L4-9{n:02d}", layer="L4", severity="major", verdict="FAIL", message=f"建议{n:02d}号", fix="收口", evidence=[], dedup_key=f"L4-9{n:02d}|-|k{n}")
     await crud.set_status(db, t, "done")
     md = (await client.get(f"/api/extensions/bid-review/tasks/{t.id}/report?format=md")).text
     html = (await client.get(f"/api/extensions/bid-review/tasks/{t.id}/report?format=html")).text
@@ -242,7 +242,7 @@ async def test_false_positive_attribution_records_l4_pack(db):
     """apply_false_positive 到 L4 issue → RulePackMeta.stats 记入 bid-review-l4 行
     (fp+1),core 行零串账。"""
     t = await crud.create_task(db, owner_id="u1")
-    issue = await crud.add_issue(db, task_id=t.id, owner_id="u1", rule_id="L4-001", layer="L4", severity="major", verdict="violation", message="质保超额", fix="收口", evidence=[], dedup_key="k1")
+    issue = await crud.add_issue(db, task_id=t.id, owner_id="u1", rule_id="L4-001", layer="L4", severity="major", verdict="FAIL", message="质保超额", fix="收口", evidence=[], dedup_key="k1")
     await R.apply_false_positive(db, issue)
     meta = (await db.execute(select(models.RulePackMeta).where(models.RulePackMeta.name == "bid-review-l4"))).scalar_one_or_none()
     assert meta is not None and meta.stats["L4-001"]["fp"] == 1

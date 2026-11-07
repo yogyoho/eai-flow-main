@@ -149,7 +149,7 @@ async def evaluate_fields(
             # 求值意外与模型侧故障(含 ModelNotConfigured)在此统一降级 ERROR
             # (引擎五值域:基础设施故障≠数据不可判;缺字段类 UNKNOWN 走
             # rule_runner._need_human 默认,P1-β批三),不外溢单规则异常。
-            logger.warning("bid_review rule %s crashed, downgraded to need_human: %r", rule.id, exc)
+            logger.warning("bid_review rule %s crashed, downgraded to ERROR: %r", rule.id, exc)
             issues = [_need_human(rule, f"规则执行异常 {exc!r}(逐规则隔离降级 ERROR)", verdict=VERDICT_ERROR)]
         out.extend(issues)
     out = _suppress_l3012_by_l2021(out)  # W9 抑制联动(聚合循环后、return 前单插入,A-β2-⑦)

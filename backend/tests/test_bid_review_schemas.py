@@ -15,7 +15,7 @@ class _ORMIssue:
         self.rule_id = "L2-020"
         self.layer = "L2"
         self.severity = "fatal"
-        self.verdict = "violation"
+        self.verdict = "FAIL"
         self.clause_id = None
         self.message = "缺少附件"
         self.fix = ""

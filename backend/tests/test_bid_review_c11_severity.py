@@ -30,35 +30,35 @@ def _fields(reqs, prov=None):
 def test_src_tender_mandatory_overrides_to_fatal():
     reqs = [{"no": "A1", "name": "营业执照", "src": "tender_mandatory"}]
     issues = run_det_rule(_att_rule(), _fields(reqs))
-    miss = [i for i in issues if i["verdict"] == "violation"]
+    miss = [i for i in issues if i["verdict"] == "FAIL"]
     assert miss and miss[0]["severity"] == "fatal"
 
 
 def test_empty_src_keeps_rule_default():
     reqs = [{"no": "A2", "name": "业绩合同", "src": ""}]
     issues = run_det_rule(_att_rule(), _fields(reqs))
-    miss = [i for i in issues if i["verdict"] == "violation"]
+    miss = [i for i in issues if i["verdict"] == "FAIL"]
     assert miss and miss[0]["severity"] == _att_rule().severity  # 缺省不覆盖,golden 存量零回归
 
 
 def test_unknown_src_keeps_rule_default():
     reqs = [{"no": "A3", "name": "x", "src": "whatever"}]
     issues = run_det_rule(_att_rule(), _fields(reqs))
-    miss = [i for i in issues if i["verdict"] == "violation"]
+    miss = [i for i in issues if i["verdict"] == "FAIL"]
     assert miss and miss[0]["severity"] == _att_rule().severity
 
 
 def test_mixed_rows_take_strictest():
     reqs = [{"no": "A4", "name": "a", "src": "internal_template"}, {"no": "A5", "name": "b", "src": "tender_mandatory"}]
     issues = run_det_rule(_att_rule(), _fields(reqs))
-    miss = [i for i in issues if i["verdict"] == "violation"]
+    miss = [i for i in issues if i["verdict"] == "FAIL"]
     assert miss and miss[0]["severity"] == "fatal"  # 合并 issue 取 max
 
 
 def test_regulation_maps_fatal_conservative():
     reqs = [{"no": "A6", "name": "x", "src": "regulation"}]
     issues = run_det_rule(_att_rule(), _fields(reqs))
-    miss = [i for i in issues if i["verdict"] == "violation"]
+    miss = [i for i in issues if i["verdict"] == "FAIL"]
     assert miss and miss[0]["severity"] == "fatal"
 
 
@@ -69,7 +69,7 @@ def test_src_internal_template_downgrades_att_check_to_minor():
     # L2-020 默认 fatal,internal_template 行须下行覆盖为 minor——「覆盖真的发生了」判别面
     reqs = [{"no": "A7", "name": "模板惯例件", "src": "internal_template"}]
     issues = run_det_rule(_att_rule(), _fields(reqs))
-    miss = [i for i in issues if i["verdict"] == "violation"]
+    miss = [i for i in issues if i["verdict"] == "FAIL"]
     assert miss and miss[0]["severity"] == "minor"
 
 
@@ -78,7 +78,7 @@ def test_att_count_partial_tender_mandatory_overrides_to_fatal():
     reqs = [{"no": "B1", "name": "银行保函", "min_count": 2, "src": "tender_mandatory"}]
     prov = [{"no": "B1", "name": "银行保函"}]
     issues = run_det_rule(_att_rule("att_count"), _fields(reqs, prov))
-    partial = [i for i in issues if i["verdict"] == "violation"]
+    partial = [i for i in issues if i["verdict"] == "FAIL"]
     assert partial and partial[0]["severity"] == "fatal"
 
 
@@ -87,7 +87,7 @@ def test_att_count_partial_internal_template_overrides_to_minor():
     reqs = [{"no": "B2", "name": "授权委托书模板", "min_count": 2, "src": "internal_template"}]
     prov = [{"no": "B2", "name": "授权委托书模板"}]
     issues = run_det_rule(_att_rule("att_count"), _fields(reqs, prov))
-    partial = [i for i in issues if i["verdict"] == "violation"]
+    partial = [i for i in issues if i["verdict"] == "FAIL"]
     assert partial and partial[0]["severity"] == "minor"
 
 
@@ -95,7 +95,7 @@ def test_att_missing_rows_tender_mandatory_overrides_to_fatal():
     # L2-023(att_missing_rows 候选,单行覆盖)默认 major → tender_mandatory fatal
     reqs = [{"no": "D1", "name": "公证书", "src": "tender_mandatory"}]
     issues = run_det_rule(_att_rule("att_missing_rows"), _fields(reqs))
-    cand = [i for i in issues if i["verdict"] == "violation"]
+    cand = [i for i in issues if i["verdict"] == "FAIL"]
     assert cand and cand[0]["severity"] == "fatal"
 
 

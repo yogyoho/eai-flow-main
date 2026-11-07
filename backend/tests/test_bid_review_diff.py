@@ -59,7 +59,7 @@ async def _mk_task(db, owner_id: str = "u1", prev_task_id: str | None = None) ->
     return t
 
 
-async def _mk_issue(db, task_id: str, rule_id: str, dedup_key: str, severity: str = "major", verdict: str = "violation") -> models.ReviewIssue:
+async def _mk_issue(db, task_id: str, rule_id: str, dedup_key: str, severity: str = "major", verdict: str = "FAIL") -> models.ReviewIssue:
     return await crud.add_issue(
         db,
         task_id=task_id,

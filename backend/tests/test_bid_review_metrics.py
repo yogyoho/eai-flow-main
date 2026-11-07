@@ -70,7 +70,7 @@ async def _mk_issue(db, rule_id: str, dedup_key: str) -> models.ReviewIssue:
         rule_id=rule_id,
         layer="L1",
         severity="fatal",
-        verdict="violation",
+        verdict="FAIL",
         message="投标总价 ¥101 超过最高限价 ¥100",
         dedup_key=dedup_key,
         need_human=False,

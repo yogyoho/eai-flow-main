@@ -194,7 +194,7 @@ async def test_advance_created_to_awaiting_confirm(db):
 @pytest.mark.asyncio
 async def test_advance_quick_det_run_to_done(db, tmp_rulepack):
     """wait_confirm=False 快审直跑:parsing→extracting→基线→running→det→done;
-    对齐审计①(2026-11-05):quick 层裁剪只跑 L1 det——T1-001 violation 照产,
+    对齐审计①(2026-11-05):quick 层裁剪只跑 L1 det——T1-001 FAIL 照产,
     T1-002(L3 det)不入 quick(全量行为见 test_advance_deep_full_rules)。"""
     t = await crud.create_task(db, owner_id="u1")
     docs = [{"doc_id": "b.pdf", "role": "bid", "text": "x"}]
@@ -207,7 +207,7 @@ async def test_advance_quick_det_run_to_done(db, tmp_rulepack):
     assert task.status == "done"
     issues = await crud.list_issues(db, task_id=t.id, owner_id="u1")
     by_rule = {i.rule_id: i for i in issues}
-    assert by_rule["T1-001"].verdict == "violation"
+    assert by_rule["T1-001"].verdict == "FAIL"
     assert by_rule["T1-001"].message == "投标总价 ¥2,000,000.00 超过最高限价 ¥1,000,000.00"
     assert "T1-002" not in by_rule  # quick 层裁剪:L3 det 不入 quick
     assert task.progress["pct"] == 100
@@ -216,8 +216,8 @@ async def test_advance_quick_det_run_to_done(db, tmp_rulepack):
 
 @pytest.mark.asyncio
 async def test_advance_deep_full_rules_det_and_need_human(db, tmp_rulepack):
-    """deep 全量对照(对齐审计①补位):mode=deep 规则层零裁剪——T1-001 violation +
-    T1-002(L3 det)need_human 双规则照旧;wait_confirm=False 直跑不停门。"""
+    """deep 全量对照(对齐审计①补位):mode=deep 规则层零裁剪——T1-001 FAIL +
+    T1-002(L3 det)UNKNOWN 双规则照旧;wait_confirm=False 直跑不停门。"""
     t = await crud.create_task(db, owner_id="u1")
     t.mode = "deep"
     await db.commit()
@@ -230,25 +230,25 @@ async def test_advance_deep_full_rules_det_and_need_human(db, tmp_rulepack):
     task = await advance_task(db, t.id, owner_id="u1", docs=docs, extract_fn=_extract, wait_confirm=False)
     assert task.status == "done"
     by_rule = {i.rule_id: i for i in await crud.list_issues(db, task_id=t.id, owner_id="u1")}
-    assert by_rule["T1-001"].verdict == "violation"
-    assert by_rule["T1-002"].verdict == "need_human"
+    assert by_rule["T1-001"].verdict == "FAIL"
+    assert by_rule["T1-002"].verdict == "UNKNOWN"
 
 
 @pytest.mark.asyncio
 async def test_advance_all_null_fields_need_human_not_crash(db, tmp_rulepack):
-    """None 值字段剥离守卫:提取全 null → 每条 det 规则 need_human、任务到 done;
+    """None 值字段剥离守卫:提取全 null → 每条 det 规则 UNKNOWN、任务到 done;
     若 None 直进求值器,run_det_rule 的比较算子会 TypeError 崩任务(守卫回归门)。"""
     t = await crud.create_task(db, owner_id="u1")
     task = await advance_task(db, t.id, owner_id="u1", docs=[], extract_fn=lambda d, p: {k: None for k in p}, wait_confirm=False)
     assert task.status == "done"
     issues = await crud.list_issues(db, task_id=t.id, owner_id="u1")
-    assert issues and all(i.verdict == "need_human" for i in issues)
+    assert issues and all(i.verdict == "UNKNOWN" for i in issues)
 
 
 @pytest.mark.asyncio
 async def test_rule_crash_isolated_to_need_human(db, crash_rulepack):
     """fix-round 评审项:单规则求值意外(KeyError 之外,如 str 与 float 比较 TypeError)被
-    _run_det_stage 逐规则隔离降级 need_human——兄弟规则照常执行、任务照常到 done;
+    _run_det_stage 逐规则隔离降级 ERROR——兄弟规则照常执行、任务照常到 done;
     禁止单个字段类型偏差把整条审查任务经 _infra_fail 重试 3 次打 failed(可用性失败)。"""
     t = await crud.create_task(db, owner_id="u1")
     fields = {"bid.total_price": "一百万整", "tender.max_price": 1000000, "bid.subtotal": 999}
@@ -260,15 +260,15 @@ async def test_rule_crash_isolated_to_need_human(db, crash_rulepack):
     assert task.status == "done"
     issues = await crud.list_issues(db, task_id=t.id, owner_id="u1")
     by_rule = {i.rule_id: i for i in issues}
-    assert by_rule["T1-101"].verdict == "need_human" and by_rule["T1-101"].need_human is True, "崩溃规则应逐规则隔离降级 need_human"
-    assert by_rule["T1-102"].verdict == "violation", "兄弟规则不受单规则崩溃影响,应照常产出 violation"
+    assert by_rule["T1-101"].verdict == "ERROR" and by_rule["T1-101"].need_human is True, "崩溃规则应逐规则隔离降级 ERROR"
+    assert by_rule["T1-102"].verdict == "FAIL", "兄弟规则不受单规则崩溃影响,应照常产出 FAIL"
 
 
 @pytest.mark.asyncio
 async def test_resume_confirmed_runs_det_and_done(db, tmp_rulepack):
     """确认门续跑:awaiting_confirm →(confirm 后)resume_confirmed →running→det→done。"""
     t = await crud.create_task(db, owner_id="u1")
-    t.mode = "deep"  # 对齐审计①:全量规则面(本测试验证 L3 det need_human)
+    t.mode = "deep"  # 对齐审计①:全量规则面(本测试验证 L3 det UNKNOWN 降级)
     await db.commit()
     docs = [{"doc_id": "t.pdf", "role": "tender", "text": "x"}]
     fields = {"bid.total_price": 500, "tender.max_price": 1000, "bid.price_includes_tax": True, "tender.price_includes_tax": True}
@@ -276,8 +276,8 @@ async def test_resume_confirmed_runs_det_and_done(db, tmp_rulepack):
     task = await resume_confirmed(db, t.id, "u1")
     assert task.status == "done"
     issues = await crud.list_issues(db, task_id=t.id, owner_id="u1")
-    # 500<=1000 干净:T1-001 不产条目;T1-002 缺字段 → 唯一 need_human
-    assert len(issues) == 1 and issues[0].verdict == "need_human" and issues[0].rule_id == "T1-002"
+    # 500<=1000 干净:T1-001 不产条目;T1-002 缺字段 → 唯一 UNKNOWN
+    assert len(issues) == 1 and issues[0].verdict == "UNKNOWN" and issues[0].rule_id == "T1-002"
 
 
 @pytest.mark.asyncio

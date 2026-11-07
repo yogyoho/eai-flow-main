@@ -254,6 +254,11 @@ async def migrate_db() -> None:
         await conn.execute(text("ALTER TABLE departments ADD COLUMN IF NOT EXISTS code VARCHAR(50)"))
         await conn.execute(text("ALTER TABLE departments ADD COLUMN IF NOT EXISTS status VARCHAR(20) DEFAULT 'active'"))
 
+        # C-08 verdict 值域迁(P1-β批三 2026-11-07,幂等 UPDATE,先例同上块):
+        # 历史三值→引擎五值;false_positive 复核域行不动(A8);need_human 布尔列不动。
+        await conn.execute(text("UPDATE bid_review_issues SET verdict='FAIL' WHERE verdict='violation'"))
+        await conn.execute(text("UPDATE bid_review_issues SET verdict='UNKNOWN' WHERE verdict IN ('need_human','unclear')"))
+
         # 4. Create user_departments association table
         await conn.execute(
             text("""

@@ -66,7 +66,7 @@ async def client(db, monkeypatch):
 
 async def _mk_issue(db, message: str = "投标总价 ¥101 超过最高限价 ¥100", rule_id: str = "L1-009", dedup_key: str = "k1", need_human: bool = False) -> models.ReviewIssue:
     t = await crud.create_task(db, owner_id="u1")
-    return await crud.add_issue(db, task_id=t.id, owner_id="u1", rule_id=rule_id, layer="L1", severity="fatal", verdict="violation", message=message, dedup_key=dedup_key, need_human=need_human)
+    return await crud.add_issue(db, task_id=t.id, owner_id="u1", rule_id=rule_id, layer="L1", severity="fatal", verdict="FAIL", message=message, dedup_key=dedup_key, need_human=need_human)
 
 
 @pytest.mark.asyncio
@@ -133,7 +133,7 @@ async def test_fp_samples_roll_at_cap_20(client, db):
     t = await crud.create_task(db, owner_id="u1")
     ids = []
     for i in range(1, 23):
-        row = await crud.add_issue(db, task_id=t.id, owner_id="u1", rule_id="L3-003", layer="L3", severity="major", verdict="violation", message=f"误报样本-{i:02d}", dedup_key=f"k{i:02d}")
+        row = await crud.add_issue(db, task_id=t.id, owner_id="u1", rule_id="L3-003", layer="L3", severity="major", verdict="FAIL", message=f"误报样本-{i:02d}", dedup_key=f"k{i:02d}")
         ids.append(row.id)
     for iid in ids:
         r = await client.post(f"/api/extensions/bid-review/issues/{iid}/feedback", json={"action": "false_positive"})
@@ -158,7 +158,7 @@ async def test_mcp_false_positive_same_backflow(db, monkeypatch):
 
     monkeypatch.setattr(mcp, "_run_in_db", lambda fn: _wrap(db, fn))
     t = await crud.create_task(db, owner_id=mcp.MCP_OWNER)
-    issue = await crud.add_issue(db, task_id=t.id, owner_id=mcp.MCP_OWNER, rule_id="L1-009", layer="L1", severity="fatal", verdict="violation", message="超限价", dedup_key="mk1", need_human=True)
+    issue = await crud.add_issue(db, task_id=t.id, owner_id=mcp.MCP_OWNER, rule_id="L1-009", layer="L1", severity="fatal", verdict="FAIL", message="超限价", dedup_key="mk1", need_human=True)
     out = json.loads((await mcp.handle_call("bid_review_feedback", {"issue_id": issue.id, "action": "false_positive", "note": "误报"}))[0].text)
     assert out["success"] is True and out["feedback_id"]
     await db.refresh(issue)
@@ -172,9 +172,9 @@ async def test_need_human_action_and_confirm_clears(client, db):
     """EAI-CUSTOM 2026-10-30 待人工闭环(spec D9):need_human 动作落 verdict/旗标且
     不计规则包统计;confirm 清 need_human(待人工格自然回落)+ adopted 计数。"""
     t = await crud.create_task(db, owner_id="u1")
-    issue = await crud.add_issue(db, task_id=t.id, owner_id="u1", rule_id="L3-005", layer="L3", severity="major", verdict="need_human", message="字段缺失无法判定", dedup_key="k1", need_human=True)
+    issue = await crud.add_issue(db, task_id=t.id, owner_id="u1", rule_id="L3-005", layer="L3", severity="major", verdict="UNKNOWN", message="字段缺失无法判定", dedup_key="k1", need_human=True)
     r = await client.post(f"/api/extensions/bid-review/issues/{issue.id}/feedback", json={"action": "need_human", "note": "引擎查不出"})
-    assert r.status_code == 200 and r.json()["need_human"] is True and r.json()["verdict"] == "need_human"
+    assert r.status_code == 200 and r.json()["need_human"] is True and r.json()["verdict"] == "UNKNOWN"
     meta = (await db.execute(select(models.RulePackMeta).where(models.RulePackMeta.name == "bid-review-core"))).scalar_one_or_none()
     assert meta is None or "L3-005" not in (meta.stats or {}), "need_human 不计规则包统计"
 
@@ -187,7 +187,7 @@ async def test_need_human_action_and_confirm_clears(client, db):
 @pytest.mark.asyncio
 async def test_need_human_rejects_unknown_action(client, db):
     t = await crud.create_task(db, owner_id="u1")
-    issue = await crud.add_issue(db, task_id=t.id, owner_id="u1", rule_id="L1-009", layer="L1", severity="fatal", verdict="violation", message="m", dedup_key="k2")
+    issue = await crud.add_issue(db, task_id=t.id, owner_id="u1", rule_id="L1-009", layer="L1", severity="fatal", verdict="FAIL", message="m", dedup_key="k2")
     r = await client.post(f"/api/extensions/bid-review/issues/{issue.id}/feedback", json={"action": "bogus"})
     assert r.status_code == 422
 
@@ -198,8 +198,8 @@ async def test_review_state_projection(client, db):
     unresolved|maintained|false_positive|severity_changed|deferred;列表/详情/
     反馈响应三处同投影;最新动作覆盖旧动作。"""
     t = await crud.create_task(db, owner_id="u1")
-    i1 = await crud.add_issue(db, task_id=t.id, owner_id="u1", rule_id="L1-009", layer="L1", severity="fatal", verdict="violation", message="m1", dedup_key="k1", need_human=False)
-    i2 = await crud.add_issue(db, task_id=t.id, owner_id="u1", rule_id="L3-005", layer="L3", severity="major", verdict="need_human", message="m2", dedup_key="k2", need_human=True)
+    i1 = await crud.add_issue(db, task_id=t.id, owner_id="u1", rule_id="L1-009", layer="L1", severity="fatal", verdict="FAIL", message="m1", dedup_key="k1", need_human=False)
+    i2 = await crud.add_issue(db, task_id=t.id, owner_id="u1", rule_id="L3-005", layer="L3", severity="major", verdict="UNKNOWN", message="m2", dedup_key="k2", need_human=True)
 
     # 初始:全部 unresolved
     r = await client.get(f"/api/extensions/bid-review/tasks/{t.id}/issues")

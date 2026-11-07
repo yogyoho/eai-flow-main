@@ -440,7 +440,7 @@ _LAYER_RANK = {"L1": 0, "L2": 1, "L3": 2, "L4": 3}
 def _cross_layer_group(issues: list) -> dict[str, dict]:
     """跨层实体去重投影(L2 P2,spec 2026-11-02 §7 挂账行,EAI-CUSTOM;现算不落库,
     先例=deviations/attachment_checklist):同一实体键(entity_keys 交集)且跨 ≥2 层的
-    violation(非 need_human)归并——keep most_severe(并列取层序 L1>L2>L3,再取
+    FAIL(非 need_human)归并——keep most_severe(并列取层序 L1>L2>L3,再取
     created_at 稳定),其余行标 grouped_into=keep.id,keep 行带 related_issues 摘要。
     条目不删:items 仍全量返回(前端隐藏 grouped 行),summary 口径不变。
     need_human 不参与归并(待人工必须可见)。多实体键行按键名字序迭代保稳定。
@@ -450,7 +450,7 @@ def _cross_layer_group(issues: list) -> dict[str, dict]:
     info: dict[str, dict] = {}
     keyed: dict[str, list] = {}
     for i in issues:
-        if getattr(i, "verdict", "") != "violation" or getattr(i, "need_human", False):
+        if getattr(i, "verdict", "") != "FAIL" or getattr(i, "need_human", False):
             continue
         if getattr(i, "layer", "") == "L4":
             continue
@@ -516,8 +516,8 @@ async def feedback_issue(issue_id: str, body: FeedbackIn, db: AsyncSession = Dep
     """复核反馈:写 ReviewFeedback + RulePackMeta.stats 回流。false_positive 走误报回流
     (apply_false_positive:verdict/need_human 落库 + fp+1 + fp_samples 滚动);confirm→
     adopted+1 且清 need_human(EAI-CUSTOM 2026-10-30 待人工闭环:待人工→确认后不再挂
-    待人工格);need_human→verdict="need_human" 落库,不计规则包统计(非误报也非认可,
-    引擎无法判定的人工挂起,A12 三值语义);severity_change 只落反馈行且允许任意合法档位
+    待人工格);need_human→verdict="UNKNOWN" 落库,不计规则包统计(非误报也非认可,
+    引擎无法判定的人工挂起,P1-β批三五值域 UNKNOWN);severity_change 只落反馈行且允许任意合法档位
     ——人工降级不拦(端点校验只拦非法值;模型侧 fatal 降级拦截是 verify 层
     normalize_severity 职责)。"""
     if body.action not in ("confirm", "false_positive", "severity_change", "need_human"):
@@ -534,7 +534,7 @@ async def feedback_issue(issue_id: str, body: FeedbackIn, db: AsyncSession = Dep
         await apply_false_positive(db, issue)
     elif body.action == "need_human":
         issue.need_human = True
-        issue.verdict = "need_human"  # 不计规则包统计(非误报非认可;正式违规口径按 verdict 排除)
+        issue.verdict = "UNKNOWN"  # 反馈转待人工:UNKNOWN+旗标(引擎五值域;不计规则包统计口径不变)
     elif body.action == "confirm":
         issue.need_human = False  # 待人工闭环:确认后不再挂待人工格(need_human_count 自然回落)
         await crud.add_rulepack_stats(db, _rulepack_name_for(issue.rule_id), issue.rule_id, adopted=True)
@@ -587,10 +587,10 @@ def _feedback_summary(feedback: list) -> str:
 
 def _fatal_hits(issues: list) -> list:
     """可提交判定口径(双渲染器共享,防漂移;spec 2026-11-05 R4):正式 fatal 违规=
-    severity=fatal 且 verdict=violation 且非 need_human——人工误报与待人工条目不计入命中红线。
+    severity=fatal 且 verdict=FAIL 且非 need_human——人工误报与待人工条目不计入命中红线。
     L4 显式守卫(A-续-⑥,P1-β批二续 T4):advisory 层 counts_toward_bid_gate=false,永不
     命中红线(lint 本已拒载 L4 fatal,守卫为消费 meta 契约的显式第二道闸)。"""
-    return [i for i in issues if i.severity == "fatal" and i.verdict == "violation" and not i.need_human and getattr(i, "layer", "") != "L4"]
+    return [i for i in issues if i.severity == "fatal" and i.verdict == "FAIL" and not i.need_human and getattr(i, "layer", "") != "L4"]
 
 
 def _l4_advisory_cap() -> int:
@@ -706,7 +706,7 @@ def _render_report_md(task, issues: list, feedback: list | None = None, deviatio
     """审查报告 md 渲染(plan Task 21 Step 1 契约,报告呈现形态以 plan 原文为准):
     首行免责声明 → 任务元信息(复核耗时=feedback 真聚合,对齐审计③ 2026-11-05)→
     可提交判定提示行(措辞照 ui-spec §3.5 照抄;口径=正式 fatal 违规:severity=fatal
-    且 verdict=violation 且非 need_human——人工误报与待人工条目不计入命中红线)→
+    且 verdict=FAIL 且非 need_human——人工误报与待人工条目不计入命中红线)→
     按 severity 四档分节,每条含规则 ID/证据(doc+page)/修复建议;need_human 条目
     不删除,按 severity 归节并标注【待人工】;false_positive 人工误报不进正文;
     尾部响应偏离表节(对齐审计⑩:counts+逐条,同 /deviations 投影口径);
@@ -936,8 +936,8 @@ async def task_score_coverage(
     pack = worker.load_rulepack(worker.RULEPACK_PATH)
     out = compute_score_coverage(raw_items, pack.rules)
     issues = await crud.list_issues(db, task_id=task_id, owner_id=owner_id)
-    violation_rule_ids = {i.rule_id for i in issues if i.verdict == "violation" and not i.need_human}
-    unresolved_rule_ids = {i.rule_id for i in issues if i.verdict != "false_positive" and (i.need_human or i.verdict == "unclear")}
+    violation_rule_ids = {i.rule_id for i in issues if i.verdict == "FAIL" and not i.need_human}
+    unresolved_rule_ids = {i.rule_id for i in issues if i.verdict != "false_positive" and (i.need_human or i.verdict == "UNKNOWN")}
     out.update(derive_score_risk(out, violation_rule_ids, unresolved_rule_ids))
     return out
 

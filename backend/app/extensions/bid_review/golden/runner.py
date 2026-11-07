@@ -98,7 +98,7 @@ async def run_case(case: GoldenCase, pack: RulePack | None = None) -> CaseResult
         for idx, i in enumerate(issues):
             if idx in consumed or i.get("verdict") != "FAIL":
                 continue
-            unexpected.append(f"期望外 violation[{i['rule_id']} {i['severity']}]: {str(i.get('message'))[:80]}")
+            unexpected.append(f"期望外 FAIL[{i['rule_id']} {i['severity']}]: {str(i.get('message'))[:80]}")
     cl_diff: list[str] = []
     if case.checklist is not None:
         cl = build_checklist(case.fields.get("tender.attachment_requirements"), case.fields.get("bid.attachment_index"))

@@ -3,7 +3,7 @@
 覆盖面(先红后绿):sem 规则经 advance/resume 产条目落库、hyb 候选路径(det 粗筛命中
 →模型确认)、need_human 单列统计口径(progress.summary 与 issues API 同口径)、
 response.content 分块 list 归一 str(worker 包装层,A12 约束②)、逐规则隔离(模型
-不可用/接线失败降级 need_human,兄弟规则照常)、fatal 不被模型降级、dedup 同键合并、
+不可用/接线失败降级 ERROR(need_human 旗标),兄弟规则照常)、fatal 不被模型降级、dedup 同键合并、
 done 帧 progress 记录各阶段耗时;基准确认门语义不破(deep 停 awaiting_confirm 且模型
 零调用,confirm 后 resume 才跑 sem)。
 
@@ -175,7 +175,7 @@ async def test_quick_sem_rule_produces_persisted_issue(db, sem_rulepack):
     issues = await crud.list_issues(db, task_id=t.id, owner_id="u1")
     assert len(issues) == 1
     row = issues[0]
-    assert row.rule_id == "S1-001" and row.verdict == "violation" and row.severity == "fatal"
+    assert row.rule_id == "S1-001" and row.verdict == "FAIL" and row.severity == "fatal"
     assert row.clause_id == "★1" and row.dedup_key, "sem 条目应携带 clause_id 与 verify 层 dedup_key"
 
 
@@ -200,7 +200,7 @@ async def test_hyb_candidate_confirmed_by_model(db, sem_rulepack):
     assert task.status == "done"
     assert sorted(calls) == ["H1-001", "S1-001"], "hyb det 命中候选应进模型确认"
     by_rule = {i.rule_id: i for i in await crud.list_issues(db, task_id=t.id, owner_id="u1")}
-    assert by_rule["H1-001"].verdict == "violation" and by_rule["H1-001"].severity == "major", "模型确认候选后应产 violation(粗筛不再短路终局)"
+    assert by_rule["H1-001"].verdict == "FAIL" and by_rule["H1-001"].severity == "major", "模型确认候选后应产 FAIL(粗筛不再短路终局)"
     assert "S1-001" not in by_rule, "模型 full=干净条款不产条目"
 
 
@@ -224,7 +224,7 @@ async def test_hyb_unclear_need_human_survives_pipeline(db, sem_rulepack):
     assert task.status == "done"
     issues = await crud.list_issues(db, task_id=t.id, owner_id="u1")
     hyb = [i for i in issues if i.rule_id == "H1-001"]
-    assert hyb and hyb[0].need_human is True and hyb[0].verdict == "unclear", "unclear+need_human 条目必须存活出管线"
+    assert hyb and hyb[0].need_human is True and hyb[0].verdict == "UNKNOWN", "raw unclear+need_human 条目必须存活出管线"
     assert task.progress["summary"]["need_human"] >= 1, "待人工条目应单列进汇总待人工计数"
 
 
@@ -292,7 +292,7 @@ async def test_content_chunk_list_normalized_to_str(db, sem_rulepack):
     task = await advance_task(db, t.id, owner_id="u1", docs=_DOCS, extract_fn=_extract, wait_confirm=False, model_fn=model)
     assert task.status == "done"
     issues = [i for i in await crud.list_issues(db, task_id=t.id, owner_id="u1") if i.rule_id == "S1-001"]
-    assert len(issues) == 1 and issues[0].verdict == "violation", "分块 list content 应拼接归一为 str 后正常过 schema"
+    assert len(issues) == 1 and issues[0].verdict == "FAIL", "分块 list content 应拼接归一为 str 后正常过 schema"
 
 
 # ── 逐规则隔离 + 生产缺口 ─────────────────────────────────────────────
@@ -301,7 +301,7 @@ async def test_content_chunk_list_normalized_to_str(db, sem_rulepack):
 @pytest.mark.asyncio
 async def test_model_crash_isolated_to_need_human(db, sem_rulepack):
     """T9 先例(9cda4828b)扩展到 sem:模型不可用/接线失败(抛异常)该规则降级
-    need_human 条目,兄弟 det 规则照常产出(fatal violation),任务照常 done(禁整任务崩)。"""
+    ERROR 条目,兄弟 det 规则照常产出(fatal FAIL),任务照常 done(禁整任务崩)。"""
     model = _fake_model({"S1-001": RuntimeError("model endpoint down")}, [])
     t = await crud.create_task(db, owner_id="u1", mode="deep")
 
@@ -311,14 +311,14 @@ async def test_model_crash_isolated_to_need_human(db, sem_rulepack):
     task = await advance_task(db, t.id, owner_id="u1", docs=_DOCS, extract_fn=_extract, wait_confirm=False, model_fn=model)
     assert task.status == "done", "单规则模型异常不得把任务打 failed"
     by_rule = {i.rule_id: i for i in await crud.list_issues(db, task_id=t.id, owner_id="u1")}
-    assert by_rule["S1-001"].need_human is True and by_rule["S1-001"].verdict == "need_human"
-    assert by_rule["D1-001"].verdict == "violation", "兄弟 det 规则不受模型异常影响,应照常产出 violation"
+    assert by_rule["S1-001"].need_human is True and by_rule["S1-001"].verdict == "ERROR"
+    assert by_rule["D1-001"].verdict == "FAIL", "兄弟 det 规则不受模型异常影响,应照常产出 FAIL"
 
 
 @pytest.mark.asyncio
 async def test_default_model_gap_degrades_sem_rule_not_crash(db, sem_rulepack, monkeypatch):
     """无可用模型(config 空且 env 未设)时 _default_model_fn 退化为显式缺口 → sem
-    规则逐规则降级 need_human 而非崩任务——绝不静默假交付(生产模型接线落地后,
+    规则逐规则降级挂待人工(need_human 旗标)而非崩任务——绝不静默假交付(生产模型接线落地后,
     本测试锁的是无模型回退路径,monkeypatch 空配置使判定确定性)。"""
     from types import SimpleNamespace
 
@@ -379,7 +379,7 @@ async def test_deep_gate_stops_before_model_then_resume_runs_sem(db, sem_rulepac
     assert calls == ["S1-001"], "确认后 sem 规则应进模型管线"
     assert isinstance(done.progress["durations"].get("review"), (int, float)) and done.progress["durations"]["review"] >= 0
     issues = [i for i in await crud.list_issues(db, task_id=t.id, owner_id="u1") if i.rule_id == "S1-001"]
-    assert len(issues) == 1 and issues[0].verdict == "violation"
+    assert len(issues) == 1 and issues[0].verdict == "FAIL"
 
 
 @pytest.mark.asyncio

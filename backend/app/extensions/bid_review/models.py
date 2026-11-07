@@ -66,7 +66,7 @@ class ReviewIssue(Base):
     rule_id: Mapped[str] = mapped_column(String(10), index=True)
     layer: Mapped[str] = mapped_column(String(2))
     severity: Mapped[str] = mapped_column(String(8))  # fatal|major|minor|info
-    verdict: Mapped[str] = mapped_column(String(20))  # violation|need_human|unclear;人工复核回写(false_positive 等,A8)也落本列;值域迁 PASS/FAIL/UNKNOWN/ERROR/SKIP=P1-β 挂账(C-08)
+    verdict: Mapped[str] = mapped_column(String(20))  # 引擎五值 FAIL|PASS|UNKNOWN|ERROR|SKIP(P1-β批三 C-08 迁毕);false_positive=复核域回写值(A8)仍落本列;存量历史三值经 database.py 幂等 UPDATE remap
     # C-08 枚举三拆(EAI-CUSTOM 2026-11-06):引擎 raw 语义四值 full|partial|none|unclear
     # (sem/hyb 专属,det 规则 NULL)与 state_map 分层业务态(L1 MATCHED…/L2 PRESENT…);
     # 模型禁编业务态,state 恒由后处理派生。

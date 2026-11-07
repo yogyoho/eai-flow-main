@@ -195,7 +195,7 @@ async def test_report_review_duration_and_deviations(client, db):
         rule_id="L1-009",
         layer="L1",
         severity="fatal",
-        verdict="violation",
+        verdict="FAIL",
         message="总价超限价",
         fix="复核报价",
         dedup_key="k1",
@@ -251,7 +251,7 @@ async def test_report_no_feedback_no_deviations(client, db):
         rule_id="L1-001",
         layer="L1",
         severity="info",
-        verdict="need_human",
+        verdict="UNKNOWN",
         message="缺字段",
         dedup_key="k2",
     )
@@ -296,13 +296,13 @@ def test_derive_score_risk_zero_none_and_uncovered_violation():
 
 @pytest.mark.asyncio
 async def test_endpoint_risk_keys_enrichment(client, db):
-    """端点接线:基线评分项 + 三种 verdict issues → 三键派生;active violation 涉险、
-    unclear → unresolved、false_positive 不进;compute 本体键(total/covered/covered_max_score)
+    """端点接线:基线评分项 + 三种 verdict issues → 三键派生;active FAIL 涉险、
+    UNKNOWN → unresolved、false_positive 不进;compute 本体键(total/covered/covered_max_score)
     原样保留。空评分项短路保持旧形状全等(R5)。"""
     t = await crud.create_task(db, owner_id="u1")
     await _mk_baseline(db, t.id, [{"name": "价格分", "max_score": 50, "related_paths": ["tender.max_price"]}])
-    await crud.add_issue(db, task_id=t.id, owner_id="u1", rule_id="L1-009", layer="L1", severity="fatal", verdict="violation", message="超限价", dedup_key="k1", need_human=False)
-    await crud.add_issue(db, task_id=t.id, owner_id="u1", rule_id="L1-010", layer="L1", severity="major", verdict="violation", message="加总不符", dedup_key="k2", need_human=False)
+    await crud.add_issue(db, task_id=t.id, owner_id="u1", rule_id="L1-009", layer="L1", severity="fatal", verdict="FAIL", message="超限价", dedup_key="k1", need_human=False)
+    await crud.add_issue(db, task_id=t.id, owner_id="u1", rule_id="L1-010", layer="L1", severity="major", verdict="FAIL", message="加总不符", dedup_key="k2", need_human=False)
     await crud.add_issue(db, task_id=t.id, owner_id="u1", rule_id="L1-013", layer="L1", severity="major", verdict="unclear", message="材料存疑", dedup_key="k3", need_human=True)
     await crud.add_issue(db, task_id=t.id, owner_id="u1", rule_id="L1-009", layer="L1", severity="minor", verdict="false_positive", message="误报", dedup_key="k4", need_human=False)
     r = await client.get(f"/api/extensions/bid-review/tasks/{t.id}/score_coverage")

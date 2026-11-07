@@ -1,7 +1,7 @@
 """L2 P2 跨层实体去重(spec 2026-11-02 §7 挂账行):entity_keys 落库链 +
 list_task_issues 投影归并(_cross_layer_group 纯函数直验,先例=checklist 现算不落库)。
 
-归并规则(D7):同实体键 + 跨 ≥2 层 + 双方 violation(非 need_human)才归并;
+归并规则(D7):同实体键 + 跨 ≥2 层 + 双方 FAIL(非 need_human)才归并;
 keep = severity 升序 → 层序 L1>L2>L3 → created_at 稳定;need_human 永不隐藏。
 条目不删:grouped 行标 grouped_into=keep.id(items 全量返回),keep 行带 related_issues。
 """
@@ -20,7 +20,7 @@ from app.extensions.bid_review.routers import _cross_layer_group
 from app.extensions.database import Base, get_db
 
 
-def _iss(id, rule_id, layer, severity, *, verdict="violation", need_human=False, keys=None, created_at="2026-11-02T00:00:00Z", message="m"):
+def _iss(id, rule_id, layer, severity, *, verdict="FAIL", need_human=False, keys=None, created_at="2026-11-02T00:00:00Z", message="m"):
     return SimpleNamespace(
         id=id,
         rule_id=rule_id,
@@ -58,7 +58,7 @@ def test_cross_layer_severity_tie_prefers_layer_order():
 
 def test_need_human_and_single_layer_never_group():
     """need_human 不参与归并(待人工必须可见);同层/无共享键/单实体不归并。"""
-    nh = _iss("n", "L2-020", "L2", "fatal", verdict="need_human", need_human=True, keys=["attachment:A-1"])
+    nh = _iss("n", "L2-020", "L2", "fatal", verdict="UNKNOWN", need_human=True, keys=["attachment:A-1"])
     v_same_layer = _iss("s", "L2-024", "L2", "major", keys=["attachment:A-1"])
     v_other_key = _iss("o", "L3-010", "L3", "minor", keys=["attachment:B-1"])
     v_no_keys = _iss("k", "L1-001", "L1", "fatal", keys=[])
@@ -131,9 +131,9 @@ async def test_issues_endpoint_grouping_wiring(db, client):
     平凡单层行零字段(IssueOut 缺省)。条目不删(D8):items 仍 3 条,summary 口径
     不变——grouped 行照常计入严重度计数,前端隐藏由展示层负责。"""
     task = await crud.create_task(db, owner_id="u1")
-    await crud.add_issue(db, task_id=task.id, owner_id="u1", rule_id="L2-020", layer="L2", severity="fatal", verdict="violation", message="缺少附件 A-2 业绩证明", dedup_key="L2-020|-|k1", entity_keys=["attachment:A-2"])
-    await crud.add_issue(db, task_id=task.id, owner_id="u1", rule_id="L3-005", layer="L3", severity="minor", verdict="violation", message="业绩证明表述不一致", dedup_key="L3-005|-|k2", entity_keys=["attachment:A-2"])
-    await crud.add_issue(db, task_id=task.id, owner_id="u1", rule_id="L2-024", layer="L2", severity="major", verdict="violation", message="无关问题", dedup_key="L2-024|-|k3")
+    await crud.add_issue(db, task_id=task.id, owner_id="u1", rule_id="L2-020", layer="L2", severity="fatal", verdict="FAIL", message="缺少附件 A-2 业绩证明", dedup_key="L2-020|-|k1", entity_keys=["attachment:A-2"])
+    await crud.add_issue(db, task_id=task.id, owner_id="u1", rule_id="L3-005", layer="L3", severity="minor", verdict="FAIL", message="业绩证明表述不一致", dedup_key="L3-005|-|k2", entity_keys=["attachment:A-2"])
+    await crud.add_issue(db, task_id=task.id, owner_id="u1", rule_id="L2-024", layer="L2", severity="major", verdict="FAIL", message="无关问题", dedup_key="L2-024|-|k3")
     r = await client.get(f"/api/extensions/bid-review/tasks/{task.id}/issues")
     assert r.status_code == 200
     body = r.json()
