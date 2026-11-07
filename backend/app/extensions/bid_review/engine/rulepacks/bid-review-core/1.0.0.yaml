@@ -141,7 +141,7 @@ rules:
     fix_tpl: "以报价汇总表为准订正正文/承诺函中的金额引用"
     confidence_gate: 1.0
     enabled: true
-  # ── L1 det 新增(§6.3:001 执照有效/002 资质等级/005 投标有效期/006 保证金/008 授权链/012 税率口径/014 工期满足/015 质保期/016 主体一致/019 一标一价/021 声明函齐备)──
+  # ── L1 det 新增(§6.3:001 执照有效/002 资质等级/005 投标有效期/006 保证金/008 授权链/012 税率口径/014 工期满足/015 质保期/016 主体一致/019 一标一价/021 声明函齐备——021 已 W11 迁 L2-031 层归位,卡留原位)──
   - id: L1-001
     name: 执照有效且经营范围覆盖标的
     layer: L1
@@ -311,12 +311,16 @@ rules:
     fix_tpl: "删除替代报价/备选方案,只保留唯一报价"
     confidence_gate: 1.0
     enabled: true
-  - id: L1-021
-    name: 招标要求的声明函齐备
-    layer: L1
+  - id: L2-031
+    name: 必备声明函齐备(签署判定挂账签署态抽取面,承诺函清单挂账)
+    layer: L2
     type: deterministic
     applies_to: ["*"]
     inputs: [tender.required_declarations, bid.declaration_letter_codes]
+    # W11 迁移(A-β2-⑥,整合版编号对齐 2026-11-07):原 L1-021 现 check=声明函存在性(all-in),
+    # 恰为规格《投标方案审查_整合版》L2-031「各类声明函齐备」的声明函半边,纯改名不改 check(W1-W5 先例);
+    # 规格 L1-021 真语义(存在且已签署)的签署维度挂账签署态抽取面,承诺函清单挂账承诺函清单抽取面;
+    # severity fatal 不变(L2 白名单含 fatal);旧 L1-021 DB override 键变孤儿 no-op(check 未变无语义翻转),只记账不清理。
     # 两侧均为声明函编码串列表;用 all-in 而非 set_eq(招标清单外自附声明函不算违规)
     check:
       op: all

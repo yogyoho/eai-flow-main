@@ -38,7 +38,7 @@ L1-009 复用既有 L1-009-over-max-price.yaml,未新建。除下表「标注对
 | L1-015-warranty-short | 引擎对 | {value,unit} 结构月×30(360<720);_fmt 渲染 "12个月"/"24个月" 入 contains 钉 |
 | L1-016-entity-name-mismatch | 引擎对 | op:all 逐处;出现值与执照名差「制造」二字,消息含 (where) |
 | L1-019-alternative-offer | 引擎对 | count≠0 即违例;消息含替代方案描述串 |
-| L1-021-declaration-missing | 引擎对 | all-in 差集(清单外自附不算违规);缺 DECL-INT 单条 |
+| L2-031-declaration-missing | 引擎对 | all-in 差集(清单外自附不算违规);缺 DECL-INT 单条 |
 | A-1-clean-price | 引擎对 | 价格族全达标零 violation;detail_rows 行键同 L1-010 改 amount(strict=True,need_human 全数容忍) |
 | A-2-clean-qual | 引擎对 | 资质族(L1-001/002)全达标零 violation;日期串加引号 |
 | A-3-clean-mixed | 引擎对 | 有效期/质保/保证金/声明函族全达标零 violation;bid 自附额外声明函 DECL-EXTRA 不触发=all-in 语义 FP 探针 |

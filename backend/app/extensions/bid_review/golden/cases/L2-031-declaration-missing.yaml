@@ -1,10 +1,10 @@
-case: L1-021-declaration-missing
-desc: 招标要求的 DECL-INT 声明函未附 → L1-021 violation(all-in 差集,清单外自附不算违规)
+case: L2-031-declaration-missing
+desc: 招标要求的 DECL-INT 声明函未附 → L2-031 violation(all-in 差集,清单外自附不算违规;W11 自 L1-021 迁移,断言语义零变)
 fields:
   tender.required_declarations: ["DECL-NDA", "DECL-INT"]
   bid.declaration_letter_codes: ["DECL-NDA"]
 expect_issues:
-  - rule_id: L1-021
+  - rule_id: L2-031
     severity: fatal
     contains: ["缺少招标要求的声明函:DECL-INT"]
 expect_absent: []

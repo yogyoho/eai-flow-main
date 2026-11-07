@@ -5,8 +5,8 @@
 golden 零触碰,materials_hash 不含本报告):
 
 - declarations(§八1 声明↔实体双向):missing=招标声明清单有、投标实体无(强
-  MISSING 方向;裁决面在 L1-021 规则,本处是交叉报告面);extra=投标实体有、
-  清单无(提示补清单,**不判 MISSING**——与 L1-021 `all` 而非 `set_eq` 语义对齐:
+  MISSING 方向;裁决面在 L2-031 规则,本处是交叉报告面);extra=投标实体有、
+  清单无(提示补清单,**不判 MISSING**——与 L2-031 `all` 而非 `set_eq` 语义对齐:
   清单外自附不算违规)。
 - page_offset(§八2 页码偏移>5 降置信,消费 M2 offset_flag 形态):flag 命中时
   worker 对 page-bearing provenance 路径注记 fields_conf page_offset:true

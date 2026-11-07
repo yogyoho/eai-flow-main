@@ -65,7 +65,7 @@ def test_run_l3_006_empty_and_none_where_no_none_literal():
         assert not re.search(r"\{[\w.]+(?::\w+)?\}", msg), f"残留占位符: {msg}"
 
 
-# 设计文档 §6.3 v1 落地清单(32 条):L1 det 14 + L1 sem 1(L1-013)+ L1 hyb 2(003/007);L3 det 13 + L3 hyb 2(004/008)
+# 设计文档 §6.3 v1 落地清单(32 条):L1 det 13(021 声明函 W11 迁 L2-031,2026-11-07)+ L1 sem 1(L1-013)+ L1 hyb 2(003/007);L3 det 13 + L3 hyb 2(004/008);L2 det 1(L2-031)
 EXPECTED_V1_IDS = {
     "L1-001",
     "L1-002",
@@ -83,7 +83,7 @@ EXPECTED_V1_IDS = {
     "L1-015",
     "L1-016",
     "L1-019",
-    "L1-021",
+    "L2-031",
     "L3-001",
     "L3-002",
     "L3-003",
@@ -130,7 +130,7 @@ def test_full_pack_loads():
     by_type = {}
     for r in pack.rules:
         by_type.setdefault(r.type, []).append(r.id)
-    assert len(by_type.get("deterministic", [])) == 34, "L1 det 14 + L3 det 15(L3-019 行乘算,P1-β批一)+ L2 det 5(L2-020/022/024/041 + L2-015 章节空缺层归位) = 34;编号对齐 2026-11-06"
+    assert len(by_type.get("deterministic", [])) == 34, "L1 det 13(021 声明函 W11 迁 L2-031)+ L3 det 15(L3-019 行乘算,P1-β批一)+ L2 det 6(L2-020/022/024/041 + L2-015 + L2-031 声明函层归位) = 34;编号对齐 2026-11-07"
     assert len(by_type.get("hybrid", [])) == 5, "L1 hyb 003/007 + L3 hyb 004/008 + L2-023 指纹通道(整合版对齐 W1) = 5"
     assert len(by_type.get("semantic", [])) == 1, "L1-013 唯一 sem 规则"
     for r in pack.rules:
@@ -266,7 +266,7 @@ def test_att_ops_missing_field_need_human():
 def test_att_ops_whitelisted_at_load():
     """载入期白名单放行 att_check/att_count/att_missing_rows;L2 层三 att 规则(L2-020/024 det
     + L2-023 hyb 指纹通道,spec 2026-11-04)可加载;R2+ 2026-11-05 增 L2-022/041(op:all 逐行);
-    整合版对齐 W5 层归位 2026-11-06 增 L2-015(op:all)。"""
+    整合版对齐 W5 层归位 2026-11-06 增 L2-015(op:all);W11 层归位 2026-11-07 增 L2-031(op:all,自 L1-021)。"""
     pack = load_rulepack(PACK)
     ops = {r.id: r.check.get("op") for r in pack.rules if r.layer == "L2"}
     assert ops == {
@@ -276,6 +276,7 @@ def test_att_ops_whitelisted_at_load():
         "L2-023": "att_missing_rows",
         "L2-041": "all",
         "L2-022": "all",
+        "L2-031": "all",
     }
 
 
