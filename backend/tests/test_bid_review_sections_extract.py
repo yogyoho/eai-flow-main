@@ -2,6 +2,7 @@
 
 from app.extensions.bid_review.engine.extract import (
     FIELD_TYPE_CONTRACTS,
+    _scan_heading_anchors,
     build_sections_baseline,
     build_sections_prompt,
     normalize_section_tree,
@@ -80,3 +81,44 @@ class TestPromptAndBaseline:
 
     def test_baseline_none_signal(self):
         assert build_sections_baseline([], lambda *a: None, None, None) == []
+
+
+class TestHeadingAnchors:
+    """批四章节兜底(A-β4-①②):确定性标题锚点扫描 + prompt 注入(hint 通道,签名零变)。"""
+
+    def test_scan_hits_three_families_with_page(self):
+        docs = [
+            {
+                "doc_id": "d1",
+                "text": "前言叙述文字\n[[p.3]]\n第一章 施工组织设计\n正文内容\n[[p.5]]\n一、总体部署\n[[p.7]]\n1.1 人员配置",
+            }
+        ]
+        anchors = _scan_heading_anchors(docs)
+        assert [a["title"] for a in anchors] == ["第一章 施工组织设计", "一、总体部署", "1.1 人员配置"]
+        assert [a["page"] for a in anchors] == [3, 5, 7]
+        assert [a["kind"] for a in anchors] == ["chapter", "cn_enum", "arabic"]
+
+    def test_scan_rejects_non_headings_and_caps(self):
+        # 数字开头非标题形(无分隔符)不中
+        docs = [{"doc_id": "d1", "text": "2026年开工\n3.5万元预算\n普通叙述文字不匹配"}]
+        assert _scan_heading_anchors(docs) == []
+        # 上限 80 截断(A-β4-⑧)
+        many = [{"doc_id": "d", "text": "\n".join(f"第{i}章 标题{i}" for i in range(100))}]
+        assert len(_scan_heading_anchors(many)) == 80
+
+    def test_prompt_injects_anchor_block_only_when_present(self):
+        with_anchors = build_sections_prompt([{"doc_id": "d1", "text": "[[p.2]]\n第一章 概述"}], [], [])
+        assert "正文标题锚点候选" in with_anchors
+        assert "第一章 概述" in with_anchors
+        assert "仅供参考" in with_anchors
+        plain = build_sections_prompt([{"doc_id": "d1", "text": "没有任何标题形的普通文本"}], [], [])
+        assert "正文标题锚点候选" not in plain
+        # 铁律与既有结构原样(A-β4-①禁编造不动)
+        assert "禁止编造章节" in with_anchors
+        assert "定位不到的目录节就跳过" in with_anchors
+
+    def test_prompt_empty_toc_with_anchors_still_honest(self):
+        # 空 TOC + 锚点:契约文本(code 空串合法)与锚点候选同在,模型可诚实产出
+        prompt = build_sections_prompt([{"doc_id": "d1", "text": "[[p.4]]\n第二章 商务文件"}], [], [])
+        assert "第二章 商务文件" in prompt
+        assert '"code"' in prompt  # 输出契约仍在

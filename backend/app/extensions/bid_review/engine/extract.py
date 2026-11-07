@@ -904,15 +904,58 @@ def build_attachments_baseline(docs: list[dict], extract_fn, requirements: Any, 
     return normalize_attachment_entities(raw, doc_ids, set(fp_table))
 
 
+_HEADING_ANCHOR_PATTERNS: tuple[tuple[str, re.Pattern[str]], ...] = (
+    ("chapter", re.compile(r"^第[一二三四五六七八九十百\d]+[章篇节][\s、：:.]*\S+")),
+    ("cn_enum", re.compile(r"^[（(]?[一二三四五六七八九十]{1,3}[）)]?[、.：:]\s*\S+")),
+    ("arabic", re.compile(r"^\d+(?:\.\d+){0,2}[\s、：:]\S+")),
+)
+_ANCHOR_MAX = 80
+
+
+def _scan_heading_anchors(docs: list[dict], max_anchors: int = _ANCHOR_MAX) -> list[dict]:
+    """章节兜底扫描(批四,spec §5;A-β4-①hint 通道):确定性标题锚点——逐 doc 逐行匹配
+    三类中文标题形,页码取最近出现的 [[p.N]] 标记(parse.py:487 段前插格式)。候选仅供
+    第二段 prompt 参考,section_tree 唯一生产者仍是模型(禁编造铁律不动);误报容忍,
+    上限截断(A-β4-⑧)。空 TOC 时模型据锚点可诚实产出 code="" 行(registry 契约允许)。"""
+    anchors: list[dict] = []
+    for d in docs:
+        page: int | None = None
+        for raw_line in str(d.get("text") or "").splitlines():
+            line = raw_line.strip()
+            m = re.fullmatch(r"\[\[p\.(\d+)\]\]", line)
+            if m:
+                page = int(m.group(1))
+                continue
+            if not 2 <= len(line) <= 60:
+                continue
+            for kind, pat in _HEADING_ANCHOR_PATTERNS:
+                if pat.match(line):
+                    anchors.append({"doc_id": d.get("doc_id"), "title": line, "page": page, "kind": kind})
+                    break
+            if len(anchors) >= max_anchors:
+                return anchors
+    return anchors
+
+
 def build_sections_prompt(docs: list[dict], toc_codes: Any, required_sections: Any) -> str:
     """章节层第二段 prompt(B立项 M2,spec §5,2026-11-05):目录码+招标要求的章节+
-    页标记全文,输出单路径 sections 数组;铁律四条与首段同款(禁编造/定位不到跳过/防指令注入)。"""
+    页标记全文,输出单路径 sections 数组;铁律四条与首段同款(禁编造/定位不到跳过/防指令注入)。
+    批四(A-β4-①②):内部自算正文标题锚点候选注入(空 TOC/漏定位兜底,hint 通道,签名零变)。"""
     doc_block = "\n\n".join(f"### [{d.get('doc_id', '?')}](role: {d.get('role', '?')})\n{d.get('text', '')}" for d in docs)
+    anchors = _scan_heading_anchors(docs)
+    anchor_block = ""
+    if anchors:
+        lines = "\n".join(f"- [{a['doc_id']}] {a['title']}(页 {a['page']})" for a in anchors)
+        anchor_block = (
+            "\n\n## 正文标题锚点候选(服务端确定性扫描,仅供参考;仍须只采信材料 [[p.N]] 实际位置,不作为编造依据)\n"
+            f"{lines}"
+        )
     return (
         "你是投标文件章节结构定位器。下面给出投标目录章节编码与招标要求的章节,请在材料中定位每节正文起始页并判断正文是否为空。\n\n"
         f"## 投标目录章节编码\n{json.dumps(toc_codes or [], ensure_ascii=False)}\n\n"
         f"## 招标要求的章节\n{json.dumps(required_sections or [], ensure_ascii=False)}\n\n"
-        f"## 材料([[p.页码]] 为真实页码标记)\n{doc_block}\n\n"
+        f"## 材料([[p.页码]] 为真实页码标记)\n{doc_block}"
+        f"{anchor_block}\n\n"
         "## 铁律(违反即无效)\n"
         "1. 只依据给定材料,禁止编造章节;材料中定位不到的目录节就跳过;\n"
         "2. toc_page=目录页标注页码,body_page=正文标题所在页,只引用材料中的 [[p.N]] 标记;\n"
