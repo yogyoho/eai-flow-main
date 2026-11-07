@@ -16,8 +16,9 @@ from app.extensions.bid_review.engine.rule_runner import RulePackError, load_rul
 
 # 宇宙(2026-11-05 R1 取证 71 路径 + M1 实体段 bid.attachments + M2 章节段 bid.section_tree + M3 表格段
 # bid.boq_rows/bid.table_cells + M4 业绩聚类 bid.performance_entries/bid.performance_groups = 77
-# + R2+ 规则族 L2-041 inputs 声明 tender.required_fields = 78)——逐位锁定。
-# 首段 prompt 路径 = EXPECTED_UNIVERSE − SECOND_STAGE_FIELDS − SERVER_DERIVED_PATHS = 71(R2+ 后 72−device_model_mismatches 服务端派生,整合版对齐 P0③)。
+# + R2+ 规则族 L2-041 inputs 声明 tender.required_fields = 78
+# + P1-β批二续 文件级 L2-001/002/003 六路径 = 84)——逐位锁定。
+# 首段 prompt 路径 = EXPECTED_UNIVERSE − SECOND_STAGE_FIELDS − SERVER_DERIVED_PATHS = 77(批二续 71+6;前值 71=R2+ 后 72−device_model_mismatches 服务端派生,整合版对齐 P0③)。
 EXPECTED_UNIVERSE = [
     "bid.alternative_price_offers",
     "bid.amount_occurrences",
@@ -43,11 +44,13 @@ EXPECTED_UNIVERSE = [
     "bid.duration_commitment_letter",
     "bid.duration_main_text",
     "bid.duration_schedule",
+    "bid.electronic_files",  # P1-β批二续 L2-003 电子标书文件(2026-11-07)
     "bid.entity.business_scope",
     "bid.entity.license_name",
     "bid.entity.license_valid_until",
     "bid.entity.name_in_bid_letter",
     "bid.entity_name_occurrences",
+    "bid.file_index",  # P1-β批二续 L2-001 投标文件索引(2026-11-07)
     "bid.header_footer.project_name",
     "bid.missing_signature_pages",
     "bid.old_project_mentions",
@@ -70,6 +73,7 @@ EXPECTED_UNIVERSE = [
     "bid.total_price_words",
     "bid.validity_days",
     "bid.version_tag_occurrences",
+    "bid.volume_index",  # P1-β批二续 L2-002 投标分册索引(2026-11-07)
     "bid.warranty_period",
     "deviation.items",
     "project.entity_whitelist.names",
@@ -80,6 +84,8 @@ EXPECTED_UNIVERSE = [
     "tender.currency",
     "tender.deposit_required",
     "tender.device_models",
+    "tender.electronic_files",  # P1-β批二续 L2-003 电子标书要求(2026-11-07)
+    "tender.file_composition",  # P1-β批二续 L2-001 投标文件组成要求(2026-11-07)
     "tender.max_duration",
     "tender.max_price",
     "tender.min_similar_performance_count",
@@ -97,6 +103,7 @@ EXPECTED_UNIVERSE = [
     "tender.substantive_clauses",
     "tender.tax_rate",
     "tender.tenderee_name",
+    "tender.volume_specs",  # P1-β批二续 L2-002 招标份数要求(2026-11-07)
 ]
 
 
@@ -125,9 +132,9 @@ def _synthetic_rule(rid: str, layer: str, severity: str) -> dict:
 
 
 class TestUniverse:
-    def test_anchored_78(self):
-        # 77→78(R2+ L2-041 inputs 声明 tender.required_fields 首次入宇宙,裁决⑤修正)
-        assert len(EXPECTED_UNIVERSE) == 78
+    def test_anchored_84(self):
+        # 78→84(P1-β批二续 文件级 L2-001/002/003 六路径入宇宙,2026-11-07;前值 77→78=R2+ 裁决⑤修正)
+        assert len(EXPECTED_UNIVERSE) == 84
         assert registry.universe() == EXPECTED_UNIVERSE
 
     def test_second_stage_fields(self):

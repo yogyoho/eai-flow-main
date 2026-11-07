@@ -1,0 +1,11 @@
+case: L2-001-composition-missing
+desc: 招标要求组成三项,投标索引仅两项→ L2-001 fatal violation(subset_of 缺项)
+fields:
+  tender.file_composition: [投标函, 授权委托书, 开标一览表]
+  bid.file_index: [投标函, 开标一览表]
+expect_issues:
+  - rule_id: L2-001
+    severity: fatal
+    contains: ["组成缺项"]
+expect_absent: []
+strict: true

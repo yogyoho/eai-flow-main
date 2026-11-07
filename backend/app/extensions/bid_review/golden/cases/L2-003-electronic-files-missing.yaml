@@ -1,0 +1,11 @@
+case: L2-003-electronic-files-missing
+desc: 招标要求电子标书三件(加密标书/签章文件/清单源文件),投标仅两件→ L2-003 major violation(subset_of 缺项)
+fields:
+  tender.electronic_files: [加密标书, 签章文件, 清单源文件]
+  bid.electronic_files: [加密标书, 签章文件]
+expect_issues:
+  - rule_id: L2-003
+    severity: major
+    contains: ["电子标书"]
+expect_absent: []
+strict: true

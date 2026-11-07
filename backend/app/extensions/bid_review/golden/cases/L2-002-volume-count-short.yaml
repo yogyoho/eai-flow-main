@@ -1,0 +1,14 @@
+case: L2-002-volume-count-short
+desc: 招标份数要求两册,投标索引仅一册→ L2-002 major violation(册数下限 gte;v1 只比册数,逐册份数对齐挂账 A-续-④)
+fields:
+  tender.volume_specs:
+    - {name: 正本, min_copies: 1}
+    - {name: 副本, min_copies: 2}
+  bid.volume_index:
+    - {name: 正本, copies: 1}
+expect_issues:
+  - rule_id: L2-002
+    severity: major
+    contains: ["分册数"]
+expect_absent: []
+strict: true

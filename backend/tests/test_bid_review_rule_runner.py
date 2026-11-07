@@ -83,6 +83,9 @@ EXPECTED_V1_IDS = {
     "L1-015",
     "L1-016",
     "L1-019",
+    "L2-001",
+    "L2-002",
+    "L2-003",
     "L2-031",
     "L3-001",
     "L3-002",
@@ -130,8 +133,9 @@ def test_full_pack_loads():
     by_type = {}
     for r in pack.rules:
         by_type.setdefault(r.type, []).append(r.id)
-    assert len(by_type.get("deterministic", [])) == 35, (
-        "L1 det 13(021 声明函 W11 迁 L2-031)+ L3 det 15(L3-019 行乘算,P1-β批一)+ L2 det 7(L2-020/021/022/024/041 + L2-015 + L2-031 声明函层归位)= 35;L2-021 附件编号引用 P1-β批二 2026-11-07;编号对齐 2026-11-07"
+    assert len(by_type.get("deterministic", [])) == 38, (
+        "L1 13 + L2 10 + L3 15 = 38(批二续 +3 文件级 L2-001/002/003,P1-β批二续 2026-11-07;"
+        "前值 35=L1 13 + L3 15 + L2 7,L2-021 附件编号引用 P1-β批二;编号对齐 2026-11-07)"
     )
     assert len(by_type.get("hybrid", [])) == 5, "L1 hyb 003/007 + L3 hyb 004/008 + L2-023 指纹通道(整合版对齐 W1) = 5"
     assert len(by_type.get("semantic", [])) == 1, "L1-013 唯一 sem 规则"
@@ -269,10 +273,14 @@ def test_att_ops_whitelisted_at_load():
     """载入期白名单放行 att_check/att_count/att_missing_rows;L2 层三 att 规则(L2-020/024 det
     + L2-023 hyb 指纹通道,spec 2026-11-04)可加载;R2+ 2026-11-05 增 L2-022/041(op:all 逐行);
     整合版对齐 W5 层归位 2026-11-06 增 L2-015(op:all);W11 层归位 2026-11-07 增 L2-031(op:all,自 L1-021);
-    P1-β批二 2026-11-07 增 L2-021(op:all,col 取列,W9 主责)。"""
+    P1-β批二 2026-11-07 增 L2-021(op:all,col 取列,W9 主责);
+    P1-β批二续 2026-11-07 增 L2-001/002/003(steps subset_of×2 + gte 册数下限,steps 形态无 op 键=None)。"""
     pack = load_rulepack(PACK)
     ops = {r.id: r.check.get("op") for r in pack.rules if r.layer == "L2"}
     assert ops == {
+        "L2-001": None,
+        "L2-002": "gte",
+        "L2-003": None,
         "L2-015": "all",
         "L2-020": "att_check",
         "L2-021": "all",

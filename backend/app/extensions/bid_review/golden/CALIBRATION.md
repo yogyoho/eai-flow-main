@@ -157,3 +157,13 @@ spec docs/superpowers/specs/2026-11-03-bid-review-l2-p3-negative-evidence-synony
 - **C-05**：入库快照 `bid.attachments[].status`/`bid.attachment_index[].status` 的 `MATCHED` 已归一为 **PRESENT**（规格 L2 枚举；`worker._normalize_attachment_status` 单点边界）。引擎内存态与判定不变；**MATCHED 保留为清单视图别名**——golden fixtures 的 `status_by_no` 钉值与 `build_checklist` 产出口径**不动**，本表既有行继续有效。
 - **C-08**：`bid_review_issues` 新增 `semantic_verdict`（引擎 raw 四值 full|partial|none|unclear，sem/hyb 专属）与 `state`（state_map 分层业务态）两列；`verdict` 收敛值（violation|need_human|unclear）与四态判定表**不变**。verdict 值域迁 PASS/FAIL/UNKNOWN/ERROR/SKIP 挂 P1-β（届时随规则扩包同批重标定本表）。
 
+## 批P1-β2续 Task1(文件级 subset 三规则)裁决表
+
+rulepack 现 44 条(det 38 / hyb 5 / sem 1;L1 16 + L2 11 + L3 17);本批新增文件级 L2-001/002/003(det fatal/major/major),六条新抽取路径(tender.file_composition/bid.file_index/tender.volume_specs/bid.volume_index/tender.electronic_files/bid.electronic_files;四串列表入 LIST_PATHS 闸,两对象列表给逐字段契约)。全部为「引擎对」,零引擎修复。
+
+| case | 裁决 | 结论/bug编号 |
+|---|---|---|
+| L2-001-composition-missing | 引擎对 | subset_of 归一集合包含(expr.py A-β2-① str 守卫:串侧误配 KeyError→need_human 不误判);招标三项投标两项单因触发,strict 钉单规则零残留 |
+| L2-002-volume-count-short | 引擎对 | gte 册数下限 count(bid.volume_index)=1 < count(tender.volume_specs)=2 单因触发;v1 只比册数(A-续-④),逐册份数对齐挂账抽取面成熟后;消息列表占位符顿号渲染,contains 钉「分册数」避开列表区 |
+| L2-003-electronic-files-missing | 引擎对 | subset_of 同 L2-001;加密标书/签章文件命中、清单源文件缺失单条 violation,strict 钉单规则零残留 |
+

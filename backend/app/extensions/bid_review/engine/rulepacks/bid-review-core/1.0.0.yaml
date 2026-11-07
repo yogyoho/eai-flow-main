@@ -1,4 +1,4 @@
-# bid-review-core 子系统规则包 v1.0.0(canonical,41 条;整合版编号对齐 2026-11-06)——技能 references/rules-det-subset.yaml 为其 M1 七条副本分发
+# bid-review-core 子系统规则包 v1.0.0(canonical,44 条:det 38 / hyb 5 / sem 1;整合版编号对齐 2026-11-06)——技能 references/rules-det-subset.yaml 为其 M1 七条副本分发
 # 转录口径(Task 18,2026-10-29):素材④全量规则包会话记录本仓不可达,按设计文档 §6.3 v1 清单+素材②元模型重写 check;
 # 格式基准=§6.4 L1-009;severity 依层级赋予(L1=否决项红线→fatal,L3=一致性→major;唯 L1-003 业绩达标=major,
 # 与 test_bid_review_llm_verify 夹具同值),素材②规则表可达后逐条对账。M1 七条(L1-009/010/011+L3-001/003/005/006)原样保留不回退。
@@ -765,5 +765,57 @@ rules:
     evidence: [A-TOC, A-MAIN-TEXT]
     message_tpl: "章节「{s.title}」正文内容为空或过简,需补全章节内容"
     fix_tpl: "补齐该章节实质性内容,空章节在评标中可能被认定未实质响应"
+    confidence_gate: 1.0
+    enabled: true
+  # ── P1-β批二续 Task1(2026-11-07):文件级 subset 三规则 L2-001/002/003——spec §4.4 :835-837;
+  # 六条新抽取路径(tender.file_composition/bid.file_index/tender.volume_specs/bid.volume_index/
+  # tender.electronic_files/bid.electronic_files)经 extract.collect_field_paths() 自动并入提取请求。
+  # steps 语义(rule_runner):所有 steps 为真=PASS,任一为假=violation;subset_of 已带 str 守卫
+  # (expr.py A-β2-①,串侧误配 KeyError→need_human 不误判)。L2-002 v1=册数下限(A-续-④),
+  # 逐册份数对齐挂账抽取面成熟后;volume_specs/volume_index 为对象列表,逐字段契约见 extract.py。──
+  - id: L2-001
+    name: 投标文件组成齐备
+    layer: L2
+    type: deterministic
+    applies_to: ["*"]
+    inputs: [tender.file_composition, bid.file_index]
+    check:
+      steps:
+        - "subset_of(tender.file_composition, bid.file_index)"
+    severity: fatal
+    evidence: [A-TENDER-NOTICE, A-MAIN-TEXT]
+    message_tpl: "投标文件组成缺项:招标要求组成与投标文件索引逐项比对未全部命中"
+    fix_tpl: "按招标『投标文件组成』逐项核对分册/正副本/电子版,补齐缺失分册后重新生成索引"
+    confidence_gate: 1.0
+    enabled: true
+  - id: L2-002
+    name: 分册与份数齐全
+    layer: L2
+    type: deterministic
+    applies_to: ["*"]
+    inputs: [tender.volume_specs, bid.volume_index]
+    check:
+      op: gte
+      left: "count(bid.volume_index)"
+      right: "count(tender.volume_specs)"
+    severity: major
+    evidence: [A-MAIN-TEXT, A-TENDER-NOTICE]
+    message_tpl: "投标分册数({bid.volume_index})少于招标份数要求册数({tender.volume_specs})"
+    fix_tpl: "按招标份数要求补齐分册,每册核对封面与页码"
+    confidence_gate: 1.0
+    enabled: true
+  - id: L2-003
+    name: 电子标书文件齐备
+    layer: L2
+    type: deterministic
+    applies_to: ["*"]
+    inputs: [tender.electronic_files, bid.electronic_files]
+    check:
+      steps:
+        - "subset_of(tender.electronic_files, bid.electronic_files)"
+    severity: major
+    evidence: [A-MAIN-TEXT, A-TENDER-NOTICE]
+    message_tpl: "电子标书要求文件未全部提供(加密标书/签章文件/清单源文件比对缺项)"
+    fix_tpl: "按招标电子标书要求补齐加密标书、签章文件与清单源文件"
     confidence_gate: 1.0
     enabled: true

@@ -213,6 +213,26 @@ def test_toc_section_codes_governed_as_scalar_list():
     assert f["bid.toc_section_codes"] is None
 
 
+def test_file_level_list_paths_governed():
+    # P1-β批二续 Task1(2026-11-07):tender.file_composition 入 LIST_PATHS 同 toc_section_codes
+    # 待遇:有效串列表透传 / 标量拦平包成单元素列表 / bool·dict 垃圾 → None need_human
+    f = _fields_via_baseline({"tender.file_composition": ["投标函", "授权委托书", "开标一览表"]})
+    assert f["tender.file_composition"] == ["投标函", "授权委托书", "开标一览表"]
+    f = _fields_via_baseline({"tender.file_composition": "投标函"})
+    assert f["tender.file_composition"] == ["投标函"]
+    f = _fields_via_baseline({"tender.file_composition": True})
+    assert f["tender.file_composition"] is None
+    f = _fields_via_baseline({"tender.file_composition": {"a": 1}})
+    assert f["tender.file_composition"] is None
+
+
+def test_volume_specs_contract_declares_row_shape():
+    # P1-β批二续 Task1:volume_specs/volume_index 对象列表不进 LIST_PATHS/形状闸,给逐字段
+    # 契约(先例 appendix/boq 行形断言 test_field_type_contracts_cover_list_paths:188-189)
+    assert "min_copies" in FIELD_TYPE_CONTRACTS["tender.volume_specs"], "tender.volume_specs 行形 {name,min_copies} 须逐字段契约"
+    assert "copies" in FIELD_TYPE_CONTRACTS["bid.volume_index"], "bid.volume_index 行形 {name,copies} 须逐字段契约"
+
+
 def test_heterogeneous_row_paths_passthrough():
     # R5 修正守卫:appendix_references(行形 {name,present})不进闸——裸串不得被包成 {value,where}
     f = _fields_via_baseline({"bid.appendix_references": ["附件A"]})

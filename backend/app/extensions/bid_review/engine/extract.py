@@ -102,6 +102,12 @@ LIST_PATHS: frozenset[str] = frozenset(
         # R2+ 规则族补齐(2026-11-05,裁决⑤修正):L2-041 inputs 声明使该路径首次入宇宙(整合版编号对齐 2026-11-06,原 EAI L2-022)
         # (顺带修复 M3 潜在缺口——必填口径此前从未进抽取请求);纯码列表同 required_declarations 待遇
         "tender.required_fields",
+        # P1-β批二续 Task1(2026-11-07):文件级 subset 三规则 L2-001/002/003——文件/分册/电子标书
+        # 逐项串列表(subset_of 归一集合比对);纯串列表闸同 required_declarations 待遇
+        "tender.file_composition",   # L2-001(P1-β批二续,spec §6.6 :2126)
+        "bid.file_index",            # L2-001(spec §6.7 :2131)
+        "tender.electronic_files",   # L2-003(spec §6.6 :2128)
+        "bid.electronic_files",      # L2-003(spec §6.7 :2133)
     }
 )
 # 行形异构字段(spec R5 修正):闸不适用(occurrence 包装与规则行形不符——appendix 读
@@ -112,6 +118,10 @@ FIELD_TYPE_CONTRACTS["bid.appendix_references"] = (
     '[{name:"附件名", no:"正文引用处标注的附件编号,无编号填空串"}] 对象列表;只报正文引用到的附件名,present 由服务端按附件清单归一比对回填(禁模型换算,不产该键);no 由服务端仅透传不校验;禁止纯值列表/标量。'
 )
 FIELD_TYPE_CONTRACTS["bid.boq_unit_checks"] = '[{code:"清单项编号", tender_unit:"招标单位", bid_unit:"投标单位"}] 对象列表;逐清单项抄录两侧计量单位原文,matched 由服务端归一比对回填(禁模型换算,不产该键);禁止纯值列表/标量。'
+# 分册/份数对象列表契约(P1-β批二续 Task1,2026-11-07;L2-002):对象列表不进 LIST_PATHS/形状闸
+# (闸只吃纯串列表),给逐字段契约;L2-002 v1 只比册数下限(A-续-④),逐册份数对齐挂账抽取面成熟后。
+FIELD_TYPE_CONTRACTS["tender.volume_specs"] = '[{name:"分册名称", min_copies:"最少份数,数字"}] 对象列表;招标份数要求逐册一行;禁止纯值列表/标量。'
+FIELD_TYPE_CONTRACTS["bid.volume_index"] = '[{name:"分册名称(正本/副本 第X册)", copies:"实际份数,数字或null"}] 对象列表;投标分册封面逐册一行;禁止纯值列表/标量。'
 # ── 服务端派生 join(整合版对齐 P0③,2026-11-06;D:\knowbase 规格书 L2233「禁模型换算」)──
 # boq_unit_checks[].matched / appendix_references[].present / device_model_mismatches 原由抽取
 # LLM 自产=换算禁令违例;改服务端派生,字段名与行形不变,规则零改动。无法判定不落键
@@ -226,7 +236,8 @@ class ExtractNotConfigured(RuntimeError):
 
 def collect_field_paths() -> list[str]:
     """首段提取请求路径 = universe − 第二段域 − 服务端派生域(EAI-CUSTOM 2026-11-05 M1,spec §4;排序稳定;
-    71 路径=R2+ 后 72−device_model_mismatches 服务端派生退出请求(整合版对齐 P0③ 2026-11-06;宇宙/注册表 78 不变);
+    77 路径=P1-β批二续后 宇宙84−第二段6−device_model_mismatches 服务端派生(2026-11-07 文件级 L2-001/002/003
+    六路径新入请求;前值 71=R2+ 后 72−派生退出,整合版对齐 P0③ 2026-11-06);
     M0 快照零翻红锚点——第二段实体路径走 build_attachments_baseline)。"""
     return sorted(set(_registry_universe()) - set(_SECOND_STAGE_FIELDS) - set(SERVER_DERIVED_PATHS))
 
