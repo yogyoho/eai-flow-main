@@ -8,7 +8,7 @@
 
 **Tech Stack:** Python 3.12 / pytest / uv / 既有 rulepack YAML schema。
 
-**工作目录:** 全部命令在 `D:\eai\eai-flow-main\backend` 下执行;pytest 必须带 `tests/` 路径(`uv run pytest tests/ ...`)。基线:全家 `uv run pytest tests/ -k bid_review -q` = **618 passed, 6 skipped**(β批一收官态;T1 后 624;另一后台跑曾报 596,系陈旧树,作废);golden CLI 60 题;宇宙 78;包 40 条(det 34 + hyb 5 + sem 1)。
+**工作目录:** 全部命令在 `D:\eai\eai-flow-main\backend` 下执行;pytest 必须带 `tests/` 路径(`uv run pytest tests/ ...`)。基线:全家 `uv run pytest tests/ -k bid_review -q` = **628 passed, 6 skipped**(T2 时点实测=已提交树 627 + 并发会话未提交测试 1;前值 618/624/596 均为各时点陈旧口径,详见 T2 评审分解);golden CLI 60 题;宇宙 78;包 40 条(det 34 + hyb 5 + sem 1)。
 
 ---
 
