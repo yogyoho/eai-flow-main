@@ -5,6 +5,8 @@
 
 from __future__ import annotations
 
+import hashlib
+import json
 import operator
 import re
 from dataclasses import dataclass
@@ -152,12 +154,17 @@ def _val(x, fields: dict):
 
 
 def _dedup_key(rule: Rule, entity: dict | None) -> str:
-    """A-β2-⑦(P1-β批二 2026-11-07):dedup_key 三层键 ``{layer}|{rule_id}|{k=v|...}``;
-    entity=行 var 环境 env(op:all 时为 {var: row}),无 env 用 "-"。仅正式 violation(_issue)
-    携带;_need_human 非正式违规不带键(spec 模板只覆盖 issue 级正式违规;att_* 分支的
-    按实体键显式覆盖为 I-1 既有修复,保持不动)。消费方对键做不透明串比较(crud 查重/
-    routers 版本 diff),换形不影响其逻辑。"""
-    ent = "|".join(f"{k}={v}" for k, v in sorted((entity or {}).items())) or "-"
+    """A-β2-⑦(P1-β批二 2026-11-07;T4 质量轮 2026-11-07 canonical+有界):dedup_key 三层键
+    ``{layer}|{rule_id}|{entity canonical json}``;entity=行 var 环境 env(op:all 时为
+    {var: row}),无 env 用 "-"。canonical 序列化(sort_keys)保同内容不同键序跨 run 同键(I-2);
+    有界截断:超 200 字符截断后接 ``#``+md5 前 12 位——models.dedup_key 为 String(256) 硬限,
+    PG 不截断、超长直接 DataError 断整 run 持久化(I-1);200 预算 → 总长 ≈224 < 256,
+    给 llm_runner "|confirm-failed" 组合留头寸;att_* 分支显式有界覆盖不受影响。仅正式
+    violation(_issue)携带;_need_human 非正式违规不带键。消费方对键做不透明串比较
+    (crud 查重/routers 版本 diff),换形不影响其逻辑。"""
+    ent = json.dumps(entity, ensure_ascii=False, sort_keys=True, default=str) if entity else "-"
+    if len(ent) > 200:
+        ent = f"{ent[:200]}#{hashlib.md5(ent.encode('utf-8')).hexdigest()[:12]}"
     return f"{rule.layer}|{rule.id}|{ent}"
 
 
@@ -216,7 +223,8 @@ def _entity_key(req: dict) -> str:
 def attach_evidence(issues: list[dict], rule: Rule, provenance: dict | None = None) -> list[dict]:
     """证据回填(EAI-CUSTOM 2026-10-30,spec D7/D9):抽取层 provenance ∩ 取数路径 →
     issue.evidence([{doc_id, page, section_path, text:quote}]),run_det_rule 保持纯函数
-    不动;dedup_key 只由 rule_id+message 构成,证据不参与——补证据不会让旧问题重发。
+    不动;dedup_key 为三层键(layer|rule_id|实体 canonical json,200 有界截断,见 _dedup_key),
+    证据不参与——补证据不会让旧问题重发。
     EAI-CUSTOM(2026-10-30 二期 spec §三):取数路径 = inputs ∪ 锚点映射路径
     (anchors.anchor_rule_paths)——det issue 证据 chips 更丰满;未注册锚名静默跳过。
     provenance 缺失/路径未命中 → 维持 [](前端回退「依据字段」chips;docx 无页码时

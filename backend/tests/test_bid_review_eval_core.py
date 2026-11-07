@@ -200,8 +200,10 @@ def _iss(rule_id, entity_keys, verdict="violation"):
 
 
 def test_w9_suppress_folds_same_entity_l3012_only():
-    """W9 四断言:①同实体(业绩合同)L3-012 violation 被 L2-021 violation 折叠移除;
-    ②异实体(其他文件)L3-012 照常保留;③L3-012 need_human 不动;④无 L2-021 时原样返回。"""
+    """W9 六断言:①同实体(业绩合同)L3-012 violation 被 L2-021 violation 折叠移除;
+    ②异实体(其他文件)L3-012 照常保留;③L3-012 need_human 不动;④无 L2-021 时原样返回;
+    ⑤L2-021 自身 need_human 不武装抑制(T4 质量轮 M-3);⑥message 全文禁入匹配面——
+    消息含实体名而 entity_keys 不含的 L3-012 violation 不折叠(变异测试钉,M-3)。"""
     from app.extensions.bid_review.engine.eval_core import _suppress_l3012_by_l2021
 
     issues = [
@@ -218,3 +220,10 @@ def test_w9_suppress_folds_same_entity_l3012_only():
 
     no_l2021 = [_iss("L3-012", ["业绩合同"]), _iss("L3-012", ["其他文件"], verdict="need_human")]
     assert _suppress_l3012_by_l2021(no_l2021) == no_l2021  # ④ 无 L2-021 → 原样返回(零折叠)
+
+    nh_armed = [_iss("L2-021", ["业绩合同"], verdict="need_human"), _iss("L3-012", ["业绩合同"])]
+    assert len(_suppress_l3012_by_l2021(nh_armed)) == 2, "⑤ L2-021 为 need_human 时不武装抑制,同实体 L3-012 violation 保留"
+
+    msg_only = {"rule_id": "L3-012", "verdict": "violation", "entity_keys": ["无关锚"], "message": "L3-012 消息全文含「业绩合同」样板词"}
+    out_msg = _suppress_l3012_by_l2021([_iss("L2-021", ["业绩合同"]), msg_only])
+    assert len(out_msg) == 2, "⑥ 匹配面只认 entity_keys 结构化锚,message 全文含实体名不触发折叠"

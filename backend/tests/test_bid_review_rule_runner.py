@@ -526,3 +526,18 @@ def test_att_check_mixed_parent_missing_subs_enumerated():
     assert "完税证明" in miss["message"]
     assert miss["entity_keys"] == ["attachment:3.3"]
     assert miss["dedup_key"] == "L2-020|-|attachment:3.3"
+
+
+def test_dedup_key_canonical_and_bounded():
+    """T4 质量轮(I-1/I-2,2026-11-07):_dedup_key canonical json 序列化(sort_keys)
+    保同内容不同键序跨 run 同键;超 200 字符实体截断接 ``#``+md5 前 12 位有界化——
+    models.dedup_key String(256) 硬限,PG 不截断、超长 DataError 断整 run 持久化;
+    总长 ≈224 < 256(给 llm_runner "|confirm-failed" 组合留头寸)。"""
+    from app.extensions.bid_review.engine.rule_runner import Rule, _dedup_key
+
+    rule = Rule(id="L2-021", name="t", layer="L2", type="deterministic", applies_to=["*"], inputs=[], check={}, severity="major", evidence=[], message_tpl="", fix_tpl="", confidence_gate=1.0, enabled=True)
+    wide = {"r": {"name": "附" * 300, "no": "附件一"}}
+    key = _dedup_key(rule, wide)
+    assert len(key) < 256 and "#" in key, "超宽实体截断+md5 后缀,总长有界 <256"
+    assert _dedup_key(rule, {"r": {"no": "附件一", "name": "附" * 300}}) == key, "同内容不同键序 → 同键(canonical sort_keys 证)"
+    assert _dedup_key(rule, None).endswith("|-"), "无 env 用 '-' 占位"

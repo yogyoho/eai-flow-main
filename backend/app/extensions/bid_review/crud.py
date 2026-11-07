@@ -141,7 +141,8 @@ async def add_issue(
     dedup_key 为必填参数且不得为空串:空/缺省值若参与查重,两条互不相关问题会
     互相命中("")并触发合并黑洞——第二条的 rule_id/verdict 等字段被静默丢弃。
     故 dedup_key 为空时跳过查重直接新建(评审修复 2026-10-29);正常键由
-    rule_runner 产出 ``{rule_id}|-|{message前40字}``。
+    rule_runner 产出三层键 ``{layer}|{rule_id}|{实体 canonical json}``(超 200 字符
+    截断接 ``#``+md5 前 12 位,见 rule_runner._dedup_key)。
     """
     task = await get_task(session, task_id, owner_id)
     if task is None:
