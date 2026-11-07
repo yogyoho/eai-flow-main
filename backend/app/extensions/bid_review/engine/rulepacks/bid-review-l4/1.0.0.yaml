@@ -1,0 +1,210 @@
+# bid-review-l4 竞争力独立包 v1.0.0(P1-β批二 A-β2-③④⑤,10 卡,离线态;卡源=整合版规格 C.2,
+# spec docs/superpowers/specs/2026-11-06-bid-review-integrated-spec-alignment.md §4「规格 C.2 已给全套可落地 YAML」)
+# ── live-off=A-β2-⑤ 构造性保证 ──────────────────────────────────────────────────
+# registry.RULEPACK_DIR / golden RULEPACK_PATH / worker.RULEPACK_PATH / routers+mcp RULEPACK_NAME
+# 全部硬接线 bid-review-core 单包——本目录不被任何生产消费方扫描,不接线非配置开关而是目录隔离;
+# 激活面(worker 多包接线/advisory 独立分节/gate 排除/L4 不计正式问题数)挂批二续任务。
+# ── 包级 meta(激活任务的显式过滤契约锚,本批仅声明不消费)────────────────────────
+#   counts_toward_bid_gate: false   # L4 竞争力层永不入门禁(整合版 §15 二十四坑「L4 不入门禁」)
+#   max_issues_per_report: 10       # advisory 上限:每报告最多 10 条(卡数即上限)
+#   gate_effect: info               # 门禁效应=纯提示,不翻转 verdict 汇总
+# ── severity 映射(A-β2-③,C.2 原档→引擎层档)───────────────────────────────────
+# critical→major / high→major / medium→minor / info→info;L4 无 fatal(lint 直接拒载,见
+# registry.lint_rules C.1.4:竞争力层不否决,SEVERITY_BY_LAYER 白名单亦不含 fatal)。
+# ── 输入路径命名(A-β2-④)────────────────────────────────────────────────────────
+# 已有 repo 路径用 repo 名(bid.warranty_period/bid.duration_main_text/tender.substantive_clauses/
+# tender.scoring_items/bid.table_cells/bid.total_price/bid.personnel_technical/bid.personnel_commercial);
+# 无 repo 路径用规格名(bid.service_commitments/bid.full_text/bid.response_sections/bid.figures/
+# bid.equipment/bid.schedule_milestones/bid.section_for_score/tender.clauses)——批二续激活任务
+# 以同名落地抽取契约。本包 inputs 不进 registry.universe()(RULEPACK_DIR 单包扫描),宇宙 78 不变。
+# ── 卡形与证据锚 ────────────────────────────────────────────────────────────────
+# sem 卡镜像 core L1-013(check.steps:[] 仅为 load_rulepack 形态门放行,执行走 run_sem_rule
+# 规则卡管线,不进 run_det_rule);hyb 卡(006/008)镜像 core L2-023(det 粗筛出候选交模型确认,
+# full 驳回候选/unclear 待人工/缺字段 need_human 透传)。evidence 锚只用 anchors.ANCHOR_REGISTRY
+# 已注册锚(load_rulepack 硬拒载未注册名,bug-3985),未映射新路径以最近域锚指路,不造新锚。
+conventions:
+  on_missing_input: need_human
+  evidence_matching: {normalize: true, similarity_threshold: 0.9, page_tolerance: 1}
+rules:
+  # ── L4-001 质保超额(C.2 卡1,critical→major;A-β2-④:repo 名 warranty_period/min_warranty_period+规格名 service_commitments)──
+  - id: L4-001
+    name: 质保承诺超额
+    layer: L4
+    type: semantic
+    applies_to: ["*"]
+    inputs: [bid.warranty_period, tender.min_warranty_period, bid.service_commitments]
+    check:
+      per_clause: true
+      verdict_set: [full, partial, none, unclear]
+      steps: []
+    severity: major
+    evidence: [A-COMMIT, A-TENDER-NOTICE]
+    message_tpl: "质保承诺超额:{clause_id}:{reason}"
+    fix_tpl: "质保期对照招标要求口径复核;超额承诺须评估备件/人力成本与服务半径后确认或收口"
+    confidence_gate: 0.75
+    enabled: true
+  # ── L4-002 工期超额(C.2 卡2,critical→major;repo 名 duration_main_text+规格名 schedule_milestones)──
+  - id: L4-002
+    name: 工期承诺超额
+    layer: L4
+    type: semantic
+    applies_to: ["*"]
+    inputs: [bid.duration_main_text, tender.max_duration, bid.schedule_milestones]
+    check:
+      per_clause: true
+      verdict_set: [full, partial, none, unclear]
+      steps: []
+    severity: major
+    evidence: [A-MAIN-TEXT, A-SCHEDULE, A-TENDER-NOTICE]
+    message_tpl: "工期承诺超额:{clause_id}:{reason}"
+    fix_tpl: "工期承诺与进度计划里程碑逐项核对;压缩工期须评估人力/供应链与罚则风险后确认或收口"
+    confidence_gate: 0.75
+    enabled: true
+  # ── L4-003 服务承诺超额(C.2 卡3,high→major;repo 名 substantive_clauses+规格名 service_commitments)──
+  - id: L4-003
+    name: 服务承诺超出实质性条款
+    layer: L4
+    type: semantic
+    applies_to: ["*"]
+    inputs: [bid.service_commitments, tender.substantive_clauses]
+    check:
+      per_clause: true
+      verdict_set: [full, partial, none, unclear]
+      steps: []
+    severity: major
+    evidence: [A-TENDER-NOTICE, A-BID-LETTER]
+    message_tpl: "服务承诺超出实质性条款要求:{clause_id}:{reason}"
+    fix_tpl: "逐条对照实质性条款评估服务承诺兑付成本;无法兑现的承诺收口至可交付口径"
+    confidence_gate: 0.75
+    enabled: true
+  # ── L4-004 无边界承诺(C.2 卡4,high→major;规格名 service_commitments/full_text)──
+  - id: L4-004
+    name: 无边界承诺
+    layer: L4
+    type: semantic
+    applies_to: ["*"]
+    inputs: [bid.service_commitments, bid.full_text]
+    check:
+      per_clause: true
+      verdict_set: [full, partial, none, unclear]
+      steps: []
+    severity: major
+    evidence: [A-MAIN-TEXT, A-BID-LETTER]
+    message_tpl: "无边界承诺:{clause_id}:{reason}"
+    fix_tpl: "为开放式承诺补足范围/期限/数量边界;无法定界的表述改为可验收的具体口径"
+    confidence_gate: 0.75
+    enabled: true
+  # ── L4-005 合同冲突承诺(C.2 卡5,high→major;规格名 service_commitments/clauses)──
+  - id: L4-005
+    name: 承诺与合同条款冲突
+    layer: L4
+    type: semantic
+    applies_to: ["*"]
+    inputs: [bid.service_commitments, tender.clauses]
+    check:
+      per_clause: true
+      verdict_set: [full, partial, none, unclear]
+      steps: []
+    severity: major
+    evidence: [A-BID-LETTER, A-TENDER-NOTICE]
+    message_tpl: "承诺与合同条款冲突:{clause_id}:{reason}"
+    fix_tpl: "对照合同条款草稿逐条核承诺;冲突表述以合同文本为准改写或删除"
+    confidence_gate: 0.75
+    enabled: true
+  # ── L4-006 评分覆盖不足(C.2 卡6,high→major;hyb 镜像 core L2-023:det 粗筛 op=all 出
+  # 「无响应章节支撑」评分项候选交模型确认;repo 名 scoring_items+规格名 section_for_score)──
+  - id: L4-006
+    name: 评分办法覆盖不足
+    layer: L4
+    type: hybrid
+    applies_to: ["*"]
+    inputs: [tender.scoring_items, bid.section_for_score]
+    check:
+      op: all
+      target: tender.scoring_items
+      var: s
+      cond: "s.code in col(bid.section_for_score, 'code')"
+      candidate_tpl: "评分项「{s.name}」未见对应响应章节"
+      verdict_set: [full, partial, none, unclear]
+      verdict_gloss: "full=响应章节已实质覆盖该评分项,驳回候选;partial=章节有触及但支撑材料不全;none=评分项完全无对应章节;unclear=材料不足以判定转待人工"
+    severity: major
+    evidence: [A-TENDER-NOTICE]
+    message_tpl: "评分项覆盖不足 {clause_id}:{reason}"
+    fix_tpl: "按评分办法逐项补齐响应章节与支撑材料;无法覆盖的评分项在偏离表中如实说明"
+    confidence_gate: 0.75
+    enabled: true
+  # ── L4-007 承诺资源不匹配(C.2 卡7,critical→major;repo 名 total_price/personnel_technical/
+  # personnel_commercial+规格名 service_commitments/equipment)──
+  - id: L4-007
+    name: 承诺与资源配置不匹配
+    layer: L4
+    type: semantic
+    applies_to: ["*"]
+    inputs: [bid.service_commitments, bid.total_price, bid.personnel_technical, bid.personnel_commercial, bid.equipment]
+    check:
+      per_clause: true
+      verdict_set: [full, partial, none, unclear]
+      steps: []
+    severity: major
+    evidence: [A-PRICE-SHEET, A-PERSONNEL]
+    message_tpl: "承诺与资源配置不匹配:{clause_id}:{reason}"
+    fix_tpl: "按报价与人员/设备配置复核承诺兑付能力;超出资源配置的承诺收口或补足资源"
+    confidence_gate: 0.75
+    enabled: true
+  # ── L4-008 模糊限定(C.2 卡8,medium→minor;hyb 镜像 core L2-023:det 粗筛 regex 扫正文
+  # 模糊限定词出候选;缺字段 need_human 透传=fail-open 不静默,离线 golden 钉该路径;
+  # 规格名 full_text/response_sections)──
+  - id: L4-008
+    name: 模糊限定词
+    layer: L4
+    type: hybrid
+    applies_to: ["*"]
+    inputs: [bid.full_text, bid.response_sections]
+    check:
+      op: eq
+      left: "regex(bid.full_text, '原则上|尽量|力争|酌情|视情况|最优|领先|一流')"
+      right: false
+      candidate_tpl: "正文检出模糊限定表述,承诺边界存疑"
+      verdict_set: [full, partial, none, unclear]
+      verdict_gloss: "full=限定词出现在与承诺无关的叙述处,驳回候选;partial=限定词削弱实质性承诺边界;none=承诺边界被明显架空;unclear=材料不足以判定转待人工"
+    severity: minor
+    evidence: [A-MAIN-TEXT]
+    message_tpl: "模糊限定表述 {clause_id}:{reason}"
+    fix_tpl: "将模糊限定表述改为可验收的具体口径;确需保留弹性的注明触发条件与责任边界"
+    confidence_gate: 0.75
+    enabled: true
+  # ── L4-009 论证不足(C.2 卡9,medium→minor;规格名 response_sections/figures+repo 名 table_cells)──
+  - id: L4-009
+    name: 方案论证不足
+    layer: L4
+    type: semantic
+    applies_to: ["*"]
+    inputs: [bid.response_sections, bid.figures, bid.table_cells]
+    check:
+      per_clause: true
+      verdict_set: [full, partial, none, unclear]
+      steps: []
+    severity: minor
+    evidence: [A-MAIN-TEXT]
+    message_tpl: "方案论证不足 {clause_id}:{reason}"
+    fix_tpl: "为结论薄弱的章节补充数据/图表/案例支撑;无依据的断言改为有出处表述"
+    confidence_gate: 0.75
+    enabled: true
+  # ── L4-010 红队风险点(C.2 卡10,info→info;规格名 full_text/response_sections+repo 名 scoring_items)──
+  - id: L4-010
+    name: 红队风险点
+    layer: L4
+    type: semantic
+    applies_to: ["*"]
+    inputs: [bid.full_text, tender.scoring_items, bid.response_sections]
+    check:
+      per_clause: true
+      verdict_set: [full, partial, none, unclear]
+      steps: []
+    severity: info
+    evidence: [A-MAIN-TEXT, A-TENDER-NOTICE]
+    message_tpl: "红队风险点 {clause_id}:{reason}"
+    fix_tpl: "以评审视角复核风险点陈述;补齐应对措施或调整表述降低被质疑面"
+    confidence_gate: 0.75
+    enabled: true
+enabled: true  # 包级开关(离线 golden 可跑;live-off 由「生产消费方单包硬接线 core」构造性保证,A-β2-⑤)

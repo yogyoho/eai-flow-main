@@ -1,0 +1,13 @@
+case: L4-008-hedge-words
+desc: 正文/响应章节字段缺失(null)→ hyb det 粗筛缺字段 need_human 透传(fail-open 不静默,零模型调用;model_script 仅为满足 loader「sem/hyb 断言须配 script」契约,内容不消费)
+fields:
+  bid.full_text: null
+  bid.response_sections: null
+model_script:
+  L4-008: '{"verdicts": [{"clause_id": "quiet", "verdict": "full", "confidence": 1.0, "reason": "粗筛透传路径,模型不应被调用", "evidence": [{"doc_id": "bid.pdf", "page": 1, "text": "quiet"}]}]}'
+expect_issues:
+  - rule_id: L4-008
+    verdict: need_human
+    contains: ["字段缺失"]
+expect_absent: []
+strict: true

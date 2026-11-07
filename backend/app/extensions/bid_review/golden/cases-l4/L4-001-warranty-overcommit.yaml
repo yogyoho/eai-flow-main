@@ -1,0 +1,15 @@
+case: L4-001-warranty-overcommit
+desc: 质保 60 个月超招标最低 12 个月,scripted 模型判 partial → L4-001 violation(severity 以 rulepack major 为准;cases-l4 独立冻结面 A-β2-⑧,不入主 golden 面)
+fields:
+  bid.warranty_period: 60
+  tender.min_warranty_period: 12
+  bid.service_commitments:
+    - {item: 整体质保期, text: 整体质保 60 个月, page: 12}
+model_script:
+  L4-001: '{"verdicts": [{"clause_id": "S1", "verdict": "partial", "confidence": 0.9, "reason": "质保期 60 个月远超招标要求的 12 个月,超额承诺构成成本与履约竞争力风险", "evidence": [{"doc_id": "bid.pdf", "page": 12, "text": "整体质保 60 个月"}]}]}'
+expect_issues:
+  - rule_id: L4-001
+    severity: major
+    contains: ["质保"]
+expect_absent: []
+strict: true

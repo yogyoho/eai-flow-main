@@ -27,11 +27,14 @@ PROJECTION_FIELDS: dict[str, str] = {
 
 # severity 层白名单(EAI-CUSTOM 2026-11-05 R1,spec §1 enums 收敛):L1 major=业绩达标特例、
 # 禁 minor(否决层无提示级);L3 禁 fatal(一致性层不否决);L2 中间层三档全放行(eval_core
-# 夹具 EX-001 L2/minor 既有语义,取证修正)。
+# 夹具 EX-001 L2/minor 既有语义,取证修正);L4 竞争力层三档无 fatal(P1-β批二 A-β2-③:
+# critical/high→major、medium→minor、info→info;fatal 拒载 lint 见 lint_rules C.1.4;
+# L4 包=rulepacks/bid-review-l4 独立目录,不在 RULEPACK_DIR 扫描面,本白名单供其离线加载用)。
 SEVERITY_BY_LAYER: dict[str, set[str]] = {
     "L1": {"fatal", "major"},
     "L2": {"fatal", "major", "minor"},
     "L3": {"major", "minor"},
+    "L4": {"major", "minor", "info"},
 }
 
 
@@ -102,6 +105,8 @@ def lint_rules(rules) -> list[str]:
             problems.append(f"规则 {rid}: 未知层 {layer!r}")
         elif str(getattr(r, "severity", "")) not in whitelist:
             problems.append(f"规则 {rid}: severity {getattr(r, 'severity', '')!r} 不在 {layer} 白名单 {sorted(whitelist)}")
+        if layer == "L4" and str(getattr(r, "severity", "")) == "fatal":
+            problems.append(f"规则 {rid}: L4 层 severity fatal 直接拒载(C.1.4:竞争力层不否决)")  # P1-β批二 A-β2-③
         for p in getattr(r, "inputs", []) or []:
             if not isinstance(p, str) or not p.strip() or "." not in p:
                 problems.append(f"规则 {rid}: input {p!r} 非点路径")
