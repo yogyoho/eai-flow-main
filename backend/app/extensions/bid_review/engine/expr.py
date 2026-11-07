@@ -17,7 +17,7 @@ class RulePackError(ExprError):
 
 
 _BIN = {"<=": operator.le, ">=": operator.ge, "==": operator.eq, "!=": operator.ne, "<": operator.lt, ">": operator.gt, "in": lambda a, b: a in (b or [])}
-_FUNCS = {"normalize_unit", "number_to_words", "months_ago", "codes", "covers", "keywords", "sum", "count", "contains_any", "imply", "all_equal", "close"}
+_FUNCS = {"normalize_unit", "number_to_words", "months_ago", "codes", "covers", "keywords", "sum", "count", "contains_any", "imply", "all_equal", "close", "regex", "subset_of", "level_ge", "col"}
 _QUANT = {"all", "any", "every", "exists"}
 _FORM2 = {"all": "all", "any": "any", "every": "all", "exists": "any"}
 # 引号串整体成单 token(评审修正 A5/A6 实测:引号逐字符成 token 会撕裂 CJK 字面量,如 covers(x, '本次投标及签署'))
@@ -263,6 +263,38 @@ def _close(a, b, tol):
         raise KeyError(f"close 无法数值化 {a!r}/{b!r}/{tol!r}") from exc
 
 
+# 资质等级阶梯(A-β2-②:保守集合,外置挂账至第二消费者/真实数据出现;未知等级 KeyError→need_human,
+# W10 机制等价——不判通过)。数值只用于互比,非对外语义。
+_LEVEL_LADDER = {"特级": 6, "一级": 5, "甲级": 5, "二级": 4, "乙级": 4, "三级": 3, "丙级": 3, "四级": 2, "丁级": 2, "暂定": 1, "暂定级": 1}
+
+
+def _regex(text, pattern):
+    if not isinstance(text, str) or not isinstance(pattern, str):
+        raise KeyError(f"regex 需字符串两侧,得 {type(text).__name__}/{type(pattern).__name__}")
+    return re.search(pattern, text) is not None
+
+
+def _subset_of(a, b):
+    if a is None or b is None:
+        raise KeyError("subset_of 任一侧 null(A-β2-① need_human 通路)")
+
+    def norm(xs):
+        return {str(x).strip() for x in xs if str(x).strip()}
+
+    return norm(a) <= norm(b)
+
+
+def _level_ge(a, b):
+    ka, kb = _LEVEL_LADDER.get(str(a or "").strip()), _LEVEL_LADDER.get(str(b or "").strip())
+    if ka is None or kb is None:
+        raise KeyError(f"资质等级未知:{a!r}/{b!r}(need_human)")
+    return ka >= kb
+
+
+def _col(rows, key):
+    return [r.get(key) for r in (rows or []) if isinstance(r, dict)]
+
+
 _BUILTIN = {
     "normalize_unit": _normalize_unit,
     "number_to_words": _number_to_words,
@@ -276,6 +308,10 @@ _BUILTIN = {
     "imply": lambda a, b: (not a) or bool(b),
     "all_equal": lambda *vals: len({str(v) for v in vals}) <= 1,
     "close": _close,
+    "regex": _regex,
+    "subset_of": _subset_of,
+    "level_ge": _level_ge,
+    "col": _col,
 }
 
 

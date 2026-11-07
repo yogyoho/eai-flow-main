@@ -17,7 +17,7 @@ from app.extensions.bid_review.engine.attachments import match_attachments, norm
 from app.extensions.bid_review.engine.expr import ExprError, RulePackError, eval_expr, fields_used, validate_expr
 
 _OPS = {"lte": operator.le, "gte": operator.ge, "eq": operator.eq}
-_KNOWN_OPS = {*_OPS, "and", "all", "set_eq", "att_check", "att_count", "att_missing_rows"}  # steps 形态无 op 键,单独判;att_* = L2 P1 附件核对(spec 2026-11-02 §3)+L2-023 指纹通道(spec 2026-11-04 §2.1)
+_KNOWN_OPS = {*_OPS, "and", "or", "all", "set_eq", "att_check", "att_count", "att_missing_rows"}  # steps 形态无 op 键,单独判;att_* = L2 P1 附件核对(spec 2026-11-02 §3)+L2-023 指纹通道(spec 2026-11-04 §2.1);or = check-op 层析取(P1-β批二)
 _UNIT_CN = {"day": "天", "month": "个月", "week": "周", "percent": "%"}
 
 
@@ -48,7 +48,7 @@ class RulePack:
 
 def _collect_exprs(chk: dict) -> list[str]:
     out = [str(chk[k]) for k in ("precondition", "left", "right", "target", "cond") if k in chk]
-    for key in ("steps", "all", "values"):
+    for key in ("steps", "all", "any", "values"):  # any = or-op 表达式列表(P1-β批二),校验语义与 all 一致
         out += [str(e) for e in chk.get(key, [])]
     return out
 
@@ -241,6 +241,9 @@ def run_det_rule(rule: Rule, fields: dict) -> list[dict]:
                 issues.append(_issue(rule, fields, {}))
         elif chk["op"] == "and":
             if not all(eval_expr(str(e), fields) for e in chk["all"]):
+                issues.append(_issue(rule, fields, {}))
+        elif chk["op"] == "or":  # check-op 层析取(P1-β批二):任一支成立即过;全支不成立=violation
+            if not any(eval_expr(str(e), fields) for e in chk["any"]):
                 issues.append(_issue(rule, fields, {}))
         elif chk["op"] == "all":  # 结构级全称量词(A7):行 dict 以 var 名并入 env,复用同一字段解析语义
             var = str(chk["var"])
