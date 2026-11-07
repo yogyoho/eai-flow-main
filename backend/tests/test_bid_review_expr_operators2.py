@@ -60,3 +60,43 @@ def test_col_operator():
 def test_pack_loads_cleanly_after_new_functions():
     pack = load_rulepack(PACK)  # 既有包继续干净加载:新 _FUNCS/_KNOWN_OPS 不破坏 lint(计数锁定在 test_golden,此处不重复)
     assert len(pack.rules) >= 40
+
+
+def test_subset_of_type_guards():
+    # I-1(质量轮):str 侧静默逐字迭代错判 / 非可迭代 TypeError 逃网——两道守卫统一 KeyError(A-β2-①)
+    with pytest.raises(KeyError):
+        eval_expr("subset_of(bid.a, bid.b)", {"bid.a": "营业执照", "bid.b": ["营业执照"]})
+    with pytest.raises(KeyError):
+        eval_expr("subset_of(bid.a, bid.b)", {"bid.a": 3, "bid.b": ["x"]})
+
+
+def test_regex_invalid_pattern():
+    # M-1:re.error(py3.12 非 ValueError 子类)须显式入 KeyError 网(det→need_human)
+    with pytest.raises(KeyError):
+        eval_expr('regex(bid.t, "(")', {"bid.t": "x"})
+
+
+def test_or_empty_any_violation():
+    # M-2a:空 any=violation(any([]) 为 False;空 all=PASS,数学标准)
+    rule = Rule(
+        id="T-OR-E",
+        name="t",
+        layer="L3",
+        type="deterministic",
+        applies_to=["*"],
+        inputs=[],
+        check={"op": "or", "any": []},
+        severity="minor",
+        evidence=[],
+        message_tpl="or 未满足",
+        fix_tpl="",
+        confidence_gate=1.0,
+        enabled=True,
+    )
+    issues = run_det_rule(rule, {})
+    assert len(issues) == 1 and issues[0]["verdict"] == "violation"
+
+
+def test_col_missing_key_rows():
+    # M-3:缺键行产 None 条目(不静默丢行,行数守恒)
+    assert eval_expr('col(bid.rows, "no")', {"bid.rows": [{"id": 1}, {"no": "A"}]}) == [None, "A"]

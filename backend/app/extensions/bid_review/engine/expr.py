@@ -269,19 +269,29 @@ _LEVEL_LADDER = {"特级": 6, "一级": 5, "甲级": 5, "二级": 4, "乙级": 4
 
 
 def _regex(text, pattern):
-    if not isinstance(text, str) or not isinstance(pattern, str):
+    if not isinstance(text, str) or not isinstance(pattern, str):  # A-β2-①(M-4 同款标签)
         raise KeyError(f"regex 需字符串两侧,得 {type(text).__name__}/{type(pattern).__name__}")
-    return re.search(pattern, text) is not None
+    try:
+        return re.search(pattern, text) is not None
+    except re.error as exc:  # M-1:py3.12 re.error 非 ValueError 子类,不入 except KeyError 网,须显式入网(det→need_human)
+        raise KeyError(f"regex 模式非法 {pattern!r}") from exc
 
 
 def _subset_of(a, b):
+    # I-1(质量轮):str 侧会静默逐字迭代('营业执照' vs ['营业执照'] → False 错判),非可迭代侧 TypeError 逃网——
+    # 两道守卫统一 KeyError(A-β2-① need_human 通路);str 语义走 covers/contains_any。
+    if isinstance(a, str) or isinstance(b, str):
+        raise KeyError("subset_of 需列表两侧,str 走 covers/contains_any")
     if a is None or b is None:
         raise KeyError("subset_of 任一侧 null(A-β2-① need_human 通路)")
+    try:
 
-    def norm(xs):
-        return {str(x).strip() for x in xs if str(x).strip()}
+        def norm(xs):
+            return {str(x).strip() for x in xs if str(x).strip()}
 
-    return norm(a) <= norm(b)
+        return norm(a) <= norm(b)
+    except TypeError as exc:
+        raise KeyError(f"subset_of 需可迭代两侧,得 {type(a).__name__}/{type(b).__name__}") from exc
 
 
 def _level_ge(a, b):

@@ -242,7 +242,7 @@ def run_det_rule(rule: Rule, fields: dict) -> list[dict]:
         elif chk["op"] == "and":
             if not all(eval_expr(str(e), fields) for e in chk["all"]):
                 issues.append(_issue(rule, fields, {}))
-        elif chk["op"] == "or":  # check-op 层析取(P1-β批二):任一支成立即过;全支不成立=violation
+        elif chk["op"] == "or":  # check-op 层析取(P1-β批二):任一支成立即过;全支不成立=violation;空 any=violation(空 all=PASS,数学标准)
             if not any(eval_expr(str(e), fields) for e in chk["any"]):
                 issues.append(_issue(rule, fields, {}))
         elif chk["op"] == "all":  # 结构级全称量词(A7):行 dict 以 var 名并入 env,复用同一字段解析语义
