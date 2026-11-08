@@ -3,6 +3,11 @@ desc: 类似业绩数量不足 det 粗筛命中,scripted 模型确认 partial �
 fields:
   bid.similar_performances: ["华鑫水泥5000t/d熟料线总承包工程"]
   tender.min_similar_performance_count: 2
+  # 批六 T4 L1-003 inputs 富化——新 inputs 须键在场且值非 None(eval_core 剥 None,
+  # null=不在场=inputs 门翻转 need_human 埋掉本案例本意);给宽门槛值,不参与本案例
+  # 数量维度语义(det_expr 冻结不消费,scripted 模型不看,仅过缺字段门)
+  tender.min_performance_amount: 1000000
+  tender.performance_window_months: 120
 model_script:
   L1-003: '{"verdicts": [{"clause_id": "PERF-1", "verdict": "partial", "confidence": 0.9, "reason": "业绩数量不足", "evidence": [{"doc_id": "bid.pdf", "page": 12, "text": "类似业绩证明附表"}]}]}'
 expect_issues:

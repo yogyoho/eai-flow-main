@@ -1,0 +1,13 @@
+case: L2-014-required-figure-missing
+desc: 批六字段实补——招标要求附图、投标图表清单缺「总平面图」(t.name 逐行渲染)→ L2-014 minor
+fields:
+  tender.required_figures:
+    - {id: F1, name: 总平面图}
+  bid.figures:
+    - {id: G1, name: 工艺流程图}
+expect_issues:
+  - rule_id: L2-014
+    severity: minor
+    contains: ["总平面图"]
+expect_absent: []
+strict: true

@@ -1,0 +1,14 @@
+case: L2-013-commitment-section-missing
+desc: 批六字段实补——招标要求承诺类章节、投标章节树为空(空 bid 侧=要求行全 MISSING,正确语义)→ L2-013 major
+fields:
+  tender.commitment_sections: [质量承诺, 廉洁承诺]
+  bid.section_tree: []
+expect_issues:
+  - rule_id: L2-013
+    severity: major
+    contains: ["质量承诺"]
+  - rule_id: L2-013
+    severity: major
+    contains: ["廉洁承诺"]
+expect_absent: []
+strict: true

@@ -1,0 +1,12 @@
+case: L2-040-required-table-missing
+desc: 批六字段实补——招标要求必备表格、bid.tables 派生骨架仅有其他表([sheet:X] 骨架,A-β6-⑤)→ L2-040 fatal
+fields:
+  tender.required_tables: [报价汇总表, 分项报价表]
+  bid.tables:
+    - {name: 分项报价表, source: bid.xlsx}
+expect_issues:
+  - rule_id: L2-040
+    severity: fatal
+    contains: ["报价汇总表"]
+expect_absent: []
+strict: true

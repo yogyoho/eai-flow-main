@@ -1,0 +1,12 @@
+case: L2-012-tech-section-missing
+desc: 批六字段实补——招标要求技术方案必备章节、投标章节树缺「应急预案」(contains_any+keywords 惯用式,A-β6-⑦)→ L2-012 major
+fields:
+  tender.tech_sections_required: [应急预案, 总体方案]
+  bid.section_tree:
+    - {code: "3", title: 施工组织设计与总体方案, toc_page: 3, body_page: 20, is_empty: false, offset: 17, offset_flag: true}
+expect_issues:
+  - rule_id: L2-012
+    severity: major
+    contains: ["应急预案"]
+expect_absent: []
+strict: true

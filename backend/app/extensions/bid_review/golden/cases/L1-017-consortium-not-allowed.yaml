@@ -1,0 +1,13 @@
+case: L1-017-consortium-not-allowed
+desc: 批六字段实补——联合体投标但招标不允许(A-β6-⑥ precondition 命中,非联合体 SKIP 不测此题)→ L1-017 fatal
+fields:
+  bid.is_consortium: true
+  bid.consortium:
+    - {lead: 甲公司, members: [乙公司, 丙公司]}
+  tender.consortium_allowed: false
+expect_issues:
+  - rule_id: L1-017
+    severity: fatal
+    contains: ["联合体投标要件不合规"]
+expect_absent: []
+strict: true
