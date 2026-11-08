@@ -604,3 +604,43 @@ def test_normalize_boq_rows_amount_field():
 def test_boq_rows_contract_has_amount():
     assert '"amount":' in FIELD_TYPE_CONTRACTS["bid.boq_rows"]
     assert "amount:合价金额或null" in SECOND_STAGE_FIELDS["bid.boq_rows"]
+
+
+# ── P1-β批六 T1 tender 字段实补(spec §6.1 差表,A-β6-①②):12 条新契约入 FIELD_TYPE_CONTRACTS 且入首段请求面 ──
+
+
+class TestBeta6FieldContracts:
+    """批六 tender 字段实补(A-β6-①②):12 条新契约入 FIELD_TYPE_CONTRACTS 且入首段请求面。"""
+
+    BETA6_PATHS = [
+        "tender.consortium_allowed",
+        "tender.tech_sections_required",
+        "tender.commitment_sections",
+        "tender.required_figures",
+        "tender.required_tables",
+        "tender.min_performance_amount",
+        "tender.performance_window_months",
+        "tender.deposit_forms",
+        "bid.is_consortium",
+        "bid.consortium",
+        "bid.figures",
+        "bid.deposit_forms",
+    ]
+
+    def test_contracts_present_with_shape_hints(self):
+        from app.extensions.bid_review.engine.extract import FIELD_TYPE_CONTRACTS
+
+        for p in self.BETA6_PATHS:
+            assert p in FIELD_TYPE_CONTRACTS, p
+        # 形状关键词抽查(A-β6-⑥⑦ 契约可诚实产出:无明示给 null/空数组)
+        assert "null" in FIELD_TYPE_CONTRACTS["tender.min_performance_amount"]
+        assert "空数组" in FIELD_TYPE_CONTRACTS["tender.tech_sections_required"]
+        assert "联合体" in FIELD_TYPE_CONTRACTS["bid.is_consortium"]
+
+    @pytest.mark.skip(reason="T5 宇宙注册后启用")
+    def test_new_paths_enter_first_stage_request(self):
+        from app.extensions.bid_review.engine.extract import collect_field_paths
+
+        paths = set(collect_field_paths())
+        for p in self.BETA6_PATHS:
+            assert p in paths, p  # T3/T4 规则未注册前 universe 暂不含;本测试在 T5 后复跑

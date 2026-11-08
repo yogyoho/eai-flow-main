@@ -511,6 +511,20 @@ FIELD_TYPE_CONTRACTS["bid.performance_entries"] = (
 
 FIELD_TYPE_CONTRACTS["bid.performance_groups"] = '[{"group_id":"G1..","ok":true|false,"members":[原始条目]}] 对象列表;服务端聚类产物(模型禁生成):ok=true=确认同项去重组,ok=false=疑似同项待人工(UNKNOWN,禁强行 PARTIAL)。'
 
+# ── P1-β批六 tender 字段实补(spec §6.1 差表,2026-11-08;A-β6-①②;消费驱动正门:全部绑包内规则 inputs)──
+FIELD_TYPE_CONTRACTS["tender.consortium_allowed"] = "bool;招标文件是否允许联合体投标;只依据材料原文,无明示给 null。"
+FIELD_TYPE_CONTRACTS["tender.tech_sections_required"] = '["技术方案必备章节名"] 字符串数组;招标要求投标技术方案应包含的章节(总体/实施/进度/质量/安全/应急/售后/培训类);无要求给空数组。'
+FIELD_TYPE_CONTRACTS["tender.commitment_sections"] = '["承诺类章节名"] 字符串数组;工期/质量/质保/服务响应/廉洁/保密等承诺章节要求;无要求给空数组。'
+FIELD_TYPE_CONTRACTS["tender.required_figures"] = '[{id:"要求编号或空串",name:"图表名称"}] 对象列表;招标要求的附图/图表;id/name 非空才收;无给空数组。'
+FIELD_TYPE_CONTRACTS["tender.required_tables"] = '["必备表格名"] 字符串数组;报价汇总/分项报价/清单响应/参数偏离/人员表/设备表类;无要求给空数组。'
+FIELD_TYPE_CONTRACTS["tender.min_performance_amount"] = "数字或 null;单项类似业绩最低金额要求(万元);无明示给 null。"
+FIELD_TYPE_CONTRACTS["tender.performance_window_months"] = "数字或 null;类似业绩时间跨度要求(近 N 个月);无明示给 null。"
+FIELD_TYPE_CONTRACTS["tender.deposit_forms"] = '["缴纳形式"] 字符串数组(现金/银行保函/保证保险等);招标要求的保证金缴纳形式;无明示给空数组。'
+FIELD_TYPE_CONTRACTS["bid.is_consortium"] = "bool;投标文件是否以联合体形式投标;无依据给 null。"
+FIELD_TYPE_CONTRACTS["bid.consortium"] = '[{lead:"牵头人名称",members:["成员名称"]}] 对象列表;联合体协议书实体;非联合体给空数组。'
+FIELD_TYPE_CONTRACTS["bid.figures"] = '[{id:"图号或空串",name:"图表名称"}] 对象列表;投标文件中的图纸/图表清单;id/name 非空;无给空数组。'
+FIELD_TYPE_CONTRACTS["bid.deposit_forms"] = '["实际缴纳形式"] 字符串数组;投标文件载明的保证金缴纳形式;无给空数组。'
+
 
 def normalize_section_tree(raw: Any) -> list[dict]:
     """章节树归一闸(B立项 M2,spec §5,2026-11-05):缺 title(空串/非串)丢行零编造;
