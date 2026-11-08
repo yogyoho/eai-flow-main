@@ -80,3 +80,24 @@ export interface BaselineOut {
   confirmed: boolean;
   created_at: string;
 }
+
+/** 审查汇总(backend worker.summarize_issues;worker 落 progress.summary 与 issues
+ * 列表 API summary 共用本实现,两侧口径一致)。fatal/major/minor/info 仅计
+ * need_human=False 的正式违规(排 layer=="L4",advisory 单列);need_human 单列待人工
+ * 计数。rules_total/unknown_ratio/advisory 为逐批 additive 键(旧网关缺省 → 消费方
+ * `??` 兜底)。前端 ResultsView 现于客户端复算可见口径(summary 字段在前端 api 层
+ * 不可达),本接口为后端全量口径的契约锚(TaskOut.progress 以 Record 透传)。
+ */
+export interface Summary {
+  fatal: number;
+  major: number;
+  minor: number;
+  info: number;
+  need_human: number;
+  rules_total?: number | null;
+  unknown_ratio?: number | null;
+  advisory?: { total: number; by_severity: Record<string, number> };
+  /** 批五(A-β5-⑥),规格 §5.7.2 四态派生键(worker.compute_gate_status;
+   * SUBMITTABLE|CONDITIONAL|NOT_SUBMITTABLE|PENDING_HUMAN)。旧 summary 无此键。 */
+  gate_status?: string;
+}

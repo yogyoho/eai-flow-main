@@ -13,7 +13,10 @@
 
 import type { ReactNode } from "react";
 
-import { type PillTone } from "@/extensions/contract-price/components/ui/bits";
+import {
+  Pill,
+  type PillTone,
+} from "@/extensions/contract-price/components/ui/bits";
 import { cn } from "@/lib/utils";
 
 // ── §2 状态 Pill 词汇映射(全视图统一)──────────────────────────────────
@@ -105,6 +108,30 @@ export function verdictPill(verdict: string): {
       return { tone: "gray", label: "误报" };
     default:
       return { tone: "gray", label: verdict || "未知" };
+  }
+}
+
+// ── 门禁四态 pill(P1-β批五 T2,规格 §5.7.2;A-β5-⑥)──────────────────────
+// 判定键=后端 worker.compute_gate_status 派生( summarize_issues additive 键
+// gate_status,双 API 面共享);四态中文文案与后端 routers._GATE_TXT 逐字同源。
+// 分级:红 error(NOT_SUBMITTABLE/PENDING_HUMAN)/黄 warn(CONDITIONAL)/
+// 绿 success(SUBMITTABLE)。need_human 旗标等既有待人工口径展示零改动(旗标
+// 不参与 gate 判定,同后端口径)。
+export function gateStatusPill(gateStatus: string): {
+  tone: PillTone;
+  label: string;
+} {
+  switch (gateStatus) {
+    case "NOT_SUBMITTABLE":
+      return { tone: "error", label: "存在否决性风险,不建议提交。" };
+    case "PENDING_HUMAN":
+      return { tone: "error", label: "关键项无法自动判定,必须人工确认。" };
+    case "CONDITIONAL":
+      return { tone: "warn", label: "存在需整改项,建议整改后提交。" };
+    case "SUBMITTABLE":
+      return { tone: "success", label: "未发现否决性风险,可按流程提交。" };
+    default:
+      return { tone: "gray", label: gateStatus || "未知" };
   }
 }
 
@@ -234,10 +261,27 @@ export interface GateMetric {
 }
 
 /** grid 横条指标格:数值 20px 档(text-2xl)semibold tabular;格间 divide-x hairline;
- * `grid-cols-2` 折行(§4)。工作台顶条/报告概览用;任务列表页不用此件(spec §1.3)。 */
-export function GateMetricsRow({ metrics }: { metrics: GateMetric[] }) {
+ * `grid-cols-2` 折行(§4)。工作台顶条/报告概览用;任务列表页不用此件(spec §1.3)。
+ * 批五(A-β5-⑥):gateStatus 给定 → 卡顶四态判定 pill({@link gateStatusPill},
+ * 文案与后端 _GATE_TXT 逐字同源,红/黄/绿分级);缺席(旧 summary 形)零渲染,
+ * 既有格展示零改动。 */
+export function GateMetricsRow({
+  metrics,
+  gateStatus,
+}: {
+  metrics: GateMetric[];
+  /** 批五 gate_status 四态派生键(规格 §5.7.2,后端 summarize_issues additive);
+   * 可选——旧 summary 无此键,不传即纯既有形态。 */
+  gateStatus?: string;
+}) {
+  const pill = gateStatus ? gateStatusPill(gateStatus) : null;
   return (
     <div className="border-border bg-card overflow-hidden rounded-lg border">
+      {pill ? (
+        <div className="border-border flex items-center gap-2 border-b px-4 py-2">
+          <Pill tone={pill.tone}>{pill.label}</Pill>
+        </div>
+      ) : null}
       <div className="grid grid-cols-2 divide-x md:grid-cols-4">
         {metrics.map((m) => (
           <div
