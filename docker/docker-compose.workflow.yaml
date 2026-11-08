@@ -1,19 +1,16 @@
 # Workflow platform overlay.
 #
-# This file is included by docker-compose.business.yaml, so a normal business
-# stack starts the workflow services without an extra -f flag. It can still be
-# passed explicitly.
+# EAI-CUSTOM (2026-11-08 重新归类): the business subsystems (this file +
+# docker-compose.business.yaml) live in their own compose group `eai-ext`;
+# this file is included automatically by docker-compose.business.yaml.
 #
-# Usage (the dev stack's nginx shares eai-flow-net with the business DB and
-# workflow services; the production compose file uses a separate deer-flow
+# Usage:
+#   cd docker && docker compose -p eai-ext -f docker-compose.business.yaml up -d
+#
+# The dev stack's nginx shares eai-flow-net with the business DB and
+# workflow services (the production compose file uses a separate deer-flow
 # network and needs an explicit network attachment before nginx can resolve
-# these service names):
-#   docker compose \
-#     -f docker-compose-dev.yaml \
-#     -f docker-compose.extensions.yaml \
-#     -f docker-compose.business.yaml \
-#     -f docker-compose.temporal.yaml \
-#     -f docker-compose.workflow.yaml up -d
+# these service names).
 #
 # Services:
 #   - workflow-db-init:  create the `workflow` database if it does not exist
@@ -80,7 +77,7 @@ x-workflow-backend: &workflow-backend
 services:
   workflow-db-init:
     image: postgres:16-alpine
-    container_name: eai-flow-workflow-db-init
+    container_name: eai-ext-workflow-db-init
     environment:
       PGHOST: business-db
       PGUSER: ${BUSINESS_DB_USER:-business}
@@ -103,7 +100,7 @@ services:
 
   workflow-migrate:
     <<: *workflow-backend
-    container_name: eai-flow-workflow-migrate
+    container_name: eai-ext-workflow-migrate
     command: ["alembic", "upgrade", "head"]
     environment:
       WORKFLOW_DATABASE_URL: postgresql+asyncpg://${BUSINESS_DB_USER:-business}:${BUSINESS_DB_PASSWORD:-business123}@business-db:5432/workflow
@@ -117,7 +114,7 @@ services:
 
   workflow-backend:
     <<: *workflow-backend
-    container_name: eai-flow-workflow-backend
+    container_name: eai-ext-workflow-backend
     environment:
       <<: *workflow-env
     command:
@@ -146,7 +143,7 @@ services:
 
   workflow-worker:
     <<: *workflow-backend
-    container_name: eai-flow-workflow-worker
+    container_name: eai-ext-workflow-worker
     environment:
       <<: *workflow-env
     command: ["python", "-m", "app.temporal.worker"]
@@ -160,7 +157,7 @@ services:
 
   workflow-dispatcher:
     <<: *workflow-backend
-    container_name: eai-flow-workflow-dispatcher
+    container_name: eai-ext-workflow-dispatcher
     environment:
       <<: *workflow-env
     command: ["python", "-m", "app.temporal.dispatcher"]
@@ -183,7 +180,7 @@ services:
         # NPM_REGISTRY=https://registry.npmjs.org to use the official registry.
         NPM_REGISTRY: ${NPM_REGISTRY:-https://registry.npmmirror.com}
     image: eai-flow-workflow-frontend:local
-    container_name: eai-flow-workflow-frontend
+    container_name: eai-ext-workflow-frontend
     environment:
       - NODE_ENV=production
       - HOSTNAME=0.0.0.0

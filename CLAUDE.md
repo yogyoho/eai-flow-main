@@ -44,6 +44,20 @@ docker compose -p eai-docker up -d            # Start all services
 - `eai-flow-postgres-ext` — PostgreSQL for extensions module (host :5432; 2026-10-31 实测容器名,旧写法 `eai-docker-postgres-ext-1` 已失效)
 - `ontostudio-backend` / `ontostudio-frontend` — 本体系统（独立服务，`profiles: ["ontostudio"]`，**不随全量 `up -d` 起飞**；显式点名服务名即自动激活 profile）。后端 FastAPI :8005 + 内置 pyoxigraph 图存储，前端 Vite SPA 经 nginx `/ontostudio/` 托管。EAI-CUSTOM
 
+### eai-ext — 业务子系统扩展组（EAI-CUSTOM，2026-11-08 重新归类）
+
+**sales / workflow / procurement + 共享 business-db 是 EAI 底座之上扩展的业务子系统，独立成 `eai-ext` compose 组**，不再随 eai-docker 全量栈起飞（`EAI_DEV_COMPOSE` 已摘除 business overlay）：
+
+```bash
+cd docker && docker compose -p eai-ext -f docker-compose.business.yaml up -d   # 全组起飞（workflow.yaml 被 include 自动带入）
+make eai-ext-up / eai-ext-down / eai-ext-logs                                  # 等价入口
+```
+
+- **容器名 `eai-ext-*`**（eai-ext-business-db / eai-ext-sales-backend / eai-ext-workflow-backend 等 12 个）：2026-10-22 有一次漏带 `-p` 的启动把旧 `eai-flow-*` 名字注册到了死项目 `docker` 下（11 个 Exited 遗留容器 + 2 个 eai-docker 下的，**保留不删**）；Docker 容器名全局唯一，故换名避开。nginx 走 compose service 名 DNS alias，路由零改动。
+- **数据卷钉死**：`business-db-data` 显式 `name: eai-docker_business-db-data`（2026-04 起的活集群 ~98M）——去掉 `name:` 会生成 `eai-ext_business-db-data` 空卷，切勿"清理"。
+- **与底座的耦合仅两点**：外部网络 `eai-docker_eai-flow-net`（nginx 按容器名路由 /sales/* /workflow/*）+ Temporal（`eai-flow-temporal` 属底座组，worker 经共享网络连 `temporal:7233`）。
+- 业务 DB 直查：`docker exec eai-ext-business-db psql -U business -d sales -c "..."`（库：sales / workflow / procurement / project 等，宿主端口 :5433）。
+
 #### OntoStudio 两个环境变量（EAI-CUSTOM，值一律放 **`docker/.env`**）
 
 | 变量 | 作用 | 未设置时 |

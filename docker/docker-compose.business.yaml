@@ -1,18 +1,32 @@
-# Business Microservices
-# Usage: docker compose -f docker-compose.yaml -f docker-compose.business.yaml up -d
+# Business Microservices (EAI-CUSTOM group: eai-ext)
 #
-# Services:
-#   - business-db:            Unified PostgreSQL (procurement, asset, project databases)
-#   - procurement-backend:    Procurement API (port 3001)
-#   - procurement-frontend:   Procurement UI (port 3000 internal)
-#   - asset-backend:          Asset API (port 3002)
-#   - asset-frontend:         Asset UI (port 3000 internal)
-#   - project-backend:        Project API (port 3003)
-#   - project-frontend:       Project UI (port 3000 internal)
+# EAI-CUSTOM (2026-11-08 重新归类): sales / workflow / procurement + 共享
+# business-db 是 EAI 底座（eai-docker 组）之上扩展出来的业务子系统，独立成
+# eai-ext 组管理，不再随 eai-docker 全量栈起飞：
 #
-# EAI-CUSTOM: the workflow platform (backend/worker/dispatcher/frontend) is
-# included from docker-compose.workflow.yaml so the usual business stack starts
-# it too, without requiring callers to pass another -f flag.
+#   cd docker && docker compose -p eai-ext -f docker-compose.business.yaml up -d
+#   cd docker && docker compose -p eai-ext -f docker-compose.business.yaml down
+#
+# 组成（workflow 平台由下方 include 自动带入，无需再加 -f）:
+#   - business-db:            统一业务 PostgreSQL（procurement/sales/workflow 库）
+#   - procurement-backend:    采购 API (port 3001)
+#   - procurement-frontend:   采购 UI
+#   - sales-backend:          销售 QW2 API (port 3004)
+#   - sales-worker:           销售 Temporal worker + outbox
+#   - sales-frontend:         销售 Vite SPA
+#   - workflow-db-init / workflow-migrate / workflow-backend / workflow-worker /
+#     workflow-dispatcher / workflow-frontend: 工作流平台（见 workflow.yaml）
+#
+# 联动: 与底座共享外部网络 eai-docker_eai-flow-net（nginx 按容器名路由，
+# /sales/* /workflow/* 直接打到 eai-ext 容器）；business-db-data 卷钉死为
+# eai-docker 时期的活数据卷（见 volumes 段）。
+# 命名: 容器名用 eai-ext-* 前缀——2026-10-22 曾有一次漏带 -p 的启动把
+# eai-flow-* 名字注册到了死项目 `docker` 下（11 个 Exited 遗留容器，保留
+# 不删）；Docker 容器名全局唯一，故新组换名避开。nginx 走 compose service
+# 名 DNS alias（sales-backend/workflow-backend 等），不受 container_name
+# 影响，路由零改动。
+# Temporal 依赖: eai-flow-temporal 属于底座组（docker-compose.temporal.yaml），
+# eai-ext 的 worker 们通过共享网络连 temporal:7233。
 
 include:
   - docker-compose.workflow.yaml
@@ -21,7 +35,7 @@ services:
   # ── Unified Business PostgreSQL ────────────────────────────────────────
   business-db:
     image: postgres:16-alpine
-    container_name: eai-flow-business-db
+    container_name: eai-ext-business-db
     environment:
       - POSTGRES_USER=${BUSINESS_DB_USER:-business}
       - POSTGRES_PASSWORD=${BUSINESS_DB_PASSWORD:-business123}
@@ -46,7 +60,7 @@ services:
     build:
       context: ../business/procurement-service/backend
       dockerfile: Dockerfile
-    container_name: eai-flow-procurement-backend
+    container_name: eai-ext-procurement-backend
     command: uv run uvicorn app.main:app --host 0.0.0.0 --port 3001 --workers 2
     environment:
       - DATABASE_URL=${PROCUREMENT_DATABASE_URL:-postgresql+asyncpg://${BUSINESS_DB_USER:-business}:${BUSINESS_DB_PASSWORD:-business123}@business-db:5432/procurement}
@@ -69,7 +83,7 @@ services:
     build:
       context: ../business/procurement-service/frontend-shadcn
       dockerfile: Dockerfile
-    container_name: eai-flow-procurement-frontend
+    container_name: eai-ext-procurement-frontend
     environment:
       - NODE_ENV=production
       - VITE_API_BASE_URL=http://localhost:${PORT:-2026}/procurement
@@ -77,7 +91,10 @@ services:
       - eai-flow-net
     restart: unless-stopped
     healthcheck:
-      test: ["CMD-SHELL", "wget -qO- http://localhost:80/health || exit 1"]
+      # EAI-CUSTOM (bug-4254): `localhost` resolves to ::1 inside the container and
+      # nginx binds IPv4 only, so the check always got "connection refused" while
+      # the service itself was fine. Pin 127.0.0.1 (same as sales-frontend).
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:80/health || exit 1"]
       interval: 10s
       timeout: 5s
       retries: 3
@@ -163,7 +180,7 @@ services:
         # Tsinghua mirror by default for fast builds in China; override with
         # PIP_INDEX_URL=https://pypi.org/simple to build against official PyPI.
         PIP_INDEX_URL: ${PIP_INDEX_URL:-https://pypi.tuna.tsinghua.edu.cn/simple}
-    container_name: eai-flow-sales-backend
+    container_name: eai-ext-sales-backend
     command: python -m uvicorn app.main:app --host 0.0.0.0 --port 3004 --workers 1
     environment:
       - DATABASE_URL=${SALES_DATABASE_URL:-postgresql+asyncpg://${BUSINESS_DB_USER:-business}:${BUSINESS_DB_PASSWORD:-business123}@business-db:5432/sales}
@@ -217,7 +234,7 @@ services:
       dockerfile: Dockerfile
       args:
         PIP_INDEX_URL: ${PIP_INDEX_URL:-https://pypi.tuna.tsinghua.edu.cn/simple}
-    container_name: eai-flow-sales-worker
+    container_name: eai-ext-sales-worker
     command: python -m app.worker
     environment:
       - DATABASE_URL=${SALES_DATABASE_URL:-postgresql+asyncpg://${BUSINESS_DB_USER:-business}:${BUSINESS_DB_PASSWORD:-business123}@business-db:5432/sales}
@@ -258,7 +275,7 @@ services:
       dockerfile: Dockerfile
       additional_contexts:
         workflow_embed: ../packages/workflow-embed
-    container_name: eai-flow-sales-frontend
+    container_name: eai-ext-sales-frontend
     environment:
       - NODE_ENV=production
     networks:
@@ -272,6 +289,12 @@ services:
 
 volumes:
   business-db-data:
+    # EAI-CUSTOM (2026-11-08 重新归类): pin the real volume name. This cluster
+    # was born under the eai-docker group (live data since 2026-04, ~98M) and
+    # was adopted intact by the eai-ext group. Without `name:` compose would
+    # prefix it to eai-ext_business-db-data and boot an EMPTY cluster next to
+    # the real data. Keep the pin; do not "clean up" the prefix.
+    name: eai-docker_business-db-data
 
 networks:
   eai-flow-net:

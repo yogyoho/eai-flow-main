@@ -6,7 +6,10 @@
 set -u
 cd "$(dirname "$0")/.." || exit 1
 
-COMPOSE_FILES="-f docker-compose-dev.yaml -f docker-compose.extensions.yaml -f docker-compose.ragflow.yaml -f docker-compose.business.yaml"
+# EAI-CUSTOM (2026-11-08 重新归类): business.yaml left the eai-docker chain
+# (business subsystems now live in their own `eai-ext` group); this check only
+# execs into the base `frontend` service, so 3 overlays suffice.
+COMPOSE_FILES="-f docker-compose-dev.yaml -f docker-compose.extensions.yaml -f docker-compose.ragflow.yaml"
 
 host_hash=$(sha256sum frontend/pnpm-lock.yaml | cut -d' ' -f1)
 # MSYS_NO_PATHCONV: Git Bash would otherwise rewrite /app/... into a Windows path

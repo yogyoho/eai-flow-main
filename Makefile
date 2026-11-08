@@ -246,9 +246,26 @@ docker-logs-redis:
 # EAI-CUSTOM (bug-4240; supersedes bug-1278 note): upstream docker.sh has no
 # rebuild-frontend / check-frontend-deps subcommands — keep both targets
 # self-contained instead of routing through scripts/docker.sh.
-# The dev stack is 4 compose overlays (must match how the running containers were
+# The dev stack is 3 compose overlays (must match how the running containers were
 # created; a single-file compose would fight the existing config hash).
-EAI_DEV_COMPOSE := docker compose -p eai-docker -f docker-compose-dev.yaml -f docker-compose.extensions.yaml -f docker-compose.ragflow.yaml -f docker-compose.business.yaml
+# EAI-CUSTOM (2026-11-08 重新归类): business subsystems (sales/workflow/
+# procurement + business-db) were re-homed OUT of this chain into their own
+# `eai-ext` group — see EAI_EXT_COMPOSE below.
+EAI_DEV_COMPOSE := docker compose -p eai-docker -f docker-compose-dev.yaml -f docker-compose.extensions.yaml -f docker-compose.ragflow.yaml
+
+# EAI-CUSTOM eai-ext: 业务子系统扩展层 (business-db + sales + workflow + procurement).
+# Shares the base network eai-docker_eai-flow-net (nginx routes by container name);
+# workflow.yaml is included by business.yaml automatically.
+EAI_EXT_COMPOSE := docker compose -p eai-ext -f docker-compose.business.yaml
+
+eai-ext-up:
+	cd docker && $(EAI_EXT_COMPOSE) up -d
+
+eai-ext-down:
+	cd docker && $(EAI_EXT_COMPOSE) down
+
+eai-ext-logs:
+	cd docker && $(EAI_EXT_COMPOSE) logs -f --tail=100
 
 rebuild-frontend:
 	cd docker && $(EAI_DEV_COMPOSE) build frontend
