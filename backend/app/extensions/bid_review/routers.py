@@ -593,6 +593,14 @@ def _fatal_hits(issues: list) -> list:
     return [i for i in issues if i.severity == "fatal" and i.verdict == "FAIL" and not i.need_human and getattr(i, "layer", "") != "L4"]
 
 
+_GATE_TXT = {
+    "NOT_SUBMITTABLE": "存在否决性风险,不建议提交。",
+    "PENDING_HUMAN": "关键项无法自动判定,必须人工确认。",
+    "CONDITIONAL": "存在需整改项,建议整改后提交。",
+    "SUBMITTABLE": "未发现否决性风险,可按流程提交。",
+}
+
+
 def _l4_advisory_cap() -> int:
     """L4 advisory 报告尾节条数上限(A-续-⑥):从 l4 包 meta ``max_issues_per_report`` 读
     (经 load_rulepack(ADVISORY_RULEPACK_PATH);常量 None/文件缺失/键缺失一律默认 10,
@@ -630,7 +638,11 @@ def _render_report_html(task, issues: list, feedback: list | None = None, deviat
         _esc(_feedback_summary(feedback or [])),
         f"生成时间:{_esc(now)}",
     ]
-    gate_txt = f"命中致命红线 {len(fatal_hits)} 项,建议整改后重新审查。" if fatal_hits else "未命中致命红线,可进入人工终审。"
+    gate_status = worker.compute_gate_status(issues)
+    if gate_status == "NOT_SUBMITTABLE":
+        gate_txt = f"命中致命红线 {len(fatal_hits)} 项,建议整改后重新审查。"
+    else:
+        gate_txt = _GATE_TXT.get(gate_status, _GATE_TXT["SUBMITTABLE"])
     parts = [
         "<!doctype html>",
         '<html lang="zh"><head><meta charset="utf-8">',
@@ -651,7 +663,7 @@ def _render_report_html(task, issues: list, feedback: list | None = None, deviat
         f'<p class="disclaimer">免责声明:{_esc(REPORT_DISCLAIMER)}</p>',
         f"<h1>投标审查报告 {tid}</h1>",
         '<ul class="meta">' + "".join(f"<li>{m}</li>" for m in meta_lines) + "</ul>",
-        f'<h2>可提交判定</h2><p class="{"hit" if fatal_hits else "ok"}">{_esc(gate_txt)}</p>',
+        f'<h2>可提交判定</h2><p class="{"hit" if gate_status == "NOT_SUBMITTABLE" else ("warn" if gate_status in ("PENDING_HUMAN", "CONDITIONAL") else "ok")}">{_esc(gate_txt)}</p>',
     ]
     for sev in ("fatal", "major", "minor", "info"):
         rows = [i for i in issues if i.severity == sev and getattr(i, "layer", "") != "L4"]  # L4 独立 advisory 尾节(A-续-⑥)
@@ -713,6 +725,11 @@ def _render_report_md(task, issues: list, feedback: list | None = None, deviatio
     最尾「竞争力建议(L4,advisory)」独立尾节(A-续-⑥,L4 不入正式分节,meta 封顶)。"""
     issues = [i for i in issues if i.verdict != "false_positive"]
     fatal_hits = _fatal_hits(issues)  # 口径共享(spec 2026-11-05 R4,防双渲染器漂移)
+    gate_status = worker.compute_gate_status(issues)
+    if gate_status == "NOT_SUBMITTABLE":
+        gate_txt = f"命中致命红线 {len(fatal_hits)} 项,建议整改后重新审查。"
+    else:
+        gate_txt = _GATE_TXT.get(gate_status, _GATE_TXT["SUBMITTABLE"])
     now = datetime.now(UTC).strftime("%Y-%m-%d %H:%M UTC")
     lines = [
         f"> 免责声明:{REPORT_DISCLAIMER}",
@@ -727,7 +744,7 @@ def _render_report_md(task, issues: list, feedback: list | None = None, deviatio
         "",
         "## 可提交判定",
         "",
-        (f"命中致命红线 {len(fatal_hits)} 项,建议整改后重新审查。" if fatal_hits else "未命中致命红线,可进入人工终审。"),
+        gate_txt,
         "",
     ]
     for sev in ("fatal", "major", "minor", "info"):

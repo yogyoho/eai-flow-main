@@ -20,7 +20,7 @@ import pytest_asyncio
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
 from app.extensions.bid_review import crud, models
-from app.extensions.bid_review.worker import advance_task, boot_recovery, resume_confirmed
+from app.extensions.bid_review.worker import advance_task, boot_recovery, compute_gate_status, resume_confirmed, summarize_issues
 from app.extensions.database import Base
 
 _TABLES = [
@@ -1142,3 +1142,55 @@ async def test_write_baselines_normalizes_matched_to_present(db):
     assert stored["bid.attachment_index"][0]["status"] == "PRESENT"
     assert stored["tender.attachment_requirements"][0].get("status") is None  # 只动两容器
     assert snapshot["status"] == "MATCHED"  # 调用方内存对象不被改(引用同一 dict)
+
+
+class TestGateStatus:
+    """批五 gate_status 四态判定(A-β5-①②③,规格 §5.7.2 逐字)。"""
+
+    @staticmethod
+    def _mk(sev, verdict, layer="L1", state=None, need_human=False):
+        return {"severity": sev, "verdict": verdict, "layer": layer, "state": state, "need_human": need_human}
+
+    def test_submittable_when_clean(self):
+        assert compute_gate_status([self._mk("major", "PASS"), self._mk("minor", "UNKNOWN", layer="L3")]) == "SUBMITTABLE"
+
+    def test_not_submittable_on_fatal_fail(self):
+        issues = [self._mk("major", "FAIL"), self._mk("fatal", "FAIL", layer="L2")]
+        assert compute_gate_status(issues) == "NOT_SUBMITTABLE"
+
+    def test_pending_human_on_fatal_unknown(self):
+        # fatal UNKNOWN(含 need_human 旗标行——旗标不参与判定,A-β5-①)
+        issues = [self._mk("major", "FAIL"), self._mk("fatal", "UNKNOWN", need_human=True)]
+        assert compute_gate_status(issues) == "PENDING_HUMAN"
+
+    def test_conditional_on_major_fail(self):
+        assert compute_gate_status([self._mk("major", "FAIL", layer="L2")]) == "CONDITIONAL"
+
+    def test_conditional_on_l3_major_inconsistent(self):
+        issues = [self._mk("major", "PASS", layer="L3", state="INCONSISTENT")]
+        assert compute_gate_status(issues) == "CONDITIONAL"
+
+    def test_l3_non_major_inconsistent_not_conditional(self):
+        issues = [self._mk("minor", "PASS", layer="L3", state="INCONSISTENT")]
+        assert compute_gate_status(issues) == "SUBMITTABLE"
+
+    def test_l4_excluded_entirely(self):
+        issues = [self._mk("fatal", "FAIL", layer="L4"), self._mk("fatal", "UNKNOWN", layer="L4")]
+        assert compute_gate_status(issues) == "SUBMITTABLE"
+
+    def test_false_positive_and_error_not_counted(self):
+        issues = [self._mk("fatal", "false_positive"), self._mk("major", "ERROR")]
+        assert compute_gate_status(issues) == "SUBMITTABLE"
+
+    def test_fatal_fail_wins_over_fatal_unknown(self):
+        issues = [self._mk("fatal", "UNKNOWN"), self._mk("fatal", "FAIL")]
+        assert compute_gate_status(issues) == "NOT_SUBMITTABLE"
+
+    def test_empty_and_none(self):
+        assert compute_gate_status([]) == "SUBMITTABLE"
+        assert compute_gate_status(None) == "SUBMITTABLE"
+
+    def test_summarize_adds_gate_status(self):
+        issues = [self._mk("fatal", "FAIL", layer="L2")]
+        summary = summarize_issues(issues, rules_total=10)
+        assert summary["gate_status"] == "NOT_SUBMITTABLE"

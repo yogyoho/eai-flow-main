@@ -208,6 +208,43 @@ def _issue_get(issue, name):
     return issue.get(name) if isinstance(issue, dict) else getattr(issue, name, None)
 
 
+GATE_SUBMITTABLE = "SUBMITTABLE"
+GATE_CONDITIONAL = "CONDITIONAL"
+GATE_NOT_SUBMITTABLE = "NOT_SUBMITTABLE"
+GATE_PENDING_HUMAN = "PENDING_HUMAN"
+
+
+def compute_gate_status(issues) -> str:
+    """门禁四态判定(批五,规格 §5.7.2 逐字;A-β5-①②③):fatal FAIL→NOT_SUBMITTABLE,
+    elif fatal UNKNOWN→PENDING_HUMAN,elif major FAIL 或 L3 major INCONSISTENT→CONDITIONAL,
+    else SUBMITTABLE。只读值域/状态域(verdict/state),need_human 旗标不参与(旗标口径零改动);
+    L4 任何结论不参与(counts_toward_bid_gate 同构);false_positive 复核域不计;UNKNOWN 不得当 PASS。
+    派生值不落库(routers._fatal_hits 逐字不动,继续供「命中 N 项」计数——A-β5-②)。"""
+    fatal_fail = fatal_unknown = major_fail = l3_inconsistent = False
+    for issue in issues or []:
+        layer = str(_issue_get(issue, "layer") or "")
+        if layer == "L4":
+            continue
+        sev = str(_issue_get(issue, "severity") or "")
+        verdict = str(_issue_get(issue, "verdict") or "")
+        if sev == "fatal":
+            if verdict == "FAIL":
+                fatal_fail = True
+            elif verdict == "UNKNOWN":
+                fatal_unknown = True
+        elif sev == "major" and verdict == "FAIL":
+            major_fail = True
+        if layer == "L3" and sev == "major" and str(_issue_get(issue, "state") or "") == "INCONSISTENT":
+            l3_inconsistent = True
+    if fatal_fail:
+        return GATE_NOT_SUBMITTABLE
+    if fatal_unknown:
+        return GATE_PENDING_HUMAN
+    if major_fail or l3_inconsistent:
+        return GATE_CONDITIONAL
+    return GATE_SUBMITTABLE
+
+
 def summarize_issues(issues, rules_total: int | None = None) -> dict:
     """汇总分级(A12 T14 集成约束①):正式违规清单/致命计数不含 need_human 条目——
     fatal/major/minor/info 仅计 need_human=False 的正式违规,need_human 条目单列待人工
@@ -219,7 +256,8 @@ def summarize_issues(issues, rules_total: int | None = None) -> dict:
     unknown_ratio(=need_human/rules_total,4 位;None 或 0→ratio=None 伪零纪律:
     无规则总数不报 0%)。既有调用零改动(默认 None→两键 None,additive)。
     EAI-CUSTOM(P1-β批二续 T4,A-续-⑥):增 advisory={total,by_severity} 单列 layer=="L4"
-    条目(counts_toward_bid_gate=false——L4 永不入正式 fatal/major/minor/info 计数与门禁)。"""
+    条目(counts_toward_bid_gate=false——L4 永不入正式 fatal/major/minor/info 计数与门禁)。
+    批五(A-β5-④):增 gate_status 四态派生键(compute_gate_status,双 API 面共享)。"""
     summary = {s: 0 for s in SEVERITY_ORDER}
     summary["need_human"] = 0
     # L4 advisory 单列(A-续-⑥,P1-β批二续 T4):正式 fatal/major/minor/info 计数排除
@@ -242,6 +280,7 @@ def summarize_issues(issues, rules_total: int | None = None) -> dict:
     summary["rules_total"] = rules_total
     summary["unknown_ratio"] = round(summary["need_human"] / rules_total, 4) if isinstance(rules_total, int) and rules_total > 0 else None
     summary["advisory"] = {"total": advisory_total, "by_severity": advisory}
+    summary["gate_status"] = compute_gate_status(issues)
     return summary
 
 
