@@ -1002,3 +1002,113 @@ class TestBeta8ListItemsNarrowing:
             for key in ("all", "any", "values"):
                 bad = [e for e in (r.check.get(key) or []) if isinstance(e, dict)]
                 assert not bad, f"{r.id} {key} 出现 dict 项(收窄门应拒载): {bad}"
+
+
+# ── P1-β批九 T1:att_year_span 附件年份连续性算子(A-β9-②,2026-11-08;rulepack 零触→五锁钉零扰动,
+#    仅算子层直调,镜像 att_count 直调先例:构造 Rule → run_det_rule,不经 load)──
+
+
+class TestBeta9AttYearSpan:
+    """批九 T1:att_year_span 算子分支八钉(A-β9-② 逐条;含勘误② findall 同名多 token 钉,controller 2026-11-08)。"""
+
+    def _rule(self):
+        return Rule(
+            id="L2-052",
+            name="附件年份连续性",
+            layer="L2",
+            type="deterministic",
+            applies_to=["*"],
+            inputs=["tender.attachment_requirements", "bid.attachment_index"],
+            check={"op": "att_year_span", "left": "tender.attachment_requirements", "right": "bid.attachment_index"},
+            severity="major",
+            evidence=[],
+            message_tpl="附件年份覆盖问题:{span_fail}",
+            fix_tpl=None,
+            confidence_gate=0.0,
+            enabled=True,
+        )
+
+    @staticmethod
+    def _fields(reqs, prov):
+        return {"tender.attachment_requirements": reqs, "bid.attachment_index": prov}
+
+    def test_compliant_span_zero_issue(self):
+        # 合规:要求3年,命中行年份 2023/2024/2024/2025 → 去重={2023,2024,2025} 数量足且连续 → 零 issue
+        reqs = [{"no": "A-1", "name": "近年财务报告", "year_span": 3}]
+        prov = [
+            {"no": "A-1", "name": "2023年度审计报告"},
+            {"no": "A-1", "name": "2024年度审计报告"},
+            {"no": "A-1", "name": "2024年度审计报告(副本)"},
+            {"no": "A-1", "name": "2025年1-6月财务报表"},
+        ]
+        assert run_det_rule(self._rule(), self._fields(reqs, prov)) == []
+
+    def test_span_short_reports_require_vs_cover(self):
+        # 不足(PARTIAL 行参与门):min_count=3 提供两份 → PARTIAL;Y={2023,2024} → 「要求3年/覆盖2年」
+        reqs = [{"no": "A-1", "name": "近年财务报告", "year_span": 3, "min_count": 3}]
+        prov = [
+            {"no": "A-1", "name": "2023年度审计报告"},
+            {"no": "A-1", "name": "2024年度审计报告"},
+        ]
+        issues = run_det_rule(self._rule(), self._fields(reqs, prov))
+        assert len(issues) == 1 and issues[0]["verdict"] == "FAIL"
+        assert "要求3年/覆盖2年" in issues[0]["message"]
+        assert issues[0]["entity_keys"] == ["attachment:A-1"]
+        assert issues[0]["dedup_key"] == "L2-052|-|attachment:A-1"
+
+    def test_span_gap_reports_discontinuity(self):
+        # 断档:要求2年,Y={2022,2024}(份数足但中间缺 2023)→「覆盖年份断档 2022-2024」
+        reqs = [{"no": "A-1", "name": "近年财务报告", "year_span": 2}]
+        prov = [
+            {"no": "A-1", "name": "2022年度审计报告"},
+            {"no": "A-1", "name": "2024年度审计报告"},
+        ]
+        issues = run_det_rule(self._rule(), self._fields(reqs, prov))
+        assert len(issues) == 1
+        assert "断档" in issues[0]["message"] and "2022-2024" in issues[0]["message"]
+
+    def test_multi_token_name_years_all_collected(self):
+        # 勘误②判别钉(controller 2026-11-08):同名多年份 token 全收(findall)——search 只收首 token 会误报「不足」
+        reqs = [{"no": "A-1", "name": "近年审计报告", "year_span": 2}]
+        prov = [{"no": "A-1", "name": "2023及2025年审计报告"}]
+        issues = run_det_rule(self._rule(), self._fields(reqs, prov))
+        assert len(issues) == 1
+        assert "断档" in issues[0]["message"] and "2023-2025" in issues[0]["message"]
+
+    def test_unparsable_years_degrades_need_human(self):
+        # 零解析(③):命中行 name 无 4 位年份 → need_human;带 entity_keys+dedup_key(att UNKNOWN 行同构)
+        reqs = [{"no": "A-1", "name": "近年财务报告", "year_span": 3}]
+        prov = [{"no": "A-1", "name": "财务报告合集"}]
+        issues = run_det_rule(self._rule(), self._fields(reqs, prov))
+        assert len(issues) == 1 and issues[0]["need_human"] is True and issues[0]["verdict"] == "UNKNOWN"
+        assert "无一可解析年份" in issues[0]["message"]
+        assert issues[0]["entity_keys"] == ["attachment:A-1"]
+        assert issues[0]["dedup_key"] == "L2-052|-|attachment:A-1"
+
+    def test_null_or_missing_year_span_zero_participation(self):
+        # year_span null/缺失 → 零参与零发声(命中行年份可解析也不发声)
+        reqs = [
+            {"no": "A-1", "name": "近年财务报告", "year_span": None},
+            {"no": "A-2", "name": "业绩证明"},
+        ]
+        prov = [
+            {"no": "A-1", "name": "2023年度审计报告"},
+            {"no": "A-2", "name": "2020-2021年业绩证明"},
+        ]
+        assert run_det_rule(self._rule(), self._fields(reqs, prov)) == []
+
+    def test_missing_status_zero_participation(self):
+        # MISSING 行零参与(④:L2-020/023 属地,零双报);year_span 合法亦不发声
+        reqs = [{"no": "A-1", "name": "近年财务报告", "year_span": 3}]
+        assert run_det_rule(self._rule(), self._fields(reqs, [])) == []
+
+    def test_both_causes_single_issue_two_entries(self):
+        # ⑥ 两因并存=一条 violation 两条目(不足+断档不互吞):year_span=4,Y={2022,2024}
+        reqs = [{"no": "A-1", "name": "近年财务报告", "year_span": 4}]
+        prov = [
+            {"no": "A-1", "name": "2022年度审计报告"},
+            {"no": "A-1", "name": "2024年度审计报告"},
+        ]
+        issues = run_det_rule(self._rule(), self._fields(reqs, prov))
+        assert len(issues) == 1
+        assert "要求4年/覆盖2年" in issues[0]["message"] and "断档" in issues[0]["message"]

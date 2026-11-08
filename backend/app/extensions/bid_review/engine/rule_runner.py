@@ -20,7 +20,8 @@ from app.extensions.bid_review.engine.expr import ExprError, RulePackError, eval
 from app.extensions.bid_review.engine.verdicts import VERDICT_FAIL, VERDICT_UNKNOWN
 
 _OPS = {"lte": operator.le, "gte": operator.ge, "eq": operator.eq}
-_KNOWN_OPS = {*_OPS, "and", "or", "all", "set_eq", "att_check", "att_count", "att_missing_rows"}  # steps 形态无 op 键,单独判;att_* = L2 P1 附件核对(spec 2026-11-02 §3)+L2-023 指纹通道(spec 2026-11-04 §2.1);or = check-op 层析取(P1-β批二)
+# att_* = L2 P1 附件核对(spec 2026-11-02 §3)+L2-023 指纹通道(spec 2026-11-04 §2.1)+L2-052 年份连续性(P1-β批九 2026-11-08)
+_KNOWN_OPS = {*_OPS, "and", "or", "all", "set_eq", "att_check", "att_count", "att_missing_rows", "att_year_span"}  # steps 形态无 op 键,单独判;or = check-op 层析取(P1-β批二)
 _UNIT_CN = {"day": "天", "month": "个月", "week": "周", "percent": "%"}
 
 
@@ -347,7 +348,7 @@ def run_det_rule(rule: Rule, fields: dict) -> list[dict]:
             miss, extra = sorted(rhs - lhs, key=str), sorted(lhs - rhs, key=str)
             if miss or extra:
                 issues.append(_issue(rule, fields, {"missing": miss, "extra": extra}))
-        elif chk["op"] in ("att_check", "att_count", "att_missing_rows"):  # L2 P1 附件核对(spec 2026-11-02 §3);P2:UNKNOWN→need_human+实体键(§7);L2-023 粗筛(spec 2026-11-04 §2.1)
+        elif chk["op"] in ("att_check", "att_count", "att_missing_rows", "att_year_span"):  # L2 P1 附件核对(spec 2026-11-02 §3);P2:UNKNOWN→need_human+实体键(§7);L2-023 粗筛(spec 2026-11-04 §2.1);L2-052 年份连续性(P1-β批九 2026-11-08)
             reqs, prov = _val(chk["left"], fields), _val(chk["right"], fields)
             if not isinstance(reqs, list) or not isinstance(prov, list):
                 issues.append(_need_human(rule, "附件字段缺失或类型非法(need_human)"))
@@ -358,7 +359,35 @@ def run_det_rule(rule: Rule, fields: dict) -> list[dict]:
                     no = str(r.get("no") or "").strip()
                     return f"{no} {r.get('name')}" if no else str(r.get("name") or "")
 
-                if chk["op"] == "att_check":
+                if chk["op"] == "att_year_span":  # L2-052 附件年份连续性(P1-β批九 T1,A-β9-② 2026-11-08;镜像 att_* 家族)
+                    # 参与门(②④):year_span 正整数(int 且非 bool)且状态∈{MATCHED,PARTIAL};其余零参与零发声
+                    # ——MISSING/UNKNOWN 归 L2-020(att_check)/L2-023(att_missing_rows)属地,零双报。
+                    for r in out["per_req"]:
+                        n = r["req"].get("year_span")
+                        if not (isinstance(n, int) and not isinstance(n, bool) and n > 0) or r["status"] not in ("MATCHED", "PARTIAL"):
+                            continue
+                        # ② 年份载体=命中提供行 name 的 4 位年份 token 集(负向后顾/前瞻防编号切片;
+                        #    findall 同名全收——勘误② controller 裁,A-β9-②「token 集」原文,「2023及2025」双年均落),去重升序
+                        years = sorted({int(y) for p in r["matched"] for y in re.findall(r"(?<!\d)(\d{4})(?!\d)", str(p.get("name") or ""))})
+                        if not years:  # ③ 零可解析年份(A-β6-③ v2)=need_human;实体键/dedup 与 att UNKNOWN 行同构
+                            nh = _need_human(rule, f"附件「{_label(r['req'])}」命中行无一可解析年份(年份连续性无法自动核对),需人工确认")
+                            nh["entity_keys"] = [_entity_key(r["req"])]
+                            nh["dedup_key"] = f"{rule.id}|-|{_entity_key(r['req'])}"
+                            issues.append(nh)
+                            continue
+                        entries: list[str] = []  # ⑥ 同行两因不互吞:各自成条目合入同一条 violation(span_fail 列表;att_count insufficient 条目句式同构)
+                        if len(years) < n:
+                            entries.append(f"「{_label(r['req'])}: 要求{n}年/覆盖{len(years)}年」")
+                        if years[-1] - years[0] + 1 != len(years):  # ② 连续性=无断档;不锚定截止日日历年(财年书写惯例异构=FP 源)
+                            entries.append(f"「{_label(r['req'])}: 覆盖年份断档 {years[0]}-{years[-1]}」")
+                        if not entries:
+                            continue  # 合规行零发声
+                        iss = _issue(rule, fields, {"span_fail": entries})
+                        iss["entity_keys"] = [_entity_key(r["req"])]
+                        iss["dedup_key"] = f"{rule.id}|-|{_entity_key(r['req'])}"  # 按要求行实体键派生(I-1 同规)
+                        iss["severity"] = _src_severity([r["req"]], rule.severity)  # ⑤ C-11 单行源覆盖(A-β1-③)
+                        issues.append(iss)
+                elif chk["op"] == "att_check":
                     miss = [r for r in out["per_req"] if r["status"] == "MISSING"]
                     unknown = [r for r in out["per_req"] if r["status"] == "UNKNOWN"]
                     if miss:
