@@ -3112,3 +3112,8 @@ CALIBRATION 批次裁决表是历史快照,新规则的行插进旧批次表必�
 - **列表项形态门(A-β8-③)**:dict 形态项仅 `steps` 合法(缺 expr 拒载=bug-4260 门);`all/any/values` dict 项载入期拒载——eval 面对三键列表只 `str(e)`(dict 渲染垃圾串),`values` 无任何 op 消费。`_validate_list_items` 单点在 load_rulepack。
 - **years() 边界**:中文小表一~十/两,组合数退化取紧邻「年」单字位(「二十年」→10、「十一年」→1)非 None;阿拉伯 `(?<!\d)(\d{1,3})\s*年` 负向后顾使「2024年」(日历年形态)→None。零规则零宇宙落的原语,规则本体(L2-024 年份连续性 v2 语义)仍挂账。
 - **buglog 撞号实录**:bug-4228 双撞(merge 会话 package.json 条 vs 批七 dict-step 门条)——批八把后者重编号 bug-4260;历史撞号尚有 13 组(3704×4、3705/06/07、3908、3967、3971/72、4027、4236/37、4254/55)留观未动(引用面不可考,不盲改)。append 前现读 max+1 的律并发会话仍在违反。
+
+### 批九 Key Learnings(2026-11-08/09,bid_review P1 EAI-CUSTOM)
+- att_year_span 第四 att 算子:dispatch 元组+分支置首(att_check 降 elif);「年份 token 集」语义=findall 同名全收——re.search 只收每名首 token,「2023及2025」类名会误报不足(controller 裁决,判别钉在 TestBeta9AttYearSpan)。
+- ruff E501 按 CJK 显示宽度计(≈2/字):test_bid_review_metrics.py :21 注释已顶格,追加注先估宽,超线即缩 `+L2-052` 级纯 ASCII 尾;det 钉链式注释扩代际时收窄历史段而非线性追加。
+- det 规则入包四联锁(少一即红,预期红=漏):pack yaml 卡+det 数钉(runner :152 链注+test_pack_pins 60/51)+白名单双处(metrics _KNOWN_OPS+载入 ops dict)+golden(案例 yaml+EXPECTED_COVERAGE 集)。三方门 EXPECTED_COVERAGE==pack_ids 精确相等→加卡必同批加题;最短模板=L2-024-count-insufficient.yaml。

@@ -9356,6 +9356,104 @@
       "related_bugs": [],
       "occurrences": 1,
       "last_seen": "2026-11-08T15:06:44.586Z"
+    },
+    {
+      "id": "bug-4262",
+      "timestamp": "2026-11-08T15:37:05.845Z",
+      "error_message": "Incorrect value in code",
+      "file": "backend/tests/test_bid_review_rule_runner.py",
+      "root_cause": "Had \"批九 T1:att_year_span 算子分支六钉+两因合并钉(A-β9-② 逐条)。\"",
+      "fix": "Changed to \"批九 T1:att_year_span 算子分支八钉(A-β9-② 逐条;含勘误② findall",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-11-08T15:37:05.845Z"
+    },
+    {
+      "id": "bug-4263",
+      "timestamp": "2026-11-08T15:45:39.109Z",
+      "error_message": "Incorrect value in code",
+      "file": "backend/tests/test_bid_review_rule_runner.py",
+      "root_cause": "Had \"L1 15 + L2 20 + L3 15 = 50(批七T2 +1:L1-026 递交时间,P1",
+      "fix": "Changed to \"L1 15 + L2 21 + L3 15 = 51(批九T1 +1:L2-052 年份连续性,P",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-11-08T15:45:39.109Z"
+    },
+    {
+      "id": "bug-4264",
+      "timestamp": "2026-11-08T15:46:50.208Z",
+      "error_message": "Incorrect value in code",
+      "file": "backend/tests/test_bid_review_metrics.py",
+      "root_cause": "Had \"steps\"",
+      "fix": "Changed to \"att_year_span\"",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-11-08T15:46:50.208Z"
+    },
+    {
+      "id": "bug-4265",
+      "timestamp": "2026-11-08T15:56:12.656Z",
+      "error_message": "Incorrect value in code",
+      "file": "backend/tests/test_bid_review_rule_runner.py",
+      "root_cause": "Had \"L1 15 + L2 21 + L3 15 = 51(批九T1 +1:L2-052 年份连续性,P",
+      "fix": "Changed to \"L1 15 + L2 21 + L3 15 = 51(批九T1 +1:L2-052 年份连续性,A",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-11-08T15:56:12.656Z"
+    },
+    {
+      "id": "bug-4266",
+      "timestamp": "2026-11-08T15:57:31.825Z",
+      "error_message": "Wrong reference: att_year_span should be L2",
+      "file": "backend/tests/test_bid_review_metrics.py",
+      "root_cause": "Used \"att_year_span\" instead of \"L2\"",
+      "fix": "Changed att_year_span → L2",
+      "tags": [
+        "auto-detected",
+        "wrong-reference",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-11-08T15:57:31.825Z"
+    },
+    {
+      "id": "bug-4267",
+      "timestamp": "2026-11-09T00:05:00",
+      "error_message": "ruff E501 Line too long (271/307/245/243 > 240) 批九T2 注释扩写连续超线",
+      "file": "backend/tests/test_bid_review_metrics.py + backend/tests/test_bid_review_rule_runner.py",
+      "root_cause": "ruff E501 按 CJK 显示宽度(约2/字)计行宽,中文注释按字符数估宽必低估;metrics :21 原注释已近顶格,追加中文注即爆",
+      "fix": "metrics 尾注缩至 +L2-052 纯 ASCII;det 链式注释收窄历史段保批号链;顶格行追加注先估宽(教训入 cerebrum)",
+      "tags": [
+        "ruff",
+        "e501",
+        "cjk-width",
+        "lint",
+        "bid-review-batch9"
+      ],
+      "related_bugs": [],
+      "occurrences": 4,
+      "last_seen": "2026-11-09T00:05:00"
     }
   ]
 }

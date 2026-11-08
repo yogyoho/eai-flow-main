@@ -7,14 +7,14 @@
 | # | 裁决 |
 |---|---|
 | A-β9-① | **范围锁**:批九 = 单规则 L2-052 附件年份连续性达标(新算子 `att_year_span` 镜像 att_* 家族 + 规则卡)。招标侧契约**已带 `year_span` 字段**(extract.py :55 实证),bid 侧匹配行名即年份载体——双向 inputs(tender.attachment_requirements/bid.attachment_index)均已在宇宙,**宇宙 126/首段 114/anchored 不动**;锁面动四处:包 59→60、det 50→51、golden 82→83、EXPECTED_COVERAGE 59→60。 |
-| A-β9-② | **v2 语义(controller 拍板,规格侧落此为准)**:对 year_span 为正整数且状态∈{MATCHED,PARTIAL} 的要求行,Y = 命中(matched)提供行 name 的 4 位年份 token 集 `(?<!\d)(\d{4})(?!\d)`;①`|Y| < year_span` → violation「年份不足」;②`max(Y)-min(Y)+1 != \|Y\|` → violation「年份断档」(连续性=无断档;**不锚定截止日日历年**——财年书写惯例异构,锚定=FP 源);③命中行年份零可解析 → need_human「无法解析年份」(A-β6-③ v2 的 无法解析→UNKNOWN);④MISSING/UNKNOWN 行零参与(L2-020/023 属地,零双报);⑤severity 行源覆盖 `_src_severity` 同 att 家族;entity_keys/dedup_key 按要求行实体键同构。 |
+| A-β9-② | **v2 语义(controller 拍板,规格侧落此为准)**:对 year_span 为正整数且状态∈{MATCHED,PARTIAL} 的要求行,Y = 命中(matched)提供行 name 的 4 位年份 token 集 `(?<!\d)(\d{4})(?!\d)`;①`|Y| < year_span` → violation「年份不足」;②`max(Y)-min(Y)+1 != \|Y\|` → violation「年份断档」(连续性=无断档;**不锚定截止日日历年**——财年书写惯例异构,锚定=FP 源);③命中行年份零可解析 → need_human「无法解析年份」(A-β6-③ v2 的 无法解析→UNKNOWN);④MISSING/UNKNOWN 行零参与(L2-020/023 属地,零双报);⑤severity 行源覆盖 `_src_severity` 同 att 家族;entity_keys/dedup_key 按要求行实体键同构。**勘误②(2026-11-08 controller 裁)**:「token 集」执行语义=findall 同名全收,search 只收首 token 系语义偏离——已改+判别钉(865f3fc46,T1 后 controller 直办一行+一钉)。 |
 | A-β9-③ | **每 commit 全绿切分**:T1 实现者只落算子分支(dispatch 第四模式)+matched 暴露核对+算子单测(rulepack 不动→钉不红);T2 controller 直办规则卡 L2-052+四锁 bump+golden 一案例+EXPECTED_COVERAGE(controller 直办 golden face/五锁,批六 T6/批七 T5 先例)。 |
 | A-β9-④ | **验证协议**:家族门全绿(基线 740p/6s/0f→T2 后实际数只增不减);lint 门仅本批文件(check+生产 format --check);spec P1 段批九兑付段 controller 落账。 |
 
 ## 任务分解
 
-- [ ] **T1(实现者)**:`att_year_span` 算子分支(rule_runner.py dispatch)——per_req 遍历,matched 行名年份集(A-β9-② ①②③④⑤ 逐条),violations 走 `_issue`+entity_keys+dedup_key+`_src_severity`,零解析走 `_need_human`。attachments.py 若 matched 暴露面不足才动(实测 :254 已出 dict 行,预期零改)。tests/test_bid_review_rule_runner.py 新 TestBeta9 算子单测(合规/不足/断档/零解析 need_human/year_span null 跳过/MISSING 跳过 六钉)。禁触:rulepack、golden、五锁数字面、.wolf/、docs/。
-- [ ] **T2(controller 直办)**:pack 卡 L2-052(det,severity major,evidence A-TENDER-NOTICE+A-BOQ,tpl {span_fail})+rule_runner 测试钉 det 51/包 60+golden 案例 L2-052-year-span-short.yaml(strict:false,bug-4227 律双 inputs 全值)+EXPECTED_COVERAGE 59→60+家族门+spec 批九段+wolf 记账。
+- [x] **T1(实现者)**:`att_year_span` 算子分支(rule_runner.py dispatch)——per_req 遍历,matched 行名年份集(A-β9-② ①②③④⑤ 逐条),violations 走 `_issue`+entity_keys+dedup_key+`_src_severity`,零解析走 `_need_human`。attachments.py 若 matched 暴露面不足才动(实测 :254 已出 dict 行,预期零改)。tests/test_bid_review_rule_runner.py 新 TestBeta9 算子单测(合规/不足/断档/零解析 need_human/year_span null 跳过/MISSING 跳过 六钉)。禁触:rulepack、golden、五锁数字面、.wolf/、docs/。**✅ 兑付 865f3fc46(2026-11-08):实现者七钉+勘误② controller 直办 findall 改造+判别钉=八钉;attachments.py 零触实证;门 740→748p/6s/0f。**
+- [x] **T2(controller 直办)**:pack 卡 L2-052(det,severity major,evidence A-TENDER-NOTICE+A-BOQ,tpl {span_fail})+rule_runner 测试钉 det 51/包 60+golden 案例 L2-052-year-span-short.yaml(strict:false,bug-4227 律双 inputs 全值)+EXPECTED_COVERAGE 59→60+家族门+spec 批九段+wolf 记账。**✅ 兑付 6eaa64196(2026-11-08→09 凌晨):卡+det 50→51/包 59→60/golden 82→83/coverage 59→60+载入白名单钉+metrics _KNOWN_OPS;golden strict:true 单规则触发钉;lint 两处 E501 注释宽度修剪(CJK 计宽教训入 cerebrum);家族门 749p/6s/0f。**
 
 ## 挂账延续(批九后)
 
