@@ -324,11 +324,14 @@ class TestSeverityOverride:
         assert loaded.severity == "fatal"
         assert loaded.severity_override == {"spec": "major", "reason": "EAI 上调:必填清单行缺价属实质性不响应,与 L1-011 漏项同档"}
 
-    def test_real_pack_zero_noise(self):
-        # 真包回归(A-β10-① 范围锁):T1 时点真包零卡带注记 → 全 None,加载零异常零噪声
+    def test_real_pack_known_deviations(self):
+        # 反向钉(A-β10-③):真包注记面精确相等——已知偏离集 {L2-041}(controller 全包扫描
+        # 2026-11-09,spec major→fatal EAI 上调,整合版 W3 行裁决)。新偏离入集须同批落
+        # 卡注记+更新本集+注释援引 C-11-③;多注记/缺注记均当场红。
+        known = {"L2-041"}
         pack = load_rulepack(registry.RULEPACK_DIR / "1.0.0.yaml")
-        assert pack.rules
-        assert all(r.severity_override is None for r in pack.rules)
+        annotated = {r.id for r in pack.rules if r.severity_override}
+        assert annotated == known, f"注记面漂移: 多={sorted(annotated - known)} 缺={sorted(known - annotated)}"
 
 
 class TestCrossSourceSubset:

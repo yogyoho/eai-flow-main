@@ -721,7 +721,7 @@ rules:
   # 整合版编号对齐 W1~W5 2026-11-06,spec docs/superpowers/specs/2026-11-06-bid-review-integrated-spec-alignment.md §3.1):
   # 四条 det 消费 M1-M5 悬空字段(取证:registry.consumed_by 七路径 rules 全空)。
   # null 安全统一「!= True」形态:operator.ne 下仅值恰为 True 时判 False,False/None 双双通过。
-  # ID 对齐:021指纹→023、023空白→022、022必填报价→041(fatal=EAI 上调,C-11 severity_override)、
+  # ID 对齐:021指纹→023、023空白→022、022必填报价→041(fatal=EAI 上调,C-11 severity_override——批十起结构化入卡,A-β10-②)、
   # 019聚类→L3-026(段尾扩展)、020章节空缺→L2-015(层 L3→L2);名称保持 EAI 显示名,编号以整合版为权威。
   - id: L2-041
     name: 必填清单行未报价
@@ -737,6 +737,9 @@ rules:
       var: r
       cond: "r.required != True or r.price != null"
     severity: fatal
+    # C-11③ severity_override(批十 2026-11-09,A-β10-②):规格档=major,EAI 上调 fatal——
+    # 必填清单行缺价属实质性不响应,与 L1-011 漏项同档(整合版 W3 行裁决;上方对齐注同源)。
+    severity_override: {spec: major, reason: "C-11-③ EAI 上调:必填清单行缺价=实质性不响应,与 L1-011 漏项同档(整合版 W3 行裁决)"}
     evidence: [A-TENDER-BOQ, A-BOQ]
     message_tpl: "必填清单行 {r.id}({r.name})未报单价,需按招标清单补报"
     fix_tpl: "按招标清单逐项核对必填行报价,缺价行补齐单价与合价"
@@ -1120,7 +1123,7 @@ rules:
     enabled: true
   # L1-022(hyb,major):格式份数密封——stage1 det 合规式 op:and(L1-017 先例):任一支失败
   # (份数不等/目录=False/页码=False)出候选,null-skip 支保护招标侧未明示维;stage2 模型确认
-  # 字体/装订/密封;A-β7-⑥ severity v1=major 固定(severity_override 机制挂账);
+  # 字体/装订/密封;A-β7-⑥ severity v1=major 固定(severity_override 机制 v1 已兑付=批十 2026-11-09;维度级分裂 YAGNI 另批,A-β10-①);
   # A-β7-② 裁决:op:or 违规式改 op:and 合规式(方向反转,违规可出候选),inputs 10 条 format 叶键
   - id: L1-022
     name: 格式、份数与密封标识
