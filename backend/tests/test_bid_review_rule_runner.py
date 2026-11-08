@@ -948,11 +948,12 @@ class TestBeta7L1007Extension:
         assert issues == []  # full=驳回候选,合规落地零 issue
 
     def test_dict_step_missing_expr_rejected_at_load(self, tmp_path):
-        from app.extensions.bid_review.engine.rule_runner import _validate_dict_steps
+        # 批八T1(A-β8-③):_validate_dict_steps 扩面改名 _validate_list_items,steps 缺 expr 门语义/文案逐字不变
+        from app.extensions.bid_review.engine.rule_runner import _validate_list_items
 
         # 直调:校验函数本体按 rid 点名拒载
         with pytest.raises(RulePackError, match="expr"):
-            _validate_dict_steps({"steps": [{"message_tpl": "x"}]}, "T-001")
+            _validate_list_items({"steps": [{"message_tpl": "x"}]}, "T-001")
 
         # 走 load_rulepack:deepcopy L1-006,dict step 弹掉 expr 键 → 载入期 raise
         raw = yaml.safe_load(Path(PACK).read_text(encoding="utf-8"))
@@ -962,3 +963,42 @@ class TestBeta7L1007Extension:
         p.write_text(yaml.safe_dump({"rules": [target]}, allow_unicode=True), encoding="utf-8")
         with pytest.raises(RulePackError, match="expr"):
             load_rulepack(str(p))
+
+
+# ── P1-β批八 T1(A-β8-③,2026-11-08):列表项形态门收窄——dict 形态项仅 steps 合法
+# (批七 expr 门维持),all/any/values 出现 dict 项载入期拒载:eval 面对三键列表只
+# str(e)(rule_runner op:and/op:or,dict 渲染垃圾串),values 更无任何 op 消费——
+# 静默放行=校验面谎报覆盖。存量包零触:现包四键全字符串项,载入零噪声。
+
+
+class TestBeta8ListItemsNarrowing:
+    """批八 T1:_collect_exprs dict 分支收窄 + _validate_list_items 载入期拒载(A-β8-③)。"""
+
+    def test_all_list_dict_item_rejected_at_load(self, tmp_path):
+        from app.extensions.bid_review.engine.rule_runner import _validate_list_items
+
+        # 直调:文案含列表键名(all)与规则 id
+        with pytest.raises(RulePackError) as ei:
+            _validate_list_items({"all": ["a == a", {"op": "and", "all": []}]}, "T-002")
+        assert "all" in str(ei.value) and "T-002" in str(ei.value)
+
+        # 走 load_rulepack:deepcopy 现包首个 op:and 规则(L3-001 先例),all 列表注入 dict 项 → 载入期 raise
+        raw = yaml.safe_load(Path(PACK).read_text(encoding="utf-8"))
+        target = copy.deepcopy(next(r for r in raw["rules"] if r["check"].get("op") == "and"))
+        assert target["check"]["all"] and all(isinstance(e, str) for e in target["check"]["all"])
+        target["check"]["all"] = [*target["check"]["all"], {"injected": True}]
+        p = tmp_path / "bad.yaml"
+        p.write_text(yaml.safe_dump({"rules": [target]}, allow_unicode=True), encoding="utf-8")
+        with pytest.raises(RulePackError) as ei:
+            load_rulepack(str(p))
+        assert "all" in str(ei.value) and target["id"] in str(ei.value)
+
+    def test_existing_core_pack_loads_zero_noise(self):
+        # 真包回归钉:收窄前置态自证——现包 all/any/values 三键全字符串项(零 dict),
+        # 新形态门对存量包零扰动(load_rulepack 全量载入不抛)。
+        pack = load_rulepack(PACK)
+        assert pack.rules, "核心包零规则=载入异常"
+        for r in pack.rules:
+            for key in ("all", "any", "values"):
+                bad = [e for e in (r.check.get(key) or []) if isinstance(e, dict)]
+                assert not bad, f"{r.id} {key} 出现 dict 项(收窄门应拒载): {bad}"

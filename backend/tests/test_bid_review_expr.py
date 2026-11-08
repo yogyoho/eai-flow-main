@@ -86,3 +86,16 @@ def test_wild_requires_attr_after_star():
     # A11 收紧:[*] 后非 .attr token → ExprError(勿照抄副本容忍 parse('bid.detail_rows[*]amount'))
     with pytest.raises(ExprError):
         eval_expr("bid.detail_rows[*]amount == 1.0", F)
+
+
+def test_years_text_extract_primitive():
+    # A-β8-②(P1-β批八T1,2026-11-08):years() 年数文本提取原语三钉。中文数字年数
+    # (「三年」「三年以上」→3)与阿拉伯数字(「近3 年」容忍数字与「年」间空白→3);
+    # 解析失败/无年份语义 → None(bug-4227 律:null=不在场,上层走 unclear/UNKNOWN
+    # 通路,禁 raise)。日历年形态(「2024年」)非年数 → 保守 None(负向后顾防中段截取)。
+    assert eval_expr("years(bid.qual_text) == 3", {"bid.qual_text": "三年"}) is True
+    assert eval_expr("years(bid.qual_text) == 3", {"bid.qual_text": "三年以上"}) is True
+    assert eval_expr("years(bid.qual_text) == 3", {"bid.qual_text": "近3 年"}) is True
+    assert eval_expr("years(bid.qual_text) == null", {"bid.qual_text": "业绩优良,无违约记录"}) is True
+    assert eval_expr("years(bid.qual_text) == null", {"bid.qual_text": "2024年通过复审"}) is True
+    assert eval_expr("years(bid.qual_text) == null", {"bid.qual_text": None}) is True

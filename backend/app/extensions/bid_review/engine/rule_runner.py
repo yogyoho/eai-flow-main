@@ -62,21 +62,36 @@ def _collect_exprs(chk: dict) -> list[str]:
                 # optional?, message_tpl?, fix_tpl?, dedup_ent?}——expr/precondition 是表达式,
                 # 入加载期校验+缺字段门;message_tpl/fix_tpl 是模板非表达式,不收集。
                 # legacy 字符串 step 行为不变。
-                out += [str(e[k]) for k in ("precondition", "expr") if k in e]
+                # EAI-CUSTOM 批八T1(A-β8-③,2026-11-08):dict 分支收窄——dict 形态项仅 steps
+                # 合法;all/any/values 的 dict 项由 _validate_list_items 载入期拒载(eval 面对三键
+                # 只 str(e) 渲染垃圾串、values 无 op 消费),此处不再收集,静默收校验=校验面谎报覆盖。
+                if key == "steps":
+                    out += [str(e[k]) for k in ("precondition", "expr") if k in e]
             else:
                 out.append(str(e))
     return out
 
 
-def _validate_dict_steps(chk: dict, rid: str) -> None:
-    """EAI-CUSTOM 批七T3(A-β7-③ 引擎左移,2026-11-08):steps dict 形态项缺 expr 键 →
-    载入期拒载。原态:load 静默放行(_collect_exprs 对 dict 项只收 expr/precondition,
-    缺 expr 即静默漏收),实评 run_det_rule str(st["expr"]) 才 KeyError → 伪装成
-    「求值期字段缺失 'expr'」need_human 错位降级。左移到 load,错误类型/句式与既有
-    载入错误(op/steps 形态门)一致;最小侵入:仅 load_rulepack 调用,执行路径零改动。"""
-    for st in chk.get("steps") or []:
-        if isinstance(st, dict) and "expr" not in st:
-            raise RulePackError(f"规则 {rid} steps dict 项缺少 expr(形态不合规,拒载)")
+_LIST_KEYS = ("steps", "all", "any", "values")
+
+
+def _validate_list_items(chk: dict, rid: str) -> None:
+    """EAI-CUSTOM 批七T3(A-β7-③)+批八T1(A-β8-③)载入期列表形态门(2026-11-08):
+    - steps dict 形态项缺 expr 键 → 拒载(批七原门,文案逐字保留)。原态 load 静默放行,
+      实评 run_det_rule str(st["expr"]) 才 KeyError → 伪装「求值期字段缺失 'expr'」
+      need_human 错位降级,左移到 load,错误句式与既有载入门一致。
+    - all/any/values 出现 dict 项 → 拒载(批八收窄):eval 面对三键列表只 str(e)
+      (rule_runner :315 op:and / :318 op:or,dict 渲染垃圾串),values 更无任何 op 消费——
+      静默放行=校验面谎报覆盖。文案含列表键名与规则 id。
+    最小侵入:仅 load_rulepack 调用,执行路径零改动;存量包零触(现包四键全字符串项)。"""
+    for key in _LIST_KEYS:
+        for item in chk.get(key) or []:
+            if not isinstance(item, dict):
+                continue
+            if key != "steps":
+                raise RulePackError(f"规则 {rid} {key} 列表出现 dict 项(eval 面不消费 dict 形态,拒载)")
+            if "expr" not in item:
+                raise RulePackError(f"规则 {rid} steps dict 项缺少 expr(形态不合规,拒载)")
 
 
 def load_rulepack(path: str | Path) -> RulePack:
@@ -92,7 +107,7 @@ def load_rulepack(path: str | Path) -> RulePack:
             raise RulePackError(f"规则 {rid} 未知算子 {op}(白名单外,拒载)")
         if "steps" not in chk and op is None:
             raise RulePackError(f"规则 {rid} check 缺少 op/steps(形态不识别,拒载)")
-        _validate_dict_steps(chk, rid)  # EAI-CUSTOM 批七T3(A-β7-③):steps dict 项缺 expr 左移到载入期拒载
+        _validate_list_items(chk, rid)  # EAI-CUSTOM 批七T3+批八T1(A-β7-③/A-β8-③):steps dict 缺 expr、all/any/values dict 项左移到载入期拒载
         if "tolerance" in chk and float(chk["tolerance"]) != 0.0:
             raise RulePackError(f"规则 {rid} tolerance 仅接受 0.00(求值器不容差)")
         for e in _collect_exprs(chk):

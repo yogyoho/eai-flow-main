@@ -19,7 +19,7 @@ class RulePackError(ExprError):
 
 
 _BIN = {"<=": operator.le, ">=": operator.ge, "==": operator.eq, "!=": operator.ne, "<": operator.lt, ">": operator.gt, "in": lambda a, b: a in (b or [])}
-_FUNCS = {"normalize_unit", "number_to_words", "months_ago", "codes", "covers", "keywords", "sum", "count", "contains_any", "imply", "all_equal", "close", "regex", "subset_of", "level_ge", "col"}
+_FUNCS = {"normalize_unit", "number_to_words", "months_ago", "years", "codes", "covers", "keywords", "sum", "count", "contains_any", "imply", "all_equal", "close", "regex", "subset_of", "level_ge", "col"}
 _QUANT = {"all", "any", "every", "exists"}
 _FORM2 = {"all": "all", "any": "any", "every": "all", "exists": "any"}
 # 引号串整体成单 token(评审修正 A5/A6 实测:引号逐字符成 token 会撕裂 CJK 字面量,如 covers(x, '本次投标及签署'))
@@ -249,6 +249,29 @@ def _months_ago(deadline, months):
     return date(y, mo, min(d.day, 28)).isoformat()
 
 
+# EAI-CUSTOM 批八T1(A-β8-②,2026-11-08):中文年数小表(一~十/两)。number_to_words 是
+# 数字→大写金额方向,逆映射不可复用;投标年数语料(质保/业绩年限)一~十覆盖现实面。
+# 已知边界(controller inline 修正 2026-11-08):组合数按设计取紧邻「年」的单字位——
+# 「二十年」→10(十)、「十一年」→1(一),非 None;现实年数语料一~十覆盖,需组合位再扩解析。
+_CN_YEAR = {"一": 1, "二": 2, "两": 2, "三": 3, "四": 4, "五": 5, "六": 6, "七": 7, "八": 8, "九": 9, "十": 10}
+
+
+def _years(text):
+    # years(文本) → int|None:中文数字年数(「三年」/「三年以上」→3)与阿拉伯数字
+    # (「3年」→3、「近3 年」→3,容忍数字与「年」间空白)。解析失败/无年份语义 → None
+    # (bug-4227 律:null=不在场,上层走 unclear/UNKNOWN 通路,禁 raise——run_det_rule
+    # 只捕 KeyError→need_human,抛错=错位降级)。≥4 位数字=日历年形态(「2024年」)非年数,
+    # 负向后顾防中段截取(「2024年起三年」不得得 24/202),保守 None。null=不在场,零新依赖。
+    s = str(text or "")
+    m = re.search(r"(?<!\d)(\d{1,3})\s*年", s)
+    if m:
+        return int(m.group(1))
+    m = re.search(r"([一两二三四五六七八九十])\s*年", s)
+    if m:
+        return _CN_YEAR[m.group(1)]
+    return None
+
+
 def _mul(a, b):
     # A-β1-①:非数值/None → KeyError(need_human 通路),禁 TypeError 逃逸(run_det_rule 只捕 KeyError)
     try:
@@ -311,6 +334,7 @@ _BUILTIN = {
     "normalize_unit": _normalize_unit,
     "number_to_words": _number_to_words,
     "months_ago": _months_ago,
+    "years": _years,
     "codes": lambda rows: [r.get("code") for r in (rows or [])],
     "covers": lambda scope, need: str(need) in str(scope or ""),
     "keywords": lambda name: re.findall(r"[一-龥]{2,}", str(name or "")),
