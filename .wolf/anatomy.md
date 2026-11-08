@@ -1,7 +1,7 @@
 # anatomy.md
 
-> Auto-maintained by OpenWolf. Last scanned: 2026-11-08T06:15:25.415Z
-> Files: 145 tracked | Anatomy hits: 0 | Misses: 0
+> Auto-maintained by OpenWolf. Last scanned: 2026-11-08T12:00:35.859Z
+> Files: 161 tracked | Anatomy hits: 0 | Misses: 0
 
 ## ../../00 工作目录/02 项目策划/马宁/应急指挥/bid-run/
 
@@ -42,7 +42,8 @@
 ## ./
 
 - `AGENTS.md` — AGENTS.md (~4025 tok)
-- `Makefile` — DeerFlow - Unified Development Environment (~3415 tok)
+- `config.yaml` — Configuration for the DeerFlow application (~42954 tok)
+- `Makefile` — DeerFlow - Unified Development Environment (~3505 tok)
 - `offline-deploy-reference.html` — EAI-Flow 离线部署参考 (~4087 tok)
 
 ## .agent/skills/smoke-test/
@@ -331,6 +332,7 @@
 - `bid-review-beta4-section-fallback-landed.md` (~292 tok)
 - `bid-review-beta5-gate-status-landed.md` (~441 tok)
 - `bid-review-live-recapture-landed.md` (~457 tok)
+- `bid-review-p1-beta6-landed.md` (~411 tok)
 
 ## C:/Users/admin/.gstack/
 
@@ -436,6 +438,7 @@
 
 ## backend/
 
+- `.beta7_t2_probe.py` — 批七 T2 实态勘误探针(plan Task2 Step3 前置;跑完即删,不入库)。 (~976 tok)
 
 ## backend/.deer-flow/
 
@@ -634,7 +637,7 @@
 
 ## backend/app/channels/
 
-- `manager.py` — ChannelManager — consumes inbound messages and dispatches them to the DeerFlow agent via LangGraph S (~43048 tok)
+- `manager.py` — ChannelManager — consumes inbound messages and dispatches them to the DeerFlow agent via LangGraph S (~43317 tok)
 
 ## backend/app/extensions/
 
@@ -660,15 +663,15 @@
 
 ## backend/app/extensions/bid_review/engine/
 
-- `anchors.py` — A-* 锚点注册表(EAI-CUSTOM 2026-10-30 二期,spec §三)。 (~1509 tok)
+- `anchors.py` — A-* 锚点注册表(EAI-CUSTOM 2026-10-30 二期,spec §三)。 (~1910 tok)
 - `crosscheck.py` — B立项 M5 交叉自检(纯服务端零 LLM,spec 2026-11-04 §5 M5 行,2026-11-05)。 (~1075 tok)
 - `eval_core.py` — 共享规则分派核(金标准评测集 spec §4,EAI-CUSTOM 2026-11-03):worker._run_review_stage (~1937 tok)
 - `expr.py` — 确定性规则 DSL:受限 AST 求值器(canonical;技能内 eval_det.py 为其无量词子集副本)。 (~3722 tok)
-- `extract.py` — 基准字段提取:解析后文档文本 → field_snapshot(+materials_hash);LLM 提取函数可注入(translation worker `TranslateFn` 惯例)。 (~14340 tok)
+- `extract.py` — 基准字段提取:解析后文档文本 → field_snapshot(+materials_hash);LLM 提取函数可注入(translation worker `TranslateFn` 惯例)。 (~14908 tok)
 - `labels.py` — 字段中文名映射(EAI-CUSTOM 2026-10-30 二期,spec §四;ui-gaps spec 提案 A②并入)。 (~1092 tok)
 - `llm_runner.py` — sem/hyb 规则执行:规则卡 prompt 构造 + 模型调用 + 七道校验管线(设计文档 §4.5/§4.6)。 (~4177 tok)
 - `registry.py` — 规则包注册表——跨源索引+lint(EAI-CUSTOM 2026-11-05 R1,spec 裁决②③修正版)。 (~1651 tok)
-- `rule_runner.py` — 规则包加载 + det 执行(canonical;技能内 eval_det.py 为其无量词子集副本)。 (~6006 tok)
+- `rule_runner.py` — 规则包加载 + det 执行(canonical;技能内 eval_det.py 为其无量词子集副本)。 (~6189 tok)
 - `verdicts.py` — EAI-CUSTOM(P1-β批三 2026-11-07,C-08 值域三拆终章):verdict 引擎五值域。 (~244 tok)
 - `verify.py` — 七道后处理校验管线(模型输出→入库之间必过,设计文档 §4.6)。 (~3550 tok)
 
@@ -677,7 +680,7 @@
 
 ## backend/app/extensions/bid_review/engine/rulepacks/bid-review-core/
 
-- `1.0.0.yaml` — bid-review-core 子系统规则包 v1.0.0(canonical,50 条:det 44 / hyb 5 / sem 1;整合版编号对齐 2026-11-06)——技能 referenc (~10954 tok)
+- `1.0.0.yaml` — bid-review-core 子系统规则包 v1.0.0(canonical,50 条:det 44 / hyb 5 / sem 1;整合版编号对齐 2026-11-06)——技能 referenc (~11917 tok)
 
 ## backend/app/extensions/bid_review/engine/rulepacks/bid-review-l4/
 
@@ -698,8 +701,13 @@
 ## backend/app/extensions/bid_review/golden/cases/
 
 - `L1-003-performance-short.yaml` (~222 tok)
+- `L1-004-pm-qual-short.yaml` (~192 tok)
 - `L1-006-deposit-mismatch.yaml` (~121 tok)
+- `L1-007-signature-missing.yaml` (~194 tok)
 - `L1-017-consortium-not-allowed.yaml` (~102 tok)
+- `L1-020-subcontract-conflict.yaml` (~181 tok)
+- `L1-022-format-mismatch.yaml` (~238 tok)
+- `L1-026-late-submission.yaml` (~103 tok)
 - `L2-001-composition-missing.yaml` (~83 tok)
 - `L2-002-volume-count-short.yaml` (~104 tok)
 - `L2-003-electronic-files-missing.yaml` (~91 tok)
@@ -713,7 +721,7 @@
 - `L2-023-fp-confirm-partial.yaml` (~216 tok)
 - `L2-023-fp-reject-full.yaml` (~195 tok)
 - `L2-023-fp-unclear.yaml` (~180 tok)
-- `L2-030-l1007-folded.yaml` (~304 tok)
+- `L2-030-l1007-folded.yaml` (~348 tok)
 - `L2-030-signature-slot-missing.yaml` (~131 tok)
 - `L2-031-declaration-missing.yaml` (~103 tok)
 - `L2-032-id-pieces-missing.yaml` (~120 tok)
@@ -1005,12 +1013,12 @@
 - `test_bid_review_c11_severity.py` — C-11 src→severity 覆盖(P1-β批一 Task 4;裁决 A-β1-③:rg→fatal 保守侧,合并 issue 取成员行最严档,未知/空 src 不覆盖)。 (~1360 tok)
 - `test_bid_review_crud.py` — Task 7 测试:bid_review CRUD(owner 隔离 + dedup 合并)——sqlite+aiosqlite 内存库。 (~2122 tok)
 - `test_bid_review_diff.py` — B7 版本 diff(spec §5)测试:GET /tasks/{id}/diff?prev=<task_id> 问题级三态。 (~2408 tok)
-- `test_bid_review_eval_core.py` — 共享分派核单测(金标准 spec §4):det/sem 分派、None 剥离、逐规则隔离、进度回调。 (~4737 tok)
+- `test_bid_review_eval_core.py` — 共享分派核单测(金标准 spec §4):det/sem 分派、None 剥离、逐规则隔离、进度回调。 (~4806 tok)
 - `test_bid_review_expr_mul_close.py` — `*` 乘法算子 + close 容差内建(P1-β批一 Task 1;裁决 A-β1-①②:空值 KeyError→need_human 通路,无三值哨兵)。 (~527 tok)
 - `test_bid_review_expr_operators2.py` — P1-β批二 T1:or(check-op 层)/regex/subset_of/level_ge/col(A-β2-①:null/未知一律 KeyError→need_human,无哨兵;A-β2- (~1216 tok)
-- `test_bid_review_extract.py` — bid_review engine/extract.py 基准提取单测:shape/materials_hash 稳定 + null 显式保留 + 非字典路径丢弃 + prompt 骨架转录。 (~8494 tok)
+- `test_bid_review_extract.py` — bid_review engine/extract.py 基准提取单测:shape/materials_hash 稳定 + null 显式保留 + 非字典路径丢弃 + prompt 骨架转录。 (~9299 tok)
 - `test_bid_review_feedback.py` — Task 16 测试:feedback 复核三连 + 误报回流——confirm/false_positive/severity_change。 (~3701 tok)
-- `test_bid_review_golden.py` — 金标准回归门(金标准 spec §7)+loader/runner/report 单测。题库=人工标注答案, (~4887 tok)
+- `test_bid_review_golden.py` — 金标准回归门(金标准 spec §7)+loader/runner/report 单测。题库=人工标注答案, (~4946 tok)
 - `test_bid_review_grouping.py` — L2 P2 跨层实体去重(spec 2026-11-02 §7 挂账行):entity_keys 落库链 + (~1957 tok)
 - `test_bid_review_invoke_json.py` — _parse_json_object 尾逗号宽松修复 + _invoke_json 三试纠错共享核。 (~436 tok)
 - `test_bid_review_l4_activation.py` — L4 激活后端(P1-β批二续 T4,A-续-⑥⑦):RulePack.meta 结构化消费 / worker 并列 (~3771 tok)
@@ -1019,10 +1027,10 @@
 - `test_bid_review_llm_verify.py` — Task 13 单测:llm_runner 规则卡 prompt + verify 七道校验管线(模型经 model_fn 注入 fake,七道逐道独立断言)。 (~8624 tok)
 - `test_bid_review_mcp.py` — Task 11 测试:bid_review MCP 十一工具——直接调 handle_call(不过 stdio);_run_in_db (~2131 tok)
 - `test_bid_review_metrics.py` — M5 治理页 B5/B6 测试:规则定义五块明细 + list_rulepacks op 投影 + FAIL 归因 + 周趋势。 (~2734 tok)
-- `test_bid_review_registry.py` — 规则包注册表测试(spec 2026-11-05 R1 §2.6):宇宙锚定/反查/lint/拒载/投影声明。 (~3170 tok)
+- `test_bid_review_registry.py` — 规则包注册表测试(spec 2026-11-05 R1 §2.6):宇宙锚定/反查/lint/拒载/投影声明。 (~3683 tok)
 - `test_bid_review_routers.py` — Task 10 测试:bid_review 8 端点——httpx ASGITransport + 独立 FastAPI 子应用挂 router; (~11014 tok)
-- `test_bid_review_rule_families.py` — R2+ 规则族补齐测试(2026-11-05):四条 det 规则消费 M1-M5 悬空字段。 (~2135 tok)
-- `test_bid_review_rule_runner.py` — test_load_and_validate, test_unknown_operator_rejected, test_run_l1_009_violation_and_need_human, te (~9251 tok)
+- `test_bid_review_rule_families.py` — R2+ 规则族补齐测试(2026-11-05):四条 det 规则消费 M1-M5 悬空字段。 (~2178 tok)
+- `test_bid_review_rule_runner.py` — test_load_and_validate, test_unknown_operator_rejected, test_run_l1_009_violation_and_need_human, te (~12400 tok)
 - `test_bid_review_schemas.py` — Minor-4 NULL entity_keys 病理(spec 2026-11-04):跑过中间提交 bfde4add6 裸 (~419 tok)
 - `test_bid_review_score_coverage.py` — B4 评分覆盖度(spec §5)测试:compute_score_coverage 纯函数 + GET /tasks/{id}/score_coverage。 (~3539 tok)
 - `test_bid_review_sections_extract.py` — M2 章节层契约+归一闸+prompt/baseline 单测(spec 2026-11-04 §5,2026-11-05)。 (~1544 tok)
@@ -1030,6 +1038,8 @@
 - `test_bid_review_worker_prod_model.py` — 生产模型接线单测(worker._resolve_model_name/_default_model_fn/_default_extract_fn/_parse_json_object)。 (~1452 tok)
 - `test_bid_review_worker_sem.py` — Task 14 测试:worker 集成 sem/hyb 规则 + 汇总分级(A12 T14 集成约束验收)。 (~4943 tok)
 - `test_bid_review_worker.py` — Task 9 测试:bid_review worker——状态机推进(advance_task)+ boot recovery + (~14521 tok)
+- `test_channel_owner_isolation.py` — Unit tests for per-user isolation via internal-auth owner_user_id (E-续 ③ C-2b). (~1697 tok)
+- `test_wechat_bot_status.py` — Tests for the EAI-CUSTOM WeChat ClawBot activation-status endpoint. (~2762 tok)
 
 ## backend/tests/ (QA 2026-10-28 增补)
 
@@ -1128,6 +1138,7 @@
 - `2026-11-08-bid-review-p1-beta4-section-fallback-plan.md` — P1-β批四(章节兜底)实施计划 (~2591 tok)
 - `2026-11-08-bid-review-p1-beta5-gate-status-plan.md` — P1-β批五(gate_status 四态判定式 + tender 差表落账)实施计划 (~3569 tok)
 - `2026-11-08-bid-review-p1-beta6-tender-fields-plan.md` — P1-β批六(tender 字段实补)实施计划 (~6540 tok)
+- `2026-11-08-bid-review-p1-beta7-req-consumers-plan.md` — P1-β批七(§6.1 ❌4 消费规则)实施计划 (~4464 tok)
 
 ## docs/superpowers/plans/2026-09-13-coal-mine-tunneling-regulation-v2.md
 
@@ -1137,7 +1148,7 @@
 
 ## docs/superpowers/specs/
 
-- `2026-11-06-bid-review-integrated-spec-alignment.md` — 投标方案审查：整合版规格书对齐审计与裁决回写 (~4468 tok)
+- `2026-11-06-bid-review-integrated-spec-alignment.md` — 投标方案审查：整合版规格书对齐审计与裁决回写 (~5057 tok)
 
 ## docs/superpowers/specs/2026-09-13-coal-mine-tunneling-regulation-v2-design.md
 
@@ -1150,7 +1161,7 @@
 
 ## frontend/
 
-- `package.json` — Node.js package manifest (~1813 tok)
+- `package.json` — Node.js package manifest (~1822 tok)
 - `rstest.config.ts` — /*.test.ts", "tests/unit/**/*.test.tsx"], (~453 tok)
 
 ## frontend/node_modules/.pnpm/prosemirror-model@1.25.6/node_modules/prosemirror-model/dist/
@@ -1588,6 +1599,8 @@
 
 ## frontend/src/extensions/contract-price/components/
 
+- `GoodsAnalysis.tsx` — badgeColors (~6814 tok)
+- `TracebackDrawer.tsx` — CpaDocument.id; null closes the drawer. (~3291 tok)
 
 ## frontend/src/extensions/contract-price/components/ui/
 
@@ -1774,6 +1787,7 @@
 
 ## frontend/tests/unit/app/
 
+- `auth-layout-next.dom.test.tsx` — replace (~1790 tok)
 
 ## frontend/tests/unit/app/bid-review-layout-flow.dom.test.tsx
 
@@ -1783,6 +1797,10 @@
 
 ## frontend/tests/unit/app/settings/
 
+
+## frontend/tests/unit/components/auth/
+
+- `password-forms.dom.test.tsx` — router (~2299 tok)
 
 ## frontend/tests/unit/components/landing/
 
@@ -1826,7 +1844,7 @@
 - `bid-review-results-evidence.dom.test.tsx` — calls (~6256 tok)
 - `bid-review-results-export.dom.test.tsx` — calls (~1601 tok)
 - `bid-review-review-queue.dom.test.tsx` — calls (~2045 tok)
-- `bid-review-rulesview-multipack.dom.test.tsx` — 五块明细夹具:core/l4 两包各回各的(GET /rulepacks/{name}/rules)。 (~1979 tok)
+- `bid-review-rulesview-multipack.dom.test.tsx` — 五块明细夹具:core/l4 两包各回各的(GET /rulepacks/{name}/rules)。 (~1980 tok)
 
 ## frontend/tests/unit/extensions/bid-materials/
 
@@ -1983,6 +2001,7 @@
 
 ## scripts/
 
+- `check-frontend-deps.sh` — EAI-CUSTOM (bug-4240; supersedes the missing docker.sh subcommand, bug-1278): (~369 tok)
 - `serve.sh` — serve.sh — Unified DeerFlow service launcher (~5523 tok)
 
 ## scripts/tests/
@@ -2301,8 +2320,3 @@
 
 - `backend/tests/test_bid_review_l4_golden.py` — run_case(pack=l4pack)跑cases-l4两题 (~350 tok)
 - `backend/tests/test_bid_review_l4_pack.py` — L4包加载/lint/fatal拒载/命名裁决4测 (~600 tok)
-- `backend/app/extensions/bid_review/golden/cases/L1-017-consortium-not-allowed.yaml` — 批六golden新题:联合体投标但招标不允许→L1-017 fatal(~15tok)
-- `backend/app/extensions/bid_review/golden/cases/L2-012-tech-section-missing.yaml` — 批六golden新题:技术章节必备缺应急预案→L2-012 major(~16tok)
-- `backend/app/extensions/bid_review/golden/cases/L2-013-commitment-section-missing.yaml` — 批六golden新题:承诺章节全缺(空section_tree)→L2-013 major×2(~16tok)
-- `backend/app/extensions/bid_review/golden/cases/L2-014-required-figure-missing.yaml` — 批六golden新题:必备附图缺总平面图→L2-014 minor(~15tok)
-- `backend/app/extensions/bid_review/golden/cases/L2-040-required-table-missing.yaml` — 批六golden新题:必备表格缺报价汇总表→L2-040 fatal(~15tok)
