@@ -25,6 +25,13 @@ OpenWolf's learning memory. Updated automatically as the AI learns from interact
 - [2026-08-21] geological-report 用户交互铁律：数据收集必须用 ask_clarification fields 渲染中文填写表单（label=中文名+单位），绝不向用户展示/索要 JSON 或英文键名；面向用户术语一律"数据项"不说"字段"；缺项清单译成中文按类别分组呈现。适用于所有面向非 IT 用户的技能。
 
 ## Key Learnings
+- [2026-11-08] 3-way merge 静默删依赖雷:上游删了某依赖而我方该行未改动时,merge 会**无声应用上游删除**(bug-4228 @xyflow/react 被删→13 处 TS2307;@types/gsap 随 #7108 删除属合理接受)。合并后必做:diff 融合后 package.json 依赖集 vs HEAD,逐个失踪依赖判定「上游有意删 vs 误删我方」。
+- [2026-11-08] merge 融合两处行为雷(bug-4236/4237):①start_run 的 run-inputs 条件 `graph_input = normalized_input if body.input is not None else None` 不可简化成无条件 normalize——None 必须保持 None 才能走 checkpoint 续跑;②lifespan shutdown 必须**先 drain 后 flush**——先 flush 会在延迟清理任务首次 yield 前把它 cancel。[AssertionError [('run-1',0)]≠[('run-1',60.0)]]
+- [2026-11-08] `scripts/config-upgrade.sh` 在 Windows/GitBash 会退化成整文件重写,**2455 条注释全剥**(bug-4239)。本机禁用;config 升级改手工 graft:从 config.example.yaml 抄新字段+注释,Edit 插到对应块,验证=注释计数不减+yaml parse。
+- [2026-11-08] merge 后查 union 面不要只看 Makefile:`scripts/docker.sh` 取上游版会丢 EAI 子命令(Makefile `rebuild-frontend` 目标调用不存在的 `docker.sh rebuild-frontend`→打印 help 退出,bug-4240)。每次 merge 后 grep Makefile 调用的脚本目标是否仍存在。
+- [2026-11-08] 重启后 nginx 绑 2026 报"forbidden"=winnat 动态保留区盖住(本机实测 1973-2072);修复三连:`net stop winnat`→起容器→`net start winnat`(需管理员 shell)(bug-4241)。
+- [2026-11-08] 上游新增登录测试(password-forms/auth-layout-next)断言的是上游登录 UX,而本 fork LoginPage=EAI 双模门面(有意替换,见 login/page.tsx 头注释「不采纳 already-authenticated redirect」)——处理先例=login-account-disabled.dom.test.tsx:`test.skip`/`it.skip`+日期+EAI-CUSTOM 注释;SetupPage/AuthCallbackPage 驱动的变体仍过、保留不动。`test.each(modes)` 用 modes.filter 剔 login/register。
+- [2026-11-08] docker/.env 是 compose 插值源:stack 起不来先看缺哪个 var(workflow overlay 要 JWT_SECRET_KEY,根 .env 里有)——用 `grep '^KEY=' ../.env >> docker/.env` 静默搬,勿内联导出密钥。
 - [2026-11-07] str 是可迭代对象:集合归一/子集类算子迭代入参前必须 isinstance(str) 守卫,否则裸字符串静默逐字迭代=静默错误判定(无异常无日志,bid_review subset_of 实证 bug-4109);表达子里新算子的类型面按 _num 先例显式拒收。
 - [2026-11-07] py3.12 re.error 不是 ValueError 子类:正则求值必须单独 try/except re.error 入 KeyError 网,否则逃出 det 的 need_human 通路,det/hyb 两调用点行为分叉(bug-4110)。
 - [2026-11-06] 对齐审计类缺口立档后、开工前必须重新 grep 核实是否已被并发会话兑付——quick 层裁剪立档当天即被 ec77631ef 兑付(11-05 四项同款先例);计划编写以当日 grep 为准,不以存档结论为准。
@@ -524,6 +531,8 @@ fixture 策略: 全节点 template_text=null(不发明招标内容), 真文渲�
 - [2026-11-06] content 端点不传 source 的整页窗口跨成员混段是既有歧义(spec R3 保留),断言「首个命中」而非「全池同源」;?source= 传入才池内收窄。
 
 ## Do-Not-Repeat
+- 2026-11-08(merge 实测):`scripts/config-upgrade.sh` 本机禁跑——Windows 下整文件重写剥光全部注释(bug-4239);config 升级走手工 graft。
+- 2026-11-08(merge 实测):merge 后勿只跑 lint 就信 package.json 完好——须 diff 依赖集 vs HEAD 抓 3-way 静默删除(bug-4228 实锤,@xyflow/react 无声消失)。
 - 2026-11-06(P1-α 实测):`pytest -k bid_review` **必须带 `tests/` 路径**(写 `pytest tests/ -k bid_review`)——裸 `-k` 会收集 backend/ 根下两个陈年散落文件(test_dept_fix.py/test_full_pipeline.py),本机 collection 即炸(DNS/import env),误判全红。
 - 2026-11-06(P1-α 实测):lint 门=每文件 `ruff check` + **生产文件** `ruff format --check`;tests/ 基线已有 28 个 format 漂移文件,别对测试文件跑 `format --check` 当门(会误报),漂移清理属专门批次。
 
@@ -3039,3 +3048,67 @@ CALIBRATION 批次裁决表是历史快照,新规则的行插进旧批次表必�
 - **git hash-object 必须带 -w**:水工提交管线里 `git hash-object <file>` 只算 hash 不写 odb,update-index --cacheinfo 报 invalid object;T3/T4/T5 用的是 -w 形态。
 - **update-ref CAS 的 expected-old 必须从 `git rev-parse HEAD` 现取**,不可手打——手打错位只拒不损(CAS 保护),重发即可。
 - **并发 merge 窗口「ours 侧」树冻结于 merge 起点 HEAD**:批六文件在 merge commit 里可能被静默回退;备份分支 bid-review-batch6 已重钉 9d7ee4f97,merge 落地后须验 tip 内容(T4 测试在/extraction 契约在/rulepack 五规则在)。
+
+## Key Learnings + Do-Not-Repeat (2026-11-08 — 批七 T2 叶平键裁决)
+
+**Key Learnings:**
+- bid_review 字段契约必须**叶平键注册**(path 本身=fields dict 的平键)规则才能点消费;normalize_fields 只收 known_paths,容器 obj 契约(bid.pm)注册后规则点消费未注册叶(bid.pm.certs)=生产侧该键永不出现=规则 live 永久 need_human 死锁。L1-001 `bid.entity.license_valid_until` 是先例:点路径形态+标量值+独立注册。容器消费只走 count/col 整体(bid.consortium/bid.tables)。
+- expr 引擎(expr.py)::61 有 and/or 语法层,:95 支持 null/None 字面量 → null-skip 守卫式可表达,如 `tender.x == null or bid.x == null or a == b`(无明示跳过不触发)与 `x != False`(null→True 合规,显式 False→触发)。消息模板 _tpl 对 None 渲染空串,但对**未注册路径**占位原样保留(测试把关无残留)。
+- rule_runner op 语义:or=全支不成立才出候选;and=任一支不成立即出候选(L1-017 先例)。**多维权违规筛=op:and+合规式支**,不是违规式取反(取反后 or 仍全违规才出=欠报)。
+- rule_runner._resolve:全点平键 fields 优先 → env 属性链下钻;`_val` 支字符串=字段键或表达式两种形态。
+
+**Do-Not-Repeat:**
+- (2026-11-08) 勿给嵌套 obj 形态的 FIELD_TYPE_CONTRACTS 然后让规则点消费其子键——契约与消费必须同层(叶叶对齐),批七 plan 即犯此错,T2 implementer 勘误⑤escalation 后才纠正(宇宙 113→126 重锁)。
+- (2026-11-08) hyb 多维粗筛勿用 op:or+违规条件式——方向倒置(违规出不了候选/合规反出);用 op:and+合规条件式+null 字面量守卫。
+
+## Key Learnings 追加(2026-11-08 批七收官)
+
+**Key Learnings:**
+- hyb prefilter 实态:det_expr 只是粗筛门,check op 才是判定(L1-004 op:eq count==0——certs 非空=命中=候选=必进模型恰1次;certs 空=零通路零调用)。plan 注记「det 粗筛=非空出候选」语义碰巧对但机制注记反了,probe 实证为准(F-1 勘误)。
+- 多会话并发期:controller 在 implementer 执行间隙往工作区预落资产(如 golden 案例),implementer 撞见会误归因(「T2 已带 T5 面」)——commit message/台账须 controller 纠正归因,观察态与叙事分开验。
+- .wolf/buglog.json 是多会话共享文件,python json 全量重写前并发追加窗口小;561 条实态(前记 536 系快照时差)。
+
+**Do-Not-Repeat:**
+- (2026-11-08) 字段+消费规则同批红线(A-β7-①)再次有效:每个新字段落宇宙须同批核 inputs/锚点/契约三层对齐(叶叶对齐,见上节)。
+
+## Key Learnings + Do-Not-Repeat (2026-11-08 — upstream-sync 537-commit merge 会话)
+
+- **channels manager Path A 判定法**: 上游原生已包含 EAI 全部 cherry-port（_safe_user_id_for_run、per-request owner 头、幂等键、telegram/goal 接线）时，全量采纳上游原文优于继续维护杂交版。判定信号：EAI hybrid 缺 11 个上游 defs 且 EAI 侧无对应定制逻辑。先例：test_channels.py 整文件 skip（2026-08-15）。
+- **MERGE_HEAD 被并发会话消费的恢复**: 并发会话在 merge 态下 pathspec commit 会吃掉 MERGE_HEAD 产生单亲提交；恢复 = git update-ref MERGE_HEAD <merge-tip> 后再 commit。其 staged==其提交的文件逐一 diff 验证无损，其未暂存 WIP 留盘不入 index。
+- **support_bundle 测试按锚点切片 serve.sh**（`# Runtime path defaults.` → `# Extra flags`、`# ── Load .env` 第二段 → `# ── Argument parsing`）——serve.sh 的 section 布局被测试契约钉死：defaults 块必须紧邻 uvicorn flags，注释里不得出现字面锚文本（会被 split 提前截断）。
+- **case 模式反斜杠陷阱**: `[A-Za-z]:\*` 中 \ 把 glob * 转义成字面星号→永不匹配。匹配 Windows 盘符用 `[A-Za-z]:*`（冒号判定）。
+- **.env 契约（上游）**: DEER_FLOW_HOME 等 launcher 路径 .env 显式值压过继承环境；EAI 主机 override 只能条件覆盖（空/容器前缀 /app /data /mnt），且 dotenv_exports.py 与 support_bundle._expand_launcher_variables 是同一语义的两份实现（单引号字面、$$→$$、\$→$、${VAR:-default}），改动一侧必须同步另一侧——测试钉死此对称。
+- **裸 bash 在本机可能是 WSL bash**（env 不继承，REPO_ROOT 空）——测试/探针一律走 require_script_bash()（git-bash 显式路径）。
+- **pytest 集群归因法**: 从 FAILURES 段抽每测最后 E 行正则聚类计数，勿按文件名子串估（postgres 子串曾虚胖 357→实际 ~98 env）。
+
+## Do-Not-Repeat 追加 (2026-11-08 — upstream-sync)
+
+- 勿再无条件 override DEER_FLOW_HOME——.env 显式值契约被 support_bundle 96 测钉死（bug-4253）。
+- serve.sh 注释/块名不得含字面 `# Extra flags`/`# Runtime path defaults.` 于 defaults 块内部（split 截断）。
+
+## Key Learnings (2026-11-08 — eai-ext 业务组重新归类)
+
+- **用户裁决**: docker 组下 sales/workflow/procurement 是活业务,归新组 **eai-ext**(EAI 底座之上的业务子系统扩展层);死项目 docker 下 11 个 Exited 遗留容器**保留不删**(用户明确指令)。实现零接触:改新栈 container_name 为 eai-ext-* 避开 Docker 全局唯一名冲突,旧容器一根手指未碰;nginx 走 compose service 名 DNS alias 不受 container_name 影响。
+- **compose 组=~-p 标志而非文件**: 同一组 business.yaml/workflow.yaml 文件,链入底座(-p eai-docker)或独立成组(-p eai-ext)只看调用方;重新归类=EAI_DEV_COMPOSE 摘 overlay + 新 make 目标。
+- **业务 DB 卷必须显式 name: 钉死**: 组名变→卷名前缀变→空卷陷阱;eai-docker_business-db-data(2026-04 起 98M)是唯一活数据,误启动窗口的 docker_business-db-data 实测 4KB 空壳(那段期间 DB 根本没初始化成功)。
+- **容器内 healthcheck 勿用 localhost**(bug-4254): alpine 容器内 localhost→::1,nginx 只绑 IPv4→恒 refused;统一用 127.0.0.1。
+- 本机 docker 分类器对**批量容器改名+改 restart 策略**敏感(判 Interfere With Workloads);零接触换名方案(改新栈名)可完全绕开且更符合意图。
+
+## Merge 危险面解除验单(2026-11-08,批六/批七穿越 upstream v2.3.0)
+
+- merge 结论 a173ee7c2(537 commits),MERGE_HEAD 清除;批七 tip 09e3ebc87 为 HEAD 祖先。
+- **验 tip 六点全过**:rulepack 4 规则在/extract 叶契约在+容器键零残留/registry+families 126 钉在/golden 82 题/dict-step 门在/L1-007 富化 inputs 在;家族门 736p/6s/0f @ tip。
+- 验-tip 协议(merge 落地后逐文件验+家族门)兑付;备份分支 bid-review-batch6/7 保留不动(本地安全钉)。
+
+## 2026-11-08 eai-ext 走查补录
+- **单文件 bind-mount inode 陷阱（Do-Not-Repeat）**：宿主编辑器改 nginx.conf 这类单文件挂载后，容器仍持旧 inode——`nginx -t` / `nginx -s reload` 全在旧配置上验证/加载且报 OK。`docker exec grep` 验容器内实际内容，修复须 `docker compose restart <svc>`（重建 bind mount），reload 无效。
+- **Git Bash 路径改写**：`docker exec ctr grep ... /etc/nginx/...` 会被 MSYS 改写成 `C:/Program Files/Git/etc/...`，加 `MSYS_NO_PATHCONV=1`（check-frontend-deps.sh 已有先例）。
+- **nginx.conf（dev）路由段＝唯一生效真相**：nginx.full.conf / nginx.external.conf 是另拓扑，新增子系统路由须进 nginx.conf 本体。house style：request-time 变量 upstream（防重启 IP 缓存 bug-3233）+ `$forwarded_proto` + Cookie 透传。
+- **procurement 后端健康路由=裸 /health**（无 /api/v1/health，异于 sales/workflow）；SPA 烘焙 VITE_API_BASE_URL 为空串走相对路径 `/procurement/api` → rewrite `/api/v1/*`，compose 里那条 environment 对镜像构建无效（Vite 变量仅构建期）。
+- **loopback 规范化**：127.0.0.1:2026 GET/HEAD → 301 localhost（上游 #6156 cookie 隔离修复），探测一律 `curl -sL`。
+
+## [2026-11-08 批八] Key Learnings(bid_review 引擎卫生批)
+- **expr 有两张表**:`_FUNCS`(解析期白名单)与 `_BUILTIN`(求值期分发)——新引擎函数必须两处同批注册,只注册 `_FUNCS` = 解析过、求值期 KeyError→need_human 伪装字段缺失。years() 落地实测(批八 T1 勘误①)。
+- **列表项形态门(A-β8-③)**:dict 形态项仅 `steps` 合法(缺 expr 拒载=bug-4260 门);`all/any/values` dict 项载入期拒载——eval 面对三键列表只 `str(e)`(dict 渲染垃圾串),`values` 无任何 op 消费。`_validate_list_items` 单点在 load_rulepack。
+- **years() 边界**:中文小表一~十/两,组合数退化取紧邻「年」单字位(「二十年」→10、「十一年」→1)非 None;阿拉伯 `(?<!\d)(\d{1,3})\s*年` 负向后顾使「2024年」(日历年形态)→None。零规则零宇宙落的原语,规则本体(L2-024 年份连续性 v2 语义)仍挂账。
+- **buglog 撞号实录**:bug-4228 双撞(merge 会话 package.json 条 vs 批七 dict-step 门条)——批八把后者重编号 bug-4260;历史撞号尚有 13 组(3704×4、3705/06/07、3908、3967、3971/72、4027、4236/37、4254/55)留观未动(引用面不可考,不盲改)。append 前现读 max+1 的律并发会话仍在违反。
