@@ -132,7 +132,8 @@ class TestFamilyWiring:
         # P1-β批二续 T2 2026-11-07 L2-004/050/051 三路径入宇宙 84→87(by design;bid.full_text 规格名全文域首入宇宙,plan 预算 86 偏差 +1);
         # P1-β批二续 T3 2026-11-07 要件级 L2-030/032/033 五路径入宇宙 87→92(by design;plan 预算 91 系 86 旧基线勘误);
         # P1-β批六 T1-T5 2026-11-08 tender/bid 字段实补 13 路径入宇宙 92→105(by design;12 模型契约经 T3 五规则+T4 L1-003/L1-006 inputs+bid.tables 经 L2-040,A-β6-④)
-        assert len(universe()) == 105
+        # P1-β批七 §6.1 ❌4 消费面 2026-11-08 21 叶平键路径入宇宙 105→126(by design;L1-004 hyb 6+L1-020 sem 3+L1-022 op:or 10+L1-026 det 1+L1-007 富化 1,A-β7-② 修订锁)
+        assert len(universe()) == 126
         wired_paths = (
             "tender.required_fields",
             "bid.boq_rows",
