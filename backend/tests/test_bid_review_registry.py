@@ -272,6 +272,65 @@ class TestLoadRejection:
             load_rulepack(self._write(tmp_path, rule))
 
 
+class TestSeverityOverride:
+    """EAI-CUSTOM 批十T1(A-β10-②③,2026-11-09):severity_override 卡级注记载入门。
+    四拒载钉(spec 缺失/域外/等值/reason 空)+非 dict 形态钉(校验四条全钉满)+一正钉
+    (注记入 dataclass 审计面、生效 severity 仍=卡字段零行为)+真包零噪声回归钉。
+    已知偏离集反向钉({L2-041} ⊆ 带注记卡)属 T2 controller 直办随 L2-041 注记同 commit 落,
+    本批不落(A-β10-③,保每 commit 全绿)。"""
+
+    def _write(self, tmp_path, rule):
+        p = tmp_path / "pack.yaml"
+        p.write_text(yaml.safe_dump({"rules": [rule]}, allow_unicode=True), encoding="utf-8")
+        return p
+
+    def test_missing_spec_rejected(self, tmp_path):
+        rule = _synthetic_rule("L2-995", "L2", "fatal")
+        rule["severity_override"] = {"reason": "EAI 上调"}
+        with pytest.raises(RulePackError, match="L2-995"):
+            load_rulepack(self._write(tmp_path, rule))
+
+    def test_spec_out_of_domain_rejected(self, tmp_path):
+        rule = _synthetic_rule("L2-994", "L2", "fatal")
+        rule["severity_override"] = {"spec": "majors", "reason": "EAI 上调"}
+        with pytest.raises(RulePackError, match="L2-994"):
+            load_rulepack(self._write(tmp_path, rule))
+
+    def test_spec_equals_severity_rejected(self, tmp_path):
+        rule = _synthetic_rule("L2-993", "L2", "fatal")
+        rule["severity_override"] = {"spec": "fatal", "reason": "EAI 上调"}
+        with pytest.raises(RulePackError, match="L2-993"):
+            load_rulepack(self._write(tmp_path, rule))
+
+    def test_reason_blank_rejected(self, tmp_path):
+        rule = _synthetic_rule("L2-992", "L2", "fatal")
+        rule["severity_override"] = {"spec": "major", "reason": "   "}
+        with pytest.raises(RulePackError, match="L2-992"):
+            load_rulepack(self._write(tmp_path, rule))
+
+    def test_non_dict_rejected(self, tmp_path):
+        rule = _synthetic_rule("L2-991", "L2", "fatal")
+        rule["severity_override"] = "major"
+        with pytest.raises(RulePackError, match="L2-991"):
+            load_rulepack(self._write(tmp_path, rule))
+
+    def test_valid_override_loaded(self, tmp_path):
+        # 正钉(A-β10-②):合法注记进 dataclass;生效 severity 仍=卡 severity 字段(裁决① 零行为)
+        rule = _synthetic_rule("L2-990", "L2", "fatal")
+        rule["severity_override"] = {"spec": "major", "reason": "EAI 上调:必填清单行缺价属实质性不响应,与 L1-011 漏项同档"}
+        pack = load_rulepack(self._write(tmp_path, rule))
+        loaded = pack.rules[0]
+        assert loaded.id == "L2-990"
+        assert loaded.severity == "fatal"
+        assert loaded.severity_override == {"spec": "major", "reason": "EAI 上调:必填清单行缺价属实质性不响应,与 L1-011 漏项同档"}
+
+    def test_real_pack_zero_noise(self):
+        # 真包回归(A-β10-① 范围锁):T1 时点真包零卡带注记 → 全 None,加载零异常零噪声
+        pack = load_rulepack(registry.RULEPACK_DIR / "1.0.0.yaml")
+        assert pack.rules
+        assert all(r.severity_override is None for r in pack.rules)
+
+
 class TestCrossSourceSubset:
     def test_contracts_subset_universe(self):
         assert set(FIELD_TYPE_CONTRACTS) <= set(registry.universe())

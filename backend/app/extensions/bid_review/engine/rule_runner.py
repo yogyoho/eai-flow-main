@@ -40,6 +40,10 @@ class Rule:
     fix_tpl: str
     confidence_gate: float
     enabled: bool
+    # EAI-CUSTOM 批十T1(A-β10-②③,2026-11-09):卡级 severity 偏离注记 {spec, reason}——
+    # 声明生效 severity 偏离规格档 spec,载入期审计面(issue/payload 面零新增,引擎/LLM 消费
+    # 零改动,已知偏离集反向钉=T2)。default None:不带键零扰动,既有全部构造点零影响。
+    severity_override: dict | None = None
 
 
 @dataclass
@@ -95,6 +99,33 @@ def _validate_list_items(chk: dict, rid: str) -> None:
                 raise RulePackError(f"规则 {rid} steps dict 项缺少 expr(形态不合规,拒载)")
 
 
+def _validate_severity_override(raw: dict, rid: str) -> None:
+    """EAI-CUSTOM 批十T1(A-β10-②③,2026-11-09)载入期 severity_override 卡级注记形态门:
+    注记语义=声明卡生效 severity 偏离规格档 spec;spec 是规格档注记,按全层并集校验、不按
+    卡层收紧(层无关,A-β10-②)。左移律(bug-4260 同构,消息句式与 _validate_list_items
+    同构):违规一律 load 期 RulePackError 拒载——非 dict 形态;spec 键缺失;spec 不在
+    severity 域(域=registry.SEVERITY_BY_LAYER 全层并集复用,禁复制第二份字面集);reason
+    缺失或剥空白后空;spec 与卡生效 severity 等值(等值注记=零信息噪声)。仅 load_rulepack
+    调用,执行路径零改动;不带键 → None,存量包零触。registry 惰性导入镜像 lint_rules
+    (依赖方向 rule_runner→registry 见 registry.py 头注,防环沿用既有惯例)。"""
+    spec_note = raw.get("severity_override")
+    if not isinstance(spec_note, dict):
+        raise RulePackError(f"规则 {rid} severity_override 非 dict 形态(注记须 spec/reason,拒载)")
+    from app.extensions.bid_review.engine.registry import SEVERITY_BY_LAYER
+
+    domain = set().union(*SEVERITY_BY_LAYER.values())
+    spec = spec_note.get("spec")
+    if spec is None:
+        raise RulePackError(f"规则 {rid} severity_override 缺少 spec 键(规格档缺失,拒载)")
+    if str(spec) not in domain:
+        raise RulePackError(f"规则 {rid} severity_override spec {spec!r} 不在 severity 域 {sorted(domain)}(域外值,拒载)")
+    reason = spec_note.get("reason")
+    if not isinstance(reason, str) or not reason.strip():
+        raise RulePackError(f"规则 {rid} severity_override reason 缺失或为空(空因注记不可审计,拒载)")
+    if str(spec) == str(raw.get("severity", "")):
+        raise RulePackError(f"规则 {rid} severity_override spec={spec!r} 与卡 severity 等值(等值注记为零信息噪声,拒载)")
+
+
 def load_rulepack(path: str | Path) -> RulePack:
     """加载规则包;逐条 validate_expr 白名单校验,语法/函数/算子/tolerance 不合规 → RulePackError(拒载)。"""
     p = Path(path)
@@ -109,6 +140,9 @@ def load_rulepack(path: str | Path) -> RulePack:
         if "steps" not in chk and op is None:
             raise RulePackError(f"规则 {rid} check 缺少 op/steps(形态不识别,拒载)")
         _validate_list_items(chk, rid)  # EAI-CUSTOM 批七T3+批八T1(A-β7-③/A-β8-③):steps dict 缺 expr、all/any/values dict 项左移到载入期拒载
+        if "severity_override" in raw:
+            # 批十T1(A-β10-②③):卡级注记载入门——带键即校验(显式 null 同按非 dict 拒),不带键零扰动
+            _validate_severity_override(raw, rid)
         if "tolerance" in chk and float(chk["tolerance"]) != 0.0:
             raise RulePackError(f"规则 {rid} tolerance 仅接受 0.00(求值器不容差)")
         for e in _collect_exprs(chk):
@@ -131,6 +165,8 @@ def load_rulepack(path: str | Path) -> RulePack:
                 fix_tpl=str(raw.get("fix_tpl", "")),
                 confidence_gate=float(raw.get("confidence_gate", 1.0)),
                 enabled=bool(raw.get("enabled", True)),
+                # 批十T1(A-β10-②③):浅拷贝防 yaml 锚别名跨卡共享同一注记对象
+                severity_override=dict(raw["severity_override"]) if "severity_override" in raw else None,
             )
         )
     # 语义 lint(EAI-CUSTOM 2026-11-05 R1,spec §2.2):evidence 锚已注册/severity 层
