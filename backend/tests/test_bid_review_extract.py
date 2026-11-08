@@ -644,3 +644,30 @@ class TestBeta6FieldContracts:
         paths = set(collect_field_paths())
         for p in self.BETA6_PATHS:
             assert p in paths, p  # T3/T4 规则未注册前 universe 暂不含;本测试在 T5 后复跑
+
+
+# ── P1-β批六 T2 bid.tables 表格骨架服务端派生(spec :2165 表格骨架识别 det,A-β6-⑤)──
+
+
+class TestBidTablesDerived:
+    """批六 bid.tables 表格骨架服务端派生(A-β6-⑤,规格 :2165 表格骨架识别 det)。"""
+
+    def test_tables_derived_from_sheet_markers(self):
+        from app.extensions.bid_review.engine.extract import _derive_bid_tables
+
+        docs = [
+            {"doc_id": "d1", "text": "前言\n[sheet: 报价汇总表]\n|a|b|\n正文\n[sheet: 分项报价表]\n|c|d|"},
+            {"doc_id": "d2", "text": "[sheet: 报价汇总表]\n|x|y|"},  # 跨 doc 同名表保留重复(骨架不去重,消费端 set)
+        ]
+        out = _derive_bid_tables(docs)
+        assert out == [
+            {"name": "报价汇总表", "source": "d1"},
+            {"name": "分项报价表", "source": "d1"},
+            {"name": "报价汇总表", "source": "d2"},
+        ]
+
+    def test_tables_empty_when_no_markers(self):
+        from app.extensions.bid_review.engine.extract import _derive_bid_tables
+
+        # PDF 表格无名 v1 不产(A-β6-⑤ 漏判容忍)
+        assert _derive_bid_tables([{"doc_id": "d1", "text": "纯文本无表格标记"}]) == []

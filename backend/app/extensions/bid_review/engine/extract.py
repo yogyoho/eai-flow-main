@@ -150,6 +150,9 @@ SERVER_DERIVED_PATHS: frozenset[str] = frozenset(
         "bid.legal_id_proof_present",
         "bid.id_copy_present",
         "bid.deposit_receipt_present",
+        # bid.tables(P1-β批六 T2,A-β6-⑤):表格骨架服务端派生,规格 :2165「表格骨架识别 det」;
+        # 模型自产同路径被闸门在 normalize 源头丢弃。
+        "bid.tables",
     }
 )
 
@@ -844,6 +847,25 @@ def build_extract_prompt(docs: list[dict], field_paths: list[str]) -> str:
     )
 
 
+_SHEET_MARKER = re.compile(r"\[sheet:\s*([^\]]+)\]")
+
+
+def _derive_bid_tables(docs: list[dict]) -> list[dict]:
+    """bid.tables 表格骨架(A-β6-⑤,规格 :2165「表格骨架识别 det」):doc text 中的
+    [sheet: X] 标记(xlsx 表格块前缀,parse.py:268)→ {name, source} 骨架行,供
+    L2-040 required_tables 匹配;PDF 表格无名 v1 不产(漏判容忍);模型自产同路径
+    被 SERVER_DERIVED 闸门在 normalize 源头丢弃。"""
+    out: list[dict] = []
+    for d in docs:
+        seen: set[str] = set()
+        for m in _SHEET_MARKER.finditer(str(d.get("text") or "")):
+            name = m.group(1).strip()
+            if name and name not in seen:  # 同 doc 同 sheet 多段只记一次(跨 doc 保留)
+                seen.add(name)
+                out.append({"name": name, "source": d.get("doc_id")})
+    return out
+
+
 def build_baseline(docs: list[dict], extract_fn: ExtractFn | None = None) -> dict[str, Any]:
     """解析后文档 → BaselinePackage.payload:{"fields", "materials_hash", "provenance",
     "candidates", "fields_conf"}(EAI-CUSTOM 2026-10-30 二期:多候选 + 置信,spec §1.1/§二)。
@@ -866,6 +888,7 @@ def build_baseline(docs: list[dict], extract_fn: ExtractFn | None = None) -> dic
     fields_raw = raw.get("fields") if isinstance(raw.get("fields"), dict) else raw
     fields = normalize_fields(fields_raw, field_paths)
     fields = derive_joins(fields)  # 换算禁令 P0③:服务端派生 join(模型不再自产三个换算布尔/串)
+    fields["bid.tables"] = _derive_bid_tables(docs)  # 批六 A-β6-⑤:表格骨架服务端派生;tender 侧无要求→all-op 零迭代零发话,bid 侧空→要求行全 MISSING(正确语义)
     doc_ids = {str(d.get("doc_id") or "doc") for d in docs}
     role_map = {str(d.get("role")): str(d.get("doc_id") or "doc") for d in docs if d.get("role")}
     provenance = normalize_provenance(raw.get("provenance"), field_paths, doc_ids, role_map)
