@@ -3117,3 +3117,11 @@ CALIBRATION 批次裁决表是历史快照,新规则的行插进旧批次表必�
 - att_year_span 第四 att 算子:dispatch 元组+分支置首(att_check 降 elif);「年份 token 集」语义=findall 同名全收——re.search 只收每名首 token,「2023及2025」类名会误报不足(controller 裁决,判别钉在 TestBeta9AttYearSpan)。
 - ruff E501 按 CJK 显示宽度计(≈2/字):test_bid_review_metrics.py :21 注释已顶格,追加注先估宽,超线即缩 `+L2-052` 级纯 ASCII 尾;det 钉链式注释扩代际时收窄历史段而非线性追加。
 - det 规则入包四联锁(少一即红,预期红=漏):pack yaml 卡+det 数钉(runner :152 链注+test_pack_pins 60/51)+白名单双处(metrics _KNOWN_OPS+载入 ops dict)+golden(案例 yaml+EXPECTED_COVERAGE 集)。三方门 EXPECTED_COVERAGE==pack_ids 精确相等→加卡必同批加题;最短模板=L2-024-count-insufficient.yaml。
+
+## Key Learnings (批十 2026-11-09)
+- **时点断言随落点失效→换钉同 commit**:registry 真包 zero-noise 钉(「全 None」)在 T1 时点成立,但 T2 落 L2-041 注记当 commit 必红——T1 时点断言不能留到 T2 才换,反向钉要与注记同 commit 落(升级为精确相等 annotated=={known});计划里就写明换钉归属,勿留两 commit 间的红窗。
+- **控制台 hex/CJK 毛刺**:git bash 管道输出会把短 hash(a87e64145→"aaa87e64145"式重复)与 CJK 拼音级乱写搞花;验证文件真值一律 python `repr`/`ord()` 码点直查,勿信 echo/grep 渲染;本批两度假伤(T1 hash"缺失"是我探针 regex {9} 应 {8},文件本正确)。
+- **yaml Edit 多卡同形锚**:rulepack 卡尾(severity+evidence 两行)多卡同形必撞 2-match;扩锚到卡独有 message_tpl 行(L2-041 必填清单行未报价文案)一次命中。
+
+## Do-Not-Repeat
+- (2026-11-09) 探针 regex 写 {9} 查 9 字符 hash 应 {8};先数位数再写正则,假阴性会误判文件损坏。

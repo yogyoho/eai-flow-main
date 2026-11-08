@@ -13,8 +13,8 @@
 
 ## 任务分解
 
-- [ ] **T1(实现者)**:rule_runner.py——Rule 尾字段 `severity_override`(dataclass default None)+load_rulepack 解析(仅当卡带该键时校验,RulePackError 逐条带规则 id;域常量自 registry 导入)。tests/test_bid_review_registry.py 新 TestSeverityOverride 四拒载钉(spec 缺失/域外/等值/reason 空,tmp_path 合成卡风格同 TestLoadRejection)+真包回归钉(既有包加载零噪声,批九后 60 卡全绿)。禁触:rulepack yaml、golden、五锁数字面、.wolf/、docs/。
-- [ ] **T2(controller 直办)**:L2-041 卡注记块(`severity_override: {spec: major, reason: C-11-③ EAI 上调:必填清单行缺价属实质性不响应,与 L1-011 漏项同档(规格 W3 行裁决)}`)+registry 已知偏离集钉+rulepack :724/:1123 注释随迁(L1-022 挂账措辞改「机制 v1 已兑付(批十),维度分裂另批」)+家族门+spec 批十段+plan 勾+wolf/会话记忆。
+- [x] **T1(实现者)**:rule_runner.py——Rule 尾字段 `severity_override`(dataclass default None)+load_rulepack 解析(仅当卡带该键时校验,RulePackError 逐条带规则 id;域常量自 registry 导入)。tests/test_bid_review_registry.py 新 TestSeverityOverride 四拒载钉(spec 缺失/域外/等值/reason 空,tmp_path 合成卡风格同 TestLoadRejection)+真包回归钉(既有包加载零噪声,批九后 60 卡全绿)。禁触:rulepack yaml、golden、五锁数字面、.wolf/、docs/。→ **已兑付 a87e64145**(2 文件 +95/-0):五拒载分支(spec 缺失/域外/等值/reason 空/非 dict,带键即校验显式 null 同拒)+域=registry SEVERITY_BY_LAYER 全层并集复用+浅拷贝防 yaml 锚别名;钉 7 枚(四拒载+形态+正钉+真包零噪声);家族门 749→756p/6s/0f。
+- [x] **T2(controller 直办)**:L2-041 卡注记块(`severity_override: {spec: major, reason: C-11-③ EAI 上调:必填清单行缺价属实质性不响应,与 L1-011 漏项同档(规格 W3 行裁决)}`)+registry 已知偏离集钉+rulepack :724/:1123 注释随迁(L1-022 挂账措辞改「机制 v1 已兑付(批十),维度分裂另批」)+家族门+spec 批十段+plan 勾+wolf/会话记忆。→ **已兑付 7ef22384d**(yaml 3 hunk+registry 钉):卡注记落 :739 后;registry 钉升级 zero-noise→**已知偏离集精确相等 annotated=={L2-041}**(多注记/缺注记双红——T1 时点「全 None」断言随 T2 同 commit 失效,故合并换钉保每 commit 全绿);:724/:1123 注释随迁;门 756p/6s/0f 持平(worker claimer 一轮计时伪红,单跑过);lint 双清。
 
 ## 挂账延续(批十后)
 
