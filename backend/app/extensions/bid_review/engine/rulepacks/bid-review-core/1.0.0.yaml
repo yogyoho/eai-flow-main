@@ -937,3 +937,98 @@ rules:
     fix_tpl: "按招标要求缴纳保证金并上传缴纳凭证(银行回单/保函),凭证名称与附件清单一致"
     confidence_gate: 1.0
     enabled: true
+  # ── P1-β批六 tender 字段实补(spec §6.1 差表,2026-11-08;A-β6-⑥⑦)──
+  # L1-017 联合体合规:precondition=非联合体自然 SKIP(规格「非联合体时跳过」);
+  # 不造新锚(A-β6-⑥),「各方资质达标」联动挂账。check 形态按实态勘误
+  # (op: and 先例 grep;若无 and 分支用 eq+or 单 cond 等价式)。
+  #   实态裁决落点:and 有独立分支(rule_runner chk['all'] 表达式列表求值取与,
+  #   L3-001/003/005 先例同构 or 分支的 chk['any']);plan 拟的 left/right 双键非
+  #   and 分支形态(缺 all 键→KeyError→need_human 常态),故按引擎实态落 all: 列表。
+  - id: L1-017
+    name: 联合体投标合规
+    layer: L1
+    type: deterministic
+    applies_to: ["*"]
+    inputs: [bid.is_consortium, bid.consortium, tender.consortium_allowed]
+    check:
+      op: and
+      all:
+        - "tender.consortium_allowed == True"
+        - "count(bid.consortium) >= 1"
+      precondition: "bid.is_consortium == True"
+    severity: fatal
+    evidence: [A-TENDER-NOTICE, A-QUAL-CERT]
+    message_tpl: "联合体投标要件不合规:须同时满足招标允许联合体、联合体协议书存在且牵头人明确"
+    fix_tpl: "补联合体协议书并明确牵头人与各方职责;若招标不允许联合体,调整投标主体形式"
+    confidence_gate: 1.0
+    enabled: true
+  # L2-012/013 章节 required⊆section_tree,名称匹配惯用式 contains_any+keywords(A-β6-⑦)
+  - id: L2-012
+    name: 技术方案必备章节齐备
+    layer: L2
+    type: deterministic
+    applies_to: ["*"]
+    inputs: [tender.tech_sections_required, bid.section_tree]
+    check:
+      op: all
+      target: tender.tech_sections_required
+      var: t
+      cond: "contains_any(col(bid.section_tree, 'title'), keywords(t))"
+    severity: major
+    evidence: [A-TOC, A-MAIN-TEXT]
+    message_tpl: "技术方案缺必备章节「{t}」"
+    fix_tpl: "按招标技术方案要求补齐章节(总体/实施/进度/质量/安全/应急/售后/培训等)"
+    confidence_gate: 0.8
+    enabled: true
+  - id: L2-013
+    name: 承诺类章节存在
+    layer: L2
+    type: deterministic
+    applies_to: ["*"]
+    inputs: [tender.commitment_sections, bid.section_tree]
+    check:
+      op: all
+      target: tender.commitment_sections
+      var: t
+      cond: "contains_any(col(bid.section_tree, 'title'), keywords(t))"
+    severity: major
+    evidence: [A-TOC, A-MAIN-TEXT]
+    message_tpl: "承诺类章节「{t}」缺失"
+    fix_tpl: "补齐承诺类章节(工期/质量/质保/服务响应/廉洁/保密等)"
+    confidence_gate: 0.85
+    enabled: true
+  - id: L2-014
+    name: 图纸与图表齐备
+    layer: L2
+    type: deterministic
+    applies_to: ["*"]
+    inputs: [tender.required_figures, bid.figures]
+    check:
+      op: all
+      target: tender.required_figures
+      var: t
+      cond: "contains_any(col(bid.figures, 'name'), keywords(t.name))"
+    severity: minor
+    evidence: [A-MAIN-TEXT, A-TECH-PROPOSAL]
+    message_tpl: "要求的图表「{t.name}」未见于投标文件"
+    fix_tpl: "按招标附图要求补充图表,图表不得空白占位"
+    confidence_gate: 0.8
+    enabled: true
+  # L2-040 必备表格:bid.tables 服务端派生(T2),规格 :2165 name 经 norm 对齐
+  - id: L2-040
+    name: 必备表格存在
+    layer: L2
+    type: deterministic
+    applies_to: ["*"]
+    inputs: [tender.required_tables, bid.tables]
+    check:
+      op: all
+      target: tender.required_tables
+      var: t
+      cond: "contains_any(col(bid.tables, 'name'), keywords(t))"
+    severity: fatal
+    evidence: [A-MAIN-TEXT, A-PRICE-SHEET]
+    message_tpl: "必备表格「{t}」缺失"
+    fix_tpl: "按招标要求编入必备表格(报价汇总/分项报价/清单响应/参数偏离/人员表/设备表)"
+    confidence_gate: 0.85
+    enabled: true

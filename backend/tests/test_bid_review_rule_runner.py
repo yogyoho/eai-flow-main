@@ -1,4 +1,5 @@
 import re
+import unittest
 from pathlib import Path
 
 import pytest
@@ -133,9 +134,9 @@ def test_full_pack_loads():
     by_type = {}
     for r in pack.rules:
         by_type.setdefault(r.type, []).append(r.id)
-    assert len(by_type.get("deterministic", [])) == 44, (
-        "L1 13 + L2 16 + L3 15 = 44(批二续T3 +3 要件级 L2-030/032/033,P1-β批二续 2026-11-07;"
-        "前值 41=L1 13 + L2 13 + L3 15,批二续T2 +3 文件级完好性 L2-004/050/051)"
+    assert len(by_type.get("deterministic", [])) == 49, (
+        "L1 14 + L2 20 + L3 15 = 49(批六T3 +5:L1-017/L2-012/013/014/040,P1-β批六 2026-11-08;"
+        "前值 44=L1 13 + L2 16 + L3 15,批二续T3 +3 要件级 L2-030/032/033)"
     )
     assert len(by_type.get("hybrid", [])) == 5, "L1 hyb 003/007 + L3 hyb 004/008 + L2-023 指纹通道(整合版对齐 W1) = 5"
     assert len(by_type.get("semantic", [])) == 1, "L1-013 唯一 sem 规则"
@@ -277,7 +278,8 @@ def test_att_ops_whitelisted_at_load():
     P1-β批二续 2026-11-07 增 L2-001/002/003(steps subset_of×2 + gte 册数下限,steps 形态无 op 键=None);
     P1-β批二续 T2 2026-11-07 增 L2-004/050(op:all 逐行完好性)+ L2-051(op:eq regex 草稿残留);
     P1-β批二续 T3 2026-11-07 增 L2-030(op:all col 取签署位列)+ L2-032(steps 两件套存在性,None)
-    + L2-033(op:eq 凭证存在性,C-17)。"""
+    + L2-033(op:eq 凭证存在性,C-17);
+    P1-β批六 T3 2026-11-08 增 L2-012/013/014/040(op:all contains_any+keywords 惯用式,A-β6-⑦)。"""
     pack = load_rulepack(PACK)
     ops = {r.id: r.check.get("op") for r in pack.rules if r.layer == "L2"}
     assert ops == {
@@ -298,6 +300,10 @@ def test_att_ops_whitelisted_at_load():
         "L2-041": "all",
         "L2-022": "all",
         "L2-031": "all",
+        "L2-012": "all",
+        "L2-013": "all",
+        "L2-014": "all",
+        "L2-040": "all",
     }
 
 
@@ -571,3 +577,53 @@ def test_dedup_key_canonical_and_bounded():
     assert len(key) < 256 and "#" in key, "超宽实体截断+md5 后缀,总长有界 <256"
     assert _dedup_key(rule, {"r": {"no": "附件一", "name": "附" * 300}}) == key, "同内容不同键序 → 同键(canonical sort_keys 证)"
     assert _dedup_key(rule, None).endswith("|-"), "无 env 用 '-' 占位"
+
+
+# ── P1-β批六 T3:五条新 det 规则直跑(A-β6-⑥⑦;L1-017 and-form=引擎 chk['all'] 表达式
+# 列表实态(plan 拟 left/right 双键非 and 分支形态,缺 all 键→KeyError→need_human,按实态落);
+# L2-012/013/014/040 contains_any(col(...)+keywords 惯用式,A-β6-⑦:list hay 走 str() repr 串搜子串) ──
+
+
+class TestBeta6DetRules(unittest.TestCase):
+    """批六五条 det 规则(A-β6-⑥⑦):L1-017/L2-012/L2-013/L2-014/L2-040。
+    直跑形态沿文件惯例:load_rulepack(PACK) → id 索引 → run_det_rule。"""
+
+    def _run(self, rule_id, fields):
+        pack = load_rulepack(PACK)
+        rule = {r.id: r for r in pack.rules}[rule_id]
+        return run_det_rule(rule, fields)
+
+    def test_l1017_consortium_precondition_skip(self):
+        # 非联合体:SKIP(precondition 不成立→[])A-β6-⑥
+        assert self._run("L1-017", {"bid.is_consortium": False, "tender.consortium_allowed": True, "bid.consortium": []}) == []
+
+    def test_l1017_not_allowed_or_no_agreement_fails(self):
+        iss = self._run("L1-017", {"bid.is_consortium": True, "tender.consortium_allowed": False, "bid.consortium": [{"lead": "甲", "members": ["乙"]}]})
+        assert len(iss) == 1 and iss[0]["verdict"] == "FAIL"
+        iss2 = self._run("L1-017", {"bid.is_consortium": True, "tender.consortium_allowed": True, "bid.consortium": []})
+        assert len(iss2) == 1 and iss2[0]["verdict"] == "FAIL"
+
+    def test_l2012_missing_required_section_per_row(self):
+        fields = {"tender.tech_sections_required": ["总体方案", "应急预案"],
+                  "bid.section_tree": [{"code": "1", "title": "第一章 总体方案", "is_empty": False}]}
+        iss = self._run("L2-012", fields)
+        assert len(iss) == 1 and "应急预案" in iss[0]["message"]  # per-row(A-β6-⑦)
+
+    def test_l2013_commitment_subset(self):
+        fields = {"tender.commitment_sections": ["质量承诺"], "bid.section_tree": []}
+        iss = self._run("L2-013", fields)
+        assert len(iss) == 1 and "质量承诺" in iss[0]["message"]
+
+    def test_l2014_figures_minor(self):
+        fields = {"tender.required_figures": [{"id": "F1", "name": "总平面图"}], "bid.figures": []}
+        iss = self._run("L2-014", fields)
+        assert len(iss) == 1 and iss[0]["severity"] == "minor"
+
+    def test_l2040_tables_fatal(self):
+        fields = {"tender.required_tables": ["报价汇总表"], "bid.tables": [{"name": "分项报价表", "source": "d1"}]}
+        iss = self._run("L2-040", fields)
+        assert len(iss) == 1 and iss[0]["severity"] == "fatal"
+
+    def test_l2040_present_table_passes(self):
+        fields = {"tender.required_tables": ["报价汇总表"], "bid.tables": [{"name": "第一章 报价汇总表", "source": "d1"}]}
+        assert self._run("L2-040", fields) == []  # contains_any repr 子串命中(A-β6-⑦)
