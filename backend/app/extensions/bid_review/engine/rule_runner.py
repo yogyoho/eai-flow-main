@@ -56,7 +56,15 @@ class RulePack:
 def _collect_exprs(chk: dict) -> list[str]:
     out = [str(chk[k]) for k in ("precondition", "left", "right", "target", "cond") if k in chk]
     for key in ("steps", "all", "any", "values"):  # any = or-op 表达式列表(P1-β批二),校验语义与 all 一致
-        out += [str(e) for e in chk.get(key, [])]
+        for e in chk.get(key, []):
+            if isinstance(e, dict):
+                # EAI-CUSTOM 批六T4(A-β6-⑧,2026-11-08):steps dict 形态 {expr, precondition?,
+                # optional?, message_tpl?, fix_tpl?, dedup_ent?}——expr/precondition 是表达式,
+                # 入加载期校验+缺字段门;message_tpl/fix_tpl 是模板非表达式,不收集。
+                # legacy 字符串 step 行为不变。
+                out += [str(e[k]) for k in ("precondition", "expr") if k in e]
+            else:
+                out.append(str(e))
     return out
 
 
@@ -250,9 +258,14 @@ def attach_evidence(issues: list[dict], rule: Rule, provenance: dict | None = No
 def run_det_rule(rule: Rule, fields: dict) -> list[dict]:
     """单条 det 规则执行:缺字段 → UNKNOWN,precondition 不成立 → [],判定失败 → FAIL(P1-β批三 五值域)。"""
     exprs = _collect_exprs(rule.check)
-    missing = sorted({p for e in exprs for p in fields_used(e) if p not in fields})
+    # EAI-CUSTOM 批六T4(A-β6-⑧,2026-11-08):steps dict 声明的 optional 路径=可选域,缺席
+    # 不咬 need_human 缺字段门(A-β6-⑧「夹具无新字段时行为不变」的唯一可达通路——门先于
+    # precondition 执行,声明外的路径缺席仍照旧 need_human);实评缺席由 step 级 optional-skip
+    # 关门,在场 None/[] 由 step 级 precondition 关门。未声明 optional 的规则两段门零变化。
+    optional = {str(p) for st in rule.check.get("steps") or [] if isinstance(st, dict) for p in (st.get("optional") or [])}
+    missing = sorted({p for e in exprs for p in fields_used(e) if p not in fields} - optional)
     if not missing:
-        missing = sorted(p for p in rule.inputs if p not in fields)
+        missing = sorted(p for p in rule.inputs if p not in fields and p not in optional)
     if missing:
         return [_need_human(rule, f"字段缺失无法判定:{', '.join(missing)}(on_missing_input=need_human)")]
     issues: list[dict] = []
@@ -261,8 +274,31 @@ def run_det_rule(rule: Rule, fields: dict) -> list[dict]:
         if "precondition" in chk and not eval_expr(str(chk["precondition"]), fields):
             return []  # 前置不成立=不适用,非问题
         if "steps" in chk:
-            if not all(eval_expr(str(st), fields) for st in chk["steps"]):
+            # 字符串 step:既有单 issue 语义逐字节保留(任一失败→一条 rule 级 tpl,L1-008/L2-032 先例)
+            str_steps = [str(st) for st in chk["steps"] if not isinstance(st, dict)]
+            if str_steps and not all(eval_expr(e, fields) for e in str_steps):
                 issues.append(_issue(rule, fields, {}))
+            # EAI-CUSTOM 批六T4(A-β6-⑧,2026-11-08):dict step 形态——optional 路径缺席=不适用;
+            # precondition 不成立=不适用(与 op 形态 precondition→[] 同语义);判定失败=FAIL,
+            # per-step message_tpl/fix_tpl 独立成话(forms 判定独立消息,A-β6-⑧ 硬线「禁合并回
+            # 单消息」);dedup_ent 声明独立实体键,双 step 同败时 dedup 键互异不互吞
+            # (crud.upsert_issue 按 (task_id, dedup_key) 合并,同键第二条消息会被吞)。
+            for st in chk["steps"]:
+                if not isinstance(st, dict):
+                    continue  # 字符串 step 已由上方 all() 判定
+                if any(p not in fields for p in (st.get("optional") or [])):
+                    continue  # 声明可选路径缺席 → step 不适用(旧夹具零扰动)
+                pre = st.get("precondition")
+                if pre is not None and not eval_expr(str(pre), fields):
+                    continue  # 前置不成立=不适用,非问题
+                if not eval_expr(str(st["expr"]), fields):
+                    ent = st.get("dedup_ent")
+                    iss = _issue(rule, fields, {}, {"step": str(ent)} if ent else None)
+                    if st.get("message_tpl"):
+                        iss["message"] = _tpl(str(st["message_tpl"]), fields)
+                    if st.get("fix_tpl"):
+                        iss["fix"] = str(st["fix_tpl"])
+                    issues.append(iss)
         elif chk["op"] == "and":
             if not all(eval_expr(str(e), fields) for e in chk["all"]):
                 issues.append(_issue(rule, fields, {}))

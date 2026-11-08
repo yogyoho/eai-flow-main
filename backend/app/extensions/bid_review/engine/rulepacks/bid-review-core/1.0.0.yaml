@@ -199,14 +199,34 @@ rules:
     applies_to: ["*"]
     # A-续-③(P1-β批二续 Task3 2026-11-07,C-17 兑付):凭证缺失场景本条不适用(金额无从比对),
     # L2-033(fatal)主责独报;present=None(清单缺失)同样不适用,L2-033 need_human 兜底。
-    # 金额比对 op/eq 检查体与 message/fix 零改动;precondition 字段须在 inputs(fields_used 同域)。
-    inputs: [bid.deposit_amount, tender.deposit_required, bid.deposit_receipt_present]
+    # ── 批六T4 steps/set_eq 实态裁决落点(A-β6-⑧ ⚠️2 兑付,spec §6.1 deposit 窄化,2026-11-08)──
+    # steps 分支实态:step=expr 串、任一失败单发 rule 级 message_tpl,无 per-step message 键;
+    # plan 草拟「check=dict 列表+per-step message_tpl」拒载(list 无 .get,load 即崩)。按 A-β6-⑧
+    # 回退授权落 steps dict 形态 {expr, precondition, optional, message_tpl, fix_tpl, dedup_ent}
+    # (引擎 run_det_rule/_collect_exprs 增量,legacy 字符串 steps 单 issue 语义不变)。
+    # ①金额 step:判定式/precondition/message/fix 逐字冻结(=原 op:eq 检查体;免缴/凭证缺失
+    #   前置不成立=不适用语义由 dict-step precondition 同义承担);
+    # ②forms step:前置门 count>=1 双侧;optional 声明=路径缺席不咬缺字段门(旧夹具零扰动,
+    #   门先于 precondition 执行,yaml-only 不可达故落引擎增量);在场 None/[] 由前置门关门
+    #   (生产契约「无明示给空数组」);set_eq op 对 str 列表实态=裸 set 差集无 norm(L1-011
+    #   用 codes 是因 boq 行为 dict,deposit_forms 是字符串列表,codes 会取出一列 None),
+    #   判定改用 subset_of×2(expr 版集合等价,元素 strip 归一);message/fix 独立于金额消息
+    #   (A-β6-⑧ 硬线「禁合并回单消息」);dedup_ent=forms 独立实体键,双 step 同败两 issue
+    #   dedup 键互异不互吞(crud.upsert_issue 按 (task_id, dedup_key) 合并)。
+    inputs: [bid.deposit_amount, tender.deposit_required, bid.deposit_receipt_present, tender.deposit_forms, bid.deposit_forms]
     # 免缴场景(deposit_required=0)或凭证缺失(deposit_receipt_present!=True)前置不成立=不适用
     check:
-      op: eq
-      left: bid.deposit_amount
-      right: tender.deposit_required
-      precondition: "tender.deposit_required > 0 and bid.deposit_receipt_present == True"
+      steps:
+        - expr: "bid.deposit_amount == tender.deposit_required"
+          precondition: "tender.deposit_required > 0 and bid.deposit_receipt_present == True"
+          message_tpl: "投标保证金 {bid.deposit_amount:money} 与招标要求 {tender.deposit_required:money} 不一致"
+          fix_tpl: "按招标文件载明金额缴纳并附凭证,金额/缴纳凭证一致后重传"
+        - expr: "subset_of(bid.deposit_forms, tender.deposit_forms) and subset_of(tender.deposit_forms, bid.deposit_forms)"
+          precondition: "count(tender.deposit_forms) >= 1 and count(bid.deposit_forms) >= 1"
+          optional: [tender.deposit_forms, bid.deposit_forms]
+          dedup_ent: forms
+          message_tpl: "保证金缴纳形式与招标要求不一致:要求 {tender.deposit_forms} / 实际 {bid.deposit_forms}"
+          fix_tpl: "缴纳形式按招标文件载明形式(现金/银行保函/保证保险等)执行并附相应凭证"
     severity: fatal
     evidence: [A-DEPOSIT, A-TENDER-NOTICE]
     message_tpl: "投标保证金 {bid.deposit_amount:money} 与招标要求 {tender.deposit_required:money} 不一致"
@@ -342,7 +362,12 @@ rules:
     layer: L1
     type: hybrid
     applies_to: ["*"]
-    inputs: [bid.similar_performances, tender.min_similar_performance_count]
+    # 批六T4(A-β6-⑧ ⚠️2 兑付,spec §6.1 performance_req 窄化收口,2026-11-08):inputs 富化
+    # min_performance_amount/performance_window_months(hyb prompt 自动富化);det_expr/op/
+    # left/right/message_tpl/fix_tpl 逐字冻结(golden contains 面)。新 inputs 使旧夹具(无新
+    # 字段)在缺字段门第二段转 need_human——golden 面受影响行由批六 T6 controller 重推导
+    # (A-β6-⑨),不在 T4 回归面(rule_runner/worker/extract 三文件)。
+    inputs: [bid.similar_performances, tender.min_similar_performance_count, tender.min_performance_amount, tender.performance_window_months]
     # det 粗筛=数量不足时产候选(表达式 False=判定失败=命中);候选交模型确认业绩相关性/证明有效性(A12);数量达标零候选不进语义管线;bid.similar_performances 为业绩名称串列表
     check:
       det_expr: "count(bid.similar_performances) >= tender.min_similar_performance_count"

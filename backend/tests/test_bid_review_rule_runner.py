@@ -627,3 +627,97 @@ class TestBeta6DetRules(unittest.TestCase):
     def test_l2040_present_table_passes(self):
         fields = {"tender.required_tables": ["报价汇总表"], "bid.tables": [{"name": "第一章 报价汇总表", "source": "d1"}]}
         assert self._run("L2-040", fields) == []  # contains_any repr 子串命中(A-β6-⑦)
+
+
+# ── P1-β批六 T4:⚠️2 兑付(A-β6-⑧)——L1-003 inputs 富化(det 冻结)/ L1-006 forms step ──
+# 实态裁决(plan 草拟「check=dict 列表+per-step message_tpl」不可达,已声明):steps 分支实态
+# =step 为 expr 串、任一失败单发 rule 级 message_tpl,无 per-step message 键;且缺字段门
+# (fields_used 首段+inputs 二段)先于任何 precondition 咬新路径——「夹具无新字段行为不变」
+# yaml-only 不可达。按 A-β6-⑧ 回退授权落 steps dict 形态 {expr, precondition, optional,
+# message_tpl, fix_tpl, dedup_ent}:引擎 run_det_rule/_collect_exprs 增量支持,legacy 字符串
+# steps 单 issue 语义逐字节保留(L1-008/L2-032 既有钉测为证)。set_eq op 对 str 列表实态=
+# 裸 set 差集无 norm,forms 判定改用 subset_of×2(expr 版集合等价,元素 strip 归一)。
+# plan 三测试扩为七:补金额消息逐字冻结钉/前置门语义不变钉/空数组前置门钉/双 step 独立消息钉
+# (各守 A-β6-⑧ 一条硬线)。
+
+
+class TestBeta6RuleExtensions(unittest.TestCase):
+    """批六 ⚠️2 兑付(A-β6-⑧):L1-003 inputs 富化 / L1-006 forms step 独立消息。
+    直跑形态沿文件惯例:load_rulepack(PACK) → id 索引 → run_det_rule。"""
+
+    def _run(self, rule_id, fields):
+        pack = load_rulepack(PACK)
+        rule = {r.id: r for r in pack.rules}[rule_id]
+        return run_det_rule(rule, fields)
+
+    def test_l1003_inputs_enriched_unchanged_det(self):
+        pack = load_rulepack(PACK)
+        r = {x.id: x for x in pack.rules}["L1-003"]
+        assert "tender.min_performance_amount" in r.inputs
+        assert "tender.performance_window_months" in r.inputs
+        # det_expr/message_tpl/fix_tpl 逐字冻结(A-β6-⑧ golden contains 面)
+        assert r.check["det_expr"] == "count(bid.similar_performances) >= tender.min_similar_performance_count"
+        assert r.message_tpl == "类似业绩 {bid.similar_performances} 数量少于招标要求 {tender.min_similar_performance_count} 项"
+        assert r.fix_tpl == "补附满足数量与年限要求的类似业绩证明(中标通知书/合同/验收证明)"
+
+    def test_l1006_forms_step_fires_on_mismatch(self):
+        fields = {
+            "bid.deposit_amount": 100000,
+            "tender.deposit_required": 100000,
+            "bid.deposit_receipt_present": True,
+            "tender.deposit_forms": ["银行保函"],
+            "bid.deposit_forms": ["现金"],
+        }
+        iss = self._run("L1-006", fields)
+        assert len(iss) == 1 and iss[0]["verdict"] == "FAIL"
+        assert "银行保函" in iss[0]["message"] and "现金" in iss[0]["message"]
+        assert "缴纳形式" in iss[0]["message"]  # forms 独立消息,非金额消息(禁合并回单消息)
+        assert "{" not in iss[0]["message"]  # 无占位残留
+        assert iss[0]["severity"] == "fatal" and iss[0]["need_human"] is False
+
+    def test_l1006_forms_step_silent_when_fields_absent(self):
+        # 夹具无新字段 → 行为不变(golden 数字锁兼容,A-β6-⑧;optional 声明使缺字段门不咬)
+        fields = {"bid.deposit_amount": 100000, "tender.deposit_required": 100000, "bid.deposit_receipt_present": True}
+        assert self._run("L1-006", fields) == []  # 金额一致且 forms 前置门未开
+
+    def test_l1006_amount_message_frozen_verbatim(self):
+        # 金额判定与既有消息/fix 逐字不动(A-β6-⑧ 冻结令直钉);forms 缺席不伴发 need_human
+        fields = {"bid.deposit_amount": 50000, "tender.deposit_required": 100000, "bid.deposit_receipt_present": True}
+        iss = self._run("L1-006", fields)
+        assert len(iss) == 1 and iss[0]["verdict"] == "FAIL"
+        assert iss[0]["message"] == "投标保证金 ¥50,000.00 与招标要求 ¥100,000.00 不一致"
+        assert iss[0]["fix"] == "按招标文件载明金额缴纳并附凭证,金额/缴纳凭证一致后重传"
+        assert iss[0]["dedup_key"] == "L1|L1-006|-"  # 既有实体键逐字节不动(查重连续性)
+
+    def test_l1006_two_steps_fire_independent_messages(self):
+        # 双 step 同败:两条 issue 各带各的消息,dedup 键互异不互吞(crud upsert 按
+        # (task_id, dedup_key) 合并,同键第二条消息会被吞——dedup_ent=forms 独立实体键)
+        fields = {
+            "bid.deposit_amount": 50000,
+            "tender.deposit_required": 100000,
+            "bid.deposit_receipt_present": True,
+            "tender.deposit_forms": ["银行保函"],
+            "bid.deposit_forms": ["现金"],
+        }
+        iss = self._run("L1-006", fields)
+        assert len(iss) == 2 and all(i["verdict"] == "FAIL" for i in iss)
+        msgs = {i["message"] for i in iss}
+        assert "投标保证金 ¥50,000.00 与招标要求 ¥100,000.00 不一致" in msgs
+        assert any("缴纳形式" in m and "银行保函" in m and "现金" in m for m in msgs)
+        assert len({i["dedup_key"] for i in iss}) == 2
+
+    def test_l1006_precondition_gate_unchanged(self):
+        # 免缴(deposit_required=0)/凭证缺失:前置不成立=不适用(op 形态既有语义,steps 化不改)
+        assert self._run("L1-006", {"bid.deposit_amount": 100000, "tender.deposit_required": 0, "bid.deposit_receipt_present": True}) == []
+        assert self._run("L1-006", {"bid.deposit_amount": 90000, "tender.deposit_required": 100000, "bid.deposit_receipt_present": False}) == []
+
+    def test_l1006_forms_precondition_empty_lists_silent(self):
+        # 生产契约「无明示给空数组」:路径在场但空 → count>=1 双侧前置门关门,零发声
+        fields = {
+            "bid.deposit_amount": 100000,
+            "tender.deposit_required": 100000,
+            "bid.deposit_receipt_present": True,
+            "tender.deposit_forms": [],
+            "bid.deposit_forms": [],
+        }
+        assert self._run("L1-006", fields) == []
