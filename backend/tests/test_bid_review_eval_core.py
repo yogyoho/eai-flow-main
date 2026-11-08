@@ -342,6 +342,10 @@ async def test_fold_l1007_definite_primary_folds_l2030_in_pipeline():
     pack = load_rulepack(PACK)
     fields = {
         "bid.missing_signature_pages": ["第12页 缺少骑缝章"],
+        # EAI-CUSTOM 批七T3(A-β7-③)夹具补键:L1-007 inputs 富化 tender.required_signatures
+        # 后,on_missing_input 缺字段门要求该键在场(L1-003 批六夹具补键同规);值=golden
+        # 夹具同款(controller 批七补键字面)。
+        "tender.required_signatures": ["法定代表人签字", "公章"],
         "tender.signature_slots": [
             {"no": "法人章", "name": "法定代表人", "page": 12},
             {"no": "公章", "name": "投标人单位", "page": 12},

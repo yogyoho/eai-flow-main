@@ -68,6 +68,17 @@ def _collect_exprs(chk: dict) -> list[str]:
     return out
 
 
+def _validate_dict_steps(chk: dict, rid: str) -> None:
+    """EAI-CUSTOM 批七T3(A-β7-③ 引擎左移,2026-11-08):steps dict 形态项缺 expr 键 →
+    载入期拒载。原态:load 静默放行(_collect_exprs 对 dict 项只收 expr/precondition,
+    缺 expr 即静默漏收),实评 run_det_rule str(st["expr"]) 才 KeyError → 伪装成
+    「求值期字段缺失 'expr'」need_human 错位降级。左移到 load,错误类型/句式与既有
+    载入错误(op/steps 形态门)一致;最小侵入:仅 load_rulepack 调用,执行路径零改动。"""
+    for st in chk.get("steps") or []:
+        if isinstance(st, dict) and "expr" not in st:
+            raise RulePackError(f"规则 {rid} steps dict 项缺少 expr(形态不合规,拒载)")
+
+
 def load_rulepack(path: str | Path) -> RulePack:
     """加载规则包;逐条 validate_expr 白名单校验,语法/函数/算子/tolerance 不合规 → RulePackError(拒载)。"""
     p = Path(path)
@@ -81,6 +92,7 @@ def load_rulepack(path: str | Path) -> RulePack:
             raise RulePackError(f"规则 {rid} 未知算子 {op}(白名单外,拒载)")
         if "steps" not in chk and op is None:
             raise RulePackError(f"规则 {rid} check 缺少 op/steps(形态不识别,拒载)")
+        _validate_dict_steps(chk, rid)  # EAI-CUSTOM 批七T3(A-β7-③):steps dict 项缺 expr 左移到载入期拒载
         if "tolerance" in chk and float(chk["tolerance"]) != 0.0:
             raise RulePackError(f"规则 {rid} tolerance 仅接受 0.00(求值器不容差)")
         for e in _collect_exprs(chk):

@@ -1,8 +1,10 @@
+import copy
 import re
 import unittest
 from pathlib import Path
 
 import pytest
+import yaml
 
 from app.extensions.bid_review.engine.eval_core import wrap_model_fn
 from app.extensions.bid_review.engine.expr import validate_expr
@@ -898,3 +900,65 @@ class TestBeta7Rules:
         dets = [r for r in pack.rules if r.type == "deterministic"]
         assert len(pack.rules) == 59
         assert len(dets) == 50
+
+
+# ── P1-β批七 T3(A-β7-③,2026-11-08):L1-007 inputs 富化(tender.required_signatures 入
+# hyb 规则卡)+ 引擎左移(steps dict 项缺 expr → 载入期拒载;原态 load 静默漏收——
+# _collect_exprs 对 dict 项只收 expr/precondition,缺 expr 即漏,实评 run_det_rule
+# str(st["expr"]) 才 KeyError→伪装「求值期字段缺失」need_human 错位降级)。
+# 实态勘误(plan 申报):plan 拟 build_rule_card(rule, fields, "") 直传——函数真实存在
+# (llm_runner.build_rule_card),但 rule 入参走 .get 契约(纯 dict),Rule 数据类直传
+# AttributeError;真通路=run_sem_rule 入口 dataclasses.asdict 归一后构造卡。测试按实态
+# 走 run_sem_rule 抓模型入参卡文案(富化字段经「已算字段」段渲染进卡)。
+
+
+class TestBeta7L1007Extension:
+    """批七 T3:L1-007 签章完整 inputs 富化 + steps dict 缺 expr 左移拒载(A-β7-③)。"""
+
+    def _rule(self, rid):
+        pack = load_rulepack(PACK)
+        return next(r for r in pack.rules if r.id == rid)
+
+    def test_l1_007_inputs_enriched(self):
+        rule = self._rule("L1-007")
+        assert "bid.missing_signature_pages" in rule.inputs
+        assert "tender.required_signatures" in rule.inputs
+        # det/op/message 逐字冻结(A-β7-③:加 input 不加规则,golden contains 面零扰动)
+        assert rule.check["det_expr"] == "count(bid.missing_signature_pages) == 0"
+        assert rule.message_tpl == "签章缺失页:{bid.missing_signature_pages}"
+
+    @pytest.mark.asyncio
+    async def test_l1_007_required_signatures_enriches_prompt(self):
+        rule = self._rule("L1-007")
+        captured = {}
+
+        def cap_model(messages):
+            captured["card"] = messages[0]["content"]
+
+            class R:
+                content = '{"verdicts": [{"clause_id": "C1", "verdict": "full", "confidence": 0.9, "reason": "签章合规", "evidence": [{"doc_id": "bid.pdf", "page": 3, "text": "法定代表人签字"}]}]}'
+
+            return R()
+
+        # 粗筛命中(missing 非空)→ 候选进模型;卡「已算字段」段须含富化字段值(法定代表人签字)
+        fields = {"bid.missing_signature_pages": ["第3页"], "tender.required_signatures": ["法定代表人签字", "公章"]}
+        issues = await run_sem_rule(rule, fields, "", wrap_model_fn(cap_model), "")
+        assert "法定代表人签字" in captured["card"]
+        assert "tender.required_signatures" in captured["card"]
+        assert issues == []  # full=驳回候选,合规落地零 issue
+
+    def test_dict_step_missing_expr_rejected_at_load(self, tmp_path):
+        from app.extensions.bid_review.engine.rule_runner import _validate_dict_steps
+
+        # 直调:校验函数本体按 rid 点名拒载
+        with pytest.raises(RulePackError, match="expr"):
+            _validate_dict_steps({"steps": [{"message_tpl": "x"}]}, "T-001")
+
+        # 走 load_rulepack:deepcopy L1-006,dict step 弹掉 expr 键 → 载入期 raise
+        raw = yaml.safe_load(Path(PACK).read_text(encoding="utf-8"))
+        target = copy.deepcopy(next(r for r in raw["rules"] if r["id"] == "L1-006"))
+        next(s for s in target["check"]["steps"] if isinstance(s, dict)).pop("expr")
+        p = tmp_path / "bad.yaml"
+        p.write_text(yaml.safe_dump({"rules": [target]}, allow_unicode=True), encoding="utf-8")
+        with pytest.raises(RulePackError, match="expr"):
+            load_rulepack(str(p))

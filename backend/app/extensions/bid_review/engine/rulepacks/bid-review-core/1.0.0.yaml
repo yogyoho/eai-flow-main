@@ -213,6 +213,8 @@ rules:
     #   判定改用 subset_of×2(expr 版集合等价,元素 strip 归一);message/fix 独立于金额消息
     #   (A-β6-⑧ 硬线「禁合并回单消息」);dedup_ent=forms 独立实体键,双 step 同败两 issue
     #   dedup 键互异不互吞(crud.upsert_issue 按 (task_id, dedup_key) 合并)。
+    #   免缴场景(A-β7-③ 批七注记):tender.deposit_forms 与 bid.deposit_forms 均声明时才判
+    #   (set_eq step),免缴(N/A)不产此步 issue——语义注记,行为零变。
     inputs: [bid.deposit_amount, tender.deposit_required, bid.deposit_receipt_present, tender.deposit_forms, bid.deposit_forms]
     # 免缴场景(deposit_required=0)或凭证缺失(deposit_receipt_present!=True)前置不成立=不适用
     check:
@@ -386,7 +388,7 @@ rules:
     layer: L1
     type: hybrid
     applies_to: ["*"]
-    inputs: [bid.missing_signature_pages]
+    inputs: [bid.missing_signature_pages, tender.required_signatures]  # 批七 A-β7-③ 富化:招标签章要求入 hyb 规则卡(加 input 不加规则);det/op 逐字冻结
     # det 粗筛=缺失签章页清单(逐页扫描产物,非空产候选);候选交模型确认盖章规范性(鲜章/复印章/骑缝,A12);空清单零候选不进语义管线
     check:
       det_expr: "count(bid.missing_signature_pages) == 0"
