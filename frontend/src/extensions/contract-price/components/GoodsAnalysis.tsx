@@ -672,6 +672,7 @@ function AnalysisResult({
       {/* Traceback drawer */}
       <TracebackDrawer
         docId={(trace?.document_id as string) ?? null}
+        itemId={(trace?.id as string) ?? null}
         page={(trace?.source_page as number) ?? null}
         bbox={(trace?.source_bbox as number[]) ?? null}
         onClose={() => setTrace(null)}

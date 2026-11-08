@@ -31,43 +31,12 @@ set -e
 REPO_ROOT="$(builtin cd "$(dirname "${BASH_SOURCE[0]}")/.." >/dev/null 2>&1 && pwd -P)"
 cd "$REPO_ROOT"
 
-# ── Load .env ────────────────────────────────────────────────────────────────
-
-if [ -f "$REPO_ROOT/.env" ]; then
-    set -a
-    source "$REPO_ROOT/.env"
-    set +a
-fi
-
-# EAI-CUSTOM: Override Docker-specific paths for local dev on the Windows host (non-Docker runs).
-# The .env file ships with container paths like /app/config.yaml; on the host
-# those paths don't exist and MSYS2 may mangle them into Git-installation paths.
-if [ -z "$IN_DOCKER" ]; then
-    # Convert Git Bash Unix path (/d/...) to Windows path (D:\...) for native
-    # Windows programs (Python, uv) that consume these env vars.
-    _win_root="$REPO_ROOT"
-    case "$_win_root" in
-        /?/*) _win_root="$(echo "${_win_root#/}" | cut -c1 | tr '[:lower:]' '[:upper:]'):${_win_root#/?}" ;;
-    esac
-    DEER_FLOW_HOME="$_win_root\\backend\\.deer-flow"
-    DEER_FLOW_CONFIG_PATH="$_win_root\\config.yaml"
-    DEER_FLOW_EXTENSIONS_CONFIG_PATH="$_win_root\\extensions_config.json"
-    DEER_FLOW_REPO_ROOT="$_win_root"
-    DEER_FLOW_HOST_BASE_DIR="$_win_root\\backend\\.deer-flow"
-    DEER_FLOW_HOST_SKILLS_PATH="$_win_root\\skills"
-    unset DEER_FLOW_DOCKER_SOCKET
-
-    # Replace Docker container hostnames with localhost (Gateway is local,
-    # but databases/services still run in Docker with exposed ports).
-    # postgres-ext:5432 → localhost:5432 (extensions DB, port mapped in docker-compose.extensions.yaml)
-    EXTENSIONS_DB_HOST=localhost
-    # RAGFlow is always accessed via localhost:9380 on the host
-    RAGFLOW_BASE_URL="${RAGFLOW_BASE_URL:-http://localhost:9380}"
-fi
-
 # _pick_python — restored from upstream (bytedance/main fcb1c88e5, env-probe fix).
 # EAI previously dropped it in favor of inline `command -v` chains; it is wired
 # back in below (PYTHON_BIN / DETECT_PYTHON) so the Windows Store-alias fix applies.
+# EAI-CUSTOM: the naive `set -a; source .env` block that used to live here was
+# superseded by upstream's dotenv_exports.py loader below; the EAI Windows host
+# path overrides now run right after it (they must win over .env's container paths).
 _pick_python() {
     local candidate
     for candidate in python3 python py; do
@@ -86,6 +55,56 @@ _pick_python() {
     done
     return 1
 }
+
+# ── Load .env ────────────────────────────────────────────────────────────────
+
+# .env is data, not a script: sourcing it turned `$$` into this shell's PID, ran
+# backticks and `$(...)`, and ran the second word of an unquoted value with a
+# space as a command. dotenv_exports.py parses it like python-dotenv, keeping the
+# launcher's `$NAME` / `${NAME:-default}` / leading `~` expansion and its
+# precedence over inherited variables, and prints shell-quoted exports.
+if [ -f "$REPO_ROOT/.env" ]; then
+    if ! DOTENV_PYTHON="$(_pick_python)"; then
+        echo "✗ Python 3 is required to read .env." >&2
+        exit 1
+    fi
+    DOTENV_EXPORTS="$("$DOTENV_PYTHON" "$REPO_ROOT/scripts/dotenv_exports.py" "$REPO_ROOT/.env")" || exit 1
+    eval "$DOTENV_EXPORTS"
+    unset DOTENV_PYTHON DOTENV_EXPORTS
+fi
+
+# EAI-CUSTOM: Override Docker-specific paths for local dev on the Windows host (non-Docker runs).
+# The .env file ships with container paths like /app/config.yaml; on the host
+# those paths don't exist and MSYS2 may mangle them into Git-installation paths.
+# Positioned AFTER the .env load above so these overrides win over .env values.
+# EAI-CUSTOM (upstream-sync 2026-11-08): DEER_FLOW_HOME is overridden only when
+# it is empty or container-prefixed — upstream's contract (locked by the
+# support-bundle tests) is that an explicit .env DEER_FLOW_HOME wins over the
+# inherited environment, so a deliberate host override from .env must survive.
+if [ -z "$IN_DOCKER" ]; then
+    # Convert Git Bash Unix path (/d/...) to Windows path (D:\...) for native
+    # Windows programs (Python, uv) that consume these env vars.
+    _win_root="$REPO_ROOT"
+    case "$_win_root" in
+        /?/*) _win_root="$(echo "${_win_root#/}" | cut -c1 | tr '[:lower:]' '[:upper:]'):${_win_root#/?}" ;;
+    esac
+    case "${DEER_FLOW_HOME:-}" in
+        ""|/app/*|/data/*|/mnt/*) DEER_FLOW_HOME="$_win_root\\backend\\.deer-flow" ;;
+    esac
+    DEER_FLOW_CONFIG_PATH="$_win_root\\config.yaml"
+    DEER_FLOW_EXTENSIONS_CONFIG_PATH="$_win_root\\extensions_config.json"
+    DEER_FLOW_REPO_ROOT="$_win_root"
+    DEER_FLOW_HOST_BASE_DIR="$_win_root\\backend\\.deer-flow"
+    DEER_FLOW_HOST_SKILLS_PATH="$_win_root\\skills"
+    unset DEER_FLOW_DOCKER_SOCKET
+
+    # Replace Docker container hostnames with localhost (Gateway is local,
+    # but databases/services still run in Docker with exposed ports).
+    # postgres-ext:5432 → localhost:5432 (extensions DB, port mapped in docker-compose.extensions.yaml)
+    EXTENSIONS_DB_HOST=localhost
+    # RAGFlow is always accessed via localhost:9380 on the host
+    RAGFLOW_BASE_URL="${RAGFLOW_BASE_URL:-http://localhost:9380}"
+fi
 
 # ── Argument parsing ─────────────────────────────────────────────────────────
 
@@ -290,6 +309,13 @@ fi
 # not tear down a running stack. Gateway and frontend always bind loopback;
 # nginx is the only entry point, as in the Docker stack.
 if [ "$ACTION" != "stop" ]; then
+    # EAI-CUSTOM: default 60 (not upstream's 30) — Windows host cold start
+    # (uv + first-request warmup) needs the longer allowance; overridable.
+    GATEWAY_STARTUP_TIMEOUT="${DEER_FLOW_GATEWAY_STARTUP_TIMEOUT-60}"
+    if [[ ! "$GATEWAY_STARTUP_TIMEOUT" =~ ^[0-9]+$ ]] || ! [ "$GATEWAY_STARTUP_TIMEOUT" -gt 0 ] 2>/dev/null; then
+        echo "✗ DEER_FLOW_GATEWAY_STARTUP_TIMEOUT must be a positive integer (seconds)." >&2
+        exit 1
+    fi
     NGINX_CONF="$(bash "$REPO_ROOT/scripts/nginx-local-conf.sh")" || exit 1
 fi
 
@@ -341,6 +367,40 @@ else
     FRONTEND_CMD="env BETTER_AUTH_SECRET=$($PYTHON_BIN -c 'import secrets; print(secrets.token_hex(16))') pnpm run preview --hostname 127.0.0.1"
 fi
 
+# Runtime path defaults. Local `make dev` launches Gateway from `backend/`,
+# so pin DeerFlow-owned state to the expected backend runtime directory and
+# create it before uvicorn builds its reload exclude filter.
+# EAI-CUSTOM (upstream-sync 2026-11-08): grafted from upstream, positioned
+# immediately before the uvicorn-flags section like upstream's layout (the
+# support-bundle tests slice this defaults block as one unit). The trailing pwd -P normalization is skipped when DEER_FLOW_HOME
+# holds a Windows-style path set by the EAI host-override block above (native
+# Python/uv consume it; MSYS normalization would rewrite D:\... to /d/...).
+if [ -z "$DEER_FLOW_PROJECT_ROOT" ]; then
+    export DEER_FLOW_PROJECT_ROOT="$REPO_ROOT"
+fi
+
+BACKEND_RUNTIME_HOME="$REPO_ROOT/backend/.deer-flow"
+if [ -z "$DEER_FLOW_HOME" ]; then
+    export DEER_FLOW_HOME="$BACKEND_RUNTIME_HOME"
+fi
+
+# `backend/sandbox` is excluded from uvicorn's reload watcher below. uvicorn only
+# excludes an absolute path directly when it already exists as a directory;
+# otherwise it globs the pattern, and Python 3.12's pathlib rejects absolute glob
+# patterns with NotImplementedError, crashing `make dev` on a fresh checkout
+# (#3459 / #3454). Creating it here keeps every absolute exclude on the is_dir path.
+mkdir -p "$DEER_FLOW_HOME" "$BACKEND_RUNTIME_HOME" "$REPO_ROOT/backend/sandbox" 2>/dev/null || true
+case "$DEER_FLOW_HOME" in
+    [A-Za-z]:*) ;;  # Windows drive path: keep as-is (EAI host runs; note \\ in a case
+                    # pattern escapes the glob, so match on the drive colon instead)
+    *) DEER_FLOW_HOME="$(cd "$DEER_FLOW_HOME" 2>/dev/null && pwd -P)" ;;
+esac
+case "$BACKEND_RUNTIME_HOME" in
+    [A-Za-z]:*) ;;
+    *) BACKEND_RUNTIME_HOME="$(cd "$BACKEND_RUNTIME_HOME" 2>/dev/null && pwd -P)" ;;
+esac
+export DEER_FLOW_HOME
+
 # Extra flags for uvicorn
 if $DEV_MODE && ! $DAEMON_MODE; then
     GATEWAY_EXTRA_FLAGS="--reload --reload-include='*.yaml' --reload-include='.env' --reload-exclude='*.pyc' --reload-exclude='__pycache__' --reload-exclude='sandbox/' --reload-exclude='.deer-flow/'"
@@ -359,6 +419,7 @@ fi
 
 if ! { \
         [ -n "$DEER_FLOW_CONFIG_PATH" ] && [ -f "$DEER_FLOW_CONFIG_PATH" ] || \
+        [ -f "$DEER_FLOW_PROJECT_ROOT/config.yaml" ] || \
         [ -f backend/config.yaml ] || \
         [ -f config.yaml ]; \
     }; then
@@ -463,6 +524,10 @@ run_service() {
         local logfile="logs/$(echo "$name" | tr '[:upper:]' '[:lower:]' | tr ' ' '-').log"
         echo "✗ $name failed to start."
         [ -f "$logfile" ] && tail -20 "$logfile"
+        if [ "$name" = "Gateway" ]; then
+            echo "  Check logs/gateway.log for startup errors. If Gateway is still initializing,"
+            echo "  increase DEER_FLOW_GATEWAY_STARTUP_TIMEOUT (seconds; current: $GATEWAY_STARTUP_TIMEOUT)."
+        fi
         cleanup 1
     }
     echo "✓ $name started on localhost:$port"
@@ -475,11 +540,12 @@ mkdir -p temp/client_body_temp temp/proxy_temp temp/fastcgi_temp temp/uwsgi_temp
 
 # 1. Gateway API
 # --host 127.0.0.1: upstream #6587 loopback-only local stack (nginx is the
-# sole entry point). Timeout 60 is EAI's Windows cold-start allowance
-# (upstream uses 30).
+# sole entry point). Startup timeout: upstream's GATEWAY_STARTUP_TIMEOUT
+# knob with EAI-CUSTOM default 60 (Windows cold-start allowance; upstream
+# ships 30) — see the override block above.
 run_service "Gateway" \
     "cd backend && PYTHONPATH=. uv run --no-sync uvicorn app.gateway.app:app --host 127.0.0.1 --port 8001 $GATEWAY_EXTRA_FLAGS > ../logs/gateway.log 2>&1" \
-    8001 60
+    8001 "$GATEWAY_STARTUP_TIMEOUT"  # EAI-CUSTOM: default 60 kept (Windows cold start; was hard-coded 60 pre-sync)
 
 # 2. Frontend
 run_service "Frontend" \

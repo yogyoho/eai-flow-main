@@ -1,6 +1,6 @@
 # DeerFlow - Unified Development Environment
 
-.PHONY: help config config-upgrade check check-agent-guidance install extension-install extension-upgrade extension-list extension-enable extension-disable extension-remove setup doctor support-bundle detect-thread-boundaries detect-blocking-io dev dev-daemon dev-multi dev-multi-check dev-multi-down start start-daemon nginx stop up down prod-logs clean docker-init docker-start docker-stop docker-logs docker-logs-frontend docker-logs-gateway docker-logs-redis setup-sandbox rebuild-frontend check-frontend-deps sync-check
+.PHONY: help config config-upgrade test-config-version check check-agent-guidance install extension-install extension-upgrade extension-list extension-enable extension-disable extension-remove setup doctor support-bundle detect-thread-boundaries detect-blocking-io dev dev-daemon dev-multi dev-multi-check dev-multi-down start start-daemon nginx stop up down prod-logs clean docker-init docker-start docker-stop docker-logs docker-logs-frontend docker-logs-gateway docker-logs-redis setup-sandbox rebuild-frontend check-frontend-deps sync-check
 
 BASH ?= bash
 # Detect uv path - prefer uv in PATH, fall back to Windows Python Scripts
@@ -30,6 +30,7 @@ help:
 	@echo "  make support-bundle  - Create a redacted issue summary, AI draft, and evidence bundle"
 	@echo "  make config          - Generate local config files (aborts if config already exists)"
 	@echo "  make config-upgrade  - Merge new fields from config.example.yaml into config.yaml"
+	@echo "  make test-config-version - Run config upgrade tests with the public uv index"
 	@echo "  make check           - Check if all required tools are installed"
 	@echo "  make check-agent-guidance - Validate scoped AGENTS.md file and chain budgets"
 	@echo "  make detect-thread-boundaries - Inventory async/thread boundary points"
@@ -97,6 +98,9 @@ config:
 
 config-upgrade:
 	@$(RUN_SHELL_SCRIPT) ./scripts/config-upgrade.sh
+
+test-config-version:
+	@$(RUN_SHELL_SCRIPT) ./scripts/test-config-version.sh
 
 # Check required tools
 check:
@@ -239,16 +243,21 @@ docker-logs-redis:
 # Rebuild the frontend image after dependency changes (package.json / pnpm-lock.yaml).
 # The dev container's node_modules is image-baked (NOT bind-mounted, since host=Windows
 # and container=Linux), so a plain `restart`/`up` will NOT pick up dependency changes.
-# EAI-CUSTOM (bug-1278): docker.sh has no rebuild-frontend subcommand — this target is
-# currently BROKEN; manual path is `cd docker && docker compose -p eai-docker
-# -f docker-compose-dev.yaml build frontend && ... up -d frontend`.
+# EAI-CUSTOM (bug-4240; supersedes bug-1278 note): upstream docker.sh has no
+# rebuild-frontend / check-frontend-deps subcommands — keep both targets
+# self-contained instead of routing through scripts/docker.sh.
+# The dev stack is 4 compose overlays (must match how the running containers were
+# created; a single-file compose would fight the existing config hash).
+EAI_DEV_COMPOSE := docker compose -p eai-docker -f docker-compose-dev.yaml -f docker-compose.extensions.yaml -f docker-compose.ragflow.yaml -f docker-compose.business.yaml
+
 rebuild-frontend:
-	@$(RUN_SHELL_SCRIPT) ./scripts/docker.sh rebuild-frontend
+	cd docker && $(EAI_DEV_COMPOSE) build frontend
+	cd docker && $(EAI_DEV_COMPOSE) up -d frontend
 
 # Warn if host frontend/pnpm-lock.yaml differs from the deps baked into the running
 # frontend container. Prevents silent regressions (e.g. BlockNote duplicate-selection crash).
 check-frontend-deps:
-	@$(RUN_SHELL_SCRIPT) ./scripts/docker.sh check-frontend-deps
+	@$(RUN_SHELL_SCRIPT) ./scripts/check-frontend-deps.sh
 
 # ==========================================
 # Production Docker Commands

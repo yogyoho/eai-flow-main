@@ -35,7 +35,7 @@ from deerflow.config.channel_leader_lease_config import CHANNEL_LEADER_LEASE_FIE
 from deerflow.config.credentials_key import CREDENTIALS_KEY_ENV_VAR, CREDENTIALS_KEY_FILENAME, GENERATE_KEY_COMMAND, CredentialsKeyError, parse_credentials_keys
 from deerflow.config.deployment_config import multi_instance_declaration
 from deerflow.persistence.feedback import FeedbackRepository
-from deerflow.runtime import RunContext, RunManager, StreamBridge
+from deerflow.runtime import ORPHAN_RECOVERY_STOP_REASON, STARTUP_ORPHAN_RECOVERY_ERROR, RunContext, RunManager, StreamBridge
 
 if TYPE_CHECKING:
     # EAI-CUSTOM: lazy-imported scheduled-task repos used as annotations below
@@ -49,6 +49,10 @@ from deerflow.runtime.runs.store.base import RunStore
 from deerflow.utils.file_io import await_drained
 
 logger = logging.getLogger(__name__)
+
+# Upstream constant (bytedance/main deps.py): graceful RunManager drain budget
+# used by the shutdown path; the fused file's shutdown helper references it.
+_RUN_DRAIN_TIMEOUT_SECONDS = 5.0
 
 
 # EAI-CUSTOM: ported from upstream bytedance/main (deps.py) so the upstream
@@ -298,15 +302,25 @@ def credentials_key_consumers(config: AppConfig) -> list[str]:
     """Return the enabled features that store data under ``DEER_FLOW_CREDENTIALS_KEY``.
 
     Each entry is the setting that enabled the feature, as refusal text spells
-    it. The Gateway loads the key only when this list is non-empty, and the
-    multi-instance gate below refuses a missing key only for these features, so
-    a deployment that stores no credentials keeps booting without one.
+    it. The Gateway loads the key at startup only when this list is non-empty,
+    and the multi-instance gate below refuses a missing key only for these
+    features, so a deployment that stores no credentials keeps booting without
+    one. Personal MCP OAuth connections are saved at runtime, so they cannot be
+    listed here; their store loads the key on first use.
     """
     consumers: list[str] = []
     connections = getattr(config, "channel_connections", None)
     if connections is not None and getattr(connections, "enabled", False):
-        # ChannelConnectionRepository encrypts per-connection credentials.
+        # ChannelConnectionRepository encrypts per-connection credentials, and
+        # the runtime config store the bot credentials entered in the web UI.
         consumers.append("channel_connections.enabled=true")
+    extensions = getattr(config, "extensions", None)
+    if extensions is not None:
+        # deerflow.mcp.oauth_store keeps rotating refresh tokens in the database.
+        for name, server in extensions.get_enabled_mcp_servers().items():
+            oauth = server.oauth
+            if oauth is not None and oauth.enabled and oauth.grant_type == "refresh_token":
+                consumers.append(f"mcpServers.{name}.oauth.enabled=true")
     return consumers
 
 
@@ -451,6 +465,207 @@ def _validate_memory_retrieval_index(config: AppConfig) -> None:
     )
 
 
+async def _drain_inflight_runs(run_manager: RunManager) -> None:
+    """Drain in-flight runs before the checkpointer is torn down (issue #3373).
+
+    Shields the (internally-bounded) drain so that even if the lifespan
+    coroutine is repeatedly cancelled mid-shutdown — e.g. signal escalation or
+    the server's graceful-shutdown timeout — the checkpointer pool is not closed
+    while run tasks are still writing checkpoints. Cancellation is remembered
+    and propagated only after the already-running drain reaches a safe terminal
+    point.
+    """
+    drain = asyncio.create_task(run_manager.shutdown(timeout=_RUN_DRAIN_TIMEOUT_SECONDS))
+    cancellation: asyncio.CancelledError | None = None
+
+    while not drain.done():
+        try:
+            await asyncio.shield(drain)
+        except asyncio.CancelledError as exc:
+            if cancellation is None:
+                cancellation = exc
+        except Exception:
+            if cancellation is not None:
+                logger.exception("In-flight run drain failed after shutdown cancellation")
+                raise cancellation
+            logger.exception("Failed to drain in-flight runs during shutdown")
+            return
+
+    if cancellation is not None:
+        try:
+            drain.result()
+        except Exception:
+            logger.exception("In-flight run drain failed after shutdown cancellation")
+        raise cancellation
+
+    try:
+        drain.result()
+    except Exception:
+        logger.exception("Failed to drain in-flight runs during shutdown")
+
+
+async def _retry_recovered_run_stream_end(
+    bridge: StreamBridge,
+    run_id: str,
+    *,
+    retry_delay: float,
+    cleanup_delay: float,
+) -> None:
+    await asyncio.sleep(max(0.0, retry_delay))
+    await bridge.publish_end(run_id)
+    await bridge.cleanup(run_id, delay=cleanup_delay)
+
+
+async def _publish_recovered_run_stream_end(
+    bridge: StreamBridge,
+    recovered_runs: list[RunRecord],
+    *,
+    cleanup_delay: float = 60.0,
+    on_cleanup_scheduled: Callable[[str, asyncio.Task[None]], None] | None = None,
+) -> list[tuple[str, asyncio.Task[None]]]:
+    """Terminate retained streams for runs recovered as orphaned."""
+    cleanup_tasks: list[tuple[str, asyncio.Task[None]]] = []
+
+    def schedule_retry(record: RunRecord) -> bool:
+        retry_delay = getattr(
+            bridge,
+            "producer_lease_retry_delay_seconds",
+            None,
+        )
+        if not isinstance(retry_delay, (int, float)) or isinstance(retry_delay, bool) or retry_delay < 0:
+            return False
+        task = asyncio.create_task(
+            _retry_recovered_run_stream_end(
+                bridge,
+                record.run_id,
+                retry_delay=float(retry_delay),
+                cleanup_delay=cleanup_delay,
+            )
+        )
+        task.add_done_callback(
+            lambda task, run_id=record.run_id: _log_recovered_stream_cleanup_result(
+                task,
+                run_id,
+            )
+        )
+        cleanup_tasks.append((record.run_id, task))
+        if on_cleanup_scheduled is not None:
+            on_cleanup_scheduled(record.run_id, task)
+        return True
+
+    for record in recovered_runs:
+        stream_exists = getattr(bridge, "stream_exists", None)
+        if stream_exists is not None:
+            try:
+                if not await stream_exists(record.run_id):
+                    logger.debug("Skipping recovered stream end for %s: stream already expired", record.run_id)
+                    cleanup_expired_producer = getattr(
+                        bridge,
+                        "cleanup_expired_producer",
+                        None,
+                    )
+                    if callable(cleanup_expired_producer):
+                        try:
+                            cleaned = bool(await cleanup_expired_producer(record.run_id))
+                        except Exception:
+                            logger.warning(
+                                "Failed to clean expired stream producer marker for %s",
+                                record.run_id,
+                                exc_info=True,
+                            )
+                            cleaned = False
+                        if not cleaned:
+                            schedule_retry(record)
+                    continue
+            except Exception:
+                logger.debug("Failed to check recovered stream existence for %s", record.run_id, exc_info=True)
+        try:
+            await bridge.publish_end(record.run_id)
+        except Exception:
+            logger.warning(
+                "Failed to publish recovered run stream end for %s",
+                record.run_id,
+                exc_info=True,
+            )
+            schedule_retry(record)
+            continue
+        task = asyncio.create_task(bridge.cleanup(record.run_id, delay=cleanup_delay))
+        task.add_done_callback(lambda task, run_id=record.run_id: _log_recovered_stream_cleanup_result(task, run_id))
+        cleanup_tasks.append((record.run_id, task))
+        if on_cleanup_scheduled is not None:
+            on_cleanup_scheduled(record.run_id, task)
+    return cleanup_tasks
+
+
+def _log_recovered_stream_cleanup_result(task: asyncio.Task[None], run_id: str) -> None:
+    if task.cancelled():
+        return
+    try:
+        task.result()
+    except Exception:
+        logger.warning("Failed to clean up recovered run stream for %s", run_id, exc_info=True)
+
+
+async def _flush_recovered_stream_cleanups(
+    bridge: StreamBridge,
+    cleanup_tasks: dict[asyncio.Task[None], str],
+    *,
+    timeout: float = 1.0,
+) -> None:
+    """Cancel delayed cleanups and delete their streams before bridge shutdown.
+
+    Upstream helper (bytedance/main deps.py), ported 2026-11-08: without it a
+    recovered run's delayed cleanup (default 60s) outlives the bridge shutdown
+    and the stream TTL becomes the only safety net.
+    """
+    pending = [(task, run_id) for task, run_id in cleanup_tasks.items() if not task.done()]
+    if not pending:
+        return
+    for task, _run_id in pending:
+        task.cancel()
+    await asyncio.gather(*(task for task, _run_id in pending), return_exceptions=True)
+
+    run_ids = list(dict.fromkeys(run_id for _task, run_id in pending))
+    try:
+        results = await asyncio.wait_for(
+            asyncio.gather(
+                *(bridge.cleanup(run_id, delay=0) for run_id in run_ids),
+                return_exceptions=True,
+            ),
+            timeout=max(0.0, timeout),
+        )
+    except TimeoutError:
+        logger.warning(
+            "Immediate recovered stream cleanup exceeded %.1fs for run_ids=%s; bridge TTL remains the final safety net",
+            timeout,
+            run_ids,
+        )
+    else:
+        for run_id, result in zip(run_ids, results):
+            if isinstance(result, BaseException):
+                logger.warning(
+                    "Failed to immediately clean up recovered run stream for %s: %r",
+                    run_id,
+                    result,
+                )
+
+
+async def _terminalize_recovered_runs(
+    bridge: StreamBridge,
+    recovered_runs: list[RunRecord],
+    *,
+    cleanup_delay: float,
+    on_cleanup_scheduled: Callable[[str, asyncio.Task[None]], None] | None = None,
+) -> list[tuple[str, asyncio.Task[None]]]:
+    """Publish terminal markers and schedule retained-stream cleanup."""
+    return await _publish_recovered_run_stream_end(
+        bridge,
+        recovered_runs,
+        cleanup_delay=cleanup_delay,
+        on_cleanup_scheduled=on_cleanup_scheduled,
+    )
+
+
 async def _cleanup_recovered_scheduled_goals(recovered_runs: list[RunRecord], *, run_manager: RunManager, checkpointer: Checkpointer) -> None:
     """Clear only confirmed occurrence-owned goals after durable orphan recovery."""
     from deerflow.runtime.runs.worker import clear_recovered_scheduled_goal
@@ -475,12 +690,19 @@ if TYPE_CHECKING:
 T = TypeVar("T")
 
 
-async def _mark_latest_recovered_threads_error(
+async def _mark_latest_startup_recovered_threads_error(
     run_manager: RunManager,
     thread_store: ThreadMetaStore,
     recovered_runs: list[RunRecord],
 ) -> None:
-    """Mark thread status as error only when its newest run was recovered."""
+    """Project startup recovery before request-serving concurrency begins.
+
+    This helper must remain on the pre-``yield`` startup path. ``ThreadMetaStore``
+    has no ``latest_run_id`` column, so it cannot express an atomic conditional
+    update keyed by the recovered run. Periodic recovery deliberately skips this
+    projection; moving this helper after request serving starts would reintroduce
+    a read/update race with newer runs.
+    """
     recovered_by_thread: dict[str, set[str]] = {}
     for record in recovered_runs:
         recovered_by_thread.setdefault(record.thread_id, set()).add(record.run_id)
@@ -675,6 +897,18 @@ async def langgraph_runtime(app: FastAPI, startup_config: AppConfig) -> AsyncGen
         run_events_config = getattr(config, "run_events", None)
         app.state.run_events_config = run_events_config
         app.state.run_event_store = make_run_event_store(run_events_config)
+        if sf is not None:
+            from deerflow.persistence.run.producer import validate_producer_fencing
+
+            # An activated database also forbids a memory/JSONL downgrade.
+            await validate_producer_fencing(
+                sf,
+                mode=getattr(run_events_config, "producer_fencing", "off"),
+                cutover_id=getattr(run_events_config, "producer_cutover_id", None),
+            )
+        from deerflow.runtime.events.terminal import RecoveryTerminalPublisher
+
+        app.state.recovery_terminal_publisher = RecoveryTerminalPublisher(app.state.run_event_store, app.state.run_store)
 
         from deerflow.extensions.run_evidence import StoreRunEvidenceReader, StoreRunEvidenceReaderFactory
 
@@ -699,6 +933,14 @@ async def langgraph_runtime(app: FastAPI, startup_config: AppConfig) -> AsyncGen
         from deerflow.extensions.gateway import start_services, stop_services
 
         extensions = getattr(app.state, "extensions", EMPTY_EXTENSIONS)
+        from deerflow.extensions.host_capabilities import HostCapabilities
+
+        host_capabilities = HostCapabilities(config, app.state.run_store, app.state.run_event_store)
+        app.state.skill_mutation_host = host_capabilities
+        # Own partial startup and cancellation before acquiring any locks or
+        # worker resources. LIFO shutdown stops plugins before host recovery.
+        stack.push_async_callback(host_capabilities.close)
+        await host_capabilities.start()
         attempted_services: list[tuple[str, Any]] = []
 
         async def stop_extension_services() -> None:
@@ -720,6 +962,7 @@ async def langgraph_runtime(app: FastAPI, startup_config: AppConfig) -> AsyncGen
                 config,
                 sf,
                 run_evidence_reader=app.state.run_evidence_reader,
+                host_capabilities=host_capabilities.bindings,
                 attempted_services=attempted_services,
             )
         )
@@ -743,10 +986,12 @@ async def langgraph_runtime(app: FastAPI, startup_config: AppConfig) -> AsyncGen
             app.state.scheduled_task_repo = ScheduledTaskRepository(
                 sf,
                 run_repository=app.state.run_store,
+                recovery_terminal_publisher=app.state.recovery_terminal_publisher,
             )
             app.state.scheduled_task_run_repo = ScheduledTaskRunRepository(
                 sf,
                 run_repository=app.state.run_store,
+                recovery_terminal_publisher=app.state.recovery_terminal_publisher,
             )
             app.state.scheduled_task_event_repo = ScheduledTaskEventRepository(sf)
             # Per-user unread state and the activity feed's read clock.
@@ -764,24 +1009,52 @@ async def langgraph_runtime(app: FastAPI, startup_config: AppConfig) -> AsyncGen
             app.state.thread_read_repo = None
 
         # RunManager with store backing for persistence
-        app.state.run_manager = RunManager(store=app.state.run_store)
-        if getattr(config.database, "backend", None) == "sqlite":
-            from deerflow.utils.time import now_iso
+        run_ownership_config = getattr(config, "run_ownership", None)
+        sb_config = getattr(config, "stream_bridge", None)
+        cleanup_delay = getattr(sb_config, "recovered_stream_cleanup_delay_seconds", 60.0) if sb_config else 60.0
+        recovered_stream_cleanup_tasks: dict[asyncio.Task[None], str] = {}
 
-            # Startup-only recovery: clean shutdowns return no active rows and
-            # the thread-status update below becomes a no-op.
-            recovered_runs = await app.state.run_manager.reconcile_orphaned_inflight_runs(
-                error="Gateway restarted before this run reached a durable final state.",
-                before=now_iso(),
-            )
-            # Upstream RFC #6340: clear confirmed occurrence-owned scheduled
-            # goals so a run orphan-recovered at startup cannot re-fire its goal.
+        def track_recovered_stream_cleanup(
+            run_id: str,
+            task: asyncio.Task[None],
+        ) -> None:
+            recovered_stream_cleanup_tasks[task] = run_id
+            task.add_done_callback(lambda completed: recovered_stream_cleanup_tasks.pop(completed, None))
+
+        async def terminalize_recovered_runs(recovered_runs: list[RunRecord]) -> None:
             await _cleanup_recovered_scheduled_goals(recovered_runs, run_manager=app.state.run_manager, checkpointer=app.state.checkpointer)
-            await _mark_latest_recovered_threads_error(app.state.run_manager, app.state.thread_store, recovered_runs)
+            await _terminalize_recovered_runs(
+                app.state.stream_bridge,
+                recovered_runs,
+                cleanup_delay=cleanup_delay,
+                on_cleanup_scheduled=track_recovered_stream_cleanup,
+            )
 
-        # Upstream #6190: host-bound agent run control. get_run_context binds
-        # internal/channel requests to a retained-delegation capability through
-        # this host; EAI constructs it unconditionally like upstream.
+        app.state.run_manager = RunManager(
+            store=app.state.run_store,
+            run_ownership_config=run_ownership_config,
+            event_store=app.state.run_event_store,
+            recovery_terminal_publisher=app.state.recovery_terminal_publisher,
+            on_orphans_recovered=terminalize_recovered_runs,
+        )
+        # Startup recovery: mark inflight runs whose lease has expired as error.
+        # In single-worker mode (SQLite / backend=memory), no run has a lease, so
+        # all inflight rows are reclaimed (unchanged behaviour). In multi-worker
+        # mode (Postgres), only runs with an expired lease are reclaimed; runs
+        # owned by another live worker are skipped.
+        from deerflow.utils.time import now_iso
+
+        recovered_runs = await app.state.run_manager.reconcile_orphaned_inflight_runs(
+            error=STARTUP_ORPHAN_RECOVERY_ERROR,
+            before=now_iso(),
+            stop_reason=ORPHAN_RECOVERY_STOP_REASON,
+        )
+        await terminalize_recovered_runs(recovered_runs)
+        await _mark_latest_startup_recovered_threads_error(
+            app.state.run_manager,
+            app.state.thread_store,
+            recovered_runs,
+        )
         from app.gateway.auth.repositories.sqlite import SQLiteUserRepository
         from app.gateway.extension_agent_runs import GatewayAgentRunsHost
 
@@ -793,7 +1066,32 @@ async def langgraph_runtime(app: FastAPI, startup_config: AppConfig) -> AsyncGen
         # returns immediately (RunManager.heartbeat_enabled is False then).
         await app.state.run_manager.start_heartbeat()
 
-        yield
+        try:
+            yield
+        finally:
+            # Upstream (bytedance/main): drain in-flight run tasks BEFORE the
+            # AsyncExitStack tears down the checkpointer (issue #3373), then
+            # flush recovered runs' delayed stream cleanups — don't abandon a
+            # scheduled cleanup when the Gateway shuts down; the bridge TTL is
+            # only the last-resort net. The drain await also lets already-
+            # scheduled cleanup tasks run to completion before the flush.
+            run_manager = getattr(app.state, "run_manager", None)
+            if run_manager is not None:
+                shutdown_deadline = asyncio.get_running_loop().time() + _RUN_DRAIN_TIMEOUT_SECONDS
+                try:
+                    await _drain_inflight_runs(run_manager)
+                finally:
+                    await _flush_recovered_stream_cleanups(
+                        app.state.stream_bridge,
+                        recovered_stream_cleanup_tasks,
+                        timeout=min(
+                            1.0,
+                            max(
+                                0.0,
+                                shutdown_deadline - asyncio.get_running_loop().time(),
+                            ),
+                        ),
+                    )
 
 
 # ---------------------------------------------------------------------------
@@ -918,6 +1216,53 @@ def get_thread_store(request: Request) -> ThreadMetaStore:
     if val is None:
         raise HTTPException(status_code=503, detail="Thread metadata store not available")
     return val
+def _run_admission_hook(*, checkpointer: Any):
+    """Prune metadata leaves inside the run's durable admission fence."""
+
+    async def handle(record: Any, config: dict[str, Any]) -> None:
+        try:
+            from app.gateway.checkpoint_retention import enforce_completed_run_retention
+
+            await enforce_completed_run_retention(
+                checkpointer=checkpointer,
+                thread_id=record.thread_id,
+                protect_checkpoint_ids=_selected_checkpoint_ids(config),
+            )
+        except Exception:
+            logger.warning(
+                "Checkpoint retention failed for thread %s before run %s (non-fatal)",
+                record.thread_id,
+                record.run_id,
+                exc_info=True,
+            )
+
+    return handle
+
+
+def _selected_checkpoint_ids(config: dict[str, Any]) -> frozenset[str]:
+    """Collect checkpoint selectors already validated for an admitted run."""
+    configurable = config.get("configurable", {})
+    selected: set[str] = set()
+    checkpoint_id = configurable.get("checkpoint_id")
+    if isinstance(checkpoint_id, str) and checkpoint_id:
+        selected.add(checkpoint_id)
+    checkpoint_map = configurable.get("checkpoint_map")
+    if isinstance(checkpoint_map, dict):
+        selected.update(value for value in checkpoint_map.values() if isinstance(value, str) and value)
+    return frozenset(selected)
+
+
+def _run_completion_hook(*, scheduled_task_service: Any | None, batch_continuations: Any | None = None):
+    """Notify the scheduler after ordinary run finalization."""
+
+    async def handle(record: Any) -> None:
+
+        if scheduled_task_service is not None:
+            await scheduled_task_service.handle_run_completion(record)
+        if batch_continuations is not None:
+            await batch_continuations.source_finished(record)
+
+    return handle
 
 
 def get_run_context(request: Request) -> RunContext:
@@ -933,10 +1278,11 @@ def get_run_context(request: Request) -> RunContext:
     host = getattr(request.app.state, "agent_runs_host", None)
     # Internal/channel and PAT runs deliberately receive no retained delegation.
     agent_runs = host.bind(request) if host is not None else None
+    checkpointer = get_checkpointer(request)
     scheduled_task_service = getattr(request.app.state, "scheduled_task_service", None)
     return RunContext(
         agent_runs=agent_runs,
-        checkpointer=get_checkpointer(request),
+        checkpointer=checkpointer,
         store=get_store(request),
         event_store=get_run_event_store(request),
         run_events_config=getattr(request.app.state, "run_events_config", None),
@@ -946,11 +1292,10 @@ def get_run_context(request: Request) -> RunContext:
         checkpoint_channel_mode=getattr(request.app.state, "checkpoint_channel_mode", "full"),
         checkpoint_snapshot_frequency=getattr(request.app.state, "checkpoint_snapshot_frequency", None),
         extensions=getattr(request.app.state, "extensions", None),
-        # 上游接线恢复(#5265 之后的 RunContext 契约): 定时任务 run 终态记账
-        # (scheduler.service.handle_run_completion)此前在 EAI 从未被调用,
-        # task_run 状态永远停在非终态。
-        on_run_completed=(
-            scheduled_task_service.handle_run_completion if scheduled_task_service is not None else None
+        on_run_admitted=_run_admission_hook(checkpointer=checkpointer),
+        on_run_completed=_run_completion_hook(
+            scheduled_task_service=scheduled_task_service,
+            batch_continuations=getattr(request.app.state, "batch_continuations", None),
         ),
     )
 

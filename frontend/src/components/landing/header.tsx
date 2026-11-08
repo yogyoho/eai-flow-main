@@ -2,6 +2,7 @@
 // locale-fallback edits; EAI landing-new owns its own nav surface.
 import { StarFilledIcon, GitHubLogoIcon } from "@radix-ui/react-icons";
 import Link from "next/link";
+import { type ReactNode } from "react";
 
 import { Button } from "@/components/ui/button";
 import { NumberTicker } from "@/components/ui/number-ticker";
@@ -14,9 +15,16 @@ export type HeaderProps = {
   className?: string;
   homeURL?: string;
   locale?: Locale;
+  /** Optional search control, e.g. the docs layout's Pagefind search. */
+  search?: ReactNode;
 };
 
-export async function Header({ className, homeURL, locale }: HeaderProps) {
+export async function Header({
+  className,
+  homeURL,
+  locale,
+  search,
+}: HeaderProps) {
   const isExternalHome = !homeURL;
   const { locale: resolvedLocale, t } = await getI18n(locale);
   const lang = resolvedLocale.substring(0, 2);
@@ -50,6 +58,7 @@ export async function Header({ className, homeURL, locale }: HeaderProps) {
           {t.home.blog}
         </Link>
       </nav>
+      {search && <div className="hidden w-40 sm:block lg:w-56">{search}</div>}
       <div className="relative">
         <div
           className="pointer-events-none absolute inset-0 z-0 h-full w-full rounded-full opacity-30 blur-2xl"

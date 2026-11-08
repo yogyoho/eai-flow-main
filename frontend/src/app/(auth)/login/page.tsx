@@ -6,6 +6,13 @@
 // via AuthDisabledContext, ?error= query-param copy, parseAuthError-based
 // error extraction and validated ?redirect=/?next= targets — all adapted to
 // the EAI facade endpoints and EAI brand copy kept below.
+// v2.3.0-dev merge: adopted upstream's SSO-after-failure hint (t.login.ssoHint,
+// placed above the SSO entry) and the permissive #7488 email check on the OTP
+// path. EAI-CUSTOM keeps its own isLoading/redirectTarget and skips upstream's
+// sign-up + setup-probe surface, the remember-session preference, and the
+// already-authenticated redirect (the extensions session can expire
+// independently of the core cookie session, so /login must stay reachable for
+// extensions re-login — the EAI token-scrub effect below relies on that).
 
 import { Eye, EyeOff } from "lucide-react";
 import Link from "next/link";
@@ -15,6 +22,7 @@ import { useContext, useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { AuthDisabledContext } from "@/core/auth/AuthProvider";
+import { isValidEmail } from "@/core/auth/email";
 import { resolveAuthNextPath } from "@/core/auth/next-path";
 import { parseAuthError } from "@/core/auth/types";
 import { useI18n } from "@/core/i18n/hooks";
@@ -63,6 +71,15 @@ export default function LoginPage() {
         ? t.login.errors.account_disabled
         : "",
   );
+  // Upstream soft hint after a failed password login when SSO is configured:
+  // an SSO-only account has no local password, so the generic "wrong
+  // password" may really mean "use the SSO button" — nudged without
+  // confirming the account exists. EAI-CUSTOM: wired to the single OIDC
+  // button (hasSsoProvider) with copy from the shared locale; upstream's
+  // loading/redirectPath/registration/setup-probe state is not adopted —
+  // this dual-mode page has no sign-up surface and keeps EAI's own
+  // isLoading and redirectTarget (which already folds ?redirect= and ?next=).
+  const [showSsoHint, setShowSsoHint] = useState(false);
 
   useEffect(() => {
     const params =
@@ -126,6 +143,7 @@ export default function LoginPage() {
   const handlePasswordLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
+    setShowSsoHint(false);
     setIsLoading(true);
     try {
       const res = await fetch("/api/extensions/auth/login", {
@@ -136,6 +154,12 @@ export default function LoginPage() {
       });
       if (!res.ok) {
         applyAuthError(await res.json().catch(() => null), "登录失败");
+        // Upstream contract: after a failed sign-in with SSO configured,
+        // surface the hint pointing at the SSO entry (no account-existence
+        // confirmation — the facade's message stays deliberately generic).
+        if (hasSsoProvider) {
+          setShowSsoHint(true);
+        }
         return;
       }
       redirectAfterLogin();
@@ -148,12 +172,21 @@ export default function LoginPage() {
 
   const handleSendCode = async () => {
     setError("");
+    setShowSsoHint(false);
     setOtpSent(false);
+    // Upstream #7488: the browser's `type="email"` rule rejects addresses the
+    // backend accepts (e.g. a non-ASCII local part) — apply the permissive
+    // JS check and send the trimmed address instead.
+    const address = email.trim();
+    if (!isValidEmail(address)) {
+      setError("邮箱格式不正确");
+      return;
+    }
     try {
       const res = await fetch("/api/extensions/auth/otp/send", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email }),
+        body: JSON.stringify({ email: address }),
         credentials: "include",
       });
       if (!res.ok) {
@@ -171,11 +204,18 @@ export default function LoginPage() {
     e.preventDefault();
     setError("");
     setIsLoading(true);
+    // Same permissive check as the send path; the trimmed address must match
+    // the one the code was sent to.
+    const address = email.trim();
+    if (!isValidEmail(address)) {
+      setError("邮箱格式不正确");
+      return;
+    }
     try {
       const res = await fetch("/api/extensions/auth/login/otp", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, code }),
+        body: JSON.stringify({ email: address, code }),
         credentials: "include",
       });
       if (!res.ok) {
@@ -238,6 +278,7 @@ export default function LoginPage() {
                   onClick={() => {
                     setMode(m);
                     setError("");
+                    setShowSsoHint(false);
                   }}
                   className={`py-2 text-sm rounded-md transition-colors ${
                     mode === m ? "bg-background shadow-sm font-medium" : "text-muted-foreground"
@@ -248,7 +289,13 @@ export default function LoginPage() {
               ))}
             </div>
 
-            {/* EAI-CUSTOM: SSO 登录入口（通用 OIDC 第三门面，仅当配置了 provider 时显示） */}
+            {/* EAI-CUSTOM: SSO 登录入口（通用 OIDC 第三门面，仅当配置了 provider 时显示）；
+                上游失败后的 SSO 提示（t.login.ssoHint）置于入口上方，「下方的选项」才指向该按钮 */}
+            {showSsoHint && hasSsoProvider && (
+              <p className="text-muted-foreground text-center text-sm mb-3">
+                {t.login.ssoHint}
+              </p>
+            )}
             {hasSsoProvider && (
               <Link
                 href="/api/extensions/auth/oidc/start?provider=keycloak"

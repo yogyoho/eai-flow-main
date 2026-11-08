@@ -1,12 +1,12 @@
 {
   "name": "deer-flow-frontend",
-  "version": "2.2.0-dev",
+  "version": "2.3.0-dev",
   "private": true,
   "type": "module",
   "scripts": {
     "catalog:sync": "node scripts/sync-capability-catalog.mjs",
     "demo:save": "node scripts/save-demo.js",
-    "build": "next build",
+    "build": "next build && pnpm run search:index",
     "check": "eslint . --ext .ts,.tsx && tsc --noEmit",
     "dev": "node scripts/dev.mjs",
     "format": "prettier --check .",
@@ -14,7 +14,8 @@
     "lint": "eslint . --ext .ts,.tsx",
     "lint:fix": "eslint . --ext .ts,.tsx --fix",
     "perf:check": "node scripts/measure-route-assets.mjs --check",
-    "preview": "next build && next start",
+    "preview": "pnpm run build && next start",
+    "search:index": "node scripts/build-search-index.mjs",
     "start": "next start",
     "test": "rstest",
     "test:e2e": "playwright test",
@@ -36,6 +37,7 @@
     "@defensestation/blocknote-math": "^0.1.0",
     "@fontsource/share-tech-mono": "^5.2.7",
     "@google/model-viewer": "^4.3.1",
+    "@headlessui/react": "^2.2.9",
     "@hocuspocus/provider": "^4.1.0",
     "@langchain/core": "^1.1.15",
     "@langchain/langgraph-sdk": "^1.5.3",
@@ -147,26 +149,26 @@
     "uuid": "^14.0.0",
     "xlsx": "^0.18.5",
     "yjs": "^13.6.30",
-    "zod": "^3.24.2"
+    "zod": "^4.6.6"
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3.3.1",
-    "@playwright/test": "^1.59.1",
+    "@playwright/test": "^1.62.1",
     "@rsbuild/plugin-react": "^2.1.0",
     "@rstest/core": "^0.10.6",
     "@tailwindcss/postcss": "^4.0.15",
     "@tailwindcss/typography": "^0.5.16",
     "@testing-library/dom": "^10.4.1",
     "@testing-library/react": "^16.3.2",
-    "@types/gsap": "^3.0.0",
     "@types/node": "^20.14.10",
     "@types/papaparse": "5.5.2",
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
     "eslint": "^9.23.0",
     "eslint-config-next": "^15.2.3",
-    "happy-dom": "^20.11.1",
+    "happy-dom": "^21.0.4",
     "markdown-it": "^14.0.0",
+    "pagefind": "1.5.2",
     "postcss": "^8.5.18",
     "prettier": "^3.5.3",
     "prettier-plugin-tailwindcss": "^0.6.11",
@@ -178,6 +180,10 @@
   },
   "ct3aMetadata": {
     "initVersion": "7.40.0"
+  },
+  "engines": {
+    "node": ">=22",
+    "pnpm": ">=10.26.2"
   },
   "packageManager": "pnpm@10.26.2"
 }

@@ -4,6 +4,7 @@ import {
   BlocksIcon,
   BotIcon,
   CalendarClock,
+  ChartColumn,
   FolderCheck,
   MessagesSquare,
 } from "lucide-react";
@@ -22,15 +23,23 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { useAgentsApiEnabled } from "@/core/agents";
+import { useAuth } from "@/core/auth/AuthProvider";
+import { hasPermission, PERMISSIONS } from "@/core/auth/permissions";
 import { useI18n } from "@/core/i18n/hooks";
 // EAI-CUSTOM: nav-level permission gating
 import { usePermission } from "@/core/permissions";
+import { isStaticWebsiteOnly } from "@/core/static-mode";
 
 export function WorkspaceNavChatList() {
   const { t } = useI18n();
   const pathname = usePathname();
   const { enabled: agentsEnabled } = useAgentsApiEnabled();
   const { canNav } = usePermission();
+  const { user } = useAuth();
+  const usageEnabled =
+    !!user &&
+    hasPermission(user, PERMISSIONS.RUNS_READ) &&
+    !isStaticWebsiteOnly();
   return (
     <SidebarGroup className="pt-1">
       <SidebarMenu>
@@ -98,6 +107,19 @@ export function WorkspaceNavChatList() {
             </Link>
           </SidebarMenuButton>
         </SidebarMenuItem>
+        {usageEnabled && (
+          <SidebarMenuItem>
+            <SidebarMenuButton
+              isActive={pathname.startsWith("/workspace/usage")}
+              asChild
+            >
+              <Link className="text-muted-foreground" href="/workspace/usage">
+                <ChartColumn />
+                <span>{t.usage.title}</span>
+              </Link>
+            </SidebarMenuButton>
+          </SidebarMenuItem>
+        )}
         <SidebarMenuItem>
           <SidebarMenuButton
             isActive={pathname.startsWith("/workspace/capabilities")}

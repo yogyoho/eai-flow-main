@@ -15,7 +15,7 @@
 # ============================================================================
 # Bump this number when the config schema changes.
 # Run `make config-upgrade` to merge new fields into your local config.yaml.
-config_version: 60
+config_version: 64
 
 # ============================================================================
 # Logging
@@ -1294,6 +1294,23 @@ read_before_write:
 
   elide_blocked_payloads: true
   elide_min_chars: 2000
+
+# Optional pre-write syntax validation and targeted error remediation guard.
+# When enabled (write_verify_syntax: true), intercepts str_replace to validate
+# spliced .py (ast.parse) and .json (json.loads) syntax before disk I/O.
+# Also classifies tool error outputs (ModuleNotFoundError, SyntaxError,
+# FileNotFoundError, etc.) and injects actionable remediation hints directly into
+# tool results.
+harness_guard:
+  enabled: true
+  write_verify_syntax: false
+  block_on_syntax_error: true
+  targeted_hints_enabled: true
+  max_repeated_error_signatures: 2
+  detect_alternating_loops: true
+  max_loop_history: 20
+  max_tracked_scopes: 1000
+
 safety_finish_reason:
   enabled: true
   # Leave `detectors` unset to use the built-in detector set. Set to a
@@ -1350,6 +1367,13 @@ sandbox:
   # trusted, single-user local workflows.
   # EAI-CUSTOM: 内网单用户可信部署，放开宿主 bash（bash 工具依赖此开关）
   allow_host_bash: true
+  # For AioSandboxProvider only: overlap likely sandbox work with the first
+  # model call. It is disabled by default and ignored by other providers.
+  prewarm: false
+  # Bound pending/ready-unused speculation per provider instance, per process.
+  # A full budget skips prewarming; foreground tools still acquire normally.
+  # This is not a total container or deployment-wide capacity limit.
+  prewarm_max_concurrent: 1
   # Optional: Mount additional host directories into the sandbox.
   # Each mount maps a host path to a virtual container path accessible by the agent.
   # Note: with LocalSandboxProvider under `make up` (docker-compose), host_path is
@@ -2236,6 +2260,16 @@ run_events:
   backend: db
   max_trace_content: 10240
   track_token_usage: true
+  # With a fencing-capable SQL RunStore and DB event store:
+  # off: host-authorized writes still check Run incarnation, epoch and state;
+  #      stale Journal flushes after takeover or deletion may be rejected.
+  # strict: additionally checks raw SQL and unaware legacy writers via the
+  #         database trigger after an offline cutover.
+  # Restart-required; strict requires database.backend: postgres and backend: db.
+  # Stop every Gateway, activate the database policy, then restart all with the
+  # matching cutover ID. See README.md#configuration for the offline cutover.
+  producer_fencing: "off"
+  # producer_cutover_id: deployment-2026-10-27
 
 # ============================================================================
 # Agent Storage Configuration
@@ -2910,6 +2944,12 @@ projects:
   # Days a trashed project document stays recoverable before the retention
   # sweep may purge it permanently (range: 1-3650).
   trash_retention_days: 30
+  # Shelf search budgets (search_project_documents), in decoded CHARACTERS
+  # not bytes (CJK differs 3x). Per-document cap and whole-shelf total; the
+  # total must be >= the per-document cap, otherwise both reset to defaults.
+  # Read per call — edits apply without a restart.
+  search_max_chars_per_document: 1000000
+  search_max_total_chars: 8000000
 
 # ============================================================================
 # Provider Safety Termination Configuration

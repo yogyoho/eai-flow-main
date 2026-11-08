@@ -21,6 +21,8 @@ class ActionContext:
     principal: ExtensionPrincipal
     settings: Mapping[str, SettingValue]
     agent_runs: AgentRuns | None = field(default=None, kw_only=True)
+    # Host-stamped browser session; model tools and other callers default closed.
+    interaction: Literal["session", "other"] = field(default="other", kw_only=True)
 
 
 @dataclass(frozen=True)
@@ -38,6 +40,8 @@ class ToolContext(ActionContext):
     """
 
     thread_id: str | None
+    # Host-stamped execution identity, never supplied by tool arguments.
+    run_id: str | None = field(default=None, kw_only=True)
 
 
 @dataclass(frozen=True)

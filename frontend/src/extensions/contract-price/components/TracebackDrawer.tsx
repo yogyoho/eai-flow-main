@@ -165,7 +165,7 @@ export function TracebackDrawer({ docId, page, bbox, itemId, onClose }: Props) {
   const stored =
     !!bbox &&
     bbox.length === 4 &&
-    (bbox[2] - bbox[0] > 0.001 || bbox[3] - bbox[1] > 0.001)
+    (bbox[2]! - bbox[0]! > 0.001 || bbox[3]! - bbox[1]! > 0.001)
       ? bbox
       : null;
   const recoverQ = useQuery({
@@ -185,7 +185,7 @@ export function TracebackDrawer({ docId, page, bbox, itemId, onClose }: Props) {
   const hasBox =
     !!box &&
     box.length === 4 &&
-    (box[2] - box[0] > 0.001 || box[3] - box[1] > 0.001);
+    (box[2]! - box[0]! > 0.001 || box[3]! - box[1]! > 0.001);
   const zoomed = view.scale > MIN_SCALE;
   const atRest = view.scale === 1 && view.x === 0 && view.y === 0;
   const iconBtn =

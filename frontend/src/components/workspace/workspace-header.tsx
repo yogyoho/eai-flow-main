@@ -8,16 +8,19 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
-  SidebarTrigger,
   useSidebar,
 } from "@/components/ui/sidebar";
 import { useI18n } from "@/core/i18n/hooks";
 import { env } from "@/env";
 import { cn } from "@/lib/utils";
 
+import { useWorkspaceSidebarExpanded } from "./workspace-sidebar-frame";
+import { WorkspaceSidebarTrigger } from "./workspace-sidebar-trigger";
+
 export function WorkspaceHeader({ className }: { className?: string }) {
   const { t } = useI18n();
-  const { state } = useSidebar();
+  const { isMobile } = useSidebar();
+  const isSidebarOpen = useWorkspaceSidebarExpanded();
   const pathname = usePathname();
   return (
     <>
@@ -27,33 +30,47 @@ export function WorkspaceHeader({ className }: { className?: string }) {
           className,
         )}
       >
-        {state === "collapsed" ? (
+        {!isSidebarOpen ? (
           <div className="group-has-data-[collapsible=icon]/sidebar-wrapper:-translate-y flex w-full cursor-pointer items-center justify-center">
-            <div className="block pt-1 group-hover/workspace-header:hidden">
-              <div className="p-1 border rounded-sm bg-blue-50 border-blue-200 text-blue-600 shrink-0">
-                <Bot className="w-4 h-4" />
+            <div
+              className={cn(
+                "block pt-1 group-hover/workspace-header:hidden",
+                isMobile && "hidden",
+              )}
+            >
+              <div className="shrink-0 rounded-sm border border-blue-200 bg-blue-50 p-1 text-blue-600">
+                <Bot className="h-4 w-4" />
               </div>
             </div>
-            <SidebarTrigger className="hidden pl-2 group-hover/workspace-header:block" />
+            <WorkspaceSidebarTrigger
+              className={cn(
+                "pl-2",
+                !isMobile && "hidden group-hover/workspace-header:block",
+              )}
+            />
           </div>
         ) : (
           <div className="flex items-center justify-between gap-2">
             {env.NEXT_PUBLIC_STATIC_WEBSITE_ONLY === "true" ? (
               <Link href="/" className="ml-2 flex items-center gap-1.5">
-                <div className="p-1 border rounded-sm bg-blue-50 border-blue-200 text-blue-600 shrink-0">
-                  <Bot className="w-4 h-4" />
+                <div className="shrink-0 rounded-sm border border-blue-200 bg-blue-50 p-1 text-blue-600">
+                  <Bot className="h-4 w-4" />
                 </div>
-                <span className="font-sans text-base font-semibold text-foreground">AI智能体</span>
+                <span className="text-foreground font-sans text-base font-semibold">
+                  AI智能体
+                </span>
               </Link>
             ) : (
               <div className="ml-2 flex cursor-default items-center gap-1.5">
-                <div className="p-1 border rounded-sm bg-blue-50 border-blue-200 text-blue-600 shrink-0">
-                  <Bot className="w-4 h-4" />
+                <div className="shrink-0 rounded-sm border border-blue-200 bg-blue-50 p-1 text-blue-600">
+                  <Bot className="h-4 w-4" />
                 </div>
-                <span className="font-sans text-base font-semibold text-foreground">AI智能体</span>
+                <span className="text-foreground font-sans text-base font-semibold">
+                  AI智能体
+                </span>
               </div>
             )}
-            <SidebarTrigger />
+            <WorkspaceSidebarTrigger />
           </div>
         )}
       </div>

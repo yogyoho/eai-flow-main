@@ -22,7 +22,6 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
-  useSidebar,
 } from "@/components/ui/sidebar";
 // EAI-CUSTOM: nav-level permission gating
 import { usePermission } from "@/core/permissions";
@@ -31,7 +30,11 @@ import { usePermission } from "@/core/permissions";
 // <SettingsDialog>，绕过了共享 store（command palette / deep-link 的
 // openSettings 实际打不开 dialog），且 dialog 代码进首屏 chunk。
 // 现改为纯触发器：单实例 host 挂在 workspace-content，这里只走 store。
+// EAI-CUSTOM(merge): 上游 v2.3.0 的 useSettingsDialog 本地挂载与
+// GithubIcon 外链入口不取（EAI 用 canNav 门控菜单）；侧栏展开态改走上游
+// useWorkspaceSidebarExpanded（上游已从 ui/sidebar 移除 useSidebar）。
 import { openSettingsDialog } from "./settings";
+import { useWorkspaceSidebarExpanded } from "./workspace-sidebar-frame";
 
 function NavMenuButtonContent({ isSidebarOpen }: { isSidebarOpen: boolean }) {
   return isSidebarOpen ? (
@@ -49,7 +52,7 @@ function NavMenuButtonContent({ isSidebarOpen }: { isSidebarOpen: boolean }) {
 
 export function WorkspaceNavMenu() {
   const [mounted, setMounted] = useState(false);
-  const { open: isSidebarOpen } = useSidebar();
+  const isSidebarOpen = useWorkspaceSidebarExpanded();
   const router = useRouter();
   const { canNav } = usePermission();
 
@@ -90,7 +93,9 @@ export function WorkspaceNavMenu() {
               >
                 <DropdownMenuGroup>
                   {canNav("nav:settings") && (
-                    <DropdownMenuItem onClick={() => openSettingsDialog("account")}>
+                    <DropdownMenuItem
+                      onClick={() => openSettingsDialog("account")}
+                    >
                       <SettingsIcon className="size-4" />
                       设置
                     </DropdownMenuItem>

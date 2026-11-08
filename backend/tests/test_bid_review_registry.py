@@ -23,8 +23,8 @@ from app.extensions.bid_review.engine.rule_runner import RulePackError, load_rul
 #   入宇宙后基线 87,plan 预算 91 系 86 旧基线,勘误 87+5=92)= 92
 # + P1-β批六 T1-T5 tender/bid 字段实补 13 路径(tender 8+bid 4 模型抽取契约经 T3 五规则+T4 L1-003/L1-006 inputs
 #   入宇宙;bid.tables 表格骨架服务端派生经 L2-040 inputs)= 105——逐位锁定。
-# + P1-β批七 §6.1 ❌4 消费面 21 路径(L1-004 hyb 6+L1-020 sem 3+L1-022 op:and 合规式 10+L1-026 det 1+L1-007 富化 1
-#   五规则 inputs 声明入包,T2 四规则+T3 富化兑付;A-β7-② 修订:容器契约→21 叶平键)= 126——逐位锁定。
+# + P1-β批七 §6.1 ❌4 消费面 21 路径(L1-004 hyb 6+L1-020 sem 3+L1-022 op:or 10+L1-026 det 1+L1-007 富化 1
+#   五规则 inputs 声明入包,T2 兑付)= 126——逐位锁定。
 # 首段 prompt 路径 = EXPECTED_UNIVERSE − SECOND_STAGE_FIELDS − SERVER_DERIVED_PATHS = 114(126−6−6;批七 21 路径全模型首段契约;前值 93=105−6−6)。
 EXPECTED_UNIVERSE = [
     "bid.alternative_price_offers",

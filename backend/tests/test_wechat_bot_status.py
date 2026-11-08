@@ -157,13 +157,20 @@ def test_load_auth_state_none_path_returns_none():
 def _app_with_wechat_state(state_dir: Path, *, qrcode_login_enabled: bool = True):
     """Build an authed test app whose channels_config points at ``state_dir``."""
     app = make_authed_test_app()
-    # _get_channels_config returns app.state.channels_config verbatim when it is a dict.
-    app.state.channels_config = {
-        "wechat": {
-            "state_dir": str(state_dir),
-            "qrcode_login_enabled": qrcode_login_enabled,
-        }
+    # EAI-CUSTOM (upstream-sync 2026-11-08): _get_channels_config no longer
+    # reads app.state.channels_config — it merges config.yaml channels with the
+    # runtime-config overlay. Patch the router-level resolver so the endpoint
+    # sees exactly this test's channels block (otherwise the real config.yaml
+    # wechat block leaks into the assertions).
+    wechat_cfg = {
+        "state_dir": str(state_dir),
+        "qrcode_login_enabled": qrcode_login_enabled,
     }
+
+    async def _fake_get_channels_config(_request):
+        return {"wechat": wechat_cfg}
+
+    cc._get_channels_config = _fake_get_channels_config
     app.include_router(cc.router)
     return app
 

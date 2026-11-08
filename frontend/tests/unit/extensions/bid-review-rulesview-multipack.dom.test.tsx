@@ -140,8 +140,7 @@ function jsonRes(body: unknown, status = 200): Response {
 /** 默认响应器:/rulepacks → 双包清单;/rulepacks/bid-review-l4/rules → l4 五块;
  * 其余 /rules → core 五块。 */
 function defaultResponder(path: string): Response {
-  if (path.includes("/rulepacks/bid-review-l4/rules"))
-    return jsonRes(L4_EXPRS);
+  if (path.includes("/rulepacks/bid-review-l4/rules")) return jsonRes(L4_EXPRS);
   if (path.endsWith("/rules")) return jsonRes(CORE_EXPRS);
   return jsonRes(packPayload);
 }
@@ -180,20 +179,16 @@ describe("bid-review RulesView 多包聚合(P1-β批二续 T5,A-续-⑥)", () =>
     expect(screen.getByText("R-001")).not.toBeNull();
     expect(screen.getByText("R-002")).not.toBeNull();
     // seg 聚合计数:全部 3 / L4 竞争力 1
-    expect(
-      screen.getByRole("button", { name: "全部 3" }),
-    ).not.toBeNull();
-    expect(
-      screen.getByRole("button", { name: "L4 竞争力 1" }),
-    ).not.toBeNull();
+    expect(screen.getByRole("button", { name: "全部 3" })).not.toBeNull();
+    expect(screen.getByRole("button", { name: "L4 竞争力 1" })).not.toBeNull();
     // l4 包头卡带 advisory pill(卡内作用域断言)
-    const l4Card = (await screen.findAllByText("bid-review-l4"))[0].closest(
+    const l4Card = (await screen.findAllByText("bid-review-l4"))[0]!.closest(
       ".card",
     );
     expect(l4Card?.querySelector(".pill-gray")?.textContent).toBe("advisory");
-    const coreCard = (await screen.findAllByText("bid-review-core"))[0].closest(
-      ".card",
-    );
+    const coreCard = (
+      await screen.findAllByText("bid-review-core")
+    )[0]!.closest(".card");
     expect(coreCard?.querySelector(".pill-gray")).toBeNull();
     // 双包各一只只读 Switch
     const switches = screen.getAllByTestId("pack-switch");
@@ -226,8 +221,7 @@ describe("bid-review RulesView 多包聚合(P1-β批二续 T5,A-续-⑥)", () =>
     expect(
       calls.some(
         (c) =>
-          c.path ===
-          "/api/extensions/bid-review/rulepacks/bid-review-l4/rules",
+          c.path === "/api/extensions/bid-review/rulepacks/bid-review-l4/rules",
       ),
     ).toBe(true);
     expect(screen.getByText(/提炼方案竞争力亮点/)).not.toBeNull();

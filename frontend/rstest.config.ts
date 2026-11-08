@@ -16,6 +16,7 @@ const shared = {
     // EAI-CUSTOM: Streamdown imports KaTeX CSS as a side effect, and the @blocknote/*
     // packages import their own dist/style.css. Bundle these packages so
     // Rsbuild processes the CSS imports instead of Node trying to load them.
+    // Nextra's client icons also use extensionless imports that need bundling.
     bundleDependencies: [
       "streamdown",
       "katex",
@@ -25,6 +26,7 @@ const shared = {
       "@blocknote/xl-ai",
       "@defensestation/blocknote-math",
       "highlight.js",
+      "nextra",
     ],
   },
 };

@@ -2,10 +2,6 @@ case: L1-007-signature-missing
 desc: 签章缺失页清单非空 det 粗筛命中,scripted 模型确认 partial → L1-007 violation(fatal)
 fields:
   bid.missing_signature_pages: ["第12页 缺少骑缝章"]
-  # 批七 T3 L1-007 inputs 富化——新 inputs 须键在场且值非 None(eval_core 剥 None,
-  # null=不在场=缺字段门翻 need_human 埋掉本案例本意,bug-4227 同律;det/op 逐字冻结,
-  # scripted 模型不看该键,仅过缺字段门)
-  tender.required_signatures: ["法定代表人签字", "公章"]
 model_script:
   L1-007: '{"verdicts": [{"clause_id": "SG-1", "verdict": "partial", "confidence": 0.9, "reason": "骑缝章缺失", "evidence": [{"doc_id": "bid.pdf", "page": 12, "text": "第12页未见骑缝章"}]}]}'
 expect_issues:

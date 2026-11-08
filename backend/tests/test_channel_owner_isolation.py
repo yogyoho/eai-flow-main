@@ -10,13 +10,14 @@ client cache.
 
 from __future__ import annotations
 
-from typing import Any
-
 import pytest
 
-from app.channels.manager import ChannelManager
+from app.channels.manager import (
+    ChannelManager,
+    _channel_storage_user_id,
+    _run_request_headers,
+)
 from app.channels.message_bus import InboundMessage, MessageBus
-from app.channels.store import ChannelStore
 from app.gateway.internal_auth import (
     INTERNAL_AUTH_HEADER_NAME,
     INTERNAL_OWNER_USER_ID_HEADER_NAME,
@@ -87,7 +88,13 @@ def test_get_internal_user_adopts_owner() -> None:
     assert user.system_role == "internal"
 
 
-# -- ChannelManager._resolve_owner_user_id -----------------------------------
+# -- owner identity / per-request headers (upstream manager API) --------------
+# EAI-CUSTOM (upstream-sync 2026-11-08): upstream replaced EAI's per-owner
+# cached clients + `_resolve_owner_user_id` method with the module-level
+# `_channel_storage_user_id` (storage/run identity) and `_run_request_headers`
+# (owner header per request; CSRF lives on the shared client). The behavioral
+# contract — binding wins, platform user isolated by a safe derived id, no
+# identity when neither exists — is unchanged; assertions re-target upstream.
 
 
 def _msg(*, user_id: str | None = "u", owner_user_id: str | None = None) -> InboundMessage:
@@ -95,70 +102,48 @@ def _msg(*, user_id: str | None = "u", owner_user_id: str | None = None) -> Inbo
 
 
 def _make_manager() -> ChannelManager:
-    return ChannelManager(bus=MessageBus(), store=ChannelStore())
+    # EAI-CUSTOM (upstream-sync 2026-11-08): ChannelStore is a Protocol now —
+    # construct with a concrete JsonChannelStore like the upstream suites do.
+    import tempfile
+    from pathlib import Path
+
+    from app.channels.store import JsonChannelStore
+
+    return ChannelManager(
+        bus=MessageBus(),
+        store=JsonChannelStore(path=Path(tempfile.mkdtemp()) / "store.json"),
+    )
 
 
 def test_resolve_owner_prefers_binding() -> None:
-    manager = _make_manager()
     # channel_connections binding wins over platform user_id.
-    assert manager._resolve_owner_user_id(_msg(user_id="platform-u", owner_user_id="bound-owner")) == "bound-owner"
+    assert _channel_storage_user_id(_msg(user_id="platform-u", owner_user_id="bound-owner")) == "bound-owner"
 
 
 def test_resolve_owner_derives_from_platform_user() -> None:
-    manager = _make_manager()
     # No binding → normalize the platform user (e.g. WeChat iLink id).
-    owner = manager._resolve_owner_user_id(_msg(user_id="o9cq80z@im.wechat"))
+    owner = _channel_storage_user_id(_msg(user_id="o9cq80z@im.wechat"))
     assert owner == make_safe_user_id("o9cq80z@im.wechat")
     assert owner != DEFAULT_USER_ID
 
 
 def test_resolve_owner_none_when_no_user() -> None:
-    manager = _make_manager()
-    assert manager._resolve_owner_user_id(_msg(user_id=None)) is None
+    assert _channel_storage_user_id(_msg(user_id=None)) is None
 
 
-# -- per-owner SDK client cache ----------------------------------------------
+# -- per-request owner headers (upstream API; shared client, owner per request)
 
 
-def test_get_client_caches_per_owner_and_passes_owner_header(monkeypatch: pytest.MonkeyPatch) -> None:
-    captured: list[dict[str, Any]] = []
-
-    def fake_get_client(url: str, headers: dict[str, str] | None = None, **kwargs: Any):
-        captured.append({"url": url, "headers": dict(headers or {})})
-        return object()  # distinct sentinel per call
-
-    monkeypatch.setattr("langgraph_sdk.get_client", fake_get_client)
-
-    manager = _make_manager()
-    client_a = manager._get_client("owner-a")
-    client_b = manager._get_client("owner-b")
-    client_a2 = manager._get_client("owner-a")  # cached
-
-    # Two distinct owners → two distinct clients (cache miss each).
-    assert client_a is not client_b
-    # Same owner → cached (no new client).
-    assert client_a2 is client_a
-    # Only two get_client calls (owner-a once, owner-b once).
-    assert len(captured) == 2
-    owners = {c["headers"].get(INTERNAL_OWNER_USER_ID_HEADER_NAME) for c in captured}
-    assert owners == {"owner-a", "owner-b"}
-    # Every client carries the internal token + CSRF double-submit.
-    for c in captured:
-        assert c["headers"][INTERNAL_AUTH_HEADER_NAME]
-        assert c["headers"]["X-CSRF-Token"] == c["headers"]["Cookie"].removeprefix("csrf_token=")
+def test_request_headers_carry_owner_and_internal_auth() -> None:
+    headers = _run_request_headers(_msg(user_id="platform-u", owner_user_id="owner-a"), "idem-1")
+    assert headers is not None
+    assert headers[INTERNAL_OWNER_USER_ID_HEADER_NAME] == "owner-a"
+    assert headers[INTERNAL_AUTH_HEADER_NAME]
+    assert headers["Idempotency-Key"] == "idem-1"
 
 
-def test_get_client_default_owner_has_no_owner_header(monkeypatch: pytest.MonkeyPatch) -> None:
-    captured: list[dict[str, str]] = []
-
-    def fake_get_client(url: str, headers: dict[str, str] | None = None, **kwargs: Any):
-        captured.append(dict(headers or {}))
-        return object()
-
-    monkeypatch.setattr("langgraph_sdk.get_client", fake_get_client)
-
-    manager = _make_manager()
-    manager._get_client(None)  # legacy default-user path
-
-    assert len(captured) == 1
-    assert INTERNAL_OWNER_USER_ID_HEADER_NAME not in captured[0]
+def test_request_headers_without_owner_have_no_owner_header() -> None:
+    # No binding and auth enabled → no owner header (platform id flows through
+    # _channel_storage_user_id for the run/storage identity instead).
+    headers = _run_request_headers(_msg(user_id="platform-u", owner_user_id=None), None)
+    assert headers is None or INTERNAL_OWNER_USER_ID_HEADER_NAME not in headers

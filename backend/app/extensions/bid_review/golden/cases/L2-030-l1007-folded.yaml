@@ -2,9 +2,6 @@ case: L2-030-l1007-folded
 desc: A-续-① 主责折叠联动(金标准面钉负向半边)——签章缺失页(L1-007 hyb violation)与签署位缺失(L2-030 fatal violation)同面共存。金标准面 docs_text 为空,verify 第2道 evidence-misalignment 降级使一切 sem issue 必带 need_human=true(verdict 仍 violation),非 definite → 折叠不武装 → L2-030 独立面保留(A-续-① 负向:L1-007 无 definite violation 时 L2-030 保留)。正向半边(证据对齐→L1-007 definite→L2-030 被折叠+suppressed_by 记账)由 eval_core 管线级接线测试 test_fold_l1007_definite_primary_folds_l2030_in_pipeline 以 docs_text 注入钉死
 fields:
   bid.missing_signature_pages: ["第12页 缺少骑缝章"]
-  # 批七 T3 L1-007 inputs 富化——非 None 真实值过缺字段门(bug-4227 同律);det/op 冻结,
-  # scripted 模型不看该键,L2-030 折叠联动语义零变化
-  tender.required_signatures: ["法定代表人签字", "公章"]
   tender.signature_slots:
     - {'no': 法人章, name: 法定代表人, page: 12}
     - {'no': 公章, name: 投标人单位, page: 12}
