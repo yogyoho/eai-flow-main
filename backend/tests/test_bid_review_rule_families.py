@@ -130,9 +130,27 @@ class TestFamilyWiring:
         # L2-041(原 EAI L2-022)inputs 声明使其首次入宇宙 77→78(by design,顺带修复 M3 必填口径从未抽取的潜在缺口);
         # P1-β批二续 2026-11-07 文件级 L2-001/002/003 六路径入宇宙 78→84(by design);
         # P1-β批二续 T2 2026-11-07 L2-004/050/051 三路径入宇宙 84→87(by design;bid.full_text 规格名全文域首入宇宙,plan 预算 86 偏差 +1);
-        # P1-β批二续 T3 2026-11-07 要件级 L2-030/032/033 五路径入宇宙 87→92(by design;plan 预算 91 系 86 旧基线勘误)
-        assert len(universe()) == 92
-        for path in ("tender.required_fields", "bid.boq_rows", "bid.attachments", "bid.performance_groups", "bid.section_tree", "tender.file_composition", "bid.volume_index", "bid.archive_files", "bid.files", "bid.full_text", "tender.signature_slots", "bid.signature_slots", "bid.legal_id_proof_present", "bid.id_copy_present", "bid.deposit_receipt_present"):
+        # P1-β批二续 T3 2026-11-07 要件级 L2-030/032/033 五路径入宇宙 87→92(by design;plan 预算 91 系 86 旧基线勘误);
+        # P1-β批六 T1-T5 2026-11-08 tender/bid 字段实补 13 路径入宇宙 92→105(by design;12 模型契约经 T3 五规则+T4 L1-003/L1-006 inputs+bid.tables 经 L2-040,A-β6-④)
+        assert len(universe()) == 105
+        wired_paths = (
+            "tender.required_fields",
+            "bid.boq_rows",
+            "bid.attachments",
+            "bid.performance_groups",
+            "bid.section_tree",
+            "tender.file_composition",
+            "bid.volume_index",
+            "bid.archive_files",
+            "bid.files",
+            "bid.full_text",
+            "tender.signature_slots",
+            "bid.signature_slots",
+            "bid.legal_id_proof_present",
+            "bid.id_copy_present",
+            "bid.deposit_receipt_present",
+        )
+        for path in wired_paths:
             assert consumed_by(path)["rules"], f"{path} 仍零规则消费"
         assert not consumed_by("bid.table_cells")["rules"]  # 临时契约挂账不动(裁决⑦)
 

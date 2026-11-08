@@ -637,13 +637,12 @@ class TestBeta6FieldContracts:
         assert "空数组" in FIELD_TYPE_CONTRACTS["tender.tech_sections_required"]
         assert "联合体" in FIELD_TYPE_CONTRACTS["bid.is_consortium"]
 
-    @pytest.mark.skip(reason="T5 宇宙注册后启用")
     def test_new_paths_enter_first_stage_request(self):
         from app.extensions.bid_review.engine.extract import collect_field_paths
 
         paths = set(collect_field_paths())
         for p in self.BETA6_PATHS:
-            assert p in paths, p  # T3/T4 规则未注册前 universe 暂不含;本测试在 T5 后复跑
+            assert p in paths, p  # T5 宇宙 bump 92→105 后 12 路径全在首段请求面(bid.tables 服务端派生不入,见 TestBidTablesDerived)
 
 
 # ── P1-β批六 T2 bid.tables 表格骨架服务端派生(spec :2165 表格骨架识别 det,A-β6-⑤)──

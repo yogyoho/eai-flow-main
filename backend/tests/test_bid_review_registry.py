@@ -20,8 +20,10 @@ from app.extensions.bid_review.engine.rule_runner import RulePackError, load_rul
 # + P1-β批二续 文件级 L2-001/002/003 六路径 = 84
 # + P1-β批二续 T2 文件级完好性 L2-004/050/051 三路径(archive_files/files/full_text;full_text 规格名全文域首入宇宙,plan 预算 86 偏差 +1)= 87
 # + P1-β批二续 T3 要件级 L2-030/032/033 五路径(signature_slots×2+三 presence 派生布尔;T2 实测 bid.full_text
-#   入宇宙后基线 87,plan 预算 91 系 86 旧基线,勘误 87+5=92)= 92)——逐位锁定。
-# 首段 prompt 路径 = EXPECTED_UNIVERSE − SECOND_STAGE_FIELDS − SERVER_DERIVED_PATHS = 81(92−6−5;T3 后三 presence 布尔入 SERVER_DERIVED_PATHS 禁模型自产;前值 79=87−6−2)。
+#   入宇宙后基线 87,plan 预算 91 系 86 旧基线,勘误 87+5=92)= 92
+# + P1-β批六 T1-T5 tender/bid 字段实补 13 路径(tender 8+bid 4 模型抽取契约经 T3 五规则+T4 L1-003/L1-006 inputs
+#   入宇宙;bid.tables 表格骨架服务端派生经 L2-040 inputs)= 105——逐位锁定。
+# 首段 prompt 路径 = EXPECTED_UNIVERSE − SECOND_STAGE_FIELDS − SERVER_DERIVED_PATHS = 93(105−6−6;批六 T2 bid.tables 入 SERVER_DERIVED_PATHS 禁模型自产;前值 81=92−6−5)。
 EXPECTED_UNIVERSE = [
     "bid.alternative_price_offers",
     "bid.amount_occurrences",
@@ -38,9 +40,11 @@ EXPECTED_UNIVERSE = [
     "bid.boq_unit_checks",
     "bid.commitment_completion_date",
     "bid.commitment_letter_date",
+    "bid.consortium",  # P1-β批六 T1 联合体协议书实体(L1-017 inputs,2026-11-08)
     "bid.currency_occurrences",
     "bid.declaration_letter_codes",
     "bid.deposit_amount",
+    "bid.deposit_forms",  # P1-β批六 T1 保证金实际缴纳形式(L1-006 inputs,2026-11-08)
     "bid.deposit_receipt_present",  # P1-β批二续 T3 L2-033 保证金凭证存在性(服务端派生,2026-11-07)
     "bid.detail_rows",
     "bid.device_model_mismatches",
@@ -55,11 +59,13 @@ EXPECTED_UNIVERSE = [
     "bid.entity.license_valid_until",
     "bid.entity.name_in_bid_letter",
     "bid.entity_name_occurrences",
+    "bid.figures",  # P1-β批六 T1 图纸/图表清单(L2-012 inputs,2026-11-08)
     "bid.file_index",  # P1-β批二续 L2-001 投标文件索引(2026-11-07)
     "bid.files",  # P1-β批二续 T2 L2-050 全量文件(2026-11-07)
     "bid.full_text",  # P1-β批二续 T2 L2-051 规格名全文域,入 SERVER_DERIVED_PATHS 禁模型抽取(2026-11-07)
     "bid.header_footer.project_name",
     "bid.id_copy_present",  # P1-β批二续 T3 L2-032 身份证复印件存在性(服务端派生,2026-11-07)
+    "bid.is_consortium",  # P1-β批六 T1 联合体投标布尔(L1-017 inputs,2026-11-08)
     "bid.legal_id_proof_present",  # P1-β批二续 T3 L2-032 法人身份证明存在性(服务端派生,2026-11-07)
     "bid.missing_signature_pages",
     "bid.old_project_mentions",
@@ -76,6 +82,7 @@ EXPECTED_UNIVERSE = [
     "bid.similar_performances",
     "bid.subtotal",
     "bid.table_cells",
+    "bid.tables",  # P1-β批六 T2 表格骨架(服务端派生,L2-040 inputs,2026-11-08)
     "bid.tax_rate_occurrences",
     "bid.tenderee_name_mentions",
     "bid.toc_section_codes",
@@ -91,28 +98,36 @@ EXPECTED_UNIVERSE = [
     "tender.bid_deadline",
     "tender.bid_scope",
     "tender.boq_items",
+    "tender.commitment_sections",  # P1-β批六 T1 承诺类章节要求(L2-013 inputs,2026-11-08)
+    "tender.consortium_allowed",  # P1-β批六 T1 联合体允许布尔(L1-017 inputs,2026-11-08)
     "tender.currency",
+    "tender.deposit_forms",  # P1-β批六 T1 保证金缴纳形式要求(L1-006 inputs,2026-11-08)
     "tender.deposit_required",
     "tender.device_models",
     "tender.electronic_files",  # P1-β批二续 L2-003 电子标书要求(2026-11-07)
     "tender.file_composition",  # P1-β批二续 L2-001 投标文件组成要求(2026-11-07)
     "tender.max_duration",
     "tender.max_price",
+    "tender.min_performance_amount",  # P1-β批六 T4 L1-003 inputs 富化(2026-11-08)
     "tender.min_similar_performance_count",
     "tender.min_warranty_period",
+    "tender.performance_window_months",  # P1-β批六 T4 L1-003 inputs 富化(2026-11-08)
     "tender.price_includes_tax",
     "tender.project_identity.code",
     "tender.project_identity.lot_section",
     "tender.project_identity.name",
     "tender.required_declarations",
     "tender.required_fields",  # R2+ L2-041 必填清单行未报价(plan 2026-11-05 规则族补齐)
+    "tender.required_figures",  # P1-β批六 T1 招标要求附图/图表(L2-014 inputs,2026-11-08)
     "tender.required_qual_level",
     "tender.required_sections",
+    "tender.required_tables",  # P1-β批六 T1 必备表格要求(L2-040 inputs,2026-11-08)
     "tender.required_validity_days",
     "tender.scoring_items",
     "tender.signature_slots",  # P1-β批二续 T3 L2-030 招标要求签署位(2026-11-07)
     "tender.substantive_clauses",
     "tender.tax_rate",
+    "tender.tech_sections_required",  # P1-β批六 T1 技术方案必备章节(L2-012 inputs,2026-11-08)
     "tender.tenderee_name",
     "tender.volume_specs",  # P1-β批二续 L2-002 招标份数要求(2026-11-07)
 ]
@@ -143,9 +158,9 @@ def _synthetic_rule(rid: str, layer: str, severity: str) -> dict:
 
 
 class TestUniverse:
-    def test_anchored_92(self):
-        # 87→92(P1-β批二续 T3 L2-030/032/033 五路径入宇宙,2026-11-07;plan 预算 91 系 86 旧基线勘误,T2 实测 bid.full_text 入宇宙后基线 87)
-        assert len(EXPECTED_UNIVERSE) == 92
+    def test_anchored_105(self):
+        # 92→105(P1-β批六 T1-T5:12 模型契约路径经 T3/T4 inputs+bid.tables 经 L2-040,2026-11-08;前值 87→92 系批二续 T3 五路径)
+        assert len(EXPECTED_UNIVERSE) == 105
         assert registry.universe() == EXPECTED_UNIVERSE
 
     def test_second_stage_fields(self):
