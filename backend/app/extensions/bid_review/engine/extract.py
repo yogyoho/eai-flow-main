@@ -528,6 +528,16 @@ FIELD_TYPE_CONTRACTS["bid.consortium"] = '[{lead:"牵头人名称",members:["成
 FIELD_TYPE_CONTRACTS["bid.figures"] = '[{id:"图号或空串",name:"图表名称"}] 对象列表;投标文件中的图纸/图表清单;id/name 非空;无给空数组。'
 FIELD_TYPE_CONTRACTS["bid.deposit_forms"] = '["实际缴纳形式"] 字符串数组;投标文件载明的保证金缴纳形式;无给空数组。'
 
+# ── 批七(A-β7-①,2026-11-08):§6.1 ❌4 消费面 8 条抽取契约(规格 §6.2 形状逐字)──
+FIELD_TYPE_CONTRACTS["tender.pm_req"] = '{certs:["证书名称"],social_months:12,exclusive:true} 对象;项目负责人资格要求(证书类别/社保连续月数/是否须专职无在建);无明示给 null。'
+FIELD_TYPE_CONTRACTS["tender.subcontract_limit"] = '{allowed:true,scope:"允许分包的范围"} 对象;分包限制;无明示给 null。'
+FIELD_TYPE_CONTRACTS["tender.required_signatures"] = '["签字盖章处名称"] 字符串列表;招标要求签章的位置清单;无明示给空数组。'
+FIELD_TYPE_CONTRACTS["tender.format_requirements"] = '{toc:true,page_numbering:true,font:"字体字号要求",copies:4,sealing:"密封标识要求"} 对象;格式份数密封要求;无明示给 null。'
+FIELD_TYPE_CONTRACTS["bid.pm"] = '{name:"拟任项目经理姓名",certs:["证书名称"],social_months:24,on_other_project:false} 对象;拟任项目负责人实体;无明示给 null。'
+FIELD_TYPE_CONTRACTS["bid.service_commitments"] = '[{item:"承诺事项",value:"承诺内容",section:"所在章节"}] 对象列表;分包/转包相关服务承诺;无明示给空数组。'
+FIELD_TYPE_CONTRACTS["bid.format"] = '{toc:true,page_numbering:true,font:"实际字体字号",copies:4,sealing_label:"密封标识实际描述"} 对象;投标文件格式实体;无明示给 null。'
+FIELD_TYPE_CONTRACTS["bid.submit_time"] = '"2026-11-08 09:00:00" 时间字符串;投标文件递交时间;无明示给 null。'
+
 
 def normalize_section_tree(raw: Any) -> list[dict]:
     """章节树归一闸(B立项 M2,spec §5,2026-11-05):缺 title(空串/非串)丢行零编造;

@@ -670,3 +670,41 @@ class TestBidTablesDerived:
 
         # PDF 表格无名 v1 不产(A-β6-⑤ 漏判容忍)
         assert _derive_bid_tables([{"doc_id": "d1", "text": "纯文本无表格标记"}]) == []
+
+
+# ── P1-β批七 T1 §6.1 ❌4 消费面 8 条抽取契约(A-β7-①,规格 §6.2 形状逐字)──
+
+
+BETA7_PATHS = [
+    "tender.pm_req",
+    "tender.subcontract_limit",
+    "tender.required_signatures",
+    "tender.format_requirements",
+    "bid.pm",
+    "bid.service_commitments",
+    "bid.format",
+    "bid.submit_time",
+]
+
+
+class TestBeta7FieldContracts:
+    """批七:§6.1 ❌4 消费面 8 条抽取契约(规格 §6.2 形状逐字)。"""
+
+    def test_contracts_registered(self):
+        from app.extensions.bid_review.engine.extract import FIELD_TYPE_CONTRACTS
+
+        for path in BETA7_PATHS:
+            assert path in FIELD_TYPE_CONTRACTS, path
+
+    def test_contract_shapes_hint_model(self):
+        from app.extensions.bid_review.engine.extract import FIELD_TYPE_CONTRACTS
+
+        # 形状提示关键字在场:模型侧照形状诚实产出
+        assert "certs" in FIELD_TYPE_CONTRACTS["tender.pm_req"]
+        assert "allowed" in FIELD_TYPE_CONTRACTS["tender.subcontract_limit"]
+        assert "签字盖章" in FIELD_TYPE_CONTRACTS["tender.required_signatures"]
+        assert "copies" in FIELD_TYPE_CONTRACTS["tender.format_requirements"]
+        assert "on_other_project" in FIELD_TYPE_CONTRACTS["bid.pm"]
+        assert "value" in FIELD_TYPE_CONTRACTS["bid.service_commitments"]
+        assert "sealing_label" in FIELD_TYPE_CONTRACTS["bid.format"]
+        assert "递交" in FIELD_TYPE_CONTRACTS["bid.submit_time"]
