@@ -1,0 +1,18 @@
+case: L2-052-year-span-short
+desc: 附件 C-1 要求近3年实供 2023/2024 两年度 → |Y|=2<3 → L2-052 major 年份不足(span 门 MATCHED/PARTIAL 参与;无 min_count → status=MATCHED;strict 钉单规则触发)
+fields:
+  tender.attachment_requirements:
+    - {'no': C-1, name: 近年财务报告, year_span: 3}
+  bid.attachment_index:
+    - {'no': C-1, name: 2023年度审计报告}
+    - {'no': C-1, name: 2024年度审计报告}
+expect_issues:
+  - rule_id: L2-052
+    severity: major
+    contains: ["年份", "要求3年", "覆盖2年"]
+    entity: "C-1"
+expect_absent: []
+strict: true
+checklist:
+  unknown_count: 0
+  status_by_no: {"C-1": "MATCHED"}

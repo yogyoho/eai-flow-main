@@ -149,8 +149,8 @@ def test_full_pack_loads():
     by_type = {}
     for r in pack.rules:
         by_type.setdefault(r.type, []).append(r.id)
-    assert len(by_type.get("deterministic", [])) == 50, (
-        "L1 15 + L2 20 + L3 15 = 50(批七T2 +1:L1-026 递交时间,P1-β批七 2026-11-08,A-β7-②;前值 49=L1 14 + L2 20 + L3 15,批六T3 +5:L1-017/L2-012/013/014/040;前前值 44=L1 13 + L2 16 + L3 15,批二续T3 +3 要件级 L2-030/032/033)"
+    assert len(by_type.get("deterministic", [])) == 51, (
+        "L1 15 + L2 21 + L3 15 = 51(批九T1 +1:L2-052 年份连续性,A-β9-①;前值 50=批七T2 +1:L1-026;前值 49=批六T3 +5 要件级;前前值 44=批二续T3 +3)"
     )
     assert len(by_type.get("hybrid", [])) == 7, "L1 hyb 003/007/004(批七T2)/022(批七T2) + L3 hyb 004/008 + L2-023 指纹通道 = 7(批七T2 +2:L1-004/L1-022,A-β7-②;前值 5=整合版对齐 W1)"
     assert len(by_type.get("semantic", [])) == 2, "L1-013 + L1-020(批七T2 +1,A-β7-②);前值 L1-013 唯一 sem 规则"
@@ -293,7 +293,8 @@ def test_att_ops_whitelisted_at_load():
     P1-β批二续 T2 2026-11-07 增 L2-004/050(op:all 逐行完好性)+ L2-051(op:eq regex 草稿残留);
     P1-β批二续 T3 2026-11-07 增 L2-030(op:all col 取签署位列)+ L2-032(steps 两件套存在性,None)
     + L2-033(op:eq 凭证存在性,C-17);
-    P1-β批六 T3 2026-11-08 增 L2-012/013/014/040(op:all contains_any+keywords 惯用式,A-β6-⑦)。"""
+    P1-β批六 T3 2026-11-08 增 L2-012/013/014/040(op:all contains_any+keywords 惯用式,A-β6-⑦);
+    P1-β批九 T2 2026-11-08 增 L2-052(op:att_year_span 年份连续性,A-β9-①②)。"""
     pack = load_rulepack(PACK)
     ops = {r.id: r.check.get("op") for r in pack.rules if r.layer == "L2"}
     assert ops == {
@@ -318,6 +319,7 @@ def test_att_ops_whitelisted_at_load():
         "L2-013": "all",
         "L2-014": "all",
         "L2-040": "all",
+        "L2-052": "att_year_span",
     }
 
 
@@ -898,8 +900,8 @@ class TestBeta7Rules:
     def test_pack_pins(self):
         pack = load_rulepack(PACK)
         dets = [r for r in pack.rules if r.type == "deterministic"]
-        assert len(pack.rules) == 59
-        assert len(dets) == 50
+        assert len(pack.rules) == 60  # 批九T1 +1 L2-052(前值 59=批七T5)
+        assert len(dets) == 51  # 批九T1 +1 L2-052(前值 50=批七T2)
 
 
 # ── P1-β批七 T3(A-β7-③,2026-11-08):L1-007 inputs 富化(tender.required_signatures 入

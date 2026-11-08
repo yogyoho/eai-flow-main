@@ -652,6 +652,26 @@ rules:
     fix_tpl: "按要求份数补齐附件或附情况说明：{insufficient}"
     confidence_gate: 1.0
     enabled: true
+  # ── L2-052 附件年份连续性(P1-β批九 2026-11-08,A-β9-①②;att_* 家族第四算子):
+  # year_span(正整数)×命中行 name 年份 token 集(findall 同名全收)→ 不足/断档两因不互吞
+  # 单 violation 双条目;零解析 need_human(A-β6-③ v2);MISSING/UNKNOWN 零参与(L2-020/023 属地);
+  # 不锚定截止日日历年(财年书写惯例异构=FP 源)──
+  - id: L2-052
+    name: 附件年份连续性
+    layer: L2
+    type: deterministic
+    applies_to: ["*"]
+    inputs: [tender.attachment_requirements, bid.attachment_index]
+    check:
+      op: att_year_span
+      left: tender.attachment_requirements
+      right: bid.attachment_index
+    severity: major
+    evidence: [A-TENDER-NOTICE, A-BOQ]
+    message_tpl: "附件年份连续性不足：{span_fail}"
+    fix_tpl: "按要求年数补齐缺失年度附件或附情况说明：{span_fail}"
+    confidence_gate: 1.0
+    enabled: true
   # ── W9(L2-021,整合版 P1-β批二 2026-11-07):附件编号与正文引用对应——存在性主责归本条
   # (规格主责矩阵);同实体 L3-012 violation 由 eval_core 折叠(suppressed_by 审计日志面记账),
   # L3-012 一致性职责独存。col(bid.attachment_index,'no') 取附件清单编号列(T1 五件套);
