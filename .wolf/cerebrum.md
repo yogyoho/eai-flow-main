@@ -25,6 +25,8 @@ OpenWolf's learning memory. Updated automatically as the AI learns from interact
 - [2026-08-21] geological-report 用户交互铁律：数据收集必须用 ask_clarification fields 渲染中文填写表单（label=中文名+单位），绝不向用户展示/索要 JSON 或英文键名；面向用户术语一律"数据项"不说"字段"；缺项清单译成中文按类别分组呈现。适用于所有面向非 IT 用户的技能。
 
 ## Key Learnings
+- [2026-11-07] str 是可迭代对象:集合归一/子集类算子迭代入参前必须 isinstance(str) 守卫,否则裸字符串静默逐字迭代=静默错误判定(无异常无日志,bid_review subset_of 实证 bug-4109);表达子里新算子的类型面按 _num 先例显式拒收。
+- [2026-11-07] py3.12 re.error 不是 ValueError 子类:正则求值必须单独 try/except re.error 入 KeyError 网,否则逃出 det 的 need_human 通路,det/hyb 两调用点行为分叉(bug-4110)。
 - [2026-11-06] 对齐审计类缺口立档后、开工前必须重新 grep 核实是否已被并发会话兑付——quick 层裁剪立档当天即被 ec77631ef 兑付(11-05 四项同款先例);计划编写以当日 grep 为准,不以存档结论为准。
 - [2026-11-06] 规则 ID 轮换迁移使 DB rule_overrides 旧键语义翻转(旧 022/023 键迁移后指向不同规则=错规则开关,非无害回落);任何早于轮换 commit 的库启用逐规则开关前须清空/重映射,列迁移落地须带旧键重映射(规格 §3.1 注记)。
 - [2026-11-06] derive_joins 类服务端派生函数的输入模型字段须按 R4「模型常态回标量」防御:任何 `for item in out.get(p) or []` 迭代前先 isinstance((list,tuple)) 守卫(标量 int 会 TypeError 炸整条一阶段基线,违诚实降级教义,bug-4083)。
@@ -522,6 +524,9 @@ fixture 策略: 全节点 template_text=null(不发明招标内容), 真文渲�
 - [2026-11-06] content 端点不传 source 的整页窗口跨成员混段是既有歧义(spec R3 保留),断言「首个命中」而非「全池同源」;?source= 传入才池内收窄。
 
 ## Do-Not-Repeat
+- 2026-11-06(P1-α 实测):`pytest -k bid_review` **必须带 `tests/` 路径**(写 `pytest tests/ -k bid_review`)——裸 `-k` 会收集 backend/ 根下两个陈年散落文件(test_dept_fix.py/test_full_pipeline.py),本机 collection 即炸(DNS/import env),误判全红。
+- 2026-11-06(P1-α 实测):lint 门=每文件 `ruff check` + **生产文件** `ruff format --check`;tests/ 基线已有 28 个 format 漂移文件,别对测试文件跑 `format --check` 当门(会误报),漂移清理属专门批次。
+
 - 2026-11-05(活体回采):烧配额/长跑批的输出**禁止过 tail 管道**——tail 只留尾部,评分头/错误头静默丢失且配额已烧;一律重定向落文件(> file 2> err)后按需 grep。
 
 - 2026-11-05(bug-4026):consumed_by 空结果≠在宇宙——consumed_by 只报消费者不查成员资格;断言「路径在宇宙」前先查 registry.universe()。给规则声明新 inputs 会扩宇宙,凡有 universe 逐位锚测试必同步。
@@ -2985,3 +2990,52 @@ spec 假设 L2{fatal,major},eval_core 夹具 EX-001 证明 L2/minor 是既有合
 - 2026-11-05 difflib 阈值带测试:嫌疑带断言串必须先跑 SequenceMatcher 实测 ratio 再写断言(直觉串「一期/二期」实为 0.889≥0.80 不在嫌疑带;「道路/管网」0.7778 才在带内)——中文串 ratio 不可脑算。
 
 - 2026-11-05 [Key Learning] bid_review MCP 直调 router 壳模式(对齐审计⑧):mcp.py `_run_router(fn)` 返回 `(err, payload)` 二元组,HTTPException→(f"{code}: {detail}", None),handler 映射 success:false——router 端点函数签名 (task_id..., db=session, owner_id=MCP_OWNER) 可直接 await 调用(Depends 默认参数只是缺省值),零逻辑复制即把输出端点补进 MCP 面。规则 enabled 切换语义=DB rule_overrides ∧ yaml enabled 相(worker._apply_rule_overrides),override 只能关不能开 yaml 关的规则;运行时禁改写 yaml 源文件。
+
+### close() 容差边界钉不住十进制小数 (2026-11-07, β批一)
+IEEE754 下 0.01 无精确二进制表示,fl(1.01)−fl(1.0)=0.010000000000000009(Sterbenz 精确减法仍>0.01),故 close(1.0,1.01,0.01) 是 False——「≤tol 精确边界」断言必须用二进制可精确表示三元组(如 1.0/1.5/0.5)钉,不许拿十进制小数字面量钉边界;Decimal 迁移(β批二)时 test_mul_close_tolerance_band 里 close(1.0,1.01,0.01) False 这行是显式翻转点。
+
+### 计划稿测试平凡绿:默认值遮蔽覆盖目标 (2026-11-07, β批一 Task4)
+写「覆盖到 X」的测试前必须先核被测规则默认值——L2-020 default=fatal 时「tm→fatal 覆盖」断言未实现也绿,红相为 0(Task4 计划稿五测全平凡绿,靠补判别测试救回)。判别测试选 default ≠ 目标档的规则/方向(att_missing_rows/att_count default=major),TDD 红相设计的第一步是 diff(默认值, 覆盖目标)。
+
+### 台账/裁决表插入当代行须另立小节 (2026-11-07, bug-4102)
+CALIBRATION 批次裁决表是历史快照,新规则的行插进旧批次表必造成段头计数自相矛盾——先例:批D/P1-α/批P1-β1 都是另立 `## 批X裁决表` 小节,前导带现役计数(det/hyb 拆分)+校准证据短语,旧行零 diff。
+
+## Key Learnings + Do-Not-Repeat (2026-11-07 — bid_review P1-β批二续会话)
+
+**Key Learnings:**
+- golden 面 docs_text 恒空 → verify 第2道证据对齐把一切 sem/hyb issue 降级 need_human=true(verdict 仍 violation)。凡依赖「definite 主责」的折叠/抑制正向半边在金标准面**不可钉**,须 eval_core 管线级测试注入 docs_text 钉死;金标准面只钉负向共存半边(L2-030-l1007-folded 先例)。
+- golden case fields 是直注 stub,**derive_joins 派生不运行**——测派生行为(三 presence 布尔等)用 pytest,金标准只测规则判定面。
+- 规则 inputs 声明=宇宙单一事实源;bid.full_text 曾不在宇宙(T4 L4 包 inputs 不入宇宙),L2-051 声明后宇宙 87;plan 预算路径数前必须核对 EXPECTED_UNIVERSE 全表(批二续实测 87/92,plan 算的 86/91)。
+- worker 合包别名安全前提=load_rulepack 每次读文件新对象(无缓存);fixture 隔离须把 ADVISORY_RULEPACK_PATH 一并 monkeypatch None。
+
+**Do-Not-Repeat:**
+- plan 里「X 使用既有路径」先 grep EXPECTED_UNIVERSE 验证在宇宙,否则预算 +1 偏差(bid.full_text 案,T2 偏离1)。
+- rstest dom 测试:findAllByText 返回 Promise,同步索引 [0] 得 undefined——须 await 后再取(测试码迭代一次的教训)。
+- summarize 新增键会翻红全部 summary 全等断言(routers/grouping/worker_sem 三处)——加响应键前先 grep `toEqual`/全等断言面。
+
+## 2026-11-07 P1-β批三 verdict 五值迁(5 commits b2f20220b..39fdc4929)
+- **verdict 引擎五值域已生效**(C-08 终章):FAIL/PASS/UNKNOWN/ERROR/SKIP,唯一真相=engine/verdicts.py `normalize_verdict`(violation→FAIL/need_human·unclear→UNKNOWN/pass→PASS;false_positive=复核域恒等)。旧值串在全仓只剩合法五类:别名表/verify 内部协议/raw semantic_verdict 域/loader·schema 默认/注释。
+- **golden 直构绕过 loader 归一**:loader 只归一 YAML 加载面;测试里直接构造 Expectation 必须显式带新值 verdict,否则默认 "violation" 与生产 FAIL 静默失配。新增直构一律写 verdict="FAIL"/"UNKNOWN"。
+- **bid_review 迁移真表名=bid_review_issues**(models ReviewIssue);幂等 UPDATE remap 已入 database.py `_run_migrations`,下次 gateway 启动生效(当前 dev 容器全停,尚无活体跑过)。
+- **verdictPill 前端零调用点**(仅定义):ResultsView iss-verdict 直出 raw verdict 文本——改 pill 不改显示;以后改判定码显示要动 ResultsView 不是 primitives。
+- **值域迁移批的序列法**:T1 引擎+golden 别名面同 commit(保 golden 面同域可比),服务端消费面 interim 红留 T2 收——比拆碎更稳,family 中途红是预期态,计划里显式申报即可。
+- DNR:机械清扫 grep 盘点要覆盖「后来才写/追加」的测试(批三 T1 首跑 gate 抓到 expr_operators2 :97 漏点,bug-4145);测试目录实际是 tests/unit/extensions/ 平铺 bid-review-* 文件,无 bid-review/ 子目录。
+
+## Do-Not-Repeat 追加(2026-11-08 批四)
+- plan 里的正则必须先与自带测试对拍再落 plan——批四 arabic 正则 `[\s、.：:]` 回溯误中「3.5万元预算」与自带测试自相矛盾,实现者被迫 TDD 侧修正(分隔符类去 `.`)。
+- 后端 bid_review family gate 路径 = `tests/ -k bid_review`(平铺 45 文件);`tests/unit/extensions/` 是前端 rstest 布局,后端不存在该目录(pytest 报 no tests ran 勿误判)。
+- docs/superpowers 在 .gitignore,git add 必须 -f(批四 T2 首次提交忘 -f 失败重试)。
+
+## Key Learnings 追加(2026-11-08 批五)
+- 前端 rstest 有效调用形态=`npx rstest run <path>`;`pnpm rstest --run` 不存在(CACError),`pnpm test -- run <path>` 的 `--` 会透传成全量跑。
+- 写 plan 的「实态勘误」断言(如"无 exact-dict 断言"/"已 import X")必须 grep 实证后写,批五两处被门禁证伪被迫钉面随迁(bff6d31aa)。
+- 规格 §6.2 对齐复核的有效手法:universe() 实跑清单 vs 规格字段清单逐字段对,C-09/C-18 别名裁决先查后映射;覆盖列表数字(如 L2 17/26 的规则号列)要先确认列语义是"覆盖"还是"缺"(批五把缺列误读为覆盖列,grep 规则包立刻证伪)。
+
+## 批次plan缺「中期红清单」教训(2026-11-08批六)
+分步落数字锁的批次(T1契约→T3规则inputs→T5锁bump),plan必须显式列「中期红清单」:哪些钉子在哪些任务后预期红、哪个任务自愈。批六T1落了12契约但宇宙T5才注册,registry:237 cross-subset钉红了两个任务周期,T1审查(仅跑extract/sections回归)漏检——回归门scope要含钉子所在测试文件。
+
+## 2026-11-08 批六追加
+- **golden 手构夹具 + hyb inputs 富化 = None 陷阱**:eval_core.evaluate_fields:136 无条件剥 None 值字段;夹具绕过 normalize_fields 不自动补键,故给新 inputs 用 `null` 占位=不在场=缺字段门翻 need_human=hyb 零候选零产出(静默)。修法只有给非 None 真实值。(bug-4227)
+- **git hash-object 必须带 -w**:水工提交管线里 `git hash-object <file>` 只算 hash 不写 odb,update-index --cacheinfo 报 invalid object;T3/T4/T5 用的是 -w 形态。
+- **update-ref CAS 的 expected-old 必须从 `git rev-parse HEAD` 现取**,不可手打——手打错位只拒不损(CAS 保护),重发即可。
+- **并发 merge 窗口「ours 侧」树冻结于 merge 起点 HEAD**:批六文件在 merge commit 里可能被静默回退;备份分支 bid-review-batch6 已重钉 9d7ee4f97,merge 落地后须验 tip 内容(T4 测试在/extraction 契约在/rulepack 五规则在)。

@@ -6413,6 +6413,2319 @@
       "related_bugs": [],
       "occurrences": 1,
       "last_seen": "2026-11-06T04:23:25.110Z"
+    },
+    {
+      "id": "bug-4086",
+      "timestamp": "2026-11-06",
+      "error_message": "方差脚本run 2/3 extract分片连续两试JSON解析失败,advance_task抛RuntimeError杀死整个脚本,run 3未跑,stdout无JSON产出",
+      "file": "backend/scripts/bid_review_live_variance.py",
+      "root_cause": "main()循环无per-run容错:_run_once直抛;单跑失败=方差数据点(崩溃即稳定性证据),不应终止后续跑;tables阶段有skip先例(:run 1)而extract阶段无",
+      "fix": "循环体包try/except,失败记入独立failed_runs列表继续;下游聚合只吃OK跑不受影响;out增failed_runs全留痕;全灭时输出ok=False恒exit 0。根修(cbde2a992,P1-α Task1):分片JSON畸形本体=_invoke_json三试纠错共享核(assistant回灌+纠错轮)+尾逗号宽松修复,五调用点DRY;spec+quality双审过(592/6)",
+      "tags": [
+        "bid-review",
+        "variance",
+        "harness-robustness",
+        "live",
+        "first-live-run"
+      ],
+      "related_bugs": [
+        "bug-4027"
+      ],
+      "occurrences": 2,
+      "last_seen": "2026-11-06"
+    },
+    {
+      "id": "bug-4087",
+      "timestamp": "2026-11-06T10:07:43.716Z",
+      "error_message": "Significant refactor of ",
+      "file": "backend/app/extensions/bid_review/worker.py",
+      "root_cause": "2 lines replaced/restructured",
+      "fix": "Rewrote 14→46 lines (2 removed) | Also: messages = [{\"role\": \"user\", \"content\": prompt}]; last_err: Exception | None = None",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 5,
+      "last_seen": "2026-11-06T10:08:06.121Z"
+    },
+    {
+      "id": "bug-4088",
+      "timestamp": "2026-11-06T11:41:18.050Z",
+      "error_message": "Function not marked async",
+      "file": "backend/tests/test_bid_review_worker.py",
+      "root_cause": "Function uses await but wasn't declared async",
+      "fix": "Added async modifier",
+      "tags": [
+        "auto-detected",
+        "async-fix",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-11-06T11:41:18.050Z"
+    },
+    {
+      "id": "bug-4089",
+      "timestamp": "2026-11-06T11:41:44.421Z",
+      "error_message": "Wrong return value",
+      "file": "backend/app/extensions/bid_review/worker.py",
+      "root_cause": "Was returning: result.scalar_one_or_none()",
+      "fix": "Now returns: out",
+      "tags": [
+        "auto-detected",
+        "return-value",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-11-06T11:41:44.421Z"
+    },
+    {
+      "id": "bug-4090",
+      "timestamp": "2026-11-06T13:47:36.177Z",
+      "error_message": "Wrong reference: fatal should be J",
+      "file": "docs/superpowers/specs/2026-11-06-bid-review-integrated-spec-alignment.md",
+      "root_cause": "Used \"fatal\" instead of \"J\"",
+      "fix": "Changed fatal → J",
+      "tags": [
+        "auto-detected",
+        "wrong-reference",
+        "md"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-11-06T13:47:36.177Z"
+    },
+    {
+      "id": "bug-4091",
+      "timestamp": "2026-11-06",
+      "error_message": "P1-α终验收全量套件309 failed/32176 passed/3773 skipped/1 error(53min);失败面=test_client(57)/support_bundle(29)/web_fetch(22)/client_live(19)/translation/validator/acp等宿主环境敏感模块",
+      "file": "backend/tests/(全量套件,非单文件)",
+      "root_cause": "存量宿主环境失败基线,非P1-α引入:4-commit改动面仅bid_review+database.py+docs与失败文件零交集(git diff 2145b9a4a..HEAD验证);bid_review家族绿(596/6三评审+registry 20/20当场复验);.pytest_cache lastfailed含1条bid_review陈旧条目(test_anchored_74,迁移前残留)",
+      "fix": "无(挂账平台级排查);验收口径=家族门-k bid_review(带tests/路径)+lastfailed失败分布与改动面不相交核对;注意:pytest输出接tail管道会吃掉完整失败清单,改用.pytest_cache/v/cache/lastfailed零成本取回",
+      "tags": [
+        "full-suite",
+        "environment-baseline",
+        "bid-review-p1-alpha",
+        "acceptance",
+        "pytest-cache",
+        "tail-pipe"
+      ],
+      "related_bugs": [
+        "bug-4086",
+        "bug-4027"
+      ],
+      "occurrences": 1,
+      "last_seen": "2026-11-06"
+    },
+    {
+      "id": "bug-4092",
+      "timestamp": "2026-11-06T14:15:00.519Z",
+      "error_message": "Incorrect value in code",
+      "file": "backend/app/extensions/bid_review/engine/expr.py",
+      "root_cause": "Had \"and\"",
+      "fix": "Changed to \"mul\"",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-11-06T14:15:00.519Z"
+    },
+    {
+      "id": "bug-4093",
+      "timestamp": "2026-11-06T14:16:06.465Z",
+      "error_message": "Wrong return value",
+      "file": "backend/app/extensions/bid_review/engine/expr.py",
+      "root_cause": "Was returning: _eval(parse(expr), fields, env or {})",
+      "fix": "Now returns: _eval(parse(expr), fields or {}, env or {})",
+      "tags": [
+        "auto-detected",
+        "return-value",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-11-06T14:16:06.465Z"
+    },
+    {
+      "id": "bug-4094",
+      "timestamp": "2026-11-06T14:39:31.312Z",
+      "error_message": "Incorrect value in code",
+      "file": "backend/app/extensions/bid_review/engine/registry.py",
+      "root_cause": "Had \",qty:数量或null,price:单价或null}] 对象列表;'",
+      "fix": "Changed to \",qty:数量或null,price:单价或null,amount:合价金额或null}] 对象列",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-11-06T14:39:31.312Z"
+    },
+    {
+      "id": "bug-4095",
+      "timestamp": "2026-11-06T14:58:45.302Z",
+      "error_message": "Incorrect value in code",
+      "file": "backend/app/extensions/bid_review/engine/extract.py",
+      "root_cause": "Had \"2. 数量单价不心算,只引用材料中的原文数字;required 字段禁止输出(服务端回填);\\n\"",
+      "fix": "Changed to \"2. 数量单价合价不心算,只引用材料中的原文数字;required 字段禁止输出(服务端回填);\\",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-11-06T14:58:45.302Z"
+    },
+    {
+      "id": "bug-4096",
+      "timestamp": "2026-11-06T14:59:13.173Z",
+      "error_message": "Significant refactor of ",
+      "file": "backend/tests/test_bid_review_extract.py",
+      "root_cause": "5 lines replaced/restructured",
+      "fix": "Rewrote 12→9 lines (5 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-11-06T14:59:13.173Z"
+    },
+    {
+      "id": "bug-4097",
+      "timestamp": "2026-11-06T15:08:48.950Z",
+      "error_message": "Incorrect value in code",
+      "file": "backend/tests/test_bid_review_golden.py",
+      "root_cause": "Had \"L3-026\"",
+      "fix": "Changed to \"L3-019\"",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-11-06T15:08:48.950Z"
+    },
+    {
+      "id": "bug-4098",
+      "timestamp": "2026-11-06T15:09:53.864Z",
+      "error_message": "Incorrect value in code",
+      "file": "backend/tests/test_bid_review_rule_runner.py",
+      "root_cause": "Had \"L1 det 14 + L3 det 14 + L2 det 5(L2-020/022/024/0",
+      "fix": "Changed to \"L1 det 14 + L3 det 15(L3-019 行乘算,P1-β批一)+ L2 det ",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-11-06T15:09:53.864Z"
+    },
+    {
+      "id": "bug-4099",
+      "timestamp": "2026-11-06T15:37:39.724Z",
+      "error_message": "Significant refactor of ",
+      "file": "backend/app/extensions/bid_review/engine/extract.py",
+      "root_cause": "2 lines replaced/restructured",
+      "fix": "Rewrote 7→11 lines (2 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-11-06T15:37:39.724Z"
+    },
+    {
+      "id": "bug-4100",
+      "timestamp": "2026-11-06T16:06:57.163Z",
+      "error_message": "Wrong return value",
+      "file": "backend/tests/test_bid_review_c11_severity.py",
+      "root_cause": "Was returning: next(r for r in pack.rules if r.check.get(\"op\") ==",
+      "fix": "Now returns: cands[0]",
+      "tags": [
+        "auto-detected",
+        "return-value",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-11-06T16:06:57.163Z"
+    },
+    {
+      "id": "bug-4101",
+      "timestamp": "2026-11-07",
+      "error_message": "Task1评审挂账:expr.py _atom 裸 - token(如 -x)走 float(\"-\") 抛裸 ValueError,逃出 run_det_rule 仅捕 KeyError→need_human 通路,会炸 worker(P1-β批一评审发现,未修)",
+      "file": "backend/app/extensions/bid_review/engine/expr.py",
+      "root_cause": "一元负号 token 无语义分支,_atom 对非数值 token 统一 float() 强转,ValueError 未包成 KeyError",
+      "fix": "未修(β批二候选):现无触发面——rulepack cond 均仓内手写无裸 - token;L3-019 cond token 流已核不含 -(Task3 质量评审实证);β批二若落一元负号须包 KeyError",
+      "tags": [
+        "expr",
+        "engine",
+        "hazard",
+        "unfixed",
+        "p1-beta2-candidate"
+      ],
+      "related_bugs": [
+        "bug-4091"
+      ],
+      "occurrences": 1,
+      "last_seen": "2026-11-07"
+    },
+    {
+      "id": "bug-4102",
+      "timestamp": "2026-11-07",
+      "error_message": "CALIBRATION.md 批B(L3×15)裁决表内插入 L3-019 行后,段头计数/前导(L3=15,det13+hyb2)与 pack L3=17 现状自相矛盾(Task3 双评审发现)",
+      "file": "backend/app/extensions/bid_review/golden/CALIBRATION.md",
+      "root_cause": "Task3 计划只指示插行未连带更新段标题/前导计数;批B 表是历史批次快照,插入当代行破坏快照自洽",
+      "fix": "d703ec601:L3-019 行移出批B表,新立「## 批P1-β1裁决表」小节(仿批D/P1-α 先例,前导 L3=17:det15+hyb2+校准证据短语);批B 表 15 行恢复零 diff 历史快照",
+      "tags": [
+        "calibration",
+        "docs",
+        "consistency",
+        "golden",
+        "snapshot-hygiene"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-11-07"
+    },
+    {
+      "id": "bug-4103",
+      "timestamp": "2026-11-07T00:27:40.722Z",
+      "error_message": "Wrong reference: RulePackError should be Rule",
+      "file": "docs/superpowers/plans/2026-11-07-bid-review-p1-beta2-operators-l2-021-w9-l4-pack-plan.md",
+      "root_cause": "Used \"RulePackError\" instead of \"Rule\"",
+      "fix": "Changed RulePackError → Rule",
+      "tags": [
+        "auto-detected",
+        "wrong-reference",
+        "md"
+      ],
+      "related_bugs": [],
+      "occurrences": 3,
+      "last_seen": "2026-11-07T00:28:16.960Z"
+    },
+    {
+      "id": "bug-4104",
+      "timestamp": "2026-11-07T00:27:44.714Z",
+      "error_message": "Wrong operator: == should be >=",
+      "file": "docs/superpowers/plans/2026-11-07-bid-review-p1-beta2-operators-l2-021-w9-l4-pack-plan.md",
+      "root_cause": "Used \"==\" instead of \">=\"",
+      "fix": "Changed operator == → >=",
+      "tags": [
+        "auto-detected",
+        "operator-fix",
+        "md"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-11-07T00:27:44.714Z"
+    },
+    {
+      "id": "bug-4105",
+      "timestamp": "2026-11-07T00:27:53.502Z",
+      "error_message": "Incorrect value in code",
+      "file": "docs/superpowers/plans/2026-11-07-bid-review-p1-beta2-operators-l2-021-w9-l4-pack-plan.md",
+      "root_cause": "Had `_subset_of`",
+      "fix": "Changed to `import re`",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "md"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-11-07T00:27:53.502Z"
+    },
+    {
+      "id": "bug-4106",
+      "timestamp": "2026-11-07T00:28:11.377Z",
+      "error_message": "Significant refactor of ",
+      "file": "docs/superpowers/plans/2026-11-07-bid-review-p1-beta2-operators-l2-021-w9-l4-pack-plan.md",
+      "root_cause": "3 lines replaced/restructured",
+      "fix": "Rewrote 8→13 lines (3 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "md"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-11-07T00:28:11.377Z"
+    },
+    {
+      "id": "bug-4107",
+      "timestamp": "2026-11-07T00:33:19.323Z",
+      "error_message": "Incorrect value in code",
+      "file": "backend/app/extensions/bid_review/engine/rule_runner.py",
+      "root_cause": "Had \"all\"",
+      "fix": "Changed to \"or\"",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 2,
+      "last_seen": "2026-11-07T00:33:22.000Z"
+    },
+    {
+      "id": "bug-4108",
+      "timestamp": "2026-11-07T00:44:15.256Z",
+      "error_message": "Wrong reference: 596 should be 618",
+      "file": "docs/superpowers/plans/2026-11-07-bid-review-p1-beta2-operators-l2-021-w9-l4-pack-plan.md",
+      "root_cause": "Used \"596\" instead of \"618\"",
+      "fix": "Changed 596 → 618",
+      "tags": [
+        "auto-detected",
+        "wrong-reference",
+        "md"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-11-07T00:44:15.256Z"
+    },
+    {
+      "id": "bug-4109",
+      "timestamp": "2026-11-07",
+      "error_message": "subset_of 对裸字符串输入静默逐字迭代('营业执照' vs ['营业执照'] → False 静默错判,无异常无日志)",
+      "file": "backend/app/extensions/bid_review/engine/expr.py",
+      "root_cause": "norm 集合归一直接迭代入参,str 是可迭代对象,逐字符进集合;唯一直达静默错误判定路径,违背 A-β2-① 不判通过纪律",
+      "fix": "str 侧 isinstance 守卫 raise KeyError(指向 covers/contains_any)+ 迭代体 try/except TypeError→KeyError;test_subset_of_type_guards 双钉(27685525c 质量轮 I-1)",
+      "tags": [
+        "bid_review",
+        "expr",
+        "subset_of",
+        "silent-wrong-verdict",
+        "p1-beta2"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-11-07"
+    },
+    {
+      "id": "bug-4110",
+      "timestamp": "2026-11-07",
+      "error_message": "regex 非法模式 '('=抛 re.error,逃出 run_det_rule except KeyError 网,det(eval_core隔离)与 hyb(fail-open)两调用点行为分叉",
+      "file": "backend/app/extensions/bid_review/engine/expr.py",
+      "root_cause": "py3.12 re.error 不是 ValueError 子类,不在既有 except KeyError 捕获面内",
+      "fix": "re.search 包 try/except re.error → KeyError(chained from exc);钉 test_regex_invalid_pattern(27685525c 质量轮 M-1);长期可在 validate_expr 加载期试编译",
+      "tags": [
+        "bid_review",
+        "expr",
+        "regex",
+        "error-path",
+        "p1-beta2"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-11-07"
+    },
+    {
+      "id": "bug-4111",
+      "timestamp": "2026-11-07T01:11:05.326Z",
+      "error_message": "Significant refactor of ",
+      "file": "backend/app/extensions/bid_review/engine/rulepacks/bid-review-core/1.0.0.yaml",
+      "root_cause": "3 lines replaced/restructured",
+      "fix": "Rewrote 7→11 lines (3 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "yaml"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-11-07T01:11:05.326Z"
+    },
+    {
+      "id": "bug-4112",
+      "timestamp": "2026-11-07T01:12:13.702Z",
+      "error_message": "Incorrect value in code",
+      "file": "backend/tests/test_bid_review_rule_runner.py",
+      "root_cause": "Had \"L1 det 14 + L3 det 15(L3-019 行乘算,P1-β批一)+ L2 det ",
+      "fix": "Changed to \"L1 det 13(021 声明函 W11 迁 L2-031)+ L3 det 15(L3-019",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-11-07T01:12:13.703Z"
+    },
+    {
+      "id": "bug-4113",
+      "timestamp": "2026-11-07T03:43:58.477Z",
+      "error_message": "Incorrect value in code",
+      "file": "backend/app/extensions/bid_review/engine/extract.py",
+      "root_cause": "Had \"}] 对象列表;只报正文引用到的附件名,present 由服务端按附件清单归一比对回填(禁模型换算",
+      "fix": "Changed to \", no:\"",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-11-07T03:43:58.477Z"
+    },
+    {
+      "id": "bug-4114",
+      "timestamp": "2026-11-07T03:44:40.157Z",
+      "error_message": "Significant refactor of ",
+      "file": "backend/app/extensions/bid_review/engine/rule_runner.py",
+      "root_cause": "2 lines replaced/restructured",
+      "fix": "Rewrote 33→42 lines (2 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-11-07T03:44:40.157Z"
+    },
+    {
+      "id": "bug-4115",
+      "timestamp": "2026-11-07T03:45:08.080Z",
+      "error_message": "Wrong return value",
+      "file": "backend/app/extensions/bid_review/engine/eval_core.py",
+      "root_cause": "Was returning: out",
+      "fix": "Now returns: 前单插入,A-β2-⑦)",
+      "tags": [
+        "auto-detected",
+        "return-value",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-11-07T03:45:08.080Z"
+    },
+    {
+      "id": "bug-4116",
+      "timestamp": "2026-11-07T03:45:24.989Z",
+      "error_message": "Incorrect value in code",
+      "file": "backend/tests/test_bid_review_golden.py",
+      "root_cause": "Had \"L2-022\"",
+      "fix": "Changed to \"L2-021\"",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-11-07T03:45:24.989Z"
+    },
+    {
+      "id": "bug-4117",
+      "timestamp": "2026-11-07T03:45:33.793Z",
+      "error_message": "Incorrect value in code",
+      "file": "backend/tests/test_bid_review_rule_runner.py",
+      "root_cause": "Had \"L1 det 13(021 声明函 W11 迁 L2-031)+ L3 det 15(L3-019",
+      "fix": "Changed to \"L1 det 13(021 声明函 W11 迁 L2-031)+ L3 det 15(L3-019",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-11-07T03:45:33.793Z"
+    },
+    {
+      "id": "bug-4118",
+      "timestamp": "2026-11-07T04:30:00.236Z",
+      "error_message": "Significant refactor of ",
+      "file": "backend/app/extensions/bid_review/engine/rule_runner.py",
+      "root_cause": "6 lines replaced/restructured",
+      "fix": "Rewrote 8→13 lines (6 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-11-07T04:30:00.236Z"
+    },
+    {
+      "id": "bug-4119",
+      "timestamp": "2026-11-07T04:30:23.851Z",
+      "error_message": "Incorrect value in code",
+      "file": "backend/app/extensions/bid_review/crud.py",
+      "root_cause": "Had `{rule_id}|-|{message前40字}`",
+      "fix": "Changed to `{layer}|{rule_id}|{实体 canonical json}`",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-11-07T04:30:23.851Z"
+    },
+    {
+      "id": "bug-4120",
+      "timestamp": "2026-11-07T04:31:05.204Z",
+      "error_message": "Significant refactor of ",
+      "file": "backend/tests/test_bid_review_eval_core.py",
+      "root_cause": "2 lines replaced/restructured",
+      "fix": "Rewrote 19→28 lines (2 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-11-07T04:31:05.204Z"
+    },
+    {
+      "id": "bug-4121",
+      "timestamp": "2026-11-07T13:05:00+08:00",
+      "error_message": "dedup_key embeds full row repr (measured 247/256 chars on medium boq row) -> PG DataError on String(256) overflow breaks whole run issue persistence via worker.py:503 infra-fail; key order also unstable across runs (dict repr)",
+      "file": "backend/app/extensions/bid_review/engine/rule_runner.py",
+      "root_cause": "T4 dedup_key embedded repr(row) unbounded; SQLite tests cannot catch PG varchar limits; create_all never ALTERs so widening column is not an option",
+      "fix": "commit e4bac0074: canonical json.dumps(entity, ensure_ascii=False, sort_keys=True, default=str) + >200-char truncate with # + md5[:12] suffix (budget ~223<256, llm_runner |confirm-failed suffix headroom ~237); None env -> \"-\"; pin test_dedup_key_canonical_and_bounded",
+      "tags": [
+        "bid-review",
+        "dedup_key",
+        "postgres",
+        "string-truncation",
+        "T4"
+      ],
+      "related_bugs": [
+        "bug-3983"
+      ],
+      "occurrences": 1,
+      "last_seen": "2026-11-07"
+    },
+    {
+      "id": "bug-4122",
+      "timestamp": "2026-11-07T13:05:00+08:00",
+      "error_message": "claimer-family tests intermittently hang minutes or flake on 15s budget: test path worker.py:407 _default_perf_entries_fn -> extract.py:943 build_performance_baseline -> worker.py:147 _invoke_json -> langchain_openai real HTTPS call (openai client default timeout 600s)",
+      "file": "backend/tests/test_bid_review_worker.py",
+      "root_cause": "claim_env fixture stubs _default_extract_fn but not _default_perf_entries_fn; with a model configured in env, build_performance_baseline makes real OpenAI-compatible network calls from test threads (py-spy verified, bug-3019 technique)",
+      "fix": "unfixed - booked as ledger item: stub _default_perf_entries_fn in claim_env fixture, or config-gate build_performance_baseline off by default, or lower openai timeout in tests",
+      "tags": [
+        "bid-review",
+        "test-flake",
+        "openai-network",
+        "claimer",
+        "bug-3019-technique",
+        "T4"
+      ],
+      "related_bugs": [
+        "bug-4013"
+      ],
+      "occurrences": 3,
+      "last_seen": "2026-11-07"
+    },
+    {
+      "id": "bug-4123",
+      "timestamp": "2026-11-07T06:46:22.573Z",
+      "error_message": "Incorrect value in code",
+      "file": "backend/tests/test_bid_review_registry.py",
+      "root_cause": "Had \"bid.duration_commitment_letter\"",
+      "fix": "Changed to \"bid.electronic_files\"",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 5,
+      "last_seen": "2026-11-07T06:48:28.514Z"
+    },
+    {
+      "id": "bug-4124",
+      "timestamp": "2026-11-07T07:12:27.293Z",
+      "error_message": "Missing await",
+      "file": "backend/tests/test_bid_review_eval_core.py",
+      "root_cause": "Async call without await — returned Promise instead of value",
+      "fix": "Added await to async call",
+      "tags": [
+        "auto-detected",
+        "async-fix",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-11-07T07:12:27.293Z"
+    },
+    {
+      "id": "bug-4125",
+      "timestamp": "2026-11-07T07:18:15.895Z",
+      "error_message": "Incorrect value in code",
+      "file": "backend/tests/test_bid_review_registry.py",
+      "root_cause": "Had \"bid.archive_files\"",
+      "fix": "Changed to \"bid.appendix_references\"",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-11-07T07:18:15.895Z"
+    },
+    {
+      "id": "bug-4126",
+      "timestamp": "2026-11-07T07:32:02.063Z",
+      "error_message": "Significant refactor of ",
+      "file": "backend/app/extensions/bid_review/engine/extract.py",
+      "root_cause": "2 lines replaced/restructured",
+      "fix": "Rewrote 6→8 lines (2 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-11-07T07:32:02.063Z"
+    },
+    {
+      "id": "bug-4127",
+      "timestamp": "2026-11-07T07:32:31.506Z",
+      "error_message": "Significant refactor of ",
+      "file": "backend/app/extensions/bid_review/engine/rulepacks/bid-review-core/1.0.0.yaml",
+      "root_cause": "3 lines replaced/restructured",
+      "fix": "Rewrote 13→16 lines (3 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "yaml"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-11-07T07:32:31.506Z"
+    },
+    {
+      "id": "bug-4128",
+      "timestamp": "2026-11-07T07:34:07.418Z",
+      "error_message": "Incorrect value in code",
+      "file": "backend/tests/test_bid_review_registry.py",
+      "root_cause": "Had \"bid.detail_rows\"",
+      "fix": "Changed to \"bid.deposit_receipt_present\"",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 3,
+      "last_seen": "2026-11-07T07:34:38.081Z"
+    },
+    {
+      "id": "bug-4129",
+      "timestamp": "2026-11-07T07:45:10.892Z",
+      "error_message": "Missing await",
+      "file": "backend/tests/test_bid_review_eval_core.py",
+      "root_cause": "Async call without await — returned Promise instead of value",
+      "fix": "Added await to async call",
+      "tags": [
+        "auto-detected",
+        "async-fix",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-11-07T07:45:10.892Z"
+    },
+    {
+      "id": "bug-4130",
+      "timestamp": "2026-11-07T07:57:56.957Z",
+      "error_message": "Wrong return value",
+      "file": "backend/app/extensions/bid_review/engine/rule_runner.py",
+      "root_cause": "Was returning: RulePack(name=p.parent.name, version=p.stem, conve",
+      "fix": "Now returns: RulePack(name=p.parent.name, version=p.stem, conve",
+      "tags": [
+        "auto-detected",
+        "return-value",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-11-07T07:57:56.957Z"
+    },
+    {
+      "id": "bug-4131",
+      "timestamp": "2026-11-07T07:58:08.977Z",
+      "error_message": "Significant refactor of ",
+      "file": "backend/app/extensions/bid_review/engine/rulepacks/bid-review-l4/1.0.0.yaml",
+      "root_cause": "4 lines replaced/restructured",
+      "fix": "Rewrote 4→7 lines (4 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "yaml"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-11-07T07:58:08.977Z"
+    },
+    {
+      "id": "bug-4132",
+      "timestamp": "2026-11-07T07:59:03.324Z",
+      "error_message": "Significant refactor of ",
+      "file": "backend/app/extensions/bid_review/worker.py",
+      "root_cause": "2 lines replaced/restructured",
+      "fix": "Rewrote 7→21 lines (2 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-11-07T07:59:03.324Z"
+    },
+    {
+      "id": "bug-4133",
+      "timestamp": "2026-11-07T07:59:59.735Z",
+      "error_message": "Wrong return value",
+      "file": "backend/app/extensions/bid_review/routers.py",
+      "root_cause": "Was returning: [i for i in issues if i.severity == \"fatal\" and i.",
+      "fix": "Now returns: [i for i in issues if i.severity == \"fatal\" and i.",
+      "tags": [
+        "auto-detected",
+        "return-value",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-11-07T07:59:59.735Z"
+    },
+    {
+      "id": "bug-4134",
+      "timestamp": "2026-11-07T08:01:14.404Z",
+      "error_message": "Incorrect value in code",
+      "file": "backend/app/extensions/bid_review/routers.py",
+      "root_cause": "Had \"<h2>{_esc(SEVERITY_LABELS[sev])}({sev})——{len(row",
+      "fix": "Changed to \"layer\"",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 2,
+      "last_seen": "2026-11-07T08:01:37.392Z"
+    },
+    {
+      "id": "bug-4135",
+      "timestamp": "2026-11-07T08:02:42.146Z",
+      "error_message": "Wrong operator: != should be ==",
+      "file": "backend/app/extensions/bid_review/routers.py",
+      "root_cause": "Used \"!=\" instead of \"==\"",
+      "fix": "Changed operator != → ==",
+      "tags": [
+        "auto-detected",
+        "operator-fix",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-11-07T08:02:42.146Z"
+    },
+    {
+      "id": "bug-4136",
+      "timestamp": "2026-11-07T08:03:07.947Z",
+      "error_message": "Significant refactor of ",
+      "file": "backend/app/extensions/bid_review/mcp.py",
+      "root_cause": "7 lines replaced/restructured",
+      "fix": "Rewrote 29→36 lines (7 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-11-07T08:03:07.947Z"
+    },
+    {
+      "id": "bug-4137",
+      "timestamp": "2026-11-07T08:07:30.287Z",
+      "error_message": "Function not marked async",
+      "file": "backend/tests/test_bid_review_l4_activation.py",
+      "root_cause": "Function uses await but wasn't declared async",
+      "fix": "Added async modifier",
+      "tags": [
+        "auto-detected",
+        "async-fix",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-11-07T08:07:30.287Z"
+    },
+    {
+      "id": "bug-4138",
+      "timestamp": "2026-11-07T12:38:59.198Z",
+      "error_message": "Significant refactor of ",
+      "file": "frontend/src/extensions/bid-review/api.ts",
+      "root_cause": "5 lines replaced/restructured",
+      "fix": "Rewrote 6→27 lines (5 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "ts"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-11-07T12:38:59.198Z"
+    },
+    {
+      "id": "bug-4139",
+      "timestamp": "2026-11-07T12:39:37.318Z",
+      "error_message": "Null/undefined access in ",
+      "file": "frontend/src/extensions/bid-review/components/ResultsView.tsx",
+      "root_cause": "Property access on potentially null/undefined value",
+      "fix": "Added null safety (optional chaining or null check) | Also: // T5(A-续-⑥):L4 行条目不删仍在 items,但正式视图排除(layer==\"L4\")——; // 客户端复算 summary/verdict-band 与后端 summarize_issues 同口径(排 L4)",
+      "tags": [
+        "auto-detected",
+        "null-safety",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 2,
+      "last_seen": "2026-11-07T12:39:58.507Z"
+    },
+    {
+      "id": "bug-4140",
+      "timestamp": "2026-11-07T12:41:43.501Z",
+      "error_message": "Significant refactor of ",
+      "file": "frontend/src/extensions/bid-review/components/RulesView.tsx",
+      "root_cause": "8 lines replaced/restructured",
+      "fix": "Rewrote 90→130 lines (8 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-11-07T12:41:43.501Z"
+    },
+    {
+      "id": "bug-4141",
+      "timestamp": "2026-11-07T12:42:49.945Z",
+      "error_message": "CSS fix: rows",
+      "file": "frontend/src/extensions/bid-review/components/RulesView.tsx",
+      "root_cause": "rows: pack.rules → pack.rules.filter(matches).map((rule): RuleStatsRow => ({",
+      "fix": "Changed rows: pack.rules → pack.rules.filter(matches).map((rule): RuleStatsRow => ({",
+      "tags": [
+        "auto-detected",
+        "style-fix",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-11-07T12:42:49.945Z"
+    },
+    {
+      "id": "bug-4142",
+      "timestamp": "2026-11-07T13:12:21.518Z",
+      "error_message": "Missing await",
+      "file": "frontend/tests/unit/extensions/bid-review-rulesview-multipack.dom.test.tsx",
+      "root_cause": "Async call without await — returned Promise instead of value",
+      "fix": "Added await to async call",
+      "tags": [
+        "auto-detected",
+        "async-fix",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-11-07T13:12:21.518Z"
+    },
+    {
+      "id": "bug-4143",
+      "timestamp": "2026-11-07",
+      "error_message": "rstest dom 测试对 findAllByText 结果同步索引取 [0] 得 undefined(断言失败)",
+      "file": "frontend/tests/unit/extensions/bid-review-rulesview-multipack.dom.test.tsx",
+      "root_cause": "findAllByText 返回 Promise,未 await 即同步索引",
+      "fix": "await findAllByText(...) 后再索引;批二续T5 实现者自曝自修,复跑全过",
+      "tags": [
+        "rstest",
+        "frontend-test",
+        "async",
+        "bid-review"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-11-07"
+    },
+    {
+      "id": "bug-4144",
+      "timestamp": "2026-11-07",
+      "error_message": "金标准面正向主责折叠不可达(expect 仅 primary 的 strict 零残留题无法构造)",
+      "file": "backend/app/extensions/bid_review/golden/cases/L2-030-l1007-folded.yaml",
+      "root_cause": "golden 面 docs_text 恒空,verify 第2道证据对齐把一切 sem/hyb issue 降级 need_human=true(verdict 仍 violation);折叠 helper need_human 不武装(W9 不变式)→ hyb primary 恒非 definite",
+      "fix": "正向半边挪 eval_core 管线级测试(docs_text 注入+scripted 证据对齐)钉死;金标准面只钉负向共存半边(两 fatal 共存 strict 无第三者);T3 commit d24c211ad 偏离1 勘误入 CALIBRATION",
+      "tags": [
+        "bid-review",
+        "golden",
+        "fold",
+        "need_human",
+        "verify"
+      ],
+      "related_bugs": [
+        "bug-4121"
+      ],
+      "occurrences": 1,
+      "last_seen": "2026-11-07"
+    },
+    {
+      "id": "bug-4145",
+      "timestamp": "2026-11-07T14:00:16.182Z",
+      "error_message": "Incorrect value in code",
+      "file": "backend/app/extensions/bid_review/engine/rule_runner.py",
+      "root_cause": "Had \"violation\"",
+      "fix": "Changed to \"need_human\"",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 2,
+      "last_seen": "2026-11-07T14:00:24.007Z"
+    },
+    {
+      "id": "bug-4146",
+      "timestamp": "2026-11-07T14:00:36.143Z",
+      "error_message": "Incorrect value in code",
+      "file": "backend/app/extensions/bid_review/engine/llm_runner.py",
+      "root_cause": "Had \"violation\"",
+      "fix": "Changed to \"none\"",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-11-07T14:00:36.143Z"
+    },
+    {
+      "id": "bug-4147",
+      "timestamp": "2026-11-07T14:00:42.154Z",
+      "error_message": "Wrong reference: unclear should be VERDICT_UNKNOWN",
+      "file": "backend/app/extensions/bid_review/engine/llm_runner.py",
+      "root_cause": "Used \"unclear\" instead of \"VERDICT_UNKNOWN\"",
+      "fix": "Changed unclear → VERDICT_UNKNOWN",
+      "tags": [
+        "auto-detected",
+        "wrong-reference",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 2,
+      "last_seen": "2026-11-07T14:00:47.222Z"
+    },
+    {
+      "id": "bug-4148",
+      "timestamp": "2026-11-07T14:01:26.248Z",
+      "error_message": "Significant refactor of ",
+      "file": "backend/app/extensions/bid_review/engine/verify.py",
+      "root_cause": "2 lines replaced/restructured",
+      "fix": "Rewrote 3→5 lines (2 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-11-07T14:01:26.248Z"
+    },
+    {
+      "id": "bug-4149",
+      "timestamp": "2026-11-07T14:02:37.978Z",
+      "error_message": "Incorrect value in code",
+      "file": "backend/tests/test_bid_review_eval_core.py",
+      "root_cause": "Had \"violation\"",
+      "fix": "Changed to \"FAIL\"",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 11,
+      "last_seen": "2026-11-07T14:03:31.301Z"
+    },
+    {
+      "id": "bug-4150",
+      "timestamp": "2026-11-07T14:09:36.995Z",
+      "error_message": "Incorrect value in code",
+      "file": "backend/tests/test_bid_review_rule_runner.py",
+      "root_cause": "Had \"need_human\"",
+      "fix": "Changed to \"UNKNOWN\"",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 5,
+      "last_seen": "2026-11-07T14:12:14.198Z"
+    },
+    {
+      "id": "bug-4151",
+      "timestamp": "2026-11-07T14:13:09.384Z",
+      "error_message": "Incorrect value in code",
+      "file": "backend/tests/test_bid_review_llm_verify.py",
+      "root_cause": "Had \"violation\"",
+      "fix": "Changed to \"FAIL\"",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 13,
+      "last_seen": "2026-11-07T14:14:31.085Z"
+    },
+    {
+      "id": "bug-4152",
+      "timestamp": "2026-11-07T14:22:46.530Z",
+      "error_message": "Incorrect value in code",
+      "file": "backend/tests/test_bid_review_golden.py",
+      "root_cause": "Had \"need_human\"",
+      "fix": "Changed to \"UNKNOWN\"",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-11-07T14:22:46.530Z"
+    },
+    {
+      "id": "bug-4153",
+      "timestamp": "2026-11-07T14:22:56.674Z",
+      "error_message": "Incorrect value in code",
+      "file": "backend/tests/test_bid_review_expr_operators2.py",
+      "root_cause": "Had \"violation\"",
+      "fix": "Changed to \"FAIL\"",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-11-07T14:22:56.674Z"
+    },
+    {
+      "id": "bug-4154",
+      "timestamp": "2026-11-07T14:23:04.945Z",
+      "error_message": "Incorrect value in code",
+      "file": "backend/tests/test_bid_review_rule_families.py",
+      "root_cause": "Had \"violation\"",
+      "fix": "Changed to \"FAIL\"",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 7,
+      "last_seen": "2026-11-07T14:23:23.087Z"
+    },
+    {
+      "id": "bug-4155",
+      "timestamp": "2026-11-07T14:50:54.804Z",
+      "error_message": "Wrong reference: violation should be FAIL",
+      "file": "backend/app/extensions/bid_review/routers.py",
+      "root_cause": "Used \"violation\" instead of \"FAIL\"",
+      "fix": "Changed violation → FAIL",
+      "tags": [
+        "auto-detected",
+        "wrong-reference",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 4,
+      "last_seen": "2026-11-07T14:51:17.247Z"
+    },
+    {
+      "id": "bug-4156",
+      "timestamp": "2026-11-07T14:51:02.153Z",
+      "error_message": "Incorrect value in code",
+      "file": "backend/app/extensions/bid_review/routers.py",
+      "root_cause": "Had \"need_human\"",
+      "fix": "Changed to \"UNKNOWN\"",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 4,
+      "last_seen": "2026-11-07T14:51:21.150Z"
+    },
+    {
+      "id": "bug-4157",
+      "timestamp": "2026-11-07T14:51:37.583Z",
+      "error_message": "Incorrect value in code",
+      "file": "backend/app/extensions/bid_review/engine/eval_core.py",
+      "root_cause": "Had \"bid_review rule %s crashed, downgraded to need_hu",
+      "fix": "Changed to \"bid_review rule %s crashed, downgraded to ERROR: ",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-11-07T14:51:37.583Z"
+    },
+    {
+      "id": "bug-4158",
+      "timestamp": "2026-11-07T14:51:42.741Z",
+      "error_message": "Incorrect value in code",
+      "file": "backend/app/extensions/bid_review/golden/runner.py",
+      "root_cause": "Had \"期望外 violation[{i['",
+      "fix": "Changed to \"期望外 FAIL[{i['",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-11-07T14:51:42.741Z"
+    },
+    {
+      "id": "bug-4159",
+      "timestamp": "2026-11-07T14:52:47.930Z",
+      "error_message": "Incorrect value in code",
+      "file": "backend/tests/test_bid_review_routers.py",
+      "root_cause": "Had \"violation\"",
+      "fix": "Changed to \"FAIL\"",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 2,
+      "last_seen": "2026-11-07T14:52:54.644Z"
+    },
+    {
+      "id": "bug-4160",
+      "timestamp": "2026-11-07T14:53:00.029Z",
+      "error_message": "Incorrect value in code",
+      "file": "backend/tests/test_bid_review_feedback.py",
+      "root_cause": "Had \"violation\"",
+      "fix": "Changed to \"FAIL\"",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 3,
+      "last_seen": "2026-11-07T14:53:08.383Z"
+    },
+    {
+      "id": "bug-4161",
+      "timestamp": "2026-11-07T14:53:17.399Z",
+      "error_message": "Wrong reference: violation should be FAIL",
+      "file": "backend/tests/test_bid_review_worker.py",
+      "root_cause": "Used \"violation\" instead of \"FAIL\"",
+      "fix": "Changed violation → FAIL",
+      "tags": [
+        "auto-detected",
+        "wrong-reference",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 3,
+      "last_seen": "2026-11-07T14:53:29.348Z"
+    },
+    {
+      "id": "bug-4162",
+      "timestamp": "2026-11-07T14:53:20.608Z",
+      "error_message": "Incorrect value in code",
+      "file": "backend/tests/test_bid_review_worker.py",
+      "root_cause": "Had \"deep 全量对照(对齐审计①补位):mode=deep 规则层零裁剪——T1-001 viola",
+      "fix": "Changed to \"deep 全量对照(对齐审计①补位):mode=deep 规则层零裁剪——T1-001 FAIL ",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 6,
+      "last_seen": "2026-11-07T14:53:51.087Z"
+    },
+    {
+      "id": "bug-4163",
+      "timestamp": "2026-11-07T14:54:04.507Z",
+      "error_message": "Incorrect value in code",
+      "file": "backend/tests/test_bid_review_worker_sem.py",
+      "root_cause": "Had \"violation\"",
+      "fix": "Changed to \"FAIL\"",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 6,
+      "last_seen": "2026-11-07T14:54:38.699Z"
+    },
+    {
+      "id": "bug-4164",
+      "timestamp": "2026-11-07T14:54:41.779Z",
+      "error_message": "Incorrect value in code",
+      "file": "backend/tests/test_bid_review_crud.py",
+      "root_cause": "Had \"violation\"",
+      "fix": "Changed to \"FAIL\"",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 4,
+      "last_seen": "2026-11-07T14:54:55.043Z"
+    },
+    {
+      "id": "bug-4165",
+      "timestamp": "2026-11-07T14:55:07.352Z",
+      "error_message": "Incorrect value in code",
+      "file": "backend/tests/test_bid_review_metrics.py",
+      "root_cause": "Had \"violation\"",
+      "fix": "Changed to \"FAIL\"",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-11-07T14:55:07.352Z"
+    },
+    {
+      "id": "bug-4166",
+      "timestamp": "2026-11-07T14:55:10.528Z",
+      "error_message": "Incorrect value in code",
+      "file": "backend/tests/test_bid_review_diff.py",
+      "root_cause": "Had \"violation\"",
+      "fix": "Changed to \"FAIL\"",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-11-07T14:55:10.528Z"
+    },
+    {
+      "id": "bug-4167",
+      "timestamp": "2026-11-07T14:55:14.982Z",
+      "error_message": "Incorrect value in code",
+      "file": "backend/tests/test_bid_review_grouping.py",
+      "root_cause": "Had \"violation\"",
+      "fix": "Changed to \"FAIL\"",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 2,
+      "last_seen": "2026-11-07T14:55:23.587Z"
+    },
+    {
+      "id": "bug-4168",
+      "timestamp": "2026-11-07T14:55:19.184Z",
+      "error_message": "Wrong reference: need_human should be UNKNOWN",
+      "file": "backend/tests/test_bid_review_grouping.py",
+      "root_cause": "Used \"need_human\" instead of \"UNKNOWN\"",
+      "fix": "Changed need_human → UNKNOWN",
+      "tags": [
+        "auto-detected",
+        "wrong-reference",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 2,
+      "last_seen": "2026-11-07T14:58:27.000Z"
+    },
+    {
+      "id": "bug-4169",
+      "timestamp": "2026-11-07T14:55:27.254Z",
+      "error_message": "Incorrect value in code",
+      "file": "backend/tests/test_bid_review_l4_activation.py",
+      "root_cause": "Had \"violation\"",
+      "fix": "Changed to \"FAIL\"",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 2,
+      "last_seen": "2026-11-07T14:55:31.448Z"
+    },
+    {
+      "id": "bug-4170",
+      "timestamp": "2026-11-07T14:55:35.633Z",
+      "error_message": "Incorrect value in code",
+      "file": "backend/tests/test_bid_review_mcp.py",
+      "root_cause": "Had \"violation\"",
+      "fix": "Changed to \"FAIL\"",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-11-07T14:55:35.633Z"
+    },
+    {
+      "id": "bug-4171",
+      "timestamp": "2026-11-07T14:55:39.409Z",
+      "error_message": "Incorrect value in code",
+      "file": "backend/tests/test_bid_review_schemas.py",
+      "root_cause": "Had \"violation\"",
+      "fix": "Changed to \"FAIL\"",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-11-07T14:55:39.409Z"
+    },
+    {
+      "id": "bug-4172",
+      "timestamp": "2026-11-07T14:55:43.811Z",
+      "error_message": "Incorrect value in code",
+      "file": "backend/tests/test_bid_review_c11_severity.py",
+      "root_cause": "Had \"violation\"",
+      "fix": "Changed to \"FAIL\"",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-11-07T14:55:43.812Z"
+    },
+    {
+      "id": "bug-4173",
+      "timestamp": "2026-11-07T14:55:51.175Z",
+      "error_message": "Incorrect value in code",
+      "file": "backend/tests/test_bid_review_score_coverage.py",
+      "root_cause": "Had \"violation\"",
+      "fix": "Changed to \"FAIL\"",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 3,
+      "last_seen": "2026-11-07T14:55:59.864Z"
+    },
+    {
+      "id": "bug-4174",
+      "timestamp": "2026-11-07T14:58:20.510Z",
+      "error_message": "Incorrect value in code",
+      "file": "backend/tests/test_bid_review_routers.py",
+      "root_cause": "Had \"fatal violation + fatal need_human 各计 1,已判误报剔除,兄弟",
+      "fix": "Changed to \"fatal FAIL + fatal UNKNOWN(need_human 旗标)各计 1,已判误",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-11-07T14:58:20.510Z"
+    },
+    {
+      "id": "bug-4175",
+      "timestamp": "2026-11-07T14:58:23.560Z",
+      "error_message": "Wrong reference: violation should be FAIL",
+      "file": "backend/tests/test_bid_review_routers.py",
+      "root_cause": "Used \"violation\" instead of \"FAIL\"",
+      "fix": "Changed violation → FAIL",
+      "tags": [
+        "auto-detected",
+        "wrong-reference",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-11-07T14:58:23.560Z"
+    },
+    {
+      "id": "bug-4176",
+      "timestamp": "2026-11-07T14:58:39.426Z",
+      "error_message": "Wrong reference: need_human should be UNKNOWN",
+      "file": "backend/tests/test_bid_review_worker.py",
+      "root_cause": "Used \"need_human\" instead of \"UNKNOWN\"",
+      "fix": "Changed need_human → UNKNOWN",
+      "tags": [
+        "auto-detected",
+        "wrong-reference",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-11-07T14:58:39.426Z"
+    },
+    {
+      "id": "bug-4177",
+      "timestamp": "2026-11-07T15:11:38.918Z",
+      "error_message": "CSS fix: tone",
+      "file": "frontend/src/extensions/bid-review/components/primitives.tsx",
+      "root_cause": "tone: \"gray\", label: \"待人工\" → \"gray\", label: \"误报\"",
+      "fix": "Changed tone: \"gray\", label: \"待人工\" → \"gray\", label: \"误报\"",
+      "tags": [
+        "auto-detected",
+        "style-fix",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-11-07T15:11:38.918Z"
+    },
+    {
+      "id": "bug-4178",
+      "timestamp": "2026-11-07T15:15:34.062Z",
+      "error_message": "Incorrect value in code",
+      "file": "frontend/tests/unit/extensions/bid-review-results-export.dom.test.tsx",
+      "root_cause": "Had \"violation\"",
+      "fix": "Changed to \"FAIL\"",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-11-07T15:15:34.062Z"
+    },
+    {
+      "id": "bug-4179",
+      "timestamp": "2026-11-07T15:15:36.939Z",
+      "error_message": "Incorrect value in code",
+      "file": "frontend/tests/unit/extensions/bid-review-hooks.dom.test.tsx",
+      "root_cause": "Had \"violation\"",
+      "fix": "Changed to \"FAIL\"",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-11-07T15:15:36.940Z"
+    },
+    {
+      "id": "bug-4180",
+      "timestamp": "2026-11-07T15:15:48.063Z",
+      "error_message": "Incorrect value in code",
+      "file": "frontend/tests/unit/extensions/bid-review-review-queue.dom.test.tsx",
+      "root_cause": "Had \"need_human\"",
+      "fix": "Changed to \"UNKNOWN\"",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-11-07T15:15:48.063Z"
+    },
+    {
+      "id": "bug-4181",
+      "timestamp": "2026-11-07T15:15:54.550Z",
+      "error_message": "CSS fix: verdict",
+      "file": "frontend/tests/unit/extensions/bid-review-review-queue.dom.test.tsx",
+      "root_cause": "verdict: \"violation\", → \"FAIL\",",
+      "fix": "Changed verdict: \"violation\", → \"FAIL\",",
+      "tags": [
+        "auto-detected",
+        "style-fix",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-11-07T15:15:54.550Z"
+    },
+    {
+      "id": "bug-4182",
+      "timestamp": "2026-11-07T15:16:03.838Z",
+      "error_message": "Incorrect value in code",
+      "file": "frontend/tests/unit/extensions/bid-review-results-advisory.dom.test.tsx",
+      "root_cause": "Had \"violation\"",
+      "fix": "Changed to \"FAIL\"",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-11-07T15:16:03.838Z"
+    },
+    {
+      "id": "bug-4183",
+      "timestamp": "2026-11-07T15:16:08.545Z",
+      "error_message": "Wrong reference: violation should be FAIL",
+      "file": "frontend/tests/unit/extensions/bid-review-results-advisory.dom.test.tsx",
+      "root_cause": "Used \"violation\" instead of \"FAIL\"",
+      "fix": "Changed violation → FAIL",
+      "tags": [
+        "auto-detected",
+        "wrong-reference",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 3,
+      "last_seen": "2026-11-07T15:17:00.220Z"
+    },
+    {
+      "id": "bug-4184",
+      "timestamp": "2026-11-07T15:17:12.215Z",
+      "error_message": "Incorrect value in code",
+      "file": "frontend/tests/unit/extensions/bid-review-results-evidence.dom.test.tsx",
+      "root_cause": "Had \"violation\"",
+      "fix": "Changed to \"FAIL\"",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 2,
+      "last_seen": "2026-11-07T15:17:15.319Z"
+    },
+    {
+      "id": "bug-4185",
+      "timestamp": "2026-11-07",
+      "error_message": "批三T1首轮gate:tests/test_bid_review_expr_operators2.py::test_or_empty_any_violation 失败(:97 断言残留旧值 \"violation\")",
+      "file": "backend/tests/test_bid_review_expr_operators2.py",
+      "root_cause": "verdict值域机械清扫靠grep盘点测试文件,盘点先行于该断言的识别;单commit内新旧值域并存致严格比较失配",
+      "fix": ":97 断言 violation→FAIL 补映射,重跑gate全绿;后续批的值域清扫须在跑gate后仍做一次全量旧值grep复核",
+      "tags": [
+        "bid_review",
+        "verdict",
+        "五值迁",
+        "机械清扫",
+        "grep盘点"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-11-07"
+    },
+    {
+      "id": "bug-4186",
+      "timestamp": "2026-11-07T22:57:06.410Z",
+      "error_message": "Significant refactor of ",
+      "file": "backend/app/extensions/bid_review/engine/extract.py",
+      "root_cause": "2 lines replaced/restructured",
+      "fix": "Rewrote 18→28 lines (2 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-11-07T22:57:06.410Z"
+    },
+    {
+      "id": "bug-4187",
+      "timestamp": "2026-11-07T22:58:16.322Z",
+      "error_message": "Incorrect value in code",
+      "file": "backend/app/extensions/bid_review/engine/extract.py",
+      "root_cause": "Had \"^\\d+(?:\\.\\d+){0,2}[\\s、.：:]\\S+\"",
+      "fix": "Changed to \"^\\d+(?:\\.\\d+){0,2}[\\s、：:]\\S+\"",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-11-07T22:58:16.322Z"
+    },
+    {
+      "id": "bug-4188",
+      "timestamp": "2026-11-07T23:40:49.474Z",
+      "error_message": "Wrong reference: resume_confirmed should be compute_gate_status",
+      "file": "backend/tests/test_bid_review_worker.py",
+      "root_cause": "Used \"resume_confirmed\" instead of \"compute_gate_status\"",
+      "fix": "Changed resume_confirmed → compute_gate_status",
+      "tags": [
+        "auto-detected",
+        "wrong-reference",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-11-07T23:40:49.474Z"
+    },
+    {
+      "id": "bug-4189",
+      "timestamp": "2026-11-07T23:42:18.868Z",
+      "error_message": "Incorrect value in code",
+      "file": "backend/app/extensions/bid_review/routers.py",
+      "root_cause": "Had \"ok\"",
+      "fix": "Changed to \"NOT_SUBMITTABLE\"",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-11-07T23:42:18.868Z"
+    },
+    {
+      "id": "bug-4190",
+      "timestamp": "2026-11-08T01:39:19.406Z",
+      "error_message": "Incorrect value in code",
+      "file": "backend/tests/test_bid_review_worker_sem.py",
+      "root_cause": "Had \"NOT_SUBMITTABLE\"",
+      "fix": "Changed to \"SUBMITTABLE\"",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-11-08T01:39:19.406Z"
+    },
+    {
+      "id": "bug-4191",
+      "timestamp": "2026-11-08",
+      "error_message": "test_renderers_advisory_tail_section_capped / test_review_state_projection 偶发失败(6跑4败/4跑1败,批五T1回归门观察)",
+      "file": "backend/tests/test_bid_review_routers.py",
+      "root_cause": "ReviewIssue.id=random uuid4,排序 order_by(created_at,id) 同毫秒插入时 id 平局随机翻面→断言序不稳;既有 flake 非批五引入(stash 归因实证 pristine 代码亦败)",
+      "fix": "未修(observe-only);修法候选=入库递增序或时间戳单调化,另批办",
+      "tags": [
+        "flake",
+        "uuid4",
+        "order-by",
+        "bid-review",
+        "pre-existing"
+      ],
+      "related_bugs": [],
+      "occurrences": 2,
+      "last_seen": "2026-11-08"
+    },
+    {
+      "id": "bug-4192",
+      "timestamp": "2026-11-08T02:24:40.653Z",
+      "error_message": "CSS fix: tone, default",
+      "file": "frontend/src/extensions/bid-review/components/primitives.tsx",
+      "root_cause": "tone: \"gray\", label: \"误报\" → \"success\", label: \"未发现否决性风险,可按流程提交。\"; default: return { tone: \"gray\", label: verdict || \"未知\" → return { tone: \"gray\", label: gateStatus || \"未知\"",
+      "fix": "Changed tone: \"gray\", label: \"误报\" → \"success\", label: \"未发现否决性风险,可按流程提交。\"; default: return { tone: \"gray\", label: verdict || \"未知\" → return { tone: \"gray\", label: gateStatus || \"未知\"",
+      "tags": [
+        "auto-detected",
+        "style-fix",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-11-08T02:24:40.653Z"
+    },
+    {
+      "id": "bug-4193",
+      "timestamp": "2026-11-08T02:24:54.181Z",
+      "error_message": "Significant refactor of ",
+      "file": "frontend/src/extensions/bid-review/components/primitives.tsx",
+      "root_cause": "2 lines replaced/restructured",
+      "fix": "Rewrote 32→49 lines (2 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-11-08T02:24:54.181Z"
+    },
+    {
+      "id": "bug-4194",
+      "timestamp": "2026-11-08T03:02:41.965Z",
+      "error_message": "Significant refactor of ",
+      "file": "docs/superpowers/plans/2026-11-08-bid-review-p1-beta6-tender-fields-plan.md",
+      "root_cause": "18 lines replaced/restructured",
+      "fix": "Rewrote 66→89 lines (18 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "md"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-11-08T03:02:41.965Z"
+    },
+    {
+      "id": "bug-4195",
+      "timestamp": "2026-11-08T03:02:45.796Z",
+      "error_message": "Wrong reference: test_l1017_consoritum_precondition_skip should be test_l1017_consortium_precondition_skip",
+      "file": "docs/superpowers/plans/2026-11-08-bid-review-p1-beta6-tender-fields-plan.md",
+      "root_cause": "Used \"test_l1017_consoritum_precondition_skip\" instead of \"test_l1017_consortium_precondition_skip\"",
+      "fix": "Changed test_l1017_consoritum_precondition_skip → test_l1017_consortium_precondition_skip",
+      "tags": [
+        "auto-detected",
+        "wrong-reference",
+        "md"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-11-08T03:02:45.796Z"
+    },
+    {
+      "id": "bug-4196",
+      "timestamp": "2026-11-08T03:24:00.024Z",
+      "error_message": "Significant refactor of ",
+      "file": "backend/packages/harness/deerflow/agents/middlewares/dynamic_context_middleware.py",
+      "root_cause": "4 lines replaced/restructured",
+      "fix": "Rewrote 8→4 lines (4 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-11-08T03:24:00.024Z"
+    },
+    {
+      "id": "bug-4197",
+      "timestamp": "2026-11-08T03:24:31.156Z",
+      "error_message": "Incorrect value in code",
+      "file": "frontend/tests/unit/components/workspace/gateway-offline-banner.dom.test.tsx",
+      "root_cause": "Had \"GatewayOfflineBanner recovery reload (bug-2235)\"",
+      "fix": "Changed to 's stale-probe-body guards below.\ndescribe(\"",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-11-08T03:24:31.156Z"
+    },
+    {
+      "id": "bug-4198",
+      "timestamp": "2026-11-08T03:27:29.531Z",
+      "error_message": "Significant refactor of ",
+      "file": "frontend/package.json",
+      "root_cause": "4 lines replaced/restructured",
+      "fix": "Rewrote 16→9 lines (4 removed) | Also: <<<<<<< HEAD; \"happy-dom\": \"^20.11.1\",",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "json"
+      ],
+      "related_bugs": [],
+      "occurrences": 2,
+      "last_seen": "2026-11-08T03:29:00.219Z"
+    },
+    {
+      "id": "bug-4199",
+      "timestamp": "2026-11-08T03:32:58.956Z",
+      "error_message": "Significant refactor of ",
+      "file": "frontend/src/components/workspace/workspace-header.tsx",
+      "root_cause": "6 lines replaced/restructured",
+      "fix": "Rewrote 15→10 lines (6 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-11-08T03:32:58.956Z"
+    },
+    {
+      "id": "bug-4200",
+      "timestamp": "2026-11-08T03:34:12.441Z",
+      "error_message": "Significant refactor of ",
+      "file": "frontend/src/app/(auth)/login/page.tsx",
+      "root_cause": "4 lines replaced/restructured",
+      "fix": "Rewrote 17→20 lines (4 removed) | Also: <<<<<<< HEAD; =======",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 3,
+      "last_seen": "2026-11-08T03:37:22.092Z"
+    },
+    {
+      "id": "bug-4201",
+      "timestamp": "2026-11-08T03:34:15.678Z",
+      "error_message": "CSS fix: EAI-CUSTOM",
+      "file": "frontend/src/components/workspace/chats/chat-page.tsx",
+      "root_cause": "EAI-CUSTOM: upstream uses state.messages.at(-1) unguarded → upstream reads state.messages.at(-1) unguarded",
+      "fix": "Changed EAI-CUSTOM: upstream uses state.messages.at(-1) unguarded → upstream reads state.messages.at(-1) unguarded",
+      "tags": [
+        "auto-detected",
+        "style-fix",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-11-08T03:34:15.678Z"
+    },
+    {
+      "id": "bug-4202",
+      "timestamp": "2026-11-08T03:34:44.955Z",
+      "error_message": "CSS fix: configured",
+      "file": "frontend/src/app/(auth)/login/page.tsx",
+      "root_cause": "configured: an SSO-only → // an SSO-only account has no local password, so the generic \"wrong",
+      "fix": "Changed configured: an SSO-only → // an SSO-only account has no local password, so the generic \"wrong",
+      "tags": [
+        "auto-detected",
+        "style-fix",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 3,
+      "last_seen": "2026-11-08T03:39:36.346Z"
+    },
+    {
+      "id": "bug-4203",
+      "timestamp": "2026-11-08T03:35:01.499Z",
+      "error_message": "Significant refactor of ",
+      "file": "frontend/src/components/workspace/messages/message-list-item.tsx",
+      "root_cause": "4 lines replaced/restructured",
+      "fix": "Rewrote 17→8 lines (4 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-11-08T03:35:01.499Z"
+    },
+    {
+      "id": "bug-4204",
+      "timestamp": "2026-11-08T03:35:34.457Z",
+      "error_message": "Significant refactor of ",
+      "file": "frontend/src/components/workspace/workspace-nav-chat-list.tsx",
+      "root_cause": "4 lines replaced/restructured",
+      "fix": "Rewrote 7→3 lines (4 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-11-08T03:35:34.457Z"
+    },
+    {
+      "id": "bug-4205",
+      "timestamp": "2026-11-08T03:36:51.054Z",
+      "error_message": "Type error",
+      "file": "frontend/src/app/(auth)/login/page.tsx",
+      "root_cause": "Missing or incorrect type annotation",
+      "fix": "Added type assertion/annotation",
+      "tags": [
+        "auto-detected",
+        "type-fix",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-11-08T03:36:51.054Z"
+    },
+    {
+      "id": "bug-4206",
+      "timestamp": "2026-11-08T03:37:25.940Z",
+      "error_message": "Significant refactor of ",
+      "file": "scripts/serve.sh",
+      "root_cause": "33 lines replaced/restructured",
+      "fix": "Rewrote 40→6 lines (33 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "sh"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-11-08T03:37:25.940Z"
+    },
+    {
+      "id": "bug-4207",
+      "timestamp": "2026-11-08T03:38:38.803Z",
+      "error_message": "Significant refactor of ",
+      "file": "frontend/src/components/workspace/workspace-nav-menu.tsx",
+      "root_cause": "5 lines replaced/restructured",
+      "fix": "Rewrote 8→3 lines (5 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-11-08T03:38:38.803Z"
+    },
+    {
+      "id": "bug-4208",
+      "timestamp": "2026-11-08T03:40:55.993Z",
+      "error_message": "Incorrect value in code",
+      "file": "frontend/src/app/(auth)/setup/page.tsx",
+      "root_cause": "Had \"/login\"",
+      "fix": "Changed to \"unavailable\"",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-11-08T03:40:55.993Z"
+    },
+    {
+      "id": "bug-4209",
+      "timestamp": "2026-11-08T03:41:13.336Z",
+      "error_message": "Incorrect value in code",
+      "file": "scripts/serve.sh",
+      "root_cause": "Had \"${DEER_FLOW_GATEWAY_STARTUP_TIMEOUT-30}\"",
+      "fix": "Changed to 's 30) — Windows host cold start\n    # (uv + first",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "sh"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-11-08T03:41:13.336Z"
+    },
+    {
+      "id": "bug-4210",
+      "timestamp": "2026-11-08T03:41:53.142Z",
+      "error_message": "Significant refactor of ",
+      "file": "backend/tests/test_artifacts_router.py",
+      "root_cause": "3 lines replaced/restructured",
+      "fix": "Rewrote 6→3 lines (3 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-11-08T03:41:53.142Z"
+    },
+    {
+      "id": "bug-4211",
+      "timestamp": "2026-11-08T03:42:22.522Z",
+      "error_message": "Significant refactor of ",
+      "file": "frontend/src/app/(auth)/setup/page.tsx",
+      "root_cause": "4 lines replaced/restructured",
+      "fix": "Rewrote 9→5 lines (4 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-11-08T03:42:22.522Z"
+    },
+    {
+      "id": "bug-4212",
+      "timestamp": "2026-11-08T03:44:25.177Z",
+      "error_message": "Significant refactor of ",
+      "file": "scripts/serve.sh",
+      "root_cause": "3 lines replaced/restructured",
+      "fix": "Rewrote 4→5 lines (3 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "sh"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-11-08T03:44:25.177Z"
+    },
+    {
+      "id": "bug-4213",
+      "timestamp": "2026-11-08T03:47:12.247Z",
+      "error_message": "Wrong reference: bind should be host",
+      "file": "scripts/serve.sh",
+      "root_cause": "Used \"bind\" instead of \"host\"",
+      "fix": "Changed bind → host",
+      "tags": [
+        "auto-detected",
+        "wrong-reference",
+        "sh"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-11-08T03:47:12.247Z"
+    },
+    {
+      "id": "bug-4214",
+      "timestamp": "2026-11-08T04:38:35.450Z",
+      "error_message": "Incorrect value in code",
+      "file": "C:/Users/admin/AppData/Local/Temp/fix_services.py",
+      "root_cause": "Had \"        execution_context = replace(\"",
+      "fix": "Changed to \"            execution_context = replace(\"",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-11-08T04:38:35.450Z"
+    },
+    {
+      "id": "bug-4215",
+      "timestamp": "2026-11-08T04:40:17.505Z",
+      "error_message": "Significant refactor of ",
+      "file": "backend/app/extensions/bid_review/engine/rule_runner.py",
+      "root_cause": "2 lines replaced/restructured",
+      "fix": "Rewrote 6→11 lines (2 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-11-08T04:40:17.506Z"
+    },
+    {
+      "id": "bug-4216",
+      "timestamp": "2026-11-08T04:41:09.328Z",
+      "error_message": "Significant refactor of ",
+      "file": "backend/app/extensions/bid_review/engine/rulepacks/bid-review-core/1.0.0.yaml",
+      "root_cause": "5 lines replaced/restructured",
+      "fix": "Rewrote 21→41 lines (5 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "yaml"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-11-08T04:41:09.328Z"
+    },
+    {
+      "id": "bug-4217",
+      "timestamp": "2026-11-08T04:48:54.589Z",
+      "error_message": "Incorrect value in code",
+      "file": "C:/Users/admin/AppData/Local/Temp/fix_services.py",
+      "root_cause": "Had \"producer_lease_handed_off\"",
+      "fix": "Changed to \"producer_lease_started\"",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-11-08T04:48:54.589Z"
+    },
+    {
+      "id": "bug-4218",
+      "timestamp": "2026-11-08T05:05:46.227Z",
+      "error_message": "Significant refactor of ",
+      "file": "backend/tests/test_bid_review_registry.py",
+      "root_cause": "2 lines replaced/restructured",
+      "fix": "Rewrote 3→5 lines (2 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-11-08T05:05:46.227Z"
+    },
+    {
+      "id": "bug-4219",
+      "timestamp": "2026-11-08T05:06:08.211Z",
+      "error_message": "Incorrect value in code",
+      "file": "backend/tests/test_bid_review_registry.py",
+      "root_cause": "Had \"bid.currency_occurrences\"",
+      "fix": "Changed to \"bid.consortium\"",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 12,
+      "last_seen": "2026-11-08T05:12:31.487Z"
+    },
+    {
+      "id": "bug-4220",
+      "timestamp": "2026-11-08T05:10:53.278Z",
+      "error_message": "Wrong reference: EXPECTED_V1_IDS should be L2",
+      "file": "backend/tests/test_bid_review_rule_runner.py",
+      "root_cause": "Used \"EXPECTED_V1_IDS\" instead of \"L2\"",
+      "fix": "Changed EXPECTED_V1_IDS → L2",
+      "tags": [
+        "auto-detected",
+        "wrong-reference",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-11-08T05:10:53.278Z"
+    },
+    {
+      "id": "bug-4221",
+      "timestamp": "2026-11-08T05:11:11.243Z",
+      "error_message": "Incorrect value in code",
+      "file": "backend/tests/test_bid_review_rule_runner.py",
+      "root_cause": "Had \"L1-019\"",
+      "fix": "Changed to \"L1-017\"",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-11-08T05:11:11.243Z"
+    },
+    {
+      "id": "bug-4222",
+      "timestamp": "2026-11-08T05:34:39.648Z",
+      "error_message": "Significant refactor of ",
+      "file": "C:/Users/admin/AppData/Local/Temp/fix_manager.py",
+      "root_cause": "2 lines replaced/restructured",
+      "fix": "Rewrote 4→8 lines (2 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-11-08T05:34:39.648Z"
+    },
+    {
+      "id": "bug-4223",
+      "timestamp": "2026-11-08T05:53:36.673Z",
+      "error_message": "Incorrect value in code",
+      "file": "backend/tests/test_bid_review_golden.py",
+      "root_cause": "Had \"L2-041\"",
+      "fix": "Changed to \"L2-040\"",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-11-08T05:53:36.674Z"
+    },
+    {
+      "id": "bug-4224",
+      "timestamp": "2026-11-08T06:05:16.291Z",
+      "error_message": "Missing await",
+      "file": "backend/app/gateway/deps.py",
+      "root_cause": "Async call without await — returned Promise instead of value",
+      "fix": "Added await to async call",
+      "tags": [
+        "auto-detected",
+        "async-fix",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-11-08T06:05:16.291Z"
+    },
+    {
+      "id": "bug-4225",
+      "timestamp": "2026-11-08T06:13:30.926Z",
+      "error_message": "Significant refactor of ",
+      "file": "backend/app/gateway/deps.py",
+      "root_cause": "5 lines replaced/restructured",
+      "fix": "Rewrote 12→26 lines (5 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-11-08T06:13:30.926Z"
+    },
+    {
+      "id": "bug-4226",
+      "timestamp": "2026-11-08T06:13:59.307Z",
+      "error_message": "Significant refactor of ",
+      "file": "docs/superpowers/specs/2026-11-06-bid-review-integrated-spec-alignment.md",
+      "root_cause": "2 lines replaced/restructured",
+      "fix": "Rewrote 3→6 lines (2 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "md"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-11-08T06:13:59.307Z"
+    },
+    {
+      "id": "bug-4227",
+      "timestamp": "2026-11-08T06:17:25.229890+00:00",
+      "error_message": "批六T6 golden test_golden_case[L1-003-performance-short] 期望未命中[L1-003 major FAIL]——夹具补 null 键后规则零产出",
+      "file": "backend/app/extensions/bid_review/golden/cases/L1-003-performance-short.yaml",
+      "root_cause": "eval_core.evaluate_fields:136 无条件剥 None 值字段(det 求值器不容 None);手构 golden 夹具绕过 normalize_fields(不自动补键),null 键被剥=不在场,L1-003 inputs 富化(min_performance_amount/performance_window_months)后缺字段门翻 need_human,hyb 粗筛零候选零模型调用,规则静默无产出。「null=键在场即过门」的修法对 det 门成立但对此路径不可达",
+      "fix": "夹具改给非 None 宽门槛值(min_performance_amount: 1000000/performance_window_months: 120)——det_expr 冻结不消费、scripted 模型不看,仅过缺字段门;教训:golden 手构夹具给 hyb 规则新 inputs 必须给真实值,不能用 null 占位",
+      "tags": [
+        "golden",
+        "hyb",
+        "none-strip",
+        "missing-field-gate",
+        "L1-003",
+        "batch6"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-11-08T06:17:25.229890+00:00"
     }
   ]
 }

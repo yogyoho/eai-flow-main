@@ -64,7 +64,7 @@
 - Modify: `backend/app/extensions/bid_review/engine/extract.py`(FIELD_TYPE_CONTRACTS 追加 12 条,按域分组插入)
 - Test: `backend/tests/test_bid_review_extract.py`(新增 test class)
 
-- [ ] **Step 1: 写失败测试**
+- [x] **Step 1: 写失败测试**
 
 `test_bid_review_extract.py` 文件尾部新增(沿用该文件现行 unittest 风格):
 
@@ -98,14 +98,14 @@ class TestBeta6FieldContracts(unittest.TestCase):
 
 注意:`test_new_paths_enter_first_stage_request` 在 T1 阶段**预期失败**(契约在但宇宙未含——宇宙正门是规则 inputs),T5 完成后复跑转绿。T1 提交时该测试打 `@unittest.skip("T5 宇宙注册后启用")`,T5 实现者移除 skip 并确认转绿。
 
-- [ ] **Step 2: 跑测试确认失败**
+- [x] **Step 2: 跑测试确认失败**
 
 ```bash
 cd backend && PYTHONPATH=. uv run pytest tests/test_bid_review_extract.py::TestBeta6FieldContracts -v
 ```
 预期:FAIL(12 键缺)。
 
-- [ ] **Step 3: 实现(FIELD_TYPE_CONTRACTS 追加)**
+- [x] **Step 3: 实现(FIELD_TYPE_CONTRACTS 追加)**
 
 在 `FIELD_TYPE_CONTRACTS` dict 内按既有域分组插入(tender.* 挨 tender 组,bid.* 挨 bid 组;先 grep 相邻键定位):
 
@@ -125,14 +125,14 @@ cd backend && PYTHONPATH=. uv run pytest tests/test_bid_review_extract.py::TestB
     "bid.deposit_forms": '["实际缴纳形式"] 字符串数组;投标文件载明的保证金缴纳形式;无给空数组。',
 ```
 
-- [ ] **Step 4: 跑测试确认通过**
+- [x] **Step 4: 跑测试确认通过**
 
 ```bash
 cd backend && PYTHONPATH=. uv run pytest tests/test_bid_review_extract.py -v
 ```
 预期:全 PASS(新 class 除 skip 项外全绿;既有契约测试不破)。
 
-- [ ] **Step 5: lint + commit**
+- [x] **Step 5: lint + commit**
 
 ```bash
 cd backend && uv run ruff check app/extensions/bid_review/engine/extract.py tests/test_bid_review_extract.py
@@ -151,7 +151,7 @@ git commit -m "feat(bid-review): 批六T1——12 条模型抽取契约入 FIELD
 
 实态已证:parse 表格块 = `{kind:"table", text, rows, source}`(parse.py:221/268),xlsx 块 text 带 `[sheet: 表名]\n` 前缀(:268),PDF 表格 text 无名;join 进 doc text 后派生面 = doc text 中的 `[sheet: X]` 标记。PDF 表格 v1 不产名(漏判容忍,refinement 挂账,A-β6-⑦ 同款)。
 
-- [ ] **Step 1: 写失败测试**
+- [x] **Step 1: 写失败测试**
 
 `test_bid_review_extract.py` 尾部新增:
 
@@ -178,14 +178,14 @@ class TestBidTablesDerived(unittest.TestCase):
         assert _derive_bid_tables([{"doc_id": "d1", "text": "纯文本无表格标记"}]) == []
 ```
 
-- [ ] **Step 2: 跑测试确认失败**
+- [x] **Step 2: 跑测试确认失败**
 
 ```bash
 cd backend && PYTHONPATH=. uv run pytest tests/test_bid_review_extract.py::TestBidTablesDerived -v
 ```
 预期:FAIL(`_derive_bid_tables` 不存在)。
 
-- [ ] **Step 3: 实现**
+- [x] **Step 3: 实现**
 
 extract.py `SERVER_DERIVED_PATHS`(:146)追加 `"bid.tables"`;`build_baseline` 上方新增:
 
@@ -215,14 +215,14 @@ def _derive_bid_tables(docs: list[dict]) -> list[dict]:
     fields["bid.tables"] = _derive_bid_tables(docs)  # 批六 A-β6-⑤:表格骨架服务端派生;tender 侧无要求→all-op 零迭代零发话,bid 侧空→要求行全 MISSING(正确语义)
 ```
 
-- [ ] **Step 4: 跑测试确认通过 + 派生面回归**
+- [x] **Step 4: 跑测试确认通过 + 派生面回归**
 
 ```bash
 cd backend && PYTHONPATH=. uv run pytest tests/test_bid_review_extract.py tests/test_bid_review_worker.py -q
 ```
 预期:全 PASS(worker 既有测试的 fields 断言若 exact-dict 含派生面会被 bid.tables 新键打破——按 additive 键先例随迁并在提交信息声明,像批五 bff6d31aa)。
 
-- [ ] **Step 5: lint + commit**
+- [x] **Step 5: lint + commit**
 
 ```bash
 cd backend && uv run ruff check app/extensions/bid_review/engine/extract.py tests/test_bid_review_extract.py
@@ -239,7 +239,7 @@ git commit -m "feat(bid-review): 批六T2——bid.tables 表格骨架服务端�
 - Modify: `backend/app/extensions/bid_review/engine/rulepacks/bid-review-core/1.0.0.yaml`(追加 5 条,带批六注释块)
 - Test: `backend/tests/test_bid_review_rule_runner.py`(新 det 规则直跑测试;先 grep 该文件既有 det 直跑测试形态)
 
-- [ ] **Step 1: 写失败测试(规则直跑,构造 fields 喂 run_det_rule)**
+- [x] **Step 1: 写失败测试(规则直跑,构造 fields 喂 run_det_rule)**
 
 ```python
 class TestBeta6DetRules(unittest.TestCase):
@@ -285,14 +285,14 @@ class TestBeta6DetRules(unittest.TestCase):
         assert self._run("L2-040", fields) == []  # contains_any repr 子串命中(A-β6-⑦)
 ```
 
-- [ ] **Step 2: 跑测试确认失败**
+- [x] **Step 2: 跑测试确认失败**
 
 ```bash
 cd backend && PYTHONPATH=. uv run pytest tests/test_bid_review_rule_runner.py::TestBeta6DetRules -v
 ```
 预期:FAIL(规则不存在)。**先跑 lint_rules 确认基线干净**:`PYTHONPATH=. uv run python -c "from app.extensions.bid_review.engine.registry import lint_rules, _pack_rules; print(lint_rules(_pack_rules()))"` → `[]`。
 
-- [ ] **Step 3: rulepack 追加(1.0.0.yaml 尾部,带批六注释块)**
+- [x] **Step 3: rulepack 追加(1.0.0.yaml 尾部,带批六注释块)**
 
 ```yaml
   # ── P1-β批六 tender 字段实补(spec §6.1 差表,2026-11-08;A-β6-⑥⑦)──
@@ -390,7 +390,7 @@ cd backend && PYTHONPATH=. uv run pytest tests/test_bid_review_rule_runner.py::T
 
 实态勘误落点:L2-012/013/040 cond 若 all-op 分支对 `col(...)` list-hay 求值报 KeyError(str 守卫),改用 `contains_any(str 结串...)` 不可用时的备选——`sum`/`codes` 不适用时,以 `_subset_of` 守卫注释(A-β2-① KeyError→UNKNOWN→need_human 通路)为准实现者按求值器实测调整并在提交信息声明;测试先行保证行为。
 
-- [ ] **Step 4: 跑测试 + lint_rules**
+- [x] **Step 4: 跑测试 + lint_rules**
 
 ```bash
 cd backend && PYTHONPATH=. uv run pytest tests/test_bid_review_rule_runner.py::TestBeta6DetRules -v
@@ -398,7 +398,7 @@ PYTHONPATH=. uv run python -c "from app.extensions.bid_review.engine.registry im
 ```
 预期:测试全 PASS;lint `[]`。
 
-- [ ] **Step 5: lint + commit**
+- [x] **Step 5: lint + commit**
 
 ```bash
 cd backend && uv run ruff check app/extensions/bid_review/engine tests/test_bid_review_rule_runner.py
@@ -415,7 +415,7 @@ git commit -m "feat(bid-review): 批六T3——五条新 det 规则:L1-017 联�
 - Modify: `backend/app/extensions/bid_review/engine/rulepacks/bid-review-core/1.0.0.yaml`(L1-003 inputs、L1-006 check steps)
 - Test: `backend/tests/test_bid_review_rule_runner.py`
 
-- [ ] **Step 1: 写失败测试**
+- [x] **Step 1: 写失败测试**
 
 ```python
 class TestBeta6RuleExtensions(unittest.TestCase):
@@ -442,13 +442,13 @@ class TestBeta6RuleExtensions(unittest.TestCase):
         assert iss == []  # 金额一致且 forms 前置门未开
 ```
 
-- [ ] **Step 2: 跑测试确认失败**
+- [x] **Step 2: 跑测试确认失败**
 
 ```bash
 cd backend && PYTHONPATH=. uv run pytest tests/test_bid_review_rule_runner.py::TestBeta6RuleExtensions -v
 ```
 
-- [ ] **Step 3: rulepack 修改**
+- [x] **Step 3: rulepack 修改**
 
 L1-003 inputs 行扩为:
 
@@ -473,13 +473,13 @@ L1-006 check 改 steps 形态(steps 分支消息机制按实态勘误先读 run_
 
 若 steps 分支不支持 per-step message:A-β6-⑧ 授权回退形态 = forms 判定单独消息必须成立,实现者按 steps 分支实态选用其支持的每步消息键(以 `grep -n "steps" rule_runner.py` 实测为准),禁止合并回单消息(会破坏金额判定消息逐字冻结)。
 
-- [ ] **Step 4: 跑测试 + 全 det 回归**
+- [x] **Step 4: 跑测试 + 全 det 回归**
 
 ```bash
 cd backend && PYTHONPATH=. uv run pytest tests/test_bid_review_rule_runner.py tests/test_bid_review_worker.py -q
 ```
 
-- [ ] **Step 5: lint + commit**
+- [x] **Step 5: lint + commit**
 
 ```bash
 cd backend && uv run ruff check app/extensions/bid_review/engine/rulepacks/bid-review-core/1.0.0.yaml tests/test_bid_review_rule_runner.py
@@ -497,14 +497,14 @@ git commit -m "feat(bid-review): 批六T4——⚠️2 兑付:L1-003 inputs 富�
 - Modify: `backend/tests/test_bid_review_registry.py`(universe/det 钉点,先 grep 92)
 - Test: 同文件(数字变更即测试)
 
-- [ ] **Step 1: 移除 T1 skip + 确认首段请求面**
+- [x] **Step 1: 移除 T1 skip + 确认首段请求面**
 
 ```bash
 cd backend && PYTHONPATH=. uv run pytest tests/test_bid_review_extract.py::TestBeta6FieldContracts -v
 ```
 移除 `@unittest.skip` 后 `test_new_paths_enter_first_stage_request` 应转绿(13 新路径含 bid.tables 全入 universe=105)。
 
-- [ ] **Step 2: 五锁数字更新**
+- [x] **Step 2: 五锁数字更新**
 
 先 grep 全部钉点再改:
 
@@ -514,14 +514,14 @@ cd backend && grep -rn "== 92\|det.*44\|44.*det\|EXPECTED_V1_IDS" tests/test_bid
 
 更新:universe 92→**105**、det 44→**49**、包 50→**55**、EXPECTED_V1_IDS 追加 L1-017/L2-012/L2-013/L2-014/L2-040(A-β6-④)。
 
-- [ ] **Step 3: family 全量门(非 golden 面)**
+- [x] **Step 3: family 全量门(非 golden 面)**
 
 ```bash
 cd backend && PYTHONPATH=. uv run pytest tests/ -k bid_review -q --deselect tests/test_bid_review_golden.py --deselect tests/test_bid_review_golden_extract.py
 ```
 预期:全绿(包 55/宇宙 105/det 49;新增测试数跑出后报 controller)。
 
-- [ ] **Step 4: lint + commit**
+- [x] **Step 4: lint + commit**
 
 ```bash
 cd backend && uv run ruff check tests/test_bid_review_rule_families.py tests/test_bid_review_registry.py tests/test_bid_review_extract.py
@@ -538,9 +538,9 @@ git commit -m "test(bid-review): 批六T5——五锁显式 bump:宇宙92→105(
 - Modify: `backend/tests/test_bid_review_golden.py`(EXPECTED_COVERAGE +5 题库行;:376-379 三方精确相等)
 - Modify: golden 夹具期望值(73 案例中受新规则影响者)
 
-- [ ] **Step 1: EXPECTED_COVERAGE 追加 5 id + 题库行(每新规则一题,选受影响夹具)**
-- [ ] **Step 2: 跑 golden 全量,逐条审新 issue 真阳性(禁止无脑快照;误报→修规则/惯例式,真阳性→更新期望)**
-- [ ] **Step 3: 全量门**
+- [x] **Step 1: EXPECTED_COVERAGE 追加 5 id + 题库行(每新规则一题,选受影响夹具)**
+- [x] **Step 2: 跑 golden 全量,逐条审新 issue 真阳性(禁止无脑快照;误报→修规则/惯例式,真阳性→更新期望)**
+- [x] **Step 3: 全量门**
 
 ```bash
 cd backend && PYTHONPATH=. uv run pytest tests/test_bid_review_golden.py tests/test_bid_review_golden_extract.py -q
@@ -548,13 +548,13 @@ cd backend && PYTHONPATH=. uv run pytest tests/ -k bid_review -q
 ```
 预期:golden 73/0;family 全绿(数字 T5 跑出值)。
 
-- [ ] **Step 4: commit(controller)**
+- [x] **Step 4: commit(controller)**
 
 ### Task 7: spec §6.1 差表更新 + 兑付段 + 台账(controller 直办)
 
-- [ ] **Step 1: spec §6.1 差表落批六结果**(❌11→❌4: pm_req/subcontract_limit/format_requirements/required_signatures 挂批七;sample_required 无卡纯挂账;⚠️2→✅;attachment_count_reqs→挂账注记 L2-024 已担份数主责)
-- [ ] **Step 2: P1 段批六兑付段**(commit hash/裁决兑付/挂账)
-- [ ] **Step 3: .wolf 三件 + buglog(如有)+ plan 勾选 + 最终报告**
+- [x] **Step 1: spec §6.1 差表落批六结果**(❌11→❌4: pm_req/subcontract_limit/format_requirements/required_signatures 挂批七;sample_required 无卡纯挂账;⚠️2→✅;attachment_count_reqs→挂账注记 L2-024 已担份数主责)
+- [x] **Step 2: P1 段批六兑付段**(commit hash/裁决兑付/挂账)
+- [x] **Step 3: .wolf 三件 + buglog(如有)+ plan 勾选 + 最终报告**
 
 ---
 
