@@ -271,6 +271,8 @@ def test_summarize_issues_accepts_orm_and_dict():
         "unknown_ratio": None,
         # A-续-⑥(批二续 T4):L4 advisory 单列键(非 L4 面=零计数,additive)
         "advisory": {"total": 0, "by_severity": {"fatal": 0, "major": 0, "minor": 0, "info": 0}},
+        # 批五 A-β5-④ additive(夹具 verdict 缺省→值域空,gate 不触发→SUBMITTABLE)
+        "gate_status": "SUBMITTABLE",
     }
 
 

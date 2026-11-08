@@ -152,4 +152,5 @@ async def test_issues_endpoint_grouping_wiring(db, client):
         "rules_total": None,
         "unknown_ratio": None,
         "advisory": {"total": 0, "by_severity": {"fatal": 0, "major": 0, "minor": 0, "info": 0}},  # A-续-⑥ additive
-    }  # 口径不变;M5 两新键 additive(None)
+        "gate_status": "NOT_SUBMITTABLE",  # 批五 A-β5-④ additive(fatal FAIL → NOT_SUBMITTABLE)
+    }  # 口径不变;M5 两新键+批五 gate_status additive(None)

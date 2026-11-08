@@ -212,7 +212,8 @@ async def test_issues_list_summary_grades_need_human_separately(client, db):
         "rules_total": None,
         "unknown_ratio": None,
         "advisory": {"total": 0, "by_severity": {"fatal": 0, "major": 0, "minor": 0, "info": 0}},  # A-续-⑥ additive
-    }, "致命计数不含 need_human 条目(fatal sem 条目入待人工);M5 两新键 additive(None)"
+        "gate_status": "NOT_SUBMITTABLE",  # 批五 A-β5-④ additive(fatal FAIL → NOT_SUBMITTABLE)
+    }, "致命计数不含 need_human 条目(fatal sem 条目入待人工);M5 两新键+批五 gate_status additive(None)"
 
 
 # ── micro-A 2026-10-29:GET /tasks 每任务问题计数(致命数/待人工填实的数据源)──
@@ -356,16 +357,17 @@ async def test_report_md_disclaimer_sections_and_per_issue_fields(client, db):
 
 @pytest.mark.asyncio
 async def test_report_md_submittable_hint_when_no_fatal_violation(client, db):
-    """ui-spec §3.5 可提交判定:正式 fatal 违规=0 → 「未命中致命红线,可进入人工终审」
-    (fatal need_human 条目不算命中红线,单列待人工)。"""
+    """ui-spec §3.5 可提交判定(批五四态化,A-β5-①③):无 fatal FAIL → 不命中红线措辞;
+    fatal UNKNOWN(need_human)→ PENDING_HUMAN(UNKNOWN 不得当 PASS,规格 §5.7.2),
+    报告出「关键项无法自动判定,必须人工确认。」。"""
     t = await crud.create_task(db, owner_id="u1")
     await crud.set_status(db, t, "done")
     await crud.add_issue(db, task_id=t.id, owner_id="u1", rule_id="L3-001", layer="L3", severity="minor", verdict="FAIL", message="页眉不一致", fix="替换页眉", evidence=[], dedup_key="k1")
     await crud.add_issue(db, task_id=t.id, owner_id="u1", rule_id="L1-013", layer="L1", severity="fatal", verdict="UNKNOWN", message="材料不足", fix="补响应", evidence=[], dedup_key="k2", need_human=True)
     r = await client.get(f"/api/extensions/bid-review/tasks/{t.id}/report", params={"format": "md"})
     assert r.status_code == 200
-    assert "未命中致命红线,可进入人工终审" in r.text
-    assert "命中致命红线" not in r.text.split("未命中致命红线")[1], "零红线时不得再出现命中措辞"
+    assert "关键项无法自动判定,必须人工确认" in r.text
+    assert "命中致命红线" not in r.text, "零红线命中时不得出现命中措辞"
 
 
 @pytest.mark.asyncio
