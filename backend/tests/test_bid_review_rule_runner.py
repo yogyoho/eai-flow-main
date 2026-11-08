@@ -4,7 +4,9 @@ from pathlib import Path
 
 import pytest
 
+from app.extensions.bid_review.engine.eval_core import wrap_model_fn
 from app.extensions.bid_review.engine.expr import validate_expr
+from app.extensions.bid_review.engine.llm_runner import run_sem_rule
 from app.extensions.bid_review.engine.rule_runner import Rule, RulePackError, load_rulepack, run_det_rule
 
 PACK = str(Path(__file__).resolve().parent.parent / "app" / "extensions" / "bid_review" / "engine" / "rulepacks" / "bid-review-core" / "1.0.0.yaml")
@@ -68,10 +70,12 @@ def test_run_l3_006_empty_and_none_where_no_none_literal():
 
 # 设计文档 §6.3 v1 落地清单(32 条):L1 det 13(021 声明函 W11 迁 L2-031,2026-11-07)+ L1 sem 1(L1-013)+ L1 hyb 2(003/007);L3 det 13 + L3 hyb 2(004/008);L2 det 1(L2-031)
 # 追加登记:批二续文件级 L2-001/002/003;批六T5 +5 L1-017/L2-012/013/014/040(T3 落包,V1 代登记面 40 条,A-β6-④)
+# 批七T2 +4 L1-004/L1-020/L1-022/L1-026(§6.1 ❌4 消费规则入包,V1 代登记面 44 条,A-β7-①②)
 EXPECTED_V1_IDS = {
     "L1-001",
     "L1-002",
     "L1-003",
+    "L1-004",
     "L1-005",
     "L1-006",
     "L1-007",
@@ -86,6 +90,9 @@ EXPECTED_V1_IDS = {
     "L1-016",
     "L1-017",
     "L1-019",
+    "L1-020",
+    "L1-022",
+    "L1-026",
     "L2-001",
     "L2-002",
     "L2-003",
@@ -140,12 +147,11 @@ def test_full_pack_loads():
     by_type = {}
     for r in pack.rules:
         by_type.setdefault(r.type, []).append(r.id)
-    assert len(by_type.get("deterministic", [])) == 49, (
-        "L1 14 + L2 20 + L3 15 = 49(批六T3 +5:L1-017/L2-012/013/014/040,P1-β批六 2026-11-08;"
-        "前值 44=L1 13 + L2 16 + L3 15,批二续T3 +3 要件级 L2-030/032/033)"
+    assert len(by_type.get("deterministic", [])) == 50, (
+        "L1 15 + L2 20 + L3 15 = 50(批七T2 +1:L1-026 递交时间,P1-β批七 2026-11-08,A-β7-②;前值 49=L1 14 + L2 20 + L3 15,批六T3 +5:L1-017/L2-012/013/014/040;前前值 44=L1 13 + L2 16 + L3 15,批二续T3 +3 要件级 L2-030/032/033)"
     )
-    assert len(by_type.get("hybrid", [])) == 5, "L1 hyb 003/007 + L3 hyb 004/008 + L2-023 指纹通道(整合版对齐 W1) = 5"
-    assert len(by_type.get("semantic", [])) == 1, "L1-013 唯一 sem 规则"
+    assert len(by_type.get("hybrid", [])) == 7, "L1 hyb 003/007/004(批七T2)/022(批七T2) + L3 hyb 004/008 + L2-023 指纹通道 = 7(批七T2 +2:L1-004/L1-022,A-β7-②;前值 5=整合版对齐 W1)"
+    assert len(by_type.get("semantic", [])) == 2, "L1-013 + L1-020(批七T2 +1,A-β7-②);前值 L1-013 唯一 sem 规则"
     for r in pack.rules:
         if r.type == "hybrid":
             # L2-023 为 op 型粗筛(att_missing_rows,spec 2026-11-04 §2.3 门=det_expr 或 op),
@@ -610,8 +616,7 @@ class TestBeta6DetRules(unittest.TestCase):
         assert len(iss2) == 1 and iss2[0]["verdict"] == "FAIL"
 
     def test_l2012_missing_required_section_per_row(self):
-        fields = {"tender.tech_sections_required": ["总体方案", "应急预案"],
-                  "bid.section_tree": [{"code": "1", "title": "第一章 总体方案", "is_empty": False}]}
+        fields = {"tender.tech_sections_required": ["总体方案", "应急预案"], "bid.section_tree": [{"code": "1", "title": "第一章 总体方案", "is_empty": False}]}
         iss = self._run("L2-012", fields)
         assert len(iss) == 1 and "应急预案" in iss[0]["message"]  # per-row(A-β6-⑦)
 
@@ -727,3 +732,169 @@ class TestBeta6RuleExtensions(unittest.TestCase):
             "bid.deposit_forms": [],
         }
         assert self._run("L1-006", fields) == []
+
+
+# ── P1-β批七 T2:4 条新消费规则(A-β7-①..⑥ 修订版,2026-11-08)——L1-004 项目负责人(hyb 双键,
+# A-β7-④ 窄化)/L1-020 分包承诺(sem,L1-013 steps:[] 形态门先例)/L1-022 格式密封(hyb op:and
+# 合规式,A-β7-② 裁决;severity major 固定 A-β7-⑥)/L1-026 递交时间(det,L3-014 字符串日期比较
+# 先例 A-β7-⑤)。controller 裁决单(2026-11-08)落定形态:
+# ① 裁决③ inputs 全部叶平键(容器键 bid.pm/tender.pm_req/tender.subcontract_limit/tender.format_requirements/
+#   bid.format 不入 flat 字段,消费死锁)——夹具 10/6/3 叶键全在场非 None(bug-4227:null=不在场陷阱)。
+# ② 裁决② L1-022 op:or 违规式 → op:and 合规式(L1-017 先例):任一支失败(份数不等/目录=False/
+#   页码=False)→ 候选;null-skip 支(x==null or y==null or x==y)保护招标侧未明示维。
+# ③ L1-020 夹具 evidence 非空数组(铁律2,check_schema 第1道),plan 逐字 evidence:[] 等价修正。
+# ④ hyb 候选实体 join 键=C1(候选同序枚举 cand_map 契约)。
+class TestBeta7Rules:
+    """批七:4 条新消费规则(L1-004 hyb/L1-020 sem/L1-022 hyb op:and/L1-026 det)。"""
+
+    def _rule(self, rid):
+        pack = load_rulepack(PACK)
+        return next(r for r in pack.rules if r.id == rid)
+
+    # ── L1-026 det 三态(plan 逐字)──
+
+    def test_l1_026_late_submission_fails(self):
+        rule = self._rule("L1-026")
+        fields = {"bid.submit_time": "2026-11-09 09:00:00", "tender.bid_deadline": "2026-11-08 17:00:00"}
+        issues = run_det_rule(rule, fields)
+        assert len(issues) == 1
+        assert issues[0]["verdict"] == "FAIL"
+        assert "递交" in issues[0]["message"]
+
+    def test_l1_026_in_time_passes(self):
+        rule = self._rule("L1-026")
+        fields = {"bid.submit_time": "2026-11-08 09:00:00", "tender.bid_deadline": "2026-11-08 17:00:00"}
+        assert run_det_rule(rule, fields) == []
+
+    def test_l1_026_missing_fields_need_human(self):
+        rule = self._rule("L1-026")
+        issues = run_det_rule(rule, {"bid.submit_time": "2026-11-08 09:00:00"})
+        assert issues[0]["verdict"] == "UNKNOWN"
+
+    # ── L1-020 sem 管线(inputs 叶平键裁决③;evidence 非空见区块注③)──
+
+    @pytest.mark.asyncio
+    async def test_l1_020_sem_pipeline_runs(self):
+        rule = self._rule("L1-020")
+        script = '{"verdicts": [{"clause_id": "SC-1", "verdict": "none", "confidence": 0.9, "reason": "承诺含转包表述", "evidence": [{"doc_id": "bid.pdf", "page": 1, "text": "承诺含转包表述"}]}]}'
+
+        class R:
+            content = script
+
+        fields = {"tender.subcontract_limit.allowed": False, "tender.subcontract_limit.scope": "主体工程", "bid.service_commitments": [{"item": "分包", "value": "允许转包", "section": "承诺函"}]}
+        issues = await run_sem_rule(rule, fields, "", wrap_model_fn(lambda m: R()), "")
+        assert any(i["rule_id"] == "L1-020" and i["verdict"] == "FAIL" for i in issues)
+
+    # ── L1-004 hyb 管线(粗筛候选=证书清单非空;inputs 6 叶键全在场非 None,裁决③)──
+
+    @pytest.mark.asyncio
+    async def test_l1_004_hyb_pipeline_candidate_confirmed(self):
+        rule = self._rule("L1-004")
+        script = '{"verdicts": [{"clause_id": "C1", "verdict": "partial", "confidence": 0.9, "reason": "证书类别与招标要求不符", "evidence": [{"doc_id": "bid.pdf", "page": 1, "text": "一级建造师"}]}]}'
+
+        class R:
+            content = script
+
+        fields = {
+            "bid.pm.certs": ["一级建造师"],
+            "bid.pm.social_months": 24,
+            "bid.pm.on_other_project": False,
+            "tender.pm_req.certs": ["一级建造师"],
+            "tender.pm_req.social_months": 12,
+            "tender.pm_req.exclusive": True,
+        }
+        issues = await run_sem_rule(rule, fields, "", wrap_model_fn(lambda m: R()), "")
+        assert any(i["rule_id"] == "L1-004" and i["verdict"] == "FAIL" for i in issues)
+
+    # ── L1-004 det 粗筛合规向(F-1,批七T2 review)──
+    # 实测勘误(申报):F-1 机制注记「det_expr count>=1 成立→prefilter 过→不进模型」与引擎
+    # 实态相反——hyb prefilter 语义=det 命中即候选(op:eq left=count(certs) right=0 → 非空
+    # 即命中,plan 逐字「证书清单非空出候选」),命中必进模型确认;「model_fn 零调用」唯一
+    # 通路=零命中(certs 空)。双景单测落地:a) certs=[] 零命中 → 零候选零模型调用(F-1 两
+    # 断言真形态);b) F-1 原夹具(certs 非空且与招标一致)→ 粗筛命中进模型,scripted full
+    # 确认合规 → 驳回候选零 issue 落地(进模型 1 次系设计内粗筛语义,已 pin 防漂移)。
+
+    @pytest.mark.asyncio
+    async def test_l1_004_hyb_prefilter_compliant_zero_issue_paths(self):
+        rule = self._rule("L1-004")
+        full_script = '{"verdicts": [{"clause_id": "C1", "verdict": "full", "confidence": 0.9, "reason": "资格要件合规", "evidence": [{"doc_id": "bid.pdf", "page": 1, "text": "一级建造师"}]}]}'
+
+        class R:
+            content = full_script
+
+        calls = 0
+
+        def counting_model(messages):
+            nonlocal calls
+            calls += 1
+            return R()
+
+        base = {
+            "bid.pm.social_months": 24,
+            "bid.pm.on_other_project": False,
+            "tender.pm_req.certs": ["一级建造师"],
+            "tender.pm_req.social_months": 12,
+            "tender.pm_req.exclusive": True,
+        }
+        issues = await run_sem_rule(rule, {**base, "bid.pm.certs": []}, "", wrap_model_fn(counting_model), "")
+        assert issues == []  # a) 零命中(certs 空,count==0 过 eq 门)→ 零候选零 issue
+        assert calls == 0  # a) 零命中 → 不进模型(F-1「model_fn 零调用」真形态)
+
+        issues = await run_sem_rule(rule, {**base, "bid.pm.certs": ["一级建造师"]}, "", wrap_model_fn(counting_model), "")
+        assert issues == []  # b) 模型 full 确认合规 → 驳回候选,零 issue 落地
+        assert calls == 1  # b) 粗筛命中必进模型恰 1 次(实态勘误见区块注,申报 controller)
+
+    # ── L1-022 hyb 管线 + op:and 合规式三钉(裁决②:a 全合规 0 候选 / b 违规→候选→scripted
+    #    判定(上方 async 测) / c null-skip 招标侧未明示 → 0 候选)──
+
+    @pytest.mark.asyncio
+    async def test_l1_022_hyb_pipeline_candidate_confirmed(self):
+        rule = self._rule("L1-022")
+        script = '{"verdicts": [{"clause_id": "C1", "verdict": "partial", "confidence": 0.9, "reason": "份数与招标要求不符", "evidence": [{"doc_id": "bid.pdf", "page": 1, "text": "正本贰份"}]}]}'
+
+        class R:
+            content = script
+
+        fields = {
+            "tender.format_requirements.copies": 4,
+            "tender.format_requirements.toc": True,
+            "tender.format_requirements.page_numbering": True,
+            "tender.format_requirements.font": "宋体小四",
+            "tender.format_requirements.sealing": "密封标识",
+            "bid.format.copies": 4,
+            "bid.format.toc": False,
+            "bid.format.page_numbering": True,
+            "bid.format.font": "宋体小四",
+            "bid.format.sealing_label": "已密封",
+        }
+        issues = await run_sem_rule(rule, fields, "", wrap_model_fn(lambda m: R()), "")
+        assert any(i["rule_id"] == "L1-022" and i["verdict"] == "FAIL" for i in issues)
+
+    def test_l1_022_and_compliance_direction_pinned(self):
+        # op:and 合规式钉测(裁决②):任一支失败→候选;全合规/null-skip→零候选零模型调用。
+        rule = self._rule("L1-022")
+        compliant = {
+            "tender.format_requirements.copies": 4,
+            "tender.format_requirements.toc": True,
+            "tender.format_requirements.page_numbering": True,
+            "tender.format_requirements.font": "宋体小四",
+            "tender.format_requirements.sealing": "密封标识",
+            "bid.format.copies": 4,
+            "bid.format.toc": True,
+            "bid.format.page_numbering": True,
+            "bid.format.font": "宋体小四",
+            "bid.format.sealing_label": "已密封",
+        }
+        toc_false = {**compliant, "bid.format.toc": False}
+        copies_mismatch = {**compliant, "bid.format.copies": 2}
+        null_skip = {**compliant, "tender.format_requirements.copies": None}
+        assert run_det_rule(rule, compliant) == []  # a) 全合规 → 零候选
+        assert len(run_det_rule(rule, toc_false)) == 1  # b) 目录=False → 候选(scripted 判定见 async 测)
+        assert len(run_det_rule(rule, copies_mismatch)) == 1  # b') 份数不等 → 候选
+        assert run_det_rule(rule, null_skip) == []  # c) 招标侧 copies=null(未明示)+投标有值 → null-skip 零候选
+
+    def test_pack_pins(self):
+        pack = load_rulepack(PACK)
+        dets = [r for r in pack.rules if r.type == "deterministic"]
+        assert len(pack.rules) == 59
+        assert len(dets) == 50

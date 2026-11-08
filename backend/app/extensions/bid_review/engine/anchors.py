@@ -42,6 +42,33 @@ ANCHOR_REGISTRY: dict[str, dict] = {
         ],
     },
     "A-TENDER-BOQ": {"label": "招标工程量清单", "paths": ["tender.boq_items"]},
+    # ── 批七(A-β7-⑨,2026-11-08;A-β7-② 修订叶平键化):§6.1 ❌4 消费面锚点注册 +3(A-TENDER-FORMAT 本条 +
+    # A-PM-CERT/A-PM-SOCIAL 见投标侧);A-TENDER-CLAUSE 为等价修正补注册——plan 勘误称
+    # 「已注册」,实态 anchors.py 无此名,而 L1-004/L1-020 evidence 逐字引用之,bug-3985
+    # 拒载门下不补注则整包拒载。A-β7-② 裁决后契约/规则 inputs 全部叶平键,四锚 paths 随之
+    # 拍平为叶键(容器键 bid.pm/tender.pm_req/tender.subcontract_limit/tender.format_requirements
+    # 不再注册);全部叶键已在规则 inputs 内 → 锚 paths 宇宙贡献 +0,宇宙算式不漂(T4 钉 126)。
+    "A-TENDER-CLAUSE": {
+        "label": "招标合同条款/实质性条款",
+        "paths": [
+            "tender.substantive_clauses",
+            "tender.subcontract_limit.allowed",
+            "tender.subcontract_limit.scope",
+            "tender.pm_req.certs",
+            "tender.pm_req.social_months",
+            "tender.pm_req.exclusive",
+        ],
+    },
+    "A-TENDER-FORMAT": {
+        "label": "招标格式/份数/密封要求",
+        "paths": [
+            "tender.format_requirements.copies",
+            "tender.format_requirements.toc",
+            "tender.format_requirements.page_numbering",
+            "tender.format_requirements.font",
+            "tender.format_requirements.sealing",
+        ],
+    },
     # ── 投标侧:价格 ──────────────────────────────────────────────────
     "A-PRICE-SHEET": {
         "label": "投标报价汇总表",
@@ -94,6 +121,10 @@ ANCHOR_REGISTRY: dict[str, dict] = {
         "label": "人员配置",
         "paths": ["bid.personnel_commercial", "bid.personnel_technical"],
     },
+    # 批七(A-β7-⑨,2026-11-08;A-β7-② 修订叶平键化):拟任项目负责人证书/社保锚(L1-004
+    # evidence);paths 拍平为叶键(与 FIELD_TYPE_CONTRACTS 叶契约对齐,宇宙贡献 +0)
+    "A-PM-CERT": {"label": "项目负责人资格证书", "paths": ["bid.pm.certs"]},
+    "A-PM-SOCIAL": {"label": "项目负责人社保证明", "paths": ["bid.pm.social_months"]},
     "A-STAMP": {"label": "签署盖章页", "paths": ["bid.missing_signature_pages"]},
     "A-DECLARATION": {"label": "声明函", "paths": ["bid.declaration_letter_codes"]},
     # ── 投标侧:工期/技术/文件结构 ──────────────────────────────────

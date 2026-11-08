@@ -105,10 +105,10 @@ LIST_PATHS: frozenset[str] = frozenset(
         "tender.required_fields",
         # P1-β批二续 Task1(2026-11-07):文件级 subset 三规则 L2-001/002/003——文件/分册/电子标书
         # 逐项串列表(subset_of 归一集合比对);纯串列表闸同 required_declarations 待遇
-        "tender.file_composition",   # L2-001(P1-β批二续,spec §6.6 :2126)
-        "bid.file_index",            # L2-001(spec §6.7 :2131)
-        "tender.electronic_files",   # L2-003(spec §6.6 :2128)
-        "bid.electronic_files",      # L2-003(spec §6.7 :2133)
+        "tender.file_composition",  # L2-001(P1-β批二续,spec §6.6 :2126)
+        "bid.file_index",  # L2-001(spec §6.7 :2131)
+        "tender.electronic_files",  # L2-003(spec §6.6 :2128)
+        "bid.electronic_files",  # L2-003(spec §6.7 :2133)
     }
 )
 # 行形异构字段(spec R5 修正):闸不适用(occurrence 包装与规则行形不符——appendix 读
@@ -528,14 +528,27 @@ FIELD_TYPE_CONTRACTS["bid.consortium"] = '[{lead:"牵头人名称",members:["成
 FIELD_TYPE_CONTRACTS["bid.figures"] = '[{id:"图号或空串",name:"图表名称"}] 对象列表;投标文件中的图纸/图表清单;id/name 非空;无给空数组。'
 FIELD_TYPE_CONTRACTS["bid.deposit_forms"] = '["实际缴纳形式"] 字符串数组;投标文件载明的保证金缴纳形式;无给空数组。'
 
-# ── 批七(A-β7-①,2026-11-08):§6.1 ❌4 消费面 8 条抽取契约(规格 §6.2 形状逐字)──
-FIELD_TYPE_CONTRACTS["tender.pm_req"] = '{certs:["证书名称"],social_months:12,exclusive:true} 对象;项目负责人资格要求(证书类别/社保连续月数/是否须专职无在建);无明示给 null。'
-FIELD_TYPE_CONTRACTS["tender.subcontract_limit"] = '{allowed:true,scope:"允许分包的范围"} 对象;分包限制;无明示给 null。'
+# ── 批七 §6.1 ❌4 消费面 21 条叶平键契约(A-β7-② 修订:C-09 式拍平,容器→叶,L1-001 bid.entity.* 先例;嵌套点访问仅在路径注册后可消费)──
+FIELD_TYPE_CONTRACTS["bid.pm.certs"] = '["一级建造师"] 证书名称列表;拟任项目负责人持证清单;无明示给空数组。'
+FIELD_TYPE_CONTRACTS["bid.pm.social_months"] = "24 社保连续缴纳月数;拟任项目负责人社保连续月数;无明示给 null。"
+FIELD_TYPE_CONTRACTS["bid.pm.on_other_project"] = "false 是否在其他在建项目任职;拟任项目负责人专职无在建;无明示给 null。"
+FIELD_TYPE_CONTRACTS["tender.pm_req.certs"] = '["一级建造师"] 证书类别列表;项目负责人资格要求的证书;无明示给 null。'
+FIELD_TYPE_CONTRACTS["tender.pm_req.social_months"] = "12 社保连续月数要求;项目负责人社保连续缴纳月数要求;无明示给 null。"
+FIELD_TYPE_CONTRACTS["tender.pm_req.exclusive"] = "true 是否须专职无在建;项目负责人专职要求;无明示给 null。"
+FIELD_TYPE_CONTRACTS["tender.subcontract_limit.allowed"] = "true 是否允许分包;招标分包限制;无明示给 null。"
+FIELD_TYPE_CONTRACTS["tender.subcontract_limit.scope"] = '"主体工程" 允许分包的范围;招标分包范围;无明示给 null。'
 FIELD_TYPE_CONTRACTS["tender.required_signatures"] = '["签字盖章处名称"] 字符串列表;招标要求签章的位置清单;无明示给空数组。'
-FIELD_TYPE_CONTRACTS["tender.format_requirements"] = '{toc:true,page_numbering:true,font:"字体字号要求",copies:4,sealing:"密封标识要求"} 对象;格式份数密封要求;无明示给 null。'
-FIELD_TYPE_CONTRACTS["bid.pm"] = '{name:"拟任项目经理姓名",certs:["证书名称"],social_months:24,on_other_project:false} 对象;拟任项目负责人实体;无明示给 null。'
+FIELD_TYPE_CONTRACTS["tender.format_requirements.copies"] = "4 份数;招标格式份数要求;无明示给 null。"
+FIELD_TYPE_CONTRACTS["tender.format_requirements.toc"] = "true 是否须目录;招标格式目录要求;无明示给 null。"
+FIELD_TYPE_CONTRACTS["tender.format_requirements.page_numbering"] = "true 是否须页码;招标格式页码要求;无明示给 null。"
+FIELD_TYPE_CONTRACTS["tender.format_requirements.font"] = '"宋体小四" 字体字号要求;招标格式字体要求;无明示给 null。'
+FIELD_TYPE_CONTRACTS["tender.format_requirements.sealing"] = '"密封标识要求" 密封标识要求;招标密封要求;无明示给 null。'
+FIELD_TYPE_CONTRACTS["bid.format.copies"] = "4 份数;投标文件实际份数;无明示给 null。"
+FIELD_TYPE_CONTRACTS["bid.format.toc"] = "true 是否有目录;投标文件实际目录;无明示给 null。"
+FIELD_TYPE_CONTRACTS["bid.format.page_numbering"] = "true 是否有页码;投标文件实际页码;无明示给 null。"
+FIELD_TYPE_CONTRACTS["bid.format.font"] = '"宋体小四" 实际字体字号;投标文件字体;无明示给 null。'
+FIELD_TYPE_CONTRACTS["bid.format.sealing_label"] = '"密封标识实际描述" 密封标识实际描述;投标文件密封标识;无明示给 null。'
 FIELD_TYPE_CONTRACTS["bid.service_commitments"] = '[{item:"承诺事项",value:"承诺内容",section:"所在章节"}] 对象列表;分包/转包相关服务承诺;无明示给空数组。'
-FIELD_TYPE_CONTRACTS["bid.format"] = '{toc:true,page_numbering:true,font:"实际字体字号",copies:4,sealing_label:"密封标识实际描述"} 对象;投标文件格式实体;无明示给 null。'
 FIELD_TYPE_CONTRACTS["bid.submit_time"] = '"2026-11-08 09:00:00" 时间字符串;投标文件递交时间;无明示给 null。'
 
 
@@ -993,10 +1006,7 @@ def build_sections_prompt(docs: list[dict], toc_codes: Any, required_sections: A
     anchor_block = ""
     if anchors:
         lines = "\n".join(f"- [{a['doc_id']}] {a['title']}(页 {a['page']})" for a in anchors)
-        anchor_block = (
-            "\n\n## 正文标题锚点候选(服务端确定性扫描,仅供参考;仍须只采信材料 [[p.N]] 实际位置,不作为编造依据)\n"
-            f"{lines}"
-        )
+        anchor_block = f"\n\n## 正文标题锚点候选(服务端确定性扫描,仅供参考;仍须只采信材料 [[p.N]] 实际位置,不作为编造依据)\n{lines}"
     return (
         "你是投标文件章节结构定位器。下面给出投标目录章节编码与招标要求的章节,请在材料中定位每节正文起始页并判断正文是否为空。\n\n"
         f"## 投标目录章节编码\n{json.dumps(toc_codes or [], ensure_ascii=False)}\n\n"

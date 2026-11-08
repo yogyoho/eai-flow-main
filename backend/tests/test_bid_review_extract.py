@@ -672,27 +672,41 @@ class TestBidTablesDerived:
         assert _derive_bid_tables([{"doc_id": "d1", "text": "纯文本无表格标记"}]) == []
 
 
-# ── P1-β批七 T1 §6.1 ❌4 消费面 8 条抽取契约(A-β7-①,规格 §6.2 形状逐字)──
+# ── P1-β批七 §6.1 ❌4 消费面 21 条叶平键抽取契约(A-β7-② 修订:C-09 式拍平,容器→叶,L1-001 bid.entity.* 先例)──
 
 
 BETA7_PATHS = [
-    "tender.pm_req",
-    "tender.subcontract_limit",
+    "bid.pm.certs",
+    "bid.pm.social_months",
+    "bid.pm.on_other_project",
+    "tender.pm_req.certs",
+    "tender.pm_req.social_months",
+    "tender.pm_req.exclusive",
+    "tender.subcontract_limit.allowed",
+    "tender.subcontract_limit.scope",
     "tender.required_signatures",
-    "tender.format_requirements",
-    "bid.pm",
+    "tender.format_requirements.copies",
+    "tender.format_requirements.toc",
+    "tender.format_requirements.page_numbering",
+    "tender.format_requirements.font",
+    "tender.format_requirements.sealing",
+    "bid.format.copies",
+    "bid.format.toc",
+    "bid.format.page_numbering",
+    "bid.format.font",
+    "bid.format.sealing_label",
     "bid.service_commitments",
-    "bid.format",
     "bid.submit_time",
 ]
 
 
 class TestBeta7FieldContracts:
-    """批七:§6.1 ❌4 消费面 8 条抽取契约(规格 §6.2 形状逐字)。"""
+    """批七:§6.1 ❌4 消费面 21 条叶平键抽取契约(A-β7-② 修订,C-09 式拍平)。"""
 
     def test_contracts_registered(self):
         from app.extensions.bid_review.engine.extract import FIELD_TYPE_CONTRACTS
 
+        assert len(BETA7_PATHS) == 21
         for path in BETA7_PATHS:
             assert path in FIELD_TYPE_CONTRACTS, path
 
@@ -700,11 +714,24 @@ class TestBeta7FieldContracts:
         from app.extensions.bid_review.engine.extract import FIELD_TYPE_CONTRACTS
 
         # 形状提示关键字在场:模型侧照形状诚实产出
-        assert "certs" in FIELD_TYPE_CONTRACTS["tender.pm_req"]
-        assert "allowed" in FIELD_TYPE_CONTRACTS["tender.subcontract_limit"]
+        assert "一级建造师" in FIELD_TYPE_CONTRACTS["bid.pm.certs"]
+        assert "社保" in FIELD_TYPE_CONTRACTS["bid.pm.social_months"]
+        assert "在建" in FIELD_TYPE_CONTRACTS["bid.pm.on_other_project"]
+        assert "证书" in FIELD_TYPE_CONTRACTS["tender.pm_req.certs"]
+        assert "社保" in FIELD_TYPE_CONTRACTS["tender.pm_req.social_months"]
+        assert "专职" in FIELD_TYPE_CONTRACTS["tender.pm_req.exclusive"]
+        assert "分包" in FIELD_TYPE_CONTRACTS["tender.subcontract_limit.allowed"]
+        assert "范围" in FIELD_TYPE_CONTRACTS["tender.subcontract_limit.scope"]
         assert "签字盖章" in FIELD_TYPE_CONTRACTS["tender.required_signatures"]
-        assert "copies" in FIELD_TYPE_CONTRACTS["tender.format_requirements"]
-        assert "on_other_project" in FIELD_TYPE_CONTRACTS["bid.pm"]
-        assert "value" in FIELD_TYPE_CONTRACTS["bid.service_commitments"]
-        assert "sealing_label" in FIELD_TYPE_CONTRACTS["bid.format"]
+        assert "份数" in FIELD_TYPE_CONTRACTS["tender.format_requirements.copies"]
+        assert "目录" in FIELD_TYPE_CONTRACTS["tender.format_requirements.toc"]
+        assert "页码" in FIELD_TYPE_CONTRACTS["tender.format_requirements.page_numbering"]
+        assert "字体" in FIELD_TYPE_CONTRACTS["tender.format_requirements.font"]
+        assert "密封" in FIELD_TYPE_CONTRACTS["tender.format_requirements.sealing"]
+        assert "份数" in FIELD_TYPE_CONTRACTS["bid.format.copies"]
+        assert "目录" in FIELD_TYPE_CONTRACTS["bid.format.toc"]
+        assert "页码" in FIELD_TYPE_CONTRACTS["bid.format.page_numbering"]
+        assert "字体" in FIELD_TYPE_CONTRACTS["bid.format.font"]
+        assert "密封" in FIELD_TYPE_CONTRACTS["bid.format.sealing_label"]
+        assert "承诺" in FIELD_TYPE_CONTRACTS["bid.service_commitments"]
         assert "递交" in FIELD_TYPE_CONTRACTS["bid.submit_time"]

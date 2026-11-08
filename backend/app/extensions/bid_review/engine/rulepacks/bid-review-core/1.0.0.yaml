@@ -1057,3 +1057,82 @@ rules:
     fix_tpl: "按招标要求编入必备表格(报价汇总/分项报价/清单响应/参数偏离/人员表/设备表)"
     confidence_gate: 0.85
     enabled: true
+  # ── 批七(A-β7-①..⑥ 修订版,2026-11-08):§6.1 ❌4 消费规则四条(叶平键 inputs,A-β7-②③ 裁决)──
+  # L1-004(hyb,fatal):项目负责人资格/社保/无在建——det 粗筛=证书清单非空出候选,模型确认
+  # 类别匹配/社保达标/无在建/主体核验;A-β7-④ 窄化:business_items 跨引维度挂账;
+  # A-β7-③ 裁决:inputs 叶平键(容器键 bid.pm/tender.pm_req 不入 flat 字段,消费死锁)
+  - id: L1-004
+    name: 项目负责人资格、社保与无在建
+    layer: L1
+    type: hybrid
+    applies_to: ["*"]
+    inputs: [bid.pm.certs, bid.pm.social_months, bid.pm.on_other_project, tender.pm_req.certs, tender.pm_req.social_months, tender.pm_req.exclusive]
+    check:
+      det_expr: "count(bid.pm.certs) >= 1"
+      op: eq
+      left: "count(bid.pm.certs)"
+      right: 0
+      verdict_set: [full, partial, none, unclear]
+    severity: fatal
+    evidence: [A-PM-CERT, A-PM-SOCIAL, A-TENDER-CLAUSE]
+    message_tpl: "项目负责人资格要件不满足:证书类别/社保月数/在建情况与招标要求不符"
+    fix_tpl: "补齐或更正项目负责人证书与社保证明,确认无其他在建项目后重新上传"
+    confidence_gate: 0.75
+    enabled: true
+  # L1-020(sem,fatal):分包转包承诺合规——纯语义规则,L1-013 steps:[] 形态门先例;
+  # A-β7-③ 裁决:inputs 叶平键
+  - id: L1-020
+    name: 分包转包承诺合规
+    layer: L1
+    type: semantic
+    applies_to: ["*"]
+    inputs: [tender.subcontract_limit.allowed, tender.subcontract_limit.scope, bid.service_commitments]
+    check:
+      steps: []
+      verdict_set: [full, partial, none, unclear]
+    severity: fatal
+    evidence: [A-COMMIT, A-TENDER-CLAUSE]
+    message_tpl: "分包/转包承诺与招标分包限制冲突或含转包表述"
+    fix_tpl: "修改服务承诺与招标分包限制一致,删除任何转包表述"
+    confidence_gate: 0.75
+    enabled: true
+  # L1-022(hyb,major):格式份数密封——stage1 det 合规式 op:and(L1-017 先例):任一支失败
+  # (份数不等/目录=False/页码=False)出候选,null-skip 支保护招标侧未明示维;stage2 模型确认
+  # 字体/装订/密封;A-β7-⑥ severity v1=major 固定(severity_override 机制挂账);
+  # A-β7-② 裁决:op:or 违规式改 op:and 合规式(方向反转,违规可出候选),inputs 10 条 format 叶键
+  - id: L1-022
+    name: 格式、份数与密封标识
+    layer: L1
+    type: hybrid
+    applies_to: ["*"]
+    inputs: [tender.format_requirements.copies, tender.format_requirements.toc, tender.format_requirements.page_numbering, tender.format_requirements.font, tender.format_requirements.sealing, bid.format.copies, bid.format.toc, bid.format.page_numbering, bid.format.font, bid.format.sealing_label]
+    check:
+      op: and
+      all:
+        - "tender.format_requirements.copies == null or bid.format.copies == null or tender.format_requirements.copies == bid.format.copies"
+        - "bid.format.toc != False"
+        - "bid.format.page_numbering != False"
+      verdict_set: [full, partial, none, unclear]
+    severity: major
+    evidence: [A-TOC, A-TENDER-FORMAT]
+    message_tpl: "投标文件格式与招标要求不符:份数/目录/页码等维度不一致"
+    fix_tpl: "按招标格式要求调整份数、目录与页码编制,补齐密封标识"
+    confidence_gate: 0.75
+    enabled: true
+  # L1-026(det,fatal):递交时间符合——A-β7-⑤ v1 只落时间维(L3-014 字符串日期比较先例逐字同构);
+  # 「递交方式在允许集合」挂账(规格无允许集合字段源,bid.submit_method 无消费不落)
+  - id: L1-026
+    name: 递交时间符合
+    layer: L1
+    type: deterministic
+    applies_to: ["*"]
+    inputs: [bid.submit_time, tender.bid_deadline]
+    check:
+      steps:
+        - "bid.submit_time <= tender.bid_deadline"
+    severity: fatal
+    evidence: [A-BID-LETTER, A-TENDER-NOTICE]
+    message_tpl: "递交时间晚于投标截止:递交 {bid.submit_time} / 截止 {tender.bid_deadline}"
+    fix_tpl: "核查递交回执时间;逾期递交按废标处理流程上报"
+    confidence_gate: 1.0
+    enabled: true
