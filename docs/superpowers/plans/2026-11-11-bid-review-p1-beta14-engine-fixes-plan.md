@@ -39,16 +39,23 @@
 
 ## 任务
 
-- [ ] T1 引擎面(expr.py + rulepack 1.0.0.yaml + skill 副本镜像 + 测试钉):`num()` 双表注册(批八
+- [x] T1 引擎面(expr.py + rulepack 1.0.0.yaml + skill 副本镜像 + 测试钉):`num()` 双表注册(批八
   years() 先例,漏一表=eval 期 KeyError 伪装 need_human);codes falsy 过滤;L1-009 left/right、
   L1-012 cond 包 num;钉:num 形态表(dict 解包/%/千分位/元缀/直通/bool 拒/不可解析 KeyError)+
   L1-009 容器键真实件形态(dict max_price+str 总价→PASS/FAIL 正确)+ L1-012「6% vs 6」假阳性
   消失钉 + L1-011 None 码渲染净钉。门禁 family `-k bid_review` 只增(基线 759p/6s/0f),lint 双清。
-- [ ] T2 真实件复采:gateway restart + realcase 探针重跑(wait_confirm 默认全链路),判读:L1-009
+  → 兑付 1b5997566:764p/6s/0f(+5 钉),lint 双清;skill 副本 eval_det.py 单表镜像 selftest OK
+  (副本 runner 只捕 KeyError→need_human,镜像 raise KeyError 对齐;续行注释漏 # 一次修)。
+- [x] T2 真实件复采:gateway restart + realcase 探针重跑(wait_confirm 默认全链路),判读:L1-009
   ERROR 消失(可判 PASS/FAIL)、L1-012 6% 假阳性消失、L1-011 渲染净;对照批首 10 条基线只升不降
   (新增违规=合理捕获记档,noise=回滚)。走 stderr 判读,JSON stdout 落 /tmp。
-- [ ] T3 收口:plan 勾兑 + spec 批十四段 + wolf 三件(memory/cerebrum/buglog)+ session memory +
-  closure 报告。
+  → 兑付:3/3 样本全链路+定点 issue 级补查——L1-009 ERROR 消失(225000≤230000 正确 PASS 零
+  issue)、L1-012「6%」vs 6 假阳性消失(零 issue)、L1-011 垃圾消失(本样本 boq=None→诚实
+  UNKNOWN;垃圾形态单测钉覆盖);无新增假阳性,余下 FAIL(L1-002+L1-016×4 执照名抽成证书名)
+  =W-real-4 域既有挂账;批十三机械正常(1 截断警告 retry 救回)。
+- [x] T3 收口:plan 勾兑 + spec 批十四段 + wolf 三件(memory/cerebrum/buglog)+ session memory +
+  closure 报告。→ 兑付 bug-4274 + cerebrum 两 learning(wolf 共享 JSON 变更律/副本镜像律)+
+  spec 批十四段 + session memory。
 
 ## 门禁
 
