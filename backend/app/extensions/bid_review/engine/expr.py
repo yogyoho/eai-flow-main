@@ -19,7 +19,7 @@ class RulePackError(ExprError):
 
 
 _BIN = {"<=": operator.le, ">=": operator.ge, "==": operator.eq, "!=": operator.ne, "<": operator.lt, ">": operator.gt, "in": lambda a, b: a in (b or [])}
-_FUNCS = {"normalize_unit", "number_to_words", "months_ago", "years", "codes", "covers", "keywords", "sum", "count", "contains_any", "imply", "all_equal", "close", "regex", "subset_of", "level_ge", "col"}
+_FUNCS = {"normalize_unit", "number_to_words", "months_ago", "years", "codes", "covers", "keywords", "sum", "count", "contains_any", "imply", "all_equal", "close", "regex", "subset_of", "level_ge", "col", "num"}
 _QUANT = {"all", "any", "every", "exists"}
 _FORM2 = {"all": "all", "any": "any", "every": "all", "exists": "any"}
 # 引号串整体成单 token(评审修正 A5/A6 实测:引号逐字符成 token 会撕裂 CJK 字面量,如 covers(x, '本次投标及签署'))
@@ -330,12 +330,38 @@ def _col(rows, key):
     return [r.get(key) for r in (rows or []) if isinstance(r, dict)]
 
 
+def _num(v):
+    # EAI-CUSTOM 批十四(W-real-1/2,2026-11-11):数值归一——抽取容器键({value,unit} dict)
+    # 与文本形态(「6%」「1,000,001」「225000元」)归一为 float。bool 拒(钱/税语义,禁 True=1,
+    # 同 sum 过滤闸);dict 需含 "value" 键(递归);不可解析 → KeyError(run_det_rule 只捕
+    # KeyError → need_human 诚实网,禁 TypeError 逃网)。已证形态面=真实件回采三形态;万/亿
+    # 乘数未证,挂账(plan 批十四裁决表)。
+    if isinstance(v, bool):
+        raise KeyError(f"num 拒布尔 {v!r}")
+    if isinstance(v, (int, float)):
+        return float(v)
+    if isinstance(v, dict):
+        if "value" in v:
+            return _num(v["value"])
+        raise KeyError(f"num 容器键缺 value {sorted(v)!r}")
+    if isinstance(v, str):
+        s = v.strip().replace(",", "").rstrip("%").strip()
+        if s.endswith("元"):
+            s = s[: -len("元")].strip()
+        try:
+            return float(s)
+        except ValueError as exc:
+            raise KeyError(f"num 无法数值化 {v!r}") from exc
+    raise KeyError(f"num 无法数值化 {v!r}")
+
+
 _BUILTIN = {
     "normalize_unit": _normalize_unit,
     "number_to_words": _number_to_words,
     "months_ago": _months_ago,
     "years": _years,
-    "codes": lambda rows: [r.get("code") for r in (rows or [])],
+    # codes falsy 过滤(批十四 W-real-3:None/'' 入集 → message 渲染「漏项 ,增项 None」垃圾)
+    "codes": lambda rows: [c for c in (r.get("code") for r in (rows or [])) if c],
     "covers": lambda scope, need: str(need) in str(scope or ""),
     "keywords": lambda name: re.findall(r"[一-龥]{2,}", str(name or "")),
     # sum 累加迁 Decimal(str(v))(金额加总链浮点漂移,0.1+0.2=0.30000000000000004;A-β1-② 挂账部分兑付;float 出口对外契约不变):
@@ -350,6 +376,7 @@ _BUILTIN = {
     "subset_of": _subset_of,
     "level_ge": _level_ge,
     "col": _col,
+    "num": _num,
 }
 
 

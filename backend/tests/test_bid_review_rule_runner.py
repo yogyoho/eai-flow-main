@@ -1114,3 +1114,51 @@ class TestBeta9AttYearSpan:
         issues = run_det_rule(self._rule(), self._fields(reqs, prov))
         assert len(issues) == 1
         assert "要求4年/覆盖2年" in issues[0]["message"] and "断档" in issues[0]["message"]
+
+
+def test_l1_009_realcase_container_shapes():
+    # 批十四(W-real-1,2026-11-11):真实件形态钉——抽取容器键 {value,unit} 与元缀/千分位文本
+    # 经 num() 归一后比较;修复前 str<=dict TypeError 逃 KeyError 网 → ERROR。
+    pack = load_rulepack(PACK)
+    rule = {r.id: r for r in pack.rules}["L1-009"]
+    base = {"bid.price_includes_tax": True, "tender.price_includes_tax": True}
+    within = {**base, "bid.total_price": "225,000元", "tender.max_price": {"value": 230000, "unit": "元"}}
+    assert run_det_rule(rule, within) == []
+    over = {**base, "bid.total_price": "230,001元", "tender.max_price": {"value": 230000, "unit": "元"}}
+    issues = run_det_rule(rule, over)
+    assert issues[0]["verdict"] == "FAIL" and issues[0]["severity"] == "fatal"
+    bad_container = {**base, "bid.total_price": 1.0, "tender.max_price": {"amount": 5}}
+    assert run_det_rule(rule, bad_container)[0]["verdict"] == "UNKNOWN"
+
+
+def test_l1_012_percent_text_no_false_positive():
+    # 批十四(W-real-2,2026-11-11):「6%」文本 vs 6 数值假阳性消失钉;6% vs 7 仍真 FAIL。
+    pack = load_rulepack(PACK)
+    rule = {r.id: r for r in pack.rules}["L1-012"]
+    ok = {"bid.tax_rate_occurrences": [{"where": "报价汇总表", "value": "6%"}], "tender.tax_rate": 6}
+    assert run_det_rule(rule, ok) == []
+    bad = {**ok, "tender.tax_rate": 7}
+    issues = run_det_rule(rule, bad)
+    assert issues[0]["verdict"] == "FAIL" and "6%" in issues[0]["message"]
+
+
+def test_l1_011_none_code_clean_render():
+    # 批十四(W-real-3,2026-11-11):codes() falsy 过滤——None/缺码行不入 missing/extra 集,
+    # message 无「None」/「, 」垃圾(修复前「漏项 ,增项 None」)。
+    pack = load_rulepack(PACK)
+    rule = {r.id: r for r in pack.rules}["L1-011"]
+    fields = {
+        "tender.boq_items": [{"code": "BM-001"}, {"code": "BM-003"}, {"name": "无码行"}],
+        "bid.boq_items": [{"code": "BM-001"}, {"code": None}],
+    }
+    issues = run_det_rule(rule, fields)
+    assert issues and issues[0]["verdict"] == "FAIL"
+    msg = issues[0]["message"]
+    # tpl 恒含「漏项/增项」字样,只钉 None 垃圾与漏项码;两侧皆空集时 runner 不出 issue
+    assert "BM-003" in msg and "None" not in msg
+    assert run_det_rule(rule, {k: v for k, v in fields.items()}) is not None
+    clean = {
+        "tender.boq_items": [{"code": "BM-001"}, {"name": "无码行"}],
+        "bid.boq_items": [{"code": "BM-001"}, {"code": None}],
+    }
+    assert run_det_rule(rule, clean) == []

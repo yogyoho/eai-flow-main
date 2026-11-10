@@ -208,13 +208,38 @@ def _eval_expr(expr: str, fields: dict):
         raise ExprError(f"尾随 token {p.peek()}")
     return v
 
+def _num(v):
+    # EAI-CUSTOM 批十四(W-real-1/2,2026-11-11)镜像 backend engine/expr.py _num:容器键
+    # ({value,unit} dict)与文本形态(「6%」「1,000,001」「225000元」)归一 float;bool 拒;
+    # 不可解析 raise KeyError(副本 runner :312 只捕 KeyError→need_human,与引擎同网;ExprError 是
+# ValueError 子类但求值网只认 KeyError)。
+    if isinstance(v, bool):
+        raise KeyError(f"num 拒布尔 {v!r}")
+    if isinstance(v, (int, float)):
+        return float(v)
+    if isinstance(v, dict):
+        if "value" in v:
+            return _num(v["value"])
+        raise KeyError(f"num 容器键缺 value {sorted(v)!r}")
+    if isinstance(v, str):
+        s = v.strip().replace(",", "").rstrip("%").strip()
+        if s.endswith("元"):
+            s = s[: -len("元")].strip()
+        try:
+            return float(s)
+        except ValueError as exc:
+            raise KeyError(f"num 无法数值化 {v!r}") from exc
+    raise KeyError(f"num 无法数值化 {v!r}")
+
 _BUILTIN = {
     "normalize_unit": _normalize_unit,
     "number_to_words": _number_to_words,
-    "codes": lambda rows: [r.get("code") for r in (rows or [])],
+    # codes falsy 过滤(批十四 W-real-3 镜像:None/'' 入集 → 渲染垃圾)
+    "codes": lambda rows: [c for c in (r.get("code") for r in (rows or [])) if c],
     "covers": lambda scope, need: str(need) in str(scope or ""),
     "keywords": lambda name: re.findall(r"[一-龥]{2,}", str(name or "")),
     "sum": lambda vals: float(sum(v for v in (vals or []) if isinstance(v, (int, float)))),
+    "num": _num,
 }
 
 def _fields_used(expr: str) -> set:

@@ -99,3 +99,31 @@ def test_years_text_extract_primitive():
     assert eval_expr("years(bid.qual_text) == null", {"bid.qual_text": "业绩优良,无违约记录"}) is True
     assert eval_expr("years(bid.qual_text) == null", {"bid.qual_text": "2024年通过复审"}) is True
     assert eval_expr("years(bid.qual_text) == null", {"bid.qual_text": None}) is True
+
+
+def test_num_normalization_primitive():
+    # 批十四(W-real-1/2,2026-11-11):num() 数值归一原语——容器键 {value,unit} dict 递归解包
+    # (真实件 tender.max_price 形态)、文本形态(「6%」/千分位「1,000,001」/元缀「225000元」)
+    # → float;int/float 直通;bool 拒(钱/税语义,禁 True=1);不可解析 → KeyError
+    # (run_det_rule 只捕 KeyError→need_human,禁 TypeError 逃网);双表注册(_FUNCS 白名单+
+    # _BUILTIN 分发,批八 years() 律)。
+    assert eval_expr("num(bid.tax_rate) == 6", {"bid.tax_rate": "6%"}) is True
+    assert eval_expr("num(bid.total_price) == 225000", {"bid.total_price": "225000元"}) is True
+    assert eval_expr("num(bid.total_price) == 1000001", {"bid.total_price": "1,000,001"}) is True
+    assert eval_expr("num(tender.max_price) == 230000", {"tender.max_price": {"value": 230000, "unit": "元"}}) is True
+    assert eval_expr("num(bid.x) == 6.5", {"bid.x": 6.5}) is True
+    with pytest.raises(KeyError):
+        eval_expr("num(bid.x) == 1", {"bid.x": True})
+    with pytest.raises(KeyError):
+        eval_expr("num(bid.x) == 1", {"bid.x": "贰拾万元"})
+    with pytest.raises(KeyError):
+        eval_expr("num(bid.x) == 1", {"bid.x": {"amount": 1}})
+
+
+def test_codes_filters_falsy():
+    # 批十四(W-real-3,2026-11-11):codes() falsy 过滤——None/'' 码入集使 set_eq message
+    # 渲染「漏项 ,增项 None」垃圾;真实件投标 boq 行缺 code 键即此形态。
+    rows = [{"code": "BM-001"}, {"code": None}, {"name": "无码行"}, {"code": ""}, {"code": "BM-002"}]
+    # DSL 无列表字面量 → 期望集走字段
+    assert eval_expr("codes(bid.boq_items) == bid.want", {"bid.boq_items": rows, "bid.want": ["BM-001", "BM-002"]}) is True
+    assert eval_expr("codes(bid.boq_items) == bid.want", {"bid.boq_items": None, "bid.want": []}) is True

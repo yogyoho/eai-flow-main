@@ -19,9 +19,11 @@ rules:
     applies_to: ["*"]
     inputs: [bid.total_price, tender.max_price, bid.price_includes_tax, tender.price_includes_tax]
     check:
+      # 批十四 W-real-1(EAI-CUSTOM 2026-11-11):真实件抽取 max_price={value,unit} 容器键、
+      # total_price 带元缀/千分位文本形态 → num() 归一后比较,容器键裸比 TypeError→ERROR 消失
       op: lte
-      left: bid.total_price
-      right: tender.max_price
+      left: "num(bid.total_price)"
+      right: "num(tender.max_price)"
       precondition: "bid.price_includes_tax == tender.price_includes_tax"
     severity: fatal
     evidence: [A-PRICE-SHEET, A-TENDER-NOTICE]
@@ -262,7 +264,8 @@ rules:
       op: all
       target: "bid.tax_rate_occurrences"
       var: r
-      cond: "r.value == tender.tax_rate"
+      # 批十四 W-real-2(EAI-CUSTOM 2026-11-11):「6%」文本 vs 6 数值假阳性 → num() 归一
+      cond: "num(r.value) == num(tender.tax_rate)"
     severity: fatal
     evidence: [A-PRICE-SHEET, A-TENDER-NOTICE]
     message_tpl: "税率 {r.value}({r.where})与招标要求税率 {tender.tax_rate} 不一致"
