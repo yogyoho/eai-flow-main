@@ -18,6 +18,7 @@ def config_models(monkeypatch):
     """monkeypatch deerflow.config.get_app_config(worker 侧 call-time import);
     _set(*names) 重设可用模型清单,_set() = 空配置。"""
     monkeypatch.delenv("EAI_BID_REVIEW_MODEL", raising=False)
+    monkeypatch.delenv("EAI_BID_REVIEW_EXTRACT_MAX_TOKENS", raising=False)  # 批十三:bind 上限钉默认 12288
 
     def _set(*names):
         cfg = SimpleNamespace(models=[SimpleNamespace(name=n) for n in names])
@@ -96,6 +97,10 @@ def _fake_llm(contents):
     calls = {"n": 0}
 
     class _Model:
+        def bind(self, **kwargs):  # 批十三:_default_extract_fn bind(max_tokens) 生产契约面
+            calls["bind_max_tokens"] = kwargs.get("max_tokens")
+            return self
+
         def invoke(self, messages):
             calls["n"] += 1
             calls["prompt_has_path"] = "bid.total_price" in messages[0]["content"]
@@ -111,7 +116,7 @@ def test_extract_fn_parses_fenced_json(config_models, monkeypatch):
     out = fn([{"doc_id": "d1", "text": "报价 99 万"}], ["bid.total_price"])
     # EAI-CUSTOM 2026-10-30 抽取 v2:_fn 返回 {"fields","provenance"} 新契约(分片 merge 产物)
     # EAI-CUSTOM 2026-10-31 二期:增 candidates/confidence 两键(模型未回 → 空映射)
-    assert out == {"fields": {"bid.total_price": 990000.0}, "provenance": {}, "candidates": {}, "confidence": {}} and calls["n"] == 1 and calls["prompt_has_path"]
+    assert out == {"fields": {"bid.total_price": 990000.0}, "provenance": {}, "candidates": {}, "confidence": {}} and calls["n"] == 1 and calls["prompt_has_path"] and calls["bind_max_tokens"] == 12288
 
 
 def test_extract_fn_retries_once_on_garbage(config_models, monkeypatch):

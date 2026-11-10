@@ -551,6 +551,68 @@ def test_collect_docs_text_leading_text_joins_first_marked_page():
     assert _collect_docs_text(docs) == {"t.docx": {2: "散头表格文本\n\n第二页"}}
 
 
+# ── 批十三 截断加固(plan 3edfd1b3d,2026-11-10)───────────────────────────────
+
+
+class _FakeModel:
+    """_invoke_json 共享调用核假模型:按序弹出 content(批十二活体 8 警告=7 假的回归面)。"""
+
+    def __init__(self, *contents: str):
+        self._contents = list(contents)
+        self.calls = 0
+
+    def invoke(self, messages):
+        self.calls += 1
+        from types import SimpleNamespace
+
+        return SimpleNamespace(content=self._contents.pop(0))
+
+
+def test_extract_max_tokens_env_three_states(monkeypatch):
+    """默认 12288 / env 覆盖 / ≤0 或非法→None 回退模型配置值。"""
+    from app.extensions.bid_review.worker import _extract_max_tokens
+
+    monkeypatch.delenv("EAI_BID_REVIEW_EXTRACT_MAX_TOKENS", raising=False)
+    assert _extract_max_tokens() == 12288
+    monkeypatch.setenv("EAI_BID_REVIEW_EXTRACT_MAX_TOKENS", "20480")
+    assert _extract_max_tokens() == 20480
+    monkeypatch.setenv("EAI_BID_REVIEW_EXTRACT_MAX_TOKENS", "0")
+    assert _extract_max_tokens() is None
+    monkeypatch.setenv("EAI_BID_REVIEW_EXTRACT_MAX_TOKENS", "abc")
+    assert _extract_max_tokens() is None
+
+
+def test_invoke_json_prose_suffix_parses_silently(caplog):
+    """尾随杂文缀尾(JSON 后缀说明文字)——slice 本就救得回,首试成功,零警告零重试
+    (批十二活体:8 次 looks truncated 警告 7 次为此假阳性)。"""
+    import logging
+
+    from app.extensions.bid_review.worker import _invoke_json
+
+    model = _FakeModel('{"entries": [], "groups": []} 注:以上为全部提取结果,完毕。')
+    with caplog.at_level(logging.DEBUG, logger="app.extensions.bid_review.worker"):
+        out = _invoke_json(model, "p", "基准提取")
+    assert out == {"entries": [], "groups": []}
+    assert model.calls == 1
+    assert [r for r in caplog.records if r.levelno >= logging.WARNING] == []
+
+
+def test_invoke_json_truncated_warns_only_on_failure_then_recovers(caplog):
+    """真截断(mid-JSON 破损)→ 警告落在解析失败路径(批十三移位),重试回灌救回。"""
+    import logging
+
+    from app.extensions.bid_review.worker import _invoke_json
+
+    model = _FakeModel('{"entries": [{"name": "业绩一", "amount": 12', '{"entries": [{"name": "业绩一", "amount": 12}]}')
+    with caplog.at_level(logging.WARNING, logger="app.extensions.bid_review.worker"):
+        out = _invoke_json(model, "p", "基准提取")
+    assert out == {"entries": [{"name": "业绩一", "amount": 12}]}
+    assert model.calls == 2
+    msgs = [r.getMessage() for r in caplog.records]
+    assert any("looks truncated" in m for m in msgs)
+    assert any("parse retry attempt=1" in m for m in msgs)
+
+
 # ── B立项 M1 附件实体第二段(spec 2026-11-04 §4,2026-11-05)──────────────────────
 
 _M1_INDEX_ROW = {"no": "1", "name": "营业执照副本", "page": 3, "pages": 2}

@@ -150,16 +150,18 @@ def _invoke_json(model, prompt: str, noun: str) -> dict:
     for attempt in (1, 2, 3):
         response = model.invoke(messages)
         raw = _content_to_str(getattr(response, "content", ""))
-        if not raw.rstrip().endswith("}"):
-            logger.warning("bid_review %s output looks truncated(len=%d)", noun, len(raw))
         try:
             return _parse_json_object(raw)
         except ValueError as exc:
             last_err = exc
+            # 批十三:截断警告移入解析失败路径——尾随杂文缀尾(first-{..last-} slice 本就
+            # 救得回)不再误报 "looks truncated"(批十二 leafkeys 活体 8 次警告 7 次为假)。
+            if not raw.rstrip().endswith("}"):
+                logger.warning("bid_review %s output looks truncated(len=%d)", noun, len(raw))
             logger.warning("bid_review %s parse retry attempt=%d err=%s", noun, attempt, exc)
             messages = messages + [
                 {"role": "assistant", "content": raw},
-                {"role": "user", "content": "上一次输出不是合法 JSON。请重新输出完整、合法的 JSON 对象：不要任何解释文字，不要截断，所有键用双引号，不要尾逗号。"},
+                {"role": "user", "content": "上一次输出不是合法 JSON。请重新输出完整、合法的 JSON 对象：不要任何解释文字，不要截断，所有键用双引号，不要尾逗号。若因长度限制被截断，请压缩输出（省略可省的键值），确保完整闭合。"},
             ]
     raise RuntimeError(f"{noun}三试未获有效 JSON({last_err})") from last_err
 
@@ -325,6 +327,20 @@ def _load_docs(task: ReviewTask) -> list[dict]:
     return out
 
 
+def _extract_max_tokens() -> int | None:
+    """基准提取 per-call 输出上限覆盖(批十三,plan 3edfd1b3d):env
+    EAI_BID_REVIEW_EXTRACT_MAX_TOKENS,默认 12288——config 模型面 max_tokens=8192
+    对大分片输出(活体 10943 字 mid-JSON 截断)已见 cap 压力;≤0 或非法→None 回退
+    模型配置值。仅 bind 基准提取模型(sem/hyb 裁决输出小,不动);config.yaml 零触碰;
+    provider 拒绝上限时运维调小 env 降档。"""
+    raw = os.environ.get("EAI_BID_REVIEW_EXTRACT_MAX_TOKENS", "12288")
+    try:
+        n = int(raw)
+    except ValueError:
+        return None
+    return n if n > 0 else None
+
+
 def _default_extract_fn() -> ExtractFn:
     """生产 LLM 基准提取接线(translation worker create_chat_model 同款先例):
     shard_docs 贪心装箱(≤SHARD_CHARS/prompt,几百页大文档不进单 prompt——spec D5)
@@ -345,7 +361,10 @@ def _default_extract_fn() -> ExtractFn:
     from deerflow.models.factory import create_chat_model
 
     model = create_chat_model(name)
-    logger.info("bid_review baseline extraction using model %s", name)
+    cap = _extract_max_tokens()
+    if cap:
+        model = model.bind(max_tokens=cap)
+    logger.info("bid_review baseline extraction using model %s(max_tokens=%s)", name, cap or "config")
 
     def _invoke_shard(prompt: str) -> dict:
         return _invoke_json(model, prompt, "基准提取")
