@@ -30050,3 +30050,12 @@
 | 22:35 | 批十三T3收口:spec批十三段+plan勾兑+buglog bug-4269+cerebrum三learning+session memory | spec/plan/wolf/memory | committed;挂账+2条件触发(salvage/分片再切) | ~5k |
 | 21:37 | Created C:/Users/admin/.claude/projects/D--eai-eai-flow-main/memory/bid-review-p1-beta13-landed.md | — | ~304 |
 | 21:38 | Edited C:/Users/admin/.claude/projects/D--eai-eai-flow-main/memory/MEMORY.md | 1→2 lines | ~67 |
+| 21:40 | Session end: 11 writes across 6 files (2026-11-10-bid-review-p1-beta13-truncation-hardening-plan.md, worker.py, test_bid_review_worker.py, test_bid_review_worker_prod_model.py, bid-review-p1-beta13-landed.md) | 4 reads | ~21179 tok |
+| 22:56 | Edited C:/Users/admin/.claude/projects/D--eai-eai-flow-main/memory/MEMORY.md | inline fix | ~34 |
+| 22:57 | Session end: 12 writes across 6 files (2026-11-10-bid-review-p1-beta13-truncation-hardening-plan.md, worker.py, test_bid_review_worker.py, test_bid_review_worker_prod_model.py, bid-review-p1-beta13-landed.md) | 4 reads | ~21215 tok |
+| 23:43 | Created backend/scripts/bid_review_realcase_probe.py | — | ~1452 |
+| 23:46 | Session end: 13 writes across 7 files (2026-11-10-bid-review-p1-beta13-truncation-hardening-plan.md, worker.py, test_bid_review_worker.py, test_bid_review_worker_prod_model.py, bid-review-p1-beta13-landed.md) | 4 reads | ~22667 tok |
+| 23:55 | Session end: 13 writes across 7 files (2026-11-10-bid-review-p1-beta13-truncation-hardening-plan.md, worker.py, test_bid_review_worker.py, test_bid_review_worker_prod_model.py, bid-review-p1-beta13-landed.md) | 4 reads | ~22667 tok |
+| 00:04 | Session end: 13 writes across 7 files (2026-11-10-bid-review-p1-beta13-truncation-hardening-plan.md, worker.py, test_bid_review_worker.py, test_bid_review_worker_prod_model.py, bid-review-p1-beta13-landed.md) | 4 reads | ~22667 tok |
+| 00:11 | Edited backend/scripts/bid_review_realcase_probe.py | 3→6 lines | ~115 |
+| 00:10 | 真实件回采判读(中煤科工环评平台):3样本13稳/8翻键;ADJ-1先验通过;审查首发NOT_SUBMITTABLE 10条;真缺陷四件(W-real-1容器键/W-real-2税率归一/W-real-3渲染/W-real-4覆盖)+扫描件OCR边界=真违规静默 | scripts/bid_review_realcase_probe.py + spec | 判读收官;批十四候选成型 | ~12k |

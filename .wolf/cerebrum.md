@@ -3138,3 +3138,9 @@ CALIBRATION 批次裁决表是历史快照,新规则的行插进旧批次表必�
 - **截断警告须落解析失败路径(4bfd1bad8)**: `_invoke_json` 在解析**前**无条件 warn "looks truncated" 造成 7/8 假阳性——尾随杂文缀尾(JSON 后说明文字)被 first-{..last-} slice 本就救回、首试即成功。判读序:**先解析后定语**,成功+缀尾=零日志;真截断(mid-JSON 破损)才配 warning。活体教训:看 stderr 8 次红旗先查有没有配套 parse retry 行,没有=假阳性。
 - **per-call cap 旁路 config(config.yaml 零触碰律)**: 模型面 max_tokens=8192 对 30k 字分片大输出已见顶(variance 基准 10943 字 mid-JSON 破损)。修法=`model.bind(max_tokens=N)` 仅 bind 基准提取调用(sem/hyb 输出小不动),env `EAI_BID_REVIEW_EXTRACT_MAX_TOKENS` 可调/≤0 回退,默认 12288。provider 拒上限风险→运维调小 env 降档,T2 live 探针验证。
 - **模型空返回≠截断**: variance 业绩 41 字 `{"entries": [], "groups": []}` 解析成功 entries=0(2026-11-06 同夹具曾 [2,3])=模型质量方差,与截断同现时易误并入截断债。分型:看输出 len+有无 parse retry+解析产物三件套定型。
+
+## Key Learnings (真实件回采 2026-11-11)
+- **wait_confirm=True 止步确认门,issues 恒 0 是探针范围假象**:advance_task 第 6 参 True=只到基线确认,审查段(det+sem/hyb)根本不跑——此前 leafkeys/realcase 探针 issues 全零是**没跑审查**,不是零违规。判审查面必须 wait_confirm=False(resume_confirmed 同效)。探针已 env 开关化。
+- **det 直比炸容器键**:契约允许容器形态(tender.max_price={value,unit}),规则卡 det_expr 期望标量——`str<=dict` TypeError→逐规则 ERROR 隔离(隔离救了整体,但规则面瞎)。修法=det 取值层容器解包或卡右值点路径 .value。
+- **「值等形态异」假阳性族**:「6%」vs 6 判不一致——money/percent 归一化要在 det 比较前做,否则真实件假阳性泛滥(合成夹具测不出:夹具值形态齐整)。
+- **扫描图片附件=L2 链饿死根因**:docx 主体是扫描件无文本→m1 附件实体空→L2 全零条目→真违规(保证金 300 vs 10000)走「凭证缺失不适用」+兜底同饿死=静默。合成夹具是纯文本永远测不出这条。
