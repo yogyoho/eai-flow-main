@@ -555,6 +555,23 @@ FIELD_TYPE_CONTRACTS["bid.format.sealing_label"] = '"密封标识实际描述" �
 FIELD_TYPE_CONTRACTS["bid.service_commitments"] = '[{item:"承诺事项",value:"承诺内容",section:"所在章节"}] 对象列表;分包/转包相关服务承诺;无明示给空数组。'
 FIELD_TYPE_CONTRACTS["bid.submit_time"] = '"2026-11-08 09:00:00" 时间字符串;投标文件递交时间;无明示给 null。'
 
+# ── 批十五 W-real-4 真实件缺陷契约扩面(EAI-CUSTOM 2026-11-11;12 键 grep 实证全裸路径,模型对路径名自由发挥:
+# deposit_required→True 布尔/license_name→「高新技术企业证书」证书名/qual_levels→证书名集/业绩表在文本内却
+# similar_performances=None→m4 链饿死。契约=纯 prompt 面,批六 T1 先例:契约入 prompt 即提升抽取质量)
+# ── 缺值面 5 键(7 UNKNOWN 中 deposit_receipt_present=服务端派生禁模型,alternative_price_offers 已有 LIST 契约)
+FIELD_TYPE_CONTRACTS["tender.bid_deadline"] = '"2026-11-08 17:00:00" 时间字符串;投标截止时间(递交/投标须知章节,含时间照抄);无明示给 null。'
+FIELD_TYPE_CONTRACTS["tender.bid_scope"] = '"采购内容/招标范围原文";招标项目范围或采购内容(公告/投标人须知前附表);无明示给 null。'
+FIELD_TYPE_CONTRACTS["bid.bid_letter_signatory"] = '"张三" 人名字符串;投标函签署人(法定代表人或委托代理人,投标函末尾签字栏);无明示给 null。'
+FIELD_TYPE_CONTRACTS["bid.entity.business_scope"] = '"经营范围原文";营业执照经营范围栏全文(可截关键句);无明示给 null。'
+FIELD_TYPE_CONTRACTS["bid.entity.license_valid_until"] = '"2030-01-01" 或 "长期" 日期字符串;营业执照营业期限止期(照抄原文,"长期/无固定期限"照抄);无明示给 null。'
+# ── 质量面 7 键(真实件四缺陷:布尔化/证书名混主体名/业绩表漏抽/资质面证书名集)
+FIELD_TYPE_CONTRACTS["tender.deposit_required"] = "10000 金额数字(元);招标要求的投标保证金金额;只填数字禁止填 true/false 布尔;无明示给 null。"
+FIELD_TYPE_CONTRACTS["bid.entity.license_name"] = '"XX有限公司" 企业全称;营业执照「名称」栏主体名;禁止填资质/荣誉/信用证书名(如"高新技术企业证书"是证书不是主体名);无明示给 null。'
+FIELD_TYPE_CONTRACTS["bid.entity.name_in_bid_letter"] = '"XX有限公司" 企业全称;投标函/封面载明的投标人名称;禁止填证书名;无明示给 null。'
+FIELD_TYPE_CONTRACTS["bid.similar_performances"] = '["类似业绩条目描述(含项目名/金额/签订时间)"] 字符串列表;投标文件业绩表(「业绩表/类似业绩/合同业绩」表)逐行抄录;业绩表逐行必收,禁止整表跳过;无业绩给空数组。'
+FIELD_TYPE_CONTRACTS["tender.required_qual_level"] = '"甲级" 资质等级要求字符串;招标设定的资质等级门槛;仅设独立法人/信用等资格条件而无资质等级时给 null;无明示给 null。'
+FIELD_TYPE_CONTRACTS["bid.qual_levels"] = '["甲级"] 资质等级字符串列表;投标方持有的行业资质等级(从资质证书等级栏);不含荣誉/信用类证书(高新技术企业/AAA 信用是证书不是资质等级);无给空数组。'
+
 
 def normalize_section_tree(raw: Any) -> list[dict]:
     """章节树归一闸(B立项 M2,spec §5,2026-11-05):缺 title(空串/非串)丢行零编造;

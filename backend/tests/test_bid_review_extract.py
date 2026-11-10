@@ -735,3 +735,40 @@ class TestBeta7FieldContracts:
         assert "密封" in FIELD_TYPE_CONTRACTS["bid.format.sealing_label"]
         assert "承诺" in FIELD_TYPE_CONTRACTS["bid.service_commitments"]
         assert "递交" in FIELD_TYPE_CONTRACTS["bid.submit_time"]
+
+
+def test_beta15_realcase_defect_contracts():
+    # 批十五(W-real-4,2026-11-11):真实件 11 缺陷键契约扩面钉——11 键全注册(prompt 面)
+    # 且 ∈collect_field_paths()(build_extract_prompt 渲染可达);关键质量短语在契约文本:
+    # deposit_required 金额非布尔(真实件抽成 True)/license_name 主体名禁证书名(真实件抽成
+    # 「高新技术企业证书」致 L1-016 假 FAIL)/similar_performances 业绩表逐行(真实件业绩表在
+    # 文本内却 None→m4 链饿死)/qual_levels 资质类禁荣誉证书/L1-002 required_qual_level
+    # 独立法人类资格条件非资质等级。
+    from app.extensions.bid_review.engine.extract import FIELD_TYPE_CONTRACTS, collect_field_paths
+
+    expected = {
+        "tender.bid_deadline",
+        "tender.bid_scope",
+        "bid.bid_letter_signatory",
+        "bid.entity.business_scope",
+        "bid.entity.license_valid_until",
+        "tender.deposit_required",
+        "bid.entity.license_name",
+        "bid.entity.name_in_bid_letter",
+        "bid.similar_performances",
+        "tender.required_qual_level",
+        "bid.qual_levels",
+    }
+    assert expected <= FIELD_TYPE_CONTRACTS.keys()
+    paths = set(collect_field_paths())
+    assert expected <= paths  # 契约只有落在首段 field_paths 才会渲染进 prompt
+    assert "金额" in FIELD_TYPE_CONTRACTS["tender.deposit_required"] and "禁止填 true/false" in FIELD_TYPE_CONTRACTS["tender.deposit_required"]
+    c = FIELD_TYPE_CONTRACTS["bid.entity.license_name"]
+    assert "营业执照" in c and "禁止" in c and "证书" in c
+    assert "业绩表" in FIELD_TYPE_CONTRACTS["bid.similar_performances"]
+    assert "不含荣誉/信用类证书" in FIELD_TYPE_CONTRACTS["bid.qual_levels"]
+    # 服务端派生键禁模型自产(批十五裁决:NOT 契约,OCR 边界挂账)
+    assert "bid.deposit_receipt_present" not in FIELD_TYPE_CONTRACTS
+
+    prompt = build_extract_prompt([{"doc_id": "d1", "role": "tender", "text": "x"}], sorted(expected))
+    assert "禁止填 true/false" in prompt and "营业执照" in prompt and "业绩表" in prompt
