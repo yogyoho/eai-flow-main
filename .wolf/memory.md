@@ -30019,3 +30019,10 @@
 | 15:40 | 批十一T1 裁决ADJ-1..4注释面落卡(yaml四处+extract.py三处code comment) | 1.0.0.yaml,extract.py | d417b749d 门756p持平 | ~14k |
 | 16:00 | 批十一T2 spec批十一段+brief裁决勾+wolf+会话记忆 | spec/2026-11-06,brief/2026-11-10 | 挂账9→2收官 | ~9k |
 | 20:37 | Created C:/Users/admin/.claude/projects/D--eai-eai-flow-main/memory/bid-review-p1-beta11-landed.md | — | ~341 |
+| 20:43 | Session end: 6 writes across 3 files (2026-11-10-bid-review-p1-backlog-adjudication-brief.md, 1.0.0.yaml, bid-review-p1-beta11-landed.md) | 0 reads | ~1243 tok |
+| 20:47 | Created backend/scripts/bid_review_live_leafkeys.py | — | ~1669 |
+| 20:49 | Session end: 7 writes across 4 files (2026-11-10-bid-review-p1-backlog-adjudication-brief.md, 1.0.0.yaml, bid-review-p1-beta11-landed.md, bid_review_live_leafkeys.py) | 4 reads | ~5204 tok |
+| 20:52 | Session end: 7 writes across 4 files (2026-11-10-bid-review-p1-backlog-adjudication-brief.md, 1.0.0.yaml, bid-review-p1-beta11-landed.md, bid_review_live_leafkeys.py) | 5 reads | ~5204 tok |
+| 21:05 | 批十二T1 21叶键live真值探针两夹具跑通(通道21/21x2,语义零幻觉,ADJ-1不可裁) | scripts/bid_review_live_leafkeys.py | 58a10ab60 | ~18k |
+| 21:25 | 批十二T2 spec批十二段+brief ADJ-1结果+wolf+记忆 | spec/2026-11-06,brief | 截断债升NEXT头号 | ~10k |
+| 20:57 | Created C:/Users/admin/.claude/projects/D--eai-eai-flow-main/memory/bid-review-p1-beta12-landed.md | — | ~337 |
