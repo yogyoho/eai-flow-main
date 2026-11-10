@@ -30026,3 +30026,27 @@
 | 21:05 | 批十二T1 21叶键live真值探针两夹具跑通(通道21/21x2,语义零幻觉,ADJ-1不可裁) | scripts/bid_review_live_leafkeys.py | 58a10ab60 | ~18k |
 | 21:25 | 批十二T2 spec批十二段+brief ADJ-1结果+wolf+记忆 | spec/2026-11-06,brief | 截断债升NEXT头号 | ~10k |
 | 20:57 | Created C:/Users/admin/.claude/projects/D--eai-eai-flow-main/memory/bid-review-p1-beta12-landed.md | — | ~337 |
+| 20:58 | Session end: 8 writes across 5 files (2026-11-10-bid-review-p1-backlog-adjudication-brief.md, 1.0.0.yaml, bid-review-p1-beta11-landed.md, bid_review_live_leafkeys.py, bid-review-p1-beta12-landed.md) | 6 reads | ~5565 tok |
+
+## Session: 2026-11-10 21:05
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 21:09 | Created docs/superpowers/plans/2026-11-10-bid-review-p1-beta13-truncation-hardening-plan.md | — | ~603 |
+| 21:10 | Edited backend/app/extensions/bid_review/worker.py | modified in() | ~299 |
+| 21:10 | Edited backend/app/extensions/bid_review/worker.py | modified _extract_max_tokens() | ~154 |
+| 21:10 | Edited backend/app/extensions/bid_review/worker.py | 2→5 lines | ~65 |
+| 21:11 | Edited backend/tests/test_bid_review_worker.py | modified __init__() | ~726 |
+| 21:17 | Edited backend/tests/test_bid_review_worker_prod_model.py | 1→2 lines | ~46 |
+| 21:17 | Edited backend/tests/test_bid_review_worker_prod_model.py | modified bind() | ~65 |
+| 21:17 | Edited backend/tests/test_bid_review_worker_prod_model.py | inline fix | ~58 |
+| 21:40 | 批十三计划稿:根因三型分型(真截断8192cap/假截断尾随杂文7次/模型空返回记档)+裁决表(bind12288做·salvage挂账·再切挂账·话术做) | docs/superpowers/plans/2026-11-10-...-beta13-truncation-hardening-plan.md | committed 3edfd1b3d | ~3k |
+| 21:55 | 批十三T1截断加固:警告移入解析失败路径+压缩逃生口+_extract_max_tokens+bind(max_tokens);fake模型补bind契约面;钉+4 | worker.py + test_bid_review_worker.py + test_bid_review_worker_prod_model.py | committed 4bfd1bad8;门759p/6s/0f;buglog bug-4269 | ~6k |
+| 21:26 | Session end: 8 writes across 4 files (2026-11-10-bid-review-p1-beta13-truncation-hardening-plan.md, worker.py, test_bid_review_worker.py, test_bid_review_worker_prod_model.py) | 2 reads | ~16449 tok |
+| 21:27 | Session end: 8 writes across 4 files (2026-11-10-bid-review-p1-beta13-truncation-hardening-plan.md, worker.py, test_bid_review_worker.py, test_bid_review_worker_prod_model.py) | 3 reads | ~16449 tok |
+| 21:31 | Session end: 8 writes across 4 files (2026-11-10-bid-review-p1-beta13-truncation-hardening-plan.md, worker.py, test_bid_review_worker.py, test_bid_review_worker_prod_model.py) | 3 reads | ~16449 tok |
+| 21:35 | Edited docs/superpowers/plans/2026-11-10-bid-review-p1-beta13-truncation-hardening-plan.md | 3→3 lines | ~258 |
+| 22:20 | 批十三T2 live 三轮探针判读:bind 轮零截断零假警告(136→77s/63→27s);对照B(8192)真截断复发=bind反证;walkthrough叶键全null与bind无关=服务端模型漂移;方差族四轮全随机锚降格 | /tmp/leafkeys{,2,3}.json + worker.py | T2 兑付;锚纪律重述 | ~4k |
+| 22:35 | 批十三T3收口:spec批十三段+plan勾兑+buglog bug-4269+cerebrum三learning+session memory | spec/plan/wolf/memory | committed;挂账+2条件触发(salvage/分片再切) | ~5k |
+| 21:37 | Created C:/Users/admin/.claude/projects/D--eai-eai-flow-main/memory/bid-review-p1-beta13-landed.md | — | ~304 |
+| 21:38 | Edited C:/Users/admin/.claude/projects/D--eai-eai-flow-main/memory/MEMORY.md | 1→2 lines | ~67 |

@@ -3133,3 +3133,8 @@ CALIBRATION 批次裁决表是历史快照,新规则的行插进旧批次表必�
 ## Key Learnings (批十二 2026-11-10)
 - **先验探针前先 grep 夹具内容域**:ADJ-1 两合成夹具零递交域内容,方式集先验白跑半边(线索行 0 行)——夹具是 M0-M5 语义域,新注册叶键的内容未必在内;探针脚本设计前 `grep 递交 <夹具>` 一分钟能省一次全链路配额。
 - **截断债已跨段扩散**:分片 JSON 截断(bug-4086 族)2026-11-06 只 tables,本日 8 次跨基准/附件/章节/表格/业绩五段(variance 业绩 41-char 截断段归零);重试+skip 降级兜住,但加固(max_tokens/分片再切/宽松解析)是 NEXT 头号。
+
+## Key Learnings (批十三 2026-11-10)
+- **截断警告须落解析失败路径(4bfd1bad8)**: `_invoke_json` 在解析**前**无条件 warn "looks truncated" 造成 7/8 假阳性——尾随杂文缀尾(JSON 后说明文字)被 first-{..last-} slice 本就救回、首试即成功。判读序:**先解析后定语**,成功+缀尾=零日志;真截断(mid-JSON 破损)才配 warning。活体教训:看 stderr 8 次红旗先查有没有配套 parse retry 行,没有=假阳性。
+- **per-call cap 旁路 config(config.yaml 零触碰律)**: 模型面 max_tokens=8192 对 30k 字分片大输出已见顶(variance 基准 10943 字 mid-JSON 破损)。修法=`model.bind(max_tokens=N)` 仅 bind 基准提取调用(sem/hyb 输出小不动),env `EAI_BID_REVIEW_EXTRACT_MAX_TOKENS` 可调/≤0 回退,默认 12288。provider 拒上限风险→运维调小 env 降档,T2 live 探针验证。
+- **模型空返回≠截断**: variance 业绩 41 字 `{"entries": [], "groups": []}` 解析成功 entries=0(2026-11-06 同夹具曾 [2,3])=模型质量方差,与截断同现时易误并入截断债。分型:看输出 len+有无 parse retry+解析产物三件套定型。

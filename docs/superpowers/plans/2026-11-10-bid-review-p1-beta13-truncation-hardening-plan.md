@@ -27,9 +27,9 @@
 
 ## 任务
 
-- [ ] T1 引擎加固(worker.py + 测试钉):`_invoke_json` 截断警告移入解析失败路径(成功+杂文缀尾=零日志降噪);纠错话术追加压缩逃生口;`_extract_max_tokens()` 三态读取 + `_default_extract_fn` bind(max_tokens);测试钉:env 三态 + 杂文缀尾成功零警告零重试 + 截断警告移位重试救回。门禁 family `-k bid_review` 只增(基线 756p/6s/0f),lint 双清。零锁面。
-- [ ] T2 live 复采:gateway restart(生产面吃新代码)+ leafkeys 探针重跑,对照批十二基线(variance m1=3/m2=4/m3 boq=5·cells=12;walkthrough copies=4/sealing 密封条/page_numbering true/pm.certs=[]);期望:真截断 warn 消失、基准 attempt-1 成功、stage 统计只升不降。provider 拒上限→env 降档重跑(降档写进 spec)。
-- [ ] T3 收口:plan 勾兑 + spec 批十三段 + wolf 三件(memory/cerebrum/buglog)+ session memory + closure 报告。
+- [x] T1 引擎加固(worker.py + 测试钉):`_invoke_json` 截断警告移入解析失败路径(成功+杂文缀尾=零日志降噪);纠错话术追加压缩逃生口;`_extract_max_tokens()` 三态读取 + `_default_extract_fn` bind(max_tokens);测试钉:env 三态 + 杂文缀尾成功零警告零重试 + 截断警告移位重试救回。门禁 family `-k bid_review` 只增(基线 756p/6s/0f),lint 双清。零锁面。→ 兑付 4bfd1bad8:759p/6s/0f(+4 钉,prod_model fake 补 bind 契约面钉 12288+fixture 去 env 干扰)。
+- [x] T2 live 复采:gateway restart(生产面吃新代码)+ leafkeys 探针重跑,对照批十二基线(variance m1=3/m2=4/m3 boq=5·cells=12;walkthrough copies=4/sealing 密封条/page_numbering true/pm.certs=[]);期望:真截断 warn 消失、基准 attempt-1 成功、stage 统计只升不降。provider 拒上限→env 降档重跑(降档写进 spec)。→ 兑付:三轮探针(12288×2 + env=0 对照 B)——bind 轮零截断零假警告、variance 136→77s/walkthrough 63→27s 重试往返消失;对照 B 基准提取真截断复发(11561 字 mid-JSON)=bind 有效性反证;walkthrough 叶键值面两轮全 null 与 bind 无关=服务端模型漂移记档(批十二 5+5 语义锚降格历史观测,不可硬化);新形态表格 len=0 空输出重试救回。
+- [x] T3 收口:plan 勾兑 + spec 批十三段 + wolf 三件(memory/cerebrum/buglog)+ session memory + closure 报告。→ 兑付 bug-4269 + cerebrum 三 learning + spec 批十三段 + session memory。
 
 ## 门禁
 

@@ -9454,6 +9454,58 @@
       "related_bugs": [],
       "occurrences": 4,
       "last_seen": "2026-11-09T00:05:00"
+    },
+    {
+      "id": "bug-4268",
+      "timestamp": "2026-11-08T16:49:47.011Z",
+      "error_message": "Significant refactor of ",
+      "file": "backend/tests/test_bid_review_registry.py",
+      "root_cause": "11 lines replaced/restructured",
+      "fix": "Rewrote 16→8 lines (11 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-11-08T16:49:47.011Z"
+    },
+    {
+      "id": "bug-4269",
+      "timestamp": "2026-11-10",
+      "error_message": "bid_review 分片 JSON 输出截断债:批十二 leafkeys 活体五段 8 次 output looks truncated 警告(variance 基准 10943 mid-JSON 破损;业绩 41 字 entries=0 归零)",
+      "file": "backend/app/extensions/bid_review/worker.py",
+      "root_cause": "三型分型:①真截断=config 模型 max_tokens=8192 per-call 输出上限,SHARD_CHARS=30_000 字分片大输出近顶;②假截断=尾随杂文缀尾(first-{..last-} slice 本就救回),_invoke_json 解析前无条件 warn;③非截断=模型空返回质量方差(41 字解析 entries=0,2026-11-06 同夹具曾 [2,3])",
+      "fix": "批十三 4bfd1bad8:警告移入解析失败路径(成功+缀尾零日志);纠错话术加压缩逃生口;_extract_max_tokens(env EAI_BID_REVIEW_EXTRACT_MAX_TOKENS 默认 12288)+_default_extract_fn bind(max_tokens) 仅基准提取;③记档不修(live 方差族另批)",
+      "tags": [
+        "bid_review",
+        "truncation",
+        "max_tokens",
+        "json-parse",
+        "bug-4086-family"
+      ],
+      "related_bugs": [
+        "bug-4086"
+      ],
+      "occurrences": 8,
+      "last_seen": "2026-11-10"
+    },
+    {
+      "id": "bug-4270",
+      "timestamp": "2026-11-10T13:35:17.092Z",
+      "error_message": "Significant refactor of ",
+      "file": "docs/superpowers/plans/2026-11-10-bid-review-p1-beta13-truncation-hardening-plan.md",
+      "root_cause": "3 lines replaced/restructured",
+      "fix": "Rewrote 3→3 lines (3 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "md"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-11-10T13:35:17.092Z"
     }
   ]
 }
