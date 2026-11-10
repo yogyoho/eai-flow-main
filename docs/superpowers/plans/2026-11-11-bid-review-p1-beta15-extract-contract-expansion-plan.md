@@ -29,15 +29,22 @@ license_name→「高新技术企业证书」、qual_levels→证书名集、业
 
 ## 任务
 
-- [ ] T1 契约面(extract.py FIELD_TYPE_CONTRACTS + 11 条 + 测试钉):钉:11 键全注册且
-  ∈collect_field_paths()(prompt 可达);build_extract_prompt 渲染含关键短语(deposit「金额…非布尔」/
+- [x] T1 契约面(extract.py FIELD_TYPE_CONTRACTS + 11 条 + 测试钉):钉:11 键全注册且
+  ∈collect_field_paths()(prompt 可达);build_extract_prompt 渲染含关键短语(deposit「金额…禁止填 true/false」/
   license_name「营业执照…禁止…证书」/similar_performances「业绩表」);门禁 family `-k bid_review`
   只增(基线 764p/6s/0f),lint 双清。零引擎零锁面。
-- [ ] T2 真实件复采:gateway restart + realcase 探针(wait_confirm 全链路),判读:L1-016 假 FAIL
+  → 兑付:765p/6s/0f(+1 钉),lint 双清,锁面冻结。
+- [x] T2 真实件复采:gateway restart + realcase 探针(wait_confirm 全链路),判读:L1-016 假 FAIL
   消失面/license_valid_until+bid_deadline 抽出率/similar_performances 非空+m4 entries 复活/
   deposit_required 数值化;余 FAIL 只升不降记档(新增=合理捕获)。模型方差族律:单样本不做硬锚,
   判读以规则 id 级翻转为单位。
-- [ ] T3 收口:plan 勾兑 + spec 批十五段 + wolf 三件 + session memory + closure。
+  → 兑付:3/3 样本探针(11U·0F gate PENDING_HUMAN / 10 条 1F / 7 条 1F)+定点判读样本(0 FAIL
+  12 UNKNOWN):deposit_required="10000" 金额数值化✓、L1-016 假 FAIL 消失(license_name=None 诚实缺,
+  不再抽成证书名)✓、L1-002 假 FAIL 消失(required_qual_level=None,独立法人类≠资质等级)✓、
+  tender.bid_scope 新抽出✓;未复活:similar_performances=None 仍 3/3、m4 entries=0×3——业绩表
+  契约到位但模型表格式逐行召回未起(与 m3 boq_rows=0 同域)=模型召回边界挂账(非契约缺口);
+  license/deadline/signatory 键跨样本方差(批十三律:单样本不做硬锚)。
+- [x] T3 收口:plan 勾兑 + spec 批十五段 + wolf 三件 + session memory + closure。
 
 ## 挂账
 
