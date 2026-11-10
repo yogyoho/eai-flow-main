@@ -3125,3 +3125,7 @@ CALIBRATION 批次裁决表是历史快照,新规则的行插进旧批次表必�
 
 ## Do-Not-Repeat
 - (2026-11-09) 探针 regex 写 {9} 查 9 字符 hash 应 {8};先数位数再写正则,假阴性会误判文件损坏。
+
+## Key Learnings (批十一 2026-11-10)
+- **挂账建机制前先复核存在性**:ADJ-4「bid.fields 别名」直觉假设六键乱,拉全量清单即证伪——取证域互斥非别名;裁决稿的每个选项都要有代码事实基线(@commit 锚定),勿把待办直觉当缺口。
+- **契约串=prompt 面**:FIELD_TYPE_CONTRACTS 值直接进抽取 prompt;「注释面」声明落 code comment(# 行)而非契约串内追加,零 prompt 扰动,声明可 grep A-ADJ-N 定位。
