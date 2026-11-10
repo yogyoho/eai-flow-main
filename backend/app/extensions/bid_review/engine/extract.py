@@ -103,6 +103,8 @@ LIST_PATHS: frozenset[str] = frozenset(
         # R2+ 规则族补齐(2026-11-05,裁决⑤修正):L2-041 inputs 声明使该路径首次入宇宙(整合版编号对齐 2026-11-06,原 EAI L2-022)
         # (顺带修复 M3 潜在缺口——必填口径此前从未进抽取请求);纯码列表同 required_declarations 待遇
         "tender.required_fields",
+        # A-ADJ-4(2026-11-10 brief 23e1294aa)文件键取证域互斥销账:attachments=附件实体定位/attachment_index=附件清单页抄录/
+        # files=上传全量/archive_files=压缩包内/file_index=投标文件目录页/electronic_files=电子标书清单——非别名,各守其职禁合并。
         # P1-β批二续 Task1(2026-11-07):文件级 subset 三规则 L2-001/002/003——文件/分册/电子标书
         # 逐项串列表(subset_of 归一集合比对);纯串列表闸同 required_declarations 待遇
         "tender.file_composition",  # L2-001(P1-β批二续,spec §6.6 :2126)
@@ -130,6 +132,7 @@ FIELD_TYPE_CONTRACTS["bid.archive_files"] = '[{name:"文件名", size_bytes:"字
 FIELD_TYPE_CONTRACTS["bid.files"] = '[{name:"文件名", size_bytes:"字节数,数字", readable:"是否可读,布尔"}] 对象列表;全量文件逐个一行;MIME 与扩展名一致性列挂账(A-续-④)不产该键;禁止纯值列表/标量。'
 # 签署位对象列表契约(P1-β批二续 Task3,2026-11-07;L2-030):对象列表不进 LIST_PATHS/形状闸
 # (闸只吃纯串列表),给逐字段契约;no 为签署位编号/名称(L2-030 col(bid.signature_slots,'no') 比对列)。
+# A-ADJ-3(2026-11-10 brief 23e1294aa):signature_slots=位置域 by-no(L2-030 消费),required_signatures=名称域 by-name(L1-007 消费),异源各守其职禁合并。
 FIELD_TYPE_CONTRACTS["tender.signature_slots"] = '[{no:"签署位编号或名称", name:"签署方", page:"页码,数字或null"}] 对象列表;格式文件『签字盖章处』逐位一行;禁止纯值列表/标量。'
 FIELD_TYPE_CONTRACTS["bid.signature_slots"] = '[{no:"签署位编号或名称", name:"签署方", page:"页码,数字或null"}] 对象列表;实际签署位逐位一行;禁止纯值列表/标量。'
 # ── 服务端派生 join(整合版对齐 P0③,2026-11-06;D:\knowbase 规格书 L2233「禁模型换算」)──
@@ -537,6 +540,7 @@ FIELD_TYPE_CONTRACTS["tender.pm_req.social_months"] = "12 社保连续月数要�
 FIELD_TYPE_CONTRACTS["tender.pm_req.exclusive"] = "true 是否须专职无在建;项目负责人专职要求;无明示给 null。"
 FIELD_TYPE_CONTRACTS["tender.subcontract_limit.allowed"] = "true 是否允许分包;招标分包限制;无明示给 null。"
 FIELD_TYPE_CONTRACTS["tender.subcontract_limit.scope"] = '"主体工程" 允许分包的范围;招标分包范围;无明示给 null。'
+# A-ADJ-3(2026-11-10):名称域 by-name(L1-007 消费);位置域另见 tender.signature_slots(L2-030),异源禁合并。
 FIELD_TYPE_CONTRACTS["tender.required_signatures"] = '["签字盖章处名称"] 字符串列表;招标要求签章的位置清单;无明示给空数组。'
 FIELD_TYPE_CONTRACTS["tender.format_requirements.copies"] = "4 份数;招标格式份数要求;无明示给 null。"
 FIELD_TYPE_CONTRACTS["tender.format_requirements.toc"] = "true 是否须目录;招标格式目录要求;无明示给 null。"

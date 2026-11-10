@@ -383,6 +383,8 @@ rules:
     fix_tpl: "补附满足数量与年限要求的类似业绩证明(中标通知书/合同/验收证明)"
     confidence_gate: 0.75
     enabled: true
+  # L1-007 签章缺失;tender.required_signatures=名称域 by-name(本卡消费,A-ADJ-3 2026-11-10);
+  # 位置域 signature_slots=L2-030 by-no 专责,两键异源各守其职禁合并(brief 23e1294aa)
   - id: L1-007
     name: 签章完整
     layer: L1
@@ -937,7 +939,8 @@ rules:
   # 授权委托书件主责留 repo 既有 L1-008(fatal,禁改检查体,A-续-②)。L1-006 precondition 同批兑付
   # C-17(A-续-③,凭证缺失场景不适用,L2-033 主责独报)。L2-030 抑制面:eval_core 聚合后
   # _fold_issues_by_primary(out,"L1-007",("L2-030",))(A-续-①:签章存在性+有效性主责 L1-007,
-  # §4.7.2 矩阵方向;rule 级折叠无 entity 条件,entity 级细化挂账)。──
+  # §4.7.2 矩阵方向;rule 级折叠无 entity 条件,entity 级细化挂账)。A-ADJ-3(2026-11-10 brief 23e1294aa):
+  # required_signatures=名称域 by-name(L1-007 消费)/signature_slots=位置域 by-no(L2-030 消费),异源各守其职禁合并。──
   - id: L2-030
     name: 签署位齐全
     layer: L2
@@ -1084,7 +1087,7 @@ rules:
     enabled: true
   # ── 批七(A-β7-①..⑥ 修订版,2026-11-08):§6.1 ❌4 消费规则四条(叶平键 inputs,A-β7-②③ 裁决)──
   # L1-004(hyb,fatal):项目负责人资格/社保/无在建——det 粗筛=证书清单非空出候选,模型确认
-  # 类别匹配/社保达标/无在建/主体核验;A-β7-④ 窄化:business_items 跨引维度挂账;
+  # 类别匹配/社保达标/无在建/主体核验;A-β7-④ 窄化:business_items 跨引维度挂账→A-ADJ-2(2026-11-10 brief 23e1294aa)裁决维持窄化销账(det 重复建模模型已判语义=反模式);
   # A-β7-③ 裁决:inputs 叶平键(容器键 bid.pm/tender.pm_req 不入 flat 字段,消费死锁)
   - id: L1-004
     name: 项目负责人资格、社保与无在建
@@ -1145,7 +1148,7 @@ rules:
     confidence_gate: 0.75
     enabled: true
   # L1-026(det,fatal):递交时间符合——A-β7-⑤ v1 只落时间维(L3-014 字符串日期比较先例逐字同构);
-  # 「递交方式在允许集合」挂账(规格无允许集合字段源,bid.submit_method 无消费不落)
+  # 「递交方式在允许集合」挂账(规格无允许集合字段源,bid.submit_method 无消费不落);A-ADJ-1(2026-11-10 brief 23e1294aa)=live 批先验条件触发,21 叶键 live 回采证 tender 可稳定抽方式集合方开字段批
   - id: L1-026
     name: 递交时间符合
     layer: L1
