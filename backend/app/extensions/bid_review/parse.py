@@ -100,13 +100,22 @@ async def _ocr_builtin(name: str, data: bytes, mime: str) -> str:
     fitz 包一层单页 PDF 再投递,复用同一服务契约。"""
     url = OCR_SERVICE_URL.rstrip("/") + "/ocr"
     if not mime.endswith("pdf"):
+        # 批十八(bug-4290):fitz 包 PDF 失败(EMF/WMF 矢量图 FzErrorFormat)原样
+        # 逃出重试网 → parse_raw gather 传播 → 整文档 parse 炸(docstring 承诺的
+        # 「单图失败→空文本」失败隔离未兑现,生产=任务卡 _infra_fail 重投)。
+        # 此处降级 ""(该图 OCR segment 保留空占位),隔离律兑现;EMF 本就非
+        # rapidocr 可读形态,无信息损失。
         import fitz
 
-        buf = io.BytesIO()
-        with fitz.open() as doc:
-            page = doc.new_page(width=612, height=792)
-            page.insert_image(page.rect, stream=data)
-            buf.write(doc.tobytes())
+        try:
+            buf = io.BytesIO()
+            with fitz.open() as doc:
+                page = doc.new_page(width=612, height=792)
+                page.insert_image(page.rect, stream=data)
+                buf.write(doc.tobytes())
+        except Exception as exc:  # noqa: BLE001
+            logger.warning("builtin OCR image wrap failed for %s: %r", name, exc)
+            return ""
         data, mime, name = buf.getvalue(), "application/pdf", f"{name}.pdf"
     last: Exception | None = None
     for _ in range(2):
@@ -140,11 +149,15 @@ async def _ocr_openai_vision(entry: dict, name: str, data: bytes, mime: str) -> 
             }
         ],
     }
+    # 批十八(bug-4289):空 api_key(免鉴权自托管服务,如 llama.cpp)原发
+    # f"Bearer " → httpx LocalProtocolError(Illegal header value)→ 请求全败静默
+    # ""(resolve 侧明放空 key,client 侧却发不出=死锁);空 key 免 Authorization 头。
+    headers = {"Authorization": f"Bearer {entry['api_key']}"} if str(entry.get("api_key") or "").strip() else {}
     last: Exception | None = None
     for _ in range(2):
         try:
             async with httpx.AsyncClient(timeout=300.0) as client:
-                resp = await client.post(url, json=payload, headers={"Authorization": f"Bearer {entry['api_key']}"})
+                resp = await client.post(url, json=payload, headers=headers)
                 resp.raise_for_status()
                 return str(resp.json()["choices"][0]["message"]["content"] or "").strip()
         except Exception as exc:  # noqa: BLE001

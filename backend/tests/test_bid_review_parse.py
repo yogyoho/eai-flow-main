@@ -364,3 +364,47 @@ async def test_zip_pdf_scan_ocr_failure_isolated(base):
     assert out["status"] == "parsed"
     ocr = next(s for s in parse.load_segments("u1", "t-zipfail", entry["slug"]) if s["kind"] == "ocr")
     assert ocr["text"] == "" and ocr["asset_id"] and ocr["source"] == "docs/s.pdf"
+
+
+@pytest.mark.asyncio
+async def test_builtin_ocr_wrap_failure_isolated():
+    """批十八 bug-4290:fitz 包 PDF 失败(EMF/WMF 等不可编码字节)→ "" 隔离,
+    不再逃出重试网炸整文档 parse(docstring「单图失败→空文本」律兑现)。"""
+    out = await parse._ocr_builtin("chart.emf", b"not-an-image-format", "image/emf")
+    assert out == ""
+
+
+@pytest.mark.asyncio
+async def test_openai_vision_empty_api_key_no_auth_header(monkeypatch):
+    """批十八 bug-4289:空 api_key(免鉴权自托管服务)不得发 Authorization 头
+    (原 f"Bearer " → httpx LocalProtocolError → 请求全败静默 "");非空 key 照发。"""
+    captured: list = []
+
+    class _Resp:
+        def raise_for_status(self):
+            pass
+
+        def json(self):
+            return {"choices": [{"message": {"content": "转写文本"}}]}
+
+    class _Client:
+        def __init__(self, **kw):
+            pass
+
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, *a):
+            return False
+
+        async def post(self, url, **kw):
+            captured.append(kw.get("headers"))
+            return _Resp()
+
+    monkeypatch.setattr(parse.httpx, "AsyncClient", _Client)
+    entry0 = {"name": "s", "base_url": "http://ocr.local/v1", "api_key": "", "model": "m"}
+    assert await parse._ocr_openai_vision(entry0, "a.png", b"x", "image/png") == "转写文本"
+    entry1 = {**entry0, "api_key": "sk-x"}
+    assert await parse._ocr_openai_vision(entry1, "a.png", b"x", "image/png") == "转写文本"
+    assert captured[0] == {}  # 空 key:无 Authorization(死锁修复面)
+    assert captured[1]["Authorization"] == "Bearer sk-x"
