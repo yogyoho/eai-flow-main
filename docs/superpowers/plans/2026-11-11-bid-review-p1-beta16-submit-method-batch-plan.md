@@ -35,16 +35,25 @@ eval_core 统一剥 None+缺字段门先咬 → 直评/金标准面防御性硬�
 
 ## 任务
 
-- [ ] T1 引擎面:rulepack L1-026(inputs+2+dict-step optional 方式集维+comment 挂账解除注记);
+- [x] T1 引擎面:rulepack L1-026(inputs+2+dict-step optional 方式集维+comment 挂账解除注记);
   expr.py `_covers`(None 双侧 KeyError)+ 注册表替换 lambda;skill 副本 eval_det.py 镜像;
   labels.py +2;锁面:EXPECTED_UNIVERSE +2 字母序插入 + 126→128(registry test_anchored +
   rule_families 两处)+ 头注 114→116;钉:expr covers KeyError 双侧 ×1、runner L1-026 三态
   (缺席零参与/方式在外 FAIL/方式在内 PASS)+ KeyError 路由 UNKNOWN ×1、extract 两契约
   注册+prompt 可达 ×1;门禁 family `-k bid_review` 只增(基线 765p/6s/0f),lint 双清。
-- [ ] T2 真实件复采:gateway restart + realcase 探针 ×3 + 定点判读:submit_method/
+  → 兑付:96b0b39a8,769p/6s/0f(+4 钉),lint 双清,零翻红(optional「夹具无新字段
+  行为不变」实证),锁面 128/116/51/60/83/60。
+- [x] T2 真实件复采:gateway restart + realcase 探针 ×3 + 定点判读:submit_method/
   allowed_submit_methods 抽出率;L1-026 方式集维 live verdict;golden/family 零翻红;
   模型方差族律:单样本不做硬锚,规则 id 级翻转判读。
-- [ ] T3 收口:plan 勾兑 + spec 批十六段 + wolf 三件 + session memory + closure。
+  → 兑付:探针 3/3 净(samples 3/2/2 exit 0;21 叶键锚定集不含新键,定点走 j_judge):
+  tender.allowed_submit_methods=['电子版上传'] 抽出✓(批十二前附表先验 live 复现)、
+  bid.submit_method='电子版上传' 抽出✓、方式集维 covers PASS 零 issue、时间维双缺
+  →UNKNOWN 字段缺失门(optional 活体正确);covers(null) 硬化零扰动;L1-010 1F
+  真实缺陷(报价加总 vs 大写,批前既有面);批十五契约稳定复现(deposit="10000"/
+  license_name=主体名/bid_scope/required_qual_level=None;bid_deadline 单样本
+  None=跨样本方差不硬锚)。
+- [x] T3 收口:plan 勾兑 + spec 批十六段 + wolf 三件 + session memory + closure。
 
 ## 挂账
 
