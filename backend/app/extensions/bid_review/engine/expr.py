@@ -18,7 +18,22 @@ class RulePackError(ExprError):
     pass
 
 
-_BIN = {"<=": operator.le, ">=": operator.ge, "==": operator.eq, "!=": operator.ne, "<": operator.lt, ">": operator.gt, "in": lambda a, b: a in (b or [])}
+def _safe_cmp(name, op):
+    # 批十七(_BIN/_OPS 全局 TypeError 硬化):误配型比较(str<=dict 等)TypeError 逃
+    # run_det_rule 唯一 except KeyError 网 → eval_core 逐规则兜底 ERROR(基础设施语义误占
+    # 「数据不可判」位,批三五值域);包裹成 KeyError → need_human 诚实网(批十四 L1-009
+    # 单点 num() 修复的全局化)。
+    def f(a, b):
+        try:
+            return op(a, b)
+        except TypeError as exc:
+            raise KeyError(f"{name} 类型不可比 {a!r} vs {b!r}") from exc
+
+    return f
+
+
+_BIN_RAW = {"<=": operator.le, ">=": operator.ge, "==": operator.eq, "!=": operator.ne, "<": operator.lt, ">": operator.gt, "in": lambda a, b: a in (b or [])}
+_BIN = {k: _safe_cmp(k, op) for k, op in _BIN_RAW.items()}
 _FUNCS = {"normalize_unit", "number_to_words", "months_ago", "years", "codes", "covers", "keywords", "sum", "count", "contains_any", "imply", "all_equal", "close", "regex", "subset_of", "level_ge", "col", "num"}
 _QUANT = {"all", "any", "every", "exists"}
 _FORM2 = {"all": "all", "any": "any", "every": "all", "exists": "any"}
@@ -348,9 +363,21 @@ def _num(v):
         s = v.strip().replace(",", "").rstrip("%").strip()
         if s.endswith("元"):
             s = s[: -len("元")].strip()
+        # 批十七(万/亿乘数,原批十四挂账):「230万」「2.3亿」类单后缀乘数 → Decimal 精确乘
+        # (2.3×1e8 二进制浮点漂移 230000000.00000003,Decimal 保 230000000.0);无乘数路径
+        # float(s) 逐字节保留;大写汉字(「十万」类)/复合乘数(「万万」)非证形态,float 败
+        # 走 KeyError 诚实网。Boolean 未及:万/亿在抽取域=数量级词,非布尔语义。
+        mult = Decimal(1)
+        for suf, m in (("亿", Decimal(10) ** 8), ("万", Decimal(10) ** 4)):
+            if s.endswith(suf):
+                mult = m
+                s = s[: -len(suf)].strip()
+                break
         try:
-            return float(s)
-        except ValueError as exc:
+            if mult == 1:
+                return float(s)
+            return float(Decimal(s) * mult)
+        except (ValueError, ArithmeticError) as exc:
             raise KeyError(f"num 无法数值化 {v!r}") from exc
     raise KeyError(f"num 无法数值化 {v!r}")
 

@@ -1204,3 +1204,14 @@ def test_l1_026_covers_null_routes_need_human():
     }
     issues = run_det_rule(rule, fields)
     assert issues[0]["verdict"] == "UNKNOWN" and "need_human" in issues[0]["message"]
+
+
+def test_ops_typeerror_routes_need_human():
+    # 批十七(_OPS 全局 TypeError 硬化):卡 op 形态(left/right)误配型比较——str vs int
+    # 原 TypeError 逃 except KeyError → eval_core 逐规则兜底 ERROR;包裹后 KeyError →
+    # need_human UNKNOWN(消息含类型不可比,ERROR 位归还基础设施语义,批三五值域)。
+    pack = load_rulepack(PACK)
+    rule = {r.id: r for r in pack.rules}["L1-005"]  # op gte, left bid.validity_days
+    fields = {"bid.validity_days": "九十天", "tender.required_validity_days": 90}
+    issues = run_det_rule(rule, fields)
+    assert issues[0]["verdict"] == "UNKNOWN" and "类型不可比" in issues[0]["message"]

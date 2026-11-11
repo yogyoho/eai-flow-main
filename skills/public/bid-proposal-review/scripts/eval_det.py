@@ -24,8 +24,21 @@ except ImportError:
 
 class ExprError(ValueError): ...
 
-_BIN = {"<=": operator.le, ">=": operator.ge, "==": operator.eq, "!=": operator.ne,
-        "<": operator.lt, ">": operator.gt, "in": lambda a, b: a in (b or [])}
+def _safe_cmp(name, op):
+    # 批十七(TypeError 硬化镜像,与引擎 expr.py 同网):误配型比较 TypeError 包 KeyError
+    # (副本 runner 只捕 KeyError→need_human)。
+    def f(a, b):
+        try:
+            return op(a, b)
+        except TypeError as exc:
+            raise KeyError(f"{name} 类型不可比 {a!r} vs {b!r}") from exc
+
+    return f
+
+
+_BIN_RAW = {"<=": operator.le, ">=": operator.ge, "==": operator.eq, "!=": operator.ne,
+            "<": operator.lt, ">": operator.gt, "in": lambda a, b: a in (b or [])}
+_BIN = {k: _safe_cmp(k, op) for k, op in _BIN_RAW.items()}
 _TOK = re.compile(r'\s*(>=|<=|==|!=|[-\w.]+|[\[\]*"\'(),<>])')
 
 def _tokens(s):
@@ -225,9 +238,20 @@ def _num(v):
         s = v.strip().replace(",", "").rstrip("%").strip()
         if s.endswith("元"):
             s = s[: -len("元")].strip()
+        # 批十七(万/亿乘数镜像,与引擎 expr.py 同网):单后缀 Decimal 精确乘;无乘数路径 float(s) 逐字节保留。
+        from decimal import Decimal
+
+        mult = Decimal(1)
+        for suf, m in (("亿", Decimal(10) ** 8), ("万", Decimal(10) ** 4)):
+            if s.endswith(suf):
+                mult = m
+                s = s[: -len(suf)].strip()
+                break
         try:
-            return float(s)
-        except ValueError as exc:
+            if mult == 1:
+                return float(s)
+            return float(Decimal(s) * mult)
+        except (ValueError, ArithmeticError) as exc:
             raise KeyError(f"num 无法数值化 {v!r}") from exc
     raise KeyError(f"num 无法数值化 {v!r}")
 
@@ -312,7 +336,7 @@ def run_rule(rule: dict, fields: dict) -> list:
                 issues.append(_issue(rule, fields, {"missing": miss, "extra": extra}))
         elif chk["op"] in ("lte", "gte", "eq"):
             l, r = _val(chk["left"], fields), _val(chk["right"], fields)
-            if not {"lte": operator.le, "gte": operator.ge, "eq": operator.eq}[chk["op"]](l, r):
+            if not {k: _safe_cmp(k, op) for k, op in (("lte", operator.le), ("gte", operator.ge), ("eq", operator.eq))}[chk["op"]](l, r):
                 issues.append(_issue(rule, fields, {}))
         else:
             raise ExprError(f"规则 {rule['id']} 使用未支持算子 {chk['op']}")

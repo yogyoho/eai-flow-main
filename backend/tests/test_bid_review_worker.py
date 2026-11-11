@@ -247,9 +247,11 @@ async def test_advance_all_null_fields_need_human_not_crash(db, tmp_rulepack):
 
 @pytest.mark.asyncio
 async def test_rule_crash_isolated_to_need_human(db, crash_rulepack):
-    """fix-round 评审项:单规则求值意外(KeyError 之外,如 str 与 float 比较 TypeError)被
-    _run_det_stage 逐规则隔离降级 ERROR——兄弟规则照常执行、任务照常到 done;
-    禁止单个字段类型偏差把整条审查任务经 _infra_fail 重试 3 次打 failed(可用性失败)。"""
+    """fix-round 评审项:单规则求值意外被逐规则隔离——兄弟规则照常执行、任务照常到 done;
+    禁止单个字段类型偏差把整条审查任务经 _infra_fail 重试 3 次打 failed(可用性失败)。
+    批十七(2026-11-11)语义升级:数据型误配(str 与 float 比较 TypeError)经 _BIN/_OPS
+    TypeError→KeyError 硬化路由 need_human UNKNOWN(数据不可判),ERROR 位归还基础设施
+    语义(RuntimeError 类真故障,eval_core 逐规则隔离仍 ERROR,见 eval_core 钉)。"""
     t = await crud.create_task(db, owner_id="u1")
     fields = {"bid.total_price": "一百万整", "tender.max_price": 1000000, "bid.subtotal": 999}
 
@@ -260,7 +262,7 @@ async def test_rule_crash_isolated_to_need_human(db, crash_rulepack):
     assert task.status == "done"
     issues = await crud.list_issues(db, task_id=t.id, owner_id="u1")
     by_rule = {i.rule_id: i for i in issues}
-    assert by_rule["T1-101"].verdict == "ERROR" and by_rule["T1-101"].need_human is True, "崩溃规则应逐规则隔离降级 ERROR"
+    assert by_rule["T1-101"].verdict == "UNKNOWN" and by_rule["T1-101"].need_human is True, "数据型误配(TypeError→KeyError 硬化)应降 need_human UNKNOWN"
     assert by_rule["T1-102"].verdict == "FAIL", "兄弟规则不受单规则崩溃影响,应照常产出 FAIL"
 
 

@@ -16,10 +16,13 @@ import yaml
 
 from app.extensions.bid_review.engine.anchors import anchor_rule_paths
 from app.extensions.bid_review.engine.attachments import match_attachments, normalize_name
-from app.extensions.bid_review.engine.expr import ExprError, RulePackError, eval_expr, fields_used, validate_expr
+from app.extensions.bid_review.engine.expr import ExprError, RulePackError, _safe_cmp, eval_expr, fields_used, validate_expr
 from app.extensions.bid_review.engine.verdicts import VERDICT_FAIL, VERDICT_UNKNOWN
 
-_OPS = {"lte": operator.le, "gte": operator.ge, "eq": operator.eq}
+# 批十七(_OPS 全局 TypeError 硬化):卡 op 形态 left/right 比较与表达式面 _BIN 同律——误配型
+# TypeError 包 KeyError → run_det_rule except KeyError → need_human(修复前逃网 → eval_core
+# 兜底 ERROR,基础设施语义误占;批十四 L1-009 单点修复的全局化)
+_OPS = {k: _safe_cmp(k, op) for k, op in (("lte", operator.le), ("gte", operator.ge), ("eq", operator.eq))}
 # att_* = L2 P1 附件核对(spec 2026-11-02 §3)+L2-023 指纹通道(spec 2026-11-04 §2.1)+L2-052 年份连续性(P1-β批九 2026-11-08)
 _KNOWN_OPS = {*_OPS, "and", "or", "all", "set_eq", "att_check", "att_count", "att_missing_rows", "att_year_span"}  # steps 形态无 op 键,单独判;or = check-op 层析取(P1-β批二)
 _UNIT_CN = {"day": "天", "month": "个月", "week": "周", "percent": "%"}

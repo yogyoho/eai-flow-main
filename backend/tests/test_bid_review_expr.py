@@ -139,3 +139,28 @@ def test_covers_null_guard():
         eval_expr("covers(bid.m, tender.allowed)", {"bid.m": None, "tender.allowed": ["电子版"]})
     assert eval_expr("covers(bid.m, tender.allowed)", {"bid.m": ["电子版", "平台线上"], "tender.allowed": "线上"}) is True
     assert eval_expr("covers(bid.m, tender.allowed)", {"bid.m": ["电子版", "纸质"], "tender.allowed": "线上"}) is False
+
+
+def test_bin_typeerror_hardened():
+    # 批十七(_BIN 全局 TypeError 硬化):误配型比较 str<=int / {} in 5 原 TypeError 逃
+    # run_det_rule KeyError 网 → eval_core 兜底 ERROR(基础设施语义误占);包裹后 KeyError
+    # → need_human 诚实网(批十四 L1-009 单点 num() 修复的全局化)。
+    with pytest.raises(KeyError):
+        eval_expr("bid.x < tender.y", {"bid.x": "abc", "tender.y": 5})
+    with pytest.raises(KeyError):
+        eval_expr("bid.x in tender.list", {"bid.x": {}, "tender.list": 5})
+    assert eval_expr("bid.x < tender.y", {"bid.x": 1, "tender.y": 2}) is True
+
+
+def test_num_wan_yi_multiplier():
+    # 批十七(万/亿乘数,原批十四 YAGNI 挂账升格):「230万」「2.3亿」类单后缀乘数 → Decimal
+    # 精确乘(2.3×1e8 二进制浮点漂移 230000000.00000003,Decimal 保 230000000.0);无乘数路径
+    # (225000元/6%)逐字节保留;大写汉字(「十万」)/复合乘数(「万万」)非证形态 → KeyError。
+    assert eval_expr("num(bid.x) == 2300000", {"bid.x": "230万"}) is True
+    assert eval_expr("num(bid.x) == 230000000", {"bid.x": "2.3亿"}) is True
+    assert eval_expr("num(bid.x) == 12300000", {"bid.x": "1,230万元"}) is True
+    assert eval_expr("num(bid.x) == 225000", {"bid.x": "225000元"}) is True
+    assert eval_expr("num(bid.x) == 6", {"bid.x": "6%"}) is True
+    for bad in ("十万", "2.3万万"):
+        with pytest.raises(KeyError):
+            eval_expr("num(bid.x) == 1", {"bid.x": bad})
