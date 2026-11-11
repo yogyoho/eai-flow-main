@@ -34,6 +34,7 @@ FIELD_LABELS: dict[str, str] = {
     "tender.device_models": "招标设备型号要求",
     "tender.scoring_items": "评分办法项",  # B4 评分覆盖度(spec §5)
     "deviation.items": "响应偏离表",  # B9(spec 2026-11-01 §1.1)
+    "tender.allowed_submit_methods": "允许递交方式集合",  # 批十六 A-ADJ-1 方式集维 L1-026 inputs
     "tender.attachment_requirements": "附件要求",  # L2 P1 附件核对(spec 2026-11-02 §1)
     # ── 批八扫尾(2026-11-08,plan A-β8-④:universe−labels 差集 54 兑付;批六/批七沿袭债)──
     "tender.commitment_sections": "承诺类章节要求",  # 批六 T1 L2-013 inputs
@@ -134,6 +135,7 @@ FIELD_LABELS: dict[str, str] = {
     "bid.section_tree": "章节树",  # M2 章节层
     "bid.service_commitments": "分包相关服务承诺",  # 批七 L1-020 inputs
     "bid.signature_slots": "投标签署位(实际)",  # 批二续 T3 L2-030
+    "bid.submit_method": "投标递交方式",  # 批十六 A-ADJ-1 方式集维 L1-026 inputs
     "bid.submit_time": "投标文件递交时间",  # 批七 L1-026 inputs
     "bid.table_cells": "表格单元格",  # M3 表格层
     "bid.tables": "表格骨架",  # 批六 T2(服务端派生)

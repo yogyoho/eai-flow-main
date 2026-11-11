@@ -25,8 +25,8 @@ from app.extensions.bid_review.engine.rule_runner import RulePackError, load_rul
 # + P1-β批六 T1-T5 tender/bid 字段实补 13 路径(tender 8+bid 4 模型抽取契约经 T3 五规则+T4 L1-003/L1-006 inputs
 #   入宇宙;bid.tables 表格骨架服务端派生经 L2-040 inputs)= 105——逐位锁定。
 # + P1-β批七 §6.1 ❌4 消费面 21 路径(L1-004 hyb 6+L1-020 sem 3+L1-022 op:and 合规式 10+L1-026 det 1+L1-007 富化 1
-#   五规则 inputs 声明入包,T2 四规则+T3 富化兑付;A-β7-② 修订:容器契约→21 叶平键)= 126——逐位锁定。
-# 首段 prompt 路径 = EXPECTED_UNIVERSE − SECOND_STAGE_FIELDS − SERVER_DERIVED_PATHS = 114(126−6−6;批七 21 路径全模型首段契约;前值 93=105−6−6)。
+#   五规则 inputs 声明入包,T2 四规则+T3 富化兑付;A-β7-② 修订:容器契约→21 叶平键;批十六 A-ADJ-1 方式集 +2)= 128——逐位锁定。
+# 首段 prompt 路径 = EXPECTED_UNIVERSE − SECOND_STAGE_FIELDS − SERVER_DERIVED_PATHS = 116(128−6−6;批七 21 路径全模型首段契约;前值 93=105−6−6)。
 EXPECTED_UNIVERSE = [
     "bid.alternative_price_offers",
     "bid.amount_occurrences",
@@ -92,6 +92,7 @@ EXPECTED_UNIVERSE = [
     "bid.service_commitments",  # P1-β批七 分包相关服务承诺(L1-020 inputs,2026-11-08)
     "bid.signature_slots",  # P1-β批二续 T3 L2-030 投标实际签署位(2026-11-07)
     "bid.similar_performances",
+    "bid.submit_method",  # P1-β批十六 A-ADJ-1 递交方式(L1-026 方式集维,2026-11-11)
     "bid.submit_time",  # P1-β批七 投标文件递交时间(L1-026 inputs,2026-11-08)
     "bid.subtotal",
     "bid.table_cells",
@@ -107,6 +108,7 @@ EXPECTED_UNIVERSE = [
     "bid.warranty_period",
     "deviation.items",
     "project.entity_whitelist.names",
+    "tender.allowed_submit_methods",  # P1-β批十六 A-ADJ-1 允许递交方式集合(L1-026 方式集维,2026-11-11)
     "tender.attachment_requirements",
     "tender.bid_deadline",
     "tender.bid_scope",
@@ -182,9 +184,10 @@ def _synthetic_rule(rid: str, layer: str, severity: str) -> dict:
 
 
 class TestUniverse:
-    def test_anchored_126(self):
-        # 105→126(P1-β批七 §6.1 ❌4 消费面:21 叶平键经 L1-004/L1-020/L1-022/L1-026 inputs+L1-007 富化,2026-11-08;前值 92→105 系批六 T1-T5)
-        assert len(EXPECTED_UNIVERSE) == 126
+    def test_anchored_128(self):
+        # 105→126(P1-β批七 §6.1 ❌4 消费面:21 叶平键经 L1-004/L1-020/L1-022/L1-026 inputs+L1-007 富化,2026-11-08;前值 92→105 系批六 T1-T5);
+        # 126→128(P1-β批十六 A-ADJ-1 方式集维:L1-026 inputs +2 bid.submit_method/tender.allowed_submit_methods,2026-11-11)
+        assert len(EXPECTED_UNIVERSE) == 128
         assert registry.universe() == EXPECTED_UNIVERSE
 
     def test_second_stage_fields(self):

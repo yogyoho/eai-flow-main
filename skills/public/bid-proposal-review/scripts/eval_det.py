@@ -231,12 +231,18 @@ def _num(v):
             raise KeyError(f"num 无法数值化 {v!r}") from exc
     raise KeyError(f"num 无法数值化 {v!r}")
 
+def _covers(scope, need):
+    # A-ADJ-1 covers(null) 硬化镜像(批十六,2026-11-11,与引擎 expr.py 同网):任一侧 None → KeyError(need_human 通路)。
+    if scope is None or need is None:
+        raise KeyError("covers 任一侧 null(need_human 通路)")
+    return str(need) in str(scope)
+
 _BUILTIN = {
     "normalize_unit": _normalize_unit,
     "number_to_words": _number_to_words,
     # codes falsy 过滤(批十四 W-real-3 镜像:None/'' 入集 → 渲染垃圾)
     "codes": lambda rows: [c for c in (r.get("code") for r in (rows or [])) if c],
-    "covers": lambda scope, need: str(need) in str(scope or ""),
+    "covers": _covers,
     "keywords": lambda name: re.findall(r"[一-龥]{2,}", str(name or "")),
     "sum": lambda vals: float(sum(v for v in (vals or []) if isinstance(v, (int, float)))),
     "num": _num,

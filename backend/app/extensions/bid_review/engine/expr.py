@@ -355,6 +355,15 @@ def _num(v):
     raise KeyError(f"num 无法数值化 {v!r}")
 
 
+def _covers(scope, need):
+    # A-ADJ-1 covers(null) 硬化(批十六,2026-11-11):任一侧 None → KeyError 入 need_human 诚实网。
+    # 原 str(None)="None" in str(scope or "") → False → FAIL 错位(subset_of A-β2-① 同类守卫);
+    # 活体面 None 由 eval_core 统一剥离+缺字段门先咬不可达,此守卫=直评/金标准面防御。
+    if scope is None or need is None:
+        raise KeyError("covers 任一侧 null(need_human 通路)")
+    return str(need) in str(scope)
+
+
 _BUILTIN = {
     "normalize_unit": _normalize_unit,
     "number_to_words": _number_to_words,
@@ -362,7 +371,7 @@ _BUILTIN = {
     "years": _years,
     # codes falsy 过滤(批十四 W-real-3:None/'' 入集 → message 渲染「漏项 ,增项 None」垃圾)
     "codes": lambda rows: [c for c in (r.get("code") for r in (rows or [])) if c],
-    "covers": lambda scope, need: str(need) in str(scope or ""),
+    "covers": _covers,
     "keywords": lambda name: re.findall(r"[一-龥]{2,}", str(name or "")),
     # sum 累加迁 Decimal(str(v))(金额加总链浮点漂移,0.1+0.2=0.30000000000000004;A-β1-② 挂账部分兑付;float 出口对外契约不变):
     # 过滤闸与 extract._num/_amount 门对齐——bool 是 int 子类(True 被当 1 计入)与 nan/inf(非金额)一并排除,非数值项静默跳过=既有语义

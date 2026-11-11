@@ -1150,17 +1150,24 @@ rules:
     fix_tpl: "按招标格式要求调整份数、目录与页码编制,补齐密封标识"
     confidence_gate: 0.75
     enabled: true
-  # L1-026(det,fatal):递交时间符合——A-β7-⑤ v1 只落时间维(L3-014 字符串日期比较先例逐字同构);
-  # 「递交方式在允许集合」挂账(规格无允许集合字段源,bid.submit_method 无消费不落);A-ADJ-1(2026-11-10 brief 23e1294aa)=live 批先验条件触发,21 叶键 live 回采证 tender 可稳定抽方式集合方开字段批
+  # L1-026(det,fatal):递交时间与方式符合——A-β7-⑤ v1 只落时间维(L3-014 字符串日期比较先例逐字同构);
+  # A-ADJ-1 方式集维兑付(批十六,2026-11-11,原挂账「规格无允许集合字段源,bid.submit_method 无消费不落」):
+  # 批十二先验(探针 58a10ab60,brief 23e1294aa)证真实招标文前附表方式集可稳定抽 → 字段批开;
+  # dict-step optional=方式集双侧(bid.submit_method+tender.allowed_submit_methods)任一缺席时
+  # step 零参与(批六T4 A-β6-⑧ 先例,时间维旧行为逐字节保留);covers 字串包含语义(spec §7)
   - id: L1-026
-    name: 递交时间符合
+    name: 递交时间与方式符合
     layer: L1
     type: deterministic
     applies_to: ["*"]
-    inputs: [bid.submit_time, tender.bid_deadline]
+    inputs: [bid.submit_time, tender.bid_deadline, bid.submit_method, tender.allowed_submit_methods]
     check:
       steps:
         - "bid.submit_time <= tender.bid_deadline"
+        - optional: [bid.submit_method, tender.allowed_submit_methods]
+          expr: "covers(tender.allowed_submit_methods, bid.submit_method)"
+          message_tpl: "递交方式 {bid.submit_method} 不在招标允许递交方式集合 {tender.allowed_submit_methods}"
+          fix_tpl: "按招标前附表允许的递交方式递交投标文件;方式不符按废标处理流程上报"
     severity: fatal
     evidence: [A-BID-LETTER, A-TENDER-NOTICE]
     message_tpl: "递交时间晚于投标截止:递交 {bid.submit_time} / 截止 {tender.bid_deadline}"

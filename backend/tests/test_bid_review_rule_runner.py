@@ -1162,3 +1162,45 @@ def test_l1_011_none_code_clean_render():
         "bid.boq_items": [{"code": "BM-001"}, {"code": None}],
     }
     assert run_det_rule(rule, clean) == []
+
+
+def test_l1_026_submit_method_dimension():
+    # 批十六(A-ADJ-1 方式集维,2026-11-11):dict-step optional 三态——
+    # ① 新键双侧缺席=step 零参与(时间维旧行为逐字节保留,批六T4「夹具无新字段行为不变」);
+    # ② 方式在允许集合外=FAIL(per-step message_tpl 独立话);
+    # ③ 方式在允许集合内=零 issue。
+    pack = load_rulepack(PACK)
+    rule = {r.id: r for r in pack.rules}["L1-026"]
+    on_time = {"bid.submit_time": "2026-11-08 16:00:00", "tender.bid_deadline": "2026-11-08 17:00:00"}
+    # ① 缺席零参与:准时+无方式集键 → 零 issue
+    assert run_det_rule(rule, dict(on_time)) == []
+    # ① 缺席零参与:逾期仍只时间维 FAIL,message 不含方式集话
+    late = {"bid.submit_time": "2026-11-08 18:00:00", "tender.bid_deadline": "2026-11-08 17:00:00"}
+    issues = run_det_rule(rule, late)
+    assert len(issues) == 1 and "递交时间晚于投标截止" in issues[0]["message"]
+    # ② 方式在外:准时但方式不在集合 → 1 条方式集 FAIL
+    outside = {**on_time, "bid.submit_method": "现场纸质", "tender.allowed_submit_methods": ["电子版上传", "纸质"]}
+    issues = run_det_rule(rule, outside)
+    assert len(issues) == 1 and issues[0]["verdict"] == "FAIL" and "现场纸质" in issues[0]["message"]
+    # ③ 方式在内:准时+方式在集合 → 零 issue
+    inside = {**on_time, "bid.submit_method": "纸质", "tender.allowed_submit_methods": ["电子版上传", "纸质"]}
+    assert run_det_rule(rule, inside) == []
+    # 单侧缺席(allowed 在场 method 缺席)= step 零参与(optional any-absent skip)
+    half = {**on_time, "tender.allowed_submit_methods": ["电子版上传"]}
+    assert run_det_rule(rule, half) == []
+
+
+def test_l1_026_covers_null_routes_need_human():
+    # 批十六(covers(null) 硬化端到端,2026-11-11):方式集键在场但值 None(直评面,eval_core
+    # 剥 None 后活体不可达)→ covers KeyError → run_det_rule KeyError 网 → UNKNOWN(need_human),
+    # 修复前为 False → FAIL 错位。
+    pack = load_rulepack(PACK)
+    rule = {r.id: r for r in pack.rules}["L1-026"]
+    fields = {
+        "bid.submit_time": "2026-11-08 16:00:00",
+        "tender.bid_deadline": "2026-11-08 17:00:00",
+        "bid.submit_method": "现场纸质",
+        "tender.allowed_submit_methods": None,
+    }
+    issues = run_det_rule(rule, fields)
+    assert issues[0]["verdict"] == "UNKNOWN" and "need_human" in issues[0]["message"]

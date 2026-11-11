@@ -772,3 +772,18 @@ def test_beta15_realcase_defect_contracts():
 
     prompt = build_extract_prompt([{"doc_id": "d1", "role": "tender", "text": "x"}], sorted(expected))
     assert "禁止填 true/false" in prompt and "营业执照" in prompt and "业绩表" in prompt
+
+
+def test_beta16_submit_method_contracts():
+    # 批十六(A-ADJ-1 方式集维,2026-11-11):递交方式两键契约入 prompt 面——
+    # L1-026 方式集维字段源(批十二先验:前附表可稳定抽);null 语义对齐 covers None 硬化
+    # (无明示给 null → eval_core 剥离 → 缺字段门,禁给空数组防 covers 空集 FAIL 错位)。
+    expected = {"tender.allowed_submit_methods", "bid.submit_method"}
+    contracts = set(FIELD_TYPE_CONTRACTS)
+    assert expected <= contracts
+    assert expected <= set(collect_field_paths())  # prompt 可达
+    a = FIELD_TYPE_CONTRACTS["tender.allowed_submit_methods"]
+    assert "递交方式" in a and "无明示给 null" in a
+    assert "无明示给 null" in FIELD_TYPE_CONTRACTS["bid.submit_method"]
+    prompt = build_extract_prompt([{"doc_id": "d1", "role": "tender", "text": "x"}], sorted(expected))
+    assert "递交方式" in prompt

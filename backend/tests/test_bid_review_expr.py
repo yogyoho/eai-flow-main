@@ -127,3 +127,15 @@ def test_codes_filters_falsy():
     # DSL 无列表字面量 → 期望集走字段
     assert eval_expr("codes(bid.boq_items) == bid.want", {"bid.boq_items": rows, "bid.want": ["BM-001", "BM-002"]}) is True
     assert eval_expr("codes(bid.boq_items) == bid.want", {"bid.boq_items": None, "bid.want": []}) is True
+
+
+def test_covers_null_guard():
+    # 批十六(A-ADJ-1 covers(null) 硬化,2026-11-11):任一侧 None → KeyError 入 need_human 诚实网
+    # (subset_of A-β2-① 先例;原 str(None)="None" in str(scope or "") → False → FAIL 错位;
+    # 活体面 eval_core 剥 None 不可达,此守卫=直评/金标准面防御;skill 副本 eval_det.py 同网镜像)。
+    with pytest.raises(KeyError):
+        eval_expr("covers(bid.m, tender.allowed)", {"bid.m": "现场纸质", "tender.allowed": None})
+    with pytest.raises(KeyError):
+        eval_expr("covers(bid.m, tender.allowed)", {"bid.m": None, "tender.allowed": ["电子版"]})
+    assert eval_expr("covers(bid.m, tender.allowed)", {"bid.m": ["电子版", "平台线上"], "tender.allowed": "线上"}) is True
+    assert eval_expr("covers(bid.m, tender.allowed)", {"bid.m": ["电子版", "纸质"], "tender.allowed": "线上"}) is False
