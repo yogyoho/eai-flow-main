@@ -38,14 +38,25 @@ None 3/3、m4 entries=0×3,与 m3 boq_rows=0 同域);③批十四挂账「_BIN �
 
 ## 任务
 
-- [ ] T1 引擎面:expr.py `_safe_cmp` 工厂+`_BIN` 包裹+`_num` 万/亿(Decimal);
+- [x] T1 引擎面:expr.py `_safe_cmp` 工厂+`_BIN` 包裹+`_num` 万/亿(Decimal);
   rule_runner.py `_OPS` 包裹(import _safe_cmp);skill 副本 eval_det.py 三面镜像
   (_BIN/op 分派/_num)+ selftest;钉:expr TypeError→KeyError ×1、num 万/亿 ×1、
   runner _OPS 误配型→UNKNOWN(非 ERROR)×1;门禁 family 只增(基线 769p/6s/0f),
   lint 双清,零锁面(128/116/51/60/83/60)。
-- [ ] T2 真实件复采:gateway restart + 探针 ×3 + j_judge:ERROR 面清零核验(硬化前
+  → 兑付:8005223e5,772p/6s/0f(+3 钉 +1 钉升级),lint 双清,selftest OK,零锁面。
+  钉升级:worker test_rule_crash_isolated 旧钉 str vs float TypeError→ERROR 与本批
+  硬化直接冲突(该场景正是硬化目标)=设计内翻转,升 UNKNOWN need_human;ERROR 位
+  归还 RuntimeError 真故障(eval_core 钉 RuntimeError→ERROR 不受影响仍护)。
+- [x] T2 真实件复采:gateway restart + 探针 ×3 + j_judge:ERROR 面清零核验(硬化前
   真实件 ERROR 计数对照)、verdict 分布零退化;②裁决入 spec 零代码。
-- [ ] T3 收口:plan 勾兑 + spec 批十七段 + wolf 三件 + session memory + closure。
+  → 兑付:探针 3/3 净(15U·0F PENDING_HUMAN / 2F·6U NOT_SUBMITTABLE / 9U·0F
+  PENDING_HUMAN)+ judge 定点(0 FAIL/0 ERROR/8 UNKNOWN 全字段缺失诚实网):
+  **零 ERROR 全样本**(批十四 num() 已吃掉 L1-009 误配面,硬化无潜伏反转,机制上
+  只 ERROR→UNKNOWN 单向不可能新增 FAIL);样本 2 的 2F=subtotal 在场性方差
+  (L1-010 报价加总链,judge 样本 subtotal 缺席同规则 UNKNOWN 同源诚实,批十三律
+  不硬锚);方式集键稳定复现(submit_method=电子版上传);probe adj1 面板示递交
+  方式线索行 live(「投标文件递交方式:客户端编制」);②裁决已入 spec。
+- [x] T3 收口:plan 勾兑 + spec 批十七段 + wolf 三件 + session memory + closure。
 
 ## 挂账
 
