@@ -2,8 +2,10 @@ import { describe, expect, it, rs } from "@rstest/core";
 
 import {
   ApiError,
+  adjudicateBaseline,
   createTask,
   exportReport,
+  feedbackIssue,
   listTasks,
 } from "@/extensions/bid-review/api";
 
@@ -110,5 +112,27 @@ describe("bid-review api", () => {
     const apiErr = err as ApiError;
     expect(apiErr.status).toBe(422);
     expect(apiErr.message).toBe("format 仅支持 md(html 导出属 M4)");
+  });
+
+  it("string bodies carry Content-Type application/json; FormData does not (bug-4291)", async () => {
+    // bug-4291:裸 string body 无 Content-Type → 浏览器默认 text/plain → FastAPI
+    // 按字符串传 pydantic → 422(基准确认页「采纳为基准值」首现)。钉双面:string
+    // JSON POST 补头;FormData multipart 不受影响(浏览器自设 boundary 头)。
+    await adjudicateBaseline("t1", { path: "bid.x", value: 1 });
+    await feedbackIssue("i1", { action: "confirm" });
+    await createTask("quick", {
+      tender: [new File(["t"], "t.txt")],
+      bid: [new File(["b"], "b.txt")],
+    });
+    const [adj, fb, create] = calls.slice(-3);
+    expect(adj?.path).toBe("/api/extensions/bid-review/tasks/t1/baselines/adjudicate");
+    expect(new Headers(adj?.init?.headers).get("Content-Type")).toBe(
+      "application/json",
+    );
+    expect(fb?.path).toBe("/api/extensions/bid-review/issues/i1/feedback");
+    expect(new Headers(fb?.init?.headers).get("Content-Type")).toBe(
+      "application/json",
+    );
+    expect(new Headers(create?.init?.headers).get("Content-Type")).toBeNull();
   });
 });

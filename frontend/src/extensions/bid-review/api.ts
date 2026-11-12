@@ -29,7 +29,13 @@ export class ApiError extends Error {
 }
 
 async function requestRaw(path: string, init?: RequestInit): Promise<Response> {
-  const res = await fetch(`${API_BASE}${path}`, init);
+  const headers = new Headers(init?.headers);
+  // bug-4291:fetch 发 string body 不带 Content-Type(默认 text/plain)→ FastAPI 按
+  // 字符串传 pydantic → 422 "Input should be a valid dictionary..."。string body =
+  // JSON.stringify 产物,统一补 JSON 头;FormData(创建任务 multipart)不走此支。
+  if (typeof init?.body === "string" && !headers.has("Content-Type"))
+    headers.set("Content-Type", "application/json");
+  const res = await fetch(`${API_BASE}${path}`, { ...init, headers });
   if (!res.ok) {
     let message = `请求失败(${res.status})`;
     try {
