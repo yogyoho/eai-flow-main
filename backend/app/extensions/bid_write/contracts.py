@@ -131,7 +131,9 @@ FORBIDDEN_CASE_INSENSITIVE = ("TBD", "XX")
 
 # ── 断言注册词汇(P0 规格 §0.4;注册表 YAML=bid_write/assertions/,批二十执行器)──
 # 断言编号 SK-<SKILL>-<序号>;错误码 E-<SK>-<序号> 一一对应。
-SKILL_IDS = ("BL", "PS", "RT", "AI")  # bid_letter/price_sheet/response_table/attachment_index
+# CMN=共享层(导出级全文扫描 SK-CMN-001..005,v2 规格):技能级断言只做本技能范围,
+# 全文面归 CMN;同口径只允许一份实现(AI-009 delegates_to CMN-005,执行器不重复跑)。
+SKILL_IDS = ("BL", "PS", "RT", "AI", "CMN")  # bid_letter/price_sheet/response_table/attachment_index/+shared
 
 
 def assertion_id(skill: str, n: int) -> str:

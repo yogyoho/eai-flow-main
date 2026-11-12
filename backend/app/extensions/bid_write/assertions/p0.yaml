@@ -15,10 +15,25 @@
 meta:
   schema_version: "1.0.0"
   skills: [BL, PS, RT, AI]
+  shared_layer: CMN  # 导出级全文扫描(SK-CMN-001..005,v2 规格);技能级只做本技能范围
 conventions:
   block_export_levels: [D0]
   on_d0_fail: 短路该技能后续生成+进待补清单(§5.1/§5.2)
+# ── 降级行为表(v2 规格 levels 节点)─────────────────────────────────────────
+# 等级直接决定行为:blk=阻断导出/render/todo=待补清单/pre_review_state=预审查映射
+# (MISSING|UNKNOWN)/retry=self-refine 上限。执行器(批二十)据此分派,不再靠约定。
+levels:
+  D0: {name: 阻断, blk: true, render: TODO_BLOCK, todo: required, pre_review_state: MISSING, retry: self_refine_max_2}
+  D1: {name: 降级, blk: false, render: MARK_YELLOW, todo: optional, pre_review_state: UNKNOWN, retry: self_refine_max_1}
+  D2: {name: 提示, blk: false, render: BOARD_ONLY, todo: none, pre_review_state: null, retry: none}
+  D3: {name: 静默, blk: false, render: NONE, todo: none, pre_review_state: null, retry: none}
 assertions:
+  # ── 共享层 SK-CMN(导出级全文扫描,v2 规格;技能级只做本技能范围)────────────
+  - {id: SK-CMN-001, skill: CMN, name: 全文无占位符与未闭合槽位, level: D0, blocks_export: true, rule_ref: L2-015, expr: "bid 全文占位符(contracts PLACEHOLDER 类含 待补充/待定/TBD/XX)与未闭合 {{ 槽位扫描 0 命中;渲染产物含 {{calc(/{{ref( 即判语法层违规——堵「模型自己算数」)"}
+  - {id: SK-CMN-002, skill: CMN, name: 全文无绝对化与越权表述, level: D1, blocks_export: false, rule_ref: L4-002, expr: "ABSOLUTE/ILLEGAL 类禁用词(contracts.FORBIDDEN_WORDS)全文扫描 0 命中;运行时级=命中词级 max(红线词命中升 D0);白名单面 P1(project.policy 挂账)"}
+  - {id: SK-CMN-003, skill: CMN, name: 无未登记实体引用, level: D0, blocks_export: true, rule_ref: null, expr: "所有 ref(entity_id) 可解析到素材实体且引用值与实体字段一致(事实一致率=阻断级;M0 素材库缺位→一律 D0 缺件,禁止模型补写主体类事实)"}
+  - {id: SK-CMN-004, skill: CMN, name: 渲染与计算可重放, level: D0, blocks_export: true, rule_ref: null, expr: "pricing_kernel 同输入重算逐单元格相等+渲染哈希重放相等(确定性零漂移;失败禁止导出并转内核缺陷单,禁止近似修正)"}
+  - {id: SK-CMN-005, skill: CMN, name: 待补项必带负证据, level: D0, blocks_export: true, rule_ref: null, expr: "status=待补 项全部带 negative_evidence(检索章节/匹配键/最接近候选;沿审查端 MISSING 负证据口径——素材缺失不静默省略)"}
   # ── bid_letter 投标函(SK-BL,§1.5)────────────────────────────────────────
   - {id: SK-BL-001, skill: BL, name: 要素齐备, level: D0, blocks_export: true, rule_ref: L1-007, expr: "12 个必填槽位全部非空(tender_purchaser_name/project_name/tender_no/total_amount_cn/total_amount_num/valid_days/deposit_amount/deposit_form/bidder_name/legal_rep_name/sign_date 等;section_no 可选不计)"}
   - {id: SK-BL-002, skill: BL, name: 金额一致, level: D0, blocks_export: true, rule_ref: L1-010, expr: "大写(小写) 双向转换相等,且等于 price_sheet 产出的 total_amount"}
@@ -60,4 +75,4 @@ assertions:
   - {id: SK-AI-006, skill: AI, name: 类型可识别, level: D1, blocks_export: false, rule_ref: L2-022, expr: "type_fingerprint ≠ unknown_type(指纹字典批十九已外置;未识别→人工指定后重跑)"}
   - {id: SK-AI-007, skill: AI, name: 无孤儿附件, level: D1, blocks_export: false, rule_ref: L2-021, expr: "索引项均能定位到实际内容页"}
   - {id: SK-AI-008, skill: AI, name: 目录一致, level: D0, blocks_export: true, rule_ref: null, expr: "目录标题与正文标题逐条匹配(写作端新增;规格原引 L2-010 不存在)"}
-  - {id: SK-AI-009, skill: AI, name: 负证据留痕, level: D0, blocks_export: true, rule_ref: null, expr: "status=待补 项必须带 negative_evidence(沿审查端 MISSING 负证据口径;素材缺失不静默省略——漏报直接相关设计点)"}
+  - {id: SK-AI-009, skill: AI, name: 负证据留痕, level: D0, blocks_export: true, rule_ref: null, delegates_to: SK-CMN-005, expr: "同 SK-CMN-005 口径(delegates_to 单实现律:执行器不重复跑,本条仅登记技能级 ID 与错误码;沿审查端 MISSING 负证据口径——素材缺失不静默省略,漏报直接相关设计点)"}

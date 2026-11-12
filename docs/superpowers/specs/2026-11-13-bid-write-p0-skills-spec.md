@@ -11,7 +11,7 @@
 | `tender.clauses(star)` | 不存在该路径 | 以 `tender.required_declarations` + `tender.attachment_requirements`(mandatory=="★")承接;`tender.substantive_clauses` 专项契约挂 M2(与 L4 激活同批) |
 | `material.*` 素材实体 | M0 不建(设计 P1) | 槽位/断言按 D0 缺件诚实落(entity_ref 类一律缺件);素材六类实体批二十兑现 |
 | `project.policy.*`(letter_defaults/tax_rates/调价开关) | 不存在 | 挂 P1 配置面;M0 有效期/税率走抽取值或人工确认 |
-| `skills/assertions.yaml` | 断言属写作服务端非 agent 技能 | 落 `backend/app/extensions/bid_write/assertions/p0.yaml`(38 条,注册表钉 `test_bid_write_assertions.py`) |
+| `skills/assertions.yaml` | 断言属写作服务端非 agent 技能 | 落 `backend/app/extensions/bid_write/assertions/p0.yaml`(43 条含 CMN 共享层,注册表钉 `test_bid_write_assertions.py`) |
 | 规则 id L1-018 / L3-015 / L2-010 / L2-042 / L4-011 | **现行两包不存在**(core 60=L1×21+L2×22+L3×17;L4=001..010) | 断言注册表只钉真实 id 或 null;映射见 §6 |
 
 ## 1. 通用约定(四技能共享,契约落 `bid_write/contracts.py`)
@@ -59,7 +59,7 @@
 
 | 公共件 | M0 落地态 | 批次 |
 |---|---|---|
-| 断言执行器 | 注册表已落(`assertions/p0.yaml` 38 条+钉);执行器(注册表→可执行校验、D0 短路、`skill_run` 落库)未建 | M1 批二十 |
+| 断言执行器 | 注册表已落(`assertions/p0.yaml` 43 条含 CMN 共享层+levels 行为表+钉);执行器(注册表→可执行校验、D0 短路、`skill_run` 落库)未建 | M1 批二十 |
 | 待补清单 | 数据面=`gaps` 端点诚实伪零(M0 全部「无对应素材」);可指派/闭环面未建 | M1/P1 |
 | 导出前置校验 | 口径已钉(`BLOCK_EXPORT_LEVELS`;重跑全量 D0+四层规则,L1 fatal 阻断,L4 不阻断加风险水印) | M2 批廿一 |
 | 埋点指标 | 未建(slot_fill_rate/assertion_pass_rate/D0·D1_count/manual_edit_ratio/latency_p95/retry_count) | P1 |
@@ -70,7 +70,20 @@
 
 ## 5. 断言注册表(机器真源)
 
-38 条断言(BL 10 / PS 10 / RT 9 / AI 9)的 id/name/level/blocks_export/rule_ref/expr 全量真源 = `backend/app/extensions/bid_write/assertions/p0.yaml`,钉 = `backend/tests/test_bid_write_assertions.py`(编号连续/规则锚真实/级别词汇/D0⇔blocks_export/错误码一一对应/硬门 D0 下限/总数 38)。本文档不复制逐条表(双真源=漂移)。
+43 条断言(BL 10 / PS 10 / RT 9 / AI 9 / **CMN 共享层 5**)的 id/name/level/blocks_export/rule_ref/expr 全量真源 = `backend/app/extensions/bid_write/assertions/p0.yaml`,钉 = `backend/tests/test_bid_write_assertions.py`(编号连续/规则锚真实/级别词汇/D0⇔blocks_export/错误码一一对应/硬门 D0 下限/总数 43/**levels 行为表**/**delegates_to 单实现律**/CMN 层范围)。本文档不复制逐条表(双真源=漂移)。
+
+### 5.1 v2 增量吸收裁决(2026-11-13 二版规格)
+
+已吸收(落地):
+- **levels 行为表**——D0..D3 每级行为元组(blk/render/todo/pre_review_state/retry)入 yaml,执行器(批二十)按表分派,不再靠约定;D0 blk=true 其余 false 有钉。
+- **SK-CMN-001..005 共享层**——导出级全文面(占位符/绝对化/未登记实体引用/渲染可重放/待补必带负证据)从四技能抽出为 CMN 技能,`contracts.SKILL_IDS += "CMN"`;技能级只做本技能范围。
+- **delegates_to 单实现律**——SK-AI-009(负证据留痕)delegates_to SK-CMN-005:同口径只允许一份实现,执行器不重复跑,SK-AI-009 仅登记技能级 ID 与错误码;钉保证目标存在。
+
+未吸收(愿景面,挂账):
+- `shared_schema schemas/bid_tender_common_schema.yaml@2.4.0`——repo 无此文件;tender.* 真源=审查端 `FIELD_TYPE_CONTRACTS` import 复用(既定裁决不变)。
+- `namespace_delta 2.5.0` / `operator_delta 21 det` / `slot_syntax`+`validator_registry 34`+`lexicons 8 类`——执行器落地面,随批二十执行器按需引入,注册表 M0 不预置空骨架。
+- `metrics.gates.WR_pack` / `executor`/`todo_list`/`export_gate`/`static_checks`/`tests`(MUT-026..029 注入算子)——属执行器与测试集范畴(见 §7 批二十)。
+- 「L2 包尚未落盘」说法本仓不成立:L2 22 条规则在 core 包内,断言 rule_ref 直接引用即可。
 
 ## 6. 规格规则 id → 落地态映射(逐条裁决)
 
