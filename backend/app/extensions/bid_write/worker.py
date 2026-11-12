@@ -1,0 +1,149 @@
+"""bid_write worker(批十九 T4)——F1 单管线:created→parsing→extracting→
+matrix_ready/failed。解析复用 bid_review.parse(save_raw/parse_raw/build_ocr_fn/
+docs_from_entries,材料目录按 (owner_id, task_id) 隔离,task id 不冲突);抽取
+复用 bid_review.engine.extract 分片/归一/quote 核验原语,**字段路径限商务子集**
+(contracts.COMMERCIAL_TENDER_SUBSET;tender-only,无 bid docs)。
+
+M0 简化(诚实记账):routers 直推单跑,无 claimer 重投循环(失败终态 failed
+落因,重投面挂批二十与生成管线同批);模型函数镜像 bid_review.worker._default_
+extract_fn 归并逻辑(子集版,首见非 null 采纳同口径)。"""
+
+from __future__ import annotations
+
+import asyncio
+import logging
+from typing import Any
+
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.extensions.bid_write import contracts, crud, matrix
+from app.extensions.bid_write.models import WriteTask
+
+logger = logging.getLogger(__name__)
+
+
+def _default_extract_fn():
+    """生产 LLM 抽取接线(子集版):复用 bid_review.worker 的模型解析/重试核
+    (_resolve_model_name/_invoke_json)与 extract 分片 prompt 原语;归并=首见非
+    null 采纳(同审查端口径,spec D7)。无可用模型抛 ExtractNotConfigured→
+    advance 落 failed(诚实,不假交付)。同步函数,advance 以 to_thread 卸载。"""
+    from app.extensions.bid_review import worker as review_worker
+    from app.extensions.bid_review.engine.extract import build_extract_prompt, shard_docs
+
+    name = review_worker._resolve_model_name()
+    if not name:
+
+        def _fn(docs: list[dict], field_paths: list[str]) -> dict:
+            raise review_worker.ExtractNotConfigured("config.yaml 无可用模型(商务要素抽取未执行)")
+
+        return _fn
+
+    from deerflow.models.factory import create_chat_model
+
+    model = create_chat_model(name)
+    cap = review_worker._extract_max_tokens()
+    if cap:
+        model = model.bind(max_tokens=cap)
+    logger.info("bid_write tender extraction using model %s(max_tokens=%s)", name, cap or "config")
+
+    def _fn(docs: list[dict], field_paths: list[str]) -> dict:
+        merged: dict[str, Any] = {}
+        merged_prov: dict[str, dict] = {}
+        merged_conf: dict[str, float] = {}
+        for shard in shard_docs(docs) or [[]]:
+            payload = review_worker._invoke_json(model, build_extract_prompt(shard, field_paths), "商务要素提取")
+            f_raw = payload.get("fields") if isinstance(payload.get("fields"), dict) else payload
+            if isinstance(f_raw, dict):
+                for k, v in f_raw.items():
+                    if k in field_paths and merged.get(k) is None and v is not None:
+                        merged[k] = v
+            prov = payload.get("provenance") if isinstance(payload, dict) else None
+            if isinstance(prov, dict):
+                for k, v in prov.items():
+                    if k in field_paths and k not in merged_prov and isinstance(v, dict):
+                        merged_prov[k] = v
+            conf = payload.get("confidence") if isinstance(payload, dict) else None
+            if isinstance(conf, dict):
+                for k, v in conf.items():
+                    if k in field_paths:
+                        merged_conf[k] = v
+        return {"fields": merged, "provenance": merged_prov, "confidence": merged_conf}
+
+    return _fn
+
+
+def run_tender_extract(docs: list[dict], extract_fn) -> tuple[dict, dict, dict]:
+    """(fields, fields_conf, provenance) 三件组:子集路径抽取→归一→quote 核验。
+    与 review build_baseline 同构但限子集(审查端零改动;bid.* 路径不入 prompt)。"""
+    from app.extensions.bid_review.engine.extract import normalize_fields, normalize_provenance, verify_quotes
+
+    field_paths = list(contracts.COMMERCIAL_TENDER_SUBSET)
+    raw = extract_fn(docs, field_paths)
+    if not isinstance(raw, dict):
+        raise TypeError(f"extract_fn 须返回 dict,得到 {type(raw).__name__}")
+    fields_raw = raw.get("fields") if isinstance(raw.get("fields"), dict) else raw
+    fields = normalize_fields(fields_raw, field_paths)
+    doc_ids = {str(d.get("doc_id") or "doc") for d in docs}
+    role_map = {str(d.get("role")): str(d.get("doc_id") or "doc") for d in docs if d.get("role")}
+    provenance = normalize_provenance(raw.get("provenance"), field_paths, doc_ids, role_map)
+    provenance = {k: v for k, v in provenance.items() if fields.get(k) is not None}
+    conf_raw = raw.get("confidence") if isinstance(raw.get("confidence"), dict) else {}
+    verified = verify_quotes(provenance, docs)
+    fields_conf = {p: {"conf": conf_raw.get(p), "verified": bool(verified.get(p, False))} for p in field_paths if fields.get(p) is not None}
+    return fields, fields_conf, provenance
+
+
+async def advance_write_task(db: AsyncSession, task_id: str, owner_id: str, extract_fn=None) -> WriteTask:
+    """状态机单步:created→parsing→extracting→matrix_ready/failed。仅 created
+    可推进(直推单跑;并发二跑=状态非 created 直接返回,无双跑)。"""
+    from app.extensions.bid_review import parse
+
+    task = await crud.get_task(db, task_id, owner_id)
+    if task is None:
+        raise ValueError(f"bid_write task {task_id} not found for owner {owner_id}")
+    if task.status != "created":
+        return task  # 并发方已领走/已终态,本侧退出
+    try:
+        await crud.set_status(db, task, "parsing", progress={"stage": "parsing", "pct": 10, "msg": "解析招标文件"})
+        raw_entries = [e for e in ((task.engine_meta or {}).get("docs") or []) if isinstance(e, dict) and e.get("status") == "raw"]
+        if not raw_entries:
+            raise RuntimeError("任务无招标文件(上传面缺 raw 条目)")
+        ocr_fn = await parse.build_ocr_fn(db)
+        for e in raw_entries:
+            await parse.parse_raw(owner_id, task.id, e, ocr_fn)
+        docs = parse.docs_from_entries(owner_id, task.id, [e for e in (task.engine_meta or {}).get("docs") or [] if isinstance(e, dict)])
+        await crud.set_status(db, task, "extracting", progress={"stage": "extracting", "pct": 50, "msg": "商务要素提取中(tender-only)"})
+        if extract_fn is None:
+            extract_fn = _default_extract_fn()
+        fields, fields_conf, provenance = await asyncio.to_thread(run_tender_extract, docs, extract_fn)
+        meta = dict(task.engine_meta or {})
+        meta["schema_version"] = contracts.SCHEMA_VERSION
+        meta["provenance"] = provenance
+        meta["fields_conf"] = fields_conf
+        task.engine_meta = meta
+        await db.commit()
+        await db.refresh(task)
+        rows = matrix.assemble_matrix(fields, fields_conf)
+        await crud.replace_matrix(db, task.id, rows)
+        n_star = sum(1 for r in rows if r["star"])
+        n_blocked = sum(1 for r in rows if r["status"] == "blocked")
+        return await crud.set_status(db, task, "matrix_ready", progress={"stage": "matrix_ready", "pct": 100, "msg": f"响应矩阵 {len(rows)} 行(★{n_star}/blocked {n_blocked})"})
+    except Exception as exc:  # noqa: BLE001  M0 单跑无重投:终态 failed 落因(重投面挂批二十)
+        logger.exception("bid_write task %s advance failed", task_id)
+        await db.rollback()
+        task = await crud.get_task(db, task_id, owner_id)
+        if task is not None:
+            return await crud.set_status(db, task, "failed", error=str(exc)[:2000])
+        raise
+
+
+async def _infra_fail(task_id: str, exc: Exception, owner_hint: str | None = None) -> None:
+    """直推包装崩溃兜底(routers._advance_background 用):独立短会话落 failed。"""
+    from app.extensions.database import get_session_factory
+
+    factory = get_session_factory()
+    async with factory() as db:
+        task = await crud.get_task(db, task_id, owner_hint) if owner_hint else None
+        if task is None:
+            return
+        await crud.set_status(db, task, "failed", error=str(exc)[:2000])

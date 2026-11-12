@@ -28,6 +28,10 @@ from app.extensions.bid_materials import router as bid_materials_router
 # EAI-CUSTOM (bid-review Task 9): 投标方案审查子系统——五张表由包 __init__ 自注册进共享
 # Base.metadata(init_db create_all 建表);router 挂工作台 API(/api/extensions/bid-review/*)。
 from app.extensions.bid_review.routers import router as bid_review_router
+
+# EAI-CUSTOM (bid-write 批十九 2026-11-13): 投标商务智能写作——两表同机制 create_all;
+# router 挂 /api/extensions/bid-write/*(F1 响应矩阵;tender-only 复用审查端 parse/extract 原语)。
+from app.extensions.bid_write.routers import router as bid_write_router
 from app.extensions.contract_price import router as contract_price_router
 from app.extensions.dashboard.routers import router as dashboard_router
 from app.extensions.data_source.routers import router as data_source_router
@@ -1682,6 +1686,9 @@ This gateway provides runtime endpoints for agent runs plus custom endpoints for
 
     # Bid review workbench API (/api/extensions/bid-review/*)  [EAI-CUSTOM bid-review Task 9]
     app.include_router(bid_review_router)
+
+    # Bid commercial writing workbench API (/api/extensions/bid-write/*)  [EAI-CUSTOM bid-write 批十九]
+    app.include_router(bid_write_router)
 
     # Spare-parts price analysis management API (/api/extensions/spare-parts/*)  [EAI-CUSTOM]
     app.include_router(spare_parts_router)
