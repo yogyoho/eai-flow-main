@@ -85,6 +85,42 @@
 - `metrics.gates.WR_pack` / `executor`/`todo_list`/`export_gate`/`static_checks`/`tests`(MUT-026..029 注入算子)——属执行器与测试集范畴(见 §7 批二十)。
 - 「L2 包尚未落盘」说法本仓不成立:L2 22 条规则在 core 包内,断言 rule_ref 直接引用即可。
 
+### 5.2 v3 对账裁决(同日三版)
+
+已吸收(落地):
+- **human_action 待补清单话术**——43 条全量入 yaml(M1 todo 消费;`null`=处置自动闭环,如 SK-PS-004 大小写重算);钉 test_human_action_present 保证在位。
+- **输入面补漏**——`tender.required_validity_days` 入 `COMMERCIAL_TENDER_SUBSET`(21→22 条;SK-BL-003 有效期操作数,L1-005 同 input,universe 真实成员)。
+
+未吸收(裁决):
+- **SK-BL-011 拆分**(禁用词按等级拆两条断言)——不取:已落 CMN 层覆盖同语义(全文占位符=SK-CMN-001 D0;绝对化/越权=SK-CMN-002 D1+运行时词级 max);同一扫描跑两遍是浪费。v3 「混合等级无法执行器判定」的顾虑在本仓语义下不成立——`level`=静态下限,运行时按 `FORBIDDEN_WORDS` 词级取 max,词表自带等级,levels 表分派。
+- **rules[] 多锚 + 指标标签**(fact_consistency/determinism_drift/anchor_alignment/missing_policy/compliance_redline)——M1 执行器面:单 `rule_ref`(真实 id 或 null)的幽灵拒载律保持;指标标签属 metrics 模块词汇(P1 挂账),不入断言注册表混淆命名空间。
+- **err_code / evidence_required / dynamic_rule 显式字段**——err_code=`contracts.error_code(skill,n)` 派生(钉已保证一一对应);evidence_required 全 true、dynamic_rule 全 null=常量。常量与派生字段写进 yaml=漂移源。
+- **on_fail 字段**——等级处置已由 levels 行为表(render/todo/retry)承担;断言特有处置(回退模板原文/CSV 人工填表等)已写进各条 expr 注。
+
+## 8. 断言执行器 v0.1 原型裁决(批二十 M1 设计输入,2026-11-13)
+
+外部原型《Assertion Runner v0.1》(4 技能/39 条/28 D0 口径)收进本节,按 repo 真相适配后为批二十 M1 开工件。口径修正:落地注册表=43 条/31 D0(含 CMN 共享层,见 §5.1)。
+
+采纳(设计成立,直接沿用):
+- **目标/非目标**——只消费快照不回写业务数据;相似度类断言吃预计算值注入(`pre.*`),`deterministic=false` 单独统计;加载期静态校验(ID 唯一/级别⇔导出/引用不悬空)= 既有注册表钉的服务端复刻。
+- **执行语义**——D0→D1→D2 排序(同级按 assertion_id 字典序,结果可复现);D0 失败短路范围默认 `skill`(本技能剩余断言 SKIPPED,其他技能继续);上下文缺失=`ERROR` 视为失败(`E-CTX-MISSING`)不得静默通过——与「诚实伪零」同律。
+- **SKIPPED 可解释性**——报告必须注明「因 SK-XX 失败跳过 N 条」,防误读为通过。
+- **导出门禁**——任一 blocks_export 断言 FAIL 或任一 L1 fatal=VIOLATION → 阻断;L4 critical 未确认 → 只加「商务风险未确认」水印(`l4_counts_toward_gate: false`)。与审查端「商务风险非否决项」隔离口径一致(= §3 既有钉)。
+- **职责分界**——「断言管生成期、规则管交付期」:SK-PS-003 与 L1-010 语义重叠处,报告中分开展示、不重复计入缺陷数。
+- **确定性验收**——同输入重跑结果一致(20 次字节级);确定性 zero-drift 与 SK-CMN-004/PS-008 断言闭环。
+
+适配(repo 真相改写):
+| 原型 | 落地态 | 依据 |
+|---|---|---|
+| `tools/assertion_runner/` 独立目录 | `app/extensions/bid_write/executor/`(loader/models/runner/gate/report + validators) | 新功能独立模块律;app→app import 合法,与 matrix/worker 同居 |
+| 受控 DSL(AST 白名单求值器) | **不建通用 DSL**;每条断言一个 Python 校验函数,按 `assertion_id` 注册(dict[str, callable]),expr 语义注释=实现验收基准 | 43 条断言的 DSL 解释器=过度工程;Python 校验器无 eval 面,类型安全;原型自己也承认 v0.2 要迁声明式条件树——不如一步到位用注册表函数 |
+| `runs/run-xxx.json` 文件 sink | `skill_run` 落库(bid_write 新表,M1 模型层;JSON 报告=导出物非真相源) | 与 bid_write_tasks/matrix_rows 同库同机制(bug-4303 教训:共享 Base) |
+| YAML 加载期版本比对 shared_schema@2.4.0 | 版本比对对象=`contracts.SCHEMA_VERSION`;shared_schema 文件不存在(§5.1 裁决不变) | 幽灵路径拒载 |
+| CLI 退出码 0/1/2/3 | 保留为金标准 oracle 适配面(CI/离线批跑);Gateway 主通道=in-process worker 调用 | 审查端同形(worker 直调,非子进程) |
+| PendingItem CSV | 待补清单走 `gaps` 端点既有数据面(M0 诚实伪零→M1 按断言结果真实产出) | routers 既有面 |
+
+M1 骨架验收(= 批二十 TDD 序):loader+models+runner 跑通 1 技能 → 全量 43 条(逐条校验函数)→ 待补清单+gate+注入负例全红 → 确定性 20 次一致+CI 门禁。注入负例清单(每技能 8–12 条)随骨架 TDD 产出,不单独立项。
+
 ## 6. 规格规则 id → 落地态映射(逐条裁决)
 
 规格原引用而现行两包不存在的 id 一律不进注册表(幽灵 ref 拒载);真实锚定与写作端新增如下(详细理由已写进 yaml 每条 expr 注):
@@ -107,4 +143,4 @@
 
 ## 7. 挂账(不入 P0-M0)
 
-M1(批二十):公共件执行器+F3 章节装配+F4 四技能生成器(读本文档 §2 骨架);M2(批廿一):F6 预审查(L1/L2 复用 rule_runner/eval_core,输入=生成过程产出的 bid.*)+导出前置校验;P1:素材库六类实体+policy 配置面+埋点+前端三栏工作台;`tender.substantive_clauses` 契约与 L4 激活同批(M2)。
+M1(批二十):公共件执行器(设计裁决见 §8)+F3 章节装配+F4 四技能生成器(读本文档 §2 骨架);M2(批廿一):F6 预审查(L1/L2 复用 rule_runner/eval_core,输入=生成过程产出的 bid.*)+导出前置校验;P1:素材库六类实体+policy 配置面+埋点+前端三栏工作台;`tender.substantive_clauses` 契约与 L4 激活同批(M2)。

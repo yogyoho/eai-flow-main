@@ -109,3 +109,12 @@ def test_shared_layer_scope():
     assert [a["id"] for a in cmn] == [f"SK-CMN-{i:03d}" for i in range(1, 6)]
     delegates = {a.get("delegates_to") for a in _assertions() if a.get("delegates_to")}
     assert delegates == {"SK-CMN-005"}
+
+
+def test_human_action_present():
+    """v3 human_action 话术全量在位(M1 待补清单消费);null=处置自动闭环无需人工。"""
+    for a in _assertions():
+        assert "human_action" in a, a["id"]
+        assert a["human_action"] is None or (
+            isinstance(a["human_action"], str) and a["human_action"].strip()
+        ), a["id"]

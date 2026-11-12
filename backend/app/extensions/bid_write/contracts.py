@@ -67,6 +67,7 @@ COMMERCIAL_TENDER_SUBSET: tuple[str, ...] = (
     "tender.deposit_required",
     "tender.deposit_forms",
     "tender.bid_deadline",
+    "tender.required_validity_days",  # SK-BL-003 有效期操作数(L1-005 同源,v3 输入面补漏)
     "tender.bid_scope",
     "tender.required_sections",
     "tender.required_tables",
