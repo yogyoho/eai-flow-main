@@ -1,0 +1,41 @@
+# 批十九 T7 golden cases-write(M0 装配断言面)——给定 tender_fields → matrix rows
+# 全量断言。批二十 F4 生成器在本目录续批;cases-write 与审查端 golden/cases 分库
+# (审查端 golden loader 冻结面零触碰,A-续-⑦ 口径)。
+cases:
+  - case_id: CW-1-full-matrix
+    description: 全要素招标:★附件行/承诺条款行/聚合行(质保工期 star)/联合体段;blocked 低置信;快照同 test_bid_write_matrix._fields 主形
+    tender_fields:
+      tender.attachment_requirements:
+        - {no: "1", name: 营业执照, mandatory: "★", clause: 3.1, min_count: 1}
+        - {no: "2", name: 矿用产品安全标志证书, mandatory: 必需, clause: 3.2}
+      tender.required_declarations: [投标函承诺真实有效, 不围标串标承诺]
+      tender.deposit_required: 100000
+      tender.bid_deadline: "2026-12-01 09:00"
+      tender.min_warranty_period: 24个月
+      tender.max_duration: 90天
+      tender.consortium_allowed: false
+    fields_conf:
+      tender.attachment_requirements: {conf: 0.4, verified: false}
+    expect_rows:
+      - {clause_id: att:1, kind: attachment, star: true, status: blocked}
+      - {clause_id: att:2, kind: attachment, star: false, status: blocked}
+      - {clause_id: decl:1, kind: clause, star: false, status: draft}
+      - {clause_id: decl:2, kind: clause, star: false, status: draft}
+      - {clause_id: consortium, kind: aggregate, star: false, status: draft}
+      - {clause_id: deadline, kind: aggregate, star: false, status: draft}
+      - {clause_id: deposit, kind: aggregate, star: false, status: draft}
+      - {clause_id: duration, kind: aggregate, star: true, status: draft}
+      - {clause_id: warranty, kind: aggregate, star: true, status: draft}
+  - case_id: CW-2-empty-honest-zero
+    description: 空快照/缺路径→零行(缺行=下游可见缺口,不造假行;伪零纪律)
+    tender_fields: {}
+    expect_rows: []
+  - case_id: CW-3-no-star-inheritance
+    description: 回归钉:必需/建议附件行不得继承包级★(首版 golden 抓到的继承 bug;逐行判定律)
+    tender_fields:
+      tender.attachment_requirements:
+        - {no: "1", name: 营业执照, mandatory: "★", clause: 3.1}
+        - {no: "2", name: 同类业绩合同, mandatory: 建议, clause: 3.3}
+    expect_rows:
+      - {clause_id: att:1, kind: attachment, star: true, status: draft}
+      - {clause_id: att:2, kind: attachment, star: false, status: draft}

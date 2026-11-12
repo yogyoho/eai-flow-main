@@ -28,35 +28,30 @@
 | 前端 | M0 零前端(API+golden);三栏工作台挂 P1 批 | 服务面先行,口径稳定后再铺 UI |
 | MCP | M0 无 mcp.py | Agent 面挂 P1;工作台走 REST |
 
-## 任务(本批=批十九/T1–T7)
+## 任务(本批=批十九/T1–T7,2026-11-13 全部兑现)
 
-- [ ] T1 契约层 `bid_write/contracts.py`:SCHEMA_VERSION=1;`RESPONSE_MATRIX_CONTRACT`(行形
-  `{clause_id, requirement, source_path, star, strategy: pending|full|positive|negative, target_section,
-  evidence_refs[], status: draft|confirmed|blocked}`);`MATERIAL_ENTITY_TYPES` 六类(qualification/
-  performance/personnel/capacity/network/past_bid)字段表(verifiable+anchor 占位,M0 仅类型枚举落库用);
-  `COMMERCIAL_TENDER_SUBSET`(tender.* 商务子集路径清单,从 registry.universe 过滤 tender.* 商务面:
-  attachment_requirements/required_tables/signature_slots/deposit/deadline/scoring_items/substantive_clauses(★)/
-  boq_items/required_fields/required_sections);钉:契约形状自检 test(行必含键/枚举合法)。
-- [ ] T2 模型+CRUD `models.py`+`crud.py`:`bid_write_tasks`(id/owner_id/status: created|parsing|extracting|
-  matrix_ready|failed/progress/engine_meta/tender_no 等 identity 三件)与 `bid_write_matrix_rows`
-  (task_id/clause_id/requirement/source_path/star/strategy/target_section/evidence_refs JSON/status,
-  (task_id,clause_id) 唯一);crud 参照 bid_review/crud.py 状态机守卫;sqlite 测试夹具 `_TABLES`。
-- [ ] T3 装配器 `bid_write/matrix.py`(纯服务端):`assemble_matrix(tender_fields) -> list[row]`——
-  attachment_requirements 逐条成行(★/必需→star 标红)+substantive_clauses ★条款逐条成行+deposit/
-  deadline/required_fields 聚合行;语义低置信/未归类→status=blocked(生成前置门);输出确定性可 golden。
-- [ ] T4 worker `bid_write/worker.py`:`start_bid_write_worker`+`advance_task`——复用 bid_review
-  parse_raw→extract(tender docs+SUBSET paths)→assemble_matrix 落库;状态机 created→parsing→extracting→
-  matrix_ready/failed;模型函数复用 `_default_extract_fn` 同构(独立实例,不共享任务态)。
-- [ ] T5 routers `bid_write/routers.py` 前缀 `/api/extensions/bid-write`:POST /tasks(multipart 招标
-  文件)/GET /tasks / GET /tasks/{id} / GET /tasks/{id}/matrix / PATCH /tasks/{id}/matrix/{clause_id}
-  (strategy/status 人工确认卡点:star 行禁 negative 直通,须 note)/GET /tasks/{id}/gaps(三态缺口:
-  有且可佐证|有但缺佐证|无对应素材——M0 只有「无对应素材」态,素材库 P1 兑现前两态)。
-- [ ] T6 gateway 接线:`app/gateway/app.py` include_router+create_all 注册(lifespan 同 bid_review 位);
-  家族门命令扩 `-k "bid_review or bid_write"`(Makefile/计划文档记录);ruff 双清。
-- [ ] T7 golden 夹具+收口:`golden/cases-write/` 首批 3 例(纯装配断言:给定 tender_fields →
-  matrix rows 全量断言,含 ★ 标红/blocked/strategy 默认);spec 附录=四技能规格骨架(bid_letter/
-  price_sheet/response_table/attachment_index:模板骨架+槽位定义+禁用词表+写后校验断言+失败降级,
-  对应设计稿 F4 表格逐行);wolf 三件+closure;显式文件清单提交。
+- [x] T1 契约层 `bid_write/contracts.py`:SCHEMA_VERSION=1;矩阵行/素材六类/槽位八型/D0-D3
+  降级/FORBIDDEN_WORDS(五类归并,D0 红线+D1 模糊面)/COMMERCIAL_TENDER_SUBSET(21 条真实
+  宇宙路径)/assertion_id·error_code helpers。钉:test_bid_write_contracts(8 例,subset⊆universe 幽灵拒载律)。
+- [x] T2 模型+CRUD `models.py`+`crud.py`:bid_write_tasks(TBW-单号/created→parsing→extracting→
+  matrix_ready|failed)+bid_write_matrix_rows((task_id,clause_id) 唯一/strategy 默认 pending);
+  replace_matrix M0 全量重置诚实口径(P1 保留 confirmed 挂账)。
+- [x] T3 装配器 `matrix.py`:三类行源(附件逐条/承诺逐条/聚合 15 要素)★逐行判定(包级继承
+  bug 首版 golden 抓到已修)/blocked=未验且 conf<0.6/缺路径不造行/摘录 cap120 省略号/
+  (kind,clause_id) 稳定排序。golden 7 例。
+- [x] T4 worker:复用审查端 parse 链+`_default_extract_fn` 同构(模型名/invoke_json/max_tokens
+  绑定);run_tender_extract=tender docs+SUBSET 路径;advance_write_task 只-from-created 守卫,
+  异常回滚落 failed(str[:2000])。
+- [x] T5 routers `/api/extensions/bid-write`:POST /tasks(multipart+save_raw 复用+后台直推)/
+  列表(matrix_counts)/matrix 读(词汇回显)/PATCH 行级卡点(★negative 须 note/blocked→confirmed
+  须 note/枚举 422)/gaps 诚实伪零。测试 8 例(双 override 夹具同审查端形态)。
+- [x] T6 gateway 接线:app.py import+include_router(EAI-CUSTOM 两行,审查端零改动唯一既有文件
+  改动);家族门扩 `-k "bid_review or bid_write"`;ruff 双清。门 796p/6s(1f=claimer 满载间歇,
+  bug-4013 类非本批,预算 300→600 加位)。
+- [x] T7 golden+断言注册表+spec:`golden/cases-write/p0-matrix.yaml` 3 例(CW-1 全要素/CW-2
+  空诚实零/CW-3 ★不继承回归钉);`assertions/p0.yaml` 38 条(BL10/PS10/RT9/AI9,规则锚只钉
+  真实 id,规格原引 L1-018/L3-015/L2-010/L2-042/L4-011 映射裁决进 spec §6);spec=
+  `docs/superpowers/specs/2026-11-13-bid-write-p0-skills-spec.md`;钉 test_bid_write_assertions 6 例。
 
 ## 后续批次(挂账不入本批)
 

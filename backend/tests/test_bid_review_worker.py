@@ -370,8 +370,8 @@ async def test_claimer_loop_processes_created_task_to_done(claim_env, tmp_rulepa
     stop = asyncio.Event()
     loop_task = asyncio.create_task(worker.bid_review_claimer_loop(stop))
     done = False
-    # 300×0.05=15s(原 100 次=5s 在满载 Windows 上间歇超时,bug-4013):仍有限,死锁照样抓
-    for _ in range(300):
+    # 600×0.05=30s(100×5s→300×15s bug-4013;批十九全量门满载下 15s 仍间歇超时一次,加位)
+    for _ in range(600):
         await asyncio.sleep(0.05)
         async with claim_env() as s:
             row = await crud.get_task(s, task_id, "u1")

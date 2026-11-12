@@ -1,0 +1,63 @@
+# bid_write P0 四技能断言注册表(EAI-CUSTOM 2026-11-13,批十九 T7)——规格《投标方案(商务部分)
+# 智能写作》P0 §1.5/§2.7/§3.5/§4.5 的机器可读面,断言执行器(批二十 M1 generators 公共件)直读。
+# 与规则包同形但语义不同:rules 断言的是「审查对象」,assertions 断言的是「生成产物」。
+#
+# 字段口径:
+#   level         静态失败级(断言自身最低级);运行时可升(SK-BL-006 等命中词级断言按
+#                 contracts.FORBIDDEN_WORDS 词级取 max,红线词命中升 D0 阻断)
+#   blocks_export level==D0 时必须 true(§5.3 导出前置校验只看 D0)
+#   rule_ref      审查端锚定规则 id(core+L4 真实成员)或 null(写作端新增校验,无对应
+#                 审查规则;规格原引用的 L1-018/L3-015/L2-010/L2-042/L4-011 在
+#                 现行两包不存在,落地态映射见 spec 文档,不许写幽灵 id——幽灵 ref 会被
+#                 test_bid_write_assertions 拒载)
+#   expr          判定表达式(批二十执行器的注册键;此处为规格转写的判定语义,执行器
+#                 落地时逐条兑现为可执行校验,零语义漂移)
+meta:
+  schema_version: "1.0.0"
+  skills: [BL, PS, RT, AI]
+conventions:
+  block_export_levels: [D0]
+  on_d0_fail: 短路该技能后续生成+进待补清单(§5.1/§5.2)
+assertions:
+  # ── bid_letter 投标函(SK-BL,§1.5)────────────────────────────────────────
+  - {id: SK-BL-001, skill: BL, name: 要素齐备, level: D0, blocks_export: true, rule_ref: L1-007, expr: "12 个必填槽位全部非空(tender_purchaser_name/project_name/tender_no/total_amount_cn/total_amount_num/valid_days/deposit_amount/deposit_form/bidder_name/legal_rep_name/sign_date 等;section_no 可选不计)"}
+  - {id: SK-BL-002, skill: BL, name: 金额一致, level: D0, blocks_export: true, rule_ref: L1-010, expr: "大写(小写) 双向转换相等,且等于 price_sheet 产出的 total_amount"}
+  - {id: SK-BL-003, skill: BL, name: 有效期达标, level: D1, blocks_export: false, rule_ref: L1-005, expr: "valid_days ≥ tender.required_validity_days(规格原引 L1-016 为主体现一致,落地态改锚 L1-005 投标有效期)"}
+  - {id: SK-BL-004, skill: BL, name: 主体一致, level: D0, blocks_export: true, rule_ref: L1-016, expr: "投标人名称与 material.bidder_profile 完全一致(规格原引 L1-018 不存在,落地态锚 L1-016 投标主体全文档一致)"}
+  - {id: SK-BL-005, skill: BL, name: 日期合法, level: D1, blocks_export: false, rule_ref: null, expr: "sign_date ≤ tender.bid_deadline(写作端新增时序校验,审查端无对应规则)"}
+  - {id: SK-BL-006, skill: BL, name: 无禁用词, level: D1, blocks_export: false, rule_ref: L4-002, expr: "五类禁用词扫描(contracts.FORBIDDEN_WORDS)命中数为 0;运行时级=命中词级 max,红线/占位符词命中升 D0 阻断"}
+  - {id: SK-BL-007, skill: BL, name: 固定条款未被改写, level: D0, blocks_export: true, rule_ref: L1-013, expr: "输出固定段与模板固定段相似度 ≥ 0.98(法律表述漂移检出;失败回退模板原文+diff 留审计)"}
+  - {id: SK-BL-008, skill: BL, name: 签章位存在, level: D0, blocks_export: true, rule_ref: L2-030, expr: "输出含 signature_slots 对应的签章锚点(盖章位+签字位)"}
+  - {id: SK-BL-009, skill: BL, name: 无未登记实体引用, level: D0, blocks_export: true, rule_ref: null, expr: "所有 ref(entity_id) 槽位可解析到素材实体(M0 素材库缺位→一律 D0 缺件,诚实不编造)"}
+  - {id: SK-BL-010, skill: BL, name: 承诺可溯源, level: D2, blocks_export: false, rule_ref: null, expr: "extra_commitments 每条含 clause_id 溯源或显式标注「通用承诺」(写作端新增;规格原引 L3-015 不存在)"}
+  # ── price_sheet 报价表(SK-PS,§2.7;算术全代码,LLM 只写报价说明)──────────
+  - {id: SK-PS-001, skill: PS, name: 清单覆盖, level: D0, blocks_export: true, rule_ref: L1-011, expr: "tender.boq_items 每行均有对应输出行且无多余行(规格原引 L2-042 不存在,落地态锚 L1-011)"}
+  - {id: SK-PS-002, skill: PS, name: 数量一致, level: D0, blocks_export: true, rule_ref: L1-011, expr: "逐行 qty/unit 与招标清单相等(不得改数量)"}
+  - {id: SK-PS-003, skill: PS, name: 加总一致, level: D0, blocks_export: true, rule_ref: L1-010, expr: "明细合计=汇总表=开标一览表=投标函金额(明细表唯一事实源,派生表全同步)"}
+  - {id: SK-PS-004, skill: PS, name: 大小写一致, level: D0, blocks_export: true, rule_ref: L3-002, expr: "大写金额与数字互转相等(固定函数,含零/整规则)"}
+  - {id: SK-PS-005, skill: PS, name: 口径统一, level: D0, blocks_export: true, rule_ref: L1-012, expr: "全表 price_mode 唯一(含税/不含税),税率一致或分行标注"}
+  - {id: SK-PS-006, skill: PS, name: 限价合规, level: D0, blocks_export: true, rule_ref: L1-009, expr: "total ≤ tender.max_price(限价未抽到→D2 跳过并标注「限价未确认」,不做假合规)"}
+  - {id: SK-PS-007, skill: PS, name: 无空单价, level: D0, blocks_export: true, rule_ref: L2-041, expr: "所有行 unit_price > 0(缺失保留空单元格标注,不导出不补)"}
+  - {id: SK-PS-008, skill: PS, name: 计算可重放, level: D0, blocks_export: true, rule_ref: null, expr: "同输入重算逐单元格相等(Decimal 中间 4 位落表 2 位 ROUND_HALF_UP,零浮点累加;写作端确定性零漂移)"}
+  - {id: SK-PS-009, skill: PS, name: 无模糊调价, level: D1, blocks_export: false, rule_ref: null, expr: "报价说明禁用词(contracts 模糊调价类)扫描 0 命中;无调价机制时该类词命中升 D0(规格原引 L4-011 不存在,L4 包现止于 010——扩面挂账)"}
+  - {id: SK-PS-010, skill: PS, name: 异常低价提示, level: D2, blocks_export: false, rule_ref: null, expr: "低于 material.price_history 均值阈值时告警(历史价缺失→D3 静默;写作端新增)"}
+  # ── response_table 商务响应表(SK-RT,§3.5)────────────────────────────────
+  - {id: SK-RT-001, skill: RT, name: 星全覆盖, level: D0, blocks_export: true, rule_ref: L1-013, expr: "response_matrix 所有 star=true 行均有响应行(★条款 100% 覆盖)"}
+  - {id: SK-RT-002, skill: RT, name: 星零负偏离, level: D0, blocks_export: true, rule_ref: L1-013, expr: "不存在 is_star && conclusion=负偏离 的行(★负偏离生成期即拦,routers PATCH 卡点为同一铁律的前置面)"}
+  - {id: SK-RT-003, skill: RT, name: 应答非空, level: D0, blocks_export: true, rule_ref: L2-015, expr: "无空应答命中(满足招标文件要求/符合招标文件要求/按招标文件执行/无异议=无参数化内容即 D0)"}
+  - {id: SK-RT-004, skill: RT, name: 原文可溯, level: D1, blocks_export: false, rule_ref: null, expr: "requirement_excerpt 与招标原文重合率 ≥ 0.80,超长截断带省略号(锚点对齐;装配器 _excerpt 既有口径)"}
+  - {id: SK-RT-005, skill: RT, name: 偏离闭环, level: D0, blocks_export: true, rule_ref: null, expr: "每条负偏离含偏离原因+替代方案(写作端新增;规格原引 L1-014 为工期规则,非偏离闭环)"}
+  - {id: SK-RT-006, skill: RT, name: 与正文一致, level: D0, blocks_export: true, rule_ref: L3-003, expr: "响应值与正文/报价表同字段一致(规格原引 L3-015 不存在,落地态锚 L3-003)"}
+  - {id: SK-RT-007, skill: RT, name: 证据齐备, level: D0, blocks_export: true, rule_ref: null, expr: "每行 evidence_refs 非空且实体存在(M0 素材库缺位→全部 D0 待补,诚实伪零)"}
+  - {id: SK-RT-008, skill: RT, name: 结论与内容匹配, level: D0, blocks_export: true, rule_ref: null, expr: "结论=完全响应时正文无偏离表述(冲突以招标要求为基准回退,冲突写入报告;写作端新增)"}
+  - {id: SK-RT-009, skill: RT, name: 无占位符, level: D0, blocks_export: true, rule_ref: L2-015, expr: "全文占位符扫描 0 命中(待补充/待定/TBD/XX)"}
+  # ── attachment_index 附件索引(SK-AI,§4.5)────────────────────────────────
+  - {id: SK-AI-001, skill: AI, name: 编号唯一, level: D0, blocks_export: true, rule_ref: L2-020, expr: "no 去重后数量相等(编号规则生成,norm() 后可与 tender 对齐)"}
+  - {id: SK-AI-002, skill: AI, name: 要求对齐, level: D0, blocks_export: true, rule_ref: L2-020, expr: "tender.attachment_requirements 每项均有索引项或标待补(要求集低置信→D0 索引不可生成)"}
+  - {id: SK-AI-003, skill: AI, name: 无悬空引用, level: D0, blocks_export: true, rule_ref: L3-012, expr: "正文「见附件X」全部可解析到索引项"}
+  - {id: SK-AI-004, skill: AI, name: 页码有效, level: D1, blocks_export: false, rule_ref: null, expr: "page ≤ 总页数且与目录偏差 ≤ 1(经 page_offset 校正,偏移>5 页降置信标注「页码待核对」;锚点对齐,写作端)"}
+  - {id: SK-AI-005, skill: AI, name: 份数达标, level: D1, blocks_export: false, rule_ref: L2-002, expr: "copies ≥ tender.volume_specs 要求份数"}
+  - {id: SK-AI-006, skill: AI, name: 类型可识别, level: D1, blocks_export: false, rule_ref: L2-022, expr: "type_fingerprint ≠ unknown_type(指纹字典批十九已外置;未识别→人工指定后重跑)"}
+  - {id: SK-AI-007, skill: AI, name: 无孤儿附件, level: D1, blocks_export: false, rule_ref: L2-021, expr: "索引项均能定位到实际内容页"}
+  - {id: SK-AI-008, skill: AI, name: 目录一致, level: D0, blocks_export: true, rule_ref: null, expr: "目录标题与正文标题逐条匹配(写作端新增;规格原引 L2-010 不存在)"}
+  - {id: SK-AI-009, skill: AI, name: 负证据留痕, level: D0, blocks_export: true, rule_ref: null, expr: "status=待补 项必须带 negative_evidence(沿审查端 MISSING 负证据口径;素材缺失不静默省略——漏报直接相关设计点)"}
