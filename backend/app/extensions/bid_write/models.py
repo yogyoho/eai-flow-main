@@ -8,7 +8,11 @@ from __future__ import annotations
 from datetime import UTC, datetime
 
 from sqlalchemy import JSON, Boolean, DateTime, Float, ForeignKey, String, Text, UniqueConstraint
-from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
+from sqlalchemy.orm import Mapped, mapped_column
+
+# 共享 metadata(bug-4303:首版误自建私有 DeclarativeBase,gateway init_db create_all
+# 建不出两表——sqlite 测试夹具显式表清单故未暴露;对齐 bid_review/models.py 机制)
+from app.extensions.database import Base
 
 
 def _id() -> str:
@@ -19,10 +23,6 @@ def _id() -> str:
 
 def _now() -> datetime:
     return datetime.now(UTC)
-
-
-class Base(DeclarativeBase):
-    pass
 
 
 class WriteTask(Base):
