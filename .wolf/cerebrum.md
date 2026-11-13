@@ -3214,3 +3214,16 @@ CALIBRATION 批次裁决表是历史快照,新规则的行插进旧批次表必�
 - bid_write 测试夹具 create_all 用显式 tables=[...] 白名单:新增 ORM 表必须手动加进每个用表的夹具(共享 Base 注册≠建表)。bug-4303 律的测试面延伸。
 - 变异路径解析两面约定:tender 面=扁平点分键(「tender.max_price」是一个键),products/material/pre 面=真嵌套 dict。通用解法=逐层贪心:先试剩余全串是否为当前 dict 的扁平键,否则按段下钻(数字段=列表下标)。exec-negatives 测试 walker 已实现。
 - PS-003 四表加总含 bid_letter(信面 total_amount_num):删 bid_letter 会打崩 PS scope,想只伤 BL/RT 面时删 attachment_index。
+
+## Do-Not-Repeat (2026-11-14 — 批廿四 P1-γ)
+
+- **判定「是否 universe 成员」必须查 `registry.universe()` 全四源**(pack_inputs ∪ anchor_paths ∪ PROJECTION_FIELDS ∪ SECOND_STAGE_FIELDS),不能只 grep extract.py FIELD_TYPE_CONTRACTS——tender.substantive_clauses 早被 ANCHOR_REGISTRY「招标合同条款/实质性条款」组收编,扩面表登记被 ext∩uni=∅ 钉当场打红(bug-4358)。扩面钉=迁移信号:成员已收编的路径走主路径。
+- **`pytest ... | tail` 管道吃掉退出码**,`&& git commit` 照跑→红提交入库。TDD 提交链必须先单跑测试看结果再单独 commit;或用 `set -o pipefail`。
+- **pytest 夹具跨文件复用**:「`from test_bid_write_policy import db as policy_db` re-export(参数名=注册名)」可行,但 `ruff --fix`(I001)会删掉它认定的 unused import→fixture 解析 ERROR;须 `# noqa: F401` 双钉住,test 函数签名参数同名再 `# noqa: F811`。
+- **写侧 L4 成本闸律**:sem 卡缺输入仍会模型调用(hybrid 才有零调用出口)——参与卡筛选(inputs 全非空)是写侧本地关切,不放 engine;缺输入卡诚实列 input_missing。
+
+## Key Learnings (2026-11-14 批廿四 P1-γ 追加)
+
+- bid_review L4 包(10 卡全 sem/hyb)写侧激活面:参与卡=enabled∧sem/hyb∧inputs 全非空;摘除条件=executed ∧ 参与卡零 FAIL/ERROR/need_human/UNKNOWN;advisory-only=pack meta counts_toward_bid_gate:false,L4 零入 gate blocked/reasons。写侧投影现覆盖 L4-003(bid.service_commitments+tender.substantive_clauses)/L4-004(+bid.full_text)两卡;默认无承诺 knobs→参与卡空→零模型调用=绿跑零行为。
+- 模型 stub 契约:`_call_model` 接受同步 callable 返回带 `.content` 对象;schema=`{"verdicts":[{clause_id,verdict:full|partial|none|unclear,confidence,reason,evidence:[{doc_id,page,text}]}]}`,confidence≥0.75 过 confidence_gate;full=干净零条目/unclear→need_human。
+- 写侧 L4 模型接线=EAI_BID_REVIEW_MODEL 同尺(bid_write 不另设 env);无可用模型→恒抛闭包→evaluate_fields 逐规则隔离降级 ERROR→水印保持。

@@ -30621,3 +30621,35 @@
 | 23:28 | Edited backend/app/extensions/bid_write/routers.py | modified put_policy() | ~616 |
 | 00:40 | 批廿三 P1-β 落地:policy owner 单例+plumb(缺省=零行为)+埋点六指标 verdict.metrics+聚合 p95 | models/crud/schemas/routers/generate/worker/metrics/test_bid_write_policy | 5 测试绿 | ~10k |
 | 23:35 | Session end: 18 writes across 14 files (contracts.py, test_bid_write_contracts.py, 2026-11-13-bid-write-p1-beta22-materials-plan.md, bid-write-p1-beta22-materials-landed.md, 2026-11-13-bid-write-p1-beta23-policy-metrics-plan.md) | 9 reads | ~15938 tok |
+| 23:37 | Created C:/Users/admin/.claude/projects/D--eai-eai-flow-main/memory/bid-write-p1-beta23-policy-metrics-landed.md | — | ~408 |
+| 23:38 | Session end: 19 writes across 15 files (contracts.py, test_bid_write_contracts.py, 2026-11-13-bid-write-p1-beta22-materials-plan.md, bid-write-p1-beta22-materials-landed.md, 2026-11-13-bid-write-p1-beta23-policy-metrics-plan.md) | 9 reads | ~16376 tok |
+
+## Session: 2026-11-13 00:06
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 00:13 | Created docs/superpowers/plans/2026-11-14-bid-write-p1-beta24-l4-activation-plan.md | — | ~5327 |
+| 00:13 | Edited backend/tests/test_bid_write_contracts.py | modified test_substantive_clauses_is_extension_member() | ~132 |
+| 00:14 | Edited backend/app/extensions/bid_write/contracts.py | 5→6 lines | ~57 |
+| 00:16 | Edited backend/app/extensions/bid_write/contracts.py | 3→6 lines | ~66 |
+| 00:17 | Edited backend/app/extensions/bid_write/contracts.py | inline fix | ~14 |
+| 00:17 | Edited backend/app/extensions/bid_write/contracts.py | 6→5 lines | ~37 |
+| 00:17 | Edited backend/tests/test_bid_write_contracts.py | modified test_substantive_clauses_is_main_subset_member() | ~140 |
+| 00:18 | Created backend/tests/test_bid_write_l4.py | — | ~586 |
+| 00:19 | Edited backend/app/extensions/bid_write/precheck.py | modified get() | ~147 |
+| 00:20 | Edited backend/tests/test_bid_write_l4.py | modified test_l4_no_participants_not_executed() | ~864 |
+| 00:21 | Edited backend/app/extensions/bid_write/precheck.py | modified _l4_participants() | ~1178 |
+| 00:23 | Edited backend/tests/test_bid_write_l4.py | 7→12 lines | ~103 |
+| 00:24 | Edited backend/app/extensions/bid_write/worker.py | modified _l4_model_fn() | ~274 |
+| 00:24 | Edited backend/app/extensions/bid_write/worker.py | 3→3 lines | ~59 |
+| 00:27 | Edited backend/tests/test_bid_write_l4.py | inline fix | ~31 |
+| 00:28 | Edited backend/tests/test_bid_write_l4.py | added 1 import(s) | ~52 |
+| 00:31 | Session end: 16 writes across 6 files (2026-11-14-bid-write-p1-beta24-l4-activation-plan.md, test_bid_write_contracts.py, contracts.py, test_bid_write_l4.py, precheck.py) | 5 reads | ~11220 tok |
+| 00:31 | Edited docs/superpowers/plans/2026-11-14-bid-write-p1-beta24-l4-activation-plan.md | 3→7 lines | ~324 |
+| 00:32 | Edited docs/superpowers/specs/2026-11-13-bid-write-p0-skills-spec.md | modified kw() | ~310 |
+| 00:20 | 批廿四 P1-γ-a substantive_clauses 主路径入 subset(扩面钉打红改道)+成员钉 | contracts.py/test_bid_write_contracts.py | 8f1b4f8d6 绿 | ~4k |
+| 00:25 | 批廿四 P1-γ-b 投影 service_commitments/full_text | precheck.py/test_bid_write_l4.py | commit 绿 | ~3k |
+| 00:30 | 批廿四 P1-γ-c run_l4_review+gate l4_model_fn(参与卡筛选/摘除条件/advisory) | precheck.py | commit 绿 | ~6k |
+| 00:35 | 批廿四 P1-γ-d worker _l4_model_fn+generate 接线;ruff --fix 删夹具 import 修复 | worker.py/test_bid_write_l4.py | 6c1685572 绿 | ~4k |
+| 00:40 | 全量回归 216p/6s/0f+docs/spec/wolf/buglog-4358 收口 | plan/spec/cerebrum | 收口 commit | ~8k |
+| 00:34 | Created C:/Users/admin/.claude/projects/D--eai-eai-flow-main/memory/bid-write-p1-beta24-l4-activation-landed.md | — | ~404 |

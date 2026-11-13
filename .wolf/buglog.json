@@ -10573,6 +10573,90 @@
       ],
       "occurrences": 1,
       "last_seen": "2026-11-13"
+    },
+    {
+      "id": "bug-4354",
+      "timestamp": "2026-11-13T16:20:30.066Z",
+      "error_message": "Missing await",
+      "file": "backend/tests/test_bid_write_l4.py",
+      "root_cause": "Async call without await — returned Promise instead of value",
+      "fix": "Added await to async call",
+      "tags": [
+        "auto-detected",
+        "async-fix",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-11-13T16:20:30.066Z"
+    },
+    {
+      "id": "bug-4355",
+      "timestamp": "2026-11-13T16:21:15.378Z",
+      "error_message": "Significant refactor of ",
+      "file": "backend/app/extensions/bid_write/precheck.py",
+      "root_cause": "6 lines replaced/restructured",
+      "fix": "Rewrote 26→96 lines (6 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-11-13T16:21:15.378Z"
+    },
+    {
+      "id": "bug-4356",
+      "timestamp": "2026-11-13T16:24:25.896Z",
+      "error_message": "Missing await",
+      "file": "backend/app/extensions/bid_write/worker.py",
+      "root_cause": "Async call without await — returned Promise instead of value",
+      "fix": "Added await to async call",
+      "tags": [
+        "auto-detected",
+        "async-fix",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-11-13T16:24:25.896Z"
+    },
+    {
+      "id": "bug-4357",
+      "timestamp": "2026-11-13T16:31:56.339Z",
+      "error_message": "Significant refactor of ",
+      "file": "docs/superpowers/plans/2026-11-14-bid-write-p1-beta24-l4-activation-plan.md",
+      "root_cause": "2 lines replaced/restructured",
+      "fix": "Rewrote 3→7 lines (2 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "md"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-11-13T16:31:56.339Z"
+    },
+    {
+      "id": "bug-4358",
+      "timestamp": "2026-11-13T16:33:06.000Z",
+      "error_message": "P1-γ-a 初版按扩面表登记 tender.substantive_clauses → 钉测试 ext∩uni=∅ 与成员钉双红(assert 'tender.substantive_clauses' not in set(universe()) FAILED)",
+      "file": "backend/app/extensions/bid_write/contracts.py",
+      "root_cause": "研究期只 grep extract.py FIELD_TYPE_CONTRACTS 判定非 universe 成员,漏查 ANCHOR_REGISTRY——universe()=pack_inputs∪anchor_paths∪PROJECTION_FIELDS∪SECOND_STAGE_FIELDS 四源,该路径早已被 anchors「招标合同条款/实质性条款」组收编;扩面表律禁收 universe 成员(钉即迁移信号)",
+      "fix": "改主路径直入 COMMERCIAL_TENDER_SUBSET(去扩面表登记),contracts 头注「挂本批落地」预埋意图兑现;新增 test_substantive_clauses_is_main_subset_member 钉主路径身份+防误迁",
+      "tags": [
+        "bid_write",
+        "universe-membership",
+        "anchors-registry",
+        "subset-pin",
+        "p1-gamma"
+      ],
+      "related_bugs": [
+        "bug-4350"
+      ],
+      "occurrences": 1,
+      "last_seen": "2026-11-13T16:33:06.000Z"
     }
   ]
 }
