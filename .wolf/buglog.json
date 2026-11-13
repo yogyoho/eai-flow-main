@@ -10434,6 +10434,74 @@
       "related_bugs": [],
       "occurrences": 1,
       "last_seen": "2026-11-13"
+    },
+    {
+      "id": "bug-4342",
+      "timestamp": "2026-11-13T14:27:01.890Z",
+      "error_message": "Missing await",
+      "file": "backend/app/extensions/bid_write/routers.py",
+      "root_cause": "Async call without await — returned Promise instead of value",
+      "fix": "Added await to async call",
+      "tags": [
+        "auto-detected",
+        "async-fix",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-11-13T14:27:01.890Z"
+    },
+    {
+      "id": "bug-4343",
+      "timestamp": "2026-11-13T14:28:59.784Z",
+      "error_message": "Incorrect value in code",
+      "file": "backend/app/extensions/bid_write/crud.py",
+      "root_cause": "Had \"ALL\"",
+      "fix": "Changed to \".join(skills) if skills else \"",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-11-13T14:28:59.784Z"
+    },
+    {
+      "id": "bug-4343",
+      "timestamp": "2026-11-13",
+      "error_message": "sqlite3.ProgrammingError: Error binding parameter 4: type 'list' is not supported (record_skill_run commit)",
+      "file": "backend/app/extensions/bid_write/crud.py",
+      "root_cause": "record_skill_run 把 skills 参数 list(skills) 成 Python list 落 String(40) 列;M1 落地后零调用方,潜伏到批廿一 M2-c 首个真实调用(自动预审查)才炸",
+      "fix": "改 ','.join(skills) if skills else 'ALL'(逗号连接字符串,与列型一致)",
+      "tags": [
+        "bid_write",
+        "sqlite",
+        "type-mismatch",
+        "latent-bug",
+        "m2"
+      ],
+      "related_bugs": [
+        "bug-4303"
+      ],
+      "occurrences": 1,
+      "last_seen": "2026-11-13"
+    },
+    {
+      "id": "bug-4344",
+      "timestamp": "2026-11-13T14:33:17.930Z",
+      "error_message": "Incorrect value in code",
+      "file": "docs/superpowers/specs/2026-11-13-bid-write-p0-skills-spec.md",
+      "root_cause": "Had `tender.substantive_clauses`",
+      "fix": "Changed to \"D0\"",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "md"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-11-13T14:33:17.930Z"
     }
   ]
 }

@@ -30556,3 +30556,29 @@
 | 21:44 | Created backend/tests/test_bid_write_generate_ctx.py | — | ~666 |
 | 21:45 | Edited backend/tests/test_bid_write_generate_ctx.py | modified test_material_missing_honest_fail() | ~141 |
 | 21:49 | Edited docs/superpowers/specs/2026-11-13-bid-write-p0-skills-spec.md | modified M2() | ~248 |
+| 21:53 | Created C:/Users/admin/.claude/projects/D--eai-eai-flow-main/memory/bid-write-p1-beta20-m1-landed.md | — | ~385 |
+| 21:54 | Session end: 6 writes across 5 files (__init__.py, bid_write_generate_fixtures.py, test_bid_write_generate_ctx.py, 2026-11-13-bid-write-p0-skills-spec.md, bid-write-p1-beta20-m1-landed.md) | 13 reads | ~21778 tok |
+| 22:02 | Session end: 6 writes across 5 files (__init__.py, bid_write_generate_fixtures.py, test_bid_write_generate_ctx.py, 2026-11-13-bid-write-p0-skills-spec.md, bid-write-p1-beta20-m1-landed.md) | 13 reads | ~21778 tok |
+
+## Session: 2026-11-13 22:09
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 22:16 | Created docs/superpowers/plans/2026-11-13-bid-write-p1-beta21-m2-precheck-export-worker-plan.md | — | ~7119 |
+| 22:16 | Created backend/tests/test_bid_write_precheck.py | — | ~1084 |
+| 22:17 | Created backend/app/extensions/bid_write/precheck.py | — | ~1452 |
+| 22:17 | Edited backend/app/extensions/bid_write/contracts.py | expanded (+8 lines) | ~119 |
+| 22:18 | Edited backend/tests/test_bid_write_precheck.py | 6→6 lines | ~40 |
+| 22:20 | Edited backend/app/extensions/bid_write/precheck.py | 2→2 lines | ~64 |
+| 22:21 | Edited backend/app/extensions/bid_write/precheck.py | 3→3 lines | ~66 |
+| 22:25 | Edited backend/app/extensions/bid_write/precheck.py | 14→18 lines | ~232 |
+| 22:25 | Edited backend/app/extensions/bid_write/worker.py | 3→4 lines | ~58 |
+| 22:25 | Edited backend/app/extensions/bid_write/worker.py | 3→7 lines | ~139 |
+| 22:26 | Edited backend/app/extensions/bid_write/worker.py | modified _infra_fail() | ~726 |
+| 22:27 | Edited backend/app/extensions/bid_write/routers.py | modified get_assertion_registry() | ~649 |
+| 22:27 | Created backend/tests/test_bid_write_m2_worker.py | — | ~1470 |
+| 22:28 | Edited backend/app/extensions/bid_write/crud.py | "ALL" → "," | ~50 |
+
+| 22:30 | 批廿一 M2 开工:precheck.py 投影+det-only 预审查+导出门禁落地(2 commits) | precheck.py/contracts.py/test_bid_write_precheck.py | 9 测试绿 | ~9k |
+| 22:45 | M2-c worker 接线:fields 持久化+自动预审查+generate/export-precheck 端点;bug-4343 record_skill_run list 落 String 列 | worker.py/routers.py/schemas.py/crud.py/test_bid_write_m2_worker.py | 3 测试绿+routers 回归 19 绿 | ~8k |
+| 22:33 | Edited docs/superpowers/specs/2026-11-13-bid-write-p0-skills-spec.md | 1→2 lines | ~260 |

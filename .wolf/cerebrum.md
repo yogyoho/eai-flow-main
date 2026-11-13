@@ -539,6 +539,8 @@ fixture 策略: 全节点 template_text=null(不发明招标内容), 真文渲�
 
 ## Do-Not-Repeat
 - 2026-11-08(merge 实测):`scripts/config-upgrade.sh` 本机禁跑——Windows 下整文件重写剥光全部注释(bug-4239);config 升级走手工 graft。
+
+- **零调用方的落库函数=潜伏 bug 温床,接首调时先审列型 (2026-11-13, bug-4343, Do-Not-Repeat):** `crud.record_skill_run` 批二十 M1 落地后无调用方,`list(skills)` 落 `String(40)` 列的错配潜伏一批才炸(批廿一 M2-c 首个真实调用)。铁律:给"从未被生产路径调用"的函数接线时,先对照 ORM 列型与传入值形态(JSON vs String vs list),别信签名能跑=语义对。相关 [[bid-write-p1-beta20-m1-landed]]。
 - 2026-11-08(merge 实测):merge 后勿只跑 lint 就信 package.json 完好——须 diff 依赖集 vs HEAD 抓 3-way 静默删除(bug-4228 实锤,@xyflow/react 无声消失)。
 - 2026-11-06(P1-α 实测):`pytest -k bid_review` **必须带 `tests/` 路径**(写 `pytest tests/ -k bid_review`)——裸 `-k` 会收集 backend/ 根下两个陈年散落文件(test_dept_fix.py/test_full_pipeline.py),本机 collection 即炸(DNS/import env),误判全红。
 - 2026-11-06(P1-α 实测):lint 门=每文件 `ruff check` + **生产文件** `ruff format --check`;tests/ 基线已有 28 个 format 漂移文件,别对测试文件跑 `format --check` 当门(会误报),漂移清理属专门批次。

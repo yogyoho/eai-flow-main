@@ -1,7 +1,7 @@
 # anatomy.md
 
-> Auto-maintained by OpenWolf. Last scanned: 2026-11-13T13:49:40.220Z
-> Files: 48 tracked | Anatomy hits: 0 | Misses: 0
+> Auto-maintained by OpenWolf. Last scanned: 2026-11-13T14:33:17.911Z
+> Files: 1 tracked | Anatomy hits: 0 | Misses: 0
 
 ## ../../00 工作目录/02 项目策划/马宁/应急指挥/bid-run/
 
@@ -323,10 +323,6 @@
 
 ## C:/Users/admin/.claude/projects/D--eai-eai-flow-main/memory/
 
-- `bid-review-p1-beta19-landed.md` (~428 tok)
-- `bid-write-editor-spec-pm.md` (~325 tok)
-- `bid-write-p1-beta20-m1-landed.md` (~412 tok)
-- `MEMORY.md` (~4502 tok)
 
 ## C:/Users/admin/.codex/
 
@@ -681,50 +677,24 @@
 
 ## backend/app/extensions/bid_write/
 
-- `contracts.py` — bid_write 契约层(批十九 T1,EAI-CUSTOM 2026-11-13)——写作端字段/槽位/断言 (~1537 tok)
-- `models.py` — bid_write ORM 模型(批十九 T2,EAI-CUSTOM 2026-11-13)——与 bid_review/models.py (~1084 tok)
-- `routers.py` — bid_write 工作台 API(批十九 T5)——挂 gateway ``/api/extensions/bid-write``: (~2454 tok)
 
 ## backend/app/extensions/bid_write/assertions/
 
-- `p0.yaml` — bid_write P0 四技能断言注册表(EAI-CUSTOM 2026-11-13,批十九 T7)——规格《投标方案(商务部分) (~2532 tok)
 
 ## backend/app/extensions/bid_write/executor/
 
-- `__init__.py` — 断言执行器(批二十 M1,EAI-CUSTOM 2026-11-13)——bid_write P0 四技能生成产物 (~200 tok)
-- `amount_cn.py` — 金额中文大写双向转换(批二十 M1,EAI-CUSTOM 2026-11-13)——SK-BL-002/PS-004 (~1210 tok)
-- `cli.py` — 金标准 oracle 适配面(批二十 M1-d,EAI-CUSTOM 2026-11-13)——命令行薄壳: (~363 tok)
-- `gate.py` — 导出门禁(批二十 M1-c,EAI-CUSTOM 2026-11-13)——blocked=存在 final 级 D0 (~186 tok)
-- `loader.py` — 断言注册表加载器(批二十 M1,EAI-CUSTOM 2026-11-13)——assertions/p0.yaml → (~1174 tok)
-- `models.py` — 断言执行器数据面(批二十 M1,EAI-CUSTOM 2026-11-13)——AssertionDef/Outcome/ (~1062 tok)
-- `report.py` — RunReport 序列化与待补提取(批二十 M1-c,EAI-CUSTOM 2026-11-13)——报告= (~634 tok)
-- `runner.py` — 断言执行核(批二十 M1,EAI-CUSTOM 2026-11-13)——纯函数 ctx→RunReport,零 IO (~1442 tok)
-- `wordscan.py` — 禁用词扫描器(批二十 M1,EAI-CUSTOM 2026-11-13)——CMN 全文扫描与 BL-006/ (~658 tok)
 
 ## backend/app/extensions/bid_write/executor/ (批二十 M1, 2026-11-13)
 
 
 ## backend/app/extensions/bid_write/executor/validators/
 
-- `__init__.py` — 断言校验函数注册表(批二十 M1,EAI-CUSTOM 2026-11-13)——无通用 DSL(spec §8 (~520 tok)
-- `ai.py` — attachment_index 附件索引校验器(批二十 M1,EAI-CUSTOM 2026-11-13)—— (~1942 tok)
-- `bl.py` — BL 投标函校验器(批二十 M1,EAI-CUSTOM 2026-11-13)——SK-BL-001..010 逐条按 (~2332 tok)
-- `cmn.py` — CMN 共享层校验器(批二十 M1,EAI-CUSTOM 2026-11-13)——导出级全文扫描, (~1796 tok)
-- `ps.py` — PS 报价表校验器(批二十 M1,EAI-CUSTOM 2026-11-13)——SK-PS-001..010 逐条按 (~2733 tok)
-- `rt.py` — RT 商务响应表校验器(批二十 M1,EAI-CUSTOM 2026-11-13)——SK-RT-001..009 逐条 (~2342 tok)
 
 ## backend/app/extensions/bid_write/generate/
 
-- `__init__.py` — build_ctx 总装(批二十 M1-i,EAI-CUSTOM 2026-11-13)——五生成器组装 executor (~1221 tok)
-- `attachment_index.py` — SK-AI 附件索引装配(批二十 M1-h,EAI-CUSTOM 2026-11-13)——§2.4 兑现: (~1137 tok)
-- `bid_letter.py` — SK-BL 投标函渲染(批二十 M1-f,EAI-CUSTOM 2026-11-13)——§2.1 骨架兑现: (~676 tok)
-- `price_sheet.py` — SK-PS 计算内核(批二十 M1-e,EAI-CUSTOM 2026-11-13)——§2.2 硬约束兑现: (~547 tok)
-- `response_table.py` — SK-RT 商务响应表装配(批二十 M1-g,EAI-CUSTOM 2026-11-13)——批十九 F1 (~450 tok)
-- `sections.py` — F3 章节装配(批二十 M1-h,EAI-CUSTOM 2026-11-13)——tender.required_sections (~189 tok)
 
 ## backend/app/extensions/bid_write/golden/cases-write/
 
-- `exec-negatives.yaml` — 批二十 M1-c exec-negatives(golden-oracle 负例全红面)——base=绿夹具 (~1847 tok)
 
 ## backend/app/extensions/contract_price/
 
@@ -983,20 +953,6 @@
 
 ## backend/tests/
 
-- `bid_write_exec_fixtures.py` — 批二十 M1 执行器 ctx 夹具构造器(EAI-CUSTOM 2026-11-13)——green_ctx()=断言 (~1781 tok)
-- `bid_write_generate_fixtures.py` — 批二十 M1-i 生成端输入夹具(EAI-CUSTOM 2026-11-13)——与执行端 green_ctx 同 (~644 tok)
-- `test_bid_write_assertions.py` — 批十九 T7 断言注册表钉(assertions/p0.yaml):编号连续、规则锚真实(禁幽灵 id)、 (~1266 tok)
-- `test_bid_write_exec_negatives.py` — 批二十 M1-c 执行器负例金标 + 报告/门禁测试(EAI-CUSTOM 2026-11-13)—— (~1845 tok)
-- `test_bid_write_executor_determinism.py` — 批二十 M1-d 确定性 20× + CLI oracle 测试(EAI-CUSTOM 2026-11-13)—— (~667 tok)
-- `test_bid_write_executor_loader.py` — 批二十 M1 断言执行器 loader/数据面测试(EAI-CUSTOM 2026-11-13)——加载期静态 (~1766 tok)
-- `test_bid_write_executor_runner.py` — 批二十 M1 执行器 runner 语义测试(EAI-CUSTOM 2026-11-13)——排序/短路/委托 (~1939 tok)
-- `test_bid_write_executor_validators.py` — 批二十 M1 全量 43 条校验器测试(EAI-CUSTOM 2026-11-13)——amount_cn 固定函数 (~4340 tok)
-- `test_bid_write_generate_bid_letter.py` — 批二十 M1-f BL 渲染测试(EAI-CUSTOM 2026-11-13)——金额引用报价表/主体信息 (~830 tok)
-- `test_bid_write_generate_ctx.py` — 批二十 M1-i 金标闭环测试(EAI-CUSTOM 2026-11-13)——生成端→执行端契约闭合: (~698 tok)
-- `test_bid_write_generate_price_sheet.py` — 批二十 M1-e PS 计算内核测试(EAI-CUSTOM 2026-11-13)——§2.2 硬约束: (~561 tok)
-- `test_bid_write_generate_response_table.py` — 批二十 M1-g RT 装配测试(EAI-CUSTOM 2026-11-13)——矩阵行→响应表:三类行源 (~822 tok)
-- `test_bid_write_generate_sections_index.py` — 批二十 M1-h AI 附件索引测试(EAI-CUSTOM 2026-11-13)——需求×素材→索引行: (~919 tok)
-- `test_bid_write_routers.py` — 批十九 T5/T4 测试:bid_write 端点(独立子应用+双 override,同 test_bid_review_ (~2826 tok)
 
 ## backend/tests/ (QA 2026-10-28 增补)
 
@@ -1072,7 +1028,6 @@
 
 ## docs/designs/
 
-- `2026-11-13-bid-write-ui.html` — 投标商务智能写作 (~25854 tok)
 
 ## docs/designs/2026-10-11-jv-mining-translation-kb.md
 
@@ -1085,8 +1040,6 @@
 
 ## docs/superpowers/plans/
 
-- `2026-11-13-bid-write-p1-beta20-m1-executor-plan.md` — 批二十 M1:断言执行器骨架(Assertion Executor)Implementation Plan (~2316 tok)
-- `2026-11-13-bid-write-p1-beta20-m1-f3-f4-plan.md` — 批二十 M1 收尾:F3 章节装配 + F4 四技能生成器(骨架)实施计划 (~1658 tok)
 
 ## docs/superpowers/plans/2026-09-13-coal-mine-tunneling-regulation-v2.md
 
@@ -1096,7 +1049,7 @@
 
 ## docs/superpowers/specs/
 
-- `2026-11-13-bid-write-p0-skills-spec.md` — 投标方案(商务部分)智能写作——P0 四技能规格(落地态) (~2724 tok)
+- `2026-11-13-bid-write-p0-skills-spec.md` — 投标方案(商务部分)智能写作——P0 四技能规格(落地态) (~2917 tok)
 
 ## docs/superpowers/specs/2026-09-13-coal-mine-tunneling-regulation-v2-design.md
 
