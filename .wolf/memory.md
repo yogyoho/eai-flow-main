@@ -30603,3 +30603,21 @@
 | 23:09 | Edited backend/tests/test_bid_write_contracts.py | modified test_commercial_subset_is_real_universe_members() | ~187 |
 | 23:50 | 批廿二收口:全量回归抓 subset 钉违例(bug-4350)→SUBSET_EXTRACT_EXTENSIONS 显式扩面表;buglog 4343 去重 | contracts.py/test_bid_write_contracts.py | 203p/6s 全绿 | ~3k |
 | 23:11 | Edited docs/superpowers/plans/2026-11-13-bid-write-p1-beta22-materials-plan.md | inline fix | ~68 |
+| 23:12 | Created C:/Users/admin/.claude/projects/D--eai-eai-flow-main/memory/bid-write-p1-beta22-materials-landed.md | — | ~426 |
+| 23:14 | Session end: 4 writes across 4 files (contracts.py, test_bid_write_contracts.py, 2026-11-13-bid-write-p1-beta22-materials-plan.md, bid-write-p1-beta22-materials-landed.md) | 1 reads | ~887 tok |
+| 23:19 | Created docs/superpowers/plans/2026-11-13-bid-write-p1-beta23-policy-metrics-plan.md | — | ~4028 |
+| 23:19 | Created backend/tests/test_bid_write_policy.py | — | ~1232 |
+| 23:19 | Edited backend/app/extensions/bid_write/models.py | modified MaterialProfile() | ~266 |
+| 23:20 | Edited backend/app/extensions/bid_write/crud.py | modified collect_material() | ~490 |
+| 23:20 | Edited backend/app/extensions/bid_write/schemas.py | modified ProfileIn() | ~200 |
+| 23:20 | Edited backend/app/extensions/bid_write/routers.py | modified put_material_profile() | ~273 |
+| 23:23 | Edited backend/app/extensions/bid_write/generate/__init__.py | modified build_ctx() | ~404 |
+| 23:23 | Edited backend/app/extensions/bid_write/generate/bid_letter.py | modified render_bid_letter() | ~547 |
+| 23:23 | Edited backend/app/extensions/bid_write/generate/bid_letter.py | 9→10 lines | ~92 |
+| 23:23 | Edited backend/app/extensions/bid_write/worker.py | 13→18 lines | ~255 |
+| 23:27 | Created backend/app/extensions/bid_write/metrics.py | — | ~445 |
+| 23:27 | Edited backend/app/extensions/bid_write/worker.py | modified generate_and_record() | ~260 |
+| 23:28 | Edited backend/app/extensions/bid_write/crud.py | modified latest_skill_run() | ~276 |
+| 23:28 | Edited backend/app/extensions/bid_write/routers.py | modified put_policy() | ~616 |
+| 00:40 | 批廿三 P1-β 落地:policy owner 单例+plumb(缺省=零行为)+埋点六指标 verdict.metrics+聚合 p95 | models/crud/schemas/routers/generate/worker/metrics/test_bid_write_policy | 5 测试绿 | ~10k |
+| 23:35 | Session end: 18 writes across 14 files (contracts.py, test_bid_write_contracts.py, 2026-11-13-bid-write-p1-beta22-materials-plan.md, bid-write-p1-beta22-materials-landed.md, 2026-11-13-bid-write-p1-beta23-policy-metrics-plan.md) | 9 reads | ~15938 tok |

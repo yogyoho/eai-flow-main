@@ -10521,6 +10521,58 @@
       ],
       "occurrences": 1,
       "last_seen": "2026-11-13"
+    },
+    {
+      "id": "bug-4351",
+      "timestamp": "2026-11-13T15:23:13.590Z",
+      "error_message": "Significant refactor of ",
+      "file": "backend/app/extensions/bid_write/generate/__init__.py",
+      "root_cause": "3 lines replaced/restructured",
+      "fix": "Rewrote 27→32 lines (3 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-11-13T15:23:13.590Z"
+    },
+    {
+      "id": "bug-4352",
+      "timestamp": "2026-11-13T15:23:31.577Z",
+      "error_message": "Significant refactor of ",
+      "file": "backend/app/extensions/bid_write/generate/bid_letter.py",
+      "root_cause": "3 lines replaced/restructured",
+      "fix": "Rewrote 21→42 lines (3 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-11-13T15:23:31.577Z"
+    },
+    {
+      "id": "bug-4353",
+      "timestamp": "2026-11-13",
+      "error_message": "test_generate_green_with_materials FAILED: sqlite3.OperationalError no such table bid_write_policies",
+      "file": "backend/tests/test_bid_write_materials.py",
+      "root_cause": "批廿三 build_task_ctx 新增 crud.get_policy 查询,materials 测试自带独立 _TABLES 清单(第三处)未加 BidWritePolicy,plan 勘误原写「两处」漏计",
+      "fix": "materials._TABLES 追加 BidWritePolicy.__table__;cerebrum Do-Not-Repeat 钉三处清单律",
+      "tags": [
+        "bid-write",
+        "fixtures",
+        "sqlite",
+        "batch23"
+      ],
+      "related_bugs": [
+        "bug-4303",
+        "bug-4343"
+      ],
+      "occurrences": 1,
+      "last_seen": "2026-11-13"
     }
   ]
 }

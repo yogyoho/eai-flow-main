@@ -1,7 +1,7 @@
 # anatomy.md
 
-> Auto-maintained by OpenWolf. Last scanned: 2026-11-13T15:11:39.018Z
-> Files: 9 tracked | Anatomy hits: 0 | Misses: 0
+> Auto-maintained by OpenWolf. Last scanned: 2026-11-13T15:28:29.171Z
+> Files: 17 tracked | Anatomy hits: 0 | Misses: 0
 
 ## ../../00 工作目录/02 项目策划/马宁/应急指挥/bid-run/
 
@@ -324,6 +324,7 @@
 ## C:/Users/admin/.claude/projects/D--eai-eai-flow-main/memory/
 
 - `bid-write-p1-beta21-m2-landed.md` (~420 tok)
+- `bid-write-p1-beta22-materials-landed.md` (~428 tok)
 
 ## C:/Users/admin/.codex/
 
@@ -679,9 +680,12 @@
 ## backend/app/extensions/bid_write/
 
 - `contracts.py` — bid_write 契约层(批十九 T1,EAI-CUSTOM 2026-11-13)——写作端字段/槽位/断言 (~1770 tok)
-- `crud.py` — bid_write CRUD(批十九 T2)——全部查询带 owner_id 过滤(经 task 联接传导, (~2587 tok)
-- `routers.py` — bid_write 工作台 API(批十九 T5)——挂 gateway ``/api/extensions/bid-write``: (~4152 tok)
-- `worker.py` — bid_write worker(批十九 T4)——F1 单管线:created→parsing→extracting→ (~2792 tok)
+- `crud.py` — bid_write CRUD(批十九 T2)——全部查询带 owner_id 过滤(经 task 联接传导, (~2994 tok)
+- `metrics.py` — 埋点六指标(P1-β 批廿三,spec §3;EAI-CUSTOM 2026-11-13)——纯函数, (~445 tok)
+- `models.py` — bid_write ORM 模型(批十九 T2,EAI-CUSTOM 2026-11-13)——与 bid_review/models.py (~1632 tok)
+- `routers.py` — bid_write 工作台 API(批十九 T5)——挂 gateway ``/api/extensions/bid-write``: (~4853 tok)
+- `schemas.py` — bid_write API schemas(批十九 T5)——与 bid_review/schemas.py 同构(from_ (~944 tok)
+- `worker.py` — bid_write worker(批十九 T4)——F1 单管线:created→parsing→extracting→ (~2988 tok)
 
 ## backend/app/extensions/bid_write/assertions/
 
@@ -697,6 +701,8 @@
 
 ## backend/app/extensions/bid_write/generate/
 
+- `__init__.py` — build_ctx 总装(批二十 M1-i,EAI-CUSTOM 2026-11-13)——五生成器组装 executor (~1323 tok)
+- `bid_letter.py` — SK-BL 投标函渲染(批二十 M1-f,EAI-CUSTOM 2026-11-13)——§2.1 骨架兑现: (~906 tok)
 
 ## backend/app/extensions/bid_write/golden/cases-write/
 
@@ -960,6 +966,9 @@
 
 - `test_bid_write_contracts.py` — 批十九 T1 契约层自检:商务子集全部是审查端宇宙真实成员(零新契约铁律)、 (~859 tok)
 - `test_bid_write_materials.py` — 批廿二 P1-α:素材库六类实体——crud collect_material 形/端点 CRUD+profile/ (~2682 tok)
+- `app/extensions/bid_write/metrics.py` — 批廿三 P1-β 埋点纯函数:compute_metrics 六指标(slot_fill_rate/pass_rate/d0·d1/manual=None/retry=0/latency_ms) (~700 tok)
+- `tests/test_bid_write_policy.py` — 批廿三 P1-β 测试 5 例:policy 合并+422/plumb 税率调价关兜底/零 policy 不变/green+degraded metrics/聚合 p95 (~2500 tok)
+- `test_bid_write_policy.py` — 批廿三 P1-β:policy 配置面(owner 单例 letter_defaults/tax_rate/调价开关)+ (~1232 tok)
 
 ## backend/tests/ (QA 2026-10-28 增补)
 
@@ -1048,6 +1057,7 @@
 ## docs/superpowers/plans/
 
 - `2026-11-13-bid-write-p1-beta22-materials-plan.md` — bid_write 批廿二(P1-α)素材库六类实体 — Implementation Plan (~1701 tok)
+- `2026-11-13-bid-write-p1-beta23-policy-metrics-plan.md` — bid_write 批廿三(P1-β)policy 配置面 + 埋点 — Implementation Plan (~3776 tok)
 
 ## docs/superpowers/plans/2026-09-13-coal-mine-tunneling-regulation-v2.md
 
