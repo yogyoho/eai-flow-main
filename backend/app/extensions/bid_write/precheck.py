@@ -71,6 +71,12 @@ def project_bid_fields(ctx: dict) -> dict:
     out["bid.alternative_price_offers"] = []  # 生成器不造替代方案(L1-019 判定面)
     if slots.get("bidder_name"):
         out["bid.entity_name_occurrences"] = [slots["bidder_name"]]
+    comms = [c for c in (bl.get("extra_commitments") or []) if isinstance(c, dict) and str(c.get("text") or "").strip()]
+    if comms:
+        # 批廿四 P1-γ:L4-003/004 语义审查输入面(承诺清单+产物全文投影;无承诺缺席=绿跑零行为)
+        out["bid.service_commitments"] = [{"text": str(c["text"]).strip(), "clause_id": str(c.get("clause_id") or "")} for c in comms]
+    if bl.get("text"):
+        out["bid.full_text"] = bl["text"]
     return out
 
 
