@@ -95,3 +95,23 @@ async def list_matrix(session: AsyncSession, task_id: str, owner_id: str) -> lis
 async def get_row(session: AsyncSession, task_id: str, clause_id: str, owner_id: str) -> MatrixRow | None:
     result = await session.execute(select(MatrixRow).join(WriteTask, MatrixRow.task_id == WriteTask.id).where(MatrixRow.task_id == task_id, MatrixRow.clause_id == clause_id, WriteTask.owner_id == owner_id))
     return result.scalar_one_or_none()
+
+
+# --- SkillRun(批二十 M1-c 断言执行落库)---------------------------------------
+
+
+async def record_skill_run(session: AsyncSession, task_id: str, owner_id: str, verdict: dict, *, skills=None, schema_version: str = "", blocked: bool = False) -> None:
+    """断言执行结果落库(报告 JSON=导出物非真相源,行才是)。owner 过滤经 task
+    存在性校验间接传导:调用方须先 get_task(db, task_id, owner_id)(404 面)。"""
+    from app.extensions.bid_write.executor.models import SkillRun
+
+    session.add(SkillRun(task_id=task_id, owner_id=owner_id, skills=list(skills) if skills else "ALL", schema_version=schema_version, verdict=verdict, blocked=blocked))
+    await session.commit()
+
+
+async def latest_skill_run(session: AsyncSession, task_id: str, owner_id: str):
+    """最近一次执行行(无→None,gaps 断言维度 404 不误伤)。"""
+    from app.extensions.bid_write.executor.models import SkillRun
+
+    result = await session.execute(select(SkillRun).join(WriteTask, SkillRun.task_id == WriteTask.id).where(SkillRun.task_id == task_id, WriteTask.owner_id == owner_id).order_by(SkillRun.created_at.desc(), SkillRun.id.desc()).limit(1))
+    return result.scalar_one_or_none()

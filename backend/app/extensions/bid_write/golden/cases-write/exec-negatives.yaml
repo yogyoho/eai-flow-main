@@ -1,0 +1,166 @@
+# 批二十 M1-c exec-negatives(golden-oracle 负例全红面)——base=绿夹具
+# tests/bid_write_exec_fixtures.green_ctx(),mutate=路径式变异(op: set/del/append;
+# path 点分,数字段=列表下标),expect={assertion_id: {status[, level]}} 子集钉
+# (其余断言不钉,防过拟合)。gate_blocked=门禁裁决钉(∃ final D0 ∧ FAIL/ERROR)。
+# 消费者 tests/test_bid_write_exec_negatives.py;与 p0-matrix.yaml 同目录分库。
+cases:
+  # ── BL 投标函 ────────────────────────────────────────────────────────────────
+  - case_id: NEG-BL-001-empty-slot
+    description: 必填槽位空→BL-001 D0 FAIL,BL-002 短路跳过(不代表通过)
+    mutate:
+      - {op: set, path: products.bid_letter.slots.legal_rep_name, value: ""}
+    expect:
+      SK-BL-001: {status: FAIL, level: D0}
+      SK-BL-002: {status: SKIPPED}
+    gate_blocked: true
+  - case_id: NEG-BL-002-cn-mismatch
+    description: 大写与小写不符→BL-002 D0 FAIL(金额三面失一致)
+    mutate:
+      - {op: set, path: products.bid_letter.slots.total_amount_cn, value: 叁佰万元整}
+    expect:
+      SK-BL-002: {status: FAIL, level: D0}
+    gate_blocked: true
+  - case_id: NEG-BL-004-material-missing
+    description: 素材缺位→BL-004 缺件 FAIL;PS-010 历史价静默 D3;RT-007 素材库缺位全待补
+    mutate:
+      - {op: del, path: material}
+    expect:
+      SK-BL-004: {status: FAIL, level: D0}
+      SK-PS-010: {status: SKIPPED, level: D3}
+      SK-RT-007: {status: FAIL, level: D0}
+      SK-CMN-003: {status: PASS}
+    gate_blocked: true
+  - case_id: NEG-BL-006-redline
+    description: 投标函红线词「包过」→BL-006 词级升 D0;CMN-002 同文本命中 D0
+    mutate:
+      - {op: set, path: products.bid_letter.text, value: 我方确保包过,请贵司放心。}
+    expect:
+      SK-BL-006: {status: FAIL, level: D0}
+      SK-CMN-002: {status: FAIL, level: D0}
+    gate_blocked: true
+  - case_id: NEG-BL-010-commitment-no-trace
+    description: 承诺无溯源→BL-010 D2 FAIL(非阻断面,gate 仍绿)
+    mutate:
+      - {op: append, path: products.bid_letter.extra_commitments, value: {text: 无溯源承诺}}
+    expect:
+      SK-BL-010: {status: FAIL, level: D2}
+    gate_blocked: false
+  # ── PS 报价表 ────────────────────────────────────────────────────────────────
+  - case_id: NEG-PS-001-extra-row
+    description: 多余清单行→PS-001 D0 FAIL,PS-002 短路
+    mutate:
+      - {op: append, path: products.price_sheet.rows, value: {id: "1.9", name: 多余项, qty: 1, unit: 项, unit_price: 1, amount: 1}}
+    expect:
+      SK-PS-001: {status: FAIL, level: D0}
+      SK-PS-002: {status: SKIPPED}
+    gate_blocked: true
+  - case_id: NEG-PS-006-over-limit
+    description: 报价超限价→PS-006 D0 FAIL
+    mutate:
+      - {op: set, path: tender.tender.max_price, value: 1500000}
+    expect:
+      SK-PS-006: {status: FAIL, level: D0}
+    gate_blocked: true
+  - case_id: NEG-PS-006-no-limit
+    description: 限价未抽到→PS-006 SKIPPED D2「限价未确认」不做假合规,gate 绿
+    mutate:
+      - {op: del, path: tender.tender.max_price}
+    expect:
+      SK-PS-006: {status: SKIPPED, level: D2}
+    gate_blocked: false
+  - case_id: NEG-PS-009-no-mechanism
+    description: 模糊调价+无调价机制→PS-009 升 D0
+    mutate:
+      - {op: set, path: products.price_sheet.note, value: 单价暂估,以最终结算为准。}
+      - {op: set, path: products.price_sheet.price_adjust_mechanism, value: false}
+    expect:
+      SK-PS-009: {status: FAIL, level: D0}
+    gate_blocked: true
+  - case_id: NEG-PS-010-no-history
+    description: 历史价缺失→PS-010 D3 静默,gate 绿
+    mutate:
+      - {op: set, path: material.price_history, value: []}
+    expect:
+      SK-PS-010: {status: SKIPPED, level: D3}
+    gate_blocked: false
+  # ── RT 响应表 ────────────────────────────────────────────────────────────────
+  - case_id: NEG-RT-001-star-uncovered
+    description: ★条款无响应行→RT-001 D0 FAIL,余 RT 短路
+    mutate:
+      - {op: append, path: products.response_table.matrix_star_clause_ids, value: att:2}
+    expect:
+      SK-RT-001: {status: FAIL, level: D0}
+      SK-RT-002: {status: SKIPPED}
+    gate_blocked: true
+  - case_id: NEG-RT-002-star-negative
+    description: ★行负偏离→RT-002 D0 FAIL(生成期铁律)
+    mutate:
+      - {op: set, path: products.response_table.rows.0.conclusion, value: 负偏离}
+    expect:
+      SK-RT-002: {status: FAIL, level: D0}
+      SK-RT-005: {status: SKIPPED}
+    gate_blocked: true
+  - case_id: NEG-RT-003-empty-answer
+    description: 空应答词→RT-003 D0 FAIL
+    mutate:
+      - {op: set, path: products.response_table.rows.1.response_text, value: 满足招标文件要求。}
+    expect:
+      SK-RT-003: {status: FAIL, level: D0}
+    gate_blocked: true
+  - case_id: NEG-RT-005-no-plan
+    description: 非星负偏离缺替代方案→RT-005 D0 FAIL(RT-002 不触发)
+    mutate:
+      - {op: set, path: products.response_table.rows.0.star, value: false}
+      - {op: set, path: products.response_table.rows.0.conclusion, value: 负偏离}
+    expect:
+      SK-RT-002: {status: PASS}
+      SK-RT-005: {status: FAIL, level: D0}
+      SK-RT-006: {status: SKIPPED}
+    gate_blocked: true
+  # ── CMN 共享层 ───────────────────────────────────────────────────────────────
+  - case_id: NEG-CMN-001-placeholder
+    description: 正文占位符→CMN-001 D0 FAIL,CMN-002(D1)短路;AI-009 镜像跳过
+    mutate:
+      - {op: set, path: products.attachment_index.body_text, value: 技术方案详见附件待补充。}
+    expect:
+      SK-CMN-001: {status: FAIL, level: D0}
+      SK-CMN-002: {status: SKIPPED}
+      SK-AI-009: {status: SKIPPED}
+    gate_blocked: true
+  - case_id: NEG-CMN-003-ghost-ref
+    description: 幽灵实体引用→CMN-003 D0 FAIL,CMN-004/005 短路
+    mutate:
+      - {op: append, path: products.bid_letter.entity_refs, value: ent:ghost}
+    expect:
+      SK-CMN-003: {status: FAIL, level: D0}
+      SK-CMN-004: {status: SKIPPED}
+      SK-RT-007: {status: PASS}
+    gate_blocked: true
+  - case_id: NEG-CMN-004-replay-drift
+    description: 内核回放漂移→CMN-004 D0 FAIL
+    mutate:
+      - {op: set, path: pre.kernel_replay_equal, value: false}
+    expect:
+      SK-CMN-004: {status: FAIL, level: D0}
+    gate_blocked: true
+  - case_id: NEG-CMN-005-pending-no-evidence
+    description: 待补缺负证据→CMN-005 D0 FAIL,AI-009 委托镜像 FAIL(单实现律)
+    mutate:
+      - {op: append, path: products.attachment_index.pending_items, value: {item: 安全生产许可证, status: 待补, negative_evidence: {}}}
+    expect:
+      SK-CMN-005: {status: FAIL, level: D0}
+      SK-AI-009: {status: FAIL, level: D0}
+    gate_blocked: true
+  # ── 上下文缺失与门禁交叉面 ───────────────────────────────────────────────────
+  - case_id: NEG-CTX-products-missing
+    description: products 整体缺失→各技能 D0 头条 CtxMissing ERROR 短路;CMN 余量 SKIPPED
+    mutate:
+      - {op: del, path: products}
+    expect:
+      SK-BL-001: {status: ERROR}
+      SK-PS-001: {status: ERROR}
+      SK-RT-001: {status: ERROR}
+      SK-AI-001: {status: ERROR}
+      SK-CMN-001: {status: ERROR}
+      SK-CMN-003: {status: SKIPPED}
+    gate_blocked: true

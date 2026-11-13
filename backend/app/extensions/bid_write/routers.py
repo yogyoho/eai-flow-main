@@ -8,7 +8,8 @@
                                     ★行 negative 直通 422;blocked 行未确认前
                                     禁跳 confirmed)
   GET  /tasks/{id}/gaps             缺口三态(F2;M0 素材库缺位→全部「无对应素材」,
-                                    诚实伪零,素材六类实体批二十兑现)
+                                    诚实伪零,素材六类实体批二十兑现)+断言维度
+                                    (M1-c:最近执行行 pending/skipped/门禁裁决)
 
 owner 隔离:与 bid_review/routers.py 同款模块级 current_owner(require_permission)。
 """
@@ -158,10 +159,27 @@ async def patch_matrix_row(task_id: str, clause_id: str, body: schemas.MatrixRow
 @router.get("/tasks/{task_id}/gaps")
 async def get_gaps(task_id: str, db: AsyncSession = Depends(get_db), owner_id: str = Depends(current_owner)):
     """缺口三态(F2;M0 素材库缺位→要求面全部「无对应素材」,诚实伪零:
-    有且可佐证/有但缺佐证两态在素材六类实体批二十落地后按 entity_ref 反查兑现)。"""
+    有且可佐证/有但缺佐证两态在素材六类实体批二十落地后按 entity_ref 反查兑现)
+    + 断言维度(批二十 M1-c):最近一次执行行的待补清单/SKIPPED 注记/门禁裁决;
+    未执行过断言=断言维度 null(不造空绿)。"""
     task = await crud.get_task(db, task_id=task_id, owner_id=owner_id)
     if task is None:
         raise HTTPException(status_code=404, detail="任务不存在")
     rows = await crud.list_matrix(db, task_id=task_id, owner_id=owner_id)
     items = [{"clause_id": r.clause_id, "kind": r.kind, "requirement": r.requirement, "star": r.star, "status": r.status, "material_state": "无对应素材", "evidence_refs": r.evidence_refs} for r in rows if r.kind in ("attachment", "clause")]
-    return {"items": items, "summary": {"total": len(items), "material_ready": 0, "pending_note": "素材库 P1 批落地;M0 全部为无对应素材(诚实伪零)"}}
+
+    from app.extensions.bid_write.executor import report as exec_report
+
+    run = await crud.latest_skill_run(db, task_id=task_id, owner_id=owner_id)
+    assertions = None
+    if run is not None:
+        results = (run.verdict or {}).get("results") or []
+        assertions = {
+            "run_at": run.created_at.isoformat() if run.created_at else None,
+            "skills": run.skills,
+            "schema_version": run.schema_version,
+            "blocked": run.blocked,
+            "pending": exec_report.pending_from(results),
+            "skipped": exec_report.skipped_from(results),
+        }
+    return {"items": items, "summary": {"total": len(items), "material_ready": 0, "pending_note": "素材库 P1 批落地;M0 全部为无对应素材(诚实伪零)"}, "assertions": assertions}
