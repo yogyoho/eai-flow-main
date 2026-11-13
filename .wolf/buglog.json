@@ -9289,27 +9289,6 @@
       "last_seen": "2026-11-10T18:12:16.132Z"
     },
     {
-      "id": "bug-4275",
-      "timestamp": "2026-11-11T00:00:00",
-      "error_message": "真实件 W-real-4:deposit_required 抽成布尔 True(卡期望金额 10000)/license_name 抽成「高新技术企业证书」致 L1-016 假 FAIL×4/qual_levels 证书名集致 L1-002 假 FAIL/业绩表在转换文本内却 similar_performances=None→m4 链饿死",
-      "file": "backend/app/extensions/bid_review/engine/extract.py",
-      "root_cause": "11 缺陷键全裸路径零 FIELD_TYPE_CONTRACTS,prompt 无类型/取材指引,模型对路径名自由发挥",
-      "fix": "11 契约入 FIELD_TYPE_CONTRACTS(金额禁布尔/主体名禁证书名/业绩表逐行必收/资质等级禁荣誉证书/独立法人类给 null 等);T2 复采:deposit_required=10000 数值化、L1-016/L1-002 假 FAIL 消失、bid_scope 新抽出;similar_performances 模型召回未起记模型召回边界挂账",
-      "tags": [
-        "bid_review",
-        "field-contracts",
-        "prompt-layer",
-        "w-real-4",
-        "deposit-boolean",
-        "license-name"
-      ],
-      "related_bugs": [
-        "bug-4274"
-      ],
-      "occurrences": 1,
-      "last_seen": "2026-11-11"
-    },
-    {
       "id": "bug-4276",
       "timestamp": "2026-11-10T23:49:45.297Z",
       "error_message": "Incorrect value in code",
@@ -9780,26 +9759,6 @@
       "related_bugs": [],
       "occurrences": 1,
       "last_seen": "2026-11-12T17:17:30.968Z"
-    },
-    {
-      "id": "bug-4303",
-      "timestamp": "2026-11-13",
-      "error_message": "bid_write 两表不在共享 Base.metadata(gateway init_db create_all 建不出;容器探针 Base.metadata.tables 为空)",
-      "file": "backend/app/extensions/bid_write/models.py",
-      "root_cause": "首版误自建私有 DeclarativeBase 而非 import 共享 app.extensions.database.Base;测试夹具用显式表清单 create_all 故未暴露,真库启动序才炸",
-      "fix": "删私有 Base,对齐 bid_review/models.py import 共享 Base;重启 gateway 后 pg_tables 实证 bid_write_tasks/matrix_rows 两表落地",
-      "tags": [
-        "bid_write",
-        "models",
-        "metadata",
-        "create_all",
-        "批十九"
-      ],
-      "related_bugs": [
-        "bug-4302"
-      ],
-      "occurrences": 1,
-      "last_seen": "2026-11-13"
     },
     {
       "id": "bug-4304",
@@ -10382,26 +10341,6 @@
       "last_seen": "2026-11-13T08:29:22.104Z"
     },
     {
-      "id": "bug-4335",
-      "timestamp": "2026-11-13T16:35:00Z",
-      "error_message": "sqlite3.OperationalError: no such table: bid_write_skill_runs (test_bid_write_routers.test_gaps_honest_zero)",
-      "file": "backend/tests/test_bid_write_routers.py",
-      "root_cause": "夹具 create_all 显式列表白只建 WriteTask+MatrixRow;get_gaps 新增 latest_skill_run 查询后 SkillRun 表未建(bug-4303 共享 Base 律的测试面延伸:每个表都要进 create_all tables=[...])",
-      "fix": "tables 列表补 R._SkillRun.__table__(routers 既有 import 注册,不新增 import)",
-      "tags": [
-        "bid_write",
-        "sqlite",
-        "test-fixture",
-        "bug-4303",
-        "create_all"
-      ],
-      "related_bugs": [
-        "bug-4303"
-      ],
-      "occurrences": 1,
-      "last_seen": "2026-11-13T16:35:00Z"
-    },
-    {
       "id": "bug-4340",
       "timestamp": "2026-11-13T13:45:01.887Z",
       "error_message": "Significant refactor of ",
@@ -10468,26 +10407,6 @@
       "last_seen": "2026-11-13T14:28:59.784Z"
     },
     {
-      "id": "bug-4343",
-      "timestamp": "2026-11-13",
-      "error_message": "sqlite3.ProgrammingError: Error binding parameter 4: type 'list' is not supported (record_skill_run commit)",
-      "file": "backend/app/extensions/bid_write/crud.py",
-      "root_cause": "record_skill_run 把 skills 参数 list(skills) 成 Python list 落 String(40) 列;M1 落地后零调用方,潜伏到批廿一 M2-c 首个真实调用(自动预审查)才炸",
-      "fix": "改 ','.join(skills) if skills else 'ALL'(逗号连接字符串,与列型一致)",
-      "tags": [
-        "bid_write",
-        "sqlite",
-        "type-mismatch",
-        "latent-bug",
-        "m2"
-      ],
-      "related_bugs": [
-        "bug-4303"
-      ],
-      "occurrences": 1,
-      "last_seen": "2026-11-13"
-    },
-    {
       "id": "bug-4344",
       "timestamp": "2026-11-13T14:33:17.930Z",
       "error_message": "Incorrect value in code",
@@ -10502,6 +10421,106 @@
       "related_bugs": [],
       "occurrences": 1,
       "last_seen": "2026-11-13T14:33:17.930Z"
+    },
+    {
+      "id": "bug-4345",
+      "timestamp": "2026-11-13T14:56:21.170Z",
+      "error_message": "Missing await",
+      "file": "backend/app/extensions/bid_write/worker.py",
+      "root_cause": "Async call without await — returned Promise instead of value",
+      "fix": "Added await to async call",
+      "tags": [
+        "auto-detected",
+        "async-fix",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-11-13T14:56:21.170Z"
+    },
+    {
+      "id": "bug-4346",
+      "timestamp": "2026-11-13T14:57:28.454Z",
+      "error_message": "Incorrect value in code",
+      "file": "backend/app/extensions/bid_write/routers.py",
+      "root_cause": "Had \"pending_note\"",
+      "fix": "Changed to \"material_missing\"",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-11-13T14:57:28.454Z"
+    },
+    {
+      "id": "bug-4347",
+      "timestamp": "2026-11-13T15:04:03.879Z",
+      "error_message": "Wrong return value",
+      "file": "backend/app/extensions/bid_write/routers.py",
+      "root_cause": "Was returning: {\"items\": items, \"summary\": {\"total\": len(items), ",
+      "fix": "Now returns: {",
+      "tags": [
+        "auto-detected",
+        "return-value",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-11-13T15:04:03.879Z"
+    },
+    {
+      "id": "bug-4348",
+      "timestamp": "2026-11-13T15:09:06.418Z",
+      "error_message": "Significant refactor of ",
+      "file": "backend/app/extensions/bid_write/contracts.py",
+      "root_cause": "3 lines replaced/restructured",
+      "fix": "Rewrote 10→17 lines (3 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-11-13T15:09:06.418Z"
+    },
+    {
+      "id": "bug-4349",
+      "timestamp": "2026-11-13T15:09:21.739Z",
+      "error_message": "Significant refactor of ",
+      "file": "backend/tests/test_bid_write_contracts.py",
+      "root_cause": "3 lines replaced/restructured",
+      "fix": "Rewrote 6→12 lines (3 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-11-13T15:09:21.739Z"
+    },
+    {
+      "id": "bug-4350",
+      "timestamp": "2026-11-13",
+      "error_message": "全量回归 FAILED test_commercial_subset_is_real_universe_members:COMMERCIAL_TENDER_SUBSET 含非 universe 成员",
+      "file": "backend/app/extensions/bid_write/contracts.py",
+      "root_cause": "批廿二给 BL-001 三槽位加抽取路径时直入 subset 主元组,违反 M0「零新增抽取契约」铁律(universe 钉测试);m2+routers 局部回归不含契约钉文件,漏网",
+      "fix": "contracts.py 增 SUBSET_EXTRACT_EXTENSIONS 显式扩面表(三路径登记后并入 subset);钉测试改 ⊆uni∪ext 并钉 ext⊆subset∧ext∩uni=∅;8 测试绿",
+      "tags": [
+        "bid-write",
+        "contracts",
+        "subset",
+        "universe-pin",
+        "batch22"
+      ],
+      "related_bugs": [
+        "bug-3989"
+      ],
+      "occurrences": 1,
+      "last_seen": "2026-11-13"
     }
   ]
 }

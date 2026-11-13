@@ -26,6 +26,7 @@ OpenWolf's learning memory. Updated automatically as the AI learns from interact
 
 ## Key Learnings
 
+- **extract 引擎 subset-param 兼容口子 (2026-11-13):** bid_review extract 对 FIELD_TYPE_CONTRACTS 外路径零改动兼容(normalize 按 subset 白名单收,prompt 渲染裸路径)——写侧新增抽取路径零触碰审查引擎,但须走 SUBSET_EXTRACT_EXTENSIONS 登记保持诚实(bug-4350)。
 - [2026-11-13] bid_write 降级面短路序:素材缺位时 BL-001(11 槽位非空,D0)先于 BL-004 FAIL 并短路 BL 后续——降级负例测试应断言 BL-001+bidder_name 而非 BL-004(不可达)。执行器短路语义在降级测试里的表现=首个 D0 失败面。
 - [2026-11-13] RT-007 证据非空面的生成端落定:matrix 行 evidence_refs 缺省 [] → 生成器合成招标条款锚点 {path: source_path, quote: requirement[:24]}(引用要求自身,非伪造素材;RT-007 只查列表非空+entity_refs 可解析,不验 ref 结构)。人工补证走批十九 PATCH 卡点通道。
 
@@ -539,6 +540,7 @@ fixture 策略: 全节点 template_text=null(不发明招标内容), 真文渲�
 
 ## Do-Not-Repeat
 - 2026-11-08(merge 实测):`scripts/config-upgrade.sh` 本机禁跑——Windows 下整文件重写剥光全部注释(bug-4239);config 升级走手工 graft。
+- **(2026-11-13, bug-4350)** 扩抽取路径勿直入 bid_write COMMERCIAL_TENDER_SUBSET 主元组——非 universe 成员会被契约钉测试抓;走 SUBSET_EXTRACT_EXTENSIONS 显式扩面表。**局部回归(-k 单文件)不含跨钉文件,提交前必须跑全量 `-k bid_write`。**
 
 - **零调用方的落库函数=潜伏 bug 温床,接首调时先审列型 (2026-11-13, bug-4343, Do-Not-Repeat):** `crud.record_skill_run` 批二十 M1 落地后无调用方,`list(skills)` 落 `String(40)` 列的错配潜伏一批才炸(批廿一 M2-c 首个真实调用)。铁律:给"从未被生产路径调用"的函数接线时,先对照 ORM 列型与传入值形态(JSON vs String vs list),别信签名能跑=语义对。相关 [[bid-write-p1-beta20-m1-landed]]。
 - 2026-11-08(merge 实测):merge 后勿只跑 lint 就信 package.json 完好——须 diff 依赖集 vs HEAD 抓 3-way 静默删除(bug-4228 实锤,@xyflow/react 无声消失)。

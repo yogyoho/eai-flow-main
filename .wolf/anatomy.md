@@ -1,7 +1,7 @@
 # anatomy.md
 
-> Auto-maintained by OpenWolf. Last scanned: 2026-11-13T14:33:17.911Z
-> Files: 1 tracked | Anatomy hits: 0 | Misses: 0
+> Auto-maintained by OpenWolf. Last scanned: 2026-11-13T15:11:39.018Z
+> Files: 9 tracked | Anatomy hits: 0 | Misses: 0
 
 ## ../../00 工作目录/02 项目策划/马宁/应急指挥/bid-run/
 
@@ -323,6 +323,7 @@
 
 ## C:/Users/admin/.claude/projects/D--eai-eai-flow-main/memory/
 
+- `bid-write-p1-beta21-m2-landed.md` (~420 tok)
 
 ## C:/Users/admin/.codex/
 
@@ -677,6 +678,10 @@
 
 ## backend/app/extensions/bid_write/
 
+- `contracts.py` — bid_write 契约层(批十九 T1,EAI-CUSTOM 2026-11-13)——写作端字段/槽位/断言 (~1770 tok)
+- `crud.py` — bid_write CRUD(批十九 T2)——全部查询带 owner_id 过滤(经 task 联接传导, (~2587 tok)
+- `routers.py` — bid_write 工作台 API(批十九 T5)——挂 gateway ``/api/extensions/bid-write``: (~4152 tok)
+- `worker.py` — bid_write worker(批十九 T4)——F1 单管线:created→parsing→extracting→ (~2792 tok)
 
 ## backend/app/extensions/bid_write/assertions/
 
@@ -953,6 +958,8 @@
 
 ## backend/tests/
 
+- `test_bid_write_contracts.py` — 批十九 T1 契约层自检:商务子集全部是审查端宇宙真实成员(零新契约铁律)、 (~859 tok)
+- `test_bid_write_materials.py` — 批廿二 P1-α:素材库六类实体——crud collect_material 形/端点 CRUD+profile/ (~2682 tok)
 
 ## backend/tests/ (QA 2026-10-28 增补)
 
@@ -1040,6 +1047,7 @@
 
 ## docs/superpowers/plans/
 
+- `2026-11-13-bid-write-p1-beta22-materials-plan.md` — bid_write 批廿二(P1-α)素材库六类实体 — Implementation Plan (~1701 tok)
 
 ## docs/superpowers/plans/2026-09-13-coal-mine-tunneling-regulation-v2.md
 

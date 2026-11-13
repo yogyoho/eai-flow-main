@@ -30582,3 +30582,24 @@
 | 22:30 | 批廿一 M2 开工:precheck.py 投影+det-only 预审查+导出门禁落地(2 commits) | precheck.py/contracts.py/test_bid_write_precheck.py | 9 测试绿 | ~9k |
 | 22:45 | M2-c worker 接线:fields 持久化+自动预审查+generate/export-precheck 端点;bug-4343 record_skill_run list 落 String 列 | worker.py/routers.py/schemas.py/crud.py/test_bid_write_m2_worker.py | 3 测试绿+routers 回归 19 绿 | ~8k |
 | 22:33 | Edited docs/superpowers/specs/2026-11-13-bid-write-p0-skills-spec.md | 1→2 lines | ~260 |
+| 22:34 | Created C:/Users/admin/.claude/projects/D--eai-eai-flow-main/memory/bid-write-p1-beta21-m2-landed.md | — | ~423 |
+| 22:36 | Session end: 16 writes across 10 files (2026-11-13-bid-write-p1-beta21-m2-precheck-export-worker-plan.md, test_bid_write_precheck.py, precheck.py, contracts.py, worker.py) | 2 reads | ~16962 tok |
+| 22:54 | Created docs/superpowers/plans/2026-11-13-bid-write-p1-beta22-materials-plan.md | — | ~1650 |
+| 22:55 | Edited backend/app/extensions/bid_write/crud.py | modified delete_material() | ~44 |
+| 22:56 | Edited backend/app/extensions/bid_write/routers.py | modified export_precheck() | ~892 |
+| 22:56 | Edited backend/app/extensions/bid_write/worker.py | 7→7 lines | ~77 |
+| 22:56 | Edited backend/app/extensions/bid_write/routers.py | modified _norm() | ~467 |
+| 22:57 | Edited backend/app/extensions/bid_write/routers.py | modified _norm() | ~411 |
+| 22:57 | Edited backend/app/extensions/bid_write/routers.py | inline fix | ~114 |
+| 22:58 | Created backend/tests/test_bid_write_materials.py | — | ~2682 |
+| 23:02 | Edited backend/app/extensions/bid_write/contracts.py | expanded (+6 lines) | ~104 |
+| 23:04 | Edited backend/app/extensions/bid_write/routers.py | expanded (+11 lines) | ~142 |
+
+## Session: 2026-11-13 23:07
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 23:09 | Edited backend/app/extensions/bid_write/contracts.py | expanded (+7 lines) | ~170 |
+| 23:09 | Edited backend/tests/test_bid_write_contracts.py | modified test_commercial_subset_is_real_universe_members() | ~187 |
+| 23:50 | 批廿二收口:全量回归抓 subset 钉违例(bug-4350)→SUBSET_EXTRACT_EXTENSIONS 显式扩面表;buglog 4343 去重 | contracts.py/test_bid_write_contracts.py | 203p/6s 全绿 | ~3k |
+| 23:11 | Edited docs/superpowers/plans/2026-11-13-bid-write-p1-beta22-materials-plan.md | inline fix | ~68 |
