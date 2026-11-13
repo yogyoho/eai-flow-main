@@ -13,6 +13,14 @@ from __future__ import annotations
 # 写作端新增面以本版本号钉;破坏性变更必须 bump + golden 全量重审)。
 SCHEMA_VERSION = "1.0.0"
 
+# ── 导出前置校验(F6/批廿一 M2;P0 规格 §8)────────────────────────────────
+# 阻断层级口径钉死:D0 断言 FAIL/ERROR 或规则层 L1 fatal det FAIL→禁导出。
+# gate_verdict(executor/gate.py)消费同口径,本常量=防漂移钉(测试对锁)。
+BLOCK_EXPORT_LEVELS = ("D0",)
+# 风险水印:L4 竞争力包全语义规则,写侧预审查不喂模型→L4 恒未评估→导出物
+# 恒带水印(诚实:商务风险未经模型确认)。M2 后接模型审查再评估摘除条件。
+EXPORT_RISK_WATERMARK = "商务风险未确认"
+
 # ── response_matrix 行契约(F1;设计稿 §四)────────────────────────────────
 # 行形: {clause_id, requirement, source_path, star, strategy, target_section,
 #        evidence_refs, status, conf, verified, kind}
