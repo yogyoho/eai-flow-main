@@ -8,7 +8,7 @@ Decimal 算术(qty/单价入口 str 化,零浮点累加)中间 4 位落表 2 位
 
 from __future__ import annotations
 
-from decimal import Decimal, ROUND_HALF_UP
+from decimal import ROUND_HALF_UP, Decimal
 
 from app.extensions.bid_write.executor.amount_cn import num_to_cn
 

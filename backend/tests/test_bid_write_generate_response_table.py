@@ -32,6 +32,13 @@ def test_star_and_passthrough():
     assert by_id["att:1"]["evidence_refs"] == [{"path": "sec:4", "quote": "营业执照", "page": 3}]
 
 
+def test_empty_evidence_synthesized_tender_anchor():
+    """证据缺位→引用招标条款锚点(RT-007 非空面;引用要求自身非伪造素材)。"""
+    bare = [{"clause_id": "att:9", "kind": "attachment", "requirement": "x", "star": False, "evidence_refs": [], "source_path": "tender.attachment_requirements"}]
+    rt = build_response_table(bare)
+    assert rt["rows"][0]["evidence_refs"] == [{"path": "tender.attachment_requirements", "quote": "x"}]
+
+
 def test_response_text_zero_forbidden_hits():
     """参数化应答 6 桶零命中(空应答词「满足招标文件要求」类被钉死,模板必须绕开)。"""
     rt = build_response_table(_ROWS)

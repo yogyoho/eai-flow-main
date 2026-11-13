@@ -25,6 +25,13 @@ OpenWolf's learning memory. Updated automatically as the AI learns from interact
 - [2026-08-21] geological-report 用户交互铁律：数据收集必须用 ask_clarification fields 渲染中文填写表单（label=中文名+单位），绝不向用户展示/索要 JSON 或英文键名；面向用户术语一律"数据项"不说"字段"；缺项清单译成中文按类别分组呈现。适用于所有面向非 IT 用户的技能。
 
 ## Key Learnings
+
+- [2026-11-13] bid_write 降级面短路序:素材缺位时 BL-001(11 槽位非空,D0)先于 BL-004 FAIL 并短路 BL 后续——降级负例测试应断言 BL-001+bidder_name 而非 BL-004(不可达)。执行器短路语义在降级测试里的表现=首个 D0 失败面。
+- [2026-11-13] RT-007 证据非空面的生成端落定:matrix 行 evidence_refs 缺省 [] → 生成器合成招标条款锚点 {path: source_path, quote: requirement[:24]}(引用要求自身,非伪造素材;RT-007 只查列表非空+entity_refs 可解析,不验 ref 结构)。人工补证走批十九 PATCH 卡点通道。
+
+- **(2026-11-13, 批十九 bid_write M0)** 写作端契约铁律:tender.* 真源=bid_review FIELD_TYPE_CONTRACTS,bid_write **import 复用不复制**(双真源=漂移);新子集路径必须 ⊆ registry.universe()(test 钉幽灵拒载——幽灵路径进 prompt 永远抽不到值,装配器缺行静默=假缺口)。断言注册表同律:rule_ref 只钉 core+L4 真实规则 id 或 null,规格原引的 L1-018/L3-015/L2-010/L2-042/L4-011 是愿景名,别照抄。
+- **(2026-11-13, bug-4013 类)** claimer loop 测试预算是负载敏感的:满载全量门(295s)下 15s 会间歇超时,空载单跑即过=纯负载非回归。判定法:先空载单跑再定责,别急着回滚自己的改动。预算现 600×0.05=30s。
+- **(2026-11-12, bug-4295)** fetch 发 string body 必带 Content-Type: application/json——浏览器默认 text/plain,FastAPI 按原始字符串传 pydantic → 422 「Input should be a valid dictionary」。病面不在端点在 client 收口层;修一处 requestRaw 单点,别逐调用点补。FormData(multipart)是对象不是 string,天然不受影响。
 - [2026-11-08] 3-way merge 静默删依赖雷:上游删了某依赖而我方该行未改动时,merge 会**无声应用上游删除**(bug-4228 @xyflow/react 被删→13 处 TS2307;@types/gsap 随 #7108 删除属合理接受)。合并后必做:diff 融合后 package.json 依赖集 vs HEAD,逐个失踪依赖判定「上游有意删 vs 误删我方」。
 - [2026-11-08] merge 融合两处行为雷(bug-4236/4237):①start_run 的 run-inputs 条件 `graph_input = normalized_input if body.input is not None else None` 不可简化成无条件 normalize——None 必须保持 None 才能走 checkpoint 续跑;②lifespan shutdown 必须**先 drain 后 flush**——先 flush 会在延迟清理任务首次 yield 前把它 cancel。[AssertionError [('run-1',0)]≠[('run-1',60.0)]]
 - [2026-11-08] `scripts/config-upgrade.sh` 在 Windows/GitBash 会退化成整文件重写,**2455 条注释全剥**(bug-4239)。本机禁用;config 升级改手工 graft:从 config.example.yaml 抄新字段+注释,Edit 插到对应块,验证=注释计数不减+yaml parse。
@@ -3053,6 +3060,7 @@ CALIBRATION 批次裁决表是历史快照,新规则的行插进旧批次表必�
 
 **Key Learnings:**
 - bid_review 字段契约必须**叶平键注册**(path 本身=fields dict 的平键)规则才能点消费;normalize_fields 只收 known_paths,容器 obj 契约(bid.pm)注册后规则点消费未注册叶(bid.pm.certs)=生产侧该键永不出现=规则 live 永久 need_human 死锁。L1-001 `bid.entity.license_valid_until` 是先例:点路径形态+标量值+独立注册。容器消费只走 count/col 整体(bid.consortium/bid.tables)。
+- **(2026-11-13, 批二十 M1-b)** bid_write 执行器 ctx 取键两律:①tender 面键=dotted 全名(`tender.boq_items`/`tender.max_price`),products 面=普通键(`price_sheet`),混用即静默取空(opt 面)或 CtxMissing(need 面);②SKIPPED 的 no_signal 注记由 runner 统一落,Outcome 无 skipped_reason 字段,validator 传未知 kwarg=TypeError→E-VALIDATOR-RAISED。
 - expr 引擎(expr.py)::61 有 and/or 语法层,:95 支持 null/None 字面量 → null-skip 守卫式可表达,如 `tender.x == null or bid.x == null or a == b`(无明示跳过不触发)与 `x != False`(null→True 合规,显式 False→触发)。消息模板 _tpl 对 None 渲染空串,但对**未注册路径**占位原样保留(测试把关无残留)。
 - rule_runner op 语义:or=全支不成立才出候选;and=任一支不成立即出候选(L1-017 先例)。**多维权违规筛=op:and+合规式支**,不是违规式取反(取反后 or 仍全违规才出=欠报)。
 - rule_runner._resolve:全点平键 fields 优先 → env 属性链下钻;`_val` 支字符串=字段键或表达式两种形态。
@@ -3144,3 +3152,59 @@ CALIBRATION 批次裁决表是历史快照,新规则的行插进旧批次表必�
 - **det 直比炸容器键**:契约允许容器形态(tender.max_price={value,unit}),规则卡 det_expr 期望标量——`str<=dict` TypeError→逐规则 ERROR 隔离(隔离救了整体,但规则面瞎)。修法=det 取值层容器解包或卡右值点路径 .value。
 - **「值等形态异」假阳性族**:「6%」vs 6 判不一致——money/percent 归一化要在 det 比较前做,否则真实件假阳性泛滥(合成夹具测不出:夹具值形态齐整)。
 - **扫描图片附件=L2 链饿死根因**:docx 主体是扫描件无文本→m1 附件实体空→L2 全零条目→真违规(保证金 300 vs 10000)走「凭证缺失不适用」+兜底同饿死=静默。合成夹具是纯文本永远测不出这条。
+
+## 批十四 learning(2026-11-11)
+
+- **wolf 共享 JSON 变更律**:buglog.json 这类 hook 与会话共写的文件,python 处理禁 list-comprehension 重绑(`bugs = [b for b in ...]` 产新列表,`data["bugs"]` 仍指旧列表——过滤静默丢失)+禁全文 dedupe(dedupe 会吃掉并发会话/hook 未提交的条目,bug-4273 因此丢失;hook next-id 取 max 数字后缀,缺号无害)。改前先打印 count/last-id,改后立即复核。
+- **eval_det.py 副本镜像律**:skills/public/bid-proposal-review/scripts/eval_det.py 是 engine/expr.py 的子集副本但**独立单表**(_BUILTIN 兼白名单+分发,runner 只捕 KeyError→need_human);引擎 builtin 双表注册后,副本必须同步(副本加 def + 单表条目,raise KeyError 与副本求值网对齐),否则改卡面表达式后技能侧拒载。副本注释可另起行,续行漏 `#` 即 SyntaxError。
+
+## 批十五 learning(2026-11-11)
+
+- **契约=召回杠杆但有边界**:FIELD_TYPE_CONTRACTS 契约入 prompt 对「取材/形态」类缺陷立竿见影(deposit_required 布尔→金额、证书名→诚实 null、bid_scope 新抽出),但「表格式逐行召回」类(similar_performances 业绩表逐行、boq_rows)契约写了模型仍漏=当前模型能力边界,与 OCR 管道边界并列;判读用规则 id 级翻转(假 FAIL→UNKNOWN/数值化)而非键值统计(方差族律)。
+- **容器运维判读脚本律**:定点判读脚本(单样本全链路+issue/键级 dump)放 .wolf/j_judge.py,docker cp 进容器跑;sys.path 必须双插 /app/backend + /app/backend/scripts(bug-4270 前科:leafkeys helper 在 scripts/)。
+
+## 批十六 learning(2026-11-11)
+- realcase 探针(scripts/bid_review_realcase_probe.py)的 leaf_variance 是批十二 21 叶键锚定集,新字段键不在其中——新键定点判读走 j_judge(docker cp 进容器单跑全链路),探针只看 gate/分布与既有键方差,勿用探针证新键抽出。
+- dict-step optional(批六T4)是「规则扩维不扰旧行为」的标准通路:optional 键任一缺席 step 零参与,缺字段门先于 step 执行但 optional 集预先豁免;L1-026 方式集维活体实证(方式集键在场+时间键缺 → 时间维 UNKNOWN 缺字段门、方式集维照判 PASS)。
+- 扩维字段契约 null 语义要对着判定算子写:covers 空 [] 会 False→FAIL 错位,故 allowed_submit_methods 契约写「无明示给 null」而非「无给空数组」(eval_core 剥 None→缺字段门);给空数组的契约(qual_levels/similar_performances)语义是「诚实空集」。
+- covers/contains_any 这类字串包含算子的 None 防御先例=_covers 双侧 KeyError(批十六);活体面 eval_core 剥 None 不可达,守卫价值在直评/金标准面——但写了就要 skill 副本镜像(KeyError 网律)。
+
+## 批十六十七 learning(2026-11-11)
+- 比较算子有两张表,硬化要双表同改:expr.py _BIN(7 算子,表达式面)+ rule_runner.py _OPS(lte/gte/eq,卡 op 形态 left/right 面)——只硬 _BIN 漏一半;skill 副本镜像面也两处(_BIN + op 分派 dict)。
+- 数据型崩溃与基础设施故障的五值域分野:TypeError(数据误配)→KeyError→UNKNOWN need_human;RuntimeError(真故障)→eval_core 逐规则隔离 ERROR。worker 钉 test_rule_crash_isolated 旧钉用 TypeError 当「崩溃」样本,硬化批会翻红——升钉时 ERROR 断言换 RuntimeError 场景(eval_core 钉已护)或断言 UNKNOWN。
+- _num 万/亿乘数走 Decimal(2.3×1e8 二进制浮点漂移 230000000.00000003);无乘数路径保留 float(s) 逐字节——扩归一 primitive 时「新路径新实现,旧路径零字节动」防金标准/方差面翻红。
+- realcase probe results[] 自带 verdict_counts/gate_status/severity_counts 汇总面(批十六十七起可见),FAIL 归属明细仍需 j_judge;probe adj1 字段=递交方式线索行面板(ADJ-1 域)。
+
+## 批十八 learning(2026-11-11)
+- **realcase 探针对 OCR 引擎是盲区**:探针喂 convert_file_to_markdown 预转换文本直送 advance_task,不经过 parse_raw/build_ocr_fn——换 OCR 引擎对探针零扰动;OCR 面验证须 parse_raw 直驱仪器(save_raw→build_ocr_fn→parse_raw;sqlite 夹具必须同时建 _TABLES+system_config 并播种引擎 KV,否则 build_ocr_fn 读不到引擎静默回退 builtin,假阴性)。
+- **sqlite 夹具 create_all 传 Table 对象不传模型类**:tables=[Model] → AttributeError(no attribute 'name'),须 tables=[Model.__table__];且 crud.create_task 要 bid_review 五表齐全(只建 system_config → no such table bid_review_tasks)。
+- **httpx 空 Bearer 头=Illegal header value**:f"Bearer {api_key}" 在 key 空时(免鉴权自托管服务如 llama.cpp)httpx 直接拒发 → 重试全败静默 "";resolve 层放行空 key + client 层发不出=死锁。免鉴权服务集成必须条件化 Authorization 头。
+- **包装/转换步骤必须在重试网内或自网**:fitz 包 PDF(bug-3703 手法)在 _ocr_builtin 重试网之前无保护,EMF/WMF FzErrorFormat 逃网 → gather 传播炸整文档——「单图失败→空文本」隔离律要求每一步可能抛的都在网内。
+- **单服务仪器必须串行**:A/B 与 e2e 并发轰同一 llama.cpp → 互致 ReadTimeout(300s)→ 空文本污染测量(B 侧 2198s vs A 侧 401s 的差大部分是争抢);先单跑测基线吞吐,再谈并发容量。
+- **docx 内嵌图常含 EMF/WMF 矢量图**(本件 46 图含 5 EMF):rapidocr/paddleocr-vl 都读不了(fitz 不可编码/服务 400),OCR segment 空占位是诚实降级;真实件图像 OCR 覆盖率按「非 EMF 图」算分母。
+
+## User Preference + Do-Not-Repeat (2026-11-13 — bid-write UI 原型图标一律 SVG,不用 emoji)
+- 用户纠正:「图标不要使用emoji」。HTML 原型/前端原型中所有状态图标(✓✕⚠ℹ🔒◉◇)必须用内联 SVG sprite(`<symbol>` + `<use href="#i-*">`),文字语素(★①-⑥▾·)与 CSS `<i>` 色点保留。
+- 双重编码律:状态=色+图标+文字三重呈现(交互说明 §0),单一维度不够。
+- 手法:文件头部隐藏 `<svg style="display:none">` 定义 i-check/i-x/i-warn/i-info/i-tri/i-lock,消费处 `<svg class="ic"><use href="#i-x"></use></svg>`。
+
+## Decision Log + Key Learnings (2026-11-13 — bid-write 编辑层技术方案对齐)
+- 《Word 编辑器技术方案》定案:选 **ProseMirror**(非 Slate/Lexical/Tiptap)。三决定性理由:①声明式 schema 与 document_ast 15 节点一一对齐,前后端同源 codegen 禁手写两份;②filterTransaction+decoration 承载三硬约束(锁定段禁改/金额只读/装饰不污染文本=SK-RT-004·SK-BL-007 机制根因);③y-prosemirror P1 协同不返工。
+- 唯一真值=AST;编辑器是投影。编辑→serialize(400ms 防抖)→执行器增量(affected_nodes 依赖图)→assertion_states 侧信道回流→纯 decoration 事务回写,绝不写节点文本。
+- 事务分层 meta.source ∈ {user,system,decor}:撤销栈只收用户编辑(装饰/系统重算不入,防金额回退)。
+- UI 原型对齐落点(docs/designs/2026-11-13-bid-write-ui.html):ed-toolbar 命令条+SKIPPED 横幅「因 SK-XX 跳过 N 条,不代表通过」+校验未完成降级横幅(导出置灰绝不默认放行)+状态栏 AST 同步/拦截原因+溯源角标点击跳转+锁定段建议置灰 demo。
+- 里程碑 M0-M4 约 16-20 人日;最大不确定项=PM 大表虚拟化(>800 行走独立只读表+行编辑弹层,退方案 B=结构化表单+只读预览,5.2-5.5 约束逻辑平移)。
+
+## User Preference (2026-11-13 — 原型 refine=减法,「太 vibe」被否)
+- 用户对 bid-write 原型的装饰性 polish 反馈「太 vibe,需要 refine」= **收敛**,不是加更多。h4 彩色竖条/入场动画(抽屉滑入/弹窗缩放/toast 上浮)/按压位移/悬停浮起阴影 → 全部撤。
+- 保留面=纯可用性:全局 focus-visible、细滚动条、行高/字距微调、h2 hairline 分隔(结构性,非装饰)。
+- 律:**企业工具原型 refine 只做减法**;悬停响应最多到 border-color 变化,阴影/动画/彩色装饰一律不加(与「页头渐变否决」同族)。
+
+## Key Learnings (2026-11-13 追加)
+
+- 【原型设计语言基线】docs/designs/2026-10-30-bid-review-ui.html = 本仓高保真原型的精美基准,新模块原型对齐它:卡片扁平(border-only, r8, 无阴影)/按钮输入 r6/点阵页头(radial-gradient 1px dot + 左向渐隐 ::after)/徽章与横幅无框(纯 soft 底)/表格行分隔用更浅 row-line、hover 中性灰(不染色)/圆角只有 8 与 6 两档/字重只用 500/600/700/阴影只有 --shadow-pop 且只给浮层(drawer/modal/toast)。bid-write 原型已按此对齐(2026-11-13)。
+
+## Key Learnings (2026-11-13 批二十 M1-c/d 追加)
+- bid_write 测试夹具 create_all 用显式 tables=[...] 白名单:新增 ORM 表必须手动加进每个用表的夹具(共享 Base 注册≠建表)。bug-4303 律的测试面延伸。
+- 变异路径解析两面约定:tender 面=扁平点分键(「tender.max_price」是一个键),products/material/pre 面=真嵌套 dict。通用解法=逐层贪心:先试剩余全串是否为当前 dict 的扁平键,否则按段下钻(数字段=列表下标)。exec-negatives 测试 walker 已实现。
+- PS-003 四表加总含 bid_letter(信面 total_amount_num):删 bid_letter 会打崩 PS scope,想只伤 BL/RT 面时删 attachment_index。

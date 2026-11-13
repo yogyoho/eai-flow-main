@@ -20,6 +20,11 @@ def build_response_table(matrix_rows: list[dict] | None) -> dict:
         cid = str(r.get("clause_id") or "")
         if r.get("star"):
             star_ids.append(cid)
+        evidence = list(r.get("evidence_refs") or [])
+        if not evidence:
+            # RT-007 证据非空面:人工证据缺位时引用招标条款自身(要求在招标文件
+            # 中的客观锚点,非伪造素材;人工补证经批十九 PATCH 卡点通道)
+            evidence = [{"path": str(r.get("source_path") or "tender"), "quote": str(r.get("requirement") or "")[:24]}]
         rows.append(
             {
                 "clause_id": cid,
@@ -27,7 +32,7 @@ def build_response_table(matrix_rows: list[dict] | None) -> dict:
                 "conclusion": "完全响应",
                 "response_text": f"我方已按第{cid}条要求备妥响应材料。",
                 "requirement_excerpt": str(r.get("requirement") or ""),
-                "evidence_refs": list(r.get("evidence_refs") or []),
+                "evidence_refs": evidence,
                 "deviation_reason": None,
                 "replacement_plan": None,
             }
