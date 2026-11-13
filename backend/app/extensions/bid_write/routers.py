@@ -183,3 +183,55 @@ async def get_gaps(task_id: str, db: AsyncSession = Depends(get_db), owner_id: s
             "skipped": exec_report.skipped_from(results),
         }
     return {"items": items, "summary": {"total": len(items), "material_ready": 0, "pending_note": "素材库 P1 批落地;M0 全部为无对应素材(诚实伪零)"}, "assertions": assertions}
+
+
+@router.get("/registry")
+async def get_assertion_registry(_owner_id: str = Depends(current_owner)):
+    """断言注册表只读投影(写作前端「断言注册表」页):p0.yaml 加载期校验后的
+    AssertionDef/levels/schema_version。静态内容禁热改;不返回任何可写句柄。"""
+    from dataclasses import asdict
+
+    from app.extensions.bid_write.executor import load_registry
+
+    registry = load_registry()
+    return {
+        "schema_version": registry.schema_version,
+        "levels": registry.levels,
+        "items": [asdict(item) for item in registry.assertions],
+    }
+
+
+@router.post("/tasks/{task_id}/generate")
+async def generate_task(task_id: str, body: schemas.GenerateKnobs | None = None, db: AsyncSession = Depends(get_db), owner_id: str = Depends(current_owner)):
+    """批廿一 M2:装配生成+断言/规则预审查+导出门禁+skill_run 落库。body 旋钮
+    合并进 meta.knobs(None 键不覆盖);409=矩阵未就绪面。"""
+    task = await crud.get_task(db, task_id=task_id, owner_id=owner_id)
+    if task is None:
+        raise HTTPException(status_code=404, detail="任务不存在")
+    if task.status != "matrix_ready":
+        raise HTTPException(status_code=409, detail=f"矩阵未就绪(status={task.status})")
+    if body is not None:
+        meta = dict(task.engine_meta or {})
+        knobs = dict(meta.get("knobs") or {})
+        knobs.update({k: v for k, v in body.model_dump().items() if v is not None})
+        meta["knobs"] = knobs
+        task.engine_meta = meta
+        await db.commit()
+        await db.refresh(task)
+    export = await worker.generate_and_record(db, task, owner_id)
+    return {"verdict": export, "blocked": export["blocked"], "biz_no": task.biz_no, "status": task.status}
+
+
+@router.post("/tasks/{task_id}/export-precheck")
+async def export_precheck(task_id: str, db: AsyncSession = Depends(get_db), owner_id: str = Depends(current_owner)):
+    """批廿一 M2:导出前置校验只读重算(D0 断言+L1 fatal det 规则层→blocked/
+    reasons/水印恒加);零落库无副作用。"""
+    from app.extensions.bid_write.precheck import run_export_gate
+
+    task = await crud.get_task(db, task_id=task_id, owner_id=owner_id)
+    if task is None:
+        raise HTTPException(status_code=404, detail="任务不存在")
+    if task.status != "matrix_ready":
+        raise HTTPException(status_code=409, detail=f"矩阵未就绪(status={task.status})")
+    ctx = await worker.build_task_ctx(db, task, owner_id)
+    return await run_export_gate(ctx)

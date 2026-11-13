@@ -105,7 +105,7 @@ async def record_skill_run(session: AsyncSession, task_id: str, owner_id: str, v
     存在性校验间接传导:调用方须先 get_task(db, task_id, owner_id)(404 面)。"""
     from app.extensions.bid_write.executor.models import SkillRun
 
-    session.add(SkillRun(task_id=task_id, owner_id=owner_id, skills=list(skills) if skills else "ALL", schema_version=schema_version, verdict=verdict, blocked=blocked))
+    session.add(SkillRun(task_id=task_id, owner_id=owner_id, skills=",".join(skills) if skills else "ALL", schema_version=schema_version, verdict=verdict, blocked=blocked))
     await session.commit()
 
 

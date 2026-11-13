@@ -101,6 +101,8 @@ async def run_export_gate(ctx: dict) -> dict:
     gate = gate_verdict(report)
     pre = await run_rule_precheck(project_bid_fields(ctx))
     a_counts = Counter(r.status for r in report.results)
+    from app.extensions.bid_write.executor.report import to_report_dict
+
     return {
         "blocked": bool(gate["blocked"] or pre["blocked"]),
         "reasons": sorted(set(gate["reasons"]) | set(pre["l1_fatal_fail"])),
@@ -110,4 +112,6 @@ async def run_export_gate(ctx: dict) -> dict:
         "l1_fatal_fail": pre["l1_fatal_fail"],
         "scope_note": pre["scope_note"],
         "schema_version": SCHEMA_VERSION,
+        # results=gaps 断言维度消费面(to_report_dict 序列化;报告=导出物非真相源)
+        "results": to_report_dict(report)["results"],
     }

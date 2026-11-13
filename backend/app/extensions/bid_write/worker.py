@@ -120,11 +120,16 @@ async def advance_write_task(db: AsyncSession, task_id: str, owner_id: str, extr
         meta["schema_version"] = contracts.SCHEMA_VERSION
         meta["provenance"] = provenance
         meta["fields_conf"] = fields_conf
+        meta["fields"] = fields  # 批廿一 M2:生成/预审查消费面(抽取快照持久化)
         task.engine_meta = meta
         await db.commit()
         await db.refresh(task)
         rows = matrix.assemble_matrix(fields, fields_conf)
         await crud.replace_matrix(db, task.id, rows)
+        try:  # 批廿一 M2:matrix_ready 落库即自动预审查(material M0 缺省空→诚实 blocked)
+            await generate_and_record(db, task, owner_id, knobs=meta.get("knobs") or {})
+        except Exception:  # noqa: BLE001  预审查/生成非致命:主状态不回滚不落 failed
+            logger.exception("bid_write task %s auto precheck failed (non-fatal)", task_id)
         n_star = sum(1 for r in rows if r["star"])
         n_blocked = sum(1 for r in rows if r["status"] == "blocked")
         return await crud.set_status(db, task, "matrix_ready", progress={"stage": "matrix_ready", "pct": 100, "msg": f"响应矩阵 {len(rows)} 行(★{n_star}/blocked {n_blocked})"})
@@ -147,3 +152,54 @@ async def _infra_fail(task_id: str, exc: Exception, owner_hint: str | None = Non
         if task is None:
             return
         await crud.set_status(db, task, "failed", error=str(exc)[:2000])
+
+
+async def build_task_ctx(db: AsyncSession, task: WriteTask, owner_id: str, *, knobs: dict | None = None) -> dict:
+    """批廿一 M2:meta.fields+矩阵行(排除 status=blocked 卡点行,批十九禁入生成
+    面)+knobs 合并 → executor 契约 ctx(纯装配;material=M0 缺省空=诚实降级面
+    BL-001)。生成器消费键白名单:clause_id/kind/source_path/requirement/star/
+    strategy/target_section/evidence_refs/status。"""
+    from app.extensions.bid_write.generate import build_ctx as assemble_ctx
+
+    meta = dict(task.engine_meta or {})
+    rows = await crud.list_matrix(db, task.id, owner_id)
+    row_dicts = [
+        {
+            "clause_id": r.clause_id,
+            "kind": r.kind,
+            "source_path": r.source_path,
+            "requirement": r.requirement,
+            "star": r.star,
+            "strategy": r.strategy,
+            "target_section": r.target_section,
+            "evidence_refs": r.evidence_refs or [],
+            "status": r.status,
+        }
+        for r in rows
+        if r.status != "blocked"
+    ]
+    k = dict(meta.get("knobs") or {})
+    k.update(knobs or {})
+    return assemble_ctx(
+        dict(meta.get("fields") or {}),
+        row_dicts,
+        dict(meta.get("material") or {}),
+        unit_prices=k.get("unit_prices"),
+        sign_date=k.get("sign_date") or "",
+        price_note=k.get("price_note") or "",
+        general_commitments=k.get("general_commitments"),
+        page_estimates=k.get("page_estimates"),
+        total_pages=k.get("total_pages"),
+    )
+
+
+async def generate_and_record(db: AsyncSession, task: WriteTask, owner_id: str, *, knobs: dict | None = None) -> dict:
+    """批廿一 M2:装配→断言+规则预审查→导出门禁→skill_run 落库。返回 verdict=
+    run_export_gate 全形(blocked/reasons/watermark/results/双计数),gaps 断言
+    维度直接消费。"""
+    from app.extensions.bid_write.precheck import run_export_gate
+
+    ctx = await build_task_ctx(db, task, owner_id, knobs=knobs)
+    export = await run_export_gate(ctx)
+    await crud.record_skill_run(db, task.id, owner_id, verdict=export, skills="ALL", schema_version=contracts.SCHEMA_VERSION, blocked=export["blocked"])
+    return export

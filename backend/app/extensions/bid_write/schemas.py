@@ -50,3 +50,14 @@ class MatrixRowPatch(BaseModel):
     target_section: str | None = None
     note: str | None = None
     evidence_refs: list[Any] | None = None
+
+
+class GenerateKnobs(BaseModel):
+    """生成旋钮(批廿一 M2;POST /generate body;None 键不覆盖 meta.knobs 已存值)。"""
+
+    unit_prices: dict[str, str] | None = None
+    sign_date: str | None = None
+    price_note: str | None = None
+    general_commitments: list[dict] | None = None
+    page_estimates: dict[str, int] | None = None
+    total_pages: int | None = None
