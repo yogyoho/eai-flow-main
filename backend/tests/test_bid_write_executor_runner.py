@@ -18,10 +18,9 @@ from app.extensions.bid_write.executor.validators import REGISTRY
 def test_registry_covers_all_non_delegate_assertions():
     snap = load_registry()
     missing = [a.id for a in snap.assertions if a.delegates_to is None and a.id not in REGISTRY]
-    # Task 2 态:仅 AI+CMN-005 注册;Task 3 全量后本钉收紧为 == []
-    covered_skills = {a.skill for a in snap.assertions if a.id in REGISTRY}
-    assert not [i for i in missing if i.startswith(("SK-AI-", "SK-CMN-005"))]
-    assert covered_skills <= {"AI", "CMN"}
+    extra = [k for k in REGISTRY if k not in {a.id for a in snap.assertions}]
+    assert missing == [], f"注册表 {len(missing)} 条未实现: {missing}"
+    assert extra == [], f"REGISTRY 幽灵键: {extra}"
 
 
 def test_delegate_assertions_not_registered():
@@ -45,12 +44,9 @@ def test_green_ai_run_all_pass_and_order():
         "SK-CMN-001", "SK-CMN-003", "SK-CMN-004", "SK-CMN-005",
         "SK-AI-004", "SK-AI-005", "SK-AI-006", "SK-AI-007", "SK-CMN-002",
     ]
-    # AI 全绿 + CMN-005 PASS;CMN-001..004 为 Task 3 注册面——基建完备面 ERROR 不短路不静默
-    for i in ("SK-AI-001", "SK-AI-002", "SK-AI-003", "SK-AI-004", "SK-AI-005", "SK-AI-006", "SK-AI-007", "SK-AI-008", "SK-AI-009", "SK-CMN-005"):
+    # 全绿基线:AI+CMN 全部 PASS(Task 3 全量注册后 CMN-001..004 也绿)
+    for i in ("SK-AI-001", "SK-AI-002", "SK-AI-003", "SK-AI-004", "SK-AI-005", "SK-AI-006", "SK-AI-007", "SK-AI-008", "SK-AI-009", "SK-CMN-001", "SK-CMN-002", "SK-CMN-003", "SK-CMN-004", "SK-CMN-005"):
         assert st[i] == "PASS", i
-    for i in ("SK-CMN-001", "SK-CMN-002", "SK-CMN-003", "SK-CMN-004"):
-        r = get_result(report, i)
-        assert r.status == "ERROR" and r.message.startswith("E-VALIDATOR-MISSING")
     assert report.skills == ("AI",)
 
 
@@ -110,20 +106,22 @@ def test_delegate_mirrors_skipped_and_fail_states():
 
 
 def test_missing_products_all_error_face():
-    # products 整体缺失:AI-001(D0)CtxMissing→ERROR 视为失败短路 AI 余量;
-    # CMN-005 CtxMissing→短路 CMN-002;CMN-001..004 基建面独立 ERROR 不短路
+    # products 整体缺失:D0 CtxMissing 即 ERROR 视为失败,同技能短路——
+    # AI-001(D0,字典序先于 CMN-001)短路 AI 余量;CMN-001(D0)短路 CMN 余量;
+    # AI-009 镜像 CMN-005 的 SKIPPED 态
     report = run_assertions({"tender": {}}, skills=("AI",))
     st = statuses(report)
     assert st["SK-AI-001"] == "ERROR"
-    assert st["SK-AI-002"] == "SKIPPED"
-    assert st["SK-CMN-005"] == "ERROR"
-    assert st["SK-AI-009"] == "ERROR"  # 委托镜像
-    for i in ("SK-CMN-001", "SK-CMN-003", "SK-CMN-004"):
-        assert get_result(report, i).message.startswith("E-VALIDATOR-MISSING")
-    assert get_result(report, "SK-CMN-002").status == "SKIPPED"  # 因 SK-CMN-005
-    for r in report.results:
-        if r.status == "ERROR" and not r.message.startswith("E-VALIDATOR-MISSING"):
-            assert r.message.startswith("E-CTX-MISSING:"), r.assertion_id
+    assert st["SK-CMN-001"] == "ERROR"
+    for i in ("SK-AI-002", "SK-AI-003", "SK-AI-008", "SK-AI-004", "SK-AI-005", "SK-AI-006", "SK-AI-007", "SK-CMN-002"):
+        r = get_result(report, i)
+        assert r.status == "SKIPPED" and r.skipped_reason == "short_circuit", i
+    assert st["SK-CMN-003"] == "SKIPPED" and st["SK-CMN-004"] == "SKIPPED" and st["SK-CMN-005"] == "SKIPPED"
+    r = get_result(report, "SK-AI-009")
+    assert r.status == "SKIPPED" and r.source_id == "SK-CMN-005"
+    for res in report.results:
+        if res.status == "ERROR":
+            assert res.message.startswith("E-CTX-MISSING:"), res.assertion_id
 
 
 def test_ctx_missing_counts_as_failure_for_gate_face():
@@ -145,8 +143,10 @@ def test_cmn_always_executes_regardless_of_skills():
     ids = {r.assertion_id for r in report.results}
     assert "SK-CMN-005" in ids
     assert not any(i.startswith("SK-AI-") for i in ids)
-    # BL 校验器 Task 3 才落地:未注册面=运行时兜底 ERROR,不静默
-    assert get_result(report, "SK-BL-001").message.startswith("E-VALIDATOR-MISSING")
+    # BL 校验器全量注册后:绿夹具上 BL 全 PASS
+    st = statuses(report)
+    assert st["SK-BL-001"] == "PASS"
+    assert all(s == "PASS" for k, s in st.items() if k.startswith("SK-BL-"))
 
 
 def test_full_run_skills_none_and_report_shape():
@@ -154,13 +154,10 @@ def test_full_run_skills_none_and_report_shape():
     report = run_assertions(ctx)
     assert report.skills is None
     assert report.schema_version == "1.0.0"
-    ids = {r.assertion_id for r in report.results}
-    assert {"SK-AI-009", "SK-CMN-005"} <= ids
-    # BL/PS/RT 未注册面:全 ERROR(E-VALIDATOR-MISSING),不静默不通过
-    st = statuses(report)
-    assert st["SK-BL-001"] == "ERROR"
-    assert st["SK-PS-003"] == "ERROR"
-    assert st["SK-RT-002"] == "ERROR"
+    # 全量 43 条(42 执行 + AI-009 镜像),绿夹具全 PASS——单实现律下 AI-009 在列
+    snap = load_registry()
+    assert len(report.results) == len(snap.assertions) == 43
+    assert all(r.status == "PASS" for r in report.results), [(r.assertion_id, r.status, r.message) for r in report.results if r.status != "PASS"]
 
 
 def test_run_is_pure_deterministic_within_process():

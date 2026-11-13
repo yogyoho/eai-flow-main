@@ -21,16 +21,16 @@ def green_ctx() -> dict:
             ],
             "tender.required_validity_days": 90,
             "tender.bid_deadline": "2026-12-01 09:00",
-            "tender.max_price": 1000000,
+            "tender.max_price": 2500000,
             "tender.boq_items": [
-                {"name": "设备安装", "qty": 2, "unit": "套"},
-                {"name": "调试服务", "qty": 1, "unit": "项"},
+                {"id": "1.1", "name": "设备安装", "qty": 2, "unit": "套"},
+                {"id": "1.2", "name": "调试服务", "qty": 1, "unit": "项"},
             ],
         },
         "products": {
             "bid_letter": {
                 "slots": {
-                    "tender_purchaser_name": "XX矿业集团有限公司",
+                    "tender_purchaser_name": "华源矿业集团有限公司",
                     "project_name": "某矿井智能化建设项目",
                     "tender_no": "TB-2026-001",
                     "total_amount_cn": "贰佰万元整",
@@ -42,7 +42,7 @@ def green_ctx() -> dict:
                     "legal_rep_name": "张三",
                     "sign_date": "2026-11-20",
                 },
-                "text": "致 XX矿业集团有限公司:我方自愿参加…(全文无占位符无禁用词)",
+                "text": "致 华源矿业集团有限公司:我方自愿参加…(全文无占位符无禁用词)",
                 "fixed_text": "本投标函即为招标文件的组成部分…",
                 "signature": {"seal_anchor": True, "sign_anchor": True},
                 "extra_commitments": [
@@ -54,12 +54,13 @@ def green_ctx() -> dict:
             },
             "price_sheet": {
                 "rows": [
-                    {"name": "设备安装", "qty": 2, "unit": "套", "unit_price": 800000, "amount": 1600000},
-                    {"name": "调试服务", "qty": 1, "unit": "项", "unit_price": 400000, "amount": 400000},
+                    {"id": "1.1", "name": "设备安装", "qty": 2, "unit": "套", "unit_price": 800000, "amount": 1600000},
+                    {"id": "1.2", "name": "调试服务", "qty": 1, "unit": "项", "unit_price": 400000, "amount": 400000},
                 ],
                 "detail_total": 2000000,
                 "summary_total": 2000000,
                 "open_letter_total": 2000000,
+                "amount_cn": "贰佰万元整",
                 "price_mode": "不含税",
                 "tax_rate": 0.13,
                 "note": "报价含调试服务,不含运输(无模糊调价表述)",

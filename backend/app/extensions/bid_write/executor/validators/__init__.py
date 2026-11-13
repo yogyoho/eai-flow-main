@@ -43,5 +43,13 @@ def norm_text(v: Any) -> str:
     return str(v).strip() if v is not None else ""
 
 
+def resolve_entity_refs(refs, entities: dict) -> tuple[list[str], int]:
+    """实体引用解析(CMN-003/RT-007 共用):refs=引用 id 列表(str),
+    entities=material.entities 映射。返回 (未解析 id 列表, 总数)。"""
+    ids = [str(r).strip() for r in refs or []]
+    unresolved = [r for r in ids if r not in (entities or {})]
+    return unresolved, len(ids)
+
+
 # 导入即注册(各技能模块自注册;新技能文件在此追加一行)
-from app.extensions.bid_write.executor.validators import ai, cmn  # noqa: E402, F401
+from app.extensions.bid_write.executor.validators import ai, bl, cmn, ps, rt  # noqa: E402, F401
