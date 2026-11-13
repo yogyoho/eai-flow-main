@@ -22,6 +22,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.extensions.auth.middleware import require_permission
 from app.extensions.bid_review import parse
 from app.extensions.bid_write import contracts, crud, schemas, worker
+from app.extensions.bid_write.executor.models import SkillRun as _SkillRun  # noqa: F401 — import 注册共享 Base metadata(bug-4303 律)
 from app.extensions.database import get_db
 from app.extensions.schemas import CurrentUser
 
