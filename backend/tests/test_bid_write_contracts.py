@@ -65,6 +65,16 @@ def test_schema_version_and_vocab():
     assert contracts.BLOCK_EXPORT_LEVELS == ("D0",)
 
 
+def test_substantive_clauses_is_main_subset_member():
+    """批廿四 P1-γ:tender.substantive_clauses=L4-003 语义审查输入面(实质性条款
+    摘录列表)。universe 成员(anchors「招标合同条款/实质性条款」组)→主路径直入;
+    扩面表 ext∩uni=∅ 律禁收 universe 成员,故不走 SUBSET_EXTRACT_EXTENSIONS
+    (批廿二三槽位仍居扩面表,本路径身份不同——钉防误迁)。"""
+    assert "tender.substantive_clauses" in contracts.COMMERCIAL_TENDER_SUBSET
+    assert "tender.substantive_clauses" not in contracts.SUBSET_EXTRACT_EXTENSIONS
+    assert "tender.substantive_clauses" in set(universe())
+
+
 def test_l4_pack_inputs_not_broken_by_subset():
     """子集引入不改变规则包输入面(审查端零改动交叉验证:pack_inputs 是包 yaml
     的 inputs 全集,与写作端子集无交集要求不成立——重叠合法,但审查端输入集

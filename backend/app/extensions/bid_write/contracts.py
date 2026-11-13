@@ -64,7 +64,7 @@ BLOCK_EXPORT_LEVELS = ("D0",)  # 导出前置校验阻断面(M2 §5.3 消费)
 # 矩阵装配只消费这些路径;星级面=tender.attachment_requirements.mandatory=="★"
 # 行 + tender.required_declarations(★承诺条款),无 tender.clauses(P0 规格
 # tender.clauses(star) 为愿景名,M0 以 required_declarations+attachment_requirements
-# 承接;substantive_clauses 专项契约挂 M2 与 L4 激活同批落地)。
+# 承接;substantive_clauses 专项契约批廿四 P1-γ 落地=主路径成员)。
 COMMERCIAL_TENDER_SUBSET: tuple[str, ...] = (
     # F1 矩阵直接行源
     "tender.attachment_requirements",
@@ -88,6 +88,9 @@ COMMERCIAL_TENDER_SUBSET: tuple[str, ...] = (
     # 商务承诺对照(M2 预审查 L1/L4 消费;矩阵存对照行)
     "tender.min_warranty_period",
     "tender.max_duration",
+    # 实质性条款摘录(批廿四 P1-γ:L4-003 语义审查输入;universe 成员=anchors
+    # 「招标合同条款/实质性条款」组,主路径直入零扩面;列表形,矩阵不消费)
+    "tender.substantive_clauses",
     # 条件段(F4 模板 {{#if}} 面)
     "tender.consortium_allowed",
     # 导出适配(F8 后续批消费,M0 随抽取顺带落库)
