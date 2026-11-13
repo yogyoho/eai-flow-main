@@ -97,6 +97,16 @@ class AssertionResult:
     source_id: str | None = None  # delegates 镜像源(仅 AI-009 类条目)
 
 
+@dataclass
+class RunReport:
+    """执行器产物(runner 纯函数零 IO 零时钟,20× 字节级一致验收面);summary/
+    pending/gate 序列化面=report.to_report_dict()(Task 4)。"""
+
+    schema_version: str
+    skills: tuple[str, ...] | None  # 请求的产品技能子集(None=全量;CMN 恒执行)
+    results: list[AssertionResult]
+
+
 class SkillRun(Base):
     """断言执行记录(批二十 M1;runner 纯函数零 IO,落库由调用方 crud.record_skill_run)。"""
 
