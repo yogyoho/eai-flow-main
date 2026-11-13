@@ -143,4 +143,5 @@ M1 骨架验收(= 批二十 TDD 序):loader+models+runner 跑通 1 技能 → �
 
 ## 7. 挂账(不入 P0-M0)
 
-M1(批二十):公共件执行器(设计裁决见 §8)+F3 章节装配+F4 四技能生成器(读本文档 §2 骨架);M2(批廿一):F6 预审查(L1/L2 复用 rule_runner/eval_core,输入=生成过程产出的 bid.*)+导出前置校验;P1:素材库六类实体+policy 配置面+埋点+前端三栏工作台;`tender.substantive_clauses` 契约与 L4 激活同批(M2)。
+**执行器落地态(批二十 M1-a..d,2026-11-13)**:§8 裁决全量兑现——executor/ 六件(loader/models/runner/gate/report/cli+validators/{ai,cmn,bl,ps,rt,amount_cn,wordscan});43 条校验函数全注册(委托 AI-009=CMN-005 单实现);exec-negatives.yaml 19 例负例全红;确定性 20× 字节级;CLI oracle 0/1/2;SkillRun 落库+gaps 断言维度。**未入 M1 挂账**:worker 生效链(record_skill_run 接线进 advance 后置 M2 导出前置同批);BL-001「12 个必填槽位」第 12 槽位无 repo 真源(L1-007 实为签章完整,input 无槽位清单)→执行器按 yaml expr 点名 11 项,第 12 槽位待 F4 模板落地时锁定;执行期 rule_ref 悬空面=CI pin(运行时不重扫,§8 适配表既裁)。
+剩余:M1 面收尾=F3 章节装配+F4 四技能生成器(读本文档 §2 骨架);M2(批廿一):F6 预审查(L1/L2 复用 rule_runner/eval_core,输入=生成过程产出的 bid.*)+导出前置校验+worker 接线;P1:素材库六类实体+policy 配置面+埋点+前端三栏工作台;`tender.substantive_clauses` 契约与 L4 激活同批(M2)。

@@ -113,41 +113,41 @@ ctx 形状:`{"tender": {...抽学子集}, "products": {"bid_letter": {...}, "pri
 
 ### Task 1: loader + models(数据面)
 
-- [ ] `executor/models.py`:AssertionDef(id/skill/name/level/blocks_export/rule_ref/expr/human_action/delegates_to)+ Outcome/AssertionResult/CtxMissing;SkillRun ORM 表 `bid_write_skill_runs`(id/task_id FK/owner_id/skills/verdict JSON/blocked/schema_version/created_at;**共享 Base**)
-- [ ] `executor/loader.py`:load_registry()→defs;静态校验=ID 唯一/level∈DEGRADE_LEVELS/D0⇔blocks_export/meta.schema_version==contracts.SCHEMA_VERSION/delegates 目标存在/CMN 范围钉;module 级 lru_cache。rule_ref 悬空面=既有 pin test(CI 时点),运行时不重扫审查注册表(零增益);plan 级注记
-- [ ] 测试 loader:43 条全载/版本不符拒载/D0⇔blk 违例拒载/delegates 悬空拒载/ID 重复拒载
-- [ ] routers.py 一行 import;测试:Base.metadata 含 bid_write_skill_runs
-- [ ] `make lint` 双清;commit「批二十 M1-a1」
+- [x] `executor/models.py`:AssertionDef(id/skill/name/level/blocks_export/rule_ref/expr/human_action/delegates_to)+ Outcome/AssertionResult/CtxMissing;SkillRun ORM 表 `bid_write_skill_runs`(id/task_id FK/owner_id/skills/verdict JSON/blocked/schema_version/created_at;**共享 Base**)
+- [x] `executor/loader.py`:load_registry()→defs;静态校验=ID 唯一/level∈DEGRADE_LEVELS/D0⇔blocks_export/meta.schema_version==contracts.SCHEMA_VERSION/delegates 目标存在/CMN 范围钉;module 级 lru_cache。rule_ref 悬空面=既有 pin test(CI 时点),运行时不重扫审查注册表(零增益);plan 级注记
+- [x] 测试 loader:43 条全载/版本不符拒载/D0⇔blk 违例拒载/delegates 悬空拒载/ID 重复拒载
+- [x] routers.py 一行 import;测试:Base.metadata 含 bid_write_skill_runs
+- [x] `make lint` 双清;commit「批二十 M1-a1」
 
 ### Task 2: runner 核 + AI/CMN-005 校验器(跑通 1 技能)
 
-- [ ] `validators/__init__.py` REGISTRY+register;`validators/ai.py`(AI-001..008+AI-009 委托登记)+`validators/cmn.py`(CMN-005 单实现)
-- [ ] `runner.py`:run_assertions(ctx, skills=None)→RunReport;排序/短路/委托派生/CtxMissing→ERROR/CMN 恒执行
-- [ ] 测试 runner:AI 全绿/SK-AI-001 D0 fail→AI-002..008 SKIPPED 注明因谁+AI-009 镜像/缺 ctx 键→E-CTX-MISSING/delegates 不重复执行(CMN-005 只跑一次)/skills=["BL"] 时 CMN 仍执行
-- [ ] commit「批二十 M1-a2 跑通 AI 技能」
+- [x] `validators/__init__.py` REGISTRY+register;`validators/ai.py`(AI-001..008+AI-009 委托登记)+`validators/cmn.py`(CMN-005 单实现)
+- [x] `runner.py`:run_assertions(ctx, skills=None)→RunReport;排序/短路/委托派生/CtxMissing→ERROR/CMN 恒执行
+- [x] 测试 runner:AI 全绿/SK-AI-001 D0 fail→AI-002..008 SKIPPED 注明因谁+AI-009 镜像/缺 ctx 键→E-CTX-MISSING/delegates 不重复执行(CMN-005 只跑一次)/skills=["BL"] 时 CMN 仍执行
+- [x] commit「批二十 M1-a2 跑通 AI 技能」
 
 ### Task 3: 全量 43 条校验器
 
-- [ ] `amount_cn.py`(num→CN 含零/整/角分;CN→num;单测 20 组边界值内嵌)
-- [ ] `wordscan.py`(分类扫描+词级 max;大小写不敏感面)
-- [ ] `cmn.py` 补 001-004;`bl.py` 10 条;`ps.py` 10 条;`rt.py` 9 条(逐条按契约表)
-- [ ] 测试 validators:43×(正例/负例/特免 PS-006 PS-010/词级升级 BL-006 PS-009)/fixtures 构造器落 `bid_write_exec_fixtures.py`
-- [ ] commit「批二十 M1-b 全量 43 条」
+- [x] `amount_cn.py`(num→CN 含零/整/角分;CN→num;单测 20 组边界值内嵌)
+- [x] `wordscan.py`(分类扫描+词级 max;大小写不敏感面)
+- [x] `cmn.py` 补 001-004;`bl.py` 10 条;`ps.py` 10 条;`rt.py` 9 条(逐条按契约表)
+- [x] 测试 validators:43×(正例/负例/特免 PS-006 PS-010/词级升级 BL-006 PS-009)/fixtures 构造器落 `bid_write_exec_fixtures.py`
+- [x] commit「批二十 M1-b 全量 43 条」
 
 ### Task 4: report + gate + 待补清单 + gaps 接线 + 注入负例全红
 
-- [ ] `report.py` to_dict(确定性序)+ pending 提取 + SKIPPED 注记「因 SK-XX 失败跳过 N 条」;`gate.py` blocked/水印位
-- [ ] crud.record_skill_run + get_gaps 增 `assertions` 段(最新 SkillRun;无 run→M0 形状不变,向后兼容)
-- [ ] `golden/cases-write/exec-negatives.yaml`(每技能 8–12 条变异负例)+ 夹具驱动测试:**负例全红**(注入缺陷 100% 检出,零漏报)
-- [ ] 测试 gate_report:gate 阻断/水印恒 False/pending 含 human_action/序列化键序稳定
-- [ ] commit「批二十 M1-c 清单+门禁+负例」
+- [x] `report.py` to_dict(确定性序)+ pending 提取 + SKIPPED 注记「因 SK-XX 失败跳过 N 条」;`gate.py` blocked/水印位
+- [x] crud.record_skill_run + get_gaps 增 `assertions` 段(最新 SkillRun;无 run→M0 形状不变,向后兼容)
+- [x] `golden/cases-write/exec-negatives.yaml`(每技能 8–12 条变异负例)+ 夹具驱动测试:**负例全红**(注入缺陷 100% 检出,零漏报)
+- [x] 测试 gate_report:gate 阻断/水印恒 False/pending 含 human_action/序列化键序稳定
+- [x] commit「批二十 M1-c 清单+门禁+负例」
 
 ### Task 5: 确定性 20× + CLI oracle + 收口
 
-- [ ] `cli.py`(ctx JSON 路径→报告 stdout,exit 0 全过/1 有 FAIL/2 有 ERROR)+ 单测
-- [ ] determinism 测试:green_ctx 20 次 run → dumps 字节级相等
-- [ ] plan 勾兑 + spec §7 挂账更新(执行器落地态)+ wolf 三件套(memory/anatomy/cerebrum)
-- [ ] `cd backend && make lint && PYTHONPATH=. uv run pytest tests/ -k bid_write -q` 全绿;commit「批二十 M1-d 收口」
+- [x] `cli.py`(ctx JSON 路径→报告 stdout,exit 0 全过/1 有 FAIL/2 有 ERROR)+ 单测
+- [x] determinism 测试:green_ctx 20 次 run → dumps 字节级相等
+- [x] plan 勾兑 + spec §7 挂账更新(执行器落地态)+ wolf 三件套(memory/anatomy/cerebrum)
+- [x] `cd backend && make lint && PYTHONPATH=. uv run pytest tests/ -k bid_write -q` 全绿;commit「批二十 M1-d 收口」
 
 ## Self-Review
 
