@@ -95,27 +95,97 @@ async def run_rule_precheck(fields: dict) -> dict:
     }
 
 
-async def run_export_gate(ctx: dict) -> dict:
-    """导出前置校验(P0 规格 §8):重跑全量 D0 断言 + det 规则层预审查。
-    blocked=gate_verdict D0 FAIL/ERROR 或 L1 fatal det FAIL;reasons 并集排序;
-    watermark 恒加(L4 未评估语义,contracts.EXPORT_RISK_WATERMARK)。"""
+_L4_BLOCKING = {"FAIL", "ERROR", "need_human", "UNKNOWN"}
+_l4_pack_cache = None
+
+
+def _l4_participants(fields: dict):
+    """L4 参与卡筛选(P1-γ):enabled ∧ sem/hyb ∧ inputs 全非空。缺输入卡诚实列
+    input_missing 不烧模型(sem 卡缺输入仍会模型调用,写侧成本闸;engine 不动,
+    写侧本地关切)。返回 (pack|None, 参与卡 id 列表, 缺输入卡 id 列表)。"""
+    global _l4_pack_cache
+    if not _L4_PATH.exists():
+        return None, [], []
+    if _l4_pack_cache is None:
+        _l4_pack_cache = load_rulepack(_L4_PATH)
+    parts: list = []
+    missing: list[str] = []
+    for r in _l4_pack_cache.rules:
+        if not r.enabled or r.type not in ("semantic", "hybrid"):
+            continue
+        if all(fields.get(p) not in (None, "", [], {}) for p in r.inputs):
+            parts.append(r)
+        else:
+            missing.append(r.id)
+    if not parts:
+        return None, [], missing
+    return dataclasses.replace(_l4_pack_cache, rules=parts), [r.id for r in parts], missing
+
+
+async def run_l4_review(fields: dict, materials: str, model_fn) -> dict:
+    """L4 语义审查面(advisory-only,P1-γ):参与卡(inputs 全非空)过 evaluate_fields
+    全引擎语义管线(逐规则隔离;full=干净零条目/partial·none=FAIL·WARN/unclear=
+    need_human/基础设施故障=ERROR)。摘除条件=executed ∧ 参与卡零 FAIL/ERROR/
+    need_human/UNKNOWN(unclear=未确认→水印保持,诚实)。L4 永不入 gate blocked/
+    reasons(pack meta counts_toward_bid_gate=false,advisory-only 铁律)。"""
+    pack, parts, missing = _l4_participants(fields)
+    if pack is None or model_fn is None:
+        return {
+            "executed": False,
+            "counts": {},
+            "issues": [],
+            "participants": parts,
+            "input_missing": missing,
+            "watermark_removed": False,
+            "scope_note": "L4 无参与卡或缺模型→未执行(水印恒加)",
+        }
+    issues = await evaluate_fields(pack, dict(fields or {}), model_fn=model_fn, materials=materials)
+    counts = Counter(i.get("verdict") for i in issues)
+    removed = not any(i.get("verdict") in _L4_BLOCKING for i in issues)
+    return {
+        "executed": True,
+        "counts": {k: counts[k] for k in sorted(counts)},
+        "issues": issues,
+        "participants": parts,
+        "input_missing": missing,
+        "watermark_removed": bool(removed),
+        "scope_note": f"L4 模型审查 advisory-only(不阻断;参与卡 {len(parts)},缺输入 {len(missing)})",
+    }
+
+
+async def run_export_gate(ctx: dict, *, l4_model_fn=None) -> dict:
+    """导出前置校验(P0 规格 §8):重跑全量 D0 断言 + det 规则层预审查
+    (+批廿四 P1-γ:l4_model_fn 供给时叠加 L4 语义审查面 advisory-only——不入
+    blocked/reasons;watermark 摘除条件=参与卡零 FAIL/ERROR/need_human/UNKNOWN,
+    摘除即 None,否则恒加 EXPORT_RISK_WATERMARK)。blocked=gate D0 FAIL/ERROR 或
+    L1 fatal det FAIL(L4 零贡献,铁律)。"""
     from app.extensions.bid_write.contracts import EXPORT_RISK_WATERMARK, SCHEMA_VERSION
     from app.extensions.bid_write.executor.gate import gate_verdict
     from app.extensions.bid_write.executor.runner import run_assertions
 
     report = run_assertions(ctx)
     gate = gate_verdict(report)
-    pre = await run_rule_precheck(project_bid_fields(ctx))
+    fields = project_bid_fields(ctx)
+    pre = await run_rule_precheck(fields)
+    l4 = None
+    if l4_model_fn is not None:
+        l4_fields = dict(fields)
+        sc = ((ctx or {}).get("tender") or {}).get("tender.substantive_clauses")
+        if sc:
+            l4_fields["tender.substantive_clauses"] = sc
+        bl = ((ctx or {}).get("products") or {}).get("bid_letter") or {}
+        l4 = await run_l4_review(l4_fields, str(bl.get("text") or ""), l4_model_fn)
     a_counts = Counter(r.status for r in report.results)
     from app.extensions.bid_write.executor.report import to_report_dict
 
     return {
         "blocked": bool(gate["blocked"] or pre["blocked"]),
         "reasons": sorted(set(gate["reasons"]) | set(pre["l1_fatal_fail"])),
-        "watermark": EXPORT_RISK_WATERMARK,
+        "watermark": None if l4 is not None and l4["watermark_removed"] else EXPORT_RISK_WATERMARK,
         "assertion_counts": {k: a_counts[k] for k in sorted(a_counts)},
         "rule_counts": pre["counts"],
         "l1_fatal_fail": pre["l1_fatal_fail"],
+        "l4": l4,
         "scope_note": pre["scope_note"],
         "schema_version": SCHEMA_VERSION,
         # results=gaps 断言维度消费面(to_report_dict 序列化;报告=导出物非真相源)
