@@ -6,9 +6,16 @@ advisory-only 铁律:L4 永不入 blocked/reasons(meta counts_toward_bid_gate=fa
 """
 
 import json
+import sys
+from pathlib import Path
 from types import SimpleNamespace
 
 import pytest
+
+sys.path.insert(0, str(Path(__file__).parent))
+
+from test_bid_write_policy import _seed  # noqa: F401 — 夹具复用(bug-4303 系 tests/ 平铺惯例)
+from test_bid_write_policy import db as policy_db  # noqa: F401 — pytest 夹具 re-export(参数名=注册名)
 
 from app.extensions.bid_write import contracts
 from app.extensions.bid_write.precheck import project_bid_fields
@@ -70,7 +77,6 @@ async def test_l4_no_participants_not_executed():
 async def test_l4_all_pass_removes_watermark():
     """L4-003/004 参与(L4-005 缺 tender.clauses 列 input_missing);全 full→零条目→摘除。"""
     from app.extensions.bid_review.engine.eval_core import wrap_model_fn
-
     from app.extensions.bid_write.precheck import run_l4_review
 
     out = await run_l4_review(_l4_fields(), "承诺:终身免费维保", wrap_model_fn(_stub_model("full")))
@@ -84,7 +90,6 @@ async def test_l4_all_pass_removes_watermark():
 async def test_l4_fail_or_unclear_keeps_watermark():
     """none→FAIL 条目;unclear→need_human;两者都不摘(未确认=未确认)。"""
     from app.extensions.bid_review.engine.eval_core import wrap_model_fn
-
     from app.extensions.bid_write.precheck import run_l4_review
 
     fail = await run_l4_review(_l4_fields(), "x", wrap_model_fn(_stub_model("none")))
@@ -97,7 +102,6 @@ async def test_l4_fail_or_unclear_keeps_watermark():
 async def test_l4_model_missing_degrades_error_keeps_watermark():
     """恒抛闭包→逐规则隔离 ERROR→水印保持(诚实,绝不假绿)。"""
     from app.extensions.bid_review.worker import ModelNotConfigured
-
     from app.extensions.bid_write.precheck import run_l4_review
 
     def _boom(messages):
@@ -113,7 +117,6 @@ async def test_export_gate_l4_advisory_and_watermark():
     """gate 形:l4 摘除→watermark=None;不供 l4_model_fn→恒加(既有面零破坏);
     L4 零贡献 blocked(advisory-only 铁律)。"""
     from app.extensions.bid_review.engine.eval_core import wrap_model_fn
-
     from app.extensions.bid_write.precheck import run_export_gate
 
     ctx = _ctx_with_commitments()
@@ -125,3 +128,27 @@ async def test_export_gate_l4_advisory_and_watermark():
     assert keep["l4"] is None
     fail = await run_export_gate(ctx, l4_model_fn=wrap_model_fn(_stub_model("none")))
     assert fail["watermark"] == contracts.EXPORT_RISK_WATERMARK
+
+
+@pytest.mark.asyncio
+async def test_worker_generate_persists_l4(policy_db, monkeypatch):  # noqa: F811 — 夹具名=导入名(pytest 夹具复用平铺惯例)
+    """generate_and_record 接线:_l4_model_fn 打桩全 full;knobs 带承诺+tender
+    实质条款→L4 参与;verdict["l4"] 落 skill_run;水印摘除=watermark None。
+    seed 自带 auto-precheck(无 knobs→参与卡空→真 _l4_model_fn 恒抛闭包零调用,
+    零行为)。"""
+    from app.extensions.bid_write import crud, worker
+
+    task = await _seed(policy_db, monkeypatch)
+    meta = dict(task.engine_meta or {})
+    meta["knobs"] = {"general_commitments": [{"text": "额外承诺:终身免费维保", "clause_id": ""}]}
+    meta.setdefault("fields", {})["tender.substantive_clauses"] = ["投标人不得转包"]
+    task.engine_meta = meta
+    await policy_db.commit()
+    await policy_db.refresh(task)
+
+    monkeypatch.setattr(worker, "_l4_model_fn", lambda: _stub_model("full"))
+    export = await worker.generate_and_record(policy_db, task, "u1")
+    assert export["l4"]["executed"] is True
+    assert export["watermark"] is None
+    run = await crud.latest_skill_run(policy_db, task_id=task.id, owner_id="u1")
+    assert ((run.verdict or {}).get("l4") or {}).get("executed") is True

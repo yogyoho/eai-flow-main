@@ -198,6 +198,33 @@ async def build_task_ctx(db: AsyncSession, task: WriteTask, owner_id: str, *, kn
     )
 
 
+def _l4_model_fn():
+    """L4 语义审查模型接线(批廿四 P1-γ;镜像 bid_review.worker._default_model_fn
+    先例):模型选择同 extraction(_resolve_model_name→EAI_BID_REVIEW_MODEL/config
+    首项,写侧不另设 env=同一把模型尺);ainvoke 异步禁同步堵环;无可用模型返回
+    恒抛闭包,L4 逐规则隔离降级 ERROR→水印保持,绝不静默假绿。"""
+    from app.extensions.bid_review import worker as review_worker
+    from app.extensions.bid_review.worker import ModelNotConfigured
+
+    name = review_worker._resolve_model_name()
+    if not name:
+
+        def _fn(messages):
+            raise ModelNotConfigured("config.yaml 无可用模型(L4 语义审查逐规则降级 ERROR→水印保持)")
+
+        return _fn
+
+    from deerflow.models.factory import create_chat_model
+
+    model = create_chat_model(name)
+    logger.info("bid_write L4 semantic review using model %s", name)
+
+    async def _fn(messages):
+        return await model.ainvoke(messages)
+
+    return _fn
+
+
 async def generate_and_record(db: AsyncSession, task: WriteTask, owner_id: str, *, knobs: dict | None = None) -> dict:
     """批廿一 M2:装配→断言+规则预审查→导出门禁→skill_run 落库。返回 verdict=
     run_export_gate 全形(blocked/reasons/watermark/results/双计数),gaps 断言
@@ -210,7 +237,7 @@ async def generate_and_record(db: AsyncSession, task: WriteTask, owner_id: str, 
 
     t0 = time.perf_counter()
     ctx = await build_task_ctx(db, task, owner_id, knobs=knobs)
-    export = await run_export_gate(ctx)
+    export = await run_export_gate(ctx, l4_model_fn=_l4_model_fn())  # 批廿四 P1-γ:L4 语义审查面(advisory;无承诺→参与卡空零模型调用)
     export["metrics"] = compute_metrics(ctx, export, duration_ms=round((time.perf_counter() - t0) * 1000))
     await crud.record_skill_run(db, task.id, owner_id, verdict=export, skills="ALL", schema_version=contracts.SCHEMA_VERSION, blocked=export["blocked"])
     return export
