@@ -98,3 +98,15 @@ class MaterialProfile(Base):
     owner_id: Mapped[str] = mapped_column(String(64), primary_key=True)
     profile: Mapped[dict] = mapped_column(JSON, default=dict)
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now, onupdate=_now)
+
+
+class BidWritePolicy(Base):
+    """project.policy.* 配置面(P1-β 批廿三;owner 单例,镜像 MaterialProfile 律):
+    letter_defaults(函默认值)/tax_rate(税率)/price_adjust_mechanism(调价开关,
+    PS-009 命中升 D0 面)。键词汇=schemas.PolicyBody(extra=forbid 422)。"""
+
+    __tablename__ = "bid_write_policies"
+
+    owner_id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    policy: Mapped[dict] = mapped_column(JSON, default=dict)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now, onupdate=_now)

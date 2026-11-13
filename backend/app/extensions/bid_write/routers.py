@@ -323,3 +323,20 @@ async def get_material_profile(db: AsyncSession = Depends(get_db), owner_id: str
 async def put_material_profile(body: schemas.ProfileIn, db: AsyncSession = Depends(get_db), owner_id: str = Depends(current_owner)):
     prof = await crud.upsert_profile(db, owner_id, body.profile)
     return {"profile": dict(prof.profile or {})}
+
+
+# ── project.policy.* 配置面(P1-β 批廿三;owner 单例,镜像 profile 律)────────
+
+
+@router.get("/policy")
+async def get_policy(db: AsyncSession = Depends(get_db), owner_id: str = Depends(current_owner)):
+    """owner policy 配置(缺→{} =零 policy 现行为)。"""
+    return {"policy": await crud.get_policy(db, owner_id)}
+
+
+@router.put("/policy")
+async def put_policy(body: schemas.PolicyBody, db: AsyncSession = Depends(get_db), owner_id: str = Depends(current_owner)):
+    """合并语义(只改传入键);键白名单/税率越界 422(pydantic extra=forbid+ge/le)。"""
+    patch = {k: v for k, v in body.model_dump().items() if v is not None}
+    policy = await crud.upsert_policy(db, owner_id, patch)
+    return {"policy": policy}

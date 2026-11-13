@@ -97,3 +97,23 @@ class ProfileIn(BaseModel):
     """投标主体 profile(BL 主体信息唯一素材源;形态={name, legal_rep, …} 自由面)。"""
 
     profile: dict
+
+
+class LetterDefaults(BaseModel):
+    """函默认值(project.policy.letter_defaults;抽取缺席时的 D1 兜底填面)。"""
+
+    model_config = ConfigDict(extra="forbid")
+
+    validity_days: int | None = None
+    sign_date: str | None = None
+
+
+class PolicyBody(BaseModel):
+    """project.policy.* 键词汇钉(P1-β):extra=forbid→ghost 键 422;
+    tax_rate 0..1(0.09=9%);price_adjust_mechanism=False→PS-009 命中升 D0。"""
+
+    model_config = ConfigDict(extra="forbid")
+
+    letter_defaults: LetterDefaults | None = None
+    tax_rate: float | None = Field(default=None, ge=0, le=1)
+    price_adjust_mechanism: bool | None = None

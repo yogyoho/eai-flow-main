@@ -213,3 +213,27 @@ async def collect_material(session: AsyncSession, owner_id: str) -> dict:
         "bidder_profile": dict(prof.profile or {}) if prof is not None else {},
         "price_history": [{"project": r.name, "amount": (r.fields or {}).get("amount")} for r in rows if r.entity_type == "performance" and (r.fields or {}).get("amount") is not None],
     }
+
+
+async def get_policy(session: AsyncSession, owner_id: str) -> dict:
+    """project.policy.* 配置(owner 单例;缺→{} =零 policy 现行为)。"""
+    from app.extensions.bid_write.models import BidWritePolicy
+
+    row = await session.get(BidWritePolicy, owner_id)
+    return dict(row.policy or {}) if row is not None else {}
+
+
+async def upsert_policy(session: AsyncSession, owner_id: str, patch: dict) -> dict:
+    """合并语义 upsert(只改传入键不清他键);键白名单校验在 schemas
+    (PolicyBody extra=forbid)。返回合并后全形。"""
+    from app.extensions.bid_write.models import BidWritePolicy
+
+    row = await session.get(BidWritePolicy, owner_id)
+    if row is None:
+        row = BidWritePolicy(owner_id=owner_id, policy=dict(patch or {}))
+        session.add(row)
+    else:
+        row.policy = {**dict(row.policy or {}), **dict(patch or {})}
+    await session.commit()
+    await session.refresh(row)
+    return dict(row.policy or {})
