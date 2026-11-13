@@ -166,7 +166,34 @@ async def get_gaps(task_id: str, db: AsyncSession = Depends(get_db), owner_id: s
     if task is None:
         raise HTTPException(status_code=404, detail="任务不存在")
     rows = await crud.list_matrix(db, task_id=task_id, owner_id=owner_id)
-    items = [{"clause_id": r.clause_id, "kind": r.kind, "requirement": r.requirement, "star": r.star, "status": r.status, "material_state": "无对应素材", "evidence_refs": r.evidence_refs} for r in rows if r.kind in ("attachment", "clause")]
+    # 批廿二 P1-α:素材三态兑现——attachment 行与 owner 素材库做名归一包含匹配
+    # (att 行 requirement=「no=.. name=.. clause=..」拼接摘录,故用包含而非全等;
+    # 与 attachment_index 名归一同律);verifiable=bool(evidence_refs) 派生;
+    # clause 行素材不适用(material_state=null)。
+    ents = await crud.list_material(db, owner_id)
+
+    def _norm(s: str) -> str:
+        return "".join(str(s or "").split()).lower()
+
+    def _state(requirement: str):
+        req = _norm(requirement)
+        for e in ents:
+            n = _norm(e.name)
+            if n and (n in req or req in n):
+                return ("有且可佐证" if e.evidence_refs else "有但缺佐证"), f"ent:{e.id}"
+        return "无对应素材", None
+
+    items = []
+    ready = 0
+    for r in rows:
+        if r.kind not in ("attachment", "clause"):
+            continue
+        if r.kind == "attachment":
+            state, ref = _state(r.requirement)
+            ready += state == "有且可佐证"
+        else:
+            state, ref = None, None
+        items.append({"clause_id": r.clause_id, "kind": r.kind, "requirement": r.requirement, "star": r.star, "status": r.status, "material_state": state, "entity_ref": ref, "evidence_refs": r.evidence_refs})
 
     from app.extensions.bid_write.executor import report as exec_report
 
@@ -182,7 +209,18 @@ async def get_gaps(task_id: str, db: AsyncSession = Depends(get_db), owner_id: s
             "pending": exec_report.pending_from(results),
             "skipped": exec_report.skipped_from(results),
         }
-    return {"items": items, "summary": {"total": len(items), "material_ready": 0, "pending_note": "素材库 P1 批落地;M0 全部为无对应素材(诚实伪零)"}, "assertions": assertions}
+    att = [i for i in items if i["kind"] == "attachment"]
+    return {
+        "items": items,
+        "summary": {
+            "total": len(items),
+            "material_ready": ready,
+            "material_missing": sum(1 for i in att if i["material_state"] == "无对应素材"),
+            "material_unverified": sum(1 for i in att if i["material_state"] == "有但缺佐证"),
+            "pending_note": "素材三态=有且可佐证/有但缺佐证/无对应素材(P1-α 兑现;素材库 /materials 维护)",
+        },
+        "assertions": assertions,
+    }
 
 
 @router.get("/registry")
@@ -235,3 +273,53 @@ async def export_precheck(task_id: str, db: AsyncSession = Depends(get_db), owne
         raise HTTPException(status_code=409, detail=f"矩阵未就绪(status={task.status})")
     ctx = await worker.build_task_ctx(db, task, owner_id)
     return await run_export_gate(ctx)
+
+
+# ── 素材库六类实体(F2/P1-α 批廿二)────────────────────────────────────────
+
+
+def _material_out(r) -> dict:
+    return {"id": r.id, "entity_type": r.entity_type, "name": r.name, "fields": r.fields or {}, "evidence_refs": r.evidence_refs or [], "verifiable": bool(r.evidence_refs), "created_at": r.created_at.isoformat() if r.created_at else None}
+
+
+@router.get("/materials")
+async def list_materials(entity_type: str | None = None, db: AsyncSession = Depends(get_db), owner_id: str = Depends(current_owner)):
+    """owner 素材清单(可选类型过滤);verifiable=派生 bool(evidence_refs)。"""
+    rows = await crud.list_material(db, owner_id, entity_type)
+    return {"items": [_material_out(r) for r in rows]}
+
+
+@router.post("/materials")
+async def create_material(body: schemas.MaterialIn, db: AsyncSession = Depends(get_db), owner_id: str = Depends(current_owner)):
+    try:
+        row = await crud.create_material(db, owner_id, body.entity_type, body.name, fields=body.fields, evidence_refs=body.evidence_refs)
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    return _material_out(row)
+
+
+@router.patch("/materials/{material_id}")
+async def patch_material(material_id: str, body: schemas.MaterialPatch, db: AsyncSession = Depends(get_db), owner_id: str = Depends(current_owner)):
+    row = await crud.update_material(db, material_id, owner_id, name=body.name, fields=body.fields, evidence_refs=body.evidence_refs)
+    if row is None:
+        raise HTTPException(status_code=404, detail="素材不存在")
+    return _material_out(row)
+
+
+@router.delete("/materials/{material_id}")
+async def delete_material(material_id: str, db: AsyncSession = Depends(get_db), owner_id: str = Depends(current_owner)):
+    if not await crud.delete_material(db, material_id, owner_id):
+        raise HTTPException(status_code=404, detail="素材不存在")
+    return {"deleted": True}
+
+
+@router.get("/materials/profile")
+async def get_material_profile(db: AsyncSession = Depends(get_db), owner_id: str = Depends(current_owner)):
+    prof = await crud.get_profile(db, owner_id)
+    return {"profile": dict(prof.profile or {}) if prof is not None else {}}
+
+
+@router.put("/materials/profile")
+async def put_material_profile(body: schemas.ProfileIn, db: AsyncSession = Depends(get_db), owner_id: str = Depends(current_owner)):
+    prof = await crud.upsert_profile(db, owner_id, body.profile)
+    return {"profile": dict(prof.profile or {})}

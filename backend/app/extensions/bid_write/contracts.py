@@ -93,6 +93,12 @@ COMMERCIAL_TENDER_SUBSET: tuple[str, ...] = (
     # 导出适配(F8 后续批消费,M0 随抽取顺带落库)
     "tender.allowed_submit_methods",
     "tender.electronic_files",
+    # BL 槽位面(批廿二 P1-α:BL-001 必填槽位 tender_purchaser_name/project_name/
+    # tender_no 唯一抽取源;标量串,extract 引擎 FIELD_TYPE_CONTRACTS 外路径零改动
+    # 兼容——prompt 裸路径/normalize 按 subset 白名单)
+    "tender.purchaser_name",
+    "tender.project_name",
+    "tender.tender_no",
 )
 
 # ── 禁用词表(P0 规格 §1.4/§2.6/§3.4/§4.4 归并;扫描器批二十公共件消费)──────

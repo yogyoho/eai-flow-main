@@ -22,7 +22,7 @@ from app.extensions.database import Base, get_db
 async def db():
     engine = create_async_engine("sqlite+aiosqlite://")
     async with engine.begin() as c:
-        await c.run_sync(Base.metadata.create_all, tables=[models.WriteTask.__table__, models.MatrixRow.__table__, R._SkillRun.__table__])
+        await c.run_sync(Base.metadata.create_all, tables=[models.WriteTask.__table__, models.MatrixRow.__table__, R._SkillRun.__table__, models.MaterialEntity.__table__, models.MaterialProfile.__table__])
     factory = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
     async with factory() as s:
         yield s

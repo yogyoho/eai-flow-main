@@ -183,7 +183,7 @@ async def build_task_ctx(db: AsyncSession, task: WriteTask, owner_id: str, *, kn
     return assemble_ctx(
         dict(meta.get("fields") or {}),
         row_dicts,
-        dict(meta.get("material") or {}),
+        await crud.collect_material(db, owner_id),  # 批廿二 P1-α:素材库装配(meta 面废除)
         unit_prices=k.get("unit_prices"),
         sign_date=k.get("sign_date") or "",
         price_note=k.get("price_note") or "",

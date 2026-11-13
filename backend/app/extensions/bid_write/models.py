@@ -70,3 +70,31 @@ class MatrixRow(Base):
     note: Mapped[str] = mapped_column(Text, default="")  # 人工备注(PATCH 卡点 note)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now, onupdate=_now)
+
+
+class MaterialEntity(Base):
+    """素材实体(F2/P1-α 批廿二;contracts.MATERIAL_ENTITY_TYPES 六类)。verifiable
+    不落列=派生 bool(evidence_refs)(spec「有可佐证附件」面);fields JSON=实体
+    自由面(资质有效期/业绩合同额等);owner 库跨任务复用。"""
+
+    __tablename__ = "bid_write_material_entities"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=_id)
+    owner_id: Mapped[str] = mapped_column(String(64), index=True)
+    entity_type: Mapped[str] = mapped_column(String(24))  # MATERIAL_ENTITY_TYPES
+    name: Mapped[str] = mapped_column(String(255))
+    fields: Mapped[dict] = mapped_column(JSON, default=dict)
+    evidence_refs: Mapped[list] = mapped_column(JSON, default=list)  # 佐证附件引用(doc_id/路径)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now, onupdate=_now)
+
+
+class MaterialProfile(Base):
+    """投标主体 profile(F2 单例面;BL bidder_name/legal_rep_name 唯一素材源,
+    缺→诚实缺件 BL-001 面)。owner 主键单例。"""
+
+    __tablename__ = "bid_write_material_profiles"
+
+    owner_id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    profile: Mapped[dict] = mapped_column(JSON, default=dict)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now, onupdate=_now)

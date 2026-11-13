@@ -115,3 +115,101 @@ async def latest_skill_run(session: AsyncSession, task_id: str, owner_id: str):
 
     result = await session.execute(select(SkillRun).join(WriteTask, SkillRun.task_id == WriteTask.id).where(SkillRun.task_id == task_id, WriteTask.owner_id == owner_id).order_by(SkillRun.created_at.desc(), SkillRun.id.desc()).limit(1))
     return result.scalar_one_or_none()
+
+
+# ── 素材库六类实体(F2/P1-α 批廿二)────────────────────────────────────────
+
+
+async def create_material(session: AsyncSession, owner_id: str, entity_type: str, name: str, fields: dict | None = None, evidence_refs: list | None = None):
+    """新建素材实体;entity_type 非六类→ValueError(routers 转 422)。"""
+    from app.extensions.bid_write import contracts
+
+    if entity_type not in contracts.MATERIAL_ENTITY_TYPES:
+        raise ValueError(f"非法素材类型: {entity_type}(合法={','.join(contracts.MATERIAL_ENTITY_TYPES)})")
+    from app.extensions.bid_write.models import MaterialEntity
+
+    row = MaterialEntity(owner_id=owner_id, entity_type=entity_type, name=name, fields=dict(fields or {}), evidence_refs=list(evidence_refs or []))
+    session.add(row)
+    await session.commit()
+    await session.refresh(row)
+    return row
+
+
+async def list_material(session: AsyncSession, owner_id: str, entity_type: str | None = None):
+    """owner 素材清单(可选类型过滤;名归一匹配在消费侧做,crud 保持薄)。"""
+    from sqlalchemy import select
+
+    from app.extensions.bid_write.models import MaterialEntity
+
+    stmt = select(MaterialEntity).where(MaterialEntity.owner_id == owner_id).order_by(MaterialEntity.created_at)
+    if entity_type:
+        stmt = stmt.where(MaterialEntity.entity_type == entity_type)
+    result = await session.execute(stmt)
+    return list(result.scalars())
+
+
+async def get_material(session: AsyncSession, material_id: str, owner_id: str):
+    from app.extensions.bid_write.models import MaterialEntity
+
+    result = await session.execute(select(MaterialEntity).where(MaterialEntity.id == material_id, MaterialEntity.owner_id == owner_id))
+    return result.scalar_one_or_none()
+
+
+async def update_material(session: AsyncSession, material_id: str, owner_id: str, *, name: str | None = None, fields: dict | None = None, evidence_refs: list | None = None):
+    """部分更新(404 面=None;name/fields/evidence_refs 只在显式传时覆盖)。"""
+    row = await get_material(session, material_id, owner_id)
+    if row is None:
+        return None
+    if name is not None:
+        row.name = name
+    if fields is not None:
+        row.fields = dict(fields)
+    if evidence_refs is not None:
+        row.evidence_refs = list(evidence_refs)
+    await session.commit()
+    await session.refresh(row)
+    return row
+
+
+async def delete_material(session: AsyncSession, material_id: str, owner_id: str) -> bool:
+    row = await get_material(session, material_id, owner_id)
+    if row is None:
+        return False
+    await session.delete(row)
+    await session.commit()
+    return True
+
+
+async def get_profile(session: AsyncSession, owner_id: str):
+    from app.extensions.bid_write.models import MaterialProfile
+
+    result = await session.execute(select(MaterialProfile).where(MaterialProfile.owner_id == owner_id))
+    return result.scalar_one_or_none()
+
+
+async def upsert_profile(session: AsyncSession, owner_id: str, profile: dict):
+    """投标主体 profile 单例 upsert(PUT 幂等面)。"""
+    from app.extensions.bid_write.models import MaterialProfile
+
+    row = await get_profile(session, owner_id)
+    if row is None:
+        row = MaterialProfile(owner_id=owner_id, profile=dict(profile or {}))
+        session.add(row)
+    else:
+        row.profile = dict(profile or {})
+    await session.commit()
+    await session.refresh(row)
+    return row
+
+
+async def collect_material(session: AsyncSession, owner_id: str) -> dict:
+    """owner 素材库→build_ctx material 形(entities 键=ent:<id>;bidder_profile 单例
+    缺→{};price_history=performance 实体 fields.amount 派生)。verifiable 不落库
+    =bool(evidence_refs) 派生,消费侧(gaps/生成面)同口径。"""
+    rows = await list_material(session, owner_id)
+    prof = await get_profile(session, owner_id)
+    return {
+        "entities": {f"ent:{r.id}": {"type": r.entity_type, "name": r.name, "fields": dict(r.fields or {}), "evidence_refs": list(r.evidence_refs or [])} for r in rows},
+        "bidder_profile": dict(prof.profile or {}) if prof is not None else {},
+        "price_history": [{"project": r.name, "amount": (r.fields or {}).get("amount")} for r in rows if r.entity_type == "performance" and (r.fields or {}).get("amount") is not None],
+    }

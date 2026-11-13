@@ -19,7 +19,7 @@ from app.extensions.database import Base, get_db
 async def db():
     engine = create_async_engine("sqlite+aiosqlite://")
     async with engine.begin() as c:
-        await c.run_sync(Base.metadata.create_all, tables=[models.WriteTask.__table__, models.MatrixRow.__table__, R._SkillRun.__table__])
+        await c.run_sync(Base.metadata.create_all, tables=[models.WriteTask.__table__, models.MatrixRow.__table__, R._SkillRun.__table__, models.MaterialEntity.__table__, models.MaterialProfile.__table__])
     factory = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
     async with factory() as s:
         yield s
@@ -129,6 +129,21 @@ async def test_gaps_honest_zero(client, db):
     body = r.json()
     assert body["items"][0]["material_state"] == "无对应素材"
     assert body["summary"]["material_ready"] == 0 and body["summary"]["total"] == 1
+
+
+@pytest.mark.asyncio
+async def test_registry_readonly_projection(client):
+    """注册表只读投影:前端「断言注册表」页消费;返回 p0.yaml 全量断言 +
+    levels 行为表 + schema_version,D0 必须阻断导出。"""
+    r = await client.get("/api/extensions/bid-write/registry")
+    assert r.status_code == 200
+    body = r.json()
+    assert body["schema_version"].count(".") == 2
+    assert len(body["items"]) == 43
+    assert {item["id"] for item in body["items"]} >= {"SK-PS-003", "SK-RT-002"}
+    assert {"D0", "D1", "D2", "D3"} <= set(body["levels"])
+    assert all(item["level"] == "D0" and item["blocks_export"] for item in body["items"] if item["level"] == "D0")
+    assert all({"id", "skill", "name", "level", "blocks_export", "rule_ref", "expr", "human_action"} <= set(item) for item in body["items"])
 
 
 # ── advance_write_task 管线(stub extract;parse 链 monkeypatch)───────────────

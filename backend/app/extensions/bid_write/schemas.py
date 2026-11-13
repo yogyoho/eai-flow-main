@@ -61,3 +61,39 @@ class GenerateKnobs(BaseModel):
     general_commitments: list[dict] | None = None
     page_estimates: dict[str, int] | None = None
     total_pages: int | None = None
+
+
+class MaterialIn(BaseModel):
+    """素材实体新建(F2/P1-α);entity_type 合法值=contracts.MATERIAL_ENTITY_TYPES
+    (非法 422 面);verifiable 不收=派生 bool(evidence_refs)。"""
+
+    entity_type: str
+    name: str
+    fields: dict = Field(default_factory=dict)
+    evidence_refs: list = Field(default_factory=list)
+
+
+class MaterialPatch(BaseModel):
+    """素材实体部分更新(None 键不覆盖)。"""
+
+    name: str | None = None
+    fields: dict | None = None
+    evidence_refs: list | None = None
+
+
+class MaterialOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: str
+    entity_type: str
+    name: str
+    fields: dict = Field(default_factory=dict)
+    evidence_refs: list = Field(default_factory=list)
+    verifiable: bool = False
+    created_at: datetime | None = None
+
+
+class ProfileIn(BaseModel):
+    """投标主体 profile(BL 主体信息唯一素材源;形态={name, legal_rep, …} 自由面)。"""
+
+    profile: dict
