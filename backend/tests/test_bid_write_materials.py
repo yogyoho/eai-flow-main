@@ -18,7 +18,7 @@ from app.extensions.bid_write import crud, models, worker
 from app.extensions.bid_write import routers as R
 from app.extensions.database import Base, get_db
 
-_TABLES = [models.WriteTask.__table__, models.MatrixRow.__table__, R._SkillRun.__table__, models.MaterialEntity.__table__, models.MaterialProfile.__table__]
+_TABLES = [models.WriteTask.__table__, models.MatrixRow.__table__, R._SkillRun.__table__, models.MaterialEntity.__table__, models.MaterialProfile.__table__, models.BidWritePolicy.__table__]
 
 
 @pytest_asyncio.fixture

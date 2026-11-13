@@ -12,7 +12,7 @@ from __future__ import annotations
 FIXED_TEXT = "本投标函即为招标文件的组成部分,我方对函内全部承诺承担相应责任。"
 
 
-def render_bid_letter(tender_fields: dict, price_sheet: dict, material: dict | None, *, sign_date: str = "", extra_commitments: list[dict] | None = None) -> dict:
+def render_bid_letter(tender_fields: dict, price_sheet: dict, material: dict | None, *, sign_date: str = "", extra_commitments: list[dict] | None = None, letter_defaults: dict | None = None) -> dict:
     t = tender_fields or {}
     ps = price_sheet or {}
     profile = (material or {}).get("bidder_profile") or {}
@@ -20,18 +20,39 @@ def render_bid_letter(tender_fields: dict, price_sheet: dict, material: dict | N
     purchaser = str(t.get("tender.purchaser_name") or "")
     project = str(t.get("tender.project_name") or "")
     tender_no = str(t.get("tender.tender_no") or "")
+    # 批廿三 P1-β:policy.letter_defaults 兜底面——抽取缺席时配置值填槽+defaults_used
+    # 标黄(D1 语义:默认值填充+标黄;SK-BL-003 对缺席 requirement 仍 CtxMissing
+    # →ERROR 诚实,不因兜底变绿)。零 letter_defaults=现行为逐字节不变。
+    defaults = letter_defaults or {}
+    defaults_used: list[str] = []
+    raw_valid = t.get("tender.required_validity_days")
+    if raw_valid is not None:
+        valid_days = raw_valid
+    elif defaults.get("validity_days") is not None:
+        valid_days = defaults["validity_days"]
+        defaults_used.append("valid_days")
+    else:
+        valid_days = None
+    raw_sign = str(sign_date or "")
+    if raw_sign:
+        sign = raw_sign
+    elif defaults.get("sign_date"):
+        sign = str(defaults["sign_date"])
+        defaults_used.append("sign_date")
+    else:
+        sign = ""
     slots = {
         "tender_purchaser_name": purchaser,
         "project_name": project,
         "tender_no": tender_no,
         "total_amount_cn": str(ps.get("amount_cn") or ""),
         "total_amount_num": ps.get("detail_total"),
-        "valid_days": t.get("tender.required_validity_days"),
+        "valid_days": valid_days,
         "deposit_amount": t.get("tender.deposit_required") if t.get("tender.deposit_required") is not None else "",
         "deposit_form": str(deposit_forms[0]) if deposit_forms else "",
         "bidder_name": str(profile.get("name") or ""),
         "legal_rep_name": str(profile.get("legal_rep") or ""),
-        "sign_date": str(sign_date or ""),
+        "sign_date": sign,
     }
     text = (
         f"致 {purchaser}:我方自愿参加{project}(招标编号:{tender_no})的投标。\n"
@@ -48,5 +69,6 @@ def render_bid_letter(tender_fields: dict, price_sheet: dict, material: dict | N
         "signature": {"seal_anchor": True, "sign_anchor": True},
         "extra_commitments": list(extra_commitments or []),
         "entity_refs": [],
+        "defaults_used": defaults_used,
         "pending_items": [],
     }

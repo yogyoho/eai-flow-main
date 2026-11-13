@@ -61,11 +61,16 @@ def build_ctx(
     general_commitments: list[dict] | None = None,
     page_estimates: dict | None = None,
     total_pages: int | None = None,
+    tax_rate: float = 0.13,
+    price_adjust_mechanism: bool = True,
+    letter_defaults: dict | None = None,
 ) -> dict:
     """tender 抽取快照+矩阵行+素材+人工旋钮 → executor 契约 ctx。
 
     decl 矩阵行→投标函承诺(clause_id 溯源,BL-010 面);general_commitments=
-    调用方通用承诺(须带 tag=通用承诺)。"""
+    调用方通用承诺(须带 tag=通用承诺)。批廿三 P1-β:policy 透传(tax_rate/
+    price_adjust_mechanism→ps 产物;letter_defaults→bl 缺席兜底+defaults_used
+    标黄);三个新 kwargs 缺省=零 policy 现行为(golden 闭环不动)。"""
     t = dict(tender_fields or {})
     rows = list(matrix_rows or [])
     mat = dict(material or {})
@@ -75,8 +80,8 @@ def build_ctx(
         for r in rows
         if str(r.get("clause_id") or "").startswith("decl:")
     ] + list(general_commitments or [])
-    ps = calc_price_sheet(t.get("tender.boq_items"), unit_prices, note=price_note)
-    bl = render_bid_letter(t, ps, mat, sign_date=sign_date, extra_commitments=commitments)
+    ps = calc_price_sheet(t.get("tender.boq_items"), unit_prices, tax_rate=tax_rate, price_adjust_mechanism=price_adjust_mechanism, note=price_note)
+    bl = render_bid_letter(t, ps, mat, sign_date=sign_date, extra_commitments=commitments, letter_defaults=letter_defaults)
     rt = build_response_table(rows)
     ai = build_attachment_index(
         t.get("tender.attachment_requirements"),

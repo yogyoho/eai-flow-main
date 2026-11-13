@@ -109,3 +109,38 @@ async def test_policy_upsert_merge(client):
     assert (await client.put("/api/extensions/bid-write/policy", json={"ghost_key": 1})).status_code == 422
     assert (await client.put("/api/extensions/bid-write/policy", json={"tax_rate": 1.5})).status_code == 422
     assert (await client.put("/api/extensions/bid-write/policy", json={"letter_defaults": {"ghost": 1}})).status_code == 422
+
+
+# ── Task 2: policy plumb ───────────────────────────────────────────────────
+
+
+@pytest.mark.asyncio
+async def test_policy_plumb(client, db, monkeypatch):
+    """tax_rate→ps 产物;调价关→PS-009 命中升 D0;letter_defaults 兜底缺席
+    validity→slot 填充+defaults_used 标黄(SK-BL-003 对缺席 requirement 仍诚实)。"""
+    task = await _seed(db, monkeypatch, omit_validity=True)
+    await client.put("/api/extensions/bid-write/policy", json={"tax_rate": 0.09, "price_adjust_mechanism": False, "letter_defaults": {"validity_days": 90}})
+    r = await client.post(f"/api/extensions/bid-write/tasks/{task.id}/generate", json={"unit_prices": {"1.1": "800000", "1.2": "400000"}, "sign_date": "2026-11-20", "price_note": "暂估按最终结算"})
+    assert r.status_code == 200
+    body = r.json()["verdict"]
+    ctx = await worker.build_task_ctx(db, task, "u1")
+    ps = ctx["products"]["price_sheet"]
+    bl = ctx["products"]["bid_letter"]
+    assert ps["tax_rate"] == 0.09
+    assert ps["price_adjust_mechanism"] is False
+    assert bl["slots"]["valid_days"] == 90
+    assert "valid_days" in bl["defaults_used"]
+    ps009 = [x for x in body["results"] if x["assertion_id"] == "SK-PS-009"][0]
+    assert ps009["status"] == "FAIL" and ps009["level"] == "D0"  # 调价关→升 D0(阻断面)
+
+
+@pytest.mark.asyncio
+async def test_zero_policy_unchanged(client, db, monkeypatch):
+    """零 policy=现行为:tax_rate 0.13 缺省、无 defaults_used;green 面=既有
+    e2e 同守(zero diff 面)。"""
+    task = await _seed(db, monkeypatch)
+    await client.post(f"/api/extensions/bid-write/tasks/{task.id}/generate", json={"unit_prices": {"1.1": "800000", "1.2": "400000"}, "sign_date": "2026-11-20"})
+    ctx = await worker.build_task_ctx(db, task, "u1")
+    assert ctx["products"]["price_sheet"]["tax_rate"] == 0.13
+    assert ctx["products"]["price_sheet"]["price_adjust_mechanism"] is True
+    assert ctx["products"]["bid_letter"]["defaults_used"] == []

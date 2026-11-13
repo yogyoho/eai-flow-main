@@ -180,6 +180,8 @@ async def build_task_ctx(db: AsyncSession, task: WriteTask, owner_id: str, *, kn
     ]
     k = dict(meta.get("knobs") or {})
     k.update(knobs or {})
+    pol = await crud.get_policy(db, owner_id)  # 批廿三 P1-β:policy 透传(缺→{}=零 policy 现行为)
+    ld = pol.get("letter_defaults") or {}
     return assemble_ctx(
         dict(meta.get("fields") or {}),
         row_dicts,
@@ -190,6 +192,9 @@ async def build_task_ctx(db: AsyncSession, task: WriteTask, owner_id: str, *, kn
         general_commitments=k.get("general_commitments"),
         page_estimates=k.get("page_estimates"),
         total_pages=k.get("total_pages"),
+        tax_rate=float(pol["tax_rate"]) if pol.get("tax_rate") is not None else 0.13,
+        price_adjust_mechanism=bool(pol["price_adjust_mechanism"]) if pol.get("price_adjust_mechanism") is not None else True,
+        letter_defaults=ld or None,
     )
 
 
