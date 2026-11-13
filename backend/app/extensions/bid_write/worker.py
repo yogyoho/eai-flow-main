@@ -201,10 +201,16 @@ async def build_task_ctx(db: AsyncSession, task: WriteTask, owner_id: str, *, kn
 async def generate_and_record(db: AsyncSession, task: WriteTask, owner_id: str, *, knobs: dict | None = None) -> dict:
     """批廿一 M2:装配→断言+规则预审查→导出门禁→skill_run 落库。返回 verdict=
     run_export_gate 全形(blocked/reasons/watermark/results/双计数),gaps 断言
-    维度直接消费。"""
+    维度直接消费。批廿三 P1-β:计时+compute_metrics 落 verdict["metrics"]
+    (无新表;聚合端点 crud.list_skill_runs 消费)。"""
+    import time
+
+    from app.extensions.bid_write.metrics import compute_metrics
     from app.extensions.bid_write.precheck import run_export_gate
 
+    t0 = time.perf_counter()
     ctx = await build_task_ctx(db, task, owner_id, knobs=knobs)
     export = await run_export_gate(ctx)
+    export["metrics"] = compute_metrics(ctx, export, duration_ms=round((time.perf_counter() - t0) * 1000))
     await crud.record_skill_run(db, task.id, owner_id, verdict=export, skills="ALL", schema_version=contracts.SCHEMA_VERSION, blocked=export["blocked"])
     return export

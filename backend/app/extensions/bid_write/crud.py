@@ -117,6 +117,15 @@ async def latest_skill_run(session: AsyncSession, task_id: str, owner_id: str):
     return result.scalar_one_or_none()
 
 
+async def list_skill_runs(session: AsyncSession, owner_id: str, limit: int = 100) -> list:
+    """owner 全任务 skill_runs 倒序(owner 隔离经 task join;批廿三 P1-β
+    /metrics 聚合端点消费,取样窗口 limit)。"""
+    from app.extensions.bid_write.executor.models import SkillRun
+
+    stmt = select(SkillRun).join(WriteTask, SkillRun.task_id == WriteTask.id).where(WriteTask.owner_id == owner_id).order_by(SkillRun.created_at.desc(), SkillRun.id.desc()).limit(limit)
+    return list((await session.execute(stmt)).scalars())
+
+
 # ── 素材库六类实体(F2/P1-α 批廿二)────────────────────────────────────────
 
 

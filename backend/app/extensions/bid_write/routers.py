@@ -340,3 +340,45 @@ async def put_policy(body: schemas.PolicyBody, db: AsyncSession = Depends(get_db
     patch = {k: v for k, v in body.model_dump().items() if v is not None}
     policy = await crud.upsert_policy(db, owner_id, patch)
     return {"policy": policy}
+
+
+# ── 埋点六指标(P1-β 批廿三;spec §3)──────────────────────────────────────
+
+
+@router.get("/tasks/{task_id}/metrics")
+async def get_task_metrics(task_id: str, db: AsyncSession = Depends(get_db), owner_id: str = Depends(current_owner)):
+    """最近一次执行的埋点面;未执行过=null(不造空绿,同 gaps 断言维度口径)。"""
+    task = await crud.get_task(db, task_id=task_id, owner_id=owner_id)
+    if task is None:
+        raise HTTPException(status_code=404, detail="任务不存在")
+    run = await crud.latest_skill_run(db, task_id=task_id, owner_id=owner_id)
+    return {
+        "metrics": (run.verdict or {}).get("metrics") if run is not None else None,
+        "run_at": run.created_at.isoformat() if run is not None and run.created_at else None,
+    }
+
+
+@router.get("/metrics")
+async def get_metrics_aggregate(db: AsyncSession = Depends(get_db), owner_id: str = Depends(current_owner)):
+    """owner 聚合(P1-β):runs/latency p95·median/断言通过率均值/D0·D1 总计;
+    取样窗口=最近 100 run;无 run 诚实零形(runs=0 余 null)。"""
+    import math
+
+    runs = await crud.list_skill_runs(db, owner_id)
+    metrics = [(r.verdict or {}).get("metrics") or {} for r in runs]
+    lat = sorted(m["latency_ms"] for m in metrics if isinstance(m.get("latency_ms"), int))
+    rates = [m["assertion_pass_rate"] for m in metrics if m.get("assertion_pass_rate") is not None]
+
+    def _pct(seq: list, q: float):
+        if not seq:
+            return None
+        return seq[max(0, math.ceil(q * len(seq)) - 1)]
+
+    return {
+        "runs": len(runs),
+        "latency_p95_ms": _pct(lat, 0.95),
+        "latency_median_ms": _pct(lat, 0.5),
+        "assertion_pass_rate_mean": round(sum(rates) / len(rates), 4) if rates else None,
+        "d0_total": sum(m.get("d0_count") or 0 for m in metrics),
+        "d1_total": sum(m.get("d1_count") or 0 for m in metrics),
+    }

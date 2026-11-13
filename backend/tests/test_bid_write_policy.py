@@ -144,3 +144,38 @@ async def test_zero_policy_unchanged(client, db, monkeypatch):
     assert ctx["products"]["price_sheet"]["tax_rate"] == 0.13
     assert ctx["products"]["price_sheet"]["price_adjust_mechanism"] is True
     assert ctx["products"]["bid_letter"]["defaults_used"] == []
+
+
+# ── Task 3: 埋点 ───────────────────────────────────────────────────────────
+
+
+@pytest.mark.asyncio
+async def test_metrics_green_and_degraded(client, db, monkeypatch):
+    """绿跑:pass_rate=1.0、retry=0、manual=None、latency int、slot_fill_rate 形;
+    缺单价跑:D0 计数≥1、pass_rate<1。"""
+    task = await _seed(db, monkeypatch)
+    await client.put("/api/extensions/bid-write/materials/profile", json={"profile": {"name": "YY装备", "legal_rep": "张三"}})
+    await client.post("/api/extensions/bid-write/materials", json={"entity_type": "qualification", "name": "营业执照", "evidence_refs": ["doc:1"]})
+    await client.post("/api/extensions/bid-write/materials", json={"entity_type": "qualification", "name": "矿用产品安全标志证书", "evidence_refs": ["doc:2"]})
+    r = await client.post(f"/api/extensions/bid-write/tasks/{task.id}/generate", json={"unit_prices": {"1.1": "800000", "1.2": "400000"}, "sign_date": "2026-11-20"})
+    m = r.json()["verdict"]["metrics"]
+    # 绿跑平台既有 1 条 CtxMissing ERROR(两 seed 共有缺席面,materials e2e 同;
+    # pass_rate 分母含 ERROR 诚实)——metric 面钉:D0 清零+FAIL 零+高位通过率。
+    assert m["d0_count"] == 0 and m["retry_count"] == 0 and m["manual_edit_ratio"] is None
+    assert r.json()["verdict"]["assertion_counts"].get("FAIL", 0) == 0
+    assert m["assertion_pass_rate"] >= 0.9
+    assert isinstance(m["latency_ms"], int) and m["latency_ms"] >= 0
+    assert 0.0 <= m["slot_fill_rate"] <= 1.0
+    task2 = await _seed(db, monkeypatch)
+    r2 = await client.post(f"/api/extensions/bid-write/tasks/{task2.id}/generate", json={})
+    m2 = r2.json()["verdict"]["metrics"]
+    assert m2["d0_count"] >= 1 and m2["assertion_pass_rate"] < 1.0
+
+
+@pytest.mark.asyncio
+async def test_metrics_aggregate_p95(client, db, monkeypatch):
+    """owner 聚合:runs 计数、p95≥median、任务级 metrics 面;404 面。"""
+    await test_metrics_green_and_degraded(client, db, monkeypatch)  # 造 2 run
+    agg = (await client.get("/api/extensions/bid-write/metrics")).json()
+    assert agg["runs"] >= 2 and agg["latency_p95_ms"] >= agg["latency_median_ms"]
+    assert (await client.get("/api/extensions/bid-write/tasks/nonexistent/metrics")).status_code == 404
