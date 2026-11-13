@@ -8,11 +8,17 @@ from app.extensions.bid_write import contracts
 
 
 def test_commercial_subset_is_real_universe_members():
-    """COMMERCIAL_TENDER_SUBSET ⊆ registry.universe()(M0 零新增抽取契约铁律:
-    幽灵路径会进 prompt 却永远抽不到值,装配器缺行静默=假缺口)。"""
+    """COMMERCIAL_TENDER_SUBSET ⊆ universe() ∪ SUBSET_EXTRACT_EXTENSIONS(M0 零新增
+    抽取契约铁律:幽灵路径会进 prompt 却永远抽不到值,装配器缺行静默=假缺口)。
+    批廿二 BL 三槽位路径=写侧显式标量扩面(extract 引擎 subset-param 兼容),
+    必须经 SUBSET_EXTRACT_EXTENSIONS 登记、不得混入主路径;上游 universe 收编
+    后应迁移回主路径(此处交集钉=收编信号)。"""
     uni = set(universe())
-    missing = [p for p in contracts.COMMERCIAL_TENDER_SUBSET if p not in uni]
+    ext = set(contracts.SUBSET_EXTRACT_EXTENSIONS)
+    missing = [p for p in contracts.COMMERCIAL_TENDER_SUBSET if p not in uni and p not in ext]
     assert missing == []
+    assert ext <= set(contracts.COMMERCIAL_TENDER_SUBSET)  # 扩面必须登记并入
+    assert not (ext & uni)  # 扩面身份诚实:一旦 universe 收编即须迁移回主路径
 
 
 def test_commercial_subset_no_bid_paths():
