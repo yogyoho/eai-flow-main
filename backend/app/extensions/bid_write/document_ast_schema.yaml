@@ -1,0 +1,138 @@
+# document_ast_schema.yaml — bid_write 正文文档 AST 事实层单一 schema
+# (EAI-CUSTOM 2026-11-14,批廿六 M0;权威设计=《Word 编辑器技术方案》三层架构)
+#
+# 单一真源铁律(方案 §十四):PM schema 与 TS 类型必须由本文件生成
+#   cd backend && PYTHONPATH=. uv run python -m app.extensions.bid_write.editor_schema_gen
+#   → frontend/src/extensions/bid-write/editor/schema.gen.ts
+# 禁止手写两份;漂移由 test_bid_write_editor_schema.py 钉住。
+#
+# 15 项口径(方案 §二「15 种节点」):13 节点(含 doc 根与 text)+ 2 mark = 15。
+# PM 节点名 == AST 类型名,零改名(方案 §四 lockedPara 等驼峰为建议名,M0 弃用)。
+# 版本锚点:方案目标 shared_schema@2.4.0;当前仓库断言注册表 assertions/p0.yaml
+# schema_version=1.0.0 独立演进,统一锚点挂后续批,本文件版本独立演进。
+#
+# M0 边界(诚实面):attrs 只定义不约束——锁定段/金额格编辑约束挂 M1 批;
+# provenance/status_mark 的 decoration 回写挂 M2 批;parseDOM 不定义(hydrate 走
+# nodeFromJSON,粘贴按纯文本落位,富文本粘贴清洗挂后续批)。
+schema_version: "0.1.0"
+layer: WR
+
+nodes:
+  - name: doc
+    kind: block
+    content: block+
+    attrs: []
+    to_dom: {tag: div, class: bwe-doc}
+
+  - name: section
+    kind: block
+    content: block+
+    attrs:
+      - {name: level, type: int, default: 1, note: 标题级 1-4}
+      - {name: title, type: string, default: "", note: 章节标题;M0 只展示,属性编辑入口挂 M1+}
+      - {name: section_id, type: string, default: ""}
+    to_dom: {tag: div, class: bwe-section, data_attrs: {data-title: title, data-level: level}}
+
+  - name: para
+    kind: block
+    content: inline*
+    attrs:
+      - {name: slot_id, type: string, default: ""}
+    to_dom: {tag: p, class: bwe-para}
+
+  - name: locked_paragraph
+    kind: block
+    content: inline*
+    attrs:
+      - {name: template_id, type: string, default: ""}
+      - {name: similarity_floor, type: number, default: 0.98, note: SK-BL-007 阈值;M0 仅展示}
+    to_dom: {tag: div, class: bwe-locked, data_attrs: {data-template-id: template_id}}
+
+  - name: table
+    kind: block
+    content: table_row+
+    attrs:
+      - {name: table_type, type: enum, values: [price, response, list], default: price}
+    to_dom: {tag: table, class: bwe-table, wrap: [tbody]}
+
+  - name: table_row
+    kind: block
+    content: (table_cell | amount_cell | enum_cell)+
+    attrs:
+      - {name: row_id, type: string, default: ""}
+    to_dom: {tag: tr, class: bwe-row}
+
+  - name: table_cell
+    kind: block
+    content: inline*
+    attrs:
+      - {name: col_role, type: enum, values: [name, qty, unit, remark], default: name, note: 角色驱动 M1 可编辑性;qty/unit 对齐 SK-PS-002 数量一致(结果侧只读)}
+    to_dom: {tag: td, class: bwe-cell}
+
+  - name: amount_cell
+    kind: block
+    content: inline*
+    attrs:
+      - {name: readonly, type: bool, default: true, note: M0 仅声明;filterTransaction 只读拦截挂 M1}
+      - {name: computed_expr, type: string, default: "", note: 计算式,值由内核重算(方案 §5.3)}
+      - {name: role, type: enum, values: [amount, subtotal, total_num, total_cn], default: amount}
+    to_dom: {tag: td, class: bwe-amount}
+
+  - name: enum_cell
+    kind: block
+    content: inline*
+    attrs:
+      - {name: enum_values, type: list, default: [], note: 候选枚举,来源 tender.*/policy;下拉禁自由输入挂 M1}
+      - {name: current, type: string, default: ""}
+    to_dom: {tag: td, class: bwe-enum}
+
+  - name: todo_block
+    kind: block
+    atom: true
+    content: ""
+    attrs:
+      - {name: missing, type: string, default: ""}
+      - {name: pending_item_id, type: string, default: ""}
+      - {name: level, type: enum, values: [D0, D1], default: D0}
+      - {name: blocks_export, type: bool, default: true}
+    to_dom: {tag: div, class: bwe-todo, data_attrs: {data-missing: missing, data-level: level}}
+
+  - name: attachment_ref
+    kind: inline
+    atom: true
+    content: ""
+    attrs:
+      - {name: attachment_no, type: string, default: ""}
+      - {name: anchor, type: string, default: ""}
+    to_dom: {tag: span, class: bwe-attach, data_attrs: {data-no: attachment_no}}
+
+  - name: toc_entry
+    kind: block
+    atom: true
+    content: ""
+    attrs:
+      - {name: title, type: string, default: ""}
+      - {name: page_placeholder, type: string, default: "—", note: 页码为渲染期回填值(方案 §八)}
+    to_dom: {tag: div, class: bwe-toc, data_attrs: {data-title: title, data-page: page_placeholder}}
+
+  - name: text
+    kind: inline
+    content: ""
+    attrs: []
+    to_dom: {tag: span, class: ""}
+
+marks:
+  - name: provenance
+    note: 溯源角标 mark(方案 §四 Mark 层);decoration widget 呈现挂 M2;导出投影剥离(§四)
+    attrs:
+      - {name: clause_id, type: string, default: ""}
+      - {name: entity_id, type: string, default: ""}
+      - {name: anchor, type: string, default: ""}
+    to_dom: {tag: sup, class: bwe-prov, data_attrs: {data-clause: clause_id, data-entity: entity_id}}
+
+  - name: status_mark
+    note: D1 标黄 mark;liveAssert 回写挂 M2;导出投影剥离
+    attrs:
+      - {name: state, type: enum, values: [D0, D1, D2], default: D1}
+      - {name: err_code, type: string, default: ""}
+    to_dom: {tag: span, class: bwe-status, data_attrs: {data-state: state, data-err: err_code}}
