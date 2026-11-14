@@ -530,13 +530,14 @@ git commit -m "feat(bid-write): 批廿七 M1-c——WorkbenchView 违规提示(3
 
 **Files:** 无代码改动（验证脚本在 job tmp）
 
-- [ ] **Step 1: 重启前端容器**（无依赖变更，restart 即可，勿重建镜像）
+- [x] **Step 1: 重启前端容器**（无依赖变更，restart 即可，勿重建镜像）
+  > 实况：容器 shim 楔死（bug-4390），重启假成功。改走宿主拓扑 :3000（既有 dev server，watch 同一工作树）完成 Step 2 验证；:2026 部署恢复待引擎重启窗口。
 
 ```bash
 docker compose -p eai-docker restart frontend
 ```
 
-- [ ] **Step 2: 浏览器验证（扩展 qa-bidwrite-editor.mjs）**
+- [x] **Step 2: 浏览器验证（扩展 qa-bidwrite-editor.mjs）**
 
 断言清单：
 1. 点进 amount_cell (800,000.00) 打字 → 无变化 + ed-notice「金额由计算内核生成…」出现
@@ -547,7 +548,7 @@ docker compose -p eai-docker restart frontend
 6. 保存 → statusbar 保存时间刷新
 （登录流程沿用已验证路径：/login networkidle+15s+真实键入；localhost 经 127.0.0.1 访问）
 
-- [ ] **Step 3: 全量前端 rstest 回归**
+- [x] **Step 3: 全量前端 rstest 回归**
 
 Run: `python ../scripts/pnpm.py exec rstest`
 Expected: 仅 pre-existing task-form-dialog 2 例隔离性 flake（单跑绿）。

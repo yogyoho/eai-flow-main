@@ -30820,3 +30820,12 @@
 | 13:19 | Created C:/Users/admin/.claude/jobs/d2aa6c7f/tmp/qa-bidwrite-m1.mjs | — | ~1020 |
 | 13:32 | 批廿七 M1 约束落地:constraints 五守卫+enum 下拉 NodeView+Workbench 提示;T1-T3 提交;前端容器 shim 楔死修复中 | bid-write editor/*, WorkbenchView, plan beta27 | 25 测绿,tsc/lint 清,实机验证待容器 | ~30k |
 | 13:33 | Session end: 18 writes across 6 files (constraints.ts, bid-write-editor-constraints.test.ts, state.ts, BidWriteEditor.tsx, WorkbenchView.tsx) | 5 reads | ~18148 tok |
+| 13:38 | Created C:/Users/admin/.claude/projects/D--eai-eai-flow-main/memory/bid-write-p1-beta27-m1-constraints-landed.md | — | ~443 |
+| 13:38 | Edited C:/Users/admin/.claude/projects/D--eai-eai-flow-main/memory/MEMORY.md | 1→2 lines | ~95 |
+| 13:39 | Session end: 20 writes across 8 files (constraints.ts, bid-write-editor-constraints.test.ts, state.ts, BidWriteEditor.tsx, WorkbenchView.tsx) | 6 reads | ~20817 tok |
+| 14:04 | Edited C:/Users/admin/.claude/jobs/d2aa6c7f/tmp/qa-bidwrite-m1.mjs | 11→11 lines | ~176 |
+| 14:06 | Edited C:/Users/admin/.claude/projects/D--eai-eai-flow-main/memory/bid-write-p1-beta27-m1-constraints-landed.md | inline fix | ~140 |
+| 14:07 | Edited C:/Users/admin/.claude/projects/D--eai-eai-flow-main/memory/bid-write-p1-beta27-m1-constraints-landed.md | inline fix | ~117 |
+| 14:07 | Session end: 23 writes across 8 files (constraints.ts, bid-write-editor-constraints.test.ts, state.ts, BidWriteEditor.tsx, WorkbenchView.tsx) | 10 reads | ~21281 tok |
+| 14:12 | Session end: 23 writes across 8 files (constraints.ts, bid-write-editor-constraints.test.ts, state.ts, BidWriteEditor.tsx, WorkbenchView.tsx) | 11 reads | ~21281 tok |
+| 14:15 | 批廿七 T4 补绿:宿主拓扑 :3000 实机 12/12(五守卫+enum 下拉 undo+保存);全量 rstest 已知 flake 外全绿;plan 全勾 | qa-bidwrite-m1.mjs, plan beta27 | T4 DONE,:2026 部署恢复待引擎窗口 | ~8k |
