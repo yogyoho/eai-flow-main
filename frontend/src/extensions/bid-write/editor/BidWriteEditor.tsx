@@ -16,10 +16,17 @@ import {
 import {
   type ConstraintViolation,
 } from "@/extensions/bid-write/editor/constraints";
+import {
+  applyAssertionStates,
+  summarize,
+  type AssertPayload,
+  type AssertSummary,
+} from "@/extensions/bid-write/editor/decor";
 import { serializeDoc } from "@/extensions/bid-write/editor/doc";
 import { type AstJsonNode } from "@/extensions/bid-write/editor/schema.gen";
 import {
   createBidWriteEditorState,
+  type OnProvenanceJump,
 } from "@/extensions/bid-write/editor/state";
 
 export interface BidWriteEditorFlags {
@@ -33,10 +40,16 @@ export interface BidWriteEditorHandle {
   serializeNow(): AstJsonNode | null;
 }
 
+/** 断言执行器(M2 演示=editorLocalAssert;真执行器同形替换)。null/抛错=校验未完成 */
+export type AssertRunner = (ast: AstJsonNode) => AssertPayload | null;
+
 interface BidWriteEditorProps {
   initialAst: AstJsonNode;
   onDocChange?: (ast: AstJsonNode, flags: BidWriteEditorFlags) => void;
   onViolation?: (violation: ConstraintViolation) => void;
+  assertRunner?: AssertRunner;
+  onAssert?: (summary: AssertSummary | null, error: boolean) => void;
+  onProvenanceJump?: OnProvenanceJump;
   debounceMs?: number;
   ariaLabel?: string;
 }
@@ -47,6 +60,9 @@ export const BidWriteEditor = forwardRef<BidWriteEditorHandle, BidWriteEditorPro
       initialAst,
       onDocChange,
       onViolation,
+      assertRunner,
+      onAssert,
+      onProvenanceJump,
       debounceMs = 400,
       ariaLabel = "投标正文编辑器",
     },
@@ -55,16 +71,37 @@ export const BidWriteEditor = forwardRef<BidWriteEditorHandle, BidWriteEditorPro
     const placeRef = useRef<HTMLDivElement | null>(null);
     const viewRef = useRef<EditorView | null>(null);
     const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-    // latest-ref:守卫回调每渲染刷新,视图不因回调身份重建
+    // latest-ref:守卫/断言回调每渲染刷新,视图不因回调身份重建
     const onViolationRef = useRef(onViolation);
     onViolationRef.current = onViolation;
+    const assertRunnerRef = useRef(assertRunner);
+    assertRunnerRef.current = assertRunner;
+    const onAssertRef = useRef(onAssert);
+    onAssertRef.current = onAssert;
+    const onProvenanceJumpRef = useRef(onProvenanceJump);
+    onProvenanceJumpRef.current = onProvenanceJump;
     const [ready, setReady] = useState(false);
+
+    // 断言侧信道(§六):serialize→runner→assert:apply 纯装饰回写;runner 抛错/
+    // null → onAssert(null, true)=「校验未完成」——绝不默认放行。
+    const runAssert = (view: EditorView) => {
+      try {
+        const payload = assertRunnerRef.current
+          ? assertRunnerRef.current(serializeDoc(view.state.doc))
+          : null;
+        if (payload) applyAssertionStates(view, payload);
+        onAssertRef.current?.(payload ? summarize(payload) : null, false);
+      } catch {
+        onAssertRef.current?.(null, true);
+      }
+    };
 
     useEffect(() => {
       const place = placeRef.current;
       if (!place) return;
       const state = createBidWriteEditorState(initialAst, {
         onViolation: (v) => onViolationRef.current?.(v),
+        onProvenanceJump: (hit) => onProvenanceJumpRef.current?.(hit),
       });
       const view = new EditorView(place, {
         state,
@@ -76,10 +113,12 @@ export const BidWriteEditor = forwardRef<BidWriteEditorHandle, BidWriteEditorPro
               canUndo: undoCmd(view.state, undefined),
               canRedo: redoCmd(view.state, undefined),
             });
+            runAssert(view);
           }, debounceMs);
         },
       });
       viewRef.current = view;
+      runAssert(view);
       setReady(true);
       return () => {
         if (timerRef.current) clearTimeout(timerRef.current);

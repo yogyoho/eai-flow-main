@@ -7,10 +7,12 @@ import { keymap } from "prosemirror-keymap";
 import { EditorState, type Transaction } from "prosemirror-state";
 
 import { constraintsPlugin, type OnViolation } from "./constraints";
+import { liveAssertPlugin, provenancePlugin, type ProvenanceHit } from "./decor";
 import { hydrateAst } from "./doc";
 import { type AstJsonNode } from "./schema.gen";
 
 export type EditorTrSource = "user" | "system" | "decor";
+export type OnProvenanceJump = (hit: ProvenanceHit) => void;
 
 export function systemTr(tr: Transaction): Transaction {
   tr.setMeta("source", "system");
@@ -30,7 +32,7 @@ export function trSource(tr: Transaction): EditorTrSource {
 
 export function createBidWriteEditorState(
   ast: AstJsonNode,
-  options: { onViolation?: OnViolation } = {},
+  options: { onViolation?: OnViolation; onProvenanceJump?: OnProvenanceJump } = {},
 ): EditorState {
   return EditorState.create({
     doc: hydrateAst(ast),
@@ -39,6 +41,8 @@ export function createBidWriteEditorState(
       keymap({ "Mod-z": undo, "Mod-Z": redo, "Mod-y": redo }),
       keymap(baseKeymap),
       constraintsPlugin(options),
+      provenancePlugin({ onJump: options.onProvenanceJump }),
+      liveAssertPlugin(),
     ],
   });
 }
