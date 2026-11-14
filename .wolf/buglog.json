@@ -11174,6 +11174,200 @@
       "related_bugs": [],
       "occurrences": 2,
       "last_seen": "2026-11-14"
+    },
+    {
+      "id": "bug-4391",
+      "timestamp": "2026-11-14T11:25:33.367Z",
+      "error_message": "Missing await",
+      "file": "backend/app/extensions/bid_write/routers.py",
+      "root_cause": "Async call without await — returned Promise instead of value",
+      "fix": "Added await to async call",
+      "tags": [
+        "auto-detected",
+        "async-fix",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-11-14T11:25:33.368Z"
+    },
+    {
+      "id": "bug-4392",
+      "timestamp": "2026-11-14T11:32:32.344Z",
+      "error_message": "Incorrect value in code",
+      "file": "frontend/tests/unit/extensions/bid-write-editor-assert.test.ts",
+      "root_cause": "Had \"rstest\"",
+      "fix": "Changed to \"@rstest/core\"",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "ts"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-11-14T11:32:32.344Z"
+    },
+    {
+      "id": "bug-4393",
+      "timestamp": "2026-11-14T11:36:46.241Z",
+      "error_message": "Type error",
+      "file": "frontend/src/extensions/bid-write/editor/decor.ts",
+      "root_cause": "Missing or incorrect type annotation",
+      "fix": "Added type assertion/annotation",
+      "tags": [
+        "auto-detected",
+        "type-fix",
+        "ts"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-11-14T11:36:46.242Z"
+    },
+    {
+      "id": "bug-4394",
+      "timestamp": "2026-11-14T11:36:59.119Z",
+      "error_message": "Null/undefined access in ",
+      "file": "frontend/tests/unit/extensions/bid-write-editor-decor.test.ts",
+      "root_cause": "Property access on potentially null/undefined value",
+      "fix": "Added null safety (optional chaining or null check)",
+      "tags": [
+        "auto-detected",
+        "null-safety",
+        "ts"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-11-14T11:36:59.119Z"
+    },
+    {
+      "id": "bug-4395",
+      "timestamp": "2026-11-14T11:39:04.057Z",
+      "error_message": "Missing error handling in BidWriteEditor",
+      "file": "frontend/src/extensions/bid-write/editor/BidWriteEditor.tsx",
+      "root_cause": "Code path had no error handling — exceptions would propagate uncaught",
+      "fix": "Added try/catch block",
+      "tags": [
+        "auto-detected",
+        "error-handling",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-11-14T11:39:04.058Z"
+    },
+    {
+      "id": "bug-4396",
+      "timestamp": "2026-11-14T11:41:08.733Z",
+      "error_message": "Missing guard clause",
+      "file": "frontend/tests/unit/extensions/bid-write-editor-assert.test.ts",
+      "root_cause": "No early return/throw for edge case: value === undefined",
+      "fix": "Added guard clause: if (value === undefined)",
+      "tags": [
+        "auto-detected",
+        "guard-clause",
+        "ts"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-11-14T11:41:08.733Z"
+    },
+    {
+      "id": "bug-4397",
+      "timestamp": "2026-11-14T11:42:09.636Z",
+      "error_message": "Null/undefined access in ",
+      "file": "frontend/tests/unit/extensions/bid-write-editor-assert.test.ts",
+      "root_cause": "Property access on potentially null/undefined value",
+      "fix": "Added null safety (optional chaining or null check)",
+      "tags": [
+        "auto-detected",
+        "null-safety",
+        "ts"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-11-14T11:42:09.636Z"
+    },
+    {
+      "id": "bug-4398",
+      "timestamp": "2026-11-14T11:48:38.537Z",
+      "error_message": "Wrong return value",
+      "file": "frontend/tests/unit/extensions/bid-write-editor-assert.test.ts",
+      "root_cause": "Was returning: at(at(at(ast.content)[1]).content)[0];",
+      "fix": "Now returns: at(at(at(at(ast.content)[1]).content)[0]);",
+      "tags": [
+        "auto-detected",
+        "return-value",
+        "ts"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-11-14T11:48:38.538Z"
+    },
+    {
+      "id": "bug-4399",
+      "timestamp": "2026-11-14T11:55:27.699Z",
+      "error_message": "Missing error handling in unknown",
+      "file": "frontend/src/extensions/bid-write/components/WorkbenchView.tsx",
+      "root_cause": "Code path had no error handling — exceptions would propagate uncaught",
+      "fix": "Added try/catch block | Also: const handleSave = useCallback(async () => {; if (!ast || !taskId || saving) return;",
+      "tags": [
+        "auto-detected",
+        "error-handling",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 2,
+      "last_seen": "2026-11-14T11:55:40.315Z"
+    },
+    {
+      "id": "bug-4400",
+      "timestamp": "2026-11-14T11:56:07.720Z",
+      "error_message": "Significant refactor of ",
+      "file": "frontend/src/extensions/bid-write/components/WorkbenchView.tsx",
+      "root_cause": "3 lines replaced/restructured",
+      "fix": "Rewrote 7→8 lines (3 removed) | Also: M0 演示文档：编辑、撤销与本地序列化可用；锁定段/金额/来源列只读、; 响应策略下拉、缺件占位禁删已生效（M1）。断言联动与后端 AST",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 2,
+      "last_seen": "2026-11-14T11:56:24.037Z"
+    },
+    {
+      "id": "bug-4401",
+      "timestamp": "2026-11-14T11:57:01.887Z",
+      "error_message": "Incorrect value in code",
+      "file": "frontend/src/extensions/bid-write/components/WorkbenchView.tsx",
+      "root_cause": "Had `${projectTitle(task)} · 矩阵/缺口/预审查/埋点实读；正文编辑器 M0（演",
+      "fix": "Changed to `${projectTitle(task)} · 矩阵/缺口/预审查/埋点实读；正文编辑器 M2（断",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-11-14T11:57:01.887Z"
+    },
+    {
+      "id": "bug-4402",
+      "timestamp": "2026-11-14T20:40:00Z",
+      "error_message": "frontend/src/app/bid-write/ 整棵路由树(layout+8 page)从未 git add——origin/main-dev-fork 只有 bid-write.css,新克隆/CI /bid-write 直接 404",
+      "file": "frontend/src/app/bid-write/",
+      "root_cause": "批廿四~廿六各批次只 git add 了 src/extensions/bid-write/ 与零散 app 文件;容器 bind-mount 让 dev server 照常服务未跟踪文件,QA/实机全绿掩盖了入库缺失(批廿五漏 css 同类教训放大版)",
+      "fix": "e71e02f54 补交 9 路由文件+constraints 测试 lint 收敛;DNR 新增:每批收口必须 git status 核对整个模块目录(含 app 路由),不能只 add 当批编辑过的文件",
+      "tags": [
+        "git",
+        "missing-files",
+        "bid-write",
+        "bind-mount-masked",
+        "routes"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-11-14T20:40:00Z"
     }
   ]
 }

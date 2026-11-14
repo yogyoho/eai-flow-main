@@ -3264,3 +3264,6 @@ CALIBRATION 批次裁决表是历史快照,新规则的行插进旧批次表必�
 - (2026-11-14) import type { X } 后 toBeInstanceOf(X) → TS1361(装饰集是值不是型);反之下 eslint consistent-type-imports warning(仅 PluginKey 作泛型参数时)
 - (2026-11-14) QA 脚本 .card-h .r first() 会命中页面第一张卡(轮廓卡)非文档卡——badge 断言必须 scope 到 section.bw-doc;误判产品 bug 前先查选择器
 - (2026-11-14) 全量 rstest flake 面=task-form-dialog.dom.test.tsx 并发隔离(超时+mock 调用数);文件单跑 37/0 即基线外,勿当回归修
+
+### Do-Not-Repeat (批廿八 追加)
+- (2026-11-14) bug-4402:批廿四~廿六 frontend/src/app/bid-write 整棵路由树从未 git add(origin 只有 css)——容器 bind-mount 让未跟踪文件照常被 dev server 服务,QA 全绿掩盖入库缺失;**每批收口必须 `git status` 核对整个模块目录**,不能只 add 当批编辑过的文件

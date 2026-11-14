@@ -30903,3 +30903,5 @@
 | 20:25 | 批廿八 M2 全落地:T1 后端 AST 存储(60718843a)+T2 装饰联动(4c2989ffa)+T3 工作台接线(3e5cc5987)+T4 实机 7 验证全过(宿主:3000;QA 断言①-⑦;badgeIsCloud=脚本选择器误指轮廓卡,复检云端文档✓;全量 rstest 4463 过/task-form-dialog 已知并发 flake 文件单跑 37/0)+T5 收口 | bid_write models/crud/routers+decor.ts/WorkbenchView+plan | 0 缺口 | ~56k |
 | 20:52 | Created C:/Users/admin/.claude/projects/D--eai-eai-flow-main/memory/bid-write-p1-beta28-m2-decor-liaison-landed.md | — | ~386 |
 | 20:53 | Edited C:/Users/admin/.claude/projects/D--eai-eai-flow-main/memory/MEMORY.md | 1→2 lines | ~107 |
+| 20:57 | Edited C:/Users/admin/.claude/projects/D--eai-eai-flow-main/memory/bid-write-p1-beta28-m2-decor-liaison-landed.md | 1→3 lines | ~87 |
+| 20:42 | 收口补漏:发现 frontend/src/app/bid-write 整棵路由树 9 文件从未入库(origin 只有 css;容器 bind-mount 掩盖)→ e71e02f54 补交+bug-4402+DNR | frontend/src/app/bid-write/ | 10 files tracked | ~4k |
