@@ -15,6 +15,7 @@ import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
+import { ApiError, getTaskDocument, putTaskDocument } from "@/extensions/bid-write/api";
 import {
   Badge,
   EmptyState,
@@ -26,8 +27,13 @@ import {
   type BidWriteEditorFlags,
   type BidWriteEditorHandle,
 } from "@/extensions/bid-write/editor/BidWriteEditor";
+import {
+  editorLocalAssert,
+  type AssertSummary,
+  type ProvenanceHit,
+} from "@/extensions/bid-write/editor/decor";
 import { demoWorkbenchAst } from "@/extensions/bid-write/editor/demo";
-import { type AstJsonNode } from "@/extensions/bid-write/editor/schema.gen";
+import { AST_SCHEMA_VERSION, type AstJsonNode } from "@/extensions/bid-write/editor/schema.gen";
 import {
   formatDate,
   formatPercent,
@@ -72,15 +78,66 @@ export function WorkbenchView() {
   const metrics = useTaskMetrics(taskId);
   const [activeSection, setActiveSection] = useState<string>("all");
 
-  // 批廿六 M0——编辑器接线:演示文档 + 400ms 防抖回传;保存=本地序列化(存储 M2 接入)
+  // 批廿六 M0——编辑器接线:演示文档 + 400ms 防抖回传;批廿八 M2——云端 AST
+  // 加载(taskId 变化重取,ast 非空才重挂)/保存=PUT/断言侧信道/溯源跳转提示。
   const editorRef = useRef<BidWriteEditorHandle | null>(null);
-  const initialAst = useMemo(() => demoWorkbenchAst(), []);
+  const [loadedAst, setLoadedAst] = useState<AstJsonNode | null>(null);
+  const [docEpoch, setDocEpoch] = useState(0);
+  const [docSource, setDocSource] = useState<"demo" | "cloud" | "cloud-error">(
+    "demo",
+  );
+  const [saving, setSaving] = useState(false);
+  const initialAst = useMemo(() => loadedAst ?? demoWorkbenchAst(), [loadedAst]);
   const latestAstRef = useRef<AstJsonNode | null>(null);
   const [flags, setFlags] = useState<BidWriteEditorFlags>({
     canUndo: false,
     canRedo: false,
   });
   const [savedAt, setSavedAt] = useState<string | null>(null);
+
+  // 云端文档加载:失败降级演示文档面(cloud-error 徽标),绝不空屏
+  useEffect(() => {
+    if (!taskId) return;
+    let alive = true;
+    getTaskDocument(taskId)
+      .then((doc) => {
+        if (!alive) return;
+        if (doc.ast) {
+          setLoadedAst(doc.ast);
+          setDocSource("cloud");
+          setDocEpoch((e) => e + 1); // key 重挂=服务端文档替换演示文档
+        }
+      })
+      .catch(() => {
+        if (alive) setDocSource("cloud-error");
+      });
+    return () => {
+      alive = false;
+    };
+  }, [taskId]);
+
+  // 断言状态栏(§六):SKIPPED 只进提示不算通过;runner 抛错=「校验未完成」
+  const [assertSummary, setAssertSummary] = useState<AssertSummary | null>(null);
+  const [assertError, setAssertError] = useState(false);
+  const handleAssert = useCallback((s: AssertSummary | null, err: boolean) => {
+    setAssertSummary(s);
+    setAssertError(err);
+  }, []);
+
+  // 溯源跳转提示(3s 消退,Timer 跨次复用)
+  const [provJump, setProvJump] = useState<string | null>(null);
+  const provTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const handleProvJump = useCallback((hit: ProvenanceHit) => {
+    setProvJump(`溯源跳转:${hit.clause_id} → ${hit.anchor || "锚点未登记"}`);
+    if (provTimer.current) clearTimeout(provTimer.current);
+    provTimer.current = setTimeout(() => setProvJump(null), 3000);
+  }, []);
+  useEffect(
+    () => () => {
+      if (provTimer.current) clearTimeout(provTimer.current);
+    },
+    [],
+  );
 
   // 批廿七 M1——违规即时提示(3s 自动消退);Timer 跨次复用,卸载清算
   const [violation, setViolation] = useState<string | null>(null);
@@ -104,13 +161,31 @@ export function WorkbenchView() {
     },
     [],
   );
-  const handleSave = useCallback(() => {
+  const handleSave = useCallback(async () => {
     const ast = editorRef.current?.serializeNow() ?? latestAstRef.current;
-    if (ast) {
-      latestAstRef.current = ast;
-      setSavedAt(new Date().toLocaleTimeString("zh-CN", { hour12: false }));
+    if (!ast || !taskId || saving) return;
+    latestAstRef.current = ast;
+    setSaving(true);
+    try {
+      const doc = await putTaskDocument(taskId, {
+        ast,
+        schema_version: AST_SCHEMA_VERSION,
+      });
+      setSavedAt(
+        doc.updated_at
+          ? new Date(doc.updated_at).toLocaleTimeString("zh-CN", {
+              hour12: false,
+            })
+          : new Date().toLocaleTimeString("zh-CN", { hour12: false }),
+      );
+    } catch (e) {
+      setViolation(e instanceof ApiError ? e.message : "保存失败,请重试");
+      if (violationTimer.current) clearTimeout(violationTimer.current);
+      violationTimer.current = setTimeout(() => setViolation(null), 3000);
+    } finally {
+      setSaving(false);
     }
-  }, []);
+  }, [taskId, saving]);
 
   const rows = useMemo(() => matrix.data?.items ?? [], [matrix.data?.items]);
   const summary = useMemo(() => matrixSummary(rows), [rows]);
@@ -163,8 +238,8 @@ export function WorkbenchView() {
         title="④ 写作工作台"
         subtitle={
           task
-            ? `${projectTitle(task)} · 矩阵/缺口/预审查/埋点实读；正文编辑器 M0（演示文档）`
-            : "矩阵/缺口/预审查/埋点实读；正文编辑器 M0（演示文档）"
+            ? `${projectTitle(task)} · 矩阵/缺口/预审查/埋点实读；正文编辑器 M2（断言联动+AST 存储）`
+            : "矩阵/缺口/预审查/埋点实读；正文编辑器 M2（断言联动+AST 存储）"
         }
         actions={
           <>
@@ -225,8 +300,8 @@ export function WorkbenchView() {
             <div className="banner info">
               <Info size={15} aria-hidden="true" />
               <span>
-                正文编辑器 M0 已接入（演示文档）：编辑、撤销与本地序列化可用；
-                断言联动与后端 AST 存储在后续批次接入。
+                正文编辑器 M2 已接入：编辑/撤销、断言联动（演示执行器）与
+                AST 云端存储可用；负偏离展开与真执行器在后续批次接入。
               </span>
             </div>
           )}
@@ -306,7 +381,21 @@ export function WorkbenchView() {
                         ?.name}
                 </h3>
                 <span className="r">
-                  <Badge tone="warn">演示数据</Badge>
+                  <Badge
+                    tone={
+                      docSource === "cloud"
+                        ? "ok"
+                        : docSource === "cloud-error"
+                          ? "warn"
+                          : "gray"
+                    }
+                  >
+                    {docSource === "cloud"
+                      ? "云端文档"
+                      : docSource === "cloud-error"
+                        ? "云端加载失败(演示文档)"
+                        : "演示文档"}
+                  </Badge>
                   <Badge tone={summary.blocked > 0 ? "bad" : "ok"} dot>
                     {summary.blocked > 0
                       ? `${summary.blocked} 项阻断`
@@ -334,10 +423,11 @@ export function WorkbenchView() {
                 <span className="sep" />
                 <button
                   type="button"
-                  title="保存=本地序列化（后端存储接入后写回）"
-                  onClick={handleSave}
+                  disabled={saving}
+                  title="保存=写入云端 AST 存储(PUT /tasks/{id}/document)"
+                  onClick={() => void handleSave()}
                 >
-                  保存
+                  {saving ? "保存中…" : "保存"}
                 </button>
                 <button type="button" disabled title="重审接口尚未接入">
                   <RefreshCw size={14} aria-hidden="true" />
@@ -358,18 +448,27 @@ export function WorkbenchView() {
                   {violation}
                 </div>
               ) : null}
+              {provJump ? (
+                <div className="ed-notice" role="status">
+                  {provJump}
+                </div>
+              ) : null}
               <div className="doc-body">
                 <BidWriteEditor
+                  key={docEpoch}
                   ref={editorRef}
                   initialAst={initialAst}
                   onDocChange={handleDocChange}
                   onViolation={handleViolation}
+                  assertRunner={editorLocalAssert}
+                  onAssert={handleAssert}
+                  onProvenanceJump={handleProvJump}
                   ariaLabel="投标正文编辑器（演示文档）"
                 />
                 <p className="bw-muted bw-mt-sm">
-                  M0 演示文档：编辑、撤销与本地序列化可用；锁定段/金额/来源列只读、
-                  响应策略下拉、缺件占位禁删已生效（M1）。断言联动与后端 AST
-                  存储在后续批次接入。
+                  M2：断言联动与 AST 存储已接入（演示执行器）——锁定段/金额/来源列
+                  只读、响应策略下拉、缺件占位禁删已生效（M1）；SKIPPED 只提示不算
+                  通过，校验未完成时导出判定以预审查为准。
                 </p>
 
                 <div className="bw-doc-sub">
@@ -539,6 +638,26 @@ export function WorkbenchView() {
               预审查{" "}
               {assertions ? (assertions.blocked ? "阻断" : "可导出") : "未执行"}
             </span>
+            <span className="sep" />
+            {assertError ? (
+              <span title="断言服务不可用——导出判定以预审查为准,不默认放行">
+                校验未完成
+              </span>
+            ) : assertSummary ? (
+              <span
+                title={assertSummary.skipped
+                  .map((s) => `${s.code}:${s.reason ?? ""}`)
+                  .join(";")}
+              >
+                校验 D0 {assertSummary.d0} · D1 {assertSummary.d1} · D2{" "}
+                {assertSummary.d2}
+                {assertSummary.skipped.length > 0
+                  ? ` · 因 ${assertSummary.skipped.map((s) => s.code).join("/")} 跳过 ${assertSummary.skipped.reduce((a, b) => a + b.count, 0)}(不算通过)`
+                  : ""}
+              </span>
+            ) : (
+              <span>校验待运行</span>
+            )}
             <span className="sep" />
             <span>保存 {savedAt ?? "未保存"}</span>
             {m ? (

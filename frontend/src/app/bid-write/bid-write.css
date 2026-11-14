@@ -1558,3 +1558,32 @@
   font-size: 13px;
   padding: 2px 6px;
 }
+
+/* ── 批廿八 M2:provenance 角标 + liveAssert 断言装饰(token 对齐审查端)── */
+.bwx .bwe-prov-badge {
+  display: inline-block;
+  margin-left: 2px;
+  padding: 0 3px;
+  font-size: 11px;
+  line-height: 16px;
+  color: var(--main-600);
+  background: var(--main-50);
+  border: 1px solid var(--hairline);
+  border-radius: 4px;
+  vertical-align: super;
+  user-select: none;
+  cursor: pointer;
+}
+.bwx .bwe-prov-badge.broken {
+  color: var(--error-700);
+  background: var(--error-50);
+  border-color: var(--error-500);
+}
+.bwx .bwx-assert-d1 {
+  background: var(--warn-50);
+  border-bottom: 2px solid var(--warn-700);
+}
+.bwx .bwx-assert-d0 {
+  background: var(--error-50);
+  border-bottom: 2px solid var(--error-700);
+}

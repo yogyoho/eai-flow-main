@@ -6,6 +6,8 @@
  * 生成正文、素材实体库、报价计算内核尚未落地时不伪造业务值。
  */
 
+import type { AstJsonNode } from "@/extensions/bid-write/editor/schema.gen";
+
 export interface MatrixCounts {
   total: number;
   star: number;
@@ -259,4 +261,11 @@ export interface BoqItem {
   name: string;
   qty: number | string;
   unit: string;
+}
+
+/** 正文 AST 存储(批廿八 M2;GET 未保存 ast=null 诚实面,PUT 全量幂等)。 */
+export interface TaskDocumentResponse {
+  ast: AstJsonNode | null;
+  schema_version: string;
+  updated_at: string | null;
 }

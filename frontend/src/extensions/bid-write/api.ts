@@ -6,6 +6,7 @@
  */
 
 import { fetch } from "@/core/api/fetcher";
+import type { AstJsonNode } from "@/extensions/bid-write/editor/schema.gen";
 
 import type {
   ExportGateResponse,
@@ -20,6 +21,7 @@ import type {
   MatrixRowPatch,
   PolicyBody,
   RegistryResponse,
+  TaskDocumentResponse,
   TaskMetricsResponse,
   WriteTaskListResponse,
   WriteTaskOut,
@@ -234,5 +236,29 @@ export async function getTaskMetrics(
 ): Promise<TaskMetricsResponse> {
   return requestJson<TaskMetricsResponse>(
     `/tasks/${encodeURIComponent(taskId)}/metrics`,
+  );
+}
+
+/** 正文 AST 读取(批廿八 M2;未保存 ast=null)。 */
+export async function getTaskDocument(
+  taskId: string,
+): Promise<TaskDocumentResponse> {
+  return requestJson<TaskDocumentResponse>(
+    `/tasks/${encodeURIComponent(taskId)}/document`,
+  );
+}
+
+/** 正文 AST 保存(PUT 全量幂等;根非 doc / semver 非法 422 由后端拒)。 */
+export async function putTaskDocument(
+  taskId: string,
+  input: { ast: AstJsonNode; schema_version: string },
+): Promise<TaskDocumentResponse> {
+  return requestJson<TaskDocumentResponse>(
+    `/tasks/${encodeURIComponent(taskId)}/document`,
+    {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(input),
+    },
   );
 }
