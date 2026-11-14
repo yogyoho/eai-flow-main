@@ -22,7 +22,19 @@ from app.extensions.database import Base, get_db
 async def db():
     engine = create_async_engine("sqlite+aiosqlite://")
     async with engine.begin() as c:
-        await c.run_sync(Base.metadata.create_all, tables=[models.WriteTask.__table__, models.MatrixRow.__table__, R._SkillRun.__table__, models.MaterialEntity.__table__, models.MaterialProfile.__table__, models.BidWritePolicy.__table__])
+        await c.run_sync(
+            Base.metadata.create_all,
+            tables=[
+                models.WriteTask.__table__,
+                models.MatrixRow.__table__,
+                R._SkillRun.__table__,
+                models.MaterialEntity.__table__,
+                models.MaterialProfile.__table__,
+                models.BidWritePolicy.__table__,
+                models.TaskDocument.__table__,
+                models.BidWriteDocumentRevision.__table__,
+            ],
+        )
     factory = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
     async with factory() as s:
         yield s
@@ -91,6 +103,11 @@ async def test_advance_persists_fields_and_autoruns(db, monkeypatch):
     assert run is not None and run.blocked is True  # 素材缺→BL-001 D0 阻断=诚实
     assert "SK-BL-001" in (run.verdict or {}).get("reasons", [])
     assert (run.verdict or {}).get("results")  # gaps 断言维度消费面
+    # 批三十四:首次生成自动装配正文 AST(不是演示文档)
+    doc = await crud.get_document(db, task_id=task.id, owner_id="u1")
+    assert doc is not None and doc.schema_version == "0.2.0"
+    titles = [((node.get("attrs") or {}).get("title")) for node in doc.ast["content"] if node.get("type") == "section"]
+    assert titles == ["一、投标函", "二、开标一览表", "三、商务响应表", "四、附件索引"]
 
 
 @pytest.mark.asyncio

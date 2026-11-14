@@ -1553,6 +1553,11 @@
   font-size: 15px;
   color: var(--text);
 }
+.bwx .bwe-section.bwe-flash {
+  outline: 2px solid var(--main-600);
+  outline-offset: 4px;
+  border-radius: 4px;
+}
 .bwx .bwe-para {
   margin: 0;
 }

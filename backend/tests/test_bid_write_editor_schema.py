@@ -9,17 +9,11 @@ from pathlib import Path
 
 import yaml
 
+from app.extensions.bid_write import contracts
+
 BACKEND = Path(__file__).resolve().parents[1]
 YAML_PATH = BACKEND / "app" / "extensions" / "bid_write" / "document_ast_schema.yaml"
-GEN_PATH = (
-    BACKEND.parents[0]
-    / "frontend"
-    / "src"
-    / "extensions"
-    / "bid-write"
-    / "editor"
-    / "schema.gen.ts"
-)
+GEN_PATH = BACKEND.parents[0] / "frontend" / "src" / "extensions" / "bid-write" / "editor" / "schema.gen.ts"
 
 # 16 项口径:14 节点(含 doc 根与 text)+ 2 mark(批廿九 +deviation_note)
 EXPECTED_NODES = {
@@ -75,6 +69,7 @@ def test_schema_version_format():
     data = _load()
     v = data["schema_version"]
     assert isinstance(v, str) and v.count(".") == 2, v
+    assert contracts.DOCUMENT_AST_SCHEMA_VERSION == v, "落库常量与 AST yaml 版本漂移"
 
 
 def test_codegen_output_in_sync():

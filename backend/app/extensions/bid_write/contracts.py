@@ -12,6 +12,9 @@ from __future__ import annotations
 # 契约版本(设计稿「与审查端同版本管理」的落点:审查端契约经 import 随引擎演进,
 # 写作端新增面以本版本号钉;破坏性变更必须 bump + golden 全量重审)。
 SCHEMA_VERSION = "1.0.0"
+# 正文 AST schema 版本(单一真源=document_ast_schema.yaml;此常量供后端落库时标注,
+# test_bid_write_editor_schema.py 钉住与 yaml 同步)。
+DOCUMENT_AST_SCHEMA_VERSION = "0.2.0"
 
 # ── 导出前置校验(F6/批廿一 M2;P0 规格 §8)────────────────────────────────
 # 阻断层级口径钉死:D0 断言 FAIL/ERROR 或规则层 L1 fatal det FAIL→禁导出。

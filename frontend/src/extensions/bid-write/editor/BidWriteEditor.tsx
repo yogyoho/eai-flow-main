@@ -13,9 +13,7 @@ import {
   useState,
 } from "react";
 
-import {
-  type ConstraintViolation,
-} from "@/extensions/bid-write/editor/constraints";
+import { type ConstraintViolation } from "@/extensions/bid-write/editor/constraints";
 import {
   applyAssertionStates,
   summarize,
@@ -23,6 +21,7 @@ import {
   type AssertSummary,
 } from "@/extensions/bid-write/editor/decor";
 import { serializeDoc } from "@/extensions/bid-write/editor/doc";
+import { findSectionPos } from "@/extensions/bid-write/editor/outline";
 import { type PasteNotice } from "@/extensions/bid-write/editor/paste";
 import { type AstJsonNode } from "@/extensions/bid-write/editor/schema.gen";
 import {
@@ -39,6 +38,8 @@ export interface BidWriteEditorHandle {
   undo(): void;
   redo(): void;
   serializeNow(): AstJsonNode | null;
+  /** 滚动到正文目录项;key="all" 回顶部。找不到返回 false。 */
+  scrollToSection(key: string): boolean;
 }
 
 /** 断言执行器(批三十:云端文档走后端真执行器;演示文档走本地演示执行器)。
@@ -60,139 +61,167 @@ interface BidWriteEditorProps {
   readOnly?: boolean;
 }
 
-export const BidWriteEditor = forwardRef<BidWriteEditorHandle, BidWriteEditorProps>(
-  function BidWriteEditor(
-    {
-      initialAst,
-      onDocChange,
-      onViolation,
-      assertRunner,
-      onAssert,
-      onProvenanceJump,
-      onPasteSanitized,
-      debounceMs = 400,
-      ariaLabel = "投标正文编辑器",
-      readOnly = false,
-    },
-    ref,
-  ) {
-    const placeRef = useRef<HTMLDivElement | null>(null);
-    const viewRef = useRef<EditorView | null>(null);
-    const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-    // 断言响应序号:防抖 + 网络乱序时只应用最后一次请求,旧响应不得覆盖新状态
-    const assertSeqRef = useRef(0);
-    // latest-ref:守卫/断言回调每渲染刷新,视图不因回调身份重建
-    const onViolationRef = useRef(onViolation);
-    onViolationRef.current = onViolation;
-    const assertRunnerRef = useRef(assertRunner);
-    assertRunnerRef.current = assertRunner;
-    const onAssertRef = useRef(onAssert);
-    onAssertRef.current = onAssert;
-    const onProvenanceJumpRef = useRef(onProvenanceJump);
-    onProvenanceJumpRef.current = onProvenanceJump;
-    const onPasteSanitizedRef = useRef(onPasteSanitized);
-    onPasteSanitizedRef.current = onPasteSanitized;
-    const readOnlyRef = useRef(readOnly);
-    readOnlyRef.current = readOnly;
-    const [ready, setReady] = useState(false);
-
-    // 断言侧信道(§六):serialize→runner→assert:apply 纯装饰回写;runner 抛错/
-    // null → onAssert(null, true)=「校验未完成」——绝不默认放行。runner 可同步
-    // (演示)或异步(后端真执行器);序号丢弃陈旧响应。
-    const runAssert = (view: EditorView) => {
-      const seq = ++assertSeqRef.current;
-      const settle = (payload: AssertPayload | null, failed: boolean) => {
-        if (seq !== assertSeqRef.current || viewRef.current !== view) return;
-        if (payload) applyAssertionStates(view, payload);
-        onAssertRef.current?.(payload ? summarize(payload) : null, failed || !payload);
-      };
-      try {
-        const maybe = assertRunnerRef.current
-          ? assertRunnerRef.current(serializeDoc(view.state.doc))
-          : null;
-        if (maybe && typeof (maybe as Promise<AssertPayload>).then === "function") {
-          (maybe as Promise<AssertPayload | null>)
-            .then((payload) => settle(payload, false))
-            .catch(() => settle(null, true));
-        } else {
-          settle(maybe as AssertPayload | null, false);
-        }
-      } catch {
-        settle(null, true);
-      }
-    };
-
-    useEffect(() => {
-      const place = placeRef.current;
-      if (!place) return;
-      const state = createBidWriteEditorState(initialAst, {
-        onViolation: (v) => onViolationRef.current?.(v),
-        onProvenanceJump: (hit) => onProvenanceJumpRef.current?.(hit),
-        onPasteSanitized: (notice) => onPasteSanitizedRef.current?.(notice),
-      });
-      const view = new EditorView(place, {
-        state,
-        editable: () => !readOnlyRef.current,
-        dispatchTransaction(tr: Transaction) {
-          if (readOnlyRef.current) return;
-          view.updateState(view.state.apply(tr));
-          if (timerRef.current) clearTimeout(timerRef.current);
-          timerRef.current = setTimeout(() => {
-            onDocChange?.(serializeDoc(view.state.doc), {
-              canUndo: undoCmd(view.state, undefined),
-              canRedo: redoCmd(view.state, undefined),
-            });
-            runAssert(view);
-          }, debounceMs);
-        },
-      });
-      viewRef.current = view;
-      runAssert(view);
-      setReady(true);
-      return () => {
-        assertSeqRef.current += 1; // 卸载后到达的响应一律丢弃
-        if (timerRef.current) clearTimeout(timerRef.current);
-        view.destroy();
-        viewRef.current = null;
-        setReady(false);
-      };
-      // initialAst 由父级 useMemo 钉住;变更即重建视图(M0 无外部写入通道)
-      // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [initialAst]);
-
-    useEffect(() => {
-      const view = viewRef.current;
-      if (view) view.updateState(view.state);
-    }, [readOnly]);
-
-    useImperativeHandle(
-      ref,
-      () => ({
-        undo() {
-          const view = viewRef.current;
-          if (view) undoCmd(view.state, (tr) => view.dispatch(tr));
-        },
-        redo() {
-          const view = viewRef.current;
-          if (view) redoCmd(view.state, (tr) => view.dispatch(tr));
-        },
-        serializeNow() {
-          const view = viewRef.current;
-          return view ? serializeDoc(view.state.doc) : null;
-        },
-      }),
-      [],
-    );
-
-    return (
-      <div
-        ref={placeRef}
-        className="bwe-editor"
-        role="textbox"
-        aria-multiline="true"
-        aria-label={ariaLabel}
-        aria-busy={!ready}
-      />
-    );
+export const BidWriteEditor = forwardRef<
+  BidWriteEditorHandle,
+  BidWriteEditorProps
+>(function BidWriteEditor(
+  {
+    initialAst,
+    onDocChange,
+    onViolation,
+    assertRunner,
+    onAssert,
+    onProvenanceJump,
+    onPasteSanitized,
+    debounceMs = 400,
+    ariaLabel = "投标正文编辑器",
+    readOnly = false,
   },
-);
+  ref,
+) {
+  const placeRef = useRef<HTMLDivElement | null>(null);
+  const viewRef = useRef<EditorView | null>(null);
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const flashTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // 断言响应序号:防抖 + 网络乱序时只应用最后一次请求,旧响应不得覆盖新状态
+  const assertSeqRef = useRef(0);
+  // latest-ref:守卫/断言回调每渲染刷新,视图不因回调身份重建
+  const onViolationRef = useRef(onViolation);
+  onViolationRef.current = onViolation;
+  const assertRunnerRef = useRef(assertRunner);
+  assertRunnerRef.current = assertRunner;
+  const onAssertRef = useRef(onAssert);
+  onAssertRef.current = onAssert;
+  const onProvenanceJumpRef = useRef(onProvenanceJump);
+  onProvenanceJumpRef.current = onProvenanceJump;
+  const onPasteSanitizedRef = useRef(onPasteSanitized);
+  onPasteSanitizedRef.current = onPasteSanitized;
+  const readOnlyRef = useRef(readOnly);
+  readOnlyRef.current = readOnly;
+  const [ready, setReady] = useState(false);
+
+  // 断言侧信道(§六):serialize→runner→assert:apply 纯装饰回写;runner 抛错/
+  // null → onAssert(null, true)=「校验未完成」——绝不默认放行。runner 可同步
+  // (演示)或异步(后端真执行器);序号丢弃陈旧响应。
+  const runAssert = (view: EditorView) => {
+    const seq = ++assertSeqRef.current;
+    const settle = (payload: AssertPayload | null, failed: boolean) => {
+      if (seq !== assertSeqRef.current || viewRef.current !== view) return;
+      if (payload) applyAssertionStates(view, payload);
+      onAssertRef.current?.(
+        payload ? summarize(payload) : null,
+        failed || !payload,
+      );
+    };
+    try {
+      const maybe = assertRunnerRef.current
+        ? assertRunnerRef.current(serializeDoc(view.state.doc))
+        : null;
+      if (
+        maybe &&
+        typeof (maybe as Promise<AssertPayload>).then === "function"
+      ) {
+        (maybe as Promise<AssertPayload | null>)
+          .then((payload) => settle(payload, false))
+          .catch(() => settle(null, true));
+      } else {
+        settle(maybe as AssertPayload | null, false);
+      }
+    } catch {
+      settle(null, true);
+    }
+  };
+
+  useEffect(() => {
+    const place = placeRef.current;
+    if (!place) return;
+    const state = createBidWriteEditorState(initialAst, {
+      onViolation: (v) => onViolationRef.current?.(v),
+      onProvenanceJump: (hit) => onProvenanceJumpRef.current?.(hit),
+      onPasteSanitized: (notice) => onPasteSanitizedRef.current?.(notice),
+    });
+    const view = new EditorView(place, {
+      state,
+      editable: () => !readOnlyRef.current,
+      dispatchTransaction(tr: Transaction) {
+        if (readOnlyRef.current) return;
+        view.updateState(view.state.apply(tr));
+        if (timerRef.current) clearTimeout(timerRef.current);
+        timerRef.current = setTimeout(() => {
+          onDocChange?.(serializeDoc(view.state.doc), {
+            canUndo: undoCmd(view.state, undefined),
+            canRedo: redoCmd(view.state, undefined),
+          });
+          runAssert(view);
+        }, debounceMs);
+      },
+    });
+    viewRef.current = view;
+    runAssert(view);
+    setReady(true);
+    return () => {
+      assertSeqRef.current += 1; // 卸载后到达的响应一律丢弃
+      if (timerRef.current) clearTimeout(timerRef.current);
+      if (flashTimerRef.current) clearTimeout(flashTimerRef.current);
+      view.destroy();
+      viewRef.current = null;
+      setReady(false);
+    };
+    // initialAst 由父级 useMemo 钉住;变更即重建视图(M0 无外部写入通道)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialAst]);
+
+  useEffect(() => {
+    const view = viewRef.current;
+    if (view) view.updateState(view.state);
+  }, [readOnly]);
+
+  useImperativeHandle(
+    ref,
+    () => ({
+      undo() {
+        const view = viewRef.current;
+        if (view) undoCmd(view.state, (tr) => view.dispatch(tr));
+      },
+      redo() {
+        const view = viewRef.current;
+        if (view) redoCmd(view.state, (tr) => view.dispatch(tr));
+      },
+      serializeNow() {
+        const view = viewRef.current;
+        return view ? serializeDoc(view.state.doc) : null;
+      },
+      scrollToSection(key: string) {
+        const view = viewRef.current;
+        if (!view) return false;
+        if (key === "all") {
+          view.dom.scrollIntoView({ behavior: "smooth", block: "start" });
+          return true;
+        }
+        const pos = findSectionPos(view.state.doc, key);
+        if (pos === null) return false;
+        const dom = view.nodeDOM(pos);
+        if (!(dom instanceof HTMLElement)) return false;
+        dom.scrollIntoView({ behavior: "smooth", block: "start" });
+        dom.classList.add("bwe-flash");
+        if (flashTimerRef.current) clearTimeout(flashTimerRef.current);
+        flashTimerRef.current = setTimeout(() => {
+          dom.classList.remove("bwe-flash");
+        }, 900);
+        return true;
+      },
+    }),
+    [],
+  );
+
+  return (
+    <div
+      ref={placeRef}
+      className="bwe-editor"
+      role="textbox"
+      aria-multiline="true"
+      aria-label={ariaLabel}
+      aria-busy={!ready}
+    />
+  );
+});

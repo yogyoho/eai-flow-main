@@ -109,8 +109,15 @@ async def advance_write_task(db: AsyncSession, task_id: str, owner_id: str, extr
         if not raw_entries:
             raise RuntimeError("任务无招标文件(上传面缺 raw 条目)")
         ocr_fn = await parse.build_ocr_fn(db)
-        for e in raw_entries:
-            await parse.parse_raw(owner_id, task.id, e, ocr_fn)
+        parsed = [await parse.parse_raw(owner_id, task.id, entry, ocr_fn) for entry in raw_entries]
+        # Persist the parsed manifest before docs_from_entries: it skips every
+        # entry still marked raw, which silently produced an empty matrix.
+        meta = dict(task.engine_meta or {})
+        by_slug = {str(item.get("slug")): item for item in parsed}
+        meta["docs"] = [by_slug.get(str(entry.get("slug")), entry) for entry in meta.get("docs") or [] if isinstance(entry, dict)]
+        task.engine_meta = meta
+        await db.commit()
+        await db.refresh(task)
         docs = parse.docs_from_entries(owner_id, task.id, [e for e in (task.engine_meta or {}).get("docs") or [] if isinstance(e, dict)])
         await crud.set_status(db, task, "extracting", progress={"stage": "extracting", "pct": 50, "msg": "商务要素提取中(tender-only)"})
         if extract_fn is None:
@@ -128,6 +135,7 @@ async def advance_write_task(db: AsyncSession, task_id: str, owner_id: str, extr
         await crud.replace_matrix(db, task.id, rows)
         try:  # 批廿一 M2:matrix_ready 落库即自动预审查(material M0 缺省空→诚实 blocked)
             await generate_and_record(db, task, owner_id, knobs=meta.get("knobs") or {})
+            await ensure_generated_document(db, task, owner_id)
         except Exception:  # noqa: BLE001  预审查/生成非致命:主状态不回滚不落 failed
             logger.exception("bid_write task %s auto precheck failed (non-fatal)", task_id)
         n_star = sum(1 for r in rows if r["star"])
@@ -224,6 +232,37 @@ def _l4_model_fn():
         return await model.ainvoke(messages)
 
     return _fn
+
+
+async def ensure_generated_document(db: AsyncSession, task: WriteTask, owner_id: str) -> bool:
+    """首次生成后把 products 装配成正文 AST 落库(批三十四)。
+
+    只在任务尚无正文、且没有任何审批修订时落库,绝不覆盖人工编辑或冻结快照。
+    返回 True=本次创建;False=已有正文/修订或装配失败(非致命,生成门禁仍以
+    verdict 为准)。装配失败只记日志,不让生成主流程假成功或假失败。
+    """
+    existing = await crud.get_document(db, task_id=task.id, owner_id=owner_id)
+    if existing is not None:
+        return False
+    latest = await crud.latest_revision(db, task.id, owner_id)
+    if latest is not None:
+        return False
+    try:
+        from app.extensions.bid_write.generate.ast import products_to_ast
+
+        ctx = await build_task_ctx(db, task, owner_id)
+        ast = products_to_ast(ctx.get("products") or {})
+        await crud.put_document(
+            db,
+            task_id=task.id,
+            owner_id=owner_id,
+            ast=ast,
+            schema_version=contracts.DOCUMENT_AST_SCHEMA_VERSION,
+        )
+        return True
+    except Exception:  # noqa: BLE001  正文装配非致命;生成门禁/审批仍按事实面
+        logger.exception("bid_write task %s materialize document failed (non-fatal)", task.id)
+        return False
 
 
 async def generate_and_record(db: AsyncSession, task: WriteTask, owner_id: str, *, knobs: dict | None = None) -> dict:

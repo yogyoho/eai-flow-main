@@ -25,6 +25,8 @@ _TABLES = [
     models.MaterialEntity.__table__,
     models.MaterialProfile.__table__,
     models.BidWritePolicy.__table__,
+    models.TaskDocument.__table__,
+    models.BidWriteDocumentRevision.__table__,
 ]
 
 

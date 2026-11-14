@@ -484,6 +484,8 @@ async def generate_task(task_id: str, body: schemas.GenerateKnobs | None = None,
         await db.commit()
         await db.refresh(task)
     export = await worker.generate_and_record(db, task, owner_id)
+    # 批三十四:首次生成即把四切片装配成可编辑正文;已有正文/修订时绝不覆盖。
+    await worker.ensure_generated_document(db, task, owner_id)
     return {"verdict": export, "blocked": export["blocked"], "biz_no": task.biz_no, "status": task.status}
 
 

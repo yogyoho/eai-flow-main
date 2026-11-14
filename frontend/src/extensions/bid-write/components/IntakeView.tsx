@@ -12,7 +12,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 
 import {
@@ -56,11 +56,25 @@ export function IntakeView() {
   const router = useRouter();
   const { taskId, task, isLoading, error } = useSelectedWriteTask();
   const matrix = useBidWriteMatrix(taskId);
+  const refetchMatrix = matrix.refetch;
   const patch = usePatchBidWriteMatrixRow(taskId);
   const [groupFilter, setGroupFilter] = useState<string>("all");
   const [selectedClause, setSelectedClause] = useState<string | null>(null);
   const [dialog, setDialog] = useState<NoteDialogState | null>(null);
   const [bulkPending, setBulkPending] = useState(false);
+  const wasExtracting = useRef(false);
+
+  useEffect(() => {
+    if (!task) return;
+    if (["created", "parsing", "extracting"].includes(task.status)) {
+      wasExtracting.current = true;
+      return;
+    }
+    if (task.status === "matrix_ready" && wasExtracting.current) {
+      wasExtracting.current = false;
+      void refetchMatrix();
+    }
+  }, [task, refetchMatrix]);
 
   const rows = useMemo(() => matrix.data?.items ?? [], [matrix.data?.items]);
   const summary = useMemo(() => matrixSummary(rows), [rows]);

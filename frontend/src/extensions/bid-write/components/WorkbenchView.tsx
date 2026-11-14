@@ -21,9 +21,7 @@ import {
   getTaskDocument,
   putTaskDocument,
 } from "@/extensions/bid-write/api";
-import {
-  ApprovalPanel,
-} from "@/extensions/bid-write/components/ApprovalPanel";
+import { ApprovalPanel } from "@/extensions/bid-write/components/ApprovalPanel";
 import {
   Badge,
   EmptyState,
@@ -42,8 +40,12 @@ import {
   type ProvenanceHit,
 } from "@/extensions/bid-write/editor/decor";
 import { demoWorkbenchAst } from "@/extensions/bid-write/editor/demo";
+import { astSections } from "@/extensions/bid-write/editor/outline";
 import { type PasteNotice } from "@/extensions/bid-write/editor/paste";
-import { AST_SCHEMA_VERSION, type AstJsonNode } from "@/extensions/bid-write/editor/schema.gen";
+import {
+  AST_SCHEMA_VERSION,
+  type AstJsonNode,
+} from "@/extensions/bid-write/editor/schema.gen";
 import {
   formatDate,
   formatPercent,
@@ -52,7 +54,6 @@ import {
   matrixStrategyLabel,
   matrixSummary,
   projectTitle,
-  sourcePathLabel,
 } from "@/extensions/bid-write/helpers";
 import {
   useBidWriteGaps,
@@ -75,10 +76,25 @@ const BidWriteEditor = dynamic(
   },
 );
 
-interface OutlineSection {
-  key: string;
-  name: string;
-  rows: MatrixRowOut[];
+function normalizeHeading(text: string): string {
+  return text
+    .replace(/^[一二三四五六七八九十百]+、/, "")
+    .replace(/\s+/g, "")
+    .toLowerCase();
+}
+
+function rowsForHeading(rows: MatrixRowOut[], title: string): MatrixRowOut[] {
+  const target = normalizeHeading(title);
+  if (!target) return [];
+  return rows.filter((row) => {
+    const section = normalizeHeading(row.target_section);
+    return (
+      Boolean(section) &&
+      (section === target ||
+        section.includes(target) ||
+        target.includes(section))
+    );
+  });
 }
 
 export function WorkbenchView() {
@@ -97,7 +113,10 @@ export function WorkbenchView() {
     "demo",
   );
   const [saving, setSaving] = useState(false);
-  const initialAst = useMemo(() => loadedAst ?? demoWorkbenchAst(), [loadedAst]);
+  const initialAst = useMemo(
+    () => loadedAst ?? demoWorkbenchAst(),
+    [loadedAst],
+  );
   // 批三十:云端文档=后端真执行器(43 条断言);演示文档与任务数据无对应关系,
   // 继续用本地演示执行器并保留「演示文档」徽标,不把两套事实混在一起。
   const assertRunner = useMemo<AssertRunner>(() => {
@@ -138,7 +157,9 @@ export function WorkbenchView() {
   }, [taskId]);
 
   // 断言状态栏(§六):SKIPPED 只进提示不算通过;runner 抛错=「校验未完成」
-  const [assertSummary, setAssertSummary] = useState<AssertSummary | null>(null);
+  const [assertSummary, setAssertSummary] = useState<AssertSummary | null>(
+    null,
+  );
   const [assertError, setAssertError] = useState(false);
   const handleAssert = useCallback((s: AssertSummary | null, err: boolean) => {
     setAssertSummary(s);
@@ -228,7 +249,12 @@ export function WorkbenchView() {
     [],
   );
   const handleSave = useCallback(async () => {
-    const ast = editorRef.current?.serializeNow() ?? latestAstRef.current;
+    const editor = editorRef.current;
+    // 防御:动态编辑器尚未挂载/测试替身无命令面时,退回最近一次回传的 AST。
+    const ast =
+      (editor && typeof editor.serializeNow === "function"
+        ? editor.serializeNow()
+        : null) ?? latestAstRef.current;
     if (!ast || !taskId || saving) return;
     latestAstRef.current = ast;
     setSaving(true);
@@ -238,6 +264,7 @@ export function WorkbenchView() {
         schema_version: AST_SCHEMA_VERSION,
       });
       setCurrentAst(ast);
+      setDocSource("cloud");
       setSavedAt(
         doc.updated_at
           ? new Date(doc.updated_at).toLocaleTimeString("zh-CN", {
@@ -258,39 +285,38 @@ export function WorkbenchView() {
   const summary = useMemo(() => matrixSummary(rows), [rows]);
   const m = metrics.data?.metrics ?? null;
 
-  const sections = useMemo<OutlineSection[]>(() => {
-    const map = new Map<string, MatrixRowOut[]>();
-    for (const row of rows) {
-      const section = row.target_section.trim();
-      const key = section ? section : `source:${row.source_path}`;
-      const list = map.get(key) ?? [];
-      list.push(row);
-      map.set(key, list);
-    }
-    return [...map.entries()]
-      .map(([key, groupRows]) => ({
-        key,
-        name: key.startsWith("source:")
-          ? sourcePathLabel(key.slice("source:".length))
-          : key,
-        rows: groupRows,
-      }))
-      .sort((a, b) => a.name.localeCompare(b.name));
-  }, [rows]);
+  const docSections = useMemo(() => astSections(initialAst), [initialAst]);
+  const activeDocSection = useMemo(
+    () => docSections.find((section) => section.key === activeSection) ?? null,
+    [activeSection, docSections],
+  );
 
   useEffect(() => {
     if (
       activeSection !== "all" &&
-      !sections.some((s) => s.key === activeSection)
+      !docSections.some((section) => section.key === activeSection)
     ) {
       setActiveSection("all");
     }
-  }, [activeSection, sections]);
+  }, [activeSection, docSections]);
 
-  const visibleRows =
-    activeSection === "all"
-      ? rows
-      : (sections.find((section) => section.key === activeSection)?.rows ?? []);
+  const matchedRows = useMemo(
+    () =>
+      activeDocSection ? rowsForHeading(rows, activeDocSection.title) : rows,
+    [activeDocSection, rows],
+  );
+  const visibleRows = matchedRows.length > 0 ? matchedRows : rows;
+
+  const activateSection = (key: string) => {
+    setActiveSection(key);
+    requestAnimationFrame(() => {
+      const editor = editorRef.current;
+      if (!editor || typeof editor.scrollToSection !== "function") return;
+      if (!editor.scrollToSection(key)) {
+        handleViolation({ message: "正文中未找到该章节，已保留当前视图。" });
+      }
+    });
+  };
 
   const gapItems = gaps.data?.items ?? [];
   const noMaterial = gapItems.filter(
@@ -367,9 +393,11 @@ export function WorkbenchView() {
             <div className="banner info">
               <Info size={15} aria-hidden="true" />
               <span>
-                正文编辑器 M6 已接入：审批修订冻结/会签或签/批准锁定、编辑/撤销、AST 云端存储、负偏离展开面
-                （自愈维护）、富文本粘贴清洗（外部标签/样式不落 AST）与后端真执行器
-                （43 条断言按锚点回写）可用；演示文档
+                正文编辑器 M6
+                已接入：审批修订冻结/会签或签/批准锁定、编辑/撤销、AST
+                云端存储、负偏离展开面
+                （自愈维护）、富文本粘贴清洗（外部标签/样式不落
+                AST）与后端真执行器 （43 条断言按锚点回写）可用；演示文档
                 使用本地演示执行器，校验不可用时显示「校验未完成」。
               </span>
             </div>
@@ -380,20 +408,21 @@ export function WorkbenchView() {
               <div className="card-h">
                 <h3>文档结构</h3>
                 <span className="r">
-                  <Badge tone="gray">{sections.length} 节</Badge>
+                  <Badge tone="gray">{docSections.length} 节</Badge>
                 </span>
               </div>
               <div className="card-b">
                 <button
                   type="button"
                   className={`outline-item ${activeSection === "all" ? "on" : ""}`}
-                  onClick={() => setActiveSection("all")}
+                  onClick={() => activateSection("all")}
                 >
-                  <span className="oi-t">全部要求</span>
+                  <span className="oi-t">全部正文</span>
                   <span className="cnt">{rows.length}</span>
                 </button>
-                {sections.map((section) => {
-                  const blocked = section.rows.filter(
+                {docSections.map((section) => {
+                  const sectionRows = rowsForHeading(rows, section.title);
+                  const blocked = sectionRows.filter(
                     (row) => row.status === "blocked",
                   ).length;
                   return (
@@ -401,9 +430,9 @@ export function WorkbenchView() {
                       key={section.key}
                       type="button"
                       className={`outline-item ${activeSection === section.key ? "on" : ""}`}
-                      onClick={() => setActiveSection(section.key)}
+                      onClick={() => activateSection(section.key)}
                     >
-                      <span className="oi-t">{section.name}</span>
+                      <span className="oi-t">{section.title}</span>
                       {blocked > 0 ? (
                         <span
                           className="oi-blocked"
@@ -412,13 +441,16 @@ export function WorkbenchView() {
                           {blocked}
                         </span>
                       ) : null}
-                      <span className="cnt">{section.rows.length}</span>
+                      {sectionRows.length > 0 ? (
+                        <span className="cnt">{sectionRows.length}</span>
+                      ) : null}
                     </button>
                   );
                 })}
-                {sections.length === 0 ? (
+                {docSections.length === 0 ? (
                   <p className="bw-muted bw-pad-sm">
-                    还没有目标章节。响应矩阵未填写 target_section 时按来源分组。
+                    正文还没有章节。请先在生成配置中生成正文，或保存一份包含
+                    section 节点的云端文档。
                   </p>
                 ) : null}
               </div>
@@ -429,7 +461,8 @@ export function WorkbenchView() {
                       最近生成 <b>{formatDate(metrics.data?.run_at ?? null)}</b>
                     </span>
                     <Badge tone={m.d0_count === 0 ? "ok" : "warn"}>
-                      D0 {m.d0_count} · 通过率 {formatPercent(m.assertion_pass_rate)}
+                      D0 {m.d0_count} · 通过率{" "}
+                      {formatPercent(m.assertion_pass_rate)}
                     </Badge>
                   </>
                 ) : (
@@ -443,12 +476,7 @@ export function WorkbenchView() {
 
             <section className="card bw-doc">
               <div className="card-h">
-                <h3>
-                  {activeSection === "all"
-                    ? "响应矩阵底稿"
-                    : sections.find((section) => section.key === activeSection)
-                        ?.name}
-                </h3>
+                <h3>{activeDocSection?.title ?? "全部正文"}</h3>
                 <span className="r">
                   <Badge
                     tone={
@@ -558,20 +586,28 @@ export function WorkbenchView() {
                   ariaLabel="投标正文编辑器（演示文档）"
                 />
                 <p className="bw-muted bw-mt-sm">
-                  M6：审批修订已接入——提交时冻结 AST/hash/断言快照，审批只审冻结修订；
+                  M6：审批修订已接入——提交时冻结
+                  AST/hash/断言快照，审批只审冻结修订；
                   批准后正文锁定，驳回后可继续编辑并重新提交。M5：富文本粘贴清洗已接入——Word/网页内容只保留可见文本，外部标签、
-                  样式、脚本与隐藏内容不进入 AST；锁定段/金额/来源列/枚举的粘贴仍被
-                  M1 约束拦截。M4：负偏离展开面已接入——响应策略选「负偏离」自动展开偏离说明
+                  样式、脚本与隐藏内容不进入
+                  AST；锁定段/金额/来源列/枚举的粘贴仍被 M1
+                  约束拦截。M4：负偏离展开面已接入——响应策略选「负偏离」自动展开偏离说明
                   （偏离原因+替代方案），未闭环 D0、孤儿展开面 D1（SK-RT-005，与
                   后端同口径）；M1 锁定段/金额/来源列只读、下拉、缺件占位禁删、
-                  M2 断言联动与 AST 存储均生效；云端文档的断言由后端真执行器产出，
+                  M2 断言联动与 AST
+                  存储均生效；云端文档的断言由后端真执行器产出，
                   演示文档使用本地演示执行器；SKIPPED 只提示不算通过，校验未完成
                   时导出判定以预审查为准。
                 </p>
 
                 <div className="bw-doc-sub">
-                  <b>当前章节的响应矩阵</b>
-                  <span>{visibleRows.length} 条要求</span>
+                  <b>响应矩阵底稿</b>
+                  <span>
+                    {visibleRows.length} 条要求
+                    {activeDocSection && matchedRows.length === 0
+                      ? "（该章节未绑定矩阵行，显示全部）"
+                      : ""}
+                  </span>
                 </div>
                 {visibleRows.length === 0 ? (
                   <p className="bw-muted">当前章节没有矩阵行。</p>
