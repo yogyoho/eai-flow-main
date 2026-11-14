@@ -1,7 +1,7 @@
 # anatomy.md
 
-> Auto-maintained by OpenWolf. Last scanned: 2026-11-13T16:34:11.267Z
-> Files: 9 tracked | Anatomy hits: 0 | Misses: 0
+> Auto-maintained by OpenWolf. Last scanned: 2026-11-14T02:19:00.772Z
+> Files: 28 tracked | Anatomy hits: 0 | Misses: 0
 
 ## ../../00 工作目录/02 项目策划/马宁/应急指挥/bid-run/
 
@@ -325,6 +325,8 @@
 
 - `bid-write-p1-beta23-policy-metrics-landed.md` (~411 tok)
 - `bid-write-p1-beta24-l4-activation-landed.md` (~407 tok)
+- `bid-write-p1-beta25-workbench-landed.md` (~348 tok)
+- `MEMORY.md` (~2054 tok)
 
 ## C:/Users/admin/.codex/
 
@@ -680,8 +682,10 @@
 ## backend/app/extensions/bid_write/
 
 - `contracts.py` — bid_write 契约层(批十九 T1,EAI-CUSTOM 2026-11-13)——写作端字段/槽位/断言 (~1808 tok)
-- `precheck.py` — F6 规则层预审查(批廿一 M2,EAI-CUSTOM 2026-11-13)——bid_review 同尺投影。 (~2436 tok)
-- `worker.py` — bid_write worker(批十九 T4)——F1 单管线:created→parsing→extracting→ (~3248 tok)
+- `metrics.py` — 埋点六指标(P1-β 批廿三,spec §3;EAI-CUSTOM 2026-11-13)——纯函数, (~522 tok)
+- `precheck.py` — F6 规则层预审查(批廿一 M2,EAI-CUSTOM 2026-11-13)——bid_review 同尺投影。 (~2607 tok)
+- `schemas.py` — bid_write API schemas(批十九 T5)——与 bid_review/schemas.py 同构(from_ (~974 tok)
+- `worker.py` — bid_write worker(批十九 T4)——F1 单管线:created→parsing→extracting→ (~3342 tok)
 
 ## backend/app/extensions/bid_write/assertions/
 
@@ -697,6 +701,7 @@
 
 ## backend/app/extensions/bid_write/generate/
 
+- `__init__.py` — build_ctx 总装(批二十 M1-i,EAI-CUSTOM 2026-11-13)——五生成器组装 executor (~1380 tok)
 
 ## backend/app/extensions/bid_write/golden/cases-write/
 
@@ -959,7 +964,11 @@
 ## backend/tests/
 
 - `test_bid_write_contracts.py` — 批十九 T1 契约层自检:商务子集全部是审查端宇宙真实成员(零新契约铁律)、 (~1000 tok)
-- `test_bid_write_l4.py` — 批廿四 P1-γ L4 语义审查面测试:投影/参与卡筛选/摘除条件/gate 形参/worker 接线。 (~1800 tok)
+- `test_bid_write_l4.py` — 批廿四 P1-γ L4 语义审查面测试:投影/参与卡筛选/摘除条件/gate 形参/worker 接线。 (~2690 tok)
+- `test_bid_write_m2_worker.py` — 批廿一 M2-c:worker 接线(fields 持久化/自动预审查/generate_and_record) (~1562 tok)
+- `test_bid_write_materials.py` — 批廿二 P1-α:素材库六类实体——crud collect_material 形/端点 CRUD+profile/ (~2801 tok)
+- `test_bid_write_policy.py` — 批廿三 P1-β:policy 配置面(owner 单例 letter_defaults/tax_rate/调价开关)+ (~2428 tok)
+- `test_tmp_l4_debug.py` — test_debug_l4_face (~251 tok)
 
 ## backend/tests/ (QA 2026-10-28 增补)
 
@@ -1048,6 +1057,7 @@
 ## docs/superpowers/plans/
 
 - `2026-11-14-bid-write-p1-beta24-l4-activation-plan.md` — 批廿四 bid_write P1-γ:tender.substantive_clauses 契约 + L4 模型审查激活(水印摘除条件)Implementation Plan (~5292 tok)
+- `2026-11-14-bid-write-p1-delta-workbench-plan.md` — bid_write 批廿五(P1-δ 前端三栏工作台)L4 投影扩面+编辑率采样源+前端接线 实施计划 (~3984 tok)
 
 ## docs/superpowers/plans/2026-09-13-coal-mine-tunneling-regulation-v2.md
 
@@ -1057,7 +1067,7 @@
 
 ## docs/superpowers/specs/
 
-- `2026-11-13-bid-write-p0-skills-spec.md` — 投标方案(商务部分)智能写作——P0 四技能规格(落地态) (~3594 tok)
+- `2026-11-13-bid-write-p0-skills-spec.md` — 投标方案(商务部分)智能写作——P0 四技能规格(落地态) (~4001 tok)
 
 ## docs/superpowers/specs/2026-09-13-coal-mine-tunneling-regulation-v2-design.md
 
@@ -1467,6 +1477,20 @@
 ## frontend/src/extensions/bid-review/nav.ts
 
 
+## frontend/src/extensions/bid-write/
+
+- `api.ts` — bid-write API client（Gateway `/api/extensions/bid-write/*`）。 (~1831 tok)
+- `helpers.ts` — bid-write 纯展示工具：状态词表、矩阵摘要、CSV 导出。 (~2489 tok)
+- `hooks.ts` — bid-write TanStack Query hooks。 (~2345 tok)
+- `types.ts` — bid-write API 类型（P0-M0 F1 响应矩阵 + M1 断言摘要；批廿五 P1-δ 增 GenerateKnobs/ExportGate/L4Face/Material/Policy/Metrics 面）。 (~1581 tok)
+
+## frontend/src/extensions/bid-write/components/
+
+- `ExportView.tsx` — ⑥ 导出适配(批廿五 P1-δ 真接线)。 (~4012 tok)
+- `GenerateView.tsx` — ③ 生成配置与执行(批廿五 P1-δ 真接线)。 (~3511 tok)
+- `IntakeView.tsx` — IntakeView (~6560 tok)
+- `MaterialsView.tsx` — ② 素材核对与缺口(批廿五 P1-δ 真接线)。 (~7157 tok)
+
 ## frontend/src/extensions/biz-pipeline/
 
 
@@ -1724,6 +1748,7 @@
 
 ## frontend/tests/unit/extensions/
 
+- `bid-write-helpers.test.ts` — row: task, gap (~1623 tok)
 
 ## frontend/tests/unit/extensions/bid-materials/
 

@@ -30653,3 +30653,77 @@
 | 00:35 | 批廿四 P1-γ-d worker _l4_model_fn+generate 接线;ruff --fix 删夹具 import 修复 | worker.py/test_bid_write_l4.py | 6c1685572 绿 | ~4k |
 | 00:40 | 全量回归 216p/6s/0f+docs/spec/wolf/buglog-4358 收口 | plan/spec/cerebrum | 收口 commit | ~8k |
 | 00:34 | Created C:/Users/admin/.claude/projects/D--eai-eai-flow-main/memory/bid-write-p1-beta24-l4-activation-landed.md | — | ~404 |
+| 00:35 | Session end: 19 writes across 8 files (2026-11-14-bid-write-p1-beta24-l4-activation-plan.md, test_bid_write_contracts.py, contracts.py, test_bid_write_l4.py, precheck.py) | 6 reads | ~12331 tok |
+| 08:36 | Session end: 19 writes across 8 files (2026-11-14-bid-write-p1-beta24-l4-activation-plan.md, test_bid_write_contracts.py, contracts.py, test_bid_write_l4.py, precheck.py) | 6 reads | ~12331 tok |
+
+## Session: 2026-11-14 09:04
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 09:12 | Created docs/superpowers/plans/2026-11-14-bid-write-p1-delta-workbench-plan.md | — | ~4106 |
+| 09:12 | Edited backend/tests/test_bid_write_l4.py | modified test_warranty_knob_and_response_sections_projection() | ~733 |
+| 09:12 | Edited backend/app/extensions/bid_write/schemas.py | 2→4 lines | ~54 |
+| 09:13 | Edited backend/app/extensions/bid_write/generate/__init__.py | 4→5 lines | ~44 |
+| 09:13 | Edited backend/app/extensions/bid_write/generate/__init__.py | expanded (+7 lines) | ~91 |
+| 09:13 | Edited backend/app/extensions/bid_write/worker.py | 2→3 lines | ~39 |
+| 09:13 | Edited backend/app/extensions/bid_write/precheck.py | modified get() | ~193 |
+| 09:13 | Edited backend/app/extensions/bid_write/precheck.py | modified is() | ~112 |
+| 09:14 | Edited backend/app/extensions/bid_write/precheck.py | inline fix | ~20 |
+| 09:17 | Edited backend/app/extensions/bid_write/metrics.py | modified compute_metrics() | ~134 |
+| 09:17 | Edited backend/app/extensions/bid_write/metrics.py | 4→4 lines | ~92 |
+| 09:17 | Edited backend/app/extensions/bid_write/worker.py | expanded (+7 lines) | ~156 |
+| 09:18 | Edited backend/tests/test_bid_write_policy.py | inline fix | ~36 |
+| 09:18 | Edited backend/tests/test_bid_write_l4.py | modified test_worker_metrics_manual_edit_ratio() | ~233 |
+| 09:20 | Edited frontend/src/extensions/bid-write/types.ts | expanded (+107 lines) | ~734 |
+| 09:20 | Edited frontend/src/extensions/bid-write/api.ts | expanded (+8 lines) | ~87 |
+| 09:20 | Edited frontend/src/extensions/bid-write/api.ts | modified getRegistry() | ~901 |
+| 09:21 | Edited frontend/src/extensions/bid-write/hooks.ts | added nullish coalescing | ~337 |
+| 09:21 | Edited frontend/src/extensions/bid-write/hooks.ts | added nullish coalescing | ~869 |
+| 09:21 | Edited frontend/src/extensions/bid-write/helpers.ts | added nullish coalescing | ~675 |
+| 09:21 | Edited frontend/src/extensions/bid-write/helpers.ts | inline fix | ~24 |
+| 09:21 | Edited frontend/tests/unit/extensions/bid-write-helpers.test.ts | 15→17 lines | ~100 |
+| 09:22 | Edited frontend/tests/unit/extensions/bid-write-helpers.test.ts | modified assembleGenerateGenerateKnobsSafe() | ~570 |
+| 09:22 | Edited frontend/tests/unit/extensions/bid-write-helpers.test.ts | assembleGenerateGenerateKnobsSafe() → assembleGenerateKnobs() | ~36 |
+| 09:22 | Edited frontend/tests/unit/extensions/bid-write-helpers.test.ts | 10→5 lines | ~48 |
+| 09:27 | Edited frontend/src/extensions/bid-write/helpers.ts | inline fix | ~6 |
+| 09:29 | Edited frontend/src/extensions/bid-write/hooks.ts | 3→4 lines | ~19 |
+| 09:31 | Edited frontend/src/extensions/bid-write/components/IntakeView.tsx | CSS: matrix | ~49 |
+| 09:31 | Edited frontend/src/extensions/bid-write/components/IntakeView.tsx | inline fix | ~15 |
+
+## Session: 2026-11-14 09:36
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 09:37 | Created frontend/src/extensions/bid-write/components/GenerateView.tsx | — | ~3509 |
+| 09:39 | Edited frontend/src/extensions/bid-write/components/GenerateView.tsx | inline fix | ~29 |
+| 09:41 | Created frontend/src/extensions/bid-write/components/ExportView.tsx | — | ~4059 |
+| 09:41 | Edited frontend/src/extensions/bid-write/components/ExportView.tsx | reduced (-6 lines) | ~43 |
+| 09:42 | Edited frontend/src/extensions/bid-write/components/ExportView.tsx | inline fix | ~22 |
+| 09:46 | Created frontend/src/extensions/bid-write/components/MaterialsView.tsx | — | ~7122 |
+| 09:46 | Edited frontend/src/extensions/bid-write/components/MaterialsView.tsx | CSS: body | ~142 |
+| 09:47 | Edited frontend/src/extensions/bid-write/components/MaterialsView.tsx | 24→24 lines | ~286 |
+| 09:48 | Edited frontend/src/extensions/bid-write/components/MaterialsView.tsx | 1→2 lines | ~11 |
+| 09:51 | Edited frontend/src/extensions/bid-write/components/MaterialsView.tsx | "bw-check" → "bw-check-line" | ~16 |
+| 09:51 | Edited frontend/src/extensions/bid-write/components/WorkbenchView.tsx | 14→16 lines | ~94 |
+| 09:51 | Edited frontend/src/extensions/bid-write/components/WorkbenchView.tsx | 6→8 lines | ~108 |
+| 09:51 | Edited frontend/src/extensions/bid-write/components/WorkbenchView.tsx | 5→5 lines | ~42 |
+| 09:52 | Edited frontend/src/extensions/bid-write/components/WorkbenchView.tsx | 6→7 lines | ~70 |
+| 09:52 | Edited frontend/src/extensions/bid-write/components/WorkbenchView.tsx | added optional chaining | ~177 |
+| 09:52 | Edited frontend/src/extensions/bid-write/components/WorkbenchView.tsx | expanded (+9 lines) | ~122 |
+| 10:02 | Created backend/tests/test_tmp_l4_debug.py | — | ~251 |
+| 10:06 | Edited backend/tests/test_bid_write_m2_worker.py | 2→5 lines | ~102 |
+| 10:06 | Edited backend/tests/test_bid_write_materials.py | inline fix | ~35 |
+
+## Session: 2026-11-14 10:12
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 10:14 | Edited docs/superpowers/specs/2026-11-13-bid-write-p0-skills-spec.md | modified b70fb8c6b() | ~450 |
+| 10:14 | Edited docs/superpowers/plans/2026-11-14-bid-write-p1-delta-workbench-plan.md | inline fix | ~4 |
+| 10:14 | Edited docs/superpowers/plans/2026-11-14-bid-write-p1-delta-workbench-plan.md | 1→3 lines | ~155 |
+| 10:14 | 批廿五 P1-δ 收口:spec §7 批廿五落地态段+剩余行更新(ProseMirror 编辑层/文件导出服务为剩余);plan 勾全+落地态勘误注 | docs/superpowers/specs/2026-11-13-bid-write-p0-skills-spec.md, plans/2026-11-14-bid-write-p1-delta-workbench-plan.md | 完成 | ~800 |
+| 10:14 | 批廿五 commit 链落账:T3=a31cd803a 骨架,T4=c78e4c985 GenerateView,T5=7d00515fb ExportView,T6=348080d1d MaterialsView,T7=c2cf59a45 WorkbenchView 埋点,T8=b70fb8c6b 水印钉翻新(T1=e13ed8bfb/T2=77de081d1 前窗口) | frontend/src/extensions/bid-write/*, backend/tests/test_bid_write_m2_worker.py, test_bid_write_materials.py | 219p/6s/0f+前端绿,未推 | ~3000 |
+| 10:16 | Created C:/Users/admin/.claude/projects/D--eai-eai-flow-main/memory/bid-write-p1-beta25-workbench-landed.md | — | ~342 |
+| 10:16 | Edited C:/Users/admin/.claude/projects/D--eai-eai-flow-main/memory/MEMORY.md | 1→2 lines | ~77 |
+| 10:18 | Created C:/Users/admin/.claude/projects/D--eai-eai-flow-main/memory/MEMORY.md | — | ~2188 |
+| 10:19 | Edited C:/Users/admin/.claude/projects/D--eai-eai-flow-main/memory/MEMORY.md | inline fix | ~34 |

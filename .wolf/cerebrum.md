@@ -3227,3 +3227,12 @@ CALIBRATION 批次裁决表是历史快照,新规则的行插进旧批次表必�
 - bid_review L4 包(10 卡全 sem/hyb)写侧激活面:参与卡=enabled∧sem/hyb∧inputs 全非空;摘除条件=executed ∧ 参与卡零 FAIL/ERROR/need_human/UNKNOWN;advisory-only=pack meta counts_toward_bid_gate:false,L4 零入 gate blocked/reasons。写侧投影现覆盖 L4-003(bid.service_commitments+tender.substantive_clauses)/L4-004(+bid.full_text)两卡;默认无承诺 knobs→参与卡空→零模型调用=绿跑零行为。
 - 模型 stub 契约:`_call_model` 接受同步 callable 返回带 `.content` 对象;schema=`{"verdicts":[{clause_id,verdict:full|partial|none|unclear,confidence,reason,evidence:[{doc_id,page,text}]}]}`,confidence≥0.75 过 confidence_gate;full=干净零条目/unclear→need_human。
 - 写侧 L4 模型接线=EAI_BID_REVIEW_MODEL 同尺(bid_write 不另设 env);无可用模型→恒抛闭包→evaluate_fields 逐规则隔离降级 ERROR→水印保持。
+
+## Key Learnings + Do-Not-Repeat (2026-11-14 批廿五 P1-δ 前端三栏工作台)
+
+- hyb 规则 det 粗筛零命中=零模型调用(bid_review/engine/llm_runner.py:266-276):det 通过→无候选可确认→`return []`,det 命中才有候选烧模型。推论:L4 水印摘除可在无模型配置下离线确定翻转——生成端(有 l4_model_fn)hyb 卡全干净→executed→摘除 None;export-precheck det-only 端点(无 l4_model_fn)水印恒加。两通道水印面天生不同,钉分开放。
+- **Do-Not-Repeat**:改 l4_fields/投影泛化前先 grep 生成端水印钉(`watermark` in tests)——泛化喂饱输入卡→参与集变化→摘除面翻转是预期行为不是回归;按双表同改律翻钉并钉 participants 面,blocked 独立性钉保留。
+- bid_write 测试夹具 client/db 是模块本地的(test_bid_write_m2_worker.py:22/33 定义,materials 文件自带一套),不在 conftest——临时调试测试必须放同文件,放别的文件报 fixture 'client' not found。
+- 后端 policy PUT 合并语义(routers.py:340):`{k:v for k,v in body if v is not None}`——顶层 None 键被丢弃=「不修改」;tax_rate 无清空通道(None≠delete)。前端 placeholder 必须诚实标「留空=不修改」,不可写「空=清除」。
+- 前端 bid-write CSS 真类名=bw-check-line(bid-write.css:123,非 bw-check);.wb 三栏 grid 断点 900/1120/1320;tsconfig noUncheckedIndexedAccess→索引访问返回 T|undefined 须 `?? ""` 兜底;eslint prefer-optional-chain 会 --fix。
+- 前端 pnpm 经 `python ../scripts/pnpm.py exec eslint|tsc --noEmit|rstest` 跑;rstest 输出头部「No test failures reported」即绿。
