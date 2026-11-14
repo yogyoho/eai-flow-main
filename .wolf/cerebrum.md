@@ -3286,3 +3286,35 @@ CALIBRATION 批次裁决表是历史快照,新规则的行插进旧批次表必�
 - **编辑器真值边界**:云端 AST 覆盖价格表/响应表/投标函;附件索引表尚未进 schema,AI 面沿用生成 ctx。演示文档与任务数据无对应关系,继续走本地演示执行器,避免把两套事实混判。
 - **异步 assertRunner 防陈旧**:网络响应乱序/防抖叠加时用递增序号;卸载时序号自增,旧响应不得 dispatch 到已销毁 view。null/异常一律 `onAssert(null, true)`=「校验未完成」。
 - **API 测试 body 断言**:`RequestInit.body` 是 BodyInit,直接 `String()` 触发 `no-base-to-string`;先 `typeof body === "string"` 再 `JSON.parse`。装饰 spec attrs 是 unknown,取值先窄化再比较 `data-err`。
+
+### Key Learnings (批三十一 2026-11-14)
+- **粘贴清洗走 handlePaste,不走 parseDOM**:外部 Word/网页 HTML 只提取可见文本行,块级标签/`<br>` 转行边界,script/style/hidden 剔除;AST schema 零扩展,外部标签永不直接落库。
+- **约束要在 dispatch 前复用 `findProtected`**:粘贴规划先判锁定段/金额/来源列/枚举,再生成事务;filterTransaction 仍是最后一道一致性守卫,但前置拒绝能给出准确提示且不产生被拒事务。
+- **文本块 vs 块级两种落位**:`para`/cell 内多行合并为空格(避免把 Word 段落塞进 inline*);`doc`/`section`/`deviation_note` 按行建 `para`;跨块选区直接拒绝,避免替换章节结构。
+- **空文本不等于可拦截**:HTML 仅含图片/附件时 `planPaste` 返回 `empty`,但插件必须 return false 交回默认行为;只有确有文本或明确拒绝面才 preventDefault。
+- **DOMParser 只存在于浏览器面**:node 单测只喂 plain text;HTML 清洗测试放 `.dom.test.ts`(jsdom),生产 `handlePaste` 只在客户端触发,SSR 不执行。
+- **插件 props 方法测试要绑 Plugin**:`plugin.props.handlePaste` 作为游离函数调用会报 `this` 类型不匹配;测试用 `plugin.props.handlePaste.call(plugin, view, event, slice)`。
+
+### Key Learnings (批三十二 2026-11-14)
+- **审批复用 workflow 但不绑 ReportProject**:通用审批实例以 `subject_type/subject_id/subject_version` 绑定业务对象,提交时快照 graph_json,后续定义编辑不影响在途审批。bid-write 只写自己的 revision 表,不写 report_projects,`PhaseReview/ReviewAssignment` 历史双模型不动。
+- **审批只消费不可变 revision**:提交时冻结 AST + canonical JSON SHA-256 + 断言快照,详情用 `hash_ok` 校验;`PUT /document` 在 pending/approved 返回 409,驳回后放开。可变 TaskDocument 只是编辑缓冲,审批与后续导出只认 revision。
+- **会签驳回即终止**:`evaluate_gate` 的 threshold 是可选参数(仅 WEIGHTED/比例签使用),会签收到 reject 立即 REJECT;原 majority 语义不变,复用 gate 不为单点需求改既有行为。
+- **提交事务边界**:创建审批实例 + revision 必须同一事务成功后才 commit(`commit=False`);任何校验失败都不能留下半保存正文,否则出现「文档已改但审批没起」的假状态。
+- **SQLite 测试夹具要显式建新表**:`workflow_subject_instances/reviews`、`bid_write_document_revisions` 都靠 `Base.metadata.create_all`;新增模型的测试文件与既有 bid_write 夹具都要补建表清单,否则只在全量跑时才炸。
+- **审批人只读面集中判权**:被指派审批人可读任务/矩阵/缺口/正文/审批面,非审批人仍 404、审批动作非指定人 403;权限判定集中在 approval/subject 服务,不散落到各 router。
+
+### Do-Not-Repeat (批三十二)
+- (2026-11-14) 不要给 subject 审批传角色/岗位绑定并期待自动解析;MVP 只接受显式 `type=user`/`reviewer_ids`,其余绑定诚实拒绝。
+- (2026-11-14) 不要在批准后仍允许 `PUT /document`;409 是唯一正确的锁面,否则 revision hash 与正文事实会分叉。
+
+### Key Learnings (批三十三 2026-11-15)
+- **导出 gate 必须吃冻结 AST**:`run_export_gate(..., ast=revision.ast)` 经 `prepare_editor_ctx` 把 price/response/letter/slots 覆盖到任务 ctx,再跑 43 条断言;只跑生成期 products 会让「批准时正文」与「导出校验事实」分叉。
+- **两层真实性都保留**:提交审批快照 `blocked=true` 直接拒导出(冻结事实),同时导出时重跑当前 gate(当前事实);任一阻断都 409,manifest 记录 gate counts/reasons。
+- **DOCX 字节确定性要重打包**:python-docx 的 ZIP 条目时间戳取墙钟,内容相同字节不同;用固定 `ZipInfo.date_time` 重新打包内层 DOCX 后,同 revision+同时钟 ZIP 字节级一致。
+- **Markdown 表格解析是朴素 split**:单元格文本含 `|` 会破坏列数;导出投影把 `|` 换全角 `｜`,换行换空格,不依赖转义。
+- **自定义响应头只能 ASCII**:中文水印不要塞 header(latin-1 会炸);用布尔 `X-Export-Watermarked` + manifest/历史里的原文水印。
+- **前端下载不能用 requestJson**:ZIP 要手动 `res.ok` → `res.blob()`,并从 `Content-Disposition`(`filename*=UTF-8''`)与 `X-Export-*` 解析文件名/哈希/文件数。
+
+### Do-Not-Repeat (批三十三)
+- (2026-11-15) 不要直接比较两次 `generate_docx_simple` 的原始 bytes 断言确定性;先固定内层 ZIP 时间戳,否则单测会随墙钟抖动。
+- (2026-11-15) 不要在导出路径重新读可变 `TaskDocument` 或只读 `products`;唯一正文来源是 `BidWriteDocumentRevision.ast`。

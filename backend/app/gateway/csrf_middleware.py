@@ -162,7 +162,15 @@ def get_configured_cors_origins() -> set[str]:
 # response as the correlation id to quote in a bug report, and unexposed it is
 # readable on same-origin nginx deployments but invisible to exactly the
 # split-origin clients that cannot see the Gateway's logs either.
-CORS_EXPOSED_HEADERS: tuple[str, ...] = ("Content-Location", TRACE_ID_HEADER)
+CORS_EXPOSED_HEADERS: tuple[str, ...] = (
+    "Content-Location",
+    TRACE_ID_HEADER,
+    "X-Export-Id",
+    "X-Export-Sha256",
+    "X-Export-Files",
+    "X-Export-Bytes",
+    "X-Export-Watermarked",
+)
 
 
 def _first_header_value(value: str | None) -> str | None:

@@ -13,10 +13,12 @@ import { useSearchParams } from "next/navigation";
 import { useMemo } from "react";
 
 import {
+  actTaskApproval,
   createMaterial,
   createTask,
   deleteMaterial,
   exportPrecheck,
+  exportTaskRevision,
   generateTask,
   getGaps,
   getMaterialProfile,
@@ -24,15 +26,22 @@ import {
   getPolicy,
   getRegistry,
   getTask,
+  getTaskApproval,
   getTaskMetrics,
   listMaterials,
+  listTaskExports,
   listTasks,
   patchMaterial,
   patchMatrixRow,
   putMaterialProfile,
   putPolicy,
+  submitTaskApproval,
 } from "./api";
 import type {
+  ApprovalActionInput,
+  ApprovalSubmitInput,
+  ExportDownload,
+  ExportHistoryResponse,
   GenerateKnobs,
   MaterialIn,
   MaterialPatch,
@@ -40,6 +49,7 @@ import type {
   MatrixRowOut,
   MatrixRowPatch,
   PolicyBody,
+  TaskApprovalResponse,
   WriteTaskOut,
 } from "./types";
 
@@ -57,6 +67,8 @@ export const bidWriteKeys = {
   profile: ["bid-write", "material-profile"] as const,
   policy: ["bid-write", "policy"] as const,
   metrics: (taskId: string) => ["bid-write", "metrics", taskId] as const,
+  approval: (taskId: string) => ["bid-write", "approval", taskId] as const,
+  exports: (taskId: string) => ["bid-write", "exports", taskId] as const,
 };
 
 function latestFirst(tasks: WriteTaskOut[]): WriteTaskOut[] {
@@ -276,6 +288,59 @@ export function useTaskMetrics(taskId: string | null) {
   });
 }
 
+// ── 批三十二:审批面 ───────────────────────────────────────────────────────
+
+export function useTaskApproval(taskId: string | null) {
+  return useQuery({
+    queryKey: bidWriteKeys.approval(taskId ?? ""),
+    queryFn: () => getTaskApproval(taskId!),
+    enabled: Boolean(taskId),
+  });
+}
+
+function invalidateApprovalSurfaces(qc: ReturnType<typeof useQueryClient>, taskId: string) {
+  void qc.invalidateQueries({ queryKey: bidWriteKeys.approval(taskId) });
+  void qc.invalidateQueries({ queryKey: ["bid-write", "task", taskId] });
+  void qc.invalidateQueries({ queryKey: ["bid-write", "tasks"] });
+  void qc.invalidateQueries({ queryKey: ["bid-write", "gaps", taskId] });
+}
+
+export function useSubmitTaskApproval(taskId: string | null) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (input: ApprovalSubmitInput) => {
+      if (!taskId) throw new Error("未选择写作任务");
+      return submitTaskApproval(taskId, input);
+    },
+    onSuccess: (data) => {
+      if (!taskId) return;
+      qc.setQueryData<TaskApprovalResponse>(
+        bidWriteKeys.approval(taskId),
+        data,
+      );
+      invalidateApprovalSurfaces(qc, taskId);
+    },
+  });
+}
+
+export function useTaskApprovalAction(taskId: string | null) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (input: ApprovalActionInput) => {
+      if (!taskId) throw new Error("未选择写作任务");
+      return actTaskApproval(taskId, input);
+    },
+    onSuccess: (data) => {
+      if (!taskId) return;
+      qc.setQueryData<TaskApprovalResponse>(
+        bidWriteKeys.approval(taskId),
+        data,
+      );
+      invalidateApprovalSurfaces(qc, taskId);
+    },
+  });
+}
+
 export interface SelectedWriteTask {
   taskId: string | null;
   task: WriteTaskOut | null;
@@ -293,7 +358,9 @@ export function useSelectedWriteTask(): SelectedWriteTask {
     [query.data?.items],
   );
   const requestedId = params.get("task_id");
+  const direct = useBidWriteTask(requestedId);
   const selected =
+    direct.data ??
     (requestedId ? tasks.find((task) => task.id === requestedId) : null) ??
     tasks[0] ??
     null;
@@ -308,4 +375,28 @@ export function useSelectedWriteTask(): SelectedWriteTask {
 
 export function isActiveWriteStatus(status: string): boolean {
   return ACTIVE_STATUSES.has(status);
+}
+
+// ── 批三十三:批准修订 DOCX 交付包 ─────────────────────────────────────────
+
+export function useTaskExports(taskId: string | null) {
+  return useQuery<ExportHistoryResponse>({
+    queryKey: bidWriteKeys.exports(taskId ?? ""),
+    queryFn: () => listTaskExports(taskId!),
+    enabled: Boolean(taskId),
+  });
+}
+
+export function useExportRevision(taskId: string | null) {
+  const qc = useQueryClient();
+  return useMutation<ExportDownload, Error, string>({
+    mutationFn: (revisionId: string) => {
+      if (!taskId) throw new Error("未选择写作任务");
+      return exportTaskRevision(taskId, revisionId);
+    },
+    onSuccess: () => {
+      if (!taskId) return;
+      void qc.invalidateQueries({ queryKey: bidWriteKeys.exports(taskId) });
+    },
+  });
 }

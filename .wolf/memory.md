@@ -30957,3 +30957,21 @@
 | Time | Action | File(s) | Outcome | ~Tokens |
 |------|--------|---------|---------|--------|
 | 23:10 | 批三十 M4 真执行器接线:新增 executor/editor.py(AST→ctx 覆盖 + 43 断言 + 锚点映射)+ POST /tasks/{id}/assert 只读端点;前端 assertTaskDocument + 异步 AssertRunner(序号防陈旧)+ response 行锚点 | backend/app/extensions/bid_write/executor/editor.py, routers.py, schemas.py; frontend api/BidWriteEditor/decor/WorkbenchView; tests | 后端 10/10 + 回归 119/119;前端 bid-write 72/72;ruff/eslint 绿;未做浏览器实机(:3000 未启动) | ~45k |
+
+## Session: 2026-11-14 23:35
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 23:35 | 批三十一 M5 富文本粘贴清洗:新增 paste.ts(HTML 可见文本/script/style/hidden 剔除 + 文本块合并/块级 para + 受保护节点拒绝)+ pastePlugin 接线 + 工作台 3s 提示;schema 注释更新 | frontend/src/extensions/bid-write/editor/paste.ts, state.ts, BidWriteEditor.tsx, WorkbenchView.tsx; tests; document_ast_schema.yaml | 粘贴专项 13/13;bid-write 定向 85/85;eslint 绿;tsc 仅既有 password-forms 3 条 TS2367;后端 schema 4/4 | ~28k |
+
+## Session: 2026-11-15 00:16
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 00:16 | 批三十二 审批流复用 workflow + 不可变修订:新增 subject_approval.py(通用 subject 实例/提交时图快照/会签或签比例签顺序签)+ bid_write/approval.py(冻结 revision canonical hash/断言快照/编辑锁)+ 5 个审批与修订端点 + ApprovalPanel 工作台接线 | backend/app/extensions/workflow/subject_approval.py, backend/app/extensions/bid_write/approval.py, models/crud/schemas/routers, review/gate.py; frontend ApprovalPanel/types/api/hooks/WorkbenchView/BidWriteEditor/css; tests | 后端定向 46 过、全量过滤 253 过/6 skip;前端 bid-write 88/88、ApprovalPanel 3/3;ruff/eslint 绿;tsc 仅既有 password-forms 3 条 TS2367;未做浏览器实机 | ~60k |
+
+## Session: 2026-11-15 00:45
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 00:45 | 批三十三 批准修订 DOCX 交付包:prepare_editor_ctx + run_export_gate(ast=) 冻结 AST 同尺;新增 export.py(AST→Markdown/一级 section 切册/DOCX+manifest/固定时间戳确定性 ZIP)+ BidWriteExport 审计 + 导出/历史端点;前端 DeliveryPackageCard 与 ExportView 接线 | backend/app/extensions/bid_write/export.py, precheck.py, executor/editor.py, models/crud/routers, gateway/csrf_middleware.py; frontend DeliveryPackageCard/ExportView/types/api/hooks; tests | 后端导出 13 过、过滤全量 266 过/6 skip;前端 bid-write 17 文件 91/91、交付包 3/3;ruff/eslint 绿;tsc 仅既有 password-forms 3 条 TS2367;未做浏览器实机 | ~55k |

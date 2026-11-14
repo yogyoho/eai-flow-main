@@ -23,6 +23,7 @@ import {
   type AssertSummary,
 } from "@/extensions/bid-write/editor/decor";
 import { serializeDoc } from "@/extensions/bid-write/editor/doc";
+import { type PasteNotice } from "@/extensions/bid-write/editor/paste";
 import { type AstJsonNode } from "@/extensions/bid-write/editor/schema.gen";
 import {
   createBidWriteEditorState,
@@ -53,8 +54,10 @@ interface BidWriteEditorProps {
   assertRunner?: AssertRunner;
   onAssert?: (summary: AssertSummary | null, error: boolean) => void;
   onProvenanceJump?: OnProvenanceJump;
+  onPasteSanitized?: (notice: PasteNotice) => void;
   debounceMs?: number;
   ariaLabel?: string;
+  readOnly?: boolean;
 }
 
 export const BidWriteEditor = forwardRef<BidWriteEditorHandle, BidWriteEditorProps>(
@@ -66,8 +69,10 @@ export const BidWriteEditor = forwardRef<BidWriteEditorHandle, BidWriteEditorPro
       assertRunner,
       onAssert,
       onProvenanceJump,
+      onPasteSanitized,
       debounceMs = 400,
       ariaLabel = "投标正文编辑器",
+      readOnly = false,
     },
     ref,
   ) {
@@ -85,6 +90,10 @@ export const BidWriteEditor = forwardRef<BidWriteEditorHandle, BidWriteEditorPro
     onAssertRef.current = onAssert;
     const onProvenanceJumpRef = useRef(onProvenanceJump);
     onProvenanceJumpRef.current = onProvenanceJump;
+    const onPasteSanitizedRef = useRef(onPasteSanitized);
+    onPasteSanitizedRef.current = onPasteSanitized;
+    const readOnlyRef = useRef(readOnly);
+    readOnlyRef.current = readOnly;
     const [ready, setReady] = useState(false);
 
     // 断言侧信道(§六):serialize→runner→assert:apply 纯装饰回写;runner 抛错/
@@ -119,10 +128,13 @@ export const BidWriteEditor = forwardRef<BidWriteEditorHandle, BidWriteEditorPro
       const state = createBidWriteEditorState(initialAst, {
         onViolation: (v) => onViolationRef.current?.(v),
         onProvenanceJump: (hit) => onProvenanceJumpRef.current?.(hit),
+        onPasteSanitized: (notice) => onPasteSanitizedRef.current?.(notice),
       });
       const view = new EditorView(place, {
         state,
+        editable: () => !readOnlyRef.current,
         dispatchTransaction(tr: Transaction) {
+          if (readOnlyRef.current) return;
           view.updateState(view.state.apply(tr));
           if (timerRef.current) clearTimeout(timerRef.current);
           timerRef.current = setTimeout(() => {
@@ -147,6 +159,11 @@ export const BidWriteEditor = forwardRef<BidWriteEditorHandle, BidWriteEditorPro
       // initialAst 由父级 useMemo 钉住;变更即重建视图(M0 无外部写入通道)
       // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [initialAst]);
+
+    useEffect(() => {
+      const view = viewRef.current;
+      if (view) view.updateState(view.state);
+    }, [readOnly]);
 
     useImperativeHandle(
       ref,

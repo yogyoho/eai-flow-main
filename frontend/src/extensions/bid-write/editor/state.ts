@@ -10,6 +10,7 @@ import { constraintsPlugin, type OnViolation } from "./constraints";
 import { liveAssertPlugin, provenancePlugin, type ProvenanceHit } from "./decor";
 import { deviationPlugin } from "./deviation";
 import { hydrateAst } from "./doc";
+import { pastePlugin, type PasteNotice } from "./paste";
 import { type AstJsonNode } from "./schema.gen";
 
 export type EditorTrSource = "user" | "system" | "decor";
@@ -33,7 +34,11 @@ export function trSource(tr: Transaction): EditorTrSource {
 
 export function createBidWriteEditorState(
   ast: AstJsonNode,
-  options: { onViolation?: OnViolation; onProvenanceJump?: OnProvenanceJump } = {},
+  options: {
+    onViolation?: OnViolation;
+    onProvenanceJump?: OnProvenanceJump;
+    onPasteSanitized?: (notice: PasteNotice) => void;
+  } = {},
 ): EditorState {
   return EditorState.create({
     doc: hydrateAst(ast),
@@ -42,6 +47,10 @@ export function createBidWriteEditorState(
       keymap({ "Mod-z": undo, "Mod-Z": redo, "Mod-y": redo }),
       keymap(baseKeymap),
       constraintsPlugin(options),
+      pastePlugin({
+        onViolation: options.onViolation,
+        onPasteSanitized: options.onPasteSanitized,
+      }),
       deviationPlugin(),
       provenancePlugin({ onJump: options.onProvenanceJump }),
       liveAssertPlugin(),

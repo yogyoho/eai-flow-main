@@ -22,6 +22,9 @@ import {
   putTaskDocument,
 } from "@/extensions/bid-write/api";
 import {
+  ApprovalPanel,
+} from "@/extensions/bid-write/components/ApprovalPanel";
+import {
   Badge,
   EmptyState,
   ErrorBlock,
@@ -39,6 +42,7 @@ import {
   type ProvenanceHit,
 } from "@/extensions/bid-write/editor/decor";
 import { demoWorkbenchAst } from "@/extensions/bid-write/editor/demo";
+import { type PasteNotice } from "@/extensions/bid-write/editor/paste";
 import { AST_SCHEMA_VERSION, type AstJsonNode } from "@/extensions/bid-write/editor/schema.gen";
 import {
   formatDate,
@@ -108,6 +112,8 @@ export function WorkbenchView() {
     canRedo: false,
   });
   const [savedAt, setSavedAt] = useState<string | null>(null);
+  const [currentAst, setCurrentAst] = useState<AstJsonNode | null>(null);
+  const [approvalLocked, setApprovalLocked] = useState(false);
 
   // 云端文档加载:失败降级演示文档面(cloud-error 徽标),绝不空屏
   useEffect(() => {
@@ -118,6 +124,7 @@ export function WorkbenchView() {
         if (!alive) return;
         if (doc.ast) {
           setLoadedAst(doc.ast);
+          setCurrentAst(doc.ast);
           setDocSource("cloud");
           setDocEpoch((e) => e + 1); // key 重挂=服务端文档替换演示文档
         }
@@ -168,9 +175,54 @@ export function WorkbenchView() {
     violationTimer.current = setTimeout(() => setViolation(null), 3000);
   }, []);
 
+  // 批三十一 M5——粘贴清洗提示(3s 消退):成功提示剥离格式,拒绝提示改分段/目标结构
+  const [pasteNotice, setPasteNotice] = useState<string | null>(null);
+  const pasteTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(
+    () => () => {
+      if (pasteTimer.current) clearTimeout(pasteTimer.current);
+    },
+    [],
+  );
+  const handlePasteSanitized = useCallback((notice: PasteNotice) => {
+    let message: string;
+    if (notice.rejected === "cross_block") {
+      message = "跨段粘贴已拦截：请分段粘贴，避免替换章节结构。";
+    } else if (notice.rejected === "unsupported") {
+      message = "当前结构不支持直接粘贴：请粘贴到正文段落或表格文本格。";
+    } else if (notice.rejected === "empty") {
+      message = "剪贴板没有可粘贴文本。";
+    } else {
+      const format = notice.markupStripped ? "已去除外部格式，" : "";
+      message = `已按纯文本粘贴 ${notice.lines} 段（${format}不写入外部标签/样式）。`;
+    }
+    setPasteNotice(message);
+    if (pasteTimer.current) clearTimeout(pasteTimer.current);
+    pasteTimer.current = setTimeout(() => setPasteNotice(null), 3000);
+  }, []);
+
+  // 批三十二——审批提示（3s 消退）；批准后锁定编辑器
+  const [approvalNotice, setApprovalNotice] = useState<string | null>(null);
+  const approvalTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(
+    () => () => {
+      if (approvalTimer.current) clearTimeout(approvalTimer.current);
+    },
+    [],
+  );
+  const handleApprovalNotice = useCallback((message: string) => {
+    setApprovalNotice(message);
+    if (approvalTimer.current) clearTimeout(approvalTimer.current);
+    approvalTimer.current = setTimeout(() => setApprovalNotice(null), 4000);
+  }, []);
+  const handleApprovalLocked = useCallback((locked: boolean) => {
+    setApprovalLocked(locked);
+  }, []);
+
   const handleDocChange = useCallback(
     (ast: AstJsonNode, f: BidWriteEditorFlags) => {
       latestAstRef.current = ast;
+      setCurrentAst(ast);
       setFlags(f);
     },
     [],
@@ -185,6 +237,7 @@ export function WorkbenchView() {
         ast,
         schema_version: AST_SCHEMA_VERSION,
       });
+      setCurrentAst(ast);
       setSavedAt(
         doc.updated_at
           ? new Date(doc.updated_at).toLocaleTimeString("zh-CN", {
@@ -252,8 +305,8 @@ export function WorkbenchView() {
         title="④ 写作工作台"
         subtitle={
           task
-            ? `${projectTitle(task)} · 矩阵/缺口/预审查/埋点实读；正文编辑器 M4（真执行器+负偏离展开+AST 存储）`
-            : "矩阵/缺口/预审查/埋点实读；正文编辑器 M4（真执行器+负偏离展开+AST 存储）"
+            ? `${projectTitle(task)} · 矩阵/缺口/预审查/埋点实读；正文编辑器 M6（审批修订+真执行器+负偏离展开+粘贴清洗）`
+            : "矩阵/缺口/预审查/埋点实读；正文编辑器 M6（审批修订+真执行器+负偏离展开+粘贴清洗）"
         }
         actions={
           <>
@@ -314,8 +367,9 @@ export function WorkbenchView() {
             <div className="banner info">
               <Info size={15} aria-hidden="true" />
               <span>
-                正文编辑器 M4 已接入：编辑/撤销、AST 云端存储、负偏离展开面
-                （自愈维护）与后端真执行器（43 条断言按锚点回写）可用；演示文档
+                正文编辑器 M6 已接入：审批修订冻结/会签或签/批准锁定、编辑/撤销、AST 云端存储、负偏离展开面
+                （自愈维护）、富文本粘贴清洗（外部标签/样式不落 AST）与后端真执行器
+                （43 条断言按锚点回写）可用；演示文档
                 使用本地演示执行器，校验不可用时显示「校验未完成」。
               </span>
             </div>
@@ -418,10 +472,17 @@ export function WorkbenchView() {
                   </Badge>
                 </span>
               </div>
+              <ApprovalPanel
+                taskId={taskId}
+                ast={currentAst ?? initialAst}
+                cloudReady={docSource === "cloud"}
+                onLockedChange={handleApprovalLocked}
+                onNotice={handleApprovalNotice}
+              />
               <div className="ed-toolbar">
                 <button
                   type="button"
-                  disabled={!flags.canUndo}
+                  disabled={!flags.canUndo || approvalLocked}
                   title="撤销（Ctrl+Z）"
                   onClick={() => editorRef.current?.undo()}
                 >
@@ -429,7 +490,7 @@ export function WorkbenchView() {
                 </button>
                 <button
                   type="button"
-                  disabled={!flags.canRedo}
+                  disabled={!flags.canRedo || approvalLocked}
                   title="重做（Ctrl+Y）"
                   onClick={() => editorRef.current?.redo()}
                 >
@@ -438,8 +499,12 @@ export function WorkbenchView() {
                 <span className="sep" />
                 <button
                   type="button"
-                  disabled={saving}
-                  title="保存=写入云端 AST 存储(PUT /tasks/{id}/document)"
+                  disabled={saving || approvalLocked}
+                  title={
+                    approvalLocked
+                      ? "正文已批准并锁定；修改需从新修订流程重开"
+                      : "保存=写入云端 AST 存储(PUT /tasks/{id}/document)"
+                  }
                   onClick={() => void handleSave()}
                 >
                   {saving ? "保存中…" : "保存"}
@@ -468,6 +533,16 @@ export function WorkbenchView() {
                   {provJump}
                 </div>
               ) : null}
+              {pasteNotice ? (
+                <div className="ed-notice" role="status">
+                  {pasteNotice}
+                </div>
+              ) : null}
+              {approvalNotice ? (
+                <div className="ed-notice" role="status">
+                  {approvalNotice}
+                </div>
+              ) : null}
               <div className="doc-body">
                 <BidWriteEditor
                   key={docEpoch}
@@ -478,10 +553,15 @@ export function WorkbenchView() {
                   assertRunner={assertRunner}
                   onAssert={handleAssert}
                   onProvenanceJump={handleProvJump}
+                  onPasteSanitized={handlePasteSanitized}
+                  readOnly={approvalLocked}
                   ariaLabel="投标正文编辑器（演示文档）"
                 />
                 <p className="bw-muted bw-mt-sm">
-                  M4：负偏离展开面已接入——响应策略选「负偏离」自动展开偏离说明
+                  M6：审批修订已接入——提交时冻结 AST/hash/断言快照，审批只审冻结修订；
+                  批准后正文锁定，驳回后可继续编辑并重新提交。M5：富文本粘贴清洗已接入——Word/网页内容只保留可见文本，外部标签、
+                  样式、脚本与隐藏内容不进入 AST；锁定段/金额/来源列/枚举的粘贴仍被
+                  M1 约束拦截。M4：负偏离展开面已接入——响应策略选「负偏离」自动展开偏离说明
                   （偏离原因+替代方案），未闭环 D0、孤儿展开面 D1（SK-RT-005，与
                   后端同口径）；M1 锁定段/金额/来源列只读、下拉、缺件占位禁删、
                   M2 断言联动与 AST 存储均生效；云端文档的断言由后端真执行器产出，

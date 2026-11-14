@@ -5,7 +5,8 @@
  *
  * 「导出前置校验」POST /export-precheck 只读重算(D0 断言+L1 fatal+L4 advisory,
  * 零落库);水印 null=L4 通过已摘除,字符串=带水印黄条。L4 面仅 advisory,
- * 不计入门禁。文件导出服务未建:无交付包按钮,不伪造下载。
+ * 不计入门禁。批三十三:已批准修订可生成 DOCX 分册 + manifest ZIP;
+ * 导出按钮只在 revision.status=approved 时启用,后端仍会重跑 gate。
  */
 
 import {
@@ -18,9 +19,10 @@ import {
   XCircle,
 } from "lucide-react";
 import Link from "next/link";
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { toast } from "sonner";
 
+import { DeliveryPackageCard } from "@/extensions/bid-write/components/DeliveryPackageCard";
 import {
   Badge,
   EmptyState,
@@ -34,10 +36,16 @@ import { formatPercent, projectTitle } from "@/extensions/bid-write/helpers";
 import {
   useBidWriteGaps,
   useExportPrecheck,
+  useExportRevision,
   useSelectedWriteTask,
+  useTaskApproval,
+  useTaskExports,
 } from "@/extensions/bid-write/hooks";
 import { writeTaskHref } from "@/extensions/bid-write/nav";
-import type { ExportGateResponse } from "@/extensions/bid-write/types";
+import type {
+  ExportDownload,
+  ExportGateResponse,
+} from "@/extensions/bid-write/types";
 
 interface GateItem {
   id: string;
@@ -48,6 +56,7 @@ interface GateItem {
 
 function precheckGateItems(
   precheck: ExportGateResponse,
+  approved: boolean,
 ): GateItem[] {
   const items: GateItem[] = [
     {
@@ -79,16 +88,35 @@ function precheckGateItems(
   items.push({
     id: "document",
     label: "正式正文文件导出",
-    detail: "导出服务（分册/版式/签章位）尚未接入，无法生成交付包文件",
-    state: "unknown",
+    detail: approved
+      ? "已批准修订可生成 DOCX 分册交付包；导出时重跑 D0/L1 门禁"
+      : "需正文审批通过后才能生成交付包",
+    state: approved ? "pass" : "unknown",
   });
   return items;
+}
+
+function triggerBlobDownload(blob: Blob, filename: string): void {
+  const url = URL.createObjectURL(blob);
+  const anchor = document.createElement("a");
+  anchor.href = url;
+  anchor.download = filename;
+  anchor.rel = "noopener";
+  anchor.click();
+  URL.revokeObjectURL(url);
 }
 
 export function ExportView() {
   const { taskId, task, isLoading } = useSelectedWriteTask();
   const gaps = useBidWriteGaps(taskId);
   const precheck = useExportPrecheck(taskId);
+  const approval = useTaskApproval(taskId);
+  const exportHistory = useTaskExports(taskId);
+  const exportMutation = useExportRevision(taskId);
+  const [lastExport, setLastExport] = useState<ExportDownload | null>(null);
+
+  const revision = approval.data?.revision ?? null;
+  const approved = revision?.status === "approved" && revision.hash_ok;
 
   const items = gaps.data?.items ?? [];
   const assertions = gaps.data?.assertions ?? null;
@@ -96,7 +124,7 @@ export function ExportView() {
   const noMaterial = items.filter((item) => item.material_state === "无对应素材").length;
 
   const gate = useMemo<GateItem[]>(() => {
-    if (precheck.data) return precheckGateItems(precheck.data);
+    if (precheck.data) return precheckGateItems(precheck.data, approved);
     const assertionState: GateItem["state"] = assertions
       ? assertions.blocked
         ? "fail"
@@ -134,11 +162,13 @@ export function ExportView() {
       {
         id: "document",
         label: "正式正文文件导出",
-        detail: "导出服务（分册/版式/签章位）尚未接入，无法生成交付包文件",
-        state: "unknown",
+        detail: approved
+          ? "已批准修订可生成 DOCX 分册交付包；导出时重跑 D0/L1 门禁"
+          : "需正文审批通过后才能生成交付包",
+        state: approved ? "pass" : "unknown",
       },
     ];
-  }, [assertions, matrixBlocked, noMaterial, precheck.data]);
+  }, [approved, assertions, matrixBlocked, noMaterial, precheck.data]);
 
   const failed = gate.filter((item) => item.state === "fail").length;
   const unknown = gate.filter((item) => item.state === "unknown").length;
@@ -152,6 +182,20 @@ export function ExportView() {
       await precheck.mutateAsync();
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "前置校验失败");
+    }
+  };
+
+  const onExport = async () => {
+    if (!approved || !revision) return;
+    try {
+      const result = await exportMutation.mutateAsync(revision.id);
+      setLastExport(result);
+      triggerBlobDownload(result.blob, result.filename);
+      toast.success(
+        `已生成 ${result.fileCount || "若干"} 个 DOCX 分册（ZIP 交付包）`,
+      );
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "导出失败");
     }
   };
 
@@ -394,31 +438,16 @@ export function ExportView() {
               </div>
             </div>
 
-            <div className="card">
-              <div className="card-h">
-                <h3>交付包</h3>
-                <span className="r">
-                  <Badge tone="gray">服务未接入</Badge>
-                </span>
-              </div>
-              <div className="card-b">
-                <p className="bw-muted">
-                  交付包格式与版式适配（DOCX / PDF /
-                  投标客户端导入包）由导出服务承担，尚未接入；本页不提供下载按钮，不生成占位文件。
-                  前置校验结果即当前导出面所能给出的全部确定性信息。
-                </p>
-                {precheck.error ? <ErrorBlock error={precheck.error} /> : null}
-                <button
-                  type="button"
-                  className="btn pri bw-full bw-mt"
-                  disabled={!ready || precheck.isPending}
-                  onClick={() => void onPrecheck()}
-                >
-                  <ShieldCheck size={14} aria-hidden="true" />
-                  {precheck.isPending ? "校验中…" : "导出前置校验"}
-                </button>
-              </div>
-            </div>
+            {precheck.error ? <ErrorBlock error={precheck.error} /> : null}
+            <DeliveryPackageCard
+              revision={revision}
+              history={exportHistory.data?.items ?? []}
+              historyLoading={exportHistory.isLoading}
+              exporting={exportMutation.isPending}
+              result={lastExport}
+              error={exportMutation.error}
+              onExport={() => void onExport()}
+            />
           </div>
 
           {failed > 0 ? (

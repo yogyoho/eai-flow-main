@@ -23,6 +23,7 @@ def evaluate_gate(
     total_reviewers: int,
     judgments: list[dict],
     weights: dict[str, float] | None = None,
+    threshold: float | None = None,
 ) -> GateResult:
     """Evaluate the review gate based on current judgments.
 
@@ -31,12 +32,17 @@ def evaluate_gate(
         total_reviewers: Total number of assigned reviewers
         judgments: List of {reviewer_id, status} dicts for submitted judgments
         weights: Per-reviewer weight for WEIGHTED mode (defaults to 1.0 each)
+        threshold: Optional pass threshold (0..1). When omitted, legacy
+            strict-majority semantics are preserved.
     """
-    if len(judgments) < total_reviewers and mode != GateMode.ANY_CAN_APPROVE:
-        return GateResult.WAITING
-
     approved = sum(1 for j in judgments if j["status"] == "approved")
     rejected = sum(1 for j in judgments if j["status"] == "rejected")
+
+    if len(judgments) < total_reviewers and mode != GateMode.ANY_CAN_APPROVE:
+        if mode == GateMode.ALL_MUST_APPROVE and rejected > 0:
+            return GateResult.REJECT
+        if not (mode == GateMode.WEIGHTED and threshold is not None):
+            return GateResult.WAITING
 
     if mode == GateMode.ALL_MUST_APPROVE:
         if len(judgments) < total_reviewers:
@@ -65,6 +71,14 @@ def evaluate_gate(
         weighted_approved = sum(w.get(j["reviewer_id"], 1.0) for j in judgments if j["status"] == "approved")
         weighted_rejected = sum(w.get(j["reviewer_id"], 1.0) for j in judgments if j["status"] == "rejected")
         total_weight = sum(w.values()) if w else total_reviewers
+        if threshold is not None:
+            if weighted_approved >= total_weight * threshold:
+                return GateResult.PASS
+            if weighted_rejected > total_weight * (1 - threshold):
+                return GateResult.REJECT
+            if len(judgments) >= total_reviewers:
+                return GateResult.REJECT
+            return GateResult.WAITING
         if weighted_approved > total_weight / 2:
             return GateResult.PASS
         if weighted_rejected >= total_weight / 2:

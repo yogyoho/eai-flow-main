@@ -4,7 +4,7 @@ orm 全开,progress/engine_meta 直透;矩阵行 PATCH 单模型)。"""
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Any
+from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -135,3 +135,26 @@ class EditorAssertIn(BaseModel):
 
     ast: dict
     skills: list[str] | None = None
+
+
+class ApprovalSubmitIn(BaseModel):
+    """提交正文审批（批三十二）。ast 缺省=使用已保存正文；传入则以本次 AST
+    冻结为新修订，避免未保存内容漏出审批快照。"""
+
+    ast: dict | None = None
+    schema_version: str = ""
+    document_hash: str | None = None
+    workflow_definition_id: str | None = None
+    reviewer_ids: list[str] | None = None
+    gate_mode: str | None = None
+    ratio_threshold: float | None = Field(default=None, ge=0, le=1)
+    label: str | None = None
+    comment: str | None = None
+
+
+class ApprovalActionIn(BaseModel):
+    """审批动作；instance_id 防误操作到另一轮审批。"""
+
+    instance_id: str
+    action: Literal["approved", "rejected"]
+    comment: str | None = None

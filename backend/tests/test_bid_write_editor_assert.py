@@ -14,6 +14,7 @@ from app.extensions.bid_write import crud, models, worker
 from app.extensions.bid_write import routers as R
 from app.extensions.bid_write.executor.editor import run_editor_assertions
 from app.extensions.database import Base, get_db
+from app.extensions.workflow import subject_approval as SA
 
 
 def _cell(role: str, text: str) -> dict:
@@ -241,6 +242,8 @@ async def db():
                 models.BidWritePolicy.__table__,
                 models.TaskDocument.__table__,
                 R._SkillRun.__table__,
+                SA.WorkflowSubjectInstance.__table__,
+                SA.WorkflowSubjectReview.__table__,
             ],
         )
     factory = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)

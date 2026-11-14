@@ -694,6 +694,8 @@
 
 ## backend/app/extensions/bid_write/
 
+- `approval.py` — 批三十二审批业务层:冻结 revision(canonical JSON SHA-256 + 断言快照)、提交/动作编排、审批面投影;提交失败统一回滚不留半保存正文;待审批/已批准锁 PUT /document (~2100 tok)
+- `export.py` — 批三十三交付包:AST→Markdown(marks 剥离)、一级 section 切册、DOCX(A4/页码/TOC/水印)+manifest、DOCX 固定时间戳重打包→确定性 ZIP;导出前用冻结 AST 重跑 gate (~2600 tok)
 - `contracts.py` — bid_write 契约层(批十九 T1,EAI-CUSTOM 2026-11-13)——写作端字段/槽位/断言 (~1808 tok)
 - `crud.py` — bid_write CRUD(批十九 T2)——全部查询带 owner_id 过滤(经 task 联接传导, (~3336 tok)
 - `document_ast_schema.yaml` — bid_write 正文文档 AST 事实层单一 schema(批廿九 16 项口径:14 节点+2 mark,v0.2.0,+deviation_note/para.label) (~1494 tok)
@@ -824,6 +826,7 @@
 
 ## backend/app/extensions/review/
 
+- `gate.py` — 审批 gate 求值(批三十二 +threshold:仅 WEIGHTED/比例签使用;会签驳回即 REJECT,原 majority 不变) (~1200 tok)
 
 ## backend/app/extensions/role/
 
@@ -851,6 +854,7 @@
 
 ## backend/app/extensions/workflow/
 
+- `subject_approval.py` — 批三十二通用 subject 审批实例(workflow_subject_instances/reviews):subject_type+subject_id+subject_version、提交时 graph 快照、DAG 校验/拓扑提取 review 节点、会签/或签/比例签/顺序签、重复动作 409;只解析显式 type=user 绑定 (~3200 tok)
 
 ## backend/app/extensions/workflow/temporal/
 
@@ -983,6 +987,9 @@
 
 ## backend/tests/
 
+- `test_bid_write_approval.py` — 批三十二:提交冻结 revision/编辑锁/审批人只读/重复动作/驳回后新修订/批准 hash 校验/提交失败不留半保存/定义图快照 (~1600 tok)
+- `test_bid_write_export.py` — 批三十三:AST 投影/切册/确定性 ZIP/manifest/DOCX 文本/gate 阻断/快照阻断/篡改/owner-only/导出审计 (~1800 tok)
+- `test_workflow_subject_approval.py` — 批三十二:subject 审批门型矩阵(会签/或签/比例签/顺序签)、非指定人 403、重复操作、驳回终止、显式 user 绑定与版本唯一 (~1400 tok)
 - `test_bid_write_contracts.py` — 批十九 T1 契约层自检:商务子集全部是审查端宇宙真实成员(零新契约铁律)、 (~1000 tok)
 - `test_bid_write_document.py` — 批廿八 M2 T1:正文 AST 存储(bid_write_task_documents 新表 create_all 零迁移)。 (~962 tok)
 - `test_bid_write_editor_schema.py` — 批廿六 M0:document_ast_schema.yaml 单一 schema 自检(EAI-CUSTOM)。 (~845 tok)
@@ -1079,12 +1086,15 @@
 
 ## docs/superpowers/plans/
 
+- `2026-11-14-bid-write-p1-beta33-export-package-plan.md` — bid_write 批三十三:批准修订→DOCX 分册+manifest ZIP、冻结 AST 重跑 gate、导出审计 Implementation Plan (~2600 tok)
+- `2026-11-14-bid-write-p1-beta32-approval-revision-plan.md` — bid_write 批三十二:审批流复用 workflow subject 实例 + 不可变 revision/hash + 驳回可编辑/批准锁定 Implementation Plan (~3200 tok)
 - `2026-11-14-bid-write-p1-beta24-l4-activation-plan.md` — 批廿四 bid_write P1-γ:tender.substantive_clauses 契约 + L4 模型审查激活(水印摘除条件)Implementation Plan (~5292 tok)
 - `2026-11-14-bid-write-p1-beta26-editor-m0-plan.md` — bid_write 批廿六(P1-M0)ProseMirror 正文编辑层骨架 实施计划 (~10925 tok)
 - `2026-11-14-bid-write-p1-beta27-editor-m1-constraints-plan.md` — bid_write 批廿七：M1 编辑约束（filterTransaction 三硬约束 + enumCell 下拉）Implementation Plan (~4560 tok)
 - `2026-11-14-bid-write-p1-beta28-editor-m2-decor-liaison-plan.md` — bid_write P1 批廿八 —— 编辑器 M2 装饰联动 实施计划 (~9887 tok)
 - `2026-11-14-bid-write-p1-beta29-negative-deviation-plan.md` — bid_write 批廿九(M3 负偏离展开)Implementation Plan (~5711 tok)
 - `2026-11-14-bid-write-p1-beta30-editor-real-executor-plan.md` — bid_write 批三十(M4 真执行器接线):AST→ctx 覆盖 + 真实 43 条断言 + 锚点侧信道 + 只读端点 + 异步 runner (~1800 tok)
+- `2026-11-14-bid-write-p1-beta31-paste-sanitize-plan.md` — bid_write 批三十一(M5 富文本粘贴清洗):HTML 可见文本提取 + 文本块/块级事务 + 受保护节点拒绝 + 工作台提示 (~1200 tok)
 - `2026-11-14-bid-write-p1-delta-workbench-plan.md` — bid_write 批廿五(P1-δ 前端三栏工作台)L4 投影扩面+编辑率采样源+前端接线 实施计划 (~3984 tok)
 
 ## docs/superpowers/plans/2026-09-13-coal-mine-tunneling-regulation-v2.md
@@ -1518,6 +1528,8 @@
 
 ## frontend/src/extensions/bid-write/components/
 
+- `ApprovalPanel.tsx` — 批三十二审批面:revision 号/hash/状态/断言快照/节点意见;owner 提交当前 AST,审批人批准/驳回,批准后驱动编辑器只读 (~1900 tok)
+- `DeliveryPackageCard.tsx` — 批三十三交付包面:仅批准修订可生成 DOCX 分册 ZIP;展示包哈希/水印/最近导出审计 (~1200 tok)
 - `ExportView.tsx` — ⑥ 导出适配(批廿五 P1-δ 真接线)。 (~4012 tok)
 - `GenerateView.tsx` — ③ 生成配置与执行(批廿五 P1-δ 真接线)。 (~3511 tok)
 - `IntakeView.tsx` — IntakeView (~6560 tok)
@@ -1526,13 +1538,14 @@
 
 ## frontend/src/extensions/bid-write/editor/
 
-- `BidWriteEditor.tsx` — EAI-CUSTOM 批廿六 M0——PM EditorView React 壳;批廿八 M2+assertRunner/onAssert/onProvenanceJump(latest-ref;runAssert serialize→runner→assert:apply,抛错=校验未完成) (~1420 tok)
+- `BidWriteEditor.tsx` — EAI-CUSTOM 批廿六 M0——PM EditorView React 壳;批廿八 M2+assertRunner/onAssert/onProvenanceJump;批三十一 +onPasteSanitized(latest-ref;runAssert serialize→runner→assert:apply,抛错=校验未完成) (~1440 tok)
 - `constraints.ts` — nodeEnd=pos+nodeSize;内部用于 enum 内容区判定 (~2033 tok)
 - `decor.ts` — 测试面:Decoration.find() 条目的窄化形态(node env 无 DOM,只看 from/to/class);批三十 +response 表行 `rt:{row_id}` 锚点 (~4200 tok)
 - `demo.ts` — EAI-CUSTOM 批廿六 M0——M0 演示文档(后端正文存储未接入;方案 §15② 最小样例: (~1735 tok)
 - `deviation.ts` — 批廿九 M3 负偏离自愈展开 deviationPlugin(appendTransaction 不变式:负偏离∧无note→表后插/缺labeled para→补/非负偏离∧全空→收拢;孤儿非空保留出D1;source=system 并入 undo 事件) (~1255 tok)
 - `doc.ts` — 序列化文本投影(导出投影口径:marks 不进文本,方案 §四 剥离规则)。 (~168 tok)
-- `state.ts` — EAI-CUSTOM 批廿六 M0——事务分层 meta.source ∈ {user, system, decor}(方案 §七); (~494 tok)
+- `paste.ts` — 批三十一 M5 富文本粘贴清洗:HTML 可见文本提取(script/style/隐藏节点剔除)+ 文本块/块级事务规划 + pastePlugin(受保护节点复用 findProtected;外部 HTML 不直接进 AST) (~1300 tok)
+- `state.ts` — EAI-CUSTOM 批廿六 M0——事务分层 meta.source ∈ {user, system, decor}(方案 §七);批三十一挂 pastePlugin (~520 tok)
 
 ## frontend/src/extensions/biz-pipeline/
 
@@ -1791,11 +1804,15 @@
 
 ## frontend/tests/unit/extensions/
 
+- `bid-write-approval-panel.dom.test.tsx` — 批三十二审批面 DOM:owner 提交/审批人动作/只读与驳回恢复 (~900 tok)
+- `bid-write-export-package.dom.test.tsx` — 批三十三交付包 DOM:未批准禁用/批准后生成/结果与审计历史 (~600 tok)
 - `bid-write-editor-assert.test.ts` — 结构守卫:noUncheckedIndexedAccess 下的显式收窄(结构漂移即抛) (~1602 tok)
 - `bid-write-editor-constraints.test.ts` — 演示文档中首个含 needle 的文本节点位置 (~1890 tok)
 - `bid-write-editor-decor.test.ts` — 批廿八 M2 T2:装饰层——assert:apply 侧信道映射 + 纯装饰不污染(方案 §六/§十二)。 (~1371 tok)
 - `bid-write-editor-deviation.test.ts` — 测试填充用:整 para replaceWith 保 label attrs。 (~1256 tok)
 - `bid-write-editor-history.test.ts` — EditorState: type (~550 tok)
+- `bid-write-editor-paste.test.ts` — 批三十一 M5:plain text 清洗/文本块合并/块级 para/锁定段与来源列拒绝/跨块拒绝 (~900 tok)
+- `bid-write-editor-paste.dom.test.ts` — 批三十一 M5:DOM HTML 清洗(script/style/hidden/table)+ pastePlugin dispatch/回调/违规 (~950 tok)
 - `bid-write-editor-roundtrip.test.ts` — 规范化 JSON:键排序 + 对称剔除空串值后逐字节比较。 (~548 tok)
 - `bid-write-editor-schema.test.ts` — Declares amount (~564 tok)
 - `bid-write-helpers.test.ts` — row: task, gap (~1623 tok)

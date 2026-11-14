@@ -12,6 +12,11 @@
                                     (M1-c:最近执行行 pending/skipped/门禁裁决)
   POST /tasks/{id}/assert           编辑器真执行器(批三十;只读 AST→任务 ctx→43 条断言,
                                     不落 skill_run;422=ast 根非法/row_id 重复)
+  GET  /tasks/{id}/approval         最新修订 + workflow subject 审批实例(owner/审批人可读)
+  POST /tasks/{id}/approval/submit  冻结正文修订并启动审批(owner;409=待审批/已批准/哈希不符)
+  POST /tasks/{id}/approval/action  指定审批人批准/驳回(403=非审批人;409=重复动作)
+  GET  /tasks/{id}/revisions        修订账本(不含 AST)
+  GET  /tasks/{id}/revisions/{rid}  单条修订(含 AST;hash_ok 发现篡改)
 
 owner 隔离:与 bid_review/routers.py 同款模块级 current_owner(require_permission)。
 """
@@ -19,13 +24,14 @@ owner 隔离:与 bid_review/routers.py 同款模块级 current_owner(require_per
 import asyncio
 import logging
 import re
+from urllib.parse import quote
 
-from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
+from fastapi import APIRouter, Depends, File, Form, HTTPException, Response, UploadFile
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.extensions.auth.middleware import require_permission
 from app.extensions.bid_review import parse
-from app.extensions.bid_write import contracts, crud, schemas, worker
+from app.extensions.bid_write import approval, contracts, crud, export, schemas, worker
 from app.extensions.bid_write.executor.models import SkillRun as _SkillRun  # noqa: F401 — import 注册共享 Base metadata(bug-4303 律)
 from app.extensions.database import get_db
 from app.extensions.schemas import CurrentUser
@@ -37,6 +43,22 @@ router = APIRouter(prefix="/api/extensions/bid-write", tags=["Bid Write"])
 
 async def current_owner(user: CurrentUser = Depends(require_permission("system:access"))) -> str:
     return str(user.id)
+
+
+async def _task_for_read(db: AsyncSession, task_id: str, user_id: str):
+    """Task owner or an assigned bid-write reviewer may read the workbench.
+
+    Mutation endpoints keep using ``crud.get_task`` (owner-only).
+    """
+
+    task = await crud.get_task_by_id(db, task_id)
+    if task is None:
+        return None
+    if task.owner_id == user_id:
+        return task
+    if await crud.user_is_bid_write_reviewer(db, task_id, user_id):
+        return task
+    return None
 
 
 def _enqueue(task) -> None:
@@ -104,7 +126,7 @@ async def list_tasks(db: AsyncSession = Depends(get_db), owner_id: str = Depends
 
 @router.get("/tasks/{task_id}", response_model=schemas.WriteTaskOut)
 async def get_task(task_id: str, db: AsyncSession = Depends(get_db), owner_id: str = Depends(current_owner)):
-    task = await crud.get_task(db, task_id=task_id, owner_id=owner_id)
+    task = await _task_for_read(db, task_id, owner_id)
     if task is None:
         raise HTTPException(status_code=404, detail="任务不存在")
     return task
@@ -112,10 +134,10 @@ async def get_task(task_id: str, db: AsyncSession = Depends(get_db), owner_id: s
 
 @router.get("/tasks/{task_id}/matrix")
 async def get_matrix(task_id: str, db: AsyncSession = Depends(get_db), owner_id: str = Depends(current_owner)):
-    task = await crud.get_task(db, task_id=task_id, owner_id=owner_id)
+    task = await _task_for_read(db, task_id, owner_id)
     if task is None:
         raise HTTPException(status_code=404, detail="任务不存在")
-    rows = await crud.list_matrix(db, task_id=task_id, owner_id=owner_id)
+    rows = await crud.list_matrix(db, task_id=task_id, owner_id=task.owner_id)
     return {
         "items": [schemas.MatrixRowOut.model_validate(r) for r in rows],
         "schema_version": contracts.SCHEMA_VERSION,
@@ -165,9 +187,10 @@ async def get_gaps(task_id: str, db: AsyncSession = Depends(get_db), owner_id: s
     有且可佐证/有但缺佐证两态在素材六类实体批二十落地后按 entity_ref 反查兑现)
     + 断言维度(批二十 M1-c):最近一次执行行的待补清单/SKIPPED 注记/门禁裁决;
     未执行过断言=断言维度 null(不造空绿)。"""
-    task = await crud.get_task(db, task_id=task_id, owner_id=owner_id)
+    task = await _task_for_read(db, task_id, owner_id)
     if task is None:
         raise HTTPException(status_code=404, detail="任务不存在")
+    owner_id = task.owner_id
     rows = await crud.list_matrix(db, task_id=task_id, owner_id=owner_id)
     # 批廿二 P1-α:素材三态兑现——attachment 行与 owner 素材库做名归一包含匹配
     # (att 行 requirement=「no=.. name=.. clause=..」拼接摘录,故用包含而非全等;
@@ -233,10 +256,10 @@ _AST_VERSION_RE = re.compile(r"^\d+\.\d+\.\d+$")
 async def get_task_document(task_id: str, db: AsyncSession = Depends(get_db), owner_id: str = Depends(current_owner)):
     """正文 AST 读取(批廿八 M2 装饰联动数据面;方案 §三 唯一真值=AST)。
     未保存过=ast:null——前端回退演示文档(诚实面:不造空文档冒充生成产物)。"""
-    task = await crud.get_task(db, task_id=task_id, owner_id=owner_id)
+    task = await _task_for_read(db, task_id, owner_id)
     if task is None:
         raise HTTPException(status_code=404, detail="任务不存在")
-    doc = await crud.get_document(db, task_id=task_id, owner_id=owner_id)
+    doc = await crud.get_document(db, task_id=task_id, owner_id=task.owner_id)
     if doc is None:
         return {"ast": None, "schema_version": "", "updated_at": None}
     return {
@@ -254,6 +277,13 @@ async def put_task_document(task_id: str, body: schemas.DocumentIn, db: AsyncSes
     task = await crud.get_task(db, task_id=task_id, owner_id=owner_id)
     if task is None:
         raise HTTPException(status_code=404, detail="任务不存在")
+    latest = await crud.latest_revision(db, task_id, owner_id)
+    if latest is not None and latest.status == "submitted":
+        raise HTTPException(status_code=409, detail="正文正在审批中，禁止修改；驳回后可继续编辑")
+    if latest is not None and latest.status == "approved":
+        raise HTTPException(status_code=409, detail="正文已批准并锁定；如确需修改请从新修订流程重开")
+    if await approval.has_pending_approval(db, task_id):
+        raise HTTPException(status_code=409, detail="正文正在审批中，禁止修改；驳回后可继续编辑")
     if not isinstance(body.ast, dict) or body.ast.get("type") != "doc":
         raise HTTPException(status_code=422, detail='ast 根节点 type 必须为 "doc"')
     if not _AST_VERSION_RE.match(body.schema_version or ""):
@@ -266,6 +296,139 @@ async def put_task_document(task_id: str, body: schemas.DocumentIn, db: AsyncSes
     }
 
 
+@router.get("/tasks/{task_id}/approval")
+async def get_task_approval(task_id: str, db: AsyncSession = Depends(get_db), owner_id: str = Depends(current_owner)):
+    """最新修订 + workflow 审批实例 + 当前用户可执行动作（owner/审批人均可读）。"""
+
+    task = await _task_for_read(db, task_id, owner_id)
+    if task is None:
+        raise HTTPException(status_code=404, detail="任务不存在")
+    return await approval.get_approval_state(db, task_id, task.owner_id, current_user=owner_id)
+
+
+@router.post("/tasks/{task_id}/approval/submit")
+async def submit_task_approval(task_id: str, body: schemas.ApprovalSubmitIn, db: AsyncSession = Depends(get_db), owner_id: str = Depends(current_owner)):
+    """冻结正文修订并启动 workflow subject 审批；仅任务 owner 可提交。"""
+
+    task = await crud.get_task(db, task_id=task_id, owner_id=owner_id)
+    if task is None:
+        raise HTTPException(status_code=404, detail="任务不存在")
+    ctx = await worker.build_task_ctx(db, task, owner_id)
+    try:
+        return await approval.submit_revision(db, task=task, owner_id=owner_id, body=body, ctx=ctx)
+    except approval.ApprovalNotFound as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except approval.ApprovalForbidden as exc:
+        raise HTTPException(status_code=403, detail=str(exc)) from exc
+    except approval.ApprovalConflict as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+    except (approval.ApprovalError, ValueError) as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+
+
+@router.post("/tasks/{task_id}/approval/action")
+async def act_task_approval(task_id: str, body: schemas.ApprovalActionIn, db: AsyncSession = Depends(get_db), owner_id: str = Depends(current_owner)):
+    """指定审批人提交批准/驳回；非指定审批人 403，重复动作 409。"""
+
+    task = await crud.get_task_by_id(db, task_id)
+    if task is None:
+        raise HTTPException(status_code=404, detail="任务不存在")
+    try:
+        return await approval.act_on_approval(
+            db,
+            task_id=task_id,
+            owner_id=task.owner_id,
+            instance_id=body.instance_id,
+            reviewer_id=owner_id,
+            action=body.action,
+            comment=body.comment,
+        )
+    except approval.ApprovalNotFound as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except approval.ApprovalForbidden as exc:
+        raise HTTPException(status_code=403, detail=str(exc)) from exc
+    except approval.ApprovalConflict as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+    except (approval.ApprovalError, ValueError) as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+
+
+@router.get("/tasks/{task_id}/revisions")
+async def list_task_revisions(task_id: str, db: AsyncSession = Depends(get_db), owner_id: str = Depends(current_owner)):
+    """只读修订账本（不含 AST 正文，详情走单条端点）。"""
+
+    task = await _task_for_read(db, task_id, owner_id)
+    if task is None:
+        raise HTTPException(status_code=404, detail="任务不存在")
+    rows = await crud.list_revisions(db, task_id, task.owner_id)
+    return {"items": [approval.revision_detail(row, include_ast=False) for row in rows]}
+
+
+@router.get("/tasks/{task_id}/revisions/{revision_id}")
+async def get_task_revision(task_id: str, revision_id: str, db: AsyncSession = Depends(get_db), owner_id: str = Depends(current_owner)):
+    """单条修订详情（含冻结 AST；hash_ok 可发现快照被篡改）。"""
+
+    task = await _task_for_read(db, task_id, owner_id)
+    if task is None:
+        raise HTTPException(status_code=404, detail="任务不存在")
+    revision = await crud.get_revision(db, revision_id, task_id, task.owner_id)
+    if revision is None:
+        raise HTTPException(status_code=404, detail="修订不存在")
+    return approval.revision_detail(revision)
+
+
+@router.post("/tasks/{task_id}/revisions/{revision_id}/export")
+async def export_task_revision(task_id: str, revision_id: str, db: AsyncSession = Depends(get_db), owner_id: str = Depends(current_owner)):
+    """批准修订 → DOCX 分册 + manifest ZIP（批三十三）。
+
+    只消费冻结 revision：未批准/哈希篡改/提交快照 D0 阻断/当前导出 gate 阻断
+    一律 409；成功响应头带 export id、bundle sha256、文件数与字节数。"""
+    task = await crud.get_task(db, task_id, owner_id)
+    if task is None:
+        raise HTTPException(status_code=404, detail="任务不存在")
+    revision = await crud.get_revision(db, revision_id, task_id, owner_id)
+    if revision is None:
+        raise HTTPException(status_code=404, detail="修订不存在")
+    try:
+        bundle, record = await export.export_revision(db, task=task, revision=revision)
+    except export.ExportConflict as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+
+    headers = {
+        "Content-Disposition": f"attachment; filename=\"bid-write-delivery.zip\"; filename*=UTF-8''{quote(bundle.filename)}",
+        "X-Export-Id": record.id,
+        "X-Export-Sha256": bundle.sha256,
+        "X-Export-Files": str(bundle.file_count),
+        "X-Export-Bytes": str(bundle.total_bytes),
+        "X-Export-Watermarked": "true" if bundle.watermark else "false",
+    }
+    return Response(content=bundle.payload, media_type="application/zip", headers=headers)
+
+
+@router.get("/tasks/{task_id}/exports")
+async def list_task_exports(task_id: str, db: AsyncSession = Depends(get_db), owner_id: str = Depends(current_owner)):
+    """成功导出审计历史（owner-only；不含文件 blob）。"""
+    task = await crud.get_task(db, task_id, owner_id)
+    if task is None:
+        raise HTTPException(status_code=404, detail="任务不存在")
+    rows = await crud.list_exports(db, task_id, owner_id)
+    return {
+        "items": [
+            {
+                "id": row.id,
+                "revision_id": row.revision_id,
+                "doc_hash": row.doc_hash,
+                "bundle_sha256": row.bundle_sha256,
+                "file_count": row.file_count,
+                "total_bytes": row.total_bytes,
+                "watermark": row.watermark,
+                "created_at": row.created_at.isoformat() if row.created_at else None,
+            }
+            for row in rows
+        ]
+    }
+
+
 @router.post("/tasks/{task_id}/assert")
 async def assert_task_document(task_id: str, body: schemas.EditorAssertIn, db: AsyncSession = Depends(get_db), owner_id: str = Depends(current_owner)):
     """编辑器真执行器(批三十):任务 ctx + 正文 AST 覆盖 → 真实 43 条断言执行,
@@ -275,12 +438,12 @@ async def assert_task_document(task_id: str, body: schemas.EditorAssertIn, db: A
     返回(不静默假绿)。"""
     from app.extensions.bid_write.executor.editor import run_editor_assertions
 
-    task = await crud.get_task(db, task_id=task_id, owner_id=owner_id)
+    task = await _task_for_read(db, task_id, owner_id)
     if task is None:
         raise HTTPException(status_code=404, detail="任务不存在")
     if not isinstance(body.ast, dict) or body.ast.get("type") != "doc":
         raise HTTPException(status_code=422, detail='ast 根节点 type 必须为 "doc"')
-    ctx = await worker.build_task_ctx(db, task, owner_id)
+    ctx = await worker.build_task_ctx(db, task, task.owner_id)
     try:
         return run_editor_assertions(ctx, body.ast, skills=tuple(body.skills) if body.skills else None)
     except ValueError as exc:
@@ -412,10 +575,10 @@ async def put_policy(body: schemas.PolicyBody, db: AsyncSession = Depends(get_db
 @router.get("/tasks/{task_id}/metrics")
 async def get_task_metrics(task_id: str, db: AsyncSession = Depends(get_db), owner_id: str = Depends(current_owner)):
     """最近一次执行的埋点面;未执行过=null(不造空绿,同 gaps 断言维度口径)。"""
-    task = await crud.get_task(db, task_id=task_id, owner_id=owner_id)
+    task = await _task_for_read(db, task_id, owner_id)
     if task is None:
         raise HTTPException(status_code=404, detail="任务不存在")
-    run = await crud.latest_skill_run(db, task_id=task_id, owner_id=owner_id)
+    run = await crud.latest_skill_run(db, task_id=task_id, owner_id=task.owner_id)
     return {
         "metrics": (run.verdict or {}).get("metrics") if run is not None else None,
         "run_at": run.created_at.isoformat() if run is not None and run.created_at else None,

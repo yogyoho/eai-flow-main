@@ -13,7 +13,8 @@
 #
 # M0 边界(诚实面):attrs 只定义不约束——锁定段/金额格编辑约束挂 M1 批;
 # provenance/status_mark 的 decoration 回写挂 M2 批;parseDOM 不定义(hydrate 走
-# nodeFromJSON,粘贴按纯文本落位,富文本粘贴清洗挂后续批)。
+# nodeFromJSON,粘贴由 frontend editor/paste.ts handlePaste 清洗为可见文本行,
+# 外部 HTML 标签/样式永不直接进 AST;批三十一 M5)。
 schema_version: "0.2.0"
 layer: WR
 

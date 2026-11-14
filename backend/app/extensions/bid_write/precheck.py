@@ -165,16 +165,24 @@ async def run_l4_review(fields: dict, materials: str, model_fn) -> dict:
     }
 
 
-async def run_export_gate(ctx: dict, *, l4_model_fn=None) -> dict:
+async def run_export_gate(ctx: dict, *, l4_model_fn=None, ast: dict | None = None) -> dict:
     """导出前置校验(P0 规格 §8):重跑全量 D0 断言 + det 规则层预审查
     (+批廿四 P1-γ:l4_model_fn 供给时叠加 L4 语义审查面 advisory-only——不入
     blocked/reasons;watermark 摘除条件=参与卡零 FAIL/ERROR/need_human/UNKNOWN,
     摘除即 None,否则恒加 EXPORT_RISK_WATERMARK)。blocked=gate D0 FAIL/ERROR 或
-    L1 fatal det FAIL(L4 零贡献,铁律)。"""
+    L1 fatal det FAIL(L4 零贡献,铁律)。
+
+    批三十三:``ast`` 非空时先把冻结 revision AST 覆盖到任务 ctx(price/response/
+    letter/slots)再跑断言与投影;导出与编辑器断言共用 ``prepare_editor_ctx``,
+    避免「审批冻结的正文」与「导出校验的事实」分叉。"""
     from app.extensions.bid_write.contracts import EXPORT_RISK_WATERMARK, SCHEMA_VERSION
     from app.extensions.bid_write.executor.gate import gate_verdict
     from app.extensions.bid_write.executor.runner import run_assertions
 
+    if ast is not None:
+        from app.extensions.bid_write.executor.editor import prepare_editor_ctx
+
+        ctx, _meta = prepare_editor_ctx(ctx, ast)
     report = run_assertions(ctx)
     gate = gate_verdict(report)
     fields = project_bid_fields(ctx)

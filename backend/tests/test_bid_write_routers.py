@@ -13,13 +13,26 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_asyn
 from app.extensions.bid_write import crud, models, worker
 from app.extensions.bid_write import routers as R
 from app.extensions.database import Base, get_db
+from app.extensions.workflow import subject_approval as SA
 
 
 @pytest_asyncio.fixture
 async def db():
     engine = create_async_engine("sqlite+aiosqlite://")
     async with engine.begin() as c:
-        await c.run_sync(Base.metadata.create_all, tables=[models.WriteTask.__table__, models.MatrixRow.__table__, R._SkillRun.__table__, models.MaterialEntity.__table__, models.MaterialProfile.__table__, models.BidWritePolicy.__table__])
+        await c.run_sync(
+            Base.metadata.create_all,
+            tables=[
+                models.WriteTask.__table__,
+                models.MatrixRow.__table__,
+                R._SkillRun.__table__,
+                models.MaterialEntity.__table__,
+                models.MaterialProfile.__table__,
+                models.BidWritePolicy.__table__,
+                SA.WorkflowSubjectInstance.__table__,
+                SA.WorkflowSubjectReview.__table__,
+            ],
+        )
     factory = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
     async with factory() as s:
         yield s

@@ -269,3 +269,107 @@ export interface TaskDocumentResponse {
   schema_version: string;
   updated_at: string | null;
 }
+
+// ── 批三十二:不可变修订 + workflow subject 审批面 ─────────────────────────
+
+export interface ApprovalRevision {
+  id: string;
+  revision_no: number;
+  status: string;
+  doc_hash: string;
+  schema_version: string;
+  assertion_snapshot: Record<string, unknown>;
+  approval_instance_id: string | null;
+  hash_ok: boolean;
+  created_at: string | null;
+  submitted_at: string | null;
+  decided_at: string | null;
+}
+
+export interface ApprovalReview {
+  id: string;
+  node_id: string;
+  node_label: string;
+  reviewer_id: string;
+  reviewer_role: string;
+  sequence: number;
+  status: string;
+  comment: string | null;
+  created_at: string | null;
+  updated_at: string | null;
+}
+
+export interface ApprovalInstance {
+  instance_id: string;
+  status: string;
+  current_node_id: string | null;
+  current_node_label: string;
+  gate_mode: string;
+  definition_id: string | null;
+  workflow_source: string;
+  label: string | null;
+  created_by: string;
+  created_at: string | null;
+  decided_at: string | null;
+  can_act: boolean;
+  my_review: {
+    id: string;
+    node_id: string;
+    reviewer_id: string;
+    status: string;
+    comment: string | null;
+  } | null;
+  reviews: ApprovalReview[];
+}
+
+export interface TaskApprovalResponse {
+  revision: ApprovalRevision | null;
+  approval: ApprovalInstance | null;
+  revisions: ApprovalRevision[];
+  is_owner: boolean;
+}
+
+// ── 批三十三:批准修订 DOCX 交付包 ─────────────────────────────────────────
+
+export interface ExportRecord {
+  id: string;
+  revision_id: string;
+  doc_hash: string;
+  bundle_sha256: string;
+  file_count: number;
+  total_bytes: number;
+  watermark: string | null;
+  created_at: string | null;
+}
+
+export interface ExportHistoryResponse {
+  items: ExportRecord[];
+}
+
+export interface ExportDownload {
+  blob: Blob;
+  filename: string;
+  exportId: string;
+  sha256: string;
+  fileCount: number;
+  totalBytes: number;
+  watermarked: boolean;
+}
+
+export interface ApprovalSubmitInput {
+  ast: AstJsonNode;
+  schema_version: string;
+  document_hash?: string;
+  workflow_definition_id?: string;
+  reviewer_ids?: string[];
+  gate_mode?: string;
+  ratio_threshold?: number;
+  label?: string;
+  comment?: string;
+}
+
+export interface ApprovalActionInput {
+  instance_id: string;
+  action: "approved" | "rejected";
+  comment?: string;
+}

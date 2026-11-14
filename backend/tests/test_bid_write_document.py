@@ -11,6 +11,7 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_asyn
 from app.extensions.bid_write import crud, models
 from app.extensions.bid_write import routers as R
 from app.extensions.database import Base, get_db
+from app.extensions.workflow import subject_approval as SA
 
 DOC = {"type": "doc", "content": [{"type": "para", "attrs": {"slot_id": "s1"}}]}
 
@@ -19,7 +20,16 @@ DOC = {"type": "doc", "content": [{"type": "para", "attrs": {"slot_id": "s1"}}]}
 async def db():
     engine = create_async_engine("sqlite+aiosqlite://")
     async with engine.begin() as c:
-        await c.run_sync(Base.metadata.create_all, tables=[models.WriteTask.__table__, models.TaskDocument.__table__])
+        await c.run_sync(
+            Base.metadata.create_all,
+            tables=[
+                models.WriteTask.__table__,
+                models.TaskDocument.__table__,
+                models.BidWriteDocumentRevision.__table__,
+                SA.WorkflowSubjectInstance.__table__,
+                SA.WorkflowSubjectReview.__table__,
+            ],
+        )
     factory = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
     async with factory() as s:
         yield s

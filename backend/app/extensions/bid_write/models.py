@@ -7,7 +7,7 @@ from __future__ import annotations
 
 from datetime import UTC, datetime
 
-from sqlalchemy import JSON, Boolean, DateTime, Float, ForeignKey, String, Text, UniqueConstraint
+from sqlalchemy import JSON, Boolean, DateTime, Float, ForeignKey, Integer, String, Text, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column
 
 # 共享 metadata(bug-4303:首版误自建私有 DeclarativeBase,gateway init_db create_all
@@ -124,3 +124,51 @@ class TaskDocument(Base):
     ast: Mapped[dict] = mapped_column(JSON, default=dict)
     schema_version: Mapped[str] = mapped_column(String(20), default="")
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now, onupdate=_now)
+
+
+class BidWriteDocumentRevision(Base):
+    """Immutable document revision frozen at approval submission (批三十二).
+
+    The mutable editor buffer lives in ``bid_write_task_documents``; approval
+    consumes only this table.  ``doc_hash`` is the SHA-256 of canonical JSON so
+    a changed approved snapshot is detectable.
+    """
+
+    __tablename__ = "bid_write_document_revisions"
+    __table_args__ = (UniqueConstraint("task_id", "revision_no", name="uq_bid_write_revision_no"),)
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=_id)
+    task_id: Mapped[str] = mapped_column(String(36), ForeignKey("bid_write_tasks.id"), index=True)
+    owner_id: Mapped[str] = mapped_column(String(64), index=True)
+    revision_no: Mapped[int] = mapped_column(Integer)
+    ast: Mapped[dict] = mapped_column(JSON, default=dict)
+    schema_version: Mapped[str] = mapped_column(String(20), default="")
+    doc_hash: Mapped[str] = mapped_column(String(64), index=True)
+    assertion_snapshot: Mapped[dict] = mapped_column(JSON, default=dict)
+    status: Mapped[str] = mapped_column(String(20), default="submitted", index=True)  # submitted|approved|rejected|superseded
+    approval_instance_id: Mapped[str | None] = mapped_column(String(36), nullable=True, index=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)
+    submitted_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)
+    decided_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+
+class BidWriteExport(Base):
+    """Successful delivery-package export audit (批三十三).
+
+    Blobs are not stored: the approved revision + fixed manifest inputs reproduce
+    the package deterministically.  This row records what was exported, from
+    which frozen revision, and the exact bundle hash the user received.
+    """
+
+    __tablename__ = "bid_write_exports"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=_id)
+    task_id: Mapped[str] = mapped_column(String(36), ForeignKey("bid_write_tasks.id"), index=True)
+    revision_id: Mapped[str] = mapped_column(String(36), ForeignKey("bid_write_document_revisions.id"), index=True)
+    owner_id: Mapped[str] = mapped_column(String(64), index=True)
+    doc_hash: Mapped[str] = mapped_column(String(64))
+    bundle_sha256: Mapped[str] = mapped_column(String(64), index=True)
+    file_count: Mapped[int] = mapped_column(Integer, default=0)
+    total_bytes: Mapped[int] = mapped_column(Integer, default=0)
+    watermark: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)

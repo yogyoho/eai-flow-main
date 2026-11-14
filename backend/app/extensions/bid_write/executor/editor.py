@@ -647,11 +647,14 @@ def _summary(states: dict) -> dict:
     return counts
 
 
-def run_editor_assertions(base_ctx: dict, ast: dict, skills: tuple[str, ...] | list[str] | None = None) -> dict:
-    """真实执行器 → 编辑器侧信道。返回 JSON 可序列化 payload。
+def prepare_editor_ctx(base_ctx: dict, ast: dict) -> tuple[dict, dict]:
+    """把冻结 AST 覆盖到任务 ctx（导出 gate 与编辑器断言共用同一事实面）。
+
+    Returns:
+        ``(ctx, meta)``；ctx 已合并 price/response/letter 与 pre.* 断言输入。
 
     Raises:
-        ValueError: ast 非法 / row_id 重复(router 422)。
+        ValueError: ast 非法 / row_id 重复。
     """
     if not isinstance(ast, dict) or ast.get("type") != "doc":
         raise ValueError('ast 根节点 type 必须为 "doc"')
@@ -683,6 +686,17 @@ def run_editor_assertions(base_ctx: dict, ast: dict, skills: tuple[str, ...] | l
     slots = bid_letter.get("slots") or {}
     if slots.get("total_amount_num") is not None and price_sheet.get("detail_total") is not None:
         pre["rt_cross_field"] = {"total_amount": {"rt": slots["total_amount_num"], "other": price_sheet["detail_total"]}}
+
+    return ctx, meta
+
+
+def run_editor_assertions(base_ctx: dict, ast: dict, skills: tuple[str, ...] | list[str] | None = None) -> dict:
+    """真实执行器 → 编辑器侧信道。返回 JSON 可序列化 payload。
+
+    Raises:
+        ValueError: ast 非法 / row_id 重复(router 422)。
+    """
+    ctx, meta = prepare_editor_ctx(base_ctx, ast)
 
     report = run_assertions(ctx, skills)
 

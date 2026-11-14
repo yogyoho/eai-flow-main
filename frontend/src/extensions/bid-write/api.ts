@@ -10,7 +10,11 @@ import type { AssertPayload } from "@/extensions/bid-write/editor/decor";
 import type { AstJsonNode } from "@/extensions/bid-write/editor/schema.gen";
 
 import type {
+  ApprovalActionInput,
+  ApprovalSubmitInput,
+  ExportDownload,
   ExportGateResponse,
+  ExportHistoryResponse,
   GapsResponse,
   GenerateKnobs,
   GenerateResponse,
@@ -22,6 +26,7 @@ import type {
   MatrixRowPatch,
   PolicyBody,
   RegistryResponse,
+  TaskApprovalResponse,
   TaskDocumentResponse,
   TaskMetricsResponse,
   WriteTaskListResponse,
@@ -277,5 +282,103 @@ export async function assertTaskDocument(
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(input),
     },
+  );
+}
+
+// ── 批三十二:审批修订面 ───────────────────────────────────────────────────
+
+/** 最新修订 + workflow 审批实例；任务 owner / 被指派审批人可读。 */
+export async function getTaskApproval(
+  taskId: string,
+): Promise<TaskApprovalResponse> {
+  return requestJson<TaskApprovalResponse>(
+    `/tasks/${encodeURIComponent(taskId)}/approval`,
+  );
+}
+
+/** 冻结当前 AST 为新修订并启动审批；owner 专属。 */
+export async function submitTaskApproval(
+  taskId: string,
+  input: ApprovalSubmitInput,
+): Promise<TaskApprovalResponse> {
+  return requestJson<TaskApprovalResponse>(
+    `/tasks/${encodeURIComponent(taskId)}/approval/submit`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(input),
+    },
+  );
+}
+
+/** 指定审批人批准/驳回；重复动作 409，非指定审批人 403。 */
+export async function actTaskApproval(
+  taskId: string,
+  input: ApprovalActionInput,
+): Promise<TaskApprovalResponse> {
+  return requestJson<TaskApprovalResponse>(
+    `/tasks/${encodeURIComponent(taskId)}/approval/action`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(input),
+    },
+  );
+}
+
+// ── 批三十三:批准修订 DOCX 交付包 ─────────────────────────────────────────
+
+export function filenameFromDisposition(value: string | null): string | null {
+  if (!value) return null;
+  const encoded = /filename\*=UTF-8''([^;]+)/i.exec(value);
+  if (encoded?.[1]) {
+    try {
+      return decodeURIComponent(encoded[1]);
+    } catch {
+      return encoded[1];
+    }
+  }
+  const plain = /filename="?([^";]+)"?/i.exec(value);
+  return plain?.[1] ?? null;
+}
+
+/** 生成批准修订的 DOCX 分册交付包（ZIP）；失败抛 ApiError 保留后端 detail。 */
+export async function exportTaskRevision(
+  taskId: string,
+  revisionId: string,
+): Promise<ExportDownload> {
+  const res = await fetch(
+    `${API_BASE}/tasks/${encodeURIComponent(taskId)}/revisions/${encodeURIComponent(revisionId)}/export`,
+    { method: "POST" },
+  );
+  if (!res.ok) {
+    const data = await res
+      .clone()
+      .json()
+      .catch(() => null);
+    throw new ApiError(
+      detailOf(data) ?? `导出失败（HTTP ${res.status}）`,
+      res.status,
+    );
+  }
+  const blob = await res.blob();
+  return {
+    blob,
+    filename: filenameFromDisposition(res.headers.get("Content-Disposition")) ??
+      "bid-write-delivery.zip",
+    exportId: res.headers.get("X-Export-Id") ?? "",
+    sha256: res.headers.get("X-Export-Sha256") ?? "",
+    fileCount: Number(res.headers.get("X-Export-Files") ?? "") || 0,
+    totalBytes: Number(res.headers.get("X-Export-Bytes") ?? "") || blob.size,
+    watermarked: res.headers.get("X-Export-Watermarked") === "true",
+  };
+}
+
+/** 成功导出审计历史（owner-only；不含 blob）。 */
+export async function listTaskExports(
+  taskId: string,
+): Promise<ExportHistoryResponse> {
+  return requestJson<ExportHistoryResponse>(
+    `/tasks/${encodeURIComponent(taskId)}/exports`,
   );
 }

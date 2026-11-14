@@ -64,6 +64,13 @@ async def get_task(session: AsyncSession, task_id: str, owner_id: str) -> WriteT
     return result.scalar_one_or_none()
 
 
+async def get_task_by_id(session: AsyncSession, task_id: str) -> WriteTask | None:
+    """Unfiltered task lookup (read access is decided by the router layer)."""
+
+    result = await session.execute(select(WriteTask).where(WriteTask.id == task_id))
+    return result.scalar_one_or_none()
+
+
 async def set_status(session: AsyncSession, task: WriteTask, status: str, progress: dict | None = None, error: str | None = None) -> WriteTask:
     task.status = status
     if progress is not None:
@@ -260,7 +267,7 @@ async def get_document(session: AsyncSession, task_id: str, owner_id: str) -> Ta
     return res.scalar_one_or_none()
 
 
-async def put_document(session: AsyncSession, task_id: str, owner_id: str, *, ast: dict, schema_version: str) -> TaskDocument:
+async def put_document(session: AsyncSession, task_id: str, owner_id: str, *, ast: dict, schema_version: str, commit: bool = True) -> TaskDocument:
     """正文 AST 保存(批廿八 M2;PUT 幂等全量,首存建行重存覆盖)。调用方
     (routers)先 get_task 卡 owner——越 owner 的 task 在路由层 404,不进本函数。"""
     from app.extensions.bid_write.models import TaskDocument
@@ -272,6 +279,130 @@ async def put_document(session: AsyncSession, task_id: str, owner_id: str, *, as
     else:
         doc.ast = ast
         doc.schema_version = schema_version
-    await session.commit()
+    if commit:
+        await session.commit()
+    else:
+        await session.flush()
     await session.refresh(doc)
     return doc
+
+
+# --- Approval revisions -------------------------------------------------------
+
+
+async def latest_revision(session: AsyncSession, task_id: str, owner_id: str):
+    from app.extensions.bid_write.models import BidWriteDocumentRevision
+
+    result = await session.execute(select(BidWriteDocumentRevision).where(BidWriteDocumentRevision.task_id == task_id, BidWriteDocumentRevision.owner_id == owner_id).order_by(BidWriteDocumentRevision.revision_no.desc()))
+    return result.scalars().first()
+
+
+async def list_revisions(session: AsyncSession, task_id: str, owner_id: str):
+    from app.extensions.bid_write.models import BidWriteDocumentRevision
+
+    result = await session.execute(select(BidWriteDocumentRevision).where(BidWriteDocumentRevision.task_id == task_id, BidWriteDocumentRevision.owner_id == owner_id).order_by(BidWriteDocumentRevision.revision_no.desc()))
+    return list(result.scalars().all())
+
+
+async def get_revision(session: AsyncSession, revision_id: str, task_id: str, owner_id: str):
+    from app.extensions.bid_write.models import BidWriteDocumentRevision
+
+    result = await session.execute(
+        select(BidWriteDocumentRevision).where(
+            BidWriteDocumentRevision.id == revision_id,
+            BidWriteDocumentRevision.task_id == task_id,
+            BidWriteDocumentRevision.owner_id == owner_id,
+        )
+    )
+    return result.scalar_one_or_none()
+
+
+async def create_revision(
+    session: AsyncSession,
+    *,
+    task_id: str,
+    owner_id: str,
+    ast: dict,
+    schema_version: str,
+    doc_hash: str,
+    assertion_snapshot: dict,
+):
+    from app.extensions.bid_write.models import BidWriteDocumentRevision
+
+    latest = await latest_revision(session, task_id, owner_id)
+    revision_no = (latest.revision_no + 1) if latest is not None else 1
+    revision = BidWriteDocumentRevision(
+        task_id=task_id,
+        owner_id=owner_id,
+        revision_no=revision_no,
+        ast=ast,
+        schema_version=schema_version,
+        doc_hash=doc_hash,
+        assertion_snapshot=assertion_snapshot,
+        status="submitted",
+    )
+    session.add(revision)
+    await session.commit()
+    await session.refresh(revision)
+    return revision
+
+
+async def set_revision_status(session: AsyncSession, revision, status: str):
+    revision.status = status
+    if status in ("approved", "rejected"):
+        revision.decided_at = datetime.now(UTC)
+    await session.commit()
+    await session.refresh(revision)
+    return revision
+
+
+async def user_is_bid_write_reviewer(session: AsyncSession, task_id: str, user_id: str) -> bool:
+    from app.extensions.workflow import subject_approval
+
+    return await subject_approval.user_is_assigned_reviewer(
+        session,
+        subject_type="bid_write_task",
+        subject_id=task_id,
+        reviewer_id=user_id,
+    )
+
+
+async def create_export(
+    session: AsyncSession,
+    *,
+    task_id: str,
+    revision_id: str,
+    owner_id: str,
+    doc_hash: str,
+    bundle_sha256: str,
+    file_count: int,
+    total_bytes: int,
+    watermark: str | None,
+    commit: bool = True,
+):
+    from app.extensions.bid_write.models import BidWriteExport
+
+    record = BidWriteExport(
+        task_id=task_id,
+        revision_id=revision_id,
+        owner_id=owner_id,
+        doc_hash=doc_hash,
+        bundle_sha256=bundle_sha256,
+        file_count=file_count,
+        total_bytes=total_bytes,
+        watermark=watermark,
+    )
+    session.add(record)
+    if commit:
+        await session.commit()
+        await session.refresh(record)
+    else:
+        await session.flush()
+    return record
+
+
+async def list_exports(session: AsyncSession, task_id: str, owner_id: str):
+    from app.extensions.bid_write.models import BidWriteExport
+
+    result = await session.execute(select(BidWriteExport).where(BidWriteExport.task_id == task_id, BidWriteExport.owner_id == owner_id).order_by(BidWriteExport.created_at.desc()))
+    return list(result.scalars().all())
