@@ -6,7 +6,7 @@
 #   → frontend/src/extensions/bid-write/editor/schema.gen.ts
 # 禁止手写两份;漂移由 test_bid_write_editor_schema.py 钉住。
 #
-# 15 项口径(方案 §二「15 种节点」):13 节点(含 doc 根与 text)+ 2 mark = 15。
+# 16 项口径:14 节点(含 doc 根与 text)+ 2 mark = 16(批廿九 +deviation_note)。
 # PM 节点名 == AST 类型名,零改名(方案 §四 lockedPara 等驼峰为建议名,M0 弃用)。
 # 版本锚点:方案目标 shared_schema@2.4.0;当前仓库断言注册表 assertions/p0.yaml
 # schema_version=1.0.0 独立演进,统一锚点挂后续批,本文件版本独立演进。
@@ -14,7 +14,7 @@
 # M0 边界(诚实面):attrs 只定义不约束——锁定段/金额格编辑约束挂 M1 批;
 # provenance/status_mark 的 decoration 回写挂 M2 批;parseDOM 不定义(hydrate 走
 # nodeFromJSON,粘贴按纯文本落位,富文本粘贴清洗挂后续批)。
-schema_version: "0.1.0"
+schema_version: "0.2.0"
 layer: WR
 
 nodes:
@@ -38,7 +38,8 @@ nodes:
     content: inline*
     attrs:
       - {name: slot_id, type: string, default: ""}
-    to_dom: {tag: p, class: bwe-para}
+      - {name: label, type: string, default: "", note: 展开面字段标签(deviation_note 内 偏离原因/替代方案;空=普通段;toDOM data-label 供 CSS ::before)}
+    to_dom: {tag: p, class: bwe-para, data_attrs: {data-label: label}}
 
   - name: locked_paragraph
     kind: block
@@ -96,6 +97,13 @@ nodes:
       - {name: level, type: enum, values: [D0, D1], default: D0}
       - {name: blocks_export, type: bool, default: true}
     to_dom: {tag: div, class: bwe-todo, data_attrs: {data-missing: missing, data-level: level}}
+
+  - name: deviation_note
+    kind: block
+    content: para+
+    attrs:
+      - {name: row_id, type: string, default: "", note: 关联 table_row.row_id(全文唯一约定,生成器保证);§5.4 负偏离展开面,appendTransaction 自愈维护挂批廿九 deviationPlugin}
+    to_dom: {tag: div, class: bwe-devnote, data_attrs: {data-row-id: row_id}}
 
   - name: attachment_ref
     kind: inline

@@ -9,8 +9,8 @@ import {
   Schema,
 } from "prosemirror-model";
 
-export const AST_SCHEMA_VERSION = "0.1.0" as const;
-export const AST_NODE_COUNT = 15 as const;
+export const AST_SCHEMA_VERSION = "0.2.0" as const;
+export const AST_NODE_COUNT = 16 as const;
 
 export const AST_NODE_TYPES = [
   "doc",
@@ -23,6 +23,7 @@ export const AST_NODE_TYPES = [
   "amount_cell",
   "enum_cell",
   "todo_block",
+  "deviation_note",
   "attachment_ref",
   "toc_entry",
   "text",
@@ -68,8 +69,8 @@ export const bidWriteSchema = new Schema({
     "para": {
       group: "block",
       content: 'inline*',
-      attrs: { slot_id: { default: "" } },
-      toDOM: (_node: PMNode) => ['p', { 'class': 'bwe-para' }, 0] as DOMOutputSpec,
+      attrs: { slot_id: { default: "" }, label: { default: "" } },
+      toDOM: (node: PMNode) => ['p', { 'class': 'bwe-para', 'data-label': node.attrs.label ?? "" }, 0] as DOMOutputSpec,
     },
     "locked_paragraph": {
       group: "block",
@@ -112,6 +113,12 @@ export const bidWriteSchema = new Schema({
       atom: true,
       attrs: { missing: { default: "" }, pending_item_id: { default: "" }, level: { default: "D0" }, blocks_export: { default: true } },
       toDOM: (node: PMNode) => ['div', { 'class': 'bwe-todo', 'data-missing': node.attrs.missing ?? "", 'data-level': node.attrs.level ?? "" }, 0] as DOMOutputSpec,
+    },
+    "deviation_note": {
+      group: "block",
+      content: 'para+',
+      attrs: { row_id: { default: "" } },
+      toDOM: (node: PMNode) => ['div', { 'class': 'bwe-devnote', 'data-row-id': node.attrs.row_id ?? "" }, 0] as DOMOutputSpec,
     },
     "attachment_ref": {
       inline: true,

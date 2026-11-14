@@ -10,11 +10,12 @@ import {
 } from "@/extensions/bid-write/editor/schema.gen";
 
 describe("bid-write editor schema.gen", () => {
-  it("15 项口径:13 节点 + 2 mark", () => {
-    expect(AST_NODE_COUNT).toBe(15);
-    expect(AST_NODE_TYPES).toHaveLength(13);
+  it("16 项口径:14 节点 + 2 mark(批廿九 +deviation_note)", () => {
+    expect(AST_NODE_COUNT).toBe(16);
+    expect(AST_NODE_TYPES).toHaveLength(14);
+    expect(AST_NODE_TYPES).toContain("deviation_note");
     expect(AST_MARK_TYPES).toHaveLength(2);
-    expect(Object.keys(bidWriteSchema.nodes)).toHaveLength(13);
+    expect(Object.keys(bidWriteSchema.nodes)).toHaveLength(14);
     expect(Object.keys(bidWriteSchema.marks)).toHaveLength(2);
   });
 
@@ -54,6 +55,6 @@ describe("bid-write editor schema.gen", () => {
   });
 
   it("版本常量随 yaml", () => {
-    expect(AST_SCHEMA_VERSION).toBe("0.1.0");
+    expect(AST_SCHEMA_VERSION).toBe("0.2.0");
   });
 });

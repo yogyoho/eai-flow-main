@@ -21,7 +21,7 @@ GEN_PATH = (
     / "schema.gen.ts"
 )
 
-# 15 项口径:13 节点(含 doc 根与 text)+ 2 mark
+# 16 项口径:14 节点(含 doc 根与 text)+ 2 mark(批廿九 +deviation_note)
 EXPECTED_NODES = {
     "doc",
     "section",
@@ -33,6 +33,7 @@ EXPECTED_NODES = {
     "amount_cell",
     "enum_cell",
     "todo_block",
+    "deviation_note",
     "attachment_ref",
     "toc_entry",
     "text",
@@ -45,13 +46,13 @@ def _load():
     return yaml.safe_load(YAML_PATH.read_text(encoding="utf-8"))
 
 
-def test_schema_has_15_entries():
+def test_schema_has_16_entries():
     data = _load()
     node_names = {n["name"] for n in data["nodes"]}
     mark_names = {m["name"] for m in data["marks"]}
     assert node_names == EXPECTED_NODES, f"节点集漂移: {node_names ^ EXPECTED_NODES}"
     assert mark_names == EXPECTED_MARKS, f"mark 集漂移: {mark_names ^ EXPECTED_MARKS}"
-    assert len(data["nodes"]) == 13 and len(data["marks"]) == 2
+    assert len(data["nodes"]) == 14 and len(data["marks"]) == 2
 
 
 def test_schema_node_fields_complete():
