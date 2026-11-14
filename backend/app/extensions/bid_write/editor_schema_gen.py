@@ -95,12 +95,14 @@ def _ts_to_dom(spec: dict, is_mark: bool = False) -> str:
     tag = spec["tag"]
     cls = spec.get("class", "")
     data = spec.get("data_attrs", {})
-    param = "mark" if is_mark else "node"
+    # 未引用 attrs 的 toDOM 参数名带 _ 前缀(eslint no-unused-vars /^_/u)
+    base = "mark" if is_mark else "node"
+    param = f"_{base}" if not data else base
     dom_attrs = []
     if cls:
         dom_attrs.append(f"'class': {cls!r}")
     for k, attr_name in data.items():
-        dom_attrs.append(f"{k!r}: {param}.attrs.{attr_name} ?? \"\"")
+        dom_attrs.append(f"{k!r}: {base}.attrs.{attr_name} ?? \"\"")
     attrs_js = "{ " + ", ".join(dom_attrs) + " }" if dom_attrs else "{}"
     wrap = spec.get("wrap", [])
     if wrap:

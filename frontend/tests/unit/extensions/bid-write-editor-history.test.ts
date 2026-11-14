@@ -1,6 +1,10 @@
 import { describe, expect, it } from "@rstest/core";
-import { EditorState, TextSelection, type Transaction } from "prosemirror-state";
 import { redo, undo } from "prosemirror-history";
+import {
+  type EditorState,
+  TextSelection,
+  type Transaction,
+} from "prosemirror-state";
 
 import { demoWorkbenchAst } from "@/extensions/bid-write/editor/demo";
 import {
@@ -34,10 +38,10 @@ describe("meta.source 事务分层(方案 §七 撤销栈口径)", () => {
     const s0 = createBidWriteEditorState(demoWorkbenchAst());
     const s1 = s0.apply(type(s0, USER_MARK));
     const s2 = s1.apply(systemTr(type(s1, SYSTEM_MARK)));
-    let captured: Transaction | null = null;
+    let captured: Transaction | undefined;
     expect(undo(s2, (tr) => { captured = tr; })).toBe(true);
-    expect(captured).not.toBeNull();
-    const s3 = s2.apply(captured as Transaction);
+    expect(captured).toBeDefined();
+    const s3 = s2.apply(captured as unknown as Transaction);
     const text = s3.doc.textBetween(0, s3.doc.content.size, "\n", "");
     expect(text).not.toContain(USER_MARK);
     expect(text).toContain(SYSTEM_MARK);

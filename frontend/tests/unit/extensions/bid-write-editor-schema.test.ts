@@ -21,12 +21,14 @@ describe("bid-write editor schema.gen", () => {
   it("关键节点在位且 attrs 默认正确", () => {
     expect(AST_NODE_TYPES).toContain("locked_paragraph");
     expect(AST_NODE_TYPES).toContain("amount_cell");
+    // PM typings 新版只在 spec 上暴露 attrs(NodeType.attrs 运行时存在但 d.ts 未列)
     const amount = bidWriteSchema.nodes.amount_cell;
-    expect(amount.attrs.readonly.default).toBe(true);
+    expect(amount.spec.attrs?.readonly?.default).toBe(true);
     expect(
-      bidWriteSchema.nodes.locked_paragraph.attrs.similarity_floor.default,
+      bidWriteSchema.nodes.locked_paragraph.spec.attrs?.similarity_floor
+        ?.default,
     ).toBe(0.98);
-    expect(bidWriteSchema.nodes.section.attrs.level.default).toBe(1);
+    expect(bidWriteSchema.nodes.section.spec.attrs?.level?.default).toBe(1);
   });
 
   it("toDOM 类名按 yaml 落位", () => {

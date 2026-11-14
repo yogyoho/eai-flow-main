@@ -57,7 +57,7 @@ export const bidWriteSchema = new Schema({
     "doc": {
       group: "block",
       content: 'block+',
-      toDOM: (node: PMNode) => ['div', { 'class': 'bwe-doc' }, 0] as DOMOutputSpec,
+      toDOM: (_node: PMNode) => ['div', { 'class': 'bwe-doc' }, 0] as DOMOutputSpec,
     },
     "section": {
       group: "block",
@@ -69,7 +69,7 @@ export const bidWriteSchema = new Schema({
       group: "block",
       content: 'inline*',
       attrs: { slot_id: { default: "" } },
-      toDOM: (node: PMNode) => ['p', { 'class': 'bwe-para' }, 0] as DOMOutputSpec,
+      toDOM: (_node: PMNode) => ['p', { 'class': 'bwe-para' }, 0] as DOMOutputSpec,
     },
     "locked_paragraph": {
       group: "block",
@@ -81,31 +81,31 @@ export const bidWriteSchema = new Schema({
       group: "block",
       content: 'table_row+',
       attrs: { table_type: { default: "price" } },
-      toDOM: (node: PMNode) => ['table', { 'class': 'bwe-table' }, ["tbody", 0]] as DOMOutputSpec,
+      toDOM: (_node: PMNode) => ['table', { 'class': 'bwe-table' }, ["tbody", 0]] as DOMOutputSpec,
     },
     "table_row": {
       group: "block",
       content: '(table_cell | amount_cell | enum_cell)+',
       attrs: { row_id: { default: "" } },
-      toDOM: (node: PMNode) => ['tr', { 'class': 'bwe-row' }, 0] as DOMOutputSpec,
+      toDOM: (_node: PMNode) => ['tr', { 'class': 'bwe-row' }, 0] as DOMOutputSpec,
     },
     "table_cell": {
       group: "block",
       content: 'inline*',
       attrs: { col_role: { default: "name" } },
-      toDOM: (node: PMNode) => ['td', { 'class': 'bwe-cell' }, 0] as DOMOutputSpec,
+      toDOM: (_node: PMNode) => ['td', { 'class': 'bwe-cell' }, 0] as DOMOutputSpec,
     },
     "amount_cell": {
       group: "block",
       content: 'inline*',
       attrs: { readonly: { default: true }, computed_expr: { default: "" }, role: { default: "amount" } },
-      toDOM: (node: PMNode) => ['td', { 'class': 'bwe-amount' }, 0] as DOMOutputSpec,
+      toDOM: (_node: PMNode) => ['td', { 'class': 'bwe-amount' }, 0] as DOMOutputSpec,
     },
     "enum_cell": {
       group: "block",
       content: 'inline*',
       attrs: { enum_values: { default: [] }, current: { default: "" } },
-      toDOM: (node: PMNode) => ['td', { 'class': 'bwe-enum' }, 0] as DOMOutputSpec,
+      toDOM: (_node: PMNode) => ['td', { 'class': 'bwe-enum' }, 0] as DOMOutputSpec,
     },
     "todo_block": {
       group: "block",

@@ -1,0 +1,1541 @@
+/* 投标方案（商务）写作 — 在 .brx 设计令牌与 chrome/card/tbl 基础上追加写作专有样式。
+ * 作用域统一 .bwx，复用 ../bid-review/bid-review.css；不改审查模块任何文件。
+ * 注意：grid 子项（.split / .wb）不设置 margin-top，避免同排 panel 顶部错位。 */
+
+/* ── 基础补件：审查模块未定义的写作组件（全部 .bwx 前缀）── */
+.bwx .chrome-main {
+  padding: 20px max(24px, env(safe-area-inset-right, 0px)) 40px
+    max(24px, env(safe-area-inset-left, 0px));
+}
+.bwx .card-h {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 45px;
+  padding: 11px 16px;
+  border-bottom: 1px solid var(--hairline);
+  flex-wrap: wrap;
+}
+.bwx .card-h h3 {
+  font-size: 14px;
+  font-weight: 600;
+}
+.bwx .card-h .hd-sub {
+  font-size: 12px;
+  color: var(--text-3);
+}
+.bwx .card-h .r {
+  margin-left: auto;
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+  min-width: 0;
+}
+.bwx .card-b {
+  padding: 14px 16px;
+}
+.bwx .tbl-wrap {
+  overflow-x: auto;
+}
+.bwx .tbl.dense th,
+.bwx .tbl.dense td {
+  padding: 7px 10px;
+}
+.bwx .bw-mt {
+  margin-top: 12px;
+}
+.bwx .bw-mt-sm {
+  margin-top: 8px;
+}
+.bwx .bw-ml-auto {
+  margin-left: auto;
+}
+.bwx .bw-pad-sm {
+  padding: 8px 12px;
+}
+.bwx .bw-full {
+  width: 100%;
+  justify-content: center;
+}
+.bwx .bw-page-loading {
+  padding: 32px;
+  color: var(--text-3);
+  font-size: 13px;
+}
+.bwx .bw-muted {
+  color: var(--text-3);
+  font-size: 12px;
+  line-height: 1.7;
+  margin: 0;
+}
+.bwx .bw-subline {
+  font-size: 11.5px;
+  color: var(--text-3);
+  margin-top: 2px;
+  line-height: 1.5;
+}
+.bwx .bw-nowrap {
+  white-space: nowrap;
+}
+.bwx .bw-pre-wrap {
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+.bwx .bw-row-note {
+  margin-top: 4px;
+  font-size: 11.5px;
+  color: var(--text-3);
+  max-width: 520px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.bwx .bw-stage-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.bwx .bw-inline-facts {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  flex-wrap: wrap;
+  font-size: 12.5px;
+  color: var(--text-2);
+}
+.bwx .bw-inline-facts b {
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+}
+.bwx .bw-facts-col {
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+}
+.bwx .bw-inline-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  color: var(--main-600);
+  font-size: 12px;
+}
+.bwx .bw-check-line {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--success-700);
+  font-size: 12.5px;
+}
+.bwx .bw-requirement {
+  background: var(--gray-50);
+  border: 1px solid var(--hairline);
+  border-radius: 6px;
+  padding: 10px 12px;
+}
+.bwx .bw-requirement .k {
+  font-size: 11.5px;
+  color: var(--text-3);
+}
+.bwx .bw-requirement p {
+  margin: 5px 0 0;
+  font-size: 13px;
+  line-height: 1.65;
+  color: var(--text);
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+.bwx .bw-search {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--text-3);
+}
+.bwx .bw-search .inp {
+  width: 190px;
+}
+
+/* ── 按钮别名：写作代码沿用 `btn pri` / `btn soft` 语义 ── */
+.bwx .btn.pri {
+  background: var(--main-color);
+  color: var(--btn-pri-fg);
+}
+.bwx .btn.pri:hover {
+  filter: brightness(1.08);
+}
+.bwx .btn.pri[disabled]:hover {
+  filter: none;
+}
+.bwx .btn.soft {
+  border: 1px solid var(--hairline);
+  background: var(--gray-0);
+  color: var(--text-2);
+}
+.bwx .btn.soft:hover {
+  border-color: var(--main-400);
+  color: var(--main-600);
+  background: var(--main-10);
+}
+
+/* ── 徽标 ── */
+.bwx .badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 20px;
+  padding: 0 8px;
+  border-radius: 999px;
+  font-size: 11.5px;
+  font-weight: 500;
+  white-space: nowrap;
+  line-height: 1;
+}
+.bwx .badge i {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: currentColor;
+  flex: none;
+}
+.bwx .badge.b-ok {
+  background: var(--success-50);
+  color: var(--success-700);
+}
+.bwx .badge.b-warn {
+  background: var(--warn-50);
+  color: var(--warn-700);
+}
+.bwx .badge.b-d0 {
+  background: var(--error-50);
+  color: var(--error-700);
+}
+.bwx .badge.b-gray {
+  background: var(--gray-100);
+  color: var(--gray-600);
+}
+.bwx .badge.b-info {
+  background: var(--info-50);
+  color: var(--info-700);
+}
+.bwx .badge.b-d1 {
+  background: var(--warn-50);
+  color: var(--warn-700);
+}
+.bwx .badge.b-d2 {
+  background: var(--second-50);
+  color: var(--second-600);
+}
+.bwx .badge.b-d3 {
+  background: var(--gray-100);
+  color: var(--gray-600);
+}
+
+/* ── 提示条 ── */
+.bwx .banner {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 9px 12px;
+  border-radius: 6px;
+  border: 1px solid transparent;
+  font-size: 12.5px;
+  line-height: 1.6;
+  color: var(--text-2);
+}
+.bwx .banner svg {
+  flex: none;
+  margin-top: 2px;
+}
+.bwx .banner b {
+  color: inherit;
+}
+.bwx .banner.info {
+  background: var(--info-50);
+  border-color: color-mix(in srgb, var(--info-700) 16%, transparent);
+  color: var(--info-700);
+}
+.bwx .banner.ok {
+  background: var(--success-50);
+  border-color: color-mix(in srgb, var(--success-700) 16%, transparent);
+  color: var(--success-700);
+}
+.bwx .banner.warn {
+  background: var(--warn-50);
+  border-color: color-mix(in srgb, var(--warn-700) 20%, transparent);
+  color: var(--warn-900, var(--warn-700));
+}
+.bwx .banner.bad {
+  background: var(--error-50);
+  border-color: color-mix(in srgb, var(--error-700) 18%, transparent);
+  color: var(--error-700);
+}
+
+/* ── 表格补充 ── */
+.bwx .star {
+  color: var(--second-600);
+  font-weight: 700;
+}
+.bwx .excerpt {
+  display: inline-block;
+  max-width: 560px;
+  vertical-align: bottom;
+}
+.bwx .ellipsis {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.bwx .idchip {
+  display: inline-block;
+  font-family: var(--mono);
+  font-size: 11px;
+  background: var(--gray-100);
+  border-radius: 4px;
+  padding: 1px 6px;
+  color: var(--gray-700);
+  white-space: nowrap;
+}
+
+/* ── 表单 ── */
+.bwx .field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 12.5px;
+  color: var(--text-2);
+  min-width: 0;
+}
+.bwx .field .req {
+  color: var(--error-700);
+}
+.bwx .form-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+}
+.bwx .form-grid .field:last-child {
+  grid-column: 1 / -1;
+}
+.bwx .select,
+.bwx .textarea {
+  border: 1px solid var(--gray-200);
+  border-radius: 6px;
+  background: var(--gray-0);
+  color: var(--text);
+  font: inherit;
+  outline: none;
+}
+.bwx .select {
+  height: 30px;
+  padding: 0 8px;
+  font-size: 12.5px;
+}
+.bwx .textarea {
+  width: 100%;
+  padding: 8px 10px;
+  font-size: 13px;
+  line-height: 1.6;
+  resize: vertical;
+}
+.bwx .select:focus,
+.bwx .textarea:focus {
+  border-color: var(--main-500);
+  box-shadow: 0 0 0 2px var(--inp-ring);
+}
+.bwx .bw-select {
+  min-width: 104px;
+  max-width: 132px;
+}
+.bwx .bw-cell-input {
+  width: 100%;
+  min-width: 62px;
+  height: 28px;
+}
+.bwx .bw-total-label {
+  font-weight: 600;
+  color: var(--text-2);
+}
+.bwx .bw-total-value {
+  font-weight: 700;
+  color: var(--text);
+}
+.bwx .bwx .num,
+.bwx .num {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ── 上传 ── */
+.bwx .bw-upload {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  border: 1px dashed var(--gray-300);
+  border-radius: 8px;
+  background: var(--gray-25);
+  color: var(--text-2);
+}
+.bwx .bw-upload svg {
+  color: var(--main-600);
+  flex: none;
+}
+.bwx .bw-upload > div {
+  min-width: 0;
+  flex: 1;
+}
+.bwx .bw-upload b {
+  font-size: 13px;
+  color: var(--text);
+}
+.bwx .bw-upload p {
+  margin: 2px 0 0;
+  font-size: 11.5px;
+  color: var(--text-3);
+}
+.bwx .bw-file-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  border: 1px solid var(--hairline);
+  border-radius: 6px;
+  overflow: hidden;
+}
+.bwx .bw-file-list li {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 6px 10px;
+  font-size: 12px;
+  border-bottom: 1px solid var(--gray-100);
+}
+.bwx .bw-file-list li:last-child {
+  border-bottom: 0;
+}
+.bwx .bw-file-list li span:first-child {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ── 空态 / loading / error ── */
+.bwx .bw-empty {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  padding: 26px 8px;
+  justify-content: center;
+}
+.bwx .bw-empty-ic {
+  width: 42px;
+  height: 42px;
+  border-radius: 10px;
+  background: var(--nav-on-bg);
+  color: var(--main-600);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+}
+.bwx .bw-empty h3 {
+  font-size: 14px;
+  font-weight: 600;
+  margin: 2px 0 0;
+}
+.bwx .bw-empty p {
+  margin: 5px 0 0;
+  max-width: 560px;
+  color: var(--text-3);
+  font-size: 12.5px;
+  line-height: 1.65;
+}
+.bwx .bw-empty-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 12px;
+}
+.bwx .bw-loading,
+.bwx .bw-error {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 16px;
+  font-size: 12.5px;
+  color: var(--text-2);
+}
+.bwx .bw-error {
+  color: var(--error-700);
+  background: var(--error-50);
+  border: 1px solid color-mix(in srgb, var(--error-700) 16%, transparent);
+  border-radius: 6px;
+}
+.bwx .bw-error .btn {
+  margin-left: auto;
+}
+.bwx .bw-spin {
+  animation: bw-spin 0.9s linear infinite;
+}
+@keyframes bw-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .bwx .bw-spin {
+    animation: none;
+  }
+}
+
+/* ── 进度 / 阶段点 ── */
+.bwx .prog {
+  height: 6px;
+  border-radius: 4px;
+  background: var(--gray-100);
+  overflow: hidden;
+  min-width: 120px;
+}
+.bwx .prog i {
+  display: block;
+  height: 100%;
+  background: var(--main-500);
+  border-radius: 4px;
+  transition: width 0.25s;
+}
+.bwx .bw-progress-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.bwx .bw-progress-row .prog {
+  flex: 1;
+  min-width: 220px;
+}
+.bwx .bw-progress-row .num {
+  font-variant-numeric: tabular-nums;
+  color: var(--text-2);
+  font-size: 12px;
+}
+.bwx .stage-dots {
+  display: inline-flex;
+  gap: 4px;
+  align-items: center;
+}
+.bwx .stage-dots i {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--gray-200);
+}
+.bwx .stage-dots i.done {
+  background: var(--main-500);
+}
+.bwx .stage-dots i.cur {
+  background: var(--second-500);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--second-500) 16%, transparent);
+}
+
+/* ── 浮层 ── */
+.bwx .overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+  background: rgba(15, 15, 20, 0.42);
+  display: flex;
+  justify-content: flex-end;
+}
+.bwx .drawer,
+.bwx .modal {
+  background: var(--gray-0);
+  border-left: 1px solid var(--hairline);
+  width: min(560px, 92vw);
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  box-shadow: var(--shadow-pop);
+  animation: bw-slide-in 0.18s ease-out;
+}
+.bwx .modal {
+  margin: auto;
+  border: 1px solid var(--hairline);
+  border-radius: 10px;
+  height: auto;
+  max-height: 88vh;
+  width: min(620px, 92vw);
+  animation: bw-pop 0.16s ease-out;
+}
+.bwx .drawer.bw-wide,
+.bwx .modal.bw-wide {
+  width: min(760px, 94vw);
+}
+.bwx .overlay:has(.modal) {
+  justify-content: center;
+  align-items: center;
+  padding: 24px;
+}
+@keyframes bw-slide-in {
+  from {
+    transform: translateX(24px);
+    opacity: 0.6;
+  }
+}
+@keyframes bw-pop {
+  from {
+    transform: scale(0.98);
+    opacity: 0.6;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .bwx .drawer,
+  .bwx .modal {
+    animation: none;
+  }
+}
+.bwx .ov-hd {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--hairline);
+  flex-wrap: wrap;
+}
+.bwx .ov-hd b {
+  font-size: 14px;
+  font-weight: 600;
+}
+.bwx .ov-hd .hd-sub {
+  font-size: 12px;
+  color: var(--text-3);
+}
+.bwx .ov-hd .xbtn {
+  margin-left: auto;
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-3);
+}
+.bwx .ov-hd .xbtn:hover {
+  background: var(--gray-100);
+  color: var(--text);
+}
+.bwx .ov-bd {
+  padding: 16px;
+  overflow-y: auto;
+  flex: 1;
+}
+.bwx .ov-ft {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  padding: 12px 16px;
+  border-top: 1px solid var(--hairline);
+}
+
+/* ── 门禁 verdict ── */
+.bwx .verdict {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 16px 18px;
+  border-radius: 8px;
+  border: 1px solid var(--hairline);
+  background: var(--gray-0);
+  margin-bottom: 12px;
+  flex-wrap: wrap;
+}
+.bwx .verdict-ic {
+  width: 44px;
+  height: 44px;
+  border-radius: 10px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+}
+.bwx .verdict.blocked {
+  border-color: color-mix(in srgb, var(--error-700) 30%, var(--hairline));
+  background: linear-gradient(90deg, var(--error-50), var(--gray-0) 80%);
+}
+.bwx .verdict.blocked .verdict-ic {
+  background: var(--error-50);
+  color: var(--error-700);
+}
+.bwx .verdict.clean {
+  border-color: color-mix(in srgb, var(--success-700) 26%, var(--hairline));
+  background: linear-gradient(90deg, var(--success-50), var(--gray-0) 80%);
+}
+.bwx .verdict.clean .verdict-ic {
+  background: var(--success-50);
+  color: var(--success-700);
+}
+.bwx .verdict.unrun .verdict-ic {
+  background: var(--warn-50);
+  color: var(--warn-700);
+}
+.bwx .verdict-txt {
+  min-width: 0;
+  flex: 1;
+}
+.bwx .verdict-txt h3 {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 600;
+}
+.bwx .verdict-txt p {
+  margin: 4px 0 0;
+  color: var(--text-3);
+  font-size: 12.5px;
+  line-height: 1.65;
+}
+.bwx .verdict-meta {
+  margin-left: auto;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 2px;
+  color: var(--text-3);
+  font-size: 11.5px;
+  text-align: right;
+}
+.bwx .verdict-meta b {
+  color: var(--text);
+  font-size: 13px;
+}
+.bwx .verdict-meta .mono {
+  margin-top: 3px;
+  color: var(--text-3);
+}
+
+/* ── 解析确认：条款树 + 矩阵 ── */
+.bwx .bw-intake-split {
+  grid-template-columns: 300px minmax(0, 1fr);
+}
+.bwx .bw-tree {
+  max-height: 680px;
+  overflow: auto;
+  padding: 8px;
+}
+.bwx .tree .node {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  text-align: left;
+  padding: 6px 8px;
+  border-radius: 5px;
+  color: var(--text-2);
+  font-size: 12.5px;
+  line-height: 1.45;
+}
+.bwx .tree .node:hover {
+  background: var(--gray-50);
+  color: var(--text);
+}
+.bwx .tree .node.on {
+  background: var(--nav-on-bg);
+  color: var(--main-600);
+  font-weight: 600;
+}
+.bwx .tree .node b {
+  font-weight: 500;
+}
+.bwx .tree .node .cnt {
+  margin-left: auto;
+  font-size: 11px;
+  color: var(--text-3);
+  font-variant-numeric: tabular-nums;
+}
+.bwx .tree .node.leaf {
+  padding-left: 22px;
+  gap: 5px;
+}
+.bwx .tree .node.leaf.on {
+  font-weight: 500;
+}
+.bwx .bw-tree-clause {
+  font-size: 10.5px;
+  color: var(--text-3);
+  flex: none;
+}
+.bwx .bw-tree-text {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+}
+.bwx .bw-tree-alert {
+  font-size: 10px;
+  min-width: 16px;
+  height: 16px;
+  border-radius: 999px;
+  padding: 0 5px;
+  background: var(--error-50);
+  color: var(--error-700);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin-left: 4px;
+}
+.bwx .tree .dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  flex: none;
+  background: var(--gray-400);
+}
+.bwx .tree .dot.ok {
+  background: var(--success-500);
+}
+.bwx .tree .dot.bad {
+  background: var(--error-500);
+}
+.bwx .tree .dot.gray {
+  background: var(--gray-400);
+}
+.bwx .bw-matrix-table .excerpt {
+  max-width: 380px;
+}
+.bwx .tbl tbody tr:focus-visible {
+  outline: 2px solid var(--main-400);
+  outline-offset: -2px;
+}
+
+/* ── 素材核对 ── */
+.bwx .bw-materials-split {
+  grid-template-columns: minmax(0, 1fr) 340px;
+}
+.bwx .bw-detail-card {
+  position: sticky;
+  top: 0;
+}
+.bwx .kv-list {
+  display: grid;
+  grid-template-columns: 86px 1fr;
+  gap: 8px 12px;
+  font-size: 12.5px;
+  align-items: start;
+}
+.bwx .kv-list .k {
+  color: var(--text-3);
+}
+.bwx .kv-list .v {
+  color: var(--text);
+  min-width: 0;
+  word-break: break-word;
+}
+
+/* ── 生成配置 ── */
+.bwx .tpl {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+.bwx .tpl .t {
+  text-align: left;
+  border: 1px solid var(--hairline);
+  border-radius: 8px;
+  padding: 12px;
+  background: var(--gray-25);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  color: var(--text-2);
+  transition: all 0.15s;
+}
+.bwx .tpl .t b {
+  color: var(--text);
+  font-size: 13px;
+}
+.bwx .tpl .t span {
+  font-size: 11.5px;
+  color: var(--text-3);
+  line-height: 1.55;
+}
+.bwx .tpl .t:hover {
+  border-color: var(--main-300);
+}
+.bwx .tpl .t.on {
+  border-color: var(--main-500);
+  background: var(--nav-on-bg);
+  box-shadow: 0 0 0 1px var(--main-300) inset;
+}
+.bwx .bw-skill-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+.bwx .sk label,
+.bwx .pkg label {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 9px 10px;
+  border: 1px solid var(--hairline);
+  border-radius: 7px;
+  background: var(--gray-25);
+  font-size: 12.5px;
+  color: var(--text-2);
+  cursor: pointer;
+}
+.bwx .sk label input,
+.bwx .pkg label input {
+  margin-top: 2px;
+  accent-color: var(--main-color);
+}
+.bwx .sk label span,
+.bwx .pkg label span {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.bwx .sk label b,
+.bwx .pkg label b {
+  color: var(--text);
+  font-weight: 500;
+}
+.bwx .sk label span span,
+.bwx .pkg label span span {
+  color: var(--text-3);
+  font-size: 11px;
+}
+.bwx .sk label.off,
+.bwx .pkg label.off {
+  opacity: 0.55;
+  background: var(--gray-0);
+}
+.bwx .bw-policy-grid {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 10px;
+}
+.bwx .bw-generate-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--gray-100);
+}
+.bwx .bw-gen-list {
+  display: flex;
+  flex-direction: column;
+  margin-top: 4px;
+}
+.bwx .gen-row {
+  display: grid;
+  grid-template-columns: 130px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 14px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--gray-100);
+}
+.bwx .gen-row:last-child {
+  border-bottom: 0;
+}
+.bwx .gen-row b {
+  font-size: 12.5px;
+  font-weight: 500;
+}
+.bwx .gen-row .prog {
+  width: 100%;
+}
+.bwx .gen-sub {
+  font-size: 11px;
+  color: var(--text-3);
+  margin-top: 4px;
+}
+
+/* ── 工作台三栏 ── */
+.bwx .wb {
+  display: grid;
+  grid-template-columns: 280px minmax(0, 1fr) 320px;
+  gap: 12px;
+  align-items: start;
+}
+.bwx .bw-outline {
+  position: sticky;
+  top: 0;
+}
+.bwx .bw-outline .card-b {
+  padding: 6px;
+}
+.bwx .outline-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  text-align: left;
+  padding: 7px 9px;
+  border-radius: 5px;
+  font-size: 12.5px;
+  color: var(--text-2);
+}
+.bwx .outline-item:hover {
+  background: var(--gray-50);
+  color: var(--text);
+}
+.bwx .outline-item.on {
+  background: var(--nav-on-bg);
+  color: var(--main-600);
+  font-weight: 600;
+}
+.bwx .outline-item .oi-t {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+}
+.bwx .outline-item .cnt {
+  margin-left: auto;
+  font-size: 11px;
+  color: var(--text-3);
+}
+.bwx .outline-item .oi-blocked {
+  min-width: 16px;
+  height: 16px;
+  border-radius: 999px;
+  padding: 0 5px;
+  background: var(--error-50);
+  color: var(--error-700);
+  font-size: 10px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.bwx .bw-outline-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 10px 14px;
+  border-top: 1px solid var(--hairline);
+  font-size: 12px;
+  color: var(--text-3);
+}
+.bwx .bw-doc-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11.5px;
+  color: var(--text-3);
+}
+.bwx .ed-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 7px 12px;
+  border-bottom: 1px solid var(--hairline);
+  flex-wrap: wrap;
+  background: var(--gray-25);
+}
+.bwx .ed-toolbar button {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  height: 26px;
+  padding: 0 8px;
+  border-radius: 5px;
+  font-size: 12px;
+  color: var(--text-2);
+}
+.bwx .ed-toolbar button:hover:not([disabled]) {
+  background: var(--gray-100);
+  color: var(--text);
+}
+.bwx .ed-toolbar button[disabled] {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+.bwx .ed-toolbar .sep {
+  width: 1px;
+  height: 16px;
+  background: var(--hairline);
+  margin: 0 4px;
+}
+.bwx .ed-toolbar .ed-spacer {
+  flex: 1;
+}
+.bwx .doc-body {
+  padding: 16px;
+}
+.bwx .bw-empty-doc {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  padding: 20px;
+  border: 1px dashed var(--gray-300);
+  border-radius: 8px;
+  background: var(--gray-25);
+}
+.bwx .bw-empty-doc h3 {
+  margin: 2px 0 0;
+  font-size: 14px;
+}
+.bwx .bw-empty-doc p {
+  margin: 5px 0 0;
+  color: var(--text-3);
+  font-size: 12.5px;
+  line-height: 1.7;
+  max-width: 620px;
+}
+.bwx .bw-doc-sub {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  margin: 18px 0 8px;
+  font-size: 12.5px;
+}
+.bwx .bw-doc-sub span {
+  color: var(--text-3);
+  font-size: 11.5px;
+}
+.bwx .bw-side {
+  min-width: 0;
+}
+.bwx .bw-side-list {
+  list-style: none;
+  margin: 0 0 10px;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.bwx .bw-side-list li {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 8px;
+  border-radius: 5px;
+  background: var(--gray-25);
+  border: 1px solid var(--gray-100);
+  font-size: 12px;
+  color: var(--text-2);
+  min-width: 0;
+}
+.bwx .bw-side-list li span:nth-child(2) {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+  flex: 1;
+}
+.bwx .bw-side-list li .mono {
+  font-size: 10.5px;
+  color: var(--text-3);
+  flex: none;
+}
+.bwx .bw-mini-item {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 7px 0;
+  border-bottom: 1px solid var(--gray-100);
+  font-size: 12px;
+  color: var(--text-2);
+}
+.bwx .bw-mini-item:last-of-type {
+  border-bottom: 0;
+}
+.bwx .bw-mini-item .mono {
+  font-size: 10.5px;
+  color: var(--text-3);
+}
+.bwx .statusbar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 12px;
+  padding: 8px 12px;
+  border: 1px solid var(--hairline);
+  border-radius: 6px;
+  background: var(--gray-0);
+  font-size: 11.5px;
+  color: var(--text-3);
+  flex-wrap: wrap;
+}
+.bwx .statusbar .sep {
+  width: 1px;
+  height: 12px;
+  background: var(--hairline);
+}
+.bwx .statusbar .grow {
+  flex: 1;
+}
+.bwx .statusbar .dot-ok {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--success-500);
+}
+
+/* ── 预审查 / 导出 ── */
+.bwx .bw-assertion-table .excerpt {
+  max-width: 460px;
+}
+.bwx .bw-export-split {
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+}
+.bwx .gate-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.bwx .gate-list li {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 10px 12px;
+  border: 1px solid var(--hairline);
+  border-radius: 7px;
+  background: var(--gray-25);
+}
+.bwx .gate-list li .gate-ic {
+  flex: none;
+  margin-top: 1px;
+  color: var(--text-3);
+}
+.bwx .gate-list li.pass .gate-ic {
+  color: var(--success-700);
+}
+.bwx .gate-list li.fail {
+  border-color: color-mix(in srgb, var(--error-700) 24%, var(--hairline));
+  background: var(--error-50);
+}
+.bwx .gate-list li.fail .gate-ic {
+  color: var(--error-700);
+}
+.bwx .gate-list li.unknown {
+  border-color: color-mix(in srgb, var(--warn-700) 22%, var(--hairline));
+  background: var(--warn-50);
+}
+.bwx .gate-list li.unknown .gate-ic {
+  color: var(--warn-700);
+}
+.bwx .gate-list li > div {
+  min-width: 0;
+  flex: 1;
+}
+.bwx .gate-list li b {
+  font-size: 12.5px;
+  font-weight: 600;
+}
+.bwx .gate-list li p {
+  margin: 2px 0 0;
+  font-size: 11.5px;
+  color: var(--text-3);
+  line-height: 1.6;
+}
+.bwx .gate-list li .btn {
+  flex: none;
+}
+.bwx .pkg {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+
+/* ── 注册表 ── */
+.bwx .lv-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+}
+.bwx .lv {
+  border: 1px solid var(--hairline);
+  border-radius: 7px;
+  padding: 10px 12px;
+  background: var(--gray-25);
+}
+.bwx .lv-h {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--gray-100);
+  margin-bottom: 8px;
+}
+.bwx .lv-h b {
+  font-size: 12.5px;
+}
+.bwx .lv-body {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 4px 10px;
+  font-size: 11.5px;
+}
+.bwx .lv-body span {
+  color: var(--text-3);
+}
+.bwx .lv-body b {
+  font-weight: 500;
+  color: var(--text-2);
+}
+.bwx .bw-registry-table .excerpt {
+  max-width: 420px;
+}
+
+/* ── 响应式：面板同排时保持顶部对齐（grid 子项不加 margin）── */
+@media (max-width: 1320px) {
+  .bwx .wb {
+    grid-template-columns: 250px minmax(0, 1fr);
+  }
+  .bwx .bw-side {
+    grid-column: 1 / -1;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    gap: 12px;
+  }
+  .bwx .bw-side > .card.bw-mt {
+    margin-top: 0;
+  }
+  .bwx .bw-policy-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+  .bwx .lv-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+@media (max-width: 1120px) {
+  .bwx .bw-intake-split,
+  .bwx .bw-materials-split,
+  .bwx .bw-export-split {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .bwx .bw-detail-card {
+    position: static;
+  }
+  .bwx .bw-tpl,
+  .bwx .tpl,
+  .bwx .bw-skill-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .bwx .form-grid {
+    grid-template-columns: 1fr;
+  }
+  .bwx .form-grid .field:last-child {
+    grid-column: auto;
+  }
+}
+@media (max-width: 900px) {
+  /* bid-review.css 的 ≤900px chrome 规则不带 .brx/,被基础规则的高优先级覆盖;
+     写作模块按同一设计意图补一条 .bwx 作用域规则,不改审查模块样式。 */
+  .bwx .chrome {
+    flex-direction: column;
+    height: auto;
+    min-height: 100%;
+  }
+  .bwx .chrome-side {
+    width: 100%;
+    height: auto;
+    flex-direction: row;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+    padding: 10px 12px;
+    overflow: visible;
+    border-right: 0;
+    border-bottom: 1px solid var(--hairline);
+  }
+  .bwx .chrome-brand {
+    flex-shrink: 0;
+    padding: 0 4px 0 0;
+    border-bottom: none;
+  }
+  .bwx .chrome-brand .g-sub {
+    display: none;
+  }
+  .bwx .chrome-group {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    flex-wrap: nowrap;
+    gap: 4px;
+    flex-shrink: 0;
+  }
+  .bwx .chrome-side .g-label {
+    display: none;
+  }
+  .bwx .nav-item {
+    white-space: nowrap;
+    padding: 7px 10px;
+  }
+  .bwx .chrome-foot {
+    margin: 0 0 0 auto;
+    padding: 0;
+    border-top: none;
+    flex-shrink: 0;
+  }
+  .bwx .chrome-main {
+    padding: 14px 14px 32px;
+  }
+  .bwx .wb {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .bwx .bw-side {
+    grid-column: auto;
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .bwx .bw-outline {
+    position: static;
+  }
+  .bwx .metric-strip {
+    grid-auto-flow: row;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .bwx .metric-cell + .metric-cell {
+    border-left: 0;
+    border-top: 1px solid var(--hairline);
+  }
+  .bwx .bw-policy-grid,
+  .bwx .tpl,
+  .bwx .bw-skill-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .bwx .bw-upload {
+    flex-wrap: wrap;
+  }
+  .bwx .overlay {
+    justify-content: center;
+    align-items: flex-end;
+  }
+  .bwx .drawer {
+    width: 100%;
+    height: 92vh;
+    border-left: 0;
+    border-top: 1px solid var(--hairline);
+    border-radius: 12px 12px 0 0;
+  }
+  .bwx .tbl {
+    min-width: 720px;
+  }
+}
+
+/* ===== 批廿六 M0——ProseMirror 正文编辑器(bwe-*,token 随 bid-review.css 双主题) ===== */
+.bwx .bwe-editor {
+  border: 1px solid var(--hairline);
+  border-radius: 8px;
+  padding: 16px 20px;
+  min-height: 320px;
+  line-height: 1.7;
+  font-size: 14px;
+  color: var(--text);
+}
+.bwx .bwe-editor .ProseMirror {
+  outline: none;
+  min-height: 280px;
+}
+.bwx .bwe-editor:focus-within {
+  border-color: var(--main-600);
+}
+.bwx .bwe-doc {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.bwx .bwe-section {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding-left: 2px;
+}
+.bwx .bwe-section::before {
+  content: attr(data-title);
+  font-weight: 600;
+  font-size: 15px;
+  color: var(--text);
+}
+.bwx .bwe-para {
+  margin: 0;
+}
+.bwx .bwe-locked {
+  border: 1px solid var(--hairline);
+  border-radius: 6px;
+  background: var(--slot-bg);
+  padding: 8px 12px;
+  font-size: 13px;
+  color: var(--text-2);
+}
+.bwx .bwe-locked::before {
+  content: "锁定模板 " attr(data-template-id);
+  display: block;
+  font-size: 11px;
+  color: var(--text-3);
+  margin-bottom: 4px;
+}
+.bwx .bwe-table {
+  border-collapse: collapse;
+  width: 100%;
+  font-size: 13px;
+}
+.bwx .bwe-table td {
+  border: 1px solid var(--hairline);
+  padding: 6px 10px;
+}
+.bwx .bwe-amount {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  font-family: ui-monospace, monospace;
+  color: var(--text);
+}
+.bwx .bwe-enum {
+  color: var(--main-600);
+}
+.bwx .bwe-todo {
+  border: 1px dashed var(--warn-700);
+  border-radius: 6px;
+  background: var(--warn-50);
+  padding: 8px 12px;
+  font-size: 13px;
+  color: var(--warn-700);
+}
+.bwx .bwe-todo::before {
+  content: "TODO · " attr(data-missing);
+  font-weight: 600;
+  display: block;
+}
+.bwx .bwe-attach {
+  border: 1px solid var(--hairline);
+  border-radius: 4px;
+  background: var(--slot-bg);
+  padding: 0 6px;
+  font-size: 12px;
+  color: var(--main-600);
+}
+.bwx .bwe-attach::before {
+  content: "📎" attr(data-no);
+}
+.bwx .bwe-toc {
+  color: var(--text-3);
+  font-size: 13px;
+  border-bottom: 1px dashed var(--hairline);
+  padding-bottom: 6px;
+}
+.bwx .bwe-toc::after {
+  content: " · 第 " attr(data-page) " 页";
+  color: var(--text-3);
+}
+.bwx .bwe-prov {
+  cursor: default;
+}
+.bwx .bwe-prov::before {
+  content: "[" attr(data-clause) "]";
+  font-size: 10px;
+  color: var(--main-600);
+  vertical-align: super;
+}
+.bwx .bwe-status[data-state="D0"],
+.bwx .bwe-status[data-state="D1"] {
+  background: var(--warn-50);
+  color: var(--warn-700);
+  border-radius: 3px;
+  padding: 0 2px;
+  text-decoration: underline dotted var(--warn-700);
+}
