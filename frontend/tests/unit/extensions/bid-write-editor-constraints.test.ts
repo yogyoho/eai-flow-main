@@ -2,7 +2,7 @@
 import { describe, expect, it } from "@rstest/core";
 import { undo } from "prosemirror-history";
 import {
-  EditorState,
+  type EditorState,
   NodeSelection,
   TextSelection,
   type Transaction,
@@ -134,7 +134,7 @@ describe("M1 约束过滤(方案 §5.2/5.3/5.4/5.6)", () => {
     const pos = cellPos(s0, "合计", { typeName: "enum_cell" });
     const tr = setEnumValue(s0, pos, "正偏离");
     expect(tr).not.toBeNull();
-    const s1 = s0.apply(tr as Transaction);
+    const s1 = s0.apply(tr!);
     expect(s1).not.toBe(s0);
     expect(docText(s1)).toContain("正偏离");
     expect(docText(s1)).not.toContain("完全响应");
@@ -144,13 +144,13 @@ describe("M1 约束过滤(方案 §5.2/5.3/5.4/5.6)", () => {
   it("undo 可撤销枚举切换且不被守卫拦截(不变式天然放行)", () => {
     const s0 = createBidWriteEditorState(demoWorkbenchAst());
     const pos = cellPos(s0, "合计", { typeName: "enum_cell" });
-    const s1 = s0.apply(setEnumValue(s0, pos, "负偏离") as Transaction);
+    const s1 = s0.apply(setEnumValue(s0, pos, "负偏离")!);
     let captured: Transaction | undefined;
     const ok = undo(s1, (t) => {
       captured = t;
     });
     expect(ok).toBe(true);
-    const s2 = s1.apply(captured as Transaction);
+    const s2 = s1.apply(captured!);
     expect(docText(s2)).toContain("完全响应");
     expect(s2.doc.nodeAt(pos)?.attrs.current).toBe("完全响应");
   });
