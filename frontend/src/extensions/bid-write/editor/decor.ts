@@ -7,7 +7,8 @@
 //    状态栏,不得当作通过——§六降级面)。
 //  · editorLocalAssert:本地确定性演示执行器(纯 AST JSON):行 qty×unit=amount
 //    (SK-PS-008)/金额格非法(SK-PS-007)/加总=合计(SK-PS-003 D0)/表外金额形文本
-//    ≠合计(SK-PS-003 D1,投标函金额只读引用口径)/缺件占位/status_mark 反射。
+//    ≠合计(SK-PS-003 D1,投标函金额只读引用口径)/缺件占位/status_mark 反射/
+//    负偏离闭环 SK-RT-005(未闭环 D0@devnote:{row_id};孤儿展开面 D1)。
 //    ponytail: 全量重建 O(n)——依赖图增量(受影响断言子集)挂真执行器批,
 //    assertRunner(ast)=>payload 接口已留好替换位;0.005 浮点阈=演示面(内核口径
 //    Decimal 4 位落表 2 位)。
@@ -15,6 +16,7 @@ import type { Node as PMNode } from "prosemirror-model";
 import { Plugin, PluginKey, type EditorState, type Transaction } from "prosemirror-state";
 import { Decoration, DecorationSet, type EditorView } from "prosemirror-view";
 
+import { ALT_LABEL, REASON_LABEL } from "./deviation";
 import { type AstJsonNode } from "./schema.gen";
 import { decorTr } from "./state";
 
@@ -280,6 +282,9 @@ export function editorLocalAssert(ast: AstJsonNode): AssertPayload {
   const states: Record<string, AssertState> = {};
   let total: number | null = null;
   const outsideAmounts: { value: number; slot: string }[] = [];
+  // 批廿九 SK-RT-005 闭环面:负偏离行集合 + 展开面快照(price 表范围,演示面同 M2)
+  const negativeRows = new Set<string>();
+  const devNotes: { rowId: string; closed: boolean; anyFilled: boolean }[] = [];
 
   // 段落文本金额(表外)+ status_mark 反射;表格与 todo 单独处理
   for (const section of root.content ?? []) {
@@ -288,6 +293,11 @@ export function editorLocalAssert(ast: AstJsonNode): AssertPayload {
         const detailAmounts: number[] = [];
         for (const row of block.content ?? []) {
           const rowId = attrStr(row, "row_id");
+          for (const cell of row.content ?? []) {
+            if (cell.type === "enum_cell" && attrStr(cell, "current") === "负偏离") {
+              negativeRows.add(rowId);
+            }
+          }
           const qty = parseNumber(nodeText(cellByRole(row, "qty")));
           const unit = parseNumber(nodeText(cellByRole(row, "unit")));
           const amountCell = cellByRole(row, "amount");
@@ -331,6 +341,30 @@ export function editorLocalAssert(ast: AstJsonNode): AssertPayload {
         };
         continue;
       }
+      if (block.type === "deviation_note") {
+        const rid = attrStr(block, "row_id");
+        let hasReason = false;
+        let reasonFilled = false;
+        let hasAlt = false;
+        let altFilled = false;
+        for (const p of block.content ?? []) {
+          const label = attrStr(p, "label");
+          const filled = nodeText(p).trim().length > 0;
+          if (label === REASON_LABEL) {
+            hasReason = true;
+            reasonFilled = reasonFilled || filled;
+          } else if (label === ALT_LABEL) {
+            hasAlt = true;
+            altFilled = altFilled || filled;
+          }
+        }
+        devNotes.push({
+          rowId: rid,
+          closed: hasReason && reasonFilled && hasAlt && altFilled,
+          anyFilled: reasonFilled || altFilled,
+        });
+        continue;
+      }
       if (block.type !== "para" && block.type !== "locked_paragraph") continue;
       const slot = attrStr(block, "slot_id") || attrStr(block, "template_id");
       if (!slot) continue;
@@ -350,6 +384,27 @@ export function editorLocalAssert(ast: AstJsonNode): AssertPayload {
       }
     }
   }
+
+  // SK-RT-005 闭环面:负偏离行 ⇔ 展开面双字段非空(与后端 RT-005 同口径)
+  for (const rid of negativeRows) {
+    const note = devNotes.find((n) => n.rowId === rid);
+    if (!note?.closed) {
+      states[`devnote:${rid}`] = {
+        state: "D0",
+        err_code: "SK-RT-005",
+        message: "负偏离未闭环:需偏离原因+替代方案",
+      };
+    }
+  }
+  for (const note of devNotes) {
+    if (negativeRows.has(note.rowId) || !note.anyFilled) continue;
+    mergeState(states, `devnote:${note.rowId}`, {
+      state: "D1",
+      err_code: "SK-RT-005",
+      message: "响应策略已非负偏离,展开面未清理(撤回或手删)",
+    });
+  }
+  // ★SK-RT-004 编辑器不管:star 不在 AST(后端生成期 422 + 预审查已拦)
 
   if (total !== null) {
     for (const { value, slot } of outsideAmounts) {

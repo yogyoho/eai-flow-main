@@ -79,4 +79,55 @@ describe("editorLocalAssert", () => {
     const b = editorLocalAssert(rt);
     expect(Object.keys(b.states).sort()).toEqual(Object.keys(a.states).sort());
   });
+
+  test("负偏离未闭环 → devnote D0 SK-RT-005;双字段闭环后消失", () => {
+    const ast = demo();
+    const sumRow = at(priceRow(ast, 2));
+    const enumCell = at(at(sumRow.content)[1]);
+    enumCell.attrs!.current = "负偏离";
+    at(at(enumCell.content)[0]).text = "负偏离";
+    // 手工挂空展开面(模拟 appendTransaction 展开产物)
+    const section = at(at(ast.content)[2]);
+    at(section.content).splice(1, 0, {
+      type: "deviation_note",
+      attrs: { row_id: "R-sum" },
+      content: [
+        { type: "para", attrs: { slot_id: "", label: "偏离原因" }, content: [] },
+        { type: "para", attrs: { slot_id: "", label: "替代方案" }, content: [] },
+      ],
+    } as unknown as AstJsonNode);
+    const p1 = editorLocalAssert(ast);
+    expect(p1.states["devnote:R-sum"]).toMatchObject({ state: "D0", err_code: "SK-RT-005" });
+    // 双字段填满 → 闭环
+    const note = at(at(section.content)[1]);
+    at(note.content)[0].content = [{ type: "text", text: "产能不足" }] as AstJsonNode[];
+    at(note.content)[1].content = [{ type: "text", text: "分批交付" }] as AstJsonNode[];
+    const p2 = editorLocalAssert(ast);
+    expect(p2.states["devnote:R-sum"]).toBeUndefined();
+  });
+
+  test("孤儿展开面(策略已翻回)有内容 → D1;空 → 无键(自愈会收拢)", () => {
+    const ast = demo();
+    const section = at(at(ast.content)[2]);
+    at(section.content).splice(1, 0, {
+      type: "deviation_note",
+      attrs: { row_id: "R-sum" },
+      content: [
+        { type: "para", attrs: { slot_id: "", label: "偏离原因" }, content: [{ type: "text", text: "旧原因" }] },
+        { type: "para", attrs: { slot_id: "", label: "替代方案" }, content: [{ type: "text", text: "旧方案" }] },
+      ],
+    } as unknown as AstJsonNode);
+    const p = editorLocalAssert(ast);
+    expect(p.states["devnote:R-sum"]).toMatchObject({ state: "D1", err_code: "SK-RT-005" });
+    // 双字段清空 → 无键(deviationPlugin 会收拢删除)
+    at(at(at(at(section.content)[1]).content)[0]).content = [];
+    at(at(at(at(section.content)[1]).content)[1]).content = [];
+    const p2 = editorLocalAssert(ast);
+    expect(p2.states["devnote:R-sum"]).toBeUndefined();
+  });
+
+  test("demo 基线无 devnote 键(无负偏离)", () => {
+    const p = editorLocalAssert(demo());
+    expect(Object.keys(p.states).some((k) => k.startsWith("devnote:"))).toBe(false);
+  });
 });
