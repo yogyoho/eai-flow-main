@@ -11368,6 +11368,216 @@
       "related_bugs": [],
       "occurrences": 1,
       "last_seen": "2026-11-14T20:40:00Z"
+    },
+    {
+      "id": "bug-4403",
+      "timestamp": "2026-11-14T13:26:16.392Z",
+      "error_message": "Incorrect value in code",
+      "file": "backend/app/extensions/bid_write/document_ast_schema.yaml",
+      "root_cause": "Had \"0.1.0\"",
+      "fix": "Changed to \"0.2.0\"",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "yaml"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-11-14T13:26:16.392Z"
+    },
+    {
+      "id": "bug-4404",
+      "timestamp": "2026-11-14T13:27:02.393Z",
+      "error_message": "Incorrect value in code",
+      "file": "frontend/tests/unit/extensions/bid-write-editor-schema.test.ts",
+      "root_cause": "Had \"0.1.0\"",
+      "fix": "Changed to \"0.2.0\"",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "ts"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-11-14T13:27:02.393Z"
+    },
+    {
+      "id": "bug-4405",
+      "timestamp": "2026-11-14T13:30:01.309Z",
+      "error_message": "Incorrect value in code",
+      "file": "frontend/src/extensions/bid-write/editor/state.ts",
+      "root_cause": "Had \"./decor\"",
+      "fix": "Changed to \"./deviation\"",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "ts"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-11-14T13:30:01.309Z"
+    },
+    {
+      "id": "bug-4406",
+      "timestamp": "2026-11-14T13:30:28.436Z",
+      "error_message": "Wrong condition in logic",
+      "file": "frontend/src/extensions/bid-write/editor/decor.ts",
+      "root_cause": "Condition was: if (node.isLeaf || node.type.name === \"table_row\")",
+      "fix": "Changed to: if (node.isLeaf || node.type.name === \"table_row\" || n)",
+      "tags": [
+        "auto-detected",
+        "logic-fix",
+        "ts"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-11-14T13:30:28.436Z"
+    },
+    {
+      "id": "bug-4407",
+      "timestamp": "2026-11-14T13:35:05.151Z",
+      "error_message": "Wrong return value",
+      "file": "frontend/src/extensions/bid-write/editor/deviation.ts",
+      "root_cause": "Was returning: [];",
+      "fix": "Now returns: null;",
+      "tags": [
+        "auto-detected",
+        "return-value",
+        "ts"
+      ],
+      "related_bugs": [],
+      "occurrences": 2,
+      "last_seen": "2026-11-14T13:36:14.165Z"
+    },
+    {
+      "id": "bug-4408",
+      "timestamp": "2026-11-14T13:41:58.619Z",
+      "error_message": "Incorrect value in code",
+      "file": "frontend/src/extensions/bid-write/editor/state.ts",
+      "root_cause": "Had \"./deviation\"",
+      "fix": "Changed to \"./decor\"",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "ts"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-11-14T13:41:58.619Z"
+    },
+    {
+      "id": "bug-4409",
+      "timestamp": "2026-11-14T13:43:59.213Z",
+      "error_message": "Incorrect value in code",
+      "file": "frontend/src/extensions/bid-write/editor/decor.ts",
+      "root_cause": "Had \"./schema.gen\"",
+      "fix": "Changed to \"./deviation\"",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "ts"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-11-14T13:43:59.213Z"
+    },
+    {
+      "id": "bug-4410",
+      "timestamp": "2026-11-14T13:44:29.238Z",
+      "error_message": "Null/undefined access in ",
+      "file": "frontend/src/extensions/bid-write/editor/decor.ts",
+      "root_cause": "Property access on potentially null/undefined value",
+      "fix": "Added null safety (optional chaining or null check) | Also: if (!note?.closed) {",
+      "tags": [
+        "auto-detected",
+        "null-safety",
+        "ts"
+      ],
+      "related_bugs": [],
+      "occurrences": 2,
+      "last_seen": "2026-11-14T13:47:19.193Z"
+    },
+    {
+      "id": "bug-4411",
+      "timestamp": "2026-11-14T13:44:38.878Z",
+      "error_message": "Wrong condition in logic",
+      "file": "frontend/src/extensions/bid-write/editor/decor.ts",
+      "root_cause": "Condition was: if (total !== null)",
+      "fix": "Changed to: if (!note || !note.closed)",
+      "tags": [
+        "auto-detected",
+        "logic-fix",
+        "ts"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-11-14T13:44:38.879Z"
+    },
+    {
+      "id": "bug-4412",
+      "timestamp": "2026-11-14T13:45:21.619Z",
+      "error_message": "Type error",
+      "file": "frontend/tests/unit/extensions/bid-write-editor-assert.test.ts",
+      "root_cause": "Missing or incorrect type annotation",
+      "fix": "Added type assertion/annotation",
+      "tags": [
+        "auto-detected",
+        "type-fix",
+        "ts"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-11-14T13:45:21.619Z"
+    },
+    {
+      "id": "bug-4413",
+      "timestamp": "2026-11-14T13:49:18.839Z",
+      "error_message": "Significant refactor of ",
+      "file": "frontend/src/extensions/bid-write/components/WorkbenchView.tsx",
+      "root_cause": "3 lines replaced/restructured",
+      "fix": "Rewrote 3→5 lines (3 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-11-14T13:49:18.839Z"
+    },
+    {
+      "id": "bug-4414",
+      "timestamp": "2026-11-14T13:49:27.955Z",
+      "error_message": "Incorrect value in code",
+      "file": "frontend/src/extensions/bid-write/components/WorkbenchView.tsx",
+      "root_cause": "Had `${projectTitle(task)} · 矩阵/缺口/预审查/埋点实读；正文编辑器 M2（断",
+      "fix": "Changed to `${projectTitle(task)} · 矩阵/缺口/预审查/埋点实读；正文编辑器 M3（负",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-11-14T13:49:27.955Z"
+    },
+    {
+      "id": "bug-4403",
+      "timestamp": "2026-11-14T22:25:00+08:00",
+      "error_message": "TypeError: tr.setMeta is not a function at EditorState.applyTransaction (prosemirror-state dist/index.js:809) — 编辑器任何 doc 变更 apply 全炸",
+      "file": "frontend/src/extensions/bid-write/editor/deviation.ts",
+      "root_cause": "新 deviationPlugin.appendTransaction 契约错误:无 ops 时 return [](空数组 truthy),有 ops 时 return [tr](包装数组)——prosemirror-state 1.4.4 只收单个 Transaction 且不摊平数组,数组 truthy 通过 filterTransaction(数组 .docChanged undefined 短路)后被 state 机 tr.setMeta('appendedTransaction') 打在数组上",
+      "fix": "两处改 return null / return tr(裸 Transaction);rstest stackFrames 空时用 catch+assert-message 抓真栈定位",
+      "tags": [
+        "prosemirror",
+        "appendTransaction",
+        "contract",
+        "rstest-debug",
+        "批廿九"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-11-14T22:25:00+08:00"
     }
   ]
 }

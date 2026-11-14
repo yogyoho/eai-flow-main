@@ -30905,3 +30905,48 @@
 | 20:53 | Edited C:/Users/admin/.claude/projects/D--eai-eai-flow-main/memory/MEMORY.md | 1→2 lines | ~107 |
 | 20:57 | Edited C:/Users/admin/.claude/projects/D--eai-eai-flow-main/memory/bid-write-p1-beta28-m2-decor-liaison-landed.md | 1→3 lines | ~87 |
 | 20:42 | 收口补漏:发现 frontend/src/app/bid-write 整棵路由树 9 文件从未入库(origin 只有 css;容器 bind-mount 掩盖)→ e71e02f54 补交+bug-4402+DNR | frontend/src/app/bid-write/ | 10 files tracked | ~4k |
+| 21:01 | Session end: 23 writes across 9 files (bid-write-editor-assert.test.ts, bid-write-editor-decor.test.ts, types.ts, api.ts, WorkbenchView.tsx) | 7 reads | ~27707 tok |
+| 21:23 | Created docs/superpowers/plans/2026-11-14-bid-write-p1-beta29-negative-deviation-plan.md | — | ~6092 |
+
+## Session: 2026-11-14 21:25
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 21:25 | Edited backend/app/extensions/bid_write/document_ast_schema.yaml | inline fix | ~19 |
+| 21:26 | Edited backend/app/extensions/bid_write/document_ast_schema.yaml | 6→7 lines | ~90 |
+| 21:26 | Edited backend/app/extensions/bid_write/document_ast_schema.yaml | expanded (+7 lines) | ~106 |
+| 21:26 | Edited backend/app/extensions/bid_write/document_ast_schema.yaml | "0.1.0" → "0.2.0" | ~7 |
+| 21:26 | Edited backend/tests/test_bid_write_editor_schema.py | 16→17 lines | ~91 |
+| 21:26 | Edited backend/tests/test_bid_write_editor_schema.py | test_schema_has_15_entries() → test_schema_has_16_entries() | ~110 |
+| 21:26 | Edited frontend/tests/unit/extensions/bid-write-editor-schema.test.ts | 7→8 lines | ~107 |
+| 21:27 | Edited frontend/tests/unit/extensions/bid-write-editor-schema.test.ts | "0.1.0" → "0.2.0" | ~13 |
+| 21:29 | Created frontend/src/extensions/bid-write/editor/deviation.ts | — | ~1228 |
+| 21:30 | Edited frontend/src/extensions/bid-write/editor/state.ts | added 1 import(s) | ~57 |
+| 21:30 | Edited frontend/src/extensions/bid-write/editor/state.ts | 2→3 lines | ~35 |
+| 21:30 | Edited frontend/src/extensions/bid-write/editor/decor.ts | added 1 condition(s) | ~75 |
+| 21:30 | Edited frontend/src/extensions/bid-write/editor/decor.ts | inline fix | ~28 |
+| 21:31 | Created frontend/tests/unit/extensions/bid-write-editor-deviation.test.ts | — | ~1136 |
+| 21:34 | Edited frontend/src/extensions/bid-write/editor/deviation.ts | modified diffDeviation() | ~50 |
+| 21:35 | Edited frontend/src/extensions/bid-write/editor/deviation.ts | 3→3 lines | ~40 |
+| 21:36 | Edited frontend/src/extensions/bid-write/editor/deviation.ts | 2→2 lines | ~31 |
+| 21:36 | Edited frontend/src/extensions/bid-write/editor/deviation.ts | modified diffDeviation() | ~36 |
+| 21:38 | Edited frontend/tests/unit/extensions/bid-write-editor-deviation.test.ts | modified fillPara() | ~168 |
+| 21:38 | Edited frontend/tests/unit/extensions/bid-write-editor-deviation.test.ts | 14→13 lines | ~172 |
+| 21:41 | Edited frontend/src/extensions/bid-write/editor/state.ts | 3→3 lines | ~57 |
+| 21:43 | Edited frontend/src/extensions/bid-write/editor/decor.ts | added 1 import(s) | ~40 |
+| 21:44 | Edited frontend/src/extensions/bid-write/editor/decor.ts | 3→6 lines | ~94 |
+| 21:44 | Edited frontend/src/extensions/bid-write/editor/decor.ts | added 1 condition(s) | ~104 |
+| 21:44 | Edited frontend/src/extensions/bid-write/editor/decor.ts | added nullish coalescing | ~258 |
+| 21:44 | Edited frontend/src/extensions/bid-write/editor/decor.ts | added 2 condition(s) | ~186 |
+| 21:44 | Edited frontend/src/extensions/bid-write/editor/decor.ts | 1→2 lines | ~33 |
+| 21:45 | Edited frontend/tests/unit/extensions/bid-write-editor-assert.test.ts | expanded (+51 lines) | ~712 |
+| 21:47 | Edited frontend/src/extensions/bid-write/editor/decor.ts | added optional chaining | ~7 |
+| 21:49 | Edited frontend/src/extensions/bid-write/components/WorkbenchView.tsx | 2→2 lines | ~29 |
+| 21:49 | Edited frontend/src/extensions/bid-write/components/WorkbenchView.tsx | 3→5 lines | ~72 |
+| 21:49 | Edited frontend/src/extensions/bid-write/components/WorkbenchView.tsx | 2→2 lines | ~41 |
+| 21:51 | Edited frontend/tests/unit/extensions/bid-write-editor-assert.test.ts | 2→2 lines | ~51 |
+| 21:54 | Created C:/Users/admin/.claude/jobs/d2aa6c7f/tmp/qa-bidwrite-m3.mjs | — | ~1212 |
+| 21:55 | Edited C:/Users/admin/.claude/jobs/d2aa6c7f/tmp/qa-bidwrite-m3.mjs | inline fix | ~12 |
+| 22:12 | Edited frontend/tests/unit/extensions/bid-write-editor-roundtrip.test.ts | modified canonical() | ~206 |
+| 22:25 | 批廿九 M3 负偏离展开落地:5 提交(8019ba2b2 schema 16口径 v0.2.0 / deviationPlugin 自愈+decor 接线 / ee96f64d6 SK-RT-005 断言 / 10c27229d 样式文案 / ecdd79278 roundtrip 规范化);实机 QA 16 断言全绿(展开/闭环 chip/一撤全撤/PUT 往返新节点);bug-4403 appendTransaction 数组契约 | deviation.ts+decor.ts+schema.gen.ts 等 | 全绿 | ~95k |
+| 22:17 | Created C:/Users/admin/.claude/projects/D--eai-eai-flow-main/memory/bid-write-p1-beta29-negative-deviation-landed.md | — | ~509 |

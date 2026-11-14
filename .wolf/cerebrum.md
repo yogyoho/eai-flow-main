@@ -3267,3 +3267,14 @@ CALIBRATION 批次裁决表是历史快照,新规则的行插进旧批次表必�
 
 ### Do-Not-Repeat (批廿八 追加)
 - (2026-11-14) bug-4402:批廿四~廿六 frontend/src/app/bid-write 整棵路由树从未 git add(origin 只有 css)——容器 bind-mount 让未跟踪文件照常被 dev server 服务,QA 全绿掩盖入库缺失;**每批收口必须 `git status` 核对整个模块目录**,不能只 add 当批编辑过的文件
+
+### Key Learnings (批廿九)
+- (2026-11-14) **appendTransaction 返回契约**:必须返回单个 `Transaction | null`/undefined——`[]` 空数组和 `[tr]` 包装数组都是 truthy,prosemirror-state 1.4.4 不摊平数组,会 `tr.setMeta("appendedTransaction")` 打到数组上炸 "tr.setMeta is not a function"(empty-[] 且 .docChanged undefined 会先骗过 filterTransaction)。无 ops 一律 return null
+- (2026-11-14) rstest stackFrames 为空时真栈抓法:try/catch + `expect(false, (e as Error).stack).toBe(true)` 断言消息带出全栈(此法定位了 state/dist/index.js:809)
+- (2026-11-14) `tr.insertText(text, rawPos, rawPos)` 插进**空** textblock 时 PM fitter 在父层新建默认节点(属性丢失,如 para label="")而非填入;要保 attrs 用整节点 `replaceWith(pos, pos+nodeSize, sameType.create(attrs, text))`(测试填充/程序化写入都适用)
+- (2026-11-14) appended tr 默认并入当前事务同一 undo 事件(一撤全撤)——前提是 appendTransaction 里**不要** setMeta("addToHistory", false)(systemTr helper 会设,自愈展开面不能用它)
+- (2026-11-14) PM `doc.toJSON()` 带出全部 schema 默认 attrs(para.label="" 等);手写 fixture 往返字节比较须两侧对称剔除空串值(roundtrip canonical 已扩)
+- (2026-11-14) enum 下拉 QA 选择器=`select.bwe-enum-select`(EnumCellView NodeView 整体替换 td,toDOM 的 .bwe-enum 类不存在于 DOM)
+
+### Do-Not-Repeat (批廿九)
+- (2026-11-14) appendTransaction 里 `return []` / `return [tr]` → 全编辑器任何 apply 都炸 setMeta(见 Key Learnings 首条);写入新 plugin 时返回类型就写 `Transaction | null`
