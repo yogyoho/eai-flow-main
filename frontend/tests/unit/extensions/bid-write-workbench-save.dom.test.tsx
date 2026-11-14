@@ -1,4 +1,4 @@
-﻿// 批三十四回归:保存成功后文档来源必须切换为云端(否则审批面板仍显示不可提交)。
+// 批三十四回归:保存成功后文档来源必须切换为云端(否则审批面板仍显示不可提交)。
 import { afterEach, describe, expect, it, rs } from "@rstest/core";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
@@ -65,7 +65,10 @@ rs.mock("@/extensions/bid-write/editor/BidWriteEditor", async () => {
     await import("@/extensions/bid-write/editor/demo");
   const { forwardRef, useEffect, useImperativeHandle } = await import("react");
   const MockEditor = forwardRef(function MockEditor(
-    props: { onDocChange?: (ast: unknown, flags: unknown) => void },
+    props: {
+      onDocChange?: (ast: unknown, flags: unknown) => void;
+      ariaLabel?: string;
+    },
     ref,
   ) {
     useImperativeHandle(ref, () => ({
@@ -78,7 +81,7 @@ rs.mock("@/extensions/bid-write/editor/BidWriteEditor", async () => {
     useEffect(() => {
       onDocChange?.(demoWorkbenchAst(), { canUndo: false, canRedo: false });
     }, [onDocChange]);
-    return <div data-testid="mock-editor" />;
+    return <div data-testid="mock-editor" aria-label={props.ariaLabel} />;
   });
   return { BidWriteEditor: MockEditor };
 });
@@ -101,9 +104,15 @@ describe("WorkbenchView 保存来源", () => {
   it("保存成功后从演示文档切到云端文档", async () => {
     render(<WorkbenchView />, { wrapper });
     expect(await screen.findByText("演示文档")).toBeTruthy();
+    expect(
+      await screen.findByLabelText("投标正文编辑器（演示文档）"),
+    ).toBeTruthy();
     expect(await screen.findByTestId("mock-editor")).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: "保存" }));
     expect(await screen.findByText("云端文档")).toBeTruthy();
+    expect(
+      await screen.findByLabelText("投标正文编辑器（云端文档）"),
+    ).toBeTruthy();
     expect(putCalls).toHaveLength(1);
   });
 });

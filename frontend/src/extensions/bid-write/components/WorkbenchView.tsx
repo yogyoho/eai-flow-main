@@ -583,7 +583,11 @@ export function WorkbenchView() {
                   onProvenanceJump={handleProvJump}
                   onPasteSanitized={handlePasteSanitized}
                   readOnly={approvalLocked}
-                  ariaLabel="投标正文编辑器（演示文档）"
+                  ariaLabel={
+                    docSource === "cloud"
+                      ? "投标正文编辑器（云端文档）"
+                      : "投标正文编辑器（演示文档）"
+                  }
                 />
                 <p className="bw-muted bw-mt-sm">
                   M6：审批修订已接入——提交时冻结
