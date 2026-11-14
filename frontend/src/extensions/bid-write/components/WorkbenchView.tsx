@@ -238,8 +238,8 @@ export function WorkbenchView() {
         title="④ 写作工作台"
         subtitle={
           task
-            ? `${projectTitle(task)} · 矩阵/缺口/预审查/埋点实读；正文编辑器 M2（断言联动+AST 存储）`
-            : "矩阵/缺口/预审查/埋点实读；正文编辑器 M2（断言联动+AST 存储）"
+            ? `${projectTitle(task)} · 矩阵/缺口/预审查/埋点实读；正文编辑器 M3（负偏离展开+断言联动+AST 存储）`
+            : "矩阵/缺口/预审查/埋点实读；正文编辑器 M3（负偏离展开+断言联动+AST 存储）"
         }
         actions={
           <>
@@ -300,8 +300,8 @@ export function WorkbenchView() {
             <div className="banner info">
               <Info size={15} aria-hidden="true" />
               <span>
-                正文编辑器 M2 已接入：编辑/撤销、断言联动（演示执行器）与
-                AST 云端存储可用；负偏离展开与真执行器在后续批次接入。
+                正文编辑器 M3 已接入：编辑/撤销、断言联动（演示执行器）、
+                AST 云端存储与负偏离展开面（自愈维护）可用；真执行器在后续批次接入。
               </span>
             </div>
           )}
@@ -466,9 +466,11 @@ export function WorkbenchView() {
                   ariaLabel="投标正文编辑器（演示文档）"
                 />
                 <p className="bw-muted bw-mt-sm">
-                  M2：断言联动与 AST 存储已接入（演示执行器）——锁定段/金额/来源列
-                  只读、响应策略下拉、缺件占位禁删已生效（M1）；SKIPPED 只提示不算
-                  通过，校验未完成时导出判定以预审查为准。
+                  M3：负偏离展开面已接入——响应策略选「负偏离」自动展开偏离说明
+                  （偏离原因+替代方案），未闭环 D0、孤儿展开面 D1（SK-RT-005，与
+                  后端同口径）；M1 锁定段/金额/来源列只读、下拉、缺件占位禁删、
+                  M2 断言联动与 AST 存储均生效；SKIPPED 只提示不算通过，校验未
+                  完成时导出判定以预审查为准。
                 </p>
 
                 <div className="bw-doc-sub">

@@ -1587,3 +1587,27 @@
   background: var(--error-50);
   border-bottom: 2px solid var(--error-700);
 }
+
+/* ── 批廿九 M3:负偏离展开面(warn 色虚线盒;label 经 data-label ::before)── */
+.bwx .bwe-devnote {
+  margin: 6px 0;
+  padding: 6px 10px;
+  background: var(--warn-50);
+  border: 1px dashed var(--warn-700);
+  border-radius: 4px;
+}
+.bwx .bwe-devnote p {
+  margin: 2px 0;
+  min-height: 18px;
+}
+.bwx .bwe-devnote p[data-label]:not([data-label=""])::before {
+  content: attr(data-label) ":";
+  font-weight: 600;
+  color: var(--warn-700);
+  margin-right: 4px;
+  user-select: none;
+}
+.bwx .bwe-devnote.bwx-assert-d0 {
+  border-style: solid;
+  border-color: var(--error-700);
+}

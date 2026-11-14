@@ -100,8 +100,8 @@ describe("editorLocalAssert", () => {
     expect(p1.states["devnote:R-sum"]).toMatchObject({ state: "D0", err_code: "SK-RT-005" });
     // 双字段填满 → 闭环
     const note = at(at(section.content)[1]);
-    at(note.content)[0].content = [{ type: "text", text: "产能不足" }] as AstJsonNode[];
-    at(note.content)[1].content = [{ type: "text", text: "分批交付" }] as AstJsonNode[];
+    at(at(note.content)[0]).content = [{ type: "text", text: "产能不足" }] as AstJsonNode[];
+    at(at(note.content)[1]).content = [{ type: "text", text: "分批交付" }] as AstJsonNode[];
     const p2 = editorLocalAssert(ast);
     expect(p2.states["devnote:R-sum"]).toBeUndefined();
   });
