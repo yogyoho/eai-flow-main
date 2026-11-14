@@ -25,6 +25,7 @@ import {
 } from "@/extensions/bid-write/components/primitives";
 import {
   formatDate,
+  formatPercent,
   matrixStatusLabel,
   matrixStatusTone,
   matrixStrategyLabel,
@@ -36,6 +37,7 @@ import {
   useBidWriteGaps,
   useBidWriteMatrix,
   useSelectedWriteTask,
+  useTaskMetrics,
 } from "@/extensions/bid-write/hooks";
 import { writeTaskHref } from "@/extensions/bid-write/nav";
 import type { MatrixRowOut } from "@/extensions/bid-write/types";
@@ -50,10 +52,12 @@ export function WorkbenchView() {
   const { taskId, task, isLoading } = useSelectedWriteTask();
   const matrix = useBidWriteMatrix(taskId);
   const gaps = useBidWriteGaps(taskId);
+  const metrics = useTaskMetrics(taskId);
   const [activeSection, setActiveSection] = useState<string>("all");
 
   const rows = useMemo(() => matrix.data?.items ?? [], [matrix.data?.items]);
   const summary = useMemo(() => matrixSummary(rows), [rows]);
+  const m = metrics.data?.metrics ?? null;
 
   const sections = useMemo<OutlineSection[]>(() => {
     const map = new Map<string, MatrixRowOut[]>();
@@ -102,8 +106,8 @@ export function WorkbenchView() {
         title="④ 写作工作台"
         subtitle={
           task
-            ? `${projectTitle(task)} · 正文生成尚未接入，先以响应矩阵与缺口作为写作底稿`
-            : "正文生成尚未接入，先以响应矩阵与缺口作为写作底稿"
+            ? `${projectTitle(task)} · 矩阵/缺口/预审查/埋点实读；正文编辑器未接入`
+            : "矩阵/缺口/预审查/埋点实读；正文编辑器未接入"
         }
         actions={
           <>
@@ -164,7 +168,8 @@ export function WorkbenchView() {
             <div className="banner info">
               <Info size={15} aria-hidden="true" />
               <span>
-                工作台当前只读：正文生成接口尚未接入；下方响应矩阵、缺口与预审查数据均来自真实后端。
+                工作台只读：正文编辑器尚未接入；生成执行在「③ 生成配置与执行」完成，
+                此处展示矩阵底稿、缺口与最近一次生成埋点。
               </span>
             </div>
           )}
@@ -217,8 +222,21 @@ export function WorkbenchView() {
                 ) : null}
               </div>
               <div className="bw-outline-foot">
-                <span>正文</span>
-                <Badge tone="gray">未生成</Badge>
+                {m ? (
+                  <>
+                    <span>
+                      最近生成 <b>{formatDate(metrics.data?.run_at ?? null)}</b>
+                    </span>
+                    <Badge tone={m.d0_count === 0 ? "ok" : "warn"}>
+                      D0 {m.d0_count} · 通过率 {formatPercent(m.assertion_pass_rate)}
+                    </Badge>
+                  </>
+                ) : (
+                  <>
+                    <span>正文</span>
+                    <Badge tone="gray">未生成</Badge>
+                  </>
+                )}
               </div>
             </aside>
 
@@ -470,6 +488,15 @@ export function WorkbenchView() {
               预审查{" "}
               {assertions ? (assertions.blocked ? "阻断" : "可导出") : "未执行"}
             </span>
+            {m ? (
+              <>
+                <span className="sep" />
+                <span>
+                  人工编辑占比 {formatPercent(m.manual_edit_ratio)} · 耗时{" "}
+                  {(m.latency_ms / 1000).toFixed(1)}s
+                </span>
+              </>
+            ) : null}
             <span className="grow" />
             {taskId ? (
               <Link

@@ -600,7 +600,7 @@ export function MaterialsView() {
                   </label>
                   <div className="field">
                     <span>调价机制</span>
-                    <label className="bw-check">
+                    <label className="bw-check-line">
                       <input
                         type="checkbox"
                         checked={policyDraft.priceAdjust}
