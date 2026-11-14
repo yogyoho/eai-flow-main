@@ -82,6 +82,21 @@ export function WorkbenchView() {
   });
   const [savedAt, setSavedAt] = useState<string | null>(null);
 
+  // 批廿七 M1——违规即时提示(3s 自动消退);Timer 跨次复用,卸载清算
+  const [violation, setViolation] = useState<string | null>(null);
+  const violationTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(
+    () => () => {
+      if (violationTimer.current) clearTimeout(violationTimer.current);
+    },
+    [],
+  );
+  const handleViolation = useCallback((v: { message: string }) => {
+    setViolation(v.message);
+    if (violationTimer.current) clearTimeout(violationTimer.current);
+    violationTimer.current = setTimeout(() => setViolation(null), 3000);
+  }, []);
+
   const handleDocChange = useCallback(
     (ast: AstJsonNode, f: BidWriteEditorFlags) => {
       latestAstRef.current = ast;
@@ -338,16 +353,23 @@ export function WorkbenchView() {
                   查看 AI 建议
                 </button>
               </div>
+              {violation ? (
+                <div className="ed-notice" role="status">
+                  {violation}
+                </div>
+              ) : null}
               <div className="doc-body">
                 <BidWriteEditor
                   ref={editorRef}
                   initialAst={initialAst}
                   onDocChange={handleDocChange}
+                  onViolation={handleViolation}
                   ariaLabel="投标正文编辑器（演示文档）"
                 />
                 <p className="bw-muted bw-mt-sm">
-                  M0 演示文档：编辑、撤销与本地序列化可用；断言联动与后端
-                  AST 存储在后续批次接入。
+                  M0 演示文档：编辑、撤销与本地序列化可用；锁定段/金额/来源列只读、
+                  响应策略下拉、缺件占位禁删已生效（M1）。断言联动与后端 AST
+                  存储在后续批次接入。
                 </p>
 
                 <div className="bw-doc-sub">
