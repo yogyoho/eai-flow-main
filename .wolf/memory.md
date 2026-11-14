@@ -30829,3 +30829,77 @@
 | 14:07 | Session end: 23 writes across 8 files (constraints.ts, bid-write-editor-constraints.test.ts, state.ts, BidWriteEditor.tsx, WorkbenchView.tsx) | 10 reads | ~21281 tok |
 | 14:12 | Session end: 23 writes across 8 files (constraints.ts, bid-write-editor-constraints.test.ts, state.ts, BidWriteEditor.tsx, WorkbenchView.tsx) | 11 reads | ~21281 tok |
 | 14:15 | 批廿七 T4 补绿:宿主拓扑 :3000 实机 12/12(五守卫+enum 下拉 undo+保存);全量 rstest 已知 flake 外全绿;plan 全勾 | qa-bidwrite-m1.mjs, plan beta27 | T4 DONE,:2026 部署恢复待引擎窗口 | ~8k |
+| 14:16 | Edited C:/Users/admin/.claude/projects/D--eai-eai-flow-main/memory/MEMORY.md | inline fix | ~54 |
+| 14:17 | Session end: 24 writes across 8 files (constraints.ts, bid-write-editor-constraints.test.ts, state.ts, BidWriteEditor.tsx, WorkbenchView.tsx) | 11 reads | ~21338 tok |
+
+## Session: 2026-11-14 15:14
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-11-14 19:13
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 19:22 | Created docs/superpowers/plans/2026-11-14-bid-write-p1-beta28-editor-m2-decor-liaison-plan.md | — | ~10546 |
+| 19:22 | Created backend/tests/test_bid_write_document.py | — | ~962 |
+| 19:24 | Edited backend/app/extensions/bid_write/models.py | modified BidWritePolicy() | ~334 |
+| 19:24 | Edited backend/app/extensions/bid_write/crud.py | modified upsert_policy() | ~466 |
+| 19:24 | Edited backend/app/extensions/bid_write/schemas.py | modified PolicyBody() | ~164 |
+| 19:25 | Edited backend/app/extensions/bid_write/routers.py | added 1 import(s) | ~12 |
+| 19:25 | Edited backend/app/extensions/bid_write/routers.py | modified get_task_document() | ~550 |
+| 19:27 | Edited backend/app/extensions/bid_write/crud.py | 6→10 lines | ~88 |
+| 19:29 | Created frontend/tests/unit/extensions/bid-write-editor-assert.test.ts | — | ~882 |
+| 19:30 | Created frontend/src/extensions/bid-write/editor/decor.ts | — | ~216 |
+| 19:31 | Created frontend/src/extensions/bid-write/editor/decor.ts | — | ~3402 |
+| 19:32 | Edited frontend/tests/unit/extensions/bid-write-editor-assert.test.ts | "rstest" → "@rstest/core" | ~16 |
+| 19:35 | Edited frontend/src/extensions/bid-write/editor/decor.ts | modified parseAmount() | ~119 |
+| 19:35 | Edited frontend/src/extensions/bid-write/editor/decor.ts | parseAmount() → parseNumber() | ~40 |
+| 19:36 | Created frontend/tests/unit/extensions/bid-write-editor-decor.test.ts | — | ~1384 |
+| 19:36 | Edited frontend/src/extensions/bid-write/editor/decor.ts | expanded (+7 lines) | ~82 |
+| 19:36 | Edited frontend/tests/unit/extensions/bid-write-editor-decor.test.ts | added optional chaining | ~61 |
+| 19:37 | Edited frontend/tests/unit/extensions/bid-write-editor-decor.test.ts | 5→4 lines | ~45 |
+| 19:37 | Edited frontend/src/extensions/bid-write/editor/decor.ts | inline fix | ~21 |
+| 19:37 | Edited frontend/src/extensions/bid-write/editor/state.ts | modified systemTr() | ~359 |
+| 19:38 | Edited frontend/src/extensions/bid-write/editor/BidWriteEditor.tsx | CSS: summary, error | ~344 |
+| 19:39 | Edited frontend/src/extensions/bid-write/editor/BidWriteEditor.tsx | added error handling | ~395 |
+| 19:39 | Edited frontend/src/extensions/bid-write/editor/BidWriteEditor.tsx | CSS: onProvenanceJump | ~229 |
+| 19:41 | Edited frontend/tests/unit/extensions/bid-write-editor-assert.test.ts | added 1 condition(s) | ~240 |
+| 19:41 | Edited frontend/tests/unit/extensions/bid-write-editor-assert.test.ts | 15→15 lines | ~186 |
+| 19:41 | Edited frontend/tests/unit/extensions/bid-write-editor-assert.test.ts | 6→6 lines | ~81 |
+| 19:41 | Edited frontend/tests/unit/extensions/bid-write-editor-assert.test.ts | 4→4 lines | ~55 |
+| 19:42 | Edited frontend/tests/unit/extensions/bid-write-editor-assert.test.ts | added optional chaining | ~54 |
+| 19:42 | Edited frontend/tests/unit/extensions/bid-write-editor-decor.test.ts | modified demoState() | ~369 |
+| 19:45 | Edited frontend/src/extensions/bid-write/editor/decor.ts | String() → attrStr() | ~130 |
+| 19:46 | Edited frontend/src/extensions/bid-write/editor/decor.ts | modified editorLocalAssert() | ~912 |
+| 19:46 | Edited frontend/src/extensions/bid-write/editor/state.ts | 4→4 lines | ~68 |
+| 19:46 | Edited frontend/src/extensions/bid-write/editor/BidWriteEditor.tsx | 7→6 lines | ~39 |
+| 19:46 | Edited frontend/tests/unit/extensions/bid-write-editor-decor.test.ts | 2→2 lines | ~34 |
+
+## Session: 2026-11-14 19:48
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 19:48 | Edited frontend/tests/unit/extensions/bid-write-editor-assert.test.ts | modified letterPara() | ~27 |
+| 19:48 | Edited frontend/tests/unit/extensions/bid-write-editor-assert.test.ts | inline fix | ~18 |
+| 19:48 | Edited frontend/tests/unit/extensions/bid-write-editor-assert.test.ts | inline fix | ~21 |
+| 19:49 | Edited frontend/tests/unit/extensions/bid-write-editor-decor.test.ts | 2→2 lines | ~33 |
+| 19:51 | Edited frontend/tests/unit/extensions/bid-write-editor-decor.test.ts | inline fix | ~19 |
+| 19:53 | Edited frontend/src/extensions/bid-write/types.ts | added 1 import(s) | ~42 |
+| 19:54 | Edited frontend/src/extensions/bid-write/api.ts | modified getTaskMetrics() | ~246 |
+| 19:54 | Edited frontend/src/extensions/bid-write/api.ts | added 1 import(s) | ~128 |
+| 19:55 | Edited frontend/src/extensions/bid-write/components/WorkbenchView.tsx | expanded (+6 lines) | ~179 |
+| 19:55 | Edited frontend/src/extensions/bid-write/components/WorkbenchView.tsx | added nullish coalescing | ~605 |
+| 19:55 | Edited frontend/src/extensions/bid-write/components/WorkbenchView.tsx | added error handling | ~252 |
+| 19:55 | Edited frontend/src/extensions/bid-write/components/WorkbenchView.tsx | expanded (+14 lines) | ~180 |
+| 19:56 | Edited frontend/src/extensions/bid-write/components/WorkbenchView.tsx | 7→8 lines | ~85 |
+| 19:56 | Edited frontend/src/extensions/bid-write/components/WorkbenchView.tsx | expanded (+9 lines) | ~296 |
+| 19:56 | Edited frontend/src/extensions/bid-write/components/WorkbenchView.tsx | 7→7 lines | ~72 |
+| 19:56 | Edited frontend/src/extensions/bid-write/components/WorkbenchView.tsx | expanded (+20 lines) | ~289 |
+| 19:57 | Edited frontend/src/extensions/bid-write/components/WorkbenchView.tsx | 3→3 lines | ~42 |
+| 20:00 | Edited frontend/src/extensions/bid-write/components/WorkbenchView.tsx | 8→8 lines | ~62 |
+| 20:08 | Created C:/Users/admin/.claude/jobs/d2aa6c7f/tmp/qa-bidwrite-m2.mjs | — | ~1111 |
+| 20:10 | Created C:/Users/admin/.claude/jobs/d2aa6c7f/tmp/qa-bidwrite-m2-badge.mjs | — | ~362 |
+| 20:25 | 批廿八 M2 全落地:T1 后端 AST 存储(60718843a)+T2 装饰联动(4c2989ffa)+T3 工作台接线(3e5cc5987)+T4 实机 7 验证全过(宿主:3000;QA 断言①-⑦;badgeIsCloud=脚本选择器误指轮廓卡,复检云端文档✓;全量 rstest 4463 过/task-form-dialog 已知并发 flake 文件单跑 37/0)+T5 收口 | bid_write models/crud/routers+decor.ts/WorkbenchView+plan | 0 缺口 | ~56k |
+| 20:52 | Created C:/Users/admin/.claude/projects/D--eai-eai-flow-main/memory/bid-write-p1-beta28-m2-decor-liaison-landed.md | — | ~386 |
+| 20:53 | Edited C:/Users/admin/.claude/projects/D--eai-eai-flow-main/memory/MEMORY.md | 1→2 lines | ~107 |

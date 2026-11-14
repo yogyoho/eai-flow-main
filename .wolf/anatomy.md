@@ -1,7 +1,7 @@
 # anatomy.md
 
-> Auto-maintained by OpenWolf. Last scanned: 2026-11-14T04:31:18.217Z
-> Files: 43 tracked | Anatomy hits: 0 | Misses: 0
+> Auto-maintained by OpenWolf. Last scanned: 2026-11-14T12:53:12.103Z
+> Files: 60 tracked | Anatomy hits: 0 | Misses: 0
 
 ## ../../00 工作目录/02 项目策划/马宁/应急指挥/bid-run/
 
@@ -304,6 +304,9 @@
 
 - `qa-bidwrite-diag.mjs` — Diagnostic: what does /bid-write workbench actually render? (~355 tok)
 - `qa-bidwrite-editor.mjs` — 批廿六 M0 browser verify: UI login -> /bid-write/workbench -> editor renders demo doc -> undo/save (~776 tok)
+- `qa-bidwrite-m1.mjs` — 批廿七 M1 browser verify: constraints (locked/amount/unit readonly, enum select, undo) (~1026 tok)
+- `qa-bidwrite-m2-badge.mjs` — 批廿八 M2 follow-up: doc badge identity after reload (scoped to .bw-doc card) (~362 tok)
+- `qa-bidwrite-m2.mjs` — 批廿八 M2 browser verify: assert chip / provenance badge / jump notice / save=PUT / reload roundtrip (~1111 tok)
 
 ## C:/Users/admin/.claude/plans/
 
@@ -331,7 +334,10 @@
 - `bid-write-p1-beta23-policy-metrics-landed.md` (~411 tok)
 - `bid-write-p1-beta24-l4-activation-landed.md` (~407 tok)
 - `bid-write-p1-beta25-workbench-landed.md` (~359 tok)
-- `MEMORY.md` (~2055 tok)
+- `bid-write-p1-beta26-editor-m0-landed.md` (~422 tok)
+- `bid-write-p1-beta27-m1-constraints-landed.md` (~477 tok)
+- `bid-write-p1-beta28-m2-decor-liaison-landed.md` (~390 tok)
+- `MEMORY.md` (~2194 tok)
 
 ## C:/Users/admin/.codex/
 
@@ -687,11 +693,14 @@
 ## backend/app/extensions/bid_write/
 
 - `contracts.py` — bid_write 契约层(批十九 T1,EAI-CUSTOM 2026-11-13)——写作端字段/槽位/断言 (~1808 tok)
+- `crud.py` — bid_write CRUD(批十九 T2)——全部查询带 owner_id 过滤(经 task 联接传导, (~3336 tok)
 - `document_ast_schema.yaml` — document_ast_schema.yaml — bid_write 正文文档 AST 事实层单一 schema (~1361 tok)
 - `editor_schema_gen.py` — AST JSON 树(与 PM doc JSON 同形;强类型随 M2 执行器契约再收紧)。 (~1800 tok)
 - `metrics.py` — 埋点六指标(P1-β 批廿三,spec §3;EAI-CUSTOM 2026-11-13)——纯函数, (~522 tok)
+- `models.py` — bid_write ORM 模型(批十九 T2,EAI-CUSTOM 2026-11-13)——与 bid_review/models.py (~1824 tok)
 - `precheck.py` — F6 规则层预审查(批廿一 M2,EAI-CUSTOM 2026-11-13)——bid_review 同尺投影。 (~2607 tok)
-- `schemas.py` — bid_write API schemas(批十九 T5)——与 bid_review/schemas.py 同构(from_ (~974 tok)
+- `routers.py` — bid_write 工作台 API(批十九 T5)——挂 gateway ``/api/extensions/bid-write``: (~5399 tok)
+- `schemas.py` — bid_write API schemas(批十九 T5)——与 bid_review/schemas.py 同构(from_ (~1034 tok)
 - `worker.py` — bid_write worker(批十九 T4)——F1 单管线:created→parsing→extracting→ (~3342 tok)
 
 ## backend/app/extensions/bid_write/assertions/
@@ -971,6 +980,7 @@
 ## backend/tests/
 
 - `test_bid_write_contracts.py` — 批十九 T1 契约层自检:商务子集全部是审查端宇宙真实成员(零新契约铁律)、 (~1000 tok)
+- `test_bid_write_document.py` — 批廿八 M2 T1:正文 AST 存储(bid_write_task_documents 新表 create_all 零迁移)。 (~962 tok)
 - `test_bid_write_editor_schema.py` — 批廿六 M0:document_ast_schema.yaml 单一 schema 自检(EAI-CUSTOM)。 (~832 tok)
 - `test_bid_write_l4.py` — 批廿四 P1-γ L4 语义审查面测试:投影/参与卡筛选/摘除条件/gate 形参/worker 接线。 (~2690 tok)
 - `test_bid_write_m2_worker.py` — 批廿一 M2-c:worker 接线(fields 持久化/自动预审查/generate_and_record) (~1562 tok)
@@ -1066,6 +1076,8 @@
 
 - `2026-11-14-bid-write-p1-beta24-l4-activation-plan.md` — 批廿四 bid_write P1-γ:tender.substantive_clauses 契约 + L4 模型审查激活(水印摘除条件)Implementation Plan (~5292 tok)
 - `2026-11-14-bid-write-p1-beta26-editor-m0-plan.md` — bid_write 批廿六(P1-M0)ProseMirror 正文编辑层骨架 实施计划 (~10925 tok)
+- `2026-11-14-bid-write-p1-beta27-editor-m1-constraints-plan.md` — bid_write 批廿七：M1 编辑约束（filterTransaction 三硬约束 + enumCell 下拉）Implementation Plan (~4560 tok)
+- `2026-11-14-bid-write-p1-beta28-editor-m2-decor-liaison-plan.md` — bid_write P1 批廿八 —— 编辑器 M2 装饰联动 实施计划 (~9887 tok)
 - `2026-11-14-bid-write-p1-delta-workbench-plan.md` — bid_write 批廿五(P1-δ 前端三栏工作台)L4 投影扩面+编辑率采样源+前端接线 实施计划 (~3984 tok)
 
 ## docs/superpowers/plans/2026-09-13-coal-mine-tunneling-regulation-v2.md
@@ -1492,10 +1504,10 @@
 
 ## frontend/src/extensions/bid-write/
 
-- `api.ts` — bid-write API client（Gateway `/api/extensions/bid-write/*`）。 (~1831 tok)
+- `api.ts` — bid-write API client（Gateway `/api/extensions/bid-write/*`）。 (~2051 tok)
 - `helpers.ts` — bid-write 纯展示工具：状态词表、矩阵摘要、CSV 导出。 (~2489 tok)
 - `hooks.ts` — bid-write TanStack Query hooks。 (~2345 tok)
-- `types.ts` — bid-write API 类型（P0-M0 F1 响应矩阵 + M1 断言摘要；批廿五 P1-δ 增 GenerateKnobs/ExportGate/L4Face/Material/Policy/Metrics 面）。 (~1581 tok)
+- `types.ts` — bid-write API 类型（P0-M0 F1 响应矩阵 + M1 断言摘要）。 (~1603 tok)
 
 ## frontend/src/extensions/bid-write/components/
 
@@ -1503,14 +1515,16 @@
 - `GenerateView.tsx` — ③ 生成配置与执行(批廿五 P1-δ 真接线)。 (~3511 tok)
 - `IntakeView.tsx` — IntakeView (~6560 tok)
 - `MaterialsView.tsx` — ② 素材核对与缺口(批廿五 P1-δ 真接线)。 (~7157 tok)
-- `WorkbenchView.tsx` — BidWriteEditor (~5239 tok)
+- `WorkbenchView.tsx` — EAI-CUSTOM 批廿八 M2——工作台:云端 AST 加载(key 重挂+cloud-error 降级)/保存=PUT/校验状态栏(D0-D2+SKIPPED 不算通过+未完成降级)/溯源提示 3s/token 化装饰样式 (~6702 tok)
 
 ## frontend/src/extensions/bid-write/editor/
 
-- `BidWriteEditor.tsx` — EAI-CUSTOM 批廿六 M0——PM EditorView React 壳:useEffect 建观(SSR 安全)、 (~911 tok)
+- `BidWriteEditor.tsx` — EAI-CUSTOM 批廿六 M0——PM EditorView React 壳;批廿八 M2+assertRunner/onAssert/onProvenanceJump(latest-ref;runAssert serialize→runner→assert:apply,抛错=校验未完成) (~1420 tok)
+- `constraints.ts` — nodeEnd=pos+nodeSize;内部用于 enum 内容区判定 (~2033 tok)
+- `decor.ts` — EAI-CUSTOM 批廿八 M2——装饰联动层:provenancePlugin(角标 widget+jump meta+broken 红⚠)/liveAssertPlugin(assert:apply 侧信道纯装饰)/editorLocalAssert 演示执行器(SK-PS-003/007/008+todo+status_mark 反射) (~3568 tok)
 - `demo.ts` — EAI-CUSTOM 批廿六 M0——M0 演示文档(后端正文存储未接入;方案 §15② 最小样例: (~1735 tok)
 - `doc.ts` — 序列化文本投影(导出投影口径:marks 不进文本,方案 §四 剥离规则)。 (~168 tok)
-- `state.ts` — EAI-CUSTOM 批廿六 M0——事务分层 meta.source ∈ {user, system, decor}(方案 §七); (~353 tok)
+- `state.ts` — EAI-CUSTOM 批廿六 M0——事务分层 meta.source ∈ {user, system, decor}(方案 §七); (~474 tok)
 
 ## frontend/src/extensions/biz-pipeline/
 
@@ -1769,6 +1783,9 @@
 
 ## frontend/tests/unit/extensions/
 
+- `bid-write-editor-assert.test.ts` — 结构守卫:noUncheckedIndexedAccess 下的显式收窄(结构漂移即抛) (~970 tok)
+- `bid-write-editor-constraints.test.ts` — 演示文档中首个含 needle 的文本节点位置 (~1890 tok)
+- `bid-write-editor-decor.test.ts` — 批廿八 M2 T2:装饰层——assert:apply 侧信道映射 + 纯装饰不污染(方案 §六/§十二)。 (~1371 tok)
 - `bid-write-editor-history.test.ts` — EditorState: type (~550 tok)
 - `bid-write-editor-roundtrip.test.ts` — 规范化 JSON:键排序后逐字节比较。 (~510 tok)
 - `bid-write-editor-schema.test.ts` — Declares amount (~542 tok)

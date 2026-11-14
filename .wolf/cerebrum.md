@@ -3251,3 +3251,16 @@ CALIBRATION 批次裁决表是历史快照,新规则的行插进旧批次表必�
 
 ### Do-Not-Repeat (批廿六)
 - (2026-11-14) 批廿五漏交 frontend/src/app/bid-write/bid-write.css——layout.tsx import 它,已推树直接断链;提交前必须核 import 的 css/静态文件是否被 git add(尤其 .gitignore 有 animation 的树)
+
+### Key Learnings (批廿八 2026-11-14)
+- PM 装饰可测性:PluginKey<DecorationSet> 导出 + key.getState(state) 即可在 node env 读装饰集(widget 工厂不被调用,无 DOM 依赖);纯构造器 assertionTr(state,payload) 优先于 view 包装
+- assert:apply 侧信道三铁律:meta 触发 apply 全量重建 / docChanged 时 old.map(tr.mapping) 保位 / D2+SKIPPED 不渲染(SKIPPED 只进状态栏)
+- noUncheckedIndexedAccess 测试守卫:demo 结构取索引用 at() 收窄,helper 链每层返回值都要收窄(漏最后一层 at() = TS18048)
+- rstest 报告吞 console.log:调试用 expect(x).toBe("SHOW_ME") 断言消息带出
+- next dev 就绪判定:grep "Ready in";QA 前置 :3000/bid-write 200 轮询(编译冷启 60s+)
+- 401≠502:gateway fail-closed 中间件下 /api/health 无 cookie 返回 401 = 已起且路由通
+
+### Do-Not-Repeat (批廿八)
+- (2026-11-14) import type { X } 后 toBeInstanceOf(X) → TS1361(装饰集是值不是型);反之下 eslint consistent-type-imports warning(仅 PluginKey 作泛型参数时)
+- (2026-11-14) QA 脚本 .card-h .r first() 会命中页面第一张卡(轮廓卡)非文档卡——badge 断言必须 scope 到 section.bw-doc;误判产品 bug 前先查选择器
+- (2026-11-14) 全量 rstest flake 面=task-form-dialog.dom.test.tsx 并发隔离(超时+mock 调用数);文件单跑 37/0 即基线外,勿当回归修
