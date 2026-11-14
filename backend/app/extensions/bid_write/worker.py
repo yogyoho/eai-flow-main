@@ -239,6 +239,13 @@ async def generate_and_record(db: AsyncSession, task: WriteTask, owner_id: str, 
     t0 = time.perf_counter()
     ctx = await build_task_ctx(db, task, owner_id, knobs=knobs)
     export = await run_export_gate(ctx, l4_model_fn=_l4_model_fn())  # 批廿四 P1-γ:L4 语义审查面(advisory;无承诺→参与卡空零模型调用)
-    export["metrics"] = compute_metrics(ctx, export, duration_ms=round((time.perf_counter() - t0) * 1000))
+    rows = await crud.list_matrix(db, task.id, owner_id)  # 批廿五 P1-δ:manual_edit_ratio 采样源(确认态占比)
+    export["metrics"] = compute_metrics(
+        ctx,
+        export,
+        duration_ms=round((time.perf_counter() - t0) * 1000),
+        manual_confirmed=sum(1 for r in rows if r.status == "confirmed"),
+        rows_total=len(rows),
+    )
     await crud.record_skill_run(db, task.id, owner_id, verdict=export, skills="ALL", schema_version=contracts.SCHEMA_VERSION, blocked=export["blocked"])
     return export

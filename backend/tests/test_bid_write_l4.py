@@ -173,6 +173,21 @@ async def test_l4_tender_snapshot_merged_and_new_cards_participate():
 
 
 @pytest.mark.asyncio
+async def test_worker_metrics_manual_edit_ratio(policy_db, monkeypatch):  # noqa: F811
+    """批廿五 P1-δ:确认 1 行→ratio=1/总行数落 metrics;零确认绿跑→0.0(诚实零非 None)。"""
+    from app.extensions.bid_write import crud, worker
+
+    task = await _seed(policy_db, monkeypatch)
+    rows = await crud.list_matrix(policy_db, task.id, "u1")
+    assert rows  # seed 夹具自带矩阵行(auto-precheck 绿跑 ratio=0.0)
+    rows[0].status = "confirmed"
+    await policy_db.commit()
+    monkeypatch.setattr(worker, "_l4_model_fn", lambda: _stub_model("full"))
+    export = await worker.generate_and_record(policy_db, task, "u1")
+    assert export["metrics"]["manual_edit_ratio"] == round(1 / len(rows), 4)
+
+
+@pytest.mark.asyncio
 async def test_worker_generate_persists_l4(policy_db, monkeypatch):  # noqa: F811 — 夹具名=导入名(pytest 夹具复用平铺惯例)
     """generate_and_record 接线:_l4_model_fn 打桩全 full;knobs 带承诺+tender
     实质条款→L4 参与;verdict["l4"] 落 skill_run;水印摘除=watermark None。

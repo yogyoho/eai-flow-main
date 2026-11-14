@@ -161,7 +161,7 @@ async def test_metrics_green_and_degraded(client, db, monkeypatch):
     m = r.json()["verdict"]["metrics"]
     # 绿跑平台既有 1 条 CtxMissing ERROR(两 seed 共有缺席面,materials e2e 同;
     # pass_rate 分母含 ERROR 诚实)——metric 面钉:D0 清零+FAIL 零+高位通过率。
-    assert m["d0_count"] == 0 and m["retry_count"] == 0 and m["manual_edit_ratio"] is None
+    assert m["d0_count"] == 0 and m["retry_count"] == 0 and m["manual_edit_ratio"] == 0.0  # 批廿五 P1-δ:零确认绿跑=零人工编辑(诚实零非 None)
     assert r.json()["verdict"]["assertion_counts"].get("FAIL", 0) == 0
     assert m["assertion_pass_rate"] >= 0.9
     assert isinstance(m["latency_ms"], int) and m["latency_ms"] >= 0
