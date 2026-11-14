@@ -85,6 +85,10 @@ function anchorKey(node: PMNode, parent: PMNode | null): string | null {
   if (node.type.name === "todo_block") {
     return `todo:${String(node.attrs.pending_item_id ?? "")}`;
   }
+  if (node.type.name === "deviation_note") {
+    const rid = String(node.attrs.row_id ?? "");
+    return rid ? `devnote:${rid}` : null;
+  }
   return null;
 }
 
@@ -98,7 +102,7 @@ export function buildAssertDecorations(doc: PMNode, states: Record<string, Asser
     const cls = st.state === "D0" ? "bwx-assert-d0" : "bwx-assert-d1";
     const title = [st.err_code, st.message].filter(Boolean).join(" · ");
     const spec = { class: cls, "data-err": st.err_code ?? "", title };
-    if (node.isLeaf || node.type.name === "table_row") {
+    if (node.isLeaf || node.type.name === "table_row" || node.type.name === "deviation_note") {
       decos.push(Decoration.node(pos, pos + node.nodeSize, spec));
     } else if (node.content.size > 0) {
       decos.push(Decoration.inline(pos + 1, pos + 1 + node.content.size, spec));

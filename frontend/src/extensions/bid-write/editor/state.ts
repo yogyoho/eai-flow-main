@@ -8,6 +8,7 @@ import { EditorState, type Transaction } from "prosemirror-state";
 
 import { constraintsPlugin, type OnViolation } from "./constraints";
 import { liveAssertPlugin, provenancePlugin, type ProvenanceHit } from "./decor";
+import { deviationPlugin } from "./deviation";
 import { hydrateAst } from "./doc";
 import { type AstJsonNode } from "./schema.gen";
 
@@ -41,6 +42,7 @@ export function createBidWriteEditorState(
       keymap({ "Mod-z": undo, "Mod-Z": redo, "Mod-y": redo }),
       keymap(baseKeymap),
       constraintsPlugin(options),
+      deviationPlugin(),
       provenancePlugin({ onJump: options.onProvenanceJump }),
       liveAssertPlugin(),
     ],
