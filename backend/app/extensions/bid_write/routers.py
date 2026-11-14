@@ -16,6 +16,7 @@ owner 隔离:与 bid_review/routers.py 同款模块级 current_owner(require_per
 
 import asyncio
 import logging
+import re
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -220,6 +221,46 @@ async def get_gaps(task_id: str, db: AsyncSession = Depends(get_db), owner_id: s
             "pending_note": "素材三态=有且可佐证/有但缺佐证/无对应素材(P1-α 兑现;素材库 /materials 维护)",
         },
         "assertions": assertions,
+    }
+
+
+_AST_VERSION_RE = re.compile(r"^\d+\.\d+\.\d+$")
+
+
+@router.get("/tasks/{task_id}/document")
+async def get_task_document(task_id: str, db: AsyncSession = Depends(get_db), owner_id: str = Depends(current_owner)):
+    """正文 AST 读取(批廿八 M2 装饰联动数据面;方案 §三 唯一真值=AST)。
+    未保存过=ast:null——前端回退演示文档(诚实面:不造空文档冒充生成产物)。"""
+    task = await crud.get_task(db, task_id=task_id, owner_id=owner_id)
+    if task is None:
+        raise HTTPException(status_code=404, detail="任务不存在")
+    doc = await crud.get_document(db, task_id=task_id, owner_id=owner_id)
+    if doc is None:
+        return {"ast": None, "schema_version": "", "updated_at": None}
+    return {
+        "ast": doc.ast,
+        "schema_version": doc.schema_version,
+        "updated_at": doc.updated_at.isoformat() if doc.updated_at else None,
+    }
+
+
+@router.put("/tasks/{task_id}/document")
+async def put_task_document(task_id: str, body: schemas.DocumentIn, db: AsyncSession = Depends(get_db), owner_id: str = Depends(current_owner)):
+    """正文 AST 保存(批廿八 M2 工作台保存接线)。校验:ast 根 type=="doc" +
+    semver schema_version(422)——防把任意 JSON 当文档落库。编辑锁 TTL/version
+    乐观锁(方案 §七)挂后续批;当前单写者幂等全量。"""
+    task = await crud.get_task(db, task_id=task_id, owner_id=owner_id)
+    if task is None:
+        raise HTTPException(status_code=404, detail="任务不存在")
+    if not isinstance(body.ast, dict) or body.ast.get("type") != "doc":
+        raise HTTPException(status_code=422, detail='ast 根节点 type 必须为 "doc"')
+    if not _AST_VERSION_RE.match(body.schema_version or ""):
+        raise HTTPException(status_code=422, detail=f"schema_version 需为 semver(收到:{body.schema_version!r})")
+    doc = await crud.put_document(db, task_id=task_id, owner_id=owner_id, ast=body.ast, schema_version=body.schema_version)
+    return {
+        "ast": doc.ast,
+        "schema_version": doc.schema_version,
+        "updated_at": doc.updated_at.isoformat() if doc.updated_at else None,
     }
 
 

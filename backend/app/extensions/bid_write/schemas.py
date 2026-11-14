@@ -119,3 +119,11 @@ class PolicyBody(BaseModel):
     letter_defaults: LetterDefaults | None = None
     tax_rate: float | None = Field(default=None, ge=0, le=1)
     price_adjust_mechanism: bool | None = None
+
+
+class DocumentIn(BaseModel):
+    """正文 AST 保存(批廿八 M2;PUT 幂等全量)。ast 根 type 必须=="doc"
+    (routers 422 面);schema_version=editor document_ast_schema semver。"""
+
+    ast: dict
+    schema_version: str = ""

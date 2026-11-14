@@ -5,11 +5,15 @@
 from __future__ import annotations
 
 from datetime import UTC, datetime
+from typing import TYPE_CHECKING
 
 from sqlalchemy import delete, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.extensions.bid_write.models import MatrixRow, WriteTask
+
+if TYPE_CHECKING:
+    from app.extensions.bid_write.models import TaskDocument
 
 
 def _seq_of(biz_no: str | None) -> int | None:
@@ -246,3 +250,28 @@ async def upsert_policy(session: AsyncSession, owner_id: str, patch: dict) -> di
     await session.commit()
     await session.refresh(row)
     return dict(row.policy or {})
+
+
+async def get_document(session: AsyncSession, task_id: str, owner_id: str) -> TaskDocument | None:
+    """正文 AST 读取(批廿八 M2;owner 过滤同矩阵行)。未保存过→None。"""
+    from app.extensions.bid_write.models import TaskDocument
+
+    res = await session.execute(select(TaskDocument).where(TaskDocument.task_id == task_id, TaskDocument.owner_id == owner_id))
+    return res.scalar_one_or_none()
+
+
+async def put_document(session: AsyncSession, task_id: str, owner_id: str, *, ast: dict, schema_version: str) -> TaskDocument:
+    """正文 AST 保存(批廿八 M2;PUT 幂等全量,首存建行重存覆盖)。调用方
+    (routers)先 get_task 卡 owner——越 owner 的 task 在路由层 404,不进本函数。"""
+    from app.extensions.bid_write.models import TaskDocument
+
+    doc = await get_document(session, task_id, owner_id)
+    if doc is None:
+        doc = TaskDocument(task_id=task_id, owner_id=owner_id, ast=ast, schema_version=schema_version)
+        session.add(doc)
+    else:
+        doc.ast = ast
+        doc.schema_version = schema_version
+    await session.commit()
+    await session.refresh(doc)
+    return doc

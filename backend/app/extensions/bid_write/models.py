@@ -110,3 +110,17 @@ class BidWritePolicy(Base):
     owner_id: Mapped[str] = mapped_column(String(64), primary_key=True)
     policy: Mapped[dict] = mapped_column(JSON, default=dict)
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now, onupdate=_now)
+
+
+class TaskDocument(Base):
+    """正文 AST 存储(批廿八 M2,EAI-CUSTOM;方案 §三 唯一真值=AST)。任务 1:1,
+    create_all 承接零迁移(独立新表,不动共享 database.py 迁移段);owner_id 冗余
+    列=owner 过滤同矩阵行口径。前端 PUT 幂等全量(编辑锁/version 乐观锁挂后续批)。"""
+
+    __tablename__ = "bid_write_task_documents"
+
+    task_id: Mapped[str] = mapped_column(String(36), ForeignKey("bid_write_tasks.id"), primary_key=True)
+    owner_id: Mapped[str] = mapped_column(String(64), index=True)
+    ast: Mapped[dict] = mapped_column(JSON, default=dict)
+    schema_version: Mapped[str] = mapped_column(String(20), default="")
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now, onupdate=_now)
