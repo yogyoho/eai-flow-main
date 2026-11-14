@@ -61,6 +61,8 @@ class GenerateKnobs(BaseModel):
     general_commitments: list[dict] | None = None
     page_estimates: dict[str, int] | None = None
     total_pages: int | None = None
+    # 批廿五 P1-δ:质保承诺(L4-001 输入 bid.warranty_period;原样透传不造数,单位随填)
+    warranty_period: str | None = None
 
 
 class MaterialIn(BaseModel):

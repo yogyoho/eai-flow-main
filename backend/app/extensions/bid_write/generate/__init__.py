@@ -64,6 +64,7 @@ def build_ctx(
     tax_rate: float = 0.13,
     price_adjust_mechanism: bool = True,
     letter_defaults: dict | None = None,
+    warranty_period: str = "",
 ) -> dict:
     """tender 抽取快照+矩阵行+素材+人工旋钮 → executor 契约 ctx。
 
@@ -100,4 +101,11 @@ def build_ctx(
         "rt_cross_field": {"total_amount": {"rt": bl["slots"]["total_amount_num"], "other": ps["summary_total"]}},
         "toc_page_estimates": {_norm(i.get("no")): i.get("page") for i in ai.get("items") or []},
     }
-    return {"tender": t, "products": {"bid_letter": bl, "price_sheet": ps, "response_table": rt, "attachment_index": ai}, "material": mat, "pre": pre}
+    return {
+        "tender": t,
+        "products": {"bid_letter": bl, "price_sheet": ps, "response_table": rt, "attachment_index": ai},
+        "material": mat,
+        "pre": pre,
+        # 批廿五 P1-δ:人工旋钮直通面(投影消费 bid.warranty_period;键恒在=形态稳定)
+        "knobs": {"warranty_period": str(warranty_period or "")},
+    }

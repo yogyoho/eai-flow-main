@@ -195,6 +195,7 @@ async def build_task_ctx(db: AsyncSession, task: WriteTask, owner_id: str, *, kn
         tax_rate=float(pol["tax_rate"]) if pol.get("tax_rate") is not None else 0.13,
         price_adjust_mechanism=bool(pol["price_adjust_mechanism"]) if pol.get("price_adjust_mechanism") is not None else True,
         letter_defaults=ld or None,
+        warranty_period=str(k.get("warranty_period") or ""),  # 批廿五 P1-δ:knobs 直通(L4-001 输入面)
     )
 
 

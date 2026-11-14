@@ -77,6 +77,18 @@ def project_bid_fields(ctx: dict) -> dict:
         out["bid.service_commitments"] = [{"text": str(c["text"]).strip(), "clause_id": str(c.get("clause_id") or "")} for c in comms]
     if bl.get("text"):
         out["bid.full_text"] = bl["text"]
+    knob_wp = str(((ctx or {}).get("knobs") or {}).get("warranty_period") or "").strip()
+    if knob_wp:
+        # 批廿五 P1-δ:L4-001 输入(人工旋钮直通,原样透传不造数)
+        out["bid.warranty_period"] = knob_wp
+    sections = [
+        {"clause_id": r.get("clause_id"), "text": str(r.get("response_text") or ""), "conclusion": r.get("conclusion")}
+        for r in ((p.get("response_table") or {}).get("rows") or [])
+        if isinstance(r, dict) and str(r.get("response_text") or "").strip()
+    ]
+    if sections:
+        # 批廿五 P1-δ:L4-008 输入(响应表行=产物可推导;空表缺席)
+        out["bid.response_sections"] = sections
     return out
 
 
@@ -169,10 +181,9 @@ async def run_export_gate(ctx: dict, *, l4_model_fn=None) -> dict:
     pre = await run_rule_precheck(fields)
     l4 = None
     if l4_model_fn is not None:
-        l4_fields = dict(fields)
-        sc = ((ctx or {}).get("tender") or {}).get("tender.substantive_clauses")
-        if sc:
-            l4_fields["tender.substantive_clauses"] = sc
+        # 批廿五 P1-δ:tender 快照全量合并(泛化 substantive_clauses 特例;L4-001 消费
+        # tender.min_warranty_period 等;bid.* 投影同键覆盖优先)
+        l4_fields = {**((ctx or {}).get("tender") or {}), **fields}
         bl = ((ctx or {}).get("products") or {}).get("bid_letter") or {}
         l4 = await run_l4_review(l4_fields, str(bl.get("text") or ""), l4_model_fn)
     a_counts = Counter(r.status for r in report.results)
