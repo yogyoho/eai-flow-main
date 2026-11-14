@@ -25,6 +25,10 @@ OpenWolf's learning memory. Updated automatically as the AI learns from interact
 - [2026-08-21] geological-report 用户交互铁律：数据收集必须用 ask_clarification fields 渲染中文填写表单（label=中文名+单位），绝不向用户展示/索要 JSON 或英文键名；面向用户术语一律"数据项"不说"字段"；缺项清单译成中文按类别分组呈现。适用于所有面向非 IT 用户的技能。
 
 ## Key Learnings
+- PM 新版 Step.apply 返回 StepResult{doc,failed} 非裸 Node;Step 类型不声明 from/to(运行时有,须 `as unknown as` 断言);StepResult.doc 可空。
+- Transform.setNodeMarkup(非叶)产生 ReplaceAroundStep(全节点跨度 from=pos,to=pos+nodeSize)——会被节点级守卫当越界拒;改单 attr 用 setNodeAttribute(AttrStep 零区间)。
+- 守卫放行设计:meta 白名单(ENUM_SET_META)会拦 undo(undo tr 无自定义 meta);改用终态不变式(enum_cell 文本≡current attr)后 setEnumValue/undo 天然自洽通过,白名单整个删掉。
+- EditorState.apply(tr) 被任意 plugin filterTransaction 拒绝时返回**同一 state 实例**(toBe 断言可用)。
 
 - **assertion_counts 缺键=零值 (2026-11-13):** bid_write export gate 的 assertion_counts 由实跑结果聚合,**只含有值状态**(全 PASS 时无 FAIL 键)——消费方取计数必须 `.get(status, 0)`,直取键=KeyError。绿跑平台另有恒定 1 条 CtxMissing ERROR(缺席 tender 面),pass_rate 分母含 ERROR 是诚实面。
 - **extract 引擎 subset-param 兼容口子 (2026-11-13):** bid_review extract 对 FIELD_TYPE_CONTRACTS 外路径零改动兼容(normalize 按 subset 白名单收,prompt 渲染裸路径)——写侧新增抽取路径零触碰审查引擎,但须走 SUBSET_EXTRACT_EXTENSIONS 登记保持诚实(bug-4350)。
@@ -540,6 +544,7 @@ fixture 策略: 全节点 template_text=null(不发明招标内容), 真文渲�
 - [2026-11-06] content 端点不传 source 的整页窗口跨成员混段是既有歧义(spec R3 保留),断言「首个命中」而非「全池同源」;?source= 传入才池内收窄。
 
 ## Do-Not-Repeat
+- [2026-11-14] docker compose restart/kill 假成功(exit 0 但容器没动):容器 shim 楔死时 stop/kill/inspect 全超时,且 SIGTERM 已送达杀死容器内 dev server(容器 Up 但 502)——先 taskkill 挂死的 docker.exe/docker-compose.exe **客户端**进程解管道,daemon 即恢复;容器本体须 up -d --force-recreate 换新容器。
 - 2026-11-08(merge 实测):`scripts/config-upgrade.sh` 本机禁跑——Windows 下整文件重写剥光全部注释(bug-4239);config 升级走手工 graft。
 - **(2026-11-13, bug-4351)** bid_write 测试夹具 `_TABLES` 清单现有**三处**(m2_worker/routers/materials 各自独立)——build_task_ctx 新增表查询时三处同改,漏一处=no such table。
 - **(2026-11-13, bug-4350)** 扩抽取路径勿直入 bid_write COMMERCIAL_TENDER_SUBSET 主元组——非 universe 成员会被契约钉测试抓;走 SUBSET_EXTRACT_EXTENSIONS 显式扩面表。**局部回归(-k 单文件)不含跨钉文件,提交前必须跑全量 `-k bid_write`。**

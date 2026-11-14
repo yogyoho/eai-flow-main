@@ -11028,6 +11028,152 @@
       "related_bugs": [],
       "occurrences": 1,
       "last_seen": "2026-11-14T04:31:18.256Z"
+    },
+    {
+      "id": "bug-4382",
+      "timestamp": "2026-11-14T04:48:39.702Z",
+      "error_message": "Wrong reference: push should be rev",
+      "file": "C:/Users/admin/.claude/projects/D--eai-eai-flow-main/memory/bid-write-p1-beta26-editor-m0-landed.md",
+      "root_cause": "Used \"push\" instead of \"rev\"",
+      "fix": "Changed push → rev",
+      "tags": [
+        "auto-detected",
+        "wrong-reference",
+        "md"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-11-14T04:48:39.702Z"
+    },
+    {
+      "id": "bug-4383",
+      "timestamp": "2026-11-14T05:02:55.528Z",
+      "error_message": "Wrong operator: !== should be ===",
+      "file": "frontend/src/extensions/bid-write/editor/constraints.ts",
+      "root_cause": "Used \"!==\" instead of \"===\"",
+      "fix": "Changed operator !== → ===",
+      "tags": [
+        "auto-detected",
+        "operator-fix",
+        "ts"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-11-14T05:02:55.528Z"
+    },
+    {
+      "id": "bug-4384",
+      "timestamp": "2026-11-14T05:03:28.982Z",
+      "error_message": "Incorrect value in code",
+      "file": "frontend/src/extensions/bid-write/editor/constraints.ts",
+      "root_cause": "Had \"system\"",
+      "fix": "Changed to \"source\"",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "ts"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-11-14T05:03:28.982Z"
+    },
+    {
+      "id": "bug-4385",
+      "timestamp": "2026-11-14T05:04:24.806Z",
+      "error_message": "Significant refactor of ",
+      "file": "frontend/tests/unit/extensions/bid-write-editor-constraints.test.ts",
+      "root_cause": "12 lines replaced/restructured",
+      "fix": "Rewrote 47→28 lines (12 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "ts"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-11-14T05:04:24.806Z"
+    },
+    {
+      "id": "bug-4386",
+      "timestamp": "2026-11-14T05:06:48.441Z",
+      "error_message": "Missing guard clause",
+      "file": "frontend/src/extensions/bid-write/editor/constraints.ts",
+      "root_cause": "No early return/throw for edge case: hit",
+      "fix": "Added guard clause: if (hit)",
+      "tags": [
+        "auto-detected",
+        "guard-clause",
+        "ts"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-11-14T05:06:48.441Z"
+    },
+    {
+      "id": "bug-4387",
+      "timestamp": "2026-11-14T05:09:43.337Z",
+      "error_message": "Null/undefined access in ",
+      "file": "frontend/src/extensions/bid-write/editor/BidWriteEditor.tsx",
+      "root_cause": "Property access on potentially null/undefined value",
+      "fix": "Added null safety (optional chaining or null check)",
+      "tags": [
+        "auto-detected",
+        "null-safety",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-11-14T05:09:43.337Z"
+    },
+    {
+      "id": "bug-4388",
+      "timestamp": "2026-11-14T05:09:58.312Z",
+      "error_message": "Type error",
+      "file": "frontend/src/extensions/bid-write/components/WorkbenchView.tsx",
+      "root_cause": "Missing or incorrect type annotation",
+      "fix": "Added type assertion/annotation",
+      "tags": [
+        "auto-detected",
+        "type-fix",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-11-14T05:09:58.312Z"
+    },
+    {
+      "id": "bug-4389",
+      "timestamp": "2026-11-14T05:13:08.678Z",
+      "error_message": "Type error",
+      "file": "frontend/src/extensions/bid-write/editor/constraints.ts",
+      "root_cause": "Missing or incorrect type annotation",
+      "fix": "Added type assertion/annotation",
+      "tags": [
+        "auto-detected",
+        "type-fix",
+        "ts"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-11-14T05:13:08.678Z"
+    },
+    {
+      "id": "bug-4390",
+      "timestamp": "2026-11-14",
+      "error_message": "docker compose restart frontend 假成功:exit 0 只打 Restarting,容器 StartedAt 不变,502 持续;docker kill/inspect 亦超时",
+      "file": "docker/docker-compose-dev.yaml (runtime incident)",
+      "root_cause": "容器 containerd shim 楔死(批廿六同类):优雅停止收不到 exit event,首次 restart 的 SIGTERM 已送达杀死容器内 next dev(CLI 随后挂死),容器壳 Up 但应用死",
+      "fix": "taskkill 挂死的 docker.exe/docker-compose.exe 客户端解 daemon 管道;容器本体走 compose up -d --force-recreate 换新容器(批廿六已验证),不动 wslservice/全 VM",
+      "tags": [
+        "docker",
+        "container-shim",
+        "wedge",
+        "frontend",
+        "ops"
+      ],
+      "related_bugs": [],
+      "occurrences": 2,
+      "last_seen": "2026-11-14"
     }
   ]
 }
