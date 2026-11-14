@@ -40,8 +40,11 @@ export interface BidWriteEditorHandle {
   serializeNow(): AstJsonNode | null;
 }
 
-/** 断言执行器(M2 演示=editorLocalAssert;真执行器同形替换)。null/抛错=校验未完成 */
-export type AssertRunner = (ast: AstJsonNode) => AssertPayload | null;
+/** 断言执行器(批三十:云端文档走后端真执行器;演示文档走本地演示执行器)。
+ *  null/抛错=校验未完成——绝不回退假绿。 */
+export type AssertRunner = (
+  ast: AstJsonNode,
+) => AssertPayload | null | Promise<AssertPayload | null>;
 
 interface BidWriteEditorProps {
   initialAst: AstJsonNode;
@@ -71,6 +74,8 @@ export const BidWriteEditor = forwardRef<BidWriteEditorHandle, BidWriteEditorPro
     const placeRef = useRef<HTMLDivElement | null>(null);
     const viewRef = useRef<EditorView | null>(null);
     const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+    // 断言响应序号:防抖 + 网络乱序时只应用最后一次请求,旧响应不得覆盖新状态
+    const assertSeqRef = useRef(0);
     // latest-ref:守卫/断言回调每渲染刷新,视图不因回调身份重建
     const onViolationRef = useRef(onViolation);
     onViolationRef.current = onViolation;
@@ -83,16 +88,28 @@ export const BidWriteEditor = forwardRef<BidWriteEditorHandle, BidWriteEditorPro
     const [ready, setReady] = useState(false);
 
     // 断言侧信道(§六):serialize→runner→assert:apply 纯装饰回写;runner 抛错/
-    // null → onAssert(null, true)=「校验未完成」——绝不默认放行。
+    // null → onAssert(null, true)=「校验未完成」——绝不默认放行。runner 可同步
+    // (演示)或异步(后端真执行器);序号丢弃陈旧响应。
     const runAssert = (view: EditorView) => {
+      const seq = ++assertSeqRef.current;
+      const settle = (payload: AssertPayload | null, failed: boolean) => {
+        if (seq !== assertSeqRef.current || viewRef.current !== view) return;
+        if (payload) applyAssertionStates(view, payload);
+        onAssertRef.current?.(payload ? summarize(payload) : null, failed || !payload);
+      };
       try {
-        const payload = assertRunnerRef.current
+        const maybe = assertRunnerRef.current
           ? assertRunnerRef.current(serializeDoc(view.state.doc))
           : null;
-        if (payload) applyAssertionStates(view, payload);
-        onAssertRef.current?.(payload ? summarize(payload) : null, false);
+        if (maybe && typeof (maybe as Promise<AssertPayload>).then === "function") {
+          (maybe as Promise<AssertPayload | null>)
+            .then((payload) => settle(payload, false))
+            .catch(() => settle(null, true));
+        } else {
+          settle(maybe as AssertPayload | null, false);
+        }
       } catch {
-        onAssertRef.current?.(null, true);
+        settle(null, true);
       }
     };
 
@@ -121,6 +138,7 @@ export const BidWriteEditor = forwardRef<BidWriteEditorHandle, BidWriteEditorPro
       runAssert(view);
       setReady(true);
       return () => {
+        assertSeqRef.current += 1; // 卸载后到达的响应一律丢弃
         if (timerRef.current) clearTimeout(timerRef.current);
         view.destroy();
         viewRef.current = null;

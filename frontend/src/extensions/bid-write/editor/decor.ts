@@ -9,9 +9,9 @@
 //    (SK-PS-008)/金额格非法(SK-PS-007)/加总=合计(SK-PS-003 D0)/表外金额形文本
 //    ≠合计(SK-PS-003 D1,投标函金额只读引用口径)/缺件占位/status_mark 反射/
 //    负偏离闭环 SK-RT-005(未闭环 D0@devnote:{row_id};孤儿展开面 D1)。
-//    ponytail: 全量重建 O(n)——依赖图增量(受影响断言子集)挂真执行器批,
-//    assertRunner(ast)=>payload 接口已留好替换位;0.005 浮点阈=演示面(内核口径
-//    Decimal 4 位落表 2 位)。
+//    批三十起云端文档由 WorkbenchView 注入后端真执行器(assertRunner 同形),
+//    本函数仅服务演示文档/离线演示面,不冒充后端校验通过;全量重建 O(n),依赖图
+//    增量留后续性能批;0.005 浮点阈=演示面(内核口径 Decimal 4 位落表 2 位)。
 import type { Node as PMNode } from "prosemirror-model";
 import { Plugin, PluginKey, type EditorState, type Transaction } from "prosemirror-state";
 import { Decoration, DecorationSet, type EditorView } from "prosemirror-view";
@@ -83,6 +83,13 @@ function anchorKey(node: PMNode, parent: PMNode | null): string | null {
     String(parent.attrs.table_type ?? "") === "price"
   ) {
     return `price:${String(node.attrs.row_id ?? "")}`;
+  }
+  if (
+    node.type.name === "table_row" &&
+    parent?.type.name === "table" &&
+    String(parent.attrs.table_type ?? "") === "response"
+  ) {
+    return `rt:${String(node.attrs.row_id ?? "")}`;
   }
   if (node.type.name === "todo_block") {
     return `todo:${String(node.attrs.pending_item_id ?? "")}`;

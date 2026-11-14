@@ -15,7 +15,12 @@ import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
-import { ApiError, getTaskDocument, putTaskDocument } from "@/extensions/bid-write/api";
+import {
+  ApiError,
+  assertTaskDocument,
+  getTaskDocument,
+  putTaskDocument,
+} from "@/extensions/bid-write/api";
 import {
   Badge,
   EmptyState,
@@ -24,6 +29,7 @@ import {
   PageHead,
 } from "@/extensions/bid-write/components/primitives";
 import {
+  type AssertRunner,
   type BidWriteEditorFlags,
   type BidWriteEditorHandle,
 } from "@/extensions/bid-write/editor/BidWriteEditor";
@@ -88,6 +94,14 @@ export function WorkbenchView() {
   );
   const [saving, setSaving] = useState(false);
   const initialAst = useMemo(() => loadedAst ?? demoWorkbenchAst(), [loadedAst]);
+  // 批三十:云端文档=后端真执行器(43 条断言);演示文档与任务数据无对应关系,
+  // 继续用本地演示执行器并保留「演示文档」徽标,不把两套事实混在一起。
+  const assertRunner = useMemo<AssertRunner>(() => {
+    if (docSource === "cloud" && taskId) {
+      return (ast) => assertTaskDocument(taskId, { ast });
+    }
+    return editorLocalAssert;
+  }, [docSource, taskId]);
   const latestAstRef = useRef<AstJsonNode | null>(null);
   const [flags, setFlags] = useState<BidWriteEditorFlags>({
     canUndo: false,
@@ -238,8 +252,8 @@ export function WorkbenchView() {
         title="④ 写作工作台"
         subtitle={
           task
-            ? `${projectTitle(task)} · 矩阵/缺口/预审查/埋点实读；正文编辑器 M3（负偏离展开+断言联动+AST 存储）`
-            : "矩阵/缺口/预审查/埋点实读；正文编辑器 M3（负偏离展开+断言联动+AST 存储）"
+            ? `${projectTitle(task)} · 矩阵/缺口/预审查/埋点实读；正文编辑器 M4（真执行器+负偏离展开+AST 存储）`
+            : "矩阵/缺口/预审查/埋点实读；正文编辑器 M4（真执行器+负偏离展开+AST 存储）"
         }
         actions={
           <>
@@ -300,8 +314,9 @@ export function WorkbenchView() {
             <div className="banner info">
               <Info size={15} aria-hidden="true" />
               <span>
-                正文编辑器 M3 已接入：编辑/撤销、断言联动（演示执行器）、
-                AST 云端存储与负偏离展开面（自愈维护）可用；真执行器在后续批次接入。
+                正文编辑器 M4 已接入：编辑/撤销、AST 云端存储、负偏离展开面
+                （自愈维护）与后端真执行器（43 条断言按锚点回写）可用；演示文档
+                使用本地演示执行器，校验不可用时显示「校验未完成」。
               </span>
             </div>
           )}
@@ -460,17 +475,18 @@ export function WorkbenchView() {
                   initialAst={initialAst}
                   onDocChange={handleDocChange}
                   onViolation={handleViolation}
-                  assertRunner={editorLocalAssert}
+                  assertRunner={assertRunner}
                   onAssert={handleAssert}
                   onProvenanceJump={handleProvJump}
                   ariaLabel="投标正文编辑器（演示文档）"
                 />
                 <p className="bw-muted bw-mt-sm">
-                  M3：负偏离展开面已接入——响应策略选「负偏离」自动展开偏离说明
+                  M4：负偏离展开面已接入——响应策略选「负偏离」自动展开偏离说明
                   （偏离原因+替代方案），未闭环 D0、孤儿展开面 D1（SK-RT-005，与
                   后端同口径）；M1 锁定段/金额/来源列只读、下拉、缺件占位禁删、
-                  M2 断言联动与 AST 存储均生效；SKIPPED 只提示不算通过，校验未
-                  完成时导出判定以预审查为准。
+                  M2 断言联动与 AST 存储均生效；云端文档的断言由后端真执行器产出，
+                  演示文档使用本地演示执行器；SKIPPED 只提示不算通过，校验未完成
+                  时导出判定以预审查为准。
                 </p>
 
                 <div className="bw-doc-sub">

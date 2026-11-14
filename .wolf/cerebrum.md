@@ -3278,3 +3278,11 @@ CALIBRATION 批次裁决表是历史快照,新规则的行插进旧批次表必�
 
 ### Do-Not-Repeat (批廿九)
 - (2026-11-14) appendTransaction 里 `return []` / `return [tr]` → 全编辑器任何 apply 都炸 setMeta(见 Key Learnings 首条);写入新 plugin 时返回类型就写 `Transaction | null`
+
+### Key Learnings (批三十 2026-11-14)
+- **D0 短路会吃掉行级证据**:`run_assertions` 同技能 D0 FAIL 后其余断言标 SKIPPED;编辑器只映射 FAIL/ERROR 会漏掉「明细行算错」。桥接层须在任一 PS/RT FAIL 时按事实条件补锚点(PS-008 行失配、PS-007 空单价、PS-002 数量单位、RT-003/007/008/009 行面),报告口径仍保持 SKIPPED 不冒充 PASS。
+- **AST 单价列口径**:当前 schema 报价表无独立 `unit_price` 角色,`col_role=unit` 在报价表内被生成器承载为单价;单位度量须从任务 ctx 同名行回填,否则 PS-002 会假红。行 id 约定=招标清单 id(生成器保证),响应表 row_id 约定=clause_id。
+- **投标函金额提取**:章节内取最大金额数字(过滤 <1000 的条款号/天数),大写取「大写:…」括注;同时覆盖 `total_amount_num/cn` 后 BL-002 能真实暴露「函金额≠报价合计」,不必伪造槽位。
+- **编辑器真值边界**:云端 AST 覆盖价格表/响应表/投标函;附件索引表尚未进 schema,AI 面沿用生成 ctx。演示文档与任务数据无对应关系,继续走本地演示执行器,避免把两套事实混判。
+- **异步 assertRunner 防陈旧**:网络响应乱序/防抖叠加时用递增序号;卸载时序号自增,旧响应不得 dispatch 到已销毁 view。null/异常一律 `onAssert(null, true)`=「校验未完成」。
+- **API 测试 body 断言**:`RequestInit.body` 是 BodyInit,直接 `String()` 触发 `no-base-to-string`;先 `typeof body === "string"` 再 `JSON.parse`。装饰 spec attrs 是 unknown,取值先窄化再比较 `data-err`。

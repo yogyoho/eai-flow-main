@@ -127,3 +127,11 @@ class DocumentIn(BaseModel):
 
     ast: dict
     schema_version: str = ""
+
+
+class EditorAssertIn(BaseModel):
+    """编辑器真执行器请求(批三十;只读)。ast 根 type 必须=="doc"(routers 422);
+    skills 缺省=全量(CMN 恒执行)。不落 skill_run:编辑防抖高频面。"""
+
+    ast: dict
+    skills: list[str] | None = None

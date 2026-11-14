@@ -10,6 +10,8 @@
   GET  /tasks/{id}/gaps             缺口三态(F2;M0 素材库缺位→全部「无对应素材」,
                                     诚实伪零,素材六类实体批二十兑现)+断言维度
                                     (M1-c:最近执行行 pending/skipped/门禁裁决)
+  POST /tasks/{id}/assert           编辑器真执行器(批三十;只读 AST→任务 ctx→43 条断言,
+                                    不落 skill_run;422=ast 根非法/row_id 重复)
 
 owner 隔离:与 bid_review/routers.py 同款模块级 current_owner(require_permission)。
 """
@@ -262,6 +264,27 @@ async def put_task_document(task_id: str, body: schemas.DocumentIn, db: AsyncSes
         "schema_version": doc.schema_version,
         "updated_at": doc.updated_at.isoformat() if doc.updated_at else None,
     }
+
+
+@router.post("/tasks/{task_id}/assert")
+async def assert_task_document(task_id: str, body: schemas.EditorAssertIn, db: AsyncSession = Depends(get_db), owner_id: str = Depends(current_owner)):
+    """编辑器真执行器(批三十):任务 ctx + 正文 AST 覆盖 → 真实 43 条断言执行,
+    返回 states/skipped/results 侧信道。只读:不落 skill_run、不改文档。
+
+    422=ast 根非法/row_id 重复;404=任务不存在或越权。执行器内部 ERROR 也照实
+    返回(不静默假绿)。"""
+    from app.extensions.bid_write.executor.editor import run_editor_assertions
+
+    task = await crud.get_task(db, task_id=task_id, owner_id=owner_id)
+    if task is None:
+        raise HTTPException(status_code=404, detail="任务不存在")
+    if not isinstance(body.ast, dict) or body.ast.get("type") != "doc":
+        raise HTTPException(status_code=422, detail='ast 根节点 type 必须为 "doc"')
+    ctx = await worker.build_task_ctx(db, task, owner_id)
+    try:
+        return run_editor_assertions(ctx, body.ast, skills=tuple(body.skills) if body.skills else None)
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
 
 
 @router.get("/registry")

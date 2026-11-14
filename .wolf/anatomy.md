@@ -713,6 +713,8 @@
 
 ## backend/app/extensions/bid_write/executor/ (批二十 M1, 2026-11-13)
 
+- `editor.py` — 批三十编辑器真执行器桥:AST 价格表/响应表/投标函覆盖任务 ctx→run_assertions→失败结果锚点映射(price:/rt:/devnote:/todo:/slot);row_id 重复 422;只读不落 skill_run (~2100 tok)
+
 
 ## backend/app/extensions/bid_write/executor/validators/
 
@@ -984,6 +986,7 @@
 - `test_bid_write_contracts.py` — 批十九 T1 契约层自检:商务子集全部是审查端宇宙真实成员(零新契约铁律)、 (~1000 tok)
 - `test_bid_write_document.py` — 批廿八 M2 T1:正文 AST 存储(bid_write_task_documents 新表 create_all 零迁移)。 (~962 tok)
 - `test_bid_write_editor_schema.py` — 批廿六 M0:document_ast_schema.yaml 单一 schema 自检(EAI-CUSTOM)。 (~845 tok)
+- `test_bid_write_editor_assert.py` — 批三十:编辑器真执行器桥(AST→ctx 覆盖/真实 43 条断言/锚点)与 POST /tasks/{id}/assert 只读端点。 (~1200 tok)
 - `test_bid_write_l4.py` — 批廿四 P1-γ L4 语义审查面测试:投影/参与卡筛选/摘除条件/gate 形参/worker 接线。 (~2690 tok)
 - `test_bid_write_m2_worker.py` — 批廿一 M2-c:worker 接线(fields 持久化/自动预审查/generate_and_record) (~1562 tok)
 - `test_bid_write_materials.py` — 批廿二 P1-α:素材库六类实体——crud collect_material 形/端点 CRUD+profile/ (~2801 tok)
@@ -1081,6 +1084,7 @@
 - `2026-11-14-bid-write-p1-beta27-editor-m1-constraints-plan.md` — bid_write 批廿七：M1 编辑约束（filterTransaction 三硬约束 + enumCell 下拉）Implementation Plan (~4560 tok)
 - `2026-11-14-bid-write-p1-beta28-editor-m2-decor-liaison-plan.md` — bid_write P1 批廿八 —— 编辑器 M2 装饰联动 实施计划 (~9887 tok)
 - `2026-11-14-bid-write-p1-beta29-negative-deviation-plan.md` — bid_write 批廿九(M3 负偏离展开)Implementation Plan (~5711 tok)
+- `2026-11-14-bid-write-p1-beta30-editor-real-executor-plan.md` — bid_write 批三十(M4 真执行器接线):AST→ctx 覆盖 + 真实 43 条断言 + 锚点侧信道 + 只读端点 + 异步 runner (~1800 tok)
 - `2026-11-14-bid-write-p1-delta-workbench-plan.md` — bid_write 批廿五(P1-δ 前端三栏工作台)L4 投影扩面+编辑率采样源+前端接线 实施计划 (~3984 tok)
 
 ## docs/superpowers/plans/2026-09-13-coal-mine-tunneling-regulation-v2.md
@@ -1524,7 +1528,7 @@
 
 - `BidWriteEditor.tsx` — EAI-CUSTOM 批廿六 M0——PM EditorView React 壳;批廿八 M2+assertRunner/onAssert/onProvenanceJump(latest-ref;runAssert serialize→runner→assert:apply,抛错=校验未完成) (~1420 tok)
 - `constraints.ts` — nodeEnd=pos+nodeSize;内部用于 enum 内容区判定 (~2033 tok)
-- `decor.ts` — 测试面:Decoration.find() 条目的窄化形态(node env 无 DOM,只看 from/to/class) (~4171 tok)
+- `decor.ts` — 测试面:Decoration.find() 条目的窄化形态(node env 无 DOM,只看 from/to/class);批三十 +response 表行 `rt:{row_id}` 锚点 (~4200 tok)
 - `demo.ts` — EAI-CUSTOM 批廿六 M0——M0 演示文档(后端正文存储未接入;方案 §15② 最小样例: (~1735 tok)
 - `deviation.ts` — 批廿九 M3 负偏离自愈展开 deviationPlugin(appendTransaction 不变式:负偏离∧无note→表后插/缺labeled para→补/非负偏离∧全空→收拢;孤儿非空保留出D1;source=system 并入 undo 事件) (~1255 tok)
 - `doc.ts` — 序列化文本投影(导出投影口径:marks 不进文本,方案 §四 剥离规则)。 (~168 tok)

@@ -6,6 +6,7 @@
  */
 
 import { fetch } from "@/core/api/fetcher";
+import type { AssertPayload } from "@/extensions/bid-write/editor/decor";
 import type { AstJsonNode } from "@/extensions/bid-write/editor/schema.gen";
 
 import type {
@@ -257,6 +258,22 @@ export async function putTaskDocument(
     `/tasks/${encodeURIComponent(taskId)}/document`,
     {
       method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(input),
+    },
+  );
+}
+
+/** 编辑器真执行器(批三十):任务 ctx + AST → 43 条断言结果 → states 侧信道。
+ *  只读,不落 skill_run。非 2xx 抛 ApiError(调用方据此显示「校验未完成」)。 */
+export async function assertTaskDocument(
+  taskId: string,
+  input: { ast: AstJsonNode; skills?: string[] },
+): Promise<AssertPayload> {
+  return requestJson<AssertPayload>(
+    `/tasks/${encodeURIComponent(taskId)}/assert`,
+    {
+      method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(input),
     },

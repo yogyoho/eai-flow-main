@@ -17,6 +17,7 @@ import {
 } from "@/extensions/bid-write/editor/decor";
 import { demoWorkbenchAst } from "@/extensions/bid-write/editor/demo";
 import { serializeDoc } from "@/extensions/bid-write/editor/doc";
+import { type AstJsonNode } from "@/extensions/bid-write/editor/schema.gen";
 import { createBidWriteEditorState } from "@/extensions/bid-write/editor/state";
 
 function demoState() {
@@ -87,6 +88,47 @@ describe("liveAssert side-channel", () => {
   test("空侧信道(编辑器初始)= 无装饰", () => {
     const state = demoState();
     expect(decosOf(state, liveAssertKey).length).toBe(0);
+  });
+
+  test("response 表行锚点 rt:{row_id} → 行 node decoration(批三十)", () => {
+    const ast = demoWorkbenchAst();
+    ast.content!.push({
+      type: "section",
+      attrs: { level: 1, title: "四、商务响应", section_id: "S-rsp" },
+      content: [
+        {
+          type: "table",
+          attrs: { table_type: "response" },
+          content: [
+            {
+              type: "table_row",
+              attrs: { row_id: "R-9" },
+              content: [
+                {
+                  type: "table_cell",
+                  attrs: { col_role: "name" },
+                  content: [{ type: "text", text: "营业执照" }],
+                },
+              ],
+            },
+          ],
+        },
+      ],
+    } as unknown as AstJsonNode);
+    const state = createBidWriteEditorState(ast, {});
+    const s2 = state.apply(
+      assertionTr(state, {
+        states: { "rt:R-9": { state: "D0", err_code: "SK-RT-002" } },
+        skipped: [],
+        run_at: "x",
+      }),
+    );
+    const hit = decosOf(s2, liveAssertKey).find((d) => {
+      const err = d.type.attrs?.["data-err"];
+      return typeof err === "string" && err === "SK-RT-002";
+    });
+    expect(hit).toBeTruthy();
+    expect(String(hit!.type.attrs?.class)).toContain("bwx-assert-d0");
   });
 });
 

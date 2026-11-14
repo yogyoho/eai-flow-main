@@ -30950,3 +30950,10 @@
 | 22:12 | Edited frontend/tests/unit/extensions/bid-write-editor-roundtrip.test.ts | modified canonical() | ~206 |
 | 22:25 | 批廿九 M3 负偏离展开落地:5 提交(8019ba2b2 schema 16口径 v0.2.0 / deviationPlugin 自愈+decor 接线 / ee96f64d6 SK-RT-005 断言 / 10c27229d 样式文案 / ecdd79278 roundtrip 规范化);实机 QA 16 断言全绿(展开/闭环 chip/一撤全撤/PUT 往返新节点);bug-4403 appendTransaction 数组契约 | deviation.ts+decor.ts+schema.gen.ts 等 | 全绿 | ~95k |
 | 22:17 | Created C:/Users/admin/.claude/projects/D--eai-eai-flow-main/memory/bid-write-p1-beta29-negative-deviation-landed.md | — | ~509 |
+| 22:20 | Session end: 37 writes across 12 files (document_ast_schema.yaml, test_bid_write_editor_schema.py, bid-write-editor-schema.test.ts, deviation.ts, state.ts) | 13 reads | ~28646 tok |
+
+## Session: 2026-11-14 23:10
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 23:10 | 批三十 M4 真执行器接线:新增 executor/editor.py(AST→ctx 覆盖 + 43 断言 + 锚点映射)+ POST /tasks/{id}/assert 只读端点;前端 assertTaskDocument + 异步 AssertRunner(序号防陈旧)+ response 行锚点 | backend/app/extensions/bid_write/executor/editor.py, routers.py, schemas.py; frontend api/BidWriteEditor/decor/WorkbenchView; tests | 后端 10/10 + 回归 119/119;前端 bid-write 72/72;ruff/eslint 绿;未做浏览器实机(:3000 未启动) | ~45k |
