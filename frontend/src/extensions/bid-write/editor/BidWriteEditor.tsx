@@ -13,6 +13,9 @@ import {
   useState,
 } from "react";
 
+import {
+  type ConstraintViolation,
+} from "@/extensions/bid-write/editor/constraints";
 import { serializeDoc } from "@/extensions/bid-write/editor/doc";
 import { type AstJsonNode } from "@/extensions/bid-write/editor/schema.gen";
 import {
@@ -33,6 +36,7 @@ export interface BidWriteEditorHandle {
 interface BidWriteEditorProps {
   initialAst: AstJsonNode;
   onDocChange?: (ast: AstJsonNode, flags: BidWriteEditorFlags) => void;
+  onViolation?: (violation: ConstraintViolation) => void;
   debounceMs?: number;
   ariaLabel?: string;
 }
@@ -42,6 +46,7 @@ export const BidWriteEditor = forwardRef<BidWriteEditorHandle, BidWriteEditorPro
     {
       initialAst,
       onDocChange,
+      onViolation,
       debounceMs = 400,
       ariaLabel = "投标正文编辑器",
     },
@@ -50,12 +55,17 @@ export const BidWriteEditor = forwardRef<BidWriteEditorHandle, BidWriteEditorPro
     const placeRef = useRef<HTMLDivElement | null>(null);
     const viewRef = useRef<EditorView | null>(null);
     const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+    // latest-ref:守卫回调每渲染刷新,视图不因回调身份重建
+    const onViolationRef = useRef(onViolation);
+    onViolationRef.current = onViolation;
     const [ready, setReady] = useState(false);
 
     useEffect(() => {
       const place = placeRef.current;
       if (!place) return;
-      const state = createBidWriteEditorState(initialAst);
+      const state = createBidWriteEditorState(initialAst, {
+        onViolation: (v) => onViolationRef.current?.(v),
+      });
       const view = new EditorView(place, {
         state,
         dispatchTransaction(tr: Transaction) {

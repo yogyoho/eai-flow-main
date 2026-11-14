@@ -112,6 +112,8 @@ function isBoundaryAttrStep(step: { from: number; to: number }, hit: ConstraintV
 export function constraintsPlugin(options: ConstraintOptions = {}): Plugin {
   return new Plugin({
     props: {
+      // enum_cell 走原生下拉 NodeView(§5.4:禁自由文本)
+      nodeViews: bidWriteNodeViews(),
       // 输入前置拦截:即时反馈,不产生被拒事务
       handleTextInput(view, from, to) {
         const hit = findProtected(view.state.doc, from, to);
@@ -128,11 +130,14 @@ export function constraintsPlugin(options: ConstraintOptions = {}): Plugin {
       if (tr.getMeta("source") === "system") return true;
       let doc = state.doc;
       for (const step of tr.steps) {
-        const hit = findProtected(doc, step.from, step.to);
+        // Step 类型未声明 from/to(运行时必有),守卫按区间判定
+        const { from, to } = step as unknown as { from: number; to: number };
+        const hit = findProtected(doc, from, to);
         if (hit) {
           const exempt =
             hit.code === "enum_cell" &&
-            (insideEnumContent(step, hit) || isBoundaryAttrStep(step, hit));
+            (insideEnumContent({ from, to }, hit) ||
+              isBoundaryAttrStep({ from, to }, hit));
           if (!exempt) {
             options.onViolation?.(hit);
             return false;
@@ -140,7 +145,7 @@ export function constraintsPlugin(options: ConstraintOptions = {}): Plugin {
         }
         // PM 新版 Step.apply 返回 StepResult 包装(doc/failed),非裸 Node
         const result = step.apply(doc);
-        if (result.failed) return false;
+        if (result.failed || !result.doc) return false;
         doc = result.doc;
       }
       // §5.4 不变式:enum_cell 文本必须等于 current attr(setEnumValue/undo 自洽通过)
@@ -163,7 +168,7 @@ export function setEnumValue(
   value: string,
 ): Transaction | null {
   const node = state.doc.nodeAt(pos);
-  if (!node || node.type.name !== "enum_cell") return null;
+  if (node?.type.name !== "enum_cell") return null;
   const values = (node.attrs.enum_values ?? []) as string[];
   if (!values.includes(value)) return null;
   const tr = state.tr;
