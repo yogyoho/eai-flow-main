@@ -9,17 +9,18 @@ import {
 import { type AstJsonNode } from "@/extensions/bid-write/editor/schema.gen";
 
 /**
- * 规范化 JSON:键排序后逐字节比较。
+ * 规范化 JSON:键排序 + 对称剔除空串值后逐字节比较。
  * PM TextNode.toJSON 键序为 {type, marks, text}(marks 先于 text),与手写
  * fixture 的 {type, text, marks} 键序不同;内容全等,故按方案 §十二「往返一致」
- * 口径取规范化字节比较。
+ * 口径取规范化字节比较。批廿九起 para.label="" 等 schema 默认填充 attrs 同属
+ * 序列化产物而非内容,两侧对称剔除(para 挂 label 后 demo fixture 无此键)。
  */
 function canonical(value: unknown): string {
   if (Array.isArray(value)) return `[${value.map(canonical).join(",")}]`;
   if (value && typeof value === "object") {
-    const entries = Object.entries(value as Record<string, unknown>).sort(
-      ([a], [b]) => a.localeCompare(b),
-    );
+    const entries = Object.entries(value as Record<string, unknown>)
+      .filter(([, v]) => v !== "")
+      .sort(([a], [b]) => a.localeCompare(b));
     return `{${entries.map(([k, v]) => `${JSON.stringify(k)}:${canonical(v)}`).join(",")}}`;
   }
   return JSON.stringify(value);
