@@ -3236,3 +3236,13 @@ CALIBRATION 批次裁决表是历史快照,新规则的行插进旧批次表必�
 - 后端 policy PUT 合并语义(routers.py:340):`{k:v for k,v in body if v is not None}`——顶层 None 键被丢弃=「不修改」;tax_rate 无清空通道(None≠delete)。前端 placeholder 必须诚实标「留空=不修改」,不可写「空=清除」。
 - 前端 bid-write CSS 真类名=bw-check-line(bid-write.css:123,非 bw-check);.wb 三栏 grid 断点 900/1120/1320;tsconfig noUncheckedIndexedAccess→索引访问返回 T|undefined 须 `?? ""` 兜底;eslint prefer-optional-chain 会 --fix。
 - 前端 pnpm 经 `python ../scripts/pnpm.py exec eslint|tsc --noEmit|rstest` 跑;rstest 输出头部「No test failures reported」即绿。
+
+### Key Learnings (批廿六, 2026-11-14)
+- PM(1.x 新版) isBlock = !(spec.inline || name=="text"):group "inline" 只是匹配标签,inline 节点必须 spec.inline=true,否则 "Mixing inline and block content"
+- prosemirror-history 官方撤销门=setMeta("addToHistory", false);undo/redo 是 dry-run 布尔,真事务须经 dispatch 回调取
+- PM 新版 d.ts NodeType 不暴露 attrs(运行时有);读默认值走 type.spec.attrs
+- PM TextNode.toJSON 键序 {type, marks, text}(marks 先于 text):往返断言用排序键规范化比较
+- codegen 产物入库模式:前端无构建期 yaml 依赖,drift 由 pytest 钉(test_codegen_output_in_sync)
+
+### Do-Not-Repeat (批廿六)
+- (2026-11-14) 批廿五漏交 frontend/src/app/bid-write/bid-write.css——layout.tsx import 它,已推树直接断链;提交前必须核 import 的 css/静态文件是否被 git add(尤其 .gitignore 有 animation 的树)

@@ -10883,6 +10883,151 @@
       "related_bugs": [],
       "occurrences": 1,
       "last_seen": "2026-11-14T10:14:00.000Z"
+    },
+    {
+      "id": "bug-4373",
+      "timestamp": "2026-11-14T03:01:30.514Z",
+      "error_message": "Incorrect value in code",
+      "file": "frontend/tests/unit/extensions/bid-write-editor-schema.test.ts",
+      "root_cause": "Had \"rstest\"",
+      "fix": "Changed to \"@rstest/core\"",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "ts"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-11-14T03:01:30.514Z"
+    },
+    {
+      "id": "bug-4374",
+      "timestamp": "2026-11-14T03:08:35.753Z",
+      "error_message": "Type error",
+      "file": "frontend/tests/unit/extensions/bid-write-editor-history.test.ts",
+      "root_cause": "Missing or incorrect type annotation",
+      "fix": "Added type assertion/annotation",
+      "tags": [
+        "auto-detected",
+        "type-fix",
+        "ts"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-11-14T03:08:35.753Z"
+    },
+    {
+      "id": "bug-4375",
+      "timestamp": "2026-11-14T03:17:52.315Z",
+      "error_message": "Null/undefined access in ",
+      "file": "frontend/tests/unit/extensions/bid-write-editor-schema.test.ts",
+      "root_cause": "Property access on potentially null/undefined value",
+      "fix": "Added null safety (optional chaining or null check)",
+      "tags": [
+        "auto-detected",
+        "null-safety",
+        "ts"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-11-14T03:17:52.315Z"
+    },
+    {
+      "id": "bug-4376",
+      "timestamp": "2026-11-14T03:24:06.519Z",
+      "error_message": "Significant refactor of ",
+      "file": "frontend/src/extensions/bid-write/components/WorkbenchView.tsx",
+      "root_cause": "3 lines replaced/restructured",
+      "fix": "Rewrote 23→28 lines (3 removed) | Also: <div className=\"bw-empty-doc\">; <span className=\"bw-empty-ic\">",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 2,
+      "last_seen": "2026-11-14T03:25:34.602Z"
+    },
+    {
+      "id": "bug-4377",
+      "timestamp": "2026-11-14T03:24:20.456Z",
+      "error_message": "Type error",
+      "file": "frontend/src/extensions/bid-write/components/WorkbenchView.tsx",
+      "root_cause": "Missing or incorrect type annotation",
+      "fix": "Added type assertion/annotation",
+      "tags": [
+        "auto-detected",
+        "type-fix",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-11-14T03:24:20.456Z"
+    },
+    {
+      "id": "bug-4378",
+      "timestamp": "2026-11-14T03:24:35.556Z",
+      "error_message": "Null/undefined access in ",
+      "file": "frontend/src/extensions/bid-write/components/WorkbenchView.tsx",
+      "root_cause": "Property access on potentially null/undefined value",
+      "fix": "Added null safety (optional chaining or null check) | Also: <Badge tone=\"warn\">演示数据</Badge>; <button | Also: <span className=\"sep\" />; <span>保存 {savedAt ?? \"未保存\"}</span>",
+      "tags": [
+        "auto-detected",
+        "null-safety",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 3,
+      "last_seen": "2026-11-14T03:25:49.005Z"
+    },
+    {
+      "id": "bug-4379",
+      "timestamp": "2026-11-14",
+      "error_message": "批廿五推送后 frontend/src/app/bid-write/bid-write.css 未入库(layout.tsx:36 import 它,git 树构建必失败;容器一直用工作树镜像故未暴露)",
+      "file": "frontend/src/app/bid-write/bid-write.css",
+      "root_cause": "批廿五提交时 git add 清单漏掉新建 css(git add 前未核 import 闭包)",
+      "fix": "批廿六 M0-e 随编辑器样式一并补交(1541 行,含批廿五遗留 1419 行)",
+      "tags": [
+        "bid-write",
+        "css",
+        "missing-commit",
+        "git-hygiene"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-11-14"
+    },
+    {
+      "id": "bug-4380",
+      "timestamp": "2026-11-14T04:12:12.974Z",
+      "error_message": "Wrong reference: email should be username",
+      "file": "C:/Users/admin/.claude/jobs/d2aa6c7f/tmp/qa-bidwrite-editor.mjs",
+      "root_cause": "Used \"email\" instead of \"username\"",
+      "fix": "Changed email → username",
+      "tags": [
+        "auto-detected",
+        "wrong-reference",
+        "mjs"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-11-14T04:12:12.974Z"
+    },
+    {
+      "id": "bug-4381",
+      "timestamp": "2026-11-14T04:31:18.256Z",
+      "error_message": "Missing error handling in unknown",
+      "file": "C:/Users/admin/.claude/jobs/d2aa6c7f/tmp/qa-bidwrite-editor.mjs",
+      "root_cause": "Code path had no error handling — exceptions would propagate uncaught",
+      "fix": "Added try/catch block",
+      "tags": [
+        "auto-detected",
+        "error-handling",
+        "mjs"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-11-14T04:31:18.256Z"
     }
   ]
 }

@@ -1,7 +1,7 @@
 # anatomy.md
 
-> Auto-maintained by OpenWolf. Last scanned: 2026-11-14T02:19:00.772Z
-> Files: 28 tracked | Anatomy hits: 0 | Misses: 0
+> Auto-maintained by OpenWolf. Last scanned: 2026-11-14T04:31:18.217Z
+> Files: 43 tracked | Anatomy hits: 0 | Misses: 0
 
 ## ../../00 工作目录/02 项目策划/马宁/应急指挥/bid-run/
 
@@ -300,6 +300,11 @@
 ## C:/Users/admin/.claude/jobs/9dd43e46/tmp/
 
 
+## C:/Users/admin/.claude/jobs/d2aa6c7f/tmp/
+
+- `qa-bidwrite-diag.mjs` — Diagnostic: what does /bid-write workbench actually render? (~355 tok)
+- `qa-bidwrite-editor.mjs` — 批廿六 M0 browser verify: UI login -> /bid-write/workbench -> editor renders demo doc -> undo/save (~776 tok)
+
 ## C:/Users/admin/.claude/plans/
 
 
@@ -325,8 +330,8 @@
 
 - `bid-write-p1-beta23-policy-metrics-landed.md` (~411 tok)
 - `bid-write-p1-beta24-l4-activation-landed.md` (~407 tok)
-- `bid-write-p1-beta25-workbench-landed.md` (~348 tok)
-- `MEMORY.md` (~2054 tok)
+- `bid-write-p1-beta25-workbench-landed.md` (~359 tok)
+- `MEMORY.md` (~2055 tok)
 
 ## C:/Users/admin/.codex/
 
@@ -682,6 +687,8 @@
 ## backend/app/extensions/bid_write/
 
 - `contracts.py` — bid_write 契约层(批十九 T1,EAI-CUSTOM 2026-11-13)——写作端字段/槽位/断言 (~1808 tok)
+- `document_ast_schema.yaml` — document_ast_schema.yaml — bid_write 正文文档 AST 事实层单一 schema (~1361 tok)
+- `editor_schema_gen.py` — AST JSON 树(与 PM doc JSON 同形;强类型随 M2 执行器契约再收紧)。 (~1800 tok)
 - `metrics.py` — 埋点六指标(P1-β 批廿三,spec §3;EAI-CUSTOM 2026-11-13)——纯函数, (~522 tok)
 - `precheck.py` — F6 规则层预审查(批廿一 M2,EAI-CUSTOM 2026-11-13)——bid_review 同尺投影。 (~2607 tok)
 - `schemas.py` — bid_write API schemas(批十九 T5)——与 bid_review/schemas.py 同构(from_ (~974 tok)
@@ -964,6 +971,7 @@
 ## backend/tests/
 
 - `test_bid_write_contracts.py` — 批十九 T1 契约层自检:商务子集全部是审查端宇宙真实成员(零新契约铁律)、 (~1000 tok)
+- `test_bid_write_editor_schema.py` — 批廿六 M0:document_ast_schema.yaml 单一 schema 自检(EAI-CUSTOM)。 (~832 tok)
 - `test_bid_write_l4.py` — 批廿四 P1-γ L4 语义审查面测试:投影/参与卡筛选/摘除条件/gate 形参/worker 接线。 (~2690 tok)
 - `test_bid_write_m2_worker.py` — 批廿一 M2-c:worker 接线(fields 持久化/自动预审查/generate_and_record) (~1562 tok)
 - `test_bid_write_materials.py` — 批廿二 P1-α:素材库六类实体——crud collect_material 形/端点 CRUD+profile/ (~2801 tok)
@@ -1057,6 +1065,7 @@
 ## docs/superpowers/plans/
 
 - `2026-11-14-bid-write-p1-beta24-l4-activation-plan.md` — 批廿四 bid_write P1-γ:tender.substantive_clauses 契约 + L4 模型审查激活(水印摘除条件)Implementation Plan (~5292 tok)
+- `2026-11-14-bid-write-p1-beta26-editor-m0-plan.md` — bid_write 批廿六(P1-M0)ProseMirror 正文编辑层骨架 实施计划 (~10925 tok)
 - `2026-11-14-bid-write-p1-delta-workbench-plan.md` — bid_write 批廿五(P1-δ 前端三栏工作台)L4 投影扩面+编辑率采样源+前端接线 实施计划 (~3984 tok)
 
 ## docs/superpowers/plans/2026-09-13-coal-mine-tunneling-regulation-v2.md
@@ -1185,6 +1194,10 @@
 
 ## frontend/src/app/bid-review/workbench/
 
+
+## frontend/src/app/bid-write/
+
+- `bid-write.css` — Styles: 121 rules (~8477 tok)
 
 ## frontend/src/app/biz-pipeline/
 
@@ -1490,6 +1503,14 @@
 - `GenerateView.tsx` — ③ 生成配置与执行(批廿五 P1-δ 真接线)。 (~3511 tok)
 - `IntakeView.tsx` — IntakeView (~6560 tok)
 - `MaterialsView.tsx` — ② 素材核对与缺口(批廿五 P1-δ 真接线)。 (~7157 tok)
+- `WorkbenchView.tsx` — BidWriteEditor (~5239 tok)
+
+## frontend/src/extensions/bid-write/editor/
+
+- `BidWriteEditor.tsx` — EAI-CUSTOM 批廿六 M0——PM EditorView React 壳:useEffect 建观(SSR 安全)、 (~911 tok)
+- `demo.ts` — EAI-CUSTOM 批廿六 M0——M0 演示文档(后端正文存储未接入;方案 §15② 最小样例: (~1735 tok)
+- `doc.ts` — 序列化文本投影(导出投影口径:marks 不进文本,方案 §四 剥离规则)。 (~168 tok)
+- `state.ts` — EAI-CUSTOM 批廿六 M0——事务分层 meta.source ∈ {user, system, decor}(方案 §七); (~353 tok)
 
 ## frontend/src/extensions/biz-pipeline/
 
@@ -1748,6 +1769,9 @@
 
 ## frontend/tests/unit/extensions/
 
+- `bid-write-editor-history.test.ts` — EditorState: type (~550 tok)
+- `bid-write-editor-roundtrip.test.ts` — 规范化 JSON:键排序后逐字节比较。 (~510 tok)
+- `bid-write-editor-schema.test.ts` — Declares amount (~542 tok)
 - `bid-write-helpers.test.ts` — row: task, gap (~1623 tok)
 
 ## frontend/tests/unit/extensions/bid-materials/

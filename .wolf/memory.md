@@ -30727,3 +30727,64 @@
 | 10:16 | Edited C:/Users/admin/.claude/projects/D--eai-eai-flow-main/memory/MEMORY.md | 1→2 lines | ~77 |
 | 10:18 | Created C:/Users/admin/.claude/projects/D--eai-eai-flow-main/memory/MEMORY.md | — | ~2188 |
 | 10:19 | Edited C:/Users/admin/.claude/projects/D--eai-eai-flow-main/memory/MEMORY.md | inline fix | ~34 |
+| 10:20 | Edited C:/Users/admin/.claude/projects/D--eai-eai-flow-main/memory/bid-write-p1-beta25-workbench-landed.md | inline fix | ~50 |
+| 10:20 | Edited C:/Users/admin/.claude/projects/D--eai-eai-flow-main/memory/MEMORY.md | inline fix | ~41 |
+| 10:21 | Session end: 9 writes across 4 files (2026-11-13-bid-write-p0-skills-spec.md, 2026-11-14-bid-write-p1-delta-workbench-plan.md, bid-write-p1-beta25-workbench-landed.md, MEMORY.md) | 3 reads | ~15727 tok |
+| 10:32 | Session end: 9 writes across 4 files (2026-11-13-bid-write-p0-skills-spec.md, 2026-11-14-bid-write-p1-delta-workbench-plan.md, bid-write-p1-beta25-workbench-landed.md, MEMORY.md) | 3 reads | ~15727 tok |
+| 10:33 | Session end: 9 writes across 4 files (2026-11-13-bid-write-p0-skills-spec.md, 2026-11-14-bid-write-p1-delta-workbench-plan.md, bid-write-p1-beta25-workbench-landed.md, MEMORY.md) | 3 reads | ~15727 tok |
+
+## Session: 2026-11-14 10:38
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 10:50 | Created docs/superpowers/plans/2026-11-14-bid-write-p1-beta26-editor-m0-plan.md | — | ~11654 |
+| 10:50 | Created backend/tests/test_bid_write_editor_schema.py | — | ~832 |
+| 10:51 | Created backend/app/extensions/bid_write/document_ast_schema.yaml | — | ~1361 |
+| 10:52 | Created backend/app/extensions/bid_write/editor_schema_gen.py | — | ~1628 |
+| 10:52 | Edited backend/app/extensions/bid_write/editor_schema_gen.py | inline fix | ~13 |
+| 10:53 | Edited backend/app/extensions/bid_write/editor_schema_gen.py | 8→8 lines | ~71 |
+| 10:53 | Edited backend/app/extensions/bid_write/editor_schema_gen.py | 9→9 lines | ~40 |
+| 10:54 | Edited backend/app/extensions/bid_write/editor_schema_gen.py | 1→6 lines | ~34 |
+| 10:54 | Edited backend/app/extensions/bid_write/editor_schema_gen.py | modified _ts_to_dom() | ~245 |
+| 10:55 | Edited backend/app/extensions/bid_write/editor_schema_gen.py | 6→6 lines | ~60 |
+| 10:55 | Edited backend/app/extensions/bid_write/editor_schema_gen.py | 6→6 lines | ~73 |
+| 10:56 | Edited backend/app/extensions/bid_write/editor_schema_gen.py | modified _ts_attrs() | ~57 |
+| 10:57 | Edited backend/app/extensions/bid_write/editor_schema_gen.py | modified _ts_to_dom() | ~260 |
+| 11:00 | Created frontend/tests/unit/extensions/bid-write-editor-schema.test.ts | — | ~512 |
+| 11:01 | Edited frontend/tests/unit/extensions/bid-write-editor-schema.test.ts | "rstest" → "@rstest/core" | ~15 |
+| 11:03 | Edited backend/app/extensions/bid_write/editor_schema_gen.py | 2→5 lines | ~76 |
+| 11:04 | Edited frontend/tests/unit/extensions/bid-write-editor-schema.test.ts | 4→4 lines | ~58 |
+| 11:05 | Created frontend/src/extensions/bid-write/editor/doc.ts | — | ~168 |
+| 11:05 | Created frontend/src/extensions/bid-write/editor/state.ts | — | ~353 |
+| 11:06 | Created frontend/src/extensions/bid-write/editor/demo.ts | — | ~1735 |
+| 11:06 | Created frontend/tests/unit/extensions/bid-write-editor-roundtrip.test.ts | — | ~348 |
+| 11:06 | Created frontend/tests/unit/extensions/bid-write-editor-history.test.ts | — | ~456 |
+| 11:08 | Created frontend/tests/unit/extensions/bid-write-editor-roundtrip.test.ts | — | ~510 |
+| 11:08 | Edited frontend/tests/unit/extensions/bid-write-editor-history.test.ts | 10→13 lines | ~166 |
+| 11:09 | Created frontend/tests/unit/extensions/bid-write-editor-history.test.ts | — | ~544 |
+| 11:10 | Created frontend/src/extensions/bid-write/editor/BidWriteEditor.tsx | — | ~911 |
+
+## Session: 2026-11-14 11:12
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 11:13 | Edited frontend/src/app/bid-write/bid-write.css | expanded (+122 lines) | ~736 |
+| 11:17 | Edited frontend/tests/unit/extensions/bid-write-editor-schema.test.ts | added optional chaining | ~109 |
+| 11:18 | Edited frontend/tests/unit/extensions/bid-write-editor-history.test.ts | 2→6 lines | ~42 |
+| 11:18 | Edited frontend/tests/unit/extensions/bid-write-editor-history.test.ts | toBeNull() → toBeDefined() | ~58 |
+| 11:18 | Edited backend/app/extensions/bid_write/editor_schema_gen.py | modified _ts_to_dom() | ~290 |
+| 11:24 | Edited frontend/src/extensions/bid-write/components/WorkbenchView.tsx | added 4 import(s) | ~195 |
+| 11:24 | Edited frontend/src/extensions/bid-write/components/WorkbenchView.tsx | CSS: ssr, loading | ~103 |
+| 11:24 | Edited frontend/src/extensions/bid-write/components/WorkbenchView.tsx | added optional chaining | ~257 |
+| 11:24 | Edited frontend/src/extensions/bid-write/components/WorkbenchView.tsx | 5→5 lines | ~46 |
+| 11:25 | Edited frontend/src/extensions/bid-write/components/WorkbenchView.tsx | 4→4 lines | ~38 |
+| 11:25 | Edited frontend/src/extensions/bid-write/components/WorkbenchView.tsx | added optional chaining | ~354 |
+| 11:25 | Edited frontend/src/extensions/bid-write/components/WorkbenchView.tsx | reduced (-24 lines) | ~118 |
+| 11:25 | Edited frontend/src/extensions/bid-write/components/WorkbenchView.tsx | added nullish coalescing | ~63 |
+
+| 11:40 | 批廿六 M0-a~f ProseMirror 正文编辑层骨架全落地:yaml 15项→codegen→schema.gen.ts→PM doc/state/demo→BidWriteEditor→WorkbenchView 挂载;前端13测绿+后端223绿;发现批廿五漏交 bid-write.css(layout.tsx imports 之,已推树断链)随 M0-e 补交 | document_ast_schema.yaml/editor_schema_gen.py/schema.gen.ts/doc.ts/state.ts/demo.ts/BidWriteEditor.tsx/bid-write.css/WorkbenchView.tsx | 6 commits 089bc23bd..47aaa61cf | ~95k |
+| 12:05 | Created C:/Users/admin/.claude/jobs/d2aa6c7f/tmp/qa-bidwrite-editor.mjs | — | ~672 |
+| 12:12 | Edited C:/Users/admin/.claude/jobs/d2aa6c7f/tmp/qa-bidwrite-editor.mjs | inline fix | ~19 |
+| 12:21 | Created C:/Users/admin/.claude/jobs/d2aa6c7f/tmp/qa-bidwrite-diag.mjs | — | ~355 |
+| 12:23 | Created C:/Users/admin/.claude/jobs/d2aa6c7f/tmp/qa-bidwrite-editor.mjs | — | ~738 |
+| 12:31 | Edited C:/Users/admin/.claude/jobs/d2aa6c7f/tmp/qa-bidwrite-editor.mjs | 7→10 lines | ~160 |
