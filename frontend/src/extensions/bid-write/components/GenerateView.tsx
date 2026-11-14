@@ -1,72 +1,48 @@
 "use client";
 
-import { Bolt, FileSpreadsheet, Info, Plus, Trash2 } from "lucide-react";
+/**
+ * ③ 生成配置与执行(批廿五 P1-δ 真接线)。
+ *
+ * 单价表从任务抽取快照 `engine_meta.fields["tender.boq_items"]` 渲染(键=清单项 id,
+ * 直通 knobs.unit_prices);旋钮经 assembleGenerateKnobs 装配后 POST /generate。
+ * 结果面=门禁 verdict(阻断原因/水印/L4 advisory)+metrics;文件导出服务未建,不做假下载。
+ */
+
+import { Bolt, FileSpreadsheet, Info, PlayCircle } from "lucide-react";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
 
 import {
   Badge,
   EmptyState,
+  ErrorBlock,
   MetricCell,
   MetricStrip,
   PageHead,
-  ProgressBar,
 } from "@/extensions/bid-write/components/primitives";
-import { projectTitle } from "@/extensions/bid-write/helpers";
-import { useSelectedWriteTask } from "@/extensions/bid-write/hooks";
+import {
+  assembleGenerateKnobs,
+  formatPercent,
+  projectTitle,
+  type GenerateKnobsDraft,
+} from "@/extensions/bid-write/helpers";
+import {
+  useGenerateTask,
+  useSelectedWriteTask,
+} from "@/extensions/bid-write/hooks";
+import type { BoqItem, WriteTaskOut } from "@/extensions/bid-write/types";
 
-const TEMPLATES = [
-  {
-    id: "goods",
-    name: "货物类标准",
-    desc: "投标函 + 报价表 + 响应表 + 附件索引",
-  },
-  {
-    id: "framework",
-    name: "框架协议",
-    desc: "含年度单价表与调价机制章节",
-  },
-  {
-    id: "service",
-    name: "服务类",
-    desc: "含实施方案与人员配置表",
-  },
-] as const;
-
-const P0_SKILLS = [
-  {
-    id: "bid_letter",
-    name: "投标函",
-    code: "bid_letter",
-    count: "10 条断言 · D0 6",
-  },
-  {
-    id: "price_sheet",
-    name: "报价表",
-    code: "price_sheet",
-    count: "10 条断言 · D0 8",
-  },
-  {
-    id: "response_table",
-    name: "响应/偏离表",
-    code: "response_table",
-    count: "9 条断言 · D0 8",
-  },
-  {
-    id: "attachment_index",
-    name: "附件索引",
-    code: "attachment_index",
-    count: "9 条断言 · D0 5",
-  },
-] as const;
-
-interface PriceRow {
-  id: string;
-  code: string;
-  name: string;
-  quantity: string;
-  unit: string;
-  unitPrice: string;
+function boqItemsOf(task: WriteTaskOut | null): BoqItem[] {
+  const fields = task?.engine_meta?.fields;
+  if (!fields || typeof fields !== "object") return [];
+  const raw = (fields as Record<string, unknown>)["tender.boq_items"];
+  if (!Array.isArray(raw)) return [];
+  return raw.filter(
+    (item): item is BoqItem =>
+      !!item &&
+      typeof item === "object" &&
+      typeof (item as BoqItem).id === "string",
+  );
 }
 
 function numberValue(value: string): number {
@@ -81,56 +57,52 @@ function money(value: number): string {
   }).format(value);
 }
 
-export function GenerateView() {
-  const { task } = useSelectedWriteTask();
-  const [template, setTemplate] =
-    useState<(typeof TEMPLATES)[number]["id"]>("goods");
-  const [skills, setSkills] = useState<Record<string, boolean>>({
-    bid_letter: true,
-    price_sheet: true,
-    response_table: true,
-    attachment_index: true,
-  });
-  const [policy, setPolicy] = useState({
-    warrantyMonths: "24",
-    spareYears: "10",
-    responseHours: "8",
-    penaltyCap: "5",
-    bidValidityDays: "90",
-  });
-  const [priceRows, setPriceRows] = useState<PriceRow[]>([]);
+const EMPTY_DRAFT: GenerateKnobsDraft = {
+  warrantyMonths: "",
+  spareYears: "",
+  responseHours: "",
+  penaltyCap: "",
+  signDate: "",
+  priceNote: "",
+  unitPrices: {},
+};
 
+export function GenerateView() {
+  const { taskId, task } = useSelectedWriteTask();
+  const generate = useGenerateTask(taskId);
+  const [draft, setDraft] = useState<GenerateKnobsDraft>(EMPTY_DRAFT);
+
+  const items = useMemo(() => boqItemsOf(task), [task]);
+  const priced = items.filter((item) => (draft.unitPrices[item.id] ?? "").trim() !== "");
   const total = useMemo(
     () =>
-      priceRows.reduce(
-        (sum, row) =>
-          sum + numberValue(row.quantity) * numberValue(row.unitPrice),
+      priced.reduce(
+        (sum, item) =>
+          sum + numberValue(String(item.qty ?? "")) * numberValue(draft.unitPrices[item.id] ?? ""),
         0,
       ),
-    [priceRows],
+    [priced, draft.unitPrices],
   );
 
-  const addPriceRow = () => {
-    setPriceRows((current) => [
+  const ready = task?.status === "matrix_ready";
+  const setUnitPrice = (id: string, value: string) =>
+    setDraft((current) => ({
       ...current,
-      {
-        id: `row-${Date.now()}-${current.length}`,
-        code: `BOQ-${String(current.length + 1).padStart(2, "0")}`,
-        name: "",
-        quantity: "1",
-        unit: "项",
-        unitPrice: "",
-      },
-    ]);
+      unitPrices: { ...current.unitPrices, [id]: value },
+    }));
+
+  const onStart = async () => {
+    if (!ready) return;
+    try {
+      await generate.mutateAsync({ knobs: assembleGenerateKnobs(draft) });
+      toast.success("生成完成，门禁与 L4 审查结果见下方");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "生成失败");
+    }
   };
 
-  const updateRow = (id: string, patch: Partial<PriceRow>) => {
-    setPriceRows((current) =>
-      current.map((row) => (row.id === id ? { ...row, ...patch } : row)),
-    );
-  };
-
-  const selectedSkillCount = Object.values(skills).filter(Boolean).length;
+  const verdict = generate.data?.verdict ?? null;
+  const l4 = verdict?.l4 ?? null;
 
   return (
     <>
@@ -139,228 +111,59 @@ export function GenerateView() {
         title="③ 生成配置与执行"
         subtitle={
           task
-            ? `${projectTitle(task)} · P0 四技能`
-            : "P0 四技能 · 数值零幻觉：单价在输入侧录入，结果侧只读"
+            ? `${projectTitle(task)} · 旋钮合并 meta.knobs（body 缺席键不覆盖）`
+            : "单价在输入侧录入，结果侧由后端确定性重算"
         }
         actions={
-          <>
-            <Badge tone="gray">
-              模板：{TEMPLATES.find((item) => item.id === template)?.name}
-            </Badge>
-            <button
-              type="button"
-              className="btn btn-sm"
-              onClick={() => toast.info("章节树预览将在生成装配器接入后开放")}
-            >
-              预览章节树
-            </button>
-          </>
+          <Badge tone={ready ? "ok" : "gray"}>
+            {ready ? "矩阵就绪" : (task ? "矩阵未就绪" : "未选任务")}
+          </Badge>
         }
       />
 
       <MetricStrip>
+        <MetricCell label="清单行" value={items.length} suffix="项" accent />
         <MetricCell
-          label="P0 已勾选技能"
-          value={selectedSkillCount}
-          suffix="/ 4"
-          accent
+          label="已出价"
+          value={priced.length}
+          suffix={`/${items.length}`}
+          tone={items.length > 0 && priced.length < items.length ? "warn" : "ok"}
         />
-        <MetricCell label="断言注册表" value="43" suffix="条 · D0 31" />
-        <MetricCell label="报价明细" value={priceRows.length} suffix="行" />
         <MetricCell
-          label="含税合计"
-          value={priceRows.length ? `¥${money(total)}` : "—"}
+          label="报价预览合计"
+          value={priced.length ? `¥${money(total)}` : "—"}
           tone="ok"
         />
+        <MetricCell label="D0 断言" value={verdict?.assertion_counts?.D0 ?? "—"} />
       </MetricStrip>
 
-      <div className="banner warn">
-        <Info size={15} aria-hidden="true" />
-        <span>
-          <b>生成执行管线尚未接入：</b>
-          当前页面可编辑生成配置草稿，但“开始生成”不会调用后端。
-          正文、报价计算内核、断言执行与导出均需等 M1/F4
-          接口落地，避免伪造生成结果。
-        </span>
-      </div>
-
-      <div className="card bw-mt">
-        <div className="card-h">
-          <h3>模板选择</h3>
-          <span className="r">
-            <span className="bw-muted">货物类标准 · P0 范围</span>
+      {!task ? (
+        <div className="banner info bw-mt">
+          <Info size={15} aria-hidden="true" />
+          <span>当前没有选中任务；请先在项目列表创建写作项目并完成矩阵确认。</span>
+        </div>
+      ) : !ready ? (
+        <div className="banner warn bw-mt">
+          <Info size={15} aria-hidden="true" />
+          <span>
+            任务状态「{task.status}」：矩阵确认（①）完成后才能生成（后端 409 拒绝）。
           </span>
         </div>
-        <div className="card-b">
-          <div className="tpl">
-            {TEMPLATES.map((item) => (
-              <button
-                key={item.id}
-                type="button"
-                className={`t ${template === item.id ? "on" : ""}`}
-                onClick={() => setTemplate(item.id)}
-              >
-                <b>{item.name}</b>
-                <span>{item.desc}</span>
-              </button>
-            ))}
-          </div>
-        </div>
-      </div>
-
-      <div className="card bw-mt">
-        <div className="card-h">
-          <h3>技能勾选</h3>
-          <span className="r">
-            <Badge tone="gray">断言注册表 43 条 · D0 31</Badge>
-          </span>
-        </div>
-        <div className="card-b">
-          <div className="sk bw-skill-grid">
-            {P0_SKILLS.map((item) => (
-              <label
-                key={item.id}
-                className={!skills[item.id] ? "off" : undefined}
-              >
-                <input
-                  type="checkbox"
-                  checked={skills[item.id]}
-                  onChange={(event) =>
-                    setSkills((current) => ({
-                      ...current,
-                      [item.id]: event.target.checked,
-                    }))
-                  }
-                />
-                <span>
-                  <b>
-                    {item.name} <span className="mono">{item.code}</span>
-                  </b>
-                  <span>{item.count}</span>
-                </span>
-              </label>
-            ))}
-            <label className="off">
-              <input type="checkbox" disabled />
-              <span>
-                <b>资格文件组织</b>
-                <span>P1 · 未启用</span>
-              </span>
-            </label>
-            <label className="off">
-              <input type="checkbox" disabled />
-              <span>
-                <b>售后承诺</b>
-                <span>P1 · 未启用</span>
-              </span>
-            </label>
-          </div>
-          <div className="banner info bw-mt-sm">
-            <Info size={15} aria-hidden="true" />
-            <span>
-              共享层 CMN 5
-              条（全文占位符/绝对化/实体引用/渲染可重放/待补负证据）随导出级全文扫描自动执行，无需勾选。
-            </span>
-          </div>
-        </div>
-      </div>
-
-      <div className="card bw-mt">
-        <div className="card-h">
-          <h3>承诺策略 policy</h3>
-          <span className="r">
-            <Badge tone="gray">本地草稿 · 不落库</Badge>
-          </span>
-        </div>
-        <div className="card-b">
-          <div className="bw-policy-grid">
-            <label className="field">
-              <span>质保上限（月）</span>
-              <input
-                className="inp"
-                value={policy.warrantyMonths}
-                onChange={(event) =>
-                  setPolicy({ ...policy, warrantyMonths: event.target.value })
-                }
-              />
-            </label>
-            <label className="field">
-              <span>备件供应年限</span>
-              <input
-                className="inp"
-                value={policy.spareYears}
-                onChange={(event) =>
-                  setPolicy({ ...policy, spareYears: event.target.value })
-                }
-              />
-            </label>
-            <label className="field">
-              <span>响应时限（小时）</span>
-              <input
-                className="inp"
-                value={policy.responseHours}
-                onChange={(event) =>
-                  setPolicy({ ...policy, responseHours: event.target.value })
-                }
-              />
-            </label>
-            <label className="field">
-              <span>违约金上限（%）</span>
-              <input
-                className="inp"
-                value={policy.penaltyCap}
-                onChange={(event) =>
-                  setPolicy({ ...policy, penaltyCap: event.target.value })
-                }
-              />
-            </label>
-            <label className="field">
-              <span>投标有效期（天）</span>
-              <input
-                className="inp"
-                value={policy.bidValidityDays}
-                onChange={(event) =>
-                  setPolicy({ ...policy, bidValidityDays: event.target.value })
-                }
-              />
-            </label>
-          </div>
-        </div>
-      </div>
+      ) : null}
 
       <div className="card bw-mt">
         <div className="card-h">
           <h3>报价输入 · 单价表</h3>
           <span className="r">
-            <button
-              type="button"
-              className="btn btn-sm"
-              onClick={() => toast.info("CSV 导入将在计算内核接入后开放")}
-            >
-              <FileSpreadsheet size={13} aria-hidden="true" />
-              导入 CSV
-            </button>
-            <button
-              type="button"
-              className="btn btn-sm soft"
-              onClick={addPriceRow}
-            >
-              <Plus size={13} aria-hidden="true" />
-              添加清单项
-            </button>
+            <Badge tone="gray">来源 tender.boq_items · 键=清单项 id</Badge>
           </span>
         </div>
-        {priceRows.length === 0 ? (
+        {items.length === 0 ? (
           <div className="card-b">
             <EmptyState
               icon={FileSpreadsheet}
-              title="暂无报价明细"
-              description="报价由人工录入单价，系统只做确定性计算，不猜测价格。"
-              action={
-                <button type="button" className="btn pri" onClick={addPriceRow}>
-                  添加第一条清单项
-                </button>
-              }
+              title="招标文件未抽取到工程量清单"
+              description="tender.boq_items 为空时不显示可编辑行，也不伪造清单项；空 unit_prices 不参与旋钮合并。"
             />
           </div>
         ) : (
@@ -368,89 +171,43 @@ export function GenerateView() {
             <table className="tbl dense">
               <thead>
                 <tr>
-                  <th>清单项</th>
+                  <th>清单项 id</th>
                   <th>名称</th>
                   <th className="num">数量</th>
                   <th>单位</th>
                   <th className="num">单价（元）</th>
-                  <th className="num">合价（元）</th>
-                  <th />
+                  <th className="num">合价预览（元）</th>
                 </tr>
               </thead>
               <tbody>
-                {priceRows.map((row) => (
-                  <tr key={row.id}>
-                    <td>
-                      <input
-                        className="inp mono bw-cell-input"
-                        value={row.code}
-                        onChange={(event) =>
-                          updateRow(row.id, { code: event.target.value })
-                        }
-                      />
-                    </td>
-                    <td>
-                      <input
-                        className="inp bw-cell-input"
-                        value={row.name}
-                        placeholder="清单名称"
-                        onChange={(event) =>
-                          updateRow(row.id, { name: event.target.value })
-                        }
-                      />
-                    </td>
-                    <td>
-                      <input
-                        className="inp num bw-cell-input"
-                        value={row.quantity}
-                        onChange={(event) =>
-                          updateRow(row.id, { quantity: event.target.value })
-                        }
-                      />
-                    </td>
-                    <td>
-                      <input
-                        className="inp bw-cell-input"
-                        value={row.unit}
-                        onChange={(event) =>
-                          updateRow(row.id, { unit: event.target.value })
-                        }
-                      />
-                    </td>
-                    <td>
-                      <input
-                        className="inp num bw-cell-input"
-                        value={row.unitPrice}
-                        placeholder="0.00"
-                        onChange={(event) =>
-                          updateRow(row.id, { unitPrice: event.target.value })
-                        }
-                      />
-                    </td>
-                    <td className="num mono">
-                      {money(
-                        numberValue(row.quantity) * numberValue(row.unitPrice),
-                      )}
-                    </td>
-                    <td>
-                      <button
-                        type="button"
-                        className="btn btn-sm"
-                        aria-label={`删除 ${row.code}`}
-                        onClick={() =>
-                          setPriceRows((current) =>
-                            current.filter((item) => item.id !== row.id),
-                          )
-                        }
-                      >
-                        <Trash2 size={13} aria-hidden="true" />
-                      </button>
-                    </td>
-                  </tr>
-                ))}
+                {items.map((item) => {
+                  const price = draft.unitPrices[item.id] ?? "";
+                  return (
+                    <tr key={item.id}>
+                      <td className="mono">{item.id}</td>
+                      <td>{item.name}</td>
+                      <td className="num mono">{String(item.qty ?? "")}</td>
+                      <td>{item.unit}</td>
+                      <td>
+                        <input
+                          className="inp num bw-cell-input"
+                          value={price}
+                          placeholder="0.00"
+                          aria-label={`${item.id} 单价`}
+                          onChange={(event) => setUnitPrice(item.id, event.target.value)}
+                        />
+                      </td>
+                      <td className="num mono">
+                        {price.trim() !== ""
+                          ? money(numberValue(String(item.qty ?? "")) * numberValue(price))
+                          : "—"}
+                      </td>
+                    </tr>
+                  );
+                })}
                 <tr>
-                  <td colSpan={5} className="num bw-total-label">
-                    合计（本地草稿）
+                  <td colSpan={4} className="num bw-total-label">
+                    合计预览（仅已出价行 · 后端按同一公式确定性重算）
                   </td>
                   <td className="num mono bw-total-value">¥{money(total)}</td>
                   <td />
@@ -459,60 +216,156 @@ export function GenerateView() {
             </table>
           </div>
         )}
-        <div className="card-b">
-          <p className="bw-muted">
-            金额只按已录入数量 ×
-            单价计算；最高限价、税率、四舍五入与跨表一致性校验需由计算内核执行。
-          </p>
-        </div>
       </div>
 
       <div className="card bw-mt">
         <div className="card-h">
-          <h3>分册与签章</h3>
+          <h3>生成旋钮</h3>
           <span className="r">
-            <Badge tone="gray">正本 1 · 副本 4 · 电子 1</Badge>
-            <Badge tone="gray">页码：连续</Badge>
-            <Badge tone="gray">CA 签章位：预留</Badge>
+            <Badge tone="gray">空值键整体缺席 · 不造默认值</Badge>
           </span>
         </div>
         <div className="card-b">
-          <div className="bw-generate-actions">
+          <div className="bw-policy-grid">
+            <label className="field">
+              <span>质保承诺（月或原文表述）</span>
+              <input
+                className="inp"
+                value={draft.warrantyMonths}
+                placeholder="如 24（纯数字自动补「个月」）"
+                onChange={(event) =>
+                  setDraft({ ...draft, warrantyMonths: event.target.value })
+                }
+              />
+            </label>
+            <label className="field">
+              <span>备件供应年限</span>
+              <input
+                className="inp"
+                value={draft.spareYears}
+                placeholder="如 10（进通用承诺清单）"
+                onChange={(event) => setDraft({ ...draft, spareYears: event.target.value })}
+              />
+            </label>
+            <label className="field">
+              <span>故障响应时限（小时）</span>
+              <input
+                className="inp"
+                value={draft.responseHours}
+                placeholder="如 8"
+                onChange={(event) => setDraft({ ...draft, responseHours: event.target.value })}
+              />
+            </label>
+            <label className="field">
+              <span>违约金上限（%）</span>
+              <input
+                className="inp"
+                value={draft.penaltyCap}
+                placeholder="如 5"
+                onChange={(event) => setDraft({ ...draft, penaltyCap: event.target.value })}
+              />
+            </label>
+            <label className="field">
+              <span>签署日期</span>
+              <input
+                className="inp"
+                value={draft.signDate}
+                placeholder="2026-11-20"
+                onChange={(event) => setDraft({ ...draft, signDate: event.target.value })}
+              />
+            </label>
+            <label className="field">
+              <span>报价说明</span>
+              <input
+                className="inp"
+                value={draft.priceNote}
+                placeholder="如 暂估按最终结算"
+                onChange={(event) => setDraft({ ...draft, priceNote: event.target.value })}
+              />
+            </label>
+          </div>
+          <div className="bw-generate-actions bw-mt-sm">
             <button
               type="button"
               className="btn pri"
-              onClick={() =>
-                toast.error("生成执行管线尚未接入，未调用后端生成")
-              }
+              disabled={!ready || generate.isPending}
+              onClick={() => void onStart()}
             >
-              开始生成
+              <PlayCircle size={14} aria-hidden="true" />
+              {generate.isPending ? "生成中…" : "开始生成"}
             </button>
-            <span className="bw-muted">解析 → 装配 → 逐节生成 → 断言校验</span>
+            <span className="bw-muted">装配旋钮 → 生成四件 → D0 断言 → L4 语义审查（advisory-only）</span>
           </div>
-          <div className="bw-gen-list">
-            {P0_SKILLS.map((item) => (
-              <div className="gen-row" key={item.id}>
-                <b>{item.name}</b>
-                <div>
-                  <ProgressBar value={0} />
-                  <div className="gen-sub">
-                    待执行 · 需要生成服务与断言执行器
-                  </div>
-                </div>
-                <Badge tone="gray">未开始</Badge>
-              </div>
-            ))}
-          </div>
+          {generate.error ? (
+            <ErrorBlock error={generate.error} />
+          ) : null}
         </div>
       </div>
 
-      {!task ? (
-        <div className="banner info bw-mt">
-          <Info size={15} aria-hidden="true" />
-          <span>
-            当前没有选中任务；生成配置草稿仍可编辑，但不会关联到任何项目。
-            请先在项目列表创建写作项目。
-          </span>
+      {generate.data ? (
+        <div className="card bw-mt">
+          <div className="card-h">
+            <h3>生成结果</h3>
+            <span className="r">
+              <Badge tone={generate.data.blocked ? "bad" : "ok"} dot>
+                {generate.data.status}
+                {generate.data.biz_no ? ` · ${generate.data.biz_no}` : ""}
+              </Badge>
+            </span>
+          </div>
+          <div className="card-b">
+            {generate.data.blocked ? (
+              <div className="banner bad">
+                <Info size={15} aria-hidden="true" />
+                <span>
+                  <b>门禁阻断：</b>
+                  {(verdict?.reasons ?? []).join("；") || "存在未通过断言"}
+                </span>
+              </div>
+            ) : (
+              <div className="banner ok">
+                <Info size={15} aria-hidden="true" />
+                <span>
+                  {verdict?.watermark == null
+                    ? "门禁通过，D0 零失败，L4 审查通过（风险水印已摘除）。"
+                    : `门禁通过但带风险水印：${verdict.watermark}`}
+                </span>
+              </div>
+            )}
+            {l4 ? (
+              <div className="banner info bw-mt-sm">
+                <Info size={15} aria-hidden="true" />
+                <span>
+                  <b>L4 语义审查（advisory-only，不计入门禁）：</b>
+                  参与卡 {l4.participants.length} 张 ·
+                  裁决 {Object.entries(l4.counts).map(([k, v]) => `${k} ${v}`).join(" / ") || "—"} ·
+                  输入缺席 {l4.input_missing.length || 0} 项
+                  {l4.issues.length > 0 ? ` · ${l4.issues.length} 条建议` : ""}
+                </span>
+              </div>
+            ) : null}
+            <MetricStrip>
+              <MetricCell
+                label="断言通过率"
+                value={formatPercent(verdict?.metrics?.assertion_pass_rate ?? null)}
+              />
+              <MetricCell label="D0" value={verdict?.assertion_counts?.D0 ?? "—"} />
+              <MetricCell label="D1" value={verdict?.assertion_counts?.D1 ?? "—"} />
+              <MetricCell
+                label="人工编辑占比"
+                value={formatPercent(verdict?.metrics?.manual_edit_ratio ?? null)}
+              />
+              <MetricCell
+                label="耗时"
+                value={
+                  verdict?.metrics ? `${(verdict.metrics.latency_ms / 1000).toFixed(1)}s` : "—"
+                }
+              />
+            </MetricStrip>
+            <p className="bw-muted">
+              文件导出（分册/页码/CA 签章位）由导出服务承担，尚未接入；本页不提供下载按钮。
+            </p>
+          </div>
         </div>
       ) : null}
     </>
