@@ -197,5 +197,5 @@ async def test_generate_green_with_materials(client, db, monkeypatch):
     assert r.status_code == 200
     body = r.json()
     assert body["blocked"] is False, body["verdict"]["reasons"]
-    assert body["verdict"]["watermark"] == "商务风险未确认"  # L4 未评估语义恒在
+    assert body["verdict"]["watermark"] is None  # 批廿五 P1-δ:L4-008 参与(响应表投影)hyb det 零命中→摘除;advisory 面,blocked False 不受影响
     assert body["verdict"]["assertion_counts"].get("FAIL", 0) == 0

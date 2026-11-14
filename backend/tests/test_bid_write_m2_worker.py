@@ -101,7 +101,10 @@ async def test_generate_endpoint_records(client, db, monkeypatch):
     assert r.status_code == 200
     body = r.json()
     assert body["blocked"] is True and "SK-BL-001" in body["verdict"]["reasons"]  # material 缺=诚实
-    assert body["verdict"]["watermark"] == "商务风险未确认"
+    # 批廿五 P1-δ:L4-008 参与(响应表投影 bid.response_sections+tender 快照合并)hyb det
+    # 零命中→水印摘除(None);L4 advisory-only,blocked 独立不翻转(上方仍 True)。
+    assert body["verdict"]["watermark"] is None
+    assert (body["verdict"]["l4"] or {}).get("participants") == ["L4-008"]
     refreshed = await crud.get_task(db, task.id, "u1")
     assert refreshed.engine_meta["knobs"]["unit_prices"] == {"1.1": "800000", "1.2": "400000"}
     # 未就绪 409
