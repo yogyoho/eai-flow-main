@@ -5,16 +5,15 @@ import {
   ArrowRight,
   BookOpen,
   ChevronRight,
-  FileText,
   Info,
-  Lock,
   RefreshCw,
   Sparkles,
   Undo2,
   Redo2,
 } from "lucide-react";
+import dynamic from "next/dynamic";
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import {
   Badge,
@@ -23,6 +22,12 @@ import {
   LoadingBlock,
   PageHead,
 } from "@/extensions/bid-write/components/primitives";
+import {
+  type BidWriteEditorFlags,
+  type BidWriteEditorHandle,
+} from "@/extensions/bid-write/editor/BidWriteEditor";
+import { demoWorkbenchAst } from "@/extensions/bid-write/editor/demo";
+import { type AstJsonNode } from "@/extensions/bid-write/editor/schema.gen";
 import {
   formatDate,
   formatPercent,
@@ -42,6 +47,18 @@ import {
 import { writeTaskHref } from "@/extensions/bid-write/nav";
 import type { MatrixRowOut } from "@/extensions/bid-write/types";
 
+// EAI-CUSTOM 批廿六 M0——PM 编辑器仅客户端挂载(prosemirror-view 不进 SSR 包)
+const BidWriteEditor = dynamic(
+  () =>
+    import("@/extensions/bid-write/editor/BidWriteEditor").then(
+      (mod) => mod.BidWriteEditor,
+    ),
+  {
+    ssr: false,
+    loading: () => <LoadingBlock label="正在挂载正文编辑器…" />,
+  },
+);
+
 interface OutlineSection {
   key: string;
   name: string;
@@ -54,6 +71,31 @@ export function WorkbenchView() {
   const gaps = useBidWriteGaps(taskId);
   const metrics = useTaskMetrics(taskId);
   const [activeSection, setActiveSection] = useState<string>("all");
+
+  // 批廿六 M0——编辑器接线:演示文档 + 400ms 防抖回传;保存=本地序列化(存储 M2 接入)
+  const editorRef = useRef<BidWriteEditorHandle | null>(null);
+  const initialAst = useMemo(() => demoWorkbenchAst(), []);
+  const latestAstRef = useRef<AstJsonNode | null>(null);
+  const [flags, setFlags] = useState<BidWriteEditorFlags>({
+    canUndo: false,
+    canRedo: false,
+  });
+  const [savedAt, setSavedAt] = useState<string | null>(null);
+
+  const handleDocChange = useCallback(
+    (ast: AstJsonNode, f: BidWriteEditorFlags) => {
+      latestAstRef.current = ast;
+      setFlags(f);
+    },
+    [],
+  );
+  const handleSave = useCallback(() => {
+    const ast = editorRef.current?.serializeNow() ?? latestAstRef.current;
+    if (ast) {
+      latestAstRef.current = ast;
+      setSavedAt(new Date().toLocaleTimeString("zh-CN", { hour12: false }));
+    }
+  }, []);
 
   const rows = useMemo(() => matrix.data?.items ?? [], [matrix.data?.items]);
   const summary = useMemo(() => matrixSummary(rows), [rows]);
@@ -106,8 +148,8 @@ export function WorkbenchView() {
         title="④ 写作工作台"
         subtitle={
           task
-            ? `${projectTitle(task)} · 矩阵/缺口/预审查/埋点实读；正文编辑器未接入`
-            : "矩阵/缺口/预审查/埋点实读；正文编辑器未接入"
+            ? `${projectTitle(task)} · 矩阵/缺口/预审查/埋点实读；正文编辑器 M0（演示文档）`
+            : "矩阵/缺口/预审查/埋点实读；正文编辑器 M0（演示文档）"
         }
         actions={
           <>
@@ -168,8 +210,8 @@ export function WorkbenchView() {
             <div className="banner info">
               <Info size={15} aria-hidden="true" />
               <span>
-                工作台只读：正文编辑器尚未接入；生成执行在「③ 生成配置与执行」完成，
-                此处展示矩阵底稿、缺口与最近一次生成埋点。
+                正文编辑器 M0 已接入（演示文档）：编辑、撤销与本地序列化可用；
+                断言联动与后端 AST 存储在后续批次接入。
               </span>
             </div>
           )}
@@ -249,10 +291,7 @@ export function WorkbenchView() {
                         ?.name}
                 </h3>
                 <span className="r">
-                  <span className="bw-doc-badge">
-                    <Lock size={12} aria-hidden="true" />
-                    只读
-                  </span>
+                  <Badge tone="warn">演示数据</Badge>
                   <Badge tone={summary.blocked > 0 ? "bad" : "ok"} dot>
                     {summary.blocked > 0
                       ? `${summary.blocked} 项阻断`
@@ -261,14 +300,28 @@ export function WorkbenchView() {
                 </span>
               </div>
               <div className="ed-toolbar">
-                <button type="button" disabled title="正文生成接入后开放">
+                <button
+                  type="button"
+                  disabled={!flags.canUndo}
+                  title="撤销（Ctrl+Z）"
+                  onClick={() => editorRef.current?.undo()}
+                >
                   <Undo2 size={14} aria-hidden="true" />
                 </button>
-                <button type="button" disabled title="正文生成接入后开放">
+                <button
+                  type="button"
+                  disabled={!flags.canRedo}
+                  title="重做（Ctrl+Y）"
+                  onClick={() => editorRef.current?.redo()}
+                >
                   <Redo2 size={14} aria-hidden="true" />
                 </button>
                 <span className="sep" />
-                <button type="button" disabled title="正文生成接入后开放">
+                <button
+                  type="button"
+                  title="保存=本地序列化（后端存储接入后写回）"
+                  onClick={handleSave}
+                >
                   保存
                 </button>
                 <button type="button" disabled title="重审接口尚未接入">
@@ -286,40 +339,16 @@ export function WorkbenchView() {
                 </button>
               </div>
               <div className="doc-body">
-                <div className="bw-empty-doc">
-                  <span className="bw-empty-ic">
-                    <FileText size={22} aria-hidden="true" />
-                  </span>
-                  <div>
-                    <h3>正文尚未生成</h3>
-                    <p>
-                      生成执行管线接入后，这里会按章节渲染可编辑正文、条款引用与素材出处。
-                      当前不使用演示段落填充。
-                    </p>
-                    <div className="bw-empty-actions">
-                      <Link
-                        href={
-                          taskId
-                            ? writeTaskHref("generate", taskId)
-                            : "/bid-write/generate"
-                        }
-                        className="btn pri btn-sm"
-                      >
-                        去生成配置
-                      </Link>
-                      <Link
-                        href={
-                          taskId
-                            ? writeTaskHref("intake", taskId)
-                            : "/bid-write/intake"
-                        }
-                        className="btn btn-sm"
-                      >
-                        回到解析确认
-                      </Link>
-                    </div>
-                  </div>
-                </div>
+                <BidWriteEditor
+                  ref={editorRef}
+                  initialAst={initialAst}
+                  onDocChange={handleDocChange}
+                  ariaLabel="投标正文编辑器（演示文档）"
+                />
+                <p className="bw-muted bw-mt-sm">
+                  M0 演示文档：编辑、撤销与本地序列化可用；断言联动与后端
+                  AST 存储在后续批次接入。
+                </p>
 
                 <div className="bw-doc-sub">
                   <b>当前章节的响应矩阵</b>
@@ -488,6 +517,8 @@ export function WorkbenchView() {
               预审查{" "}
               {assertions ? (assertions.blocked ? "阻断" : "可导出") : "未执行"}
             </span>
+            <span className="sep" />
+            <span>保存 {savedAt ?? "未保存"}</span>
             {m ? (
               <>
                 <span className="sep" />
