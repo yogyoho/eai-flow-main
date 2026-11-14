@@ -120,6 +120,9 @@ def _node_spec(node: dict, indent: str) -> str:
     if kind == "block":
         lines.append(f'{indent}  group: "block",')
     elif kind == "inline":
+        # PM isBlock = !(spec.inline || name=="text")——inline 判定看 inline 标志,
+        # group "inline" 只是匹配标签,缺 inline:true 会与 text 混排报错
+        lines.append(f"{indent}  inline: true,")
         lines.append(f'{indent}  group: "inline",')
     content = node.get("content", "")
     if content:

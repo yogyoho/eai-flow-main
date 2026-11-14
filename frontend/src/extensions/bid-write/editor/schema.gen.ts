@@ -114,6 +114,7 @@ export const bidWriteSchema = new Schema({
       toDOM: (node: PMNode) => ['div', { 'class': 'bwe-todo', 'data-missing': node.attrs.missing ?? "", 'data-level': node.attrs.level ?? "" }, 0] as DOMOutputSpec,
     },
     "attachment_ref": {
+      inline: true,
       group: "inline",
       atom: true,
       attrs: { attachment_no: { default: "" }, anchor: { default: "" } },
@@ -126,6 +127,7 @@ export const bidWriteSchema = new Schema({
       toDOM: (node: PMNode) => ['div', { 'class': 'bwe-toc', 'data-title': node.attrs.title ?? "", 'data-page': node.attrs.page_placeholder ?? "" }, 0] as DOMOutputSpec,
     },
     "text": {
+      inline: true,
       group: "inline",
     },
   },
