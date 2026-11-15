@@ -7,6 +7,8 @@ import {
   canLeaveIntake,
   gapStatusTone,
   materialEntityLabel,
+  matrixClauseLabel,
+  matrixRequirementLabel,
   matrixStatusLabel,
   matrixStatusTone,
   matrixStrategyLabel,
@@ -116,6 +118,30 @@ describe("矩阵摘要", () => {
 });
 
 describe("展示口径", () => {
+  it("抽取要求中的结构化字段展示为中文", () => {
+    expect(
+      matrixRequirementLabel(
+        "name=投标函; clause=第六章投标文件格式; mandatory=★必需; year_span=1",
+      ),
+    ).toBe("名称：投标函；条款：第六章投标文件格式；要求：★必需；年限：1");
+    expect(matrixRequirementLabel("联合体:False")).toBe("联合体：否");
+    expect(
+      matrixRequirementLabel("最低质保期:{'value': 3, 'unit': 'month'}"),
+    ).toBe("最低质保期:3 个月");
+    expect(matrixRequirementLabel("投标人未被列入失信被执行人清单")).toBe(
+      "投标人未被列入失信被执行人清单",
+    );
+  });
+
+  it("系统行标识展示为中文", () => {
+    expect(matrixClauseLabel("att:1")).toBe("附件 1");
+    expect(matrixClauseLabel("decl:3")).toBe("承诺 3");
+    expect(matrixClauseLabel("sign:2")).toBe("签章 2");
+    expect(matrixClauseLabel("submit_methods")).toBe("递交方式");
+    expect(matrixClauseLabel("deposit")).toBe("投标保证金");
+    expect(matrixClauseLabel("unknown")).toBe("unknown");
+  });
+
   it("状态词表与 tone 对齐后端状态", () => {
     expect(taskStatusView(task({ status: "failed" }))).toMatchObject({
       label: "已失败",
@@ -167,7 +193,9 @@ describe("生成旋钮装配(批廿五 P1-δ)", () => {
   });
 
   it("纯数字质保补单位,非数字原样透传", () => {
-    expect(assembleGenerateKnobs({ ...emptyDraft, warrantyMonths: "24" })).toEqual({
+    expect(
+      assembleGenerateKnobs({ ...emptyDraft, warrantyMonths: "24" }),
+    ).toEqual({
       warranty_period: "24个月",
     });
     expect(

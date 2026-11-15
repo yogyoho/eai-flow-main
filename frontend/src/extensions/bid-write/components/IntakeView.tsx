@@ -38,6 +38,8 @@ import {
   canLeaveIntake,
   downloadCsv,
   formatPercent,
+  matrixClauseLabel,
+  matrixRequirementLabel,
   matrixStatusLabel,
   matrixStatusTone,
   matrixStrategyLabel,
@@ -70,6 +72,7 @@ export function IntakeView() {
   const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(
     () => new Set(),
   );
+  const [helpOpen, setHelpOpen] = useState(false);
   const [selectedClause, setSelectedClause] = useState<string | null>(null);
   const [dialog, setDialog] = useState<NoteDialogState | null>(null);
   const [bulkPending, setBulkPending] = useState(false);
@@ -173,7 +176,7 @@ export function IntakeView() {
     void applyPatch(
       row,
       { strategy: next },
-      `已更新 ${row.clause_id} 的响应策略`,
+      `已更新 ${matrixClauseLabel(row.clause_id)} 的响应策略`,
     );
   };
 
@@ -182,7 +185,7 @@ export function IntakeView() {
       void applyPatch(
         row,
         { status: "draft" },
-        `已撤回 ${row.clause_id} 的确认`,
+        `已撤回 ${matrixClauseLabel(row.clause_id)} 的确认`,
       );
       return;
     }
@@ -190,7 +193,11 @@ export function IntakeView() {
       setDialog({ row, note: "", mode: "confirm" });
       return;
     }
-    void applyPatch(row, { status: "confirmed" }, `${row.clause_id} 已确认`);
+    void applyPatch(
+      row,
+      { status: "confirmed" },
+      `${matrixClauseLabel(row.clause_id)} 已确认`,
+    );
   };
 
   const submitDialog = async () => {
@@ -257,9 +264,9 @@ export function IntakeView() {
       `响应矩阵-未确认-${new Date().toISOString().slice(0, 10)}.csv`,
       ["条款号", "来源", "要求", "★", "矩阵状态", "响应策略", "置信度", "备注"],
       pending.map((row) => [
-        row.clause_id,
+        matrixClauseLabel(row.clause_id),
         sourcePathLabel(row.source_path),
-        row.requirement,
+        matrixRequirementLabel(row.requirement),
         row.star ? "★" : "",
         matrixStatusLabel(row.status),
         matrixStrategyLabel(row.strategy),
@@ -285,9 +292,17 @@ export function IntakeView() {
       <PageHead
         icon={FileText}
         title="① 招标文件解析确认"
-        subtitle="tender.* 抽取结果 → 可确认、可纠错的响应矩阵"
+        subtitle="招标文件抽取结果 → 可确认、可纠错的商务响应矩阵"
         actions={
           <>
+            <button
+              type="button"
+              className="btn btn-sm"
+              onClick={() => setHelpOpen(true)}
+            >
+              <Info size={13} aria-hidden="true" />
+              本页说明
+            </button>
             <button
               type="button"
               className="btn btn-sm"
@@ -377,7 +392,7 @@ export function IntakeView() {
               <div className="card-h">
                 <h3>条款树</h3>
                 <span className="r">
-                  <Badge tone="gray">det / sem</Badge>
+                  <Badge tone="gray">规则 + 语义</Badge>
                 </span>
               </div>
               <div className="card-b tree bw-tree">
@@ -462,7 +477,7 @@ export function IntakeView() {
                                     behavior: "smooth",
                                   });
                               }}
-                              title={row.requirement}
+                              title={matrixRequirementLabel(row.requirement)}
                             >
                               <span
                                 className={`dot ${
@@ -475,10 +490,10 @@ export function IntakeView() {
                                 aria-hidden="true"
                               />
                               <span className="bw-tree-clause mono">
-                                {row.clause_id}
+                                {matrixClauseLabel(row.clause_id)}
                               </span>
                               <span className="bw-tree-text">
-                                {row.requirement}
+                                {matrixRequirementLabel(row.requirement)}
                               </span>
                               {row.star ? (
                                 <span className="star">★</span>
@@ -551,13 +566,17 @@ export function IntakeView() {
                           }}
                           tabIndex={0}
                         >
-                          <td className="mono">{row.clause_id}</td>
+                          <td className="mono">
+                            {matrixClauseLabel(row.clause_id)}
+                          </td>
                           <td>
                             <span
                               className="excerpt ellipsis"
-                              title={row.requirement}
+                              title={matrixRequirementLabel(row.requirement)}
                             >
-                              {row.requirement || "（空要求）"}
+                              {row.requirement
+                                ? matrixRequirementLabel(row.requirement)
+                                : "（空要求）"}
                             </span>
                             {row.note ? (
                               <div className="bw-row-note" title={row.note}>
@@ -595,7 +614,7 @@ export function IntakeView() {
                                 <SelectTrigger
                                   size="sm"
                                   className="bw-strategy-select"
-                                  aria-label={`${row.clause_id} 响应策略`}
+                                  aria-label={`${matrixClauseLabel(row.clause_id)} 响应策略`}
                                 >
                                   <SelectValue />
                                 </SelectTrigger>
@@ -673,9 +692,106 @@ export function IntakeView() {
       )}
 
       <Overlay
+        open={helpOpen}
+        title="本页说明"
+        subtitle="条款树来源与响应矩阵用途"
+        onClose={() => setHelpOpen(false)}
+        variant="modal"
+        size="wide"
+        footer={
+          <button
+            type="button"
+            className="btn pri"
+            onClick={() => setHelpOpen(false)}
+          >
+            知道了
+          </button>
+        }
+      >
+        <div className="bw-help">
+          <p className="bw-help-intro">
+            本页不是把招标文件目录逐条转换成法律条款树，而是把商务要求整理成一张可确认、可追踪的响应台账。
+          </p>
+          <div className="bw-help-grid">
+            <section
+              className="bw-help-section"
+              aria-labelledby="bw-help-tree-title"
+            >
+              <h3 id="bw-help-tree-title">条款树从哪里来</h3>
+              <ol className="bw-help-steps">
+                <li>上传招标文件后，系统解析正文和表格，必要时识别扫描件。</li>
+                <li>
+                  系统按固定商务范围抽取附件、承诺、签章、保证金、截止时间、必需章节、资质与业绩门槛等要求。
+                </li>
+                <li>
+                  抽取内容会回查原文并记录置信度，低置信项进入“低置信待确认”。
+                </li>
+                <li>
+                  系统把抽取结果装配成响应矩阵；左侧条款树只是按来源分组展示。
+                </li>
+              </ol>
+              <ul className="bw-help-list">
+                <li>
+                  要求摘录来自招标文件，不是系统编造；没有抽到的字段不会生成空行。
+                </li>
+                <li>
+                  列表中的行编号是系统生成，不是招标文件原条款号；原条款位置通常写在要求摘录或依据中。
+                </li>
+                <li>
+                  当前只覆盖商务要求；技术条款和完整多级法律条款树不在此页。
+                </li>
+              </ul>
+            </section>
+            <section
+              className="bw-help-section"
+              aria-labelledby="bw-help-matrix-title"
+            >
+              <h3 id="bw-help-matrix-title">响应矩阵有什么用</h3>
+              <p>
+                它是抽取结果的人工确认台账，也是后续生成、审查和导出的唯一要求来源。
+              </p>
+              <ul className="bw-help-list">
+                <li>
+                  <b>确认与纠错：</b>
+                  逐行核对要求摘录、强制项和置信度，处理草稿、已确认、低置信待确认三种状态。
+                </li>
+                <li>
+                  <b>卡住流程：</b>
+                  低置信待确认未清零时不能进入素材核对，避免错误抽取带入正文。
+                </li>
+                <li>
+                  <b>设定响应策略：</b>
+                  选择待定、完全响应、正偏离或负偏离；强制项选负偏离必须填写原因。
+                </li>
+                <li>
+                  <b>关联章节：</b>
+                  把要求归到正文对应标题，写作时展示该节要求。
+                </li>
+                <li>
+                  <b>驱动交付：</b>
+                  商务响应表、投标函承诺、附件索引、素材缺口、预审查和导出门禁都使用这些矩阵行。
+                </li>
+                <li>
+                  <b>留痕审计：</b>
+                  可导出未确认清单，也支持批量确认。
+                </li>
+              </ul>
+            </section>
+          </div>
+          <div className="bw-help-callout">
+            <Info size={15} aria-hidden="true" />
+            <span>
+              可以把它理解成“招标要求 → 我方响应策略 →
+              证据与素材”的对照表，而不是投标文件正文本身。
+            </span>
+          </div>
+        </div>
+      </Overlay>
+
+      <Overlay
         open={dialog !== null}
         title={dialog?.mode === "negative" ? "★ 负偏离确认" : "低置信行确认"}
-        subtitle={dialog?.row.clause_id}
+        subtitle={dialog ? matrixClauseLabel(dialog.row.clause_id) : undefined}
         onClose={() => setDialog(null)}
         footer={
           <>
@@ -717,7 +833,7 @@ export function IntakeView() {
             </div>
             <div className="bw-requirement">
               <span className="k">要求摘录</span>
-              <p>{dialog.row.requirement}</p>
+              <p>{matrixRequirementLabel(dialog.row.requirement)}</p>
             </div>
             <label className="field bw-mt-sm">
               <span>
@@ -801,8 +917,8 @@ function TaskProgress({
         <div className="banner info bw-mt">
           <Info size={15} aria-hidden="true" />
           <span>
-            解析链：招标文件解析 → tender.* 商务要素抽取 →
-            响应矩阵装配。失败时保留原因，不伪造矩阵。
+            解析流程：解析招标文件 → 抽取商务要素 → 装配响应矩阵。
+            失败时保留原因，不伪造矩阵。
           </span>
         </div>
       </div>

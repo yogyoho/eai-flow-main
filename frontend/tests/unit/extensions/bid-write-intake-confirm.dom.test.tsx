@@ -196,4 +196,35 @@ describe("bid-write IntakeView 阻断行确认", () => {
       screen.getByRole("button", { name: "收起tender.commitments" }),
     ).toBeTruthy();
   });
+
+  it("shows the page guide with Chinese business terminology", async () => {
+    renderView();
+
+    await screen.findAllByText("clause:2");
+    expect(screen.queryByText("det / sem")).toBeNull();
+    expect(screen.getByText("规则 + 语义")).toBeTruthy();
+
+    fireEvent.click(screen.getByRole("button", { name: "本页说明" }));
+
+    const dialog = await screen.findByRole("dialog", { name: "本页说明" });
+    expect(within(dialog).getByText("条款树从哪里来")).toBeTruthy();
+    expect(within(dialog).getByText("响应矩阵有什么用")).toBeTruthy();
+    expect(within(dialog).getByText(/行编号是系统生成/)).toBeTruthy();
+
+    const copy = dialog.textContent ?? "";
+    for (const token of [
+      "source_path",
+      "target_section",
+      "canLeaveIntake",
+      "tender.*",
+      "draft",
+      "confirmed",
+      "blocked",
+      "pending",
+      "positive",
+      "negative",
+    ]) {
+      expect(copy).not.toContain(token);
+    }
+  });
 });

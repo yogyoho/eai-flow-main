@@ -792,6 +792,78 @@
   outline: 2px solid var(--main-400);
   outline-offset: -2px;
 }
+.bwx .bw-help {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.bwx .bw-help-intro {
+  margin: 0;
+  color: var(--text-2);
+  font-size: 13px;
+  line-height: 1.75;
+}
+.bwx .bw-help-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+.bwx .bw-help-section {
+  padding: 14px;
+  border: 1px solid var(--hairline);
+  border-radius: 9px;
+  background: var(--gray-50);
+}
+.bwx .bw-help-section h3 {
+  margin: 0 0 8px;
+  color: var(--text);
+  font-size: 14px;
+  font-weight: 600;
+}
+.bwx .bw-help-section p {
+  margin: 0;
+  color: var(--text-2);
+  font-size: 12.5px;
+  line-height: 1.7;
+}
+.bwx .bw-help-steps,
+.bwx .bw-help-list {
+  margin: 8px 0 0;
+  padding-left: 18px;
+  color: var(--text-2);
+  font-size: 12.5px;
+  line-height: 1.7;
+}
+.bwx .bw-help-steps li,
+.bwx .bw-help-list li {
+  margin: 5px 0;
+  padding-left: 2px;
+}
+.bwx .bw-help-list b {
+  color: var(--text);
+  font-weight: 600;
+}
+.bwx .bw-help-callout {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 10px 12px;
+  border: 1px solid color-mix(in srgb, var(--info-700) 16%, transparent);
+  border-radius: 8px;
+  background: var(--info-50);
+  color: var(--info-700);
+  font-size: 12.5px;
+  line-height: 1.7;
+}
+.bwx .bw-help-callout svg {
+  flex: none;
+  margin-top: 2px;
+}
+@media (max-width: 960px) {
+  .bwx .bw-help-grid {
+    grid-template-columns: 1fr;
+  }
+}
 .bwx .tree .node {
   display: flex;
   align-items: center;

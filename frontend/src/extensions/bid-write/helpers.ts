@@ -4,7 +4,12 @@
  * 词表与后端 contracts.py / models.py 对齐；未知值原样展示，不猜测含义。
  */
 
-import type { GenerateKnobs, GapItem, MatrixRowOut, WriteTaskOut } from "./types";
+import type {
+  GenerateKnobs,
+  GapItem,
+  MatrixRowOut,
+  WriteTaskOut,
+} from "./types";
 
 export const TASK_STATUS_LABELS: Record<string, string> = {
   created: "已创建",
@@ -44,6 +49,26 @@ export const MATRIX_KIND_LABELS: Record<string, string> = {
   aggregate: "聚合要素",
 };
 
+export const MATRIX_CLAUSE_LABELS: Record<string, string> = {
+  consortium: "联合体要求",
+  deadline: "投标截止时间",
+  deposit: "投标保证金",
+  fields: "必需字段",
+  perf_window: "业绩年限窗口",
+  scope: "招标范围",
+  sections: "必需章节",
+  submit_methods: "递交方式",
+  tables: "必需表格",
+  volume: "分册与份数",
+  warranty: "最低质保期",
+};
+
+const MATRIX_CLAUSE_PREFIXES: Record<string, string> = {
+  att: "附件",
+  decl: "承诺",
+  sign: "签章",
+};
+
 export const SOURCE_PATH_LABELS: Record<string, string> = {
   "tender.attachment_requirements": "附件要求",
   "tender.required_declarations": "承诺条款",
@@ -74,6 +99,43 @@ export const ASSERTION_STATUS_LABELS: Record<string, string> = {
 
 export function sourcePathLabel(path: string): string {
   return SOURCE_PATH_LABELS[path] ?? path;
+}
+
+const REQUIREMENT_UNIT_LABELS: Record<string, string> = {
+  day: "天",
+  days: "天",
+  hour: "小时",
+  hours: "小时",
+  month: "个月",
+  months: "个月",
+  year: "年",
+  years: "年",
+};
+
+export function matrixRequirementLabel(value: string): string {
+  const text = value
+    .replace(/(^|;\s*)name=/g, "$1名称：")
+    .replace(/(^|;\s*)clause=/g, "$1条款：")
+    .replace(/(^|;\s*)mandatory=/g, "$1要求：")
+    .replace(/(^|;\s*)year_span=/g, "$1年限：")
+    .replace(/(^|;\s*)no=/g, "$1序号：")
+    .replace(/:False\b/g, "：否")
+    .replace(/:True\b/g, "：是")
+    .replace(
+      /\{\s*['"]value['"]\s*:\s*([^,}]+)\s*,\s*['"]unit['"]\s*:\s*['"]([^'"]+)['"]\s*\}/g,
+      (_match, amount: string, unit: string) =>
+        `${amount.trim()} ${REQUIREMENT_UNIT_LABELS[unit] ?? unit}`,
+    )
+    .replace(/;\s*/g, "；");
+  return text;
+}
+
+export function matrixClauseLabel(value: string): string {
+  const fixed = MATRIX_CLAUSE_LABELS[value];
+  if (fixed) return fixed;
+  const match = /^(att|decl|sign):(\d+)$/.exec(value);
+  if (!match) return value;
+  return `${MATRIX_CLAUSE_PREFIXES[match[1]]} ${match[2]}`;
 }
 
 export function matrixStrategyLabel(value: string): string {
@@ -248,7 +310,9 @@ export interface GenerateKnobsDraft {
  * \u8986\u76D6 meta.knobs \u5DF2\u5B58\u503C,\u540E\u7AEF\u5408\u5E76\u8BED\u4E49);\u8D28\u4FDD\u7EAF\u6570\u5B57\u8865\u300C\u4E2A\u6708\u300D\u5355\u4F4D;
  * \u5907\u4EF6/\u54CD\u5E94\u65F6\u9650/\u8FDD\u7EA6\u91D1\u58F0\u660E\u4E3A\u901A\u7528\u627F\u8BFA(\u8FDB BL \u627F\u8BFA\u6E05\u5355+L4-003 \u5BA1\u67E5\u9762)\u3002
  */
-export function assembleGenerateKnobs(draft: GenerateKnobsDraft): GenerateKnobs {
+export function assembleGenerateKnobs(
+  draft: GenerateKnobsDraft,
+): GenerateKnobs {
   const knobs: GenerateKnobs = {};
   const warranty = draft.warrantyMonths.trim();
   if (warranty) {
@@ -261,7 +325,8 @@ export function assembleGenerateKnobs(draft: GenerateKnobsDraft): GenerateKnobs 
       `\u5907\u4EF6\u4F9B\u5E94\u5E74\u9650:${draft.spareYears.trim()}\u5E74`,
     draft.responseHours.trim() &&
       `\u6545\u969C\u54CD\u5E94\u65F6\u9650:${draft.responseHours.trim()}\u5C0F\u65F6`,
-    draft.penaltyCap.trim() && `\u8FDD\u7EA6\u91D1\u4E0A\u9650:${draft.penaltyCap.trim()}%`,
+    draft.penaltyCap.trim() &&
+      `\u8FDD\u7EA6\u91D1\u4E0A\u9650:${draft.penaltyCap.trim()}%`,
   ].filter(Boolean);
   if (commitments.length > 0) {
     knobs.general_commitments = commitments.map((text) => ({
@@ -270,9 +335,7 @@ export function assembleGenerateKnobs(draft: GenerateKnobsDraft): GenerateKnobs 
     }));
   }
   const prices = Object.fromEntries(
-    Object.entries(draft.unitPrices).filter(
-      ([, value]) => value.trim() !== "",
-    ),
+    Object.entries(draft.unitPrices).filter(([, value]) => value.trim() !== ""),
   );
   if (Object.keys(prices).length > 0) knobs.unit_prices = prices;
   const signDate = draft.signDate.trim();
