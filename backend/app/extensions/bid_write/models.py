@@ -171,6 +171,28 @@ class BidWriteDocumentRevision(Base):
     decided_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
 
+class BidWriteRevisionFormatProfile(Base):
+    """审批提交时冻结的 FormatProfile(P1,EAI-CUSTOM 2026-11-15)。
+
+    独立表而非给既有 revision 表加列:create_all 承接零迁移。导出只读本快照,
+    审批后重新提取任务档案不会改变已提交修订的版式事实。"""
+
+    __tablename__ = "bid_write_revision_format_profiles"
+
+    revision_id: Mapped[str] = mapped_column(
+        String(36),
+        ForeignKey("bid_write_document_revisions.id"),
+        primary_key=True,
+    )
+    task_id: Mapped[str] = mapped_column(String(36), ForeignKey("bid_write_tasks.id"), index=True)
+    owner_id: Mapped[str] = mapped_column(String(64), index=True)
+    profile: Mapped[dict] = mapped_column(JSON, default=dict)
+    profile_hash: Mapped[str] = mapped_column(String(64), default="", index=True)
+    schema_version: Mapped[str] = mapped_column(String(20), default="")
+    source_sha256: Mapped[str] = mapped_column(String(64), default="")
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)
+
+
 class BidWriteExport(Base):
     """Successful delivery-package export audit (批三十三).
 

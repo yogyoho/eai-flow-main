@@ -306,6 +306,24 @@ async def upsert_format_profile(
     return row
 
 
+async def get_revision_format_profile(session: AsyncSession, revision_id: str):
+    """审批冻结格式快照读取(导出只认本表,不读当前任务档案)。"""
+    from app.extensions.bid_write.models import BidWriteRevisionFormatProfile
+
+    return await session.get(BidWriteRevisionFormatProfile, revision_id)
+
+
+async def get_revision_format_profiles(session: AsyncSession, revision_ids: list[str]) -> dict[str, object]:
+    """批量读取冻结快照(revision_id → row),审批状态列表用。"""
+    from app.extensions.bid_write.models import BidWriteRevisionFormatProfile
+
+    ids = [str(item) for item in revision_ids if item]
+    if not ids:
+        return {}
+    result = await session.execute(select(BidWriteRevisionFormatProfile).where(BidWriteRevisionFormatProfile.revision_id.in_(ids)))
+    return {row.revision_id: row for row in result.scalars().all()}
+
+
 async def put_document(session: AsyncSession, task_id: str, owner_id: str, *, ast: dict, schema_version: str, commit: bool = True) -> TaskDocument:
     """正文 AST 保存(批廿八 M2;PUT 幂等全量,首存建行重存覆盖)。调用方
     (routers)先 get_task 卡 owner——越 owner 的 task 在路由层 404,不进本函数。"""

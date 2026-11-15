@@ -24,7 +24,7 @@ import re
 from pathlib import Path
 from typing import Any
 
-FORMAT_PROFILE_SCHEMA_VERSION = "1.0.0"
+FORMAT_PROFILE_SCHEMA_VERSION = "1.1.0"
 
 _ALIGN_NAMES = {
     0: "LEFT",
@@ -179,11 +179,15 @@ def _placeholders(text: str) -> list[dict]:
 
     out: list[dict] = []
     for start, end, kind in accepted:
-        before = text[max(0, start - 24) : start]
-        after = text[end : min(len(text), end + 24)]
-        before = re.split(r"[：:，,；;、（）()\[\]【】]", before)[-1].strip()
-        after = re.split(r"[：:，,；;、（）()\[\]【】]", after)[0].strip()
+        before_raw = text[max(0, start - 24) : start]
+        after_raw = text[end : min(len(text), end + 24)]
+        before_parts = [part.strip() for part in re.split(r"[：:，,；;、（）()\[\]【】]", before_raw) if part.strip()]
+        before = before_parts[-1] if before_parts else ""
+        after_clean = after_raw.lstrip(" \t（(【[")
+        after = re.split(r"[：:，,；;、（）()\[\]【】]", after_clean)[0].strip(" \t）)】]")
         label = before or after or ""
+        if not label and kind == "bracket_slot":
+            label = text[start:end].strip(" \t[]【】（）()")
         out.append(
             {
                 "type": kind,
@@ -191,6 +195,7 @@ def _placeholders(text: str) -> list[dict]:
                 "start": start,
                 "end": end,
                 "label": label[:40],
+                "context": text[max(0, start - 24) : min(len(text), end + 24)],
             }
         )
     return out
@@ -628,72 +633,72 @@ def _gap_report(
             "id": "chapter_structure",
             "label": "招标章节结构与顺序",
             "tender_demand": f"投标文件目录 {len(toc_entries)} 项,正文解析 {heading_count} 个标题",
-            "current_support": "section 节点可表达任意标题,但 products_to_ast 固定四章节",
-            "status": "partial" if business_titles else "missing",
+            "current_support": "format_profile_to_ast 按招标标题层级生成 section 树;未检测到格式章节时仍走四章节兜底",
+            "status": "supported" if business_titles else "missing",
             "evidence": business_titles[:20],
         },
         {
             "id": "fixed_text",
             "label": "招标固定文字 1:1 照抄",
             "tender_demand": f"检测到 {len(fixed_texts)} 段无占位固定文字",
-            "current_support": "locked_paragraph/template_id 仅占位,生成器未消费招标固定文字",
-            "status": "partial" if fixed_texts else "missing",
+            "current_support": "固定文字写入 locked_paragraph(template_id=tender-format:*),编辑器禁改",
+            "status": "supported" if fixed_texts else "missing",
             "evidence": [item.get("text", "")[:50] for item in fixed_texts[:10]],
         },
         {
             "id": "placeholders",
             "label": "表单占位符/待填位",
             "tender_demand": f"检测到 {len(placeholders)} 个占位符",
-            "current_support": "todo_block 只表达缺件,无法表达招标表单的填空位",
-            "status": "missing" if placeholders else "partial",
+            "current_support": "placeholder 行内原子节点保留原文占位符,并按任务/素材/报价事实填充;未知字段保留待填",
+            "status": "supported" if placeholders else "missing",
             "evidence": [item.get("text") for item in placeholders[:10]],
         },
         {
             "id": "table_structure",
             "label": "招标表格列头/合并单元格/空行",
             "tender_demand": f"{len(tables)} 张表,最大 {max_columns} 列,{len(merged_tables)} 张含合并单元格",
-            "current_support": "table/table_cell 可表达行,但无 colspan/rowspan,列角色仅 name/qty/unit/remark/amount/enum",
-            "status": "missing" if merged_tables or max_columns > 4 else ("partial" if tables else "missing"),
+            "current_support": "表格节点支持 col_span/row_span;format_profile_to_ast 将 OOXML gridSpan/vMerge 归一为合并起点单元格",
+            "status": "supported" if tables else "missing",
             "evidence": {"max_columns": max_columns, "merged_tables": merged_tables},
         },
         {
             "id": "signature_image",
             "label": "签章位/身份证/证书贴图位",
             "tender_demand": f"{len(signatures)} 个签章/落款位,{len(image_slots)} 个贴图/扫描件位",
-            "current_support": "attachment_ref 只能做行内引用,无图片块/签章块",
-            "status": "missing" if signatures or image_slots else "partial",
+            "current_support": "签章/贴图文字位保留为 para(slot_id),尚不能嵌入图片或印章图形",
+            "status": "missing" if signatures or image_slots else "supported",
             "evidence": [item.get("text", "")[:50] for item in (signatures + image_slots)[:10]],
         },
         {
             "id": "page_layout",
             "label": "页面设置/页眉页脚/分节",
             "tender_demand": f"{len(page_setup)} 个分节,含页边距/分页设置",
-            "current_support": "AST 无页面设置节点,导出用通用 A4/页边距/页码",
-            "status": "missing",
+            "current_support": "冻结 FormatProfile 的首个分节页面尺寸/方向/页边距/页眉页脚/页码由 DOCX 渲染器应用",
+            "status": "supported" if page_setup else "missing",
             "evidence": page_setup[:3],
         },
         {
             "id": "toc",
             "label": "目录与章节标题一致",
             "tender_demand": f"目录 {len(toc_entries)} 项,正文匹配 {toc_matched} 项" if toc_entries else "未检测到目录",
-            "current_support": "toc_entry 节点存在,但生成器不从招标目录驱动",
-            "status": "partial" if toc_entries else ("partial" if business_titles else "missing"),
+            "current_support": "format_profile_to_ast 按招标目录项生成 toc_entry,并保留原目录文字",
+            "status": "supported" if toc_entries else ("partial" if business_titles else "missing"),
             "evidence": business_titles[:10],
         },
         {
             "id": "export_render",
             "label": "DOCX 版式保真导出",
             "tender_demand": "需保留招标表格/合并单元格/字体/页眉页脚/分节",
-            "current_support": "export.py 走 AST→Markdown→generate_docx_simple,只能生成通用样式",
-            "status": "missing",
+            "current_support": "有冻结 FormatProfile 时走 AST→python-docx 直渲染(合并单元格/页面设置/页眉页脚);逐 run 字体细节按段落摘要近似",
+            "status": "partial",
             "evidence": [],
         },
         {
             "id": "approval_freeze",
             "label": "审批冻结格式事实",
             "tender_demand": "格式档案必须随正文一起冻结,防止审批后换版",
-            "current_support": "修订只冻结 AST/hash/断言快照,未冻结 FormatProfile",
-            "status": "missing",
+            "current_support": "审批提交时在同一事务写入 bid_write_revision_format_profiles 快照;导出只读冻结快照",
+            "status": "supported",
             "evidence": [],
         },
     ]
@@ -717,7 +722,7 @@ def _gap_report(
         "capabilities": capabilities,
         "blocking_gaps": blocking,
         "blocking_reasons": blocking_reasons,
-        "note": "P0 只做格式档案与差距清单;blocking_gaps 未清零前不应宣称可 1:1 生成招标商务卷。",
+        "note": "P1 已接入合并表格、固定文字、占位符、版式渲染与审批冻结;signature_image 与逐 run 字体保真仍有差距,不会宣称 100% 1:1。",
     }
 
 

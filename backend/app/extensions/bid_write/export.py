@@ -61,6 +61,15 @@ def _inline_text(node: dict) -> str:
     if kind == "attachment_ref":
         no = str(_attrs(node).get("attachment_no") or "").strip()
         return f"（附件 {no}）" if no else "（见附件）"
+    if kind == "placeholder":
+        attrs = _attrs(node)
+        value = str(attrs.get("value") or "").strip()
+        if value:
+            return value
+        label = str(attrs.get("label") or "").strip()
+        if label:
+            return f"（待填：{label}）"
+        return str(attrs.get("raw") or "________").strip() or "________"
     if kind == "enum_cell":
         value = str(_attrs(node).get("current") or "").strip()
         if value:
@@ -221,27 +230,33 @@ def build_export_bundle(
     revision,
     gate: dict,
     now: datetime | None = None,
+    format_profile: dict | None = None,
 ) -> ExportBundle:
     """Render the deterministic DOCX + manifest ZIP for an exportable revision."""
 
+    from app.extensions.bid_write.export_docx import render_ast_to_docx
     from app.extensions.output.generator import generate_docx_simple
 
     generated_at = (now or datetime.now(UTC)).isoformat()
     watermark = gate.get("watermark")
+    use_format = bool(format_profile and format_profile.get("supported") and (format_profile.get("format_section") or {}).get("detected"))
     volumes = split_volumes(revision.ast or {})
     files: list[tuple[str, bytes]] = []
     manifest_files: list[dict] = []
     for index, volume in enumerate(volumes, start=1):
-        markdown = ast_to_markdown(volume.ast)
-        buf = io.BytesIO()
-        generate_docx_simple(
-            markdown,
-            buf,
-            template_data={"header_footer": {"showPageNumber": True}},
-            watermark=watermark,
-            toc_settings={"maxDepth": 3},
-        )
-        data = _normalize_zip(buf.getvalue())
+        if use_format:
+            data = _normalize_zip(render_ast_to_docx(volume.ast, profile=format_profile, watermark=watermark))
+        else:
+            markdown = ast_to_markdown(volume.ast)
+            buf = io.BytesIO()
+            generate_docx_simple(
+                markdown,
+                buf,
+                template_data={"header_footer": {"showPageNumber": True}},
+                watermark=watermark,
+                toc_settings={"maxDepth": 3},
+            )
+            data = _normalize_zip(buf.getvalue())
         name = f"{index:02d}-{_safe_name(volume.name, f'第{index}册')}.docx"
         files.append((name, data))
         manifest_files.append({"name": name, "bytes": len(data), "sha256": hashlib.sha256(data).hexdigest()})
@@ -264,6 +279,10 @@ def build_export_bundle(
         "export": {
             "generated_at": generated_at,
             "watermark": watermark,
+            "rendering": "format_profile" if use_format else "markdown",
+            "format_profile_hash": str((format_profile or {}).get("profile_hash") or ""),
+            "format_profile_schema_version": str((format_profile or {}).get("schema_version") or ""),
+            "format_profile_gap_count": len(((format_profile or {}).get("gap_report") or {}).get("blocking_gaps") or []),
             "volume_count": len(files),
             "assertion_counts": gate.get("assertion_counts") or {},
             "rule_counts": gate.get("rule_counts") or {},
@@ -271,6 +290,13 @@ def build_export_bundle(
             "reasons": gate.get("reasons") or [],
             "schema_version": gate.get("schema_version") or "",
             "scope_note": gate.get("scope_note") or "",
+        },
+        "format_profile": {
+            "frozen": format_profile is not None,
+            "used": use_format,
+            "hash": str((format_profile or {}).get("profile_hash") or ""),
+            "schema_version": str((format_profile or {}).get("schema_version") or ""),
+            "detected": bool(((format_profile or {}).get("format_section") or {}).get("detected")),
         },
         "files": manifest_files,
     }
@@ -319,7 +345,14 @@ async def export_revision(
         reasons = "；".join(str(reason) for reason in (gate.get("reasons") or []) if str(reason).strip())
         raise ExportConflict(f"导出前置校验未通过：{reasons or '存在 D0 断言或 L1 fatal 规则失败'}")
 
-    bundle = build_export_bundle(task=task, revision=revision, gate=gate, now=now)
+    frozen = await crud.get_revision_format_profile(db, revision.id)
+    bundle = build_export_bundle(
+        task=task,
+        revision=revision,
+        gate=gate,
+        now=now,
+        format_profile=dict(frozen.profile or {}) if frozen is not None and isinstance(frozen.profile, dict) else None,
+    )
     record = await crud.create_export(
         db,
         task_id=task.id,

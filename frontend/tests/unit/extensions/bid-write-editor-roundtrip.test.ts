@@ -19,7 +19,12 @@ function canonical(value: unknown): string {
   if (Array.isArray(value)) return `[${value.map(canonical).join(",")}]`;
   if (value && typeof value === "object") {
     const entries = Object.entries(value as Record<string, unknown>)
-      .filter(([, v]) => v !== "")
+      .filter(
+        ([k, v]) =>
+          v !== "" &&
+          !(v === 1 && (k === "col_span" || k === "row_span")) &&
+          !(v === -1 && k === "source_index"),
+      )
       .sort(([a], [b]) => a.localeCompare(b));
     return `{${entries.map(([k, v]) => `${JSON.stringify(k)}:${canonical(v)}`).join(",")}}`;
   }
@@ -43,6 +48,80 @@ describe("AST ↔ PMdoc 往返", () => {
   it("未知节点类型被 schema 拒绝", () => {
     const bad = { type: "bogus_node" } as unknown as AstJsonNode;
     expect(() => hydrateAst(bad)).toThrow();
+  });
+
+  it("合并单元格与占位符往返不丢 attrs", () => {
+    const ast: AstJsonNode = {
+      type: "doc",
+      content: [
+        {
+          type: "section",
+          attrs: { level: 1, title: "一、投标函", section_id: "S-fmt-1" },
+          content: [
+            {
+              type: "table",
+              attrs: { table_type: "list" },
+              content: [
+                {
+                  type: "table_row",
+                  attrs: { row_id: "R-0" },
+                  content: [
+                    {
+                      type: "table_cell",
+                      attrs: {
+                        col_role: "name",
+                        col_span: 2,
+                        row_span: 1,
+                      },
+                      content: [{ type: "text", text: "项目名称" }],
+                    },
+                    {
+                      type: "table_cell",
+                      attrs: {
+                        col_role: "remark",
+                        col_span: 1,
+                        row_span: 2,
+                      },
+                      content: [
+                        {
+                          type: "placeholder",
+                          attrs: {
+                            slot_id: "fmt-1-0",
+                            placeholder_type: "underscore",
+                            label: "项目名称",
+                            value: "某矿井智能化建设项目",
+                            required: false,
+                            source: "project_name",
+                            raw: "________",
+                          },
+                        },
+                      ],
+                    },
+                  ],
+                },
+                {
+                  type: "table_row",
+                  attrs: { row_id: "R-1" },
+                  content: [
+                    {
+                      type: "table_cell",
+                      attrs: {
+                        col_role: "name",
+                        col_span: 2,
+                        row_span: 1,
+                      },
+                      content: [{ type: "text", text: "备注" }],
+                    },
+                  ],
+                },
+              ],
+            },
+          ],
+        },
+      ],
+    };
+    const back = serializeDoc(hydrateAst(ast));
+    expect(canonical(back)).toBe(canonical(ast));
   });
 
   it("文本投影剥离 marks(provenance/status 不进文本)", () => {

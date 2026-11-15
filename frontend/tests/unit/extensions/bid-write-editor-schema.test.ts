@@ -10,12 +10,13 @@ import {
 } from "@/extensions/bid-write/editor/schema.gen";
 
 describe("bid-write editor schema.gen", () => {
-  it("16 项口径:14 节点 + 2 mark(批廿九 +deviation_note)", () => {
-    expect(AST_NODE_COUNT).toBe(16);
-    expect(AST_NODE_TYPES).toHaveLength(14);
+  it("17 项口径:15 节点 + 2 mark(含 placeholder)", () => {
+    expect(AST_NODE_COUNT).toBe(17);
+    expect(AST_NODE_TYPES).toHaveLength(15);
     expect(AST_NODE_TYPES).toContain("deviation_note");
+    expect(AST_NODE_TYPES).toContain("placeholder");
     expect(AST_MARK_TYPES).toHaveLength(2);
-    expect(Object.keys(bidWriteSchema.nodes)).toHaveLength(14);
+    expect(Object.keys(bidWriteSchema.nodes)).toHaveLength(15);
     expect(Object.keys(bidWriteSchema.marks)).toHaveLength(2);
   });
 
@@ -30,6 +31,18 @@ describe("bid-write editor schema.gen", () => {
         ?.default,
     ).toBe(0.98);
     expect(bidWriteSchema.nodes.section.spec.attrs?.level?.default).toBe(1);
+    expect(bidWriteSchema.nodes.table_cell.spec.attrs?.col_span?.default).toBe(
+      1,
+    );
+    expect(bidWriteSchema.nodes.table_cell.spec.attrs?.row_span?.default).toBe(
+      1,
+    );
+    expect(bidWriteSchema.nodes.table.spec.attrs?.source_index?.default).toBe(
+      -1,
+    );
+    expect(bidWriteSchema.nodes.placeholder.spec.attrs?.required?.default).toBe(
+      true,
+    );
   });
 
   it("toDOM 类名按 yaml 落位", () => {
@@ -39,7 +52,9 @@ describe("bid-write editor schema.gen", () => {
         {
           type: "section",
           attrs: { level: 1, title: "一、投标函", section_id: "S1" },
-          content: [{ type: "para", content: [{ type: "text", text: "正文" }] }],
+          content: [
+            { type: "para", content: [{ type: "text", text: "正文" }] },
+          ],
         },
       ],
     });
@@ -55,6 +70,6 @@ describe("bid-write editor schema.gen", () => {
   });
 
   it("版本常量随 yaml", () => {
-    expect(AST_SCHEMA_VERSION).toBe("0.2.0");
+    expect(AST_SCHEMA_VERSION).toBe("0.3.0");
   });
 });

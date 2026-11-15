@@ -40,6 +40,8 @@ async def db():
         models.WriteTask.__table__,
         models.TaskDocument.__table__,
         models.BidWriteDocumentRevision.__table__,
+        models.BidWriteFormatProfile.__table__,
+        models.BidWriteRevisionFormatProfile.__table__,
         models.MatrixRow.__table__,
         models.MaterialEntity.__table__,
         models.MaterialProfile.__table__,

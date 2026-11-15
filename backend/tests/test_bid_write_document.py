@@ -26,6 +26,8 @@ async def db():
                 models.WriteTask.__table__,
                 models.TaskDocument.__table__,
                 models.BidWriteDocumentRevision.__table__,
+                models.BidWriteFormatProfile.__table__,
+                models.BidWriteRevisionFormatProfile.__table__,
                 SA.WorkflowSubjectInstance.__table__,
                 SA.WorkflowSubjectReview.__table__,
             ],

@@ -1664,6 +1664,12 @@
 .bwx .bwe-table td {
   border: 1px solid var(--hairline);
   padding: 6px 10px;
+  vertical-align: middle;
+  word-break: break-word;
+}
+.bwx .bwe-table td[colspan],
+.bwx .bwe-table td[rowspan] {
+  background: color-mix(in srgb, var(--main-50) 42%, transparent);
 }
 .bwx .bwe-amount {
   text-align: right;
@@ -1673,6 +1679,24 @@
 }
 .bwx .bwe-enum {
   color: var(--main-600);
+}
+.bwx .bwe-placeholder {
+  display: inline-block;
+  min-width: 72px;
+  padding: 0 6px;
+  border-bottom: 1px solid var(--main-600);
+  border-radius: 3px 3px 0 0;
+  background: var(--main-50);
+  color: var(--main-700);
+  font-size: 0.95em;
+  line-height: 1.5;
+  white-space: nowrap;
+  user-select: none;
+}
+.bwx .bwe-placeholder[data-source=""] {
+  border-bottom-color: var(--warn-700);
+  background: var(--warn-50);
+  color: var(--warn-700);
 }
 .bwx .bwe-todo {
   border: 1px dashed var(--warn-700);

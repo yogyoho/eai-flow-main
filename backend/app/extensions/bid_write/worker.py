@@ -302,9 +302,14 @@ async def ensure_generated_document(db: AsyncSession, task: WriteTask, owner_id:
         return False
     try:
         from app.extensions.bid_write.generate.ast import products_to_ast
+        from app.extensions.bid_write.generate.format_ast import format_profile_to_ast
 
         ctx = await build_task_ctx(db, task, owner_id)
-        ast = products_to_ast(ctx.get("products") or {})
+        profile_row = await crud.get_format_profile(db, task.id, owner_id)
+        profile = dict(profile_row.profile or {}) if profile_row is not None and isinstance(profile_row.profile, dict) else {}
+        ast = format_profile_to_ast(profile, task=task, ctx=ctx) if profile else None
+        if ast is None:
+            ast = products_to_ast(ctx.get("products") or {})
         await crud.put_document(
             db,
             task_id=task.id,

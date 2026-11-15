@@ -76,11 +76,7 @@ def build_ctx(
     rows = list(matrix_rows or [])
     mat = dict(material or {})
     sections = assemble_sections(t.get("tender.required_sections"))
-    commitments = [
-        {"text": str(r.get("requirement") or ""), "clause_id": str(r.get("clause_id") or "")}
-        for r in rows
-        if str(r.get("clause_id") or "").startswith("decl:")
-    ] + list(general_commitments or [])
+    commitments = [{"text": str(r.get("requirement") or ""), "clause_id": str(r.get("clause_id") or "")} for r in rows if str(r.get("clause_id") or "").startswith("decl:")] + list(general_commitments or [])
     ps = calc_price_sheet(t.get("tender.boq_items"), unit_prices, tax_rate=tax_rate, price_adjust_mechanism=price_adjust_mechanism, note=price_note)
     bl = render_bid_letter(t, ps, mat, sign_date=sign_date, extra_commitments=commitments, letter_defaults=letter_defaults)
     rt = build_response_table(rows)
@@ -107,5 +103,5 @@ def build_ctx(
         "material": mat,
         "pre": pre,
         # 批廿五 P1-δ:人工旋钮直通面(投影消费 bid.warranty_period;键恒在=形态稳定)
-        "knobs": {"warranty_period": str(warranty_period or "")},
+        "knobs": {"warranty_period": str(warranty_period or ""), "sign_date": str(sign_date or "")},
     }

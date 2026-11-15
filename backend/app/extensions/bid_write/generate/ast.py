@@ -54,18 +54,27 @@ def _para(text: str, *, slot_id: str = "") -> dict:
     return node
 
 
-def _cell(text: str, role: str) -> dict:
-    node = {"type": "table_cell", "attrs": {"col_role": role}}
+def _span_attrs(col_span: int = 1, row_span: int = 1) -> dict:
+    attrs: dict = {}
+    if int(col_span or 1) > 1:
+        attrs["col_span"] = int(col_span)
+    if int(row_span or 1) > 1:
+        attrs["row_span"] = int(row_span)
+    return attrs
+
+
+def _cell(text: str, role: str, *, col_span: int = 1, row_span: int = 1) -> dict:
+    node = {"type": "table_cell", "attrs": {"col_role": role, **_span_attrs(col_span, row_span)}}
     content = _text(text)
     if content:
         node["content"] = content
     return node
 
 
-def _amount(text: str, role: str) -> dict:
+def _amount(text: str, role: str, *, col_span: int = 1, row_span: int = 1) -> dict:
     node = {
         "type": "amount_cell",
-        "attrs": {"readonly": True, "computed_expr": "", "role": role},
+        "attrs": {"readonly": True, "computed_expr": "", "role": role, **_span_attrs(col_span, row_span)},
     }
     content = _text(text)
     if content:
@@ -73,8 +82,8 @@ def _amount(text: str, role: str) -> dict:
     return node
 
 
-def _enum(text: str, values: list[str]) -> dict:
-    node = {"type": "enum_cell", "attrs": {"enum_values": values, "current": text}}
+def _enum(text: str, values: list[str], *, col_span: int = 1, row_span: int = 1) -> dict:
+    node = {"type": "enum_cell", "attrs": {"enum_values": values, "current": text, **_span_attrs(col_span, row_span)}}
     content = _text(text)
     if content:
         node["content"] = content

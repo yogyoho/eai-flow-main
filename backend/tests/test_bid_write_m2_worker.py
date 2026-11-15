@@ -33,6 +33,8 @@ async def db():
                 models.BidWritePolicy.__table__,
                 models.TaskDocument.__table__,
                 models.BidWriteDocumentRevision.__table__,
+                models.BidWriteFormatProfile.__table__,
+                models.BidWriteRevisionFormatProfile.__table__,
             ],
         )
     factory = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
@@ -105,7 +107,7 @@ async def test_advance_persists_fields_and_autoruns(db, monkeypatch):
     assert (run.verdict or {}).get("results")  # gaps 断言维度消费面
     # 批三十四:首次生成自动装配正文 AST(不是演示文档)
     doc = await crud.get_document(db, task_id=task.id, owner_id="u1")
-    assert doc is not None and doc.schema_version == "0.2.0"
+    assert doc is not None and doc.schema_version == "0.3.0"
     titles = [((node.get("attrs") or {}).get("title")) for node in doc.ast["content"] if node.get("type") == "section"]
     assert titles == ["一、投标函", "二、开标一览表", "三、商务响应表", "四、附件索引"]
 

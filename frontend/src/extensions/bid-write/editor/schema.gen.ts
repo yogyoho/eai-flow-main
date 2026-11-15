@@ -9,8 +9,8 @@ import {
   Schema,
 } from "prosemirror-model";
 
-export const AST_SCHEMA_VERSION = "0.2.0" as const;
-export const AST_NODE_COUNT = 16 as const;
+export const AST_SCHEMA_VERSION = "0.3.0" as const;
+export const AST_NODE_COUNT = 17 as const;
 
 export const AST_NODE_TYPES = [
   "doc",
@@ -22,6 +22,7 @@ export const AST_NODE_TYPES = [
   "table_cell",
   "amount_cell",
   "enum_cell",
+  "placeholder",
   "todo_block",
   "deviation_note",
   "attachment_ref",
@@ -29,10 +30,7 @@ export const AST_NODE_TYPES = [
   "text",
 ] as const;
 export type AstNodeType = (typeof AST_NODE_TYPES)[number];
-export const AST_MARK_TYPES = [
-  "provenance",
-  "status_mark",
-] as const;
+export const AST_MARK_TYPES = ["provenance", "status_mark"] as const;
 export type AstMarkType = (typeof AST_MARK_TYPES)[number];
 
 /** AST JSON 树(与 PM doc JSON 同形;强类型随 M2 执行器契约再收紧)。 */
@@ -55,97 +53,252 @@ export const AST_ENUM_VALUES = {
 
 export const bidWriteSchema = new Schema({
   nodes: {
-    "doc": {
+    doc: {
       group: "block",
-      content: 'block+',
-      toDOM: (_node: PMNode) => ['div', { 'class': 'bwe-doc' }, 0] as DOMOutputSpec,
+      content: "block+",
+      toDOM: (_node: PMNode) =>
+        ["div", { class: "bwe-doc" }, 0] as DOMOutputSpec,
     },
-    "section": {
+    section: {
       group: "block",
-      content: 'block+',
-      attrs: { level: { default: 1 }, title: { default: "" }, section_id: { default: "" } },
-      toDOM: (node: PMNode) => ['div', { 'class': 'bwe-section', 'data-title': node.attrs.title ?? "", 'data-level': node.attrs.level ?? "" }, 0] as DOMOutputSpec,
+      content: "block+",
+      attrs: {
+        level: { default: 1 },
+        title: { default: "" },
+        section_id: { default: "" },
+      },
+      toDOM: (node: PMNode) =>
+        [
+          "div",
+          {
+            class: "bwe-section",
+            "data-title": node.attrs.title ?? "",
+            "data-level": node.attrs.level ?? "",
+          },
+          0,
+        ] as DOMOutputSpec,
     },
-    "para": {
+    para: {
       group: "block",
-      content: 'inline*',
+      content: "inline*",
       attrs: { slot_id: { default: "" }, label: { default: "" } },
-      toDOM: (node: PMNode) => ['p', { 'class': 'bwe-para', 'data-label': node.attrs.label ?? "" }, 0] as DOMOutputSpec,
+      toDOM: (node: PMNode) =>
+        [
+          "p",
+          { class: "bwe-para", "data-label": node.attrs.label ?? "" },
+          0,
+        ] as DOMOutputSpec,
     },
-    "locked_paragraph": {
+    locked_paragraph: {
       group: "block",
-      content: 'inline*',
-      attrs: { template_id: { default: "" }, similarity_floor: { default: 0.98 } },
-      toDOM: (node: PMNode) => ['div', { 'class': 'bwe-locked', 'data-template-id': node.attrs.template_id ?? "" }, 0] as DOMOutputSpec,
+      content: "inline*",
+      attrs: {
+        template_id: { default: "" },
+        similarity_floor: { default: 0.98 },
+      },
+      toDOM: (node: PMNode) =>
+        [
+          "div",
+          {
+            class: "bwe-locked",
+            "data-template-id": node.attrs.template_id ?? "",
+          },
+          0,
+        ] as DOMOutputSpec,
     },
-    "table": {
+    table: {
       group: "block",
-      content: 'table_row+',
-      attrs: { table_type: { default: "price" } },
-      toDOM: (_node: PMNode) => ['table', { 'class': 'bwe-table' }, ["tbody", 0]] as DOMOutputSpec,
+      content: "table_row+",
+      attrs: {
+        table_type: { default: "price" },
+        source_index: { default: -1 },
+      },
+      toDOM: (_node: PMNode) =>
+        ["table", { class: "bwe-table" }, ["tbody", 0]] as DOMOutputSpec,
     },
-    "table_row": {
+    table_row: {
       group: "block",
-      content: '(table_cell | amount_cell | enum_cell)+',
+      content: "(table_cell | amount_cell | enum_cell)+",
       attrs: { row_id: { default: "" } },
-      toDOM: (_node: PMNode) => ['tr', { 'class': 'bwe-row' }, 0] as DOMOutputSpec,
+      toDOM: (_node: PMNode) =>
+        ["tr", { class: "bwe-row" }, 0] as DOMOutputSpec,
     },
-    "table_cell": {
+    table_cell: {
       group: "block",
-      content: 'inline*',
-      attrs: { col_role: { default: "name" } },
-      toDOM: (_node: PMNode) => ['td', { 'class': 'bwe-cell' }, 0] as DOMOutputSpec,
+      content: "inline*",
+      attrs: {
+        col_role: { default: "name" },
+        col_span: { default: 1 },
+        row_span: { default: 1 },
+      },
+      toDOM: (node: PMNode) =>
+        [
+          "td",
+          {
+            class: "bwe-cell",
+            colspan: node.attrs.col_span ?? 1,
+            rowspan: node.attrs.row_span ?? 1,
+          },
+          0,
+        ] as DOMOutputSpec,
     },
-    "amount_cell": {
+    amount_cell: {
       group: "block",
-      content: 'inline*',
-      attrs: { readonly: { default: true }, computed_expr: { default: "" }, role: { default: "amount" } },
-      toDOM: (_node: PMNode) => ['td', { 'class': 'bwe-amount' }, 0] as DOMOutputSpec,
+      content: "inline*",
+      attrs: {
+        readonly: { default: true },
+        computed_expr: { default: "" },
+        role: { default: "amount" },
+        col_span: { default: 1 },
+        row_span: { default: 1 },
+      },
+      toDOM: (node: PMNode) =>
+        [
+          "td",
+          {
+            class: "bwe-amount",
+            colspan: node.attrs.col_span ?? 1,
+            rowspan: node.attrs.row_span ?? 1,
+          },
+          0,
+        ] as DOMOutputSpec,
     },
-    "enum_cell": {
+    enum_cell: {
       group: "block",
-      content: 'inline*',
-      attrs: { enum_values: { default: [] }, current: { default: "" } },
-      toDOM: (_node: PMNode) => ['td', { 'class': 'bwe-enum' }, 0] as DOMOutputSpec,
+      content: "inline*",
+      attrs: {
+        enum_values: { default: [] },
+        current: { default: "" },
+        col_span: { default: 1 },
+        row_span: { default: 1 },
+      },
+      toDOM: (node: PMNode) =>
+        [
+          "td",
+          {
+            class: "bwe-enum",
+            colspan: node.attrs.col_span ?? 1,
+            rowspan: node.attrs.row_span ?? 1,
+          },
+          0,
+        ] as DOMOutputSpec,
     },
-    "todo_block": {
+    placeholder: {
+      inline: true,
+      group: "inline",
+      atom: true,
+      attrs: {
+        slot_id: { default: "" },
+        placeholder_type: { default: "" },
+        label: { default: "" },
+        value: { default: "" },
+        required: { default: true },
+        source: { default: "" },
+        raw: { default: "" },
+      },
+      toDOM: (node: PMNode) =>
+        [
+          "span",
+          {
+            class: "bwe-placeholder",
+            "data-slot": node.attrs.slot_id ?? "",
+            "data-type": node.attrs.placeholder_type ?? "",
+            "data-label": node.attrs.label ?? "",
+            "data-value": node.attrs.value ?? "",
+            "data-source": node.attrs.source ?? "",
+          },
+        ] as DOMOutputSpec,
+    },
+    todo_block: {
       group: "block",
       atom: true,
-      attrs: { missing: { default: "" }, pending_item_id: { default: "" }, level: { default: "D0" }, blocks_export: { default: true } },
-      toDOM: (node: PMNode) => ['div', { 'class': 'bwe-todo', 'data-missing': node.attrs.missing ?? "", 'data-level': node.attrs.level ?? "" }, 0] as DOMOutputSpec,
+      attrs: {
+        missing: { default: "" },
+        pending_item_id: { default: "" },
+        level: { default: "D0" },
+        blocks_export: { default: true },
+      },
+      toDOM: (node: PMNode) =>
+        [
+          "div",
+          {
+            class: "bwe-todo",
+            "data-missing": node.attrs.missing ?? "",
+            "data-level": node.attrs.level ?? "",
+          },
+        ] as DOMOutputSpec,
     },
-    "deviation_note": {
+    deviation_note: {
       group: "block",
-      content: 'para+',
+      content: "para+",
       attrs: { row_id: { default: "" } },
-      toDOM: (node: PMNode) => ['div', { 'class': 'bwe-devnote', 'data-row-id': node.attrs.row_id ?? "" }, 0] as DOMOutputSpec,
+      toDOM: (node: PMNode) =>
+        [
+          "div",
+          { class: "bwe-devnote", "data-row-id": node.attrs.row_id ?? "" },
+          0,
+        ] as DOMOutputSpec,
     },
-    "attachment_ref": {
+    attachment_ref: {
       inline: true,
       group: "inline",
       atom: true,
       attrs: { attachment_no: { default: "" }, anchor: { default: "" } },
-      toDOM: (node: PMNode) => ['span', { 'class': 'bwe-attach', 'data-no': node.attrs.attachment_no ?? "" }, 0] as DOMOutputSpec,
+      toDOM: (node: PMNode) =>
+        [
+          "span",
+          { class: "bwe-attach", "data-no": node.attrs.attachment_no ?? "" },
+        ] as DOMOutputSpec,
     },
-    "toc_entry": {
+    toc_entry: {
       group: "block",
       atom: true,
       attrs: { title: { default: "" }, page_placeholder: { default: "—" } },
-      toDOM: (node: PMNode) => ['div', { 'class': 'bwe-toc', 'data-title': node.attrs.title ?? "", 'data-page': node.attrs.page_placeholder ?? "" }, 0] as DOMOutputSpec,
+      toDOM: (node: PMNode) =>
+        [
+          "div",
+          {
+            class: "bwe-toc",
+            "data-title": node.attrs.title ?? "",
+            "data-page": node.attrs.page_placeholder ?? "",
+          },
+        ] as DOMOutputSpec,
     },
-    "text": {
+    text: {
       inline: true,
       group: "inline",
     },
   },
   marks: {
-    "provenance": {
-      attrs: { clause_id: { default: "" }, entity_id: { default: "" }, anchor: { default: "" } },
-      toDOM: (mark: PMMark) => ['sup', { 'class': 'bwe-prov', 'data-clause': mark.attrs.clause_id ?? "", 'data-entity': mark.attrs.entity_id ?? "" }, 0] as DOMOutputSpec,
+    provenance: {
+      attrs: {
+        clause_id: { default: "" },
+        entity_id: { default: "" },
+        anchor: { default: "" },
+      },
+      toDOM: (mark: PMMark) =>
+        [
+          "sup",
+          {
+            class: "bwe-prov",
+            "data-clause": mark.attrs.clause_id ?? "",
+            "data-entity": mark.attrs.entity_id ?? "",
+          },
+          0,
+        ] as DOMOutputSpec,
     },
-    "status_mark": {
+    status_mark: {
       attrs: { state: { default: "D1" }, err_code: { default: "" } },
-      toDOM: (mark: PMMark) => ['span', { 'class': 'bwe-status', 'data-state': mark.attrs.state ?? "", 'data-err': mark.attrs.err_code ?? "" }, 0] as DOMOutputSpec,
+      toDOM: (mark: PMMark) =>
+        [
+          "span",
+          {
+            class: "bwe-status",
+            "data-state": mark.attrs.state ?? "",
+            "data-err": mark.attrs.err_code ?? "",
+          },
+          0,
+        ] as DOMOutputSpec,
     },
   },
 });

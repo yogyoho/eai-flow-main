@@ -6,7 +6,7 @@
 #   → frontend/src/extensions/bid-write/editor/schema.gen.ts
 # 禁止手写两份;漂移由 test_bid_write_editor_schema.py 钉住。
 #
-# 16 项口径:14 节点(含 doc 根与 text)+ 2 mark = 16(批廿九 +deviation_note)。
+# 17 项口径:15 节点(含 doc 根与 text)+ 2 mark = 17(批廿九 +deviation_note;2026-11-15 +placeholder)。
 # PM 节点名 == AST 类型名,零改名(方案 §四 lockedPara 等驼峰为建议名,M0 弃用)。
 # 版本锚点:方案目标 shared_schema@2.4.0;当前仓库断言注册表 assertions/p0.yaml
 # schema_version=1.0.0 独立演进,统一锚点挂后续批,本文件版本独立演进。
@@ -15,7 +15,7 @@
 # provenance/status_mark 的 decoration 回写挂 M2 批;parseDOM 不定义(hydrate 走
 # nodeFromJSON,粘贴由 frontend editor/paste.ts handlePaste 清洗为可见文本行,
 # 外部 HTML 标签/样式永不直接进 AST;批三十一 M5)。
-schema_version: "0.2.0"
+schema_version: "0.3.0"
 layer: WR
 
 nodes:
@@ -55,6 +55,7 @@ nodes:
     content: table_row+
     attrs:
       - {name: table_type, type: enum, values: [price, response, list], default: price}
+      - {name: source_index, type: int, default: -1, note: 招标格式表序号;导出列宽匹配用;-1=非招标表}
     to_dom: {tag: table, class: bwe-table, wrap: [tbody]}
 
   - name: table_row
@@ -69,7 +70,9 @@ nodes:
     content: inline*
     attrs:
       - {name: col_role, type: enum, values: [name, qty, unit, remark], default: name, note: 角色驱动 M1 可编辑性;qty/unit 对齐 SK-PS-002 数量一致(结果侧只读)}
-    to_dom: {tag: td, class: bwe-cell}
+      - {name: col_span, type: int, default: 1, note: 招标表格横向合并列数}
+      - {name: row_span, type: int, default: 1, note: 招标表格纵向合并行数}
+    to_dom: {tag: td, class: bwe-cell, dom_attrs: {colspan: col_span, rowspan: row_span}}
 
   - name: amount_cell
     kind: block
@@ -78,7 +81,9 @@ nodes:
       - {name: readonly, type: bool, default: true, note: M0 仅声明;filterTransaction 只读拦截挂 M1}
       - {name: computed_expr, type: string, default: "", note: 计算式,值由内核重算(方案 §5.3)}
       - {name: role, type: enum, values: [amount, subtotal, total_num, total_cn], default: amount}
-    to_dom: {tag: td, class: bwe-amount}
+      - {name: col_span, type: int, default: 1}
+      - {name: row_span, type: int, default: 1}
+    to_dom: {tag: td, class: bwe-amount, dom_attrs: {colspan: col_span, rowspan: row_span}}
 
   - name: enum_cell
     kind: block
@@ -86,7 +91,26 @@ nodes:
     attrs:
       - {name: enum_values, type: list, default: [], note: 候选枚举,来源 tender.*/policy;下拉禁自由输入挂 M1}
       - {name: current, type: string, default: ""}
-    to_dom: {tag: td, class: bwe-enum}
+      - {name: col_span, type: int, default: 1}
+      - {name: row_span, type: int, default: 1}
+    to_dom: {tag: td, class: bwe-enum, dom_attrs: {colspan: col_span, rowspan: row_span}}
+
+  - name: placeholder
+    kind: inline
+    atom: true
+    content: ""
+    attrs:
+      - {name: slot_id, type: string, default: "", note: 格式档案 block/offset 派生槽位}
+      - {name: placeholder_type, type: string, default: "", note: underscore|blank_parentheses|date_blank|bracket_slot}
+      - {name: label, type: string, default: ""}
+      - {name: value, type: string, default: "", note: 任务/素材/报价事实填充值;空=待填}
+      - {name: required, type: bool, default: true}
+      - {name: source, type: string, default: "", note: 填充事实路径,如 task.project_name}
+      - {name: raw, type: string, default: "", note: 招标原文占位符,导出未填时保留}
+    to_dom:
+      tag: span
+      class: bwe-placeholder
+      data_attrs: {data-slot: slot_id, data-type: placeholder_type, data-label: label, data-value: value, data-source: source}
 
   - name: todo_block
     kind: block

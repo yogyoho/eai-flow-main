@@ -16,7 +16,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.extensions.workflow import subject_approval
 
 from . import crud
-from .models import BidWriteDocumentRevision, TaskDocument, WriteTask
+from .models import BidWriteDocumentRevision, BidWriteRevisionFormatProfile, TaskDocument, WriteTask
 
 _AST_VERSION_RE = re.compile(r"^\d+\.\d+\.\d+$")
 SUBJECT_TYPE = "bid_write_task"
@@ -124,7 +124,9 @@ def _node_map(graph: dict) -> dict[str, dict]:
     return {str(node.get("id")): node for node in main.get("nodes", []) if isinstance(node, dict) and node.get("id")}
 
 
-def _revision_summary(revision: BidWriteDocumentRevision) -> dict:
+def _revision_summary(revision: BidWriteDocumentRevision, frozen: BidWriteRevisionFormatProfile | None = None) -> dict:
+    frozen_profile = dict(frozen.profile or {}) if frozen is not None and isinstance(frozen.profile, dict) else {}
+    frozen_gap = (frozen_profile.get("gap_report") or {}).get("blocking_gaps") or []
     return {
         "id": revision.id,
         "revision_no": revision.revision_no,
@@ -132,6 +134,11 @@ def _revision_summary(revision: BidWriteDocumentRevision) -> dict:
         "doc_hash": revision.doc_hash,
         "schema_version": revision.schema_version,
         "assertion_snapshot": revision.assertion_snapshot or {},
+        "format_profile_frozen": frozen is not None,
+        "format_profile_hash": frozen.profile_hash if frozen is not None else "",
+        "format_profile_schema_version": frozen.schema_version if frozen is not None else "",
+        "format_profile_detected": bool((frozen_profile.get("format_section") or {}).get("detected")),
+        "format_profile_gap_count": len(frozen_gap),
         "approval_instance_id": revision.approval_instance_id,
         "hash_ok": canonical_hash(revision.ast or {}) == revision.doc_hash,
         "created_at": revision.created_at.isoformat() if revision.created_at else None,
@@ -140,8 +147,13 @@ def _revision_summary(revision: BidWriteDocumentRevision) -> dict:
     }
 
 
-def revision_detail(revision: BidWriteDocumentRevision, *, include_ast: bool = True) -> dict:
-    out = _revision_summary(revision)
+def revision_detail(
+    revision: BidWriteDocumentRevision,
+    *,
+    include_ast: bool = True,
+    frozen: BidWriteRevisionFormatProfile | None = None,
+) -> dict:
+    out = _revision_summary(revision, frozen)
     if include_ast:
         out["ast"] = revision.ast
     return out
@@ -199,6 +211,7 @@ async def _instance_payload(db: AsyncSession, instance, current_user: str) -> di
 
 async def get_approval_state(db: AsyncSession, task_id: str, owner_id: str, current_user: str | None = None) -> dict:
     revisions = await crud.list_revisions(db, task_id, owner_id)
+    frozen_map = await crud.get_revision_format_profiles(db, [revision.id for revision in revisions])
     latest = revisions[0] if revisions else None
     viewer = current_user or owner_id
     if latest is None:
@@ -210,10 +223,10 @@ async def get_approval_state(db: AsyncSession, task_id: str, owner_id: str, curr
         active = await subject_approval.get_active_subject_instance(db, subject_type=SUBJECT_TYPE, subject_id=task_id)
         instance = active
     return {
-        "revision": _revision_summary(latest),
+        "revision": _revision_summary(latest, frozen_map.get(latest.id)),
         "is_owner": viewer == owner_id,
         "approval": (await _instance_payload(db, instance, viewer)) if instance is not None else None,
-        "revisions": [_revision_summary(revision) for revision in revisions],
+        "revisions": [_revision_summary(revision, frozen_map.get(revision.id)) for revision in revisions],
     }
 
 
@@ -297,6 +310,20 @@ async def submit_revision(
     db.add(revision)
     await db.flush()
     try:
+        profile_row = await crud.get_format_profile(db, task.id, owner_id)
+        if profile_row is not None:
+            db.add(
+                BidWriteRevisionFormatProfile(
+                    revision_id=revision.id,
+                    task_id=task.id,
+                    owner_id=owner_id,
+                    profile=dict(profile_row.profile or {}),
+                    profile_hash=profile_row.profile_hash,
+                    schema_version=profile_row.schema_version,
+                    source_sha256=profile_row.source_sha256,
+                )
+            )
+            await db.flush()
         instance = await subject_approval.start_subject_approval(
             db,
             subject_type=SUBJECT_TYPE,

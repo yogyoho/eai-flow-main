@@ -101,10 +101,11 @@ def test_extracts_chapters_tables_placeholders_and_gap_report():
     assert gap["summary"]["table_count"] == 1
     assert gap["summary"]["merged_table_count"] == 1
     assert gap["summary"]["blocking_gap_count"] == len(gap["blocking_gaps"])
-    assert "approval_freeze" in gap["blocking_gaps"]
-    assert "table_structure" in gap["blocking_gaps"]
-    assert gap["blocking_reasons"]["approval_freeze"]
-    assert all(capability["status"] != "supported" for capability in gap["capabilities"])
+    assert "approval_freeze" not in gap["blocking_gaps"]
+    assert "table_structure" not in gap["blocking_gaps"]
+    assert "export_render" in gap["blocking_gaps"]
+    assert gap["blocking_reasons"]["export_render"]
+    assert any(capability["status"] == "supported" for capability in gap["capabilities"])
 
 
 def test_profile_hash_is_deterministic():

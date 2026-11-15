@@ -85,7 +85,12 @@ function findEnumMismatch(doc: PMNode): ConstraintViolation | null {
     if (node.type.name === "enum_cell") {
       const current = String(node.attrs.current ?? "");
       if (node.textContent !== current) {
-        found = { code: "enum_cell", message: VIOLATIONS.enum_cell, pos, end: pos + node.nodeSize };
+        found = {
+          code: "enum_cell",
+          message: VIOLATIONS.enum_cell,
+          pos,
+          end: pos + node.nodeSize,
+        };
         return false;
       }
     }
@@ -99,14 +104,23 @@ interface ConstraintOptions {
 }
 
 /** enum_cell 内容区内的改动:内容替换/光标插入先放行,由终态一致性校验把关 */
-function insideEnumContent(step: { from: number; to: number }, hit: ConstraintViolation): boolean {
-  if (step.from === step.to) return step.from >= hit.pos + 1 && step.from <= hit.end - 1;
+function insideEnumContent(
+  step: { from: number; to: number },
+  hit: ConstraintViolation,
+): boolean {
+  if (step.from === step.to)
+    return step.from >= hit.pos + 1 && step.from <= hit.end - 1;
   return step.from >= hit.pos + 1 && step.to <= hit.end - 1;
 }
 
 /** attr 步(空区间恰在节点边界)是 setNodeMarkup 的形状,放行交给一致性校验 */
-function isBoundaryAttrStep(step: { from: number; to: number }, hit: ConstraintViolation): boolean {
-  return step.from === step.to && (step.from === hit.pos || step.from === hit.end);
+function isBoundaryAttrStep(
+  step: { from: number; to: number },
+  hit: ConstraintViolation,
+): boolean {
+  return (
+    step.from === step.to && (step.from === hit.pos || step.from === hit.end)
+  );
 }
 
 export function constraintsPlugin(options: ConstraintOptions = {}): Plugin {
@@ -184,29 +198,93 @@ export type EnumViewHost = {
   dispatch: (tr: Transaction) => void;
 };
 
-/** 批廿七 M1-b——enum_cell NodeView:原生 <select>,无 contentDOM(内容不可打字) */
+/** 批廿七 M1-b——enum_cell NodeView:td 外壳 + 原生 <select>,无 contentDOM(内容不可打字)。
+ *  td 外壳保留招标表格的 colspan/rowspan,避免 select 直接挂在 tr 下破坏表格结构。 */
 export class EnumCellView {
-  dom: HTMLSelectElement;
+  dom: HTMLTableCellElement;
+  private select: HTMLSelectElement;
 
-  constructor(node: PMNode, view: EnumViewHost, getPos: () => number | undefined) {
-    this.dom = document.createElement("select");
-    this.dom.className = "bwe-enum-select";
-    this.dom.setAttribute("aria-label", "响应策略");
+  constructor(
+    node: PMNode,
+    view: EnumViewHost,
+    getPos: () => number | undefined,
+  ) {
+    this.dom = document.createElement("td");
+    this.dom.className = "bwe-enum";
+    this.select = document.createElement("select");
+    this.select.className = "bwe-enum-select";
+    this.select.setAttribute("aria-label", "响应策略");
     for (const v of (node.attrs.enum_values ?? []) as string[]) {
-      this.dom.append(new Option(v, v));
+      this.select.append(new Option(v, v));
     }
-    this.dom.value = String(node.attrs.current ?? "");
-    this.dom.onchange = () => {
+    this.select.value = String(node.attrs.current ?? "");
+    this.dom.append(this.select);
+    this.applyAttrs(node);
+    this.select.onchange = () => {
       const pos = getPos();
       if (pos == null) return;
-      const tr = setEnumValue(view.state, pos, this.dom.value);
+      const tr = setEnumValue(view.state, pos, this.select.value);
       if (tr) view.dispatch(tr);
     };
   }
 
   update(node: PMNode): boolean {
     if (node.type.name !== "enum_cell") return false;
-    this.dom.value = String(node.attrs.current ?? "");
+    this.applyAttrs(node);
+    this.select.value = String(node.attrs.current ?? "");
+    return true;
+  }
+
+  private applyAttrs(node: PMNode): void {
+    this.dom.setAttribute("colspan", String(node.attrs.col_span ?? 1));
+    this.dom.setAttribute("rowspan", String(node.attrs.row_span ?? 1));
+  }
+
+  ignoreMutation(): boolean {
+    return true;
+  }
+
+  stopEvent(): boolean {
+    return true;
+  }
+}
+
+function placeholderText(node: PMNode): string {
+  const value = String(node.attrs.value ?? "").trim();
+  if (value) return value;
+  const label = String(node.attrs.label ?? "").trim();
+  if (label) return `（待填：${label}）`;
+  const raw = String(node.attrs.raw ?? "").trim();
+  return raw || "________";
+}
+
+/** 招标格式占位符:行内原子,只读展示;填值走 attrs.value(system 事务)。 */
+export class PlaceholderView {
+  dom: HTMLSpanElement;
+
+  constructor(node: PMNode) {
+    this.dom = document.createElement("span");
+    this.dom.className = "bwe-placeholder";
+    this.update(node);
+  }
+
+  update(node: PMNode): boolean {
+    if (node.type.name !== "placeholder") return false;
+    const slot = String(node.attrs.slot_id ?? "");
+    const type = String(node.attrs.placeholder_type ?? "");
+    const label = String(node.attrs.label ?? "");
+    const value = String(node.attrs.value ?? "");
+    const source = String(node.attrs.source ?? "");
+    this.dom.textContent = placeholderText(node);
+    this.dom.dataset.slot = slot;
+    this.dom.dataset.type = type;
+    this.dom.dataset.label = label;
+    this.dom.dataset.value = value;
+    this.dom.dataset.source = source;
+    this.dom.title = source
+      ? `来源：${source}${value ? "" : "（未填）"}`
+      : label || type || "招标格式占位符";
+    this.dom.setAttribute("aria-label", `占位符：${label || type || slot}`);
     return true;
   }
 
@@ -221,8 +299,12 @@ export class EnumCellView {
 
 export function bidWriteNodeViews() {
   return {
-    enum_cell: (node: PMNode, view: EnumViewHost, getPos: () => number | undefined) =>
-      new EnumCellView(node, view, getPos),
+    enum_cell: (
+      node: PMNode,
+      view: EnumViewHost,
+      getPos: () => number | undefined,
+    ) => new EnumCellView(node, view, getPos),
+    placeholder: (node: PMNode) => new PlaceholderView(node),
   };
 }
 

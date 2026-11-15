@@ -27,6 +27,8 @@ _TABLES = [
     models.BidWritePolicy.__table__,
     models.TaskDocument.__table__,
     models.BidWriteDocumentRevision.__table__,
+    models.BidWriteFormatProfile.__table__,
+    models.BidWriteRevisionFormatProfile.__table__,
 ]
 
 

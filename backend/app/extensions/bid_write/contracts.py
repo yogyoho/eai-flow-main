@@ -14,7 +14,7 @@ from __future__ import annotations
 SCHEMA_VERSION = "1.0.0"
 # 正文 AST schema 版本(单一真源=document_ast_schema.yaml;此常量供后端落库时标注,
 # test_bid_write_editor_schema.py 钉住与 yaml 同步)。
-DOCUMENT_AST_SCHEMA_VERSION = "0.2.0"
+DOCUMENT_AST_SCHEMA_VERSION = "0.3.0"
 
 # ── 导出前置校验(F6/批廿一 M2;P0 规格 §8)────────────────────────────────
 # 阻断层级口径钉死:D0 断言 FAIL/ERROR 或规则层 L1 fatal det FAIL→禁导出。

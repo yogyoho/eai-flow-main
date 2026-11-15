@@ -121,6 +121,8 @@ async def db():
         models.WriteTask.__table__,
         models.TaskDocument.__table__,
         models.BidWriteDocumentRevision.__table__,
+        models.BidWriteFormatProfile.__table__,
+        models.BidWriteRevisionFormatProfile.__table__,
         models.BidWriteExport.__table__,
         models.MatrixRow.__table__,
         models.MaterialEntity.__table__,
@@ -386,3 +388,105 @@ async def test_export_is_owner_only(owner_client, db, monkeypatch):
         resp = await reviewer.post(f"/api/extensions/bid-write/tasks/{task_id}/revisions/{revision_id}/export")
         assert resp.status_code == 404
         assert (await reviewer.get(f"/api/extensions/bid-write/tasks/{task_id}/exports")).status_code == 404
+
+
+def _format_profile(header: str, *, profile_hash: str) -> dict:
+    return {
+        "schema_version": "1.0.0",
+        "supported": True,
+        "format_section": {"detected": True, "toc_entry_count": 1},
+        "document": {
+            "page_setup": [
+                {
+                    "page_width": 7560310,
+                    "page_height": 10692130,
+                    "top_margin": 914400,
+                    "bottom_margin": 914400,
+                    "left_margin": 1143000,
+                    "right_margin": 1143000,
+                    "header_texts": [header],
+                    "footer_texts": ["招标文件页脚"],
+                }
+            ]
+        },
+        "tables": [],
+        "blocks": [],
+        "gap_report": {"blocking_gaps": []},
+        "profile_hash": profile_hash,
+    }
+
+
+@pytest.mark.asyncio
+async def test_export_uses_frozen_format_profile_after_task_profile_changes(owner_client, db, monkeypatch):
+    monkeypatch.setattr(approval, "_assertion_snapshot", _clean_snapshot)
+
+    async def fake_gate(ctx, *, ast=None, l4_model_fn=None):
+        assert ast is not None
+        return _gate()
+
+    monkeypatch.setattr(EX, "run_export_gate", fake_gate)
+    task_id = await _seed(db)
+    await crud.upsert_format_profile(
+        db,
+        task_id,
+        "u1",
+        profile=_format_profile("冻结页眉", profile_hash="frozen-hash"),
+        source_sha256="src-1",
+    )
+    submitted = await _submit(owner_client, task_id, BUNDLE_AST)
+    assert submitted.status_code == 200, submitted.text
+    revision_id = submitted.json()["revision"]["id"]
+    assert submitted.json()["revision"]["format_profile_frozen"] is True
+    assert submitted.json()["revision"]["format_profile_hash"] == "frozen-hash"
+
+    await crud.upsert_format_profile(
+        db,
+        task_id,
+        "u1",
+        profile=_format_profile("新页眉", profile_hash="new-hash"),
+        source_sha256="src-2",
+    )
+    state = await owner_client.get(f"/api/extensions/bid-write/tasks/{task_id}/approval")
+    assert state.json()["revision"]["format_profile_hash"] == "frozen-hash"
+    await _approve(db, task_id, revision_id)
+
+    resp = await owner_client.post(f"/api/extensions/bid-write/tasks/{task_id}/revisions/{revision_id}/export")
+    assert resp.status_code == 200, resp.text
+    with zipfile.ZipFile(io.BytesIO(resp.content)) as bundle:
+        manifest = json.loads(bundle.read("manifest.json"))
+        assert manifest["format_profile"]["hash"] == "frozen-hash"
+        assert manifest["format_profile"]["frozen"] is True
+        assert manifest["export"]["rendering"] == "format_profile"
+        docx_name = next(name for name in bundle.namelist() if name.endswith(".docx"))
+        with zipfile.ZipFile(io.BytesIO(bundle.read(docx_name))) as docx:
+            header = docx.read("word/header1.xml").decode("utf-8")
+    assert "冻结页眉" in header
+    assert "新页眉" not in header
+
+
+def test_render_table_places_cells_after_vertical_merge():
+    from docx import Document
+
+    from app.extensions.bid_write.export_docx import render_ast_to_docx
+    from app.extensions.bid_write.generate.ast import _cell, _row
+
+    ast = {
+        "type": "doc",
+        "content": [
+            {
+                "type": "table",
+                "attrs": {"table_type": "price", "source_index": -1},
+                "content": [
+                    _row("R0", [_cell("A", "name", row_span=2), _cell("B", "name", col_span=2)]),
+                    _row("R1", [_cell("C", "name", col_span=2)]),
+                ],
+            }
+        ],
+    }
+    doc = Document(io.BytesIO(render_ast_to_docx(ast)))
+    table = doc.tables[0]
+    assert table.cell(0, 1).text == "B"
+    assert table.cell(0, 2).text == "B"
+    assert table.cell(1, 0).text == "A"
+    assert table.cell(1, 1).text == "C"
+    assert table.cell(1, 2).text == "C"

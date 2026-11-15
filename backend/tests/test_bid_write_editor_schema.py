@@ -15,7 +15,7 @@ BACKEND = Path(__file__).resolve().parents[1]
 YAML_PATH = BACKEND / "app" / "extensions" / "bid_write" / "document_ast_schema.yaml"
 GEN_PATH = BACKEND.parents[0] / "frontend" / "src" / "extensions" / "bid-write" / "editor" / "schema.gen.ts"
 
-# 16 项口径:14 节点(含 doc 根与 text)+ 2 mark(批廿九 +deviation_note)
+# 17 项口径:15 节点(含 doc 根与 text/placeholder)+ 2 mark
 EXPECTED_NODES = {
     "doc",
     "section",
@@ -26,6 +26,7 @@ EXPECTED_NODES = {
     "table_cell",
     "amount_cell",
     "enum_cell",
+    "placeholder",
     "todo_block",
     "deviation_note",
     "attachment_ref",
@@ -40,13 +41,13 @@ def _load():
     return yaml.safe_load(YAML_PATH.read_text(encoding="utf-8"))
 
 
-def test_schema_has_16_entries():
+def test_schema_has_17_entries():
     data = _load()
     node_names = {n["name"] for n in data["nodes"]}
     mark_names = {m["name"] for m in data["marks"]}
     assert node_names == EXPECTED_NODES, f"节点集漂移: {node_names ^ EXPECTED_NODES}"
     assert mark_names == EXPECTED_MARKS, f"mark 集漂移: {mark_names ^ EXPECTED_MARKS}"
-    assert len(data["nodes"]) == 14 and len(data["marks"]) == 2
+    assert len(data["nodes"]) == 15 and len(data["marks"]) == 2
 
 
 def test_schema_node_fields_complete():
@@ -80,6 +81,6 @@ def test_codegen_output_in_sync():
     assert "GENERATED" in gen, "生成文件缺 GENERATED 头"
     assert f'AST_SCHEMA_VERSION = "{data["schema_version"]}"' in gen, "版本漂移"
     for node in data["nodes"]:
-        assert f'"{node["name"]}":' in gen, f"{node['name']} 未出现在 schema.gen.ts"
+        assert f'"{node["name"]}":' in gen or f"{node['name']}: {{" in gen, f"{node['name']} 未出现在 schema.gen.ts"
     for mark in data["marks"]:
-        assert f'"{mark["name"]}":' in gen, f"mark {mark['name']} 未出现在 schema.gen.ts"
+        assert f'"{mark["name"]}":' in gen or f"{mark['name']}: {{" in gen, f"mark {mark['name']} 未出现在 schema.gen.ts"

@@ -397,7 +397,8 @@ async def list_task_revisions(task_id: str, db: AsyncSession = Depends(get_db), 
     if task is None:
         raise HTTPException(status_code=404, detail="任务不存在")
     rows = await crud.list_revisions(db, task_id, task.owner_id)
-    return {"items": [approval.revision_detail(row, include_ast=False) for row in rows]}
+    frozen_map = await crud.get_revision_format_profiles(db, [row.id for row in rows])
+    return {"items": [approval.revision_detail(row, include_ast=False, frozen=frozen_map.get(row.id)) for row in rows]}
 
 
 @router.get("/tasks/{task_id}/revisions/{revision_id}")
@@ -410,7 +411,8 @@ async def get_task_revision(task_id: str, revision_id: str, db: AsyncSession = D
     revision = await crud.get_revision(db, revision_id, task_id, task.owner_id)
     if revision is None:
         raise HTTPException(status_code=404, detail="修订不存在")
-    return approval.revision_detail(revision)
+    frozen = await crud.get_revision_format_profile(db, revision.id)
+    return approval.revision_detail(revision, frozen=frozen)
 
 
 @router.post("/tasks/{task_id}/revisions/{revision_id}/export")
