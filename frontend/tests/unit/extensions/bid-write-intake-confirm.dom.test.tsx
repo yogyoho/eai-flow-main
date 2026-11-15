@@ -6,6 +6,7 @@ import {
   render,
   screen,
   waitFor,
+  within,
 } from "@testing-library/react";
 import type { PropsWithChildren } from "react";
 
@@ -88,6 +89,9 @@ function renderView() {
 describe("bid-write IntakeView 阻断行确认", () => {
   beforeEach(() => {
     calls.length = 0;
+    rs.spyOn(HTMLElement.prototype, "scrollIntoView").mockImplementation(
+      () => undefined,
+    );
     responder = (path, init) => {
       if (path.endsWith("/tasks")) return jsonRes({ items: [TASK] });
       if (path.endsWith("/matrix") && init?.method === "PATCH") {
@@ -104,6 +108,7 @@ describe("bid-write IntakeView 阻断行确认", () => {
 
   afterEach(() => {
     cleanup();
+    rs.restoreAllMocks();
   });
 
   it("空备注不发 PATCH，填写依据后才确认", async () => {
@@ -137,5 +142,58 @@ describe("bid-write IntakeView 阻断行确认", () => {
       status: "confirmed",
       note: "已对照招标文件 p.18 原文，确认投标有效期为 90 天",
     });
+  });
+
+  it("uses a non-native strategy dropdown and PATCHes the selection", async () => {
+    renderView();
+
+    await screen.findAllByText("clause:2");
+    expect(document.querySelector("select")).toBeNull();
+
+    const trigger = screen.getByRole("combobox", {
+      name: "clause:2 响应策略",
+    });
+    expect(trigger.textContent).toContain("正偏离");
+
+    fireEvent.keyDown(trigger, { key: "ArrowDown" });
+    fireEvent.click(await screen.findByRole("option", { name: "负偏离" }));
+
+    await waitFor(() => {
+      const patch = calls.find((call) => call.init?.method === "PATCH");
+      const body = patch?.init?.body;
+      if (typeof body !== "string") throw new Error("PATCH body 不是字符串");
+      expect(JSON.parse(body)).toEqual({ strategy: "negative" });
+    });
+  });
+
+  it("collapses and expands clause tree groups", async () => {
+    renderView();
+
+    await screen.findAllByText("clause:2");
+    const tree = document.querySelector(".bw-tree");
+    if (!tree) throw new Error("tree not ready");
+    const treeScope = tree as HTMLElement;
+
+    expect(within(treeScope).getByText("clause:2")).toBeTruthy();
+
+    fireEvent.click(
+      screen.getByRole("button", { name: "收起tender.commitments" }),
+    );
+    expect(within(treeScope).queryByText("clause:2")).toBeNull();
+
+    fireEvent.click(
+      screen.getByRole("button", { name: "展开tender.commitments" }),
+    );
+    expect(within(treeScope).getByText("clause:2")).toBeTruthy();
+
+    fireEvent.click(screen.getByRole("button", { name: "收起全部" }));
+    expect(
+      screen.getByRole("button", { name: "展开tender.commitments" }),
+    ).toBeTruthy();
+
+    fireEvent.click(screen.getByRole("button", { name: "展开全部" }));
+    expect(
+      screen.getByRole("button", { name: "收起tender.commitments" }),
+    ).toBeTruthy();
   });
 });

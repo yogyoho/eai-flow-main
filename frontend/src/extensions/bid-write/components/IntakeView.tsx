@@ -5,6 +5,7 @@ import {
   ArrowRight,
   CheckCheck,
   ChevronDown,
+  ChevronRight,
   Download,
   FileText,
   Info,
@@ -15,6 +16,13 @@ import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import {
   Badge,
   EmptyState,
@@ -59,6 +67,9 @@ export function IntakeView() {
   const refetchMatrix = matrix.refetch;
   const patch = usePatchBidWriteMatrixRow(taskId);
   const [groupFilter, setGroupFilter] = useState<string>("all");
+  const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(
+    () => new Set(),
+  );
   const [selectedClause, setSelectedClause] = useState<string | null>(null);
   const [dialog, setDialog] = useState<NoteDialogState | null>(null);
   const [bulkPending, setBulkPending] = useState(false);
@@ -87,6 +98,35 @@ export function IntakeView() {
     }
     return [...map.entries()].sort(([a], [b]) => a.localeCompare(b));
   }, [rows]);
+
+  const allCollapsed =
+    groups.length > 0 && groups.every(([path]) => collapsedGroups.has(path));
+
+  const toggleGroup = (path: string) => {
+    setCollapsedGroups((prev) => {
+      const next = new Set(prev);
+      if (next.has(path)) next.delete(path);
+      else next.add(path);
+      return next;
+    });
+  };
+
+  const toggleAllGroups = () => {
+    setCollapsedGroups(
+      allCollapsed ? new Set() : new Set(groups.map(([path]) => path)),
+    );
+  };
+
+  const selectGroup = (path: string) => {
+    setGroupFilter(path);
+    setSelectedClause(null);
+    setCollapsedGroups((prev) => {
+      if (!prev.has(path)) return prev;
+      const next = new Set(prev);
+      next.delete(path);
+      return next;
+    });
+  };
 
   const visibleRows = useMemo(
     () =>
@@ -341,75 +381,110 @@ export function IntakeView() {
                 </span>
               </div>
               <div className="card-b tree bw-tree">
-                <button
-                  type="button"
-                  className={`node ${groupFilter === "all" ? "on" : ""}`}
-                  onClick={() => {
-                    setGroupFilter("all");
-                    setSelectedClause(null);
-                  }}
+                <div
+                  className={`bw-tree-row ${groupFilter === "all" ? "on" : ""}`}
                 >
-                  <ChevronDown size={12} aria-hidden="true" />
-                  <b>全部商务要求</b>
-                  <span className="cnt">{rows.length}</span>
-                </button>
+                  <button
+                    type="button"
+                    className="bw-tree-toggle"
+                    aria-label={allCollapsed ? "展开全部" : "收起全部"}
+                    aria-expanded={!allCollapsed}
+                    onClick={toggleAllGroups}
+                  >
+                    {allCollapsed ? (
+                      <ChevronRight size={12} aria-hidden="true" />
+                    ) : (
+                      <ChevronDown size={12} aria-hidden="true" />
+                    )}
+                  </button>
+                  <button
+                    type="button"
+                    className="bw-tree-label"
+                    onClick={() => {
+                      setGroupFilter("all");
+                      setSelectedClause(null);
+                    }}
+                  >
+                    <b>全部商务要求</b>
+                    <span className="cnt">{rows.length}</span>
+                  </button>
+                </div>
                 {groups.map(([path, groupRows]) => {
                   const blocked = groupRows.filter(
                     (row) => row.status === "blocked",
                   ).length;
+                  const collapsed = collapsedGroups.has(path);
+                  const label = sourcePathLabel(path);
                   return (
                     <div className="bw-tree-group" key={path}>
-                      <button
-                        type="button"
-                        className={`node ${groupFilter === path ? "on" : ""}`}
-                        onClick={() => {
-                          setGroupFilter(path);
-                          setSelectedClause(null);
-                        }}
+                      <div
+                        className={`bw-tree-row ${groupFilter === path ? "on" : ""}`}
                       >
-                        <ChevronDown size={12} aria-hidden="true" />
-                        <b>{sourcePathLabel(path)}</b>
-                        <span className="cnt">{groupRows.length}</span>
-                        {blocked > 0 ? (
-                          <span className="bw-tree-alert">{blocked}</span>
-                        ) : null}
-                      </button>
-                      {groupRows.map((row) => (
                         <button
                           type="button"
-                          key={row.clause_id}
-                          className={`node leaf ${selectedClause === row.clause_id ? "on" : ""}`}
-                          onClick={() => {
-                            setGroupFilter(path);
-                            setSelectedClause(row.clause_id);
-                            document
-                              .getElementById(`matrix-${row.clause_id}`)
-                              ?.scrollIntoView({
-                                block: "center",
-                                behavior: "smooth",
-                              });
-                          }}
-                          title={row.requirement}
+                          className="bw-tree-toggle"
+                          aria-label={`${collapsed ? "展开" : "收起"}${label}`}
+                          aria-expanded={!collapsed}
+                          onClick={() => toggleGroup(path)}
                         >
-                          <span
-                            className={`dot ${
-                              row.status === "blocked"
-                                ? "bad"
-                                : row.status === "confirmed"
-                                  ? "ok"
-                                  : "gray"
-                            }`}
-                            aria-hidden="true"
-                          />
-                          <span className="bw-tree-clause mono">
-                            {row.clause_id}
-                          </span>
-                          <span className="bw-tree-text">
-                            {row.requirement}
-                          </span>
-                          {row.star ? <span className="star">★</span> : null}
+                          {collapsed ? (
+                            <ChevronRight size={12} aria-hidden="true" />
+                          ) : (
+                            <ChevronDown size={12} aria-hidden="true" />
+                          )}
                         </button>
-                      ))}
+                        <button
+                          type="button"
+                          className="bw-tree-label"
+                          onClick={() => selectGroup(path)}
+                        >
+                          <b>{label}</b>
+                          <span className="cnt">{groupRows.length}</span>
+                          {blocked > 0 ? (
+                            <span className="bw-tree-alert">{blocked}</span>
+                          ) : null}
+                        </button>
+                      </div>
+                      {collapsed
+                        ? null
+                        : groupRows.map((row) => (
+                            <button
+                              type="button"
+                              key={row.clause_id}
+                              className={`node leaf ${selectedClause === row.clause_id ? "on" : ""}`}
+                              onClick={() => {
+                                setGroupFilter(path);
+                                setSelectedClause(row.clause_id);
+                                document
+                                  .getElementById(`matrix-${row.clause_id}`)
+                                  ?.scrollIntoView({
+                                    block: "center",
+                                    behavior: "smooth",
+                                  });
+                              }}
+                              title={row.requirement}
+                            >
+                              <span
+                                className={`dot ${
+                                  row.status === "blocked"
+                                    ? "bad"
+                                    : row.status === "confirmed"
+                                      ? "ok"
+                                      : "gray"
+                                }`}
+                                aria-hidden="true"
+                              />
+                              <span className="bw-tree-clause mono">
+                                {row.clause_id}
+                              </span>
+                              <span className="bw-tree-text">
+                                {row.requirement}
+                              </span>
+                              {row.star ? (
+                                <span className="star">★</span>
+                              ) : null}
+                            </button>
+                          ))}
                     </div>
                   );
                 })}
@@ -506,28 +581,45 @@ export function IntakeView() {
                             ) : null}
                           </td>
                           <td>
-                            <select
-                              className="select bw-select"
-                              value={row.strategy}
-                              disabled={patch.isPending}
-                              onChange={(event) =>
-                                onStrategyChange(row, event.target.value)
-                              }
-                              aria-label={`${row.clause_id} 响应策略`}
+                            <span
+                              className="bw-strategy-cell"
+                              onClick={(event) => event.stopPropagation()}
                             >
-                              {(
-                                matrix.data?.vocab.strategies ?? [
-                                  "pending",
-                                  "full",
-                                  "positive",
-                                  "negative",
-                                ]
-                              ).map((strategy) => (
-                                <option key={strategy} value={strategy}>
-                                  {matrixStrategyLabel(strategy)}
-                                </option>
-                              ))}
-                            </select>
+                              <Select
+                                value={row.strategy}
+                                disabled={patch.isPending}
+                                onValueChange={(next) =>
+                                  onStrategyChange(row, next)
+                                }
+                              >
+                                <SelectTrigger
+                                  size="sm"
+                                  className="bw-strategy-select"
+                                  aria-label={`${row.clause_id} 响应策略`}
+                                >
+                                  <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent
+                                  className="bw-strategy-menu"
+                                  position="popper"
+                                  align="start"
+                                  sideOffset={4}
+                                >
+                                  {(
+                                    matrix.data?.vocab.strategies ?? [
+                                      "pending",
+                                      "full",
+                                      "positive",
+                                      "negative",
+                                    ]
+                                  ).map((strategy) => (
+                                    <SelectItem key={strategy} value={strategy}>
+                                      {matrixStrategyLabel(strategy)}
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            </span>
                           </td>
                           <td className="num">{formatPercent(row.conf)}</td>
                           <td>

@@ -342,9 +342,20 @@
   border-color: var(--main-500);
   box-shadow: 0 0 0 2px var(--inp-ring);
 }
-.bwx .bw-select {
+.bwx .bw-strategy-cell {
+  display: inline-flex;
+  align-items: center;
+}
+.bwx .bw-strategy-select {
   min-width: 104px;
   max-width: 132px;
+  height: 30px;
+  padding: 0 8px;
+  background: var(--card);
+  color: var(--text);
+}
+.bw-strategy-menu {
+  z-index: 60;
 }
 .bwx .bw-cell-input {
   width: 100%;
@@ -718,6 +729,68 @@
   max-height: 680px;
   overflow: auto;
   padding: 8px;
+}
+.bwx .bw-tree-row {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  width: 100%;
+  padding: 0 8px 0 2px;
+  border-radius: 5px;
+  color: var(--text-2);
+  font-size: 12.5px;
+  line-height: 1.45;
+}
+.bwx .bw-tree-row:hover {
+  background: var(--gray-50);
+  color: var(--text);
+}
+.bwx .bw-tree-row.on {
+  background: var(--nav-on-bg);
+  color: var(--main-600);
+  font-weight: 600;
+}
+.bwx .bw-tree-toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 28px;
+  flex: none;
+  border-radius: 4px;
+  color: inherit;
+}
+.bwx .bw-tree-toggle:hover {
+  background: var(--gray-100);
+}
+.bwx .bw-tree-label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: 1;
+  min-width: 0;
+  padding: 6px 0;
+  text-align: left;
+  color: inherit;
+  font-size: inherit;
+  font-weight: inherit;
+}
+.bwx .bw-tree-label b {
+  font-weight: 500;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.bwx .bw-tree-label .cnt {
+  margin-left: auto;
+  font-size: 11px;
+  color: var(--text-3);
+  font-variant-numeric: tabular-nums;
+}
+.bwx .bw-tree-toggle:focus-visible,
+.bwx .bw-tree-label:focus-visible {
+  outline: 2px solid var(--main-400);
+  outline-offset: -2px;
 }
 .bwx .tree .node {
   display: flex;
