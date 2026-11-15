@@ -118,6 +118,10 @@ async def advance_write_task(db: AsyncSession, task_id: str, owner_id: str, extr
         task.engine_meta = meta
         await db.commit()
         await db.refresh(task)
+        try:  # 格式档案是旁路增强:失败只记日志,不影响解析/矩阵主流程
+            await extract_task_format_profiles(db, task, owner_id)
+        except Exception:  # noqa: BLE001
+            logger.exception("bid_write task %s format profile extraction failed (non-fatal)", task_id)
         docs = parse.docs_from_entries(owner_id, task.id, [e for e in (task.engine_meta or {}).get("docs") or [] if isinstance(e, dict)])
         await crud.set_status(db, task, "extracting", progress={"stage": "extracting", "pct": 50, "msg": "商务要素提取中(tender-only)"})
         if extract_fn is None:
@@ -160,6 +164,55 @@ async def _infra_fail(task_id: str, exc: Exception, owner_hint: str | None = Non
         if task is None:
             return
         await crud.set_status(db, task, "failed", error=str(exc)[:2000])
+
+
+async def extract_task_format_profiles(db: AsyncSession, task: WriteTask, owner_id: str) -> dict | None:
+    """从任务 raw 招标 DOCX 提取 FormatProfile 并落库(任务 1:1,优先有格式区段的文档)。"""
+    from app.extensions.bid_review import parse
+    from app.extensions.bid_write.format_profile import extract_format_profile
+
+    raw_dir = parse.task_dir(owner_id, task.id) / "raw"
+    candidates: list[tuple[dict, dict]] = []
+    for entry in (task.engine_meta or {}).get("docs") or []:
+        if not isinstance(entry, dict) or entry.get("role") != "tender" or entry.get("kind") != "docx":
+            continue
+        slug = str(entry.get("slug") or "")
+        if not slug:
+            continue
+        path = raw_dir / f"{slug}.bin"
+        if not path.exists():
+            continue
+        try:
+            data = await asyncio.to_thread(path.read_bytes)
+            profile = await asyncio.to_thread(
+                extract_format_profile,
+                data,
+                doc_id=str(entry.get("doc_id") or ""),
+                source_name=str(entry.get("doc_id") or path.name),
+            )
+        except Exception:  # noqa: BLE001  单个文件失败不影响其他招标文件
+            logger.exception("bid_write task %s format profile failed for %s", task.id, path)
+            continue
+        candidates.append((profile, entry))
+
+    chosen = next((item for item in candidates if (item[0].get("format_section") or {}).get("detected")), None)
+    if chosen is None and candidates:
+        chosen = candidates[0]
+    if chosen is None:
+        return None
+
+    profile, entry = chosen
+    source = profile.get("source") if isinstance(profile.get("source"), dict) else {}
+    await crud.upsert_format_profile(
+        db,
+        task.id,
+        owner_id,
+        profile=profile,
+        source_doc_id=str(source.get("doc_id") or entry.get("doc_id") or ""),
+        source_name=str(source.get("name") or entry.get("doc_id") or ""),
+        source_sha256=str(source.get("sha256") or ""),
+    )
+    return profile
 
 
 async def build_task_ctx(db: AsyncSession, task: WriteTask, owner_id: str, *, knobs: dict | None = None) -> dict:

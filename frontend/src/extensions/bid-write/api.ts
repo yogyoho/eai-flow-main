@@ -15,6 +15,7 @@ import type {
   ExportDownload,
   ExportGateResponse,
   ExportHistoryResponse,
+  FormatProfileResponse,
   GapsResponse,
   GenerateKnobs,
   GenerateResponse,
@@ -106,6 +107,23 @@ export async function createTask(input: {
 export async function getMatrix(taskId: string): Promise<MatrixResponse> {
   return requestJson<MatrixResponse>(
     `/tasks/${encodeURIComponent(taskId)}/matrix`,
+  );
+}
+
+export async function getFormatProfile(
+  taskId: string,
+): Promise<FormatProfileResponse> {
+  return requestJson<FormatProfileResponse>(
+    `/tasks/${encodeURIComponent(taskId)}/format-profile`,
+  );
+}
+
+export async function extractFormatProfile(
+  taskId: string,
+): Promise<FormatProfileResponse> {
+  return requestJson<FormatProfileResponse>(
+    `/tasks/${encodeURIComponent(taskId)}/format-profile/extract`,
+    { method: "POST" },
   );
 }
 
@@ -364,7 +382,8 @@ export async function exportTaskRevision(
   const blob = await res.blob();
   return {
     blob,
-    filename: filenameFromDisposition(res.headers.get("Content-Disposition")) ??
+    filename:
+      filenameFromDisposition(res.headers.get("Content-Disposition")) ??
       "bid-write-delivery.zip",
     exportId: res.headers.get("X-Export-Id") ?? "",
     sha256: res.headers.get("X-Export-Sha256") ?? "",

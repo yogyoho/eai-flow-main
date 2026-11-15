@@ -296,6 +296,42 @@ async def put_task_document(task_id: str, body: schemas.DocumentIn, db: AsyncSes
     }
 
 
+def _format_profile_payload(row) -> dict:
+    if row is None:
+        return {"profile": None, "profile_hash": "", "schema_version": "", "source": None, "updated_at": None}
+    profile = row.profile if isinstance(row.profile, dict) else {}
+    return {
+        "profile": profile,
+        "profile_hash": row.profile_hash,
+        "schema_version": row.schema_version,
+        "source": profile.get("source"),
+        "updated_at": row.updated_at.isoformat() if row.updated_at else None,
+    }
+
+
+@router.get("/tasks/{task_id}/format-profile")
+async def get_task_format_profile(task_id: str, db: AsyncSession = Depends(get_db), owner_id: str = Depends(current_owner)):
+    """招标商务卷格式档案(owner/审批人可读;未提取过=profile:null)。"""
+    task = await _task_for_read(db, task_id, owner_id)
+    if task is None:
+        raise HTTPException(status_code=404, detail="任务不存在")
+    row = await crud.get_format_profile(db, task_id=task_id, owner_id=task.owner_id)
+    return _format_profile_payload(row)
+
+
+@router.post("/tasks/{task_id}/format-profile/extract")
+async def extract_task_format_profile(task_id: str, db: AsyncSession = Depends(get_db), owner_id: str = Depends(current_owner)):
+    """强制重新提取格式档案(owner;无招标 DOCX → 422;损坏 DOCX 返回 supported=false)。"""
+    task = await crud.get_task(db, task_id=task_id, owner_id=owner_id)
+    if task is None:
+        raise HTTPException(status_code=404, detail="任务不存在")
+    profile = await worker.extract_task_format_profiles(db, task, owner_id)
+    if profile is None:
+        raise HTTPException(status_code=422, detail="任务没有可提取格式的 DOCX 招标文件")
+    row = await crud.get_format_profile(db, task_id=task_id, owner_id=task.owner_id)
+    return _format_profile_payload(row)
+
+
 @router.get("/tasks/{task_id}/approval")
 async def get_task_approval(task_id: str, db: AsyncSession = Depends(get_db), owner_id: str = Depends(current_owner)):
     """最新修订 + workflow 审批实例 + 当前用户可执行动作（owner/审批人均可读）。"""

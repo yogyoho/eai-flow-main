@@ -53,6 +53,23 @@ rs.mock("@/extensions/bid-write/hooks", () => ({
     isLoading: false,
     error: null,
   }),
+  useBidWriteFormatProfile: () => ({
+    data: {
+      profile: null,
+      profile_hash: "",
+      schema_version: "",
+      source: null,
+      updated_at: null,
+    },
+    isLoading: false,
+    error: null,
+    refetch: async () => undefined,
+  }),
+  useExtractBidWriteFormatProfile: () => ({
+    mutate: () => undefined,
+    isPending: false,
+    error: null,
+  }),
   useTaskMetrics: () => ({ data: { metrics: null, run_at: null } }),
 }));
 

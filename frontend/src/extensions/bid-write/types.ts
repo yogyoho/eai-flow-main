@@ -373,3 +373,62 @@ export interface ApprovalActionInput {
   action: "approved" | "rejected";
   comment?: string;
 }
+
+// ── 招标商务卷格式档案（P0 FormatProfile）──────────────────────────────
+
+export interface FormatProfileSource {
+  doc_id?: string;
+  name?: string;
+  kind?: string;
+  bytes?: number;
+  sha256?: string;
+}
+
+export interface FormatSection {
+  detected: boolean;
+  start_block_index?: number | null;
+  end_block_index?: number | null;
+  chapter_count?: number;
+  heading_count?: number;
+  toc_entry_count?: number;
+  toc_matched_count?: number;
+  chapter_titles?: string[];
+  toc_entries?: Array<{ text: string }>;
+  cover_texts?: string[];
+}
+
+export interface FormatCapability {
+  id: string;
+  label: string;
+  tender_demand: string;
+  current_support: string;
+  status: "supported" | "partial" | "missing" | string;
+  evidence: unknown;
+}
+
+export interface FormatGapReport {
+  summary: Record<string, number>;
+  capabilities: FormatCapability[];
+  blocking_gaps: string[];
+  blocking_reasons?: Record<string, string>;
+  note?: string;
+}
+
+export interface FormatProfile {
+  schema_version?: string;
+  supported: boolean;
+  reason?: string;
+  source?: FormatProfileSource;
+  format_section?: FormatSection;
+  gap_report?: FormatGapReport;
+  profile_hash?: string;
+  [key: string]: unknown;
+}
+
+export interface FormatProfileResponse {
+  profile: FormatProfile | null;
+  profile_hash: string;
+  schema_version: string;
+  source: FormatProfileSource | null;
+  updated_at: string | null;
+}

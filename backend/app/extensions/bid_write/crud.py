@@ -13,7 +13,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.extensions.bid_write.models import MatrixRow, WriteTask
 
 if TYPE_CHECKING:
-    from app.extensions.bid_write.models import TaskDocument
+    from app.extensions.bid_write.models import BidWriteFormatProfile, TaskDocument
 
 
 def _seq_of(biz_no: str | None) -> int | None:
@@ -265,6 +265,45 @@ async def get_document(session: AsyncSession, task_id: str, owner_id: str) -> Ta
 
     res = await session.execute(select(TaskDocument).where(TaskDocument.task_id == task_id, TaskDocument.owner_id == owner_id))
     return res.scalar_one_or_none()
+
+
+async def get_format_profile(session: AsyncSession, task_id: str, owner_id: str) -> BidWriteFormatProfile | None:
+    """任务格式档案读取(owner 过滤;复审人读 owner 的档案由路由层放行)。"""
+    from app.extensions.bid_write.models import BidWriteFormatProfile
+
+    res = await session.execute(select(BidWriteFormatProfile).where(BidWriteFormatProfile.task_id == task_id, BidWriteFormatProfile.owner_id == owner_id))
+    return res.scalar_one_or_none()
+
+
+async def upsert_format_profile(
+    session: AsyncSession,
+    task_id: str,
+    owner_id: str,
+    *,
+    profile: dict,
+    source_doc_id: str = "",
+    source_name: str = "",
+    source_sha256: str = "",
+    commit: bool = True,
+) -> BidWriteFormatProfile:
+    """格式档案幂等覆盖(任务 1:1;重新提取=覆盖同任务档案)。"""
+    from app.extensions.bid_write.models import BidWriteFormatProfile
+
+    row = await session.get(BidWriteFormatProfile, task_id)
+    if row is None:
+        row = BidWriteFormatProfile(task_id=task_id, owner_id=owner_id)
+        session.add(row)
+    row.owner_id = owner_id
+    row.source_doc_id = source_doc_id
+    row.source_name = source_name
+    row.source_sha256 = source_sha256
+    row.schema_version = str(profile.get("schema_version") or "")
+    row.profile = profile
+    row.profile_hash = str(profile.get("profile_hash") or "")
+    if commit:
+        await session.commit()
+        await session.refresh(row)
+    return row
 
 
 async def put_document(session: AsyncSession, task_id: str, owner_id: str, *, ast: dict, schema_version: str, commit: bool = True) -> TaskDocument:

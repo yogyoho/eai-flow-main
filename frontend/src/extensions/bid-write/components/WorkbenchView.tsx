@@ -22,6 +22,7 @@ import {
   putTaskDocument,
 } from "@/extensions/bid-write/api";
 import { ApprovalPanel } from "@/extensions/bid-write/components/ApprovalPanel";
+import { FormatProfileCard } from "@/extensions/bid-write/components/FormatProfileCard";
 import {
   Badge,
   EmptyState,
@@ -402,6 +403,8 @@ export function WorkbenchView() {
               </span>
             </div>
           )}
+
+          <FormatProfileCard taskId={taskId} />
 
           <div className="wb bw-mt">
             <aside className="card bw-outline">

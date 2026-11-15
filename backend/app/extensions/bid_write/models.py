@@ -126,6 +126,25 @@ class TaskDocument(Base):
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now, onupdate=_now)
 
 
+class BidWriteFormatProfile(Base):
+    """招标商务卷格式档案(P0,EAI-CUSTOM 2026-11-15)。任务 1:1,独立新表
+    create_all 零迁移;profile JSON 保留目录/标题/表格/占位符/签章位/差距清单,
+    profile_hash 用于审批冻结与复现。"""
+
+    __tablename__ = "bid_write_format_profiles"
+
+    task_id: Mapped[str] = mapped_column(String(36), ForeignKey("bid_write_tasks.id"), primary_key=True)
+    owner_id: Mapped[str] = mapped_column(String(64), index=True)
+    source_doc_id: Mapped[str] = mapped_column(String(255), default="")
+    source_name: Mapped[str] = mapped_column(String(255), default="")
+    source_sha256: Mapped[str] = mapped_column(String(64), default="", index=True)
+    schema_version: Mapped[str] = mapped_column(String(20), default="")
+    profile: Mapped[dict] = mapped_column(JSON, default=dict)
+    profile_hash: Mapped[str] = mapped_column(String(64), default="", index=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now, onupdate=_now)
+
+
 class BidWriteDocumentRevision(Base):
     """Immutable document revision frozen at approval submission (批三十二).
 

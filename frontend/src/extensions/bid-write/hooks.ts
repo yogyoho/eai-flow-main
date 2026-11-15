@@ -19,7 +19,9 @@ import {
   deleteMaterial,
   exportPrecheck,
   exportTaskRevision,
+  extractFormatProfile,
   generateTask,
+  getFormatProfile,
   getGaps,
   getMaterialProfile,
   getMatrix,
@@ -42,6 +44,7 @@ import type {
   ApprovalSubmitInput,
   ExportDownload,
   ExportHistoryResponse,
+  FormatProfileResponse,
   GenerateKnobs,
   MaterialIn,
   MaterialPatch,
@@ -69,6 +72,8 @@ export const bidWriteKeys = {
   metrics: (taskId: string) => ["bid-write", "metrics", taskId] as const,
   approval: (taskId: string) => ["bid-write", "approval", taskId] as const,
   exports: (taskId: string) => ["bid-write", "exports", taskId] as const,
+  formatProfile: (taskId: string) =>
+    ["bid-write", "format-profile", taskId] as const,
 };
 
 function latestFirst(tasks: WriteTaskOut[]): WriteTaskOut[] {
@@ -117,6 +122,27 @@ export function useBidWriteGaps(taskId: string | null) {
     queryKey: bidWriteKeys.gaps(taskId ?? ""),
     queryFn: () => getGaps(taskId!),
     enabled: Boolean(taskId),
+  });
+}
+
+export function useBidWriteFormatProfile(taskId: string | null) {
+  return useQuery({
+    queryKey: bidWriteKeys.formatProfile(taskId ?? ""),
+    queryFn: () => getFormatProfile(taskId!),
+    enabled: Boolean(taskId),
+  });
+}
+
+export function useExtractBidWriteFormatProfile(taskId: string | null) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: () => {
+      if (!taskId) throw new Error("未选择写作任务");
+      return extractFormatProfile(taskId);
+    },
+    onSuccess: (data: FormatProfileResponse) => {
+      if (taskId) qc.setQueryData(bidWriteKeys.formatProfile(taskId), data);
+    },
   });
 }
 
@@ -298,7 +324,10 @@ export function useTaskApproval(taskId: string | null) {
   });
 }
 
-function invalidateApprovalSurfaces(qc: ReturnType<typeof useQueryClient>, taskId: string) {
+function invalidateApprovalSurfaces(
+  qc: ReturnType<typeof useQueryClient>,
+  taskId: string,
+) {
   void qc.invalidateQueries({ queryKey: bidWriteKeys.approval(taskId) });
   void qc.invalidateQueries({ queryKey: ["bid-write", "task", taskId] });
   void qc.invalidateQueries({ queryKey: ["bid-write", "tasks"] });
