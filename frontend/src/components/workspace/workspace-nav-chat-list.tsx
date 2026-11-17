@@ -2,6 +2,7 @@
 
 import {
   BlocksIcon,
+  SearchIcon,
   BotIcon,
   CalendarClock,
   ChartColumn,
@@ -10,12 +11,14 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useEffect, useState } from "react";
 
 import {
   SidebarGroup,
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
+  useSidebar,
 } from "@/components/ui/sidebar";
 import {
   Tooltip,
@@ -28,6 +31,7 @@ import { hasPermission, PERMISSIONS } from "@/core/auth/permissions";
 import { useI18n } from "@/core/i18n/hooks";
 // EAI-CUSTOM: nav-level permission gating
 import { usePermission } from "@/core/permissions";
+import { OPEN_SEARCH_EVENT } from "@/core/search/api";
 import { isStaticWebsiteOnly } from "@/core/static-mode";
 
 export function WorkspaceNavChatList() {
@@ -36,6 +40,11 @@ export function WorkspaceNavChatList() {
   const { enabled: agentsEnabled } = useAgentsApiEnabled();
   const { canNav } = usePermission();
   const { user } = useAuth();
+  const { setOpenMobile } = useSidebar();
+  const [shortcut, setShortcut] = useState("⌘K");
+  useEffect(() => {
+    setShortcut(navigator.userAgent.includes("Mac") ? "⌘K" : "Ctrl K");
+  }, []);
   const usageEnabled =
     !!user &&
     hasPermission(user, PERMISSIONS.RUNS_READ) &&
@@ -43,6 +52,23 @@ export function WorkspaceNavChatList() {
   return (
     <SidebarGroup className="pt-1">
       <SidebarMenu>
+        <SidebarMenuItem>
+          <SidebarMenuButton
+            onClick={() => {
+              setOpenMobile(false);
+              window.dispatchEvent(new Event(OPEN_SEARCH_EVENT));
+            }}
+            aria-label={t.workspaceSearch.open}
+            tooltip={t.workspaceSearch.title}
+            className="text-muted-foreground"
+          >
+            <SearchIcon />
+            <span>{t.workspaceSearch.open}</span>
+            <kbd aria-hidden className="ml-auto text-xs">
+              {shortcut}
+            </kbd>
+          </SidebarMenuButton>
+        </SidebarMenuItem>
         <SidebarMenuItem>
           <SidebarMenuButton isActive={pathname === "/workspace/chats"} asChild>
             <Link className="text-muted-foreground" href="/workspace/chats">

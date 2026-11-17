@@ -118,6 +118,7 @@ markers = [
     "integration: tests that require an external service (e.g. Redis); skipped when unavailable",
     "live: tests that call real external APIs and require explicit opt-in",
     "state_guard_strict: skip the lenient unsigned-state fixture patch in test_bid_proposal_scripts.py (verify real no-meta injection semantics)",
+    "bundled_extension: behavior tests owned by a bundled extension example; excluded from the core shards and run by the bundled extension CI job",
 ]
 
 [tool.uv]

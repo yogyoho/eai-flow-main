@@ -10,6 +10,7 @@ Fine-grained permission checks remain in authz.py decorators.
 """
 
 import logging
+import re
 from collections.abc import Callable
 
 from fastapi import HTTPException, Request, Response
@@ -30,7 +31,7 @@ from app.gateway.authz import AuthContext, resolve_route_permissions
 from app.gateway.internal_auth import INTERNAL_AUTH_HEADER_NAME, get_internal_user, is_valid_internal_auth_token
 from app.gateway.request_path import get_request_route_path
 from deerflow.config.paths import make_safe_user_id
-from deerflow.runtime.user_context import reset_current_user, set_current_user
+from deerflow.runtime.user_context import bind_authenticated_user, reset_current_user, set_current_user
 
 logger = logging.getLogger(__name__)
 
@@ -75,7 +76,11 @@ _PUBLIC_EXACT_PATHS: frozenset[str] = frozenset(
 _INTERNAL_PATH_PREFIXES: tuple[str, ...] = ("/api/v1/auth/users/",)
 
 
-def _is_public(path: str) -> bool:
+def _is_public(path: str, method: str = "GET") -> bool:
+    # A share token grants only these reads. Forks and any future write routes
+    # under /shares still pass through session authentication and permissions.
+    if method in {"GET", "HEAD"} and re.fullmatch(r"/api/shares/[A-Za-z0-9_-]{43}(?:/artifacts/.+)?", path):
+        return True
     stripped = path.rstrip("/")
     if stripped in _PUBLIC_EXACT_PATHS:
         return True
@@ -111,7 +116,7 @@ class AuthMiddleware(BaseHTTPMiddleware):
         # Route-path projection (upstream #4780): resolve the matched route's
         # template path instead of the raw URL so extension-contributed routes
         # mounted under a public prefix keep host auth semantics.
-        if _is_public(get_request_route_path(request)):
+        if _is_public(get_request_route_path(request), request.method):
             return await call_next(request)
 
         internal_user = None
@@ -262,6 +267,8 @@ class AuthMiddleware(BaseHTTPMiddleware):
         request.state.auth = AuthContext(user=user, permissions=permissions)
         token = set_current_user(user)
         try:
-            return await call_next(request)
+            verified_user_id = str(user.id) if auth_source in {AUTH_SOURCE_SESSION, AUTH_SOURCE_PAT} else None
+            with bind_authenticated_user(verified_user_id):
+                return await call_next(request)
         finally:
             reset_current_user(token)
