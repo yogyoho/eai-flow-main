@@ -29,7 +29,7 @@ import {
 // from artifact-file-detail.tsx when upstream extracted the preview components
 // into this file, upstream-sync 2026-08-31).
 import { rewriteThreadImageReferences } from "@/core/streamdown/preprocess";
-import { getFileExtensionDisplayName, getFileIcon, getFileName } from "@/core/utils/files";
+import { getFileExtensionDisplayName, getFileName } from "@/core/utils/files";
 
 import { ArtifactLink } from "../citations/artifact-link";
 import { CitationSourcesPanel } from "../citations/citation-sources-panel";
