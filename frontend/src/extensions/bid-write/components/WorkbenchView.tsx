@@ -386,7 +386,7 @@ export function WorkbenchView() {
             <div className="banner bad">
               <AlertTriangle size={15} aria-hidden="true" />
               <span>
-                <b>{summary.blocked} 条低置信行未确认：</b>
+                <b>{summary.blocked} 条记录待人工核对：</b>
                 生成前必须回到解析确认清零阻断，否则断言与导出门禁会拦截。
               </span>
             </div>

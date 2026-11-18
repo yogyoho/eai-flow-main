@@ -40,7 +40,7 @@ export const MATRIX_STRATEGY_LABELS: Record<string, string> = {
 export const MATRIX_STATUS_LABELS: Record<string, string> = {
   draft: "草稿",
   confirmed: "已确认",
-  blocked: "低置信待确认",
+  blocked: "待人工核对",
 };
 
 export const MATRIX_KIND_LABELS: Record<string, string> = {
@@ -53,8 +53,12 @@ export const MATRIX_CLAUSE_LABELS: Record<string, string> = {
   consortium: "联合体要求",
   deadline: "投标截止时间",
   deposit: "投标保证金",
+  duration: "最长交货期",
+  e_files: "电子标书要求",
   fields: "必需字段",
+  perf_amount: "业绩金额门槛",
   perf_window: "业绩年限窗口",
+  qual_level: "资质等级门槛",
   scope: "招标范围",
   sections: "必需章节",
   submit_methods: "递交方式",
@@ -65,6 +69,7 @@ export const MATRIX_CLAUSE_LABELS: Record<string, string> = {
 
 const MATRIX_CLAUSE_PREFIXES: Record<string, string> = {
   att: "附件",
+  clause: "条款",
   decl: "承诺",
   sign: "签章",
 };
@@ -118,6 +123,7 @@ export function matrixRequirementLabel(value: string): string {
     .replace(/(^|;\s*)clause=/g, "$1条款：")
     .replace(/(^|;\s*)mandatory=/g, "$1要求：")
     .replace(/(^|;\s*)year_span=/g, "$1年限：")
+    .replace(/(^|;\s*)min_count=/g, "$1份数：")
     .replace(/(^|;\s*)no=/g, "$1序号：")
     .replace(/:False\b/g, "：否")
     .replace(/:True\b/g, "：是")
@@ -133,9 +139,10 @@ export function matrixRequirementLabel(value: string): string {
 export function matrixClauseLabel(value: string): string {
   const fixed = MATRIX_CLAUSE_LABELS[value];
   if (fixed) return fixed;
-  const match = /^(att|decl|sign):(\d+)$/.exec(value);
+  const match = /^(att|clause|decl|sign):(\d+)$/.exec(value);
   if (!match) return value;
-  return `${MATRIX_CLAUSE_PREFIXES[match[1]]} ${match[2]}`;
+  const prefix = MATRIX_CLAUSE_PREFIXES[match[1] ?? ""] ?? match[1] ?? "";
+  return `${prefix} ${match[2] ?? ""}`.trim();
 }
 
 export function matrixStrategyLabel(value: string): string {

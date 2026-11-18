@@ -133,10 +133,10 @@ export function ExportView() {
     return [
       {
         id: "matrix",
-        label: "响应矩阵无低置信阻断",
+        label: "矩阵记录已全部核对",
         detail:
           matrixBlocked > 0
-            ? `仍有 ${matrixBlocked} 条低置信行未确认`
+            ? `仍有 ${matrixBlocked} 条记录待人工核对`
             : "响应矩阵无阻断行",
         state: matrixBlocked > 0 ? "fail" : "pass",
       },

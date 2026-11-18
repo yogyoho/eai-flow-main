@@ -10,7 +10,7 @@ import {
 } from "@testing-library/react";
 import type { PropsWithChildren } from "react";
 
-// 低置信阻断行的确认必须带人工依据：空备注不得发 PATCH，填写后只提交
+// 待人工核对行的确认必须带核对依据：空备注不得发 PATCH，填写后只提交
 // status=confirmed + note；行级 422 由调用方 toast 展示。
 const calls: Array<{ path: string; init?: RequestInit }> = [];
 let responder: (path: string, init?: RequestInit) => Response;
@@ -47,13 +47,22 @@ const TASK = {
   lot_name: "标段一",
   tender_no: "T-2026-1",
   created_at: "2026-11-13T08:00:00Z",
-  engine_meta: { matrix_counts: { total: 1, star: 0, blocked: 1 } },
+  engine_meta: {
+    matrix_counts: { total: 1, star: 0, blocked: 1 },
+    provenance: {
+      "tender.required_declarations": {
+        doc_id: "t.txt",
+        page: null,
+        quote: "投标有效期不少于 90 日历天",
+      },
+    },
+  },
 };
 
 const BLOCKED_ROW = {
   clause_id: "clause:2",
   kind: "clause",
-  source_path: "tender.commitments",
+  source_path: "tender.required_declarations",
   requirement: "投标有效期不少于 90 日历天",
   star: false,
   strategy: "positive",
@@ -73,6 +82,14 @@ const MATRIX = {
     kinds: ["attachment", "clause", "aggregate"],
   },
   items: [BLOCKED_ROW],
+};
+
+const EXTRA_ROW = {
+  ...BLOCKED_ROW,
+  clause_id: "att:1",
+  kind: "attachment",
+  source_path: "tender.attachment_requirements",
+  requirement: "营业执照复印件一式两份",
 };
 
 function renderView() {
@@ -102,6 +119,21 @@ describe("bid-write IntakeView 阻断行确认", () => {
         });
       }
       if (path.endsWith("/matrix")) return jsonRes(MATRIX);
+      if (path.includes("/docs/t.txt/content")) {
+        const url = new URL(path, "http://t");
+        const quote = (url.searchParams.get("quote") ?? "").replace(/\s+/g, "");
+        if (quote.includes("投标有效期")) {
+          return jsonRes({
+            doc: { doc_id: "t.txt", role: "tender", kind: "text", pages: 3, chars: 120, assets: 0, status: "parsed" },
+            page: null,
+            seq: 2,
+            segments: [
+              { seq: 2, page: null, kind: "text", text: "投标有效期不少于 90 日历天，自开标之日起算。", asset_id: null },
+            ],
+          });
+        }
+        return jsonRes({ detail: "未定位到原文" }, 404);
+      }
       return jsonRes({ detail: { message: "not found" } }, 404);
     };
   });
@@ -115,15 +147,15 @@ describe("bid-write IntakeView 阻断行确认", () => {
     renderView();
 
     fireEvent.click(await screen.findByRole("button", { name: "确认" }));
-    expect(screen.getByText("低置信行确认")).toBeTruthy();
+    expect(screen.getByText("人工核对确认")).toBeTruthy();
 
-    fireEvent.click(screen.getByRole("button", { name: "确认并解阻" }));
+    fireEvent.click(screen.getByRole("button", { name: "核对无误，确认" }));
     expect(calls.some((call) => call.init?.method === "PATCH")).toBe(false);
 
     fireEvent.change(screen.getByPlaceholderText(/已对照招标文件 p.18 原文/), {
       target: { value: "已对照招标文件 p.18 原文，确认投标有效期为 90 天" },
     });
-    fireEvent.click(screen.getByRole("button", { name: "确认并解阻" }));
+    fireEvent.click(screen.getByRole("button", { name: "核对无误，确认" }));
 
     await waitFor(() =>
       expect(
@@ -147,11 +179,11 @@ describe("bid-write IntakeView 阻断行确认", () => {
   it("uses a non-native strategy dropdown and PATCHes the selection", async () => {
     renderView();
 
-    await screen.findAllByText("clause:2");
+    await screen.findAllByText("条款 2");
     expect(document.querySelector("select")).toBeNull();
 
     const trigger = screen.getByRole("combobox", {
-      name: "clause:2 响应策略",
+      name: "条款 2 响应策略",
     });
     expect(trigger.textContent).toContain("正偏离");
 
@@ -166,48 +198,52 @@ describe("bid-write IntakeView 阻断行确认", () => {
     });
   });
 
-  it("collapses and expands clause tree groups", async () => {
+  it("defaults to collapsed source groups and navigates without duplicating excerpts", async () => {
     renderView();
 
-    await screen.findAllByText("clause:2");
+    await screen.findAllByText("条款 2");
     const tree = document.querySelector(".bw-tree");
     if (!tree) throw new Error("tree not ready");
     const treeScope = tree as HTMLElement;
 
-    expect(within(treeScope).getByText("clause:2")).toBeTruthy();
+    expect(within(treeScope).getByText("承诺条款")).toBeTruthy();
+    expect(within(treeScope).queryByText("条款 2")).toBeNull();
 
     fireEvent.click(
-      screen.getByRole("button", { name: "收起tender.commitments" }),
+      screen.getByRole("button", { name: "展开承诺条款" }),
     );
-    expect(within(treeScope).queryByText("clause:2")).toBeNull();
-
-    fireEvent.click(
-      screen.getByRole("button", { name: "展开tender.commitments" }),
-    );
-    expect(within(treeScope).getByText("clause:2")).toBeTruthy();
-
-    fireEvent.click(screen.getByRole("button", { name: "收起全部" }));
+    expect(within(treeScope).getByText("条款 2")).toBeTruthy();
     expect(
-      screen.getByRole("button", { name: "展开tender.commitments" }),
-    ).toBeTruthy();
+      within(treeScope).queryByText("投标有效期不少于 90 日历天"),
+    ).toBeNull();
+
+    fireEvent.click(
+      screen.getByRole("button", { name: "收起承诺条款" }),
+    );
+    expect(within(treeScope).queryByText("条款 2")).toBeNull();
 
     fireEvent.click(screen.getByRole("button", { name: "展开全部" }));
     expect(
-      screen.getByRole("button", { name: "收起tender.commitments" }),
+      screen.getByRole("button", { name: "收起承诺条款" }),
+    ).toBeTruthy();
+
+    fireEvent.click(screen.getByRole("button", { name: "收起全部" }));
+    expect(
+      screen.getByRole("button", { name: "展开承诺条款" }),
     ).toBeTruthy();
   });
 
   it("shows the page guide with Chinese business terminology", async () => {
     renderView();
 
-    await screen.findAllByText("clause:2");
+    await screen.findAllByText("条款 2");
     expect(screen.queryByText("det / sem")).toBeNull();
-    expect(screen.getByText("规则 + 语义")).toBeTruthy();
+    expect(screen.getByText("来源导航")).toBeTruthy();
 
     fireEvent.click(screen.getByRole("button", { name: "本页说明" }));
 
     const dialog = await screen.findByRole("dialog", { name: "本页说明" });
-    expect(within(dialog).getByText("条款树从哪里来")).toBeTruthy();
+    expect(within(dialog).getByText("要求来源从哪里来")).toBeTruthy();
     expect(within(dialog).getByText("响应矩阵有什么用")).toBeTruthy();
     expect(within(dialog).getByText(/行编号是系统生成/)).toBeTruthy();
 
@@ -226,5 +262,50 @@ describe("bid-write IntakeView 阻断行确认", () => {
     ]) {
       expect(copy).not.toContain(token);
     }
+  });
+
+  it("要求摘录不截断：矩阵表摘录格去掉单行省略，完整文本可换行", async () => {
+    renderView();
+
+    await screen.findAllByText("条款 2");
+
+    const cell = document.querySelector(".bw-matrix-table td .excerpt");
+    if (!cell) throw new Error("excerpt cell not ready");
+    expect(cell.className).toBe("excerpt"); // 无 ellipsis：不再单行截断
+    expect(cell.textContent).toContain("投标有效期不少于 90 日历天");
+    expect(cell.getAttribute("title")).toContain("投标有效期不少于 90 日历天");
+  });
+
+  it("溯源按钮打开定位原文弹窗，命中显示原文窗口；无出处置灰", async () => {
+    renderView();
+    await screen.findAllByText("条款 2");
+
+    // 有出处行 → 点击溯源,弹窗渲染原文窗口(命中段)
+    fireEvent.click(screen.getByRole("button", { name: /溯源/ }));
+    const dialog = await screen.findByRole("dialog", { name: "定位原文" });
+    expect(
+      await within(dialog).findByText(/投标有效期不少于 90 日历天/),
+    ).toBeTruthy();
+
+    fireEvent.click(within(dialog).getByText("关闭")); // 底部按钮(右上角 X 是 aria-label,无文本)
+    expect(screen.queryByRole("dialog", { name: "定位原文" })).toBeNull();
+
+    // 无出处来源 → 溯源按钮置灰(不造假定位入口)
+    responder = (path, _init) => {
+      if (path.endsWith("/tasks")) return jsonRes({ items: [TASK] });
+      if (path.endsWith("/matrix")) {
+        return jsonRes({ ...MATRIX, items: [BLOCKED_ROW, EXTRA_ROW] });
+      }
+      return jsonRes({ detail: { message: "not found" } }, 404);
+    };
+    renderView();
+    const attRow = await screen.findByText("营业执照复印件一式两份");
+    const cell = attRow.closest("td");
+    const row = cell?.parentElement;
+    if (!row) throw new Error("row not ready");
+    const locateBtn = within(row).getByRole("button", {
+      name: /溯源/,
+    });
+    expect((locateBtn as HTMLButtonElement).disabled).toBe(true);
   });
 });

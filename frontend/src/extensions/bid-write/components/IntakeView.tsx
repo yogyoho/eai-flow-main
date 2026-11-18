@@ -6,6 +6,7 @@ import {
   CheckCheck,
   ChevronDown,
   ChevronRight,
+  Crosshair,
   Download,
   FileText,
   Info,
@@ -23,6 +24,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { DocLocateBody } from "@/extensions/bid-review/components/DocLocateModal";
+import {
+  fetchWriteDocContent,
+  writeDocAssetUrl,
+  type LocateTarget,
+} from "@/extensions/bid-write/api";
 import {
   Badge,
   EmptyState,
@@ -69,12 +76,13 @@ export function IntakeView() {
   const refetchMatrix = matrix.refetch;
   const patch = usePatchBidWriteMatrixRow(taskId);
   const [groupFilter, setGroupFilter] = useState<string>("all");
-  const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(
+  const [expandedGroups, setExpandedGroups] = useState<Set<string>>(
     () => new Set(),
   );
   const [helpOpen, setHelpOpen] = useState(false);
   const [selectedClause, setSelectedClause] = useState<string | null>(null);
   const [dialog, setDialog] = useState<NoteDialogState | null>(null);
+  const [locate, setLocate] = useState<LocateTarget | null>(null);
   const [bulkPending, setBulkPending] = useState(false);
   const wasExtracting = useRef(false);
 
@@ -103,10 +111,10 @@ export function IntakeView() {
   }, [rows]);
 
   const allCollapsed =
-    groups.length > 0 && groups.every(([path]) => collapsedGroups.has(path));
+    groups.length > 0 && groups.every(([path]) => !expandedGroups.has(path));
 
   const toggleGroup = (path: string) => {
-    setCollapsedGroups((prev) => {
+    setExpandedGroups((prev) => {
       const next = new Set(prev);
       if (next.has(path)) next.delete(path);
       else next.add(path);
@@ -115,18 +123,18 @@ export function IntakeView() {
   };
 
   const toggleAllGroups = () => {
-    setCollapsedGroups(
-      allCollapsed ? new Set() : new Set(groups.map(([path]) => path)),
+    setExpandedGroups(
+      allCollapsed ? new Set(groups.map(([path]) => path)) : new Set(),
     );
   };
 
   const selectGroup = (path: string) => {
     setGroupFilter(path);
     setSelectedClause(null);
-    setCollapsedGroups((prev) => {
-      if (!prev.has(path)) return prev;
+    setExpandedGroups((prev) => {
+      if (prev.has(path)) return prev;
       const next = new Set(prev);
-      next.delete(path);
+      next.add(path);
       return next;
     });
   };
@@ -200,6 +208,17 @@ export function IntakeView() {
     );
   };
 
+  /** 行 → 来源引文溯源目标(provenance 按 source_path 共享;缺引文=无法定位)。 */
+  const provenanceOf = (sourcePath: string): LocateTarget | null => {
+    const entry = task?.engine_meta?.provenance?.[sourcePath];
+    if (!entry?.doc_id || !entry.quote) return null;
+    return {
+      docId: entry.doc_id,
+      quote: entry.quote,
+      page: typeof entry.page === "number" ? entry.page : null,
+    };
+  };
+
   const submitDialog = async () => {
     if (!dialog) return;
     const note = dialog.note.trim();
@@ -222,7 +241,7 @@ export function IntakeView() {
       toast.success(
         dialog.mode === "negative"
           ? "负偏离原因已记录"
-          : "低置信行已确认并解阻",
+          : "待核对记录已全部确认",
       );
       setDialog(null);
     } catch (err) {
@@ -280,7 +299,7 @@ export function IntakeView() {
   const enterMaterials = () => {
     if (!canLeaveIntake(summary)) {
       toast.error(
-        `仍有 ${summary.blocked} 条低置信行未确认，确认后才能进入素材核对`,
+        `仍有 ${summary.blocked} 条记录待人工核对，核对确认后才能进入素材核对`,
       );
       return;
     }
@@ -329,7 +348,7 @@ export function IntakeView() {
               title={
                 canLeaveIntake(summary)
                   ? "进入素材核对"
-                  : `仍有 ${summary.blocked} 条低置信行未确认`
+                  : `仍有 ${summary.blocked} 条记录待人工核对`
               }
             >
               进入素材核对
@@ -375,7 +394,7 @@ export function IntakeView() {
               }
             />
             <MetricCell
-              label="低置信待确认"
+              label="待人工核对"
               value={summary.blocked}
               tone={summary.blocked > 0 ? "err" : "ok"}
             />
@@ -390,12 +409,15 @@ export function IntakeView() {
           <div className="split bw-intake-split">
             <div className="card">
               <div className="card-h">
-                <h3>条款树</h3>
+                <h3>要求来源</h3>
                 <span className="r">
-                  <Badge tone="gray">规则 + 语义</Badge>
+                  <Badge tone="gray">来源导航</Badge>
                 </span>
               </div>
               <div className="card-b tree bw-tree">
+                <p className="bw-tree-hint">
+                  按来源筛选与定位；完整摘录和响应操作在右侧矩阵。
+                </p>
                 <div
                   className={`bw-tree-row ${groupFilter === "all" ? "on" : ""}`}
                 >
@@ -428,7 +450,7 @@ export function IntakeView() {
                   const blocked = groupRows.filter(
                     (row) => row.status === "blocked",
                   ).length;
-                  const collapsed = collapsedGroups.has(path);
+                  const expanded = expandedGroups.has(path);
                   const label = sourcePathLabel(path);
                   return (
                     <div className="bw-tree-group" key={path}>
@@ -438,14 +460,14 @@ export function IntakeView() {
                         <button
                           type="button"
                           className="bw-tree-toggle"
-                          aria-label={`${collapsed ? "展开" : "收起"}${label}`}
-                          aria-expanded={!collapsed}
+                          aria-label={`${expanded ? "收起" : "展开"}${label}`}
+                          aria-expanded={expanded}
                           onClick={() => toggleGroup(path)}
                         >
-                          {collapsed ? (
-                            <ChevronRight size={12} aria-hidden="true" />
-                          ) : (
+                          {expanded ? (
                             <ChevronDown size={12} aria-hidden="true" />
+                          ) : (
+                            <ChevronRight size={12} aria-hidden="true" />
                           )}
                         </button>
                         <button
@@ -460,7 +482,7 @@ export function IntakeView() {
                           ) : null}
                         </button>
                       </div>
-                      {collapsed
+                      {!expanded
                         ? null
                         : groupRows.map((row) => (
                             <button
@@ -489,11 +511,8 @@ export function IntakeView() {
                                 }`}
                                 aria-hidden="true"
                               />
-                              <span className="bw-tree-clause mono">
-                                {matrixClauseLabel(row.clause_id)}
-                              </span>
                               <span className="bw-tree-text">
-                                {matrixRequirementLabel(row.requirement)}
+                                {matrixClauseLabel(row.clause_id)}
                               </span>
                               {row.star ? (
                                 <span className="star">★</span>
@@ -551,7 +570,9 @@ export function IntakeView() {
                       </tr>
                     </thead>
                     <tbody>
-                      {visibleRows.map((row) => (
+                      {visibleRows.map((row) => {
+                        const locateTarget = provenanceOf(row.source_path);
+                        return (
                         <tr
                           key={row.clause_id}
                           id={`matrix-${row.clause_id}`}
@@ -571,7 +592,7 @@ export function IntakeView() {
                           </td>
                           <td>
                             <span
-                              className="excerpt ellipsis"
+                              className="excerpt"
                               title={matrixRequirementLabel(row.requirement)}
                             >
                               {row.requirement
@@ -619,7 +640,7 @@ export function IntakeView() {
                                   <SelectValue />
                                 </SelectTrigger>
                                 <SelectContent
-                                  className="bw-strategy-menu"
+                                  className="bw-strategy-menu bw-select-menu"
                                   position="popper"
                                   align="start"
                                   sideOffset={4}
@@ -644,6 +665,23 @@ export function IntakeView() {
                           <td>
                             <button
                               type="button"
+                              className="btn btn-sm"
+                              disabled={!locateTarget}
+                              title={
+                                locateTarget
+                                  ? `定位原文 · ${locateTarget.docId}${locateTarget.page != null ? ` 第 ${locateTarget.page} 页` : ""}`
+                                  : "该来源无抽取出处，无法溯源"
+                              }
+                              onClick={(event) => {
+                                event.stopPropagation();
+                                if (locateTarget) setLocate(locateTarget);
+                              }}
+                            >
+                              <Crosshair size={13} aria-hidden="true" />
+                              溯源
+                            </button>
+                            <button
+                              type="button"
                               className={`btn btn-sm ${
                                 row.status === "confirmed" ? "soft" : "pri"
                               }`}
@@ -657,7 +695,8 @@ export function IntakeView() {
                             </button>
                           </td>
                         </tr>
-                      ))}
+                        );
+                      })}
                     </tbody>
                   </table>
                 </div>
@@ -667,7 +706,7 @@ export function IntakeView() {
                   <div className="banner bad">
                     <AlertTriangle size={15} aria-hidden="true" />
                     <span>
-                      <b>{summary.blocked} 条低置信行待确认</b>
+                      <b>{summary.blocked} 条记录待人工核对</b>
                       ：未确认前禁止进入生成；确认时必须填写确认依据。
                     </span>
                   </div>
@@ -694,7 +733,7 @@ export function IntakeView() {
       <Overlay
         open={helpOpen}
         title="本页说明"
-        subtitle="条款树来源与响应矩阵用途"
+        subtitle="要求来源导航与响应矩阵用途"
         onClose={() => setHelpOpen(false)}
         variant="modal"
         size="wide"
@@ -710,24 +749,24 @@ export function IntakeView() {
       >
         <div className="bw-help">
           <p className="bw-help-intro">
-            本页不是把招标文件目录逐条转换成法律条款树，而是把商务要求整理成一张可确认、可追踪的响应台账。
+            本页把从招标文件中抽取的商务要求整理成一张可确认、可追踪的响应台账。左侧与右侧使用同一份数据：左侧负责按来源筛选和定位，右侧承载完整摘录、响应策略、置信度与确认操作。
           </p>
           <div className="bw-help-grid">
             <section
               className="bw-help-section"
               aria-labelledby="bw-help-tree-title"
             >
-              <h3 id="bw-help-tree-title">条款树从哪里来</h3>
+              <h3 id="bw-help-tree-title">要求来源从哪里来</h3>
               <ol className="bw-help-steps">
                 <li>上传招标文件后，系统解析正文和表格，必要时识别扫描件。</li>
                 <li>
                   系统按固定商务范围抽取附件、承诺、签章、保证金、截止时间、必需章节、资质与业绩门槛等要求。
                 </li>
                 <li>
-                  抽取内容会回查原文并记录置信度，低置信项进入“低置信待确认”。
+                  抽取内容会自动回原文比对，未能逐字对上的进入「待人工核对」——这不代表内容有错，请人工核对后确认。
                 </li>
                 <li>
-                  系统把抽取结果装配成响应矩阵；左侧条款树只是按来源分组展示。
+                  系统把抽取结果装配成响应矩阵；左侧“要求来源”只按来源分组、显示数量和风险，不重复展示完整明细。
                 </li>
               </ol>
               <ul className="bw-help-list">
@@ -738,7 +777,7 @@ export function IntakeView() {
                   列表中的行编号是系统生成，不是招标文件原条款号；原条款位置通常写在要求摘录或依据中。
                 </li>
                 <li>
-                  当前只覆盖商务要求；技术条款和完整多级法律条款树不在此页。
+                  当前只覆盖商务要求；技术条款和完整多级法律条款不在此页。
                 </li>
               </ul>
             </section>
@@ -748,16 +787,16 @@ export function IntakeView() {
             >
               <h3 id="bw-help-matrix-title">响应矩阵有什么用</h3>
               <p>
-                它是抽取结果的人工确认台账，也是后续生成、审查和导出的唯一要求来源。
+                右侧矩阵是抽取结果的人工确认台账，也是后续生成、审查和导出的唯一要求来源。
               </p>
               <ul className="bw-help-list">
                 <li>
                   <b>确认与纠错：</b>
-                  逐行核对要求摘录、强制项和置信度，处理草稿、已确认、低置信待确认三种状态。
+                  逐行核对要求摘录和强制项，处理草稿、待人工核对、已确认三种状态。
                 </li>
                 <li>
                   <b>卡住流程：</b>
-                  低置信待确认未清零时不能进入素材核对，避免错误抽取带入正文。
+                  待人工核对未清零时不能进入素材核对，避免错误摘录带入正文。
                 </li>
                 <li>
                   <b>设定响应策略：</b>
@@ -790,7 +829,7 @@ export function IntakeView() {
 
       <Overlay
         open={dialog !== null}
-        title={dialog?.mode === "negative" ? "★ 负偏离确认" : "低置信行确认"}
+        title={dialog?.mode === "negative" ? "★ 负偏离确认" : "人工核对确认"}
         subtitle={dialog ? matrixClauseLabel(dialog.row.clause_id) : undefined}
         onClose={() => setDialog(null)}
         footer={
@@ -808,7 +847,7 @@ export function IntakeView() {
               onClick={() => void submitDialog()}
               disabled={patch.isPending}
             >
-              {dialog?.mode === "negative" ? "记录负偏离" : "确认并解阻"}
+              {dialog?.mode === "negative" ? "记录负偏离" : "核对无误，确认"}
             </button>
           </>
         }
@@ -825,8 +864,8 @@ export function IntakeView() {
                   </>
                 ) : (
                   <>
-                    <b>低置信抽取：</b>
-                    确认即解阻，但必须记录人工核对依据，避免把裁决推给下游。
+                    <b>系统未能从原文逐字核实此条：</b>
+                    请对照招标文件核对摘录内容是否一致；确认时请填写核对依据（如原文页码或条款号）。
                   </>
                 )}
               </span>
@@ -856,6 +895,37 @@ export function IntakeView() {
               />
             </label>
           </>
+        ) : null}
+      </Overlay>
+
+      <Overlay
+        open={locate !== null}
+        title="定位原文"
+        subtitle={
+          locate
+            ? `${locate.docId}${locate.page != null ? ` · 第 ${locate.page} 页` : " · 片段窗口"}`
+            : undefined
+        }
+        onClose={() => setLocate(null)}
+        variant="modal"
+        size="wide"
+        footer={
+          <button
+            type="button"
+            className="btn pri"
+            onClick={() => setLocate(null)}
+          >
+            关闭
+          </button>
+        }
+      >
+        {locate ? (
+          <DocLocateBody
+            taskId={taskId ?? ""}
+            target={locate}
+            fetchContent={fetchWriteDocContent}
+            assetUrl={writeDocAssetUrl}
+          />
         ) : null}
       </Overlay>
     </>

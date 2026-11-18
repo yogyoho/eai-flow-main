@@ -22,12 +22,20 @@ import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
   Badge,
   EmptyState,
   ErrorBlock,
   LoadingBlock,
   MetricCell,
   MetricStrip,
+  Overlay,
   PageHead,
 } from "@/extensions/bid-write/components/primitives";
 import {
@@ -35,6 +43,8 @@ import {
   gapStatusTone,
   MATERIAL_ENTITY_LABELS,
   materialEntityLabel,
+  matrixClauseLabel,
+  matrixRequirementLabel,
   matrixStatusLabel,
   matrixStatusTone,
   sourcePathLabel,
@@ -51,7 +61,7 @@ import {
   useSelectedWriteTask,
 } from "@/extensions/bid-write/hooks";
 import { writeTaskHref } from "@/extensions/bid-write/nav";
-import type { MaterialOut, PolicyBody } from "@/extensions/bid-write/types";
+import type { GapItem, MaterialOut, PolicyBody } from "@/extensions/bid-write/types";
 
 type Filter = "all" | "star" | "blocked" | "confirmed";
 
@@ -102,6 +112,14 @@ function entityLabel(item: MaterialOut): string {
   return materialEntityLabel(item.entity_type);
 }
 
+function gapSourceLabel(item: GapItem): string {
+  return sourcePathLabel(
+    item.kind === "attachment"
+      ? "tender.attachment_requirements"
+      : "tender.required_declarations",
+  );
+}
+
 export function MaterialsView() {
   const { taskId, task, isLoading } = useSelectedWriteTask();
   const gaps = useBidWriteGaps(taskId);
@@ -139,6 +157,17 @@ export function MaterialsView() {
     return items;
   }, [filter, items]);
 
+  useEffect(() => {
+    if (selectedId && !visible.some((item) => item.clause_id === selectedId)) {
+      setSelectedId(null);
+    }
+  }, [selectedId, visible]);
+
+  const changeFilter = (next: Filter) => {
+    setFilter(next);
+    setSelectedId(null);
+  };
+
   const materialRows = useMemo(() => {
     const all = materials.data?.items ?? [];
     return entityFilter === "all"
@@ -146,7 +175,9 @@ export function MaterialsView() {
       : all.filter((item) => item.entity_type === entityFilter);
   }, [materials.data?.items, entityFilter]);
 
-  const selected = visible.find((item) => item.clause_id === selectedId) ?? visible[0] ?? null;
+  const selected = selectedId
+    ? visible.find((item) => item.clause_id === selectedId) ?? null
+    : null;
   const starCount = items.filter((item) => item.star).length;
   const blockedCount = items.filter((item) => item.status === "blocked").length;
   const totalCount = materials.data?.items.length ?? 0;
@@ -248,7 +279,7 @@ export function MaterialsView() {
             <MetricCell label="要求项" value={items.length} accent />
             <MetricCell label="★ 强制条款" value={starCount} tone="warn" />
             <MetricCell
-              label="低置信阻断"
+              label="待人工核对"
               value={blockedCount}
               tone={blockedCount > 0 ? "err" : "ok"}
             />
@@ -260,8 +291,7 @@ export function MaterialsView() {
             />
           </MetricStrip>
 
-          <div className="split bw-materials-split bw-mt">
-            <div className="card">
+          <div className="card bw-mt">
               <div className="card-h">
                 <h3>缺口清单</h3>
                 <span className="r">
@@ -269,28 +299,28 @@ export function MaterialsView() {
                     <button
                       type="button"
                       className={filter === "all" ? "on" : undefined}
-                      onClick={() => setFilter("all")}
+                      onClick={() => changeFilter("all")}
                     >
                       全部 {items.length}
                     </button>
                     <button
                       type="button"
                       className={filter === "star" ? "on" : undefined}
-                      onClick={() => setFilter("star")}
+                      onClick={() => changeFilter("star")}
                     >
                       ★ {starCount}
                     </button>
                     <button
                       type="button"
                       className={filter === "blocked" ? "on" : undefined}
-                      onClick={() => setFilter("blocked")}
+                      onClick={() => changeFilter("blocked")}
                     >
                       阻断 {blockedCount}
                     </button>
                     <button
                       type="button"
                       className={filter === "confirmed" ? "on" : undefined}
-                      onClick={() => setFilter("confirmed")}
+                      onClick={() => changeFilter("confirmed")}
                     >
                       已确认
                     </button>
@@ -322,9 +352,10 @@ export function MaterialsView() {
                       {visible.map((item) => (
                         <tr
                           key={item.clause_id}
-                          className={
-                            selected?.clause_id === item.clause_id ? "on" : undefined
-                          }
+                          className={`bw-gap-row ${
+                            selected?.clause_id === item.clause_id ? "on" : ""
+                          }`}
+                          title={`查看缺口详情：${matrixClauseLabel(item.clause_id)}`}
                           onClick={() => setSelectedId(item.clause_id)}
                           onKeyDown={(event) => {
                             if (event.key === "Enter" || event.key === " ") {
@@ -333,17 +364,18 @@ export function MaterialsView() {
                           }}
                           tabIndex={0}
                         >
-                          <td className="mono">{item.clause_id}</td>
-                          <td>
-                            {sourcePathLabel(
-                              item.kind === "attachment"
-                                ? "tender.attachment_requirements"
-                                : "tender.required_declarations",
-                            )}
+                          <td className="mono" title={item.clause_id}>
+                            {matrixClauseLabel(item.clause_id)}
                           </td>
+                          <td>{gapSourceLabel(item)}</td>
                           <td>
-                            <span className="excerpt ellipsis" title={item.requirement}>
-                              {item.requirement || "（空要求）"}
+                            <span
+                              className="excerpt ellipsis"
+                              title={matrixRequirementLabel(item.requirement)}
+                            >
+                              {item.requirement
+                                ? matrixRequirementLabel(item.requirement)
+                                : "（空要求）"}
                             </span>
                           </td>
                           <td>{item.star ? <span className="star">★</span> : ""}</td>
@@ -373,65 +405,71 @@ export function MaterialsView() {
               </div>
             </div>
 
-            <aside className="card bw-detail-card">
-              <div className="card-h">
-                <h3>缺口详情</h3>
-                <span className="r">
-                  {selected ? (
-                    <Badge tone={gapStatusTone(selected)} dot>
-                      {selected.material_state}
-                    </Badge>
-                  ) : (
-                    <Badge tone="gray">未选择</Badge>
-                  )}
-                </span>
-              </div>
-              <div className="card-b">
-                {selected ? (
-                  <>
-                    <div className="kv-list">
-                      <span className="k">条款</span>
-                      <span className="v mono">{selected.clause_id}</span>
-                      <span className="k">类型</span>
-                      <span className="v">
-                        {sourcePathLabel(
-                          selected.kind === "attachment"
-                            ? "tender.attachment_requirements"
-                            : "tender.required_declarations",
-                        )}
-                      </span>
-                      <span className="k">矩阵</span>
-                      <span className="v">{matrixStatusLabel(selected.status)}</span>
-                      <span className="k">★</span>
-                      <span className="v">{selected.star ? "强制" : "否"}</span>
-                      <span className="k">证据</span>
-                      <span className="v">
-                        {selected.evidence_refs.length > 0
-                          ? `${selected.evidence_refs.length} 条引用`
-                          : "无"}
-                      </span>
-                    </div>
-                    <div className="bw-requirement bw-mt">
-                      <span className="k">要求原文</span>
-                      <p>{selected.requirement}</p>
-                    </div>
-                    <div className="banner info bw-mt">
-                      <Info size={15} aria-hidden="true" />
-                      <span>
-                        在下方素材库补录对应实体；绑定判定由断言执行与导出门禁裁决，本页不人工标记「已绑定」。
-                      </span>
-                    </div>
-                  </>
-                ) : (
-                  <EmptyState
-                    icon={PackageSearch}
-                    title="选择一条缺口"
-                    description="左侧选择要求行后查看缺口详情。"
-                  />
-                )}
-              </div>
-            </aside>
-          </div>
+          <Overlay
+            open={selected !== null}
+            title="缺口详情"
+            subtitle={
+              selected
+                ? `${matrixClauseLabel(selected.clause_id)} · ${gapSourceLabel(selected)}`
+                : undefined
+            }
+            onClose={() => setSelectedId(null)}
+            footer={
+              <button
+                type="button"
+                className="btn"
+                onClick={() => setSelectedId(null)}
+              >
+                关闭详情
+              </button>
+            }
+          >
+            {selected ? (
+              <>
+                <div className="bw-drawer-summary">
+                  <Badge tone={gapStatusTone(selected)} dot>
+                    {selected.material_state}
+                  </Badge>
+                  <Badge tone={matrixStatusTone(selected)} dot>
+                    {matrixStatusLabel(selected.status)}
+                  </Badge>
+                  {selected.star ? <Badge tone="warn">强制条款</Badge> : null}
+                </div>
+                <div className="kv-list">
+                  <span className="k">条款</span>
+                  <span className="v" title={selected.clause_id}>
+                    {matrixClauseLabel(selected.clause_id)}
+                  </span>
+                  <span className="k">类型</span>
+                  <span className="v">{gapSourceLabel(selected)}</span>
+                  <span className="k">矩阵</span>
+                  <span className="v">{matrixStatusLabel(selected.status)}</span>
+                  <span className="k">★</span>
+                  <span className="v">{selected.star ? "强制" : "否"}</span>
+                  <span className="k">证据</span>
+                  <span className="v">
+                    {selected.evidence_refs.length > 0
+                      ? `${selected.evidence_refs.length} 条引用`
+                      : "无"}
+                  </span>
+                </div>
+                <div className="bw-requirement bw-mt">
+                  <span className="k">要求原文</span>
+                  <p>
+                    {selected.requirement
+                      ? matrixRequirementLabel(selected.requirement)
+                      : "（空要求）"}
+                  </p>
+                </div>
+                <div className="banner info bw-mt">
+                  <Info size={15} aria-hidden="true" />
+                  <span>
+                    在下方素材库补录对应实体；绑定判定由断言执行与导出门禁裁决，本页不人工标记「已绑定」。
+                  </span>
+                </div>
+              </>
+            ) : null}
+          </Overlay>
 
           <div className="split bw-export-split bw-mt">
             <div className="card">
@@ -522,18 +560,30 @@ export function MaterialsView() {
               )}
               <div className="card-b">
                 <div className="bw-inline-facts">
-                  <select
-                    className="select bw-select"
+                  <Select
                     value={newType}
-                    aria-label="素材类型"
-                    onChange={(event) => setNewType(event.target.value)}
+                    onValueChange={setNewType}
                   >
-                    {Object.entries(MATERIAL_ENTITY_LABELS).map(([type, label]) => (
-                      <option key={type} value={type}>
-                        {label}
-                      </option>
-                    ))}
-                  </select>
+                    <SelectTrigger
+                      size="sm"
+                      className="bw-select-trigger"
+                      aria-label="素材类型"
+                    >
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent
+                      className="bw-select-menu"
+                      position="popper"
+                      align="start"
+                      sideOffset={4}
+                    >
+                      {Object.entries(MATERIAL_ENTITY_LABELS).map(([type, label]) => (
+                        <SelectItem key={type} value={type}>
+                          {label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                   <input
                     className="inp"
                     value={newName}
@@ -588,7 +638,7 @@ export function MaterialsView() {
                     />
                   </label>
                   <label className="field">
-                    <span>税率（0~1，留空=不修改）</span>
+                    <span>税率</span>
                     <input
                       className="inp"
                       value={policyDraft.taxRate}
@@ -597,29 +647,33 @@ export function MaterialsView() {
                         setPolicyDraft({ ...policyDraft, taxRate: event.target.value })
                       }
                     />
+                    <span className="bw-field-hint">0~1 之间；留空表示不修改</span>
                   </label>
-                  <div className="field">
-                    <span>调价机制</span>
-                    <label className="bw-check-line">
-                      <input
-                        type="checkbox"
-                        checked={policyDraft.priceAdjust}
-                        onChange={(event) =>
-                          setPolicyDraft({ ...policyDraft, priceAdjust: event.target.checked })
-                        }
-                      />
+                  <label className="bw-policy-option">
+                    <input
+                      type="checkbox"
+                      checked={policyDraft.priceAdjust}
+                      onChange={(event) =>
+                        setPolicyDraft({ ...policyDraft, priceAdjust: event.target.checked })
+                      }
+                    />
+                    <span className="t">
                       <span>报价含年度调价机制</span>
-                    </label>
-                  </div>
+                      <span className="d">关闭后报价表按无调价机制生成，并触发 PS-009 阻断</span>
+                    </span>
+                  </label>
                 </div>
-                <button
-                  type="button"
-                  className="btn pri btn-sm bw-mt-sm"
-                  disabled={putPolicy.isPending}
-                  onClick={() => void onSavePolicy()}
-                >
-                  保存策略
-                </button>
+                <div className="bw-policy-actions">
+                  <button
+                    type="button"
+                    className="btn pri btn-sm"
+                    disabled={putPolicy.isPending}
+                    onClick={() => void onSavePolicy()}
+                  >
+                    保存策略
+                  </button>
+                  <span className="hint">仅提交本次填写字段；留空不会覆盖已有值</span>
+                </div>
                 <label className="field bw-mt">
                   <span>企业素材画像（JSON；生成面按此注入文案）</span>
                   <textarea

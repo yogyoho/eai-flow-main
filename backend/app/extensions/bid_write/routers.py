@@ -27,6 +27,7 @@ import re
 from urllib.parse import quote
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Response, UploadFile
+from fastapi.responses import FileResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.extensions.auth.middleware import require_permission
@@ -59,6 +60,29 @@ async def _task_for_read(db: AsyncSession, task_id: str, user_id: str):
     if await crud.user_is_bid_write_reviewer(db, task_id, user_id):
         return task
     return None
+
+
+def _matrix_row_out(row, task):
+    """读取投影：旧任务矩阵行缺少 conf/verified 时，从任务的抽取快照回填展示。
+
+    这里只做读取层兼容，不回写历史数据库，避免 GET 请求产生副作用；新任务在
+    matrix.assemble_matrix 装配时已直接写入这两个字段。
+    """
+
+    out = schemas.MatrixRowOut.model_validate(row)
+    meta = task.engine_meta if isinstance(task.engine_meta, dict) else {}
+    raw_conf = meta.get("fields_conf")
+    fields_conf = raw_conf if isinstance(raw_conf, dict) else {}
+    entry = fields_conf.get(row.source_path) or {}
+    conf = out.conf
+    if conf is None:
+        source_conf = entry.get("conf")
+        if isinstance(source_conf, (int, float)) and not isinstance(source_conf, bool):
+            conf = float(source_conf)
+    verified = out.verified or bool(entry.get("verified"))
+    if conf == out.conf and verified == out.verified:
+        return out
+    return out.model_copy(update={"conf": conf, "verified": verified})
 
 
 def _enqueue(task) -> None:
@@ -139,7 +163,7 @@ async def get_matrix(task_id: str, db: AsyncSession = Depends(get_db), owner_id:
         raise HTTPException(status_code=404, detail="任务不存在")
     rows = await crud.list_matrix(db, task_id=task_id, owner_id=task.owner_id)
     return {
-        "items": [schemas.MatrixRowOut.model_validate(r) for r in rows],
+        "items": [_matrix_row_out(r, task) for r in rows],
         "schema_version": contracts.SCHEMA_VERSION,
         "vocab": {"strategies": contracts.MATRIX_STRATEGIES, "statuses": contracts.MATRIX_STATUSES, "kinds": contracts.ROW_KINDS},
     }
@@ -165,7 +189,7 @@ async def patch_matrix_row(task_id: str, clause_id: str, body: schemas.MatrixRow
     if body.strategy == "negative" and row.star and not (body.note or "").strip() and not (row.note or "").strip():
         raise HTTPException(status_code=422, detail="★条款负偏离必须给偏离理由与替代方案(note)")
     if row.status == "blocked" and body.status == "confirmed" and not (body.note or "").strip():
-        raise HTTPException(status_code=422, detail="blocked(低置信)行确认须带确认依据(note)")
+        raise HTTPException(status_code=422, detail="该记录待人工核对，确认须填写核对依据（note）")
     if body.strategy is not None:
         row.strategy = body.strategy
     if body.status is not None:
@@ -178,7 +202,7 @@ async def patch_matrix_row(task_id: str, clause_id: str, body: schemas.MatrixRow
         row.evidence_refs = body.evidence_refs
     await db.commit()
     await db.refresh(row)
-    return schemas.MatrixRowOut.model_validate(row)
+    return _matrix_row_out(row, task)
 
 
 @router.get("/tasks/{task_id}/gaps")
@@ -247,6 +271,84 @@ async def get_gaps(task_id: str, db: AsyncSession = Depends(get_db), owner_id: s
         },
         "assertions": assertions,
     }
+
+
+def _write_doc_entry(task, doc_id: str) -> dict | None:
+    return next((e for e in (task.engine_meta or {}).get("docs") or [] if isinstance(e, dict) and e.get("doc_id") == doc_id), None)
+
+
+@router.get("/tasks/{task_id}/docs/{doc_id}/content")
+async def get_write_doc_content(
+    task_id: str,
+    doc_id: str,
+    quote: str = "",
+    page: int | None = None,
+    source: str = "",
+    db: AsyncSession = Depends(get_db),
+    owner_id: str = Depends(current_owner),
+):
+    """溯源定位窗口(响应矩阵「溯源」按钮取数;审查端同款口径镜像):quote 空白
+    折叠命中段 ±10 条窗口(docx)/pdf 真页码整页;只回窗口不回整本(D6);未命中
+    404,前端如实呈现「未定位到原文」。read 面 owner 或指定审批人可读。"""
+    task = await _task_for_read(db, task_id, owner_id)
+    if task is None:
+        raise HTTPException(status_code=404, detail="任务不存在")
+    entry = _write_doc_entry(task, doc_id)
+    if entry is None:
+        raise HTTPException(status_code=404, detail="文档不存在")
+    owner = task.owner_id  # 分片落盘键以任务 owner 为准,与请求者无关
+    segs = parse.load_segments(owner, task_id, str(entry.get("slug") or ""))
+    if not segs:
+        raise HTTPException(status_code=404, detail="文档尚未解析完成")
+    pool = [s for s in segs if s.get("source") == source] if source else segs
+    hit = None
+    if page is not None:
+        hit = next((s for s in pool if s.get("page") == page), None)
+    elif quote:
+        q = "".join(quote.split())
+        if q:
+            hit = next((s for s in pool if q in "".join(str(s.get("text") or "").split())), None)
+    if hit is None:
+        raise HTTPException(status_code=404, detail="未定位到原文")
+    if hit.get("page") is not None:
+        win = [s for s in pool if s.get("page") == hit["page"]]
+    else:
+        win = parse.excerpt_window(pool, int(hit["seq"] or 0))
+    return {
+        "doc": {k: entry.get(k) for k in ("doc_id", "role", "kind", "pages", "chars", "assets", "status")},
+        "page": hit.get("page"),
+        "seq": hit.get("seq"),
+        "segments": win,
+    }
+
+
+@router.get("/tasks/{task_id}/docs/{doc_id}/assets/{asset_id}")
+async def get_write_doc_asset(
+    task_id: str,
+    doc_id: str,
+    asset_id: str,
+    db: AsyncSession = Depends(get_db),
+    owner_id: str = Depends(current_owner),
+):
+    """原图取数(OCR 扫描页原件预览;审查端同款防探测口径):asset 必须已被该
+    文档 segments 引用,文件缺失 404。read 面 owner 或指定审批人可读。"""
+    task = await _task_for_read(db, task_id, owner_id)
+    if task is None:
+        raise HTTPException(status_code=404, detail="任务不存在")
+    entry = _write_doc_entry(task, doc_id)
+    if entry is None:
+        raise HTTPException(status_code=404, detail="文档不存在")
+    owner = task.owner_id
+    segs = parse.load_segments(owner, task_id, str(entry.get("slug") or ""))
+    if asset_id not in {str(s.get("asset_id") or "") for s in segs}:
+        raise HTTPException(status_code=404, detail="资产不存在")
+    matches = list((parse.task_dir(owner, task_id) / "assets").glob(f"{asset_id}.*"))
+    if not matches:
+        raise HTTPException(status_code=404, detail="资产文件缺失")
+    import mimetypes
+
+    mt = mimetypes.guess_type(matches[0].name)[0] or "application/octet-stream"
+    return FileResponse(matches[0], media_type=mt)
 
 
 _AST_VERSION_RE = re.compile(r"^\d+\.\d+\.\d+$")
