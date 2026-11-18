@@ -20,10 +20,6 @@ from app.extensions.auth.permission_routers import router as permissions_router
 from app.extensions.auth.policy_routers import router as policy_router
 from app.extensions.auth.routers import router as auth_router
 
-# EAI-CUSTOM: bid_materials(投标资料管理,bug-3109)——资质 MinIO 版本库 + 样例台账;
-# 导入包即把 bid_* 表模型注册到 Base.metadata(init_db create_all 建表);
-# router 供管理 API 挂载(/api/extensions/bid-materials/*)。
-from app.extensions.bid_materials import router as bid_materials_router
 
 # EAI-CUSTOM (bid-review Task 9): 投标方案审查子系统——五张表由包 __init__ 自注册进共享
 # Base.metadata(init_db create_all 建表);router 挂工作台 API(/api/extensions/bid-review/*)。
@@ -1630,7 +1626,7 @@ This gateway provides runtime endpoints for agent runs plus custom endpoints for
 
     # EAI-CUSTOM: EAI 扩展路由统一挂载区(app/extensions/*)——auth/policy/permissions/users/roles/dept/
     # docmgr(+collab/collab_ai_chat)/knowledge/web_scraper/law/knowledge_factory/contract_price/
-    # geo_samples/eia_samples/bid_materials/spare_parts/settings/project(+workspace)/approval/
+    # geo_samples/eia_samples/spare_parts/settings/project(+workspace)/approval/
     # data_source/app_center/workflow/timeline/dashboard/output/license。
     # Extension APIs
     # Authentication API is mounted at /api/extensions/auth
@@ -1687,8 +1683,6 @@ This gateway provides runtime endpoints for agent runs plus custom endpoints for
     # Coal EIA report sample bank management API (/api/extensions/eia-samples/*)  [EAI-CUSTOM]
     app.include_router(eia_samples_router)
 
-    # Bid materials management API (/api/extensions/bid-materials/*)  [EAI-CUSTOM bug-3109]
-    app.include_router(bid_materials_router)
 
     # Bid review workbench API (/api/extensions/bid-review/*)  [EAI-CUSTOM bid-review Task 9]
     app.include_router(bid_review_router)
