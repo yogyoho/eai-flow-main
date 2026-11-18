@@ -198,39 +198,79 @@ describe("bid-write IntakeView 阻断行确认", () => {
     });
   });
 
-  it("defaults to collapsed source groups and navigates without duplicating excerpts", async () => {
+  it("筛选面板不重复摘录：来源单选叠加状态多选过滤矩阵，可一键清除", async () => {
+    responder = (path, _init) => {
+      if (path.endsWith("/tasks")) return jsonRes({ items: [TASK] });
+      if (path.endsWith("/matrix")) {
+        return jsonRes({ ...MATRIX, items: [BLOCKED_ROW, EXTRA_ROW] });
+      }
+      return jsonRes({ detail: { message: "not found" } }, 404);
+    };
     renderView();
 
-    await screen.findAllByText("条款 2");
-    const tree = document.querySelector(".bw-tree");
-    if (!tree) throw new Error("tree not ready");
-    const treeScope = tree as HTMLElement;
+    await screen.findByText("营业执照复印件一式两份");
+    const filter = document.querySelector(".bw-filter");
+    if (!filter) throw new Error("filter panel not ready");
+    const filterScope = filter as HTMLElement;
 
-    expect(within(treeScope).getByText("承诺条款")).toBeTruthy();
-    expect(within(treeScope).queryByText("条款 2")).toBeNull();
-
-    fireEvent.click(
-      screen.getByRole("button", { name: "展开承诺条款" }),
-    );
-    expect(within(treeScope).getByText("条款 2")).toBeTruthy();
+    // 面板只承载筛选选项，不重复摘录全文
+    expect(within(filterScope).getByText("承诺条款")).toBeTruthy();
     expect(
-      within(treeScope).queryByText("投标有效期不少于 90 日历天"),
+      within(filterScope).queryByText("投标有效期不少于 90 日历天"),
     ).toBeNull();
 
+    // 来源单选：选中承诺条款 → 矩阵只剩该来源
+    fireEvent.click(within(filterScope).getByRole("radio", { name: /承诺条款/ }));
+    expect(screen.getByText(/显示 1 \/ 2/)).toBeTruthy();
+    expect(screen.getByText(/筛选 1\/2 · 清除/)).toBeTruthy();
+
+    // 叠加状态多选（已确认）→ 无匹配 → 空态引导清除筛选
+    fireEvent.click(within(filterScope).getByRole("checkbox", { name: /已确认/ }));
+    expect(screen.getByText("当前筛选没有匹配的矩阵行")).toBeTruthy();
+
+    fireEvent.click(screen.getByRole("button", { name: "清除筛选" }));
+    expect(screen.getByText("营业执照复印件一式两份")).toBeTruthy();
+    expect(
+      within(filterScope)
+        .getByRole("radio", { name: /全部来源/ })
+        .getAttribute("aria-checked"),
+    ).toBe("true");
+    expect(screen.getByText("全部 2")).toBeTruthy();
+
+    // ★ 必答开关：无必答行时过滤为空，chip 可单独移除
     fireEvent.click(
-      screen.getByRole("button", { name: "收起承诺条款" }),
+      within(filterScope).getByRole("checkbox", { name: /仅看必答条款/ }),
     );
-    expect(within(treeScope).queryByText("条款 2")).toBeNull();
+    expect(screen.getByText("当前筛选没有匹配的矩阵行")).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: /★ 仅看必答/ }));
+    expect(screen.getByText("营业执照复印件一式两份")).toBeTruthy();
+  });
 
-    fireEvent.click(screen.getByRole("button", { name: "展开全部" }));
-    expect(
-      screen.getByRole("button", { name: "收起承诺条款" }),
-    ).toBeTruthy();
+  it("搜索框定位具体条款：命中后选中矩阵行", async () => {
+    responder = (path, _init) => {
+      if (path.endsWith("/tasks")) return jsonRes({ items: [TASK] });
+      if (path.endsWith("/matrix")) {
+        return jsonRes({ ...MATRIX, items: [BLOCKED_ROW, EXTRA_ROW] });
+      }
+      return jsonRes({ detail: { message: "not found" } }, 404);
+    };
+    renderView();
 
-    fireEvent.click(screen.getByRole("button", { name: "收起全部" }));
+    await screen.findByText("营业执照复印件一式两份");
+    fireEvent.change(screen.getByPlaceholderText("搜索条款定位，如「附件 1」"), {
+      target: { value: "附件 1" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "定位" }));
+
+    await waitFor(() => {
+      const row = document.querySelector(".bw-matrix-table tbody tr.on");
+      expect(row).toBeTruthy();
+    });
     expect(
-      screen.getByRole("button", { name: "展开承诺条款" }),
-    ).toBeTruthy();
+      document
+        .querySelector(".bw-matrix-table tbody tr.on")
+        ?.getAttribute("id"),
+    ).toBe("matrix-att:1");
   });
 
   it("shows the page guide with Chinese business terminology", async () => {
@@ -238,7 +278,7 @@ describe("bid-write IntakeView 阻断行确认", () => {
 
     await screen.findAllByText("条款 2");
     expect(screen.queryByText("det / sem")).toBeNull();
-    expect(screen.getByText("来源导航")).toBeTruthy();
+    expect(screen.getByText("点选即筛选")).toBeTruthy();
 
     fireEvent.click(screen.getByRole("button", { name: "本页说明" }));
 

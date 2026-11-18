@@ -4,6 +4,13 @@ import { BookMarked, Download, Info, Search, ShieldCheck } from "lucide-react";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
 
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { ApiError } from "@/extensions/bid-write/api";
 import {
   Badge,
@@ -211,32 +218,56 @@ export function RegistryView() {
                     aria-label="搜索断言"
                   />
                 </span>
-                <select
-                  className="select bw-select"
+                <Select
                   value={skill}
-                  onChange={(event) => setSkill(event.target.value)}
-                  aria-label="按技能筛选"
+                  onValueChange={setSkill}
                 >
-                  <option value="all">全部技能</option>
-                  {skills.map((item) => (
-                    <option key={item} value={item}>
-                      {SKILL_LABELS[item] ?? item}
-                    </option>
-                  ))}
-                </select>
-                <select
-                  className="select bw-select"
+                  <SelectTrigger
+                    size="sm"
+                    className="bw-select-trigger"
+                    aria-label="按技能筛选"
+                  >
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent
+                    className="bw-select-menu"
+                    position="popper"
+                    align="start"
+                    sideOffset={4}
+                  >
+                    <SelectItem value="all">全部技能</SelectItem>
+                    {skills.map((item) => (
+                      <SelectItem key={item} value={item}>
+                        {SKILL_LABELS[item] ?? item}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <Select
                   value={level}
-                  onChange={(event) => setLevel(event.target.value)}
-                  aria-label="按等级筛选"
+                  onValueChange={setLevel}
                 >
-                  <option value="all">全部等级</option>
-                  {levels.map((item) => (
-                    <option key={item} value={item}>
-                      {item}
-                    </option>
-                  ))}
-                </select>
+                  <SelectTrigger
+                    size="sm"
+                    className="bw-select-trigger"
+                    aria-label="按等级筛选"
+                  >
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent
+                    className="bw-select-menu"
+                    position="popper"
+                    align="start"
+                    sideOffset={4}
+                  >
+                    <SelectItem value="all">全部等级</SelectItem>
+                    {levels.map((item) => (
+                      <SelectItem key={item} value={item}>
+                        {item}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </span>
             </div>
             {rows.length === 0 ? (

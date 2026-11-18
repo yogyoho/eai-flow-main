@@ -40,6 +40,18 @@ def test_golden_attachment_rows_star_flagged():
     assert all(r["strategy"] == "pending" and r["status"] == "draft" for r in att)
 
 
+def test_star_with_suffix_still_flagged():
+    """模型回 "★必需"(★带后缀)仍按星判——包含判定,不再因全等匹配把强制
+    计数清零;"必需"/"建议" 无 ★ 不误标红(逐行判定律不变)。"""
+    fields = _fields()
+    fields["tender.attachment_requirements"][0]["mandatory"] = "★必需"
+    rows = matrix.assemble_matrix(fields)
+    att = {r["clause_id"]: r for r in rows if r["clause_id"].startswith("att:")}
+    assert att["att:1"]["star"] is True
+    assert att["att:2"]["star"] is False
+    assert att["att:3"]["star"] is False
+
+
 def test_golden_declaration_and_aggregate_rows():
     """承诺条款逐条成行(clause);聚合要素行(deposit/deadline/warranty★/duration★/
     consortium)有值才造行;warranty/duration 为 star(商务承诺对照面)。"""
@@ -79,6 +91,11 @@ def test_blocked_low_confidence_unverified():
     assert by_id["deposit"]["status"] == "draft"
     assert by_id["deadline"]["status"] == "draft"  # conf 未报不造 block(诚实缺省)
     assert by_id["decl:1"]["status"] == "draft"  # 无 conf 条目的路径=draft
+    # 行内必须携带来源置信快照，前端才能展示置信度而不是空占位。
+    assert by_id["att:1"]["conf"] == 0.4 and by_id["att:1"]["verified"] is False
+    assert by_id["deposit"]["conf"] == 0.9 and by_id["deposit"]["verified"] is True
+    assert by_id["deadline"]["conf"] is None and by_id["deadline"]["verified"] is False
+    assert by_id["decl:1"]["conf"] is None and by_id["decl:1"]["verified"] is False
 
 
 def test_excerpt_truncated_with_ellipsis():

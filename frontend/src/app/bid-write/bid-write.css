@@ -354,6 +354,12 @@
   background: var(--card);
   color: var(--text);
 }
+.bwx .bw-select-trigger {
+  min-width: 116px;
+  height: 30px;
+  background: var(--card);
+  color: var(--text);
+}
 .bw-strategy-menu {
   z-index: 60;
 }
@@ -721,76 +727,319 @@
   color: var(--text-3);
 }
 
-/* ── 解析确认：条款树 + 矩阵 ── */
+/* ── 解析确认：刻面筛选面板 + 矩阵 ── */
 .bwx .bw-intake-split {
-  grid-template-columns: 300px minmax(0, 1fr);
+  grid-template-columns: 236px minmax(0, 1fr);
 }
-.bwx .bw-tree {
+/* 左侧是筛选面板而非树:来源单选 + 状态多选,点击即过滤右侧矩阵;
+   「定位具体条款」的职责在搜索框,面板内不做逐条导航。 */
+.bwx .bw-filter {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
   max-height: 680px;
   overflow: auto;
-  padding: 8px;
 }
-.bwx .bw-tree-row {
-  display: flex;
-  align-items: center;
-  gap: 2px;
-  width: 100%;
-  padding: 0 8px 0 2px;
-  border-radius: 5px;
-  color: var(--text-2);
-  font-size: 12.5px;
-  line-height: 1.45;
-}
-.bwx .bw-tree-row:hover {
-  background: var(--gray-50);
-  color: var(--text);
-}
-.bwx .bw-tree-row.on {
-  background: var(--nav-on-bg);
-  color: var(--main-600);
-  font-weight: 600;
-}
-.bwx .bw-tree-toggle {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 22px;
-  height: 28px;
-  flex: none;
-  border-radius: 4px;
-  color: inherit;
-}
-.bwx .bw-tree-toggle:hover {
-  background: var(--gray-100);
-}
-.bwx .bw-tree-label {
+.bwx .bw-fx-search {
   display: flex;
   align-items: center;
   gap: 6px;
+  padding: 0 5px 0 9px;
+  border: 1px solid var(--hairline);
+  border-radius: 7px;
+  background: var(--gray-50);
+  color: var(--text-3);
+}
+.bwx .bw-fx-search:focus-within {
+  border-color: var(--main-400);
+  background: var(--main-0);
+}
+.bwx .bw-fx-search input {
   flex: 1;
   min-width: 0;
-  padding: 6px 0;
-  text-align: left;
-  color: inherit;
-  font-size: inherit;
-  font-weight: inherit;
+  height: 28px;
+  border: none;
+  outline: none;
+  background: transparent;
+  color: var(--text);
+  font-size: 12px;
 }
-.bwx .bw-tree-label b {
+.bwx .bw-fx-search input::placeholder {
+  color: var(--text-3);
+}
+.bwx .bw-fx-search-go {
+  flex: none;
+  border: none;
+  border-radius: 5px;
+  padding: 3px 8px;
+  background: var(--main-50);
+  color: var(--main-600);
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.bwx .bw-fx-search-go:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+.bwx .bw-fx-progress {
+  border: 1px solid var(--hairline);
+  border-radius: 8px;
+  padding: 8px 10px;
+  background: var(--gray-25);
+}
+.bwx .bw-fx-progress-top {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+.bwx .bw-fx-progress-top b {
+  font-size: 12px;
+  color: var(--text);
+}
+.bwx .bw-fx-frac {
+  margin-left: auto;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+}
+.bwx .bw-fx-frac em {
+  font-style: normal;
+  font-weight: 400;
+  color: var(--text-3);
+}
+.bwx .bw-fx-seg {
+  display: flex;
+  height: 6px;
+  border-radius: 999px;
+  overflow: hidden;
+  background: var(--gray-200);
+}
+.bwx .bw-fx-seg i {
+  height: 100%;
+}
+.bwx .bw-fx-seg i.ok {
+  background: var(--success-500);
+}
+.bwx .bw-fx-seg i.draft {
+  background: var(--warn-700);
+}
+.bwx .bw-fx-seg i.bad {
+  background: var(--error-500);
+}
+.bwx .bw-fx-progress-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 10px;
+  margin-top: 6px;
+  font-size: 10.5px;
+  color: var(--text-3);
+}
+.bwx .bw-fx-progress-legend span {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+.bwx .bw-fx-progress-legend i {
+  width: 8px;
+  height: 8px;
+  border-radius: 2.5px;
+}
+.bwx .bw-fx-progress-legend i.ok {
+  background: var(--success-500);
+}
+.bwx .bw-fx-progress-legend i.draft {
+  background: var(--warn-700);
+}
+.bwx .bw-fx-progress-legend i.bad {
+  background: var(--error-500);
+}
+.bwx .bw-fx-active {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 5px;
+  padding: 7px 8px;
+  border: 1px dashed var(--main-300);
+  border-radius: 8px;
+  background: var(--main-50);
+}
+.bwx .bw-fx-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  border: 1px solid var(--main-300);
+  border-radius: 999px;
+  padding: 2px 8px;
+  background: var(--main-0);
+  color: var(--main-800);
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.bwx .bw-fx-chip .x {
+  font-weight: 400;
+  opacity: 0.6;
+}
+.bwx .bw-fx-chip:hover {
+  border-color: var(--main-600);
+  color: var(--main-600);
+}
+.bwx .bw-fx-count {
+  margin-left: auto;
+  font-size: 10.5px;
+  font-weight: 600;
+  color: var(--main-800);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.bwx .bw-fx-title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 2px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  color: var(--text-3);
+}
+.bwx .bw-fx-multi {
+  font-size: 10px;
   font-weight: 500;
+  color: var(--text-3);
+  border: 1px solid var(--hairline);
+  border-radius: 4px;
+  padding: 1px 5px;
+  background: var(--gray-25);
+}
+.bwx .bw-fx-list {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+.bwx .bw-fx-row {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  width: 100%;
+  padding: 5px 8px;
+  border-radius: 6px;
+  color: var(--text-2);
+  font-size: 12.5px;
+  line-height: 1.45;
+  text-align: left;
+  cursor: pointer;
+}
+.bwx .bw-fx-row:hover {
+  background: var(--gray-50);
+  color: var(--text);
+}
+.bwx .bw-fx-row.on {
+  background: var(--nav-on-bg);
+  box-shadow: inset 2.5px 0 0 var(--main-600);
+}
+.bwx .bw-fx-row.on .bw-fx-name {
+  color: var(--main-600);
+  font-weight: 600;
+}
+.bwx .bw-fx-row:focus-visible {
+  outline: 2px solid var(--main-400);
+  outline-offset: -2px;
+}
+.bwx .bw-fx-name {
+  min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-.bwx .bw-tree-label .cnt {
+.bwx .bw-fx-verb {
+  display: none;
+  margin-left: auto;
+  flex: none;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--main-600);
+}
+.bwx .bw-fx-row:hover .bw-fx-verb {
+  display: inline;
+}
+.bwx .bw-fx-row:hover .cnt {
+  display: none;
+}
+.bwx .bw-fx-row .cnt {
   margin-left: auto;
   font-size: 11px;
   color: var(--text-3);
   font-variant-numeric: tabular-nums;
 }
-.bwx .bw-tree-toggle:focus-visible,
-.bwx .bw-tree-label:focus-visible {
-  outline: 2px solid var(--main-400);
-  outline-offset: -2px;
+.bwx .bw-fx-radio {
+  width: 13px;
+  height: 13px;
+  flex: none;
+  border: 1.5px solid var(--gray-300);
+  border-radius: 50%;
+  background: var(--main-0);
+  position: relative;
+}
+.bwx .bw-fx-row.on .bw-fx-radio {
+  border-color: var(--main-600);
+}
+.bwx .bw-fx-row.on .bw-fx-radio::after {
+  content: "";
+  position: absolute;
+  inset: 2.5px;
+  border-radius: 50%;
+  background: var(--main-600);
+}
+.bwx .bw-fx-check {
+  width: 13px;
+  height: 13px;
+  flex: none;
+  border: 1.5px solid var(--gray-300);
+  border-radius: 4px;
+  background: var(--main-0);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: transparent;
+}
+.bwx .bw-fx-row.on .bw-fx-check {
+  background: var(--main-600);
+  border-color: var(--main-600);
+  color: var(--main-0);
+}
+.bwx .bw-fx-foot {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 2px;
+  padding-top: 8px;
+  border-top: 1px solid var(--hairline);
+}
+.bwx .bw-fx-hint {
+  font-size: 11px;
+  color: var(--text-3);
+  line-height: 1.5;
+}
+.bwx .bw-fx-clear {
+  margin-left: auto;
+  flex: none;
+}
+.bwx .bw-fx-clear:disabled {
+  opacity: 0.45;
+}
+/* 矩阵卡片头的筛选镜像:筛选态显示「筛选 N/M · 清除」,点击即还原全部。 */
+.bwx .bw-fx-mirror {
+  border-color: var(--main-300);
+  background: var(--main-50);
+  color: var(--main-600);
+  font-weight: 600;
+}
+.bwx .bw-fx-mirror:hover {
+  border-color: var(--main-600);
 }
 .bwx .bw-help {
   display: flex;
@@ -864,54 +1113,6 @@
     grid-template-columns: 1fr;
   }
 }
-.bwx .tree .node {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  width: 100%;
-  text-align: left;
-  padding: 6px 8px;
-  border-radius: 5px;
-  color: var(--text-2);
-  font-size: 12.5px;
-  line-height: 1.45;
-}
-.bwx .tree .node:hover {
-  background: var(--gray-50);
-  color: var(--text);
-}
-.bwx .tree .node.on {
-  background: var(--nav-on-bg);
-  color: var(--main-600);
-  font-weight: 600;
-}
-.bwx .tree .node b {
-  font-weight: 500;
-}
-.bwx .tree .node .cnt {
-  margin-left: auto;
-  font-size: 11px;
-  color: var(--text-3);
-  font-variant-numeric: tabular-nums;
-}
-.bwx .tree .node.leaf {
-  padding-left: 22px;
-  gap: 5px;
-}
-.bwx .tree .node.leaf.on {
-  font-weight: 500;
-}
-.bwx .bw-tree-clause {
-  font-size: 10.5px;
-  color: var(--text-3);
-  flex: none;
-}
-.bwx .bw-tree-text {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  min-width: 0;
-}
 .bwx .bw-tree-alert {
   font-size: 10px;
   min-width: 16px;
@@ -925,24 +1126,9 @@
   justify-content: center;
   margin-left: 4px;
 }
-.bwx .tree .dot {
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  flex: none;
-  background: var(--gray-400);
-}
-.bwx .tree .dot.ok {
-  background: var(--success-500);
-}
-.bwx .tree .dot.bad {
-  background: var(--error-500);
-}
-.bwx .tree .dot.gray {
-  background: var(--gray-400);
-}
 .bwx .bw-matrix-table .excerpt {
   max-width: 380px;
+  overflow-wrap: anywhere;
 }
 .bwx .tbl tbody tr:focus-visible {
   outline: 2px solid var(--main-400);
@@ -950,12 +1136,21 @@
 }
 
 /* ── 素材核对 ── */
-.bwx .bw-materials-split {
-  grid-template-columns: minmax(0, 1fr) 340px;
+.bwx .bw-gap-row {
+  cursor: pointer;
 }
-.bwx .bw-detail-card {
-  position: sticky;
-  top: 0;
+.bwx .bw-gap-row:hover {
+  background: var(--gray-25);
+}
+.bwx .bw-gap-row.on {
+  background: var(--nav-on-bg);
+}
+.bwx .bw-drawer-summary {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 14px;
 }
 .bwx .kv-list {
   display: grid;
@@ -1055,8 +1250,65 @@
 }
 .bwx .bw-policy-grid {
   display: grid;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  align-items: start;
+  gap: 14px 16px;
+}
+.bwx .bw-policy-grid .inp {
+  width: 100%;
+}
+.bwx .bw-field-hint {
+  color: var(--text-3);
+  font-size: 11.5px;
+  line-height: 1.4;
+}
+.bwx .bw-policy-option {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: flex-start;
   gap: 10px;
+  padding: 10px 12px;
+  border: 1px solid var(--gray-200);
+  border-radius: 8px;
+  background: var(--gray-25);
+  color: var(--text);
+  font-size: 12.5px;
+  cursor: pointer;
+}
+.bwx .bw-policy-option:hover {
+  border-color: var(--main-300);
+}
+.bwx .bw-policy-option input[type="checkbox"] {
+  flex-shrink: 0;
+  width: 15px;
+  height: 15px;
+  margin: 2px 0 0;
+  accent-color: var(--main-600);
+}
+.bwx .bw-policy-option .t {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.bwx .bw-policy-option .d {
+  color: var(--text-3);
+  font-size: 11.5px;
+  line-height: 1.4;
+}
+.bwx .bw-policy-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px solid var(--gray-100);
+}
+.bwx .bw-policy-actions .hint {
+  margin-left: auto;
+  color: var(--text-3);
+  font-size: 11.5px;
 }
 .bwx .bw-generate-actions {
   display: flex;
@@ -1383,6 +1635,12 @@
   background: var(--surface, #fff);
   color: var(--text);
 }
+.bwx .bw-approval-form .bw-approval-select {
+  width: 100%;
+  height: 28px;
+  background: var(--surface, #fff);
+  color: var(--text);
+}
 .bwx .bw-approval-btns {
   display: flex;
   align-items: center;
@@ -1622,21 +1880,14 @@
   .bwx .bw-side > .card.bw-mt {
     margin-top: 0;
   }
-  .bwx .bw-policy-grid {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-  }
   .bwx .lv-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
 @media (max-width: 1120px) {
   .bwx .bw-intake-split,
-  .bwx .bw-materials-split,
   .bwx .bw-export-split {
     grid-template-columns: minmax(0, 1fr);
-  }
-  .bwx .bw-detail-card {
-    position: static;
   }
   .bwx .bw-tpl,
   .bwx .tpl,
@@ -1720,7 +1971,9 @@
     border-left: 0;
     border-top: 1px solid var(--hairline);
   }
-  .bwx .bw-policy-grid,
+  .bwx .bw-policy-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
   .bwx .tpl,
   .bwx .bw-skill-grid {
     grid-template-columns: minmax(0, 1fr);
@@ -1905,13 +2158,19 @@
   font-size: 13px;
   color: var(--warn-700);
 }
+.bwx .bwe-enum-host {
+  display: inline-block;
+  min-width: 104px;
+}
 .bwx .bwe-enum-select {
+  min-width: 104px;
+  height: 28px;
   border: 1px solid var(--hairline);
   border-radius: 4px;
   background: transparent;
   color: var(--main-600);
   font-size: 13px;
-  padding: 2px 6px;
+  padding: 0 6px;
 }
 
 /* ── 批廿八 M2:provenance 角标 + liveAssert 断言装饰(token 对齐审查端)── */
@@ -1965,4 +2224,39 @@
 .bwx .bwe-devnote.bwx-assert-d0 {
   border-style: solid;
   border-color: var(--error-700);
+}
+
+@media (max-width: 620px) {
+  .bwx .bw-policy-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .bwx .bw-policy-actions .hint {
+    flex-basis: 100%;
+    margin-left: 0;
+  }
+}
+
+/* ===== 控件字号统一 13px（输入框 / 按钮 / 下拉框 / checkbox 标签）===== */
+.bwx input,
+.bwx textarea,
+.bwx select,
+.bwx .btn,
+.bwx .btn-sm,
+.bwx button,
+.bwx .ed-toolbar button,
+.bwx .seg button,
+.bwx .chrome-foot button,
+.bwx .bw-approval-form input,
+.bwx .bw-approval-form select,
+.bwx [data-slot="select-trigger"],
+.bwx .bw-approval-select,
+.bwx .bwe-enum-select,
+.bwx .outline-item,
+.bwx .bw-check-line,
+.bwx .bw-policy-option {
+  font-size: 13px;
+}
+.bw-select-menu [data-slot="select-item"],
+.bw-select-menu [data-slot="select-label"] {
+  font-size: 13px;
 }

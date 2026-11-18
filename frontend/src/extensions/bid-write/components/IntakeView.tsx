@@ -3,14 +3,14 @@
 import {
   AlertTriangle,
   ArrowRight,
+  Check,
   CheckCheck,
-  ChevronDown,
-  ChevronRight,
   Crosshair,
   Download,
   FileText,
   Info,
   RefreshCw,
+  Search,
 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -75,10 +75,13 @@ export function IntakeView() {
   const matrix = useBidWriteMatrix(taskId);
   const refetchMatrix = matrix.refetch;
   const patch = usePatchBidWriteMatrixRow(taskId);
-  const [groupFilter, setGroupFilter] = useState<string>("all");
-  const [expandedGroups, setExpandedGroups] = useState<Set<string>>(
+  /** 刻面筛选:来源单选 + 状态多选 + 必答开关,三者 AND 叠加(方案 A)。 */
+  const [sourceFilter, setSourceFilter] = useState<string>("all");
+  const [statusFilters, setStatusFilters] = useState<Set<string>>(
     () => new Set(),
   );
+  const [starOnly, setStarOnly] = useState(false);
+  const [search, setSearch] = useState("");
   const [helpOpen, setHelpOpen] = useState(false);
   const [selectedClause, setSelectedClause] = useState<string | null>(null);
   const [dialog, setDialog] = useState<NoteDialogState | null>(null);
@@ -100,6 +103,7 @@ export function IntakeView() {
 
   const rows = useMemo(() => matrix.data?.items ?? [], [matrix.data?.items]);
   const summary = useMemo(() => matrixSummary(rows), [rows]);
+  // 来源刻面:标签按中文自然序(数字按值比较),修复「附件 2 排在附件 16 后」的字符串失序。
   const groups = useMemo(() => {
     const map = new Map<string, MatrixRowOut[]>();
     for (const row of rows) {
@@ -107,45 +111,79 @@ export function IntakeView() {
       list.push(row);
       map.set(row.source_path, list);
     }
-    return [...map.entries()].sort(([a], [b]) => a.localeCompare(b));
+    const collator = new Intl.Collator("zh-Hans-CN", {
+      numeric: true,
+      sensitivity: "base",
+    });
+    return [...map.entries()].sort(([a], [b]) =>
+      collator.compare(sourcePathLabel(a), sourcePathLabel(b)),
+    );
   }, [rows]);
 
-  const allCollapsed =
-    groups.length > 0 && groups.every(([path]) => !expandedGroups.has(path));
+  const draftCount = useMemo(
+    () => rows.filter((row) => row.status === "draft").length,
+    [rows],
+  );
+  const statusCounts = useMemo(
+    () => ({
+      blocked: summary.blocked,
+      draft: draftCount,
+      confirmed: summary.confirmed,
+    }),
+    [summary.blocked, summary.confirmed, draftCount],
+  );
+  const filtersActive =
+    sourceFilter !== "all" || statusFilters.size > 0 || starOnly;
+  const pctOf = (count: number) =>
+    `${rows.length ? Math.round((count / rows.length) * 100) : 0}%`;
 
-  const toggleGroup = (path: string) => {
-    setExpandedGroups((prev) => {
+  const toggleStatusFilter = (status: string) => {
+    setStatusFilters((prev) => {
       const next = new Set(prev);
-      if (next.has(path)) next.delete(path);
-      else next.add(path);
+      if (next.has(status)) next.delete(status);
+      else next.add(status);
       return next;
     });
   };
 
-  const toggleAllGroups = () => {
-    setExpandedGroups(
-      allCollapsed ? new Set(groups.map(([path]) => path)) : new Set(),
-    );
-  };
-
-  const selectGroup = (path: string) => {
-    setGroupFilter(path);
-    setSelectedClause(null);
-    setExpandedGroups((prev) => {
-      if (prev.has(path)) return prev;
-      const next = new Set(prev);
-      next.add(path);
-      return next;
-    });
+  const clearFilters = () => {
+    setSourceFilter("all");
+    setStatusFilters(new Set());
+    setStarOnly(false);
   };
 
   const visibleRows = useMemo(
     () =>
-      groupFilter === "all"
-        ? rows
-        : rows.filter((row) => row.source_path === groupFilter),
-    [groupFilter, rows],
+      rows.filter((row) => {
+        if (sourceFilter !== "all" && row.source_path !== sourceFilter) {
+          return false;
+        }
+        if (statusFilters.size > 0 && !statusFilters.has(row.status)) {
+          return false;
+        }
+        if (starOnly && !row.star) return false;
+        return true;
+      }),
+    [sourceFilter, statusFilters, starOnly, rows],
   );
+
+  /** 搜索框承担「定位具体条款」:命中后选中矩阵行并滚动(左面板不再做逐条导航)。 */
+  const locateBySearch = () => {
+    const query = search.trim().toLowerCase();
+    if (!query) return;
+    const matches = (row: MatrixRowOut) =>
+      matrixClauseLabel(row.clause_id).toLowerCase().includes(query) ||
+      matrixRequirementLabel(row.requirement).toLowerCase().includes(query);
+    const hit = visibleRows.find(matches) ?? rows.find(matches);
+    if (!hit) {
+      toast.error(`没有匹配「${search.trim()}」的条款`);
+      return;
+    }
+    setSelectedClause(hit.clause_id);
+    document
+      .getElementById(`matrix-${hit.clause_id}`)
+      ?.scrollIntoView({ block: "center", behavior: "smooth" });
+  };
 
   const averageConfidence = useMemo(() => {
     const values = rows
@@ -409,119 +447,238 @@ export function IntakeView() {
           <div className="split bw-intake-split">
             <div className="card">
               <div className="card-h">
-                <h3>要求来源</h3>
+                <h3>筛选 · 来源与状态</h3>
                 <span className="r">
-                  <Badge tone="gray">来源导航</Badge>
+                  <Badge tone="gray">点选即筛选</Badge>
                 </span>
               </div>
-              <div className="card-b tree bw-tree">
-                <p className="bw-tree-hint">
-                  按来源筛选与定位；完整摘录和响应操作在右侧矩阵。
-                </p>
+              <div className="card-b bw-filter">
+                <form
+                  className="bw-fx-search"
+                  onSubmit={(event) => {
+                    event.preventDefault();
+                    locateBySearch();
+                  }}
+                >
+                  <Search size={13} aria-hidden="true" />
+                  <input
+                    value={search}
+                    onChange={(event) => setSearch(event.target.value)}
+                    onKeyDown={(event) => {
+                      if (event.key === "Escape") setSearch("");
+                    }}
+                    placeholder="搜索条款定位，如「附件 1」"
+                    aria-label="搜索条款定位"
+                  />
+                  <button
+                    type="submit"
+                    className="bw-fx-search-go"
+                    disabled={!search.trim()}
+                  >
+                    定位
+                  </button>
+                </form>
+
+                <div className="bw-fx-progress">
+                  <div className="bw-fx-progress-top">
+                    <b>核对进度</b>
+                    <span className="bw-fx-frac">
+                      {summary.confirmed}
+                      <em>/{rows.length}</em>
+                    </span>
+                  </div>
+                  <div className="bw-fx-seg" aria-hidden="true">
+                    <i
+                      className="ok"
+                      style={{ width: pctOf(summary.confirmed) }}
+                    />
+                    <i className="draft" style={{ width: pctOf(draftCount) }} />
+                    <i
+                      className="bad"
+                      style={{ width: pctOf(summary.blocked) }}
+                    />
+                  </div>
+                  <div className="bw-fx-progress-legend">
+                    <span>
+                      <i className="ok" aria-hidden="true" />
+                      已确认 {summary.confirmed}
+                    </span>
+                    <span>
+                      <i className="draft" aria-hidden="true" />
+                      草稿 {draftCount}
+                    </span>
+                    <span>
+                      <i className="bad" aria-hidden="true" />
+                      待核对 {summary.blocked}
+                    </span>
+                  </div>
+                </div>
+
+                {filtersActive ? (
+                  <div className="bw-fx-active" aria-label="当前筛选条件">
+                    {sourceFilter !== "all" ? (
+                      <button
+                        type="button"
+                        className="bw-fx-chip"
+                        onClick={() => setSourceFilter("all")}
+                      >
+                        来源：{sourcePathLabel(sourceFilter)}
+                        <span className="x" aria-hidden="true">
+                          ×
+                        </span>
+                      </button>
+                    ) : null}
+                    {[...statusFilters].map((status) => (
+                      <button
+                        key={status}
+                        type="button"
+                        className="bw-fx-chip"
+                        onClick={() => toggleStatusFilter(status)}
+                      >
+                        状态：{matrixStatusLabel(status)}
+                        <span className="x" aria-hidden="true">
+                          ×
+                        </span>
+                      </button>
+                    ))}
+                    {starOnly ? (
+                      <button
+                        type="button"
+                        className="bw-fx-chip"
+                        onClick={() => setStarOnly(false)}
+                      >
+                        ★ 仅看必答
+                        <span className="x" aria-hidden="true">
+                          ×
+                        </span>
+                      </button>
+                    ) : null}
+                    <span className="bw-fx-count">
+                      显示 {visibleRows.length} / {rows.length}
+                    </span>
+                  </div>
+                ) : null}
+
+                <div className="bw-fx-title">
+                  来源
+                  <span className="bw-fx-multi">单选</span>
+                </div>
                 <div
-                  className={`bw-tree-row ${groupFilter === "all" ? "on" : ""}`}
+                  className="bw-fx-list"
+                  role="radiogroup"
+                  aria-label="按来源筛选"
                 >
                   <button
                     type="button"
-                    className="bw-tree-toggle"
-                    aria-label={allCollapsed ? "展开全部" : "收起全部"}
-                    aria-expanded={!allCollapsed}
-                    onClick={toggleAllGroups}
-                  >
-                    {allCollapsed ? (
-                      <ChevronRight size={12} aria-hidden="true" />
-                    ) : (
-                      <ChevronDown size={12} aria-hidden="true" />
-                    )}
-                  </button>
-                  <button
-                    type="button"
-                    className="bw-tree-label"
+                    role="radio"
+                    aria-checked={sourceFilter === "all"}
+                    className={`bw-fx-row ${
+                      sourceFilter === "all" ? "on" : ""
+                    }`}
                     onClick={() => {
-                      setGroupFilter("all");
+                      setSourceFilter("all");
                       setSelectedClause(null);
                     }}
                   >
-                    <b>全部商务要求</b>
+                    <span className="bw-fx-radio" aria-hidden="true" />
+                    <span className="bw-fx-name">全部来源</span>
+                    <span className="bw-fx-verb">仅看</span>
                     <span className="cnt">{rows.length}</span>
                   </button>
-                </div>
-                {groups.map(([path, groupRows]) => {
-                  const blocked = groupRows.filter(
-                    (row) => row.status === "blocked",
-                  ).length;
-                  const expanded = expandedGroups.has(path);
-                  const label = sourcePathLabel(path);
-                  return (
-                    <div className="bw-tree-group" key={path}>
-                      <div
-                        className={`bw-tree-row ${groupFilter === path ? "on" : ""}`}
+                  {groups.map(([path, groupRows]) => {
+                    const blocked = groupRows.filter(
+                      (row) => row.status === "blocked",
+                    ).length;
+                    return (
+                      <button
+                        type="button"
+                        key={path}
+                        role="radio"
+                        aria-checked={sourceFilter === path}
+                        className={`bw-fx-row ${
+                          sourceFilter === path ? "on" : ""
+                        }`}
+                        onClick={() => {
+                          setSourceFilter(path);
+                          setSelectedClause(null);
+                        }}
                       >
+                        <span className="bw-fx-radio" aria-hidden="true" />
+                        <span className="bw-fx-name">
+                          {sourcePathLabel(path)}
+                        </span>
+                        <span className="bw-fx-verb">仅看</span>
+                        <span className="cnt">{groupRows.length}</span>
+                        {blocked > 0 ? (
+                          <span className="bw-tree-alert">{blocked}</span>
+                        ) : null}
+                      </button>
+                    );
+                  })}
+                </div>
+
+                <div className="bw-fx-title">
+                  状态
+                  <span className="bw-fx-multi">可多选</span>
+                </div>
+                <div className="bw-fx-list" aria-label="按状态筛选">
+                  {(["blocked", "draft", "confirmed"] as const).map(
+                    (status) => {
+                      const on = statusFilters.has(status);
+                      return (
                         <button
                           type="button"
-                          className="bw-tree-toggle"
-                          aria-label={`${expanded ? "收起" : "展开"}${label}`}
-                          aria-expanded={expanded}
-                          onClick={() => toggleGroup(path)}
+                          key={status}
+                          role="checkbox"
+                          aria-checked={on}
+                          className={`bw-fx-row ${on ? "on" : ""}`}
+                          onClick={() => toggleStatusFilter(status)}
                         >
-                          {expanded ? (
-                            <ChevronDown size={12} aria-hidden="true" />
-                          ) : (
-                            <ChevronRight size={12} aria-hidden="true" />
-                          )}
+                          <span
+                            className={`bw-fx-check ${on ? "on" : ""}`}
+                            aria-hidden="true"
+                          >
+                            {on ? <Check size={10} /> : null}
+                          </span>
+                          <span className="bw-fx-name">
+                            {matrixStatusLabel(status)}
+                          </span>
+                          <span className="bw-fx-verb">筛选</span>
+                          <span className="cnt">{statusCounts[status]}</span>
                         </button>
-                        <button
-                          type="button"
-                          className="bw-tree-label"
-                          onClick={() => selectGroup(path)}
-                        >
-                          <b>{label}</b>
-                          <span className="cnt">{groupRows.length}</span>
-                          {blocked > 0 ? (
-                            <span className="bw-tree-alert">{blocked}</span>
-                          ) : null}
-                        </button>
-                      </div>
-                      {!expanded
-                        ? null
-                        : groupRows.map((row) => (
-                            <button
-                              type="button"
-                              key={row.clause_id}
-                              className={`node leaf ${selectedClause === row.clause_id ? "on" : ""}`}
-                              onClick={() => {
-                                setGroupFilter(path);
-                                setSelectedClause(row.clause_id);
-                                document
-                                  .getElementById(`matrix-${row.clause_id}`)
-                                  ?.scrollIntoView({
-                                    block: "center",
-                                    behavior: "smooth",
-                                  });
-                              }}
-                              title={matrixRequirementLabel(row.requirement)}
-                            >
-                              <span
-                                className={`dot ${
-                                  row.status === "blocked"
-                                    ? "bad"
-                                    : row.status === "confirmed"
-                                      ? "ok"
-                                      : "gray"
-                                }`}
-                                aria-hidden="true"
-                              />
-                              <span className="bw-tree-text">
-                                {matrixClauseLabel(row.clause_id)}
-                              </span>
-                              {row.star ? (
-                                <span className="star">★</span>
-                              ) : null}
-                            </button>
-                          ))}
-                    </div>
-                  );
-                })}
+                      );
+                    },
+                  )}
+                  <button
+                    type="button"
+                    role="checkbox"
+                    aria-checked={starOnly}
+                    className={`bw-fx-row ${starOnly ? "on" : ""}`}
+                    onClick={() => setStarOnly((prev) => !prev)}
+                  >
+                    <span
+                      className={`bw-fx-check ${starOnly ? "on" : ""}`}
+                      aria-hidden="true"
+                    >
+                      {starOnly ? <Check size={10} /> : null}
+                    </span>
+                    <span className="bw-fx-name">★ 仅看必答条款</span>
+                    <span className="bw-fx-verb">筛选</span>
+                    <span className="cnt">{summary.star}</span>
+                  </button>
+                </div>
+
+                <div className="bw-fx-foot">
+                  <span className="bw-fx-hint">点击选项筛选右侧矩阵</span>
+                  <button
+                    type="button"
+                    className="btn btn-sm bw-fx-clear"
+                    onClick={clearFilters}
+                    disabled={!filtersActive}
+                  >
+                    清除全部筛选
+                  </button>
+                </div>
               </div>
             </div>
 
@@ -529,11 +686,18 @@ export function IntakeView() {
               <div className="card-h">
                 <h3>响应矩阵</h3>
                 <span className="r">
-                  <Badge tone="gray">
-                    {groupFilter === "all"
-                      ? `全部 ${rows.length}`
-                      : `${sourcePathLabel(groupFilter)} ${visibleRows.length}`}
-                  </Badge>
+                  {filtersActive ? (
+                    <button
+                      type="button"
+                      className="btn btn-sm bw-fx-mirror"
+                      onClick={clearFilters}
+                      title="清除筛选，显示全部行"
+                    >
+                      筛选 {visibleRows.length}/{rows.length} · 清除
+                    </button>
+                  ) : (
+                    <Badge tone="gray">全部 {rows.length}</Badge>
+                  )}
                 </span>
               </div>
               {matrix.isLoading ? (
@@ -551,8 +715,23 @@ export function IntakeView() {
                 <div className="card-b">
                   <EmptyState
                     icon={FileText}
-                    title="当前分组没有矩阵行"
-                    description="抽取结果未产出该来源的要求行。缺失行代表下游可见缺口，不会伪造行。"
+                    title="当前筛选没有匹配的矩阵行"
+                    description={
+                      filtersActive
+                        ? "调整或清除筛选条件后再试；缺失行代表下游可见缺口，不会伪造行。"
+                        : "抽取结果未产出该来源的要求行。缺失行代表下游可见缺口，不会伪造行。"
+                    }
+                    action={
+                      filtersActive ? (
+                        <button
+                          type="button"
+                          className="btn"
+                          onClick={clearFilters}
+                        >
+                          清除筛选
+                        </button>
+                      ) : undefined
+                    }
                   />
                 </div>
               ) : (
@@ -749,7 +928,7 @@ export function IntakeView() {
       >
         <div className="bw-help">
           <p className="bw-help-intro">
-            本页把从招标文件中抽取的商务要求整理成一张可确认、可追踪的响应台账。左侧与右侧使用同一份数据：左侧负责按来源筛选和定位，右侧承载完整摘录、响应策略、置信度与确认操作。
+            本页把从招标文件中抽取的商务要求整理成一张可确认、可追踪的响应台账。左侧与右侧使用同一份数据：左侧负责按来源与状态筛选，搜索框负责定位具体条款；右侧承载完整摘录、响应策略、置信度与确认操作。
           </p>
           <div className="bw-help-grid">
             <section
@@ -766,7 +945,7 @@ export function IntakeView() {
                   抽取内容会自动回原文比对，未能逐字对上的进入「待人工核对」——这不代表内容有错，请人工核对后确认。
                 </li>
                 <li>
-                  系统把抽取结果装配成响应矩阵；左侧“要求来源”只按来源分组、显示数量和风险，不重复展示完整明细。
+                  系统把抽取结果装配成响应矩阵；左侧筛选面板只提供来源、状态与必答条款的筛选，不重复展示完整明细。
                 </li>
               </ol>
               <ul className="bw-help-list">

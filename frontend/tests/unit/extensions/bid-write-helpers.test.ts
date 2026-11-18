@@ -135,10 +135,15 @@ describe("展示口径", () => {
 
   it("系统行标识展示为中文", () => {
     expect(matrixClauseLabel("att:1")).toBe("附件 1");
+    expect(matrixClauseLabel("clause:2")).toBe("条款 2");
     expect(matrixClauseLabel("decl:3")).toBe("承诺 3");
     expect(matrixClauseLabel("sign:2")).toBe("签章 2");
     expect(matrixClauseLabel("submit_methods")).toBe("递交方式");
     expect(matrixClauseLabel("deposit")).toBe("投标保证金");
+    expect(matrixClauseLabel("duration")).toBe("最长交货期");
+    expect(matrixClauseLabel("e_files")).toBe("电子标书要求");
+    expect(matrixClauseLabel("perf_amount")).toBe("业绩金额门槛");
+    expect(matrixClauseLabel("qual_level")).toBe("资质等级门槛");
     expect(matrixClauseLabel("unknown")).toBe("unknown");
   });
 

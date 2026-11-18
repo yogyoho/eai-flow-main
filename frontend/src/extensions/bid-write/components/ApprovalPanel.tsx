@@ -9,6 +9,13 @@ import {
 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { ApiError } from "@/extensions/bid-write/api";
 import { Badge } from "@/extensions/bid-write/components/primitives";
 import type { AstJsonNode } from "@/extensions/bid-write/editor/schema.gen";
@@ -297,15 +304,29 @@ export function ApprovalPanel({
                 </label>
                 <label>
                   签核模式
-                  <select
+                  <Select
                     value={gateMode}
-                    onChange={(event) => setGateMode(event.target.value)}
+                    onValueChange={setGateMode}
                   >
-                    <option value="all">会签（全部通过）</option>
-                    <option value="any">或签（任一通过）</option>
-                    <option value="ratio">比例签（默认 50%）</option>
-                    <option value="sequential">顺序签</option>
-                  </select>
+                    <SelectTrigger
+                      size="sm"
+                      className="bw-approval-select"
+                      aria-label="签核模式"
+                    >
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent
+                      className="bw-select-menu"
+                      position="popper"
+                      align="start"
+                      sideOffset={4}
+                    >
+                      <SelectItem value="all">会签（全部通过）</SelectItem>
+                      <SelectItem value="any">或签（任一通过）</SelectItem>
+                      <SelectItem value="ratio">比例签（默认 50%）</SelectItem>
+                      <SelectItem value="sequential">顺序签</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </label>
                 <label>
                   审批流定义 ID（可选）

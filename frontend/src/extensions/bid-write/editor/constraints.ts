@@ -5,6 +5,10 @@
 // 系统事务(meta.source=system)放行——审批替换/缺件补录的唯一通道。
 import { type Node as PMNode } from "prosemirror-model";
 import { type EditorState, Plugin, type Transaction } from "prosemirror-state";
+import { createElement } from "react";
+import { createRoot, type Root } from "react-dom/client";
+
+import { EnumCellSelect } from "@/extensions/bid-write/editor/EnumCellSelect";
 
 export interface ConstraintViolation {
   code:
@@ -198,11 +202,14 @@ export type EnumViewHost = {
   dispatch: (tr: Transaction) => void;
 };
 
-/** 批廿七 M1-b——enum_cell NodeView:td 外壳 + 原生 <select>,无 contentDOM(内容不可打字)。
- *  td 外壳保留招标表格的 colspan/rowspan,避免 select 直接挂在 tr 下破坏表格结构。 */
+/** 批廿七 M1-b——enum_cell NodeView:td 外壳 + shadcn Select,无 contentDOM(内容不可打字)。
+ *  td 外壳保留招标表格的 colspan/rowspan,避免下拉直接挂在 tr 下破坏表格结构。 */
 export class EnumCellView {
   dom: HTMLTableCellElement;
-  private select: HTMLSelectElement;
+  private host: HTMLDivElement;
+  private root: Root;
+  private view: EnumViewHost;
+  private getPos: () => number | undefined;
 
   constructor(
     node: PMNode,
@@ -211,28 +218,36 @@ export class EnumCellView {
   ) {
     this.dom = document.createElement("td");
     this.dom.className = "bwe-enum";
-    this.select = document.createElement("select");
-    this.select.className = "bwe-enum-select";
-    this.select.setAttribute("aria-label", "响应策略");
-    for (const v of (node.attrs.enum_values ?? []) as string[]) {
-      this.select.append(new Option(v, v));
-    }
-    this.select.value = String(node.attrs.current ?? "");
-    this.dom.append(this.select);
+    this.host = document.createElement("div");
+    this.host.className = "bwe-enum-host";
+    this.dom.append(this.host);
+    this.view = view;
+    this.getPos = getPos;
+    this.root = createRoot(this.host);
+    this.render(node);
     this.applyAttrs(node);
-    this.select.onchange = () => {
-      const pos = getPos();
-      if (pos == null) return;
-      const tr = setEnumValue(view.state, pos, this.select.value);
-      if (tr) view.dispatch(tr);
-    };
   }
 
   update(node: PMNode): boolean {
     if (node.type.name !== "enum_cell") return false;
     this.applyAttrs(node);
-    this.select.value = String(node.attrs.current ?? "");
+    this.render(node);
     return true;
+  }
+
+  private render(node: PMNode): void {
+    this.root.render(
+      createElement(EnumCellSelect, {
+        values: (node.attrs.enum_values ?? []) as string[],
+        value: String(node.attrs.current ?? ""),
+        onChange: (next: string) => {
+          const pos = this.getPos();
+          if (pos == null) return;
+          const tr = setEnumValue(this.view.state, pos, next);
+          if (tr) this.view.dispatch(tr);
+        },
+      }),
+    );
   }
 
   private applyAttrs(node: PMNode): void {
@@ -246,6 +261,14 @@ export class EnumCellView {
 
   stopEvent(): boolean {
     return true;
+  }
+
+  destroy(): void {
+    // React 18 渲染期同步 unmount 另一 root 会抛 "Attempted to synchronously
+    // unmount a root while React was already rendering"(BidWriteEditor 重建视图
+    // 时 PM 在 effect cleanup 同步 destroy → root.unmount 撞上当前 commit)。
+    // defer 到宏任务:届时宿主 td 已被 PM 摘除,异步卸载 detached root 无副作用。
+    setTimeout(() => this.root.unmount());
   }
 }
 

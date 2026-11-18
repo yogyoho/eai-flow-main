@@ -6,6 +6,10 @@
  */
 
 import { fetch } from "@/core/api/fetcher";
+import type {
+  BidDocContent,
+  LocateTarget,
+} from "@/extensions/bid-review/api";
 import type { AssertPayload } from "@/extensions/bid-write/editor/decor";
 import type { AstJsonNode } from "@/extensions/bid-write/editor/schema.gen";
 
@@ -401,3 +405,32 @@ export async function listTaskExports(
     `/tasks/${encodeURIComponent(taskId)}/exports`,
   );
 }
+
+// ── 溯源定位（响应矩阵「溯源」按钮；审查端同口径 write 端点镜像）──────────
+
+/** GET /tasks/{id}/docs/{doc_id}/content?quote=|page= —— 溯源定位窗口（quote
+ * 空白折叠命中段 ±10 段 / pdf 真页码整页）。404 = 未定位到原文（调用方如实呈现）。 */
+export function fetchWriteDocContent(
+  taskId: string,
+  docId: string,
+  params: { quote?: string; page?: number },
+): Promise<BidDocContent> {
+  const q = new URLSearchParams();
+  if (params.quote) q.set("quote", params.quote);
+  if (params.page != null) q.set("page", String(params.page));
+  const qs = q.toString();
+  return requestJson<BidDocContent>(
+    `/tasks/${encodeURIComponent(taskId)}/docs/${encodeURIComponent(docId)}/content${qs ? `?${qs}` : ""}`,
+  );
+}
+
+/** 原图 URL（OCR 扫描页原件预览；<img src> 直接消费，owner 过滤在端点侧）。 */
+export function writeDocAssetUrl(
+  taskId: string,
+  docId: string,
+  assetId: string,
+): string {
+  return `${API_BASE}/tasks/${encodeURIComponent(taskId)}/docs/${encodeURIComponent(docId)}/assets/${encodeURIComponent(assetId)}`;
+}
+
+export type { LocateTarget };

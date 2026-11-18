@@ -81,8 +81,13 @@ async def test_owner_isolation(client, db):
         assert (await c2.get("/api/extensions/bid-write/tasks")).json()["items"] == []
 
 
-async def _seed_matrix(db, *, star=False, status="draft"):
+async def _seed_matrix(db, *, star=False, status="draft", fields_conf=None):
     task = await crud.create_task(db, "u1")
+    if fields_conf is not None:
+        meta = dict(task.engine_meta or {})
+        meta["fields_conf"] = fields_conf
+        task.engine_meta = meta
+        await db.commit()
     rows = [
         {
             "clause_id": "att:1",
@@ -114,6 +119,25 @@ async def test_matrix_read_and_patch(client, db):
 
 
 @pytest.mark.asyncio
+async def test_matrix_read_backfills_legacy_conf(client, db):
+    """历史矩阵行未落 conf/verified 时，读取层从任务抽取快照回填展示。"""
+    tid = await _seed_matrix(
+        db,
+        fields_conf={"tender.attachment_requirements": {"conf": 0.42, "verified": True}},
+    )
+    r = await client.get(f"/api/extensions/bid-write/tasks/{tid}/matrix")
+    item = r.json()["items"][0]
+    assert item["conf"] == 0.42 and item["verified"] is True
+
+    patched = await client.patch(
+        f"/api/extensions/bid-write/tasks/{tid}/matrix/att:1",
+        json={"note": "已核对附件清单"},
+    )
+    assert patched.status_code == 200
+    assert patched.json()["conf"] == 0.42 and patched.json()["verified"] is True
+
+
+@pytest.mark.asyncio
 async def test_star_negative_requires_note(client, db):
     """★行负偏离卡点(SK-RT-005 前置):无 note 422;带理由放行。"""
     tid = await _seed_matrix(db, star=True)
@@ -142,6 +166,47 @@ async def test_gaps_honest_zero(client, db):
     body = r.json()
     assert body["items"][0]["material_state"] == "无对应素材"
     assert body["summary"]["material_ready"] == 0 and body["summary"]["total"] == 1
+
+
+@pytest.mark.asyncio
+async def test_doc_content_locate_window(client, db, monkeypatch):
+    """溯源定位窗口(审查端口径镜像):quote 空白折叠命中段 ±10 窗口;
+    未命中 404 如实呈现;未知文档 404。"""
+    from app.extensions.bid_review import parse
+
+    task = await crud.create_task(db, "u1")
+    meta = dict(task.engine_meta or {})
+    meta["docs"] = [{"doc_id": "t.txt", "role": "tender", "kind": "text", "slug": "t", "status": "parsed", "pages": 1, "chars": 30, "assets": 0}]
+    task.engine_meta = meta
+    await db.commit()
+
+    segs = [
+        {"seq": 1, "page": None, "kind": "text", "text": "3.1 资质要求", "asset_id": None},
+        {"seq": 2, "page": None, "kind": "text", "text": "投标单位须提供营业执照复印件一式两份", "asset_id": None},
+        {"seq": 3, "page": None, "kind": "text", "text": "3.2 业绩要求", "asset_id": None},
+    ]
+    monkeypatch.setattr(parse, "load_segments", lambda owner, tid, slug: segs)
+
+    r = await client.get(
+        f"/api/extensions/bid-write/tasks/{task.id}/docs/t.txt/content",
+        params={"quote": "营业执照复印件"},
+    )
+    assert r.status_code == 200
+    body = r.json()
+    assert body["doc"]["doc_id"] == "t.txt" and body["doc"]["role"] == "tender"
+    assert [s["seq"] for s in body["segments"]] == [1, 2, 3]  # 命中 seq2 ±10 → 全窗口
+
+    miss = await client.get(
+        f"/api/extensions/bid-write/tasks/{task.id}/docs/t.txt/content",
+        params={"quote": "原文里不存在的话"},
+    )
+    assert miss.status_code == 404
+
+    ghost = await client.get(
+        f"/api/extensions/bid-write/tasks/{task.id}/docs/ghost/content",
+        params={"quote": "营业执照复印件"},
+    )
+    assert ghost.status_code == 404
 
 
 @pytest.mark.asyncio
@@ -249,3 +314,61 @@ async def test_advance_no_docs_fails(db):
     task = await crud.create_task(db, "u1")
     out = await worker.advance_write_task(db, task.id, "u1", extract_fn=lambda d, f: {"fields": {}})
     assert out.status == "failed" and "raw" in (out.error or "")
+
+
+# ── run_tender_extract 置信闸(30k 分片事故回归)──────────────────────────────
+
+
+def _tender_docs():
+    return [{"doc_id": "t.txt", "role": "tender", "text": "营业执照复印件一式两份"}]
+
+
+def test_run_tender_extract_normalizes_confidence():
+    """confidence 走 normalize_confidence(越界夹 [0,1];bool/字符串非法丢弃;
+    未知路径丢弃)——不再把模型原始值直落 fields_conf。"""
+
+    def fake_extract(docs, field_paths):
+        return {
+            "fields": {"tender.bid_deadline": "2026-12-01"},
+            "confidence": {"tender.bid_deadline": 1.4, "tender.ghost_path": 0.9},
+        }
+
+    fields, fields_conf, _ = worker.run_tender_extract(_tender_docs(), fake_extract)
+    assert fields_conf["tender.bid_deadline"]["conf"] == 1.0
+
+
+def test_run_tender_extract_invalid_confidence_dropped():
+    """非法值(bool/str)被丢弃→conf=None(诚实缺省,draft 不 block)。"""
+
+    def fake_extract(docs, field_paths):
+        return {
+            "fields": {"tender.bid_deadline": "2026-12-01"},
+            "confidence": {"tender.bid_deadline": True},
+        }
+
+    _, fields_conf, _ = worker.run_tender_extract(_tender_docs(), fake_extract)
+    assert fields_conf["tender.bid_deadline"]["conf"] is None
+
+
+def test_run_tender_extract_uniform_zero_treated_unreported():
+    """统一给 0=模型未有效自报置信(事故回归:40 字段全 0 带倒全量 blocked)
+    → 按未上报处理(conf=None→draft);混合 0(差异化低置信)保留 block 语义。"""
+
+    def uniform_zero(docs, field_paths):
+        return {
+            "fields": {"tender.bid_deadline": "2026-12-01"},
+            "confidence": {"tender.bid_deadline": 0},
+        }
+
+    _, fields_conf, _ = worker.run_tender_extract(_tender_docs(), uniform_zero)
+    assert fields_conf["tender.bid_deadline"]["conf"] is None
+
+    def mixed(docs, field_paths):
+        return {
+            "fields": {"tender.bid_deadline": "2026-12-01", "tender.deposit_required": 100000},
+            "confidence": {"tender.bid_deadline": 0, "tender.deposit_required": 0.9},
+        }
+
+    _, fields_conf_mixed, _ = worker.run_tender_extract(_tender_docs(), mixed)
+    assert fields_conf_mixed["tender.bid_deadline"]["conf"] == 0.0
+    assert fields_conf_mixed["tender.deposit_required"]["conf"] == 0.9

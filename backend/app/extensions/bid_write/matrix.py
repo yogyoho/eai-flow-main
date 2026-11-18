@@ -15,11 +15,16 @@ _LOW_CONF = 0.6
 _EXCERPT_CAP = 120
 
 
-def _status_of(source_path: str, fields_conf: dict) -> str:
+def _conf_of(source_path: str, fields_conf: dict) -> tuple[float | None, bool]:
+    """返回来源路径的模型置信度与原文核验标记。"""
     entry = fields_conf.get(source_path) or {}
     conf = entry.get("conf")
-    verified = bool(entry.get("verified"))
-    if not verified and isinstance(conf, (int, float)) and conf < _LOW_CONF:
+    return (conf if isinstance(conf, (int, float)) and not isinstance(conf, bool) else None, bool(entry.get("verified")))
+
+
+def _status_of(source_path: str, fields_conf: dict) -> str:
+    conf, verified = _conf_of(source_path, fields_conf)
+    if not verified and conf is not None and conf < _LOW_CONF:
         return "blocked"
     return "draft"
 
@@ -53,9 +58,12 @@ def _req_rows(value: list, source_path: str, prefix: str, fields_conf: dict) -> 
     包级继承会把「必需/建议」行误标红,首版 golden 抓到已修)。"""
     rows: list[dict] = []
     status = _status_of(source_path, fields_conf)
+    conf, verified = _conf_of(source_path, fields_conf)
     for i, item in enumerate(value, 1):
         if isinstance(item, dict):
-            row_star = source_path == "tender.attachment_requirements" and str(item.get("mandatory") or "").strip() == "★"
+            # ★ 包含判定:模型可能回 "★必需"(★带后缀),全等匹配会把强制计数清零。
+            mandatory = str(item.get("mandatory") or "").strip()
+            row_star = source_path == "tender.attachment_requirements" and "★" in mandatory
             requirement = _excerpt("; ".join(f"{k}={item.get(k)}" for k in ("no", "name", "clause", "mandatory", "min_count", "year_span") if item.get(k) not in (None, "")))
         else:
             row_star = False
@@ -71,6 +79,8 @@ def _req_rows(value: list, source_path: str, prefix: str, fields_conf: dict) -> 
                 "target_section": "",
                 "evidence_refs": [],
                 "status": status,
+                "conf": conf,
+                "verified": verified,
             }
         )
     return rows
@@ -81,6 +91,7 @@ def _agg_row(clause_id: str, source_path: str, fields: dict, fields_conf: dict, 
     value = fields.get(source_path)
     if value in (None, "", [], {}):
         return None
+    conf, verified = _conf_of(source_path, fields_conf)
     return {
         "clause_id": clause_id,
         "kind": "aggregate",
@@ -91,6 +102,8 @@ def _agg_row(clause_id: str, source_path: str, fields: dict, fields_conf: dict, 
         "target_section": "",
         "evidence_refs": [],
         "status": _status_of(source_path, fields_conf),
+        "conf": conf,
+        "verified": verified,
     }
 
 

@@ -156,3 +156,17 @@ def test_existing_provenance_untouched():
         {"t.deposit_required": "人民币伍万元整"}, prov, DOCS
     )
     assert stats["synthesized"] == 0 and prov["t.deposit_required"]["quote"] == "已有"
+
+
+# ── 批卅一 T2:锚点提示词(写作端镜像,引擎零改动)──────────────────────────
+
+def test_build_anchor_prompt_pins_contract():
+    from app.extensions.bid_write.extract_prompt import build_anchor_prompt
+
+    prompt = build_anchor_prompt([{"doc_id": "T", "role": "tender", "text": "材料"}], ["t.deposit_required"])
+    assert "≤40 字" in prompt and "单处连续片段" in prompt  # 锚点收紧
+    assert "禁止跨处拼接" in prompt
+    assert "必须" in prompt and "出处" in prompt  # 逐字段强制 provenance
+    assert "填 null" in prompt and "绝不编造出处" in prompt  # 宁缺勿假
+    assert "candidates" in prompt and "confidence" in prompt  # 四对象契约不变
+    assert "t.deposit_required" in prompt

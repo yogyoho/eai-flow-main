@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, rs } from "@rstest/core";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { cleanup, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import type { PropsWithChildren } from "react";
 
 // 项目列表只消费真实 GET /tasks：矩阵阻断/星级来自 engine_meta.matrix_counts，
@@ -100,5 +100,29 @@ describe("bid-write ProjectsView", () => {
     expect(calls.map((call) => call.path)).toEqual([
       "/api/extensions/bid-write/tasks",
     ]);
+  });
+
+  it("流程说明按钮打开对话框并展示七阶段流程，知道了关闭", async () => {
+    renderView();
+    await screen.findByText("数据中心一期");
+
+    fireEvent.click(screen.getByRole("button", { name: /流程说明/ }));
+
+    const dialog = await screen.findByRole("dialog", { name: "流程说明" });
+    expect(dialog.getAttribute("aria-modal")).toBe("true");
+    for (const stage of [
+      "① 治理面准备（跨任务）",
+      "② 解析确认（建任务 → 响应矩阵）",
+      "③ 素材匹配与缺口清单",
+      "④ 生成配置与执行",
+      "⑤ 正文编辑（工作台）",
+      "⑥ 审批修订与导出交付",
+    ]) {
+      expect(screen.getByText(stage)).toBeTruthy();
+    }
+    expect(screen.getByText(/created → parsing → extracting/)).toBeTruthy();
+
+    fireEvent.click(screen.getByRole("button", { name: "知道了" }));
+    expect(screen.queryByRole("dialog", { name: "流程说明" })).toBeNull();
   });
 });

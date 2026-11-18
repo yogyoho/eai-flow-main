@@ -27,9 +27,16 @@ export interface WriteTaskEngineMeta {
   docs?: TenderDocEntry[];
   schema_version?: string;
   matrix_counts?: MatrixCounts;
-  provenance?: Record<string, unknown>;
+  /** 逐字段抽取出处({doc_id,page,quote};模型没给的路径缺省——不造假出处)。 */
+  provenance?: Record<string, ProvenanceEntry>;
   fields_conf?: Record<string, unknown>;
   [key: string]: unknown;
+}
+
+export interface ProvenanceEntry {
+  doc_id?: string;
+  page?: number | null;
+  quote?: string;
 }
 
 export interface WriteTaskOut {

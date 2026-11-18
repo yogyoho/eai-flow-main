@@ -101,12 +101,12 @@ describe("bid-write IntakeView matrix refresh", () => {
     await waitFor(() =>
       expect(calls.some((call) => call.path.endsWith("/matrix"))).toBe(true),
     );
-    expect(screen.queryByText("clause:2")).toBeNull();
+    expect(screen.queryByText("条款 2")).toBeNull();
 
     taskStatus = "matrix_ready";
 
     await waitFor(
-      () => expect(screen.getAllByText("clause:2").length).toBeGreaterThan(0),
+      () => expect(screen.getAllByText("条款 2").length).toBeGreaterThan(0),
       { timeout: 8000 },
     );
   }, 15000);
