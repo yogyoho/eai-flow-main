@@ -52,6 +52,77 @@ def _verbatim_hit(quote: str, hay_raw: str) -> bool:
     return bool(quote) and "".join(quote.split()) in "".join(hay_raw.split())
 
 
+_SENT_END = "。;;!?!!?!"
+_JSON_MODULE = __import__("json")
+
+
+def _sentence_span(hay_raw: str, orig_lo: int, orig_hi: int, cap: int = 160) -> tuple[int, int]:
+    """从命中区向外扩到句界(。;;!?…),超 cap 截命中±半 cap。"""
+    lo = orig_lo
+    while lo > 0 and hay_raw[lo - 1] not in _SENT_END:
+        lo -= 1
+    hi = orig_hi
+    while hi < len(hay_raw) and hay_raw[hi] not in _SENT_END:
+        hi += 1
+    if hi - lo > cap:
+        lo = max(lo, orig_lo - cap // 2)
+        hi = min(hi, orig_hi + cap // 2)
+    return lo, hi
+
+
+def synthesize_missing_provenance(
+    fields: dict, provenance: dict, docs: list[dict]
+) -> dict:
+    """批卅一 T1:无 provenance 的已抽取路径 → 字段值反查原文 → 程序复制所在
+    原句为 quote(零 AI;「值本身当锚点」)。查不到=诚实不造(与「缺路径不造
+    行」同口径)。只新增缺失路径,不触碰已有 provenance。"""
+    joined: dict[str, str] = {}
+    for d in docs:
+        doc_id = str(d.get("doc_id") or "doc")
+        joined[doc_id] = joined.get(doc_id, "") + str(d.get("text") or "")
+    corpus = {doc_id: _norm_with_map(t) for doc_id, t in joined.items()}
+    stats = {"synthesized": 0, "missed": 0}
+    for path, value in (fields or {}).items():
+        if path in provenance or value in (None, "", [], {}):
+            continue
+        items = value if isinstance(value, list) else [value]
+        hit = None
+        for item in items:
+            s = item if isinstance(item, str) else _JSON_MODULE.dumps(item, ensure_ascii=False)
+            s = s.strip()
+            if not s or len(s) > 120:
+                continue
+            sn, _ = _norm_with_map(s)
+            if len(sn) < 4:  # 值反查=精确查找,4 字足(与模糊锚点 8 字下限区分)
+                continue
+            probe = sn[:64]
+            for doc_id, (hn, horig) in corpus.items():
+                pos = hn.find(probe)
+                while pos >= 0:
+                    if hn[pos : pos + len(sn)] == sn:  # 全值命中(前缀仅定位)
+                        lo = horig[pos]
+                        hi = horig[min(pos + len(sn) - 1, len(horig) - 1)] + 1
+                        slo, shi = _sentence_span(joined[doc_id], lo, hi)
+                        hit = {
+                            "doc_id": doc_id,
+                            "page": None,
+                            "quote": joined[doc_id][slo:shi],
+                            "synthesized": True,
+                        }
+                        break
+                    pos = hn.find(probe, pos + 1)
+                if hit:
+                    break
+            if hit:
+                break
+        if hit:
+            provenance[path] = hit
+            stats["synthesized"] += 1
+        else:
+            stats["missed"] += 1
+    return stats
+
+
 def repair_and_verify(
     provenance: dict, docs: list[dict], ratio: float = REPAIR_RATIO
 ) -> dict:

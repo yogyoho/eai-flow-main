@@ -110,3 +110,49 @@ def test_single_sentence_repair_via_and_verify():
     assert stats["verified_parts"] == 0  # 无分号=单句路径
     assert stats["repaired_parts"] == 1
     assert "人民币伍万元整(¥50,000.00)" in prov["t.x"]["quote"]
+
+
+# ── 批卅一 T1:值反查兜底 synthesize_missing_provenance ─────────────────────
+
+def test_scalar_value_located_sentence_copied():
+    from app.extensions.bid_write.quote_repair import synthesize_missing_provenance
+
+    fields = {"t.deposit_required": "人民币伍万元整"}
+    prov: dict = {}
+    stats = synthesize_missing_provenance(fields, prov, DOCS)
+    assert stats["synthesized"] == 1
+    q = prov["t.deposit_required"]["quote"]
+    assert "人民币伍万元整" in q  # 程序复制,原文逐字
+    assert "".join(q.split()) in "".join(DOCS[0]["text"].split())
+    assert prov["t.deposit_required"]["synthesized"] is True
+
+
+def test_list_value_first_item_hit():
+    from app.extensions.bid_write.quote_repair import synthesize_missing_provenance
+
+    prov: dict = {}
+    stats = synthesize_missing_provenance(
+        {"t.required_sections": ["评标办法"]}, prov, DOCS
+    )
+    assert stats["synthesized"] == 1
+    assert "评标办法" in prov["t.required_sections"]["quote"]
+
+
+def test_value_not_in_doc_honest_miss():
+    from app.extensions.bid_write.quote_repair import synthesize_missing_provenance
+
+    prov: dict = {}
+    stats = synthesize_missing_provenance(
+        {"t.x": "材料中不存在的推导结论"}, prov, DOCS
+    )
+    assert stats["missed"] == 1 and "t.x" not in prov
+
+
+def test_existing_provenance_untouched():
+    from app.extensions.bid_write.quote_repair import synthesize_missing_provenance
+
+    prov = {"t.deposit_required": {"doc_id": "T", "quote": "已有"}}
+    stats = synthesize_missing_provenance(
+        {"t.deposit_required": "人民币伍万元整"}, prov, DOCS
+    )
+    assert stats["synthesized"] == 0 and prov["t.deposit_required"]["quote"] == "已有"
