@@ -3337,3 +3337,9 @@ CALIBRATION 批次裁决表是历史快照,新规则的行插进旧批次表必�
 - (2026-11-18) blocked 两类构成:quote 未命中(可修/可人工)+ **无 provenance 路径**(结构不可核验,Tier-2 位置指针制才是根治)
 - (2026-11-18) 宿主机跑 parse 链必须 DEER_FLOW_HOME=D:/eai/eai-flow-main/backend/.deer-flow(默认 D:\app\backend 是陈旧 fallback);extensions DB=eai-flow-postgres-ext/agentflow/agentflow,表 bid_write_tasks;engine_meta 是 json 非 jsonb(psql 里要 ::jsonb 才能用 ? 操作符)
 - (2026-11-18) 测量前置链路核查法:git diff <上次读版>..<sync merge> -- <paths> + 全文重读,上游同步后旧结论须重验(本次 merge 未动抽取链,读数有效)
+
+### Key Learnings (批卅一)
+- (2026-11-18) **锚点提示词根治摘录失真**:quote 契约从"≤120字摘录"收紧为"≤40字单处连续逐字关键短语"+逐字段强制出处+宁null勿编——实测同文件 blocked 95%→0%,provenance 20/20 逐字,修复管线零介入(管线降级为纯保险网,保留不删)
+- (2026-11-18) 值反查兜底:无出处路径拿字段值当锚点精确反查(dict 列表项必须用项内字符串字段——json 串与原文不同形必 miss);精确查找 4 字门槛,与模糊锚点 8 字下限区分
+- (2026-11-18) 写作端提示词镜像模式:审查端引擎零改动红线下,本地 build_anchor_prompt 镜像+只动契约行;四对象输出契约不变则 normalize 零适配
+- (2026-11-18) Playwright API 通道:page.request.post multipart 传文件(context cookies 自动带;csrf cookie 可选 X-CSRF-Token 头;本例未需)+context.cookies() 是 Promise 要 await

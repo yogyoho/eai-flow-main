@@ -31086,3 +31086,20 @@
 | 12:10 | Edited backend/tests/test_bid_write_quote_repair.py | modified test_composite_synthesis_rescued_via_verbatim_parts() | ~333 |
 | 12:10 | Edited backend/app/extensions/bid_write/quote_repair.py | 6→7 lines | ~94 |
 | 12:10 | 批卅摘录修复管线落地(3 提交):T1 quote_repair 纯函数+6 golden / T2 worker 接线 / T1b 合成句拆子句逐字核验+quote 锚点化(子句级模糊修复实测否决:覆盖率 0.82 放过数值幻觉)+测量脚本入库;实测恢复率 0/4(全多源合成句,拒修正确;5/8 blocked 无 provenance=Tier-2 面);T4 按规则④跳过 | quote_repair.py+worker.py+measure script | 33 测试全过 | ~70k |
+| 12:13 | Created C:/Users/admin/.claude/projects/D--eai-eai-flow-main/memory/bid-write-p1-beta30-quote-repair-landed.md | — | ~328 |
+| 12:14 | Session end: 46 writes across 18 files (helpers.ts, IntakeView.tsx, WorkbenchView.tsx, MaterialsView.tsx, ExportView.tsx) | 5 reads | ~24858 tok |
+| 13:42 | Created docs/superpowers/plans/2026-11-18-bid-write-p1-beta31-anchor-provenance-plan.md | — | ~1316 |
+| 13:43 | Edited backend/app/extensions/bid_write/quote_repair.py | modified _verbatim_hit() | ~781 |
+| 13:44 | Edited backend/app/extensions/bid_write/quote_repair.py | 3→3 lines | ~35 |
+| 13:46 | Created backend/app/extensions/bid_write/extract_prompt.py | — | ~646 |
+| 13:46 | Edited backend/app/extensions/bid_write/worker.py | added 1 import(s) | ~60 |
+| 13:46 | Edited backend/app/extensions/bid_write/worker.py | inline fix | ~31 |
+| 13:46 | Edited backend/app/extensions/bid_write/worker.py | inline fix | ~30 |
+| 13:46 | Edited backend/app/extensions/bid_write/worker.py | modified get() | ~137 |
+| 13:48 | Session end: 54 writes across 20 files (helpers.ts, IntakeView.tsx, WorkbenchView.tsx, MaterialsView.tsx, ExportView.tsx) | 5 reads | ~29452 tok |
+| 13:55 | Edited backend/scripts/measure_quote_repair.py | modified sorted() | ~462 |
+| 13:56 | Edited backend/app/extensions/bid_write/quote_repair.py | modified isinstance() | ~156 |
+| 13:57 | Edited backend/app/extensions/bid_write/quote_repair.py | modified items() | ~338 |
+| 14:04 | Created C:/Users/admin/.claude/jobs/d2aa6c7f/tmp/qa-bidwrite-m31.mjs | — | ~926 |
+| 14:06 | Edited C:/Users/admin/.claude/jobs/d2aa6c7f/tmp/qa-bidwrite-m31.mjs | 1→2 lines | ~30 |
+| 14:20 | 批卅一 Tier-2 锚点制落地(4 提交):T1 值反查兜底(dict 项用项内字符串试查)+T2 写作端锚点提示词(extract_prompt.py 引擎零改动镜像:quote≤40字单处逐字/强制出处/宁null勿编)+T3 三级测量+T4 真抽取 QA(9165669c:37行 blocked 0 vs 旧 38/40;provenance 20/20 逐字,管线零介入=源头根治) | extract_prompt.py+quote_repair.py+worker.py | 37/37 pytest+实机 | ~85k |
