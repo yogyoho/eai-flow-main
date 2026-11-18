@@ -298,6 +298,19 @@ export const MATERIAL_ENTITY_LABELS: Record<string, string> = {
   history_bid: "\u5386\u53F2\u6807\u4E66",
 };
 
+/** 批卅二:缺口要求文本 → 素材库实体类型(关键词粗映射;默认 all=不过滤,
+    映射只是补录引导,佐证/绑定仍归断言与门禁)。 */
+export function gapLibraryType(requirement: string): string {
+  const t = requirement ?? "";
+  if (/资质|认证|证书|ISO|资格/.test(t)) return "qualification";
+  if (/业绩|合同|案例|同类/.test(t)) return "performance";
+  if (/人员|工程师|项目经理|职称|团队/.test(t)) return "personnel";
+  if (/产能|产能证明|生产/.test(t)) return "capacity";
+  if (/网点|服务网络|售后/.test(t)) return "network";
+  if (/历史|过往|中标通知/.test(t)) return "history_bid";
+  return "all";
+}
+
 export function materialEntityLabel(entityType: string): string {
   return MATERIAL_ENTITY_LABELS[entityType] ?? entityType;
 }

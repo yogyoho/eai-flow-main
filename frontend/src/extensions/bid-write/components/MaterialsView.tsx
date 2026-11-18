@@ -31,6 +31,7 @@ import {
 } from "@/extensions/bid-write/components/primitives";
 import {
   formatDate,
+  gapLibraryType,
   gapStatusTone,
   matrixClauseLabel,
   matrixRequirementLabel,
@@ -47,7 +48,7 @@ import {
   usePutPolicy,
   useSelectedWriteTask,
 } from "@/extensions/bid-write/hooks";
-import { writeTaskHref } from "@/extensions/bid-write/nav";
+import { WRITE_PAGE_PATHS, writeTaskHref } from "@/extensions/bid-write/nav";
 import type { GapItem, MaterialOut, PolicyBody } from "@/extensions/bid-write/types";
 
 type Filter = "all" | "star" | "blocked" | "confirmed";
@@ -413,8 +414,14 @@ export function MaterialsView() {
                 <div className="banner info bw-mt">
                   <Info size={15} aria-hidden="true" />
                   <span>
-                    在下方素材库补录对应实体；绑定判定由断言执行与导出门禁裁决，本页不人工标记「已绑定」。
+                    去素材库补录对应实体；绑定判定由断言执行与导出门禁裁决，本页不人工标记「已绑定」。
                   </span>
+                  <Link
+                    className="btn btn-sm"
+                    href={`${WRITE_PAGE_PATHS.materials_library}?type=${encodeURIComponent(gapLibraryType(selected.requirement ?? ""))}${taskId ? `&task_id=${encodeURIComponent(taskId)}` : ""}`}
+                  >
+                    去素材库补录
+                  </Link>
                 </div>
               </>
             ) : null}
