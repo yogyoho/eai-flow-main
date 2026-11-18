@@ -3,6 +3,7 @@
 import {
   Bolt,
   BookMarked,
+  LibraryBig,
   BookOpen,
   Boxes,
   ClipboardList,
@@ -94,6 +95,13 @@ const navItems: Array<{
     icon: FileArchive,
     group: 1,
     taskPage: "export",
+  },
+  {
+    href: WRITE_PAGE_PATHS.materials_library,
+    label: "素材库",
+    icon: LibraryBig,
+    group: 2,
+    taskPage: "materials_library",
   },
   {
     href: WRITE_PAGE_PATHS.registry,

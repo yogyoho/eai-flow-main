@@ -225,19 +225,6 @@ modules:
         display_name: "样例台账"
         operations: []
 
-  # ─── 投标资料管理（应用中心 → 市场营销；EAI-CUSTOM bug-3109 v4：资质 MinIO 版本库+样例台账。
-  #     后端 /api/extensions/bid-materials/*，沿用 require_permission("system:access")，
-  #     页面可见性由本页键 + 角色 nav/pages 授权控制）───
-  bid_materials:
-    display_name: "投标资料管理"
-    nav_id: "nav:bid-materials"
-    pages:
-      - id: "bid:page:qualifications"
-        display_name: "投标资质管理"
-        operations: []
-      - id: "bid:page:samples"
-        display_name: "技术资料库"
-        operations: []
 
   # ─── 投标报价分析（应用中心 → 市场营销；Route B 直调 data_source 只读查询）───
   bid_quote:
@@ -351,6 +338,20 @@ modules:
         operations:
           - { id: "export:generate", display_name: "生成导出" }
 
+  # ─── 材料学计算（应用中心 → 材料计算，独立子系统 /materials）───
+  materials:
+    display_name: "材料学计算"
+    nav_id: "nav:materials"
+    pages:
+      - id: "materials:page:index"
+        display_name: "材料学计算工作台"
+        operations:
+          - { id: "materials:read", display_name: "查看材料计算" }
+          - { id: "materials:write", display_name: "编辑材料与结构" }
+          - { id: "materials:submit", display_name: "提交计算任务" }
+          - { id: "materials:control", display_name: "控制计算任务" }
+          - { id: "materials:archive", display_name: "归档与标注" }
+
   # ─── 流程管理（应用中心 → 流程管理，admin_only）───
   workflow_admin:
     display_name: "流程管理"
@@ -452,9 +453,9 @@ roles:
       # EAI-CUSTOM (2026-09 样例库迁出): 煤矿环评报告样例库导航
       - nav:coal-eia-samples
       # EAI-CUSTOM (bug-3109 v4): 投标资料管理导航
-      - nav:bid-materials
       # EAI-CUSTOM (2026-10-20): 文档翻译工作台导航（该角色持有 translation:read）
       - nav:translation
+      - nav:materials
       - nav:output
       - nav:app-center
     pages: ["*"]
@@ -485,6 +486,11 @@ roles:
       - user:read
       # EAI-CUSTOM (geo-sample-bank T9): 地质样例库模块访问点（与 roles_custom.yaml overlay 同步）
       - geo_samples:access
+      - materials:read
+      - materials:write
+      - materials:submit
+      - materials:control
+      - materials:archive
     # EAI-CUSTOM (bug-1135): +knowledge_public — 公开库是部门可见的超集（私有<部门<公开），
     # 凡持有 knowledge_dept 的角色亦应可见公开库；M1 只补了 user 角色遗漏了继承链。
     # EAI-CUSTOM: +csp_dept — 备品备件价格分析（spare_parts）本部门数据范围（与 overlay 同步，bug-1087）
@@ -505,7 +511,7 @@ roles:
       # EAI-CUSTOM (2026-09 样例库迁出): 煤矿环评报告样例库导航（与 overlay 同步）
       - nav:coal-eia-samples
       # EAI-CUSTOM (bug-3109 v4): 投标资料管理导航（与 overlay 同步）
-      - nav:bid-materials
+      - nav:materials
       - nav:output
       - nav:app-center
     pages: ["*"]
@@ -525,6 +531,11 @@ roles:
       # EAI-CUSTOM (bug-1137): 创建项目向导「组建团队」/ AddMemberDialog 搜用户调
       # /api/extensions/users/search（require user:read）；缺此点 → 403 → 加不了成员
       - user:read
+      - materials:read
+      - materials:write
+      - materials:submit
+      - materials:control
+      - materials:archive
     # EAI-CUSTOM (bug-1135): +knowledge_public（同 dept_head，公开库是部门可见超集）
     # EAI-CUSTOM: +csp_dept — 备品备件价格分析（spare_parts）本部门数据范围（与 overlay 同步，bug-1087）
     data_scopes: ["project_member", "knowledge_dept", "knowledge_public", "cpa_dept", "csp_dept", "bqa_dept", "bpp_all", "spq_all", "doc_owner", "doc_project_member"]

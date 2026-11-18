@@ -12,6 +12,7 @@ export type WritePage =
   | "projects"
   | "intake"
   | "materials"
+  | "materials_library"
   | "generate"
   | "workbench"
   | "review"
@@ -22,6 +23,7 @@ export const WRITE_PAGE_PATHS: Record<WritePage, string> = {
   projects: "/bid-write",
   intake: "/bid-write/intake",
   materials: "/bid-write/materials",
+  materials_library: "/bid-write/materials-library",
   generate: "/bid-write/generate",
   workbench: "/bid-write/workbench",
   review: "/bid-write/review",
