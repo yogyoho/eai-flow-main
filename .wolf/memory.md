@@ -30975,3 +30975,92 @@
 | Time | Action | File(s) | Outcome | ~Tokens |
 |------|--------|---------|---------|--------|
 | 00:45 | 批三十三 批准修订 DOCX 交付包:prepare_editor_ctx + run_export_gate(ast=) 冻结 AST 同尺;新增 export.py(AST→Markdown/一级 section 切册/DOCX+manifest/固定时间戳确定性 ZIP)+ BidWriteExport 审计 + 导出/历史端点;前端 DeliveryPackageCard 与 ExportView 接线 | backend/app/extensions/bid_write/export.py, precheck.py, executor/editor.py, models/crud/routers, gateway/csrf_middleware.py; frontend DeliveryPackageCard/ExportView/types/api/hooks; tests | 后端导出 13 过、过滤全量 266 过/6 skip;前端 bid-write 17 文件 91/91、交付包 3/3;ruff/eslint 绿;tsc 仅既有 password-forms 3 条 TS2367;未做浏览器实机 | ~55k |
+| 08:24 | Session end: 37 writes across 12 files (document_ast_schema.yaml, test_bid_write_editor_schema.py, bid-write-editor-schema.test.ts, deviation.ts, state.ts) | 13 reads | ~28646 tok |
+
+## Session: 2026-11-17 21:13
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-11-17 21:14
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 21:28 | Edited backend/pyproject.toml | 5→2 lines | ~79 |
+| 21:29 | Edited .github/workflows/backend-unit-tests.yml | modified CUSTOM() | ~96 |
+| 21:30 | Edited backend/tests/test_agent_guidance_check.py | 8→3 lines | ~46 |
+| 21:30 | Edited backend/tests/test_agent_guidance_check.py | 2→3 lines | ~56 |
+| 21:32 | Edited AGENTS.md | reduced (-6 lines) | ~128 |
+| 21:32 | Edited AGENTS.md | modified inventories() | ~832 |
+| 21:37 | Edited backend/app/gateway/app.py | added 1 import(s) | ~269 |
+| 21:39 | Edited backend/app/gateway/auth_middleware.py | 6→2 lines | ~45 |
+| 21:39 | Edited backend/app/gateway/auth_middleware.py | modified projection() | ~84 |
+| 21:49 | Edited backend/app/gateway/services.py | modified CUSTOM() | ~90 |
+| 21:50 | Edited backend/app/gateway/services.py | modified CUSTOM() | ~635 |
+| 21:51 | Edited backend/app/gateway/services.py | modified CUSTOM() | ~502 |
+| 21:53 | Edited backend/app/gateway/services.py | modified CUSTOM() | ~236 |
+| 21:53 | Edited backend/app/gateway/services.py | modified CUSTOM() | ~718 |
+| 21:54 | Edited backend/app/gateway/services.py | removed 185 lines | ~13 |
+| 21:55 | Edited backend/app/gateway/routers/thread_runs.py | 10→6 lines | ~115 |
+| 21:56 | Edited backend/app/gateway/routers/thread_runs.py | modified _prepare_regenerate_payload() | ~102 |
+| 21:56 | Edited backend/app/gateway/routers/thread_runs.py | 6→3 lines | ~38 |
+| 21:57 | Edited backend/packages/harness/deerflow/agents/lead_agent/prompt.py | removed 27 lines | ~20 |
+| 21:58 | Edited backend/packages/harness/deerflow/agents/lead_agent/prompt.py | modified CUSTOM() | ~76 |
+| 22:17 | Created C:/Users/admin/AppData/Local/Temp/merge-msg-2026-11-17.txt | — | ~639 |
+| 22:26 | Edited frontend/src/components/workspace/artifacts/artifact-file-preview.tsx | inline fix | ~23 |
+| 22:30 | 上游154-commit增量merge(223dfffc5双亲)+lint修复(5b6d3c803);16文件27冲突;EAI early-admission保留+hitl/mcp_agent_auth移植;定向门481p/0f | backend/frontend 16+2文件 | 语法全OK;bug-4256录既存漂移 | ~60k |
+| 22:36 | Created C:/Users/admin/.claude/projects/D--eai-eai-flow-main/memory/upstream-sync-2026-11-17-landed.md | — | ~506 |
+| 22:36 | Edited C:/Users/admin/.claude/projects/D--eai-eai-flow-main/memory/MEMORY.md | 1→2 lines | ~102 |
+| 22:40 | Session end: 24 writes across 13 files (pyproject.toml, backend-unit-tests.yml, test_agent_guidance_check.py, AGENTS.md, app.py) | 10 reads | ~65984 tok |
+| 22:42 | Session end: 24 writes across 13 files (pyproject.toml, backend-unit-tests.yml, test_agent_guidance_check.py, AGENTS.md, app.py) | 11 reads | ~65984 tok |
+| 22:48 | Session end: 24 writes across 13 files (pyproject.toml, backend-unit-tests.yml, test_agent_guidance_check.py, AGENTS.md, app.py) | 11 reads | ~65984 tok |
+| 22:59 | Session end: 24 writes across 13 files (pyproject.toml, backend-unit-tests.yml, test_agent_guidance_check.py, AGENTS.md, app.py) | 11 reads | ~65984 tok |
+| 23:04 | 全量pytest Windows进程楔死(CPU 0.03s/35min)杀掉;门禁已由定向481p+auth120p+家族门775p覆盖,Linux CI为权威 | n/a | 无阻塞 | ~2k |
+| 23:05 | Session end: 24 writes across 13 files (pyproject.toml, backend-unit-tests.yml, test_agent_guidance_check.py, AGENTS.md, app.py) | 11 reads | ~65984 tok |
+| 23:57 | Session end: 24 writes across 13 files (pyproject.toml, backend-unit-tests.yml, test_agent_guidance_check.py, AGENTS.md, app.py) | 12 reads | ~65984 tok |
+| 00:00 | eai-ext sales/procurement 502三天根因=materials会话include进business.yaml构建中止;点名up复起;四路由200 | n/a | 全绿;bug-4257 | ~8k |
+| 00:01 | Session end: 24 writes across 13 files (pyproject.toml, backend-unit-tests.yml, test_agent_guidance_check.py, AGENTS.md, app.py) | 13 reads | ~65984 tok |
+| 00:17 | Session end: 24 writes across 13 files (pyproject.toml, backend-unit-tests.yml, test_agent_guidance_check.py, AGENTS.md, app.py) | 14 reads | ~65984 tok |
+| 00:35 | Session end: 24 writes across 13 files (pyproject.toml, backend-unit-tests.yml, test_agent_guidance_check.py, AGENTS.md, app.py) | 15 reads | ~65984 tok |
+| 00:49 | Session end: 24 writes across 13 files (pyproject.toml, backend-unit-tests.yml, test_agent_guidance_check.py, AGENTS.md, app.py) | 15 reads | ~65984 tok |
+| 00:54 | 用户报登录回landing+双前端容器;根因=Nov-14两次up撞车铸hash副本,alias双IP轮询;force-recreate收敛单容器;登录curl链全200 | docker compose frontend | bug-4258 | ~12k |
+| 00:54 | Session end: 24 writes across 13 files (pyproject.toml, backend-unit-tests.yml, test_agent_guidance_check.py, AGENTS.md, app.py) | 16 reads | ~65984 tok |
+| 01:05 | Session end: 24 writes across 13 files (pyproject.toml, backend-unit-tests.yml, test_agent_guidance_check.py, AGENTS.md, app.py) | 17 reads | ~65984 tok |
+| 07:46 | Session end: 24 writes across 13 files (pyproject.toml, backend-unit-tests.yml, test_agent_guidance_check.py, AGENTS.md, app.py) | 17 reads | ~65984 tok |
+| 07:58 | Session end: 24 writes across 13 files (pyproject.toml, backend-unit-tests.yml, test_agent_guidance_check.py, AGENTS.md, app.py) | 18 reads | ~65984 tok |
+| 07:59 | Session end: 24 writes across 13 files (pyproject.toml, backend-unit-tests.yml, test_agent_guidance_check.py, AGENTS.md, app.py) | 18 reads | ~65984 tok |
+
+## Session: 2026-11-18 09:38
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 10:15 | Edited frontend/src/extensions/bid-write/helpers.ts | "低置信待确认" → "待人工核对" | ~6 |
+| 10:15 | Edited frontend/src/extensions/bid-write/components/IntakeView.tsx | "低置信行已确认并解阻" → "待核对记录已全部确认" | ~8 |
+| 10:15 | Edited frontend/src/extensions/bid-write/components/IntakeView.tsx | "仍有 ${summary.blocked} 条低置" → "仍有 ${summary.blocked} 条记录" | ~16 |
+| 10:15 | Edited frontend/src/extensions/bid-write/components/IntakeView.tsx | "仍有 ${summary.blocked} 条低置" → "仍有 ${summary.blocked} 条记录" | ~15 |
+| 10:15 | Edited frontend/src/extensions/bid-write/components/IntakeView.tsx | "低置信待确认" → "待人工核对" | ~8 |
+| 10:15 | Edited frontend/src/extensions/bid-write/components/IntakeView.tsx | inline fix | ~16 |
+| 10:15 | Edited frontend/src/extensions/bid-write/components/IntakeView.tsx | inline fix | ~20 |
+| 10:16 | Edited frontend/src/extensions/bid-write/components/IntakeView.tsx | inline fix | ~15 |
+| 10:16 | Edited frontend/src/extensions/bid-write/components/IntakeView.tsx | inline fix | ~14 |
+| 10:16 | Edited frontend/src/extensions/bid-write/components/IntakeView.tsx | inline fix | ~19 |
+| 10:16 | Edited frontend/src/extensions/bid-write/components/IntakeView.tsx | inline fix | ~19 |
+| 10:17 | Edited frontend/src/extensions/bid-write/components/IntakeView.tsx | 2→2 lines | ~30 |
+| 10:17 | Edited frontend/src/extensions/bid-write/components/WorkbenchView.tsx | inline fix | ~15 |
+| 10:17 | Edited frontend/src/extensions/bid-write/components/MaterialsView.tsx | "低置信阻断" → "待人工核对" | ~8 |
+| 10:17 | Edited frontend/src/extensions/bid-write/components/ExportView.tsx | "响应矩阵无低置信阻断" → "矩阵记录已全部核对" | ~8 |
+| 10:17 | Edited frontend/src/extensions/bid-write/components/ExportView.tsx | "仍有 ${matrixBlocked} 条低置信行" → "仍有 ${matrixBlocked} 条记录待人" | ~13 |
+| 10:17 | Edited frontend/src/extensions/bid-write/components/ProjectsView.tsx | 4→4 lines | ~38 |
+| 10:18 | Edited frontend/src/extensions/bid-write/components/ProjectsView.tsx | inline fix | ~16 |
+| 10:18 | Edited backend/app/extensions/bid_write/routers.py | "blocked(低置信)行确认须带确认依据(not" → "该记录待人工核对，确认须填写核对依据（note）" | ~23 |
+| 10:18 | Edited frontend/tests/unit/extensions/bid-write-intake-confirm.dom.test.tsx | "低置信行确认" → "人工核对确认" | ~15 |
+| 10:30 | Edited frontend/src/extensions/bid-review/components/DocLocateModal.tsx | added 4 condition(s) | ~323 |
+| 10:30 | Edited frontend/src/extensions/bid-review/components/DocLocateModal.tsx | 20→20 lines | ~215 |
+| 10:30 | Edited frontend/src/app/bid-review/bid-review.css | expanded (+9 lines) | ~87 |
+| 10:31 | Created frontend/tests/unit/extensions/bid-review-doc-locate.dom.test.tsx | — | ~793 |
+| 10:32 | Edited frontend/tests/unit/extensions/bid-review-doc-locate.dom.test.tsx | 2→2 lines | ~40 |
+| 10:32 | Edited frontend/tests/unit/extensions/bid-review-doc-locate.dom.test.tsx | 1→4 lines | ~34 |
+| 10:35 | Edited frontend/src/extensions/bid-review/components/DocLocateModal.tsx | added 1 condition(s) | ~167 |
+| 10:35 | Edited frontend/tests/unit/extensions/bid-review-doc-locate.dom.test.tsx | 5→7 lines | ~50 |
+| 10:35 | Edited frontend/tests/unit/extensions/bid-review-doc-locate.dom.test.tsx | added nullish coalescing | ~84 |
+| 10:45 | 用户两条 UX 反馈落地:「低置信待确认」→「待人工核对」全套文案(4abcec2ac,含后端422明细+测试钉点;venv半残lib64 junction rmdir摘除重建)+溯源弹窗段内命中摘录精确高亮 locateHitRange+mark.loc-hit(57b7b1c6;bid-review.css 另一会话2625行重排未代提,样式随其入库,mark默认黄底兜底) | IntakeView/DocLocateModal.tsx 等 | 14/0+15pytest+12/0 | ~60k |

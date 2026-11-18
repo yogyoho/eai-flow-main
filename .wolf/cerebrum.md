@@ -3318,3 +3318,13 @@ CALIBRATION 批次裁决表是历史快照,新规则的行插进旧批次表必�
 ### Do-Not-Repeat (批三十三)
 - (2026-11-15) 不要直接比较两次 `generate_docx_simple` 的原始 bytes 断言确定性;先固定内层 ZIP 时间戳,否则单测会随墙钟抖动。
 - (2026-11-15) 不要在导出路径重新读可变 `TaskDocument` 或只读 `products`;唯一正文来源是 `BidWriteDocumentRevision.ast`。
+
+## 2026-11-17 上游154-commit同步学习
+- **services.py EAI early-admission 流的上游功能移植点（Key Learnings）**：EAI 在 `start_run` 维护 early-admission 变体（create_or_reject 在 config build 前），上游功能移植映射——①hitl 预校验：插在 agent_factory 之后 admission recheck 之前，command/graph_input/request_input 均已被 EAI hoisted 管线算出**不重复算**；②`mark_approval_answered` 接点 = `task = asyncio.create_task(...)` 之前（EAI 无 attach-failure 窗口，restore 不需要；mark 失败走 `_discard_failed_resume_admission` 丢 pending record 保 no-orphan）；③`capture_agent_authority`（mcp_agent_auth）用 EAI 作用域内 `app_config` 变量而非 `run_ctx.app_config`（EAI 的 RunContext 版本不带）；④`build_run_config(..., app_config=app_config)` 上游已自动并入调用点。上游 late-admission `admit_run()` 闭包 + `run_after_metadata` worker 持续 NOT adopted。
+- **上游常量反哺**：THREAD_RUN_RECURSION_LIMIT=1000 上游已采 EAI bug-2203 同值——EAI 侧字面量钉可逐步换成上游常量（保注释）。
+- **容器内 tsc 的 mount 盲区（bug-4256）**：容器只挂 frontend/，tests import 的 `examples/*/static/dist/*.mjs` 构建产物不可见 → 容器 tsc 假阴性/假阳性；host `pnpm check` 才是全量权威。
+- **stash 协调法**：merge 面与并发会话脏文件重叠时 `git stash push -m ... -- <重叠文件>` 隔离，merge 后按性质回放或丢弃（本次 4 文件：README×2 材料子系统段落待回放、project-documents-section 纯格式化可丢、skillscan −2320 僵尸删除恢复后验证）。
+
+### User Preferences (2026-11-18)
+- UI 状态文案禁工程术语(「低置信/置信度/阻断/解阻」),用用户视角动词短语(「待人工核对」);用户会追问术语含义——解释时也要说人话,用表格/比喻,不堆 file:line
+- 用户明确要求"准确且舒适"的状态描述;认定"未通过验证"≠"内容错误",命名不得暗示后者
