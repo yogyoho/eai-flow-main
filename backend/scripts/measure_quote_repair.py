@@ -43,30 +43,51 @@ def main() -> None:
     fields_conf = meta.get("fields_conf") or {}
     fields = meta.get("fields") or {}
 
-    old_verified = verify_quotes(provenance, docs)
-    stats = repair_quotes(provenance, docs)
-    new_verified = verify_quotes(provenance, docs)
+    import copy
 
-    print(f"task={task_id} docs={len(docs)} stats={stats}")
+    from app.extensions.bid_write.quote_repair import (  # noqa: E402
+        repair_and_verify,
+        synthesize_missing_provenance,
+    )
+
+    old_verified = verify_quotes(provenance, docs)
+
+    # 三级对比(批卅一 T3):原始(落库 fields_conf)→ 仅修复 → 值反查+修复(worker 顺序)
+    prov_repair = copy.deepcopy(provenance)
+    repair_and_verify(prov_repair, docs)
+    repair_verified = verify_quotes(prov_repair, docs)
+    prov_full = copy.deepcopy(provenance)
+    syn_stats = synthesize_missing_provenance(fields, prov_full, docs)
+    repair_and_verify(prov_full, docs)
+    full_verified = verify_quotes(prov_full, docs)
+
+    print(f"task={task_id} docs={len(docs)} syn={syn_stats}")
     fixed = 0
     unverified_total = 0
     for path in sorted(fields_conf):
         if path not in provenance:
             continue
-        o, n = old_verified.get(path), new_verified.get(path)
-        rep = bool((provenance.get(path) or {}).get("repaired"))
+        o, m, n = (
+            old_verified.get(path),
+            repair_verified.get(path),
+            full_verified.get(path),
+        )
         if o is False:
             unverified_total += 1
         if o is False and n is True:
             fixed += 1
-        mark = "FIXED" if rep else "    "
-        print(f"{mark} {path}: {o} -> {n}")
-    print(f"恢复率: {fixed}/{unverified_total} 条 unverified 被修复")
+        print(f"{path}: stored={o} repair={m} syn+repair={n}")
+    print(f"恢复: {fixed}/{unverified_total} unverified provenance 路径")
     print(
         f"矩阵 blocked(路径口径): "
         f"{_blocked_count(fields, fields_conf, old_verified)} -> "
-        f"{_blocked_count(fields, fields_conf, new_verified)}"
+        f"{_blocked_count(fields, fields_conf, repair_verified)} -> "
+        f"{_blocked_count(fields, fields_conf, full_verified)}"
     )
+    no_prov = [
+        p for p in fields_conf if p not in provenance and fields.get(p) is not None
+    ]
+    print(f"无 provenance 路径({len(no_prov)}): {no_prov}")
 
 
 if __name__ == "__main__":

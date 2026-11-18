@@ -88,29 +88,40 @@ def synthesize_missing_provenance(
         items = value if isinstance(value, list) else [value]
         hit = None
         for item in items:
-            s = item if isinstance(item, str) else _JSON_MODULE.dumps(item, ensure_ascii=False)
-            s = s.strip()
-            if not s or len(s) > 120:
-                continue
-            sn, _ = _norm_with_map(s)
-            if len(sn) < 4:  # 值反查=精确查找,4 字足(与模糊锚点 8 字下限区分)
-                continue
-            probe = sn[:64]
-            for doc_id, (hn, horig) in corpus.items():
-                pos = hn.find(probe)
-                while pos >= 0:
-                    if hn[pos : pos + len(sn)] == sn:  # 全值命中(前缀仅定位)
-                        lo = horig[pos]
-                        hi = horig[min(pos + len(sn) - 1, len(horig) - 1)] + 1
-                        slo, shi = _sentence_span(joined[doc_id], lo, hi)
-                        hit = {
-                            "doc_id": doc_id,
-                            "page": None,
-                            "quote": joined[doc_id][slo:shi],
-                            "synthesized": True,
-                        }
+            if isinstance(item, dict):
+                # 列表项(dict,如附件要求行):用项内字符串字段逐个试查
+                # (name/mandatory/clause…;json 串与原文不同形,必 miss)
+                probes = [
+                    str(v).strip()
+                    for v in item.values()
+                    if isinstance(v, str) and 4 <= len(v.strip()) <= 120
+                ]
+            else:
+                probes = [str(item).strip()]
+            for s in probes:
+                if not s:
+                    continue
+                sn, _ = _norm_with_map(s)
+                if len(sn) < 4:  # 值反查=精确查找,4 字足(与模糊锚点 8 字下限区分)
+                    continue
+                probe = sn[:64]
+                for doc_id, (hn, horig) in corpus.items():
+                    pos = hn.find(probe)
+                    while pos >= 0:
+                        if hn[pos : pos + len(sn)] == sn:  # 全值命中(前缀仅定位)
+                            lo = horig[pos]
+                            hi = horig[min(pos + len(sn) - 1, len(horig) - 1)] + 1
+                            slo, shi = _sentence_span(joined[doc_id], lo, hi)
+                            hit = {
+                                "doc_id": doc_id,
+                                "page": None,
+                                "quote": joined[doc_id][slo:shi],
+                                "synthesized": True,
+                            }
+                            break
+                        pos = hn.find(probe, pos + 1)
+                    if hit:
                         break
-                    pos = hn.find(probe, pos + 1)
                 if hit:
                     break
             if hit:
