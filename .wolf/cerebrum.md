@@ -3343,3 +3343,6 @@ CALIBRATION 批次裁决表是历史快照,新规则的行插进旧批次表必�
 - (2026-11-18) 值反查兜底:无出处路径拿字段值当锚点精确反查(dict 列表项必须用项内字符串字段——json 串与原文不同形必 miss);精确查找 4 字门槛,与模糊锚点 8 字下限区分
 - (2026-11-18) 写作端提示词镜像模式:审查端引擎零改动红线下,本地 build_anchor_prompt 镜像+只动契约行;四对象输出契约不变则 normalize 零适配
 - (2026-11-18) Playwright API 通道:page.request.post multipart 传文件(context cookies 自动带;csrf cookie 可选 X-CSRF-Token 头;本例未需)+context.cookies() 是 Promise 要 await
+
+### Do-Not-Repeat (批卅一 追加)
+- (2026-11-18) bug-4404:`cat >> 相对路径` 在 cwd 漂移时静默写错位置(命令成功≠写对文件)——heredoc/重定向一律用仓库锚定绝对路径;写入后必须核文件落点;提交前 `git status` 核对模块目录的检查要连同**新增残留**一起看(bug-4402 同根,二次发生)

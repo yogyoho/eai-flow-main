@@ -31103,3 +31103,7 @@
 | 14:04 | Created C:/Users/admin/.claude/jobs/d2aa6c7f/tmp/qa-bidwrite-m31.mjs | — | ~926 |
 | 14:06 | Edited C:/Users/admin/.claude/jobs/d2aa6c7f/tmp/qa-bidwrite-m31.mjs | 1→2 lines | ~30 |
 | 14:20 | 批卅一 Tier-2 锚点制落地(4 提交):T1 值反查兜底(dict 项用项内字符串试查)+T2 写作端锚点提示词(extract_prompt.py 引擎零改动镜像:quote≤40字单处逐字/强制出处/宁null勿编)+T3 三级测量+T4 真抽取 QA(9165669c:37行 blocked 0 vs 旧 38/40;provenance 20/20 逐字,管线零介入=源头根治) | extract_prompt.py+quote_repair.py+worker.py | 37/37 pytest+实机 | ~85k |
+| 14:11 | Created C:/Users/admin/.claude/projects/D--eai-eai-flow-main/memory/bid-write-p1-beta31-anchor-provenance-landed.md | — | ~351 |
+| 14:13 | Session end: 60 writes across 22 files (helpers.ts, IntakeView.tsx, WorkbenchView.tsx, MaterialsView.tsx, ExportView.tsx) | 6 reads | ~34616 tok |
+| 18:06 | Session end: 60 writes across 22 files (helpers.ts, IntakeView.tsx, WorkbenchView.tsx, MaterialsView.tsx, ExportView.tsx) | 6 reads | ~34616 tok |
+| 15:05 | 并发会话工作入库(用户授权,857f85d2c):intake UI 刷新+EnumCellView td外壳+shadcn Select+溯源write端点镜像+matrix行级conf/verified;23pytest+28rstest+typecheck全绿;修批卅一T2 golden cwd漂移误写仓库根tests/(bug-4404) | 19文件 | 全绿 | ~30k |

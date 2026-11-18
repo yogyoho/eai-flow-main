@@ -11578,6 +11578,409 @@
       "related_bugs": [],
       "occurrences": 1,
       "last_seen": "2026-11-14T22:25:00+08:00"
+    },
+    {
+      "id": "bug-4415",
+      "timestamp": "2026-11-17T13:32:25.801Z",
+      "error_message": "Significant refactor of ",
+      "file": "AGENTS.md",
+      "root_cause": "6 lines replaced/restructured",
+      "fix": "Rewrote 10→4 lines (6 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "md"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-11-17T13:32:25.801Z"
+    },
+    {
+      "id": "bug-4416",
+      "timestamp": "2026-11-17T13:51:47.352Z",
+      "error_message": "Significant refactor of ",
+      "file": "backend/app/gateway/services.py",
+      "root_cause": "20 lines replaced/restructured",
+      "fix": "Rewrote 42→30 lines (20 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-11-17T13:51:47.352Z"
+    },
+    {
+      "id": "bug-4417",
+      "timestamp": "2026-11-17T13:56:28.850Z",
+      "error_message": "Significant refactor of ",
+      "file": "backend/app/gateway/routers/thread_runs.py",
+      "root_cause": "5 lines replaced/restructured",
+      "fix": "Rewrote 6→3 lines (5 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-11-17T13:56:28.850Z"
+    },
+    {
+      "id": "bug-4418",
+      "timestamp": "2026-11-17T13:58:05.918Z",
+      "error_message": "Significant refactor of ",
+      "file": "backend/packages/harness/deerflow/agents/lead_agent/prompt.py",
+      "root_cause": "5 lines replaced/restructured",
+      "fix": "Rewrote 9→4 lines (5 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-11-17T13:58:05.918Z"
+    },
+    {
+      "id": "bug-4256",
+      "timestamp": "2026-11-17",
+      "error_message": "前端容器内 tsc --noEmit 报 4 错:password-forms.dom.test.tsx 三处 TS2367(mode 联合类型无 \"login\"/\"register\") + bookmarks.test.ts TS2307 找不到 examples/.../static/dist/index.mjs",
+      "file": "frontend/tests/unit/components/auth/password-forms.dom.test.tsx",
+      "root_cause": "两处均为既有漂移(2026-11-17 上游同步 merge 未触碰这些文件,git diff 22149ac82..HEAD 为空):①password-forms 测试自 Nov-8 sync 带入(21fb08053),与 EAI 统一认证改造后的组件 mode 联合类型不匹配;②bookmarks 测试 import 的 dist/index.mjs 是 examples 扩展的构建产物,host 上存在但容器只挂 frontend/ 不挂 examples/,容器内 tsc 必然找不到——环境性,host pnpm check 不受影响",
+      "fix": "本次不修(非本 merge 引入)。后续处理路径:①password-forms 测试按 EAI 统一认证实态改写 mode 断言或在组件恢复 login/register 字面量;②bookmarks 类测试须 host 侧跑或构建 examples 后容器内跑",
+      "tags": [
+        "tsc",
+        "frontend",
+        "pre-existing",
+        "container-mount-scope",
+        "password-forms",
+        "upstream-drift"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-11-17"
+    },
+    {
+      "id": "bug-4257",
+      "timestamp": "2026-11-18",
+      "error_message": "宿主 /sales/ 502(nginx: sales-frontend could not be resolved);eai-ext sales/procurement 五容器 Exited 三天(137/0)",
+      "file": "docker/docker-compose.business.yaml",
+      "root_cause": "并发 materials 会话把未提交的 include: docker-compose.materials.yaml 塞进 business.yaml,其 materials-migrate 构建失败(buildx \"image already exists\")中断整组 up -d,sales/procurement 在 recreate 后未再启动;workflow 容器幸存",
+      "fix": "点名 up 绕过 materials: docker compose -p eai-ext -f docker-compose.business.yaml up -d sales-backend sales-worker sales-frontend procurement-backend procurement-frontend;四路由复测 200。教训:①共享 compose 文件的 include 是并发会话耦合点,整组 up 会因任一 include 服务构建失败而全线中止;②502+Host not found 先查容器组存活再查 nginx",
+      "tags": [
+        "eai-ext",
+        "compose",
+        "include",
+        "502",
+        "concurrent-session",
+        "materials",
+        "build-abort"
+      ],
+      "related_bugs": [
+        "bug-3233"
+      ],
+      "occurrences": 1,
+      "last_seen": "2026-11-18"
+    },
+    {
+      "id": "bug-4258",
+      "timestamp": "2026-11-18",
+      "error_message": "用户报:登录后回 landing 页且内容显示不全;docker 中出现两个前端容器(0f600812b1de_deer-flow-frontend + ec70e8dc4f0e_deer-flow-frontend)",
+      "file": "docker/docker-compose-dev.yaml (frontend service)",
+      "root_cause": "Nov-14 两次 compose up 相隔 2h 撞车(config-hash 漂移期,疑与 eai-ext 摘除后 overlay 链变化叠加),compose 未原地重建而铸 <hash>_ 前缀副本;两容器同挂 frontend/deer-flow-frontend alias,DNS 轮询双 IP(.17/.15),nginx request-time 解析轮流打两台 webpack dev-server——不同实例编译态/HMR socket 不同,表现即内容缺失+登录态错乱回 landing",
+      "fix": "docker compose -p eai-docker <3 overlays> up -d --force-recreate frontend → 单容器恢复干净名 deer-flow-frontend,DNS 单 IP;验证:/ 200、/login 预热 200、login POST 200(access_token cookie 落地)、带 cookie 取页 200。教训:①同 service 多容器=alias 多 IP,nginx 轮询即随机性故障,先 getent hosts 查 IP 数;②compose <hash>_ 前缀名=撞车副本的指纹,见到即收敛;③用户报\"随机性显示异常\"优先怀疑 DNS 轮询双实例",
+      "tags": [
+        "compose",
+        "duplicate-container",
+        "dns-round-robin",
+        "frontend",
+        "hash-prefix",
+        "502-variant",
+        "login"
+      ],
+      "related_bugs": [
+        "bug-4257",
+        "bug-3233"
+      ],
+      "occurrences": 1,
+      "last_seen": "2026-11-18"
+    },
+    {
+      "id": "bug-4419",
+      "timestamp": "2026-11-18T02:15:15.258Z",
+      "error_message": "Incorrect value in code",
+      "file": "frontend/src/extensions/bid-write/helpers.ts",
+      "root_cause": "Had \"低置信待确认\"",
+      "fix": "Changed to \"待人工核对\"",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "ts"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-11-18T02:15:15.258Z"
+    },
+    {
+      "id": "bug-4420",
+      "timestamp": "2026-11-18T02:15:24.012Z",
+      "error_message": "Incorrect value in code",
+      "file": "frontend/src/extensions/bid-write/components/IntakeView.tsx",
+      "root_cause": "Had \"低置信行已确认并解阻\"",
+      "fix": "Changed to \"待核对记录已全部确认\"",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 6,
+      "last_seen": "2026-11-18T02:16:42.276Z"
+    },
+    {
+      "id": "bug-4421",
+      "timestamp": "2026-11-18T02:17:37.155Z",
+      "error_message": "Incorrect value in code",
+      "file": "frontend/src/extensions/bid-write/components/MaterialsView.tsx",
+      "root_cause": "Had \"低置信阻断\"",
+      "fix": "Changed to \"待人工核对\"",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-11-18T02:17:37.155Z"
+    },
+    {
+      "id": "bug-4422",
+      "timestamp": "2026-11-18T02:17:45.790Z",
+      "error_message": "Incorrect value in code",
+      "file": "frontend/src/extensions/bid-write/components/ExportView.tsx",
+      "root_cause": "Had \"响应矩阵无低置信阻断\"",
+      "fix": "Changed to \"矩阵记录已全部核对\"",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 2,
+      "last_seen": "2026-11-18T02:17:52.598Z"
+    },
+    {
+      "id": "bug-4423",
+      "timestamp": "2026-11-18T02:18:20.536Z",
+      "error_message": "Incorrect value in code",
+      "file": "backend/app/extensions/bid_write/routers.py",
+      "root_cause": "Had \"blocked(低置信)行确认须带确认依据(note)\"",
+      "fix": "Changed to \"该记录待人工核对，确认须填写核对依据（note）\"",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-11-18T02:18:20.536Z"
+    },
+    {
+      "id": "bug-4424",
+      "timestamp": "2026-11-18T02:18:30.949Z",
+      "error_message": "Incorrect value in code",
+      "file": "frontend/tests/unit/extensions/bid-write-intake-confirm.dom.test.tsx",
+      "root_cause": "Had \"低置信行确认\"",
+      "fix": "Changed to \"人工核对确认\"",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-11-18T02:18:30.949Z"
+    },
+    {
+      "id": "bug-4425",
+      "timestamp": "2026-11-18T02:30:03.957Z",
+      "error_message": "Missing guard clause",
+      "file": "frontend/src/extensions/bid-review/components/DocLocateModal.tsx",
+      "root_cause": "No early return/throw for edge case: !quoteKey",
+      "fix": "Added guard clause: if (!quoteKey)",
+      "tags": [
+        "auto-detected",
+        "guard-clause",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-11-18T02:30:03.957Z"
+    },
+    {
+      "id": "bug-4426",
+      "timestamp": "2026-11-18T02:30:18.035Z",
+      "error_message": "CSS fix: background",
+      "file": "frontend/src/app/bid-review/bid-review.css",
+      "root_cause": "background: var(--main-10) → var(--warn-50)",
+      "fix": "Changed background: var(--main-10) → var(--warn-50)",
+      "tags": [
+        "auto-detected",
+        "style-fix",
+        "css"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-11-18T02:30:18.035Z"
+    },
+    {
+      "id": "bug-4427",
+      "timestamp": "2026-11-18T02:35:27.665Z",
+      "error_message": "Null/undefined access in ",
+      "file": "frontend/tests/unit/extensions/bid-review-doc-locate.dom.test.tsx",
+      "root_cause": "Property access on potentially null/undefined value",
+      "fix": "Added null safety (optional chaining or null check)",
+      "tags": [
+        "auto-detected",
+        "null-safety",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-11-18T02:35:27.665Z"
+    },
+    {
+      "id": "bug-4428",
+      "timestamp": "2026-11-18T04:06:34.725Z",
+      "error_message": "Significant refactor of ",
+      "file": "backend/app/extensions/bid_write/quote_repair.py",
+      "root_cause": "26 lines replaced/restructured",
+      "fix": "Rewrote 40→11 lines (26 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-11-18T04:06:34.725Z"
+    },
+    {
+      "id": "bug-4429",
+      "timestamp": "2026-11-18T04:06:53.966Z",
+      "error_message": "Wrong reference: repair_quotes should be repair_and_verify",
+      "file": "backend/app/extensions/bid_write/worker.py",
+      "root_cause": "Used \"repair_quotes\" instead of \"repair_and_verify\"",
+      "fix": "Changed repair_quotes → repair_and_verify",
+      "tags": [
+        "auto-detected",
+        "wrong-reference",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-11-18T04:06:53.966Z"
+    },
+    {
+      "id": "bug-4430",
+      "timestamp": "2026-11-18T05:46:24.681Z",
+      "error_message": "Wrong reference: build_extract_prompt should be build_anchor_prompt",
+      "file": "backend/app/extensions/bid_write/worker.py",
+      "root_cause": "Used \"build_extract_prompt\" instead of \"build_anchor_prompt\"",
+      "fix": "Changed build_extract_prompt → build_anchor_prompt",
+      "tags": [
+        "auto-detected",
+        "wrong-reference",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-11-18T05:46:24.681Z"
+    },
+    {
+      "id": "bug-4431",
+      "timestamp": "2026-11-18T05:46:43.296Z",
+      "error_message": "Significant refactor of ",
+      "file": "backend/app/extensions/bid_write/worker.py",
+      "root_cause": "2 lines replaced/restructured",
+      "fix": "Rewrote 4→5 lines (2 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-11-18T05:46:43.296Z"
+    },
+    {
+      "id": "bug-4432",
+      "timestamp": "2026-11-18T05:55:45.100Z",
+      "error_message": "Significant refactor of ",
+      "file": "backend/scripts/measure_quote_repair.py",
+      "root_cause": "9 lines replaced/restructured",
+      "fix": "Rewrote 24→45 lines (9 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-11-18T05:55:45.100Z"
+    },
+    {
+      "id": "bug-4433",
+      "timestamp": "2026-11-18T05:56:39.982Z",
+      "error_message": "Significant refactor of ",
+      "file": "backend/app/extensions/bid_write/quote_repair.py",
+      "root_cause": "4 lines replaced/restructured",
+      "fix": "Rewrote 7→14 lines (4 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-11-18T05:56:39.982Z"
+    },
+    {
+      "id": "bug-4434",
+      "timestamp": "2026-11-18T06:06:10.803Z",
+      "error_message": "Missing await",
+      "file": "C:/Users/admin/.claude/jobs/d2aa6c7f/tmp/qa-bidwrite-m31.mjs",
+      "root_cause": "Async call without await — returned Promise instead of value",
+      "fix": "Added await to async call",
+      "tags": [
+        "auto-detected",
+        "async-fix",
+        "mjs"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-11-18T06:06:10.803Z"
+    },
+    {
+      "id": "bug-4404",
+      "timestamp": "2026-11-18T15:05:00+08:00",
+      "error_message": "批卅一 T2 golden 追加落到了仓库根 tests/test_bid_write_quote_repair.py(应为 backend/tests/),backend 测试文件漏收新用例且根目录多出残留文件",
+      "file": "backend/tests/test_bid_write_quote_repair.py",
+      "root_cause": "heredoc 追加用相对路径 tests/...,而 shell cwd 已漂移到仓库根(上一命令 cd 后失败回退);bug-4402(路由树漏入库)同类——相对路径写入不校验落点",
+      "fix": "golden 追加回 backend/tests 真身(15/15 过),删除根目录残留文件;DNR:cat >>/重定向一律用仓库锚定绝对路径,或写入后 ls 验证落点",
+      "tags": [
+        "cwd-drift",
+        "heredoc",
+        "test-file",
+        "批卅一"
+      ],
+      "related_bugs": [
+        "bug-4402"
+      ],
+      "occurrences": 1,
+      "last_seen": "2026-11-18T15:05:00+08:00"
     }
   ]
 }
