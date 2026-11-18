@@ -28,7 +28,8 @@ def _default_extract_fn():
     null 采纳(同审查端口径,spec D7)。无可用模型抛 ExtractNotConfigured→
     advance 落 failed(诚实,不假交付)。同步函数,advance 以 to_thread 卸载。"""
     from app.extensions.bid_review import worker as review_worker
-    from app.extensions.bid_review.engine.extract import build_extract_prompt, shard_docs
+    from app.extensions.bid_review.engine.extract import shard_docs
+    from app.extensions.bid_write.extract_prompt import build_anchor_prompt
 
     name = review_worker._resolve_model_name()
     if not name:
@@ -51,7 +52,7 @@ def _default_extract_fn():
         merged_prov: dict[str, dict] = {}
         merged_conf: dict[str, float] = {}
         for shard in shard_docs(docs) or [[]]:
-            payload = review_worker._invoke_json(model, build_extract_prompt(shard, field_paths), "商务要素提取")
+            payload = review_worker._invoke_json(model, build_anchor_prompt(shard, field_paths), "商务要素提取")
             f_raw = payload.get("fields") if isinstance(payload.get("fields"), dict) else payload
             if isinstance(f_raw, dict):
                 for k, v in f_raw.items():
@@ -76,7 +77,7 @@ def run_tender_extract(docs: list[dict], extract_fn) -> tuple[dict, dict, dict]:
     """(fields, fields_conf, provenance) 三件组:子集路径抽取→归一→quote 核验。
     与 review build_baseline 同构但限子集(审查端零改动;bid.* 路径不入 prompt)。"""
     from app.extensions.bid_review.engine.extract import normalize_confidence, normalize_fields, normalize_provenance, verify_quotes
-    from app.extensions.bid_write.quote_repair import repair_and_verify
+    from app.extensions.bid_write.quote_repair import repair_and_verify, synthesize_missing_provenance
 
     field_paths = list(contracts.COMMERCIAL_TENDER_SUBSET)
     raw = extract_fn(docs, field_paths)
@@ -88,9 +89,10 @@ def run_tender_extract(docs: list[dict], extract_fn) -> tuple[dict, dict, dict]:
     role_map = {str(d.get("role")): str(d.get("doc_id") or "doc") for d in docs if d.get("role")}
     provenance = normalize_provenance(raw.get("provenance"), field_paths, doc_ids, role_map)
     provenance = {k: v for k, v in provenance.items() if fields.get(k) is not None}
+    syn_stats = synthesize_missing_provenance(fields, provenance, docs)  # 批卅一 T1:值反查兜底(零 AI)
     repair_stats = repair_and_verify(provenance, docs)  # 批卅 T1b:分段修复+核验(合成句拆子句;quote 改写为原文锚点;审查端引擎零改动)
-    if repair_stats.get("repaired"):
-        logger.info("bid_write quote repair: %s", repair_stats)
+    if syn_stats.get("synthesized") or repair_stats.get("repaired") or repair_stats.get("verified_parts"):
+        logger.info("bid_write quote rescue: syn=%s repair=%s", syn_stats, repair_stats)
     confidences = normalize_confidence(raw.get("confidence"), field_paths)
     if confidences and all(v == 0 for v in confidences.values()):
         confidences = {}  # 统一给 0=模型未有效自报置信(事故回归:40 字段全 0 带倒全量 blocked)→按未上报(conf=None→draft),不造假改值
