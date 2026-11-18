@@ -3331,3 +3331,9 @@ CALIBRATION 批次裁决表是历史快照,新规则的行插进旧批次表必�
 
 ### User Preferences (2026-11-18 追加)
 - 常驻四规则(用户原文 pasted):①顶尖从业者视角排查遗漏+外行盲区;②禁二手摘要/转述加工,必须回归原始材料(含会话压缩摘要——关键文件重读);③输出写明方法+工具,过程可执行可复查;④结论不自判正确——代码配测试、研究结论带可追溯来源、方案经真实用户结果验证。分析类回复加「方法与工具」段;方案区分已验证事实(带来源)vs推断(待验证)
+
+### Key Learnings (批卅)
+- (2026-11-18) 摘录核验失败的真实构成(实测 8d76e6aa 任务):**多源合成句**为主(AI 拼多处条款成一句,无连续原文区可对),机械阈值拒修是正确行为;覆盖率/相似度放宽到 0.6 会放过数值写错的幻觉摘录(0.82)——核验口径宁严勿松,人工确认是兜底不是缺陷
+- (2026-11-18) blocked 两类构成:quote 未命中(可修/可人工)+ **无 provenance 路径**(结构不可核验,Tier-2 位置指针制才是根治)
+- (2026-11-18) 宿主机跑 parse 链必须 DEER_FLOW_HOME=D:/eai/eai-flow-main/backend/.deer-flow(默认 D:\app\backend 是陈旧 fallback);extensions DB=eai-flow-postgres-ext/agentflow/agentflow,表 bid_write_tasks;engine_meta 是 json 非 jsonb(psql 里要 ::jsonb 才能用 ? 操作符)
+- (2026-11-18) 测量前置链路核查法:git diff <上次读版>..<sync merge> -- <paths> + 全文重读,上游同步后旧结论须重验(本次 merge 未动抽取链,读数有效)

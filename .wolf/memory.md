@@ -31064,3 +31064,25 @@
 | 10:35 | Edited frontend/tests/unit/extensions/bid-review-doc-locate.dom.test.tsx | 5→7 lines | ~50 |
 | 10:35 | Edited frontend/tests/unit/extensions/bid-review-doc-locate.dom.test.tsx | added nullish coalescing | ~84 |
 | 10:45 | 用户两条 UX 反馈落地:「低置信待确认」→「待人工核对」全套文案(4abcec2ac,含后端422明细+测试钉点;venv半残lib64 junction rmdir摘除重建)+溯源弹窗段内命中摘录精确高亮 locateHitRange+mark.loc-hit(57b7b1c6;bid-review.css 另一会话2625行重排未代提,样式随其入库,mark默认黄底兜底) | IntakeView/DocLocateModal.tsx 等 | 14/0+15pytest+12/0 | ~60k |
+| 10:39 | Session end: 29 writes across 11 files (helpers.ts, IntakeView.tsx, WorkbenchView.tsx, MaterialsView.tsx, ExportView.tsx) | 5 reads | ~14880 tok |
+| 10:56 | Session end: 29 writes across 11 files (helpers.ts, IntakeView.tsx, WorkbenchView.tsx, MaterialsView.tsx, ExportView.tsx) | 5 reads | ~14880 tok |
+| 11:35 | Session end: 29 writes across 11 files (helpers.ts, IntakeView.tsx, WorkbenchView.tsx, MaterialsView.tsx, ExportView.tsx) | 5 reads | ~14880 tok |
+| 11:41 | Session end: 29 writes across 11 files (helpers.ts, IntakeView.tsx, WorkbenchView.tsx, MaterialsView.tsx, ExportView.tsx) | 5 reads | ~14880 tok |
+| 11:47 | Created C:/Users/admin/.claude/projects/D--eai-eai-flow-main/memory/user-standing-work-rules-4.md | — | ~218 |
+| 11:49 | Session end: 30 writes across 12 files (helpers.ts, IntakeView.tsx, WorkbenchView.tsx, MaterialsView.tsx, ExportView.tsx) | 5 reads | ~15114 tok |
+| 11:53 | Created docs/superpowers/plans/2026-11-18-bid-write-p1-beta30-quote-repair-plan.md | — | ~3655 |
+| 11:54 | Created backend/app/extensions/bid_write/quote_repair.py | — | ~1142 |
+| 11:54 | Created backend/tests/test_bid_write_quote_repair.py | — | ~500 |
+| 11:55 | Edited backend/tests/test_bid_write_quote_repair.py | modified test_short_quote_skipped() | ~48 |
+| 11:57 | Edited backend/app/extensions/bid_write/worker.py | modified get() | ~100 |
+| 11:57 | Edited backend/app/extensions/bid_write/worker.py | added 1 import(s) | ~58 |
+| 11:59 | Created backend/scripts/measure_quote_repair.py | — | ~791 |
+| 12:06 | Edited backend/app/extensions/bid_write/quote_repair.py | modified _verbatim_hit() | ~1374 |
+| 12:06 | Edited backend/app/extensions/bid_write/quote_repair.py | reduced (-29 lines) | ~132 |
+| 12:06 | Edited backend/app/extensions/bid_write/worker.py | inline fix | ~21 |
+| 12:07 | Edited backend/app/extensions/bid_write/worker.py | inline fix | ~30 |
+| 12:07 | Edited backend/tests/test_bid_write_quote_repair.py | modified test_empty_quote_ignored() | ~552 |
+| 12:09 | Edited backend/app/extensions/bid_write/quote_repair.py | modified _verbatim_hit() | ~302 |
+| 12:10 | Edited backend/tests/test_bid_write_quote_repair.py | modified test_composite_synthesis_rescued_via_verbatim_parts() | ~333 |
+| 12:10 | Edited backend/app/extensions/bid_write/quote_repair.py | 6→7 lines | ~94 |
+| 12:10 | 批卅摘录修复管线落地(3 提交):T1 quote_repair 纯函数+6 golden / T2 worker 接线 / T1b 合成句拆子句逐字核验+quote 锚点化(子句级模糊修复实测否决:覆盖率 0.82 放过数值幻觉)+测量脚本入库;实测恢复率 0/4(全多源合成句,拒修正确;5/8 blocked 无 provenance=Tier-2 面);T4 按规则④跳过 | quote_repair.py+worker.py+measure script | 33 测试全过 | ~70k |
