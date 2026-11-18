@@ -106,3 +106,15 @@ plan 全勾(add -f)+ wolf 四件套 + auto-memory + docs commit。**不推,等�
 1. 值反查只救「值逐字出现在原文」的路径;推导值(合计/对照类)救不了=诚实缺 provenance,仍 blocked 待人工。
 2. 锚点 ≤40 字靠提示词约束,模型仍可能违规 → 批卅管线(fast/合成拆分/单句模糊)全量保留为安全网,两道工序同一入口。
 3. candidates(多值冲突面)本批不动;prompt 契约四对象不变,normalize 零适配。
+
+
+---
+
+## T3/T4 实测结果(2026-11-18,规则④)
+
+- **离线三级对比**(任务 8d76e6aa):blocked 8 → 8(仅修复)→ **6**(+值反查;★attachment/declarations 两组 dict 项反查救回;4 条合成句诚实拒)
+- **全链路真抽取**(同文件新任务 9165669c / TBW-20261118-0001,锚点提示词+两道工序):
+  - 矩阵 **37 行,blocked 0**(旧任务同文件 40 行 blocked 38=95%)
+  - provenance **20/20 路径全部逐字命中**(repaired 0 / synthesized 0——提示词源头根治,管线纯保险网)
+  - QA:Playwright API 通道(create multipart+轮询 100s 到 matrix_ready+矩阵对比;截图 bidwrite-m31-intake.png)
+- 结论:用户"大部分低置信待确认"问题在该真实文件上从 95%→0%;合成句/缺出处两类失败模式在源头消失。
