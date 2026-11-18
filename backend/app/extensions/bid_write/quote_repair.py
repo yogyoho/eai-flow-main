@@ -47,6 +47,130 @@ def _norm_with_map(text: str) -> tuple[str, list[int]]:
     return "".join(normed), origins
 
 
+def _verbatim_hit(quote: str, hay_raw: str) -> bool:
+    """逐字命中(空白折叠口径,与 verify_quotes 相同)。"""
+    return bool(quote) and "".join(quote.split()) in "".join(hay_raw.split())
+
+
+def repair_and_verify(
+    provenance: dict, docs: list[dict], ratio: float = REPAIR_RATIO
+) -> dict:
+    """批卅 T1b:分段修复+分段核验(真实任务复盘产物,2026-11-18)。
+
+    实测:未命中摘录多为**多源合成句**(AI 把散落各处的条款拼成一句),单段
+    模糊修复救不了(repair_quotes 全文无单一连续区域达标)。改契约:
+      · 合成句按 ;/;/\\n 拆子句,逐子句**逐字核验**(不做子句级模糊修——覆盖率
+        口径实测会放过"数值写错"的幻觉摘录 0.82>0.6,安全侧裁决 2026-11-18);
+      · 全部子句逐字可溯 = 该路径 verified;
+      · provenance[path].quote 改写为**最长可溯子句的原文**(溯源锚点:弹窗
+        定位+高亮直接生效);原合成句存 quote_orig 留审计,不删不编。
+    返回遥测 {scanned, verified_whole, verified_parts, repaired_parts,
+    unverified, skipped_short};审查端引擎零改动(verify_quotes 语义仍由
+    "逐字命中"承担,本函数只是把"逐字"的考题从合成句换成子句集)。
+    """
+    import re as _re
+
+    joined: dict[str, str] = {}
+    for d in docs:
+        doc_id = str(d.get("doc_id") or "doc")
+        joined[doc_id] = joined.get(doc_id, "") + str(d.get("text") or "")
+    corpus: dict[str, tuple[str, list[int]]] = {
+        doc_id: _norm_with_map(text) for doc_id, text in joined.items()
+    }
+
+    stats = {
+        "scanned": 0,
+        "verified_whole": 0,
+        "verified_parts": 0,
+        "repaired_parts": 0,
+        "unverified": 0,
+        "skipped_short": 0,
+    }
+    for _path, p in (provenance or {}).items():
+        if not isinstance(p, dict):
+            continue
+        quote = str(p.get("quote") or "")
+        if not quote:
+            continue
+        stats["scanned"] += 1
+        doc_id = str(p.get("doc_id") or "")
+        hay_raw = joined.get(doc_id, "")
+        if _verbatim_hit(quote, hay_raw):
+            stats["verified_whole"] += 1  # 整句已逐字:什么都不用动
+            continue
+        parts = [
+            s.strip() for s in _re.split(r"[;;\n]", quote) if s.strip()
+        ]
+        if len(parts) <= 1:
+            # 非合成句:整句走单段模糊修复(原 repair_quotes 语义)
+            if _repair_single(p, hay_raw, corpus.get(doc_id, ("", [])), quote, ratio, stats):
+                stats["repaired_parts"] += 1
+            else:
+                stats["unverified"] += 1
+            continue
+        # 合成句:逐子句**逐字核验**(不做模糊修——覆盖率口径会放过"数值写错"
+        # 的幻觉摘录,实测 0.82 可过 0.6 门槛;安全侧裁决 2026-11-18)
+        anchors: list[str] = []
+        all_ok = True
+        for part in parts:
+            if _verbatim_hit(part, hay_raw):
+                anchors.append(part)
+                continue
+            all_ok = False
+            break
+        if not all_ok or not anchors:
+            stats["unverified"] += 1
+            continue
+        anchor = max(anchors, key=len)  # 最长子句=最具体定位锚
+        p["quote_orig"] = quote  # 原合成句留审计
+        p["quote"] = anchor  # 原文逐字锚点(弹窗定位+高亮直接生效)
+        p["repaired"] = True
+        stats["verified_parts"] += 1
+    return stats
+
+
+def _repair_single(
+    entry: dict,
+    hay_raw: str,
+    corpus: tuple[str, list[int]],
+    quote: str,
+    ratio: float,
+    stats: dict,
+) -> bool:
+    """单段模糊修复:成功则 entry["quote"] 被替换为原文片段并返回 True。"""
+    qn, _ = _norm_with_map(quote)
+    if len(qn) < _MIN_QUOTE:
+        stats["skipped_short"] = stats.get("skipped_short", 0) + 1
+        return False
+    hn, horig = corpus
+    if not hn:
+        return False
+    best: tuple[float, int, int] | None = None
+    mid = len(qn) // 2
+    anchors = {qn[:_ANCHOR], qn[mid : mid + _ANCHOR], qn[-_ANCHOR:]}
+    for anchor in anchors:
+        if len(anchor) < _MIN_QUOTE // 2:
+            continue
+        start = hn.find(anchor)
+        while start >= 0:
+            win_lo = max(0, start - len(qn))
+            win_hi = min(len(hn), start + len(anchor) + len(qn))
+            cand = hn[win_lo:win_hi]
+            r = SequenceMatcher(None, qn, cand, autojunk=False).ratio()
+            if best is None or r > best[0]:
+                best = (r, win_lo, win_hi)
+            start = hn.find(anchor, start + 1)
+            if best is not None and best[0] >= 0.999:
+                break
+    if best is None or best[0] < ratio:
+        return False
+    _r, lo, hi = best
+    orig_lo, orig_hi = horig[lo], horig[hi - 1] + 1
+    entry["quote"] = hay_raw[orig_lo:orig_hi]  # 原文复制,逐字保真
+    entry["repaired"] = True
+    return True
+
+
 def repair_quotes(
     provenance: dict, docs: list[dict], ratio: float = REPAIR_RATIO
 ) -> dict:
@@ -81,37 +205,8 @@ def repair_quotes(
         if "".join(quote.split()) in "".join(hay_raw.split()):
             stats["verified_fast"] += 1  # 已逐字命中,verify_quotes 会过,不动
             continue
-        qn, _ = _norm_with_map(quote)
-        if len(qn) < _MIN_QUOTE:
-            stats["skipped_short"] += 1
-            continue
-        hn, horig = corpus.get(doc_id, ("", []))
-        if not hn:
+        if _repair_single(p, hay_raw, corpus.get(doc_id, ("", [])), quote, ratio, stats):
+            stats["repaired"] += 1
+        else:
             stats["unrepaired"] += 1
-            continue
-        best: tuple[float, int, int] | None = None
-        mid = len(qn) // 2
-        anchors = {qn[:_ANCHOR], qn[mid : mid + _ANCHOR], qn[-_ANCHOR:]}
-        for anchor in anchors:
-            if len(anchor) < _MIN_QUOTE // 2:
-                continue
-            start = hn.find(anchor)
-            while start >= 0:
-                win_lo = max(0, start - len(qn))
-                win_hi = min(len(hn), start + len(anchor) + len(qn))
-                cand = hn[win_lo:win_hi]
-                r = SequenceMatcher(None, qn, cand, autojunk=False).ratio()
-                if best is None or r > best[0]:
-                    best = (r, win_lo, win_hi)
-                start = hn.find(anchor, start + 1)
-                if best is not None and best[0] >= 0.999:
-                    break
-        if best is None or best[0] < ratio:
-            stats["unrepaired"] += 1
-            continue
-        _r, lo, hi = best
-        orig_lo, orig_hi = horig[lo], horig[hi - 1] + 1
-        p["quote"] = hay_raw[orig_lo:orig_hi]  # 原文复制,逐字保真
-        p["repaired"] = True  # 遥测标记(测量/前端可辨,不参与定位契约)
-        stats["repaired"] += 1
     return stats

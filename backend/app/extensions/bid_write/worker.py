@@ -76,7 +76,7 @@ def run_tender_extract(docs: list[dict], extract_fn) -> tuple[dict, dict, dict]:
     """(fields, fields_conf, provenance) 三件组:子集路径抽取→归一→quote 核验。
     与 review build_baseline 同构但限子集(审查端零改动;bid.* 路径不入 prompt)。"""
     from app.extensions.bid_review.engine.extract import normalize_confidence, normalize_fields, normalize_provenance, verify_quotes
-    from app.extensions.bid_write.quote_repair import repair_quotes
+    from app.extensions.bid_write.quote_repair import repair_and_verify
 
     field_paths = list(contracts.COMMERCIAL_TENDER_SUBSET)
     raw = extract_fn(docs, field_paths)
@@ -88,7 +88,7 @@ def run_tender_extract(docs: list[dict], extract_fn) -> tuple[dict, dict, dict]:
     role_map = {str(d.get("role")): str(d.get("doc_id") or "doc") for d in docs if d.get("role")}
     provenance = normalize_provenance(raw.get("provenance"), field_paths, doc_ids, role_map)
     provenance = {k: v for k, v in provenance.items() if fields.get(k) is not None}
-    repair_stats = repair_quotes(provenance, docs)  # 批卅 Tier-1:摘录修复(归一定位→原文复制;审查端引擎零改动)
+    repair_stats = repair_and_verify(provenance, docs)  # 批卅 T1b:分段修复+核验(合成句拆子句;quote 改写为原文锚点;审查端引擎零改动)
     if repair_stats.get("repaired"):
         logger.info("bid_write quote repair: %s", repair_stats)
     confidences = normalize_confidence(raw.get("confidence"), field_paths)

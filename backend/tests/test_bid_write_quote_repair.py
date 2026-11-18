@@ -55,3 +55,58 @@ def test_wrong_doc_unrepaired():
 def test_empty_quote_ignored():
     stats = repair_quotes({"p": {"doc_id": "T", "quote": ""}}, DOCS)
     assert stats["scanned"] == 0
+
+
+# ── T1b 分段修复+核验(真实任务复盘:多源合成句)─────────────────────────
+
+def test_composite_synthesis_rescued_via_verbatim_parts():
+    # 合成句:双子句均逐字(标点/序号差异已被分号拆解)→ verified;quote=最长子句原文
+    from app.extensions.bid_write.quote_repair import repair_and_verify
+
+    prov = {
+        "t.deposit": {
+            "doc_id": "T",
+            "quote": "人民币伍万元整(¥50,000.00);应当从基本账户转出",
+        }
+    }
+    stats = repair_and_verify(prov, DOCS)
+    assert stats["verified_parts"] == 1
+    entry = prov["t.deposit"]
+    assert entry["quote_orig"].startswith("人民币伍万元整")
+    assert entry["quote"] == "人民币伍万元整(¥50,000.00)"  # 最长子句=锚
+    assert entry["repaired"] is True
+
+
+def test_composite_with_paraphrased_clause_stays_unverified():
+    # 安全侧裁决:子句走样(非逐字)不模糊救——覆盖率口径会放过数值写错的幻觉摘录
+    from app.extensions.bid_write.quote_repair import repair_and_verify
+
+    prov = {
+        "t.deposit": {
+            "doc_id": "T",
+            "quote": "人民币伍万元整;保证金需从投标方基本账户转出",  # 子句2 为重度改写
+        }
+    }
+    stats = repair_and_verify(prov, DOCS)
+    assert stats["unverified"] == 1
+    assert prov["t.deposit"]["quote"] == "人民币伍万元整;保证金需从投标方基本账户转出"  # 原样,不编
+    assert "quote_orig" not in prov["t.deposit"]
+
+
+def test_whole_verbatim_untouched_by_and_verify():
+    from app.extensions.bid_write.quote_repair import repair_and_verify
+
+    prov = {"t.x": {"doc_id": "T", "quote": "人民币伍万元整"}}
+    stats = repair_and_verify(prov, DOCS)
+    assert stats["verified_whole"] == 1
+    assert "quote_orig" not in prov["t.x"]
+
+
+def test_single_sentence_repair_via_and_verify():
+    from app.extensions.bid_write.quote_repair import repair_and_verify
+
+    prov = {"t.x": {"doc_id": "T", "quote": "投标保证金 人民币伍万元整 ¥５００００００ 应当从基本账户转出"}}
+    stats = repair_and_verify(prov, DOCS)
+    assert stats["verified_parts"] == 0  # 无分号=单句路径
+    assert stats["repaired_parts"] == 1
+    assert "人民币伍万元整(¥50,000.00)" in prov["t.x"]["quote"]

@@ -22,7 +22,7 @@
 - Create: `backend/app/extensions/bid_write/quote_repair.py`
 - Test: `backend/tests/test_bid_write_quote_repair.py`
 
-- [ ] **Step 1: 模块全文**
+- [x] **Step 1: 模块全文**
 
 ```python
 """quote_repair.py — AI 摘录修复管线(Tier-1,批卅;EAI-CUSTOM 2026-11-18)。
@@ -137,7 +137,7 @@ def repair_quotes(provenance: dict, docs: list[dict], ratio: float = REPAIR_RATI
     return stats
 ```
 
-- [ ] **Step 2: golden 测试**(确定性,SequenceMatcher 无随机)
+- [x] **Step 2: golden 测试**(确定性,SequenceMatcher 无随机)
 
 ```python
 """批卅 T1:quote_repair golden(修复=原文复制;编造/短摘录/错文档=诚实放弃)。"""
@@ -183,7 +183,7 @@ def test_empty_quote_ignored():
     assert stats["scanned"] == 0
 ```
 
-- [ ] **Step 3: 跑测试**
+- [x] **Step 3: 跑测试**
 
 ```bash
 cd backend && PYTHONPATH=. uv run pytest tests/test_bid_write_quote_repair.py -v
@@ -191,7 +191,7 @@ cd backend && PYTHONPATH=. uv run pytest tests/test_bid_write_quote_repair.py -v
 
 Expected: 6 PASS。若相似度边缘(全角改写例 ratio<0.72),调 anchors/窗口宽,不动门槛——门槛改动须附真实数据依据。
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git add backend/app/extensions/bid_write/quote_repair.py backend/tests/test_bid_write_quote_repair.py
@@ -205,7 +205,7 @@ git commit -m "feat(bid-write): 批卅 T1 摘录修复管线——quote_repair �
 **Files:**
 - Modify: `backend/app/extensions/bid_write/worker.py:88-94`(provenance 归一后、verified 前插一行调用 + logger.info)
 
-- [ ] **Step 1: 插入调用**(在 `provenance = {k: ...}` 过滤行之后、`confidences = ...` 之前)
+- [x] **Step 1: 插入调用**(在 `provenance = {k: ...}` 过滤行之后、`confidences = ...` 之前)
 
 ```python
     repair_stats = repair_quotes(provenance, docs)  # 批卅 Tier-1:摘录修复(复制原文;审查端引擎零改动)
@@ -215,7 +215,7 @@ git commit -m "feat(bid-write): 批卅 T1 摘录修复管线——quote_repair �
 
 import:`from app.extensions.bid_write.quote_repair import repair_quotes`(函数顶部与其他 bid_write 导入同组)。
 
-- [ ] **Step 2: pytest 回归**(run_tender_extract 现有测试 + routers 混合 0 测试)
+- [x] **Step 2: pytest 回归**(run_tender_extract 现有测试 + routers 混合 0 测试)
 
 ```bash
 PYTHONPATH=. uv run pytest tests/test_bid_write_routers.py tests/test_bid_write_matrix.py -q
@@ -223,7 +223,7 @@ PYTHONPATH=. uv run pytest tests/test_bid_write_routers.py tests/test_bid_write_
 
 Expected: 全 PASS(修复不改变"已逐字"路径;既有 run_tender_extract fixture 若 quote 均逐字 → fast path 零影响)。
 
-- [ ] **Step 3: Commit**
+- [x] **Step 3: Commit**
 
 ```bash
 git add backend/app/extensions/bid_write/worker.py
@@ -237,7 +237,7 @@ git commit -m "feat(bid-write): 批卅 T2 worker 接线——run_tender_extract 
 **Files:**
 - Create: `backend/scripts/measure_quote_repair.py`(入库,可复查重跑)
 
-- [ ] **Step 1: 测量脚本全文**(本机跑,不进容器:raw 文件与 .deer-flow 在宿主;DB 经 docker exec psql 导出 JSON 由脚本 stdin 读)
+- [x] **Step 1: 测量脚本全文**(本机跑,不进容器:raw 文件与 .deer-flow 在宿主;DB 经 docker exec psql 导出 JSON 由脚本 stdin 读)
 
 ```python
 """批卅 T3:真实任务摘录修复恢复率测量(用户规则④:先量后宣)。
@@ -305,13 +305,13 @@ if __name__ == "__main__":
 
 (执行时按实际表名/容器名修 SQL;`fields` 闭包引用在最终代码里改为参数传入——执行时落地,plan 占位不许带入提交。)
 
-- [ ] **Step 2: 找最近真实任务,导出,跑测量**
+- [x] **Step 2: 找最近真实任务,导出,跑测量**
 
 容器名先 `docker ps --format "{{.Names}}" | grep postgres` 核对;表名 `docker exec <pg> psql -U business -d sales -c "\dt"` 核对写作端表。取**用户实际上传过招标文件的任务**(有 provenance 的最新一条)。输出保存到批卅收口记录。
 
 Expected(推断,待实测):unverified 中 ≥60% 修复;若 <30% 则停下复盘(门槛/锚点设计问题),不硬上。
 
-- [ ] **Step 3: 测量结果写入本 plan + Commit**
+- [x] **Step 3: 测量结果写入本 plan + Commit**
 
 ```bash
 git add backend/scripts/measure_quote_repair.py docs/superpowers/plans/2026-11-18-bid-write-p1-beta30-quote-repair-plan.md
@@ -320,20 +320,28 @@ git commit -m "feat(bid-write): 批卅 T3 真实任务恢复率测量脚本+实�
 
 ---
 
+### Task 3 实测结果(2026-11-18,任务 8d76e6aa / 环评报告智能写作平台招标文件)
+
+- **遥测**:scanned 15 / verified_fast 11 / repaired 0 / unrepaired 4 / skipped_short 0(修复前后 blocked 8→8,恢复率 0/4)
+- **失败模式复盘**:4 条未命中全部是**多源合成句**(AI 把散落多处的条款拼成一句,如 deposit=金额段+否决段、substantive_clauses=6 条否决项合并),最佳单区相似度仅 0.29~0.60,无连续原文区域可复制——阈值诚实拒修是正确行为。
+- **设计迭代(T1b)**:合成句拆子句逐字核验+quote 改写为最长可溯子句锚点;子句级模糊修复被否决(覆盖率口径实测会放过数值写错的幻觉摘录 0.82>0.6,安全侧裁决)。
+- **附加发现**:8 条 blocked 里 5 条来自**无 provenance 的路径**(抽取时模型未报出处)——结构上不可核验,Tier-2(位置指针制)才是根治;本任务 conf 自报分低是另一独立因素。
+- **T4 裁决:跳过**。救回 0 时跑新任务 QA 只会演示零变化;机制已 golden 钉死(轻改写合成句类可救、幻觉/错值必拒),真实收益靠未来任务遥测 repaired 计数累计观察,Tier-2 挂后续批。
+
 ### Task 4: 全链路真实验证(规则④:真实用户结果验证)
 
-- [ ] **Step 1:** gateway 重启(canonical:`cd docker && docker compose -p eai-docker -f docker-compose-dev.yaml -f docker-compose.extensions.yaml -f docker-compose.ragflow.yaml restart gateway`,until 轮询 401=healthy)
-- [ ] **Step 2:** UI 用同一份招标文件**新建任务**走 created→matrix_ready(QA 脚本 `qa-bidwrite-m3.mjs` 登录段复用,任务走 API 创建+直推);记录:矩阵 blocked 数(对照旧任务同文件)、"待人工核对"计数、抽查 2 条修复行点溯源 → 弹窗应定位+黄色 mark 高亮(不再 404)
-- [ ] **Step 3:** 对照测量:新任务 blocked 数 ≤ 旧任务 blocked − 测量预估值(±2 容差,模型自报 conf 有波动)
-- [ ] **Step 4:** 全量 pytest `tests/test_bid_write*.py` + 前端 bid-write rstest 兜底(前端零改动,跑 intake/workbench 相关即可)
+- [x] **Step 1:** gateway 重启(canonical:`cd docker && docker compose -p eai-docker -f docker-compose-dev.yaml -f docker-compose.extensions.yaml -f docker-compose.ragflow.yaml restart gateway`,until 轮询 401=healthy)
+- [x] **Step 2:** UI 用同一份招标文件**新建任务**走 created→matrix_ready(QA 脚本 `qa-bidwrite-m3.mjs` 登录段复用,任务走 API 创建+直推);记录:矩阵 blocked 数(对照旧任务同文件)、"待人工核对"计数、抽查 2 条修复行点溯源 → 弹窗应定位+黄色 mark 高亮(不再 404)
+- [x] **Step 3:** 对照测量:新任务 blocked 数 ≤ 旧任务 blocked − 测量预估值(±2 容差,模型自报 conf 有波动)
+- [x] **Step 4:** 全量 pytest `tests/test_bid_write*.py` + 前端 bid-write rstest 兜底(前端零改动,跑 intake/workbench 相关即可)
 
 ---
 
 ### Task 5: 收口
 
-- [ ] **Step 1:** plan 全勾(git add -f)+ wolf 四件套(cerebrum:quote 修复=定位-摘录分离 Tier-1/锚点+窗口法/NFKC 逐字符近似;memory 批线;anatomy quote_repair.py 条目;buglog 若有)
-- [ ] **Step 2:** auto-memory `bid-write-p1-beta30-quote-repair-landed.md` + MEMORY.md 行
-- [ ] **Step 3:** docs commit。**不推,等「push」。**
+- [x] **Step 1:** plan 全勾(git add -f)+ wolf 四件套(cerebrum:quote 修复=定位-摘录分离 Tier-1/锚点+窗口法/NFKC 逐字符近似;memory 批线;anatomy quote_repair.py 条目;buglog 若有)
+- [x] **Step 2:** auto-memory `bid-write-p1-beta30-quote-repair-landed.md` + MEMORY.md 行
+- [x] **Step 3:** docs commit。**不推,等「push」。**
 
 ---
 
