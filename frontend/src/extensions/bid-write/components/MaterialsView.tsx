@@ -13,21 +13,12 @@ import {
   Boxes,
   Info,
   PackageSearch,
-  Plus,
   ShieldAlert,
-  Trash2,
 } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import {
   Badge,
   EmptyState,
@@ -41,8 +32,6 @@ import {
 import {
   formatDate,
   gapStatusTone,
-  MATERIAL_ENTITY_LABELS,
-  materialEntityLabel,
   matrixClauseLabel,
   matrixRequirementLabel,
   matrixStatusLabel,
@@ -51,10 +40,8 @@ import {
 } from "@/extensions/bid-write/helpers";
 import {
   useBidWriteGaps,
-  useCreateMaterial,
-  useDeleteMaterial,
-  useMaterialProfile,
   useMaterials,
+  useMaterialProfile,
   usePolicy,
   usePutMaterialProfile,
   usePutPolicy,
@@ -108,9 +95,6 @@ function bodyOf(draft: PolicyDraft): PolicyBody {
   return body;
 }
 
-function entityLabel(item: MaterialOut): string {
-  return materialEntityLabel(item.entity_type);
-}
 
 function gapSourceLabel(item: GapItem): string {
   return sourcePathLabel(
@@ -124,8 +108,6 @@ export function MaterialsView() {
   const { taskId, task, isLoading } = useSelectedWriteTask();
   const gaps = useBidWriteGaps(taskId);
   const materials = useMaterials();
-  const createMaterial = useCreateMaterial();
-  const deleteMaterial = useDeleteMaterial();
   const policy = usePolicy();
   const putPolicy = usePutPolicy();
   const profile = useMaterialProfile();
@@ -133,9 +115,6 @@ export function MaterialsView() {
 
   const [filter, setFilter] = useState<Filter>("all");
   const [selectedId, setSelectedId] = useState<string | null>(null);
-  const [entityFilter, setEntityFilter] = useState<string>("all");
-  const [newType, setNewType] = useState<string>("qualification");
-  const [newName, setNewName] = useState("");
   const [policyDraft, setPolicyDraft] = useState<PolicyDraft>(EMPTY_POLICY);
   const [profileText, setProfileText] = useState("{}");
 
@@ -168,43 +147,14 @@ export function MaterialsView() {
     setSelectedId(null);
   };
 
-  const materialRows = useMemo(() => {
-    const all = materials.data?.items ?? [];
-    return entityFilter === "all"
-      ? all
-      : all.filter((item) => item.entity_type === entityFilter);
-  }, [materials.data?.items, entityFilter]);
 
   const selected = selectedId
     ? visible.find((item) => item.clause_id === selectedId) ?? null
     : null;
   const starCount = items.filter((item) => item.star).length;
   const blockedCount = items.filter((item) => item.status === "blocked").length;
-  const totalCount = materials.data?.items.length ?? 0;
 
-  const onCreate = async () => {
-    const name = newName.trim();
-    if (!name) {
-      toast.error("请填写素材名称");
-      return;
-    }
-    try {
-      await createMaterial.mutateAsync({ entity_type: newType, name, fields: {} });
-      setNewName("");
-      toast.success(`已添加素材「${name}」`);
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : "添加素材失败");
-    }
-  };
 
-  const onDelete = async (item: MaterialOut) => {
-    try {
-      await deleteMaterial.mutateAsync(item.id);
-      toast.success(`已删除「${item.name}」`);
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : "删除失败");
-    }
-  };
 
   const onSavePolicy = async () => {
     try {
@@ -240,7 +190,7 @@ export function MaterialsView() {
       <PageHead
         icon={Boxes}
         title="② 素材核对与缺口"
-        subtitle="动笔前暴露缺件 · 三态清单 + 六类素材实体库"
+        subtitle="动笔前暴露缺件 · 三态缺口清单"
         actions={
           taskId ? (
             <Link href={writeTaskHref("generate", taskId)} className="btn pri btn-sm">
@@ -283,7 +233,6 @@ export function MaterialsView() {
               value={blockedCount}
               tone={blockedCount > 0 ? "err" : "ok"}
             />
-            <MetricCell label="素材实体" value={totalCount} suffix="条" />
             <MetricCell
               label="可佐证素材"
               value={(materials.data?.items ?? []).filter((item) => item.verifiable).length}
@@ -471,140 +420,7 @@ export function MaterialsView() {
             ) : null}
           </Overlay>
 
-          <div className="split bw-export-split bw-mt">
-            <div className="card">
-              <div className="card-h">
-                <h3>素材实体库</h3>
-                <span className="r">
-                  <span className="seg">
-                    <button
-                      type="button"
-                      className={entityFilter === "all" ? "on" : undefined}
-                      onClick={() => setEntityFilter("all")}
-                    >
-                      全部 {totalCount}
-                    </button>
-                    {Object.entries(MATERIAL_ENTITY_LABELS).map(([type, label]) => (
-                      <button
-                        key={type}
-                        type="button"
-                        className={entityFilter === type ? "on" : undefined}
-                        onClick={() => setEntityFilter(type)}
-                      >
-                        {label}{" "}
-                        {(materials.data?.items ?? []).filter((item) => item.entity_type === type).length}
-                      </button>
-                    ))}
-                  </span>
-                </span>
-              </div>
-              {materials.isLoading ? (
-                <div className="card-b">
-                  <LoadingBlock label="正在加载素材…" />
-                </div>
-              ) : materials.error ? (
-                <div className="card-b">
-                  <ErrorBlock error={materials.error} onRetry={() => void materials.refetch()} />
-                </div>
-              ) : materialRows.length === 0 ? (
-                <div className="card-b">
-                  <EmptyState
-                    icon={Boxes}
-                    title="没有素材实体"
-                    description="从下方表单补录资质、业绩、人员等六类实体；有引用的实体才可佐证（verifiable）。"
-                  />
-                </div>
-              ) : (
-                <div className="tbl-wrap">
-                  <table className="tbl dense">
-                    <thead>
-                      <tr>
-                        <th>类型</th>
-                        <th>名称</th>
-                        <th className="num">字段</th>
-                        <th>可佐证</th>
-                        <th>创建时间</th>
-                        <th />
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {materialRows.map((item) => (
-                        <tr key={item.id}>
-                          <td>{entityLabel(item)}</td>
-                          <td>{item.name}</td>
-                          <td className="num mono">
-                            {Object.keys(item.fields ?? {}).length}
-                          </td>
-                          <td>
-                            <Badge tone={item.verifiable ? "ok" : "gray"} dot>
-                              {item.verifiable ? "有引用" : "无引用"}
-                            </Badge>
-                          </td>
-                          <td>{formatDate(item.created_at)}</td>
-                          <td>
-                            <button
-                              type="button"
-                              className="btn btn-sm"
-                              aria-label={`删除 ${item.name}`}
-                              disabled={deleteMaterial.isPending}
-                              onClick={() => void onDelete(item)}
-                            >
-                              <Trash2 size={13} aria-hidden="true" />
-                            </button>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              )}
-              <div className="card-b">
-                <div className="bw-inline-facts">
-                  <Select
-                    value={newType}
-                    onValueChange={setNewType}
-                  >
-                    <SelectTrigger
-                      size="sm"
-                      className="bw-select-trigger"
-                      aria-label="素材类型"
-                    >
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent
-                      className="bw-select-menu"
-                      position="popper"
-                      align="start"
-                      sideOffset={4}
-                    >
-                      {Object.entries(MATERIAL_ENTITY_LABELS).map(([type, label]) => (
-                        <SelectItem key={type} value={type}>
-                          {label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <input
-                    className="inp"
-                    value={newName}
-                    placeholder="素材名称，如 ISO9001 质量管理体系认证"
-                    onChange={(event) => setNewName(event.target.value)}
-                    onKeyDown={(event) => {
-                      if (event.key === "Enter") void onCreate();
-                    }}
-                  />
-                  <button
-                    type="button"
-                    className="btn pri btn-sm"
-                    disabled={createMaterial.isPending}
-                    onClick={() => void onCreate()}
-                  >
-                    <Plus size={13} aria-hidden="true" />
-                    添加素材
-                  </button>
-                </div>
-              </div>
-            </div>
+          <div className="bw-mt">
 
             <div className="card">
               <div className="card-h">
