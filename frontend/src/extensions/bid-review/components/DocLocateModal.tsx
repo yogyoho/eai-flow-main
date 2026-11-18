@@ -15,19 +15,61 @@ import { useEffect, useState } from "react";
 import {
   type BidDocContent,
   type LocateTarget,
-  ApiError,
   docAssetUrl,
   fetchDocContent,
 } from "@/extensions/bid-review/api";
 import { cn } from "@/lib/utils";
 
+/** 段内命中区段:空白折叠口径与后端定位一致(逐字比对);返回原文偏移 [start,end)
+ * 供 <mark> 切分(用户反馈 2026-11-18:整段泛黄不够一目了然,要精确到句)。
+ * quoteKey=两侧均已 replace(/\s+/g,"") 的摘录;无命中返回 null(段级 hit 但
+ * 逐字没对上时如实不高亮,不硬造)。 */
+export function locateHitRange(
+  text: string,
+  quoteKey: string,
+): [number, number] | null {
+  if (!quoteKey) return null;
+  let collapsed = "";
+  const origins: number[] = []; // 折叠串下标 → 原文下标
+  for (let i = 0; i < text.length; i++) {
+    if (/\s/.test(text.charAt(i))) continue;
+    collapsed += text.charAt(i);
+    origins.push(i);
+  }
+  const start = collapsed.indexOf(quoteKey);
+  if (start < 0) return null;
+  const from = origins[start];
+  const to = origins[start + quoteKey.length - 1];
+  if (from === undefined || to === undefined) return null;
+  return [from, to + 1];
+}
+
+/** 命中段正文渲染:命中区段 <mark> 强调,其余原样(无命中整段纯文本)。 */
+function SegmentText({ text, quoteKey }: { text: string; quoteKey: string }) {
+  const range = locateHitRange(text, quoteKey);
+  if (!range) return <p className="loc-seg-tx">{text}</p>;
+  const [s, e] = range;
+  return (
+    <p className="loc-seg-tx">
+      {text.slice(0, s)}
+      <mark className="loc-hit">{text.slice(s, e)}</mark>
+      {text.slice(e)}
+    </p>
+  );
+}
+
 /** 原文取数 + 正文渲染(加载/未命中/错误/命中段高亮);modal 与复核工作台共用。 */
 export function DocLocateBody({
   taskId,
   target,
+  fetchContent = fetchDocContent,
+  assetUrl = docAssetUrl,
 }: {
   taskId: string;
   target: LocateTarget;
+  /** 数据源注入点:bid-write 溯源按钮传同口径 write 端点(fetcher 单实现律)。 */
+  fetchContent?: typeof fetchDocContent;
+  assetUrl?: typeof docAssetUrl;
 }) {
   const [state, setState] = useState<
     | { s: "loading" }
@@ -39,7 +81,7 @@ export function DocLocateBody({
   useEffect(() => {
     let alive = true;
     setState({ s: "loading" });
-    fetchDocContent(taskId, target.docId, {
+    fetchContent(taskId, target.docId, {
       quote: target.page == null && target.quote ? target.quote : undefined,
       page: target.page ?? undefined,
     })
@@ -48,7 +90,10 @@ export function DocLocateBody({
       })
       .catch((e: unknown) => {
         if (!alive) return;
-        if (e instanceof ApiError && e.status === 404) setState({ s: "miss" });
+        // 404 判定走鸭子类型(注入的 fetcher 可能抛别的 ApiError 类——bid-write
+        // 镜像端点即如此),不锁单一错误类;404 一律落诚实 miss 面。
+        const status = (e as { status?: unknown } | null)?.status;
+        if (status === 404) setState({ s: "miss" });
         else
           setState({
             s: "err",
@@ -58,7 +103,7 @@ export function DocLocateBody({
     return () => {
       alive = false;
     };
-  }, [taskId, target]);
+  }, [taskId, target, fetchContent]);
 
   // 命中高亮:空白折叠后子串匹配(与后端定位口径一致)
   const quoteKey = target.quote ? target.quote.replace(/\s+/g, "") : "";
@@ -90,7 +135,7 @@ export function DocLocateBody({
       <p className="loc-meta">
         {state.data.doc.doc_id} · {state.data.doc.kind} ·{" "}
         {state.data.page != null ? `第 ${state.data.page} 页` : "片段窗口"}
-        {quoteKey ? "(高亮为引用命中)" : ""}
+        {quoteKey ? "(黄色高亮为命中摘录)" : ""}
       </p>
       {state.data.segments.map((sg) => {
         const hit =
@@ -109,11 +154,11 @@ export function DocLocateBody({
                     : "正文"}
               </span>
             </div>
-            <p className="loc-seg-tx">{sg.text}</p>
+            <SegmentText text={sg.text} quoteKey={quoteKey} />
             {sg.asset_id ? (
               <img
                 className="loc-img"
-                src={docAssetUrl(taskId, target.docId, sg.asset_id)}
+                src={assetUrl(taskId, target.docId, sg.asset_id)}
                 alt={`原文图片 ${sg.asset_id}`}
                 loading="lazy"
               />
