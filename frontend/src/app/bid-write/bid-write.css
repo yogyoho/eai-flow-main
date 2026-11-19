@@ -1683,6 +1683,12 @@
 }
 .bwx .bw-side {
   min-width: 0;
+  /* 用户反馈 2026-11-19:页面下滚时右侧素材缺口区与文档结构栏一致钉住 */
+  position: sticky;
+  top: 0;
+  align-self: start;
+  max-height: calc(100vh - 16px);
+  overflow-y: auto;
 }
 .bwx .bw-side-list {
   list-style: none;
@@ -1967,6 +1973,10 @@
     position: static;
   }
   .bwx .bw-outline .card-b {
+    max-height: none;
+  }
+  .bwx .bw-side {
+    position: static;
     max-height: none;
   }
   .bwx .metric-strip {
