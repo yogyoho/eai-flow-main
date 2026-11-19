@@ -3346,3 +3346,6 @@ CALIBRATION 批次裁决表是历史快照,新规则的行插进旧批次表必�
 
 ### Do-Not-Repeat (批卅一 追加)
 - (2026-11-18) bug-4404:`cat >> 相对路径` 在 cwd 漂移时静默写错位置(命令成功≠写对文件)——heredoc/重定向一律用仓库锚定绝对路径;写入后必须核文件落点;提交前 `git status` 核对模块目录的检查要连同**新增残留**一起看(bug-4402 同根,二次发生)
+
+### Do-Not-Repeat (UI 修复批)
+- (2026-11-19) 并发会话频繁脏化 bid-write css:提交流程必须是「add → **先看 diff --cached --stat** → commit」,不许 add 后直接 commit(本日两笔均超行数才察觉,靠软回退+HEAD 基线 patch 拆分补救);同文件拆分法=show HEAD:file 为基线→构造 my-only 版→git diff --no-index→改 a/b 路径→git apply --cached

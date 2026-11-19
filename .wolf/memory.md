@@ -31120,3 +31120,11 @@
 | 20:52 | Session end: 65 writes across 26 files (helpers.ts, IntakeView.tsx, WorkbenchView.tsx, MaterialsView.tsx, ExportView.tsx) | 7 reads | ~36707 tok |
 | 20:57 | Created frontend/src/extensions/bid-write/components/LibraryView.tsx | — | ~2068 |
 | 22:10 | 批卅二素材库独立页落地(5 提交):T1 导航/路由/权限清除+T2 LibraryView 迁出(②瘦身)+T3 缺口跳转(gapLibraryType 映射)+T4 /bid-materials 连根删(前端6+后端7+gateway+seed+测试;database.py 外科移除不stage)+T5 实机9/9(旧路由404);坑:rstest缓存/未跟踪残留复活(cwd 漂移+checkout 拉回) | LibraryView.tsx 等 | 全绿+flake | ~90k |
+| 23:41 | Created C:/Users/admin/.claude/projects/D--eai-eai-flow-main/memory/bid-write-p1-beta32-materials-library-landed.md | — | ~346 |
+| 23:42 | Session end: 67 writes across 28 files (helpers.ts, IntakeView.tsx, WorkbenchView.tsx, MaterialsView.tsx, ExportView.tsx) | 9 reads | ~49707 tok |
+| 00:01 | Session end: 67 writes across 28 files (helpers.ts, IntakeView.tsx, WorkbenchView.tsx, MaterialsView.tsx, ExportView.tsx) | 9 reads | ~49707 tok |
+| 12:19 | Session end: 67 writes across 28 files (helpers.ts, IntakeView.tsx, WorkbenchView.tsx, MaterialsView.tsx, ExportView.tsx) | 9 reads | ~49707 tok |
+| 13:00 | Session end: 67 writes across 28 files (helpers.ts, IntakeView.tsx, WorkbenchView.tsx, MaterialsView.tsx, ExportView.tsx) | 10 reads | ~49707 tok |
+| 13:20 | Session end: 67 writes across 28 files (helpers.ts, IntakeView.tsx, WorkbenchView.tsx, MaterialsView.tsx, ExportView.tsx) | 10 reads | ~49707 tok |
+| 19:34 | Session end: 67 writes across 28 files (helpers.ts, IntakeView.tsx, WorkbenchView.tsx, MaterialsView.tsx, ExportView.tsx) | 10 reads | ~49707 tok |
+| 09:20 | 两笔 UI 修复:工作台文档结构栏纵向滚动+右侧素材缺口区 sticky 钉住(bid-write.css 各一提交;均遇并发会话同文件 WIP 扫入——软回退+HEAD 基线 patch 只入本 hunks 拆出);实机验证可滚/钉住(top 445 恒定) | bid-write.css | 实机2/2 | ~25k |
