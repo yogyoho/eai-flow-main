@@ -185,6 +185,15 @@ export function WorkbenchView() {
 
   // 批廿七 M1——违规即时提示(3s 自动消退);Timer 跨次复用,卸载清算
   const [violation, setViolation] = useState<string | null>(null);
+  // 批卅三 T3:首次引导条(localStorage 记忆已读;SSR 安全——惰性初始化在客户端)
+  const [guideShown, setGuideShown] = useState<boolean>(false);
+  useEffect(() => {
+    try {
+      setGuideShown(localStorage.getItem("bw_workbench_guide_read") === "1");
+    } catch {
+      setGuideShown(false);
+    }
+  }, []);
   const violationTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   useEffect(
     () => () => {
@@ -383,6 +392,32 @@ export function WorkbenchView() {
         />
       ) : (
         <>
+          {guideShown ? null : (
+            <div className="banner info">
+              <Info size={15} aria-hidden="true" />
+              <span>
+                <b>快速上手：</b>各节正文点选后直接输入；响应表/清单表把光标点进
+                单元格后用工具条「＋行/－行」增删行；蓝框锁定模板不可改写，插槽值
+                （采购编号/报价/大写金额）在③生成配置补齐后重新生成；黄色下划线=
+                断言提示，右侧看素材缺口与预审查明细。
+              </span>
+              <button
+                type="button"
+                className="btn btn-sm"
+                onClick={() => {
+                  try {
+                    localStorage.setItem("bw_workbench_guide_read", "1");
+                  } catch {
+                    /* 隐私模式等场景静默降级:本次会话仍显示 */
+                  }
+                  setGuideShown(true);
+                }}
+              >
+                知道了
+              </button>
+            </div>
+          )}
+
           {summary.blocked > 0 ? (
             <div className="banner bad">
               <AlertTriangle size={15} aria-hidden="true" />
