@@ -1440,6 +1440,9 @@
 }
 .bwx .bw-outline .card-b {
   padding: 6px;
+  /* 用户反馈 2026-11-19:章节多时溢出视口且 sticky 裁底——视口高约束+纵向滚动 */
+  max-height: calc(100vh - 120px);
+  overflow-y: auto;
 }
 .bwx .outline-item {
   display: flex;
@@ -1962,6 +1965,9 @@
   }
   .bwx .bw-outline {
     position: static;
+  }
+  .bwx .bw-outline .card-b {
+    max-height: none;
   }
   .bwx .metric-strip {
     grid-auto-flow: row;
