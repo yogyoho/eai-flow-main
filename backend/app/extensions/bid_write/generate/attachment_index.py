@@ -47,6 +47,15 @@ def build_attachment_index(attachment_requirements: list | None, volume_specs: l
     for r in attachment_requirements or []:
         name = str(r.get("name") or "").strip()
         no = str(r.get("no") or "").strip()
+        if not no:
+            # 批卅三兜底(SK-AI-001 expr「编号规则生成」):来源编号缺失时按序
+            # 自编号,避开已占用编号(来源提供的附件N/去重;V 分册号不冲突)。
+            k = len(items) + 1
+            no = f"附件{k}"
+            used = {str(i.get("no") or "").strip() for i in items}
+            while no in used:
+                k += 1
+                no = f"附件{k}"
         hit, nearest = _match_entity(name, entities)
         page = est.get(no) if isinstance(est.get(no), int) else len(items) + 1
         if hit is not None:

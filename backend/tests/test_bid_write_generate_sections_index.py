@@ -82,3 +82,20 @@ def test_no_entities_all_pending():
 
 def test_deterministic():
     assert _build() == _build()
+
+
+def test_empty_no_self_numbered_no_collision():
+    """批卅三:来源编号缺失(SK-AI-001「14 行编号为空」事故根因)→ 规则生成
+    附件N,避开来源已占用编号;全空时按序。"""
+    reqs = [
+        {"no": "", "name": "投标函", "clause": "格式一", "mandatory": "★", "min_count": 1},
+        {"no": "附件3", "name": "营业执照", "clause": "格式二", "mandatory": "★", "min_count": 1},
+        {"no": "", "name": "安全标志证书", "clause": "格式三", "mandatory": "必需", "min_count": 1},
+    ]
+    idx = build_attachment_index(reqs, [], {"entities": {}}, _SECS)
+    nos = [i["no"] for i in idx["items"][:3]]
+    assert nos == ["附件1", "附件3", "附件4"], nos  # 空→自编避让占用号(位置序+冲突跳过)
+    assert len(set(nos)) == len(nos)
+    assert all(nos), "不允许空编号出口(SK-AI-001 门禁)"
+    ref = idx["body_text"]
+    assert "附件1" in ref and "详见" in ref  # 正文引用面不再残缺
