@@ -2142,6 +2142,14 @@
   border-bottom: 1px dashed var(--hairline);
   padding-bottom: 6px;
 }
+/* 用户反馈 2026-11-19:目录行只见「第 — 页」不见标题——toc_entry 原子节点
+   标题仅在 data-title 属性,补 ::before 呈现标题文本 */
+.bwx .bwe-toc::before {
+  content: attr(data-title);
+  color: var(--text);
+  font-weight: 500;
+  margin-right: 6px;
+}
 .bwx .bwe-toc::after {
   content: " · 第 " attr(data-page) " 页";
   color: var(--text-3);
