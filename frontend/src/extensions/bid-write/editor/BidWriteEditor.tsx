@@ -3,7 +3,7 @@
 "use client";
 
 import { redo as redoCmd, undo as undoCmd } from "prosemirror-history";
-import { type Transaction } from "prosemirror-state";
+import { type EditorState, type Transaction } from "prosemirror-state";
 import { EditorView } from "prosemirror-view";
 import {
   forwardRef,
@@ -40,6 +40,8 @@ export interface BidWriteEditorHandle {
   serializeNow(): AstJsonNode | null;
   /** 滚动到正文目录项;key="all" 回顶部。找不到返回 false。 */
   scrollToSection(key: string): boolean;
+  /** 批卅三 T1:执行表格行操作(加行/删行等 tableOps 事务);不可用返回 false。 */
+  execTableOp(op: (state: EditorState) => Transaction | null): boolean;
 }
 
 /** 断言执行器(批三十:云端文档走后端真执行器;演示文档走本地演示执行器)。
@@ -208,6 +210,14 @@ export const BidWriteEditor = forwardRef<
         flashTimerRef.current = setTimeout(() => {
           dom.classList.remove("bwe-flash");
         }, 900);
+        return true;
+      },
+      execTableOp(op: (state: EditorState) => Transaction | null) {
+        const view = viewRef.current;
+        if (!view) return false;
+        const tr = op(view.state);
+        if (!tr) return false;
+        view.dispatch(tr);
         return true;
       },
     }),

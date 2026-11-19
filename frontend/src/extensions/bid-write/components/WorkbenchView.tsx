@@ -47,6 +47,7 @@ import {
   AST_SCHEMA_VERSION,
   type AstJsonNode,
 } from "@/extensions/bid-write/editor/schema.gen";
+import { addRowInSelection, deleteRowInSelection } from "@/extensions/bid-write/editor/tableOps";
 import {
   formatDate,
   formatPercent,
@@ -526,6 +527,29 @@ export function WorkbenchView() {
                   onClick={() => editorRef.current?.redo()}
                 >
                   <Redo2 size={14} aria-hidden="true" />
+                </button>
+                <span className="sep" />
+                <button
+                  type="button"
+                  disabled={approvalLocked}
+                  title="表格加行（光标点在响应表/清单表内；价格表不支持）"
+                  onClick={() => {
+                    const ok = editorRef.current?.execTableOp(addRowInSelection) ?? false;
+                    if (!ok) setViolation("表格加行不可用：请先把光标点进响应表/清单表的单元格内（价格表属报价面，不支持加行）");
+                  }}
+                >
+                  ＋行
+                </button>
+                <button
+                  type="button"
+                  disabled={approvalLocked}
+                  title="表格删行（删除光标所在行；价格表不支持，表格至少保留一行）"
+                  onClick={() => {
+                    const ok = editorRef.current?.execTableOp(deleteRowInSelection) ?? false;
+                    if (!ok) setViolation("表格删行不可用：光标需在响应表/清单表的行内，且表格至少保留一行（价格表不支持）");
+                  }}
+                >
+                  －行
                 </button>
                 <span className="sep" />
                 <button

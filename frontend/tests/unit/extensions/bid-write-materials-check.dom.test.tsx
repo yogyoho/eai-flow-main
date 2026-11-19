@@ -1,8 +1,9 @@
 // 批卅二 T3:②素材核对页瘦身断言——实体库区块移除、缺口关键词映射(经 helpers 纯函数面)。
-import { describe, expect, it } from "@rstest/core";
+import { describe, expect, it, rs } from "@rstest/core";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render, screen } from "@testing-library/react";
 
+import { MaterialsView } from "@/extensions/bid-write/components/MaterialsView";
 import { gapLibraryType } from "@/extensions/bid-write/helpers";
 
 rs.mock("next/navigation", () => ({
@@ -10,8 +11,6 @@ rs.mock("next/navigation", () => ({
   usePathname: () => "/bid-write/materials",
   useSearchParams: () => new URLSearchParams("task_id=t1"),
 }));
-
-import { MaterialsView } from "@/extensions/bid-write/components/MaterialsView";
 
 describe("②素材核对页 瘦身(批卅二)", () => {
   it("实体库区块不再渲染(素材实体库标题不存在)", () => {
