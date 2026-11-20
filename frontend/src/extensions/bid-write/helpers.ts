@@ -4,6 +4,8 @@
  * 词表与后端 contracts.py / models.py 对齐；未知值原样展示，不猜测含义。
  */
 
+import { PROJECTS_COPY } from "./copy";
+
 import type {
   GenerateKnobs,
   GapItem,
@@ -363,4 +365,31 @@ export function assembleGenerateKnobs(
   const priceNote = draft.priceNote.trim();
   if (priceNote) knobs.price_note = priceNote;
   return knobs;
+}
+
+/**
+ * 断言 message 中文化（P0-14）：`E-XXX-MISSING: tender.xxx [tail]` →
+ * 「缺少『词表名』（tail）」。字段名复用 SOURCE_PATH_LABELS 词表；
+ * 非内部码格式原样返回，不猜测含义。
+ */
+export function assertionMessageLabel(message: string): string {
+  const match = /^(E-[A-Z-]+):\s*(tender\.[a-z_]+)(?:\s+(.*))?$/.exec(
+    message.trim(),
+  );
+  if (!match) return message;
+  const field = SOURCE_PATH_LABELS[match[2] ?? ""] ?? match[2] ?? "";
+  const tail = match[3] ? `（${match[3]}）` : "";
+  return `缺少「${field}」${tail}`;
+}
+
+/**
+ * 乱码标题兜底（P0-26）：GBK 字节被按 Latin 误读时产生高密度
+ * 拉丁扩展字符（如 ù¾¼Æ·ÃÉèÏîÄ¿）。正常中英标题里这类字符占比极低；
+ * 超过 30% 判定为编码异常，显示兜底文案，不展示乱码。
+ */
+export function safeProjectTitle(title: string): string {
+  if (title.includes("\uFFFD")) return PROJECTS_COPY.untitledProject;
+  if (title.length === 0) return title;
+  const garbled = title.match(/[\u00c0-\u00ff\u0100-\u024f]/g)?.length ?? 0;
+  return garbled / title.length > 0.3 ? PROJECTS_COPY.untitledProject : title;
 }
