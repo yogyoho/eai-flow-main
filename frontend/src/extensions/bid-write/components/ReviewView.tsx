@@ -24,8 +24,10 @@ import {
   Overlay,
   PageHead,
 } from "@/extensions/bid-write/components/primitives";
+import { REVIEW_COPY } from "@/extensions/bid-write/copy";
 import {
   ASSERTION_STATUS_LABELS,
+  assertionMessageLabel,
   assertionWatermark,
   downloadCsv,
   formatDate,
@@ -42,6 +44,10 @@ import type {
 } from "@/extensions/bid-write/types";
 
 type Filter = "all" | "FAIL" | "ERROR" | "SKIPPED";
+
+const ASSERTION_ACTION_LABELS: Record<string, string> = {
+  no_signal: "无需处理",
+};
 
 type TableRow =
   | { kind: "pending"; item: AssertionPendingItem }
@@ -67,6 +73,19 @@ function rowMessage(row: TableRow): string {
 
 function rowLevel(row: TableRow): string {
   return row.kind === "skipped" ? row.item.level : "—";
+}
+
+function rowAction(row: TableRow): string {
+  if (row.kind === "pending") {
+    const action = row.item.human_action;
+    if (!action) return "—";
+    return ASSERTION_ACTION_LABELS[action] ?? action;
+  }
+  return row.item.skipped_reason ?? "可解释跳过";
+}
+
+function rowMessageLabel(row: TableRow): string {
+  return assertionMessageLabel(rowMessage(row));
 }
 
 export function ReviewView() {
@@ -140,7 +159,7 @@ export function ReviewView() {
               type="button"
               className="btn btn-sm soft"
               onClick={() =>
-                toast.info("断言重跑接口尚未接入；当前只读最近一次执行结果")
+                toast.info(REVIEW_COPY.snapshotBadge)
               }
             >
               <PlayCircle size={13} aria-hidden="true" />
@@ -191,9 +210,9 @@ export function ReviewView() {
               </h3>
               <p>
                 {watermark === "blocked"
-                  ? "最近一次执行存在 blocks_export 级失败/错误。先处理待补清单并重跑，再尝试导出。"
+                  ? REVIEW_COPY.blockedHint
                   : watermark === "clean"
-                    ? "最近一次执行没有导出门禁级失败。导出仍需在导出页确认清单与正式版本。"
+                    ? REVIEW_COPY.snapshotBadge
                     : "生成与断言执行器接入后，完成一次预审查才会给出导出判定。"}
               </p>
             </div>
@@ -247,8 +266,7 @@ export function ReviewView() {
               <AlertTriangle size={15} aria-hidden="true" />
               <span>
                 <b>门禁裁决来自后端：</b>
-                当前接口只返回最近一次执行的 pending / skipped 摘要与 blocked
-                标记，不提供全部 43 条 PASS 明细。 未展示的通过项不代表未执行。
+                未展示的通过项不代表未执行。
               </span>
             </div>
           ) : null}
@@ -367,16 +385,12 @@ export function ReviewView() {
                         <td>
                           <span
                             className="excerpt ellipsis"
-                            title={rowMessage(row)}
+                            title={rowMessageLabel(row)}
                           >
-                            {rowMessage(row)}
+                            {rowMessageLabel(row)}
                           </span>
                         </td>
-                        <td>
-                          {row.kind === "pending"
-                            ? (row.item.human_action ?? "—")
-                            : (row.item.skipped_reason ?? "可解释跳过")}
-                        </td>
+                        <td>{rowAction(row)}</td>
                       </tr>
                     ))}
                   </tbody>
@@ -387,8 +401,7 @@ export function ReviewView() {
               <div className="banner info">
                 <Info size={15} aria-hidden="true" />
                 <span>
-                  仅展示后端最近一次执行返回的待补/跳过/门禁摘要；全部 43
-                  条断言表需要后续开放只读结果端点。
+                  {REVIEW_COPY.bottomNote}
                 </span>
               </div>
             </div>
