@@ -2063,13 +2063,6 @@
   font-size: 13px;
   color: var(--text-2);
 }
-.bwx .bwe-locked::before {
-  content: "锁定模板 " attr(data-template-id);
-  display: block;
-  font-size: 11px;
-  color: var(--text-3);
-  margin-bottom: 4px;
-}
 .bwx .bwe-table {
   border-collapse: collapse;
   width: 100%;
