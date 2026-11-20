@@ -26,6 +26,7 @@ import {
   projectTitle,
   type GenerateKnobsDraft,
 } from "@/extensions/bid-write/helpers";
+import { GENERATE_COPY } from "@/extensions/bid-write/copy";
 import {
   useGenerateTask,
   useSelectedWriteTask,
@@ -111,8 +112,8 @@ export function GenerateView() {
         title="③ 生成配置与执行"
         subtitle={
           task
-            ? `${projectTitle(task)} · 旋钮合并 meta.knobs（body 缺席键不覆盖）`
-            : "单价在输入侧录入，结果侧由后端确定性重算"
+            ? `${projectTitle(task)} · ${GENERATE_COPY.subtitle}`
+            : GENERATE_COPY.subtitleNoTask
         }
         actions={
           <Badge tone={ready ? "ok" : "gray"}>
@@ -154,16 +155,13 @@ export function GenerateView() {
       <div className="card bw-mt">
         <div className="card-h">
           <h3>报价输入 · 单价表</h3>
-          <span className="r">
-            <Badge tone="gray">来源 tender.boq_items · 键=清单项 id</Badge>
-          </span>
         </div>
         {items.length === 0 ? (
           <div className="card-b">
             <EmptyState
               icon={FileSpreadsheet}
-              title="招标文件未抽取到工程量清单"
-              description="tender.boq_items 为空时不显示可编辑行，也不伪造清单项；空 unit_prices 不参与旋钮合并。"
+              title={GENERATE_COPY.boqEmptyTitle}
+              description={GENERATE_COPY.boqEmptyHint}
             />
           </div>
         ) : (
@@ -220,9 +218,9 @@ export function GenerateView() {
 
       <div className="card bw-mt">
         <div className="card-h">
-          <h3>生成旋钮</h3>
+          <h3>{GENERATE_COPY.paramsTitle}</h3>
           <span className="r">
-            <Badge tone="gray">空值键整体缺席 · 不造默认值</Badge>
+            <Badge tone="gray">{GENERATE_COPY.paramsBadge}</Badge>
           </span>
         </div>
         <div className="card-b">
@@ -294,7 +292,7 @@ export function GenerateView() {
               <PlayCircle size={14} aria-hidden="true" />
               {generate.isPending ? "生成中…" : "开始生成"}
             </button>
-            <span className="bw-muted">装配旋钮 → 生成四件 → D0 断言 → L4 语义审查（advisory-only）</span>
+            <span className="bw-muted">{GENERATE_COPY.runHint}</span>
           </div>
           {generate.error ? (
             <ErrorBlock error={generate.error} />
