@@ -30,6 +30,7 @@ import {
   LoadingBlock,
   PageHead,
 } from "@/extensions/bid-write/components/primitives";
+import { WORKBENCH_COPY } from "@/extensions/bid-write/copy";
 import {
   type AssertRunner,
   type BidWriteEditorFlags,
@@ -51,6 +52,7 @@ import { addRowInSelection, deleteRowInSelection } from "@/extensions/bid-write/
 import {
   formatDate,
   formatPercent,
+  matrixClauseLabel,
   matrixStatusLabel,
   matrixStatusTone,
   matrixStrategyLabel,
@@ -65,6 +67,16 @@ import {
 } from "@/extensions/bid-write/hooks";
 import { writeTaskHref } from "@/extensions/bid-write/nav";
 import type { MatrixRowOut } from "@/extensions/bid-write/types";
+
+export function workbenchSubtitle(projectName: string | null): string {
+  return projectName
+    ? `${projectName} · ${WORKBENCH_COPY.subtitle}`
+    : WORKBENCH_COPY.subtitle;
+}
+
+export function fillItemLabel(label: string): string {
+  return label.trim() === "" ? WORKBENCH_COPY.unnamedPlaceholder : label;
+}
 
 // EAI-CUSTOM 批廿六 M0——PM 编辑器仅客户端挂载(prosemirror-view 不进 SSR 包)
 const BidWriteEditor = dynamic(
@@ -340,11 +352,7 @@ export function WorkbenchView() {
       <PageHead
         icon={BookOpen}
         title="④ 写作工作台"
-        subtitle={
-          task
-            ? `${projectTitle(task)} · 矩阵/缺口/预审查/埋点实读；正文编辑器 M6（审批修订+真执行器+负偏离展开+粘贴清洗）`
-            : "矩阵/缺口/预审查/埋点实读；正文编辑器 M6（审批修订+真执行器+负偏离展开+粘贴清洗）"
-        }
+        subtitle={workbenchSubtitle(task ? projectTitle(task) : null)}
         actions={
           <>
             <Link
@@ -396,10 +404,7 @@ export function WorkbenchView() {
             <div className="banner info">
               <Info size={15} aria-hidden="true" />
               <span>
-                <b>快速上手：</b>各节正文点选后直接输入；响应表/清单表把光标点进
-                单元格后用工具条「＋行/－行」增删行；蓝框锁定模板不可改写，插槽值
-                （采购编号/报价/大写金额）在③生成配置补齐后重新生成；黄色下划线=
-                断言提示，右侧看素材缺口与预审查明细。
+                {WORKBENCH_COPY.quickGuide}
               </span>
               <button
                 type="button"
@@ -426,19 +431,7 @@ export function WorkbenchView() {
                 生成前必须回到解析确认清零阻断，否则断言与导出门禁会拦截。
               </span>
             </div>
-          ) : (
-            <div className="banner info">
-              <Info size={15} aria-hidden="true" />
-              <span>
-                正文编辑器 M6
-                已接入：审批修订冻结/会签或签/批准锁定、编辑/撤销、AST
-                云端存储、负偏离展开面
-                （自愈维护）、富文本粘贴清洗（外部标签/样式不落
-                AST）与后端真执行器 （43 条断言按锚点回写）可用；演示文档
-                使用本地演示执行器，校验不可用时显示「校验未完成」。
-              </span>
-            </div>
-          )}
+          ) : null}
 
           <FormatProfileCard taskId={taskId} />
 
@@ -500,8 +493,10 @@ export function WorkbenchView() {
                       最近生成 <b>{formatDate(metrics.data?.run_at ?? null)}</b>
                     </span>
                     <Badge tone={m.d0_count === 0 ? "ok" : "warn"}>
-                      D0 {m.d0_count} · 通过率{" "}
-                      {formatPercent(m.assertion_pass_rate)}
+                      {WORKBENCH_COPY.coverage(
+                        m.d0_count,
+                        formatPercent(m.assertion_pass_rate),
+                      )}
                     </Badge>
                   </>
                 ) : (
@@ -651,20 +646,6 @@ export function WorkbenchView() {
                       : "投标正文编辑器（演示文档）"
                   }
                 />
-                <p className="bw-muted bw-mt-sm">
-                  M6：审批修订已接入——提交时冻结
-                  AST/hash/断言快照，审批只审冻结修订；
-                  批准后正文锁定，驳回后可继续编辑并重新提交。M5：富文本粘贴清洗已接入——Word/网页内容只保留可见文本，外部标签、
-                  样式、脚本与隐藏内容不进入
-                  AST；锁定段/金额/来源列/枚举的粘贴仍被 M1
-                  约束拦截。M4：负偏离展开面已接入——响应策略选「负偏离」自动展开偏离说明
-                  （偏离原因+替代方案），未闭环 D0、孤儿展开面 D1（SK-RT-005，与
-                  后端同口径）；M1 锁定段/金额/来源列只读、下拉、缺件占位禁删、
-                  M2 断言联动与 AST
-                  存储均生效；云端文档的断言由后端真执行器产出，
-                  演示文档使用本地演示执行器；SKIPPED 只提示不算通过，校验未完成
-                  时导出判定以预审查为准。
-                </p>
 
                 <div className="bw-doc-sub">
                   <b>响应矩阵底稿</b>
@@ -741,7 +722,9 @@ export function WorkbenchView() {
                     <ul className="bw-side-list">
                       {noMaterial.slice(0, 8).map((item) => (
                         <li key={item.clause_id}>
-                          <span className="mono">{item.clause_id}</span>
+                          <span className="mono">
+                            {matrixClauseLabel(item.clause_id)}
+                          </span>
                           <span title={item.requirement}>
                             {item.requirement}
                           </span>
@@ -849,8 +832,11 @@ export function WorkbenchView() {
                   .map((s) => `${s.code}:${s.reason ?? ""}`)
                   .join(";")}
               >
-                校验 D0 {assertSummary.d0} · D1 {assertSummary.d1} · D2{" "}
-                {assertSummary.d2}
+                {WORKBENCH_COPY.submitChecks(
+                  assertSummary.d0,
+                  assertSummary.d1,
+                  assertSummary.d2,
+                )}
                 {assertSummary.skipped.length > 0
                   ? ` · 因 ${assertSummary.skipped.map((s) => s.code).join("/")} 跳过 ${assertSummary.skipped.reduce((a, b) => a + b.count, 0)}(不算通过)`
                   : ""}
