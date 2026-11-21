@@ -39,6 +39,8 @@ import {
   putPolicy,
   submitTaskApproval,
 } from "./api";
+import { gatesFromData } from "./helpers";
+import type { DeliveryGate } from "./helpers";
 import type {
   ApprovalActionInput,
   ApprovalSubmitInput,
@@ -123,6 +125,46 @@ export function useBidWriteGaps(taskId: string | null) {
     queryFn: () => getGaps(taskId!),
     enabled: Boolean(taskId),
   });
+}
+
+export interface DeliveryGates {
+  gates: Array<DeliveryGate>;
+  blocked: boolean;
+}
+
+/** 统一交付门禁：同一份数据口径供预审查与导出两页共用。 */
+export function useDeliveryGates(taskId: string | null): DeliveryGates {
+  const task = useBidWriteTask(taskId);
+  const gaps = useBidWriteGaps(taskId);
+  const approval = useTaskApproval(taskId);
+
+  return useMemo(() => {
+    const matrixBlocked =
+      task.isLoading
+        ? null
+        : (task.data?.engine_meta.matrix_counts?.blocked ?? null);
+    const assertionsBlocked = gaps.isLoading
+      ? null
+      : (gaps.data?.assertions?.blocked ?? null);
+    const noMaterialCount = gaps.isLoading
+      ? null
+      : gaps.data
+        ? gaps.data.items.filter(
+            (item) => item.material_state === "无对应素材",
+          ).length
+        : null;
+    const revisionApproved = approval.isLoading
+      ? null
+      : (approval.data?.revision?.status === "approved" || null);
+
+    const gates = gatesFromData({
+      matrixBlocked,
+      assertionsBlocked,
+      noMaterialCount,
+      revisionApproved,
+    });
+    return { gates, blocked: gates.some((gate) => gate.state === "fail") };
+  }, [approval.data, approval.isLoading, gaps.data, gaps.isLoading, task.data, task.isLoading]);
 }
 
 export function useBidWriteFormatProfile(taskId: string | null) {

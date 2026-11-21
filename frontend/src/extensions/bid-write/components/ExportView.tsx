@@ -19,7 +19,7 @@ import {
   XCircle,
 } from "lucide-react";
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { toast } from "sonner";
 
 import { DeliveryPackageCard } from "@/extensions/bid-write/components/DeliveryPackageCard";
@@ -36,6 +36,7 @@ import { EXPORT_COPY } from "@/extensions/bid-write/copy";
 import { formatPercent, projectTitle } from "@/extensions/bid-write/helpers";
 import {
   useBidWriteGaps,
+  useDeliveryGates,
   useExportPrecheck,
   useExportRevision,
   useSelectedWriteTask,
@@ -43,59 +44,7 @@ import {
   useTaskExports,
 } from "@/extensions/bid-write/hooks";
 import { WRITE_PAGE_PATHS, writeTaskHref } from "@/extensions/bid-write/nav";
-import type {
-  ExportDownload,
-  ExportGateResponse,
-} from "@/extensions/bid-write/types";
-
-interface GateItem {
-  id: string;
-  label: string;
-  detail: string;
-  state: "pass" | "fail" | "unknown";
-}
-
-function precheckGateItems(
-  precheck: ExportGateResponse,
-  approved: boolean,
-): GateItem[] {
-  const items: GateItem[] = [
-    {
-      id: "d0",
-      label: "D0 断言零失败",
-      detail:
-        precheck.assertion_counts.D0 === undefined
-          ? "无 D0 断言计数"
-          : `D0 计数 ${precheck.assertion_counts.D0}`,
-      state: precheck.blocked ? "fail" : "pass",
-    },
-  ];
-  for (const reason of precheck.reasons) {
-    items.push({
-      id: `reason:${reason}`,
-      label: "阻断原因",
-      detail: reason,
-      state: "fail",
-    });
-  }
-  for (const fatal of precheck.l1_fatal_fail) {
-    items.push({
-      id: `fatal:${fatal}`,
-      label: "L1 fatal 规则命中",
-      detail: fatal,
-      state: "fail",
-    });
-  }
-  items.push({
-    id: "document",
-    label: "正式正文文件导出",
-    detail: approved
-      ? "正文审批通过后可生成 DOCX 交付包；导出时会再次执行交付检查"
-      : "需正文审批通过后才能生成交付包",
-    state: approved ? "pass" : "unknown",
-  });
-  return items;
-}
+import type { ExportDownload } from "@/extensions/bid-write/types";
 
 function triggerBlobDownload(blob: Blob, filename: string): void {
   const url = URL.createObjectURL(blob);
@@ -110,6 +59,7 @@ function triggerBlobDownload(blob: Blob, filename: string): void {
 export function ExportView() {
   const { taskId, task, isLoading } = useSelectedWriteTask();
   const gaps = useBidWriteGaps(taskId);
+  const delivery = useDeliveryGates(taskId);
   const precheck = useExportPrecheck(taskId);
   const approval = useTaskApproval(taskId);
   const exportHistory = useTaskExports(taskId);
@@ -128,58 +78,7 @@ export function ExportView() {
       }
     : null;
 
-  const items = gaps.data?.items ?? [];
-  const assertions = gaps.data?.assertions ?? null;
-  const matrixBlocked = items.filter((item) => item.status === "blocked").length;
-  const noMaterial = items.filter((item) => item.material_state === "无对应素材").length;
-
-  const gate = useMemo<GateItem[]>(() => {
-    if (precheck.data) return precheckGateItems(precheck.data, approved);
-    const assertionState: GateItem["state"] = assertions
-      ? assertions.blocked
-        ? "fail"
-        : "pass"
-      : "unknown";
-    return [
-      {
-        id: "matrix",
-        label: "矩阵记录已全部核对",
-        detail:
-          matrixBlocked > 0
-            ? `仍有 ${matrixBlocked} 条记录待人工核对`
-            : "响应矩阵无阻断行",
-        state: matrixBlocked > 0 ? "fail" : "pass",
-      },
-      {
-        id: "assertions",
-        label: "预审查断言（点击「导出前置校验」获得门禁判定）",
-        detail: assertions
-          ? assertions.blocked
-            ? `最近一次执行判定阻断，待补 ${assertions.pending.length} 条`
-            : "最近一次执行未触发导出门禁"
-          : "尚未执行断言，无法给出导出判定",
-        state: assertionState,
-      },
-      {
-        id: "materials",
-        label: "素材缺口已处理",
-        detail:
-          noMaterial > 0
-            ? `${noMaterial} 条要求仍无对应素材`
-            : "没有无对应素材的要求",
-        state: noMaterial > 0 ? "fail" : "pass",
-      },
-      {
-        id: "document",
-        label: "正式正文文件导出",
-        detail: approved
-          ? "正文审批通过后可生成 DOCX 交付包；导出时会再次执行交付检查"
-          : "需正文审批通过后才能生成交付包",
-        state: approved ? "pass" : "unknown",
-      },
-    ];
-  }, [approved, assertions, matrixBlocked, noMaterial, precheck.data]);
-
+  const gate = delivery.gates;
   const failed = gate.filter((item) => item.state === "fail").length;
   const unknown = gate.filter((item) => item.state === "unknown").length;
   const ready = task?.status === "matrix_ready";
@@ -253,37 +152,33 @@ export function ExportView() {
       ) : (
         <>
           <div
-            className={`verdict ${precheck.data ? (precheck.data.blocked ? "blocked" : "clean") : failed > 0 ? "blocked" : "unrun"}`}
+            className={`verdict ${failed > 0 ? "blocked" : unknown > 0 ? "unrun" : "clean"}`}
           >
             <span className="verdict-ic">
-              {precheck.data ? (
-                precheck.data.blocked ? (
-                  <XCircle size={24} aria-hidden="true" />
-                ) : (
-                  <ShieldCheck size={24} aria-hidden="true" />
-                )
-              ) : failed > 0 ? (
+              {failed > 0 ? (
                 <XCircle size={24} aria-hidden="true" />
-              ) : (
+              ) : unknown > 0 ? (
                 <ShieldAlert size={24} aria-hidden="true" />
+              ) : (
+                <ShieldCheck size={24} aria-hidden="true" />
               )}
             </span>
             <div className="verdict-txt">
               <h3>
-                {precheck.data
-                  ? precheck.data.blocked
-                    ? "门禁判定：阻断"
-                    : "门禁判定：通过"
-                  : failed > 0
-                    ? "导出门禁未通过（矩阵/素材面）"
-                    : "门禁信息不完整"}
+                {failed > 0
+                  ? "交付门禁未通过"
+                  : unknown > 0
+                    ? "交付门禁待确认"
+                    : "交付门禁通过"}
               </h3>
               <p>
-                {precheck.data
-                  ? precheck.data.blocked
-                    ? precheck.data.reasons.join("；") || "存在未通过断言"
-                    : "D0 断言与 L1 fatal 均无阻断；L4 仅 advisory 不参与判定。"
-                  : "点「导出前置校验」获得后端确定性门禁判定；导出页不会绕过门禁。"}
+                {failed > 0
+                  ? precheck.data?.blocked
+                    ? precheck.data.reasons.join("；") || "存在未通过的交付门禁项"
+                    : "存在未通过的交付门禁项。"
+                  : unknown > 0
+                    ? "等待矩阵、预审查、素材或正文审批数据补齐。"
+                    : "矩阵、预审查、素材与正文审批均无未通过项。"}
               </p>
             </div>
             <div className="verdict-meta">
@@ -397,21 +292,21 @@ export function ExportView() {
                 <h3>导出门禁</h3>
                 <span className="r">
                   <Badge
-                    tone={failed > 0 ? "bad" : precheck.data ? "ok" : "warn"}
+                    tone={failed > 0 ? "bad" : unknown > 0 ? "warn" : "ok"}
                     dot
                   >
                     {failed > 0
                       ? `${failed} 项未通过`
-                      : precheck.data
-                        ? "判定通过"
-                        : "待前置校验"}
+                      : unknown > 0
+                        ? `${unknown} 项待确认`
+                        : "判定通过"}
                   </Badge>
                 </span>
               </div>
               <div className="card-b">
                 <ul className="gate-list">
                   {gate.map((item) => (
-                    <li key={item.id} className={item.state}>
+                    <li key={item.key} className={item.state}>
                       <span className="gate-ic">
                         {item.state === "pass" ? (
                           <CheckCircle2 size={16} aria-hidden="true" />
@@ -425,7 +320,7 @@ export function ExportView() {
                         <b>{item.label}</b>
                         <p>{item.detail}</p>
                       </div>
-                      {item.id === "matrix" && matrixBlocked > 0 ? (
+                      {item.key === "matrix" && item.state === "fail" ? (
                         <Link
                           href={
                             taskId ? writeTaskHref("intake", taskId) : "/bid-write/intake"
@@ -435,7 +330,7 @@ export function ExportView() {
                           去确认
                         </Link>
                       ) : null}
-                      {item.id === "materials" && noMaterial > 0 ? (
+                      {item.key === "materials" && item.state === "fail" ? (
                         <Link
                           href={
                             taskId
@@ -447,7 +342,7 @@ export function ExportView() {
                           去资质素材库补录
                         </Link>
                       ) : null}
-                      {item.id === "assertions" ? (
+                      {item.key === "assertions" ? (
                         <Link
                           href={
                             taskId ? writeTaskHref("review", taskId) : "/bid-write/review"

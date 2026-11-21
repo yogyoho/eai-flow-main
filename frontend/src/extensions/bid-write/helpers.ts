@@ -393,3 +393,85 @@ export function safeProjectTitle(title: string): string {
   const garbled = title.match(/[\u00c0-\u00ff\u0100-\u024f]/g)?.length ?? 0;
   return garbled / title.length > 0.3 ? PROJECTS_COPY.untitledProject : title;
 }
+
+
+export interface DeliveryGatesInput {
+  matrixBlocked: number | null;
+  assertionsBlocked: boolean | null;
+  noMaterialCount: number | null;
+  revisionApproved: boolean | null;
+}
+
+export interface DeliveryGate {
+  key: "matrix" | "assertions" | "materials" | "revision";
+  label: string;
+  state: "pass" | "fail" | "unknown";
+  detail: string;
+}
+
+/** 交付门禁四卡清单：数据缺失显示未知，不用 null 冒充通过或失败。 */
+export function gatesFromData(
+  input: DeliveryGatesInput,
+): Array<DeliveryGate> {
+  return [
+    {
+      key: "matrix",
+      label: "矩阵记录已全部核对",
+      state: input.matrixBlocked == null ? "unknown" : input.matrixBlocked > 0 ? "fail" : "pass",
+      detail:
+        input.matrixBlocked == null
+          ? "暂无数据"
+          : input.matrixBlocked > 0
+            ? `${input.matrixBlocked} 行待人工核对`
+            : "响应矩阵无阻断行",
+    },
+    {
+      key: "assertions",
+      label: "预审查检查通过",
+      state:
+        input.assertionsBlocked == null
+          ? "unknown"
+          : input.assertionsBlocked
+            ? "fail"
+            : "pass",
+      detail:
+        input.assertionsBlocked == null
+          ? "暂无数据"
+          : input.assertionsBlocked
+            ? "存在阻止导出的检查失败"
+            : "检查通过",
+    },
+    {
+      key: "materials",
+      label: "素材缺口已处理",
+      state:
+        input.noMaterialCount == null
+          ? "unknown"
+          : input.noMaterialCount > 0
+            ? "fail"
+            : "pass",
+      detail:
+        input.noMaterialCount == null
+          ? "暂无数据"
+          : input.noMaterialCount > 0
+            ? `${input.noMaterialCount} 条要求无对应素材`
+            : "素材全部有佐证",
+    },
+    {
+      key: "revision",
+      label: "正式正文文件审批",
+      state:
+        input.revisionApproved == null
+          ? "unknown"
+          : input.revisionApproved
+            ? "pass"
+            : "fail",
+      detail:
+        input.revisionApproved == null
+          ? "暂无数据"
+          : input.revisionApproved
+            ? "正文已批准"
+            : "正文待审批",
+    },
+  ];
+}

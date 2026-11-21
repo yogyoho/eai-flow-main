@@ -5,6 +5,7 @@ import { cleanup, render, screen } from "@testing-library/react";
 import { ExportView } from "@/extensions/bid-write/components/ExportView";
 import { LibraryView } from "@/extensions/bid-write/components/LibraryView";
 import { EXPORT_COPY, LIBRARY_COPY } from "@/extensions/bid-write/copy";
+import { gatesFromData } from "@/extensions/bid-write/helpers";
 
 rs.mock("@/extensions/bid-write/hooks", () => ({
   useBidWriteGaps: () => ({
@@ -26,6 +27,15 @@ rs.mock("@/extensions/bid-write/hooks", () => ({
     error: null,
     isLoading: false,
     refetch: async () => undefined,
+  }),
+  useDeliveryGates: () => ({
+    gates: gatesFromData({
+      matrixBlocked: null,
+      assertionsBlocked: null,
+      noMaterialCount: 1,
+      revisionApproved: false,
+    }),
+    blocked: true,
   }),
   useExportPrecheck: () => ({
     data: null,
@@ -133,9 +143,10 @@ it("导出页副标题、交付说明与修订状态为业务词", () => {
     screen.getByText(`测试项目 · ${EXPORT_COPY.subtitle}`),
   ).toBeTruthy();
   expect(screen.getByText(/修订 1 · 已提交审批/)).toBeTruthy();
+  expect(screen.getByText("正文待审批")).toBeTruthy();
   expect(
-    screen.getAllByText("需正文审批通过后才能生成交付包").length,
-  ).toBeGreaterThan(0);
+    screen.getByText(/需正文审批通过后才能生成交付包。/),
+  ).toBeTruthy();
   expect(screen.queryByText(/前置校验只读重算，零落库/)).toBeNull();
   expect(screen.queryByText(/已批准修订可生成 DOCX 分册交付包/)).toBeNull();
 });

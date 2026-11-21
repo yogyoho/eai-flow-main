@@ -2,11 +2,11 @@
 
 import {
   AlertTriangle,
+  CheckCircle2,
   CheckCheck,
   ClipboardList,
   Download,
   Info,
-  ShieldCheck,
   XCircle,
 } from "lucide-react";
 import Link from "next/link";
@@ -34,6 +34,7 @@ import {
 } from "@/extensions/bid-write/helpers";
 import {
   useBidWriteGaps,
+  useDeliveryGates,
   useSelectedWriteTask,
 } from "@/extensions/bid-write/hooks";
 import { writeTaskHref } from "@/extensions/bid-write/nav";
@@ -47,6 +48,12 @@ type Filter = "all" | "FAIL" | "ERROR" | "SKIPPED";
 const ASSERTION_ACTION_LABELS: Record<string, string> = {
   no_signal: "无需处理",
 };
+
+const DELIVERY_STATE_BADGES = {
+  pass: { tone: "ok", label: "通过" },
+  fail: { tone: "bad", label: "未通过" },
+  unknown: { tone: "gray", label: "未知" },
+} as const;
 
 type TableRow =
   | { kind: "pending"; item: AssertionPendingItem }
@@ -91,6 +98,7 @@ function rowMessageLabel(row: TableRow): string {
 export function ReviewView() {
   const { taskId, task, isLoading } = useSelectedWriteTask();
   const gaps = useBidWriteGaps(taskId);
+  const delivery = useDeliveryGates(taskId);
   const [filter, setFilter] = useState<Filter>("all");
   const [selected, setSelected] = useState<TableRow | null>(null);
 
@@ -179,44 +187,48 @@ export function ReviewView() {
         <ErrorBlock error={gaps.error} onRetry={() => void gaps.refetch()} />
       ) : (
         <>
-          <div
-            className={`verdict ${watermark === "blocked" ? "blocked" : watermark === "clean" ? "clean" : "unrun"}`}
-          >
-            <span className="verdict-ic">
-              {watermark === "blocked" ? (
-                <XCircle size={24} aria-hidden="true" />
-              ) : watermark === "clean" ? (
-                <ShieldCheck size={24} aria-hidden="true" />
-              ) : (
-                <Info size={24} aria-hidden="true" />
-              )}
-            </span>
-            <div className="verdict-txt">
-              <h3>
-                {watermark === "blocked"
-                  ? "导出阻断"
-                  : watermark === "clean"
-                    ? "断言门禁通过，可进入导出"
-                    : "尚未执行断言"}
-              </h3>
-              <p>
-                {watermark === "blocked"
-                  ? REVIEW_COPY.blockedHint
-                  : watermark === "clean"
-                    ? REVIEW_COPY.snapshotBadge
-                    : "生成与断言执行器接入后，完成一次预审查才会给出导出判定。"}
-              </p>
+          <div className="card bw-mt">
+            <div className="card-h">
+              <h3>交付门禁清单</h3>
+              <span className="r">
+                <Badge tone={delivery.blocked ? "bad" : "ok"} dot>
+                  {delivery.blocked ? "存在未通过项" : "无未通过项"}
+                </Badge>
+                {assertions ? (
+                  <>
+                    <span>执行于</span>
+                    <b>{formatDate(assertions.run_at)}</b>
+                    <span className="mono">{assertions.schema_version}</span>
+                  </>
+                ) : (
+                  <Badge tone="gray">未执行</Badge>
+                )}
+              </span>
             </div>
-            <div className="verdict-meta">
-              {assertions ? (
-                <>
-                  <span>执行于</span>
-                  <b>{formatDate(assertions.run_at)}</b>
-                  <span className="mono">{assertions.schema_version}</span>
-                </>
-              ) : (
-                <Badge tone="gray">未执行</Badge>
-              )}
+            <div className="card-b">
+              <ul className="gate-list">
+                {delivery.gates.map((gate) => {
+                  const badge = DELIVERY_STATE_BADGES[gate.state];
+                  return (
+                    <li key={gate.key} className={gate.state}>
+                      <span className="gate-ic">
+                        {gate.state === "pass" ? (
+                          <CheckCircle2 size={16} aria-hidden="true" />
+                        ) : gate.state === "fail" ? (
+                          <XCircle size={16} aria-hidden="true" />
+                        ) : (
+                          <Info size={16} aria-hidden="true" />
+                        )}
+                      </span>
+                      <div>
+                        <b>{gate.label}</b>
+                        <p>{gate.detail}</p>
+                      </div>
+                      <Badge tone={badge.tone}>{badge.label}</Badge>
+                    </li>
+                  );
+                })}
+              </ul>
             </div>
           </div>
 

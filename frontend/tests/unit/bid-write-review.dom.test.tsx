@@ -4,6 +4,7 @@ import { cleanup, render, screen } from "@testing-library/react";
 
 import { ReviewView } from "@/extensions/bid-write/components/ReviewView";
 import { REVIEW_COPY } from "@/extensions/bid-write/copy";
+import { gatesFromData } from "@/extensions/bid-write/helpers";
 
 rs.mock("@/extensions/bid-write/hooks", () => ({
   useBidWriteGaps: () => ({
@@ -11,6 +12,15 @@ rs.mock("@/extensions/bid-write/hooks", () => ({
     error: null,
     isLoading: false,
     refetch: async () => undefined,
+  }),
+  useDeliveryGates: () => ({
+    gates: gatesFromData({
+      matrixBlocked: null,
+      assertionsBlocked: null,
+      noMaterialCount: null,
+      revisionApproved: null,
+    }),
+    blocked: false,
   }),
   useSelectedWriteTask: () => ({
     taskId: "t1",
