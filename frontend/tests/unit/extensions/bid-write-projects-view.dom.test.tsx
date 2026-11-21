@@ -102,7 +102,7 @@ describe("bid-write ProjectsView", () => {
     ]);
   });
 
-  it("流程说明按钮打开对话框并展示七阶段流程，知道了关闭", async () => {
+  it("流程说明按钮打开对话框并展示六步流程，知道了关闭", async () => {
     renderView();
     await screen.findByText("数据中心一期");
 
@@ -111,16 +111,17 @@ describe("bid-write ProjectsView", () => {
     const dialog = await screen.findByRole("dialog", { name: "流程说明" });
     expect(dialog.getAttribute("aria-modal")).toBe("true");
     for (const stage of [
-      "① 治理面准备（跨任务）",
-      "② 解析确认（建任务 → 响应矩阵）",
-      "③ 素材匹配与缺口清单",
-      "④ 生成配置与执行",
-      "⑤ 正文编辑（工作台）",
-      "⑥ 审批修订与导出交付",
+      "治理区（跨任务可用）",
+      "① 解析确认",
+      "② 素材核对",
+      "③ 生成配置",
+      "④ 写作工作台",
+      "⑤ 预审查",
+      "⑥ 导出适配",
     ]) {
       expect(screen.getByText(stage)).toBeTruthy();
     }
-    expect(screen.getByText(/created → parsing → extracting/)).toBeTruthy();
+    expect(screen.getByText(/投标商务写作分六步/)).toBeTruthy();
 
     fireEvent.click(screen.getByRole("button", { name: "知道了" }));
     expect(screen.queryByRole("dialog", { name: "流程说明" })).toBeNull();
