@@ -13,10 +13,6 @@ import {
   useExtractBidWriteFormatProfile,
 } from "@/extensions/bid-write/hooks";
 
-function shortHash(value: string | undefined): string {
-  return value ? value.slice(0, 10) : "";
-}
-
 function Stat({ label, value }: { label: string; value: number | undefined }) {
   return (
     <div className="bw-format-stat">
@@ -49,7 +45,7 @@ export function FormatProfileCard({ taskId }: { taskId: string | null }) {
         </span>
         <span className="r">
           {profile?.profile_hash ? (
-            <Badge tone="gray">SHA {shortHash(profile.profile_hash)}</Badge>
+            <Badge tone="gray">格式档案已提取</Badge>
           ) : null}
           <button
             type="button"

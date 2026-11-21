@@ -165,7 +165,7 @@ export function RegistryView() {
             <MetricCell label="必须通过（阻断导出）" value={d0} tone="err" />
             <MetricCell label="技能域" value={skills.length} />
             <MetricCell
-              label="schema"
+              label="规则集版本"
               value={query.data?.schema_version ?? "—"}
             />
           </MetricStrip>

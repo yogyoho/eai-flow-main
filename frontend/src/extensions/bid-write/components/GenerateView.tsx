@@ -153,7 +153,10 @@ export function GenerateView() {
           value={priced.length ? `¥${money(total)}` : "—"}
           tone="ok"
         />
-        <MetricCell label="D0 断言" value={verdict?.assertion_counts?.D0 ?? "—"} />
+        <MetricCell
+          label="必须通过项"
+          value={verdict?.assertion_counts?.D0 ?? "—"}
+        />
       </MetricStrip>
 
       {!task ? (
@@ -353,7 +356,7 @@ export function GenerateView() {
                 <Info size={15} aria-hidden="true" />
                 <span>
                   {verdict?.watermark == null
-                    ? "门禁通过，D0 零失败，L4 审查通过（风险水印已摘除）。"
+                    ? "门禁通过，检查零失败，审查通过（风险水印已摘除）。"
                     : `门禁通过但带风险水印：${verdict.watermark}`}
                 </span>
               </div>
@@ -375,7 +378,10 @@ export function GenerateView() {
                 label="断言通过率"
                 value={formatPercent(verdict?.metrics?.assertion_pass_rate ?? null)}
               />
-              <MetricCell label="D0" value={verdict?.assertion_counts?.D0 ?? "—"} />
+              <MetricCell
+                label="必须通过项"
+                value={verdict?.assertion_counts?.D0 ?? "—"}
+              />
               <MetricCell label="D1" value={verdict?.assertion_counts?.D1 ?? "—"} />
               <MetricCell
                 label="人工编辑占比"

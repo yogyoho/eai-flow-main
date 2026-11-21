@@ -325,7 +325,7 @@ export function ExportView() {
               value={precheck.data?.assertion_counts.D0 ?? "—"}
             />
             <MetricCell
-              label="断言通过率"
+              label="检查通过率"
               value={formatPercent(metrics?.assertion_pass_rate ?? null)}
             />
             <MetricCell

@@ -167,9 +167,8 @@ export function ApprovalPanel({
         )}
         {revision ? (
           <span className="bw-approval-meta">
-            修订 #{revision.revision_no} · hash{" "}
-            <span className="mono">{revision.doc_hash.slice(0, 12)}</span>
-            {revision.hash_ok ? null : " · 哈希不匹配"}
+            修订 #{revision.revision_no}
+            {revision.hash_ok ? null : " · 修订内容校验未通过"}
           </span>
         ) : null}
       </div>
@@ -183,8 +182,9 @@ export function ApprovalPanel({
           提交时断言快照：
           {snapshot.status === "ok" ? (
             <>
-              D0 {snapshot.summary?.d0 ?? 0} · D1 {snapshot.summary?.d1 ?? 0} ·
-              D2 {snapshot.summary?.d2 ?? 0}
+              必须通过 {snapshot.summary?.d0 ?? 0} 项 · 建议{" "}
+              {snapshot.summary?.d1 ?? 0} 项 · 提示 {snapshot.summary?.d2 ?? 0}{" "}
+              项
             </>
           ) : (
             "执行器不可用（已如实记录，未伪造通过）"

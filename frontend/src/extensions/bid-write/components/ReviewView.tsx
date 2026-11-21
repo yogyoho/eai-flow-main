@@ -81,7 +81,8 @@ function rowAction(row: TableRow): string {
     if (!action) return "—";
     return ASSERTION_ACTION_LABELS[action] ?? action;
   }
-  return row.item.skipped_reason ?? "可解释跳过";
+  const reason = row.item.skipped_reason ?? "可解释跳过";
+  return ASSERTION_ACTION_LABELS[reason] ?? reason;
 }
 
 function rowMessageLabel(row: TableRow): string {
@@ -257,7 +258,7 @@ export function ReviewView() {
             <MetricCell
               label="汇总口径"
               value="最近执行"
-              suffix="非全量 43 条"
+              suffix="共 43 条规则"
             />
           </MetricStrip>
 
