@@ -58,3 +58,11 @@ it("页头动作移除重跑入口并展示检查快照说明", () => {
   expect(screen.queryByRole("button", { name: /重跑断言/ })).toBeNull();
   expect(screen.getByText(REVIEW_COPY.snapshotBadge)).toBeTruthy();
 });
+
+it("页头首位提供回退到工作台的链接", () => {
+  renderView();
+  const backLink = screen.getByRole("link", { name: "← 上一步" });
+  expect(backLink.getAttribute("href")).toContain(
+    "/bid-write/workbench?task_id=t1",
+  );
+});

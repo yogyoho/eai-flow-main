@@ -30,7 +30,7 @@ import {
   LoadingBlock,
   PageHead,
 } from "@/extensions/bid-write/components/primitives";
-import { WORKBENCH_COPY } from "@/extensions/bid-write/copy";
+import { STEP_BACK, WORKBENCH_COPY } from "@/extensions/bid-write/copy";
 import {
   type AssertRunner,
   type BidWriteEditorFlags,
@@ -366,6 +366,14 @@ export function WorkbenchView() {
         subtitle={workbenchSubtitle(task ? projectTitle(task) : null)}
         actions={
           <>
+            {taskId && STEP_BACK.workbench && (
+              <Link
+                href={writeTaskHref(STEP_BACK.workbench, taskId)}
+                className="btn btn-sm"
+              >
+                ← 上一步
+              </Link>
+            )}
             <Link
               href={
                 taskId ? writeTaskHref("review", taskId) : "/bid-write/review"

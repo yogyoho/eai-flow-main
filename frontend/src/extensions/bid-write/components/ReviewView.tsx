@@ -23,7 +23,7 @@ import {
   Overlay,
   PageHead,
 } from "@/extensions/bid-write/components/primitives";
-import { REVIEW_COPY } from "@/extensions/bid-write/copy";
+import { REVIEW_COPY, STEP_BACK } from "@/extensions/bid-write/copy";
 import {
   ASSERTION_STATUS_LABELS,
   assertionMessageLabel,
@@ -154,6 +154,14 @@ export function ReviewView() {
         }
         actions={
           <>
+            {taskId && STEP_BACK.review && (
+              <Link
+                href={writeTaskHref(STEP_BACK.review, taskId)}
+                className="btn btn-sm"
+              >
+                ← 上一步
+              </Link>
+            )}
             <button
               type="button"
               className="btn btn-sm"

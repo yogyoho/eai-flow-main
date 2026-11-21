@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it } from "@rstest/core";
 
+import { STEP_BACK } from "@/extensions/bid-write/copy";
 import {
   continueHref,
   continueLabel,
@@ -207,5 +208,19 @@ describe("bid-write project continue nav", () => {
       registry: "质量规则中心",
     });
     expect(Object.keys(PAGE_LABELS)).toEqual(Object.keys(WRITE_PAGE_PATHS));
+  });
+});
+
+describe("bid-write page step-back nav", () => {
+  it("maps each main-flow page to its previous page and omits entry pages", () => {
+    expect(STEP_BACK).toEqual({
+      materials: "intake",
+      generate: "materials",
+      workbench: "generate",
+      review: "workbench",
+      export: "review",
+    });
+    expect(Object.hasOwn(STEP_BACK, "projects")).toBe(false);
+    expect(Object.hasOwn(STEP_BACK, "intake")).toBe(false);
   });
 });

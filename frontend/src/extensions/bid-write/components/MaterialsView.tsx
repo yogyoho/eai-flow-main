@@ -29,7 +29,7 @@ import {
   Overlay,
   PageHead,
 } from "@/extensions/bid-write/components/primitives";
-import { MATERIALS_COPY } from "@/extensions/bid-write/copy";
+import { MATERIALS_COPY, STEP_BACK } from "@/extensions/bid-write/copy";
 import {
   formatDate,
   gapLibraryType,
@@ -50,7 +50,7 @@ import {
   useSelectedWriteTask,
 } from "@/extensions/bid-write/hooks";
 import { WRITE_PAGE_PATHS, writeTaskHref } from "@/extensions/bid-write/nav";
-import type { GapItem, MaterialOut, PolicyBody } from "@/extensions/bid-write/types";
+import type { GapItem, PolicyBody } from "@/extensions/bid-write/types";
 
 type Filter = "all" | "star" | "blocked" | "confirmed";
 
@@ -194,17 +194,27 @@ export function MaterialsView() {
         title="② 素材核对与缺口"
         subtitle={MATERIALS_COPY.subtitle}
         actions={
-          taskId ? (
-            <Link href={writeTaskHref("generate", taskId)} className="btn pri btn-sm">
-              进入生成配置
-              <ArrowRight size={13} aria-hidden="true" />
-            </Link>
-          ) : (
-            <button type="button" className="btn pri btn-sm" disabled>
-              进入生成配置
-              <ArrowRight size={13} aria-hidden="true" />
-            </button>
-          )
+          <>
+            {taskId && STEP_BACK.materials && (
+              <Link
+                href={writeTaskHref(STEP_BACK.materials, taskId)}
+                className="btn btn-sm"
+              >
+                ← 上一步
+              </Link>
+            )}
+            {taskId ? (
+              <Link href={writeTaskHref("generate", taskId)} className="btn pri btn-sm">
+                进入生成配置
+                <ArrowRight size={13} aria-hidden="true" />
+              </Link>
+            ) : (
+              <button type="button" className="btn pri btn-sm" disabled>
+                进入生成配置
+                <ArrowRight size={13} aria-hidden="true" />
+              </button>
+            )}
+          </>
         }
       />
 

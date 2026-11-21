@@ -5,6 +5,17 @@
  * 与后端枚举相关的展示值词表仍在 helpers.ts，本文件只放页面级长文案与行为说明。
  */
 
+import type { WritePage } from "./nav";
+
+/** 主流程上一页；projects/intake 是入口页，不设回退键。 */
+export const STEP_BACK: Partial<Record<WritePage, WritePage>> = {
+  materials: "intake",
+  generate: "materials",
+  workbench: "generate",
+  review: "workbench",
+  export: "review",
+};
+
 export const GENERATE_COPY = {
   subtitle: "录入质保、报价等商务参数，据此生成投标正文",
   subtitleNoTask: "先录入关键商务参数，系统据此生成并校验正文",

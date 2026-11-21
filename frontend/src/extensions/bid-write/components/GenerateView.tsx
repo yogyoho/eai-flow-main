@@ -9,6 +9,7 @@
  */
 
 import { Bolt, FileSpreadsheet, Info, PlayCircle, RefreshCw } from "lucide-react";
+import Link from "next/link";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
 
@@ -20,7 +21,7 @@ import {
   MetricStrip,
   PageHead,
 } from "@/extensions/bid-write/components/primitives";
-import { GENERATE_COPY } from "@/extensions/bid-write/copy";
+import { GENERATE_COPY, STEP_BACK } from "@/extensions/bid-write/copy";
 import {
   assembleGenerateKnobs,
   formatPercent,
@@ -31,6 +32,7 @@ import {
   useGenerateTask,
   useSelectedWriteTask,
 } from "@/extensions/bid-write/hooks";
+import { writeTaskHref } from "@/extensions/bid-write/nav";
 import type { BoqItem, WriteTaskOut } from "@/extensions/bid-write/types";
 
 function boqItemsOf(task: WriteTaskOut | null): BoqItem[] {
@@ -134,9 +136,19 @@ export function GenerateView() {
             : GENERATE_COPY.subtitleNoTask
         }
         actions={
-          <Badge tone={ready ? "ok" : "gray"}>
-            {ready ? "矩阵就绪" : (task ? "矩阵未就绪" : "未选任务")}
-          </Badge>
+          <>
+            {taskId && STEP_BACK.generate && (
+              <Link
+                href={writeTaskHref(STEP_BACK.generate, taskId)}
+                className="btn btn-sm"
+              >
+                ← 上一步
+              </Link>
+            )}
+            <Badge tone={ready ? "ok" : "gray"}>
+              {ready ? "矩阵就绪" : (task ? "矩阵未就绪" : "未选任务")}
+            </Badge>
+          </>
         }
       />
 
