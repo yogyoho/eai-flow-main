@@ -8,7 +8,7 @@
  * 结果面=门禁 verdict(阻断原因/水印/L4 advisory)+metrics;文件导出服务未建,不做假下载。
  */
 
-import { Bolt, FileSpreadsheet, Info, PlayCircle } from "lucide-react";
+import { Bolt, FileSpreadsheet, Info, PlayCircle, RefreshCw } from "lucide-react";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
 
@@ -20,13 +20,13 @@ import {
   MetricStrip,
   PageHead,
 } from "@/extensions/bid-write/components/primitives";
+import { GENERATE_COPY } from "@/extensions/bid-write/copy";
 import {
   assembleGenerateKnobs,
   formatPercent,
   projectTitle,
   type GenerateKnobsDraft,
 } from "@/extensions/bid-write/helpers";
-import { GENERATE_COPY } from "@/extensions/bid-write/copy";
 import {
   useGenerateTask,
   useSelectedWriteTask,
@@ -99,6 +99,24 @@ export function GenerateView() {
       toast.success("生成完成，门禁与 L4 审查结果见下方");
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "生成失败");
+    }
+  };
+
+  /** 重建正文:knobs+regenerate_document=true → 后端受控重建(有审批修订 409)。
+   *  确认话术必须明说「覆盖人工修改」——半句警告等于没有警告。 */
+  const onRegenerate = async () => {
+    if (!ready) return;
+    const confirmed = window.confirm(
+      "重建正文将用当前商务参数重新装配整篇正文，覆盖已有的人工修改；已提交审批的修订不可覆盖（后端将拒绝）。确定继续？",
+    );
+    if (!confirmed) return;
+    try {
+      await generate.mutateAsync({
+        knobs: { ...assembleGenerateKnobs(draft), regenerate_document: true },
+      });
+      toast.success("正文已重建；回「④ 写作工作台」查看新正文。");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "重建正文失败");
     }
   };
 
@@ -292,6 +310,16 @@ export function GenerateView() {
               <PlayCircle size={14} aria-hidden="true" />
               {generate.isPending ? "生成中…" : "开始生成"}
             </button>
+            <button
+              type="button"
+              className="btn"
+              disabled={!ready || generate.isPending}
+              title="用当前商务参数重新装配正文；覆盖人工修改，审批中的修订会被后端拒绝"
+              onClick={() => void onRegenerate()}
+            >
+              <RefreshCw size={14} aria-hidden="true" />
+              {generate.isPending ? "生成中…" : "重建正文"}
+            </button>
             <span className="bw-muted">{GENERATE_COPY.runHint}</span>
           </div>
           {generate.error ? (
@@ -334,7 +362,7 @@ export function GenerateView() {
               <div className="banner info bw-mt-sm">
                 <Info size={15} aria-hidden="true" />
                 <span>
-                  <b>L4 语义审查（advisory-only，不计入门禁）：</b>
+                  <b>语义审查（提示级，不计入门禁）：</b>
                   参与卡 {l4.participants.length} 张 ·
                   裁决 {Object.entries(l4.counts).map(([k, v]) => `${k} ${v}`).join(" / ") || "—"} ·
                   输入缺席 {l4.input_missing.length || 0} 项

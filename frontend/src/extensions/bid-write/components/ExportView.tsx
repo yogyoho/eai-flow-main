@@ -309,7 +309,7 @@ export function ExportView() {
           {precheck.data && precheck.data.watermark == null ? (
             <div className="banner ok">
               <CheckCircle2 size={15} aria-hidden="true" />
-              <span>风险水印已摘除：L4 语义审查通过（advisory-only 面不计入阻断）。</span>
+              <span>风险水印已摘除：语义审查通过（提示级，不计入阻断）。</span>
             </div>
           ) : null}
 
@@ -320,7 +320,10 @@ export function ExportView() {
               tone={failed > 0 ? "err" : "ok"}
               accent
             />
-            <MetricCell label="D0 断言" value={precheck.data?.assertion_counts.D0 ?? "—"} />
+            <MetricCell
+              label="必须通过项"
+              value={precheck.data?.assertion_counts.D0 ?? "—"}
+            />
             <MetricCell
               label="断言通过率"
               value={formatPercent(metrics?.assertion_pass_rate ?? null)}
@@ -338,9 +341,9 @@ export function ExportView() {
           {l4 ? (
             <div className="card bw-mt">
               <div className="card-h">
-                <h3>L4 语义审查</h3>
+                <h3>语义审查</h3>
                 <span className="r">
-                  <Badge tone="info">advisory-only · 不计入门禁</Badge>
+                  <Badge tone="info">提示级 · 不计入门禁</Badge>
                   {l4.watermark_removed ? <Badge tone="ok">水印已摘除</Badge> : null}
                 </span>
               </div>
