@@ -29,6 +29,7 @@ import { PROJECTS_COPY } from "@/extensions/bid-write/copy";
 import {
   downloadCsv,
   formatDate,
+  lifecycleLabel,
   projectSubtitle,
   projectTitle,
   safeProjectTitle,
@@ -264,6 +265,7 @@ export function ProjectsView() {
                         <div className="bw-stage-cell">
                           <StageDots
                             status={task.status}
+                            lifecycle={task.lifecycle}
                             stageTitles={STAGE_TITLES}
                           />
                           <span className="bw-subline">{status.label}</span>
@@ -273,6 +275,16 @@ export function ProjectsView() {
                         <Badge tone={verdict.tone} outline>
                           {verdict.label}
                         </Badge>
+                        {task.lifecycle === "reviewing" ? (
+                          <Badge tone="info">
+                            {lifecycleLabel(task.lifecycle)}
+                          </Badge>
+                        ) : null}
+                        {task.lifecycle === "delivered" ? (
+                          <Badge tone="ok">
+                            {lifecycleLabel(task.lifecycle)}
+                          </Badge>
+                        ) : null}
                       </td>
                       <td className="num">
                         {counts

@@ -32,6 +32,17 @@ export const TASK_STATUS_TONES: Record<
   failed: "bad",
 };
 
+
+export const LIFECYCLE_LABELS: Record<string, string> = {
+  active: "进行中",
+  reviewing: "审批中",
+  delivered: "已交付",
+};
+
+export function lifecycleLabel(value: string): string {
+  return LIFECYCLE_LABELS[value] ?? value;
+}
+
 export const MATRIX_STRATEGY_LABELS: Record<string, string> = {
   pending: "待定",
   full: "完全响应",

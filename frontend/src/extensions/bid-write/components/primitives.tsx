@@ -240,13 +240,17 @@ const DEFAULT_STAGE_TITLES = [
 
 export function StageDots({
   status,
+  lifecycle,
   stageTitles = DEFAULT_STAGE_TITLES,
 }: {
   status: string;
+  lifecycle?: string;
   stageTitles?: string[];
 }) {
   const stage =
-    status === "matrix_ready"
+    lifecycle === "delivered"
+      ? 6
+      : status === "matrix_ready"
       ? 6
       : status === "extracting"
         ? 3
@@ -262,7 +266,13 @@ export function StageDots({
           key={index}
           title={stageTitles[index]}
           className={
-            index < stage - 1 ? "done" : index === stage - 1 ? "cur" : undefined
+            lifecycle === "delivered"
+              ? "done"
+              : index < stage - 1
+                ? "done"
+                : index === stage - 1
+                  ? "cur"
+                  : undefined
           }
         />
       ))}

@@ -14,6 +14,7 @@ function task(partial: Partial<WriteTaskOut>): WriteTaskOut {
     id: "t0",
     biz_no: null,
     status: "matrix_ready",
+    lifecycle: "active",
     progress: {},
     error: null,
     project_name: "项目",

@@ -2,6 +2,10 @@ import { afterEach, beforeEach, describe, expect, it } from "@rstest/core";
 
 import { STEP_BACK } from "@/extensions/bid-write/copy";
 import {
+  LIFECYCLE_LABELS,
+  lifecycleLabel,
+} from "@/extensions/bid-write/helpers";
+import {
   continueHref,
   continueLabel,
   effectiveWriteTaskId,
@@ -222,5 +226,21 @@ describe("bid-write page step-back nav", () => {
     });
     expect(Object.hasOwn(STEP_BACK, "projects")).toBe(false);
     expect(Object.hasOwn(STEP_BACK, "intake")).toBe(false);
+  });
+});
+
+describe("bid-write lifecycle labels", () => {
+  it("maps supported lifecycle values to user-facing labels", () => {
+    expect(LIFECYCLE_LABELS).toEqual({
+      active: "进行中",
+      reviewing: "审批中",
+      delivered: "已交付",
+    });
+    expect(lifecycleLabel("reviewing")).toBe("审批中");
+    expect(lifecycleLabel("delivered")).toBe("已交付");
+  });
+
+  it("keeps an unknown lifecycle value visible as-is", () => {
+    expect(lifecycleLabel("future-state")).toBe("future-state");
   });
 });

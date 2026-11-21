@@ -98,6 +98,18 @@ it("StageDots 每个圆点带阶段名 title", () => {
   expect(dots[5]?.getAttribute("title")).toContain("导出适配");
 });
 
+it("StageDots lifecycle delivered 点亮全部六个阶段", () => {
+  const { container } = render(
+    <StageDots status="matrix_ready" lifecycle="delivered" />,
+  );
+  const dots = container.querySelectorAll(".stage-dots i");
+
+  expect(dots.length).toBe(6);
+  for (const dot of dots) {
+    expect(dot.classList.contains("done")).toBe(true);
+  }
+});
+
 it("项目列表乱码名兜底，流程说明使用用户语言", () => {
   renderWithQueryClient(<ProjectsView />);
 

@@ -43,6 +43,7 @@ export interface WriteTaskOut {
   id: string;
   biz_no: string | null;
   status: string;
+  lifecycle: string;
   progress: Record<string, unknown>;
   error: string | null;
   project_name: string | null;
@@ -174,6 +175,9 @@ export interface GenerateKnobs {
   page_estimates?: Record<string, number>;
   total_pages?: number;
   warranty_period?: string;
+  /** 重建正文开关(批卅六可用性修复):true=已有正文时受控重建(覆盖人工修改;
+   *  存在审批修订时后端 409 拒绝)。缺省 false=首次语义不变。 */
+  regenerate_document?: boolean;
 }
 
 export interface L4Issue {
