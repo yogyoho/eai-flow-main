@@ -9,12 +9,13 @@ import {
   Download,
   FileText,
   Info,
+  PencilLine,
   RefreshCw,
   Search,
 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { toast } from "sonner";
 
 import {
@@ -63,11 +64,58 @@ import {
 } from "@/extensions/bid-write/hooks";
 import { writeTaskHref } from "@/extensions/bid-write/nav";
 import type { MatrixRowOut } from "@/extensions/bid-write/types";
+import { cn } from "@/lib/utils";
 
 interface NoteDialogState {
   row: MatrixRowOut;
   note: string;
   mode: "negative" | "confirm";
+}
+
+/** 摘录关键值(原型):数量+单位短语,以及紧跟字段冒号的两位以上裸数值(如 保证金：10000)。 */
+const EXCERPT_KV_RE =
+  /(?:：|:)?\s?(\d[\d,，]*(?:\.\d+)?\s*(?:日历天|工作日|个月|万元|元|天|日|月|年|小时|份|套|项|册|次|%|％))|(?:：|:)\s?(\d{2,}(?:,\d{3})*(?:\.\d+)?)/g;
+
+/** 摘录关键值淡金高亮(原型):命中片段包 mark.kv,其余保持纯文本;不改变文本内容。 */
+function highlightExcerpt(text: string): ReactNode[] {
+  const nodes: ReactNode[] = [];
+  let last = 0;
+  let key = 0;
+  EXCERPT_KV_RE.lastIndex = 0;
+  for (
+    let match = EXCERPT_KV_RE.exec(text);
+    match !== null;
+    match = EXCERPT_KV_RE.exec(text)
+  ) {
+    const value = match[1] ?? match[2];
+    if (!value) break;
+    const start = match.index + match[0].indexOf(value);
+    const end = start + value.length;
+    if (start > last) nodes.push(text.slice(last, start));
+    nodes.push(
+      <mark key={key++} className="kv">
+        {text.slice(start, end)}
+      </mark>,
+    );
+    last = end;
+    EXCERPT_KV_RE.lastIndex = end;
+  }
+  if (last < text.length) nodes.push(text.slice(last));
+  return nodes;
+}
+
+/** 置信三档(原型):<60% 红(低置信,对齐 lowConfidence 口径) / 60–79% 黄 / ≥80% 绿。 */
+function confBand(conf: number | null): "lo" | "mid" | "hi" {
+  if (typeof conf !== "number") return "lo";
+  if (conf >= 0.8) return "hi";
+  if (conf >= 0.6) return "mid";
+  return "lo";
+}
+
+function confBarWidth(conf: number | null): string {
+  if (typeof conf !== "number") return "0%";
+  const clamped = Math.max(0, Math.min(1, conf));
+  return `${Math.round(clamped * 100)}%`;
 }
 
 export function IntakeView() {
@@ -742,7 +790,6 @@ export function IntakeView() {
                       <tr>
                         <th>条款号</th>
                         <th>要求摘录</th>
-                        <th>★</th>
                         <th>状态</th>
                         <th>响应策略</th>
                         <th>置信</th>
@@ -767,8 +814,26 @@ export function IntakeView() {
                           }}
                           tabIndex={0}
                         >
-                          <td className="mono">
-                            {matrixClauseLabel(row.clause_id)}
+                          <td>
+                            {/* 原型样式:编号 + 必答★ 在上,来源 chip 在下。
+                                clause_id 是系统语义标识(att:12→附件 12),
+                                非招标文件原生条款号;悬停可看原始标识。 */}
+                            <div className="bw-clause-id">
+                              <span
+                                className="id"
+                                title={`条款标识：${row.clause_id}`}
+                              >
+                                {matrixClauseLabel(row.clause_id)}
+                                {row.star ? (
+                                  <span className="star" title="必答条款">
+                                    ★
+                                  </span>
+                                ) : null}
+                              </span>
+                              <span className="src-chip">
+                                {sourcePathLabel(row.source_path)}
+                              </span>
+                            </div>
                           </td>
                           <td>
                             <span
@@ -776,7 +841,9 @@ export function IntakeView() {
                               title={matrixRequirementLabel(row.requirement)}
                             >
                               {row.requirement
-                                ? matrixRequirementLabel(row.requirement)
+                                ? highlightExcerpt(
+                                    matrixRequirementLabel(row.requirement),
+                                  )
                                 : "（空要求）"}
                             </span>
                             {row.note ? (
@@ -786,12 +853,20 @@ export function IntakeView() {
                             ) : null}
                           </td>
                           <td>
-                            {row.star ? <span className="star">★</span> : ""}
-                          </td>
-                          <td>
+                            {/* 原型样式:外框徽标 + 图标。草稿=琥珀铅笔;
+                                待核对/已确认走语气映射(警示三角/对勾)。 */}
                             <Badge
-                              tone={matrixStatusTone(row)}
-                              dot
+                              tone={
+                                row.status === "draft"
+                                  ? "warn"
+                                  : matrixStatusTone(row)
+                              }
+                              outline
+                              icon={
+                                row.status === "draft"
+                                  ? PencilLine
+                                  : undefined
+                              }
                               className="bw-nowrap"
                             >
                               {matrixStatusLabel(row.status)}
@@ -814,7 +889,16 @@ export function IntakeView() {
                               >
                                 <SelectTrigger
                                   size="sm"
-                                  className="bw-strategy-select"
+                                  className={cn(
+                                    "bw-strategy-select",
+                                    row.strategy === "negative" &&
+                                      "bw-strategy-neg",
+                                    (row.strategy === "full" ||
+                                      row.strategy === "positive") &&
+                                      "bw-strategy-pos",
+                                    row.strategy === "pending" &&
+                                      "bw-strategy-pending",
+                                  )}
                                   aria-label={`${matrixClauseLabel(row.clause_id)} 响应策略`}
                                 >
                                   <SelectValue />
@@ -841,7 +925,22 @@ export function IntakeView() {
                               </Select>
                             </span>
                           </td>
-                          <td className="num">{formatPercent(row.conf)}</td>
+                          <td className="num">
+                            {/* 原型样式:迷你条 + 三档色阶数值(红/黄/绿)。 */}
+                            <span
+                              className={`bw-conf ${confBand(row.conf)}`}
+                              aria-label={`置信 ${formatPercent(row.conf)}`}
+                            >
+                              <span className="bw-conf-bar" aria-hidden="true">
+                                <i
+                                  style={{ width: confBarWidth(row.conf) }}
+                                />
+                              </span>
+                              <span className="bw-conf-num">
+                                {formatPercent(row.conf)}
+                              </span>
+                            </span>
+                          </td>
                           <td>
                             <button
                               type="button"

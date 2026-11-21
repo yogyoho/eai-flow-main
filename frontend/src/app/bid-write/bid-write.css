@@ -229,6 +229,28 @@
   background: var(--gray-100);
   color: var(--gray-600);
 }
+/* 外框徽标(项目列表「矩阵状态」列,截图样式):描边胶囊 + 语气图标;
+   描边取文字色 32% 透明度,配色随语气与暗色主题自动跟随。 */
+.bwx .badge.bw-badge-outline {
+  height: auto;
+  padding: 3px 9px;
+  font-weight: 600;
+  line-height: 1.3;
+  border: 1px solid color-mix(in srgb, currentColor 32%, transparent);
+}
+.bwx .bw-badge-spin {
+  animation: bw-badge-spin 0.9s linear infinite;
+}
+@keyframes bw-badge-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .bwx .bw-badge-spin {
+    animation: none;
+  }
+}
 
 /* ── 提示条 ── */
 .bwx .banner {
@@ -274,6 +296,89 @@
 .bwx .star {
   color: var(--second-600);
   font-weight: 700;
+}
+/* 条款号单元格(原型):编号 + 必答★ 在上,来源 chip 在下;
+   ★ 独立列已并入,摘录列获得对应宽度。 */
+.bwx .bw-clause-id {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+  min-width: 88px;
+}
+.bwx .bw-clause-id .id {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--text);
+  white-space: nowrap;
+}
+.bwx .bw-clause-id .src-chip {
+  font-size: 10.5px;
+  line-height: 1;
+  color: var(--text-3);
+  background: var(--gray-100);
+  border: 1px solid var(--hairline);
+  border-radius: 5px;
+  padding: 3px 6px;
+  white-space: nowrap;
+}
+/* 摘录关键值(原型):金额/期限等淡金标记,色随令牌适配暗色。 */
+.bwx .excerpt mark.kv {
+  background: var(--warn-50);
+  border-bottom: 1px solid
+    color-mix(in srgb, var(--warn-700) 45%, transparent);
+  border-radius: 3px;
+  padding: 0 3px;
+  font-weight: 600;
+  color: var(--warn-900);
+}
+/* 置信度(原型):迷你条 + 三档色阶数值。
+   <60% 红(lowConfidence 同口径,需重点核对) / 60–79% 黄 / ≥80% 绿。 */
+.bwx .bw-conf {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
+}
+.bwx .bw-conf-bar {
+  width: 46px;
+  height: 6px;
+  border-radius: 999px;
+  background: var(--gray-100);
+  overflow: hidden;
+  flex: none;
+}
+.bwx .bw-conf-bar i {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+}
+.bwx .bw-conf.lo .bw-conf-bar i {
+  background: var(--error-500);
+}
+.bwx .bw-conf.mid .bw-conf-bar i {
+  background: #fadb14;
+}
+.bwx .bw-conf.hi .bw-conf-bar i {
+  background: var(--success-500);
+}
+.bwx .bw-conf-num {
+  font-size: 12px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-2);
+}
+.bwx .bw-conf.lo .bw-conf-num {
+  color: var(--error-700);
+}
+.bwx .bw-conf.mid .bw-conf-num {
+  color: var(--warn-700);
+}
+.bwx .bw-conf.hi .bw-conf-num {
+  color: var(--success-700);
 }
 .bwx .excerpt {
   display: inline-block;
@@ -347,12 +452,27 @@
   align-items: center;
 }
 .bwx .bw-strategy-select {
-  min-width: 104px;
-  max-width: 132px;
+  min-width: 88px;
+  max-width: 112px;
   height: 30px;
-  padding: 0 8px;
+  padding: 0 7px;
   background: var(--card);
   color: var(--text);
+  /* .brx button 的 border:none 压掉了 shadcn 触发器的 border-input,这里显式补回(原型有外框)。 */
+  border: 1px solid var(--hairline);
+  border-radius: 8px;
+  box-shadow: none;
+}
+/* 策略语气字色(原型):负偏离琥珀、完全/正偏离绿、待定弱灰;图标保持中性灰。 */
+.bwx .bw-strategy-select.bw-strategy-neg {
+  color: var(--warn-700);
+  font-weight: 600;
+}
+.bwx .bw-strategy-select.bw-strategy-pos {
+  color: var(--success-700);
+}
+.bwx .bw-strategy-select.bw-strategy-pending {
+  color: var(--text-3);
 }
 .bwx .bw-select-trigger {
   min-width: 116px;
@@ -823,8 +943,9 @@
 .bwx .bw-fx-seg i.ok {
   background: var(--success-500);
 }
+/* 草稿段用亮黄(原型 #fadb14),不用土黄 --warn-700;暗色主题下同样成立。 */
 .bwx .bw-fx-seg i.draft {
-  background: var(--warn-700);
+  background: #fadb14;
 }
 .bwx .bw-fx-seg i.bad {
   background: var(--error-500);
@@ -851,7 +972,7 @@
   background: var(--success-500);
 }
 .bwx .bw-fx-progress-legend i.draft {
-  background: var(--warn-700);
+  background: #fadb14;
 }
 .bwx .bw-fx-progress-legend i.bad {
   background: var(--error-500);
@@ -1486,6 +1607,50 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
+}
+.bwx .outline-item .oi-empty {
+  min-width: 16px;
+  height: 16px;
+  border-radius: 999px;
+  padding: 0 5px;
+  background: var(--gray-100);
+  color: var(--text-3);
+  font-size: 10px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.bwx .bw-fill-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.bwx .bw-fill-item > span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 12px;
+  color: var(--text-2);
+}
+.bwx .bw-fill-propagate {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  flex-direction: row;
+}
+.bwx .bw-fill-propagate input[type="checkbox"] {
+  margin-top: 3px;
+  flex: none;
+}
+.bwx .bw-fill-propagate span {
+  font-size: 12px;
+  color: var(--text-2);
+}
+/* 空章节的可写空白行此前零高度不可发现(9.2/9.3/9.4 类章节 textLength=0,
+   仅剩一个空 para)——给最小可点击高度,配合 Workbench 空章节引导条。 */
+.bwx .bwe-section > .bwe-para:only-child {
+  min-height: 2.4em;
 }
 .bwx .bw-outline-foot {
   display: flex;
@@ -2276,4 +2441,366 @@
 .bw-select-menu [data-slot="select-item"],
 .bw-select-menu [data-slot="select-label"] {
   font-size: 13px;
+}
+
+/* ── 左侧菜单收起/展开(截图样式):边缘圆形箭头按钮,收起后仅留图标列。 ──
+   仅桌面竖排侧栏(>900px)生效;≤900px 侧栏变顶栏,不受影响。
+   按钮挂 .chrome 根节点定位,避开侧栏 overflow 裁剪。 */
+@media (min-width: 901px) {
+  .bwx .chrome {
+    position: relative;
+  }
+  .bwx .chrome-side {
+    transition: width 0.18s ease;
+  }
+  .bwx .bw-side-toggle {
+    position: absolute;
+    top: 64px;
+    left: 216px;
+    transform: translateX(-50%);
+    z-index: 40;
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--gray-0);
+    color: var(--text-3);
+    border: 1px solid var(--hairline);
+    box-shadow: 0 1px 3px rgba(16, 19, 34, 0.12);
+    cursor: pointer;
+    transition:
+      left 0.18s ease,
+      color 0.15s,
+      border-color 0.15s,
+      background 0.15s;
+  }
+  .bwx .bw-side-toggle:hover {
+    color: var(--main-600);
+    border-color: var(--main-300);
+    background: var(--main-50);
+  }
+  .bwx .chrome.bw-side-collapsed .bw-side-toggle {
+    left: 60px;
+  }
+
+  /* 收起态:216px → 60px 图标列;文字用 font-size:0 隐藏(屏幕阅读器仍可读)。 */
+  .bwx .chrome.bw-side-collapsed .chrome-side {
+    width: 60px;
+  }
+  .bwx .chrome.bw-side-collapsed .chrome-brand {
+    padding: 18px 8px 12px;
+  }
+  .bwx .chrome.bw-side-collapsed .brand-row {
+    justify-content: center;
+  }
+  .bwx .chrome.bw-side-collapsed .brand-txt {
+    display: none;
+  }
+  .bwx .chrome.bw-side-collapsed .g-label {
+    display: none;
+  }
+  .bwx .chrome.bw-side-collapsed .chrome-group {
+    padding: 10px 6px 4px;
+  }
+  .bwx .chrome.bw-side-collapsed .nav-item {
+    position: relative;
+    justify-content: center;
+    padding: 7px 0;
+    gap: 0;
+    font-size: 0;
+  }
+  /* 计数徽标退化为角标圆点:阻断(红)/活跃(灰),数字对屏幕阅读器保留。 */
+  .bwx .chrome.bw-side-collapsed .nav-cnt {
+    position: absolute;
+    top: 5px;
+    right: 7px;
+    margin: 0;
+    width: 6px;
+    height: 6px;
+    padding: 0;
+    border-radius: 50%;
+    background: var(--gray-300);
+    font-size: 0;
+    overflow: hidden;
+  }
+  .bwx .chrome.bw-side-collapsed .nav-cnt.warn {
+    background: var(--second-600);
+  }
+  .bwx .chrome.bw-side-collapsed .chrome-foot {
+    padding: 12px 8px;
+  }
+  .bwx .chrome.bw-side-collapsed .chrome-foot button {
+    justify-content: center;
+    padding: 6px 0;
+    gap: 0;
+    font-size: 0;
+  }
+}
+
+/* ── 资质素材库:概览/类型 rail/佐证过滤/编辑抽屉(2026-11-18 重设计)── */
+.bwx .bw-lib-split {
+  grid-template-columns: 216px minmax(0, 1fr);
+}
+.bwx .bw-lib-rail {
+  align-self: start;
+  padding: 10px 8px;
+}
+.bwx .bw-lib-rail-t {
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  color: var(--text-3);
+  padding: 2px 8px 8px;
+}
+.bwx .bw-lib-rail-item {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 7px 9px;
+  border-radius: 8px;
+  color: var(--text-2);
+  font-size: 12.5px;
+  text-align: left;
+}
+.bwx .bw-lib-rail-item:hover {
+  background: var(--gray-50);
+  color: var(--text);
+}
+.bwx .bw-lib-rail-item.on {
+  background: var(--nav-on-bg);
+  box-shadow: inset 2.5px 0 0 var(--main-600);
+  color: var(--main-600);
+  font-weight: 600;
+}
+.bwx .bw-lib-rail-item .cnt {
+  margin-left: auto;
+  font-size: 11px;
+  color: var(--text-3);
+  font-variant-numeric: tabular-nums;
+}
+.bwx .bw-lib-rail-item .dot-badge {
+  position: absolute;
+  right: 7px;
+  bottom: 6px;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--error-500);
+}
+.bwx .bw-lib-mini {
+  display: block;
+  margin: 3px 0 4px 31px;
+  width: 56px;
+  height: 3px;
+  border-radius: 999px;
+  background: var(--gray-100);
+  overflow: hidden;
+}
+.bwx .bw-lib-mini i {
+  display: block;
+  height: 100%;
+  background: var(--success-500);
+}
+.bwx .bw-lib-chips {
+  display: inline-flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.bwx .bw-lib-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  height: 26px;
+  padding: 0 11px;
+  border: 1px solid var(--hairline);
+  border-radius: 999px;
+  background: var(--card);
+  font-size: 12px;
+  color: var(--text-2);
+}
+.bwx .bw-lib-chip .c {
+  font-size: 10.5px;
+  font-weight: 600;
+  color: var(--text-3);
+  font-variant-numeric: tabular-nums;
+}
+.bwx .bw-lib-chip.on {
+  background: var(--brand-50);
+  border-color: var(--main-300);
+  color: var(--main-600);
+}
+.bwx .bw-lib-chip.warn-on {
+  background: var(--warn-50);
+  border-color: var(--warn-700);
+  color: var(--warn-700);
+}
+.bwx .bw-lib-fields {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 5px;
+}
+.bwx .bw-lib-fields .chip {
+  height: auto;
+  padding: 2px 7px;
+  border-radius: 5px;
+  gap: 3px;
+  font-family: var(--mono);
+  font-size: 10.5px;
+  font-weight: 400;
+}
+.bwx .bw-lib-fields .chip b {
+  font-weight: 600;
+  color: var(--text-2);
+}
+.bwx .bw-lib-row-act {
+  display: flex;
+  gap: 6px;
+  white-space: nowrap;
+}
+.bwx .bw-lib-foot-hint {
+  color: var(--text-3);
+  font-size: 11.5px;
+}
+.bwx .bw-lib-drawer {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.bwx .bw-lib-fgroup {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+.bwx .bw-lib-flabel {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-2);
+}
+.bwx .bw-lib-fhint {
+  margin-left: 6px;
+  font-weight: 400;
+  color: var(--text-3);
+}
+.bwx .bw-lib-entity-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 7px;
+}
+.bwx .bw-lib-entity-opt {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 3px;
+  border: 1px solid var(--hairline);
+  border-radius: 9px;
+  padding: 9px 10px;
+  font-size: 12px;
+  color: var(--text-2);
+}
+.bwx .bw-lib-entity-opt small {
+  font-size: 9.5px;
+  color: var(--text-3);
+  font-family: var(--mono);
+}
+.bwx .bw-lib-entity-opt.on {
+  border-color: var(--main-600);
+  background: var(--brand-50);
+  color: var(--main-600);
+}
+.bwx .bw-lib-entity-opt:disabled {
+  cursor: default;
+  opacity: 0.75;
+}
+.bwx .bw-lib-entity-opt.on:disabled {
+  opacity: 1;
+}
+.bwx .bw-lib-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+.bwx .bw-lib-field-row {
+  display: grid;
+  grid-template-columns: minmax(0, 150px) minmax(0, 1fr) 30px;
+  gap: 8px;
+  align-items: center;
+}
+.bwx .bw-lib-field-row.single {
+  grid-template-columns: minmax(0, 1fr) 30px;
+}
+.bwx .bw-lib-row-del {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 7px;
+  color: var(--text-3);
+}
+.bwx .bw-lib-row-del:hover {
+  color: var(--error-700);
+  background: var(--error-50);
+}
+.bwx .bw-lib-add {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--main-600);
+  align-self: flex-start;
+}
+.bwx .bw-lib-add:hover {
+  color: var(--main-800);
+}
+.bwx .bw-lib-inp {
+  height: 30px;
+  font-size: 12.5px;
+}
+.bwx .btn.danger {
+  background: var(--error-700);
+  border-color: var(--error-700);
+  color: var(--gray-0);
+}
+@media (max-width: 900px) {
+  .bwx .bw-lib-split {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+@media (max-width: 620px) {
+  .bwx .bw-lib-entity-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+/* 搜索框(资质素材库,名称/字段键/字段值) */
+.bwx .bw-lib-search {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  height: 30px;
+  padding: 0 10px;
+  border: 1px solid var(--hairline);
+  border-radius: 8px;
+  background: var(--card);
+  color: var(--text-3);
+}
+.bwx .bw-lib-search:focus-within {
+  border-color: var(--main-400);
+}
+.bwx .bw-lib-search input {
+  border: none;
+  outline: none;
+  background: transparent;
+  width: 180px;
+  font-size: 12px;
+  color: var(--text);
+}
+.bwx .bw-lib-search input::placeholder {
+  color: var(--text-3);
 }

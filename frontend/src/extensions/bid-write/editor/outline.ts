@@ -13,6 +13,8 @@ export interface DocSection {
   title: string;
   level: number;
   index: number;
+  /** 章节内正文文本长度(含子章节;0=空章节——写作入口引导的消费面)。 */
+  textLength: number;
 }
 
 function asString(value: unknown): string {
@@ -21,6 +23,19 @@ function asString(value: unknown): string {
 
 function asLevel(value: unknown): number {
   return typeof value === "number" && Number.isFinite(value) ? value : 1;
+}
+
+/** 章节正文文本量:直接 text 节点求和;子 section 另行计数(不双算)。 */
+function directTextLength(node: AstJsonNode | undefined): number {
+  let total = 0;
+  const walk = (current: AstJsonNode | undefined) => {
+    if (!current || typeof current !== "object") return;
+    if (current !== node && current.type === "section") return; // 子章节不计入父级
+    if (current.type === "text") total += current.text?.length ?? 0;
+    for (const child of current.content ?? []) walk(child);
+  };
+  walk(node);
+  return total;
 }
 
 /** section 的稳定键:优先 section_id,缺省按正文顺序编号。 */
@@ -44,6 +59,7 @@ export function astSections(ast: AstJsonNode | null | undefined): DocSection[] {
         title: asString(node.attrs?.title) || `未命名章节 ${index}`,
         level: asLevel(node.attrs?.level),
         index: index - 1,
+        textLength: directTextLength(node),
       });
     }
     for (const child of node.content ?? []) walk(child);

@@ -28,6 +28,7 @@ import {
   EmptyState,
   ErrorBlock,
   LoadingBlock,
+  Overlay,
   PageHead,
 } from "@/extensions/bid-write/components/primitives";
 import { STEP_BACK, WORKBENCH_COPY } from "@/extensions/bid-write/copy";
@@ -44,6 +45,10 @@ import {
 import { demoWorkbenchAst } from "@/extensions/bid-write/editor/demo";
 import { astSections } from "@/extensions/bid-write/editor/outline";
 import { type PasteNotice } from "@/extensions/bid-write/editor/paste";
+import {
+  astPlaceholders,
+  sameVariableInfo,
+} from "@/extensions/bid-write/editor/placeholders";
 import {
   AST_SCHEMA_VERSION,
   type AstJsonNode,
@@ -150,14 +155,25 @@ export function WorkbenchView() {
   });
   const [savedAt, setSavedAt] = useState<string | null>(null);
   const [currentAst, setCurrentAst] = useState<AstJsonNode | null>(null);
-  
+  const [approvalLocked, setApprovalLocked] = useState(false);
+  // 批卅六——占位符填写面:点击正文占位符或待填清单「填写」→ Overlay 对话框
+  // → fillPlaceholder(system 事务)→ 防抖回传 currentAst → 清单自动消账。
+  const [fillDialog, setFillDialog] = useState<{
+    slotId: string;
+    label: string;
+    section: string;
+  } | null>(null);
+  const [fillDraft, setFillDraft] = useState("");
+  // 批卅六-b——全局替换勾选:签署日期/法定代表人等变量在文档中裂成 N 个独立
+  // slot(实测日期 12 处、法定代表人 14 处),只填一个=改 1 漏 N-1。默认勾选。
+  const [fillPropagate, setFillPropagate] = useState(true);
+
   // 最近任务记忆：进入工作台后同步侧栏默认跳转；rememberTaskPage 内部幂等。
   useEffect(() => {
     if (taskId) {
       rememberTaskPage(taskId, "workbench");
     }
   }, [taskId]);
-  const [approvalLocked, setApprovalLocked] = useState(false);
 
   // 云端文档加载:失败降级演示文档面(cloud-error 徽标),绝不空屏
   useEffect(() => {
@@ -315,6 +331,58 @@ export function WorkbenchView() {
     }
   }, [taskId, saving]);
 
+  /** 占位符填写提交:走编辑器 system 事务;成功提示必须带「记得保存」——
+   *  填充只进编辑缓冲,云端落库靠保存/提交审批。 */
+  const handleFillSubmit = useCallback(() => {
+    const dialog = fillDialog;
+    if (!dialog) return;
+    const value = fillDraft.trim();
+    if (value === "") {
+      setViolation("填写内容不能为空白");
+      if (violationTimer.current) clearTimeout(violationTimer.current);
+      violationTimer.current = setTimeout(() => setViolation(null), 3000);
+      return;
+    }
+    const ok = editorRef.current?.fillPlaceholder?.(
+      dialog.slotId,
+      value,
+      fillPropagate,
+    );
+    if (ok) {
+      setFillDialog(null);
+      setFillDraft("");
+      setViolation(
+        ok > 1
+          ? `已填入「${dialog.label || "占位符"}」＝${value}（全局同步 ${ok} 处，记得保存）`
+          : `已填入「${dialog.label || "占位符"}」＝${value}（记得保存）`,
+      );
+      if (violationTimer.current) clearTimeout(violationTimer.current);
+      violationTimer.current = setTimeout(() => setViolation(null), 4000);
+    } else {
+      setViolation("填入失败：正文里找不到该占位符槽位");
+      if (violationTimer.current) clearTimeout(violationTimer.current);
+      violationTimer.current = setTimeout(() => setViolation(null), 3000);
+    }
+  }, [fillDialog, fillDraft, fillPropagate]);
+
+  const openFillDialog = useCallback(
+    (slotId: string, label: string, value: string, section: string) => {
+      setFillDraft(value);
+      setFillPropagate(true); // 每次打开默认全局替换(变量语义的默认预期)
+      setFillDialog({ slotId, label, section });
+    },
+    [],
+  );
+
+  // 同变量统计(勾选框文案):与 findVariableHits 同口径(归一化标签+类型+同值/未填)
+  const fillSameVar = useMemo(
+    () =>
+      fillDialog
+        ? sameVariableInfo(currentAst, fillDialog.slotId)
+        : { label: "", total: 0 },
+    [fillDialog, currentAst],
+  );
+
   const rows = useMemo(() => matrix.data?.items ?? [], [matrix.data?.items]);
   const summary = useMemo(() => matrixSummary(rows), [rows]);
   const m = metrics.data?.metrics ?? null;
@@ -323,6 +391,12 @@ export function WorkbenchView() {
   const activeDocSection = useMemo(
     () => docSections.find((section) => section.key === activeSection) ?? null,
     [activeSection, docSections],
+  );
+  // 待填清单(数据源=最新编辑缓冲 AST;演示值非空=已填,不替用户判断真伪)
+  const astFillItems = useMemo(() => astPlaceholders(currentAst), [currentAst]);
+  const pendingFills = useMemo(
+    () => astFillItems.filter((item) => item.value.trim() === ""),
+    [astFillItems],
   );
 
   useEffect(() => {
@@ -363,7 +437,11 @@ export function WorkbenchView() {
       <PageHead
         icon={BookOpen}
         title="④ 写作工作台"
-        subtitle={workbenchSubtitle(task ? projectTitle(task) : null)}
+        subtitle={
+          task
+            ? `${projectTitle(task)} · ${WORKBENCH_COPY.subtitle}`
+            : WORKBENCH_COPY.subtitle
+        }
         actions={
           <>
             {taskId && STEP_BACK.workbench && (
@@ -476,6 +554,7 @@ export function WorkbenchView() {
                   const blocked = sectionRows.filter(
                     (row) => row.status === "blocked",
                   ).length;
+                  const emptySection = section.textLength === 0;
                   return (
                     <button
                       key={section.key}
@@ -484,6 +563,11 @@ export function WorkbenchView() {
                       onClick={() => activateSection(section.key)}
                     >
                       <span className="oi-t">{section.title}</span>
+                      {emptySection ? (
+                        <span className="oi-empty" title="本章暂无内容，可点击进入输入">
+                          空
+                        </span>
+                      ) : null}
                       {blocked > 0 ? (
                         <span
                           className="oi-blocked"
@@ -647,16 +731,33 @@ export function WorkbenchView() {
                   {approvalNotice}
                 </div>
               ) : null}
+              {activeDocSection?.textLength === 0 ? (
+                <div className="ed-notice" role="status">
+                  「{activeDocSection.title}
+                  」本章暂无内容：把光标点进下方标题后的空白行直接输入（Enter
+                  换行）；需要填的占位符见右侧「待填清单」。
+                </div>
+              ) : null}
               <div className="doc-body">
                 <BidWriteEditor
                   key={docEpoch}
-                  ref={editorRef}
                   initialAst={initialAst}
+                  onReady={(handle) => {
+                    editorRef.current = handle;
+                  }}
                   onDocChange={handleDocChange}
                   onViolation={handleViolation}
                   assertRunner={assertRunner}
                   onAssert={handleAssert}
                   onProvenanceJump={handleProvJump}
+                  onPlaceholderSelect={(info) =>
+                    openFillDialog(
+                      info.slotId,
+                      info.label,
+                      info.value,
+                      activeDocSection?.title ?? "",
+                    )
+                  }
                   onPasteSanitized={handlePasteSanitized}
                   readOnly={approvalLocked}
                   ariaLabel={
@@ -665,7 +766,6 @@ export function WorkbenchView() {
                       : "投标正文编辑器（演示文档）"
                   }
                 />
-
                 <div className="bw-doc-sub">
                   <b>响应矩阵底稿</b>
                   <span>
@@ -723,6 +823,67 @@ export function WorkbenchView() {
             </section>
 
             <aside className="bw-side">
+              <div className="card">
+                <div className="card-h">
+                  <h3>待填清单</h3>
+                  <span className="r">
+                    <Badge
+                      tone={pendingFills.length > 0 ? "warn" : "ok"}
+                      dot
+                    >
+                      待填 {pendingFills.length} / {astFillItems.length}
+                    </Badge>
+                  </span>
+                </div>
+                <div className="card-b">
+                  {docSource === "cloud-error" ? (
+                    <p className="bw-muted">
+                      云端文档加载失败，当前为演示文档；待填清单以保存成功的正文为准。
+                    </p>
+                  ) : pendingFills.length === 0 ? (
+                    <p className="bw-muted">
+                      占位符已全部填写。金额与总价请走③生成配置单价录入。
+                    </p>
+                  ) : (
+                    <>
+                      <ul className="bw-side-list">
+                        {pendingFills.slice(0, 8).map((item) => (
+                          <li
+                            key={item.slotId || item.label}
+                            className="bw-fill-item"
+                          >
+                            <span title={item.source || item.section}>
+                              {fillItemLabel(item.label) ||
+                                item.placeholderType ||
+                                "未标注占位符"}
+                            </span>
+                            <button
+                              type="button"
+                              className="btn btn-sm soft"
+                              onClick={() =>
+                                openFillDialog(
+                                  item.slotId,
+                                  item.label,
+                                  item.value,
+                                  item.section,
+                                )
+                              }
+                            >
+                              填写
+                            </button>
+                          </li>
+                        ))}
+                      </ul>
+                      {pendingFills.length > 8 ? (
+                        <p className="bw-muted bw-mt-sm">
+                          另有 {pendingFills.length - 8} 项待填…
+                        </p>
+                      ) : null}
+                    </>
+                  )}
+                </div>
+              </div>
+
               <div className="card">
                 <div className="card-h">
                   <h3>素材缺口</h3>
@@ -896,6 +1057,75 @@ export function WorkbenchView() {
               </Link>
             ) : null}
           </div>
+
+          <Overlay
+            open={fillDialog !== null}
+            title={`填写占位符${fillDialog?.label ? `：${fillDialog.label}` : ""}`}
+            subtitle={
+              fillDialog?.section
+                ? `所在章节：${fillDialog.section}`
+                : "填写写入编辑缓冲，点「保存」后落云端"
+            }
+            onClose={() => {
+              setFillDialog(null);
+              setFillDraft("");
+            }}
+            footer={
+              <>
+                <button
+                  type="button"
+                  className="btn"
+                  onClick={() => {
+                    setFillDialog(null);
+                    setFillDraft("");
+                  }}
+                >
+                  取消
+                </button>
+                <button
+                  type="button"
+                  className="btn pri"
+                  disabled={fillDraft.trim() === ""}
+                  onClick={handleFillSubmit}
+                >
+                  填入
+                </button>
+              </>
+            }
+          >
+            <label className="field">
+              <span>填写内容</span>
+              <input
+                className="inp"
+                value={fillDraft}
+                autoFocus
+                aria-label="占位符填写内容"
+                placeholder="如 2026-11-20 或 采购编号原文"
+                onChange={(event) => setFillDraft(event.target.value)}
+                onKeyDown={(event) => {
+                  if (event.key === "Enter") handleFillSubmit();
+                }}
+              />
+            </label>
+            {fillSameVar.total > 1 ? (
+              <label className="field bw-fill-propagate">
+                <input
+                  type="checkbox"
+                  checked={fillPropagate}
+                  aria-label="同步填充所有相同变量"
+                  onChange={(event) => setFillPropagate(event.target.checked)}
+                />
+                <span>
+                  全局替换：同步填充所有「{fillSameVar.label || "同变量"}
+                  」占位符（含未填，共 {fillSameVar.total} 处）
+                </span>
+              </label>
+            ) : null}
+            <p className="bw-muted bw-mt-sm">
+              金额与大写金额由报价内核计算，请走③生成配置录入单价后「重建正文」；
+              此处填写适用于采购编号、日期等文本类槽位。
+            </p>
+          </Overlay>
         </>
       )}
     </>

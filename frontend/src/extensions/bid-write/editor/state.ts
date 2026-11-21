@@ -6,7 +6,11 @@ import { history, redo, undo } from "prosemirror-history";
 import { keymap } from "prosemirror-keymap";
 import { EditorState, type Transaction } from "prosemirror-state";
 
-import { constraintsPlugin, type OnViolation } from "./constraints";
+import {
+  constraintsPlugin,
+  type OnViolation,
+  type PlaceholderSelectInfo,
+} from "./constraints";
 import { liveAssertPlugin, provenancePlugin, type ProvenanceHit } from "./decor";
 import { deviationPlugin } from "./deviation";
 import { hydrateAst } from "./doc";
@@ -38,6 +42,7 @@ export function createBidWriteEditorState(
     onViolation?: OnViolation;
     onProvenanceJump?: OnProvenanceJump;
     onPasteSanitized?: (notice: PasteNotice) => void;
+    onPlaceholderSelect?: (info: PlaceholderSelectInfo) => void;
   } = {},
 ): EditorState {
   return EditorState.create({

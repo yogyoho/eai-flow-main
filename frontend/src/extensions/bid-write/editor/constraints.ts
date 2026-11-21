@@ -33,6 +33,23 @@ const VIOLATIONS: Record<ConstraintViolation["code"], string> = {
   todo_block: "缺件占位不可删除，请走补录流程",
 };
 
+/** 占位符点击信息(待填对话框数据源;填值走 fillPlaceholder system 事务)。 */
+export interface PlaceholderSelectInfo {
+  slotId: string;
+  label: string;
+  value: string;
+  placeholderType: string;
+}
+
+export interface PlaceholderViewHandlers {
+  onPlaceholderSelect?: (info: PlaceholderSelectInfo) => void;
+}
+
+/** attrs 值安全字符串化(unknown 直 String() 会被 no-base-to-string 拦)。 */
+function attrStr(value: unknown): string {
+  return typeof value === "string" ? value : "";
+}
+
 /** §5.6 只读来源列(清单数量/单价不允许在结果侧改,SK-PS-002) */
 const READONLY_CELL_ROLES = new Set(["qty", "unit"]);
 
@@ -105,6 +122,7 @@ function findEnumMismatch(doc: PMNode): ConstraintViolation | null {
 
 interface ConstraintOptions {
   onViolation?: OnViolation;
+  onPlaceholderSelect?: (info: PlaceholderSelectInfo) => void;
 }
 
 /** enum_cell 内容区内的改动:内容替换/光标插入先放行,由终态一致性校验把关 */
@@ -131,7 +149,9 @@ export function constraintsPlugin(options: ConstraintOptions = {}): Plugin {
   return new Plugin({
     props: {
       // enum_cell 走原生下拉 NodeView(§5.4:禁自由文本)
-      nodeViews: bidWriteNodeViews(),
+      nodeViews: bidWriteNodeViews({
+        onPlaceholderSelect: options.onPlaceholderSelect,
+      }),
       // 输入前置拦截:即时反馈,不产生被拒事务
       handleTextInput(view, from, to) {
         const hit = findProtected(view.state.doc, from, to);
@@ -285,9 +305,19 @@ function placeholderText(node: PMNode): string {
 export class PlaceholderView {
   dom: HTMLSpanElement;
 
-  constructor(node: PMNode) {
+  constructor(node: PMNode, handlers?: PlaceholderViewHandlers) {
     this.dom = document.createElement("span");
     this.dom.className = "bwe-placeholder";
+    // 只读原子的用户入口:点击弹出填写面(stopEvent 阻 PM,DOM 监听不受影响)
+    this.dom.addEventListener("click", () => {
+      const attrs = node.attrs as Record<string, unknown>;
+      handlers?.onPlaceholderSelect?.({
+        slotId: attrStr(attrs.slot_id),
+        label: attrStr(attrs.label),
+        value: attrStr(attrs.value),
+        placeholderType: attrStr(attrs.placeholder_type),
+      });
+    });
     this.update(node);
   }
 
@@ -320,14 +350,14 @@ export class PlaceholderView {
   }
 }
 
-export function bidWriteNodeViews() {
+export function bidWriteNodeViews(handlers: PlaceholderViewHandlers = {}) {
   return {
     enum_cell: (
       node: PMNode,
       view: EnumViewHost,
       getPos: () => number | undefined,
     ) => new EnumCellView(node, view, getPos),
-    placeholder: (node: PMNode) => new PlaceholderView(node),
+    placeholder: (node: PMNode) => new PlaceholderView(node, handlers),
   };
 }
 

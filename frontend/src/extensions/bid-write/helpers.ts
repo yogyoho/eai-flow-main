@@ -5,10 +5,10 @@
  */
 
 import { PROJECTS_COPY } from "./copy";
-
 import type {
   GenerateKnobs,
   GapItem,
+  MaterialOut,
   MatrixRowOut,
   WriteTaskOut,
 } from "./types";
@@ -31,7 +31,6 @@ export const TASK_STATUS_TONES: Record<
   matrix_ready: "ok",
   failed: "bad",
 };
-
 
 export const LIFECYCLE_LABELS: Record<string, string> = {
   active: "进行中",
@@ -308,7 +307,7 @@ export const MATERIAL_ENTITY_LABELS: Record<string, string> = {
   personnel: "\u4EBA\u5458",
   capacity: "\u4EA7\u80FD",
   network: "\u7F51\u70B9",
-  history_bid: "\u5386\u53F2\u6807\u4E66",
+  past_bid: "\u5386\u53F2\u6807\u4E66",
 };
 
 /** 批卅二:缺口要求文本 → 素材库实体类型(关键词粗映射;默认 all=不过滤,
@@ -320,12 +319,71 @@ export function gapLibraryType(requirement: string): string {
   if (/人员|工程师|项目经理|职称|团队/.test(t)) return "personnel";
   if (/产能|产能证明|生产/.test(t)) return "capacity";
   if (/网点|服务网络|售后/.test(t)) return "network";
-  if (/历史|过往|中标通知/.test(t)) return "history_bid";
+  if (/历史|过往|中标通知/.test(t)) return "past_bid";
   return "all";
 }
 
 export function materialEntityLabel(entityType: string): string {
   return MATERIAL_ENTITY_LABELS[entityType] ?? entityType;
+}
+
+/** 资质素材库字段模板(前端引导层;fields 契约仍是自由 KV,模板只提供预填行,
+    不引入强 schema;语义对应 backend contracts.py 六类注释)。 */
+export const MATERIAL_FIELD_TEMPLATES: Record<string, string[]> = {
+  qualification: ["证书编号", "发证机关", "有效期至", "覆盖范围"],
+  performance: ["机型", "工作面", "吨位", "合同额", "验收时间", "业主"],
+  personnel: ["角色", "证书编号", "专业", "职称", "有效期至"],
+  capacity: ["设计产能", "排产周期", "证明方式"],
+  network: ["区域覆盖", "响应时限", "网点数量"],
+  past_bid: ["来源项目", "中标时间", "复用章节", "脱敏状态"],
+};
+
+export function materialFieldTemplate(entityType: string): string[] {
+  return MATERIAL_FIELD_TEMPLATES[entityType] ?? [];
+}
+
+/** 实体行字段预览:最多取 max 个基本类型键值(对象/数组不展示,避免 [object Object])。 */
+export function materialFieldPreview(
+  fields: Record<string, unknown> | null | undefined,
+  max = 3,
+): Array<[string, string]> {
+  const out: Array<[string, string]> = [];
+  for (const [key, value] of Object.entries(fields ?? {})) {
+    if (out.length >= max) break;
+    if (
+      typeof value === "string" ||
+      typeof value === "number" ||
+      typeof value === "boolean"
+    ) {
+      out.push([key, String(value)]);
+    }
+  }
+  return out;
+}
+
+/** 字段完整度:实体 fields 覆盖其类型模板键的比例(值非空才算覆盖;
+    无模板的类型不计入分母)。 */
+export function materialTemplateCoverage(
+  items: Array<Pick<MaterialOut, "entity_type" | "fields">>,
+): { complete: number; counted: number; pct: number } {
+  let complete = 0;
+  let counted = 0;
+  for (const item of items) {
+    const template = MATERIAL_FIELD_TEMPLATES[item.entity_type];
+    if (!template || template.length === 0) continue;
+    counted += 1;
+    const fields = item.fields ?? {};
+    const covered = template.every((key) => {
+      const value = fields[key];
+      return typeof value === "string" ? value.trim() !== "" : value != null;
+    });
+    if (covered) complete += 1;
+  }
+  return {
+    complete,
+    counted,
+    pct: counted === 0 ? 0 : Math.round((complete / counted) * 100),
+  };
 }
 
 export interface GenerateKnobsDraft {
@@ -404,7 +462,6 @@ export function safeProjectTitle(title: string): string {
   const garbled = title.match(/[\u00c0-\u00ff\u0100-\u024f]/g)?.length ?? 0;
   return garbled / title.length > 0.3 ? PROJECTS_COPY.untitledProject : title;
 }
-
 
 export interface DeliveryGatesInput {
   matrixBlocked: number | null;

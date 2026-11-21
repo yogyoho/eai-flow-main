@@ -6,6 +6,7 @@ import { redo as redoCmd, undo as undoCmd } from "prosemirror-history";
 import { type EditorState, type Transaction } from "prosemirror-state";
 import { EditorView } from "prosemirror-view";
 import {
+  useCallback,
   forwardRef,
   useImperativeHandle,
   useEffect,
@@ -13,7 +14,10 @@ import {
   useState,
 } from "react";
 
-import { type ConstraintViolation } from "@/extensions/bid-write/editor/constraints";
+import {
+  type ConstraintViolation,
+  type PlaceholderSelectInfo,
+} from "@/extensions/bid-write/editor/constraints";
 import {
   applyAssertionStates,
   summarize,
@@ -23,6 +27,10 @@ import {
 import { serializeDoc } from "@/extensions/bid-write/editor/doc";
 import { findSectionPos } from "@/extensions/bid-write/editor/outline";
 import { type PasteNotice } from "@/extensions/bid-write/editor/paste";
+import {
+  setPlaceholderValue,
+  setPlaceholderVariable,
+} from "@/extensions/bid-write/editor/placeholderOps";
 import { type AstJsonNode } from "@/extensions/bid-write/editor/schema.gen";
 import {
   createBidWriteEditorState,
@@ -42,6 +50,12 @@ export interface BidWriteEditorHandle {
   scrollToSection(key: string): boolean;
   /** 批卅三 T1:执行表格行操作(加行/删行等 tableOps 事务);不可用返回 false。 */
   execTableOp(op: (state: EditorState) => Transaction | null): boolean;
+  /**
+   * 占位符填值(system 事务;slot 不存在/值空白返回 0 不猜)。
+   * propagate=true=同变量全局替换(归一化标签+类型+同值/未填全命中),
+   * 返回受影响原子数——「改一处漏 N-1 处」的废标隐患由此封堵。
+   */
+  fillPlaceholder(slotId: string, value: string, propagate?: boolean): number;
 }
 
 /** 断言执行器(批三十:云端文档走后端真执行器;演示文档走本地演示执行器)。
@@ -52,11 +66,15 @@ export type AssertRunner = (
 
 interface BidWriteEditorProps {
   initialAst: AstJsonNode;
+  /** 命令柄通道(next/dynamic 不转发 ref——撤销/重做/序列化/填槽必须走此回调,
+   *  批卅六可用性修复;useImperativeHandle 保留供单测 ref mock)。 */
+  onReady?: (handle: BidWriteEditorHandle) => void;
   onDocChange?: (ast: AstJsonNode, flags: BidWriteEditorFlags) => void;
   onViolation?: (violation: ConstraintViolation) => void;
   assertRunner?: AssertRunner;
   onAssert?: (summary: AssertSummary | null, error: boolean) => void;
   onProvenanceJump?: OnProvenanceJump;
+  onPlaceholderSelect?: (info: PlaceholderSelectInfo) => void;
   onPasteSanitized?: (notice: PasteNotice) => void;
   debounceMs?: number;
   ariaLabel?: string;
@@ -69,11 +87,13 @@ export const BidWriteEditor = forwardRef<
 >(function BidWriteEditor(
   {
     initialAst,
+    onReady,
     onDocChange,
     onViolation,
     assertRunner,
     onAssert,
     onProvenanceJump,
+  onPlaceholderSelect,
     onPasteSanitized,
     debounceMs = 400,
     ariaLabel = "投标正文编辑器",
@@ -96,91 +116,16 @@ export const BidWriteEditor = forwardRef<
   onAssertRef.current = onAssert;
   const onProvenanceJumpRef = useRef(onProvenanceJump);
   onProvenanceJumpRef.current = onProvenanceJump;
+  const onPlaceholderSelectRef = useRef(onPlaceholderSelect);
+  onPlaceholderSelectRef.current = onPlaceholderSelect;
   const onPasteSanitizedRef = useRef(onPasteSanitized);
   onPasteSanitizedRef.current = onPasteSanitized;
   const readOnlyRef = useRef(readOnly);
   readOnlyRef.current = readOnly;
   const [ready, setReady] = useState(false);
-
-  // 断言侧信道(§六):serialize→runner→assert:apply 纯装饰回写;runner 抛错/
-  // null → onAssert(null, true)=「校验未完成」——绝不默认放行。runner 可同步
-  // (演示)或异步(后端真执行器);序号丢弃陈旧响应。
-  const runAssert = (view: EditorView) => {
-    const seq = ++assertSeqRef.current;
-    const settle = (payload: AssertPayload | null, failed: boolean) => {
-      if (seq !== assertSeqRef.current || viewRef.current !== view) return;
-      if (payload) applyAssertionStates(view, payload);
-      onAssertRef.current?.(
-        payload ? summarize(payload) : null,
-        failed || !payload,
-      );
-    };
-    try {
-      const maybe = assertRunnerRef.current
-        ? assertRunnerRef.current(serializeDoc(view.state.doc))
-        : null;
-      if (
-        maybe &&
-        typeof (maybe as Promise<AssertPayload>).then === "function"
-      ) {
-        (maybe as Promise<AssertPayload | null>)
-          .then((payload) => settle(payload, false))
-          .catch(() => settle(null, true));
-      } else {
-        settle(maybe as AssertPayload | null, false);
-      }
-    } catch {
-      settle(null, true);
-    }
-  };
-
-  useEffect(() => {
-    const place = placeRef.current;
-    if (!place) return;
-    const state = createBidWriteEditorState(initialAst, {
-      onViolation: (v) => onViolationRef.current?.(v),
-      onProvenanceJump: (hit) => onProvenanceJumpRef.current?.(hit),
-      onPasteSanitized: (notice) => onPasteSanitizedRef.current?.(notice),
-    });
-    const view = new EditorView(place, {
-      state,
-      editable: () => !readOnlyRef.current,
-      dispatchTransaction(tr: Transaction) {
-        if (readOnlyRef.current) return;
-        view.updateState(view.state.apply(tr));
-        if (timerRef.current) clearTimeout(timerRef.current);
-        timerRef.current = setTimeout(() => {
-          onDocChange?.(serializeDoc(view.state.doc), {
-            canUndo: undoCmd(view.state, undefined),
-            canRedo: redoCmd(view.state, undefined),
-          });
-          runAssert(view);
-        }, debounceMs);
-      },
-    });
-    viewRef.current = view;
-    runAssert(view);
-    setReady(true);
-    return () => {
-      assertSeqRef.current += 1; // 卸载后到达的响应一律丢弃
-      if (timerRef.current) clearTimeout(timerRef.current);
-      if (flashTimerRef.current) clearTimeout(flashTimerRef.current);
-      view.destroy();
-      viewRef.current = null;
-      setReady(false);
-    };
-    // initialAst 由父级 useMemo 钉住;变更即重建视图(M0 无外部写入通道)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [initialAst]);
-
-  useEffect(() => {
-    const view = viewRef.current;
-    if (view) view.updateState(view.state);
-  }, [readOnly]);
-
-  useImperativeHandle(
-    ref,
-    () => ({
+  // 批卅六:命令柄经 onReady 直交宿主(useImperativeHandle 同一函数,双通道同源)
+  const buildHandle = useCallback((): BidWriteEditorHandle => {
+    return {
       undo() {
         const view = viewRef.current;
         if (view) undoCmd(view.state, (tr) => view.dispatch(tr));
@@ -220,8 +165,106 @@ export const BidWriteEditor = forwardRef<
         view.dispatch(tr);
         return true;
       },
-    }),
-    [],
+      fillPlaceholder(slotId: string, value: string, propagate = false) {
+        const view = viewRef.current;
+        if (!view) return 0;
+        const applied = propagate
+          ? setPlaceholderVariable(view.state, slotId, value)
+          : (() => {
+              const tr = setPlaceholderValue(view.state, slotId, value);
+              return tr ? { tr, count: 1 } : null;
+            })();
+        if (!applied) return 0;
+        view.dispatch(applied.tr);
+        return applied.count;
+      },
+    };
+  }, []);
+  const onReadyRef = useRef(onReady);
+  onReadyRef.current = onReady;
+
+  // 断言侧信道(§六):serialize→runner→assert:apply 纯装饰回写;runner 抛错/
+  // null → onAssert(null, true)=「校验未完成」——绝不默认放行。runner 可同步
+  // (演示)或异步(后端真执行器);序号丢弃陈旧响应。
+  const runAssert = (view: EditorView) => {
+    const seq = ++assertSeqRef.current;
+    const settle = (payload: AssertPayload | null, failed: boolean) => {
+      if (seq !== assertSeqRef.current || viewRef.current !== view) return;
+      if (payload) applyAssertionStates(view, payload);
+      onAssertRef.current?.(
+        payload ? summarize(payload) : null,
+        failed || !payload,
+      );
+    };
+    try {
+      const maybe = assertRunnerRef.current
+        ? assertRunnerRef.current(serializeDoc(view.state.doc))
+        : null;
+      if (
+        maybe &&
+        typeof (maybe as Promise<AssertPayload>).then === "function"
+      ) {
+        (maybe as Promise<AssertPayload | null>)
+          .then((payload) => settle(payload, false))
+          .catch(() => settle(null, true));
+      } else {
+        settle(maybe as AssertPayload | null, false);
+      }
+    } catch {
+      settle(null, true);
+    }
+  };
+
+  useEffect(() => {
+    const place = placeRef.current;
+    if (!place) return;
+    const state = createBidWriteEditorState(initialAst, {
+      onViolation: (v) => onViolationRef.current?.(v),
+      onProvenanceJump: (hit) => onProvenanceJumpRef.current?.(hit),
+      onPlaceholderSelect: (info) => onPlaceholderSelectRef.current?.(info),
+      onPasteSanitized: (notice) => onPasteSanitizedRef.current?.(notice),
+    });
+    const view = new EditorView(place, {
+      state,
+      editable: () => !readOnlyRef.current,
+      dispatchTransaction(tr: Transaction) {
+        if (readOnlyRef.current) return;
+        view.updateState(view.state.apply(tr));
+        if (timerRef.current) clearTimeout(timerRef.current);
+        timerRef.current = setTimeout(() => {
+          onDocChange?.(serializeDoc(view.state.doc), {
+            canUndo: undoCmd(view.state, undefined),
+            canRedo: redoCmd(view.state, undefined),
+          });
+          runAssert(view);
+        }, debounceMs);
+      },
+    });
+    viewRef.current = view;
+    onReadyRef.current?.(buildHandle());
+    runAssert(view);
+    setReady(true);
+    return () => {
+      assertSeqRef.current += 1; // 卸载后到达的响应一律丢弃
+      if (timerRef.current) clearTimeout(timerRef.current);
+      if (flashTimerRef.current) clearTimeout(flashTimerRef.current);
+      view.destroy();
+      viewRef.current = null;
+      setReady(false);
+    };
+    // initialAst 由父级 useMemo 钉住;变更即重建视图(M0 无外部写入通道)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialAst]);
+
+  useEffect(() => {
+    const view = viewRef.current;
+    if (view) view.updateState(view.state);
+  }, [readOnly]);
+
+  useImperativeHandle(
+    ref,
+    buildHandle,
+    [buildHandle],
   );
 
   return (
