@@ -65,7 +65,10 @@ import {
   useSelectedWriteTask,
   useTaskMetrics,
 } from "@/extensions/bid-write/hooks";
-import { writeTaskHref } from "@/extensions/bid-write/nav";
+import {
+  rememberTaskPage,
+  writeTaskHref,
+} from "@/extensions/bid-write/nav";
 import type { MatrixRowOut } from "@/extensions/bid-write/types";
 
 export function workbenchSubtitle(projectName: string | null): string {
@@ -146,6 +149,13 @@ export function WorkbenchView() {
   });
   const [savedAt, setSavedAt] = useState<string | null>(null);
   const [currentAst, setCurrentAst] = useState<AstJsonNode | null>(null);
+  
+  // 最近任务记忆：进入工作台后同步侧栏默认跳转；rememberTaskPage 内部幂等。
+  useEffect(() => {
+    if (taskId) {
+      rememberTaskPage(taskId, "workbench");
+    }
+  }, [taskId]);
   const [approvalLocked, setApprovalLocked] = useState(false);
 
   // 云端文档加载:失败降级演示文档面(cloud-error 徽标),绝不空屏

@@ -31,8 +31,46 @@ export const WRITE_PAGE_PATHS: Record<WritePage, string> = {
   registry: "/bid-write/registry",
 };
 
+const LAST_TASK_STORAGE_KEY = "bw-last-task";
+
+function writeTaskPageStorageKey(taskId: string): string {
+  return `bw-task-page:${taskId}`;
+}
+
+function isWritePage(value: string): value is WritePage {
+  return Object.hasOwn(WRITE_PAGE_PATHS, value);
+}
+
 export function writeTaskHref(page: WritePage, taskId: string): string {
   return `${WRITE_PAGE_PATHS[page]}?task_id=${encodeURIComponent(taskId)}`;
+}
+
+export function rememberTaskPage(taskId: string, page: WritePage): void {
+  try {
+    const storage = globalThis.localStorage;
+    const pageKey = writeTaskPageStorageKey(taskId);
+    if (
+      storage?.getItem(LAST_TASK_STORAGE_KEY) === taskId &&
+      storage.getItem(pageKey) === page
+    ) {
+      return;
+    }
+    storage.setItem(pageKey, page);
+    storage.setItem(LAST_TASK_STORAGE_KEY, taskId);
+  } catch {
+    // SSR 与浏览器隐私模式都可能没有可写 storage；导航记忆必须静默降级。
+  }
+}
+
+export function lastVisitedPage(taskId: string): WritePage | null {
+  try {
+    const page = globalThis.localStorage?.getItem(
+      writeTaskPageStorageKey(taskId),
+    );
+    return page && isWritePage(page) ? page : null;
+  } catch {
+    return null;
+  }
 }
 
 export interface WriteNavBadges {
@@ -63,5 +101,21 @@ export function effectiveWriteTaskId(
   if (requestedId && tasks.some((task) => task.id === requestedId)) {
     return requestedId;
   }
+
+  let rememberedTaskId: string | null = null;
+  try {
+    rememberedTaskId = globalThis.localStorage?.getItem(
+      LAST_TASK_STORAGE_KEY,
+    ) ?? null;
+  } catch {
+    rememberedTaskId = null;
+  }
+  if (
+    rememberedTaskId &&
+    tasks.some((task) => task.id === rememberedTaskId)
+  ) {
+    return rememberedTaskId;
+  }
+
   return tasks[0]?.id ?? null;
 }
