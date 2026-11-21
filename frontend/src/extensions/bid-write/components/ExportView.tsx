@@ -32,6 +32,7 @@ import {
   MetricStrip,
   PageHead,
 } from "@/extensions/bid-write/components/primitives";
+import { EXPORT_COPY } from "@/extensions/bid-write/copy";
 import { formatPercent, projectTitle } from "@/extensions/bid-write/helpers";
 import {
   useBidWriteGaps,
@@ -89,7 +90,7 @@ function precheckGateItems(
     id: "document",
     label: "正式正文文件导出",
     detail: approved
-      ? "已批准修订可生成 DOCX 分册交付包；导出时重跑 D0/L1 门禁"
+      ? "正文审批通过后可生成 DOCX 交付包；导出时会再次执行交付检查"
       : "需正文审批通过后才能生成交付包",
     state: approved ? "pass" : "unknown",
   });
@@ -117,6 +118,15 @@ export function ExportView() {
 
   const revision = approval.data?.revision ?? null;
   const approved = revision?.status === "approved" && revision.hash_ok;
+  const deliveryRevision = revision
+    ? {
+        ...revision,
+        status: approved
+          ? revision.status
+          : (EXPORT_COPY.revisionStateLabels[revision.status] ??
+            revision.status),
+      }
+    : null;
 
   const items = gaps.data?.items ?? [];
   const assertions = gaps.data?.assertions ?? null;
@@ -163,7 +173,7 @@ export function ExportView() {
         id: "document",
         label: "正式正文文件导出",
         detail: approved
-          ? "已批准修订可生成 DOCX 分册交付包；导出时重跑 D0/L1 门禁"
+          ? "正文审批通过后可生成 DOCX 交付包；导出时会再次执行交付检查"
           : "需正文审批通过后才能生成交付包",
         state: approved ? "pass" : "unknown",
       },
@@ -206,8 +216,8 @@ export function ExportView() {
         title="⑥ 导出适配"
         subtitle={
           task
-            ? `${projectTitle(task)} · 前置校验只读重算，零落库`
-            : "门禁明确判定后才谈交付包"
+            ? `${projectTitle(task)} · ${EXPORT_COPY.subtitle}`
+            : EXPORT_COPY.subtitle
         }
         actions={
           <button
@@ -440,7 +450,7 @@ export function ExportView() {
 
             {precheck.error ? <ErrorBlock error={precheck.error} /> : null}
             <DeliveryPackageCard
-              revision={revision}
+              revision={deliveryRevision}
               history={exportHistory.data?.items ?? []}
               historyLoading={exportHistory.isLoading}
               exporting={exportMutation.isPending}
