@@ -341,7 +341,9 @@ export function ReviewView() {
                     <tr>
                       <th>断言 ID</th>
                       <th>技能</th>
-                      <th>等级</th>
+                      <th title="检查项分四档：必须通过（红色，阻止导出）、建议（黄色）、提示、静默">
+                        等级
+                      </th>
                       <th>状态</th>
                       <th>说明</th>
                       <th>建议动作</th>
