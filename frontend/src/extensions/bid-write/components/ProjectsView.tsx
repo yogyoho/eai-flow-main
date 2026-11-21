@@ -38,7 +38,11 @@ import {
   useBidWriteTasks,
   useCreateBidWriteTask,
 } from "@/extensions/bid-write/hooks";
-import { writeTaskHref } from "@/extensions/bid-write/nav";
+import {
+  continueHref,
+  continueLabel,
+  writeTaskHref,
+} from "@/extensions/bid-write/nav";
 import type { WriteTaskOut } from "@/extensions/bid-write/types";
 
 const STAGE_TITLES = [
@@ -61,11 +65,6 @@ function submitability(task: WriteTaskOut): {
   const blocked = task.engine_meta?.matrix_counts?.blocked ?? 0;
   if (blocked > 0) return { tone: "warn", label: `待确认 ${blocked} 项` };
   return { tone: "ok", label: "矩阵已就绪" };
-}
-
-function nextHref(task: WriteTaskOut): string {
-  // 新任务与失败任务都先落到解析确认页：失败任务在那里看到错误并重试。
-  return writeTaskHref("intake", task.id);
 }
 
 export function ProjectsView() {
@@ -282,12 +281,8 @@ export function ProjectsView() {
                             : "统计中"}
                       </td>
                       <td>
-                        <Link href={nextHref(task)} className="btn btn-sm soft">
-                          {task.status === "matrix_ready"
-                            ? "进入解析确认"
-                            : task.status === "failed"
-                              ? "查看失败原因"
-                              : "查看进度"}
+                        <Link href={continueHref(task)} className="btn btn-sm soft">
+                          {continueLabel(task)}
                         </Link>
                       </td>
                     </tr>

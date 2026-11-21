@@ -31,6 +31,18 @@ export const WRITE_PAGE_PATHS: Record<WritePage, string> = {
   registry: "/bid-write/registry",
 };
 
+export const PAGE_LABELS: Record<WritePage, string> = {
+  projects: "项目列表",
+  intake: "解析确认",
+  materials: "素材核对",
+  materials_library: "资质素材库",
+  generate: "生成配置",
+  workbench: "写作工作台",
+  review: "预审查",
+  export: "导出适配",
+  registry: "质量规则中心",
+};
+
 const LAST_TASK_STORAGE_KEY = "bw-last-task";
 
 function writeTaskPageStorageKey(taskId: string): string {
@@ -71,6 +83,22 @@ export function lastVisitedPage(taskId: string): WritePage | null {
   } catch {
     return null;
   }
+}
+
+export function continueHref(task: WriteTaskOut): string {
+  const page =
+    task.status === "matrix_ready"
+      ? lastVisitedPage(task.id) ?? "intake"
+      : "intake";
+  return writeTaskHref(page, task.id);
+}
+
+export function continueLabel(task: WriteTaskOut): string {
+  if (task.status === "failed") return "查看失败原因";
+  if (task.status !== "matrix_ready") return "查看进度";
+
+  const page = lastVisitedPage(task.id);
+  return page ? `继续：${PAGE_LABELS[page]}` : "进入解析确认";
 }
 
 export interface WriteNavBadges {

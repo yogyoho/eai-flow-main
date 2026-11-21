@@ -1,9 +1,13 @@
 import { afterEach, beforeEach, describe, expect, it } from "@rstest/core";
 
 import {
+  continueHref,
+  continueLabel,
   effectiveWriteTaskId,
   lastVisitedPage,
+  PAGE_LABELS,
   rememberTaskPage,
+  WRITE_PAGE_PATHS,
 } from "@/extensions/bid-write/nav";
 import type { WriteTaskOut } from "@/extensions/bid-write/types";
 
@@ -57,6 +61,13 @@ function writeTasks(ids: string[]): WriteTaskOut[] {
         status: "created",
       }) as WriteTaskOut,
   );
+}
+
+function writeTask(id: string, status: string): WriteTaskOut {
+  return {
+    id,
+    status,
+  } as WriteTaskOut;
 }
 
 describe("bid-write nav task memory", () => {
@@ -128,5 +139,73 @@ describe("bid-write nav task memory", () => {
     installStorage().set("bw-task-page:task-a", "not-a-page");
 
     expect(lastVisitedPage("task-a")).toBeNull();
+  });
+});
+
+describe("bid-write project continue nav", () => {
+  beforeEach(() => {
+    installStorage();
+  });
+
+  afterEach(() => {
+    if (originalStorage) {
+      Object.defineProperty(globalThis, "localStorage", originalStorage);
+    } else {
+      Reflect.deleteProperty(globalThis, "localStorage");
+    }
+  });
+
+  it("resumes a matrix-ready task from its remembered page", () => {
+    const task = writeTask("task-a", "matrix_ready");
+    installStorage().set("bw-task-page:task-a", "workbench");
+
+    expect(continueHref(task)).toBe("/bid-write/workbench?task_id=task-a");
+    expect(continueLabel(task)).toBe("继续：写作工作台");
+  });
+
+  it("labels an intake memory as a resumable step", () => {
+    const task = writeTask("task-a", "matrix_ready");
+    installStorage().set("bw-task-page:task-a", "intake");
+
+    expect(continueHref(task)).toBe("/bid-write/intake?task_id=task-a");
+    expect(continueLabel(task)).toBe("继续：解析确认");
+  });
+
+  it("sends a matrix-ready task without memory to intake", () => {
+    const task = writeTask("task-a", "matrix_ready");
+
+    expect(continueHref(task)).toBe("/bid-write/intake?task_id=task-a");
+    expect(continueLabel(task)).toBe("进入解析确认");
+  });
+
+  it("sends a failed task to its failure reason", () => {
+    const task = writeTask("task-a", "failed");
+
+    expect(continueHref(task)).toBe("/bid-write/intake?task_id=task-a");
+    expect(continueLabel(task)).toBe("查看失败原因");
+  });
+
+  it("shows progress for in-flight statuses", () => {
+    for (const status of ["created", "parsing", "extracting"]) {
+      const task = writeTask("task-a", status);
+
+      expect(continueHref(task)).toBe("/bid-write/intake?task_id=task-a");
+      expect(continueLabel(task)).toBe("查看进度");
+    }
+  });
+
+  it("maps every registered write page to its user-facing name", () => {
+    expect(PAGE_LABELS).toEqual({
+      projects: "项目列表",
+      intake: "解析确认",
+      materials: "素材核对",
+      materials_library: "资质素材库",
+      generate: "生成配置",
+      workbench: "写作工作台",
+      review: "预审查",
+      export: "导出适配",
+      registry: "质量规则中心",
+    });
+    expect(Object.keys(PAGE_LABELS)).toEqual(Object.keys(WRITE_PAGE_PATHS));
   });
 });
