@@ -6,6 +6,7 @@
  * 的真实计数；未加载/未统计时不渲染（禁伪零）。
  */
 
+import { gapLibraryType } from "./helpers";
 import type { WriteTaskOut } from "./types";
 
 export type WritePage =
@@ -55,6 +56,17 @@ function isWritePage(value: string): value is WritePage {
 
 export function writeTaskHref(page: WritePage, taskId: string): string {
   return `${WRITE_PAGE_PATHS[page]}?task_id=${encodeURIComponent(taskId)}`;
+}
+
+export function gapLibraryHref(
+  requirement: string,
+  taskId: string | null,
+): string {
+  const type = encodeURIComponent(gapLibraryType(requirement));
+  const href = `${WRITE_PAGE_PATHS.materials_library}?type=${type}`;
+  return taskId
+    ? `${href}&task_id=${encodeURIComponent(taskId)}`
+    : href;
 }
 
 export function rememberTaskPage(taskId: string, page: WritePage): void {

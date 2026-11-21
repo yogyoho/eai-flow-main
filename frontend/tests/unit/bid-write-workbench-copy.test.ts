@@ -5,6 +5,7 @@ import {
   workbenchSubtitle,
 } from "@/extensions/bid-write/components/WorkbenchView";
 import { WORKBENCH_COPY } from "@/extensions/bid-write/copy";
+import { gapLibraryHref } from "@/extensions/bid-write/nav";
 
 describe("workbench 文案组装", () => {
   it("副标题 = 项目名 + 业务描述，无任务时也返回业务描述", () => {
@@ -18,5 +19,16 @@ describe("workbench 文案组装", () => {
     expect(fillItemLabel("%")).toBe("%");
     expect(fillItemLabel("与")).toBe("与");
     expect(fillItemLabel("   ")).toBe(WORKBENCH_COPY.unnamedPlaceholder);
+  });
+});
+
+describe("素材缺口直达素材库", () => {
+  it("资质要求携带素材库类型与任务上下文", () => {
+    expect(gapLibraryHref("资质", null)).toBe(
+      "/bid-write/materials-library?type=qualification",
+    );
+    expect(gapLibraryHref("资质", "t1")).toBe(
+      "/bid-write/materials-library?type=qualification&task_id=t1",
+    );
   });
 });

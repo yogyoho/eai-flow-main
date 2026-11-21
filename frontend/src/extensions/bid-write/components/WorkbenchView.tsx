@@ -66,6 +66,7 @@ import {
   useTaskMetrics,
 } from "@/extensions/bid-write/hooks";
 import {
+  gapLibraryHref,
   rememberTaskPage,
   writeTaskHref,
 } from "@/extensions/bid-write/nav";
@@ -747,6 +748,17 @@ export function WorkbenchView() {
                     <p className="bw-muted bw-mt-sm">
                       另有 {noMaterial.length - 8} 条缺口…
                     </p>
+                  ) : null}
+                  {noMaterial.length > 0 ? (
+                    <Link
+                      href={gapLibraryHref(
+                        noMaterial[0]?.requirement ?? "",
+                        taskId,
+                      )}
+                      className="btn btn-sm soft bw-full bw-mt-sm"
+                    >
+                      去资质素材库补录
+                    </Link>
                   ) : null}
                   <Link
                     href={

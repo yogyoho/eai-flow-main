@@ -42,7 +42,7 @@ import {
   useTaskApproval,
   useTaskExports,
 } from "@/extensions/bid-write/hooks";
-import { writeTaskHref } from "@/extensions/bid-write/nav";
+import { WRITE_PAGE_PATHS, writeTaskHref } from "@/extensions/bid-write/nav";
 import type {
   ExportDownload,
   ExportGateResponse,
@@ -433,6 +433,18 @@ export function ExportView() {
                           className="btn btn-sm"
                         >
                           去确认
+                        </Link>
+                      ) : null}
+                      {item.id === "materials" && noMaterial > 0 ? (
+                        <Link
+                          href={
+                            taskId
+                              ? writeTaskHref("materials_library", taskId)
+                              : WRITE_PAGE_PATHS.materials_library
+                          }
+                          className="btn btn-sm"
+                        >
+                          去资质素材库补录
                         </Link>
                       ) : null}
                       {item.id === "assertions" ? (

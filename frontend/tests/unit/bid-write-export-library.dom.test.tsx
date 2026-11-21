@@ -9,7 +9,17 @@ import { EXPORT_COPY, LIBRARY_COPY } from "@/extensions/bid-write/copy";
 rs.mock("@/extensions/bid-write/hooks", () => ({
   useBidWriteGaps: () => ({
     data: {
-      items: [],
+      items: [
+        {
+          clause_id: "C-1",
+          kind: "clause",
+          requirement: "资质",
+          star: false,
+          status: "blocked",
+          material_state: "无对应素材",
+          evidence_refs: [],
+        },
+      ],
       summary: { total: 0, material_ready: 0 },
       assertions: null,
     },
@@ -139,4 +149,12 @@ it("素材库副标题、空状态与底部注释为业务词", () => {
   expect(screen.queryByText(/owner 级资产/)).toBeNull();
   expect(screen.queryByText(/verifiable/)).toBeNull();
   expect(screen.queryByText(/D0 门禁/)).toBeNull();
+});
+
+it("导出门禁的素材缺口未通过时直达资质素材库补录", () => {
+  renderView("export");
+
+  const link = screen.getByRole("link", { name: "去资质素材库补录" });
+  expect(link.getAttribute("href")).toContain("materials-library");
+  expect(link.getAttribute("href")).toContain("task_id=t1");
 });
