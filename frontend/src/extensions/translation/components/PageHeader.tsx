@@ -45,7 +45,7 @@ export function PageHeader({
       {/* 左实右透渐变：保证标题可读，点阵只在右端透出 */}
       <div
         aria-hidden
-        className="pointer-events-none absolute inset-0 bg-gradient-to-r from-card from-55% to-transparent"
+        className="from-card pointer-events-none absolute inset-0 bg-gradient-to-r from-55% to-transparent"
       />
       <div className="relative flex flex-wrap items-center gap-3 px-[18px] py-3">
         {icon ? (
@@ -65,9 +65,7 @@ export function PageHeader({
         {topRight ? (
           /* 右上角：辅助文案贴顶，动作其下 */
           <div className="ml-auto flex shrink-0 flex-col items-end gap-1 self-start">
-            <div className="text-muted-foreground text-[11px]">
-              {topRight}
-            </div>
+            <div className="text-muted-foreground text-[11px]">{topRight}</div>
             {actions ? (
               <div className="flex items-center gap-2">{actions}</div>
             ) : null}

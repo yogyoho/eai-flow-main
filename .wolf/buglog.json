@@ -11981,6 +11981,54 @@
       ],
       "occurrences": 1,
       "last_seen": "2026-11-18T15:05:00+08:00"
+    },
+    {
+      "id": "bug-4435",
+      "timestamp": "2026-11-19T12:32:43.438Z",
+      "error_message": "Missing guard clause",
+      "file": "frontend/src/extensions/bid-write/editor/BidWriteEditor.tsx",
+      "root_cause": "No early return/throw for edge case: !view",
+      "fix": "Added guard clause: if (!view)",
+      "tags": [
+        "auto-detected",
+        "guard-clause",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-11-19T12:32:43.438Z"
+    },
+    {
+      "id": "bug-4436",
+      "timestamp": "2026-11-19T12:33:35.557Z",
+      "error_message": "Null/undefined access in ",
+      "file": "frontend/src/extensions/bid-write/components/WorkbenchView.tsx",
+      "root_cause": "Property access on potentially null/undefined value",
+      "fix": "Added null safety (optional chaining or null check)",
+      "tags": [
+        "auto-detected",
+        "null-safety",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-11-19T12:33:35.557Z"
+    },
+    {
+      "id": "bug-4437",
+      "timestamp": "2026-11-19T12:47:11.305Z",
+      "error_message": "Missing error handling in unknown",
+      "file": "frontend/src/extensions/bid-write/components/WorkbenchView.tsx",
+      "root_cause": "Code path had no error handling — exceptions would propagate uncaught",
+      "fix": "Added try/catch block | Also: // 批卅三 T3:首次引导条(localStorage 记忆已读;SSR 安全——惰性初始化在客户端); const [guideShown, setGuideShown] = useState<boolean>(false)",
+      "tags": [
+        "auto-detected",
+        "error-handling",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 2,
+      "last_seen": "2026-11-19T12:47:20.521Z"
     }
   ]
 }

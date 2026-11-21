@@ -22,7 +22,7 @@ function getLawLibraryApiBase(): string {
 
 export function buildLawLibraryUrl(
   path: string,
-  params?: Record<string, string | number | undefined>
+  params?: Record<string, string | number | undefined>,
 ): string {
   const base = getLawLibraryApiBase().replace(/\/+$/, "");
   const cleanPath = path.replace(/^\/+/, "");

@@ -12,7 +12,10 @@ export function ChunkErrorHandler() {
   useEffect(() => {
     const handler = (event: PromiseRejectionEvent) => {
       const msg = String(event?.reason?.message ?? event?.reason ?? "");
-      if (msg.includes("ChunkLoadError") || msg.includes("Failed to load chunk")) {
+      if (
+        msg.includes("ChunkLoadError") ||
+        msg.includes("Failed to load chunk")
+      ) {
         event.preventDefault();
         // Only show the reload overlay once per page session
         if (document.getElementById("__chunk-error-overlay")) return;
@@ -29,9 +32,11 @@ export function ChunkErrorHandler() {
           </div>`;
         document.body.appendChild(overlay);
 
-        document.getElementById("__chunk-reload-btn")?.addEventListener("click", () => {
-          window.location.reload();
-        });
+        document
+          .getElementById("__chunk-reload-btn")
+          ?.addEventListener("click", () => {
+            window.location.reload();
+          });
       }
     };
 

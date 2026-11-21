@@ -23,7 +23,7 @@ serializer.renderSpec = function (
   if (
     structure != null &&
     typeof structure === "object" &&
-    "nodeType" in (structure) &&
+    "nodeType" in structure &&
     (structure as { nodeType: number }).nodeType != null
   ) {
     return { dom: structure as Node };
@@ -32,14 +32,20 @@ serializer.renderSpec = function (
   if (
     structure != null &&
     typeof structure === "object" &&
-    "dom" in (structure) &&
+    "dom" in structure &&
     (structure as { dom: unknown }).dom != null &&
     typeof (structure as { dom: unknown }).dom === "object" &&
     "nodeType" in (structure as { dom: object }).dom
   ) {
     return structure as { dom: Node; contentDOM?: Node };
   }
-  return origRenderSpec.call(DOMSerializer, doc, structure, xmlNS ?? null, blockArraysIn);
+  return origRenderSpec.call(
+    DOMSerializer,
+    doc,
+    structure,
+    xmlNS ?? null,
+    blockArraysIn,
+  );
 };
 
 export {};

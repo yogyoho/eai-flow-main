@@ -42,7 +42,7 @@ export function TableSelect({
       <SelectTrigger
         size="sm"
         className={cn(
-          "h-8 min-w-[96px] w-full gap-1.5 px-2.5 shadow-none bg-muted/40 border-transparent hover:bg-muted focus-visible:bg-background",
+          "bg-muted/40 hover:bg-muted focus-visible:bg-background h-8 w-full min-w-[96px] gap-1.5 border-transparent px-2.5 shadow-none",
           className,
         )}
       >
@@ -54,7 +54,10 @@ export function TableSelect({
             <span className="flex items-center gap-2">
               {opt.swatch && (
                 <span
-                  className={cn("inline-block size-2.5 rounded-full", opt.swatch)}
+                  className={cn(
+                    "inline-block size-2.5 rounded-full",
+                    opt.swatch,
+                  )}
                 />
               )}
               {opt.label}

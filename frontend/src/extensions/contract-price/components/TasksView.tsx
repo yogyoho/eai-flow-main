@@ -55,8 +55,7 @@ const statusLabel: Record<string, string> = {
 /** 历史运行 label 为空（后端 2026-10-16 起才在创建时落名）时的派生名，
  *  命名与后端 _run_label 一致：{解析|聚类}任务_{Unix时间戳秒}。 */
 function derivedLabel(run: CpaRun): string {
-  const name =
-    run.scope?.phase === "cluster" ? "聚类分组任务" : "合同解析任务";
+  const name = run.scope?.phase === "cluster" ? "聚类分组任务" : "合同解析任务";
   return `${name}_${Math.floor(new Date(run.started_at).getTime() / 1000)}`;
 }
 

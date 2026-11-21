@@ -46,11 +46,11 @@ export function ApprovalTimeline({
 
   const sortedSteps = useMemo(
     () => [...steps].sort((a, b) => a.order - b.order),
-    [steps]
+    [steps],
   );
 
   const getStepStatus = (
-    step: ApprovalStep
+    step: ApprovalStep,
   ): "pending" | "current" | "completed" | "rejected" => {
     if (step.id === currentStepId) return "current";
     const stepRecords = recordsByStep.get(step.id) ?? [];
@@ -80,12 +80,12 @@ export function ApprovalTimeline({
             {!isLast && (
               <div
                 className={cn(
-                  "absolute left-[15px] top-10 h-[calc(100%-16px)] w-0.5",
+                  "absolute top-10 left-[15px] h-[calc(100%-16px)] w-0.5",
                   status === "completed"
                     ? "bg-green-500/40"
                     : status === "rejected"
                       ? "bg-destructive/40"
-                      : "bg-border"
+                      : "bg-border",
                 )}
               />
             )}
@@ -104,12 +104,14 @@ export function ApprovalTimeline({
                   {stepRecords.map((record) => (
                     <div
                       key={record.id}
-                      className="flex items-start gap-2 rounded-lg bg-muted/50 px-3 py-2 text-xs"
+                      className="bg-muted/50 flex items-start gap-2 rounded-lg px-3 py-2 text-xs"
                     >
-                      <MessageSquare className="mt-0.5 h-3 w-3 shrink-0 text-muted-foreground" />
+                      <MessageSquare className="text-muted-foreground mt-0.5 h-3 w-3 shrink-0" />
                       <div className="min-w-0 flex-1">
                         <div className="flex items-center gap-2">
-                          <span className="font-medium">{record.reviewerName}</span>
+                          <span className="font-medium">
+                            {record.reviewerName}
+                          </span>
                           <span
                             className={cn(
                               "inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[10px] font-medium",
@@ -118,7 +120,7 @@ export function ApprovalTimeline({
                               record.action === "reject" &&
                                 "bg-red-100 text-red-700 dark:bg-red-500/20 dark:text-red-400",
                               record.action === "comment" &&
-                                "bg-blue-100 text-blue-700 dark:bg-blue-500/20 dark:text-blue-400"
+                                "bg-blue-100 text-blue-700 dark:bg-blue-500/20 dark:text-blue-400",
                             )}
                           >
                             {actionLabels[record.action]}
@@ -128,7 +130,7 @@ export function ApprovalTimeline({
                           </span>
                         </div>
                         {record.comment && (
-                          <p className="mt-1 text-muted-foreground leading-relaxed">
+                          <p className="text-muted-foreground mt-1 leading-relaxed">
                             {record.comment}
                           </p>
                         )}

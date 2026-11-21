@@ -1,6 +1,9 @@
 // EAI-CUSTOM: 上传图片到个人文档（BlockNote uploadFile 的网络层）。
 /** 上传图片，返回可直接用于 <img> / markdown 的同源相对 URL。失败抛 Error(detail)。 */
-async function uploadImageTo(url: string, file: File): Promise<{ url: string }> {
+async function uploadImageTo(
+  url: string,
+  file: File,
+): Promise<{ url: string }> {
   const token = /(?:^|;\s*)csrf_token=([^;]+)/.exec(document.cookie)?.[1] ?? "";
   const form = new FormData();
   form.append("file", file);
@@ -39,8 +42,14 @@ async function uploadImageTo(url: string, file: File): Promise<{ url: string }> 
 }
 
 /** 有线程文档：落盘线程 user-data/outputs/images/。 */
-export function uploadDocImage(threadId: string, file: File): Promise<{ url: string }> {
-  return uploadImageTo(`/api/extensions/docmgr/threads/${encodeURIComponent(threadId)}/images`, file);
+export function uploadDocImage(
+  threadId: string,
+  file: File,
+): Promise<{ url: string }> {
+  return uploadImageTo(
+    `/api/extensions/docmgr/threads/${encodeURIComponent(threadId)}/images`,
+    file,
+  );
 }
 
 /** 无线程文档（docmgr 直接新建）：落盘用户级 docmgr-images/ 目录。 */

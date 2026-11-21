@@ -18,7 +18,12 @@ interface StatCardProps {
  * EAI-CUSTOM: 视觉习语取自 2026-10-12 eia-p2 原型 .metric-cell —— 无图标、
  * label 12px muted 在上 / 数值 22px bold tabular-nums 在下；原 icon/color API 已移除。
  */
-export function StatCard({ label, value, hint, tone = "default" }: StatCardProps) {
+export function StatCard({
+  label,
+  value,
+  hint,
+  tone = "default",
+}: StatCardProps) {
   return (
     <div
       className={cn(

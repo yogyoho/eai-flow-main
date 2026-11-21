@@ -182,8 +182,8 @@ export function DrillDownModal({ title, sql, onClose }: DrillDownModalProps) {
           )}
         </div>
         <div className="border-border text-muted-foreground/70 border-t px-5 py-2 text-xs">
-          {/* 二次筛选生效时显示 可见/总数,避免与表格行数对不上 */}
-          共 {visibleRows.length}
+          {/* 二次筛选生效时显示 可见/总数,避免与表格行数对不上 */}共{" "}
+          {visibleRows.length}
           {visibleRows.length !== rows.length
             ? ` / ${data?.row_count ?? 0}`
             : ""}{" "}

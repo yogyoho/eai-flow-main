@@ -1,8 +1,5 @@
 export { AppCenterPage } from "./AppCenterPage";
-export {
-  fetchApps,
-  fetchDomains,
-} from "./api";
+export { fetchApps, fetchDomains } from "./api";
 export {
   ACCENT_STYLES,
   getDomainLabel,

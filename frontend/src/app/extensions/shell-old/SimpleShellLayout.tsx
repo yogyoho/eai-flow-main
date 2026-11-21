@@ -8,6 +8,8 @@ interface SimpleShellLayoutProps {
   children: ReactNode;
 }
 
-export default function SimpleShellLayout({ children }: SimpleShellLayoutProps) {
+export default function SimpleShellLayout({
+  children,
+}: SimpleShellLayoutProps) {
   return <ShellLayout>{children}</ShellLayout>;
 }

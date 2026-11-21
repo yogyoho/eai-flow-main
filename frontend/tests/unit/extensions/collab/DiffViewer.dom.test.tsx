@@ -1,4 +1,3 @@
-
 import { afterEach, expect, test } from "@rstest/core";
 import { act } from "react";
 import ReactDOMClient from "react-dom/client";
@@ -93,7 +92,12 @@ test("renders diff blocks with correct content", async () => {
     diff_blocks: [
       { type: "added", content: "new line added" },
       { type: "removed", content: "old line removed" },
-      { type: "changed", content: "modified line", from_content: "original", to_content: "modified line" },
+      {
+        type: "changed",
+        content: "modified line",
+        from_content: "original",
+        to_content: "modified line",
+      },
     ],
     ai_summary: null,
     legacy_notice: null,

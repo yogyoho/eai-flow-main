@@ -115,7 +115,10 @@ const EXPRS = {
       type: "hybrid",
       op: "steps",
       precondition: null,
-      expr_lines: ["sum(bid.detail_rows[*].amount) == bid.subtotal", "bid.subtotal == bid.total_price"],
+      expr_lines: [
+        "sum(bid.detail_rows[*].amount) == bid.subtotal",
+        "bid.subtotal == bid.total_price",
+      ],
       on_missing_input: "need_human",
       message_tpl: "报价加总不一致",
       fix_tpl: "以明细表为准重算",
@@ -126,11 +129,28 @@ const EXPRS = {
 
 /** B6 归因夹具(GET /metrics/fail_attribution)。 */
 const ATTR = {
-  items: [{ rule_id: "R-001", total: 4, reasons: [{ reason: "规则误判", count: 3 }, { reason: "证据错位", count: 1 }] }],
+  items: [
+    {
+      rule_id: "R-001",
+      total: 4,
+      reasons: [
+        { reason: "规则误判", count: 3 },
+        { reason: "证据错位", count: 1 },
+      ],
+    },
+  ],
 };
 
 function week(start: string, fp: number, confirmed: number) {
-  return { week_start: start, fp, confirmed, rate: fp + confirmed > 0 ? Math.round((fp / (fp + confirmed)) * 1000) / 10 : null };
+  return {
+    week_start: start,
+    fp,
+    confirmed,
+    rate:
+      fp + confirmed > 0
+        ? Math.round((fp / (fp + confirmed)) * 1000) / 10
+        : null,
+  };
 }
 
 /** B6 趋势夹具:近 6 周,2 周有值。 */
@@ -147,10 +167,12 @@ const TRENDS = {
 
 /** 全空周(伪零纪律:rate 全 null)。 */
 const TREND_EMPTY = {
-  weeks: Array.from({ length: 6 }, (_, i) => week(`2026-09-28`, 0, 0)).map((w, i) => ({
-    ...w,
-    week_start: `2026-09-${21 + i}`,
-  })),
+  weeks: Array.from({ length: 6 }, (_, i) => week(`2026-09-28`, 0, 0)).map(
+    (w, i) => ({
+      ...w,
+      week_start: `2026-09-${21 + i}`,
+    }),
+  ),
 };
 
 function jsonRes(body: unknown, status = 200): Response {
@@ -234,7 +256,9 @@ describe("bid-review RulesView 原型重整(2026-10-30 #s9)", () => {
     renderView(<RulesView />);
     expect(await screen.findByText("规则定义 · R-002")).not.toBeNull();
     // 包加载后五块明细落定(抽屉先开、数据后至)
-    await waitFor(() => expect(screen.getByText("EXPR · steps")).not.toBeNull());
+    await waitFor(() =>
+      expect(screen.getByText("EXPR · steps")).not.toBeNull(),
+    );
     expect(screen.getByText("MESSAGE_TPL")).not.toBeNull();
   });
 
@@ -313,7 +337,9 @@ describe("bid-review MetricsView 规则效果看板(2026-10-30 #s10)", () => {
     await screen.findByText("规则效果看板");
     // 周趋势卡:6 柱 + 回流闭环 note
     expect(await screen.findByText("周趋势")).not.toBeNull();
-    await waitFor(() => expect(document.querySelectorAll(".t-col").length).toBe(6));
+    await waitFor(() =>
+      expect(document.querySelectorAll(".t-col").length).toBe(6),
+    );
     expect(screen.getByText(/回流闭环生效/)).not.toBeNull();
     // FAIL 名单卡锚点(s9 高误报段互跳①落点)
     const failCard = screen.getByText("高误报 FAIL 名单").closest(".card");
@@ -328,12 +354,15 @@ describe("bid-review MetricsView 规则效果看板(2026-10-30 #s10)", () => {
   it("M5 §4.8:无回流时趋势空态不画 0%(伪零纪律)", async () => {
     packPayload = { items: [{ ...PACK, stats: {} }] };
     responder = (path) => {
-      if (path.includes("/metrics/fail_attribution")) return jsonRes({ items: [] });
+      if (path.includes("/metrics/fail_attribution"))
+        return jsonRes({ items: [] });
       if (path.includes("/metrics/trends")) return jsonRes(TREND_EMPTY);
       return jsonRes(packPayload);
     };
     renderView(<MetricsView />);
-    expect(await screen.findByText(/尚无回流数据——周趋势随人工复核产生/)).not.toBeNull();
+    expect(
+      await screen.findByText(/尚无回流数据——周趋势随人工复核产生/),
+    ).not.toBeNull();
     expect(document.querySelectorAll(".t-col").length).toBe(0);
   });
 });

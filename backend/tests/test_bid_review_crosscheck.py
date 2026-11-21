@@ -65,3 +65,32 @@ class TestAnnotatePageOffset:
         fc = {"a": {"conf": 0.9, "verified": True}}
         assert annotate_page_offset(fc, {"a": {"page": 3}}, {"flag": False}) == fc
         assert annotate_page_offset(None, None, None) in (None, {})
+
+
+class TestNegativeEvidenceCoverageGate:
+    """§十指标「负证据覆盖 100%」测试门禁(裁决⑤c,M5 2026-11-05):M1 门禁实现已在
+    (attachments.py 平件/复合父行/复合子行 MISSING 记负证据),本锁防回归——三种
+    MISSING 形态一律带非 null negative_evidence。"""
+
+    def test_all_missing_forms_carry_negative_evidence(self):
+        from app.extensions.bid_review.engine.attachments import build_checklist
+
+        reqs = [
+            {"no": "A-1", "name": "完全不存在之文件甲"},  # 平件真缺失
+            {"no": "3", "name": "资格审查文件", "sub_items": [{"no": "3.1", "name": "营业执照"}]},  # 复合:父行+子行
+        ]
+        out = build_checklist(reqs, [], bid_doc_id="投标文件.docx")
+        flat, comp = out["items"]
+        assert flat["status"] == "MISSING" and flat["negative_evidence"] is not None
+        assert comp["status"] == "MISSING" and comp["negative_evidence"] is not None  # 复合父行真缺失(M1 门禁)
+        sub = comp["sub_results"][0]
+        assert sub["status"] == "MISSING" and sub["negative_evidence"] is not None
+
+        # 覆盖率恒 100%:全树任意 MISSING 行负证据非 null
+        def _walk(rows):
+            for r in rows:
+                if r.get("status") == "MISSING":
+                    assert r.get("negative_evidence") is not None, f"MISSING 行缺负证据:{r.get('no')}/{r.get('name')}"
+                _walk(r.get("sub_results") or [])
+
+        _walk(out["items"])

@@ -49,9 +49,7 @@ export function ChartFilterPopover({ chart, onChange, enable }: Props) {
       <PopoverContent align="end" className="w-52 p-2">
         {enable.selfAttribute && (
           <div className="mb-2" role="group" aria-label="自产属性">
-            <div className="text-muted-foreground mb-1 text-xs">
-              自产属性
-            </div>
+            <div className="text-muted-foreground mb-1 text-xs">自产属性</div>
             {(
               ["all", "self_dominant", "outsource_dominant"] as SelfAttribute[]
             ).map((a) => (

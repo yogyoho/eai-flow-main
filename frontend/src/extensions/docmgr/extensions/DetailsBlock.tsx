@@ -46,7 +46,7 @@ export const DetailsBlock = createReactBlockSpec(
             contentEditable={false}
           >
             <span
-              className={`details-block-marker${collapsed ? " is-collapsed" : ""}`}
+              className={`details-block-marker${collapsed ? "is-collapsed" : ""}`}
               aria-hidden="true"
             />
           </span>

@@ -52,7 +52,8 @@ function ToastContainer({
                 "border-success/30 bg-success text-success-foreground",
               t.type === "error" &&
                 "border-destructive/30 bg-destructive text-white",
-              t.type === "info" && "border-info/30 bg-info text-info-foreground",
+              t.type === "info" &&
+                "border-info/30 bg-info text-info-foreground",
             )}
           >
             {t.type === "success" && (

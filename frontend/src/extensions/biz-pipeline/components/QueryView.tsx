@@ -12,8 +12,16 @@ import {
   TableHeader,
   TableRow,
 } from "@/extensions/biz-pipeline/components/ui/table";
-import { useBidList, useContractRecon, useMonthlyBids } from "@/extensions/biz-pipeline/hooks";
-import type { BidRow, MonthlyRow, ReconRow } from "@/extensions/biz-pipeline/types";
+import {
+  useBidList,
+  useContractRecon,
+  useMonthlyBids,
+} from "@/extensions/biz-pipeline/hooks";
+import type {
+  BidRow,
+  MonthlyRow,
+  ReconRow,
+} from "@/extensions/biz-pipeline/types";
 
 type TabKey = "bidlist" | "recon" | "monthly";
 
@@ -37,7 +45,9 @@ const esc = (v: unknown) => {
 
 export function QueryView() {
   const [tab, setTab] = useState<TabKey>("bidlist");
-  const [drill, setDrill] = useState<{ title: string; sql: string } | null>(null);
+  const [drill, setDrill] = useState<{ title: string; sql: string } | null>(
+    null,
+  );
 
   const bidQ = useBidList();
   const reconQ = useContractRecon();
@@ -77,7 +87,12 @@ export function QueryView() {
   };
 
   const loading = useMemo(
-    () => (tab === "bidlist" ? bidQ.isLoading : tab === "recon" ? reconQ.isLoading : monthlyQ.isLoading),
+    () =>
+      tab === "bidlist"
+        ? bidQ.isLoading
+        : tab === "recon"
+          ? reconQ.isLoading
+          : monthlyQ.isLoading,
     [tab, bidQ.isLoading, reconQ.isLoading, monthlyQ.isLoading],
   );
 
@@ -89,8 +104,8 @@ export function QueryView() {
   return (
     <div className="space-y-4 p-6">
       <div className="flex items-center gap-3">
-        <Search className="h-5 w-5 text-primary" />
-        <h1 className="text-2xl font-bold text-foreground">数据查询</h1>
+        <Search className="text-primary h-5 w-5" />
+        <h1 className="text-foreground text-2xl font-bold">数据查询</h1>
       </div>
 
       {/* 视图 tab(pill) */}
@@ -112,9 +127,11 @@ export function QueryView() {
       </div>
 
       {/* 当前视图表(点行下钻) */}
-      <div className="rounded-xl border border-border bg-card p-4">
+      <div className="border-border bg-card rounded-xl border p-4">
         {loading ? (
-          <p className="py-8 text-center text-sm text-muted-foreground">加载中…</p>
+          <p className="text-muted-foreground py-8 text-center text-sm">
+            加载中…
+          </p>
         ) : tab === "bidlist" ? (
           <Table>
             <TableHeader>
@@ -131,7 +148,9 @@ export function QueryView() {
                   <TableRow
                     key={i}
                     onClick={() => onRowDrill("bidlist", r)}
-                    className={cn ? "cursor-pointer" : "cursor-default opacity-70"}
+                    className={
+                      cn ? "cursor-pointer" : "cursor-default opacity-70"
+                    }
                   >
                     {bidCols.map((c) => (
                       // 显示用 String(原始值);r[c] 为 primitive(BidRow 类型),不触发 no-base-to-string
@@ -162,7 +181,13 @@ export function QueryView() {
                   <TableCell>{r.customer}</TableCell>
                   <TableCell>{toWan(r.amount)}</TableCell>
                   <TableCell>{toWan(r.invoiced)}</TableCell>
-                  <TableCell className={Number(r.uninvoiced) > 0 ? "font-bold text-destructive" : ""}>
+                  <TableCell
+                    className={
+                      Number(r.uninvoiced) > 0
+                        ? "text-destructive font-bold"
+                        : ""
+                    }
+                  >
                     {toWan(r.uninvoiced)}
                   </TableCell>
                 </TableRow>
@@ -191,7 +216,11 @@ export function QueryView() {
         )}
       </div>
 
-      <DrillDownModal title={drill?.title ?? ""} sql={drill?.sql ?? null} onClose={() => setDrill(null)} />
+      <DrillDownModal
+        title={drill?.title ?? ""}
+        sql={drill?.sql ?? null}
+        onClose={() => setDrill(null)}
+      />
     </div>
   );
 }

@@ -704,7 +704,7 @@ function ProjectDocCard({
       animate={{ opacity: 1, scale: 1 }}
       exit={{ opacity: 0, scale: 0.95 }}
       transition={{ duration: 0.2 }}
-      className="border-border bg-card group flex h-48 cursor-pointer flex-col rounded-lg border p-4 transition-all hover:border-primary/20 hover:shadow-md"
+      className="border-border bg-card group hover:border-primary/20 flex h-48 cursor-pointer flex-col rounded-lg border p-4 transition-all hover:shadow-md"
       onClick={onClick}
     >
       {/* Icon area */}
@@ -724,7 +724,7 @@ function ProjectDocCard({
       </div>
 
       {/* Title */}
-      <h3 className="text-foreground mb-2 line-clamp-1 text-sm font-semibold transition-colors group-hover:text-primary">
+      <h3 className="text-foreground group-hover:text-primary mb-2 line-clamp-1 text-sm font-semibold transition-colors">
         {doc.title || "无标题"}
       </h3>
 

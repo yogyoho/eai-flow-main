@@ -29,7 +29,10 @@ const STAGE_INDEX: Record<string, number> = {
 };
 
 /** 当前步:progress.stage 优先;缺失时按任务状态兜底(测试夹具/早期任务无 stage)。 */
-export function resolveStageIdx(stageRaw: string | null, status: string): number {
+export function resolveStageIdx(
+  stageRaw: string | null,
+  status: string,
+): number {
   if (stageRaw && stageRaw in STAGE_INDEX) return STAGE_INDEX[stageRaw]!;
   switch (status) {
     case "done":

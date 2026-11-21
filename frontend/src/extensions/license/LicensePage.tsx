@@ -106,7 +106,7 @@ export default function LicensePage() {
       <h1 className="text-2xl font-bold">许可证管理</h1>
 
       {/* Status Card */}
-      <div className="rounded-xl border bg-card p-6 shadow-sm">
+      <div className="bg-card rounded-xl border p-6 shadow-sm">
         <h2 className="mb-4 text-lg font-semibold">当前许可证</h2>
         {status?.is_dev_mode && (
           <div className="mb-4 flex items-center gap-3 rounded-lg border border-amber-500/30 bg-gradient-to-r from-amber-500/5 via-amber-500/10 to-amber-500/5 px-4 py-3">
@@ -202,9 +202,7 @@ export default function LicensePage() {
                     />
                     <span
                       className={`truncate text-sm font-medium ${
-                        enabled
-                          ? "text-foreground"
-                          : "text-muted-foreground"
+                        enabled ? "text-foreground" : "text-muted-foreground"
                       }`}
                     >
                       {name}
@@ -235,9 +233,9 @@ export default function LicensePage() {
       </div>
 
       {/* Import */}
-      <div className="rounded-xl border bg-card p-6 shadow-sm">
+      <div className="bg-card rounded-xl border p-6 shadow-sm">
         <h2 className="mb-4 text-lg font-semibold">导入许可证</h2>
-        <p className="mb-4 text-sm text-muted-foreground">
+        <p className="text-muted-foreground mb-4 text-sm">
           如已获取{" "}
           <code className="bg-muted rounded px-1 py-0.5 text-xs">
             license.lic
@@ -258,14 +256,14 @@ export default function LicensePage() {
           <button
             type="button"
             onClick={handleDownloadRequest}
-            className="inline-flex items-center gap-2 rounded-lg border border-input bg-background px-4 py-2 text-sm font-medium text-foreground hover:bg-accent hover:text-accent-foreground"
+            className="border-input bg-background text-foreground hover:bg-accent hover:text-accent-foreground inline-flex items-center gap-2 rounded-lg border px-4 py-2 text-sm font-medium"
           >
             <Download className="h-4 w-4" />
             申请许可证
           </button>
         </div>
         {importMutation.isPending && (
-          <span className="ml-3 text-sm text-muted-foreground">导入中...</span>
+          <span className="text-muted-foreground ml-3 text-sm">导入中...</span>
         )}
         {importError && (
           <div className="mt-3 rounded bg-red-50 px-3 py-2 text-sm text-red-700 dark:bg-red-900/20 dark:text-red-400">
@@ -281,12 +279,12 @@ export default function LicensePage() {
 
       {/* Export */}
       {status?.valid && (
-        <div className="rounded-xl border bg-card p-6 shadow-sm">
+        <div className="bg-card rounded-xl border p-6 shadow-sm">
           <h2 className="mb-4 text-lg font-semibold">导出许可证</h2>
           <button
             type="button"
             onClick={handleExport}
-            className="inline-flex items-center gap-2 rounded-lg border border-input bg-background px-4 py-2 text-sm font-medium text-foreground hover:bg-accent hover:text-accent-foreground"
+            className="border-input bg-background text-foreground hover:bg-accent hover:text-accent-foreground inline-flex items-center gap-2 rounded-lg border px-4 py-2 text-sm font-medium"
           >
             <Download className="h-4 w-4" />
             下载 license.lic
@@ -295,15 +293,15 @@ export default function LicensePage() {
       )}
 
       {/* History */}
-      <div className="rounded-xl border bg-card p-6 shadow-sm">
+      <div className="bg-card rounded-xl border p-6 shadow-sm">
         <h2 className="mb-4 text-lg font-semibold">导入历史</h2>
         {!history?.items.length ? (
-          <p className="text-sm text-muted-foreground/80">暂无记录</p>
+          <p className="text-muted-foreground/80 text-sm">暂无记录</p>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b text-left text-muted-foreground">
+                <tr className="text-muted-foreground border-b text-left">
                   <th className="pr-4 pb-2">许可证 ID</th>
                   <th className="pr-4 pb-2">类型</th>
                   <th className="pr-4 pb-2">客户</th>

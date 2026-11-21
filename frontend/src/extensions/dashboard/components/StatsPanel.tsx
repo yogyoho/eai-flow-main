@@ -1,6 +1,11 @@
 "use client";
 
-import { FolderKanban, SearchCheck, PenTool, AlertTriangle } from "lucide-react";
+import {
+  FolderKanban,
+  SearchCheck,
+  PenTool,
+  AlertTriangle,
+} from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
 import type { MyStatsResponse } from "../types";
@@ -53,23 +58,31 @@ export function StatsPanel({ data }: { data?: MyStatsResponse }) {
   ];
 
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
       {stats.map((item) => {
         const Icon = item.icon;
         return (
           <div
             key={item.label}
-            className={`flex items-center gap-4 rounded-xl border p-4 bg-card shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md cursor-default ${item.containerClass}`}
+            className={`bg-card flex cursor-default items-center gap-4 rounded-xl border p-4 shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md ${item.containerClass}`}
           >
-            <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border bg-background ${item.valueClass}`}>
+            <div
+              className={`bg-background flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border ${item.valueClass}`}
+            >
               <Icon className="h-5 w-5" />
             </div>
             <div className="min-w-0">
-              <p className={`text-2xl font-extrabold leading-none tracking-tight ${item.valueClass}`}>
+              <p
+                className={`text-2xl leading-none font-extrabold tracking-tight ${item.valueClass}`}
+              >
                 {item.value}
               </p>
-              <p className="text-xs font-medium text-muted-foreground mt-1">{item.label}</p>
-              <p className="text-[10px] text-muted-foreground/50 mt-0.5 uppercase tracking-wider font-medium">{item.sub}</p>
+              <p className="text-muted-foreground mt-1 text-xs font-medium">
+                {item.label}
+              </p>
+              <p className="text-muted-foreground/50 mt-0.5 text-[10px] font-medium tracking-wider uppercase">
+                {item.sub}
+              </p>
             </div>
           </div>
         );

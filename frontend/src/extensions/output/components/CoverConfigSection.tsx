@@ -240,9 +240,7 @@ export function CoverConfigSection({
                   className="border-border flex items-center gap-2 rounded-lg border px-2 py-1.5"
                 >
                   <span className="text-muted-foreground flex w-32 shrink-0 flex-col">
-                    <span className="text-xs font-medium">
-                      {slot.label}
-                    </span>
+                    <span className="text-xs font-medium">{slot.label}</span>
                     <span
                       className="text-muted-foreground/60 truncate text-[9px]"
                       title={coverSlotSourceLabel(slot.id, slot.defaultFrom)}

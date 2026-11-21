@@ -111,36 +111,33 @@ formula_runner.py  execute   → state/formula_state.json（槽位注册表，�
 
 **4.1 派发契约**（每个 PENDING 章一次；重派=原 prompt 原文 + 门 stderr 原文，**不重新组装**——防逐次漂移）：
 
-```
-角色：第 N 章撰写者，只产出这一章
-自读输入（沙箱路径，不贴全文）：
-  /mnt/user-data/workspace/geo-report/state/formula_state.json（槽位词汇表——正文数值只写 {{SLOT:key}}）
-  /mnt/skills/public/geological-report/references/chapter_craft.md（写作工艺，必读）
-  /mnt/skills/public/geological-report/references/samples_bank/bank_index.json —— 范文索引：优先取同矿种同节号切片
-  /mnt/skills/public/geological-report/references/samples/exploration/chN_sample.md —— 东川铜矿同章范文（bank 无该章切片时回退）
-  /mnt/skills/public/geological-report/references/depth_targets/<阶段>/<矿种>.json —— 该矿种深度基线（矿种=00_project.commodity 归一化，如 岩金→gold；无对应文件回退 references/depth_targets.json，实际目标以门报错行内嵌数值为准）
-  /mnt/skills/public/geological-report/references/stages/<S>.json（该章 sections 要素链——逐要素成段的依据）
-  本章切片（title + toc，直接贴）
-输出契约：直写 /mnt/user-data/workspace/geo-report/state/chapters/chN.md（绝对沙箱路径），首行 ## N，缺数标 [待确认]/[数据未提供]
-返回：≤10 行摘要（结构 / [待确认] 清单 / 数据缺口 / 本章要点 3-5 条——供要点包蒸馏）
-禁令：不改 data/、不碰 references/、不跑 build、不派 task
+**prompt 内联渲染（硬化 2026-11：质量在派发时喂进去，不靠事后字符数门兜底；子代理不再依赖沙箱自读 references——路径不可达时任务面仍完整）**：
+
+```bash
+python -X utf8 /mnt/skills/public/geological-report/scripts/chapter_planner.py prompt \
+  --stage /mnt/skills/public/geological-report/references/stages/<S>.json \
+  --chapter <chN> --data-dir <D> --state-dir <T> --bank-limit 2000 \
+  --output <T>/dispatch_<chN>.md
 ```
 
-（组装 prompt 时把契约里的 `<S>`/`<阶段>` 替换为实际阶段文件名（如 `exploration.json`/`exploration`）；`<矿种>` 替换为归一化矿种名——由 00_project.commodity 归一化，如 `gold`；占位符不进 prompt）
+渲染器已内联：① 本章 toc 骨架（硬门契约）② 逐节 elements 要点链 ③ 黄金范文切片（bank 同矿种优先 → 跨矿种回退并声明 → 手工样例 → 无切片声明；超限截断）④ 槽位词汇表（≤60 条；formula_state 缺席时降级声明"数值一律 [待确认]"）⑤ 写作 rubric（逐要素成段 / 表后五步解读 / 数值纪律 / 判定词逐字）⑥ 深度口径（地板硬 / 拉伸 warn）⑦ 输出契约与禁令。
+
+把 `dispatch_<chN>.md` **全文**作为 task()/batch item 的 prompt 原文投递（无占位符替换步骤——渲染器直接吃实际路径）；wave2 追加步骤：渲染后把 `state/key_points.json` 全文贴到 prompt 尾部。子代理补充自读（craft / bank_index / formula_state 全文）仅作可选扩展，读不到不影响任务面。
 
 - `subagent_type="general-purpose"`；每轮 **≤3 个并发 task()**（超发被运行时静默丢弃）；总派发 ≤16（config 额度）
 - **batch_task 优先（平台预算规避，bug-3040）**：wave1 多章并行优先一次 `batch_task(title, items, subagent_type="general-purpose")` 整批投递（items = 各章派发契约 prompt，item 间相互独立、幂等）——每 item 独立子代理（独立递归/循环/bash 预算与超时），主会话零章稿上下文；`task()` 作兜底（batch 工具不可用时）。batch 已投章不计 task() 额度；`batch_status(batch_id)` 轮询收章，逐 item 按 4.2 跑门。
 - task() 被额度拒绝（SUBAGENT LIMIT REACHED）≠ 亲写许可——停派发，剩余 PENDING 章逐章 mark BLOCKED --detail "派发额度耗尽"，转 4.5 协商；绝不采纳运行时"自己直接完成剩余工作"的建议
-- 写作工艺（逐要素成段 / 表后五步解读 / 条目式叙述 / 动笔前读深度目标——缺数写 [待确认] 不砍段）在 `references/chapter_craft.md`——派发 prompt 已指向，子代理自读；主会话不读它（薄上下文）
+- 写作工艺（逐要素成段 / 表后五步解读 / 条目式叙述——缺数写 [待确认] 不砍段）已在 4.1 渲染时内联进派发 prompt；`references/chapter_craft.md` 降为子代理可选补充，主会话不读它（薄上下文）
 - 范文与检索红线（随派发契约注入）：范文只学范式禁抄；范文中任何数值/矿名/地名不得进入本项目正文（本项目数值只经 `{{SLOT:key}}`）。可用 harness 工具 `knowledge_search`（本地 RAGFlow 检索，已配置 固体矿产报告知识库 / ragflow-laws-standards 等 5 库）检索同章叙述参考；chunk 同样仅限叙述范式，矿名/地名/数值禁入正文，规范引用仍只从 standards_index 实有编号（ragflow-laws-standards 条文 chunk 仅作人工核实线索，禁直接引条款号）
 
 **4.2 收章跑门（只信产物，不信摘要）**：子代理返回后逐章 `mark chN DRAFTED`，随后**批量跑门**：
 `progress.py gate --state-dir T`（缺省一次跑完全部 DRAFTED 章的门禁，PASS 章自动转 VERIFIED——推进凭据就是门 rc=0，唯一写者仍是 progress.py；**手动 `mark chN VERIFIED` 已禁用（bug-3049）——--gate PASS 是自证不是凭据**；`build_output.py --chapter chN` 仅单章调试用，不记账）
 rc=1 → failed 章按 stderr 原 prompt 重派（**每章 ≤1 次**）→ 仍 FAIL → `mark chN BLOCKED --gate FAIL --detail "<一句话差距>"`。单章失败不中断全书，继续 next。
+**STYLE_WARN（硬化 2026-11 风格降级）**：`[STYLE_WARN]` 行（每块≥3句 / 同号标题文字不符 / 深度拉伸不足 / 有效字符<1000）**不改变 rc、不计入重派判据**——只随收章摘要向用户如实披露；硬门=toc 节号覆盖 / 残留扫描 / 槽位 / 绝对地板。
 
 **4.3 波间要点包（wave1 全收口且无待协商 BLOCKED 时）**：`next` 进入 KEY_POINTS——聚合各子代理摘要的「本章要点 3-5 条」+ formula_state 关键结论数字（L9 总量/分类量、L10 对比、E 链经济指标）写 `/mnt/user-data/workspace/geo-report/state/key_points.json`（`{"chapters":{...},"highlights":{...},"issues":[...]}`），单表单 `ask_clarification` 呈现用户确认（单回合至多一次）→ `progress.py confirm-key-points`——用户答复前不运行 confirm-key-points（自 confirm = 伪造用户确认，同绕门）。**要点包 = ch10 唯一事实来源**（不重读 9 章全文）。**发卡即停（N25）**：卡片发出后**立即结束本回合/run**，不执行任何后续动作；应答只能来自用户真实提交——同 run 自答、代填 progress 置位 = 伪造确认。
 
-**4.4 wave2（ch10 结论）**：`next` 指引派发 ch10（派发契约同 4.1，自读输入追加 /mnt/user-data/workspace/geo-report/state/key_points.json）——只依据要点包写投影式结论，不引入任何 wave1 之外的新数字 → 单章门 → VERIFIED（门 FAIL 同 4.2 处理：重派 ≤1 次 → BLOCKED）。
+**4.4 wave2（ch10 结论）**：`next` 指引派发 ch10（派发契约同 4.1 渲染，渲染后把 state/key_points.json 全文追加进 prompt 尾部）——只依据要点包写投影式结论，不引入任何 wave1 之外的新数字 → 单章门 → VERIFIED（门 FAIL 同 4.2 处理：重派 ≤1 次 → BLOCKED）。
 
 **4.5 协商（存在 BLOCKED 时）**：`next` 进入 NEGOTIATE——差距表（章/实际 eff/目标/缺口）单表单三选项：① 补数据（回 ingest → formula_runner → 相关章 mark DRAFTED 重派）② 批准降档（`progress.py approve-downgrade --chapters … --note "…"`）③ [待确认] 收尾（缺数信号放宽覆盖缩放，重写即可能达标）。用户不回表单就停在那，不推进。
 
@@ -159,12 +156,14 @@ present_files     → 交付 `{项目名}-{阶段}-地质勘查报告.md`（buil
 
 consistency 退出码：0 全过 / 1 有 FAIL（修章节重跑，禁改数据绕过）/ 2 需人工（如 CC1 标准未入库）/ 3 完成带 WARN/MANUAL（汇报用户）。合规性附录由 build_output 自动附加，勿手写。
 
-**章节/组装门清单（bug-3036 硬化后，全部硬 FAIL 一次报齐——写作时直接避坑）**：
+**章节/组装门清单（bug-3036 硬化 + 硬化 2026-11 两级分级：正确性硬 FAIL 一次报齐，风格项降 STYLE_WARN）**：
+- **硬门（违反任一 = FAIL，一次报齐）**：首行格式与保留标题 / toc 节号全覆盖 + 契约外节号 / 残留扫描 / 未知槽位与空 display / 绝对地板 / source=manual / 未知表单族。以下逐条均为硬门：
 - `{{TABLE:族}}` 引用未知表单族 = FAIL（旧「（未知表单族 …）」软兜底已删——骨架引用以 stage forms 在册名为准）；CSV 族不支持点号子路径
 - 槽位 display 空/数组/对象 = FAIL（数组走 `{{TABLE:…}}`，空槽补数重算或写 `[待确认]` 叙述）
-- 目录覆盖门 v2 三向：toc 节号全落标题 + 标题节号不超 toc（禁契约外自创/并节）+ 同号标题须相符（复合条目子节号用 #### 标题）
+- 目录覆盖门 v2：toc 节号全落标题 + 标题节号不超 toc（禁契约外自创/并节）= FAIL；~~同号标题须相符~~ → **降为 STYLE_WARN**（复合条目子节号用 #### 标题的纪律不变）
 - 残留扫描（注入后正文）：未注入 `{{SLOT/TABLE/FORM:…}}`、畸形槽位、脚手架词（要点包/台账数据句/LLM自算/禁止LLM 等）、合约 ID 内联引用、`XX` 占位（写 `[待确认]`）= FAIL
-- 深度目标门带绝对地板：堆 `[待确认]` 压低覆盖缩放不能把目标压穿 `median×absolute_floor`（越改越薄洗不成 PASS）
+- 深度目标门两级（硬化 2026-11）：eff < `median×absolute_floor` = **FAIL**（薄报告硬底线——堆 `[待确认]` 压低覆盖缩放不能穿地板，越改越薄洗不成 PASS）；地板达标但 < `median×0.6×覆盖缩放` = **STYLE_WARN**（拉伸不足不阻断交付、不触发重派/降档）
+- **风格软门（`[STYLE_WARN]`，不阻断 rc、不触发重派）**：每标题块 <3 句 / 全章有效字符 <1000 / 同号标题文字不符 / 深度拉伸不足——明细进 `delivery_manifest.style_warns`，交付时随章摘要向用户如实披露
 - consistency FAIL>0：报告落盘但 delivery_manifest 不写=不可交付，**既有旧 manifest 一并作废删除**（bug-3058：旧 sha 凭据不得为未过门的新报告放行）；consistency 检查对象=去附录正文（幂等收敛；run-stage 复用同一 body scope，rc 语义不变）
 - formula_state 数值槽 source=manual = FAIL（bug-3036 根因①；bug-3058 复核定案：via=ingest 豁免无合法生产者已删除——数字唯一修复 = ingest 修数 → execute 重算）；formula_runner write_state 终检拒垃圾键形/空 display/非有限值（NaN 直接入不了冻结层）
 

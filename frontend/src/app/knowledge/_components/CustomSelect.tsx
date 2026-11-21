@@ -42,9 +42,9 @@ export function CustomSelect({
         onClick={() => setOpen(!open)}
         className={cn(
           "flex w-full items-center justify-between gap-2 rounded-lg px-3 py-2.5 text-sm",
-          "border bg-background transition-all duration-150",
+          "bg-background border transition-all duration-150",
           open
-            ? "border-primary shadow-sm ring-2 ring-ring/50"
+            ? "border-primary ring-ring/50 shadow-sm ring-2"
             : "border-input hover:border-input hover:shadow-sm",
         )}
       >
@@ -55,13 +55,15 @@ export function CustomSelect({
           )}
         >
           {selected?.icon && (
-            <span className="shrink-0 text-muted-foreground">{selected.icon}</span>
+            <span className="text-muted-foreground shrink-0">
+              {selected.icon}
+            </span>
           )}
           <span className="truncate">{selected?.label ?? "请选择"}</span>
         </span>
         <ChevronDown
           className={cn(
-            "h-4 w-4 shrink-0 text-muted-foreground transition-transform duration-200",
+            "text-muted-foreground h-4 w-4 shrink-0 transition-transform duration-200",
             open && "rotate-180",
           )}
         />
@@ -74,7 +76,7 @@ export function CustomSelect({
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: -4, scale: 0.98 }}
             transition={{ duration: 0.15 }}
-            className="absolute top-full right-0 left-0 z-50 mt-1.5 overflow-hidden rounded-xl border border-border bg-background shadow-lg shadow-black/5"
+            className="border-border bg-background absolute top-full right-0 left-0 z-50 mt-1.5 overflow-hidden rounded-xl border shadow-lg shadow-black/5"
           >
             {options.map((o) => (
               <button
@@ -87,7 +89,7 @@ export function CustomSelect({
                 className={cn(
                   "flex w-full items-center gap-2.5 px-3 py-2.5 text-left text-sm transition-colors",
                   o.value === value
-                    ? "bg-primary/10 font-medium text-primary"
+                    ? "bg-primary/10 text-primary font-medium"
                     : "text-foreground hover:bg-muted",
                 )}
               >
@@ -95,7 +97,9 @@ export function CustomSelect({
                   <span
                     className={cn(
                       "shrink-0",
-                      o.value === value ? "text-primary" : "text-muted-foreground",
+                      o.value === value
+                        ? "text-primary"
+                        : "text-muted-foreground",
                     )}
                   >
                     {o.icon}
@@ -104,11 +108,13 @@ export function CustomSelect({
                 <span className="flex min-w-0 flex-col">
                   <span className="truncate">{o.label}</span>
                   {o.desc && (
-                    <span className="mt-0.5 text-xs text-muted-foreground">{o.desc}</span>
+                    <span className="text-muted-foreground mt-0.5 text-xs">
+                      {o.desc}
+                    </span>
                   )}
                 </span>
                 {o.value === value && (
-                  <CheckCircle2 className="ml-auto h-3.5 w-3.5 shrink-0 text-primary" />
+                  <CheckCircle2 className="text-primary ml-auto h-3.5 w-3.5 shrink-0" />
                 )}
               </button>
             ))}

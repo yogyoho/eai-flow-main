@@ -1,0 +1,21 @@
+case: L1-022-format-mismatch
+desc: 投标文件无目录(bid.format.toc=False)op:and 合规式破支出候选(份数相等/页码在席不触发),scripted 模型确认 partial → L1-022 violation(major)
+fields:
+  tender.format_requirements.copies: 4
+  tender.format_requirements.toc: true
+  tender.format_requirements.page_numbering: true
+  tender.format_requirements.font: 宋体小四
+  tender.format_requirements.sealing: 标书密封袋密封
+  bid.format.copies: 4
+  bid.format.toc: false
+  bid.format.page_numbering: true
+  bid.format.font: 仿宋
+  bid.format.sealing_label: 密封袋封装
+model_script:
+  L1-022: '{"verdicts": [{"clause_id": "FM-1", "verdict": "partial", "confidence": 0.9, "reason": "投标文件未编制目录且字体与招标要求不符", "evidence": [{"doc_id": "bid.pdf", "page": 1, "text": "投标文件正文首页无目录页"}]}]}'
+expect_issues:
+  - rule_id: L1-022
+    severity: major
+    contains: ["格式与招标要求不符", "目录"]
+expect_absent: []
+strict: false

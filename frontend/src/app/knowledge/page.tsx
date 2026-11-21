@@ -394,7 +394,7 @@ function KnowledgeBaseManagement({
         {/* Header */}
         <div className="flex items-start justify-between gap-4">
           <div className="flex items-start gap-3">
-            <div className="shrink-0 rounded-lg border border-primary/20 bg-primary/10 p-3 text-primary">
+            <div className="border-primary/20 bg-primary/10 text-primary shrink-0 rounded-lg border p-3">
               <BookOpen className="h-6 w-6" />
             </div>
             <div className="min-w-0">
@@ -476,7 +476,7 @@ function KnowledgeBaseManagement({
                     exit={{ opacity: 0, scale: 0.95 }}
                     transition={{ duration: 0.2 }}
                     onClick={() => router.push(`/knowledge/${kb.id}`)}
-                    className="group border-border bg-card flex cursor-pointer flex-col overflow-hidden rounded-lg border transition-all hover:border-primary/20 hover:shadow-md"
+                    className="group border-border bg-card hover:border-primary/20 flex cursor-pointer flex-col overflow-hidden rounded-lg border transition-all hover:shadow-md"
                   >
                     <div className="flex-1 p-5">
                       <div className="mb-4 flex items-center gap-3">

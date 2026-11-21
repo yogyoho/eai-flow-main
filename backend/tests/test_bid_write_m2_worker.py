@@ -133,6 +133,70 @@ async def test_generate_endpoint_records(client, db, monkeypatch):
 
 
 @pytest.mark.asyncio
+async def test_generate_regenerate_document_overwrites(client, db, monkeypatch):
+    """批卅六:regenerate_document=True 受控重建已有正文(无修订面);
+    knobs 不被控制面污染;旋钮变更后正文内容随重建更新。"""
+    task = await _ready_task(db, monkeypatch)
+    r1 = await client.post(
+        f"/api/extensions/bid-write/tasks/{task.id}/generate",
+        json={"sign_date": "2026-11-20"},
+    )
+    assert r1.status_code == 200
+    before = await crud.get_document(db, task_id=task.id, owner_id="u1")
+    assert before is not None
+    # 同一 AsyncSession identity map:put 后 before.ast 与 after.ast 是同一 dict,
+    # 快照必须深拷贝,否则自比恒等
+    import copy as _copy
+
+    ast_before = _copy.deepcopy(before.ast)
+
+    r2 = await client.post(
+        f"/api/extensions/bid-write/tasks/{task.id}/generate",
+        json={"sign_date": "2026-12-31", "regenerate_document": True},
+    )
+    assert r2.status_code == 200
+    after = await crud.get_document(db, task_id=task.id, owner_id="u1")
+    assert after is not None
+    assert after.ast != ast_before  # 旋钮变更+重建 → 正文内容随重建更新
+    refreshed = await crud.get_task(db, task.id, "u1")
+    assert refreshed.engine_meta["knobs"]["sign_date"] == "2026-12-31"
+    assert "regenerate_document" not in refreshed.engine_meta["knobs"]
+
+
+@pytest.mark.asyncio
+async def test_generate_regenerate_refused_when_revision_exists(client, db, monkeypatch):
+    """批卅六:存在审批修订时 regenerate_document=True → 409,正文保持原样。"""
+    from app.extensions.bid_write import approval as approval_mod
+
+    task = await _ready_task(db, monkeypatch)
+    r1 = await client.post(f"/api/extensions/bid-write/tasks/{task.id}/generate", json={})
+    assert r1.status_code == 200
+    doc_before = await crud.get_document(db, task_id=task.id, owner_id="u1")
+    assert doc_before is not None
+    ast_snapshot = doc_before.ast
+    rev = models.BidWriteDocumentRevision(
+        task_id=task.id,
+        owner_id="u1",
+        revision_no=1,
+        ast=ast_snapshot,
+        schema_version="0.3.0",
+        doc_hash=approval_mod.canonical_hash(ast_snapshot),
+        assertion_snapshot={},
+        status="submitted",
+    )
+    db.add(rev)
+    await db.commit()
+    r2 = await client.post(
+        f"/api/extensions/bid-write/tasks/{task.id}/generate",
+        json={"regenerate_document": True},
+    )
+    assert r2.status_code == 409
+    assert "审批修订" in r2.json()["detail"]
+    doc_after = await crud.get_document(db, task_id=task.id, owner_id="u1")
+    assert doc_after is not None and doc_after.ast == ast_snapshot
+
+
+@pytest.mark.asyncio
 async def test_export_precheck_readonly(client, db, monkeypatch):
     """export-precheck 只读重算:不落新 skill_run;watermark/reasons/计数面齐。"""
     task = await _ready_task(db, monkeypatch)

@@ -110,7 +110,11 @@ export function SelfVsOutsourceChart({
               layout="vertical"
               margin={{ top: 4, right: 12, left: 0, bottom: 0 }}
             >
-              <CartesianGrid strokeDasharray="2 4" stroke={GRID} horizontal={false} />
+              <CartesianGrid
+                strokeDasharray="2 4"
+                stroke={GRID}
+                horizontal={false}
+              />
               <XAxis
                 type="number"
                 tick={AXIS}

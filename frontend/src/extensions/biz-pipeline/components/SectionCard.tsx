@@ -12,7 +12,6 @@ import {
 } from "@/extensions/biz-pipeline/components/chartTheme";
 import { cn } from "@/lib/utils";
 
-
 interface SectionCardProps {
   /** 区块序号徽标(①/②,克隆自 bid-quote 三问框架)。 */
   badge: string;

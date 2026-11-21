@@ -840,7 +840,9 @@ function DocumentList({
           <div className="shrink-0 rounded-sm border border-blue-200 bg-blue-50 p-1 text-blue-600 dark:border-blue-800 dark:bg-blue-950/40 dark:text-blue-300">
             <FolderCheck className="h-4 w-4" />
           </div>
-          <span className="text-foreground text-lg font-semibold">文档空间</span>
+          <span className="text-foreground text-lg font-semibold">
+            文档空间
+          </span>
         </div>
         <nav
           ref={personalNavRef}
@@ -1148,14 +1150,14 @@ function DocumentList({
                         <div
                           key={`${thread_id}/${file.rel_path}`}
                           onClick={() => onSelectDoc(doc)}
-                          className="group border-border bg-card cursor-pointer rounded-lg border px-4 py-3 transition-all hover:border-primary/20 hover:shadow-md"
+                          className="group border-border bg-card hover:border-primary/20 cursor-pointer rounded-lg border px-4 py-3 transition-all hover:shadow-md"
                         >
                           <div className="flex items-start gap-3">
-                            <div className="shrink-0 rounded-lg bg-primary/10 p-2">
-                              <FileText className="h-4 w-4 text-primary" />
+                            <div className="bg-primary/10 shrink-0 rounded-lg p-2">
+                              <FileText className="text-primary h-4 w-4" />
                             </div>
                             <div className="min-w-0 flex-1">
-                              <div className="text-foreground truncate text-sm font-semibold transition-colors group-hover:text-primary">
+                              <div className="text-foreground group-hover:text-primary truncate text-sm font-semibold transition-colors">
                                 {file.name}
                               </div>
                               <div className="text-muted-foreground mt-1 flex items-center gap-1 text-xs">
@@ -1573,7 +1575,7 @@ function DocCard({
       animate={{ opacity: 1, scale: 1 }}
       exit={{ opacity: 0, scale: 0.95 }}
       transition={{ duration: 0.2 }}
-      className="border-border bg-card group relative flex h-50 cursor-pointer flex-col rounded-lg border p-4 transition-all hover:border-primary/20 hover:shadow-md"
+      className="border-border bg-card group hover:border-primary/20 relative flex h-50 cursor-pointer flex-col rounded-lg border p-4 transition-all hover:shadow-md"
       onClick={(e) => {
         if (e.ctrlKey || e.metaKey) {
           e.preventDefault();
@@ -1607,7 +1609,7 @@ function DocCard({
           </div>
         )}
       </div>
-      <h3 className="text-foreground mb-4 line-clamp-1 text-sm font-semibold transition-colors group-hover:text-primary">
+      <h3 className="text-foreground group-hover:text-primary mb-4 line-clamp-1 text-sm font-semibold transition-colors">
         {doc.title || "无标题"}
       </h3>
       <div className="text-muted-foreground mt-auto flex items-center justify-between">
@@ -2619,7 +2621,7 @@ export function DocumentEditor({
             <span className="mr-2 flex items-center gap-1.5 text-xs select-none">
               {saveError ? (
                 <span
-                  className="flex items-center gap-1.5 text-destructive"
+                  className="text-destructive flex items-center gap-1.5"
                   title={saveError}
                 >
                   <AlertCircle className="h-3.5 w-3.5" />
@@ -2831,7 +2833,9 @@ export function DocumentEditor({
                 initialContent={doc.content ?? ""}
                 onChange={scheduleSave}
                 className="flex-1"
-                threadId={doc.source_thread_id ?? personalFile?.thread_id ?? undefined}
+                threadId={
+                  doc.source_thread_id ?? personalFile?.thread_id ?? undefined
+                }
                 hideSideMenu={
                   !!getLanguageFromName(personalFile?.title ?? doc?.title ?? "")
                 }

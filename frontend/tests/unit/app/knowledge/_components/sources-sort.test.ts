@@ -15,7 +15,10 @@ describe("sortSourcesByScore", () => {
   });
 
   it("does not mutate input", () => {
-    const srcs = [{ content: "a", score: 0.1 }, { content: "b", score: 0.9 }];
+    const srcs = [
+      { content: "a", score: 0.1 },
+      { content: "b", score: 0.9 },
+    ];
     sortSourcesByScore(srcs);
     expect(srcs.map((s) => s.content)).toEqual(["a", "b"]);
   });

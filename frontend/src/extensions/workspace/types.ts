@@ -3,7 +3,11 @@
 
 export type ProjectKind = "quickdoc" | "report";
 export type TierState = "tier1" | "tier2" | "tier3";
-export type ProjectStatus = "active" | "submitted_for_release" | "released" | "archived";
+export type ProjectStatus =
+  | "active"
+  | "submitted_for_release"
+  | "released"
+  | "archived";
 
 export interface CollabProject {
   id: string;
@@ -91,7 +95,14 @@ export interface CollabGate {
   scope: "task" | "project_release";
   state: "pending" | "approved" | "rejected";
   mode: string;
-  participants: Array<{ type: MemberType; user_id?: string; userId?: string; agent_name?: string; agentName?: string; weight: number }>;
+  participants: Array<{
+    type: MemberType;
+    user_id?: string;
+    userId?: string;
+    agent_name?: string;
+    agentName?: string;
+    weight: number;
+  }>;
   deadlineAt: string | null;
   resolvedAt: string | null;
   revision: number;

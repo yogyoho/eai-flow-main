@@ -18,43 +18,43 @@
 
 ### 2.1 颜色系统
 
-| 令牌 | 用途 | 亮色模式 | 暗色模式 |
-|------|------|----------|----------|
-| `--background` | 页面背景 | `oklch(1 0 0)` 白 | `oklch(0.145 0 0)` 深灰 |
-| `--foreground` | 主文本 | `oklch(0.145 0 0)` | `oklch(0.985 0 0)` |
-| `--primary` | 主色调 | `oklch(0.51 0.22 264)` 靛蓝 | `oklch(0.58 0.22 264)` |
-| `--primary-foreground` | 主色文本 | `oklch(1 0 0)` 白 | `oklch(0.985 0 0)` |
-| `--secondary` | 次要背景 | `oklch(0.96 0 0)` | `oklch(0.3 0 0)` |
-| `--muted` | 弱化背景 | `oklch(0.97 0 0)` | `oklch(0.269 0 0)` |
-| `--muted-foreground` | 次要文本 | `oklch(0.556 0 0)` | `oklch(0.6 0 0)` |
-| `--accent` | 强调背景 | `oklch(0.96 0 0)` | `oklch(0.32 0 0)` |
-| `--destructive` | 危险/错误 | `oklch(0.577 0.245 27.325)` 红 | 同左 |
-| `--border` | 边框 | `oklch(0.922 0 0)` | `oklch(1 0 0 / 10%)` |
-| `--input` | 输入框边框 | `oklch(0.88 0 0)` | `oklch(1 0 0 / 15%)` |
-| `--success` | 成功状态 | `oklch(0.55 0.15 160)` 绿 #059669 | `oklch(0.62 0.13 160)` |
-| `--warning` | 警告状态 | `oklch(0.769 0.188 70.08)` 黄 | 同左 |
+| 令牌                   | 用途       | 亮色模式                          | 暗色模式                |
+| ---------------------- | ---------- | --------------------------------- | ----------------------- |
+| `--background`         | 页面背景   | `oklch(1 0 0)` 白                 | `oklch(0.145 0 0)` 深灰 |
+| `--foreground`         | 主文本     | `oklch(0.145 0 0)`                | `oklch(0.985 0 0)`      |
+| `--primary`            | 主色调     | `oklch(0.51 0.22 264)` 靛蓝       | `oklch(0.58 0.22 264)`  |
+| `--primary-foreground` | 主色文本   | `oklch(1 0 0)` 白                 | `oklch(0.985 0 0)`      |
+| `--secondary`          | 次要背景   | `oklch(0.96 0 0)`                 | `oklch(0.3 0 0)`        |
+| `--muted`              | 弱化背景   | `oklch(0.97 0 0)`                 | `oklch(0.269 0 0)`      |
+| `--muted-foreground`   | 次要文本   | `oklch(0.556 0 0)`                | `oklch(0.6 0 0)`        |
+| `--accent`             | 强调背景   | `oklch(0.96 0 0)`                 | `oklch(0.32 0 0)`       |
+| `--destructive`        | 危险/错误  | `oklch(0.577 0.245 27.325)` 红    | 同左                    |
+| `--border`             | 边框       | `oklch(0.922 0 0)`                | `oklch(1 0 0 / 10%)`    |
+| `--input`              | 输入框边框 | `oklch(0.88 0 0)`                 | `oklch(1 0 0 / 15%)`    |
+| `--success`            | 成功状态   | `oklch(0.55 0.15 160)` 绿 #059669 | `oklch(0.62 0.13 160)`  |
+| `--warning`            | 警告状态   | `oklch(0.769 0.188 70.08)` 黄     | 同左                    |
 
 ### 2.2 圆角系统
 
-| 令牌 | 尺寸 | 用途 |
-|------|------|------|
-| `--radius` | 0.625rem (10px) | 默认圆角 |
-| `--radius-sm` | calc(var(--radius) - 4px) = 6px | 小按钮/输入框 |
-| `--radius-md` | calc(var(--radius) - 2px) = 8px | 中等元素 |
-| `--radius-lg` | var(--radius) = 10px | 大卡片/弹窗 |
-| `--radius-xl` | calc(var(--radius) + 4px) = 14px | 更大卡片 |
+| 令牌          | 尺寸                             | 用途          |
+| ------------- | -------------------------------- | ------------- |
+| `--radius`    | 0.625rem (10px)                  | 默认圆角      |
+| `--radius-sm` | calc(var(--radius) - 4px) = 6px  | 小按钮/输入框 |
+| `--radius-md` | calc(var(--radius) - 2px) = 8px  | 中等元素      |
+| `--radius-lg` | var(--radius) = 10px             | 大卡片/弹窗   |
+| `--radius-xl` | calc(var(--radius) + 4px) = 14px | 更大卡片      |
 
 ### 2.3 间距规范
 
-| 名称 | 尺寸 | 用途 |
-|------|------|------|
-| `space-y-1` | 4px | 紧凑间距 |
-| `space-y-2` | 8px | 小间距 |
-| `space-y-4` | 16px | 默认间距 |
-| `space-y-6` | 24px | 大间距 |
-| `space-y-8` | 32px | 区域间距 |
+| 名称                    | 尺寸           | 用途       |
+| ----------------------- | -------------- | ---------- |
+| `space-y-1`             | 4px            | 紧凑间距   |
+| `space-y-2`             | 8px            | 小间距     |
+| `space-y-4`             | 16px           | 默认间距   |
+| `space-y-6`             | 24px           | 大间距     |
+| `space-y-8`             | 32px           | 区域间距   |
 | `p-4` / `px-4` / `py-6` | 16px/16px/24px | 组件内边距 |
-| `px-8 py-6` | 32px/24px | 页面级边距 |
+| `px-8 py-6`             | 32px/24px      | 页面级边距 |
 
 ### 2.4 阴影系统
 
@@ -71,11 +71,13 @@ shadow-[0_8px_30px_rgb(0,0,0,0.08)] /* 登录页卡片阴影 */
 ### 2.5 字体系统
 
 ```css
---font-sans: ui-sans-serif, system-ui, sans-serif, "Apple Color Emoji", "Segoe UI Emoji",
-    "Segoe UI Symbol", "Noto Color Emoji";
+--font-sans:
+  ui-sans-serif, system-ui, sans-serif, "Apple Color Emoji", "Segoe UI Emoji",
+  "Segoe UI Symbol", "Noto Color Emoji";
 ```
 
 字号层级：
+
 - `text-xs`: 0.75rem (12px) - 辅助文本
 - `text-sm`: 0.875rem (14px) - 正文/按钮
 - `text-base`: 1rem (16px) - 主文本
@@ -94,23 +96,26 @@ shadow-[0_8px_30px_rgb(0,0,0,0.08)] /* 登录页卡片阴影 */
 ```typescript
 buttonVariants({
   variant: {
-    default:    'bg-primary text-primary-foreground shadow-xs hover:bg-primary/90',
-    destructive: 'bg-destructive text-white shadow-xs hover:bg-destructive/90',
-    outline:    'border bg-background shadow-xs hover:bg-accent hover:text-accent-foreground',
-    secondary:  'bg-secondary text-secondary-foreground shadow-xs hover:bg-secondary/80',
-    ghost:      'hover:bg-accent hover:text-accent-foreground',
-    link:       'text-primary underline-offset-4 hover:underline',
+    default: "bg-primary text-primary-foreground shadow-xs hover:bg-primary/90",
+    destructive: "bg-destructive text-white shadow-xs hover:bg-destructive/90",
+    outline:
+      "border bg-background shadow-xs hover:bg-accent hover:text-accent-foreground",
+    secondary:
+      "bg-secondary text-secondary-foreground shadow-xs hover:bg-secondary/80",
+    ghost: "hover:bg-accent hover:text-accent-foreground",
+    link: "text-primary underline-offset-4 hover:underline",
   },
   size: {
-    default: 'h-9 px-4 py-2 has-[>svg]:px-3',
-    sm:      'h-8 rounded-md gap-1.5 px-3 has-[>svg]:px-2.5',
-    lg:      'h-10 rounded-md px-6 has-[>svg]:px-4',
-    icon:    'size-9',
+    default: "h-9 px-4 py-2 has-[>svg]:px-3",
+    sm: "h-8 rounded-md gap-1.5 px-3 has-[>svg]:px-2.5",
+    lg: "h-10 rounded-md px-6 has-[>svg]:px-4",
+    icon: "size-9",
   },
-})
+});
 ```
 
 **使用规范**：
+
 - 主要操作使用 `variant="default"`（主色调按钮）
 - 危险操作（删除）使用 `variant="destructive"`
 - 次要操作使用 `variant="outline"`
@@ -119,6 +124,7 @@ buttonVariants({
 - 使用 `data-slot="button"` 属性
 
 **正确示例**：
+
 ```tsx
 import { Button } from "@/components/ui/button"
 import { Plus, Edit, Trash2 } from "lucide-react"
@@ -142,6 +148,7 @@ import { Plus, Edit, Trash2 } from "lucide-react"
 ```
 
 **错误示例**：
+
 ```tsx
 // ❌ 错误：使用普通 <button> 而非 shadcn Button
 <button className="px-4 py-2 bg-primary text-white rounded-lg">
@@ -168,7 +175,7 @@ import {
   CardContent,
   CardFooter,
   CardAction,
-} from "@/components/ui/card"
+} from "@/components/ui/card";
 
 // 标准卡片结构
 <Card>
@@ -179,16 +186,18 @@ import {
   </CardHeader>
   <CardContent>内容区域</CardContent>
   <CardFooter>底部操作</CardFooter>
-</Card>
+</Card>;
 ```
 
 **样式规范**：
+
 - 卡片：`rounded-xl border bg-card py-6 text-card-foreground shadow-sm`
 - CardHeader：`px-6`，包含标题和描述时使用 `@container/card-header` 布局
 - CardContent：`px-6`
 - CardFooter：`px-6`，有上边框时自动添加 `pt-6`
 
 **应用场景**：
+
 - 数据展示卡片：用户信息卡片、统计卡片
 - 表单卡片：编辑/创建表单容器
 - 列表卡片：聊天会话卡片、文件卡片
@@ -205,7 +214,7 @@ import {
   TableRow,
   TableHead,
   TableCell,
-} from "@/components/ui/table"
+} from "@/components/ui/table";
 
 <Table>
   <TableHeader>
@@ -220,16 +229,18 @@ import {
       <TableCell className="text-right">右对齐</TableCell>
     </TableRow>
   </TableBody>
-</Table>
+</Table>;
 ```
 
 **样式规范**：
+
 - TableRow：`border-b transition-colors hover:bg-muted/50`
 - TableHead：`h-10 px-2 text-start align-middle font-medium text-muted-foreground uppercase tracking-wider`
 - TableCell：`p-2 align-middle`
 - 表头背景：`bg-muted/50` 或 `bg-muted`
 
 **交互规范**：
+
 - 行悬停：鼠标悬停时整行高亮 `hover:bg-muted/50`
 - 行选中：选中行高亮 `data-[state=selected]:bg-muted`
 - 操作按钮：默认隐藏（opacity-0），悬停行时显示（group-hover:opacity-100）
@@ -239,7 +250,7 @@ import {
 **组件结构**：
 
 ```tsx
-import { Input } from "@/components/ui/input"
+import { Input } from "@/components/ui/input";
 
 <Input
   type="text"
@@ -247,10 +258,11 @@ import { Input } from "@/components/ui/input"
   onChange={(e) => setValue(e.target.value)}
   placeholder="请输入..."
   className="w-full"
-/>
+/>;
 ```
 
 **样式规范**：
+
 - 高度：`h-9`（默认）、`h-8`（小）、`h-10`（大）
 - 内边距：`px-3 py-1`
 - 焦点样式：`focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50`
@@ -260,7 +272,7 @@ import { Input } from "@/components/ui/input"
 
 ```tsx
 <div className="relative">
-  <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+  <User className="text-muted-foreground absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2" />
   <Input className="pl-9" placeholder="用户名" />
 </div>
 ```
@@ -277,10 +289,11 @@ import {
   DialogTitle,
   DialogDescription,
   DialogFooter,
-} from "@/components/ui/dialog"
+} from "@/components/ui/dialog";
 ```
 
 **动画规范**：
+
 - 进入动画：`animate-in fade-in-0 zoom-in-95`
 - 退出动画：`animate-out fade-out-0 zoom-out-95`
 - 背景遮罩：`bg-black/40 backdrop-blur-sm`
@@ -297,7 +310,7 @@ import {
   DropdownMenuItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
+} from "@/components/ui/dropdown-menu";
 
 <DropdownMenu>
   <DropdownMenuTrigger>触发器</DropdownMenuTrigger>
@@ -306,10 +319,11 @@ import {
     <DropdownMenuSeparator />
     <DropdownMenuItem className="text-destructive">危险操作</DropdownMenuItem>
   </DropdownMenuContent>
-</DropdownMenu>
+</DropdownMenu>;
 ```
 
 **样式规范**：
+
 - 触发器使用 `DropdownMenuTrigger asChild`
 - 内容区域：`w-56 rounded-lg border bg-popover p-1 shadow-md`
 - 项目：`flex cursor-pointer select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none hover:bg-accent`
@@ -349,14 +363,14 @@ import { Badge } from "@/components/ui/badge"
 **组件结构**：
 
 ```tsx
-import { Button } from "@/components/ui/button"
+import { Button } from "@/components/ui/button";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select"
+} from "@/components/ui/select";
 
 <div className="flex items-center justify-between px-2">
   {/* 左侧：每页条数 */}
@@ -366,12 +380,14 @@ import {
         <SelectValue />
       </SelectTrigger>
       <SelectContent>
-        {[10, 20, 30, 50].map(size => (
-          <SelectItem key={size} value={`${size}`}>{size}</SelectItem>
+        {[10, 20, 30, 50].map((size) => (
+          <SelectItem key={size} value={`${size}`}>
+            {size}
+          </SelectItem>
         ))}
       </SelectContent>
     </Select>
-    <span className="text-sm text-muted-foreground">条/页</span>
+    <span className="text-muted-foreground text-sm">条/页</span>
   </div>
 
   {/* 右侧：分页按钮 */}
@@ -379,24 +395,26 @@ import {
     <Button size="icon" variant="outline" disabled={!canPrevious}>
       <ChevronLeftIcon className="h-4 w-4" />
     </Button>
-    {pageNumbers.map((page, idx) => (
-      page === '...' ? (
-        <span key={idx} className="px-2 text-muted-foreground">...</span>
+    {pageNumbers.map((page, idx) =>
+      page === "..." ? (
+        <span key={idx} className="text-muted-foreground px-2">
+          ...
+        </span>
       ) : (
         <Button
           key={page}
           size="sm"
-          variant={currentPage === page ? 'default' : 'outline'}
+          variant={currentPage === page ? "default" : "outline"}
         >
           {page}
         </Button>
-      )
-    ))}
+      ),
+    )}
     <Button size="icon" variant="outline" disabled={!canNext}>
       <ChevronRightIcon className="h-4 w-4" />
     </Button>
   </div>
-</div>
+</div>;
 ```
 
 ---
@@ -426,16 +444,17 @@ import {
 
 ### 4.2 页面边距规范
 
-| 区域 | 边距 |
-|------|------|
-| 页面头部 | `px-8 py-6` |
-| 内容区域 | `p-8` |
-| 卡片内边距 | `px-6` |
+| 区域       | 边距        |
+| ---------- | ----------- |
+| 页面头部   | `px-8 py-6` |
+| 内容区域   | `p-8`       |
+| 卡片内边距 | `px-6`      |
 | 表格单元格 | `px-6 py-4` |
 
 ### 4.3 侧边栏规范
 
 **ExtensionsSidebar**（左侧图标导航栏）：
+
 - 宽度：`w-14 shrink-0`
 - 高度：全屏 `h-screen`
 - 图标按钮：`w-10 h-10 rounded-lg`
@@ -443,6 +462,7 @@ import {
 - 悬停状态：`text-muted-foreground hover:text-primary hover:bg-accent`
 
 **WorkspaceSidebar**（工作区侧边栏）：
+
 - 使用 shadcn/ui Sidebar 组件
 - 折叠模式：`collapsible="icon"`
 - 变体：`variant="sidebar"`
@@ -471,7 +491,7 @@ import { Skeleton } from "@/components/ui/skeleton"
 
 ```tsx
 <div className="flex flex-col items-center justify-center py-12 text-center">
-  <EmptyIcon className="w-12 h-12 text-muted-foreground mb-3" />
+  <EmptyIcon className="text-muted-foreground mb-3 h-12 w-12" />
   <p className="text-muted-foreground">没有找到匹配的数据</p>
 </div>
 ```
@@ -480,7 +500,7 @@ import { Skeleton } from "@/components/ui/skeleton"
 
 ```tsx
 // 使用 Alert 显示错误
-<div className="p-3 text-sm text-destructive bg-destructive/10 rounded-lg">
+<div className="text-destructive bg-destructive/10 rounded-lg p-3 text-sm">
   {errorMessage}
 </div>
 ```
@@ -489,7 +509,7 @@ import { Skeleton } from "@/components/ui/skeleton"
 
 ```tsx
 // 使用 Toast (Sonner) 或 Alert
-toast.success("操作成功")
+toast.success("操作成功");
 ```
 
 ---
@@ -541,7 +561,12 @@ import { motion, AnimatePresence } from "framer-motion"
 
 .animate-shimmer {
   animation: shimmer 2s infinite linear;
-  background: linear-gradient(90deg, var(--muted) 25%, var(--muted-foreground) 50%, var(--muted) 75%);
+  background: linear-gradient(
+    90deg,
+    var(--muted) 25%,
+    var(--muted-foreground) 50%,
+    var(--muted) 75%
+  );
   background-size: 200% 100%;
 }
 ```
@@ -625,26 +650,26 @@ export default {
       delete: "删除失败",
     },
   },
-}
+};
 ```
 
 ---
 
 ## 九、参考文件
 
-| 类别 | 参考文件 |
-|------|----------|
-| Button | `src/components/ui/button.tsx` |
-| Card | `src/components/ui/card.tsx` |
-| Table | `src/components/ui/table.tsx` |
-| Input | `src/components/ui/input.tsx` |
-| Badge | `src/components/ui/badge.tsx` |
-| Dialog | `src/components/ui/dialog.tsx` |
-| Dropdown | `src/components/ui/dropdown-menu.tsx` |
-| 全局样式 | `src/styles/globals.css` |
-| 布局组件 | `src/components/workspace/workspace-sidebar.tsx` |
-| Admin 页面 | `src/app/admin/users/page.tsx` |
-| shadcn-admin | `D:\aiproj\qData\shadcn-admin-main\` |
+| 类别         | 参考文件                                         |
+| ------------ | ------------------------------------------------ |
+| Button       | `src/components/ui/button.tsx`                   |
+| Card         | `src/components/ui/card.tsx`                     |
+| Table        | `src/components/ui/table.tsx`                    |
+| Input        | `src/components/ui/input.tsx`                    |
+| Badge        | `src/components/ui/badge.tsx`                    |
+| Dialog       | `src/components/ui/dialog.tsx`                   |
+| Dropdown     | `src/components/ui/dropdown-menu.tsx`            |
+| 全局样式     | `src/styles/globals.css`                         |
+| 布局组件     | `src/components/workspace/workspace-sidebar.tsx` |
+| Admin 页面   | `src/app/admin/users/page.tsx`                   |
+| shadcn-admin | `D:\aiproj\qData\shadcn-admin-main\`             |
 
 ---
 

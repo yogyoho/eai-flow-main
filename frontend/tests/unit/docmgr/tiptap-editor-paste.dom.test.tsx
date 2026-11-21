@@ -1,10 +1,11 @@
-
 import { afterEach, expect, rs, test } from "@rstest/core";
 import React, { createRef } from "react";
 import { act } from "react";
 import ReactDOMClient from "react-dom/client";
 
-import TiptapEditor, { type TiptapEditorRef } from "@/extensions/docmgr/TiptapEditor";
+import TiptapEditor, {
+  type TiptapEditorRef,
+} from "@/extensions/docmgr/TiptapEditor";
 
 (
   globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT: boolean }
@@ -47,20 +48,27 @@ if ("Range" in window) {
 }
 
 if ("Text" in window) {
-  (window.Text.prototype as Text & {
-    getBoundingClientRect?: () => DOMRect;
-    getClientRects?: () => DOMRectList;
-  }).getBoundingClientRect = rs.fn(createRect);
-  (window.Text.prototype as Text & {
-    getBoundingClientRect?: () => DOMRect;
-    getClientRects?: () => DOMRectList;
-  }).getClientRects = rs.fn(createRectList);
+  (
+    window.Text.prototype as Text & {
+      getBoundingClientRect?: () => DOMRect;
+      getClientRects?: () => DOMRectList;
+    }
+  ).getBoundingClientRect = rs.fn(createRect);
+  (
+    window.Text.prototype as Text & {
+      getBoundingClientRect?: () => DOMRect;
+      getClientRects?: () => DOMRectList;
+    }
+  ).getClientRects = rs.fn(createRectList);
 }
 
 let container: HTMLDivElement | null = null;
 let root: ReactDOMClient.Root | null = null;
 
-async function waitFor<T>(getValue: () => T | null, timeoutMs = 3000): Promise<T> {
+async function waitFor<T>(
+  getValue: () => T | null,
+  timeoutMs = 3000,
+): Promise<T> {
   const startedAt = Date.now();
 
   while (Date.now() - startedAt < timeoutMs) {
@@ -96,12 +104,12 @@ test("pasting markdown renders structured blocks in the editor", async () => {
     root?.render(
       <div style={{ width: "960px", height: "720px" }}>
         <TiptapEditor ref={editorRef} initialContent="" onChange={onChange} />
-      </div>
+      </div>,
     );
   });
 
   const proseMirror = await waitFor(
-    () => container?.querySelector(".ProseMirror") as HTMLElement | null
+    () => container?.querySelector(".ProseMirror") as HTMLElement | null,
   );
   const editor = await waitFor(() => editorRef.current?.getEditor() ?? null);
 

@@ -58,7 +58,15 @@ export const TAB_REGISTRY: TabDefinition[] = [
     icon: FileText,
     componentKey: "editor",
     visibleWhen: (ctx) =>
-      ctx.hasAnyDuty(["write", "writer", "edit", "lead", "review", "reviewer", "approve"]) ||
+      ctx.hasAnyDuty([
+        "write",
+        "writer",
+        "edit",
+        "lead",
+        "review",
+        "reviewer",
+        "approve",
+      ]) ||
       ctx.hasAnyPermission([
         "chapter:write_any",
         "chapter:write_own",
@@ -75,7 +83,11 @@ export const TAB_REGISTRY: TabDefinition[] = [
     icon: CheckCircle,
     componentKey: "review",
     visibleWhen: (ctx) =>
-      ctx.hasAnyPermission(["approval:review", "approval:approve", "approval:submit"]),
+      ctx.hasAnyPermission([
+        "approval:review",
+        "approval:approve",
+        "approval:submit",
+      ]),
     order: 3,
   },
 ];
@@ -84,13 +96,15 @@ export const TAB_REGISTRY: TabDefinition[] = [
 
 /** Get visible tabs for a given project identity, sorted by order. */
 export function getVisibleTabs(ctx: ProjectIdentity): TabDefinition[] {
-  return TAB_REGISTRY
-    .filter((tab) => tab.visibleWhen(ctx))
-    .sort((a, b) => a.order - b.order);
+  return TAB_REGISTRY.filter((tab) => tab.visibleWhen(ctx)).sort(
+    (a, b) => a.order - b.order,
+  );
 }
 
 /** Create a ProjectIdentity from the API response data. */
-export function createProjectIdentity(data: ProjectPermissions): ProjectIdentity {
+export function createProjectIdentity(
+  data: ProjectPermissions,
+): ProjectIdentity {
   return {
     projectRole: data.role,
     permissions: data.permissions ?? [],
@@ -98,7 +112,9 @@ export function createProjectIdentity(data: ProjectPermissions): ProjectIdentity
     isAdmin: data.isAdmin ?? false,
     hasAnyDuty: (duties: string[]) => {
       if (!data.phaseDuties) return false;
-      return Object.values(data.phaseDuties).some((d) => duties.includes(d.duty));
+      return Object.values(data.phaseDuties).some((d) =>
+        duties.includes(d.duty),
+      );
     },
     hasAnyPermission: (perms: string[]) => {
       if (data.isAdmin) return true;

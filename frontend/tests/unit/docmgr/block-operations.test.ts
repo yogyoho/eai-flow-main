@@ -25,7 +25,9 @@ function createDoc(labels: string[]) {
   return schema.node(
     "doc",
     null,
-    labels.map((label) => schema.node("paragraph", null, label ? [schema.text(label)] : []))
+    labels.map((label) =>
+      schema.node("paragraph", null, label ? [schema.text(label)] : []),
+    ),
   );
 }
 
@@ -51,8 +53,12 @@ test("removeTopLevelBlock removes the targeted block", () => {
 
 test("moveTopLevelBlock swaps blocks upward and downward", () => {
   const blocks = getBlocks(["A", "B", "C"]);
-  expect(moveTopLevelBlock(blocks, 1, "up")?.map((node) => node.textContent)).toEqual(["B", "A", "C"]);
-  expect(moveTopLevelBlock(blocks, 1, "down")?.map((node) => node.textContent)).toEqual(["A", "C", "B"]);
+  expect(
+    moveTopLevelBlock(blocks, 1, "up")?.map((node) => node.textContent),
+  ).toEqual(["B", "A", "C"]);
+  expect(
+    moveTopLevelBlock(blocks, 1, "down")?.map((node) => node.textContent),
+  ).toEqual(["A", "C", "B"]);
 });
 
 test("moveTopLevelBlockToIndex reorders by explicit target index", () => {

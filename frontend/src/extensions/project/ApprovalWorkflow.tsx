@@ -180,9 +180,7 @@ export function ApprovalWorkflow({
               </div>
             </div>
 
-            <h4 className="text-foreground text-sm font-semibold">
-              审批流程
-            </h4>
+            <h4 className="text-foreground text-sm font-semibold">审批流程</h4>
 
             {/* Vertical step chain */}
             <div className="flex flex-col">
@@ -248,9 +246,7 @@ export function ApprovalWorkflow({
 
             {/* Comment textarea */}
             <div className="border-border bg-card flex flex-col gap-2 rounded-[8px] border p-3">
-              <p className="text-muted-foreground text-xs">
-                审核意见（可选）
-              </p>
+              <p className="text-muted-foreground text-xs">审核意见（可选）</p>
               <Textarea
                 value={comment}
                 onChange={(e) => setComment(e.target.value)}

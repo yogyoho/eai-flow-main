@@ -1,7 +1,13 @@
 "use client";
 
 import { Handle, Position, type NodeProps } from "@xyflow/react";
-import { CheckCircle2, Circle, Loader2, ShieldCheck, XCircle } from "lucide-react";
+import {
+  CheckCircle2,
+  Circle,
+  Loader2,
+  ShieldCheck,
+  XCircle,
+} from "lucide-react";
 
 import type { DAGNodeData } from "../types";
 
@@ -27,7 +33,9 @@ const STATUS_CONFIG: Record<
   completed: {
     border: "border-green-400",
     bg: "bg-green-50 dark:bg-green-950/40",
-    icon: <CheckCircle2 className="h-4 w-4 text-green-600 dark:text-green-400" />,
+    icon: (
+      <CheckCircle2 className="h-4 w-4 text-green-600 dark:text-green-400" />
+    ),
     pulse: "",
     label: "已通过",
     labelColor: "text-green-600 dark:text-green-400",
@@ -35,7 +43,9 @@ const STATUS_CONFIG: Record<
   running: {
     border: "border-blue-400",
     bg: "bg-blue-50 dark:bg-blue-950/40",
-    icon: <Loader2 className="h-4 w-4 text-blue-600 dark:text-blue-400 animate-spin" />,
+    icon: (
+      <Loader2 className="h-4 w-4 animate-spin text-blue-600 dark:text-blue-400" />
+    ),
     pulse: "animate-pulse-ring",
     label: "审核中",
     labelColor: "text-blue-600 dark:text-blue-400",
@@ -43,7 +53,7 @@ const STATUS_CONFIG: Record<
   pending: {
     border: "border-input",
     bg: "bg-muted/50",
-    icon: <Circle className="h-4 w-4 text-muted-foreground" />,
+    icon: <Circle className="text-muted-foreground h-4 w-4" />,
     pulse: "",
     label: "待审核",
     labelColor: "text-muted-foreground",
@@ -58,8 +68,10 @@ const STATUS_CONFIG: Record<
   },
 };
 
-export function ProgressReviewNode({ data }: NodeProps & { data: ProgressReviewNodeData }) {
-  const status: NodeStatus = (data.status!) ?? "pending";
+export function ProgressReviewNode({
+  data,
+}: NodeProps & { data: ProgressReviewNodeData }) {
+  const status: NodeStatus = data.status! ?? "pending";
   const cfg = STATUS_CONFIG[status];
   const total = data.reviewTotal ?? 0;
   const approved = data.reviewApproved ?? 0;
@@ -67,39 +79,54 @@ export function ProgressReviewNode({ data }: NodeProps & { data: ProgressReviewN
 
   // Use ShieldCheck for approval-type review nodes
   const isApproval = data.label?.includes("审批");
-  const typeIcon = isApproval ? <ShieldCheck className="h-3 w-3 text-amber-600 dark:text-amber-400 mr-1" /> : null;
+  const typeIcon = isApproval ? (
+    <ShieldCheck className="mr-1 h-3 w-3 text-amber-600 dark:text-amber-400" />
+  ) : null;
 
   return (
     <div
-      className={`px-3.5 py-2.5 rounded-lg border-2 min-w-[160px] ${cfg.border} ${cfg.bg} ${cfg.pulse} transition-colors`}
+      className={`min-w-[160px] rounded-lg border-2 px-3.5 py-2.5 ${cfg.border} ${cfg.bg} ${cfg.pulse} transition-colors`}
     >
-      <Handle type="target" position={Position.Top} className="!bg-red-400 !w-2 !h-2" />
+      <Handle
+        type="target"
+        position={Position.Top}
+        className="!h-2 !w-2 !bg-red-400"
+      />
 
       {/* Header */}
       <div className="flex items-center gap-1.5">
         {cfg.icon}
-        <span className="text-xs font-semibold text-foreground truncate flex-1 flex items-center">
+        <span className="text-foreground flex flex-1 items-center truncate text-xs font-semibold">
           {typeIcon}
           {data.label || "审核"}
         </span>
-        <span className={`text-[10px] font-medium ${cfg.labelColor}`}>{cfg.label}</span>
+        <span className={`text-[10px] font-medium ${cfg.labelColor}`}>
+          {cfg.label}
+        </span>
       </div>
 
       {/* Review progress */}
       {total > 0 && (
         <div className="mt-2 space-y-1">
           <div className="flex items-center justify-between">
-            <span className="text-[10px] text-muted-foreground">
+            <span className="text-muted-foreground text-[10px]">
               通过: {approved}/{total}
             </span>
-            <span className="text-[10px] font-medium text-muted-foreground">{pct}%</span>
+            <span className="text-muted-foreground text-[10px] font-medium">
+              {pct}%
+            </span>
           </div>
-          <div className="h-1.5 rounded-full bg-muted overflow-hidden">
+          <div className="bg-muted h-1.5 overflow-hidden rounded-full">
             <div
               className="h-full rounded-full transition-all duration-500"
               style={{
                 width: `${pct}%`,
-                backgroundColor: status === "completed" ? "#22c55e" : status === "running" ? "#3b82f6" : "#9ca3af",
+                backgroundColor:
+                  status === "completed"
+                    ? "#22c55e"
+                    : status === "running"
+                      ? "#3b82f6"
+                      : "#9ca3af",
               }}
             />
           </div>
@@ -108,12 +135,21 @@ export function ProgressReviewNode({ data }: NodeProps & { data: ProgressReviewN
 
       {/* Review mode */}
       {data.mode && (
-        <div className="text-[10px] text-muted-foreground mt-1.5">
-          模式: {data.mode === "chapter" ? "章节" : data.mode === "dimension" ? "维度" : "混合"}
+        <div className="text-muted-foreground mt-1.5 text-[10px]">
+          模式:{" "}
+          {data.mode === "chapter"
+            ? "章节"
+            : data.mode === "dimension"
+              ? "维度"
+              : "混合"}
         </div>
       )}
 
-      <Handle type="source" position={Position.Bottom} className="!bg-red-400 !w-2 !h-2" />
+      <Handle
+        type="source"
+        position={Position.Bottom}
+        className="!h-2 !w-2 !bg-red-400"
+      />
     </div>
   );
 }

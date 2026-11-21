@@ -1,6 +1,11 @@
 "use client";
 
-import { BaseEdge, EdgeLabelRenderer, getBezierPath, type EdgeProps } from "@xyflow/react";
+import {
+  BaseEdge,
+  EdgeLabelRenderer,
+  getBezierPath,
+  type EdgeProps,
+} from "@xyflow/react";
 
 export function ConditionEdge({
   id,
@@ -36,7 +41,7 @@ export function ConditionEdge({
               transform: `translate(-50%, -50%) translate(${labelX}px,${labelY}px)`,
               pointerEvents: "all",
             }}
-            className="px-2 py-0.5 bg-card border rounded text-[10px] font-medium text-muted-foreground"
+            className="bg-card text-muted-foreground rounded border px-2 py-0.5 text-[10px] font-medium"
           >
             {label}
           </div>

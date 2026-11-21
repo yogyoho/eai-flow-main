@@ -253,8 +253,12 @@ def effective_chars(text: str) -> int:
     return sum(len(re.sub(r"[\s\|\-*#:{}]", "", line)) for line in text.splitlines() if line.strip() and not line.strip().startswith("|") and not line.strip().startswith("#"))
 
 
-def validate_depth(ch_id: str, text: str) -> None:
-    """每个标题块（## / ###）正文 ≥3 句（表格行不计句、不豁免；有子节的父节豁免——父节块在首个 ### 处截断，正文在子节）；全章有效字符 ≥1000。"""
+def depth_style_warns(ch_id: str, text: str) -> list[str]:
+    """风格软门（硬化 2026-11 自 validate_depth 硬 FAIL 降级）：每标题块（## / ###）正文 <3 句
+    （表格行不计句；有子节的父节豁免——父节块在首个 ### 处截断，正文在子节）或全章有效
+    字符 <1000 → 返回 warn 文案列表，调用方打印 [STYLE_WARN]（不阻断交付、不触发重派/降档
+    ——风格问题用硬门制造无休止重派是 false-negative 死循环来源）。正确性硬门（首行格式/
+    保留标题/toc 节号覆盖/残留扫描/槽位/绝对地板）不在此列。"""
     blocks: list[tuple[str, list[str]]] = []
     cur_title, cur_lines = "", []
     for ln in text.splitlines():
@@ -265,6 +269,7 @@ def validate_depth(ch_id: str, text: str) -> None:
         else:
             cur_lines.append(ln)
     blocks.append((cur_title, cur_lines))
+    warns: list[str] = []
     thin = []
     for i, (title, lns) in enumerate(blocks):
         if title == "" and not any(ln.strip() for ln in lns):
@@ -275,10 +280,11 @@ def validate_depth(ch_id: str, text: str) -> None:
         if sents < 3:
             thin.append(f"{title or '(章首段)'}={sents}句")
     if thin:
-        raise ValueError(f"{ch_id}.md 深度门 FAIL（每节 ≥3 句——句子写进该节自己的正文、下一级子标题之前；表格行不计句；有子节的父节不适用本门）瘦块: {'; '.join(thin)}；参照 references/samples/exploration/{ch_id}_sample.md 范文补写")
+        warns.append(f"{ch_id}.md 深度提示（风格 warn）：瘦块 {'; '.join(thin)}（每节 ≥3 句——句子写进该节自己的正文、下一级子标题之前；表格行不计句；有子节的父节不适用本门）；参照 references/samples/exploration/{ch_id}_sample.md 范文补写")
     eff = effective_chars(text)
     if eff < 1000:
-        raise ValueError(f"{ch_id}.md 有效字符 {eff} <1000——章节单薄（bug-2223），参照 references/samples/exploration/{ch_id}_sample.md 范文扩写")
+        warns.append(f"{ch_id}.md 有效字符 {eff} <1000（风格 warn）——章节单薄（bug-2223），参照 references/samples/exploration/{ch_id}_sample.md 范文扩写")
+    return warns
 
 
 # ── 目录覆盖门（bug-2225：E2E 实测 toc 覆盖仅 54.7%——bug-2223 遗留项收口）────
@@ -314,12 +320,13 @@ def _toc_index(toc: list[str]) -> tuple[set[str], dict[str, str]]:
 def validate_toc(ch_id: str, text: str, toc: list[str]) -> dict:
     """目录覆盖门 v2（bug-3036：旧版纯编号盲检——同名异节/错题/契约外自创节全放行）。
 
-    三向校验：① toc 全部节号（复合条目拆出的子节号也算）必须出现在章节 ##/###/#### 标题（旧有）；
-    ② 标题节号不得超出 toc——契约外自创节/并节残留拦截；③ 编号相同则标题必须相符
-    （规范化后双向包含即视为相符，防后缀展开误伤）。
+    三向校验（硬化 2026-11 分级）：① toc 全部节号（复合条目拆出的子节号也算）必须出现在
+    章节 ##/###/#### 标题 + ② 标题节号不得超出 toc（契约外自创节/并节残留）= 结构正确性，
+    任一违反硬 FAIL；③ 编号相同则标题相符（规范化双向包含防后缀展开误伤）= 风格性，
+    不符降为 warn（返回值 title_mismatches），不再硬拦。
 
     num_re 与 backend/tests/test_geological_report_v2_scripts.py::TestStageSections 同源。
-    返回 {"toc_entries": 节号数, "toc_covered": 已落标题数}（供 delivery_manifest.json）。
+    返回 {"toc_entries", "toc_covered", "title_mismatches": [warn 文案]}（供 delivery_manifest.json）。
     """
     toc_nos, toc_titles = _toc_index(toc)
     heading_nos: set[str] = set()
@@ -343,17 +350,15 @@ def validate_toc(ch_id: str, text: str, toc: list[str]) -> dict:
         and toc_titles[no] not in heading_titles[no]
         and heading_titles[no] not in toc_titles[no]
     ]
-    if missing or extra or mismatched:
+    if missing or extra:
         parts = [f"toc 节号未落标题 {missing}"] if missing else []
         if extra:
             parts.append(f"契约外节号 {extra}（禁自创/并节——stage toc 是唯一骨架契约，bug-3036）")
-        if mismatched:
-            parts.append("编号同但标题不符: " + "; ".join(mismatched[:6]))
         raise ValueError(
             f"{ch_id}.md 目录覆盖门 FAIL：{'；'.join(parts)}"
             f"（骨架全覆盖——动笔前读 STAGE 该章 toc 逐节展开，复合条目子节号须 #### 标题，bug-2221/2225/3036）"
         )
-    return {"toc_entries": len(toc_nos), "toc_covered": len(toc_nos & heading_nos)}
+    return {"toc_entries": len(toc_nos), "toc_covered": len(toc_nos & heading_nos), "title_mismatches": mismatched}
 
 
 # ── 注入后残留扫描门（bug-3036：模板脚手架/槽位标记/合约内部词汇泄漏进交付稿）──────
@@ -384,37 +389,55 @@ def validate_residue(ch_id: str, text: str) -> None:
 # ── L2 深度目标门（spec 2026-08-25 §4：eff ≥ 样例 median × coefficient × 覆盖缩放）──
 
 
+def depth_target_eff(median: float, coeff: float, scale: float, floor: float) -> float:
+    """L2 深度目标公式唯一出处（硬化 2026-11：原 validate_depth_target / _depth_row /
+    run_chapter_gate PASS 行三处内联重复、各自注释「三处同式须同步改」——漂移隐患收口）：
+    max(median × coeff × coverage_scale, median × absolute_floor)。
+    """
+    return max(median * coeff * scale, median * floor)
+
+
 def coverage_scale(text: str, targets: dict) -> float:
     """覆盖缩放：缺数信号越多目标越低，下限 scale_floor（缺数章防误拦）。"""
     signals = text.count("[待确认]") + targets.get("missing_table_weight", 8) * text.count("数据未提供")
     return max(targets.get("scale_floor", 0.25), 1 - targets.get("per_signal_penalty", 0.05) * signals)
 
 
-def validate_depth_target(ch_id: str, text: str, targets: dict) -> None:
-    """L2 深度目标门：inject 后文本 eff ≥ max(样例 median × coefficient × 覆盖缩放, 样例 median × absolute_floor)。
-
-    bug-3036：绝对地板防「堆 [待确认] 压低覆盖缩放把越改越薄洗成 PASS」——缩放再低目标也不得穿地板。
+def depth_target_check(ch_id: str, text: str, targets: dict) -> str | None:
+    """L2 深度目标（硬化 2026-11 分级）：inject 后文本 eff 对 max(median×coeff×覆盖缩放,
+    median×absolute_floor) 两档判定——
+    - eff < median×absolute_floor = 硬 FAIL（薄报告硬底线，bug-3036：堆 [待确认] 压低覆盖
+      缩放把越改越薄洗成 PASS 不再可能）；
+    - 地板达标但 < 风格目标 → 返回 warn 文案（风格性拉伸不足，不阻断交付、不触发重派/降档）；
+    - 达标 → None。targets 未覆盖该章 → None（样例库不全时不误伤）。
     """
     ch = targets.get("per_chapter", {}).get(ch_id)
     if not ch:
-        return  # targets 未覆盖该章 → 不拦（样例库不全时不误伤）
+        return None  # targets 未覆盖该章 → 不拦（样例库不全时不误伤）
     coeff = targets.get("coefficient", 0.6)
     floor = targets.get("absolute_floor", 0.4)
     scale = coverage_scale(text, targets)
     median = ch.get("median_eff", 0)
-    # 目标公式三处同式须同步改（validate_depth_target / _depth_row / run_chapter_gate PASS 行——max(median × coefficient × coverage_scale, median × absolute_floor)）
-    target_eff = max(median * coeff * scale, median * floor)
+    target_eff = depth_target_eff(median, coeff, scale, floor)
+    floor_eff = median * floor
     eff = effective_chars(text)
-    if eff < target_eff:
+    if eff < floor_eff:
         floor_binding = median * floor > median * coeff * scale
         raise ValueError(
-            f"{ch_id}.md 深度目标门 FAIL：eff {eff} < 目标 {target_eff:.0f}"
+            f"{ch_id}.md 深度目标门 FAIL：eff {eff} < 绝对地板 {floor_eff:.0f}"
             f"（样例 median {median} × {coeff} × 覆盖缩放 {scale:.2f}"
             + ("，绝对地板 {ff} 生效——[待确认] 堆叠不再降目标".format(ff=floor) if floor_binding else "")
-            + f"）——逐要素成段扩写（缺数写 [待确认] 不砍段）；"
+            + f"；风格目标 {target_eff:.0f} 不足仅 STYLE_WARN 不阻断）——逐要素成段扩写（缺数写 [待确认] 不砍段）；"
             f"表后五步解读（陈述→规律识别→成因解释→规范对比→勘查意义）；"
             f"范式参照 references/samples/exploration/{ch_id}_sample.md"
         )
+    if eff < target_eff:
+        return (
+            f"{ch_id}.md 深度目标 style warn：eff {eff} < 风格目标 {target_eff:.0f}"
+            f"（样例 median {median} × {coeff} × 覆盖缩放 {scale:.2f}；绝对地板 {floor_eff:.0f} 已达标）"
+            f"——表后五步解读（陈述→规律识别→成因解释→规范对比→勘查意义）逐节补强"
+        )
+    return None
 
 
 def load_targets(path: Path) -> dict | None:
@@ -612,6 +635,7 @@ def assemble(stage: dict, data_dir: Path, state_dir: Path, targets: dict | None 
     slot_errors: set[str] = set()
     inject = make_inject(stage, data_dir, state, unknown_keys, slot_errors)  # 重构：注入闭包提取
     toc_stats: dict[str, dict] = {}
+    style_warns: dict[str, list[str]] = {}
     depth_rows = depth_rows if depth_rows is not None else (partial["chapter_depth"] if partial is not None else [])  # bug-3036：全量 build 也留痕
 
     parts = [render_front_matter(stage, data_dir)]
@@ -627,17 +651,28 @@ def assemble(stage: dict, data_dir: Path, state_dir: Path, targets: dict | None 
         try:
             # 六步门序列与 run_chapter_gate 须同步改（新增校验两处同加）
             validate_chapter(ch_id, raw)
-            validate_depth(ch_id, raw)
+            ch_warns = depth_style_warns(ch_id, raw)
+            if ch_warns:
+                style_warns[ch_id] = ch_warns  # 先记账——后续硬错（toc 等）抛出时 warn 仍同屏可见
             toc_stats[ch_id] = validate_toc(ch_id, raw, stage["chapters"][ch_id].get("toc", []))
+            ch_warns.extend(f"{ch_id}.md 目录标题 style warn：{mm}" for mm in toc_stats[ch_id].get("title_mismatches", []))
             injected = inject(raw).rstrip() + "\n"
             validate_residue(ch_id, injected)
             if targets is not None and not (skip_l2 and ch_id in skip_l2):  # skip_l2：--allow-partial 批准集（Task 3）
-                validate_depth_target(ch_id, injected, targets)
+                stretch_warn = depth_target_check(ch_id, injected, targets)
+                if stretch_warn:
+                    ch_warns.append(stretch_warn)
             depth_rows.append(_depth_row(ch_id, injected, targets, bool(skip_l2 and ch_id in skip_l2)))  # 校验抛错的章进 errors 硬 FAIL，不进表
         except ValueError as e:
             errors.append(str(e))
             continue
         parts.append(injected)
+    if style_warns:
+        total = sum(len(v) for v in style_warns.values())
+        print(f"[build] STYLE_WARN 共 {total} 项（风格软门不阻断交付；硬门=toc 节号覆盖/残留/槽位/绝对地板）:", file=sys.stderr)
+        for cid, msgs in style_warns.items():
+            for m in msgs:
+                print(f"  [STYLE_WARN] {m}", file=sys.stderr)
     parts.append(render_compliance_appendix(consistency, state, state_path))
     if unknown_keys:
         errors.append(f"未知槽位 key（不在 formula_state.values，FAIL 阻断）: {sorted(unknown_keys)}")
@@ -645,7 +680,7 @@ def assemble(stage: dict, data_dir: Path, state_dir: Path, targets: dict | None 
         errors.append(f"槽位 display 非法（空/非标量，bug-3036 空槽静默渲染根治）:\n  " + "\n  ".join(sorted(slot_errors)))
     if errors:
         raise ValueError(f"{len(errors)} 项未过门（一次报齐，逐项修完再重跑——勿修一章跑一轮）:\n" + "\n".join(errors))
-    return "\n\n".join(parts) + "\n", toc_stats
+    return "\n\n".join(parts) + "\n", toc_stats, style_warns
 
 
 def load_progress(state_dir: Path) -> dict:
@@ -678,8 +713,7 @@ def _depth_row(ch_id: str, injected: str, targets: dict | None, downgraded: bool
     tg = targets or {}
     ch = tg.get("per_chapter", {}).get(ch_id)
     scale = coverage_scale(injected, tg)
-    # 目标公式三处同式须同步改（validate_depth_target / _depth_row / run_chapter_gate PASS 行——max(median × coefficient × coverage_scale, median × absolute_floor)）
-    target_eff = max(ch.get("median_eff", 0) * tg.get("coefficient", 0.6) * scale, ch.get("median_eff", 0) * tg.get("absolute_floor", 0.4)) if ch else 0
+    target_eff = depth_target_eff(ch.get("median_eff", 0), tg.get("coefficient", 0.6), scale, tg.get("absolute_floor", 0.4)) if ch else 0
     return {
         "chapter": ch_id,
         "effective_chars": eff,
@@ -712,17 +746,21 @@ def run_chapter_gate(stage: dict, data_dir: Path, state_dir: Path, ch_id: str, t
         raise ValueError(f"章节产物缺失: {cf}（子代理未完成或未派发——先按 progress.py next 指引派发/重派该章）")
     raw = cf.read_text(encoding="utf-8")
     errors: list[str] = []
+    style_warns: list[str] = []
     toc: dict = {}
     injected = ""
     try:
         # 六步门序列与 assemble 循环体须同步改（新增校验两处同加）
         validate_chapter(ch_id, raw)
-        validate_depth(ch_id, raw)
+        style_warns.extend(depth_style_warns(ch_id, raw))
         toc = validate_toc(ch_id, raw, stage["chapters"][ch_id].get("toc", []))
+        style_warns.extend(f"{ch_id}.md 目录标题 style warn：{mm}" for mm in toc.get("title_mismatches", []))
         injected = inject(raw).rstrip() + "\n"
         validate_residue(ch_id, injected)
         if targets is not None:
-            validate_depth_target(ch_id, injected, targets)
+            stretch_warn = depth_target_check(ch_id, injected, targets)
+            if stretch_warn:
+                style_warns.append(stretch_warn)
     except ValueError as e:
         errors.append(str(e))
     if unknown_keys:
@@ -731,14 +769,15 @@ def run_chapter_gate(stage: dict, data_dir: Path, state_dir: Path, ch_id: str, t
         errors.append(f"槽位 display 非法（空/非标量，bug-3036）:\n  " + "\n  ".join(sorted(slot_errors)))
     if errors:
         raise ValueError(f"{ch_id} 单章门 FAIL（{len(errors)} 项，一次报齐——补写该章正文后重跑）:\n" + "\n".join(errors))
+    for m in style_warns:
+        print(f"[STYLE_WARN] {m}", file=sys.stderr)
     ch = (targets or {}).get("per_chapter", {}).get(ch_id)
     if ch:
         scale = coverage_scale(injected, targets)
-        # 目标公式三处同式须同步改（validate_depth_target / _depth_row / run_chapter_gate PASS 行——max(median × coefficient × coverage_scale, median × absolute_floor)）
-        t = max(ch.get("median_eff", 0) * targets.get("coefficient", 0.6) * scale, ch.get("median_eff", 0) * targets.get("absolute_floor", 0.4))
-        print(f"CHAPTER_GATE_PASS: {ch_id} toc {toc['toc_covered']}/{toc['toc_entries']} eff {effective_chars(injected)} ≥ 目标 {t:.0f}（样例 median {ch.get('median_eff')} × {targets.get('coefficient', 0.6)} × 覆盖缩放 {scale:.2f}，地板 {targets.get('absolute_floor', 0.4)}）")
+        t = depth_target_eff(ch.get("median_eff", 0), targets.get("coefficient", 0.6), scale, targets.get("absolute_floor", 0.4))
+        print(f"CHAPTER_GATE_PASS: {ch_id} toc {toc['toc_covered']}/{toc['toc_entries']} eff {effective_chars(injected)} ≥ 目标 {t:.0f}（样例 median {ch.get('median_eff')} × {targets.get('coefficient', 0.6)} × 覆盖缩放 {scale:.2f}，地板 {targets.get('absolute_floor', 0.4)}）style_warn {len(style_warns)}")
     else:
-        print(f"CHAPTER_GATE_PASS: {ch_id} toc {toc['toc_covered']}/{toc['toc_entries']} eff {effective_chars(injected)}（L2 基准未覆盖该章，地板门通过）")
+        print(f"CHAPTER_GATE_PASS: {ch_id} toc {toc['toc_covered']}/{toc['toc_entries']} eff {effective_chars(injected)}（L2 基准未覆盖该章，地板门通过）style_warn {len(style_warns)}")
 
 
 def atomic_write(path: Path, content: str) -> bool:
@@ -802,7 +841,7 @@ def main() -> int:
             skip_l2 = blocked  # 只放行 L2；L0/L1/toc/槽位门在场；产物缺失章仍由 assemble 硬 FAIL（含 PENDING 未派发）
             partial = {"downgrade_approvals": progress.get("downgrade_approvals", []), "chapter_depth": [], "downgraded": sorted(blocked)}
         depth_rows: list[dict] = partial["chapter_depth"] if partial is not None else []
-        content, toc_stats = assemble(stage, Path(args.data_dir), Path(args.state_dir), targets=targets, skip_l2=skip_l2 or None, partial=partial, depth_rows=depth_rows)
+        content, toc_stats, style_warns = assemble(stage, Path(args.data_dir), Path(args.state_dir), targets=targets, skip_l2=skip_l2 or None, partial=partial, depth_rows=depth_rows)
         # ── bug-3036：consistency.py 25 合约门接入（此前在盘零调用——装配过门 ≠ 交付放行）。
         # 先落盘供 run_checks 读取；检查结果写 state_dir/consistency_check.json（附录读取源），fail>0
         # 则报告留盘但 manifest 不写——无清单 = 不可交付（bug-2225 凭据模型），逐项修复后重跑。
@@ -854,7 +893,7 @@ def main() -> int:
         # 复核修复（bug-3058）：depth_rows 由引用传入且 assemble 逐章 append——不清空则两次
         # 组装各追加一整套 → manifest.chapter_depth 每章两行（--allow-partial 时 partial 同病）。
         depth_rows.clear()
-        content, toc_stats = assemble(stage, Path(args.data_dir), Path(args.state_dir), targets=targets, skip_l2=skip_l2 or None, partial=partial, depth_rows=depth_rows)
+        content, toc_stats, style_warns = assemble(stage, Path(args.data_dir), Path(args.state_dir), targets=targets, skip_l2=skip_l2 or None, partial=partial, depth_rows=depth_rows)
     except (FileNotFoundError, KeyError, ValueError, AttributeError, OSError, json.JSONDecodeError) as e:
         print(f"[build] 错误: {e}", file=sys.stderr)
         return EXIT_ERROR
@@ -872,6 +911,9 @@ def main() -> int:
         "targets": {"path": str(targets_src), "sha256": sha256_file(targets_src) if targets_src.exists() else None},
         # bug-3036：全量 build 也逐章披露深度/覆盖缩放/达标比（此前仅 --allow-partial 留痕）
         "chapter_depth": depth_rows,
+        # 硬化 2026-11 风格软门留痕：≥3句/标题相符/深度拉伸不足 → [STYLE_WARN]（不阻断）；
+        # 空 dict = 全章风格达标。确定性问题：同输入必同字节（manifest 幂等不破坏）。
+        "style_warns": style_warns,
         "consistency": {"summary": c_result["summary"], "detail_path": str(Path(args.state_dir) / "consistency_check.json")},
     }
     if partial is not None:
@@ -882,6 +924,9 @@ def main() -> int:
     print(f"MANIFEST_READY: {m_path} {'written' if m_wrote else 'unchanged(skip, idempotent)'}")
     s = c_result["summary"]
     print(f"CONSISTENCY: pass {s.get('pass', 0)} / warn {s.get('warn', 0)} / manual {s.get('manual', 0)} / fail 0（fail>0 已在上一步阻断）")
+    n_style = sum(len(v) for v in style_warns.values())
+    if n_style:
+        print(f"STYLE_WARN_TOTAL: {n_style}（风格软门不阻断交付——明细见 delivery_manifest.json.style_warns 与上方 stderr）")
     if partial is not None:
         print(f"PARTIAL_DELIVERY: 分级交付 {len(partial['downgraded'])} 章降档 {partial['downgraded']}（深度未达标明细见 delivery_manifest.json → partial.chapter_depth，交付时向用户如实汇报）")
     return EXIT_OK

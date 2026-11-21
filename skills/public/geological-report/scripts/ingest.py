@@ -40,6 +40,7 @@ EXIT_MANUAL = 2
 EXIT_ANOMALY = 3
 
 MANIFEST_NAME = "state_manifest.json"
+LOCK_STALE_SECONDS = 60  # manifest 自旋锁残留判定阈值（持锁进程崩溃 → 死锁文件自动清理，硬化 2026-11）
 
 
 # ── 通用小件 ────────────────────────────────────────────────────────────────
@@ -52,10 +53,13 @@ def sha256_file(path: Path) -> str:
 
 def atomic_write_text(path: Path, text: str) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
+    # 硬化 2026-11：newline="\n" 禁平台翻译——Windows 默认会把 \n→\r\n，与文本内已含的
+    # \r\n 叠成 \r\r\n（行尾脏 \r 混进末列值 → Decimal 解析失败静默丢行；交叉平台字节
+    # 不稳定还破坏 manifest 指纹幂等）。逐字节落盘，与 build_output.atomic_write 同纪律。
     # bug-2217: 固定 .tmp 名在并行 ingest.py 进程间互吃临时文件 → os.replace
     # FileNotFoundError（页面实测 seq133/152）。pid 后缀各写各的，replace 仍原子。
     tmp = path.parent / f"{path.name}.{os.getpid()}.tmp"
-    tmp.write_text(text, encoding="utf-8")
+    tmp.write_text(text, encoding="utf-8", newline="\n")
     os.replace(tmp, path)
 
 
@@ -112,6 +116,14 @@ def register_file(data_dir: Path, rel_name: str, family: str, required: bool, fm
             os.close(fd)
             break
         except FileExistsError:
+            # 硬化 2026-11：持锁进程崩溃残留的死锁文件此前只能人工删（# ponytail 原注）——
+            # mtime 超过 LOCK_STALE_SECONDS 视为残留就地清理重试。活跃进程 0.05s 内必释锁，
+            # 60s 阈值远超任何正常持锁时长；竞态下他进程先删/Windows 文件占用 → OSError 容忍。
+            try:
+                if time.time() - lock.stat().st_mtime > LOCK_STALE_SECONDS:
+                    lock.unlink()
+            except OSError:
+                pass
             time.sleep(0.05)
     else:
         raise RuntimeError(f"{lock} 被占用超过 10s（若为残留死锁文件可删除后重试）")
@@ -319,7 +331,7 @@ def cmd_forms(args) -> int:
                 print(f"[ingest] 错误: 行宽不等于列数 {len(header)}（行号 0-based: {bad}）", file=sys.stderr)
                 return EXIT_ERROR
             buf = io.StringIO()
-            w = csv.writer(buf)
+            w = csv.writer(buf, lineterminator="\n")
             w.writerow(header)
             w.writerows(rows)
             new_text = buf.getvalue().rstrip("\n")
@@ -453,7 +465,7 @@ def parse_pdf_tables(path: Path) -> list[list[list[str]]]:
         text = "".join((p.extract_text() or "") for p in pdf.pages[:3])
         if not text.strip():
             print("[ingest] PDF 无文本层（扫描件）——请走 eai-flow-ocr 全文 OCR 路径", file=sys.stderr)
-            raise SystemExit(EXIT_MANOMALY if False else EXIT_MANUAL)
+            raise SystemExit(EXIT_MANUAL)
         for p in pdf.pages:
             for t in (p.extract_tables() or []):
                 tables.append([[c or "" for c in row] for row in t])
@@ -537,7 +549,7 @@ def cmd_file(args) -> int:
     body = [r for r in body if any(x.strip() for x in r)]
 
     buf = io.StringIO()
-    w = csv.writer(buf)
+    w = csv.writer(buf, lineterminator="\n")
     w.writerow(columns)
     w.writerows(body)
     new_text = buf.getvalue().rstrip("\n")

@@ -1,0 +1,141 @@
+# Materials calculation platform overlay.
+#
+# Included automatically by docker-compose.business.yaml (the `eai-ext` group).
+# Mirrors the workflow subsystem topology while staying independent:
+#   - materials-db-init: create the `materials` database if it does not exist
+#   - materials-migrate: alembic upgrade head (one-shot)
+#   - materials-backend: FastAPI API on 8030
+#   - materials-frontend: Next.js on 3030, basePath=/materials
+#
+# Slurm defaults to mock so the platform is demonstrable without a cluster.
+# Set MATERIALS_SLURM_MODE=slurm plus the SSH/sbatch variables to drive a real
+# cluster.
+
+x-materials-env: &materials-env
+  MATERIALS_DATABASE_URL: postgresql+asyncpg://${BUSINESS_DB_USER:-business}:${BUSINESS_DB_PASSWORD:-business123}@business-db:5432/materials
+  MATERIALS_AUTO_CREATE_SCHEMA: "0"
+  MATERIALS_SEED_DEMO: ${MATERIALS_SEED_DEMO:-1}
+  MATERIALS_AUTH_MODE: ${MATERIALS_AUTH_MODE:-eai}
+  MATERIALS_INTERNAL_TOKEN: ${MATERIALS_INTERNAL_TOKEN:-}
+  EAI_BASE_URL: ${EAI_BASE_URL:-http://gateway:8001}
+  EAI_TIMEOUT_SECONDS: "4"
+  PERMISSION_CACHE_TTL_SECONDS: "60"
+  JWT_SECRET_KEY: ${JWT_SECRET_KEY:?set JWT_SECRET_KEY in .env}
+  JWT_ALGORITHM: ${JWT_ALGORITHM:-HS256}
+  ACCESS_TOKEN_COOKIE: ${ACCESS_TOKEN_COOKIE:-access_token}
+  MATERIALS_TENANT_ID: ${MATERIALS_TENANT_ID:-000000}
+  MATERIALS_DEFAULT_PROJECT: ${MATERIALS_DEFAULT_PROJECT:-proj-dft-demo}
+  MATERIALS_CORS_ORIGINS: ${MATERIALS_CORS_ORIGINS:-http://localhost:${PORT:-2026},http://127.0.0.1:${PORT:-2026}}
+  MATERIALS_PUBLIC_BASE_URL: ${MATERIALS_PUBLIC_BASE_URL:-http://localhost:${PORT:-2026}/materials}
+  MATERIALS_SLURM_MODE: ${MATERIALS_SLURM_MODE:-mock}
+  MATERIALS_SLURM_PARTITION: ${MATERIALS_SLURM_PARTITION:-cpu}
+  MATERIALS_SLURM_ACCOUNT: ${MATERIALS_SLURM_ACCOUNT:-}
+  MATERIALS_SLURM_USER: ${MATERIALS_SLURM_USER:-}
+  MATERIALS_SLURM_SSH_HOST: ${MATERIALS_SLURM_SSH_HOST:-}
+  MATERIALS_SLURM_WORKDIR: ${MATERIALS_SLURM_WORKDIR:-/shared/materials/jobs}
+  MATERIALS_SLURM_COMMAND_TIMEOUT: ${MATERIALS_SLURM_COMMAND_TIMEOUT:-15}
+  MATERIALS_PSEUDO_ROOT: ${MATERIALS_PSEUDO_ROOT:-/opt/vasp/potpaw}
+  MATERIALS_LOG_LEVEL: ${MATERIALS_LOG_LEVEL:-INFO}
+
+x-materials-backend: &materials-backend
+  build:
+    context: ../materials/backend
+    dockerfile: Dockerfile
+    args:
+      PIP_INDEX_URL: ${PIP_INDEX_URL:-https://pypi.tuna.tsinghua.edu.cn/simple}
+  image: eai-flow-materials-backend:local
+
+services:
+  materials-db-init:
+    image: postgres:16-alpine
+    container_name: eai-ext-materials-db-init
+    environment:
+      PGHOST: business-db
+      PGUSER: ${BUSINESS_DB_USER:-business}
+      PGPASSWORD: ${BUSINESS_DB_PASSWORD:-business123}
+      PGDATABASE: postgres
+    command:
+      - sh
+      - -c
+      - |
+        until pg_isready -q; do sleep 2; done
+        if ! psql -d postgres -tAc "SELECT 1 FROM pg_database WHERE datname='materials'" | grep -q 1; then
+          psql -d postgres -v ON_ERROR_STOP=1 -c 'CREATE DATABASE materials'
+        fi
+    networks:
+      - eai-flow-net
+    restart: "no"
+
+  materials-migrate:
+    <<: *materials-backend
+    container_name: eai-ext-materials-migrate
+    command: ["alembic", "upgrade", "head"]
+    environment:
+      MATERIALS_DATABASE_URL: postgresql+asyncpg://${BUSINESS_DB_USER:-business}:${BUSINESS_DB_PASSWORD:-business123}@business-db:5432/materials
+      MATERIALS_AUTO_CREATE_SCHEMA: "0"
+    depends_on:
+      materials-db-init:
+        condition: service_completed_successfully
+    networks:
+      - eai-flow-net
+    restart: "no"
+
+  materials-backend:
+    <<: *materials-backend
+    container_name: eai-ext-materials-backend
+    environment:
+      <<: *materials-env
+    command:
+      ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8030"]
+    ports:
+      - "${MATERIALS_BACKEND_BIND_HOST:-127.0.0.1}:${MATERIALS_BACKEND_PORT:-8030}:8030"
+    depends_on:
+      materials-migrate:
+        condition: service_completed_successfully
+    networks:
+      - eai-flow-net
+    restart: unless-stopped
+    init: true
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "python",
+          "-c",
+          "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://127.0.0.1:8030/health', timeout=3).status == 200 else 1)",
+        ]
+      interval: 15s
+      timeout: 5s
+      retries: 6
+      start_period: 15s
+
+  materials-frontend:
+    build:
+      context: ../materials/frontend
+      dockerfile: Dockerfile
+      args:
+        NEXT_PUBLIC_MATERIALS_API: /materials/api
+        NEXT_PUBLIC_BASE_PATH: /materials
+        NPM_REGISTRY: ${NPM_REGISTRY:-https://registry.npmmirror.com}
+    image: eai-flow-materials-frontend:local
+    container_name: eai-ext-materials-frontend
+    environment:
+      - NODE_ENV=production
+      - HOSTNAME=0.0.0.0
+      - PORT=3030
+    ports:
+      - "${MATERIALS_FRONTEND_BIND_HOST:-127.0.0.1}:${MATERIALS_FRONTEND_PORT:-3030}:3030"
+    networks:
+      - eai-flow-net
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:3030/materials/ >/dev/null || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 6
+      start_period: 20s
+
+networks:
+  eai-flow-net:
+    external: true
+    name: eai-docker_eai-flow-net

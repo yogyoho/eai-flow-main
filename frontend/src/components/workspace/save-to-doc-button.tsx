@@ -1,6 +1,11 @@
 "use client";
 
-import { BookmarkIcon, CheckIcon, Loader2Icon, AlertCircleIcon } from "lucide-react";
+import {
+  BookmarkIcon,
+  CheckIcon,
+  Loader2Icon,
+  AlertCircleIcon,
+} from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
@@ -26,7 +31,9 @@ export function SaveToDocButton({
   projectId?: string;
 }) {
   const router = useRouter();
-  const [state, setState] = useState<"idle" | "saving" | "done" | "error">("idle");
+  const [state, setState] = useState<"idle" | "saving" | "done" | "error">(
+    "idle",
+  );
 
   const handleSave = async () => {
     if (!content.trim() || state !== "idle") return;

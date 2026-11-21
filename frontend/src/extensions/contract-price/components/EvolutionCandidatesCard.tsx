@@ -91,7 +91,7 @@ export function EvolutionCandidatesCard() {
             <span className="bg-primary/10 text-primary rounded-full px-2 py-0.5 text-xs">
               ×{c.recurrence}
             </span>
-            <span className="text-muted-foreground min-w-0 flex-1 break-all font-mono text-xs">
+            <span className="text-muted-foreground min-w-0 flex-1 font-mono text-xs break-all">
               {c.evidence}
             </span>
             {Object.keys(c.suggested_anchors ?? {}).length > 0 ? (
@@ -103,7 +103,11 @@ export function EvolutionCandidatesCard() {
               </span>
             ) : null}
             <span className="ml-auto flex shrink-0 gap-1.5">
-              <Button size="sm" variant="outline" onClick={() => onDismiss(c.learning_id)}>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => onDismiss(c.learning_id)}
+              >
                 忽略
               </Button>
               <Button size="sm" onClick={() => onAdopt(c.learning_id)}>

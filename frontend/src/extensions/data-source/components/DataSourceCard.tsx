@@ -1,14 +1,28 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { Code, Database, Edit, Globe, Loader2, RefreshCw, Table, Trash2, Upload } from "lucide-react";
+import {
+  Code,
+  Database,
+  Edit,
+  Globe,
+  Loader2,
+  RefreshCw,
+  Table,
+  Trash2,
+  Upload,
+} from "lucide-react";
 import React, { useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
 import type { DataSource, DataSourceType } from "../types";
-import { AUTH_TYPE_LABELS, DATA_SOURCE_TYPE_LABELS, SYNC_MODE_LABELS } from "../types";
+import {
+  AUTH_TYPE_LABELS,
+  DATA_SOURCE_TYPE_LABELS,
+  SYNC_MODE_LABELS,
+} from "../types";
 
 import { ConnectionStatusBadge } from "./ConnectionStatusBadge";
 import { SourceDatasetsModal } from "./SourceDatasetsModal";
@@ -71,7 +85,7 @@ export function DataSourceCard({
       animate={{ opacity: 1, scale: 1 }}
       exit={{ opacity: 0, scale: 0.95 }}
       transition={{ duration: 0.2 }}
-      className="group flex flex-col overflow-hidden rounded-lg border border-border bg-card transition-all hover:border-primary/20 hover:shadow-md"
+      className="group border-border bg-card hover:border-primary/20 flex flex-col overflow-hidden rounded-lg border transition-all hover:shadow-md"
     >
       {/* Top section */}
       <div className="flex-1 p-5">
@@ -85,11 +99,13 @@ export function DataSourceCard({
             {typeIcon}
           </div>
           <div className="min-w-0 flex-1">
-            <h3 className="line-clamp-1 font-semibold text-foreground">
+            <h3 className="text-foreground line-clamp-1 font-semibold">
               {source.name}
             </h3>
             {source.description && (
-              <p className="mt-1 line-clamp-2 text-xs text-muted-foreground">{source.description}</p>
+              <p className="text-muted-foreground mt-1 line-clamp-2 text-xs">
+                {source.description}
+              </p>
             )}
             <div className="mt-1 flex items-center gap-2">
               <span
@@ -106,22 +122,22 @@ export function DataSourceCard({
         </div>
 
         {/* Middle: 3-column grid */}
-        <div className="grid grid-cols-3 gap-3 border-t border-border py-3">
+        <div className="border-border grid grid-cols-3 gap-3 border-t py-3">
           <div>
-            <div className="mb-1 text-xs text-muted-foreground">认证方式</div>
-            <div className="truncate text-sm font-medium text-foreground">
+            <div className="text-muted-foreground mb-1 text-xs">认证方式</div>
+            <div className="text-foreground truncate text-sm font-medium">
               {authLabel}
             </div>
           </div>
           <div>
-            <div className="mb-1 text-xs text-muted-foreground">同步模式</div>
-            <div className="truncate text-sm font-medium text-foreground">
+            <div className="text-muted-foreground mb-1 text-xs">同步模式</div>
+            <div className="text-foreground truncate text-sm font-medium">
               {syncLabel}
             </div>
           </div>
           <div>
-            <div className="mb-1 text-xs text-muted-foreground">最近同步</div>
-            <div className="text-sm font-medium text-foreground">
+            <div className="text-muted-foreground mb-1 text-xs">最近同步</div>
+            <div className="text-foreground text-sm font-medium">
               {formatDate(source.lastSyncAt)}
             </div>
           </div>
@@ -129,14 +145,14 @@ export function DataSourceCard({
       </div>
 
       {/* Bottom bar */}
-      <div className="flex items-center justify-between border-t border-border bg-muted/50 px-5 py-3">
+      <div className="border-border bg-muted/50 flex items-center justify-between border-t px-5 py-3">
         <div className="flex items-center gap-1">
           <Button
             variant="ghost"
             size="icon"
             onClick={onTest}
             disabled={testing}
-            className="h-7 w-7 text-muted-foreground hover:bg-primary/10 hover:text-primary"
+            className="text-muted-foreground hover:bg-primary/10 hover:text-primary h-7 w-7"
             title="测试连接"
           >
             {testing ? (
@@ -150,7 +166,7 @@ export function DataSourceCard({
             size="icon"
             onClick={onSync}
             disabled={syncing}
-            className="h-7 w-7 text-muted-foreground hover:bg-primary/10 hover:text-primary"
+            className="text-muted-foreground hover:bg-primary/10 hover:text-primary h-7 w-7"
             title="同步数据"
           >
             <RefreshCw
@@ -161,7 +177,7 @@ export function DataSourceCard({
             variant="ghost"
             size="icon"
             onClick={() => setShowDatasets(true)}
-            className="h-7 w-7 text-muted-foreground hover:bg-primary/10 hover:text-primary"
+            className="text-muted-foreground hover:bg-primary/10 hover:text-primary h-7 w-7"
             title="数据集"
           >
             <Table className="h-3.5 w-3.5" />
@@ -172,7 +188,7 @@ export function DataSourceCard({
             variant="ghost"
             size="icon"
             onClick={onEdit}
-            className="h-7 w-7 text-muted-foreground hover:bg-muted hover:text-foreground"
+            className="text-muted-foreground hover:bg-muted hover:text-foreground h-7 w-7"
             title="编辑"
           >
             <Edit className="h-3.5 w-3.5" />
@@ -181,14 +197,18 @@ export function DataSourceCard({
             variant="ghost"
             size="icon"
             onClick={onDelete}
-            className="h-7 w-7 text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
+            className="text-muted-foreground hover:bg-destructive/10 hover:text-destructive h-7 w-7"
             title="删除"
           >
             <Trash2 className="h-3.5 w-3.5" />
           </Button>
         </div>
       </div>
-      <SourceDatasetsModal source={source} open={showDatasets} onClose={() => setShowDatasets(false)} />
+      <SourceDatasetsModal
+        source={source}
+        open={showDatasets}
+        onClose={() => setShowDatasets(false)}
+      />
     </motion.div>
   );
 }

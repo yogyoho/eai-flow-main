@@ -69,19 +69,24 @@ export function AppCenterPage() {
     <div className="mx-auto max-w-7xl px-6 py-8">
       {/* 标题区 */}
       <header className="mb-6 flex items-start gap-3">
-        <div className="p-3 border border-primary/20 bg-primary/10 text-primary rounded-lg shrink-0">
-          <Blocks className="w-6 h-6" />
+        <div className="border-primary/20 bg-primary/10 text-primary shrink-0 rounded-lg border p-3">
+          <Blocks className="h-6 w-6" />
         </div>
         <div className="min-w-0">
-          <div className="flex items-center gap-2 flex-wrap">
-            <h1 className="text-2xl font-bold tracking-tight text-foreground">应用中心</h1>
+          <div className="flex flex-wrap items-center gap-2">
+            <h1 className="text-foreground text-2xl font-bold tracking-tight">
+              应用中心
+            </h1>
             {!isLoading && (
-              <span className="inline-flex items-center rounded-full border border-border bg-muted/50 px-2.5 py-0.5 text-xs font-medium text-muted-foreground tabular-nums" suppressHydrationWarning>
+              <span
+                className="border-border bg-muted/50 text-muted-foreground inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-medium tabular-nums"
+                suppressHydrationWarning
+              >
                 {visibleApps.length} 个应用
               </span>
             )}
           </div>
-          <p className="text-sm text-muted-foreground mt-1">
+          <p className="text-muted-foreground mt-1 text-sm">
             发现并快速进入你需要的应用，收藏常用应用，让工作流更顺畅。
           </p>
         </div>
@@ -102,9 +107,12 @@ export function AppCenterPage() {
       {showFavorites && (
         <section className="mt-8">
           <div className="mb-3 flex items-center gap-2">
-            <Star className="size-4 text-amber-500 dark:text-amber-400" fill="currentColor" />
-            <h2 className="text-sm font-semibold text-foreground">我的收藏</h2>
-            <span className="text-xs text-muted-foreground">
+            <Star
+              className="size-4 text-amber-500 dark:text-amber-400"
+              fill="currentColor"
+            />
+            <h2 className="text-foreground text-sm font-semibold">我的收藏</h2>
+            <span className="text-muted-foreground text-xs">
               {favoriteApps.length}
             </span>
           </div>
@@ -123,7 +131,7 @@ export function AppCenterPage() {
       <section className="mt-8">
         {showFavorites && (
           <div className="mb-3">
-            <h2 className="text-sm font-semibold text-foreground">全部应用</h2>
+            <h2 className="text-foreground text-sm font-semibold">全部应用</h2>
           </div>
         )}
 

@@ -95,8 +95,24 @@ function TimeHandle({
   return (
     <g>
       <rect x={x} y={top} width={width} height={h} rx={3} fill={BLUE} />
-      <line x1={cx - 2.5} x2={cx - 2.5} y1={cy - 3.5} y2={cy + 3.5} stroke="#fff" strokeWidth={1.2} strokeLinecap="round" />
-      <line x1={cx + 2.5} x2={cx + 2.5} y1={cy - 3.5} y2={cy + 3.5} stroke="#fff" strokeWidth={1.2} strokeLinecap="round" />
+      <line
+        x1={cx - 2.5}
+        x2={cx - 2.5}
+        y1={cy - 3.5}
+        y2={cy + 3.5}
+        stroke="#fff"
+        strokeWidth={1.2}
+        strokeLinecap="round"
+      />
+      <line
+        x1={cx + 2.5}
+        x2={cx + 2.5}
+        y1={cy - 3.5}
+        y2={cy + 3.5}
+        stroke="#fff"
+        strokeWidth={1.2}
+        strokeLinecap="round"
+      />
     </g>
   );
 }
@@ -154,7 +170,9 @@ export function DashboardView() {
   // 图2:横向分组条形数据——货物名让位给 Y 轴整名;按(我方−友商)差距升序,
   // recharts 纵向布局 data[0] 在最顶部 → 差距最负(我方自产最落后=失标根因)置顶
   const compData = (compQ.data ?? [])
-    .filter((r) => matchesSelfAttribute(r.ours_self_pct, compChart.selfAttribute))
+    .filter((r) =>
+      matchesSelfAttribute(r.ours_self_pct, compChart.selfAttribute),
+    )
     .map((r) => ({
       goods_name: r.goods_name,
       我方: toNum(r.ours_self_pct),
@@ -162,7 +180,9 @@ export function DashboardView() {
     }))
     .sort((a, b) => a.我方 - a.友商 - (b.我方 - b.友商));
   const partRate =
-    s && s.bid_count > 0 ? `${((100 * s.ours_bid) / s.bid_count).toFixed(0)}% 参与率` : "";
+    s && s.bid_count > 0
+      ? `${((100 * s.ours_bid) / s.bid_count).toFixed(0)}% 参与率`
+      : "";
 
   // 图4 时间窗:win=null → 默认最近 10 个项目;拖 Brush 后跟随;数据集变更(筛选)重置回默认
   const sd = useMemo(() => showdownQ.data ?? [], [showdownQ.data]);
@@ -237,7 +257,11 @@ export function DashboardView() {
               ) : undefined
             }
           />
-          <StatCard label="投标总数" value={s?.bid_count ?? "—"} delta={yearSpan} />
+          <StatCard
+            label="投标总数"
+            value={s?.bid_count ?? "—"}
+            delta={yearSpan}
+          />
           <StatCard
             label="我方投 / 中"
             value={s ? `${s.ours_bid} / ${s.ours_won}` : "—"}
@@ -399,7 +423,11 @@ export function DashboardView() {
       </SectionCard>
 
       {/* ── 三问 ②:下次报多少? ─────────────────────────── */}
-      <SectionCard badge="②" title="下次报多少?" sub="报价决策 · 溢价拐点 / 区间建议 / 单项目复盘">
+      <SectionCard
+        badge="②"
+        title="下次报多少?"
+        sub="报价决策 · 溢价拐点 / 区间建议 / 单项目复盘"
+      >
         <div className="grid grid-cols-1 gap-5 xl:grid-cols-2">
           <PremiumCurveChart filters={filters} />
           <PriceBandChart filters={filters} />
@@ -411,12 +439,17 @@ export function DashboardView() {
           meta="拖下方滑块缩时间窗 · 点击我方柱下钻"
         >
           <ResponsiveContainer width="100%" height={320}>
-            <BarChart data={sdChart} margin={{ top: 8, right: 8, left: -8, bottom: 0 }}>
+            <BarChart
+              data={sdChart}
+              margin={{ top: 8, right: 8, left: -8, bottom: 0 }}
+            >
               <CartesianGrid stroke={GRID} vertical={false} />
               <XAxis
                 dataKey="project_name"
                 tick={{ ...AXIS, fontSize: 10 }}
-                tickFormatter={(v: string) => (v.length > 8 ? v.slice(0, 8) + "…" : v)}
+                tickFormatter={(v: string) =>
+                  v.length > 8 ? v.slice(0, 8) + "…" : v
+                }
                 tickLine={false}
                 axisLine={{ stroke: GRID }}
                 interval="preserveEnd"
@@ -448,8 +481,11 @@ export function DashboardView() {
                   // displayedData=slice(dataStartIndex,…)),直接查全表会错位;优先 data.payload(被点柱
                   // 原始行,project_name 为 GROUP BY 键全表唯一)按名回查,payload 缺失时退回 start+idx。
                   // esc 单引号转义防 SQL 注入(与 api.ts 同源,勿内联第三份)
-                  const p = (d as { payload?: { project_name?: string } })?.payload?.project_name;
-                  const row = (p ? sd.find((x) => x.project_name === p) : undefined) ?? sd[start + idx];
+                  const p = (d as { payload?: { project_name?: string } })
+                    ?.payload?.project_name;
+                  const row =
+                    (p ? sd.find((x) => x.project_name === p) : undefined) ??
+                    sd[start + idx];
                   if (row) {
                     const v = esc(row.project_name);
                     setDrill({
@@ -491,7 +527,7 @@ export function DashboardView() {
                 </span>
               ))}
             </div>
-            <span className="text-muted-foreground [font-variant-numeric:tabular-nums] text-xs font-semibold whitespace-nowrap">
+            <span className="text-muted-foreground text-xs font-semibold whitespace-nowrap [font-variant-numeric:tabular-nums]">
               时间窗 {mon(sd[start]?.bid_dt)} – {mon(sd[end]?.bid_dt)} ·{" "}
               {end - start + 1}/{sd.length} 项目
             </span>
@@ -500,13 +536,19 @@ export function DashboardView() {
       </SectionCard>
 
       {/* ── 三问 ③:对手是谁? ───────────────────────────── */}
-      <SectionCard badge="③" title="对手是谁?" sub="竞争情报 · 友商画像 / 遭遇战 / 份额格局">
+      <SectionCard
+        badge="③"
+        title="对手是谁?"
+        sub="竞争情报 · 友商画像 / 遭遇战 / 份额格局"
+      >
         <div className="grid grid-cols-1 gap-5 xl:grid-cols-[1.4fr_1fr]">
           <CompetitorProfileTable filters={filters} onDrill={setDrill} />
           <HeadToHeadCard
             filters={filters}
             // 行级友商过滤后,未选友商在 base 里无行 → 下拉只给全局选中集(未选=全量)
-            competitors={filters.competitors.length ? filters.competitors : competitors}
+            competitors={
+              filters.competitors.length ? filters.competitors : competitors
+            }
             onDrill={setDrill}
           />
         </div>
@@ -548,7 +590,10 @@ function SegTooltip(props: {
       <p className="[font-variant-numeric:tabular-nums]" style={{ color: INK }}>
         中标率 <b>{Math.round(d.ours_win_rate_pct)}%</b>
       </p>
-      <p className="[font-variant-numeric:tabular-nums]" style={{ color: INK_3 }}>
+      <p
+        className="[font-variant-numeric:tabular-nums]"
+        style={{ color: INK_3 }}
+      >
         {d.ours_won}/{d.ours_bid}
       </p>
     </div>

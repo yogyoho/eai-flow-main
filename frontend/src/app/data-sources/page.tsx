@@ -11,8 +11,8 @@ export default function DataSourcesPage() {
     <ShellLayout>
       <Suspense
         fallback={
-          <div className="flex items-center justify-center h-full text-muted-foreground text-sm">
-            <Loader2 className="h-8 w-8 animate-spin text-primary mr-2" />
+          <div className="text-muted-foreground flex h-full items-center justify-center text-sm">
+            <Loader2 className="text-primary mr-2 h-8 w-8 animate-spin" />
             加载中...
           </div>
         }

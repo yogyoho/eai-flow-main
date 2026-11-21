@@ -8,7 +8,8 @@ import type { DAGNodeData } from "../types";
 const ROLE_COLORS: Record<string, string> = {
   lead: "bg-amber-100 dark:bg-amber-500/15 text-amber-700 dark:text-amber-300",
   writer: "bg-blue-100 dark:bg-blue-500/15 text-blue-700 dark:text-blue-300",
-  reviewer: "bg-green-100 dark:bg-green-500/15 text-green-700 dark:text-green-300",
+  reviewer:
+    "bg-green-100 dark:bg-green-500/15 text-green-700 dark:text-green-300",
   data_reviewer: "bg-teal-100 dark:bg-teal-500/15 text-teal-700",
   approver: "bg-red-100 dark:bg-red-500/15 text-red-700 dark:text-red-300",
 };
@@ -24,7 +25,7 @@ export function SubflowNode({
 
   return (
     <div
-      className={`min-w-[150px] cursor-pointer rounded-lg border-2 bg-card px-3 py-2.5 transition-shadow ${selected ? "border-violet-500 shadow-lg ring-2 ring-violet-200" : "border-violet-300 dark:border-violet-700 hover:shadow-sm"}`}
+      className={`bg-card min-w-[150px] cursor-pointer rounded-lg border-2 px-3 py-2.5 transition-shadow ${selected ? "border-violet-500 shadow-lg ring-2 ring-violet-200" : "border-violet-300 hover:shadow-sm dark:border-violet-700"}`}
     >
       <Handle
         type="target"
@@ -40,7 +41,7 @@ export function SubflowNode({
         </span>
       </div>
       {data.team && (
-        <div className="mt-1 ml-[38px] text-[10px] text-muted-foreground">
+        <div className="text-muted-foreground mt-1 ml-[38px] text-[10px]">
           团队: {data.team}
         </div>
       )}
@@ -51,7 +52,7 @@ export function SubflowNode({
       )}
       {roles.length > 0 && (
         <div className="mt-1 ml-[38px] flex flex-wrap gap-0.5">
-          <Users className="mr-0.5 h-2.5 w-2.5 text-muted-foreground" />
+          <Users className="text-muted-foreground mr-0.5 h-2.5 w-2.5" />
           {roles.map((slot) => (
             <span
               key={slot.roleKey}

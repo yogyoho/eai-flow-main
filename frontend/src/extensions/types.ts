@@ -477,7 +477,10 @@ export interface FolderListResponse {
   folders: string[];
 }
 
-export type KBBusinessType = "sample_reports" | "template_library" | "laws_regulations";
+export type KBBusinessType =
+  | "sample_reports"
+  | "template_library"
+  | "laws_regulations";
 export type ChunkMethod = "naive" | "report" | "paper" | "laws" | "book" | "qa";
 export type ReportType = "general" | "engineering_report";
 
@@ -529,21 +532,24 @@ export const DocumentStatus = {
   FAILED: "failed",
 } as const;
 
-export type DocumentStatusValue = (typeof DocumentStatus)[keyof typeof DocumentStatus];
+export type DocumentStatusValue =
+  (typeof DocumentStatus)[keyof typeof DocumentStatus];
 
 export function isDocumentReady(status: string | undefined): boolean {
   if (!status) return false;
   const s = String(status).toLowerCase().trim();
   return (
-    s === DocumentStatus.SUCCESS
-    || s === DocumentStatus.DONE
-    || s === DocumentStatus.COMPLETED
-    || s === DocumentStatus.PARSED
-    || s === "1"
+    s === DocumentStatus.SUCCESS ||
+    s === DocumentStatus.DONE ||
+    s === DocumentStatus.COMPLETED ||
+    s === DocumentStatus.PARSED ||
+    s === "1"
   );
 }
 
-export function normalizeDocStatus(raw: string | undefined | null): DocumentStatusValue {
+export function normalizeDocStatus(
+  raw: string | undefined | null,
+): DocumentStatusValue {
   if (!raw) return DocumentStatus.PENDING;
   const s = String(raw).toLowerCase().trim();
   const mapping: Record<string, DocumentStatusValue> = {

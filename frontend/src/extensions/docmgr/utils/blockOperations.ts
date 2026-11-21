@@ -10,7 +10,10 @@ function getTopLevelBlocks(doc: ProseMirrorNode): ProseMirrorNode[] {
   return blocks;
 }
 
-export function getTopLevelBlockIndex(doc: ProseMirrorNode, pos: number): number | null {
+export function getTopLevelBlockIndex(
+  doc: ProseMirrorNode,
+  pos: number,
+): number | null {
   if (doc.childCount === 0) return null;
 
   const $pos = doc.resolve(Math.max(0, Math.min(pos, doc.content.size)));
@@ -20,7 +23,7 @@ export function getTopLevelBlockIndex(doc: ProseMirrorNode, pos: number): number
 
 export function removeTopLevelBlock(
   blocks: ProseMirrorNode[],
-  index: number
+  index: number,
 ): ProseMirrorNode[] | null {
   if (index < 0 || index >= blocks.length) return null;
   return blocks.filter((_, currentIndex) => currentIndex !== index);
@@ -28,22 +31,18 @@ export function removeTopLevelBlock(
 
 export function duplicateTopLevelBlock(
   blocks: ProseMirrorNode[],
-  index: number
+  index: number,
 ): ProseMirrorNode[] | null {
   const block = blocks[index];
   if (!block) return null;
 
-  return [
-    ...blocks.slice(0, index + 1),
-    block,
-    ...blocks.slice(index + 1),
-  ];
+  return [...blocks.slice(0, index + 1), block, ...blocks.slice(index + 1)];
 }
 
 export function moveTopLevelBlock(
   blocks: ProseMirrorNode[],
   index: number,
-  direction: "up" | "down"
+  direction: "up" | "down",
 ): ProseMirrorNode[] | null {
   const targetIndex = direction === "up" ? index - 1 : index + 1;
   return moveTopLevelBlockToIndex(blocks, index, targetIndex);
@@ -52,7 +51,7 @@ export function moveTopLevelBlock(
 export function moveTopLevelBlockToIndex(
   blocks: ProseMirrorNode[],
   fromIndex: number,
-  toIndex: number
+  toIndex: number,
 ): ProseMirrorNode[] | null {
   if (
     fromIndex < 0 ||
@@ -71,7 +70,10 @@ export function moveTopLevelBlockToIndex(
   return nextBlocks;
 }
 
-function getBlockSelectionPos(blocks: ProseMirrorNode[], index: number): number {
+function getBlockSelectionPos(
+  blocks: ProseMirrorNode[],
+  index: number,
+): number {
   const offset = blocks
     .slice(0, index)
     .reduce((total, block) => total + block.nodeSize, 0);
@@ -83,11 +85,18 @@ function getBlockSelectionPos(blocks: ProseMirrorNode[], index: number): number 
 function replaceTopLevelBlocks(
   editor: Editor,
   blocks: ProseMirrorNode[],
-  selectionIndex: number
+  selectionIndex: number,
 ): boolean {
   const { state } = editor;
-  const tr = state.tr.replaceWith(0, state.doc.content.size, Fragment.fromArray(blocks));
-  const nextSelectionIndex = Math.max(0, Math.min(selectionIndex, blocks.length - 1));
+  const tr = state.tr.replaceWith(
+    0,
+    state.doc.content.size,
+    Fragment.fromArray(blocks),
+  );
+  const nextSelectionIndex = Math.max(
+    0,
+    Math.min(selectionIndex, blocks.length - 1),
+  );
   const selectionPos = getBlockSelectionPos(blocks, nextSelectionIndex);
 
   tr.setSelection(TextSelection.near(tr.doc.resolve(selectionPos)));
@@ -112,7 +121,10 @@ export function duplicateTopLevelBlockAt(editor: Editor, pos: number): boolean {
   const index = getTopLevelBlockIndex(state.doc, pos);
   if (index === null) return false;
 
-  const nextBlocks = duplicateTopLevelBlock(getTopLevelBlocks(state.doc), index);
+  const nextBlocks = duplicateTopLevelBlock(
+    getTopLevelBlocks(state.doc),
+    index,
+  );
   if (!nextBlocks) return false;
 
   return replaceTopLevelBlocks(editor, nextBlocks, index + 1);
@@ -121,22 +133,30 @@ export function duplicateTopLevelBlockAt(editor: Editor, pos: number): boolean {
 export function moveTopLevelBlockAt(
   editor: Editor,
   pos: number,
-  direction: "up" | "down"
+  direction: "up" | "down",
 ): boolean {
   const { state } = editor;
   const index = getTopLevelBlockIndex(state.doc, pos);
   if (index === null) return false;
 
-  const nextBlocks = moveTopLevelBlock(getTopLevelBlocks(state.doc), index, direction);
+  const nextBlocks = moveTopLevelBlock(
+    getTopLevelBlocks(state.doc),
+    index,
+    direction,
+  );
   if (!nextBlocks) return false;
 
-  return replaceTopLevelBlocks(editor, nextBlocks, direction === "up" ? index - 1 : index + 1);
+  return replaceTopLevelBlocks(
+    editor,
+    nextBlocks,
+    direction === "up" ? index - 1 : index + 1,
+  );
 }
 
 export function moveTopLevelBlockByTarget(
   editor: Editor,
   sourcePos: number,
-  targetPos: number
+  targetPos: number,
 ): boolean {
   const { state } = editor;
   const blocks = getTopLevelBlocks(state.doc);
@@ -154,7 +174,7 @@ export function moveTopLevelBlockToPosition(
   editor: Editor,
   sourcePos: number,
   targetIndex: number,
-  placement: "before" | "after"
+  placement: "before" | "after",
 ): boolean {
   const { state } = editor;
   const blocks = getTopLevelBlocks(state.doc);

@@ -6,7 +6,7 @@ import {
 
 function sanitizeOptions(
   options: RuleDictionaryOption[] | undefined,
-  fallback: RuleDictionaryOption[]
+  fallback: RuleDictionaryOption[],
 ): RuleDictionaryOption[] {
   if (!options || options.length === 0) {
     return [...fallback];
@@ -16,25 +16,43 @@ function sanitizeOptions(
     .filter((item) => typeof item?.value === "string" && item.value.length > 0)
     .map((item) => ({
       value: item.value,
-      label: typeof item.label === "string" && item.label.length > 0 ? item.label : item.value,
+      label:
+        typeof item.label === "string" && item.label.length > 0
+          ? item.label
+          : item.value,
     }));
 }
 
 export function mergeRuleDictionaries(
-  dictionaries?: Partial<RuleDictionaries> | null
+  dictionaries?: Partial<RuleDictionaries> | null,
 ): RuleDictionaries {
   return {
-    industries: sanitizeOptions(dictionaries?.industries, DEFAULT_RULE_DICTIONARIES.industries),
-    reportTypes: sanitizeOptions(dictionaries?.reportTypes, DEFAULT_RULE_DICTIONARIES.reportTypes),
-    regions: sanitizeOptions(dictionaries?.regions, DEFAULT_RULE_DICTIONARIES.regions),
-    ruleTypes: sanitizeOptions(dictionaries?.ruleTypes, DEFAULT_RULE_DICTIONARIES.ruleTypes),
-    severityLevels: sanitizeOptions(dictionaries?.severityLevels, DEFAULT_RULE_DICTIONARIES.severityLevels),
+    industries: sanitizeOptions(
+      dictionaries?.industries,
+      DEFAULT_RULE_DICTIONARIES.industries,
+    ),
+    reportTypes: sanitizeOptions(
+      dictionaries?.reportTypes,
+      DEFAULT_RULE_DICTIONARIES.reportTypes,
+    ),
+    regions: sanitizeOptions(
+      dictionaries?.regions,
+      DEFAULT_RULE_DICTIONARIES.regions,
+    ),
+    ruleTypes: sanitizeOptions(
+      dictionaries?.ruleTypes,
+      DEFAULT_RULE_DICTIONARIES.ruleTypes,
+    ),
+    severityLevels: sanitizeOptions(
+      dictionaries?.severityLevels,
+      DEFAULT_RULE_DICTIONARIES.severityLevels,
+    ),
   };
 }
 
 export function getDictionaryLabel(
   options: RuleDictionaryOption[],
-  value: string
+  value: string,
 ): string {
   return options.find((item) => item.value === value)?.label ?? value;
 }

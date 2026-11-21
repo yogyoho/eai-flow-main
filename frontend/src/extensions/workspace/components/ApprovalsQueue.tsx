@@ -216,7 +216,7 @@ export function ApprovalsQueue({ projectId }: ApprovalsQueueProps) {
                     className="flex items-center gap-2 font-mono text-xs"
                   >
                     {p.type === "agent" ? (
-                      <Bot className="text-purple-600 dark:text-purple-400 h-3.5 w-3.5" />
+                      <Bot className="h-3.5 w-3.5 text-purple-600 dark:text-purple-400" />
                     ) : (
                       <span>👤</span>
                     )}

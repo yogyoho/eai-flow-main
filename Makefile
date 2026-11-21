@@ -253,9 +253,9 @@ docker-logs-redis:
 # `eai-ext` group — see EAI_EXT_COMPOSE below.
 EAI_DEV_COMPOSE := docker compose -p eai-docker -f docker-compose-dev.yaml -f docker-compose.extensions.yaml -f docker-compose.ragflow.yaml
 
-# EAI-CUSTOM eai-ext: 业务子系统扩展层 (business-db + sales + workflow + procurement).
+# EAI-CUSTOM eai-ext: 业务子系统扩展层 (business-db + sales + workflow + materials + procurement).
 # Shares the base network eai-docker_eai-flow-net (nginx routes by container name);
-# workflow.yaml is included by business.yaml automatically.
+# workflow.yaml / materials.yaml are included by business.yaml automatically.
 EAI_EXT_COMPOSE := docker compose -p eai-ext -f docker-compose.business.yaml
 
 eai-ext-up:

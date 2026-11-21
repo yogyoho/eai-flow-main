@@ -33,7 +33,7 @@ const FULL_BASE = "/api/extensions/spare-parts";
 
 /** Build a query string, skipping empty/null/undefined values. */
 export function qs(
-  params?: Record<string, string | number | boolean | null | undefined>
+  params?: Record<string, string | number | boolean | null | undefined>,
 ): string {
   const sp = new URLSearchParams();
   for (const [k, v] of Object.entries(params ?? {})) {
@@ -48,8 +48,15 @@ export const sparePartsApi = {
   dashboard: () => authFetch<CspDashboard>(`${API_BASE}/dashboard`),
 
   // Cross-contract goods analysis
-  partsAnalysis: (params: { name?: string; cluster_id?: string; skip?: number; limit?: number }) =>
-    authFetch<Record<string, unknown>>(`${API_BASE}/spare-parts-analysis${qs(params)}`),
+  partsAnalysis: (params: {
+    name?: string;
+    cluster_id?: string;
+    skip?: number;
+    limit?: number;
+  }) =>
+    authFetch<Record<string, unknown>>(
+      `${API_BASE}/spare-parts-analysis${qs(params)}`,
+    ),
 
   // Functional area 1: documents
   listDocuments: (params?: {
@@ -64,9 +71,12 @@ export const sparePartsApi = {
     authFetch<void>(`${API_BASE}/documents/${id}`, { method: "DELETE" }),
 
   reparseDocument: (id: string) =>
-    authFetch<{ run_id: string; status: string; message?: string }>(`${API_BASE}/documents/${id}/reparse`, {
-      method: "POST",
-    }),
+    authFetch<{ run_id: string; status: string; message?: string }>(
+      `${API_BASE}/documents/${id}/reparse`,
+      {
+        method: "POST",
+      },
+    ),
 
   updateDocument: (
     id: string,
@@ -81,7 +91,7 @@ export const sparePartsApi = {
         | "customer_name"
         | "sign_date"
       >
-    >
+    >,
   ) =>
     authFetch<CspDocument>(`${API_BASE}/documents/${id}`, {
       method: "PATCH",
@@ -95,10 +105,13 @@ export const sparePartsApi = {
     }),
 
   confirmAllDocuments: (confirm_status: "confirmed" | "skipped") =>
-    authFetch<{ updated: number; confirm_status: string }>(`${API_BASE}/documents/confirm-all`, {
-      method: "POST",
-      body: JSON.stringify({ confirm_status }),
-    }),
+    authFetch<{ updated: number; confirm_status: string }>(
+      `${API_BASE}/documents/confirm-all`,
+      {
+        method: "POST",
+        body: JSON.stringify({ confirm_status }),
+      },
+    ),
 
   runCluster: (mode = "table", trigger = "manual") =>
     authFetch<PipelineRunResponse>(`${API_BASE}/cluster/run`, {
@@ -124,44 +137,70 @@ export const sparePartsApi = {
     limit?: number;
   }) => authFetch<Page<CspCluster>>(`${API_BASE}/clusters${qs(params)}`),
 
-  getCluster: (id: string) => authFetch<CspClusterDetail>(`${API_BASE}/clusters/${id}`),
+  getCluster: (id: string) =>
+    authFetch<CspClusterDetail>(`${API_BASE}/clusters/${id}`),
 
-  confirmCluster: (id: string, body?: { confirmed_by?: string; expected_version?: number }) =>
-    authFetch<{ status: string; version: number }>(`${API_BASE}/clusters/${id}/confirm`, {
-      method: "POST",
-      body: JSON.stringify(body ?? {}),
-    }),
+  confirmCluster: (
+    id: string,
+    body?: { confirmed_by?: string; expected_version?: number },
+  ) =>
+    authFetch<{ status: string; version: number }>(
+      `${API_BASE}/clusters/${id}/confirm`,
+      {
+        method: "POST",
+        body: JSON.stringify(body ?? {}),
+      },
+    ),
 
   rejectCluster: (id: string, body?: { expected_version?: number }) =>
-    authFetch<{ status: string; version: number }>(`${API_BASE}/clusters/${id}/reject`, {
-      method: "POST",
-      body: JSON.stringify(body ?? {}),
-    }),
+    authFetch<{ status: string; version: number }>(
+      `${API_BASE}/clusters/${id}/reject`,
+      {
+        method: "POST",
+        body: JSON.stringify(body ?? {}),
+      },
+    ),
 
-  updateCluster: (id: string, body: { category?: string; representative_name?: string }) =>
+  updateCluster: (
+    id: string,
+    body: { category?: string; representative_name?: string },
+  ) =>
     authFetch<CspCluster>(`${API_BASE}/clusters/${id}`, {
       method: "PATCH",
       body: JSON.stringify(body),
     }),
 
-  mergeClusters: (cluster_ids: string[], representative_name: string, category?: string) =>
-    authFetch<{ cluster_id: string; item_count: number }>(`${API_BASE}/clusters/merge`, {
-      method: "POST",
-      body: JSON.stringify({ cluster_ids, representative_name, category }),
-    }),
+  mergeClusters: (
+    cluster_ids: string[],
+    representative_name: string,
+    category?: string,
+  ) =>
+    authFetch<{ cluster_id: string; item_count: number }>(
+      `${API_BASE}/clusters/merge`,
+      {
+        method: "POST",
+        body: JSON.stringify({ cluster_ids, representative_name, category }),
+      },
+    ),
 
   moveItem: (item_id: string, target_cluster_id: string) =>
-    authFetch<{ item_id: string; cluster_id: string }>(`${API_BASE}/items/${item_id}/move`, {
-      method: "POST",
-      body: JSON.stringify({ target_cluster_id }),
-    }),
+    authFetch<{ item_id: string; cluster_id: string }>(
+      `${API_BASE}/items/${item_id}/move`,
+      {
+        method: "POST",
+        body: JSON.stringify({ target_cluster_id }),
+      },
+    ),
 
   // Functional area 3: items
   listItemContracts: () =>
-    authFetch<{ source_contract_no: string; count: number }[]>(`${API_BASE}/items/contracts`),
+    authFetch<{ source_contract_no: string; count: number }[]>(
+      `${API_BASE}/items/contracts`,
+    ),
 
   /** 明细按客户聚合(D3 客户维度)。 */
-  listItemCustomers: () => authFetch<CspItemCustomer[]>(`${API_BASE}/items/customers`),
+  listItemCustomers: () =>
+    authFetch<CspItemCustomer[]>(`${API_BASE}/items/customers`),
 
   listItems: (params?: {
     part_name?: string;
@@ -184,7 +223,7 @@ export const sparePartsApi = {
       spec?: string;
       validation_status?: string;
       note?: string;
-    }
+    },
   ) =>
     authFetch<CspItem>(`${API_BASE}/items/${id}`, {
       method: "PATCH",
@@ -207,14 +246,22 @@ export const sparePartsApi = {
     }),
 
   deleteItemsByRun: (runId: string) =>
-    authFetch<{ deleted: number }>(`${API_BASE}/items/by-run/${runId}`, { method: "DELETE" }),
+    authFetch<{ deleted: number }>(`${API_BASE}/items/by-run/${runId}`, {
+      method: "DELETE",
+    }),
 
   // Functional area 4: runs
-  listRuns: (params?: { run_status?: string; has_items?: boolean; skip?: number; limit?: number }) =>
-    authFetch<Page<CspRun>>(`${API_BASE}/runs${qs(params)}`),
+  listRuns: (params?: {
+    run_status?: string;
+    has_items?: boolean;
+    skip?: number;
+    limit?: number;
+  }) => authFetch<Page<CspRun>>(`${API_BASE}/runs${qs(params)}`),
 
   deleteRun: (runId: string) =>
-    authFetch<{ deleted: number }>(`${API_BASE}/runs/${runId}`, { method: "DELETE" }),
+    authFetch<{ deleted: number }>(`${API_BASE}/runs/${runId}`, {
+      method: "DELETE",
+    }),
 
   // Functional area 5: config
   getConfig: () => authFetch<CspConfig>(`${API_BASE}/config`),
@@ -236,8 +283,12 @@ export const sparePartsApi = {
     authFetch<PipelineStatus>(`${API_BASE}/pipeline/runs/${run_id}/status`),
 
   // Functional area 7: 客户管理 (D3 master/alias 归并)
-  listCustomers: (params?: { keyword?: string; status?: string; skip?: number; limit?: number }) =>
-    authFetch<Page<CspCustomer>>(`${API_BASE}/customers${qs(params)}`),
+  listCustomers: (params?: {
+    keyword?: string;
+    status?: string;
+    skip?: number;
+    limit?: number;
+  }) => authFetch<Page<CspCustomer>>(`${API_BASE}/customers${qs(params)}`),
 
   createCustomer: (body: CspCustomerCreate) =>
     authFetch<CspCustomer>(`${API_BASE}/customers`, {

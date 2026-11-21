@@ -12,7 +12,7 @@ void test("buildLawLibraryUrl does not duplicate /api when base already contains
 
   assert.equal(
     buildLawLibraryUrl("/kf/laws/parse-file"),
-    "http://localhost:4026/api/kf/laws/parse-file"
+    "http://localhost:4026/api/kf/laws/parse-file",
   );
 });
 
@@ -25,7 +25,7 @@ void test("buildLawLibraryUrl appends query params once", async () => {
 
   assert.equal(
     buildLawLibraryUrl("/kf/laws", { page: 2, law_type: "technical" }),
-    "http://localhost:4026/api/kf/laws?page=2&law_type=technical"
+    "http://localhost:4026/api/kf/laws?page=2&law_type=technical",
   );
 });
 

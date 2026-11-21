@@ -3,7 +3,7 @@ import type { RuleFilterParams } from "@/extensions/knowledge-factory/types";
 export function updateRuleFilters(
   prev: RuleFilterParams,
   key: keyof RuleFilterParams,
-  value: string | boolean | number | undefined
+  value: string | boolean | number | undefined,
 ): RuleFilterParams {
   if (key === "page") {
     return {

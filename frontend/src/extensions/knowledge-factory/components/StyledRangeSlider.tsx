@@ -33,7 +33,7 @@ export function StyledRangeSlider({
 
   return (
     <div className={cn("space-y-2", className)}>
-      <div className="rounded-xl bg-muted/80 px-1 py-2 ring-1 ring-border/80 dark:ring-border/50">
+      <div className="bg-muted/80 ring-border/80 dark:ring-border/50 rounded-xl px-1 py-2 ring-1">
         <input
           type="range"
           min={min}

@@ -17,7 +17,8 @@ interface VersionCompareModalProps {
 const STATUS_CONFIG = {
   added: {
     label: "新增",
-    color: "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20",
+    color:
+      "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20",
   },
   removed: {
     label: "删除",
@@ -25,7 +26,8 @@ const STATUS_CONFIG = {
   },
   modified: {
     label: "修改",
-    color: "bg-yellow-500/10 text-amber-600 dark:text-amber-400 border-yellow-500/20",
+    color:
+      "bg-yellow-500/10 text-amber-600 dark:text-amber-400 border-yellow-500/20",
   },
   unchanged: {
     label: "未变",

@@ -6,10 +6,17 @@ import * as Y from "yjs";
  * Tests validate the core algorithm without mounting React components.
  */
 
-function shouldSeedFromServerMeta(ydoc: Y.Doc): { shouldSeed: boolean; markdown: string | null } {
+function shouldSeedFromServerMeta(ydoc: Y.Doc): {
+  shouldSeed: boolean;
+  markdown: string | null;
+} {
   const meta = ydoc.getMap("_collabMeta");
   const pendingMarkdown = meta.get("pendingMarkdown");
-  if (pendingMarkdown && typeof pendingMarkdown === "string" && pendingMarkdown.trim()) {
+  if (
+    pendingMarkdown &&
+    typeof pendingMarkdown === "string" &&
+    pendingMarkdown.trim()
+  ) {
     return { shouldSeed: true, markdown: pendingMarkdown.trim() };
   }
   return { shouldSeed: false, markdown: null };
@@ -24,7 +31,7 @@ function hasRealContent(document: Array<Record<string, unknown>>): boolean {
     if (Array.isArray(content)) {
       return content.some(
         (c: Record<string, unknown>) =>
-          typeof c.text === "string" && (c.text).trim().length > 0,
+          typeof c.text === "string" && c.text.trim().length > 0,
       );
     }
     return false;
@@ -89,14 +96,22 @@ describe("hasRealContent", () => {
 
   it("returns false for paragraph with only empty text", () => {
     const document = [
-      { type: "paragraph", content: [{ type: "text", text: "", styles: {} }], children: [] },
+      {
+        type: "paragraph",
+        content: [{ type: "text", text: "", styles: {} }],
+        children: [],
+      },
     ];
     expect(hasRealContent(document)).toBe(false);
   });
 
   it("returns false for paragraph with only whitespace text", () => {
     const document = [
-      { type: "paragraph", content: [{ type: "text", text: "   ", styles: {} }], children: [] },
+      {
+        type: "paragraph",
+        content: [{ type: "text", text: "   ", styles: {} }],
+        children: [],
+      },
     ];
     expect(hasRealContent(document)).toBe(false);
   });
@@ -113,12 +128,16 @@ describe("hasRealContent", () => {
   });
 
   it("returns true for heading block (non-paragraph type)", () => {
-    const document = [{ type: "heading", props: { level: 2 }, content: [], children: [] }];
+    const document = [
+      { type: "heading", props: { level: 2 }, content: [], children: [] },
+    ];
     expect(hasRealContent(document)).toBe(true);
   });
 
   it("returns true for paragraph with children (nested blocks)", () => {
-    const document = [{ type: "paragraph", content: [], children: [{ type: "paragraph" }] }];
+    const document = [
+      { type: "paragraph", content: [], children: [{ type: "paragraph" }] },
+    ];
     expect(hasRealContent(document)).toBe(true);
   });
 
@@ -129,14 +148,16 @@ describe("hasRealContent", () => {
 
 describe("Seeding flow: server meta → client seeding → clear flag", () => {
   it("full round-trip: server sets flag, client reads and clears", () => {
-    const markdown = "# 华宇大厦消防设计专篇\n\n## 第一章 总则\n\n消防设计应符合...";
+    const markdown =
+      "# 华宇大厦消防设计专篇\n\n## 第一章 总则\n\n消防设计应符合...";
 
     // 1. Server creates Yjs doc with pendingMarkdown
     const doc = new Y.Doc();
     doc.getMap("_collabMeta").set("pendingMarkdown", markdown);
 
     // 2. Client checks for pending markdown
-    const { shouldSeed, markdown: fetchedMarkdown } = shouldSeedFromServerMeta(doc);
+    const { shouldSeed, markdown: fetchedMarkdown } =
+      shouldSeedFromServerMeta(doc);
     expect(shouldSeed).toBe(true);
     expect(fetchedMarkdown).toBe(markdown);
 

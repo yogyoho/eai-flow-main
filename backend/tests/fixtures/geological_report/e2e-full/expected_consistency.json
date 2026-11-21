@@ -1,0 +1,32 @@
+{
+  "contracts": {
+    "CC1": "manual",
+    "CC2": "pass",
+    "CC3": "pass",
+    "FC1": "pass",
+    "FC2": "pass",
+    "FC3": "pass",
+    "FC4": "pass",
+    "FC5": "pass",
+    "FC6": "pass",
+    "FC7": "pass",
+    "FC8": "pass",
+    "FC9": "pass",
+    "NR1": "pass",
+    "NR2": "pass",
+    "NR3": "warn",
+    "SL1": "pass",
+    "SL2": "pass",
+    "SL3": "pass",
+    "XS2": "warn",
+    "XS3": "pass",
+    "XS5": "pass",
+    "XS6": "pass"
+  },
+  "summary": {
+    "fail": 0,
+    "manual": 1,
+    "pass": 28,
+    "warn": 12
+  }
+}

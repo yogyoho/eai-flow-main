@@ -43,7 +43,10 @@ type EdgeState = "completed" | "running" | "pending";
 
 // ── Inner component (needs ReactFlowProvider context) ──
 
-function WorkflowProgressInner({ projectId, workflowGraph }: WorkflowProgressViewProps) {
+function WorkflowProgressInner({
+  projectId,
+  workflowGraph,
+}: WorkflowProgressViewProps) {
   const { status, loading } = useWorkflowStatus(projectId, 5000);
   const { resolvedTheme } = useTheme();
   // EAI-CUSTOM: 画布 colorMode 跟随应用主题(.dark class)
@@ -114,10 +117,12 @@ function WorkflowProgressInner({ projectId, workflowGraph }: WorkflowProgressVie
   // ── Empty state: no workflow assigned ──
   if (!loading && !status?.workflowId) {
     return (
-      <div className="flex h-full flex-col items-center justify-center gap-3 text-muted-foreground">
+      <div className="text-muted-foreground flex h-full flex-col items-center justify-center gap-3">
         <GitBranch className="h-12 w-12 opacity-30" />
         <p className="text-sm font-medium">该项目尚未关联工作流</p>
-        <p className="text-xs text-muted-foreground/60">请在项目设置中关联工作流模板</p>
+        <p className="text-muted-foreground/60 text-xs">
+          请在项目设置中关联工作流模板
+        </p>
       </div>
     );
   }
@@ -126,7 +131,7 @@ function WorkflowProgressInner({ projectId, workflowGraph }: WorkflowProgressVie
   if (loading && !status) {
     return (
       <div className="flex h-full items-center justify-center">
-        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground/50" />
+        <Loader2 className="text-muted-foreground/50 h-6 w-6 animate-spin" />
       </div>
     );
   }
@@ -134,26 +139,29 @@ function WorkflowProgressInner({ projectId, workflowGraph }: WorkflowProgressVie
   // ── Workflow status summary header ──
   const overallStatus = status?.status ?? "idle";
   const currentPhase = status?.currentPhaseNode;
-  const currentNodeLabel = currentPhase ? statusMap.get(currentPhase)?.label : null;
+  const currentNodeLabel = currentPhase
+    ? statusMap.get(currentPhase)?.label
+    : null;
 
   return (
     <div className="flex h-full flex-col">
       {/* Status header */}
-      <div className="flex items-center gap-3 px-4 py-2 border-b border-border bg-muted/30 shrink-0">
+      <div className="border-border bg-muted/30 flex shrink-0 items-center gap-3 border-b px-4 py-2">
         <div
           className={`h-2 w-2 rounded-full ${
             overallStatus === "completed"
               ? "bg-green-500"
               : overallStatus === "running"
-                ? "bg-blue-500 animate-pulse"
+                ? "animate-pulse bg-blue-500"
                 : overallStatus === "failed"
                   ? "bg-red-500"
                   : "bg-gray-400"
           }`}
         />
-        <span className="text-xs text-muted-foreground">
+        <span className="text-muted-foreground text-xs">
           {overallStatus === "completed" && "工作流已完成"}
-          {overallStatus === "running" && `正在执行: ${currentNodeLabel ?? "..."}`}
+          {overallStatus === "running" &&
+            `正在执行: ${currentNodeLabel ?? "..."}`}
           {overallStatus === "failed" && "工作流执行失败"}
           {overallStatus === "idle" && "工作流尚未启动"}
         </span>
@@ -193,10 +201,16 @@ function WorkflowProgressInner({ projectId, workflowGraph }: WorkflowProgressVie
 
 // ── Exported component with provider ──
 
-export function WorkflowProgressView({ projectId, workflowGraph }: WorkflowProgressViewProps) {
+export function WorkflowProgressView({
+  projectId,
+  workflowGraph,
+}: WorkflowProgressViewProps) {
   return (
     <ReactFlowProvider>
-      <WorkflowProgressInner projectId={projectId} workflowGraph={workflowGraph} />
+      <WorkflowProgressInner
+        projectId={projectId}
+        workflowGraph={workflowGraph}
+      />
     </ReactFlowProvider>
   );
 }

@@ -4,7 +4,13 @@ import { Copy, Link2, Users, CheckCircle2, Loader2 } from "lucide-react";
 import { useState } from "react";
 
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
@@ -17,7 +23,11 @@ interface ShareDialogProps {
   onOpenChange: (open: boolean) => void;
 }
 
-export default function ShareDialog({ doc, open, onOpenChange }: ShareDialogProps) {
+export default function ShareDialog({
+  doc,
+  open,
+  onOpenChange,
+}: ShareDialogProps) {
   const [link, setLink] = useState("");
   const [linkCopied, setLinkCopied] = useState(false);
   const [generating, setGenerating] = useState(false);
@@ -91,22 +101,26 @@ export default function ShareDialog({ doc, open, onOpenChange }: ShareDialogProp
       <DialogContent className="max-w-md">
         <DialogHeader>
           <DialogTitle>分享文档</DialogTitle>
-          <DialogDescription className="truncate">{doc.title || "无标题"}</DialogDescription>
+          <DialogDescription className="truncate">
+            {doc.title || "无标题"}
+          </DialogDescription>
         </DialogHeader>
         <Tabs defaultValue="link">
           <TabsList className="grid w-full grid-cols-2">
             <TabsTrigger value="link" className="flex items-center gap-1.5">
-              <Link2 className="w-3.5 h-3.5" />
+              <Link2 className="h-3.5 w-3.5" />
               通过链接分享
             </TabsTrigger>
             <TabsTrigger value="user" className="flex items-center gap-1.5">
-              <Users className="w-3.5 h-3.5" />
+              <Users className="h-3.5 w-3.5" />
               分享给用户
             </TabsTrigger>
           </TabsList>
-          <TabsContent value="link" className="space-y-4 mt-4">
+          <TabsContent value="link" className="mt-4 space-y-4">
             <div>
-              <label className="block text-sm font-medium text-foreground mb-1.5">权限</label>
+              <label className="text-foreground mb-1.5 block text-sm font-medium">
+                权限
+              </label>
               <div className="flex gap-2">
                 <Button
                   variant={permission === "read" ? "default" : "outline"}
@@ -125,10 +139,14 @@ export default function ShareDialog({ doc, open, onOpenChange }: ShareDialogProp
               </div>
             </div>
             {!link ? (
-              <Button className="w-full" onClick={handleGenerateLink} disabled={generating}>
+              <Button
+                className="w-full"
+                onClick={handleGenerateLink}
+                disabled={generating}
+              >
                 {generating ? (
                   <>
-                    <Loader2 className="w-4 h-4 animate-spin" />
+                    <Loader2 className="h-4 w-4 animate-spin" />
                     生成中...
                   </>
                 ) : (
@@ -138,15 +156,19 @@ export default function ShareDialog({ doc, open, onOpenChange }: ShareDialogProp
             ) : (
               <div className="space-y-2">
                 <Input readOnly value={link} className="text-xs" />
-                <Button variant="outline" className="w-full" onClick={handleCopyLink}>
+                <Button
+                  variant="outline"
+                  className="w-full"
+                  onClick={handleCopyLink}
+                >
                   {linkCopied ? (
                     <>
-                      <CheckCircle2 className="text-success w-4 h-4" />
+                      <CheckCircle2 className="text-success h-4 w-4" />
                       链接已复制
                     </>
                   ) : (
                     <>
-                      <Copy className="w-4 h-4" />
+                      <Copy className="h-4 w-4" />
                       复制链接
                     </>
                   )}
@@ -154,9 +176,11 @@ export default function ShareDialog({ doc, open, onOpenChange }: ShareDialogProp
               </div>
             )}
           </TabsContent>
-          <TabsContent value="user" className="space-y-4 mt-4">
+          <TabsContent value="user" className="mt-4 space-y-4">
             <div>
-              <label className="block text-sm font-medium text-foreground mb-1.5">用户 ID</label>
+              <label className="text-foreground mb-1.5 block text-sm font-medium">
+                用户 ID
+              </label>
               <Input
                 value={targetId}
                 onChange={(e) => setTargetId(e.target.value)}
@@ -164,7 +188,9 @@ export default function ShareDialog({ doc, open, onOpenChange }: ShareDialogProp
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-foreground mb-1.5">权限</label>
+              <label className="text-foreground mb-1.5 block text-sm font-medium">
+                权限
+              </label>
               <div className="flex gap-2">
                 <Button
                   variant={permission === "read" ? "default" : "outline"}
@@ -182,10 +208,14 @@ export default function ShareDialog({ doc, open, onOpenChange }: ShareDialogProp
                 </Button>
               </div>
             </div>
-            <Button className="w-full" onClick={handleShareToUser} disabled={sharing || !targetId.trim()}>
+            <Button
+              className="w-full"
+              onClick={handleShareToUser}
+              disabled={sharing || !targetId.trim()}
+            >
               {sharing ? (
                 <>
-                  <Loader2 className="w-4 h-4 animate-spin" />
+                  <Loader2 className="h-4 w-4 animate-spin" />
                   分享中...
                 </>
               ) : (
@@ -195,7 +225,9 @@ export default function ShareDialog({ doc, open, onOpenChange }: ShareDialogProp
           </TabsContent>
         </Tabs>
         {shareMessage && (
-          <p className={`text-xs text-center ${shareMessage.includes("失败") ? "text-destructive" : "text-success"}`}>
+          <p
+            className={`text-center text-xs ${shareMessage.includes("失败") ? "text-destructive" : "text-success"}`}
+          >
             {shareMessage}
           </p>
         )}

@@ -30,20 +30,27 @@ function AdminSelect({
   className,
   disabled = false,
 }: AdminSelectProps) {
-    // ponytail: keep "" as-is instead of converting to undefined.
-    // Converting ""→undefined makes React see uncontrolled→controlled transition
-    // when value changes from initial empty to a real option. Fixes:
-    // "Select is changing from uncontrolled to controlled."
-    const rootValue = value;
-    return (
-      <SelectPrimitive.Root value={rootValue} onValueChange={(v) => { onChange?.(v); onValueChange?.(v); }} disabled={disabled}>
+  // ponytail: keep "" as-is instead of converting to undefined.
+  // Converting ""→undefined makes React see uncontrolled→controlled transition
+  // when value changes from initial empty to a real option. Fixes:
+  // "Select is changing from uncontrolled to controlled."
+  const rootValue = value;
+  return (
+    <SelectPrimitive.Root
+      value={rootValue}
+      onValueChange={(v) => {
+        onChange?.(v);
+        onValueChange?.(v);
+      }}
+      disabled={disabled}
+    >
       <SelectPrimitive.Trigger
         className={cn(
-          "flex items-center justify-between w-full rounded-md border border-input bg-background px-3 py-2 text-sm transition-colors",
-          "focus:outline-none focus:ring-2 focus:ring-ring focus:border-ring",
+          "border-input bg-background flex w-full items-center justify-between rounded-md border px-3 py-2 text-sm transition-colors",
+          "focus:ring-ring focus:border-ring focus:ring-2 focus:outline-none",
           "hover:border-input",
-          disabled && "opacity-50 cursor-not-allowed bg-muted",
-          className
+          disabled && "bg-muted cursor-not-allowed opacity-50",
+          className,
         )}
       >
         {/* Radix Select.Value DROPS the className prop (destructured & unused in its
@@ -61,12 +68,12 @@ function AdminSelect({
       <SelectPrimitive.Portal>
         <SelectPrimitive.Content
           className={cn(
-            "relative z-50 min-w-[8rem] overflow-hidden rounded-md border bg-popover text-popover-foreground shadow-md",
+            "bg-popover text-popover-foreground relative z-50 min-w-[8rem] overflow-hidden rounded-md border shadow-md",
             "data-[state=open]:animate-in data-[state=closed]:animate-out",
             "data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0",
             "data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95",
             "data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2",
-            "data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2"
+            "data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2",
           )}
           position="popper"
           sideOffset={4}
@@ -80,10 +87,10 @@ function AdminSelect({
                 key={option.value}
                 value={option.value}
                 className={cn(
-                  "relative flex w-full cursor-pointer items-center rounded-sm py-1.5 pl-8 pr-2 text-sm outline-none",
+                  "relative flex w-full cursor-pointer items-center rounded-sm py-1.5 pr-2 pl-8 text-sm outline-none",
                   "focus:bg-accent focus:text-accent-foreground",
                   "data-[disabled]:pointer-events-none data-[disabled]:opacity-50",
-                  "data-[highlighted]:bg-accent data-[highlighted]:text-accent-foreground"
+                  "data-[highlighted]:bg-accent data-[highlighted]:text-accent-foreground",
                 )}
               >
                 <span className="absolute left-2 flex size-3.5 items-center justify-center">
@@ -93,7 +100,9 @@ function AdminSelect({
                 </span>
                 {/* ItemText also drops className — same wrapper-span pattern as the trigger. */}
                 <span className="min-w-0 flex-1 truncate">
-                  <SelectPrimitive.ItemText>{option.label}</SelectPrimitive.ItemText>
+                  <SelectPrimitive.ItemText>
+                    {option.label}
+                  </SelectPrimitive.ItemText>
                 </span>
               </SelectPrimitive.Item>
             ))}

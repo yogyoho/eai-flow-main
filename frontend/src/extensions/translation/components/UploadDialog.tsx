@@ -78,7 +78,10 @@ export function UploadDialog({
     });
     setSelected((prev) => {
       const seen = new Set(prev.map((f) => `${f.name}-${f.size}`));
-      return [...prev, ...supported.filter((f) => !seen.has(`${f.name}-${f.size}`))];
+      return [
+        ...prev,
+        ...supported.filter((f) => !seen.has(`${f.name}-${f.size}`)),
+      ];
     });
   };
 
@@ -88,10 +91,11 @@ export function UploadDialog({
     setUploadError(null);
     setUploadNotice(null);
     try {
-      const { failed, reused = [], message } = await onUpload(
-        selected,
-        autoTranslate,
-      );
+      const {
+        failed,
+        reused = [],
+        message,
+      } = await onUpload(selected, autoTranslate);
       if (failed.length === 0) {
         if (reused.length > 0) {
           // 内容重复：说明未新建、已有任务名，保持弹窗打开，避免“静默成功”
@@ -113,7 +117,9 @@ export function UploadDialog({
         onOpenChange(false);
       } else {
         const failedKeys = new Set(failed.map((f) => `${f.name}-${f.size}`));
-        setSelected((prev) => prev.filter((f) => failedKeys.has(`${f.name}-${f.size}`)));
+        setSelected((prev) =>
+          prev.filter((f) => failedKeys.has(`${f.name}-${f.size}`)),
+        );
         setUploadError(
           (message ? `${message} — ` : "") +
             `${failed.length} 个文件上传失败，已保留在选择列表，可直接重试或移除。`,
@@ -140,7 +146,9 @@ export function UploadDialog({
       <DialogContent className="max-w-lg">
         <DialogHeader>
           <DialogTitle>上传</DialogTitle>
-          <DialogDescription>支持批量选择 EN/FR 文档或整个文件夹。</DialogDescription>
+          <DialogDescription>
+            支持批量选择 EN/FR 文档或整个文件夹。
+          </DialogDescription>
         </DialogHeader>
 
         {/* Drag-drop zone */}
@@ -162,16 +170,20 @@ export function UploadDialog({
           }}
           onClick={() => fileRef.current?.click()}
         >
-          <FileUp className="h-10 w-10 text-muted-foreground" />
-          <p className="text-sm font-medium text-foreground">拖拽文档到此处</p>
-          <p className="text-xs text-muted-foreground">或点击选择文件 · 支持多选</p>
+          <FileUp className="text-muted-foreground h-10 w-10" />
+          <p className="text-foreground text-sm font-medium">拖拽文档到此处</p>
+          <p className="text-muted-foreground text-xs">
+            或点击选择文件 · 支持多选
+          </p>
         </div>
 
         {/* 目标 RAG 知识库 */}
         <div className="grid grid-cols-[110px_1fr] items-center gap-2 text-sm">
-          <span className="text-xs text-muted-foreground">目标知识库</span>
+          <span className="text-muted-foreground text-xs">目标知识库</span>
           {kbOptions.length === 0 ? (
-            <span className="text-xs text-destructive">无可用库——请先在设置页「RAG知识库配置」创建</span>
+            <span className="text-destructive text-xs">
+              无可用库——请先在设置页「RAG知识库配置」创建
+            </span>
           ) : (
             <Select value={kbId} onValueChange={onKbChange}>
               <SelectTrigger
@@ -193,17 +205,23 @@ export function UploadDialog({
         </div>
 
         {/* Auto-translate toggle */}
-        <label className="flex cursor-pointer select-none items-center gap-2 text-sm">
+        <label className="flex cursor-pointer items-center gap-2 text-sm select-none">
           <input
             type="checkbox"
             checked={autoTranslate}
             onChange={(e) => setAutoTranslate(e.target.checked)}
             className="accent-primary"
           />
-          <span className={autoTranslate ? "font-medium text-foreground" : "text-muted-foreground"}>
+          <span
+            className={
+              autoTranslate
+                ? "text-foreground font-medium"
+                : "text-muted-foreground"
+            }
+          >
             上传后自动翻译
           </span>
-          <span className="text-xs text-muted-foreground">
+          <span className="text-muted-foreground text-xs">
             {autoTranslate
               ? "（上传完即加入翻译队列）"
               : "（上传后需勾选并点「翻译」）"}
@@ -247,7 +265,10 @@ export function UploadDialog({
           type="file"
           multiple
           className="hidden"
-          {...({ webkitdirectory: "", directory: "" } as Record<string, string>)}
+          {...({ webkitdirectory: "", directory: "" } as Record<
+            string,
+            string
+          >)}
           onChange={(e) => {
             if (e.target.files) addFiles(e.target.files);
             e.target.value = "";
@@ -257,18 +278,19 @@ export function UploadDialog({
         {/* Selected files list */}
         {selected.length > 0 && (
           <div className="max-h-48 space-y-1 overflow-y-auto">
-            <p className="text-xs text-muted-foreground">
+            <p className="text-muted-foreground text-xs">
               已选 {selected.length} 个文件 · 共{" "}
-              {(selected.reduce((s, f) => s + f.size, 0) / 1048576).toFixed(1)} MB
+              {(selected.reduce((s, f) => s + f.size, 0) / 1048576).toFixed(1)}{" "}
+              MB
             </p>
             {selected.map((f, i) => (
               <div
                 key={`${f.name}-${i}`}
-                className="flex items-center justify-between rounded-md bg-muted/50 px-3 py-1.5 text-sm"
+                className="bg-muted/50 flex items-center justify-between rounded-md px-3 py-1.5 text-sm"
               >
                 <span className="flex-1 truncate">{f.name}</span>
                 <div className="flex shrink-0 items-center gap-2">
-                  <span className="text-xs tabular-nums text-muted-foreground">
+                  <span className="text-muted-foreground text-xs tabular-nums">
                     {(f.size / 1048576).toFixed(1)}MB
                   </span>
                   {!uploading && (
@@ -288,11 +310,13 @@ export function UploadDialog({
         )}
 
         {uploadNotice && (
-          <p className="bg-info/10 text-[var(--info-900)] rounded-md px-3 py-2 text-xs">
+          <p className="bg-info/10 rounded-md px-3 py-2 text-xs text-[var(--info-900)]">
             {uploadNotice}
           </p>
         )}
-        {uploadError && <p className="text-sm text-destructive">{uploadError}</p>}
+        {uploadError && (
+          <p className="text-destructive text-sm">{uploadError}</p>
+        )}
 
         <DialogFooter>
           <Button
@@ -304,7 +328,10 @@ export function UploadDialog({
           >
             取消
           </Button>
-          <Button disabled={selected.length === 0 || uploading} onClick={() => void startUpload()}>
+          <Button
+            disabled={selected.length === 0 || uploading}
+            onClick={() => void startUpload()}
+          >
             <FileUp className="h-4 w-4" />
             {uploading ? "上传中…" : `开始上传 (${selected.length})`}
           </Button>

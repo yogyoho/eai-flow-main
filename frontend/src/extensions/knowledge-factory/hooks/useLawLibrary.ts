@@ -122,7 +122,7 @@ export function useCreateLaw() {
           method: "POST",
           body: JSON.stringify(data),
         },
-        ""
+        "",
       );
     },
     onSuccess: () => {
@@ -160,7 +160,7 @@ export function useUpdateLaw() {
           method: "PUT",
           body: JSON.stringify(data),
         },
-        ""
+        "",
       );
     },
     onSuccess: () => {
@@ -191,7 +191,9 @@ export function useSyncLaw() {
     },
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ["laws"] });
-      void queryClient.invalidateQueries({ queryKey: ["laws", "ragflow-status"] });
+      void queryClient.invalidateQueries({
+        queryKey: ["laws", "ragflow-status"],
+      });
     },
   });
 }
@@ -200,12 +202,16 @@ export function useSyncAllLaws() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (lawType?: LawType) => {
-      const url = buildLawLibraryUrl("/kf/laws/sync-all", { law_type: lawType });
+      const url = buildLawLibraryUrl("/kf/laws/sync-all", {
+        law_type: lawType,
+      });
       return authFetch<{ message: string }>(url, { method: "POST" }, "");
     },
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ["laws"] });
-      void queryClient.invalidateQueries({ queryKey: ["laws", "ragflow-status"] });
+      void queryClient.invalidateQueries({
+        queryKey: ["laws", "ragflow-status"],
+      });
     },
   });
 }
@@ -226,11 +232,15 @@ export function useInitRAGFlow() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (lawType?: LawType) => {
-      const url = buildLawLibraryUrl("/kf/laws/init-ragflow", { law_type: lawType });
+      const url = buildLawLibraryUrl("/kf/laws/init-ragflow", {
+        law_type: lawType,
+      });
       return authFetch<InitRAGFlowResponse>(url, { method: "POST" }, "");
     },
     onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: ["laws", "ragflow-status"] });
+      void queryClient.invalidateQueries({
+        queryKey: ["laws", "ragflow-status"],
+      });
     },
   });
 }
@@ -252,9 +262,12 @@ export function useLinkTemplate() {
         url,
         {
           method: "POST",
-          body: JSON.stringify({ template_id: templateId, section_title: sectionTitle }),
+          body: JSON.stringify({
+            template_id: templateId,
+            section_title: sectionTitle,
+          }),
         },
-        ""
+        "",
       );
     },
     onSuccess: (_, variables) => {
@@ -275,7 +288,9 @@ export function useUnlinkTemplate() {
       lawId: string;
       templateId: string;
     }) => {
-      const url = buildLawLibraryUrl(`/kf/laws/${lawId}/templates/${templateId}`);
+      const url = buildLawLibraryUrl(
+        `/kf/laws/${lawId}/templates/${templateId}`,
+      );
       return authFetch<{ message: string }>(url, { method: "DELETE" }, "");
     },
     onSuccess: (_, variables) => {
@@ -292,7 +307,11 @@ export function useLawTemplates(lawId: string | null) {
     queryFn: async () => {
       if (!lawId) return { templates: [], total: 0 };
       const url = buildLawLibraryUrl(`/kf/laws/${lawId}/templates`);
-      return authFetch<{ templates: unknown[]; total: number }>(url, undefined, "");
+      return authFetch<{ templates: unknown[]; total: number }>(
+        url,
+        undefined,
+        "",
+      );
     },
     enabled: !!lawId,
   });

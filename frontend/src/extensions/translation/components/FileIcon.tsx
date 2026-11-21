@@ -42,7 +42,9 @@ export function FileIcon({
       )}
       style={{ backgroundColor: t.bg }}
     >
-      <span className="text-[10px] font-bold leading-none text-white">{t.letter}</span>
+      <span className="text-[10px] leading-none font-bold text-white">
+        {t.letter}
+      </span>
     </span>
   );
 }

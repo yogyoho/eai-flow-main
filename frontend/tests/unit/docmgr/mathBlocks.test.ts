@@ -204,7 +204,11 @@ test("transformMathInBlocks: 嵌套列表子项内联公式 → latex 节点", (
           id: "li1-1",
           type: "bulletListItem",
           content: [
-            { type: "text", text: "公式：$Q_{e} = Q \times K_{ZF}$", styles: {} },
+            {
+              type: "text",
+              text: "公式：$Q_{e} = Q \times K_{ZF}$",
+              styles: {},
+            },
           ],
         },
         {
@@ -225,7 +229,10 @@ test("transformMathInBlocks: 嵌套列表子项内联公式 → latex 节点", (
   const children = result[0]!.children!;
   expect(children[0]!.content).toEqual([
     { type: "text", text: "公式：", styles: {} },
-    { type: "latex", props: { latex: "Q_{e} = Q \times K_{ZF}", displayMode: false } },
+    {
+      type: "latex",
+      props: { latex: "Q_{e} = Q \times K_{ZF}", displayMode: false },
+    },
   ]);
   expect(children[1]!.content).toEqual([
     { type: "text", text: "取值：", styles: {} },
@@ -249,7 +256,9 @@ test("transformMathInBlocks: 更深层嵌套（二级子项）同样转换", () 
             {
               id: "li1-1-1",
               type: "bulletListItem",
-              content: [{ type: "text", text: "代入：$18000 \times 8$", styles: {} }],
+              content: [
+                { type: "text", text: "代入：$18000 \times 8$", styles: {} },
+              ],
             },
           ],
         },
@@ -257,8 +266,7 @@ test("transformMathInBlocks: 更深层嵌套（二级子项）同样转换", () 
     },
   ];
   const result = transformMathInBlocks(blocks);
-  const deep =
-    result[0]!.children![0]!.children![0]!;
+  const deep = result[0]!.children![0]!.children![0]!;
   expect(deep.content).toEqual([
     { type: "text", text: "代入：", styles: {} },
     { type: "latex", props: { latex: "18000 \times 8", displayMode: false } },
@@ -298,7 +306,11 @@ test("transformMathInBlocks: blockQuote 内 $...$ → latex 节点（结构保�
       id: "q1",
       type: "blockQuote",
       content: [
-        { type: "text", text: "依据 GB/T 50746，$K_{ZF}$ 按表 3.3.3 取值", styles: {} },
+        {
+          type: "text",
+          text: "依据 GB/T 50746，$K_{ZF}$ 按表 3.3.3 取值",
+          styles: {},
+        },
       ],
     },
   ];

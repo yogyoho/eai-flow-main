@@ -504,6 +504,21 @@ def test_verify_quotes_whitespace_collapsed():
     assert v == {"hit": True, "miss": False, "empty": False, "wrong_doc": False}
 
 
+def test_verify_quotes_concatenates_sharded_docs():
+    """同 doc_id 多分片(parse.docs_from_entries 大文档 30k 段边界预切)语料拼接后再
+    核验——此前 dict 推导式让后片覆盖前片,前片原文引用恒误判 False。"""
+    docs = [
+        {"doc_id": "tender.pdf", "text": "3.4.1投标保证金可以采用银行转账方式"},
+        {"doc_id": "tender.pdf", "text": "投标文件递交截止时间:2026年3月1日"},
+    ]
+    prov = {
+        "first_shard": {"doc_id": "tender.pdf", "quote": "投标保证金可以采用银行转账方式"},
+        "last_shard": {"doc_id": "tender.pdf", "quote": "投标文件递交截止时间:2026年3月1日"},
+    }
+    v = verify_quotes(prov, docs)
+    assert v == {"first_shard": True, "last_shard": True}
+
+
 def test_apply_adjudications_merges_known_paths_only():
     fields = {"bid.total_price": 8000000, "bid.subtotal": 100}
     adj = {"bid.total_price": {"value": 9000000}, "bid.ghost": {"value": 1}, "bid.subtotal": "not_dict", "bid.detail_rows": {"value": None}}

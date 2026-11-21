@@ -1,0 +1,11 @@
+case: L1-026-late-submission
+desc: 递交回执时间晚于投标截止 det 逐字比较直接 FAIL,L3-014 日期比较先例形态 → L1-026 violation(fatal);det 无 model_script
+fields:
+  bid.submit_time: "2026-11-09 10:00:00"
+  tender.bid_deadline: "2026-11-08 17:00:00"
+expect_issues:
+  - rule_id: L1-026
+    severity: fatal
+    contains: ["递交时间晚于投标截止", "2026-11-09 10:00:00"]
+expect_absent: []
+strict: false

@@ -73,14 +73,14 @@ export function ChapterReviewCard({
             <button
               onClick={() => handleAction("approved")}
               disabled={submitting}
-              className="rounded bg-success px-3 py-1 text-sm text-success-foreground hover:bg-success/90 disabled:opacity-50"
+              className="bg-success text-success-foreground hover:bg-success/90 rounded px-3 py-1 text-sm disabled:opacity-50"
             >
               通过
             </button>
             <button
               onClick={() => handleAction("rejected")}
               disabled={submitting}
-              className="rounded bg-destructive px-3 py-1 text-sm text-white hover:bg-destructive/90 disabled:opacity-50"
+              className="bg-destructive hover:bg-destructive/90 rounded px-3 py-1 text-sm text-white disabled:opacity-50"
             >
               退回
             </button>

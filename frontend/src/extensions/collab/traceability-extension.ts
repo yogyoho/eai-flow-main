@@ -45,7 +45,10 @@ interface PluginState {
 // Colour palette per source type (matching SourceAnnotation.tsx)
 // ---------------------------------------------------------------------------
 
-const TYPE_COLORS: Record<string, { bg: string; border: string; text: string }> = {
+const TYPE_COLORS: Record<
+  string,
+  { bg: string; border: string; text: string }
+> = {
   rag_retrieval: { bg: "#dbeafe", border: "#3b82f6", text: "#1e40af" },
   knowledge_base: { bg: "#eff6ff", border: "#93c5fd", text: "#1e3a5f" },
   regulation: { bg: "#dcfce7", border: "#22c55e", text: "#166534" },
@@ -61,9 +64,7 @@ const DEFAULT_COLOR = { bg: "#f3f4f6", border: "#9ca3af", text: "#4b5563" };
 // Plugin key
 // ---------------------------------------------------------------------------
 
-export const traceabilityPluginKey = new PluginKey<PluginState>(
-  "traceability",
-);
+export const traceabilityPluginKey = new PluginKey<PluginState>("traceability");
 
 // ---------------------------------------------------------------------------
 // Helpers

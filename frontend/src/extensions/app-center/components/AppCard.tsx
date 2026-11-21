@@ -4,7 +4,11 @@ import { Star } from "lucide-react";
 import Link from "next/link";
 import { memo, useMemo } from "react";
 
-import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 
 import {
@@ -39,7 +43,8 @@ function AppCardImpl({
     [app.businessDomain, domainOrder, domains],
   );
   const accent = ACCENT_STYLES[accentColor];
-  const domainLabel = app.domainLabel ?? getDomainLabel(app.businessDomain, domains);
+  const domainLabel =
+    app.domainLabel ?? getDomainLabel(app.businessDomain, domains);
   const stageLabel = app.stageTag ? STAGE_LABELS[app.stageTag] : null;
 
   const handleFavoriteClick = (e: React.MouseEvent) => {
@@ -48,9 +53,9 @@ function AppCardImpl({
     onToggleFavorite(app.id);
   };
 
-  // EAI-CUSTOM (2026-10-30): 投标方案审查为独立子系统(无 EAI 壳/左侧导航,
-  // /bid-review 自绘 chrome),应用中心卡片新 tab 打开,不做站内软导航(用户指定)。
-  const openInNewTab = app.path === "/bid-review";
+  // EAI-CUSTOM (2026-10-30): 投标方案审查与材料学计算均为独立子系统(无 EAI
+  // 壳/左侧导航),应用中心卡片新 tab 打开,不做站内软导航(用户指定)。
+  const openInNewTab = app.path === "/bid-review" || app.path === "/materials";
 
   return (
     <Link
@@ -60,10 +65,10 @@ function AppCardImpl({
       target={openInNewTab ? "_blank" : undefined}
       rel={openInNewTab ? "noopener" : undefined}
       className={cn(
-        "group relative flex flex-col gap-3 rounded-2xl border border-border bg-card p-5 shadow-sm transition-all",
-        "hover:-translate-y-1 hover:border-primary/30 hover:bg-accent/40 hover:shadow-lg hover:shadow-primary/5",
-        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
-        isFavorite && "border-primary/40 ring-1 ring-primary/10",
+        "group border-border bg-card relative flex flex-col gap-3 rounded-2xl border p-5 shadow-sm transition-all",
+        "hover:border-primary/30 hover:bg-accent/40 hover:shadow-primary/5 hover:-translate-y-1 hover:shadow-lg",
+        "focus-visible:ring-ring focus-visible:ring-offset-background focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none",
+        isFavorite && "border-primary/40 ring-primary/10 ring-1",
       )}
     >
       {/* 收藏按钮 */}
@@ -72,15 +77,17 @@ function AppCardImpl({
           <button
             type="button"
             onClick={handleFavoriteClick}
-            aria-label={isFavorite ? `取消收藏 ${app.name}` : `收藏 ${app.name}`}
+            aria-label={
+              isFavorite ? `取消收藏 ${app.name}` : `收藏 ${app.name}`
+            }
             aria-pressed={isFavorite}
             className={cn(
-              "absolute right-3 top-3 z-10 flex size-7 items-center justify-center rounded-full transition-all",
+              "absolute top-3 right-3 z-10 flex size-7 items-center justify-center rounded-full transition-all",
               "opacity-0 group-hover:opacity-100 focus-visible:opacity-100",
               isFavorite && "opacity-100",
               "hover:scale-110 active:scale-95",
               isFavorite
-                ? "text-amber-500 dark:text-amber-400 hover:bg-amber-500/10"
+                ? "text-amber-500 hover:bg-amber-500/10 dark:text-amber-400"
                 : "text-muted-foreground hover:bg-accent hover:text-foreground",
             )}
           >
@@ -108,10 +115,10 @@ function AppCardImpl({
 
       {/* 文本区 */}
       <div className="flex min-w-0 flex-col gap-1">
-        <h3 className="truncate text-sm font-semibold text-foreground">
+        <h3 className="text-foreground truncate text-sm font-semibold">
           {app.name}
         </h3>
-        <p className="line-clamp-2 text-xs leading-relaxed text-muted-foreground">
+        <p className="text-muted-foreground line-clamp-2 text-xs leading-relaxed">
           {app.description}
         </p>
       </div>
@@ -127,7 +134,7 @@ function AppCardImpl({
           {domainLabel}
         </span>
         {stageLabel && (
-          <span className="inline-flex items-center rounded-full border border-border bg-muted/50 px-1.5 py-0.5 text-[10px] text-muted-foreground">
+          <span className="border-border bg-muted/50 text-muted-foreground inline-flex items-center rounded-full border px-1.5 py-0.5 text-[10px]">
             {stageLabel}
           </span>
         )}

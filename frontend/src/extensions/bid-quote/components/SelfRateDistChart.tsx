@@ -41,13 +41,17 @@ const BIN = 10; // 直方图桶宽 10%
 
 // 栈顶圆角规则:每根堆叠柱只有最上段带顶部圆角,下方段方角——
 // 两段都圆会在接缝处各圆各的,露出背景缺口(2026-08-17 绿/琥珀圆角对齐)
-type SegProps = ComponentProps<typeof Rectangle> & { payload?: Record<string, number> };
+type SegProps = ComponentProps<typeof Rectangle> & {
+  payload?: Record<string, number>;
+};
 const R_TOP: [number, number, number, number] = [3, 3, 0, 0];
 const R_NONE: [number, number, number, number] = [0, 0, 0, 0];
 
 /** 绿段(底段):本桶"低于门槛"为 0 时自己即栈顶,才给圆角。 */
 function GreenSeg({ payload: d, ...rest }: SegProps) {
-  return <Rectangle {...rest} radius={(d?.["低于门槛"] ?? 0) > 0 ? R_NONE : R_TOP} />;
+  return (
+    <Rectangle {...rest} radius={(d?.["低于门槛"] ?? 0) > 0 ? R_NONE : R_TOP} />
+  );
 }
 /** 琥珀段(顶段):计数 > 0 才渲染,恒为栈顶,恒带圆角。 */
 function AmberSeg(props: SegProps) {
@@ -74,7 +78,7 @@ export function SelfRateDistChart({
   const rows = Array.from({ length: 100 / BIN }, (_, i) => ({
     bin: `${i * BIN}–${i * BIN + BIN}%`,
     "≥门槛": 0,
-    "低于门槛": 0,
+    低于门槛: 0,
   }));
   for (const r of rows0) {
     const rate = Number(r.self_rate ?? 0);
@@ -105,14 +109,17 @@ export function SelfRateDistChart({
           style={{
             background: `linear-gradient(to right, ${GREEN} 0%, ${GREEN} ${threshold}%, ${GRID} ${threshold}%, ${GRID} 100%)`,
           }}
-          className="h-1.5 max-w-[320px] flex-1 cursor-pointer appearance-none rounded-full focus-visible:ring-emerald-500/40 focus-visible:ring-2 focus-visible:outline-none [&::-moz-range-thumb]:h-3.5 [&::-moz-range-thumb]:w-3.5 [&::-moz-range-thumb]:appearance-none [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:border-2 [&::-moz-range-thumb]:border-white [&::-moz-range-thumb]:bg-emerald-500 [&::-moz-range-thumb]:shadow [&::-webkit-slider-thumb]:h-3.5 [&::-webkit-slider-thumb]:w-3.5 [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:border-2 [&::-webkit-slider-thumb]:border-white [&::-webkit-slider-thumb]:bg-emerald-500 [&::-webkit-slider-thumb]:shadow"
+          className="h-1.5 max-w-[320px] flex-1 cursor-pointer appearance-none rounded-full focus-visible:ring-2 focus-visible:ring-emerald-500/40 focus-visible:outline-none [&::-moz-range-thumb]:h-3.5 [&::-moz-range-thumb]:w-3.5 [&::-moz-range-thumb]:appearance-none [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:border-2 [&::-moz-range-thumb]:border-white [&::-moz-range-thumb]:bg-emerald-500 [&::-moz-range-thumb]:shadow [&::-webkit-slider-thumb]:h-3.5 [&::-webkit-slider-thumb]:w-3.5 [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:border-2 [&::-webkit-slider-thumb]:border-white [&::-webkit-slider-thumb]:bg-emerald-500 [&::-webkit-slider-thumb]:shadow"
         />
         <span className="text-muted-foreground shrink-0 text-right text-[11px] font-bold whitespace-nowrap">
           门槛 {threshold}% · 低于 {below} 个
         </span>
       </div>
       <ResponsiveContainer width="100%" height={230}>
-        <BarChart data={rows} margin={{ top: 8, right: 8, left: -18, bottom: 0 }}>
+        <BarChart
+          data={rows}
+          margin={{ top: 8, right: 8, left: -18, bottom: 0 }}
+        >
           <CartesianGrid strokeDasharray="2 4" stroke={GRID} vertical={false} />
           <XAxis
             dataKey="bin"

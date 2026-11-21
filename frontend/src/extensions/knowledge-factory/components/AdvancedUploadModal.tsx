@@ -341,7 +341,8 @@ export default function AdvancedUploadModal({
               </div>
               <div>
                 <label className="text-foreground mb-1 block text-sm font-medium">
-                  知识库名称 <span className="text-red-600 dark:text-red-400">*</span>
+                  知识库名称{" "}
+                  <span className="text-red-600 dark:text-red-400">*</span>
                 </label>
                 <input
                   type="text"

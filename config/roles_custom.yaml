@@ -41,6 +41,11 @@ roles:
     - workflow:edit
     - chapter:view_all
     - ai:stop_writing
+    - materials:read
+    - materials:write
+    - materials:submit
+    - materials:control
+    - materials:archive
     nav:
     - nav:writing
     - nav:projects
@@ -53,6 +58,7 @@ roles:
     - nav:dashboard
     - nav:workflow-admin
     - nav:bid-review
+    - nav:materials
     data_scopes:
     - project_member
     - knowledge_dept
@@ -145,6 +151,11 @@ roles:
     - kb:read
     - translation:read
     - translation:transition
+    - materials:read
+    - materials:write
+    - materials:submit
+    - materials:control
+    - materials:archive
     nav:
     - nav:knowledge
     - nav:contract-price
@@ -160,6 +171,7 @@ roles:
     - nav:writing
     - nav:translation
     - nav:bid-review
+    - nav:materials
     data_scopes:
     - project_member
     - knowledge_dept

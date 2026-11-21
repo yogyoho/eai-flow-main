@@ -270,9 +270,7 @@ export function SettingsView() {
                 当前生效 · {modelQ.data.effective ?? "—"}
               </Pill>
             ) : (
-              <Pill tone="gray">
-                {modelQ.isLoading ? "加载中…" : "未配置"}
-              </Pill>
+              <Pill tone="gray">{modelQ.isLoading ? "加载中…" : "未配置"}</Pill>
             )}
           </div>
         </div>
@@ -330,8 +328,9 @@ export function SettingsView() {
         </div>
         <div className="px-4 pb-3">
           <NoteBar>
-            翻译 worker 使用此模型；对话页的模型选择不影响翻译任务。思考模型已统一使用
-            JSON 模式，避免推理内容混入译文。
+            翻译 worker
+            使用此模型；对话页的模型选择不影响翻译任务。思考模型已统一使用 JSON
+            模式，避免推理内容混入译文。
           </NoteBar>
         </div>
       </section>
@@ -537,10 +536,7 @@ export function SettingsView() {
                           <button
                             className="text-muted-foreground hover:bg-muted hover:text-foreground rounded px-1.5 py-0.5 text-[13px] whitespace-nowrap transition-colors"
                             onClick={() => {
-                              window.localStorage.setItem(
-                                DEFAULT_KB_KEY,
-                                k.id,
-                              );
+                              window.localStorage.setItem(DEFAULT_KB_KEY, k.id);
                               refresh();
                             }}
                           >
@@ -590,7 +586,9 @@ export function SettingsView() {
           </div>
         )}
         <div className="border-border text-muted-foreground flex flex-wrap items-center gap-2 border-t px-4 py-2 text-xs">
-          <span>默认库用于上传时自动选择；删除 RAGFlow dataset 会断开此接入。</span>
+          <span>
+            默认库用于上传时自动选择；删除 RAGFlow dataset 会断开此接入。
+          </span>
           <span className="flex-1" />
           <span>
             共{" "}
@@ -624,13 +622,21 @@ export function SettingsView() {
             <div className="flex flex-col gap-0.5 px-4 py-3">
               <span className="text-muted-foreground text-xs">轮询间隔</span>
               <span className="text-foreground text-xl font-bold tabular-nums">
-                5<small className="text-muted-foreground ml-1 text-xs font-normal">s</small>
+                5
+                <small className="text-muted-foreground ml-1 text-xs font-normal">
+                  s
+                </small>
               </span>
             </div>
             <div className="flex flex-col gap-0.5 px-4 py-3">
-              <span className="text-muted-foreground text-xs">基础设施重试</span>
+              <span className="text-muted-foreground text-xs">
+                基础设施重试
+              </span>
               <span className="text-foreground text-xl font-bold tabular-nums">
-                ≤3<small className="text-muted-foreground ml-1 text-xs font-normal">次</small>
+                ≤3
+                <small className="text-muted-foreground ml-1 text-xs font-normal">
+                  次
+                </small>
               </span>
             </div>
           </div>
@@ -701,7 +707,7 @@ export function SettingsView() {
       <div className="shrink-0">
         <NoteBar>
           所有修改即时保存；翻译模型变更在下一次翻译/重跑时生效。RAG
-        知识库与运行参数由翻译管线读取，质量标准由样例验收流程维护。
+          知识库与运行参数由翻译管线读取，质量标准由样例验收流程维护。
         </NoteBar>
       </div>
 

@@ -43,7 +43,10 @@ import {
 } from "@/components/ui/popover";
 import { BoxPlot } from "@/extensions/contract-price/components/BoxPlot";
 import { TracebackDrawer } from "@/extensions/contract-price/components/TracebackDrawer";
-import { useClusters, useGoodsAnalysis } from "@/extensions/contract-price/hooks";
+import {
+  useClusters,
+  useGoodsAnalysis,
+} from "@/extensions/contract-price/hooks";
 import {
   baselineShiftDocIds,
   buildBaselineTooltips,
@@ -77,7 +80,7 @@ function ChartCard({
   children: React.ReactNode;
 }) {
   return (
-    <div className="border-border bg-card rounded-lg border p-4 transition-all hover:border-primary/20 hover:shadow-md">
+    <div className="border-border bg-card hover:border-primary/20 rounded-lg border p-4 transition-all hover:shadow-md">
       <div className="mb-4 flex items-center justify-between">
         <h3 className="text-muted-foreground flex items-center gap-2 text-sm font-semibold">
           {icon}
@@ -123,10 +126,10 @@ export function GoodsAnalysis() {
   const [open, setOpen] = useState(false);
   const [page, setPage] = useState(0);
   // 懒加载: 仅在下拉展开时拉取全量分组(60s 缓存, 收合再开不重复请求)
-  const {
-    data: clustersData,
-    isLoading: clustersLoading,
-  } = useClusters({ limit: 1000 }, { enabled: open, staleTime: 60_000 });
+  const { data: clustersData, isLoading: clustersLoading } = useClusters(
+    { limit: 1000 },
+    { enabled: open, staleTime: 60_000 },
+  );
   const clusters = clustersData?.items ?? [];
 
   const params = selectedCluster
@@ -298,7 +301,10 @@ function AnalysisResult({
     [items],
   );
   const baselineDocs = useMemo(() => baselineShiftDocIds(statRows), [statRows]);
-  const baselineTooltips = useMemo(() => buildBaselineTooltips(statRows), [statRows]);
+  const baselineTooltips = useMemo(
+    () => buildBaselineTooltips(statRows),
+    [statRows],
+  );
 
   return (
     <div className="space-y-4">

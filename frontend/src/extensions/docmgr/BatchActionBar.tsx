@@ -1,6 +1,6 @@
 "use client";
 
-import { FolderInput, Star, Trash2, X , Layers } from "lucide-react";
+import { FolderInput, Star, Trash2, X, Layers } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 
@@ -27,32 +27,44 @@ export default function BatchActionBar({
   if (selectedCount === 0) return null;
 
   return (
-    <div className="fixed bottom-0 left-0 right-0 z-50 bg-background border-t border-border shadow-lg">
-      <div className="max-w-5xl mx-auto h-14 flex items-center justify-between px-6">
-        <span className="text-sm text-foreground">
-          已选择 <span className="font-semibold text-primary">{selectedCount}</span> 个文件
+    <div className="bg-background border-border fixed right-0 bottom-0 left-0 z-50 border-t shadow-lg">
+      <div className="mx-auto flex h-14 max-w-5xl items-center justify-between px-6">
+        <span className="text-foreground text-sm">
+          已选择{" "}
+          <span className="text-primary font-semibold">{selectedCount}</span>{" "}
+          个文件
         </span>
         <div className="flex items-center gap-2">
           <Button variant="outline" size="sm" onClick={onMove}>
-            <FolderInput className="w-4 h-4" />
+            <FolderInput className="h-4 w-4" />
             移动
           </Button>
           <Button variant="outline" size="sm" onClick={onStar}>
-            <Star className="w-4 h-4" />
+            <Star className="h-4 w-4" />
             收藏
           </Button>
           {onMergeExport && (
-            <Button variant="outline" size="sm" onClick={onMergeExport} disabled={mergeExporting}>
-              <Layers className="w-4 h-4" />
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={onMergeExport}
+              disabled={mergeExporting}
+            >
+              <Layers className="h-4 w-4" />
               {mergeExporting ? "合并中…" : "合并导出"}
             </Button>
           )}
-          <Button variant="outline" size="sm" className="text-destructive hover:text-destructive" onClick={onDelete}>
-            <Trash2 className="w-4 h-4" />
+          <Button
+            variant="outline"
+            size="sm"
+            className="text-destructive hover:text-destructive"
+            onClick={onDelete}
+          >
+            <Trash2 className="h-4 w-4" />
             删除
           </Button>
           <Button variant="ghost" size="sm" onClick={onCancel}>
-            <X className="w-4 h-4" />
+            <X className="h-4 w-4" />
             取消
           </Button>
         </div>

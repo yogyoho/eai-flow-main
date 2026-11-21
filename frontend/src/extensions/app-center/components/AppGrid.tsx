@@ -61,7 +61,7 @@ function SkeletonCard() {
   return (
     <div
       className={cn(
-        "flex flex-col gap-3 rounded-2xl border border-border bg-card p-5",
+        "border-border bg-card flex flex-col gap-3 rounded-2xl border p-5",
       )}
     >
       <Skeleton className="size-11 rounded-xl" />

@@ -211,7 +211,11 @@ export function TaskManagementView() {
   };
 
   const doDelete = async (t: TltTask) => {
-    if (!window.confirm(`删除「${t.file_name}」？将下线检索索引，交付物文件保留。`))
+    if (
+      !window.confirm(
+        `删除「${t.file_name}」？将下线检索索引，交付物文件保留。`,
+      )
+    )
       return;
     try {
       await deleteTask(t.id);

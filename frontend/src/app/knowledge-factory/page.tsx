@@ -53,30 +53,36 @@ function KnowledgeFactoryMain() {
   const params = useSearchParams();
   const { canPage, isLoading: permLoading } = usePermission();
   // 权限加载中 fail-open 全显，加载完成后按 canPage(pageId) 过滤不可见 tab
-  const visibleNav = permLoading ? NAV_ITEMS : NAV_ITEMS.filter((n) => canPage(n.pageId));
+  const visibleNav = permLoading
+    ? NAV_ITEMS
+    : NAV_ITEMS.filter((n) => canPage(n.pageId));
   const rawTab = (params.get("tab") ?? "reports") as TabId;
   // URL 指定的 tab 无权限时，回退到第一个可见 tab
-  const currentTab = visibleNav.some((n) => n.id === rawTab) ? rawTab : (visibleNav[0]?.id ?? "reports");
+  const currentTab = visibleNav.some((n) => n.id === rawTab)
+    ? rawTab
+    : (visibleNav[0]?.id ?? "reports");
   const Content = TAB_COMPONENTS[currentTab];
 
   // EAI-CUSTOM (T4 review I2): 权限加载完成但无任何可见页面 → 空状态，不回退渲染无权限内容
   if (!permLoading && visibleNav.length === 0) {
     return (
-      <div className="flex h-full items-center justify-center text-muted-foreground text-sm">
+      <div className="text-muted-foreground flex h-full items-center justify-center text-sm">
         当前角色没有可见的知识工厂页面
       </div>
     );
   }
 
   return (
-    <div className="flex flex-col h-full bg-muted">
+    <div className="bg-muted flex h-full flex-col">
       {/* 顶部导航栏 — 与 admin/layout.tsx 一致 */}
-      <header className="bg-background border-b border-border h-15 flex items-center px-6 shrink-0">
-        <div className="p-1 border rounded-sm bg-amber-50 border-amber-200 text-amber-600 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-300 shrink-0 mr-3">
-          <Factory className="w-4 h-4" />
+      <header className="bg-background border-border flex h-15 shrink-0 items-center border-b px-6">
+        <div className="mr-3 shrink-0 rounded-sm border border-amber-200 bg-amber-50 p-1 text-amber-600 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-300">
+          <Factory className="h-4 w-4" />
         </div>
-        <span className="font-bold text-lg tracking-tight text-foreground mr-8">知识工厂</span>
-        <nav className="flex items-center gap-6 text-sm font-medium text-muted-foreground h-full">
+        <span className="text-foreground mr-8 text-lg font-bold tracking-tight">
+          知识工厂
+        </span>
+        <nav className="text-muted-foreground flex h-full items-center gap-6 text-sm font-medium">
           {visibleNav.map(({ id, label }) => {
             const href = `/knowledge-factory?tab=${id}`;
             const isActive = currentTab === id;
@@ -85,10 +91,10 @@ function KnowledgeFactoryMain() {
                 key={id}
                 href={href}
                 className={cn(
-                  "flex items-center h-full transition-colors py-5 border-b-2",
+                  "flex h-full items-center border-b-2 py-5 transition-colors",
                   isActive
                     ? "text-primary border-primary"
-                    : "border-transparent hover:text-foreground"
+                    : "hover:text-foreground border-transparent",
                 )}
               >
                 {label}
@@ -99,8 +105,14 @@ function KnowledgeFactoryMain() {
       </header>
 
       {/* 主内容区 */}
-      <div className="flex-1 overflow-hidden min-w-0 min-h-0 bg-background">
-        <Suspense fallback={<div className="flex items-center justify-center h-full text-muted-foreground text-sm">加载中...</div>}>
+      <div className="bg-background min-h-0 min-w-0 flex-1 overflow-hidden">
+        <Suspense
+          fallback={
+            <div className="text-muted-foreground flex h-full items-center justify-center text-sm">
+              加载中...
+            </div>
+          }
+        >
           <Content />
         </Suspense>
       </div>
@@ -116,17 +128,25 @@ function KnowledgeFactoryLayoutContent() {
   );
 }
 
-function KnowledgeFactoryLayoutFallback({ children }: { children: React.ReactNode }) {
+function KnowledgeFactoryLayoutFallback({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
   return (
     <ShellLayout>
-      <div className="flex flex-col h-full bg-muted">
-        <header className="bg-background border-b border-border h-15 flex items-center px-6 shrink-0">
-          <div className="p-1 border rounded-sm bg-amber-50 border-amber-200 text-amber-600 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-300 shrink-0 mr-3">
-            <Factory className="w-4 h-4" />
+      <div className="bg-muted flex h-full flex-col">
+        <header className="bg-background border-border flex h-15 shrink-0 items-center border-b px-6">
+          <div className="mr-3 shrink-0 rounded-sm border border-amber-200 bg-amber-50 p-1 text-amber-600 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-300">
+            <Factory className="h-4 w-4" />
           </div>
-          <span className="font-bold text-lg tracking-tight text-foreground mr-8">知识工厂</span>
+          <span className="text-foreground mr-8 text-lg font-bold tracking-tight">
+            知识工厂
+          </span>
         </header>
-        <div className="flex-1 overflow-hidden min-w-0 min-h-0 bg-background">{children}</div>
+        <div className="bg-background min-h-0 min-w-0 flex-1 overflow-hidden">
+          {children}
+        </div>
       </div>
     </ShellLayout>
   );
@@ -135,10 +155,18 @@ function KnowledgeFactoryLayoutFallback({ children }: { children: React.ReactNod
 function KnowledgeFactoryRoute() {
   return (
     <>
-    <Suspense fallback={<KnowledgeFactoryLayoutFallback><div className="flex items-center justify-center h-full text-muted-foreground text-sm">加载中...</div></KnowledgeFactoryLayoutFallback>}>
-      <KnowledgeFactoryLayoutContent />
-    </Suspense>
-    <Toaster />
+      <Suspense
+        fallback={
+          <KnowledgeFactoryLayoutFallback>
+            <div className="text-muted-foreground flex h-full items-center justify-center text-sm">
+              加载中...
+            </div>
+          </KnowledgeFactoryLayoutFallback>
+        }
+      >
+        <KnowledgeFactoryLayoutContent />
+      </Suspense>
+      <Toaster />
     </>
   );
 }

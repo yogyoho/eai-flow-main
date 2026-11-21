@@ -74,8 +74,8 @@ export function CompetitorProfileTable({
           友商画像
         </h3>
         <p className="mt-0.5 text-xs" style={{ color: INK_3 }}>
-          点击行 → 该友商与我们的<b style={{ color: INK_2 }}>遭遇战详情</b> · 竖标
-          = 市场均值 {meanRate.toFixed(0)}%
+          点击行 → 该友商与我们的<b style={{ color: INK_2 }}>遭遇战详情</b> ·
+          竖标 = 市场均值 {meanRate.toFixed(0)}%
         </p>
       </div>
       <table className="w-full border-collapse text-xs">
@@ -95,16 +95,19 @@ export function CompetitorProfileTable({
         <tbody>
           {rows.map((r) => {
             const rate = r.win_rate === null ? 0 : Number(r.win_rate);
-            const prem = r.avg_premium_pct === null ? null : Number(r.avg_premium_pct);
+            const prem =
+              r.avg_premium_pct === null ? null : Number(r.avg_premium_pct);
             return (
               <tr
                 key={r.bidder_name}
                 className="cursor-pointer transition-colors hover:bg-[#f7f8f8]"
-                onClick={() => onDrill({
-                  title: `对阵明细 · ${r.bidder_name}`,
-                  // 该友商参与的项目的全部投标行(含我方)——与遭遇战口径一致
-                  sql: `SELECT project_name, bidder_name, winning_price, won FROM mock_bid WHERE project_name IN (SELECT project_name FROM mock_bid WHERE bidder_name='${r.bidder_name.replaceAll("'", "''")}' AND bidder_role='competitor') ORDER BY project_name, winning_price`,
-                })}
+                onClick={() =>
+                  onDrill({
+                    title: `对阵明细 · ${r.bidder_name}`,
+                    // 该友商参与的项目的全部投标行(含我方)——与遭遇战口径一致
+                    sql: `SELECT project_name, bidder_name, winning_price, won FROM mock_bid WHERE project_name IN (SELECT project_name FROM mock_bid WHERE bidder_name='${r.bidder_name.replaceAll("'", "''")}' AND bidder_role='competitor') ORDER BY project_name, winning_price`,
+                  })
+                }
               >
                 <td
                   className="border-b px-2.5 py-2 font-semibold"
@@ -112,7 +115,10 @@ export function CompetitorProfileTable({
                 >
                   {r.bidder_name}
                 </td>
-                <td className="border-b px-2.5 py-2" style={{ borderColor: "#f0f0ef" }}>
+                <td
+                  className="border-b px-2.5 py-2"
+                  style={{ borderColor: "#f0f0ef" }}
+                >
                   {/* 中标率横条 + 市场均值竖标(原型 .ratebar) */}
                   <div
                     className="relative h-[9px] w-[120px] rounded-[5px]"
@@ -121,7 +127,10 @@ export function CompetitorProfileTable({
                   >
                     <i
                       className="absolute top-0 bottom-0 left-0 rounded-[5px]"
-                      style={{ width: `${Math.min(rate, 100)}%`, background: BLUE }}
+                      style={{
+                        width: `${Math.min(rate, 100)}%`,
+                        background: BLUE,
+                      }}
                     />
                     <em
                       className="absolute -top-0.5 h-[13px] w-[2px] not-italic"
@@ -143,7 +152,10 @@ export function CompetitorProfileTable({
                     ? "—"
                     : `${prem < 0 ? "−" : "+"}${Math.abs(prem).toFixed(1)}%`}
                 </td>
-                <td className="border-b px-2.5 py-2" style={{ borderColor: "#f0f0ef" }}>
+                <td
+                  className="border-b px-2.5 py-2"
+                  style={{ borderColor: "#f0f0ef" }}
+                >
                   {(chips.get(r.bidder_name) ?? []).map((g) => (
                     <span
                       key={g}

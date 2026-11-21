@@ -4,7 +4,14 @@ import { FolderPlus, FolderOpen } from "lucide-react";
 import { useState } from "react";
 
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+  DialogDescription,
+} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 
 interface FolderPickerDialogProps {
@@ -46,19 +53,21 @@ export default function FolderPickerDialog({
           <DialogTitle>{title}</DialogTitle>
           <DialogDescription>选择目标文件夹</DialogDescription>
         </DialogHeader>
-        <div className="max-h-60 overflow-y-auto space-y-0.5">
+        <div className="max-h-60 space-y-0.5 overflow-y-auto">
           {folders.map((f) => (
             <button
               key={f}
               onClick={() => handleSelect(f)}
-              className="w-full flex items-center gap-2 px-3 py-2 text-sm text-foreground hover:bg-muted rounded-lg transition-colors"
+              className="text-foreground hover:bg-muted flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm transition-colors"
             >
-              <FolderOpen className="w-4 h-4 text-muted-foreground" />
+              <FolderOpen className="text-muted-foreground h-4 w-4" />
               {f}
             </button>
           ))}
           {folders.length === 0 && (
-            <p className="text-sm text-muted-foreground text-center py-4">暂无文件夹</p>
+            <p className="text-muted-foreground py-4 text-center text-sm">
+              暂无文件夹
+            </p>
           )}
         </div>
         {showNewFolder ? (
@@ -71,16 +80,32 @@ export default function FolderPickerDialog({
               placeholder="文件夹名称"
               className="flex-1"
             />
-            <Button size="sm" onClick={handleCreate} disabled={!newFolderName.trim()}>
+            <Button
+              size="sm"
+              onClick={handleCreate}
+              disabled={!newFolderName.trim()}
+            >
               创建
             </Button>
-            <Button size="sm" variant="ghost" onClick={() => { setShowNewFolder(false); setNewFolderName(""); }}>
+            <Button
+              size="sm"
+              variant="ghost"
+              onClick={() => {
+                setShowNewFolder(false);
+                setNewFolderName("");
+              }}
+            >
               取消
             </Button>
           </div>
         ) : (
-          <Button variant="outline" size="sm" className="w-full" onClick={() => setShowNewFolder(true)}>
-            <FolderPlus className="w-4 h-4" />
+          <Button
+            variant="outline"
+            size="sm"
+            className="w-full"
+            onClick={() => setShowNewFolder(true)}
+          >
+            <FolderPlus className="h-4 w-4" />
             新建文件夹
           </Button>
         )}

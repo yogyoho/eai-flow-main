@@ -12,7 +12,9 @@ const API_BASE = "/approval";
 export const approvalApi = {
   getWorkflow: async (reportType: string): Promise<ApprovalWorkflow | null> => {
     try {
-      const data = await authFetch<Record<string, unknown>>(`${API_BASE}/workflows/default?report_type=${reportType}`);
+      const data = await authFetch<Record<string, unknown>>(
+        `${API_BASE}/workflows/default?report_type=${reportType}`,
+      );
       return {
         id: data.id as string,
         name: data.name as string,
@@ -44,16 +46,19 @@ export const approvalApi = {
   },
 
   act: async (req: ApprovalActionRequest): Promise<ApprovalRecord> => {
-    const data = await authFetch<Record<string, unknown>>(`${API_BASE}/actions`, {
-      method: "POST",
-      body: JSON.stringify({
-        project_id: req.projectId,
-        step_id: req.stepId,
-        chapter_id: req.chapterId,
-        action: req.action,
-        comment: req.comment,
-      }),
-    });
+    const data = await authFetch<Record<string, unknown>>(
+      `${API_BASE}/actions`,
+      {
+        method: "POST",
+        body: JSON.stringify({
+          project_id: req.projectId,
+          step_id: req.stepId,
+          chapter_id: req.chapterId,
+          action: req.action,
+          comment: req.comment,
+        }),
+      },
+    );
     return {
       id: data.id as string,
       projectId: data.project_id as string,
@@ -68,7 +73,9 @@ export const approvalApi = {
   },
 
   getRecords: async (projectId: string): Promise<ApprovalRecord[]> => {
-    const data = await authFetch<{ items: Record<string, unknown>[] }>(`${API_BASE}/records?project_id=${projectId}`);
+    const data = await authFetch<{ items: Record<string, unknown>[] }>(
+      `${API_BASE}/records?project_id=${projectId}`,
+    );
     return data.items.map((item) => ({
       id: item.id as string,
       projectId: item.project_id as string,

@@ -1,6 +1,12 @@
 "use client";
 
-import { Sparkles, Loader2, AlertTriangle, Info, AlertCircle } from "lucide-react";
+import {
+  Sparkles,
+  Loader2,
+  AlertTriangle,
+  Info,
+  AlertCircle,
+} from "lucide-react";
 import { useState } from "react";
 
 import { Button } from "@/components/ui/button";
@@ -29,11 +35,19 @@ const SEVERITY_ICONS = {
 interface AIReviewResult {
   overall_score?: number | null;
   summary?: string | null;
-  comments?: Array<{ block_id?: string | null; comment: string; severity: string }>;
+  comments?: Array<{
+    block_id?: string | null;
+    comment: string;
+    severity: string;
+  }>;
   error?: string;
 }
 
-export function AIDocumentReview({ docId, documentContent, onInsertComment }: AIDocumentReviewProps) {
+export function AIDocumentReview({
+  docId,
+  documentContent,
+  onInsertComment,
+}: AIDocumentReviewProps) {
   const [reviewType, setReviewType] = useState<string>("full");
   const [result, setResult] = useState<AIReviewResult | null>(null);
   const [loading, setLoading] = useState(false);
@@ -42,7 +56,11 @@ export function AIDocumentReview({ docId, documentContent, onInsertComment }: AI
     setLoading(true);
     setResult(null);
     try {
-      const res = await docmgrApi.aiReview({ doc_id: docId, review_type: reviewType, content: documentContent });
+      const res = await docmgrApi.aiReview({
+        doc_id: docId,
+        review_type: reviewType,
+        content: documentContent,
+      });
       setResult(res);
     } catch {
       setResult({ error: "AI 审查失败，请重试" });
@@ -54,7 +72,7 @@ export function AIDocumentReview({ docId, documentContent, onInsertComment }: AI
   return (
     <div className="space-y-3">
       <div className="flex items-center gap-2">
-        <Sparkles className="w-4 h-4" />
+        <Sparkles className="h-4 w-4" />
         <span className="text-sm font-medium">文档级 AI 审查</span>
       </div>
 
@@ -72,10 +90,15 @@ export function AIDocumentReview({ docId, documentContent, onInsertComment }: AI
         ))}
       </div>
 
-      <Button size="sm" className="w-full" onClick={handleReview} disabled={loading}>
+      <Button
+        size="sm"
+        className="w-full"
+        onClick={handleReview}
+        disabled={loading}
+      >
         {loading ? (
           <>
-            <Loader2 className="w-3 h-3 mr-1 animate-spin" />
+            <Loader2 className="mr-1 h-3 w-3 animate-spin" />
             审查中...
           </>
         ) : (
@@ -87,22 +110,33 @@ export function AIDocumentReview({ docId, documentContent, onInsertComment }: AI
         <div className="space-y-2">
           {result.overall_score != null && (
             <div className="text-sm">
-              综合评分: <span className="font-bold text-lg">{result.overall_score}/100</span>
+              综合评分:{" "}
+              <span className="text-lg font-bold">
+                {result.overall_score}/100
+              </span>
             </div>
           )}
-          {result.summary && <p className="text-sm text-muted-foreground">{result.summary}</p>}
+          {result.summary && (
+            <p className="text-muted-foreground text-sm">{result.summary}</p>
+          )}
           {(result.comments ?? []).map((c, i: number) => {
-            const Icon = SEVERITY_ICONS[c.severity as keyof typeof SEVERITY_ICONS] ?? Info;
+            const Icon =
+              SEVERITY_ICONS[c.severity as keyof typeof SEVERITY_ICONS] ?? Info;
             return (
-              <div key={i} className="p-2 rounded border border-border flex gap-2">
-                <Icon className="w-4 h-4 text-muted-foreground shrink-0 mt-0.5" />
+              <div
+                key={i}
+                className="border-border flex gap-2 rounded border p-2"
+              >
+                <Icon className="text-muted-foreground mt-0.5 h-4 w-4 shrink-0" />
                 <div className="flex-1">
                   <p className="text-xs">{c.comment}</p>
                   <Button
                     size="sm"
                     variant="link"
                     className="h-auto p-0 text-[10px]"
-                    onClick={() => onInsertComment(c.block_id ?? null, c.comment)}
+                    onClick={() =>
+                      onInsertComment(c.block_id ?? null, c.comment)
+                    }
                   >
                     插入为评论
                   </Button>
@@ -112,7 +146,9 @@ export function AIDocumentReview({ docId, documentContent, onInsertComment }: AI
           })}
         </div>
       )}
-      {result?.error && <p className="text-sm text-destructive">{result.error}</p>}
+      {result?.error && (
+        <p className="text-destructive text-sm">{result.error}</p>
+      )}
     </div>
   );
 }

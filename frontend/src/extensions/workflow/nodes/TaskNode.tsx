@@ -13,7 +13,7 @@ export function TaskNode({
 
   return (
     <div
-      className={`min-w-[140px] rounded-lg border-2 bg-card px-3 py-2.5 transition-shadow ${selected ? "border-teal-400 shadow-lg ring-2 ring-teal-200" : "border-teal-200 dark:border-teal-800 hover:shadow-sm"}`}
+      className={`bg-card min-w-[140px] rounded-lg border-2 px-3 py-2.5 transition-shadow ${selected ? "border-teal-400 shadow-lg ring-2 ring-teal-200" : "border-teal-200 hover:shadow-sm dark:border-teal-800"}`}
     >
       <Handle
         type="target"
@@ -29,19 +29,23 @@ export function TaskNode({
             {data.label ?? "任务"}
           </div>
           {data.team && (
-            <div className="text-[10px] text-muted-foreground">团队: {data.team}</div>
+            <div className="text-muted-foreground text-[10px]">
+              团队: {data.team}
+            </div>
           )}
         </div>
       </div>
       {data.aiAssist && (
-        <div className="mt-1 ml-[38px] text-[10px] text-teal-600 dark:text-teal-400">AI 辅助</div>
+        <div className="mt-1 ml-[38px] text-[10px] text-teal-600 dark:text-teal-400">
+          AI 辅助
+        </div>
       )}
       {roles.length > 0 && (
         <div className="mt-1 ml-[38px] flex flex-wrap gap-0.5">
           {roles.map((slot) => (
             <span
               key={slot.roleKey}
-              className="rounded bg-teal-100 dark:bg-teal-500/15 px-1.5 py-0.5 text-[9px] font-medium text-teal-700"
+              className="rounded bg-teal-100 px-1.5 py-0.5 text-[9px] font-medium text-teal-700 dark:bg-teal-500/15"
               title={`${slot.label} ×${slot.count}`}
             >
               {slot.label.slice(0, 2)}×{slot.count}

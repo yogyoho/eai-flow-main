@@ -91,7 +91,12 @@ export function medianOf(values: number[]): number | null {
  * 两者都不可得(无价/无簇中位/中位为 0)返回 null。 */
 export function rowDeviationPct(row: OutlierStatRow): number | null {
   if (row.deviationPct != null) return row.deviationPct;
-  if (row.unitPrice == null || row.clusterMedian == null || row.clusterMedian === 0) return null;
+  if (
+    row.unitPrice == null ||
+    row.clusterMedian == null ||
+    row.clusterMedian === 0
+  )
+    return null;
   return (row.unitPrice - row.clusterMedian) / row.clusterMedian;
 }
 
@@ -102,7 +107,9 @@ export function rowDeviationPct(row: OutlierStatRow): number | null {
  * 规则二对「outlier 行单位价中位 vs 簇中位」的严格读法在单簇场景下与
  * 「逐行偏离取中位」等价(单调变换),跨簇时按各自簇中位归一再取中位,更稳。
  */
-export function docOutlierProfile(docRows: OutlierStatRow[]): DocOutlierProfile {
+export function docOutlierProfile(
+  docRows: OutlierStatRow[],
+): DocOutlierProfile {
   const totalRows = docRows.length;
   const outlierRows = docRows.filter((r) => r.isOutlier);
   const outlierCount = outlierRows.length;
@@ -113,7 +120,8 @@ export function docOutlierProfile(docRows: OutlierStatRow[]): DocOutlierProfile 
   const deviationMedian = medianOf(deviations);
 
   const ratioTrigger =
-    outlierCount >= OUTLIER_DOC_MIN_OUTLIERS && outlierRatio >= OUTLIER_DOC_RATIO_THRESHOLD;
+    outlierCount >= OUTLIER_DOC_MIN_OUTLIERS &&
+    outlierRatio >= OUTLIER_DOC_RATIO_THRESHOLD;
   const deviationTrigger =
     deviations.length >= OUTLIER_DOC_MIN_OUTLIERS &&
     deviationMedian != null &&
@@ -146,7 +154,9 @@ export function baselineShiftDocIds(rows: OutlierStatRow[]): Set<string> {
 
 /** 单行离群语义分层: 非离群=normal;离群且其文档成片=baseline-shift;否则=outlier(红)。 */
 export function rowOutlierTier(
-  row: Pick<OutlierStatRow, "documentId" | "isOutlier"> | Pick<CpaItem, "document_id" | "is_outlier">,
+  row:
+    | Pick<OutlierStatRow, "documentId" | "isOutlier">
+    | Pick<CpaItem, "document_id" | "is_outlier">,
   baselineDocs: Set<string>,
 ): OutlierTier {
   const docId = "documentId" in row ? row.documentId : row.document_id;
@@ -166,7 +176,9 @@ function formatSignedPct(v: number): string {
  * 合同: [各文档基线概览]。概览 = 同簇各文档(视图内)相对簇中位的偏离中位。
  * 非成片文档不产生 tooltip(保持红色异常,无降级说明)。
  */
-export function buildBaselineTooltips(rows: OutlierStatRow[]): Map<string, string> {
+export function buildBaselineTooltips(
+  rows: OutlierStatRow[],
+): Map<string, string> {
   const byDoc = new Map<string, OutlierStatRow[]>();
   for (const r of rows) {
     const bucket = byDoc.get(r.documentId);
@@ -180,7 +192,8 @@ export function buildBaselineTooltips(rows: OutlierStatRow[]): Map<string, strin
     if (!profile.isBaselineShift) continue;
 
     // 目标簇 = 该文档离群行里第一个可用的簇 id(单簇常态;跨簇取主导簇近似)。
-    const targetCluster = docRows.find((r) => r.isOutlier && r.clusterId)?.clusterId ?? null;
+    const targetCluster =
+      docRows.find((r) => r.isOutlier && r.clusterId)?.clusterId ?? null;
 
     // N = 后端预取的簇内文档数;缺失时回退为视图内同簇文档数。
     const backendDocCount = docRows.find(
@@ -188,12 +201,16 @@ export function buildBaselineTooltips(rows: OutlierStatRow[]): Map<string, strin
     )?.clusterDocCount;
 
     // 各文档基线概览: 同簇(视图内)每文档「全部行偏离中位」(无可算偏离的行跳过)。
-    const clusterRows = targetCluster ? rows.filter((r) => r.clusterId === targetCluster) : [];
+    const clusterRows = targetCluster
+      ? rows.filter((r) => r.clusterId === targetCluster)
+      : [];
     const docsInCluster = new Set(clusterRows.map((r) => r.documentId));
     const overview: string[] = [];
     for (const cid of docsInCluster) {
       const docAll = clusterRows.filter((r) => r.documentId === cid);
-      const devs = docAll.map(rowDeviationPct).filter((v): v is number => v != null);
+      const devs = docAll
+        .map(rowDeviationPct)
+        .filter((v): v is number => v != null);
       if (devs.length === 0) continue;
       const med = medianOf(devs)!;
       const label = docAll[0]?.contractNo || `${cid.slice(0, 8)}…`;

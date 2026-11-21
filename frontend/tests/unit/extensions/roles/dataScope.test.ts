@@ -36,12 +36,21 @@ describe("resolveDataScopeSelections (deny-by-default)", () => {
   });
 
   test("role scope matching a module → that module maps to the matched scope id", () => {
-    const result = resolveDataScopeSelections(modules, ["cpa_all", "knowledge_owner"]);
-    expect(result).toEqual({ contract_price: "cpa_all", knowledge: "knowledge_owner" });
+    const result = resolveDataScopeSelections(modules, [
+      "cpa_all",
+      "knowledge_owner",
+    ]);
+    expect(result).toEqual({
+      contract_price: "cpa_all",
+      knowledge: "knowledge_owner",
+    });
   });
 
   test("role scope id matching nothing → omitted (unknown ids never map)", () => {
-    const result = resolveDataScopeSelections(modules, ["bogus_scope", "cpa_dept"]);
+    const result = resolveDataScopeSelections(modules, [
+      "bogus_scope",
+      "cpa_dept",
+    ]);
     expect(result).toEqual({ contract_price: "cpa_dept" });
   });
 
@@ -53,9 +62,16 @@ describe("resolveDataScopeSelections (deny-by-default)", () => {
   test("modules with no data_scopes are skipped", () => {
     const noScopeModules: RegistryModule[] = [
       { key: "system", display_name: "系统", permissions: [], data_scopes: [] },
-      { key: "settings", display_name: "设置", permissions: [], data_scopes: [] },
+      {
+        key: "settings",
+        display_name: "设置",
+        permissions: [],
+        data_scopes: [],
+      },
     ];
-    expect(resolveDataScopeSelections(noScopeModules, ["anything"])).toEqual({});
+    expect(resolveDataScopeSelections(noScopeModules, ["anything"])).toEqual(
+      {},
+    );
   });
 
   test("undefined roleDataScopes → empty result", () => {

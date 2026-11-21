@@ -5,9 +5,9 @@ import { normalizeLatexForKatex } from "@/core/streamdown/latexNormalize";
 // ── Bug 回归: bug-2222 docmgr 导入吃掉 \_ → KaTeX text-mode 裸 _ 报错 ──
 // 渲染层兜底:\text{} 内裸 _ 补 \_;数学模式 Q_w 不动。
 test("normalizeLatexForKatex: \\text{} 内裸 _ 补 \\_(治存量坏 latex)", () => {
-  expect(
-    normalizeLatexForKatex("Q_w = Q \\times \\text{drift_rate}"),
-  ).toBe("Q_w = Q \\times \\text{drift\\_rate}");
+  expect(normalizeLatexForKatex("Q_w = Q \\times \\text{drift_rate}")).toBe(
+    "Q_w = Q \\times \\text{drift\\_rate}",
+  );
 });
 
 test("normalizeLatexForKatex: 已转义 \\_ 不重复补", () => {
@@ -28,9 +28,7 @@ test("normalizeLatexForKatex: 数学下标/命令不受影响", () => {
 // ── 既有行为回归(改动前就有的归一逻辑) ─────────────────────────────────
 test("normalizeLatexForKatex: \\text{} 尾部 ℃/上标搬移仍生效", () => {
   expect(normalizeLatexForKatex("\\text{25℃}")).toBe("\\text{25}^{\\circ}C");
-  expect(normalizeLatexForKatex("\\text{面积m²}")).toBe(
-    "\\text{面积m}^{2}",
-  );
+  expect(normalizeLatexForKatex("\\text{面积m²}")).toBe("\\text{面积m}^{2}");
 });
 
 test("normalizeLatexForKatex: 双写命令折叠后走 \\text{} 补转义(组合)", () => {

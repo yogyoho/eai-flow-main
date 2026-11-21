@@ -19,7 +19,8 @@ test("extractDetailsSegments: 无 details 时原样单段返回", () => {
 });
 
 test("extractDetailsSegments: details+summary+inner 正确切分", () => {
-  const md = "前文\n<details><summary>计算过程</summary>\n* 公式：$Q$\n</details>\n后文";
+  const md =
+    "前文\n<details><summary>计算过程</summary>\n* 公式：$Q$\n</details>\n后文";
   const segs = extractDetailsSegments(md);
   expect(segs.map((s) => s.kind)).toEqual(["md", "details", "md"]);
   expect(segs[1]!.summary).toBe("计算过程");
@@ -46,7 +47,8 @@ test("buildBlocksWithDetails: 生成 detailsBlock 节点（summary/children/嵌�
       content: [{ type: "text", text: md.trim(), styles: {} }],
     },
   ];
-  const md = "前文\n<details><summary>计算过程</summary>\n* 公式：$Q$\n</details>";
+  const md =
+    "前文\n<details><summary>计算过程</summary>\n* 公式：$Q$\n</details>";
   const blocks = buildBlocksWithDetails(md, parse);
   expect(blocks).toHaveLength(2);
   expect(blocks[0]!.type).toBe("paragraph");
@@ -81,7 +83,9 @@ test("buildBlocksWithDetails: 递归处理 details 内嵌 details", () => {
 
 test("serializeWithDetails: details 回写 <details> 标签，普通块按序交给 mdFn", () => {
   const mdFn = (bs: Array<Record<string, unknown>>) =>
-    bs.map((b) => `MD(${(b.content as Array<{ text: string }>)[0]!.text})`).join("\n\n");
+    bs
+      .map((b) => `MD(${(b.content as Array<{ text: string }>)[0]!.text})`)
+      .join("\n\n");
   const blocks = [
     {
       type: "paragraph",

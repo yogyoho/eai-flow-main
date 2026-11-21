@@ -21,7 +21,7 @@ export function FilterPills({ pills, value, onChange }: FilterPillsProps) {
           key={pill.value}
           onClick={() => onChange(pill.value)}
           className={cn(
-            "px-3 py-1.5 rounded-md text-sm font-medium transition-colors",
+            "rounded-md px-3 py-1.5 text-sm font-medium transition-colors",
             value === pill.value
               ? "bg-primary/10 text-primary"
               : "text-muted-foreground hover:text-foreground hover:bg-accent",

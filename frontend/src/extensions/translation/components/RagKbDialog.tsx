@@ -71,8 +71,10 @@ function SectionHeader({
 }) {
   return (
     <div className="mb-2.5 flex items-center gap-2">
-      <h4 className="text-[13px] font-semibold text-muted-foreground">{title}</h4>
-      <span className="font-mono text-[10px] tracking-[0.02em] text-muted-foreground/70">
+      <h4 className="text-muted-foreground text-[13px] font-semibold">
+        {title}
+      </h4>
+      <span className="text-muted-foreground/70 font-mono text-[10px] tracking-[0.02em]">
         {en}
       </span>
       {badge ? <span className="ml-auto">{badge}</span> : null}
@@ -83,11 +85,13 @@ function SectionHeader({
 /** 「建议默认」提示行（原型 .rec）。 */
 function Rec({ children }: { children: ReactNode }) {
   return (
-    <p className="flex flex-wrap items-center gap-1.5 text-[11px] leading-snug text-muted-foreground">
+    <p className="text-muted-foreground flex flex-wrap items-center gap-1.5 text-[11px] leading-snug">
       <span className="bg-primary/10 text-primary inline-flex h-4 items-center rounded px-1.5 text-[10px] font-semibold">
         建议默认
       </span>
-      <b className="text-foreground font-mono text-[11px] font-semibold">{children}</b>
+      <b className="text-foreground font-mono text-[11px] font-semibold">
+        {children}
+      </b>
     </p>
   );
 }
@@ -112,7 +116,7 @@ function Field({
 }) {
   return (
     <div className={cn("mb-3 flex flex-col gap-1", className)}>
-      <span className="block text-xs font-medium leading-snug text-muted-foreground">
+      <span className="text-muted-foreground block text-xs leading-snug font-medium">
         {label}
         {required ? <span className="text-destructive ml-0.5">*</span> : null}
         <span className={EN_LINE}>{en}</span>
@@ -288,7 +292,7 @@ export function RagKbDialog({
         className="accent-primary mt-0.5 h-[15px] w-[15px] shrink-0"
       />
       <span className="min-w-0 flex-1">
-        <span className="block text-xs font-medium leading-snug text-foreground">
+        <span className="text-foreground block text-xs leading-snug font-medium">
           {title}
           <span className={EN_LINE}>{en}</span>
         </span>
@@ -308,7 +312,7 @@ export function RagKbDialog({
             {editing ? `编辑配置 — ${editing.name}` : "新建 RAG 知识库"}
             <Pill tone="gray">RAGFlow</Pill>
           </DialogTitle>
-          <DialogDescription className="text-xs text-muted-foreground">
+          <DialogDescription className="text-muted-foreground text-xs">
             {editing
               ? "基础与检索字段可编辑；分块/向量由 RAGFlow pipeline 管理。"
               : "创建 dataset 后自动加入翻译体系 · 分块参数在 RAGFlow 1.0 由 pipeline 接管"}
@@ -324,7 +328,8 @@ export function RagKbDialog({
           {!editing && (
             <div className="mb-4">
               <NoteBar>
-                新建会在 RAGFlow 创建 dataset 并自动加入翻译体系。建库后向量模型与分块配置不可修改；精细调优请到
+                新建会在 RAGFlow 创建 dataset
+                并自动加入翻译体系。建库后向量模型与分块配置不可修改；精细调优请到
                 RAGFlow 平台。
               </NoteBar>
             </div>
@@ -405,7 +410,7 @@ export function RagKbDialog({
                 建库后不支持更换向量模型。
               </p>
             ) : modelsQ.isLoading ? (
-              <span className="flex items-center gap-2 text-xs text-muted-foreground">
+              <span className="text-muted-foreground flex items-center gap-2 text-xs">
                 <Loader2 className="h-4 w-4 animate-spin" /> 加载模型列表…
               </span>
             ) : (
@@ -414,9 +419,16 @@ export function RagKbDialog({
                 en="Embedding model"
                 required
                 help="须与 RAGFlow 已安装的 embedding 模型一致；建库后不可更换。"
-                rec={embedDefault ? `${embedDefault}（中文/多语检索）` : "首个可用模型"}
+                rec={
+                  embedDefault
+                    ? `${embedDefault}（中文/多语检索）`
+                    : "首个可用模型"
+                }
               >
-                <Select value={embedding || undefined} onValueChange={setEmbedding}>
+                <Select
+                  value={embedding || undefined}
+                  onValueChange={setEmbedding}
+                >
                   <SelectTrigger size="sm" className="w-full text-[13px]">
                     <SelectValue placeholder="（自动选择首个可用模型）" />
                   </SelectTrigger>
@@ -454,7 +466,10 @@ export function RagKbDialog({
                       help="按文档形态选择解析模板；常规文档用 naive，书籍 book，法规 laws，表格 table。"
                       rec="naive（常规文档）"
                     >
-                      <Select value={chunkMethod} onValueChange={setChunkMethod}>
+                      <Select
+                        value={chunkMethod}
+                        onValueChange={setChunkMethod}
+                      >
                         <SelectTrigger size="sm" className="w-full text-[13px]">
                           <SelectValue />
                         </SelectTrigger>
@@ -496,8 +511,14 @@ export function RagKbDialog({
                           help="PDF 版面解析器；复杂排版用 DeepDOC，快解析用 Naive，扫描件用 Vision。"
                           rec="DeepDOC（复杂 PDF）"
                         >
-                          <Select value={layoutRecognize} onValueChange={setLayoutRecognize}>
-                            <SelectTrigger size="sm" className="w-full text-[13px]">
+                          <Select
+                            value={layoutRecognize}
+                            onValueChange={setLayoutRecognize}
+                          >
+                            <SelectTrigger
+                              size="sm"
+                              className="w-full text-[13px]"
+                            >
                               <SelectValue />
                             </SelectTrigger>
                             <SelectContent>
@@ -574,8 +595,8 @@ export function RagKbDialog({
                   <TriangleAlert className="mt-0.5 h-3.5 w-3.5 shrink-0" />
                   <span>
                     当前部署版 RAGFlow 1.0 的分块参数由 pipeline
-                    默认值接管，此处配置可能不生效；建库后不可修改，精细调优请到 RAGFlow
-                    平台。
+                    默认值接管，此处配置可能不生效；建库后不可修改，精细调优请到
+                    RAGFlow 平台。
                   </span>
                 </div>
               </>
@@ -604,8 +625,10 @@ export function RagKbDialog({
         </div>
 
         <DialogFooter className="flex-none flex-row items-center justify-end gap-2 border-t px-5 pt-3 pb-4">
-          <span className="mr-auto text-[11px] text-muted-foreground">
-            {editing ? "名称不可修改" : "创建后可在知识库列表中继续编辑基础信息"}
+          <span className="text-muted-foreground mr-auto text-[11px]">
+            {editing
+              ? "名称不可修改"
+              : "创建后可在知识库列表中继续编辑基础信息"}
           </span>
           <Button
             variant="outline"
@@ -619,7 +642,9 @@ export function RagKbDialog({
             disabled={saving || (!editing && !name.trim())}
             onClick={() => void save()}
           >
-            {saving ? <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" /> : null}
+            {saving ? (
+              <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" />
+            ) : null}
             {editing ? "保存配置" : "创建知识库"}
           </Button>
         </DialogFooter>

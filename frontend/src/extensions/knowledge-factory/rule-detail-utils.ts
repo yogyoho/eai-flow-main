@@ -16,9 +16,11 @@ export function formatValidationConfig(config?: ValidationConfig): string {
 
 export function getRegionLabel(
   region: string,
-  dictionaries: RuleDictionaries = DEFAULT_RULE_DICTIONARIES
+  dictionaries: RuleDictionaries = DEFAULT_RULE_DICTIONARIES,
 ): string {
-  return dictionaries.regions.find((item) => item.value === region)?.label ?? region;
+  return (
+    dictionaries.regions.find((item) => item.value === region)?.label ?? region
+  );
 }
 
 export function buildRuleUpdatePayload(options: {
@@ -43,19 +45,28 @@ export function buildRuleUpdatePayload(options: {
     throw new Error("验证配置不是合法的 JSON");
   }
 
-  if (!validationConfig || !Array.isArray(validationConfig.fields) || typeof validationConfig.comparisonType !== "string") {
+  if (
+    !validationConfig ||
+    !Array.isArray(validationConfig.fields) ||
+    typeof validationConfig.comparisonType !== "string"
+  ) {
     throw new Error("验证配置缺少 fields 或 comparisonType");
   }
 
-  const typeName = RULE_TYPES.find((item) => item.value === rule.type)?.label ?? rule.typeName;
+  const typeName =
+    RULE_TYPES.find((item) => item.value === rule.type)?.label ?? rule.typeName;
   const severityName =
-    SEVERITY_LEVELS.find((item) => item.value === rule.severity)?.label ?? rule.severityName;
+    SEVERITY_LEVELS.find((item) => item.value === rule.severity)?.label ??
+    rule.severityName;
   const industryName =
-    dictionaries.industries.find((item) => item.value === rule.industry)?.label ?? rule.industryName;
+    dictionaries.industries.find((item) => item.value === rule.industry)
+      ?.label ?? rule.industryName;
 
   const applicableRegions = rule.nationalLevel
     ? ["nationwide"]
-    : (rule.applicableRegions ?? []).filter((region) => region !== "nationwide");
+    : (rule.applicableRegions ?? []).filter(
+        (region) => region !== "nationwide",
+      );
 
   return {
     name: rule.name.trim(),

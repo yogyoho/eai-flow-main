@@ -47,52 +47,32 @@ def _env_value(v: str | None) -> str:
 
 # EAI-CUSTOM (cpa v3 M3 spec §3.3): OCR 服务注册表写在 system_config KV
 # (settings 扩展管理),key 掩码哨兵与 settings/routers.py 保持同一值。
-_OCR_KEY_MASK = "********"
-
-
 async def _resolve_ocr_args(
     session: AsyncSession, ocr_provider_override: str | None = None
 ) -> list[str]:
     """选中外部 OCR 服务 → --ocr-* argv;内建/失效 → [](行为与今天逐字节一致)。
 
     优先级: 显式 override(单文档重解析,spec §3.4) > cpa config.json
-    ocr_provider > 内建。服务不在注册表 / api_key 为掩码 / 要素不全 →
-    回退内建 + warning(六重保证之 1「默认零变化」与 6「失败隔离」)。
+    ocr_provider > 内建。
+    EAI-CUSTOM (2026-10-30): 注册表解析段抽公共版 app.extensions.ocr_resolve
+    (bid_review 解析层同源复用);本函数只保留 argv 组装,回退语义
+    (builtin/不在注册表/掩码/要素不全 → [] + warning)逐字节保留。
     """
     try:
         provider = (ocr_provider_override or crud.load_config().ocr_provider or "").strip()
     except Exception:  # noqa: BLE001 — 配置不可读时绝不阻塞管线触发
         return []
-    if not provider or provider == "builtin":
-        return []
-    try:
-        from app.extensions.settings.service import SystemConfigService
+    from app.extensions.ocr_resolve import resolve_ocr_entry
 
-        data = await SystemConfigService.get_all(session)
-        raw = (data or {}).get("ocr_services") or ""
-        services = json.loads(raw) if raw else []
-        entry = next(
-            (s for s in services if isinstance(s, dict) and s.get("name") == provider),
-            None,
-        )
-    except Exception as exc:  # noqa: BLE001 — 注册表不可读等同回退内建
-        logger.warning("OCR registry unreadable, fallback to builtin: %s", exc)
-        return []
-    if not entry:
-        logger.warning("OCR provider %r not in registry, fallback to builtin", provider)
-        return []
-    base_url = str(entry.get("base_url") or "").strip()
-    api_key = str(entry.get("api_key") or "").strip()
-    model = str(entry.get("model") or "").strip()
-    if not base_url or not model or api_key == _OCR_KEY_MASK:
-        logger.warning("OCR provider %r incomplete/masked key, fallback to builtin", provider)
+    entry = await resolve_ocr_entry(session, provider)
+    if entry is None:
         return []
     return [
-        "--ocr-provider", provider,
+        "--ocr-provider", entry["name"],
         "--ocr-backend", "openai-vision",
-        "--ocr-base-url", base_url,
-        "--ocr-key", api_key,
-        "--ocr-model", model,
+        "--ocr-base-url", entry["base_url"],
+        "--ocr-key", entry["api_key"],
+        "--ocr-model", entry["model"],
     ]
 
 

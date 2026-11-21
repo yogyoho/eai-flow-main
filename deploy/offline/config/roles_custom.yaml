@@ -41,6 +41,11 @@ roles:
     - workflow:edit
     - chapter:view_all
     - ai:stop_writing
+    - materials:read
+    - materials:write
+    - materials:submit
+    - materials:control
+    - materials:archive
     nav:
     - nav:writing
     - nav:projects
@@ -52,6 +57,7 @@ roles:
     - nav:knowledge-factory
     - nav:dashboard
     - nav:workflow-admin
+    - nav:materials
     data_scopes:
     - project_member
     - knowledge_dept
@@ -140,6 +146,11 @@ roles:
     # EAI-CUSTOM (2026-10-20): overlay 早于 translation 一期，补齐基础定义中的翻译权限
     - translation:read
     - translation:transition
+    - materials:read
+    - materials:write
+    - materials:submit
+    - materials:control
+    - materials:archive
     nav:
     - nav:knowledge
     - nav:contract-price
@@ -154,6 +165,7 @@ roles:
     - nav:knowledge-factory
     - nav:writing
     - nav:translation
+    - nav:materials
     data_scopes:
     - project_member
     - knowledge_dept

@@ -154,9 +154,7 @@ export function ReviewView() {
                               : undefined
                           }
                         >
-                          <TableCell className="text-sm">
-                            {r.rule}
-                          </TableCell>
+                          <TableCell className="text-sm">{r.rule}</TableCell>
                           <TableCell
                             className="text-sm"
                             style={{ color: r.mode === "auto" ? INK_2 : AMBER }}

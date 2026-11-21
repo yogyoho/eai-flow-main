@@ -19,9 +19,19 @@ export function flattenChapters(chapters: ProjectChapter[]): ProjectChapter[] {
  * Legacy backend values are folded into canonical buckets during the transition.
  */
 export function inferStatus(ch: ProjectChapter): ChapterStatus {
-  if (["approved", "signed", "completed"].includes(ch.status)) return "approved";
-  if (["reviewing", "in_review", "pending_review", "review", "reviewed"].includes(ch.status)) return "reviewing";
-  if ((ch.wordCountCurrent ?? 0) > 0 || ["draft", "writing"].includes(ch.status)) return "draft";
+  if (["approved", "signed", "completed"].includes(ch.status))
+    return "approved";
+  if (
+    ["reviewing", "in_review", "pending_review", "review", "reviewed"].includes(
+      ch.status,
+    )
+  )
+    return "reviewing";
+  if (
+    (ch.wordCountCurrent ?? 0) > 0 ||
+    ["draft", "writing"].includes(ch.status)
+  )
+    return "draft";
   return "pending";
 }
 
@@ -52,7 +62,9 @@ export type ChapterBlockState = "not_generated" | "generating" | "human_edit";
 
 /** 任意章节(递归)是否有非空 content。 */
 export function hasAnyContent(chapters: ProjectChapter[]): boolean {
-  return flattenChapters(chapters).some((c) => (c.content ?? "").trim().length > 0);
+  return flattenChapters(chapters).some(
+    (c) => (c.content ?? "").trim().length > 0,
+  );
 }
 
 /**
@@ -71,7 +83,9 @@ export function deriveBlockState(
 }
 
 /** 按角色分组(泛型,适用于任何带 role 字段的对象)。 */
-export function groupByRole<T extends { role: string }>(members: T[]): Record<string, T[]> {
+export function groupByRole<T extends { role: string }>(
+  members: T[],
+): Record<string, T[]> {
   const groups: Record<string, T[]> = {};
   for (const m of members) {
     (groups[m.role] ??= []).push(m);

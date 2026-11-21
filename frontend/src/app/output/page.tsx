@@ -11,7 +11,7 @@ export default function OutputPage() {
     <ShellLayout>
       <Suspense
         fallback={
-          <div className="flex items-center justify-center h-full text-muted-foreground text-sm">
+          <div className="text-muted-foreground flex h-full items-center justify-center text-sm">
             加载中...
           </div>
         }

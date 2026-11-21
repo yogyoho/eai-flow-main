@@ -133,7 +133,7 @@ def next_action(doc: dict, state_dir: Path) -> str:
         c = pending[0]
         lines += [
             f"[NEXT] 派发: {c}（PENDING，wave1 独立章）",
-            f'动作: 按 SKILL.md 步骤4 派发契约组装 prompt，task(subagent_type="general-purpose") 派子代理直写 state/chapters/{c}.md',
+            f'动作: chapter_planner.py prompt 渲染内联派发 prompt（SKILL.md 步骤4.1——toc/要点/范文切片/槽位表/rubric 已内联），task(subagent_type="general-purpose") 派子代理直写 state/chapters/{c}.md',
             "约束: 每轮 ≤3 个并发 task()（超发被运行时静默丢弃）；子代理只回 ≤10 行摘要（含本章要点 3-5 条）",
             f"派发后记账: progress.py mark {c} DRAFTED --state-dir {sd}（收章后跑单章门，见 DRAFTED 分支）",
         ]
@@ -171,7 +171,7 @@ def next_action(doc: dict, state_dir: Path) -> str:
             return "\n".join(lines)
         lines += [
             f"[NEXT] 派发: {last}（PENDING，wave2 结论章）",
-            "动作: 派发契约同 wave1，输入追加 state/key_points.json——只依据要点包写投影式结论，不引入 wave1 之外的新数字",
+            "动作: 派发契约同 wave1 渲染 prompt，渲染后把 state/key_points.json 全文追加到 prompt 尾部——只依据要点包写投影式结论，不引入 wave1 之外的新数字",
         ]
         return "\n".join(lines)
 

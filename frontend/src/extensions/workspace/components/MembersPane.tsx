@@ -183,9 +183,9 @@ export function MembersPane({ projectId, projectName }: MembersPaneProps) {
                 className={`rounded-lg p-1.5 ${m.memberType === "agent" ? "bg-purple-500/10" : "bg-cyan-500/10"}`}
               >
                 {m.memberType === "agent" ? (
-                  <Bot className="text-purple-600 dark:text-purple-400 h-4 w-4" />
+                  <Bot className="h-4 w-4 text-purple-600 dark:text-purple-400" />
                 ) : (
-                  <User className="text-cyan-600 dark:text-cyan-400 h-4 w-4" />
+                  <User className="h-4 w-4 text-cyan-600 dark:text-cyan-400" />
                 )}
               </span>
               <div>

@@ -3,11 +3,7 @@
 import { useMemo } from "react";
 
 import { ChartCard } from "@/extensions/bid-quote/components/ChartCard";
-import {
-  BLUE,
-  INK,
-  INK_2,
-} from "@/extensions/bid-quote/components/chartTheme";
+import { BLUE, INK, INK_2 } from "@/extensions/bid-quote/components/chartTheme";
 import { useShareStack } from "@/extensions/bid-quote/hooks";
 import type { FilterState, ShareStackRow } from "@/extensions/bid-quote/types";
 
@@ -28,7 +24,18 @@ const GAP = 80;
 const LABEL_MIN_H = 30;
 
 /** 2~9 的中文数字(「三连涨」文案用,超出退回阿拉伯数字)。 */
-const CN_NUM = ["", "", "二", "三", "四", "五", "六", "七", "八", "九"] as const;
+const CN_NUM = [
+  "",
+  "",
+  "二",
+  "三",
+  "四",
+  "五",
+  "六",
+  "七",
+  "八",
+  "九",
+] as const;
 
 /**
  * 图12(新增):中标份额格局 — 按年 100% 堆叠柱(自绘 SVG,样式对齐原型 block3 图C):
@@ -80,7 +87,13 @@ export function ShareStackChart({ filters }: { filters: FilterState }) {
                 return (
                   <g key={seg.name}>
                     {/* 原型为无缝连续堆叠(无段间隙、无圆角) */}
-                    <rect x={x0} y={rectY} width={COL_W} height={h} fill={seg.color} />
+                    <rect
+                      x={x0}
+                      y={rectY}
+                      width={COL_W}
+                      height={h}
+                      fill={seg.color}
+                    />
                     {h >= LABEL_MIN_H ? (
                       <text
                         x={cx}
@@ -112,7 +125,10 @@ export function ShareStackChart({ filters }: { filters: FilterState }) {
         ) : null}
       </svg>
       {/* 图例:沉底一行(原型在柱体下方的 svg 内,等价 HTML 行) */}
-      <div className="mt-1.5 flex flex-wrap gap-4 text-[11px]" style={{ color: INK_2 }}>
+      <div
+        className="mt-1.5 flex flex-wrap gap-4 text-[11px]"
+        style={{ color: INK_2 }}
+      >
         {legend.map((l) => (
           <span key={l.name} className="flex items-center gap-1.5">
             <i
@@ -155,7 +171,8 @@ function foldRows(rows: ShareStackRow[]): {
   // 全局金额排名(我方除外,固定主蓝)
   const totals = new Map<string, number>();
   for (const list of byYear.values()) {
-    for (const { name, amt } of list) totals.set(name, (totals.get(name) ?? 0) + amt);
+    for (const { name, amt } of list)
+      totals.set(name, (totals.get(name) ?? 0) + amt);
   }
   const rank = [...totals.entries()]
     .filter(([n]) => n !== OURS)
@@ -164,7 +181,9 @@ function foldRows(rows: ShareStackRow[]): {
   const colorOf = (name: string) =>
     name === OURS
       ? BLUE
-      : RIVAL_PALETTE[Math.min(rank.indexOf(name), RIVAL_PALETTE.length - 1)] ?? OTHER_COLOR;
+      : (RIVAL_PALETTE[
+          Math.min(rank.indexOf(name), RIVAL_PALETTE.length - 1)
+        ] ?? OTHER_COLOR);
 
   const cols = years.map((yr) => {
     const list = [...(byYear.get(yr) ?? [])].sort((a, b) => b.amt - a.amt);
@@ -174,10 +193,15 @@ function foldRows(rows: ShareStackRow[]): {
     // 原型:我方段固定置顶(跨年可比),其余按金额降序,「其他」垫底
     const segs: Seg[] = [];
     const ours = top5.find((x) => x.name === OURS);
-    if (ours) segs.push({ name: OURS, share: (100 * ours.amt) / tot, color: BLUE });
+    if (ours)
+      segs.push({ name: OURS, share: (100 * ours.amt) / tot, color: BLUE });
     for (const x of top5) {
       if (x.name === OURS) continue;
-      segs.push({ name: x.name, share: (100 * x.amt) / tot, color: colorOf(x.name) });
+      segs.push({
+        name: x.name,
+        share: (100 * x.amt) / tot,
+        color: colorOf(x.name),
+      });
     }
     if (rest.length) {
       segs.push({
@@ -193,13 +217,18 @@ function foldRows(rows: ShareStackRow[]): {
   const rawShare = (yi: number, name: string) => {
     const list = byYear.get(years[yi] ?? 0) ?? [];
     const tot = list.reduce((s, x) => s + x.amt, 0) || 1;
-    return Math.round((100 * (list.find((x) => x.name === name)?.amt ?? 0)) / tot);
+    return Math.round(
+      (100 * (list.find((x) => x.name === name)?.amt ?? 0)) / tot,
+    );
   };
 
   // 我方份额逐年严格上涨 → 注解(泛化:不看友商名)
-  const oursShare = cols.map((segs) => segs.find((s) => s.name === OURS)?.share ?? 0);
+  const oursShare = cols.map(
+    (segs) => segs.find((s) => s.name === OURS)?.share ?? 0,
+  );
   const rising =
-    oursShare.length >= 2 && oursShare.every((v, i) => i === 0 || v > (oursShare[i - 1] ?? 0));
+    oursShare.length >= 2 &&
+    oursShare.every((v, i) => i === 0 || v > (oursShare[i - 1] ?? 0));
 
   // 首末年都在场的友商里,份额落差最大者为「退场」注解(原型:中机国能 28%→17%)
   let decliner: { name: string; first: number; last: number } | null = null;
@@ -208,7 +237,11 @@ function foldRows(rows: ShareStackRow[]): {
     for (const name of rank.slice(0, RIVAL_PALETTE.length)) {
       const first = rawShare(0, name);
       const end = rawShare(last, name);
-      if (first > 0 && end < first && first - end > (decliner?.first ?? 0) - (decliner?.last ?? 0)) {
+      if (
+        first > 0 &&
+        end < first &&
+        first - end > (decliner?.first ?? 0) - (decliner?.last ?? 0)
+      ) {
         decliner = { name, first, last: end };
       }
     }
@@ -216,7 +249,8 @@ function foldRows(rows: ShareStackRow[]): {
 
   // 图例顺序:我方 + 友商全局排名前4 + 其他(原型 6 色封顶)
   const legendNames = [OURS, ...rank.slice(0, RIVAL_PALETTE.length)];
-  if (cols.some((c) => c.some((s) => s.name === "其他"))) legendNames.push("其他");
+  if (cols.some((c) => c.some((s) => s.name === "其他")))
+    legendNames.push("其他");
   const legend = legendNames.map((n) => ({
     name: n === OURS ? "我方" : n,
     color: n === "其他" ? OTHER_COLOR : colorOf(n),

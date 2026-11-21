@@ -2,9 +2,13 @@
 
 import type { ReactNode } from "react";
 
-import { CARD, CARD_BORDER, INK, INK_3 } from "@/extensions/biz-pipeline/components/chartTheme";
+import {
+  CARD,
+  CARD_BORDER,
+  INK,
+  INK_3,
+} from "@/extensions/biz-pipeline/components/chartTheme";
 import { cn } from "@/lib/utils";
-
 
 interface ChartCardProps {
   title: string;
@@ -16,7 +20,12 @@ interface ChartCardProps {
 
 // EAI-CUSTOM: DeepSeek 风白卡(纯白 + 1px 细边 + 14px 圆角,无重阴影无光晕)—— 克隆自
 // bid-quote/ChartCard,原型即验收标准
-export function ChartCard({ title, meta, children, className }: ChartCardProps) {
+export function ChartCard({
+  title,
+  meta,
+  children,
+  className,
+}: ChartCardProps) {
   return (
     <div
       className={cn("rounded-[14px] p-5", className)}

@@ -60,64 +60,98 @@ test.describe("Load More button", () => {
     await expect(body).toBeVisible();
   });
 
-  test("opens a thread page and checks for Load More button", async ({ page }) => {
+  test("opens a thread page and checks for Load More button", async ({
+    page,
+  }) => {
     const threadId = "test-thread-123";
 
     // Mock thread runs — 3 runs exist
-    await page.route(`**/api/langgraph/threads/${threadId}/runs**`, async (route) => {
-      await route.fulfill({
-        status: 200,
-        contentType: "application/json",
-        body: JSON.stringify([
-          { run_id: "run-1", thread_id: threadId, assistant_id: "lead_agent", status: "success" },
-          { run_id: "run-2", thread_id: threadId, assistant_id: "lead_agent", status: "success" },
-          { run_id: "run-3", thread_id: threadId, assistant_id: "lead_agent", status: "success" },
-        ]),
-      });
-    });
+    await page.route(
+      `**/api/langgraph/threads/${threadId}/runs**`,
+      async (route) => {
+        await route.fulfill({
+          status: 200,
+          contentType: "application/json",
+          body: JSON.stringify([
+            {
+              run_id: "run-1",
+              thread_id: threadId,
+              assistant_id: "lead_agent",
+              status: "success",
+            },
+            {
+              run_id: "run-2",
+              thread_id: threadId,
+              assistant_id: "lead_agent",
+              status: "success",
+            },
+            {
+              run_id: "run-3",
+              thread_id: threadId,
+              assistant_id: "lead_agent",
+              status: "success",
+            },
+          ]),
+        });
+      },
+    );
 
     // Mock thread state (useStream)
-    await page.route(`**/api/langgraph/threads/${threadId}/state**`, async (route) => {
-      await route.fulfill({
-        status: 200,
-        contentType: "application/json",
-        body: JSON.stringify({
-          values: {
-            messages: [
-              { id: "msg-1", type: "human", content: "Hello" },
-              { id: "msg-2", type: "ai", content: "Hi there!" },
-              { id: "msg-3", type: "human", content: "How are you?" },
-              { id: "msg-4", type: "ai", content: "I'm fine!" },
-            ],
-            title: "Test Thread",
-            artifacts: [],
-          },
-        }),
-      });
-    });
+    await page.route(
+      `**/api/langgraph/threads/${threadId}/state**`,
+      async (route) => {
+        await route.fulfill({
+          status: 200,
+          contentType: "application/json",
+          body: JSON.stringify({
+            values: {
+              messages: [
+                { id: "msg-1", type: "human", content: "Hello" },
+                { id: "msg-2", type: "ai", content: "Hi there!" },
+                { id: "msg-3", type: "human", content: "How are you?" },
+                { id: "msg-4", type: "ai", content: "I'm fine!" },
+              ],
+              title: "Test Thread",
+              artifacts: [],
+            },
+          }),
+        });
+      },
+    );
 
     // Mock run messages endpoint
-    await page.route(`**/api/threads/${threadId}/runs/*/messages`, async (route) => {
-      await route.fulfill({
-        status: 200,
-        contentType: "application/json",
-        body: JSON.stringify({
-          data: [
-            {
-              run_id: "run-1",
-              content: { id: "old-msg-1", type: "human", content: "Old message 1" },
-              metadata: { caller: "" },
-            },
-            {
-              run_id: "run-1",
-              content: { id: "old-msg-2", type: "ai", content: "Old response 1" },
-              metadata: { caller: "" },
-            },
-          ],
-          hasMore: false,
-        }),
-      });
-    });
+    await page.route(
+      `**/api/threads/${threadId}/runs/*/messages`,
+      async (route) => {
+        await route.fulfill({
+          status: 200,
+          contentType: "application/json",
+          body: JSON.stringify({
+            data: [
+              {
+                run_id: "run-1",
+                content: {
+                  id: "old-msg-1",
+                  type: "human",
+                  content: "Old message 1",
+                },
+                metadata: { caller: "" },
+              },
+              {
+                run_id: "run-1",
+                content: {
+                  id: "old-msg-2",
+                  type: "ai",
+                  content: "Old response 1",
+                },
+                metadata: { caller: "" },
+              },
+            ],
+            hasMore: false,
+          }),
+        });
+      },
+    );
 
     // Navigate to the thread page
     await page.goto(`http://localhost:3000/workspace/chats/${threadId}`);
@@ -138,7 +172,9 @@ test.describe("Load More button", () => {
     console.log(`Found ${messageCount} message elements`);
 
     // Look for "Load More" button or similar
-    const loadMoreButton = page.locator('button:has-text("Load"), button:has-text("加载"), button:has-text("more"), button:has-text("更多")');
+    const loadMoreButton = page.locator(
+      'button:has-text("Load"), button:has-text("加载"), button:has-text("more"), button:has-text("更多")',
+    );
     const loadMoreCount = await loadMoreButton.count();
     console.log(`Found ${loadMoreCount} "Load More" buttons`);
 

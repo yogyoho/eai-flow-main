@@ -1,4 +1,3 @@
-
 import { afterEach, expect, rs, test } from "@rstest/core";
 import { act } from "react";
 import ReactDOMClient from "react-dom/client";

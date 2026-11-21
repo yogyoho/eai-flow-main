@@ -30,9 +30,15 @@ interface CollabEditorProps {
 }
 
 export const CollabEditor = forwardRef<BlockNoteEditorRef, CollabEditorProps>(
-  function CollabEditor({ documentId, initialContent, projectId, className, visibleChapterIds }, ref) {
+  function CollabEditor(
+    { documentId, initialContent, projectId, className, visibleChapterIds },
+    ref,
+  ) {
     return (
-      <div className={className} style={{ minHeight: 0, display: "flex", flexDirection: "row" }}>
+      <div
+        className={className}
+        style={{ minHeight: 0, display: "flex", flexDirection: "row" }}
+      >
         <BlockNoteEditor
           ref={ref}
           documentId={documentId}

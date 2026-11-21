@@ -60,25 +60,34 @@ export function RuleTestModal({
   };
 
   return (
-    <div 
-      className="fixed inset-0 bg-black/50 flex items-center justify-center z-[1000]"
+    <div
+      className="fixed inset-0 z-[1000] flex items-center justify-center bg-black/50"
       onClick={onClose}
     >
-      <div 
-        className="w-full max-w-[700px] max-h-[90vh] flex flex-col bg-background rounded-xl shadow-xl overflow-hidden"
+      <div
+        className="bg-background flex max-h-[90vh] w-full max-w-[700px] flex-col overflow-hidden rounded-xl shadow-xl"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="flex justify-between items-center px-6 py-4 border-b">
-          <h2 className="text-lg font-semibold text-foreground m-0">测试规则: {ruleName}</h2>
-          <Button variant="ghost" size="icon" className="w-8 h-8" onClick={onClose}>
-            <X className="w-5 h-5" />
+        <div className="flex items-center justify-between border-b px-6 py-4">
+          <h2 className="text-foreground m-0 text-lg font-semibold">
+            测试规则: {ruleName}
+          </h2>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-8 w-8"
+            onClick={onClose}
+          >
+            <X className="h-5 w-5" />
           </Button>
         </div>
 
         <div className="flex-1 overflow-y-auto p-6">
           {/* 测试数据输入 */}
           <div className="mb-4">
-            <label className="block text-sm font-medium text-foreground mb-2">输入测试数据 (JSON 格式或纯文本)</label>
+            <label className="text-foreground mb-2 block text-sm font-medium">
+              输入测试数据 (JSON 格式或纯文本)
+            </label>
             <Textarea
               value={testData}
               onChange={(e) => setTestData(e.target.value)}
@@ -104,21 +113,31 @@ export function RuleTestModal({
 
           {/* 错误提示 */}
           {error && (
-            <div className="p-3 bg-destructive/10 text-destructive rounded-md mt-3 text-sm">{error}</div>
+            <div className="bg-destructive/10 text-destructive mt-3 rounded-md p-3 text-sm">
+              {error}
+            </div>
           )}
 
           {/* 测试结果 */}
           {result && (
-            <div className="mt-4 p-4 bg-muted rounded-lg">
-              <h4 className="text-sm font-semibold text-foreground mb-3">测试结果</h4>
-              <div className="flex justify-between items-center mb-3">
-                <span className={cn(
-                  "px-3 py-1 rounded text-sm font-medium",
-                  result.success ? "bg-success/10 text-success" : "bg-destructive/10 text-destructive"
-                )}>
+            <div className="bg-muted mt-4 rounded-lg p-4">
+              <h4 className="text-foreground mb-3 text-sm font-semibold">
+                测试结果
+              </h4>
+              <div className="mb-3 flex items-center justify-between">
+                <span
+                  className={cn(
+                    "rounded px-3 py-1 text-sm font-medium",
+                    result.success
+                      ? "bg-success/10 text-success"
+                      : "bg-destructive/10 text-destructive",
+                  )}
+                >
                   {result.success ? "通过" : "失败"}
                 </span>
-                <span className="text-xs text-muted-foreground">耗时: {result.durationMs.toFixed(0)}ms</span>
+                <span className="text-muted-foreground text-xs">
+                  耗时: {result.durationMs.toFixed(0)}ms
+                </span>
               </div>
               {result.issues.length > 0 ? (
                 <div className="max-h-[300px] overflow-y-auto">
@@ -126,45 +145,59 @@ export function RuleTestModal({
                     <div
                       key={idx}
                       className={cn(
-                        "p-3 bg-background rounded-md mb-2 last:mb-0",
-                        issue.severity === "critical" && "border-l-2 border-destructive",
-                        issue.severity === "warning" && "border-l-2 border-warning",
-                        issue.severity === "info" && "border-l-2 border-primary"
+                        "bg-background mb-2 rounded-md p-3 last:mb-0",
+                        issue.severity === "critical" &&
+                          "border-destructive border-l-2",
+                        issue.severity === "warning" &&
+                          "border-warning border-l-2",
+                        issue.severity === "info" &&
+                          "border-primary border-l-2",
                       )}
                     >
-                      <div className="flex items-start gap-2 mb-1.5">
-                        <span className={cn(
-                          "px-1.5 py-0.5 rounded text-xs font-medium",
-                          issue.severity === "critical" ? "bg-destructive/10 text-destructive" :
-                          issue.severity === "warning" ? "bg-warning/10 text-warning" :
-                          "bg-muted text-muted-foreground"
-                        )}>{issue.severity}</span>
-                        <span className="flex-1 text-sm text-foreground">{issue.message}</span>
+                      <div className="mb-1.5 flex items-start gap-2">
+                        <span
+                          className={cn(
+                            "rounded px-1.5 py-0.5 text-xs font-medium",
+                            issue.severity === "critical"
+                              ? "bg-destructive/10 text-destructive"
+                              : issue.severity === "warning"
+                                ? "bg-warning/10 text-warning"
+                                : "bg-muted text-muted-foreground",
+                          )}
+                        >
+                          {issue.severity}
+                        </span>
+                        <span className="text-foreground flex-1 text-sm">
+                          {issue.message}
+                        </span>
                       </div>
                       {issue.fieldName && (
-                        <div className="text-xs text-muted-foreground mt-1">字段: {issue.fieldName}</div>
+                        <div className="text-muted-foreground mt-1 text-xs">
+                          字段: {issue.fieldName}
+                        </div>
                       )}
                       {issue.suggestion && (
-                        <div className="text-xs text-success mt-1">建议: {issue.suggestion}</div>
+                        <div className="text-success mt-1 text-xs">
+                          建议: {issue.suggestion}
+                        </div>
                       )}
                     </div>
                   ))}
                 </div>
               ) : (
-                <div className="p-4 text-center text-success bg-success/10 rounded-md">没有发现问题</div>
+                <div className="text-success bg-success/10 rounded-md p-4 text-center">
+                  没有发现问题
+                </div>
               )}
             </div>
           )}
         </div>
 
-        <div className="flex justify-end gap-2 px-6 py-4 border-t bg-muted">
+        <div className="bg-muted flex justify-end gap-2 border-t px-6 py-4">
           <Button variant="outline" onClick={onClose}>
             关闭
           </Button>
-          <Button
-            onClick={handleTest}
-            disabled={testing || !testData.trim()}
-          >
+          <Button onClick={handleTest} disabled={testing || !testData.trim()}>
             {testing ? "测试中..." : "执行测试"}
           </Button>
         </div>

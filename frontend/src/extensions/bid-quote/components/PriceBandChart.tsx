@@ -66,7 +66,8 @@ export function PriceBandChart({ filters }: { filters: FilterState }) {
           报价区间建议
         </h3>
         <p className="mt-0.5 text-xs" style={{ color: INK_3 }}>
-          按金额段 · 历史中标价 <b style={{ color: INK_2 }}>P25–P75</b> · 成本底线(自产+外购)
+          按金额段 · 历史中标价 <b style={{ color: INK_2 }}>P25–P75</b> ·
+          成本底线(自产+外购)
         </p>
       </div>
       <svg viewBox={`0 0 ${W} ${H}`} width="100%" className="overflow-visible">
@@ -109,8 +110,14 @@ export function PriceBandChart({ filters }: { filters: FilterState }) {
         className="mt-3 rounded-xl px-4 py-3 text-[13px] leading-relaxed"
         style={{ background: ACCENT_SOFT }}
       >
-        读法:蓝带=<b className="font-semibold" style={{ color: BLUE }}>历史中标价 P25–P75</b>
-        (报带内胜率最高);绿线=<b className="font-semibold" style={{ color: BLUE }}>成本底线</b>
+        读法:蓝带=
+        <b className="font-semibold" style={{ color: BLUE }}>
+          历史中标价 P25–P75
+        </b>
+        (报带内胜率最高);绿线=
+        <b className="font-semibold" style={{ color: BLUE }}>
+          成本底线
+        </b>
         (报低于它必亏);红线切进蓝带的段 → 该段成本结构不支持竞争性报价。
       </div>
     </div>

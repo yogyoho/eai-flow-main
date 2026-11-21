@@ -31,7 +31,7 @@ export function parseRuleTestInput(input: string): RuleTestPayload {
 }
 
 export function buildRuleTestRequestBody(
-  testData: RuleTestPayload
+  testData: RuleTestPayload,
 ): RuleTestRequestBody {
   const body: RuleTestRequestBody = {
     extracted_fields: testData.extractedFields ?? {},

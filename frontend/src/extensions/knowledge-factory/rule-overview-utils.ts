@@ -1,6 +1,8 @@
 import type { ComplianceRuleOverview } from "@/extensions/knowledge-factory/types";
 
-export function mapRuleOverviewResponse(data: Record<string, unknown>): ComplianceRuleOverview {
+export function mapRuleOverviewResponse(
+  data: Record<string, unknown>,
+): ComplianceRuleOverview {
   const statistics = data.statistics as Record<string, unknown>;
   const seedStatus = data.seed_status as Record<string, unknown>;
   const triggerStatistics = data.trigger_statistics as Record<string, unknown>;
@@ -12,8 +14,14 @@ export function mapRuleOverviewResponse(data: Record<string, unknown>): Complian
       disabled: statistics.disabled as number,
       fromSeed: statistics.from_seed as number,
       typeDistribution: statistics.type_distribution as Record<string, number>,
-      severityDistribution: statistics.severity_distribution as Record<string, number>,
-      industryDistribution: statistics.industry_distribution as Record<string, number>,
+      severityDistribution: statistics.severity_distribution as Record<
+        string,
+        number
+      >,
+      industryDistribution: statistics.industry_distribution as Record<
+        string,
+        number
+      >,
     },
     seedStatus: {
       seedVersion: seedStatus.seed_version as string,

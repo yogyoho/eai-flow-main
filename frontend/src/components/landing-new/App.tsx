@@ -178,7 +178,6 @@ export default function LandingNew() {
           <div className="space-y-8">
             <motion.div variants={itemVariants}>
               <span className="bg-primary/10 text-primary border-primary/20 inline-flex items-center space-x-2 rounded-full border px-4 py-1.5 text-sm font-medium">
-                <Sparkles className="h-4 w-4" />
                 <span>企业智能体平台套件，融合知识工厂与RAG知识库</span>
               </span>
             </motion.div>

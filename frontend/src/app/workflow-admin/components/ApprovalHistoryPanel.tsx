@@ -8,10 +8,25 @@ interface ApprovalHistoryPanelProps {
   approvals: TemplateApproval[];
 }
 
-const ACTION_CONFIG: Record<string, { label: string; icon: React.ElementType; color: string }> = {
-  pending: { label: "提交审批", icon: Send, color: "text-amber-600 dark:text-amber-400" },
-  approved: { label: "审批通过", icon: CheckCircle2, color: "text-green-600 dark:text-green-400" },
-  rejected: { label: "审批拒绝", icon: XCircle, color: "text-red-600 dark:text-red-400" },
+const ACTION_CONFIG: Record<
+  string,
+  { label: string; icon: React.ElementType; color: string }
+> = {
+  pending: {
+    label: "提交审批",
+    icon: Send,
+    color: "text-amber-600 dark:text-amber-400",
+  },
+  approved: {
+    label: "审批通过",
+    icon: CheckCircle2,
+    color: "text-green-600 dark:text-green-400",
+  },
+  rejected: {
+    label: "审批拒绝",
+    icon: XCircle,
+    color: "text-red-600 dark:text-red-400",
+  },
   withdrawn: { label: "撤回审批", icon: Undo2, color: "text-muted-foreground" },
 };
 
@@ -20,11 +35,16 @@ function formatTime(s: string | null): string {
   try {
     const d = new Date(s);
     return `${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")} ${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
-  } catch { return ""; }
+  } catch {
+    return "";
+  }
 }
 
 export function ApprovalHistoryPanel({ approvals }: ApprovalHistoryPanelProps) {
-  if (approvals.length === 0) return <div className="text-xs text-muted-foreground py-2">暂无审批记录</div>;
+  if (approvals.length === 0)
+    return (
+      <div className="text-muted-foreground py-2 text-xs">暂无审批记录</div>
+    );
   return (
     <div className="space-y-2">
       {approvals.map((a) => {
@@ -32,13 +52,17 @@ export function ApprovalHistoryPanel({ approvals }: ApprovalHistoryPanelProps) {
         const Icon = config.icon;
         return (
           <div key={a.id} className="flex items-start gap-2 text-xs">
-            <Icon className={`w-3.5 h-3.5 mt-0.5 shrink-0 ${config.color}`} />
-            <div className="flex-1 min-w-0">
+            <Icon className={`mt-0.5 h-3.5 w-3.5 shrink-0 ${config.color}`} />
+            <div className="min-w-0 flex-1">
               <div className="flex items-center gap-2">
                 <span className="font-medium">{config.label}</span>
-                <span className="text-muted-foreground">{formatTime(a.createdAt)}</span>
+                <span className="text-muted-foreground">
+                  {formatTime(a.createdAt)}
+                </span>
               </div>
-              {a.comment && <p className="text-muted-foreground mt-0.5">{a.comment}</p>}
+              {a.comment && (
+                <p className="text-muted-foreground mt-0.5">{a.comment}</p>
+              )}
             </div>
           </div>
         );

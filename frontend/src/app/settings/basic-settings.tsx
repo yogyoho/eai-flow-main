@@ -50,6 +50,8 @@ interface SystemConfig {
   content_guard_llm_model?: string;
   theme?: string;
   ocr_services?: string;
+  /** EAI-CUSTOM (2026-10-30): 全局默认 OCR 引擎(builtin | 注册表服务名)。 */
+  default_ocr_engine?: string;
 }
 
 interface OcrServiceEntry {
@@ -427,6 +429,34 @@ export function BasicSettings() {
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
+          {/* EAI-CUSTOM (2026-10-30): 全局默认 OCR 引擎(bid_review 等解析层消费) */}
+          <div className="space-y-1">
+            <Label>默认 OCR 引擎</Label>
+            <Select
+              value={config.default_ocr_engine ?? "builtin"}
+              onValueChange={(v) => handleChange("default_ocr_engine", v)}
+            >
+              <SelectTrigger className="w-full md:w-72">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="builtin">
+                  内建 eai-flow-ocr（rapidocr）
+                </SelectItem>
+                {ocrServices
+                  .filter((s) => s.name.trim())
+                  .map((s) => (
+                    <SelectItem key={`ocr-def-${s.name}`} value={s.name}>
+                      {s.name}
+                    </SelectItem>
+                  ))}
+              </SelectContent>
+            </Select>
+            <p className="text-muted-foreground text-xs">
+              文档解析（投标审查等）图片文字识别使用的引擎；默认内建
+              eai-flow-ocr，选择已注册服务则走 OpenAI 兼容 vision 协议。
+            </p>
+          </div>
           {ocrServices.length === 0 && (
             <p className="text-muted-foreground text-sm">
               尚未注册 OCR 服务。未注册时合同解析使用内建 eai-flow-ocr 引擎。

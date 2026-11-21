@@ -85,7 +85,13 @@ export interface CspRun {
   customers_resolved: number;
   error: string | null;
   scope: Record<string, unknown> | null;
-  progress: { total: number; done: number; failed: number; phase?: string; processing?: string[] } | null;
+  progress: {
+    total: number;
+    done: number;
+    failed: number;
+    phase?: string;
+    processing?: string[];
+  } | null;
   started_at: string;
   finished_at: string | null;
 }
@@ -95,7 +101,13 @@ export interface CspDashboardCharts {
   price_ranges: { range: string; count: number }[];
   validation: { status: string; count: number }[];
   cluster_sizes: { range: string; count: number }[];
-  by_customer: { name: string; count: number; avg_price: number; min: number; max: number }[];
+  by_customer: {
+    name: string;
+    count: number;
+    avg_price: number;
+    min: number;
+    max: number;
+  }[];
 }
 
 export interface CspDashboard {

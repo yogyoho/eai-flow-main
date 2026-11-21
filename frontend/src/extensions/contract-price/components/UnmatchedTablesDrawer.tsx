@@ -54,9 +54,17 @@ export function UnmatchedTablesDrawer({
   // 分项价格清单 → 排前, 用户优先为高分表建规则。
   const priceSignal = (t: UnmatchedTable) => {
     const hay = t.header.join(" ") + " " + (t.title ?? "");
-    const kw = ["单价", "合价", "总价", "金额", "合计", "数量", "规格", "单位", "含税"].filter(
-      (k) => hay.includes(k),
-    ).length;
+    const kw = [
+      "单价",
+      "合价",
+      "总价",
+      "金额",
+      "合计",
+      "数量",
+      "规格",
+      "单位",
+      "含税",
+    ].filter((k) => hay.includes(k)).length;
     return kw * 2 + (t.col_count >= 5 ? 1 : 0) + (t.row_count >= 2 ? 1 : 0);
   };
   const sorted = [...tables].sort((a, b) => priceSignal(b) - priceSignal(a));
@@ -79,7 +87,8 @@ export function UnmatchedTablesDrawer({
                 疑似价格表（{tables.length}）
               </h2>
               <p className="text-muted-foreground text-xs">
-                {fileName} · 未匹配任何定位规则,未提取;评分高者更可能是价格清单,建议优先建规则
+                {fileName} ·
+                未匹配任何定位规则,未提取;评分高者更可能是价格清单,建议优先建规则
               </p>
             </div>
           </div>

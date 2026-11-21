@@ -14,8 +14,10 @@ export function resolveDataScopeSelections(
     (modules || [])
       .filter((m) => m.data_scopes?.length)
       .flatMap((m) => {
-        const matched = (roleDataScopes ?? []).find((d) => m.data_scopes.some((s) => s.id === d));
-        return matched ? ([[m.key, matched] as [string, string]]) : [];
+        const matched = (roleDataScopes ?? []).find((d) =>
+          m.data_scopes.some((s) => s.id === d),
+        );
+        return matched ? [[m.key, matched] as [string, string]] : [];
       }),
   );
 }

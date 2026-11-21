@@ -32,7 +32,7 @@ export function OnlineUsers({ users, connected }: OnlineUsersProps) {
       {users.map((user) => (
         <div
           key={user.clientId}
-          className="w-7 h-7 rounded-full flex items-center justify-center text-xs text-white font-medium"
+          className="flex h-7 w-7 items-center justify-center rounded-full text-xs font-medium text-white"
           style={{ backgroundColor: user.color }}
           title={user.name}
         >
@@ -40,7 +40,7 @@ export function OnlineUsers({ users, connected }: OnlineUsersProps) {
         </div>
       ))}
       {!connected && (
-        <span className="text-xs text-muted-foreground ml-1">未连接</span>
+        <span className="text-muted-foreground ml-1 text-xs">未连接</span>
       )}
       {showOfflineBanner && (
         <div

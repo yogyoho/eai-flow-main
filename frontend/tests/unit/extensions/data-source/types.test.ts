@@ -29,7 +29,9 @@ describe("Data source type labels", () => {
   test("every DataSourceType has a label", () => {
     const types: string[] = ["database", "api", "file", "gis"];
     for (const t of types) {
-      expect(DATA_SOURCE_TYPE_LABELS[t as keyof typeof DATA_SOURCE_TYPE_LABELS]).toBeDefined();
+      expect(
+        DATA_SOURCE_TYPE_LABELS[t as keyof typeof DATA_SOURCE_TYPE_LABELS],
+      ).toBeDefined();
     }
   });
 

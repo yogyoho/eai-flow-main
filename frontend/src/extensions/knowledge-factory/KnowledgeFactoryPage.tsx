@@ -60,7 +60,9 @@ export default function KnowledgeFactoryPage() {
           <div className="shrink-0 rounded-sm border border-amber-200 bg-amber-50 p-1 text-amber-600 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-300">
             <Factory className="h-4 w-4" />
           </div>
-          <span className="text-foreground text-lg font-semibold">知识工厂</span>
+          <span className="text-foreground text-lg font-semibold">
+            知识工厂
+          </span>
         </div>
         <TabNavigation
           activeTab={activeTab}

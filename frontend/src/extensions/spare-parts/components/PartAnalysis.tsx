@@ -73,7 +73,7 @@ function ChartCard({
   children: React.ReactNode;
 }) {
   return (
-    <div className="border-border bg-card rounded-lg border p-4 transition-all hover:border-primary/20 hover:shadow-md">
+    <div className="border-border bg-card hover:border-primary/20 rounded-lg border p-4 transition-all hover:shadow-md">
       <div className="mb-4 flex items-center justify-between">
         <h3 className="text-muted-foreground flex items-center gap-2 text-sm font-semibold">
           {icon}

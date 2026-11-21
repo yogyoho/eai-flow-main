@@ -13,6 +13,11 @@ contracts 声明：XS2（资源量数字族）把 L8-L12 链到 ch1/ch4/ch9/ch10
 
 CLI:
   manifest --stage references/stages/exploration.json --output state/chapter_manifest.json
+  prompt   --stage references/stages/exploration.json --chapter ch4 --data-dir data/
+           --state-dir state [--bank-limit 2000] [--output state/dispatch_ch4.md]
+           派发契约内联渲染（硬化 2026-11）：toc 骨架 + 逐节 elements 要点 + 黄金范文切片
+           （bank_index 同矿种优先）+ 槽位词汇表 + rubric + 输出契约，全部喂进子代理
+           prompt——不再依赖沙箱自读 references（路径不可达时任务面仍完整）。
   impacted --manifest state/chapter_manifest.json --formulas L8,L9 [--families 13a]
        --formulas: 受影响公式 id 逗号清单（formula_runner impacted 的输出直接喂入）
        --families: 受影响表单族名（非公式数据变更路径，如 04_geography 文本改动）
@@ -28,6 +33,10 @@ from pathlib import Path
 
 # 全量依赖伪章节：任一公式/表单变化都必受影响
 ALWAYS_DEPENDENT = ("ch10", "compliance_appendix")
+
+# 与 build_output.MINERAL_ALIASES 同步维护（六处变更面清单；此处仅用于范文切片选源归一化）
+_MINERAL_ALIASES = [("copper", ("铜",)), ("coal", ("煤",)), ("gold", ("金",)),
+                    ("iron", ("铁",)), ("lead_zinc", ("铅锌", "铅", "锌"))]
 
 # 合约 → 其校验/引用的公式族（exploration.json 章级 contracts 声明的反向边）
 CONTRACT_FORMULA_REFS: dict[str, list[str]] = {
@@ -103,6 +112,137 @@ def impacted_chapters(affected_formulas: list[str], affected_families: list[str]
     return hit
 
 
+def _norm_mineral(commodity):
+    """中文 commodity → slug（最早出现位置=主矿种在前；「金属」负向守卫同 build_output）。"""
+    if not commodity:
+        return None
+    s = str(commodity).strip()
+    if "非金属" in s:
+        return None
+    best = None
+    for slug, keys in _MINERAL_ALIASES:
+        for k in keys:
+            pos = s.find(k)
+            if pos == -1:
+                continue
+            if k == "金" and pos + 1 < len(s) and s[pos + 1] == "属":
+                continue
+            if best is None or pos < best[0]:
+                best = (pos, slug)
+    return best[1] if best else None
+
+
+_RUBRIC = """## 写作 rubric（质量在派发时给定，不靠事后字符数门兜底）
+- 逐要素成段：下方「逐节内容要点」每个要素 ≥1 段完整专业叙述（定性描述+空间关系+工程意义）；缺数写 [待确认] 占位句，不砍段、不删节、不并节
+- 表后五步解读：陈述→规律识别→成因解释→规范对比→勘查意义（规范编号只从 standards_index 实有编号引）
+- 数值纪律：正文数值只写 {{SLOT:key}}（词汇表见下），数据表只写 {{TABLE:族}}；范文数值/矿名/地名一律禁抄进正文（只学叙述范式）；真数永不手写
+- 判定词（水文/工程/环境/复合类型等）逐字写入正文
+- 结构纪律：首行 `## N 章标题`；toc 骨架全覆盖禁自创/并节；复合条目子节号用 #### 标题"""
+
+
+def build_dispatch_prompt(stage_path, chapter_id, data_dir, state_dir, bank_limit=2000):
+    """渲染第 chapter_id 章的内联派发 prompt（纯 stdlib；缺文件逐段降级不致命）。"""
+    stage = json.loads(Path(stage_path).read_text(encoding="utf-8"))
+    ch = stage.get("chapters", {}).get(chapter_id)
+    if not ch:
+        sys.stderr.write(f"[planner] 错误: 未知章节 {chapter_id}（stage 在册: {sorted(stage.get('chapters', {}))}）\n")
+        raise SystemExit(1)
+    no = chapter_id[2:] if chapter_id.startswith("ch") else chapter_id
+    refs_dir = Path(stage_path).resolve().parents[1]
+    lines = [
+        f"# 第 {no} 章撰写任务（geological-report v2 · 派发契约内联版）",
+        "",
+        f"角色：第 {no} 章撰写者，只产出这一章。本 prompt 已内联全部任务面，不依赖沙箱自读 references（路径不可达时任务仍完整可执行）。",
+        "",
+        "## 本章目录骨架（硬门：节号必须全覆盖；禁自创节/并节）",
+    ]
+    lines += [f"- {t}" for t in ch.get("toc", [])]
+    lines += ["", "## 逐节内容要点（每节按 elements 逐要素成段）"]
+    for sec in ch.get("sections", []):
+        lines.append(f"### {sec.get('title', '')}")
+        for el in sec.get("elements", []):
+            lines.append(f"- {el if isinstance(el, str) else json.dumps(el, ensure_ascii=False)}")
+    lines += ["", _RUBRIC]
+    # ── 黄金范文切片（bank 同矿种优先 → bank 任一 → 手工样例回退 → 无）──
+    lines += ["", "## 黄金范文切片（只学叙述范式；数值/矿名/地名一律禁抄）"]
+    mineral = None
+    if data_dir:
+        proj = Path(data_dir) / "00_project.json"
+        if proj.exists():
+            try:
+                mineral = _norm_mineral(json.loads(proj.read_text(encoding="utf-8")).get("commodity"))
+            except (OSError, ValueError):
+                mineral = None
+    stage_key = Path(stage_path).stem
+    entry = None
+    bi = refs_dir / "samples_bank" / "bank_index.json"
+    if bi.exists():
+        try:
+            entries = json.loads(bi.read_text(encoding="utf-8")).get(stage_key, {}).get(chapter_id, [])
+        except (OSError, ValueError):
+            entries = []
+        for e in entries:  # 同矿种优先
+            if mineral and e.get("mineral") == mineral and (refs_dir / e.get("file", "")).exists():
+                entry = e
+                break
+        if entry is None:
+            entry = next((e for e in entries if (refs_dir / e.get("file", "")).exists()), None)
+    slice_text = ""
+    if entry:
+        p = refs_dir / entry["file"]
+        slice_text = p.read_text(encoding="utf-8")
+        note = f"范文来源: {entry['file']}（mineral={entry.get('mineral')}" + ("；同矿种命中）" if mineral and entry.get("mineral") == mineral else "；跨矿种回退——范式更须谨慎对齐本章矿种术语）")
+    else:
+        p = refs_dir / "samples" / stage_key / f"{chapter_id}_sample.md"
+        if p.exists():
+            slice_text = p.read_text(encoding="utf-8")
+            note = f"范文来源: samples/{stage_key}/{chapter_id}_sample.md（bank 无切片，手工样例回退）"
+        else:
+            note = "（无范文切片——按目录骨架与逐节要点独立成文，禁引入任何外部项目内容）"
+    if slice_text:
+        if len(slice_text) > bank_limit:
+            slice_text = slice_text[:bank_limit] + "\n…（切片超限截断——完整范文可自读该文件，仅补范式不作依据）"
+        lines.append(note)
+        lines.append("")
+        lines.append(slice_text)
+    else:
+        lines.append(note)
+    # ── 槽位词汇表 ──
+    lines += ["", "## 槽位词汇表（正文数值只写 {{SLOT:key}}；本表=可写数值的全部合法来源）"]
+    values = {}
+    if state_dir:
+        fs = Path(state_dir) / "formula_state.json"
+        if fs.exists():
+            try:
+                values = json.loads(fs.read_text(encoding="utf-8")).get("values", {})
+            except (OSError, ValueError):
+                values = {}
+    if not values:
+        lines.append("- （formula_state 不在/为空——冻结层尚未生成；本章数值一律 [待确认]，禁自算禁手写）")
+    else:
+        for k, v in list(values.items())[:60]:
+            unit = str((v or {}).get("unit") or "")
+            lines.append(f"- {k}" + (f"（{unit}）" if unit else ""))
+        if len(values) > 60:
+            lines.append(f"- …共 {len(values)} 槽位，其余自读 formula_state.json（只读，禁改）")
+    lines += [
+        "",
+        "## 深度口径（硬化 2026-11 分级）",
+        "- 绝对地板（median×0.4）= 硬 FAIL，低于即整章打回；风格拉伸（median×0.6×覆盖缩放）不足只 STYLE_WARN 不阻断",
+        "- 要素链逐段写满自然达标——禁为凑字符重复套话（重复段落会被盯防）",
+        "",
+        "## 输出契约",
+        f"- 直写 /mnt/user-data/workspace/geo-report/state/chapters/{chapter_id}.md（绝对沙箱路径；容器路径以挂载为准）",
+        f"- 首行 `## {no} {ch.get('title', '')}`；缺数标 [待确认]/[数据未提供]",
+        "- 返回 ≤10 行摘要：结构 / [待确认] 清单 / 数据缺口 / 本章要点 3-5 条（供要点包蒸馏）",
+        "- 禁令：不改 data/、不碰 references/、不跑 build、不派 task",
+        "",
+        "## 补充自读（可选——读不到不影响本任务）",
+        "- state/formula_state.json（完整槽位表）· references/chapter_craft.md（写作工艺）· references/samples_bank/bank_index.json",
+    ]
+    return "\n".join(lines) + "\n"
+
+
 def main() -> int:
     p = argparse.ArgumentParser(description="geological-report v2 — 章节规划器")
     sub = p.add_subparsers(dest="command", required=True)
@@ -117,6 +257,14 @@ def main() -> int:
     i.add_argument("--families", default="", help="逗号分隔表单族名")
     i.add_argument("--output", help="结果 JSON 落盘路径（可选）")
 
+    d = sub.add_parser("prompt", help="派发契约内联渲染（toc+要点+范文切片+槽位表+rubric）")
+    d.add_argument("--stage", required=True)
+    d.add_argument("--chapter", required=True, help="章节 id（如 ch4）")
+    d.add_argument("--data-dir", help="data/（读 00_project.commodity 选同矿种范文）")
+    d.add_argument("--state-dir", help="state/（读 formula_state.json 出槽位词汇表）")
+    d.add_argument("--bank-limit", type=int, default=2000, help="范文切片截断字符数")
+    d.add_argument("--output", help="prompt 落盘路径（缺省打印 stdout）")
+
     args = p.parse_args()
     if args.command == "manifest":
         stage = json.loads(Path(args.stage).read_text(encoding="utf-8"))
@@ -124,6 +272,16 @@ def main() -> int:
         Path(args.output).parent.mkdir(parents=True, exist_ok=True)
         Path(args.output).write_text(json.dumps(manifest, ensure_ascii=False, indent=2), encoding="utf-8")
         print(f"MANIFEST_READY: {args.output} chapters={len(manifest['chapters'])}")
+        return 0
+
+    if args.command == "prompt":
+        text = build_dispatch_prompt(args.stage, args.chapter, args.data_dir, args.state_dir, args.bank_limit)
+        if args.output:
+            Path(args.output).parent.mkdir(parents=True, exist_ok=True)
+            Path(args.output).write_text(text, encoding="utf-8")
+            print(f"PROMPT_READY: {args.output} chars={len(text)}")
+        else:
+            sys.stdout.write(text)
         return 0
 
     manifest = json.loads(Path(args.manifest).read_text(encoding="utf-8"))

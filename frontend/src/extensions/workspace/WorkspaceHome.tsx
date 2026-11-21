@@ -39,7 +39,10 @@ const KIND_LABELS: Record<ProjectKind, string> = {
   report: "多章节报告",
 };
 
-const KIND_STYLE: Record<ProjectKind, { color: string; icon: React.ElementType }> = {
+const KIND_STYLE: Record<
+  ProjectKind,
+  { color: string; icon: React.ElementType }
+> = {
   quickdoc: { color: "bg-info/10 text-info", icon: FileText },
   report: { color: "bg-primary/10 text-primary", icon: FolderKanban },
 };
@@ -87,7 +90,8 @@ function computeStats(projects: CollabProject[]): StatCard[] {
     {
       icon: <Clock className="h-5 w-5" />,
       label: "待发布",
-      count: projects.filter((p) => p.status === "submitted_for_release").length,
+      count: projects.filter((p) => p.status === "submitted_for_release")
+        .length,
       iconBg: "bg-warning/10",
       iconColor: "text-warning",
     },
@@ -192,7 +196,9 @@ export function WorkspaceHome() {
   // ── Filtering ────────────────────────────────────────────────────────────────
   const filteredProjects = useMemo(() => {
     return projects.filter((project) => {
-      const matchesSearch = project.name.toLowerCase().includes(searchQuery.toLowerCase());
+      const matchesSearch = project.name
+        .toLowerCase()
+        .includes(searchQuery.toLowerCase());
       const matchesKind = kindFilter === "all" || project.kind === kindFilter;
       return matchesSearch && matchesKind;
     });
@@ -202,27 +208,27 @@ export function WorkspaceHome() {
 
   // ── Render ───────────────────────────────────────────────────────────────────
   return (
-    <main className="flex-1 overflow-y-auto bg-background">
+    <main className="bg-background flex-1 overflow-y-auto">
       {/* Header */}
-      <div className="flex h-14 items-center gap-4 border-b border-border bg-card px-7">
-        <div className="flex h-7 w-7 items-center justify-center border rounded-sm border-violet-200 bg-violet-50 text-violet-600 dark:border-violet-800 dark:bg-violet-950/40 dark:text-violet-300 shrink-0">
-          <Boxes className="w-4 h-4" />
+      <div className="border-border bg-card flex h-14 items-center gap-4 border-b px-7">
+        <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-sm border border-violet-200 bg-violet-50 text-violet-600 dark:border-violet-800 dark:bg-violet-950/40 dark:text-violet-300">
+          <Boxes className="h-4 w-4" />
         </div>
-        <h1 className="text-lg font-bold text-foreground">协作工作台</h1>
+        <h1 className="text-foreground text-lg font-bold">协作工作台</h1>
         <div className="flex-1" />
         <div className="relative">
-          <Search className="absolute top-1/2 left-2.5 h-[15px] w-[15px] -translate-y-1/2 text-muted-foreground" />
+          <Search className="text-muted-foreground absolute top-1/2 left-2.5 h-[15px] w-[15px] -translate-y-1/2" />
           <Input
             type="text"
             placeholder="搜索项目..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="h-[34px] w-[220px] rounded-md border-border bg-card pl-8 pr-3 text-sm text-foreground placeholder:text-muted-foreground"
+            className="border-border bg-card text-foreground placeholder:text-muted-foreground h-[34px] w-[220px] rounded-md pr-3 pl-8 text-sm"
           />
         </div>
         <Button
           onClick={() => setShowCreate((v) => !v)}
-          className="h-[34px] rounded-md bg-primary px-3.5 text-sm font-semibold text-primary-foreground hover:bg-primary/90"
+          className="bg-primary text-primary-foreground hover:bg-primary/90 h-[34px] rounded-md px-3.5 text-sm font-semibold"
         >
           <Plus className="h-[15px] w-[15px]" />
           新建项目
@@ -234,14 +240,24 @@ export function WorkspaceHome() {
         {stats.map((stat) => (
           <div
             key={stat.label}
-            className="flex items-center gap-3.5 rounded-md border border-border bg-card p-4"
+            className="border-border bg-card flex items-center gap-3.5 rounded-md border p-4"
           >
-            <div className={cn("flex h-10 w-10 items-center justify-center rounded-[10px]", stat.iconBg, stat.iconColor)}>
+            <div
+              className={cn(
+                "flex h-10 w-10 items-center justify-center rounded-[10px]",
+                stat.iconBg,
+                stat.iconColor,
+              )}
+            >
               {stat.icon}
             </div>
             <div className="flex flex-col gap-0.5">
-              <span className="text-sm text-muted-foreground">{stat.label}</span>
-              <span className="text-[22px] font-bold leading-tight text-foreground">{stat.count}</span>
+              <span className="text-muted-foreground text-sm">
+                {stat.label}
+              </span>
+              <span className="text-foreground text-[22px] leading-tight font-bold">
+                {stat.count}
+              </span>
             </div>
           </div>
         ))}
@@ -249,12 +265,12 @@ export function WorkspaceHome() {
 
       {/* Create panel (inline) */}
       {showCreate && (
-        <div className="mx-7 mt-5 flex flex-col gap-3 rounded-md border border-border bg-card p-4 md:max-w-md">
+        <div className="border-border bg-card mx-7 mt-5 flex flex-col gap-3 rounded-md border p-4 md:max-w-md">
           <Input
             placeholder="项目名称"
             value={name}
             onChange={(e) => setName(e.target.value)}
-            className="h-9 rounded-md border-border bg-background text-sm"
+            className="border-border bg-background h-9 rounded-md text-sm"
           />
           <div className="flex gap-2">
             {(Object.keys(KIND_LABELS) as ProjectKind[]).map((k) => (
@@ -264,14 +280,20 @@ export function WorkspaceHome() {
                 onClick={() => setKind(k)}
                 className={cn(
                   "flex-1 rounded-lg border px-3 py-2 text-xs font-semibold transition-colors",
-                  kind === k ? "border-primary bg-primary/10 text-primary" : "border-border text-muted-foreground hover:text-foreground",
+                  kind === k
+                    ? "border-primary bg-primary/10 text-primary"
+                    : "border-border text-muted-foreground hover:text-foreground",
                 )}
               >
                 {KIND_LABELS[k]}
               </button>
             ))}
           </div>
-          <Button onClick={handleCreate} disabled={creating} className="h-9 w-full">
+          <Button
+            onClick={handleCreate}
+            disabled={creating}
+            className="h-9 w-full"
+          >
             {creating ? "创建中..." : "创建"}
           </Button>
         </div>
@@ -279,9 +301,13 @@ export function WorkspaceHome() {
 
       {/* Filter pills + view toggle */}
       <div className="flex items-center gap-2 px-7 pt-4">
-        <FilterPills pills={FILTER_PILLS} value={kindFilter} onChange={setKindFilter} />
+        <FilterPills
+          pills={FILTER_PILLS}
+          value={kindFilter}
+          onChange={setKindFilter}
+        />
         <div className="flex-1" />
-        <div className="flex h-[30px] items-center overflow-hidden rounded-sm border border-border bg-card">
+        <div className="border-border bg-card flex h-[30px] items-center overflow-hidden rounded-sm border">
           <button
             onClick={() => setViewMode("grid")}
             className={cn(
@@ -305,24 +331,26 @@ export function WorkspaceHome() {
 
       {/* Content */}
       {isLoading ? (
-        <div className="flex items-center justify-center gap-2 py-16 text-sm text-muted-foreground">
+        <div className="text-muted-foreground flex items-center justify-center gap-2 py-16 text-sm">
           <Loader2 className="h-5 w-5 animate-spin" />
           加载中...
         </div>
       ) : filteredProjects.length === 0 ? (
-        <div className="mx-7 mt-5 flex flex-col items-center justify-center rounded-md border border-dashed border-border bg-card py-16">
-          <FolderKanban className="mb-3 h-12 w-12 text-muted-foreground/50" />
-          <h3 className="text-sm font-medium text-foreground">
+        <div className="border-border bg-card mx-7 mt-5 flex flex-col items-center justify-center rounded-md border border-dashed py-16">
+          <FolderKanban className="text-muted-foreground/50 mb-3 h-12 w-12" />
+          <h3 className="text-foreground text-sm font-medium">
             {projects.length === 0 ? "还没有项目" : "未找到项目"}
           </h3>
-          <p className="mt-1 text-sm text-muted-foreground">
-            {projects.length === 0 ? "新建一个快速文档或报告项目开始" : "尝试调整搜索词或筛选条件"}
+          <p className="text-muted-foreground mt-1 text-sm">
+            {projects.length === 0
+              ? "新建一个快速文档或报告项目开始"
+              : "尝试调整搜索词或筛选条件"}
           </p>
         </div>
       ) : (
         <div
           className={cn(
-            "px-7 pb-5 pt-4",
+            "px-7 pt-4 pb-5",
             viewMode === "grid"
               ? "grid grid-cols-1 gap-[14px] md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4"
               : "flex flex-col gap-[14px]",
@@ -331,7 +359,8 @@ export function WorkspaceHome() {
           {filteredProjects.map((project) => {
             const style = KIND_STYLE[project.kind];
             const KindIcon = style.icon;
-            const statusColor = STATUS_COLORS[project.status] ?? "bg-muted text-muted-foreground";
+            const statusColor =
+              STATUS_COLORS[project.status] ?? "bg-muted text-muted-foreground";
             const statusLabel = STATUS_LABELS[project.status] ?? project.status;
 
             if (viewMode === "list") {
@@ -339,23 +368,37 @@ export function WorkspaceHome() {
                 <div
                   key={project.id}
                   onClick={() => handleOpen(project.id)}
-                  className="group flex cursor-pointer items-center gap-4 rounded-md border border-border bg-card px-4 py-3 transition-shadow hover:shadow-sm"
+                  className="group border-border bg-card flex cursor-pointer items-center gap-4 rounded-md border px-4 py-3 transition-shadow hover:shadow-sm"
                 >
-                  <div className={cn("flex h-10 w-10 shrink-0 items-center justify-center rounded-[10px]", style.color)}>
+                  <div
+                    className={cn(
+                      "flex h-10 w-10 shrink-0 items-center justify-center rounded-[10px]",
+                      style.color,
+                    )}
+                  >
                     <KindIcon className="h-5 w-5" />
                   </div>
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-2">
-                      <h3 className="truncate text-sm font-semibold text-foreground">{project.name}</h3>
-                      <span className={cn("shrink-0 rounded-[4px] px-1.5 py-0.5 text-xs font-semibold", statusColor)}>
+                      <h3 className="text-foreground truncate text-sm font-semibold">
+                        {project.name}
+                      </h3>
+                      <span
+                        className={cn(
+                          "shrink-0 rounded-[4px] px-1.5 py-0.5 text-xs font-semibold",
+                          statusColor,
+                        )}
+                      >
                         {statusLabel}
                       </span>
                     </div>
-                    <div className="mt-1 flex items-center gap-3 text-xs text-muted-foreground">
+                    <div className="text-muted-foreground mt-1 flex items-center gap-3 text-xs">
                       <span>{KIND_LABELS[project.kind]}</span>
                       <span className="flex items-center gap-1">
                         <FileText className="h-3 w-3" />
-                        {project.kind === "quickdoc" ? "单文档" : `${project.sectionCount}章`}
+                        {project.kind === "quickdoc"
+                          ? "单文档"
+                          : `${project.sectionCount}章`}
                       </span>
                       <span className="flex items-center gap-1">
                         <Users className="h-3 w-3" />
@@ -369,7 +412,7 @@ export function WorkspaceHome() {
                       variant="ghost"
                       size="sm"
                       onClick={(e) => handleOpen(project.id, e)}
-                      className="h-7 gap-1 px-2 text-xs text-primary hover:bg-primary/10"
+                      className="text-primary hover:bg-primary/10 h-7 gap-1 px-2 text-xs"
                     >
                       <Send className="h-3.5 w-3.5" />
                       进入
@@ -378,12 +421,12 @@ export function WorkspaceHome() {
                       variant="ghost"
                       size="icon"
                       onClick={(e) => handleDelete(project.id, e)}
-                      className="h-7 w-7 text-muted-foreground hover:text-destructive"
+                      className="text-muted-foreground hover:text-destructive h-7 w-7"
                     >
                       <Trash2 className="h-3.5 w-3.5" />
                     </Button>
                   </div>
-                  <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" />
+                  <ChevronRight className="text-muted-foreground h-4 w-4 shrink-0" />
                 </div>
               );
             }
@@ -392,22 +435,34 @@ export function WorkspaceHome() {
               <div
                 key={project.id}
                 onClick={() => handleOpen(project.id)}
-                className="group flex cursor-pointer flex-col overflow-hidden rounded-[10px] border border-border bg-card transition-all hover:shadow-md hover:border-primary/20"
+                className="group border-border bg-card hover:border-primary/20 flex cursor-pointer flex-col overflow-hidden rounded-[10px] border transition-all hover:shadow-md"
               >
                 {/* Header: kind icon + name + status */}
                 <div className="px-4 pt-4 pb-2">
                   <div className="flex items-start gap-3">
-                    <div className={cn("flex h-9 w-9 shrink-0 items-center justify-center rounded-lg", style.color)}>
+                    <div
+                      className={cn(
+                        "flex h-9 w-9 shrink-0 items-center justify-center rounded-lg",
+                        style.color,
+                      )}
+                    >
                       <KindIcon className="h-5 w-5" />
                     </div>
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center gap-2">
-                        <h3 className="line-clamp-1 flex-1 text-sm font-semibold text-foreground">{project.name}</h3>
-                        <span className={cn("shrink-0 rounded-[4px] px-1.5 py-0.5 text-[10px] font-semibold", statusColor)}>
+                        <h3 className="text-foreground line-clamp-1 flex-1 text-sm font-semibold">
+                          {project.name}
+                        </h3>
+                        <span
+                          className={cn(
+                            "shrink-0 rounded-[4px] px-1.5 py-0.5 text-[10px] font-semibold",
+                            statusColor,
+                          )}
+                        >
                           {statusLabel}
                         </span>
                       </div>
-                      <span className="mt-0.5 line-clamp-1 text-xs text-muted-foreground">
+                      <span className="text-muted-foreground mt-0.5 line-clamp-1 text-xs">
                         {KIND_LABELS[project.kind]}
                       </span>
                     </div>
@@ -418,29 +473,37 @@ export function WorkspaceHome() {
                 <div className="flex-1 px-4 py-2">
                   <div className="grid grid-cols-2 gap-x-4 gap-y-1.5">
                     <div className="flex items-center gap-1.5">
-                      <FileText className="h-3 w-3 shrink-0 text-muted-foreground/60" />
-                      <span className="text-xs text-muted-foreground">
-                        {project.kind === "quickdoc" ? "单文档" : `${project.sectionCount} 章节`}
+                      <FileText className="text-muted-foreground/60 h-3 w-3 shrink-0" />
+                      <span className="text-muted-foreground text-xs">
+                        {project.kind === "quickdoc"
+                          ? "单文档"
+                          : `${project.sectionCount} 章节`}
                       </span>
                     </div>
                     <div className="flex items-center gap-1.5">
-                      <FolderKanban className="h-3 w-3 shrink-0 text-muted-foreground/60" />
-                      <span className="text-xs text-muted-foreground">{project.taskCount} 任务</span>
+                      <FolderKanban className="text-muted-foreground/60 h-3 w-3 shrink-0" />
+                      <span className="text-muted-foreground text-xs">
+                        {project.taskCount} 任务
+                      </span>
                     </div>
                     <div className="flex items-center gap-1.5">
-                      <Users className="h-3 w-3 shrink-0 text-muted-foreground/60" />
-                      <span className="text-xs text-muted-foreground">{project.memberCount} 成员</span>
+                      <Users className="text-muted-foreground/60 h-3 w-3 shrink-0" />
+                      <span className="text-muted-foreground text-xs">
+                        {project.memberCount} 成员
+                      </span>
                     </div>
                     <div className="flex items-center gap-1.5">
-                      <Clock className="h-3 w-3 shrink-0 text-muted-foreground/60" />
-                      <span className="text-xs text-muted-foreground">{formatDate(project.updatedAt)}</span>
+                      <Clock className="text-muted-foreground/60 h-3 w-3 shrink-0" />
+                      <span className="text-muted-foreground text-xs">
+                        {formatDate(project.updatedAt)}
+                      </span>
                     </div>
                   </div>
                 </div>
 
                 {/* Footer: actions */}
-                <div className="flex items-center justify-between border-t border-border/60 bg-muted/20 px-4 py-2">
-                  <span className="text-xs text-muted-foreground">
+                <div className="border-border/60 bg-muted/20 flex items-center justify-between border-t px-4 py-2">
+                  <span className="text-muted-foreground text-xs">
                     {project.kind === "quickdoc" ? "快速文档" : "多章节报告"}
                   </span>
                   <div className="flex items-center gap-0.5 opacity-0 transition-opacity group-hover:opacity-100">
@@ -448,7 +511,7 @@ export function WorkspaceHome() {
                       variant="ghost"
                       size="sm"
                       onClick={(e) => handleOpen(project.id, e)}
-                      className="h-6 gap-1 rounded-[6px] px-2 text-xs text-primary hover:bg-primary/10"
+                      className="text-primary hover:bg-primary/10 h-6 gap-1 rounded-[6px] px-2 text-xs"
                     >
                       <Send className="h-3 w-3" />
                       进入
@@ -457,7 +520,7 @@ export function WorkspaceHome() {
                       variant="ghost"
                       size="icon"
                       onClick={(e) => handleDelete(project.id, e)}
-                      className="h-6 w-6 text-muted-foreground hover:text-destructive"
+                      className="text-muted-foreground hover:text-destructive h-6 w-6"
                     >
                       <Trash2 className="h-3 w-3" />
                     </Button>

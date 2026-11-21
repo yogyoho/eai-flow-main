@@ -3,13 +3,13 @@ export type BusinessDomainKey = string;
 
 /** 功能阶段标签 */
 export type StageTag =
-  | "overview"     // 概览
-  | "collect"      // 采集
-  | "process"      // 加工
-  | "collaborate"  // 协作
-  | "output"       // 输出
-  | "retrieve"     // 检索
-  | "manage";      // 管理
+  | "overview" // 概览
+  | "collect" // 采集
+  | "process" // 加工
+  | "collaborate" // 协作
+  | "output" // 输出
+  | "retrieve" // 检索
+  | "manage"; // 管理
 
 /** 排序模式 */
 export type SortMode = "default" | "alphabetical" | "favorites-first";

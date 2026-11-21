@@ -28,20 +28,34 @@ export async function resolveSourceId(name = SOURCE_NAME): Promise<string> {
   return sourceIdCache;
 }
 
-export async function resolveDatasetId(sourceId: string, label: string): Promise<string> {
+export async function resolveDatasetId(
+  sourceId: string,
+  label: string,
+): Promise<string> {
   if (datasetIdCache[label]) return datasetIdCache[label];
-  const resp = await authFetch<{ items: ListItem[] }>(`${API_BASE}/${sourceId}/datasets`);
+  const resp = await authFetch<{ items: ListItem[] }>(
+    `${API_BASE}/${sourceId}/datasets`,
+  );
   const hit = resp.items.find((d) => d.label === label);
   if (!hit) throw new Error(`数据集 "${label}" 未找到`);
   datasetIdCache[label] = hit.id;
   return datasetIdCache[label];
 }
 
-export async function queryDataset(sourceId: string, datasetId: string): Promise<QueryResult> {
-  return authFetch<QueryResult>(`${API_BASE}/${sourceId}/datasets/${datasetId}/query`, { method: "POST" });
+export async function queryDataset(
+  sourceId: string,
+  datasetId: string,
+): Promise<QueryResult> {
+  return authFetch<QueryResult>(
+    `${API_BASE}/${sourceId}/datasets/${datasetId}/query`,
+    { method: "POST" },
+  );
 }
 
-export async function querySql(sourceId: string, sql: string): Promise<QueryResult> {
+export async function querySql(
+  sourceId: string,
+  sql: string,
+): Promise<QueryResult> {
   return authFetch<QueryResult>(`${API_BASE}/${sourceId}/query`, {
     method: "POST",
     body: JSON.stringify({ sql }),

@@ -1,7 +1,11 @@
 // EAI-CUSTOM: 策略条件/授权 shape 转换器单测（UI 数组 ⇄ 引擎 dict）
 import { afterEach, describe, expect, it, rs } from "@rstest/core";
 
-import { toEngineConditions, toGrantArray, toUIConditions } from "@/extensions/role/policyConverters";
+import {
+  toEngineConditions,
+  toGrantArray,
+  toUIConditions,
+} from "@/extensions/role/policyConverters";
 
 describe("toEngineConditions (UI 数组 → 引擎 dict)", () => {
   it("空数组 → 空 dict（引擎视为无条件=全量）", () => {
@@ -25,16 +29,28 @@ describe("toEngineConditions (UI 数组 → 引擎 dict)", () => {
   });
 
   it("in/not_in 值按逗号拆分并 trim 成列表", () => {
-    expect(toEngineConditions([{ attribute: "tags", operator: "in", value: "a, b ,c" }])).toEqual({
+    expect(
+      toEngineConditions([
+        { attribute: "tags", operator: "in", value: "a, b ,c" },
+      ]),
+    ).toEqual({
       and: [{ attr: "tags", op: "in", value: ["a", "b", "c"] }],
     });
-    expect(toEngineConditions([{ attribute: "tags", operator: "not_in", value: "x, y" }])).toEqual({
+    expect(
+      toEngineConditions([
+        { attribute: "tags", operator: "not_in", value: "x, y" },
+      ]),
+    ).toEqual({
       and: [{ attr: "tags", op: "not_in", value: ["x", "y"] }],
     });
   });
 
   it("contains/not_contains 原样透传", () => {
-    expect(toEngineConditions([{ attribute: "tags", operator: "contains", value: "vip" }])).toEqual({
+    expect(
+      toEngineConditions([
+        { attribute: "tags", operator: "contains", value: "vip" },
+      ]),
+    ).toEqual({
       and: [{ attr: "tags", op: "contains", value: "vip" }],
     });
   });
@@ -42,15 +58,15 @@ describe("toEngineConditions (UI 数组 → 引擎 dict)", () => {
 
 describe("toUIConditions (引擎 dict → UI 数组)", () => {
   it("映射引擎 op → 展示符（eq → =）", () => {
-    expect(toUIConditions({ and: [{ attr: "role_level", op: "gte", value: "5" }] })).toEqual([
-      { attribute: "role_level", operator: ">=", value: "5" },
-    ]);
+    expect(
+      toUIConditions({ and: [{ attr: "role_level", op: "gte", value: "5" }] }),
+    ).toEqual([{ attribute: "role_level", operator: ">=", value: "5" }]);
   });
 
   it("数组 value join 成逗号字符串", () => {
-    expect(toUIConditions({ and: [{ attr: "tags", op: "in", value: ["a", "b"] }] })).toEqual([
-      { attribute: "tags", operator: "in", value: "a, b" },
-    ]);
+    expect(
+      toUIConditions({ and: [{ attr: "tags", op: "in", value: ["a", "b"] }] }),
+    ).toEqual([{ attribute: "tags", operator: "in", value: "a, b" }]);
   });
 
   it("已是数组（旧数据）原样透传", () => {
@@ -59,7 +75,12 @@ describe("toUIConditions (引擎 dict → UI 数组)", () => {
   });
 
   it("or 树 → __or__ 只读标记，可往返还原", () => {
-    const orTree = { or: [{ attr: "role_code", op: "eq", value: "dept_head" }, { attr: "user_id", op: "eq", value: "u1" }] };
+    const orTree = {
+      or: [
+        { attr: "role_code", op: "eq", value: "dept_head" },
+        { attr: "user_id", op: "eq", value: "u1" },
+      ],
+    };
     const ui = toUIConditions(orTree);
     expect(ui.length).toBe(1);
     expect(ui[0]!.attribute).toBe("__or__");
@@ -72,15 +93,15 @@ describe("toUIConditions (引擎 dict → UI 数组)", () => {
   });
 
   it("单条件 {attr, op, value}（API/脚本创建，非 and 包裹）→ 单行 UI 条件", () => {
-    expect(toUIConditions({ attr: "role_code", op: "eq", value: "dept_head" })).toEqual([
-      { attribute: "role_code", operator: "=", value: "dept_head" },
-    ]);
+    expect(
+      toUIConditions({ attr: "role_code", op: "eq", value: "dept_head" }),
+    ).toEqual([{ attribute: "role_code", operator: "=", value: "dept_head" }]);
   });
 
   it("单条件 in 值数组 join 成逗号字符串", () => {
-    expect(toUIConditions({ attr: "dept_ids", op: "in", value: ["d1", "d2"] })).toEqual([
-      { attribute: "dept_ids", operator: "in", value: "d1, d2" },
-    ]);
+    expect(
+      toUIConditions({ attr: "dept_ids", op: "in", value: ["d1", "d2"] }),
+    ).toEqual([{ attribute: "dept_ids", operator: "in", value: "d1, d2" }]);
   });
 
   it("非 dict / 垃圾输入 → []", () => {

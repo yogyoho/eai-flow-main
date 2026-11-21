@@ -227,9 +227,11 @@ export default function ExtractionProgressDrawer({
                           )}
                           <span
                             className={cn(
-                              step.status === "completed" && "text-emerald-600 dark:text-emerald-400",
+                              step.status === "completed" &&
+                                "text-emerald-600 dark:text-emerald-400",
                               step.status === "running" && "text-primary",
-                              step.status === "failed" && "text-red-600 dark:text-red-400",
+                              step.status === "failed" &&
+                                "text-red-600 dark:text-red-400",
                               step.status === "waiting" &&
                                 "text-muted-foreground",
                             )}

@@ -22,16 +22,33 @@ const colorClasses: Record<StatColor, string> = {
   emerald: "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400",
 };
 
-export function StatCard({ label, value, icon: Icon, hint, color = "blue" }: StatCardProps) {
+export function StatCard({
+  label,
+  value,
+  icon: Icon,
+  hint,
+  color = "blue",
+}: StatCardProps) {
   return (
-    <div className="flex items-center gap-4 rounded-lg border border-border bg-card p-4 transition-all hover:border-primary/20 hover:shadow-md">
-      <div className={cn("flex h-10 w-10 shrink-0 items-center justify-center rounded-[10px]", colorClasses[color])}>
+    <div className="border-border bg-card hover:border-primary/20 flex items-center gap-4 rounded-lg border p-4 transition-all hover:shadow-md">
+      <div
+        className={cn(
+          "flex h-10 w-10 shrink-0 items-center justify-center rounded-[10px]",
+          colorClasses[color],
+        )}
+      >
         <Icon className="h-[18px] w-[18px]" />
       </div>
       <div className="min-w-0 flex-1">
-        <p className="text-xs uppercase tracking-wide text-muted-foreground/60">{label}</p>
-        <p className="font-cyber text-2xl font-extrabold tracking-tight text-foreground">{value}</p>
-        {hint ? <p className="truncate text-xs text-muted-foreground">{hint}</p> : null}
+        <p className="text-muted-foreground/60 text-xs tracking-wide uppercase">
+          {label}
+        </p>
+        <p className="font-cyber text-foreground text-2xl font-extrabold tracking-tight">
+          {value}
+        </p>
+        {hint ? (
+          <p className="text-muted-foreground truncate text-xs">{hint}</p>
+        ) : null}
       </div>
     </div>
   );

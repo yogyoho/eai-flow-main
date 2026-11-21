@@ -64,14 +64,16 @@ export function Welcome({
         ) : (
           <div className="flex items-center gap-2">
             <div className={cn("inline-block", !waved ? "animate-wave" : "")}>
-              {isUltra ? "🚀" : <Bot className="size-7 text-primary" />}
+              {isUltra ? "🚀" : <Bot className="text-primary size-7" />}
             </div>
-            <AuroraText className="font-normal" colors={colors}>{t.welcome.greeting}</AuroraText>
+            <AuroraText className="font-normal" colors={colors}>
+              {t.welcome.greeting}
+            </AuroraText>
           </div>
         )}
       </div>
       {skill ? (
-        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+        <div className="text-muted-foreground flex items-center gap-2 text-sm">
           <p>{skill.description}</p>
         </div>
       ) : null}

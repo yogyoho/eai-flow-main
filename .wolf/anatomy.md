@@ -1,7 +1,7 @@
 # anatomy.md
 
-> Auto-maintained by OpenWolf. Last scanned: 2026-11-18T04:10:20.187Z
-> Files: 107 tracked | Anatomy hits: 0 | Misses: 0
+> Auto-maintained by OpenWolf. Last scanned: 2026-11-20T04:19:18.344Z
+> Files: 121 tracked | Anatomy hits: 0 | Misses: 0
 
 ## ../../00 工作目录/02 项目策划/马宁/应急指挥/bid-run/
 
@@ -310,6 +310,7 @@
 - `qa-bidwrite-m2-badge.mjs` — 批廿八 M2 follow-up: doc badge identity after reload (scoped to .bw-doc card) (~362 tok)
 - `qa-bidwrite-m2.mjs` — 批廿八 M2 browser verify: assert chip / provenance badge / jump notice / save=PUT / reload roundtrip (~1111 tok)
 - `qa-bidwrite-m3.mjs` — 批廿九 M3 browser verify: 负偏离展开自愈 / SK-RT-005 闭环 chip / undo 全撤 / 保存往返(新节点) (~1215 tok)
+- `qa-bidwrite-m31.mjs` — 批卅一 T4:锚点制全链路真实验证——同文件新建任务,对比旧任务矩阵 blocked/溯源锚点质量 (~934 tok)
 
 ## C:/Users/admin/.claude/plans/
 
@@ -341,6 +342,9 @@
 - `bid-write-p1-beta27-m1-constraints-landed.md` (~477 tok)
 - `bid-write-p1-beta28-m2-decor-liaison-landed.md` (~446 tok)
 - `bid-write-p1-beta29-negative-deviation-landed.md` (~486 tok)
+- `bid-write-p1-beta30-quote-repair-landed.md` (~336 tok)
+- `bid-write-p1-beta31-anchor-provenance-landed.md` (~357 tok)
+- `bid-write-p1-beta32-materials-library-landed.md` (~353 tok)
 - `MEMORY.md` (~2289 tok)
 - `upstream-sync-2026-11-17-landed.md` (~474 tok)
 - `user-standing-work-rules-4.md` (~233 tok)
@@ -362,6 +366,10 @@
 
 ## C:/Users/admin/.gstack/projects/yogyoho-eai-flow-main/admin-main-dev-fork-design-20261011-121127.md.review.wysTrj/
 
+
+## C:/Users/admin/.gstack/projects/yogyoho-eai-flow-main/designs/design-audit-20261120/
+
+- `design-audit-bid-write.md` — 投标方案(商务)写作模块四维度审查(2026-11-20,/design-review) (~376 tok)
 
 ## C:/Users/admin/AppData/Local/Temp/
 
@@ -706,13 +714,14 @@
 - `document_ast_schema.yaml` — bid_write 正文文档 AST 事实层单一 schema(批廿九 16 项口径:14 节点+2 mark,v0.2.0,+deviation_note/para.label) (~1494 tok)
 - `editor_schema_gen.py` — AST JSON 树(与 PM doc JSON 同形;强类型随 M2 执行器契约再收紧)。 (~1800 tok)
 - `export.py` — 批三十三交付包:AST→Markdown(marks 剥离)、一级 section 切册、DOCX(A4/页码/TOC/水印)+manifest、DOCX 固定时间戳重打包→确定性 ZIP;导出前用冻结 AST 重跑 gate (~2600 tok)
+- `extract_prompt.py` — extract_prompt.py — bid_write 商务子集抽取提示词(Tier-2 锚点制,批卅一; (~646 tok)
 - `metrics.py` — 埋点六指标(P1-β 批廿三,spec §3;EAI-CUSTOM 2026-11-13)——纯函数, (~522 tok)
 - `models.py` — bid_write ORM 模型(批十九 T2,EAI-CUSTOM 2026-11-13)——与 bid_review/models.py (~1824 tok)
 - `precheck.py` — F6 规则层预审查(批廿一 M2,EAI-CUSTOM 2026-11-13)——bid_review 同尺投影。 (~2607 tok)
-- `quote_repair.py` — quote_repair.py — AI 摘录修复管线(Tier-1,批卅;EAI-CUSTOM 2026-11-18)。 (~1998 tok)
+- `quote_repair.py` — quote_repair.py — AI 摘录修复管线(Tier-1,批卅;EAI-CUSTOM 2026-11-18)。 (~2862 tok)
 - `routers.py` — bid_write 工作台 API(批十九 T5)——挂 gateway ``/api/extensions/bid-write``: (~9515 tok)
 - `schemas.py` — bid_write API schemas(批十九 T5)——与 bid_review/schemas.py 同构(from_ (~1034 tok)
-- `worker.py` — bid_write worker(批十九 T4)——F1 单管线:created→parsing→extracting→ (~4806 tok)
+- `worker.py` — bid_write worker(批十九 T4)——F1 单管线:created→parsing→extracting→ (~4884 tok)
 
 ## backend/app/extensions/bid_write/assertions/
 
@@ -986,7 +995,7 @@
 
 ## backend/scripts/
 
-- `measure_quote_repair.py` — 批卅 T3:真实任务摘录修复恢复率测量(用户规则④:先量后宣;EAI-CUSTOM 2026-11-18)。 (~791 tok)
+- `measure_quote_repair.py` — 批卅 T3:真实任务摘录修复恢复率测量(用户规则④:先量后宣;EAI-CUSTOM 2026-11-18)。 (~993 tok)
 
 ## backend/scripts/bid_seed_samples.py
 
@@ -1111,6 +1120,9 @@
 - `2026-11-14-bid-write-p1-beta33-export-package-plan.md` — bid_write 批三十三:批准修订→DOCX 分册+manifest ZIP、冻结 AST 重跑 gate、导出审计 Implementation Plan (~2600 tok)
 - `2026-11-14-bid-write-p1-delta-workbench-plan.md` — bid_write 批廿五(P1-δ 前端三栏工作台)L4 投影扩面+编辑率采样源+前端接线 实施计划 (~3984 tok)
 - `2026-11-18-bid-write-p1-beta30-quote-repair-plan.md` — bid_write 批卅(摘录修复管线 Tier-1)Implementation Plan (~3427 tok)
+- `2026-11-18-bid-write-p1-beta31-anchor-provenance-plan.md` — bid_write 批卅一(Tier-2 位置锚点制)Implementation Plan (~1234 tok)
+- `2026-11-18-bid-write-p1-beta32-materials-library-plan.md` — 批卅二(素材库独立页+废弃/bid-materials 清除)Implementation Plan (~1347 tok)
+- `2026-11-19-bid-write-p1-beta33-workbench-ux-plan.md` — 批卅三(工作台可操作性+可发现性)Implementation Plan (~1225 tok)
 
 ## docs/superpowers/plans/2026-09-13-coal-mine-tunneling-regulation-v2.md
 
@@ -1121,6 +1133,7 @@
 ## docs/superpowers/specs/
 
 - `2026-11-13-bid-write-p0-skills-spec.md` — 投标方案(商务部分)智能写作——P0 四技能规格(落地态) (~4001 tok)
+- `2026-11-18-bid-write-materials-library-design.md` — 素材库独立页 + 废弃 /bid-materials 应用清除 设计(2026-11-18,批卅二) (~357 tok)
 
 ## docs/superpowers/specs/2026-09-13-coal-mine-tunneling-regulation-v2-design.md
 
@@ -1243,6 +1256,7 @@
 ## frontend/src/app/bid-write/
 
 - `bid-write.css` — Styles: 121 rules (~8477 tok)
+- `layout.tsx` — navItems (~2025 tok)
 
 ## frontend/src/app/biz-pipeline/
 
@@ -1542,6 +1556,7 @@
 - `api.ts` — bid-write API client（Gateway `/api/extensions/bid-write/*`）。 (~2051 tok)
 - `helpers.ts` — bid-write 纯展示工具：状态词表、矩阵摘要、CSV 导出。 (~2977 tok)
 - `hooks.ts` — bid-write TanStack Query hooks。 (~2345 tok)
+- `nav.ts` — bid-write 侧栏导航纯工具。 (~485 tok)
 - `types.ts` — bid-write API 类型（P0-M0 F1 响应矩阵 + M1 断言摘要）。 (~1603 tok)
 
 ## frontend/src/extensions/bid-write/components/
@@ -1551,13 +1566,14 @@
 - `ExportView.tsx` — ⑥ 导出适配(批廿五 P1-δ 真接线)。 (~4276 tok)
 - `GenerateView.tsx` — ③ 生成配置与执行(批廿五 P1-δ 真接线)。 (~3511 tok)
 - `IntakeView.tsx` — 行 → 来源引文溯源目标(provenance 按 source_path 共享;缺引文=无法定位)。 (~9423 tok)
+- `LibraryView.tsx` — entityLabel — renders table (~2068 tok)
 - `MaterialsView.tsx` — ② 素材核对与缺口(批廿五 P1-δ 真接线)。 (~7584 tok)
 - `ProjectsView.tsx` — submitability — renders table (~4864 tok)
-- `WorkbenchView.tsx` — BidWriteEditor (~8156 tok)
+- `WorkbenchView.tsx` — BidWriteEditor (~8773 tok)
 
 ## frontend/src/extensions/bid-write/editor/
 
-- `BidWriteEditor.tsx` — EAI-CUSTOM 批廿六 M0——PM EditorView React 壳;批廿八 M2+assertRunner/onAssert/onProvenanceJump;批三十一 +onPasteSanitized(latest-ref;runAssert serialize→runner→assert:apply,抛错=校验未完成) (~1440 tok)
+- `BidWriteEditor.tsx` — 滚动到正文目录项;key="all" 回顶部。找不到返回 false。 (~2185 tok)
 - `constraints.ts` — nodeEnd=pos+nodeSize;内部用于 enum 内容区判定 (~2033 tok)
 - `decor.ts` — 测试面:Decoration.find() 条目的窄化形态(node env 无 DOM,只看 from/to/class);批三十 +response 表行 `rt:{row_id}` 锚点 (~4200 tok)
 - `demo.ts` — EAI-CUSTOM 批廿六 M0——M0 演示文档(后端正文存储未接入;方案 §15② 最小样例: (~1735 tok)
@@ -1565,6 +1581,7 @@
 - `doc.ts` — 序列化文本投影(导出投影口径:marks 不进文本,方案 §四 剥离规则)。 (~168 tok)
 - `paste.ts` — 批三十一 M5 富文本粘贴清洗:HTML 可见文本提取(script/style/隐藏节点剔除)+ 文本块/块级事务规划 + pastePlugin(受保护节点复用 findProtected;外部 HTML 不直接进 AST) (~1300 tok)
 - `state.ts` — EAI-CUSTOM 批廿六 M0——事务分层 meta.source ∈ {user, system, decor}(方案 §七);批三十一挂 pastePlugin (~520 tok)
+- `tableOps.ts` — EAI-CUSTOM 批卅三 T1——表格行操作:加行/删行(用户痛点:表格不能加行)。 (~513 tok)
 
 ## frontend/src/extensions/biz-pipeline/
 

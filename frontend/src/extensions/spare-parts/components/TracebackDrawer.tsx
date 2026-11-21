@@ -173,7 +173,7 @@ export function TracebackDrawer({ docId, page, bbox, onClose }: Props) {
       <div className="bg-card border-border relative h-full w-full max-w-2xl overflow-auto border-l shadow-2xl">
         <div className="border-border sticky top-0 z-10 flex items-center justify-between border-b bg-[var(--db-bg-tertiary)] px-5 py-3">
           <div className="flex items-center gap-2">
-            <Crosshair className="text-rose-600 dark:text-rose-400 h-4 w-4" />
+            <Crosshair className="h-4 w-4 text-rose-600 dark:text-rose-400" />
             <h3 className="db-text-primary text-sm font-semibold">溯源比对</h3>
             <span className="font-cyber db-text-subtle text-[10px] tracking-wider">
               PAGE {page} TRACEBACK

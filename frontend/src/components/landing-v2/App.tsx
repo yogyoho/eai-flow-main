@@ -163,7 +163,7 @@ export default function LandingV2() {
         {/* 打底渐变：顶部极淡主色洗染，消除纯白/纯黑的平板感 */}
         <div className="from-primary/[0.06] via-background to-background absolute inset-0 bg-gradient-to-b" />
         {/* 点阵网格：主色 token 上色，顶部聚焦、向下渐隐（mask 中 black 为遮罩不透明度约定色，非页面用色） */}
-        <div className="absolute inset-0 [background-image:radial-gradient(color-mix(in_oklab,var(--color-primary)_16%,transparent)_1px,transparent_1px)] [background-size:26px_26px] [mask-image:radial-gradient(120%_60%_at_50%_0%,black_10%,transparent_70%)]" />
+        <div className="absolute inset-0 [background-image:radial-gradient(color-mix(in_oklab,var(--color-primary)_16%,transparent)_1px,transparent_1px)] [mask-image:radial-gradient(120%_60%_at_50%_0%,black_10%,transparent_70%)] [background-size:26px_26px]" />
         {/* 光晕：主色主光 + info 次级色 + 底部双角弱光 */}
         <div className="bg-primary/15 absolute -top-[15%] left-1/2 h-[45rem] w-[70rem] -translate-x-1/2 rounded-full blur-[140px]" />
         <div className="bg-info/10 absolute top-[28%] right-[-12%] h-[32rem] w-[36rem] rounded-full blur-[120px]" />
@@ -345,7 +345,11 @@ function UserMenu({
           <UserCircle className="h-6 w-6" strokeWidth={1.5} />
         </button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent className="w-56 rounded-xl" align="end" sideOffset={8}>
+      <DropdownMenuContent
+        className="w-56 rounded-xl"
+        align="end"
+        sideOffset={8}
+      >
         <div className="border-border border-b px-3 py-2">
           <p className="text-foreground text-sm font-medium">{username}</p>
         </div>
@@ -458,7 +462,7 @@ function ProductVisual() {
       {/* 视觉后方光晕 */}
       <div className="bg-primary/15 absolute -inset-x-10 -top-10 bottom-0 -z-10 rounded-[2rem] blur-[80px]" />
 
-      <div className="border-border bg-card shadow-2xl overflow-hidden rounded-2xl border">
+      <div className="border-border bg-card overflow-hidden rounded-2xl border shadow-2xl">
         {/* 浏览器 chrome 条 */}
         <div className="bg-muted/50 border-border flex items-center gap-3 border-b px-4 py-3">
           <div className="flex gap-1.5" aria-hidden>

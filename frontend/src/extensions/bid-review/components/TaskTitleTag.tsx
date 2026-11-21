@@ -13,5 +13,10 @@ export function TaskTitleTag({
 }) {
   if (!taskId) return null;
   // 原型 h2 内任务号=纯正文(同字号/字重/色,非 mono);tt-id 仅作语义钩子
-  return <span className="tt-id">{" · "}{bizNo ?? taskId.slice(0, 8)}</span>;
+  return (
+    <span className="tt-id">
+      {" · "}
+      {bizNo ?? taskId.slice(0, 8)}
+    </span>
+  );
 }

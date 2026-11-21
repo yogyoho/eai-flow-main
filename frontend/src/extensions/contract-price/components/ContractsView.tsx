@@ -58,7 +58,10 @@ import {
 import { pathOf } from "@/extensions/contract-price/components/library-tree";
 import { PageHeader } from "@/extensions/contract-price/components/PageHeader";
 import type { SeedDraft } from "@/extensions/contract-price/components/SeedEditorDrawer";
-import { Pill, type PillTone } from "@/extensions/contract-price/components/ui/bits";
+import {
+  Pill,
+  type PillTone,
+} from "@/extensions/contract-price/components/ui/bits";
 import {
   Table,
   TableBody,

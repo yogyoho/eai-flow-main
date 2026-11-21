@@ -9,7 +9,11 @@ import SimpleShellLayout from "@/app/extensions/shell-old/SimpleShellLayout";
 import { PermissionProvider, usePermission } from "@/core/permissions";
 import { useAuth } from "@/extensions/hooks/useAuth";
 
-export default function WorkflowAdminLayout({ children }: { children: ReactNode }) {
+export default function WorkflowAdminLayout({
+  children,
+}: {
+  children: ReactNode;
+}) {
   // EAI-CUSTOM (F4): PermissionProvider 置于判权门之上，使 WorkflowAdminGate 能消费 /me 的 is_admin
   // （同 admin/layout.tsx AdminGate 模式），改名但 is_system 的超管不会被误锁门外。
   return (

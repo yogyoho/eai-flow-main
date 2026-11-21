@@ -409,7 +409,13 @@ def verify_quotes(provenance: dict, docs: list[dict]) -> dict[str, bool]:
     正文的子串(与 DocLocateModal 高亮、content 端点定位同口径)。docx quote 窗口
     与 pdf [[p.N]] 标记文本同源——诚实摘录必命中,改写/幻觉不命中。provenance 缺
     路径不出键(不造假核验)。"""
-    corpus = {str(d.get("doc_id") or "doc"): "".join(str(d.get("text") or "").split()) for d in docs}
+    # 同 doc_id 多分片(parse.docs_from_entries 大文档 30k 段边界预切)必须拼接
+    # 成整篇语料再核验——dict 一步推导会让后片覆盖前片,前片原文引用恒误判
+    # False(30k+ 文档全量误 blocked 事故根因之一)。
+    corpus: dict[str, str] = {}
+    for d in docs:
+        doc_id = str(d.get("doc_id") or "doc")
+        corpus[doc_id] = corpus.get(doc_id, "") + "".join(str(d.get("text") or "").split())
     verified: dict[str, bool] = {}
     for path, p in (provenance or {}).items():
         if not isinstance(p, dict):
@@ -571,6 +577,11 @@ FIELD_TYPE_CONTRACTS["bid.entity.name_in_bid_letter"] = '"XX有限公司" 企业
 FIELD_TYPE_CONTRACTS["bid.similar_performances"] = '["类似业绩条目描述(含项目名/金额/签订时间)"] 字符串列表;投标文件业绩表(「业绩表/类似业绩/合同业绩」表)逐行抄录;业绩表逐行必收,禁止整表跳过;无业绩给空数组。'
 FIELD_TYPE_CONTRACTS["tender.required_qual_level"] = '"甲级" 资质等级要求字符串;招标设定的资质等级门槛;仅设独立法人/信用等资格条件而无资质等级时给 null;无明示给 null。'
 FIELD_TYPE_CONTRACTS["bid.qual_levels"] = '["甲级"] 资质等级字符串列表;投标方持有的行业资质等级(从资质证书等级栏);不含荣誉/信用类证书(高新技术企业/AAA 信用是证书不是资质等级);无给空数组。'
+
+# ── 批十六 A-ADJ-1 递交方式集契约(EAI-CUSTOM 2026-11-11;L1-026 方式集维字段源,批十二先验证前附表可稳定抽;
+# null 语义对齐 covers None 硬化:无明示给 null → eval_core 剥离 → 缺字段门,禁给空数组防 covers 空集 FAIL 错位)
+FIELD_TYPE_CONTRACTS["tender.allowed_submit_methods"] = '["电子版上传","纸质"] 允许递交方式字符串列表;招标文件前附表/递交须知明示的投标文件递交方式集合(如线上平台上传/电子版/纸质);无明示给 null。'
+FIELD_TYPE_CONTRACTS["bid.submit_method"] = '"平台线上上传" 递交方式字符串;投标文件实际采用的递交方式(递交回执/投标函/封面载明);无明示给 null。'
 
 
 def normalize_section_tree(raw: Any) -> list[dict]:

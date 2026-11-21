@@ -11,13 +11,18 @@ export default async function SciFiProjectDetailPage({
   const { id } = await params;
   return (
     <ShellLayout>
-      <Suspense fallback={
-        <div className="flex items-center justify-center h-full" style={{ background: "var(--cyber-bg-primary, #020617)" }}>
-          <span className="font-cyber text-xs text-[var(--cyber-text-muted)] tracking-widest uppercase">
-            &gt; LOADING PROJECT DATA...
-          </span>
-        </div>
-      }>
+      <Suspense
+        fallback={
+          <div
+            className="flex h-full items-center justify-center"
+            style={{ background: "var(--cyber-bg-primary, #020617)" }}
+          >
+            <span className="font-cyber text-xs tracking-widest text-[var(--cyber-text-muted)] uppercase">
+              &gt; LOADING PROJECT DATA...
+            </span>
+          </div>
+        }
+      >
         <SciFiProjectDetail projectId={id} />
       </Suspense>
     </ShellLayout>

@@ -12,7 +12,6 @@ import {
 } from "@/extensions/bid-quote/components/chartTheme";
 import { cn } from "@/lib/utils";
 
-
 interface SectionCardProps {
   /** 区块序号徽标(①/②/③,原型 .section-badge)。 */
   badge: string;

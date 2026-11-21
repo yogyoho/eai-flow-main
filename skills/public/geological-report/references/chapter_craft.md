@@ -2,6 +2,8 @@
 
 > 供章节撰写子代理自读（派发 prompt 指向本文件）。主会话/控制器不需要读——工艺细节下沉于此，
 > 控制器保持薄上下文（spec 2026-08-28 §5.4 渐进披露）。
+> 硬化 2026-11：派发 prompt 已内联本工艺核心（rubric 段：逐要素成段/表后五步解读/数值纪律）与
+> 黄金范文切片——本文件降为子代理可选补充参考，读不到不影响任务面。
 
 ## 结构规范
 
@@ -28,9 +30,9 @@
 - 一切数字用 `{{SLOT:key}}`（key ∈ formula_state.values）；数据表用 `{{TABLE:fam}}`；**真数永不经过撰写者**（零数值漂移，比冻结快照更强）
 - 判定词（水文/工程/复合类型等 type_verdicts 值）**逐字**写入正文（XS3）
 
-## 动笔前读深度目标（bug-2221 根治）
+## 深度口径（硬化 2026-11 两级分级）
 
-写每章前读 `references/depth_targets.json` 该章 `median_eff`/`median_table_rows`/`median_paragraphs`，以此为篇幅下限自检；build_output 深度目标门兜底（eff ≥ 样例 median × 0.6 × 覆盖缩放，FAIL exit 1）。深度基线按矿种分文件（`references/depth_targets/<阶段>/<矿种>.json`，由样例库编译生成）；无对应矿种文件时回退 `references/depth_targets.json`。实际目标以单章门报错行内嵌的「样例 median × 系数」数值为准。缺数写 `[待确认]` 不砍段，数据覆盖不足时门自动放宽目标。**深度基准只认技能自带编译产物（`references/depth_targets.json` 或 `depth_targets/<阶段>/<矿种>.json`——后者由管理模块 compile 生成）**——绝不传 `--targets` 换基准、绝不自造/改写 depth_targets 文件、绝不绕过 build_output 直调 assemble（线程 03e18e4a 死循环取证：伪造基准+直调绕门 → 熔断）。门 FAIL 的唯一合法出路=补写正文。
+写每章前读 `references/depth_targets.json`（或矿种基线 `references/depth_targets/<阶段>/<矿种>.json`）该章 `median_eff`，两档自检：**绝对地板 = median×0.4 是硬 FAIL**（低于即整章打回——堆 `[待确认]` 压低覆盖缩放穿不了地板，越改越薄洗不成 PASS）；**风格拉伸 = median×0.6×覆盖缩放不足只记 STYLE_WARN**（不阻断交付、不触发重派）。要素链逐段写满自然达标——禁为凑字符重复套话。**深度基准只认技能自带编译产物**——绝不传 `--targets` 换基准、绝不自造/改写 depth_targets 文件、绝不绕过 build_output 直调 assemble（线程 03e18e4a 死循环取证：伪造基准+直调绕门 → 熔断）。硬门 FAIL 的唯一合法出路=补写正文。
 
 ## 大章分节写作指引（ch6 等最大目标章）
 

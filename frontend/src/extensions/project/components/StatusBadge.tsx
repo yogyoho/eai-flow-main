@@ -1,6 +1,12 @@
 "use client";
 
-import { CheckCircle2, Clock, Loader2, AlertCircle, Pencil } from "lucide-react";
+import {
+  CheckCircle2,
+  Clock,
+  Loader2,
+  AlertCircle,
+  Pencil,
+} from "lucide-react";
 import React from "react";
 
 import { cn } from "@/lib/utils";
@@ -12,34 +18,56 @@ interface StatusBadgeProps {
 
 // EAI-CUSTOM: canonical statuses (ADR 2026-08-02 P4). Legacy aliases kept only
 // during the transition so stale-fed badges still render sensibly.
-const STATUS_CONFIG: Record<string, { color: string; icon?: React.ReactNode }> = {
-  // Project statuses
-  draft: {
-    color: "border-primary/20 bg-primary/10 text-primary",
-    icon: <Loader2 className="h-3 w-3 animate-spin" />,
-  },
-  in_review: { color: "border-warning/20 bg-warning/10 text-warning", icon: <Clock className="h-3 w-3" /> },
-  approved: { color: "border-success/20 bg-success/10 text-success", icon: <CheckCircle2 className="h-3 w-3" /> },
+const STATUS_CONFIG: Record<string, { color: string; icon?: React.ReactNode }> =
+  {
+    // Project statuses
+    draft: {
+      color: "border-primary/20 bg-primary/10 text-primary",
+      icon: <Loader2 className="h-3 w-3 animate-spin" />,
+    },
+    in_review: {
+      color: "border-warning/20 bg-warning/10 text-warning",
+      icon: <Clock className="h-3 w-3" />,
+    },
+    approved: {
+      color: "border-success/20 bg-success/10 text-success",
+      icon: <CheckCircle2 className="h-3 w-3" />,
+    },
 
-  // Chapter statuses
-  pending: { color: "border-border bg-muted text-muted-foreground", icon: <Clock className="h-3 w-3" /> },
-  reviewing: {
-    color: "border-warning/20 bg-warning/10 text-warning",
-    icon: <Clock className="h-3 w-3" />,
-  },
+    // Chapter statuses
+    pending: {
+      color: "border-border bg-muted text-muted-foreground",
+      icon: <Clock className="h-3 w-3" />,
+    },
+    reviewing: {
+      color: "border-warning/20 bg-warning/10 text-warning",
+      icon: <Clock className="h-3 w-3" />,
+    },
 
-  // Legacy aliases (transition shim)
-  writing: {
-    color: "border-primary/20 bg-primary/10 text-primary",
-    icon: <Loader2 className="h-3 w-3 animate-spin" />,
-  },
-  review: { color: "border-warning/20 bg-warning/10 text-warning", icon: <Clock className="h-3 w-3" /> },
-  signed: { color: "border-success/20 bg-success/10 text-success", icon: <CheckCircle2 className="h-3 w-3" /> },
+    // Legacy aliases (transition shim)
+    writing: {
+      color: "border-primary/20 bg-primary/10 text-primary",
+      icon: <Loader2 className="h-3 w-3 animate-spin" />,
+    },
+    review: {
+      color: "border-warning/20 bg-warning/10 text-warning",
+      icon: <Clock className="h-3 w-3" />,
+    },
+    signed: {
+      color: "border-success/20 bg-success/10 text-success",
+      icon: <CheckCircle2 className="h-3 w-3" />,
+    },
 
-  // Error states
-  error: { color: "border-destructive/20 bg-destructive/10 text-destructive", icon: <AlertCircle className="h-3 w-3" /> },
-  failed: { color: "border-destructive/20 bg-destructive/10 text-destructive", icon: <AlertCircle className="h-3 w-3" /> },
-};
+    // Error states
+    error: {
+      color: "border-destructive/20 bg-destructive/10 text-destructive",
+      icon: <AlertCircle className="h-3 w-3" />,
+    },
+    failed: {
+      color: "border-destructive/20 bg-destructive/10 text-destructive",
+      icon: <AlertCircle className="h-3 w-3" />,
+    },
+  };
 
 const STATUS_LABELS: Record<string, string> = {
   draft: "编写中",
@@ -66,7 +94,7 @@ export function StatusBadge({ status, type }: StatusBadgeProps) {
   return (
     <span
       className={cn(
-        "inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[10px] font-medium border",
+        "inline-flex items-center gap-1 rounded-md border px-1.5 py-0.5 text-[10px] font-medium",
         config?.color,
       )}
     >

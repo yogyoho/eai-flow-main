@@ -1,12 +1,7 @@
 "use client";
 
 import { ChevronDown, Filter, Search } from "lucide-react";
-import {
-  type RefObject,
-  useEffect,
-  useRef,
-  useState,
-} from "react";
+import { type RefObject, useEffect, useRef, useState } from "react";
 
 import { BLUE } from "@/extensions/bid-quote/components/chartTheme";
 import {
@@ -77,7 +72,12 @@ function ProjectDropdown({
   };
   return (
     <div className="relative" ref={rootRef}>
-      <button type="button" className={TRIGGER} onClick={() => setOpen((o) => !o)} aria-label="项目">
+      <button
+        type="button"
+        className={TRIGGER}
+        onClick={() => setOpen((o) => !o)}
+        aria-label="项目"
+      >
         <span className="truncate">{value || "全部项目"}</span>
         <ChevronDown className="text-muted-foreground h-4 w-4 shrink-0" />
       </button>
@@ -90,7 +90,7 @@ function ProjectDropdown({
               value={kw}
               onChange={(e) => setKw(e.target.value)}
               placeholder="搜索项目名…"
-              className="border-border bg-background placeholder:text-muted-foreground/60 w-full rounded border py-1 pr-2 pl-7 text-sm outline-none focus:border-foreground/40"
+              className="border-border bg-background placeholder:text-muted-foreground/60 focus:border-foreground/40 w-full rounded border py-1 pr-2 pl-7 text-sm outline-none"
             />
           </div>
           <div className="max-h-60 overflow-auto">
@@ -101,8 +101,16 @@ function ProjectDropdown({
             >
               全部项目
             </button>
-            {q.isPending && <div className="text-muted-foreground/60 px-2 py-1.5 text-sm">加载中…</div>}
-            {q.isError && <div className="text-destructive/80 px-2 py-1.5 text-sm">加载失败</div>}
+            {q.isPending && (
+              <div className="text-muted-foreground/60 px-2 py-1.5 text-sm">
+                加载中…
+              </div>
+            )}
+            {q.isError && (
+              <div className="text-destructive/80 px-2 py-1.5 text-sm">
+                加载失败
+              </div>
+            )}
             {q.data?.map((p) => (
               <button
                 key={p}
@@ -148,7 +156,12 @@ function CompetitorDropdown({
   };
   return (
     <div className="relative" ref={rootRef}>
-      <button type="button" className={TRIGGER} onClick={() => setOpen((o) => !o)} aria-label="友商">
+      <button
+        type="button"
+        className={TRIGGER}
+        onClick={() => setOpen((o) => !o)}
+        aria-label="友商"
+      >
         <span className="truncate">{value || "全部"}</span>
         <ChevronDown className="text-muted-foreground h-4 w-4 shrink-0" />
       </button>
@@ -163,10 +176,14 @@ function CompetitorDropdown({
               全部
             </button>
             {status === "pending" && options.length === 0 && (
-              <div className="text-muted-foreground/60 px-2 py-1.5 text-sm">加载中…</div>
+              <div className="text-muted-foreground/60 px-2 py-1.5 text-sm">
+                加载中…
+              </div>
             )}
             {status === "error" && options.length === 0 && (
-              <div className="text-destructive/80 px-2 py-1.5 text-sm">选项加载失败</div>
+              <div className="text-destructive/80 px-2 py-1.5 text-sm">
+                选项加载失败
+              </div>
             )}
             {options.map((o) => (
               <button
@@ -274,7 +291,10 @@ function DateRangePicker({
           </div>
           <div className="grid grid-cols-7">
             {WEEK.map((w) => (
-              <span key={w} className="text-muted-foreground grid h-8 place-items-center text-sm">
+              <span
+                key={w}
+                className="text-muted-foreground grid h-8 place-items-center text-sm"
+              >
                 {w}
               </span>
             ))}
@@ -284,7 +304,12 @@ function DateRangePicker({
             {Array.from({ length: daysInMonth }, (_, i) => {
               const day = ymd(new Date(y, m, i + 1));
               const isEnd = day === effFrom || day === effTo;
-              const inRange = !!(effFrom && effTo && day >= effFrom && day <= effTo);
+              const inRange = !!(
+                effFrom &&
+                effTo &&
+                day >= effFrom &&
+                day <= effTo
+              );
               return (
                 <button
                   key={day}
@@ -306,7 +331,9 @@ function DateRangePicker({
             })}
           </div>
           <div className="mt-1 flex items-center justify-between px-1">
-            <span className="text-muted-foreground/70 text-sm">点击两下选起止区间</span>
+            <span className="text-muted-foreground/70 text-sm">
+              点击两下选起止区间
+            </span>
             {(from !== null || to !== null) && (
               <button
                 type="button"
@@ -396,7 +423,9 @@ export function FilterBar({ filters, onChange }: FilterBarProps) {
           <DateRangePicker
             from={filters.dateFrom}
             to={filters.dateTo}
-            onChange={(r) => onChange({ ...filters, dateFrom: r.from, dateTo: r.to })}
+            onChange={(r) =>
+              onChange({ ...filters, dateFrom: r.from, dateTo: r.to })
+            }
           />
         </div>
       </div>

@@ -7,13 +7,16 @@ import {
 } from "@/extensions/knowledge-factory/types";
 
 export function createEmptyRuleDraft(
-  dictionaries: RuleDictionaries = DEFAULT_RULE_DICTIONARIES
+  dictionaries: RuleDictionaries = DEFAULT_RULE_DICTIONARIES,
 ): ComplianceRuleCreate {
   const defaultType = RULE_TYPES.at(0);
   const defaultSeverity = SEVERITY_LEVELS.at(0);
   const defaultIndustry = dictionaries.industries.at(0);
   const defaultReportType = dictionaries.reportTypes.at(0);
-  const defaultRegion = dictionaries.regions.at(0) ?? { value: "nationwide", label: "全国" };
+  const defaultRegion = dictionaries.regions.at(0) ?? {
+    value: "nationwide",
+    label: "全国",
+  };
 
   return {
     ruleId: "",
@@ -51,16 +54,17 @@ export function buildRuleCreatePayload(
   draft: ComplianceRuleCreate,
   sourceSectionsInput: string,
   targetSectionsInput: string,
-  dictionaries: RuleDictionaries = DEFAULT_RULE_DICTIONARIES
+  dictionaries: RuleDictionaries = DEFAULT_RULE_DICTIONARIES,
 ): ComplianceRuleCreate {
   const typeName =
-    RULE_TYPES.find((item) => item.value === draft.type)?.label ?? draft.typeName;
+    RULE_TYPES.find((item) => item.value === draft.type)?.label ??
+    draft.typeName;
   const severityName =
     SEVERITY_LEVELS.find((item) => item.value === draft.severity)?.label ??
     draft.severityName;
   const industryName =
-    dictionaries.industries.find((item) => item.value === draft.industry)?.label ??
-    draft.industryName;
+    dictionaries.industries.find((item) => item.value === draft.industry)
+      ?.label ?? draft.industryName;
 
   const applicableRegions = draft.nationalLevel
     ? ["nationwide"]

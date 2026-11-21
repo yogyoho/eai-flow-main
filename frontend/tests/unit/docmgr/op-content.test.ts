@@ -6,14 +6,12 @@ describe("parseOperationContent（op.content 统一走 details+math 管线）", 
   test("$$ 独立公式被转成 equation 块（不再裸 parse 成文本段）", () => {
     // stub 模拟真实 tryParse：按 \n\n 分段各成 paragraph（与真实 markdown 解析一致，
     // 亦同本文件测试 2 的 stub）。transformMathInBlocks 的 equation 识别锚定单块全文。
-    const blocks = parseOperationContent(
-      "前文。\n\n$$\nE = mc^2\n$$",
-      (md) =>
-        md.split("\n\n").map((t, i) => ({
-          id: `raw${i}`,
-          type: "paragraph",
-          content: [{ type: "text", text: t }],
-        })),
+    const blocks = parseOperationContent("前文。\n\n$$\nE = mc^2\n$$", (md) =>
+      md.split("\n\n").map((t, i) => ({
+        id: `raw${i}`,
+        type: "paragraph",
+        content: [{ type: "text", text: t }],
+      })),
     ) as Array<{ type: string }>;
     expect(blocks.some((b) => b.type === "equation")).toBe(true);
   });
@@ -37,7 +35,11 @@ describe("parseOperationContent（op.content 统一走 details+math 管线）", 
       (md) => {
         seen.push(md);
         return [
-          { id: "raw", type: "paragraph", content: [{ type: "text", text: md }] },
+          {
+            id: "raw",
+            type: "paragraph",
+            content: [{ type: "text", text: md }],
+          },
         ];
       },
     ) as Array<{ type: string }>;

@@ -8,7 +8,12 @@
 
 import { useQuery } from "@tanstack/react-query";
 
-import { queryDataset, querySql, resolveDatasetId, resolveSourceId } from "./api";
+import {
+  queryDataset,
+  querySql,
+  resolveDatasetId,
+  resolveSourceId,
+} from "./api";
 import type {
   AttendanceSummaryRow,
   DeptTravelRow,
@@ -31,7 +36,11 @@ export const KEYS = {
   drilldown: (sql: string) => ["spq", "drilldown", sql] as const,
 };
 
-function useDatasetQuery<T>(key: readonly string[], label: string, enabled = true) {
+function useDatasetQuery<T>(
+  key: readonly string[],
+  label: string,
+  enabled = true,
+) {
   return useQuery({
     queryKey: key,
     enabled,
@@ -45,11 +54,16 @@ function useDatasetQuery<T>(key: readonly string[], label: string, enabled = tru
 }
 
 export const useHrKpi = () => useDatasetQuery<HrKpiRow>(KEYS.kpi, "HR总览");
-export const useAttendanceSummary = () => useDatasetQuery<AttendanceSummaryRow>(KEYS.attendance, "考勤汇总");
-export const useDeptTravel = () => useDatasetQuery<DeptTravelRow>(KEYS.travel, "部门差旅");
-export const useReimburseStatus = () => useDatasetQuery<ReimburseStatusRow>(KEYS.reimburse, "报销状态构成");
-export const useEmployeeDetail = () => useDatasetQuery<EmployeeDetailRow>(KEYS.detail, "员工明细");
-export const useReimburseDept = () => useDatasetQuery<ReimburseDeptRow>(KEYS.reimburseDept, "报销状态×部门");
+export const useAttendanceSummary = () =>
+  useDatasetQuery<AttendanceSummaryRow>(KEYS.attendance, "考勤汇总");
+export const useDeptTravel = () =>
+  useDatasetQuery<DeptTravelRow>(KEYS.travel, "部门差旅");
+export const useReimburseStatus = () =>
+  useDatasetQuery<ReimburseStatusRow>(KEYS.reimburse, "报销状态构成");
+export const useEmployeeDetail = () =>
+  useDatasetQuery<EmployeeDetailRow>(KEYS.detail, "员工明细");
+export const useReimburseDept = () =>
+  useDatasetQuery<ReimburseDeptRow>(KEYS.reimburseDept, "报销状态×部门");
 
 /** 员工明细:全量 mock_employee,下钻来源。 */
 export function useEmployeeList(enabled = true) {

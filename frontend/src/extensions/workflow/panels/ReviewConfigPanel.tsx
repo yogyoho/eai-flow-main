@@ -19,36 +19,42 @@ const MODES = [
 
 export function ReviewConfigPanel({ data, onUpdate }: ReviewConfigPanelProps) {
   return (
-    <div className="p-4 space-y-4">
+    <div className="space-y-4 p-4">
       {/* Section header */}
       <div className="flex items-center gap-2">
-        <div className="w-1 h-4 rounded-full bg-red-500" />
-        <span className="text-xs font-semibold uppercase tracking-wider text-red-600 dark:text-red-400">审核属性</span>
+        <div className="h-4 w-1 rounded-full bg-red-500" />
+        <span className="text-xs font-semibold tracking-wider text-red-600 uppercase dark:text-red-400">
+          审核属性
+        </span>
       </div>
 
       {/* Review name */}
       <div className="space-y-1.5">
-        <label className="text-xs font-medium text-muted-foreground">审核名称</label>
+        <label className="text-muted-foreground text-xs font-medium">
+          审核名称
+        </label>
         <input
           value={data.label || ""}
           onChange={(e) => onUpdate({ label: e.target.value })}
-          className="w-full px-2.5 py-1.5 text-sm border border-border rounded-md bg-background focus:outline-none focus:ring-2 focus:ring-red-500/20 focus:border-red-400 transition-colors"
+          className="border-border bg-background w-full rounded-md border px-2.5 py-1.5 text-sm transition-colors focus:border-red-400 focus:ring-2 focus:ring-red-500/20 focus:outline-none"
         />
       </div>
 
       {/* Review mode — radio group styled as cards */}
       <div className="space-y-1.5">
-        <label className="text-xs font-medium text-muted-foreground">审核模式</label>
-        <div className="space-y-2 mt-1">
+        <label className="text-muted-foreground text-xs font-medium">
+          审核模式
+        </label>
+        <div className="mt-1 space-y-2">
           {MODES.map((mode) => {
             const isSelected = data.mode === mode.value;
             return (
               <label
                 key={mode.value}
-                className={`flex items-start gap-2.5 p-2.5 rounded-lg border cursor-pointer transition-all ${
+                className={`flex cursor-pointer items-start gap-2.5 rounded-lg border p-2.5 transition-all ${
                   isSelected
-                    ? "border-red-300 dark:border-red-700 bg-red-50/60 shadow-sm"
-                    : "border-border bg-background hover:border-red-200 dark:border-red-800 hover:bg-red-50/30"
+                    ? "border-red-300 bg-red-50/60 shadow-sm dark:border-red-700"
+                    : "border-border bg-background hover:border-red-200 hover:bg-red-50/30 dark:border-red-800"
                 }`}
               >
                 <div className="mt-0.5">
@@ -62,10 +68,14 @@ export function ReviewConfigPanel({ data, onUpdate }: ReviewConfigPanelProps) {
                   />
                 </div>
                 <div>
-                  <div className={`text-xs font-medium ${isSelected ? "text-red-700 dark:text-red-300" : "text-foreground"}`}>
+                  <div
+                    className={`text-xs font-medium ${isSelected ? "text-red-700 dark:text-red-300" : "text-foreground"}`}
+                  >
                     {mode.label}
                   </div>
-                  <div className="text-[10px] text-muted-foreground mt-0.5">{mode.desc}</div>
+                  <div className="text-muted-foreground mt-0.5 text-[10px]">
+                    {mode.desc}
+                  </div>
                 </div>
               </label>
             );
@@ -74,14 +84,16 @@ export function ReviewConfigPanel({ data, onUpdate }: ReviewConfigPanelProps) {
       </div>
 
       {/* Info box */}
-      <div className="flex items-start gap-2 text-xs text-amber-700 dark:text-amber-300 bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 p-2.5 rounded-lg">
-        <ShieldCheck className="h-3.5 w-3.5 shrink-0 mt-0.5 text-amber-600 dark:text-amber-400 dark:text-amber-400" />
+      <div className="flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 p-2.5 text-xs text-amber-700 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-300">
+        <ShieldCheck className="mt-0.5 h-3.5 w-3.5 shrink-0 text-amber-600 dark:text-amber-400" />
         <span>审核人分配将在工作流启动后，由经理在工作台配置</span>
       </div>
 
       <NotificationsConfigPanel
         notifications={data.notifications ?? []}
-        onUpdate={(notifications: NotificationConfig[]) => onUpdate({ notifications })}
+        onUpdate={(notifications: NotificationConfig[]) =>
+          onUpdate({ notifications })
+        }
       />
     </div>
   );

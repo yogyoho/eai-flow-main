@@ -237,15 +237,18 @@ export function TemplateEditorPage({ templateId }: TemplateEditorPageProps) {
     },
     pending_approval: {
       text: "待审批",
-      color: "bg-amber-50 text-amber-600 border-amber-200 dark:bg-amber-950/40 dark:text-amber-300 dark:border-amber-800",
+      color:
+        "bg-amber-50 text-amber-600 border-amber-200 dark:bg-amber-950/40 dark:text-amber-300 dark:border-amber-800",
     },
     published: {
       text: "已发布",
-      color: "bg-green-50 text-green-600 border-green-200 dark:bg-green-950/40 dark:text-green-300 dark:border-green-800",
+      color:
+        "bg-green-50 text-green-600 border-green-200 dark:bg-green-950/40 dark:text-green-300 dark:border-green-800",
     },
     rejected: {
       text: "已拒绝",
-      color: "bg-red-50 text-red-600 border-red-200 dark:bg-red-950/40 dark:text-red-300 dark:border-red-800",
+      color:
+        "bg-red-50 text-red-600 border-red-200 dark:bg-red-950/40 dark:text-red-300 dark:border-red-800",
     },
   };
   const st = statusLabel[templateStatus] ?? statusLabel.draft!;

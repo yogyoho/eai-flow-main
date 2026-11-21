@@ -11,30 +11,49 @@ import { cn } from "@/lib/utils";
 
 // EAI-CUSTOM: 子路由映射到子页面权限点(/api/permissions/me 的 pages),供 canPage 过滤
 const navItems = [
-  { href: "/sales-personnel", label: "人员仪表盘", icon: LayoutDashboard, exact: true, pageId: "spq:page:dashboard" },
-  { href: "/sales-personnel/query", label: "数据查询", icon: Search, pageId: "spq:page:query" },
+  {
+    href: "/sales-personnel",
+    label: "人员仪表盘",
+    icon: LayoutDashboard,
+    exact: true,
+    pageId: "spq:page:dashboard",
+  },
+  {
+    href: "/sales-personnel/query",
+    label: "数据查询",
+    icon: Search,
+    pageId: "spq:page:query",
+  },
 ];
 
 function SalesPersonnelLayoutContent({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const { canPage, isLoading } = usePermission();
   // EAI-CUSTOM: 权限加载中 fail-open 全显,加载完按 canPage(pageId) 过滤
-  const visibleItems = isLoading ? navItems : navItems.filter((n) => canPage(n.pageId));
+  const visibleItems = isLoading
+    ? navItems
+    : navItems.filter((n) => canPage(n.pageId));
 
   return (
-    <div className="flex h-full flex-col bg-background">
-      <header className="flex h-16 shrink-0 items-center border-b border-border bg-background px-6">
-        <span className="mr-8 text-lg font-bold tracking-tight text-foreground">销售人员</span>
-        <nav className="flex h-full items-center gap-6 text-sm font-medium text-muted-foreground">
+    <div className="bg-background flex h-full flex-col">
+      <header className="border-border bg-background flex h-16 shrink-0 items-center border-b px-6">
+        <span className="text-foreground mr-8 text-lg font-bold tracking-tight">
+          销售人员
+        </span>
+        <nav className="text-muted-foreground flex h-full items-center gap-6 text-sm font-medium">
           {visibleItems.map(({ href, label, icon: Icon, exact }) => {
-            const isActive = exact ? pathname === href : pathname.startsWith(href);
+            const isActive = exact
+              ? pathname === href
+              : pathname.startsWith(href);
             return (
               <Link
                 key={href}
                 href={href}
                 className={cn(
                   "flex h-full items-center gap-1.5 border-b-2 py-5 transition-colors",
-                  isActive ? "border-primary text-primary" : "border-transparent hover:text-foreground",
+                  isActive
+                    ? "border-primary text-primary"
+                    : "hover:text-foreground border-transparent",
                 )}
               >
                 <Icon className="h-4 w-4" />
@@ -49,7 +68,11 @@ function SalesPersonnelLayoutContent({ children }: { children: ReactNode }) {
   );
 }
 
-export default function SalesPersonnelLayout({ children }: { children: ReactNode }) {
+export default function SalesPersonnelLayout({
+  children,
+}: {
+  children: ReactNode;
+}) {
   return (
     <ShellLayout>
       <SalesPersonnelLayoutContent>{children}</SalesPersonnelLayoutContent>

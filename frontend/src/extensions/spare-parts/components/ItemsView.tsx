@@ -51,8 +51,10 @@ const PAGE_SIZE = 50;
 
 const STATUS_TONE: Record<string, string> = {
   ok: "text-emerald-600 dark:text-emerald-400 border-emerald-500/30 bg-emerald-500/5",
-  needs_review: "text-amber-600 dark:text-amber-400 border-amber-500/30 bg-amber-500/5",
-  corrected: "text-blue-600 dark:text-blue-400 border-blue-500/30 bg-blue-500/5",
+  needs_review:
+    "text-amber-600 dark:text-amber-400 border-amber-500/30 bg-amber-500/5",
+  corrected:
+    "text-blue-600 dark:text-blue-400 border-blue-500/30 bg-blue-500/5",
 };
 const STATUS_LABEL: Record<string, string> = {
   ok: "已校验",
@@ -661,7 +663,9 @@ export function ItemsView() {
                                 className="h-8 w-28 text-right"
                               />
                             ) : item.unit_price == null ? (
-                              <span className="text-amber-600 dark:text-amber-400">待核验</span>
+                              <span className="text-amber-600 dark:text-amber-400">
+                                待核验
+                              </span>
                             ) : item.is_outlier ? (
                               <span className="text-destructive">
                                 {item.unit_price.toLocaleString()}
@@ -747,7 +751,7 @@ export function ItemsView() {
                                   }
                                   onClick={() => setTrace(item)}
                                 >
-                                  <Crosshair className="text-rose-600 dark:text-rose-400 h-3.5 w-3.5" />
+                                  <Crosshair className="h-3.5 w-3.5 text-rose-600 dark:text-rose-400" />
                                   溯源
                                 </Button>
                                 {confirmDelete === item.id ? (

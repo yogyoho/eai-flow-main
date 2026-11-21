@@ -47,30 +47,32 @@ export function ApprovalStepCard({
   return (
     <div
       className={cn(
-        "flex items-center gap-3 rounded-lg border border-border bg-card p-4",
-        status === "current" && "ring-2 ring-primary/30"
+        "border-border bg-card flex items-center gap-3 rounded-lg border p-4",
+        status === "current" && "ring-primary/30 ring-2",
       )}
     >
       {/* Step number circle */}
       <div
         className={cn(
           "flex h-8 w-8 shrink-0 items-center justify-center rounded-full border text-sm font-semibold",
-          config.circleClass
+          config.circleClass,
         )}
       >
-        <IconComponent className={cn("h-4 w-4", "iconClass" in config && config.iconClass)} />
+        <IconComponent
+          className={cn("h-4 w-4", "iconClass" in config && config.iconClass)}
+        />
       </div>
 
       {/* Step info */}
       <div className="flex min-w-0 flex-1 flex-col gap-0.5">
         <div className="flex items-center gap-2">
           <span className="text-sm font-medium">{step.name}</span>
-          <span className="inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[10px] font-medium bg-muted text-muted-foreground">
+          <span className="bg-muted text-muted-foreground inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[10px] font-medium">
             {step.requiredRole}
           </span>
         </div>
         {reviewerName && (
-          <span className="text-xs text-muted-foreground">
+          <span className="text-muted-foreground text-xs">
             审批人：{reviewerName}
           </span>
         )}
@@ -83,7 +85,7 @@ export function ApprovalStepCard({
           status === "completed" && "text-success",
           status === "current" && "text-primary",
           status === "pending" && "text-muted-foreground",
-          status === "rejected" && "text-destructive"
+          status === "rejected" && "text-destructive",
         )}
       >
         {config.statusText}

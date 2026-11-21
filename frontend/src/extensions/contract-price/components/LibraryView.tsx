@@ -566,16 +566,18 @@ export function LibraryView() {
               /* 目录树初始骨架（对齐右侧文件表骨架配方）：8 行缩进脉冲条，
                   灰条 muted-foreground/15，缩进模拟层级、宽度交错拟真目录名 */
               <div className="space-y-2.5 p-2">
-                {([
-                  [0, 52],
-                  [1, 68],
-                  [2, 56],
-                  [1, 76],
-                  [2, 48],
-                  [1, 60],
-                  [2, 72],
-                  [3, 44],
-                ] as const).map(([depth, w], i) => (
+                {(
+                  [
+                    [0, 52],
+                    [1, 68],
+                    [2, 56],
+                    [1, 76],
+                    [2, 48],
+                    [1, 60],
+                    [2, 72],
+                    [3, 44],
+                  ] as const
+                ).map(([depth, w], i) => (
                   <div
                     key={i}
                     className="flex items-center gap-1.5"
@@ -694,7 +696,7 @@ export function LibraryView() {
                       key={d.id}
                       tabIndex={0}
                       aria-label={`打开文件夹 ${d.name}`}
-                      className="hover:bg-muted/50 cursor-pointer border-border/70 border-b"
+                      className="hover:bg-muted/50 border-border/70 cursor-pointer border-b"
                       onClick={() => enterFolder(d.id)}
                       onKeyDown={(e) => {
                         if (e.key === "Enter" || e.key === " ") {

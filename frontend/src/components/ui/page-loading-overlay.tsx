@@ -8,16 +8,19 @@ interface PageLoadingOverlayProps {
   className?: string;
 }
 
-export function PageLoadingOverlay({ text = "Loading...", className }: PageLoadingOverlayProps) {
+export function PageLoadingOverlay({
+  text = "Loading...",
+  className,
+}: PageLoadingOverlayProps) {
   return (
     <div
       className={cn(
-        "fixed inset-0 z-50 flex flex-col items-center justify-center bg-background/80 backdrop-blur-sm",
-        className
+        "bg-background/80 fixed inset-0 z-50 flex flex-col items-center justify-center backdrop-blur-sm",
+        className,
       )}
     >
-      <Loader2 className="h-10 w-10 animate-spin text-primary mb-4" />
-      <p className="text-sm text-muted-foreground">{text}</p>
+      <Loader2 className="text-primary mb-4 h-10 w-10 animate-spin" />
+      <p className="text-muted-foreground text-sm">{text}</p>
     </div>
   );
 }

@@ -346,7 +346,9 @@ export function GlossaryView() {
       index === originalIndex ? normalized : entry,
     );
     const key = KEY(normalized);
-    if (next.some((entry, index) => index !== originalIndex && KEY(entry) === key)) {
+    if (
+      next.some((entry, index) => index !== originalIndex && KEY(entry) === key)
+    ) {
       toast.error("同一源词与语言只允许一条");
       return;
     }
@@ -372,7 +374,8 @@ export function GlossaryView() {
       toast.error("同一源词与语言只允许一条");
       return;
     }
-    if (await persist([...entries, normalized], "术语已新增")) setAddOpen(false);
+    if (await persist([...entries, normalized], "术语已新增"))
+      setAddOpen(false);
   };
 
   const openImport = () => {
@@ -426,7 +429,10 @@ export function GlossaryView() {
 
   const TableSkeleton = () => (
     <div role="status" aria-label="术语列表加载中">
-      <table className="w-full table-fixed border-collapse text-left" aria-hidden>
+      <table
+        className="w-full table-fixed border-collapse text-left"
+        aria-hidden
+      >
         <thead>
           <tr className="bg-muted/50 border-b">
             {["源词", "语言", "动作", "目标译法", "领域", "说明", "操作"].map(
@@ -579,7 +585,9 @@ export function GlossaryView() {
                 }}
               >
                 全部领域
-                {domainFilters.length === 0 && <Check className="h-3.5 w-3.5" />}
+                {domainFilters.length === 0 && (
+                  <Check className="h-3.5 w-3.5" />
+                )}
               </button>
               <div className="border-border my-1 border-t" />
               <div className="max-h-60 overflow-y-auto">
@@ -632,9 +640,7 @@ export function GlossaryView() {
             <div className="text-muted-foreground flex flex-col items-center justify-center gap-2 p-10 text-center text-sm">
               <BookMarked className="h-10 w-10" />
               <p>术语库为空——机制已生效但无注入内容。</p>
-              <p className="text-xs">
-                从 Excel 导入，或新增术语开始维护。
-              </p>
+              <p className="text-xs">从 Excel 导入，或新增术语开始维护。</p>
             </div>
           ) : (
             <table className="w-full table-fixed border-collapse text-left">
@@ -674,9 +680,7 @@ export function GlossaryView() {
                       key={key}
                       className={cn(
                         "border-b border-[var(--gray-100)] transition-colors last:border-b-0",
-                        isEditing
-                          ? "bg-primary/5"
-                          : "hover:bg-muted/40",
+                        isEditing ? "bg-primary/5" : "hover:bg-muted/40",
                       )}
                       onKeyDown={(e) => {
                         if (!isEditing) return;
@@ -891,9 +895,8 @@ export function GlossaryView() {
 
         <div className="border-border text-muted-foreground flex flex-wrap items-center gap-2 border-t px-4 py-2 text-xs">
           <span>
-            共{" "}
-            <b className="text-foreground tabular-nums">{entries.length}</b> 条
-            · 当前筛选{" "}
+            共 <b className="text-foreground tabular-nums">{entries.length}</b>{" "}
+            条 · 当前筛选{" "}
             <b className="text-foreground tabular-nums">{visible.length}</b> 条
           </span>
           <span className="flex-1" />
@@ -1005,10 +1008,7 @@ export function GlossaryView() {
           </div>
           <div className="divide-border flex flex-col divide-y">
             {[
-              [
-                "语言维度",
-                "EN / FR 只作用于对应源语言任务；ANY 英法文都生效",
-              ],
+              ["语言维度", "EN / FR 只作用于对应源语言任务；ANY 英法文都生效"],
               [
                 "注入方式",
                 "每个 block 只注入命中该段文本的术语，避免全表 token 膨胀",
@@ -1098,9 +1098,7 @@ export function GlossaryView() {
                 )}
               </span>
               <span className="text-[13px] font-medium">
-                {importing
-                  ? "正在解析…"
-                  : "拖拽 Excel 到这里，或点击选择文件"}
+                {importing ? "正在解析…" : "拖拽 Excel 到这里，或点击选择文件"}
               </span>
               <span className="text-muted-foreground text-[11px]">
                 支持 .xlsx / .csv · 首行表头 · 最大 2 MB
@@ -1173,8 +1171,8 @@ export function GlossaryView() {
                     className="mt-2.5 rounded-md border border-[var(--error-100)] bg-[var(--error-50)] px-3 py-2 text-xs text-[var(--error-900)]"
                   >
                     <div className="mb-1 flex items-center gap-1.5 font-semibold">
-                      <TriangleAlert className="h-3.5 w-3.5" />
-                      有 {invalidCount} 行未通过校验，请修正后重新上传
+                      <TriangleAlert className="h-3.5 w-3.5" />有 {invalidCount}{" "}
+                      行未通过校验，请修正后重新上传
                     </div>
                     <ul className="ml-4 list-disc">
                       {importPreview.rows
@@ -1188,14 +1186,30 @@ export function GlossaryView() {
                   </div>
                 )}
 
-                <div className="border-border mt-3 grid grid-flow-col auto-cols-fr overflow-hidden rounded-md border">
+                <div className="border-border mt-3 grid auto-cols-fr grid-flow-col overflow-hidden rounded-md border">
                   {(
                     [
                       ["新增", importPreview.summary.add ?? 0, "text-primary"],
-                      ["更新", importPreview.summary.update ?? 0, "text-[var(--warning-900)]"],
-                      ["无变化", importPreview.summary.unchanged ?? 0, "text-foreground"],
-                      ["错误", importPreview.summary.invalid ?? 0, "text-destructive"],
-                      ["合计", importPreview.summary.total ?? 0, "text-foreground"],
+                      [
+                        "更新",
+                        importPreview.summary.update ?? 0,
+                        "text-[var(--warning-900)]",
+                      ],
+                      [
+                        "无变化",
+                        importPreview.summary.unchanged ?? 0,
+                        "text-foreground",
+                      ],
+                      [
+                        "错误",
+                        importPreview.summary.invalid ?? 0,
+                        "text-destructive",
+                      ],
+                      [
+                        "合计",
+                        importPreview.summary.total ?? 0,
+                        "text-foreground",
+                      ],
                     ] as const
                   ).map(([label, value, tone]) => (
                     <div
@@ -1256,7 +1270,8 @@ export function GlossaryView() {
                             key={row.row}
                             className={cn(
                               "border-b border-[var(--gray-100)] last:border-b-0",
-                              row.status === "invalid" && "bg-[var(--error-50)]",
+                              row.status === "invalid" &&
+                                "bg-[var(--error-50)]",
                             )}
                           >
                             <td className="text-muted-foreground px-2.5 py-1.5 font-mono text-[11px] tabular-nums">
@@ -1295,12 +1310,12 @@ export function GlossaryView() {
                                 </>
                               )}
                             </td>
-                            <td className="px-2.5 py-1.5 text-xs text-muted-foreground">
+                            <td className="text-muted-foreground px-2.5 py-1.5 text-xs">
                               {row.domains.length > 0
                                 ? row.domains.join("、")
                                 : "—"}
                             </td>
-                            <td className="px-2.5 py-1.5 text-xs text-muted-foreground">
+                            <td className="text-muted-foreground px-2.5 py-1.5 text-xs">
                               {row.notes ? (
                                 <span
                                   className="line-clamp-1"
@@ -1446,9 +1461,7 @@ export function GlossaryView() {
               </label>
               <TagInput
                 value={addDraft.domains}
-                onChange={(domains) =>
-                  setAddDraft({ ...addDraft, domains })
-                }
+                onChange={(domains) => setAddDraft({ ...addDraft, domains })}
                 placeholder="输入后回车生成标签"
                 ariaLabel="业务领域标签"
               />

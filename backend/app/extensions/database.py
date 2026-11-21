@@ -1555,6 +1555,8 @@ async def seed_db() -> None:
                     {"key": "geology", "label": "地质管理", "accent": "teal", "sort": 6, "universal": False},
                     # EAI-CUSTOM (2026-09 样例库迁出): 煤矿设计域（煤矿环评报告样例库，自 knowledge_factory 独立成应用）
                     {"key": "mining", "label": "煤矿设计", "accent": "orange", "sort": 7, "universal": False},
+                    # EAI-CUSTOM (2026-11-14 materials): 材料学计算域（第一性原理计算平台）
+                    {"key": "materials", "label": "材料计算", "accent": "indigo", "sort": 8, "universal": False},
                 ]
                 for domain in domains:
                     await session.execute(
@@ -1749,21 +1751,6 @@ async def seed_db() -> None:
                         "sort": 16,
                         "sort_key": "meikuanghuanpingyangliku",
                     },
-                    # EAI-CUSTOM (bug-3109 v4): 投标资料管理（应用中心 → 市场营销；资质 MinIO 版本库+样例台账，
-                    # 端点 /api/extensions/bid-materials/*，permissions 块 bid_materials / nav:bid-materials）
-                    {
-                        "app_id": "bid-materials",
-                        "name": "投标资料管理",
-                        "desc": "投标资质版本库与标书技术资料台账，资质到期预警与样例幂等导入",
-                        "icon": "book-marked",
-                        "domain": "marketing",
-                        "stage": "process",
-                        "path": "/bid-materials",
-                        "license": "platform",
-                        "admin": False,
-                        "sort": 17,
-                        "sort_key": "toubiaoziliaoguanli",
-                    },
                     # EAI-CUSTOM (2026-10-29 bid-review): 投标方案审查（应用中心 → 市场营销；
                     # 子系统端点 /api/extensions/bid-review/*，permissions 块 bid_review / nav:bid-review，
                     # 前端 /bid-review 四页。应用中心 seed 缺此行则左侧导航无入口（应用列表 = app_definitions 表驱动））
@@ -1779,6 +1766,37 @@ async def seed_db() -> None:
                         "admin": False,
                         "sort": 18,
                         "sort_key": "toubiaofangancha",
+                    },
+                    # EAI-CUSTOM (2026-11-13 bid-write): 投标方案（商务）写作。独立子系统
+                    # /api/extensions/bid-write/* + 前端 /bid-write 八页;复用 bid-review 的
+                    # .brx 视觉语言,入口与应用中心其它业务应用同款新 tab 打开。
+                    {
+                        "app_id": "bid-write",
+                        "name": "投标方案写作",
+                        "desc": "商务标响应矩阵、素材缺口、写作工作台与导出适配，正文可追溯到招标条款",
+                        "icon": "file-text",
+                        "domain": "marketing",
+                        "stage": "process",
+                        "path": "/bid-write",
+                        "license": "platform",
+                        "admin": False,
+                        "sort": 19,
+                        "sort_key": "toubiaofanganxiezuo",
+                    },
+                    # EAI-CUSTOM (2026-11-14 materials): 材料学计算独立子系统。前端 /materials
+                    # 独立端口 3030/8030，nginx 以 /materials/api 反代；应用中心新 tab 打开。
+                    {
+                        "app_id": "materials",
+                        "name": "材料学计算",
+                        "desc": "第一性原理材料计算：结构构建、工作流编排、Slurm 执行、运行诊断与结果归档",
+                        "icon": "atom",
+                        "domain": "materials",
+                        "stage": "process",
+                        "path": "/materials",
+                        "license": "platform",
+                        "admin": False,
+                        "sort": 20,
+                        "sort_key": "cailiaojisuan",
                     },
                     {
                         "app_id": "admin",

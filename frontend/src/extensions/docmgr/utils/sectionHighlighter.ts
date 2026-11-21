@@ -5,7 +5,10 @@
 
 const HIGHLIGHT_DURATION = 2000;
 
-export function highlightSection(element: HTMLElement, duration = HIGHLIGHT_DURATION) {
+export function highlightSection(
+  element: HTMLElement,
+  duration = HIGHLIGHT_DURATION,
+) {
   const originalBg = element.style.backgroundColor;
   const originalTransition = element.style.transition;
   element.style.transition = "background-color 0.3s ease";

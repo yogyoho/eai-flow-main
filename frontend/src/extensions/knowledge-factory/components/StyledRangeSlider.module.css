@@ -56,7 +56,9 @@
   box-shadow:
     0 1px 3px rgb(0 0 0 / 0.12),
     0 0 0 1px rgb(79 70 229 / 0.12);
-  transition: transform 0.15s ease, box-shadow 0.15s ease;
+  transition:
+    transform 0.15s ease,
+    box-shadow 0.15s ease;
 }
 
 .slider:hover::-webkit-slider-thumb {
@@ -98,7 +100,9 @@
   box-shadow:
     0 1px 3px rgb(0 0 0 / 0.12),
     0 0 0 1px rgb(79 70 229 / 0.12);
-  transition: transform 0.15s ease, box-shadow 0.15s ease;
+  transition:
+    transform 0.15s ease,
+    box-shadow 0.15s ease;
 }
 
 .slider:hover::-moz-range-thumb {

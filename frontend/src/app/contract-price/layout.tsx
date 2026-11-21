@@ -60,7 +60,7 @@ const navItems = [
     icon: Tags,
     pageId: "cpa:page:terms",
   },
-    {
+  {
     href: "/contract-price/tasks",
     label: "任务记录",
     icon: History,

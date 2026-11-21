@@ -390,7 +390,7 @@ export default function ProgressiveSkillsAnimation() {
         {/* Left: File Tree */}
         <div className="flex flex-1 flex-col">
           <motion.div
-            className="mb-4 font-mono text-sm dark:text-zinc-500 text-muted-foreground"
+            className="text-muted-foreground mb-4 font-mono text-sm dark:text-zinc-500"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
           >
@@ -407,8 +407,8 @@ export default function ProgressiveSkillsAnimation() {
                     : item.dragging
                       ? "translate-x-8 scale-105 text-blue-400"
                       : item.active
-                          ? "text-foreground"
-                          : item.highlight
+                        ? "text-foreground"
+                        : item.highlight
                           ? "text-purple-400"
                           : "text-foreground"
                 }`}
@@ -456,12 +456,14 @@ export default function ProgressiveSkillsAnimation() {
         </div>
 
         {/* Right: Chat Interface */}
-        <div className="flex flex-1 flex-col overflow-hidden rounded-2xl border border-border dark:border-zinc-800 bg-muted/30 dark:bg-zinc-900/50">
+        <div className="border-border bg-muted/30 flex flex-1 flex-col overflow-hidden rounded-2xl border dark:border-zinc-800 dark:bg-zinc-900/50">
           {/* Chat Header */}
-          <div className="border-border dark:border-zinc-800 border-b p-4">
+          <div className="border-border border-b p-4 dark:border-zinc-800">
             <div className="flex items-center gap-2">
               <div className="h-3 w-3 rounded-full bg-green-500" />
-              <span className="text-sm dark:text-zinc-400 text-muted-foreground">EAIFlow Agent</span>
+              <span className="text-muted-foreground text-sm dark:text-zinc-400">
+                EAIFlow Agent
+              </span>
             </div>
           </div>
 
@@ -508,7 +510,7 @@ export default function ProgressiveSkillsAnimation() {
                     "deploying",
                     "done",
                   ].includes(phase) && (
-                    <div className="text-base dark:text-zinc-300 text-foreground">
+                    <div className="text-foreground text-base dark:text-zinc-300">
                       <span className="text-purple-400">✨</span> Found 3 skills
                     </div>
                   )}
@@ -525,8 +527,8 @@ export default function ProgressiveSkillsAnimation() {
                     "done",
                   ].includes(phase) && (
                     <div className="mt-4">
-                      <hr className="dark:border-zinc-700 border-border mb-3" />
-                      <div className="mb-3 dark:text-zinc-300 text-foreground">
+                      <hr className="border-border mb-3 dark:border-zinc-700" />
+                      <div className="text-foreground mb-3 dark:text-zinc-300">
                         🔬 Researching...
                       </div>
                       <div className="mb-3 space-y-2">
@@ -541,7 +543,7 @@ export default function ProgressiveSkillsAnimation() {
                           "deploying",
                           "done",
                         ].includes(phase) && (
-                          <div className="flex items-center gap-2 pl-4 dark:text-zinc-400 text-muted-foreground">
+                          <div className="text-muted-foreground flex items-center gap-2 pl-4 dark:text-zinc-400">
                             <FileText size={16} />
                             <span>Loading deep-search/SKILL.md...</span>
                           </div>
@@ -556,7 +558,7 @@ export default function ProgressiveSkillsAnimation() {
                           "deploying",
                           "done",
                         ].includes(phase) && (
-                          <div className="flex items-center gap-2 pl-4 dark:text-zinc-400 text-muted-foreground">
+                          <div className="text-muted-foreground flex items-center gap-2 pl-4 dark:text-zinc-400">
                             <FileText size={16} />
                             <span>
                               Found biotech related topic, loading
@@ -573,7 +575,7 @@ export default function ProgressiveSkillsAnimation() {
                               key={i}
                               initial={{ opacity: 0, y: 10 }}
                               animate={{ opacity: 1, y: 0 }}
-                              className="flex items-center gap-2 text-sm dark:text-zinc-500 text-muted-foreground"
+                              className="text-muted-foreground flex items-center gap-2 text-sm dark:text-zinc-500"
                             >
                               {step.type === "search" ? (
                                 <Search size={14} className="text-blue-400" />
@@ -598,7 +600,7 @@ export default function ProgressiveSkillsAnimation() {
                               key={i}
                               initial={{ opacity: 0, y: 10 }}
                               animate={{ opacity: 1, y: 0 }}
-                              className="flex items-center gap-2 text-sm dark:text-zinc-500 text-muted-foreground"
+                              className="text-muted-foreground flex items-center gap-2 text-sm dark:text-zinc-500"
                             >
                               {step.type === "search" ? (
                                 <Search size={14} className="text-blue-400" />
@@ -622,9 +624,11 @@ export default function ProgressiveSkillsAnimation() {
                       animate={{ opacity: 1 }}
                       className="mt-4"
                     >
-                      <hr className="dark:border-zinc-700 border-border mb-3" />
-                      <div className="mb-3 dark:text-zinc-300 text-foreground">🔨 Building...</div>
-                      <div className="mb-3 flex items-center gap-2 pl-4 dark:text-zinc-400 text-muted-foreground">
+                      <hr className="border-border mb-3 dark:border-zinc-700" />
+                      <div className="text-foreground mb-3 dark:text-zinc-300">
+                        🔨 Building...
+                      </div>
+                      <div className="text-muted-foreground mb-3 flex items-center gap-2 pl-4 dark:text-zinc-400">
                         <FileText size={16} />
                         <span>Loading frontend-design/SKILL.md...</span>
                       </div>
@@ -652,10 +656,12 @@ export default function ProgressiveSkillsAnimation() {
                       animate={{ opacity: 1 }}
                       className="mt-4"
                     >
-                      <hr className="dark:border-zinc-700 border-border mb-3" />
-                      <div className="mb-3 dark:text-zinc-300 text-foreground">🚀 Deploying...</div>
+                      <hr className="border-border mb-3 dark:border-zinc-700" />
+                      <div className="text-foreground mb-3 dark:text-zinc-300">
+                        🚀 Deploying...
+                      </div>
                       <div className="mb-3 space-y-2">
-                        <div className="flex items-center gap-2 pl-4 dark:text-zinc-400 text-muted-foreground">
+                        <div className="text-muted-foreground flex items-center gap-2 pl-4 dark:text-zinc-400">
                           <FileText size={16} />
                           <span>Loading deploy/SKILL.md...</span>
                         </div>
@@ -663,7 +669,7 @@ export default function ProgressiveSkillsAnimation() {
                           <motion.div
                             initial={{ opacity: 0 }}
                             animate={{ opacity: 1 }}
-                            className="flex items-center gap-2 pl-4 dark:text-zinc-400 text-muted-foreground"
+                            className="text-muted-foreground flex items-center gap-2 pl-4 dark:text-zinc-400"
                           >
                             <Terminal size={16} />
                             <span>Executing scripts/deploy.sh</span>
@@ -689,8 +695,8 @@ export default function ProgressiveSkillsAnimation() {
           </div>
 
           {/* Chat Input (decorative) */}
-          <div className="border-border dark:border-zinc-800 border-t p-4">
-            <div className="rounded-xl dark:bg-zinc-800 bg-muted px-4 py-3 text-sm dark:text-zinc-500 text-muted-foreground">
+          <div className="border-border border-t p-4 dark:border-zinc-800">
+            <div className="bg-muted text-muted-foreground rounded-xl px-4 py-3 text-sm dark:bg-zinc-800 dark:text-zinc-500">
               Ask EAIFlow anything...
             </div>
           </div>

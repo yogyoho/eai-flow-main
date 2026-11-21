@@ -447,7 +447,9 @@ function ProjectDocumentRow({
         {getFileIcon(document.name, "size-5 shrink-0")}
         <div className="flex min-w-0 flex-1 flex-col gap-0.5">
           <div className="flex min-w-0 items-center gap-2">
-            <span className="truncate text-sm font-medium">{document.name}</span>
+            <span className="truncate text-sm font-medium">
+              {document.name}
+            </span>
             {provenance && (
               <Badge variant="secondary" className="shrink-0">
                 {provenance}

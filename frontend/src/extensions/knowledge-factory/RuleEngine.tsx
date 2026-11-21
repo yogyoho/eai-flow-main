@@ -61,17 +61,26 @@ export default function RuleEngine({
   initialFilters,
 }: RuleEngineProps) {
   const dictionaries = useRuleDictionaries();
-  const ruleTypes = dictionaries.ruleTypes?.length ? dictionaries.ruleTypes : RULE_TYPES;
-  const severityLevels = dictionaries.severityLevels?.length ? dictionaries.severityLevels : SEVERITY_LEVELS;
+  const ruleTypes = dictionaries.ruleTypes?.length
+    ? dictionaries.ruleTypes
+    : RULE_TYPES;
+  const severityLevels = dictionaries.severityLevels?.length
+    ? dictionaries.severityLevels
+    : SEVERITY_LEVELS;
   const [selectedRuleId, setSelectedRuleId] = useState<string | null>(null);
   const [showCreatePanel, setShowCreatePanel] = useState(false);
-  const [selectedRules, setSelectedRules] = useState<string[]>(initialSelectedRules);
+  const [selectedRules, setSelectedRules] =
+    useState<string[]>(initialSelectedRules);
   const [batchSelectionMode, setBatchSelectionMode] = useState(false);
   const [batchActionLoading, setBatchActionLoading] = useState(false);
   const [batchActionError, setBatchActionError] = useState<string | null>(null);
   const [showSeedManager, setShowSeedManager] = useState(false);
-  const [logsModalRule, setLogsModalRule] = useState<ComplianceRule | null>(null);
-  const [testModalRule, setTestModalRule] = useState<ComplianceRule | null>(null);
+  const [logsModalRule, setLogsModalRule] = useState<ComplianceRule | null>(
+    null,
+  );
+  const [testModalRule, setTestModalRule] = useState<ComplianceRule | null>(
+    null,
+  );
   const [searchQuery, setSearchQuery] = useState("");
   const [showAiExtract, setShowAiExtract] = useState(false);
 
@@ -141,7 +150,10 @@ export default function RuleEngine({
     setSelectedRuleId(rule.ruleId ?? null);
   };
 
-  const handleFilterChange = (key: keyof RuleFilterParams, value: string | boolean | number | undefined) => {
+  const handleFilterChange = (
+    key: keyof RuleFilterParams,
+    value: string | boolean | number | undefined,
+  ) => {
     setFilter(key, value);
   };
 
@@ -154,13 +166,15 @@ export default function RuleEngine({
     ? rules.filter(
         (rule) =>
           rule.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          (rule.ruleId ?? "").toLowerCase().includes(searchQuery.toLowerCase()) ||
-          rule.description?.toLowerCase().includes(searchQuery.toLowerCase())
+          (rule.ruleId ?? "")
+            .toLowerCase()
+            .includes(searchQuery.toLowerCase()) ||
+          rule.description?.toLowerCase().includes(searchQuery.toLowerCase()),
       )
     : rules;
 
   const selectedRule = selectedRuleId
-    ? rules.find((rule) => rule.ruleId === selectedRuleId) ?? null
+    ? (rules.find((rule) => rule.ruleId === selectedRuleId) ?? null)
     : null;
 
   const hasActiveFilters =
@@ -183,10 +197,12 @@ export default function RuleEngine({
 
   const allFilteredRulesSelected = areAllRulesSelected(
     filteredRules.map((rule) => rule.id),
-    selectedRules
+    selectedRules,
   );
 
-  const selectedBatchRules = rules.filter((rule) => selectedRules.includes(rule.id));
+  const selectedBatchRules = rules.filter((rule) =>
+    selectedRules.includes(rule.id),
+  );
 
   const handleToggleRuleSelection = (ruleId: string) => {
     const nextSelection = toggleRuleSelection(selectedRules, ruleId);
@@ -197,7 +213,7 @@ export default function RuleEngine({
   const handleSelectAll = () => {
     const nextSelection = getAllSelectedRuleIds(
       filteredRules.map((rule) => rule.id),
-      selectedRules
+      selectedRules,
     );
     setSelectedRules(nextSelection);
     onSelectionChange?.(nextSelection);
@@ -223,7 +239,7 @@ export default function RuleEngine({
     }
 
     const confirmed = window.confirm(
-      `确定要批量${enabled ? "启用" : "禁用"} ${selectedBatchRules.length} 条规则吗？`
+      `确定要批量${enabled ? "启用" : "禁用"} ${selectedBatchRules.length} 条规则吗？`,
     );
     if (!confirmed) {
       return;
@@ -234,13 +250,15 @@ export default function RuleEngine({
 
     try {
       const result = await handleBatchToggleEnabled(
-        selectedBatchRules.map((rule) => rule.ruleId).filter((id): id is string => !!id),
-        enabled
+        selectedBatchRules
+          .map((rule) => rule.ruleId)
+          .filter((id): id is string => !!id),
+        enabled,
       );
 
       if (result.failedCount > 0) {
         setBatchActionError(
-          `已处理 ${result.successCount} 条，失败 ${result.failedCount} 条。${result.errors[0] ?? ""}`
+          `已处理 ${result.successCount} 条，失败 ${result.failedCount} 条。${result.errors[0] ?? ""}`,
         );
         return;
       }
@@ -255,14 +273,14 @@ export default function RuleEngine({
 
   return (
     <div className="flex h-full flex-col">
-      <div className="shrink-0 border-b border-border bg-card p-4">
+      <div className="border-border bg-card shrink-0 border-b p-4">
         <div className="flex items-center justify-between">
           <div>
-            <h2 className="flex items-center gap-2 text-lg font-medium tracking-tight text-foreground">
-              <ShieldCheck className="h-5 w-5 text-primary" />
+            <h2 className="text-foreground flex items-center gap-2 text-lg font-medium tracking-tight">
+              <ShieldCheck className="text-primary h-5 w-5" />
               合规规则引擎
             </h2>
-            <p className="mt-1 text-sm text-muted-foreground">
+            <p className="text-muted-foreground mt-1 text-sm">
               当前筛选结果 {total} 条
               {searchQuery ? `，本地搜索命中 ${filteredRules.length} 条` : ""}
             </p>
@@ -270,13 +288,15 @@ export default function RuleEngine({
 
           <div className="flex gap-2">
             <button
-              className="flex shrink-0 items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50"
+              className="bg-primary hover:bg-primary/90 flex shrink-0 items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium text-white transition-colors disabled:cursor-not-allowed disabled:opacity-50"
               onClick={() => {
                 setSelectedRuleId(null);
                 setShowCreatePanel(true);
               }}
               disabled={!showManagement || readOnly}
-              title={!showManagement || readOnly ? "当前模式不可新建规则" : undefined}
+              title={
+                !showManagement || readOnly ? "当前模式不可新建规则" : undefined
+              }
             >
               <Plus className="h-4 w-4" />
               新建规则
@@ -284,7 +304,7 @@ export default function RuleEngine({
 
             {showManagement && (
               <button
-                className="flex shrink-0 items-center gap-2 rounded-lg bg-gradient-to-r from-primary to-primary/80 px-4 py-2 text-sm font-medium text-white shadow-sm transition-all hover:shadow-md disabled:cursor-not-allowed disabled:opacity-50"
+                className="from-primary to-primary/80 flex shrink-0 items-center gap-2 rounded-lg bg-gradient-to-r px-4 py-2 text-sm font-medium text-white shadow-sm transition-all hover:shadow-md disabled:cursor-not-allowed disabled:opacity-50"
                 onClick={() => setShowAiExtract(true)}
                 disabled={readOnly}
               >
@@ -295,7 +315,7 @@ export default function RuleEngine({
 
             {showManagement && (
               <button
-                className="flex items-center gap-1.5 rounded-lg border border-border bg-card px-4 py-2 text-sm font-medium text-foreground shadow-sm transition-colors hover:bg-accent disabled:cursor-not-allowed disabled:opacity-50"
+                className="border-border bg-card text-foreground hover:bg-accent flex items-center gap-1.5 rounded-lg border px-4 py-2 text-sm font-medium shadow-sm transition-colors disabled:cursor-not-allowed disabled:opacity-50"
                 onClick={() => setShowSeedManager(true)}
                 disabled={loading}
                 title="种子数据管理"
@@ -307,30 +327,36 @@ export default function RuleEngine({
 
             {!batchSelectionMode ? (
               <button
-                className="rounded-lg border border-border bg-card px-4 py-2 text-sm font-medium text-foreground shadow-sm transition-colors hover:bg-accent disabled:cursor-not-allowed disabled:opacity-50"
+                className="border-border bg-card text-foreground hover:bg-accent rounded-lg border px-4 py-2 text-sm font-medium shadow-sm transition-colors disabled:cursor-not-allowed disabled:opacity-50"
                 onClick={handleStartBatchSelection}
-                disabled={!showManagement || readOnly || loading || rules.length === 0}
+                disabled={
+                  !showManagement || readOnly || loading || rules.length === 0
+                }
               >
                 批量启用/禁用
               </button>
             ) : (
               <>
                 <button
-                  className="rounded-lg border border-success/20 bg-success/10 text-success px-4 py-2 text-sm font-medium shadow-sm transition-colors hover:bg-success/20 disabled:cursor-not-allowed disabled:opacity-50"
+                  className="border-success/20 bg-success/10 text-success hover:bg-success/20 rounded-lg border px-4 py-2 text-sm font-medium shadow-sm transition-colors disabled:cursor-not-allowed disabled:opacity-50"
                   onClick={() => void handleBatchToggle(true)}
-                  disabled={batchActionLoading || selectedBatchRules.length === 0}
+                  disabled={
+                    batchActionLoading || selectedBatchRules.length === 0
+                  }
                 >
                   批量启用
                 </button>
                 <button
-                  className="rounded-lg border border-warning/20 bg-warning/10 text-warning px-4 py-2 text-sm font-medium shadow-sm transition-colors hover:bg-warning/20 disabled:cursor-not-allowed disabled:opacity-50"
+                  className="border-warning/20 bg-warning/10 text-warning hover:bg-warning/20 rounded-lg border px-4 py-2 text-sm font-medium shadow-sm transition-colors disabled:cursor-not-allowed disabled:opacity-50"
                   onClick={() => void handleBatchToggle(false)}
-                  disabled={batchActionLoading || selectedBatchRules.length === 0}
+                  disabled={
+                    batchActionLoading || selectedBatchRules.length === 0
+                  }
                 >
                   批量禁用
                 </button>
                 <button
-                  className="rounded-lg border border-border bg-card px-4 py-2 text-sm font-medium text-muted-foreground shadow-sm transition-colors hover:bg-accent disabled:cursor-not-allowed disabled:opacity-50"
+                  className="border-border bg-card text-muted-foreground hover:bg-accent rounded-lg border px-4 py-2 text-sm font-medium shadow-sm transition-colors disabled:cursor-not-allowed disabled:opacity-50"
                   onClick={resetBatchSelection}
                   disabled={batchActionLoading}
                 >
@@ -341,7 +367,7 @@ export default function RuleEngine({
 
             {showManagement && (
               <button
-                className="flex items-center gap-1.5 rounded-lg border border-border bg-card px-4 py-2 text-sm font-medium text-foreground shadow-sm transition-colors hover:bg-accent disabled:cursor-not-allowed disabled:opacity-50"
+                className="border-border bg-card text-foreground hover:bg-accent flex items-center gap-1.5 rounded-lg border px-4 py-2 text-sm font-medium shadow-sm transition-colors disabled:cursor-not-allowed disabled:opacity-50"
                 onClick={refresh}
                 disabled={loading || batchActionLoading}
                 title="刷新"
@@ -354,78 +380,100 @@ export default function RuleEngine({
         </div>
       </div>
 
-      <div className="flex-1 space-y-6 overflow-y-auto bg-muted/30 p-6">
+      <div className="bg-muted/30 flex-1 space-y-6 overflow-y-auto p-6">
         <div className="grid grid-cols-1 gap-4 md:grid-cols-5">
-          <div className="flex items-center gap-3 rounded-xl border border-info/20 bg-gradient-to-br from-card to-info/5 p-5 shadow-sm transition-shadow hover:shadow-md">
-            <div className="flex size-12 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-info/20 to-info/5 text-info">
+          <div className="border-info/20 from-card to-info/5 flex items-center gap-3 rounded-xl border bg-gradient-to-br p-5 shadow-sm transition-shadow hover:shadow-md">
+            <div className="from-info/20 to-info/5 text-info flex size-12 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br">
               <LayoutList className="size-6" aria-hidden />
             </div>
             <div className="min-w-0 flex-1">
-              <div className="mb-1 text-sm text-muted-foreground">总规则数</div>
-              <div className="text-2xl font-bold text-foreground font-cyber">{statistics?.total ?? "-"}</div>
+              <div className="text-muted-foreground mb-1 text-sm">总规则数</div>
+              <div className="text-foreground font-cyber text-2xl font-bold">
+                {statistics?.total ?? "-"}
+              </div>
             </div>
           </div>
-          <div className="flex items-center gap-3 rounded-xl border border-success/20 bg-gradient-to-br from-card to-success/5 p-5 shadow-sm transition-shadow hover:shadow-md">
-            <div className="flex size-12 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-success/20 to-success/5 text-success">
+          <div className="border-success/20 from-card to-success/5 flex items-center gap-3 rounded-xl border bg-gradient-to-br p-5 shadow-sm transition-shadow hover:shadow-md">
+            <div className="from-success/20 to-success/5 text-success flex size-12 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br">
               <BadgeCheck className="size-6" aria-hidden />
             </div>
             <div className="min-w-0 flex-1">
-              <div className="mb-1 text-sm text-muted-foreground">已启用</div>
-              <div className="text-2xl font-bold text-success font-cyber">{statistics?.enabled ?? "-"}</div>
+              <div className="text-muted-foreground mb-1 text-sm">已启用</div>
+              <div className="text-success font-cyber text-2xl font-bold">
+                {statistics?.enabled ?? "-"}
+              </div>
             </div>
           </div>
-          <div className="flex items-center gap-3 rounded-xl border border-primary/20 bg-gradient-to-br from-card to-primary/5 p-5 shadow-sm transition-shadow hover:shadow-md">
-            <div className="flex size-12 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-primary/20 to-primary/5 text-primary">
+          <div className="border-primary/20 from-card to-primary/5 flex items-center gap-3 rounded-xl border bg-gradient-to-br p-5 shadow-sm transition-shadow hover:shadow-md">
+            <div className="from-primary/20 to-primary/5 text-primary flex size-12 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br">
               <Activity className="size-6" aria-hidden />
             </div>
             <div className="min-w-0 flex-1">
-              <div className="mb-1 text-sm text-muted-foreground">本月触发</div>
-              <div className="text-2xl font-bold text-primary font-cyber">
+              <div className="text-muted-foreground mb-1 text-sm">本月触发</div>
+              <div className="text-primary font-cyber text-2xl font-bold">
                 {triggerStats?.monthTriggers?.toLocaleString() ?? "-"}
               </div>
             </div>
           </div>
-          <div className="flex items-center gap-3 rounded-xl border border-destructive/20 bg-gradient-to-br from-card to-destructive/5 p-5 shadow-sm transition-shadow hover:shadow-md">
-            <div className="flex size-12 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-destructive/20 to-destructive/5 text-destructive">
+          <div className="border-destructive/20 from-card to-destructive/5 flex items-center gap-3 rounded-xl border bg-gradient-to-br p-5 shadow-sm transition-shadow hover:shadow-md">
+            <div className="from-destructive/20 to-destructive/5 text-destructive flex size-12 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br">
               <ShieldAlert className="size-6" aria-hidden />
             </div>
             <div className="min-w-0 flex-1">
-              <div className="mb-1 text-sm text-muted-foreground">拦截问题</div>
-              <div className="text-2xl font-bold text-destructive font-cyber">{triggerStats?.monthBlocked ?? "-"}</div>
+              <div className="text-muted-foreground mb-1 text-sm">拦截问题</div>
+              <div className="text-destructive font-cyber text-2xl font-bold">
+                {triggerStats?.monthBlocked ?? "-"}
+              </div>
             </div>
           </div>
-          <div className="flex items-center gap-3 rounded-xl border border-warning/20 bg-gradient-to-br from-card to-warning/5 p-5 shadow-sm transition-shadow hover:shadow-md">
-            <div className="flex size-12 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-warning/20 to-warning/5 text-warning">
+          <div className="border-warning/20 from-card to-warning/5 flex items-center gap-3 rounded-xl border bg-gradient-to-br p-5 shadow-sm transition-shadow hover:shadow-md">
+            <div className="from-warning/20 to-warning/5 text-warning flex size-12 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br">
               <Sprout className="size-6" aria-hidden />
             </div>
             <div className="min-w-0 flex-1">
-              <div className="mb-1 text-sm text-muted-foreground">种子规则</div>
-              <div className="text-2xl font-bold text-warning font-cyber">{seedStatus?.seedTotal ?? "-"}</div>
+              <div className="text-muted-foreground mb-1 text-sm">种子规则</div>
+              <div className="text-warning font-cyber text-2xl font-bold">
+                {seedStatus?.seedTotal ?? "-"}
+              </div>
             </div>
           </div>
         </div>
 
         {industrySummary.length > 0 && (
-          <div className="rounded-xl border border-border/50 bg-gradient-to-br from-card to-card/80 p-4 text-sm text-muted-foreground shadow-sm">
+          <div className="border-border/50 from-card to-card/80 text-muted-foreground rounded-xl border bg-gradient-to-br p-4 text-sm shadow-sm">
             行业分布: {industrySummary.join(" | ")}
           </div>
         )}
 
-        <div className="flex flex-wrap items-center gap-4 rounded-xl border border-border/50 bg-gradient-to-br from-card to-card/80 p-4 shadow-sm">
+        <div className="border-border/50 from-card to-card/80 flex flex-wrap items-center gap-4 rounded-xl border bg-gradient-to-br p-4 shadow-sm">
           <div className="flex gap-4">
             <AdminSelect
               value={filters.type ?? "all"}
-              onChange={(value) => handleFilterChange("type", value === "all" ? undefined : value)}
+              onChange={(value) =>
+                handleFilterChange("type", value === "all" ? undefined : value)
+              }
               options={[
                 { value: "all", label: "全部规则分类" },
-                ...ruleTypes.map((item) => ({ value: item.value, label: item.label })),
+                ...ruleTypes.map((item) => ({
+                  value: item.value,
+                  label: item.label,
+                })),
               ]}
               className="w-40"
             />
             <AdminSelect
-              value={filters.enabled === undefined ? "all" : filters.enabled ? "enabled" : "disabled"}
+              value={
+                filters.enabled === undefined
+                  ? "all"
+                  : filters.enabled
+                    ? "enabled"
+                    : "disabled"
+              }
               onChange={(value) =>
-                handleFilterChange("enabled", value === "all" ? undefined : value === "enabled")
+                handleFilterChange(
+                  "enabled",
+                  value === "all" ? undefined : value === "enabled",
+                )
               }
               options={[
                 { value: "all", label: "全部状态" },
@@ -436,57 +484,89 @@ export default function RuleEngine({
             />
             <AdminSelect
               value={filters.severity ?? "all"}
-              onChange={(value) => handleFilterChange("severity", value === "all" ? undefined : value)}
+              onChange={(value) =>
+                handleFilterChange(
+                  "severity",
+                  value === "all" ? undefined : value,
+                )
+              }
               options={[
                 { value: "all", label: "全部严重级别" },
-                ...severityLevels.map((item) => ({ value: item.value, label: item.label })),
+                ...severityLevels.map((item) => ({
+                  value: item.value,
+                  label: item.label,
+                })),
               ]}
               className="w-36"
             />
             <AdminSelect
               value={filters.industry ?? "all"}
-              onChange={(value) => handleFilterChange("industry", value === "all" ? undefined : value)}
+              onChange={(value) =>
+                handleFilterChange(
+                  "industry",
+                  value === "all" ? undefined : value,
+                )
+              }
               options={[
                 { value: "all", label: "全部行业" },
-                ...dictionaries.industries.map((item) => ({ value: item.value, label: item.label })),
+                ...dictionaries.industries.map((item) => ({
+                  value: item.value,
+                  label: item.label,
+                })),
               ]}
               className="w-36"
             />
             <AdminSelect
               value={filters.reportType ?? "all"}
-              onChange={(value) => handleFilterChange("reportType", value === "all" ? undefined : value)}
+              onChange={(value) =>
+                handleFilterChange(
+                  "reportType",
+                  value === "all" ? undefined : value,
+                )
+              }
               options={[
                 { value: "all", label: "全部报告类型" },
-                ...dictionaries.reportTypes.map((item) => ({ value: item.value, label: item.label })),
+                ...dictionaries.reportTypes.map((item) => ({
+                  value: item.value,
+                  label: item.label,
+                })),
               ]}
               className="w-44"
             />
             <AdminSelect
               value={filters.region ?? "all"}
-              onChange={(value) => handleFilterChange("region", value === "all" ? undefined : value)}
+              onChange={(value) =>
+                handleFilterChange(
+                  "region",
+                  value === "all" ? undefined : value,
+                )
+              }
               options={[
                 { value: "all", label: "全部地区" },
-                ...dictionaries.regions.map((item) => ({ value: item.value, label: item.label })),
+                ...dictionaries.regions.map((item) => ({
+                  value: item.value,
+                  label: item.label,
+                })),
               ]}
               className="w-32"
             />
           </div>
 
           <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <Search className="text-muted-foreground absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2" />
             <input
               type="text"
               placeholder="搜索规则名称、ID、描述..."
               value={searchQuery}
               onChange={(event) => setSearchQuery(event.target.value)}
-              className="w-full rounded-lg border border-border bg-muted py-2 pl-10 pr-4 text-sm outline-none transition-all focus:border-primary focus:ring-2 focus:ring-primary/20"
+              className="border-border bg-muted focus:border-primary focus:ring-primary/20 w-full rounded-lg border py-2 pr-4 pl-10 text-sm transition-all outline-none focus:ring-2"
             />
           </div>
 
           <div className="flex items-center gap-2">
             {hasActiveFilters && (
               <button
-                className="px-3 py-2 text-sm text-muted-foreground transition-colors hover:text-foreground"
+                className="text-muted-foreground hover:text-foreground px-3 py-2 text-sm transition-colors"
                 onClick={clearFilters}
               >
                 清除筛选
@@ -497,13 +577,13 @@ export default function RuleEngine({
 
         <div className="space-y-4">
           {batchActionError && (
-            <div className="rounded-xl border border-destructive/20 bg-destructive/10 px-4 py-3 text-sm text-destructive">
+            <div className="border-destructive/20 bg-destructive/10 text-destructive rounded-xl border px-4 py-3 text-sm">
               {batchActionError}
             </div>
           )}
 
           {effectiveSelectionMode && (
-            <div className="flex items-center justify-between rounded-xl border border-border bg-muted p-4">
+            <div className="border-border bg-muted flex items-center justify-between rounded-xl border p-4">
               <label className="flex cursor-pointer items-center gap-2">
                 <input
                   type="checkbox"
@@ -513,7 +593,7 @@ export default function RuleEngine({
                 />
                 <span className="text-sm font-medium">全选当前页</span>
               </label>
-              <div className="text-sm text-muted-foreground">
+              <div className="text-muted-foreground text-sm">
                 已选择 {selectedRules.length} 条规则
                 {batchActionLoading ? "，正在执行批量操作..." : ""}
               </div>
@@ -521,18 +601,20 @@ export default function RuleEngine({
           )}
 
           {loading && (
-            <div className="flex flex-col items-center justify-center py-16 text-muted-foreground">
+            <div className="text-muted-foreground flex flex-col items-center justify-center py-16">
               <RefreshCw className="mb-4 h-8 w-8 animate-spin" />
               <span>加载中...</span>
             </div>
           )}
 
           {!loading && error && (
-            <div className="flex flex-col items-center justify-center py-16 text-destructive">
+            <div className="text-destructive flex flex-col items-center justify-center py-16">
               <span className="mb-2 text-lg">加载失败</span>
-              <span className="mb-4 text-sm text-muted-foreground">{error}</span>
+              <span className="text-muted-foreground mb-4 text-sm">
+                {error}
+              </span>
               <button
-                className="rounded-lg bg-destructive px-4 py-2 text-sm text-white hover:bg-destructive/90"
+                className="bg-destructive hover:bg-destructive/90 rounded-lg px-4 py-2 text-sm text-white"
                 onClick={() => {
                   void loadRules();
                 }}
@@ -543,13 +625,16 @@ export default function RuleEngine({
           )}
 
           {!loading && !error && filteredRules.length === 0 && (
-            <div className="flex flex-col items-center justify-center py-16 text-muted-foreground">
+            <div className="text-muted-foreground flex flex-col items-center justify-center py-16">
               <span className="mb-4 text-4xl">📭</span>
               <span className="mb-2 text-lg">
                 {hasActiveFilters ? "没有符合条件的规则" : "暂无规则"}
               </span>
               {hasActiveFilters && (
-                <button className="text-sm text-primary hover:underline" onClick={clearFilters}>
+                <button
+                  className="text-primary text-sm hover:underline"
+                  onClick={clearFilters}
+                >
                   清除筛选
                 </button>
               )}
@@ -558,7 +643,7 @@ export default function RuleEngine({
 
           {!loading && !error && filteredRules.length > 0 && (
             <>
-              <div className="text-sm text-muted-foreground">
+              <div className="text-muted-foreground text-sm">
                 共 {total} 条规则
                 {searchQuery ? `，搜索到 ${filteredRules.length} 条` : ""}
               </div>
@@ -567,11 +652,15 @@ export default function RuleEngine({
                 <div
                   key={rule.id}
                   className={cn(
-                    "overflow-hidden rounded-xl border border-border/50 bg-card shadow-sm transition-all group hover:border-primary/30 hover:shadow-md border-l-[3px]",
+                    "border-border/50 bg-card group hover:border-primary/30 overflow-hidden rounded-xl border border-l-[3px] shadow-sm transition-all hover:shadow-md",
                     rule.severity === "critical" && "border-l-destructive/60",
                     rule.severity === "warning" && "border-l-warning/60",
-                    (rule.severity !== "critical" && rule.severity !== "warning") && "border-l-primary/40",
-                    effectiveSelectionMode && selectedRules.includes(rule.id) && "border-primary/40 ring-2 ring-primary/30"
+                    rule.severity !== "critical" &&
+                      rule.severity !== "warning" &&
+                      "border-l-primary/40",
+                    effectiveSelectionMode &&
+                      selectedRules.includes(rule.id) &&
+                      "border-primary/40 ring-primary/30 ring-2",
                   )}
                   onClick={() => {
                     if (effectiveSelectionMode) {
@@ -579,7 +668,7 @@ export default function RuleEngine({
                     }
                   }}
                 >
-                  <div className="flex items-start justify-between border-b border-border p-5">
+                  <div className="border-border flex items-start justify-between border-b p-5">
                     <div className="flex gap-4">
                       {effectiveSelectionMode && (
                         <label
@@ -599,10 +688,10 @@ export default function RuleEngine({
                         className={cn(
                           "flex h-10 w-10 items-center justify-center rounded-lg",
                           rule.severity === "critical"
-                            ? "bg-gradient-to-br from-destructive/20 to-destructive/5 text-destructive"
+                            ? "from-destructive/20 to-destructive/5 text-destructive bg-gradient-to-br"
                             : rule.severity === "warning"
-                              ? "bg-gradient-to-br from-warning/20 to-warning/5 text-warning"
-                              : "bg-gradient-to-br from-muted/50 to-muted/20 text-muted-foreground"
+                              ? "from-warning/20 to-warning/5 text-warning bg-gradient-to-br"
+                              : "from-muted/50 to-muted/20 text-muted-foreground bg-gradient-to-br",
                         )}
                       >
                         <AlertCircle className="h-6 w-6" />
@@ -610,7 +699,7 @@ export default function RuleEngine({
 
                       <div className="space-y-1">
                         <div className="flex items-center gap-3">
-                          <h4 className="font-medium text-foreground">
+                          <h4 className="text-foreground font-medium">
                             {rule.ruleId} | {rule.name}
                           </h4>
                           <span
@@ -618,11 +707,19 @@ export default function RuleEngine({
                               "flex cursor-pointer items-center gap-1.5 rounded-full border px-2 py-1 text-xs font-medium",
                               rule.enabled
                                 ? "border-success/20 bg-success/10 text-success"
-                                : "border-border bg-muted text-muted-foreground"
+                                : "border-border bg-muted text-muted-foreground",
                             )}
                             onClick={() => {
-                              if (!effectiveSelectionMode && !readOnly && showManagement && rule.ruleId) {
-                                void handleToggleEnabled(rule.ruleId, !rule.enabled);
+                              if (
+                                !effectiveSelectionMode &&
+                                !readOnly &&
+                                showManagement &&
+                                rule.ruleId
+                              ) {
+                                void handleToggleEnabled(
+                                  rule.ruleId,
+                                  !rule.enabled,
+                                );
                               }
                             }}
                           >
@@ -630,25 +727,31 @@ export default function RuleEngine({
                           </span>
                         </div>
 
-                        <div className="flex gap-4 text-xs text-muted-foreground">
+                        <div className="text-muted-foreground flex gap-4 text-xs">
                           <span>类型: {rule.typeName || rule.type}</span>
                           <span className="flex items-center gap-1">
                             级别:
                             {rule.severity === "critical" ? (
-                              <span className="font-medium text-destructive">严重</span>
+                              <span className="text-destructive font-medium">
+                                严重
+                              </span>
                             ) : rule.severity === "warning" ? (
-                              <span className="font-medium text-warning">警告</span>
+                              <span className="text-warning font-medium">
+                                警告
+                              </span>
                             ) : (
                               <span>{rule.severity}</span>
                             )}
                           </span>
-                          {rule.industryName && <span>行业: {rule.industryName}</span>}
+                          {rule.industryName && (
+                            <span>行业: {rule.industryName}</span>
+                          )}
                         </div>
                       </div>
                     </div>
 
                     <button
-                      className="rounded-md p-1.5 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+                      className="text-muted-foreground hover:bg-accent hover:text-foreground rounded-md p-1.5 transition-colors"
                       onClick={(event) => event.stopPropagation()}
                     >
                       <MoreVertical className="h-5 w-5" />
@@ -656,53 +759,65 @@ export default function RuleEngine({
                   </div>
 
                   <div className="space-y-4 p-5">
-                    <p className="text-sm text-muted-foreground">
+                    <p className="text-muted-foreground text-sm">
                       {rule.description ?? rule.errorMessage ?? "暂无描述"}
                     </p>
 
-                    {((rule.sourceSections?.length ?? 0) > 0 || (rule.targetSections?.length ?? 0) > 0) && (
+                    {((rule.sourceSections?.length ?? 0) > 0 ||
+                      (rule.targetSections?.length ?? 0) > 0) && (
                       <div className="grid grid-cols-1 gap-6 text-sm md:grid-cols-2">
                         <div className="space-y-2">
-                          <div className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
+                          <div className="text-muted-foreground text-[10px] font-medium tracking-wider uppercase">
                             涉及章节
                           </div>
                           <div className="flex flex-wrap gap-2">
-                            {(rule.sourceSections ?? []).map((section, index) => (
-                              <span
-                                key={`src-${index}`}
-                                className="rounded bg-muted px-2 py-1 text-foreground"
-                              >
-                                [{section}]
-                              </span>
-                            ))}
-                            {((rule.targetSections?.length ?? 0) > 0) && (
-                              <ChevronRight className="h-4 w-4 self-center text-muted-foreground" />
+                            {(rule.sourceSections ?? []).map(
+                              (section, index) => (
+                                <span
+                                  key={`src-${index}`}
+                                  className="bg-muted text-foreground rounded px-2 py-1"
+                                >
+                                  [{section}]
+                                </span>
+                              ),
                             )}
-                            {(rule.targetSections ?? []).map((section, index) => (
-                              <span
-                                key={`tgt-${index}`}
-                                className="rounded bg-secondary px-2 py-1 text-primary"
-                              >
-                                [{section}]
-                              </span>
-                            ))}
+                            {(rule.targetSections?.length ?? 0) > 0 && (
+                              <ChevronRight className="text-muted-foreground h-4 w-4 self-center" />
+                            )}
+                            {(rule.targetSections ?? []).map(
+                              (section, index) => (
+                                <span
+                                  key={`tgt-${index}`}
+                                  className="bg-secondary text-primary rounded px-2 py-1"
+                                >
+                                  [{section}]
+                                </span>
+                              ),
+                            )}
                           </div>
                         </div>
                       </div>
                     )}
 
-                    <div className="flex items-center justify-between border-t border-border pt-4 text-xs text-muted-foreground">
+                    <div className="border-border text-muted-foreground flex items-center justify-between border-t pt-4 text-xs">
                       <div>
-                        {rule.seedVersion && <span className="mr-4">种子版本: {rule.seedVersion}</span>}
+                        {rule.seedVersion && (
+                          <span className="mr-4">
+                            种子版本: {rule.seedVersion}
+                          </span>
+                        )}
                         {rule.updatedAt && (
-                          <span>更新: {new Date(rule.updatedAt).toLocaleDateString()}</span>
+                          <span>
+                            更新:{" "}
+                            {new Date(rule.updatedAt).toLocaleDateString()}
+                          </span>
                         )}
                       </div>
 
                       <div className="flex gap-4">
                         {showManagement && !readOnly && (
                           <button
-                            className="font-medium text-primary transition-colors hover:text-primary/70 hover:underline"
+                            className="text-primary hover:text-primary/70 font-medium transition-colors hover:underline"
                             onClick={(event) => {
                               event.stopPropagation();
                               setSelectedRuleId(rule.ruleId ?? null);
@@ -713,7 +828,7 @@ export default function RuleEngine({
                         )}
                         {showManagement && (
                           <button
-                            className="font-medium text-primary transition-colors hover:text-primary/70 hover:underline"
+                            className="text-primary hover:text-primary/70 font-medium transition-colors hover:underline"
                             onClick={(event) => {
                               event.stopPropagation();
                               void handleViewLogs(rule);
@@ -724,7 +839,7 @@ export default function RuleEngine({
                         )}
                         {showManagement && (
                           <button
-                            className="flex items-center gap-1 font-medium text-primary transition-colors hover:text-primary/70 hover:underline"
+                            className="text-primary hover:text-primary/70 flex items-center gap-1 font-medium transition-colors hover:underline"
                             onClick={(event) => {
                               event.stopPropagation();
                               handleTestRule(rule);
@@ -745,17 +860,17 @@ export default function RuleEngine({
           {!loading && !error && total > limit && (
             <div className="flex items-center justify-center gap-4 py-4">
               <button
-                className="rounded-lg border border-border bg-card px-4 py-2 text-sm font-medium text-foreground transition-colors hover:bg-accent disabled:cursor-not-allowed disabled:opacity-50"
+                className="border-border bg-card text-foreground hover:bg-accent rounded-lg border px-4 py-2 text-sm font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-50"
                 disabled={page <= 1}
                 onClick={() => handleFilterChange("page", page - 1)}
               >
                 上一页
               </button>
-              <span className="text-sm text-muted-foreground">
+              <span className="text-muted-foreground text-sm">
                 第 {page} / {Math.ceil(total / limit)} 页
               </span>
               <button
-                className="rounded-lg border border-border bg-card px-4 py-2 text-sm font-medium text-foreground transition-colors hover:bg-accent disabled:cursor-not-allowed disabled:opacity-50"
+                className="border-border bg-card text-foreground hover:bg-accent rounded-lg border px-4 py-2 text-sm font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-50"
                 disabled={page >= Math.ceil(total / limit)}
                 onClick={() => handleFilterChange("page", page + 1)}
               >

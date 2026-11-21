@@ -21,7 +21,13 @@ const PRESET_DIMENSIONS = [
   { value: "format", label: "格式规范" },
 ];
 
-export function ReviewAssignmentDialog({ projectId, phaseNode, open, onClose, onAssigned }: ReviewAssignmentDialogProps) {
+export function ReviewAssignmentDialog({
+  projectId,
+  phaseNode,
+  open,
+  onClose,
+  onAssigned,
+}: ReviewAssignmentDialogProps) {
   const [mode, setMode] = useState<"chapter" | "dimension">("chapter");
   const [reviewerId, setReviewerId] = useState("");
   const [dimension, setDimension] = useState("technical");
@@ -56,23 +62,28 @@ export function ReviewAssignmentDialog({ projectId, phaseNode, open, onClose, on
   };
 
   return (
-    <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
-      <div className="bg-card rounded-xl shadow-xl w-[480px] max-h-[80vh] overflow-y-auto p-6 space-y-4">
-        <div className="flex justify-between items-center">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+      <div className="bg-card max-h-[80vh] w-[480px] space-y-4 overflow-y-auto rounded-xl p-6 shadow-xl">
+        <div className="flex items-center justify-between">
           <div className="text-lg font-medium">分配审核人</div>
-          <button onClick={onClose} className="text-muted-foreground hover:text-foreground">✕</button>
+          <button
+            onClick={onClose}
+            className="text-muted-foreground hover:text-foreground"
+          >
+            ✕
+          </button>
         </div>
 
         <div className="flex gap-2">
           <button
             onClick={() => setMode("chapter")}
-            className={`px-3 py-1 text-sm rounded ${mode === "chapter" ? "bg-primary text-primary-foreground" : "bg-muted"}`}
+            className={`rounded px-3 py-1 text-sm ${mode === "chapter" ? "bg-primary text-primary-foreground" : "bg-muted"}`}
           >
             按章节
           </button>
           <button
             onClick={() => setMode("dimension")}
-            className={`px-3 py-1 text-sm rounded ${mode === "dimension" ? "bg-primary text-primary-foreground" : "bg-muted"}`}
+            className={`rounded px-3 py-1 text-sm ${mode === "dimension" ? "bg-primary text-primary-foreground" : "bg-muted"}`}
           >
             按维度
           </button>
@@ -83,31 +94,45 @@ export function ReviewAssignmentDialog({ projectId, phaseNode, open, onClose, on
             value={reviewerId}
             onChange={(e) => setReviewerId(e.target.value)}
             placeholder="审核人 ID"
-            className="flex-1 px-2 py-1 text-sm border rounded"
+            className="flex-1 rounded border px-2 py-1 text-sm"
           />
           {mode === "dimension" && (
             <select
               value={dimension}
               onChange={(e) => setDimension(e.target.value)}
-              className="px-2 py-1 text-sm border rounded"
+              className="rounded border px-2 py-1 text-sm"
             >
               {PRESET_DIMENSIONS.map((d) => (
-                <option key={d.value} value={d.value}>{d.label}</option>
+                <option key={d.value} value={d.value}>
+                  {d.label}
+                </option>
               ))}
             </select>
           )}
-          <button onClick={addAssignment} className="px-3 py-1 text-sm bg-muted rounded hover:bg-muted/80">添加</button>
+          <button
+            onClick={addAssignment}
+            className="bg-muted hover:bg-muted/80 rounded px-3 py-1 text-sm"
+          >
+            添加
+          </button>
         </div>
 
         {assignments.length > 0 && (
           <div className="space-y-1">
             {assignments.map((a, i) => (
-              <div key={i} className="flex items-center gap-2 text-xs bg-muted/50 px-2 py-1 rounded">
-                <span>{a.reviewType === "chapter" ? "章节" : `维度:${a.dimension}`}</span>
+              <div
+                key={i}
+                className="bg-muted/50 flex items-center gap-2 rounded px-2 py-1 text-xs"
+              >
+                <span>
+                  {a.reviewType === "chapter" ? "章节" : `维度:${a.dimension}`}
+                </span>
                 <span className="flex-1 truncate">{a.reviewerId}</span>
                 <button
-                  onClick={() => setAssignments((prev) => prev.filter((_, j) => j !== i))}
-                  className="text-red-600 dark:text-red-400 dark:text-red-400 hover:text-red-700 dark:text-red-300"
+                  onClick={() =>
+                    setAssignments((prev) => prev.filter((_, j) => j !== i))
+                  }
+                  className="text-red-600 hover:text-red-700 dark:text-red-300 dark:text-red-400"
                 >
                   ✕
                 </button>
@@ -117,11 +142,16 @@ export function ReviewAssignmentDialog({ projectId, phaseNode, open, onClose, on
         )}
 
         <div className="flex justify-end gap-2 pt-2">
-          <button onClick={onClose} className="px-4 py-2 text-sm rounded border">取消</button>
+          <button
+            onClick={onClose}
+            className="rounded border px-4 py-2 text-sm"
+          >
+            取消
+          </button>
           <button
             onClick={handleSubmit}
             disabled={submitting || assignments.length === 0}
-            className="px-4 py-2 text-sm bg-primary text-primary-foreground rounded disabled:opacity-50"
+            className="bg-primary text-primary-foreground rounded px-4 py-2 text-sm disabled:opacity-50"
           >
             确认分配 ({assignments.length})
           </button>

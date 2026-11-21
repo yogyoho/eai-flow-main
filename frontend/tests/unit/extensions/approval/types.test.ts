@@ -18,7 +18,11 @@ describe("Approval types", () => {
   });
 
   test("ApprovalStepType covers all expected values", () => {
-    const stepTypes: ApprovalStepType[] = ["review", "technical_review", "sign_off"];
+    const stepTypes: ApprovalStepType[] = [
+      "review",
+      "technical_review",
+      "sign_off",
+    ];
     expect(stepTypes).toHaveLength(3);
     expect(stepTypes).toContain("review");
     expect(stepTypes).toContain("sign_off");

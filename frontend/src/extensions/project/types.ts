@@ -9,7 +9,12 @@ export type ReportType = string;
 export type ProjectStatus = "draft" | "in_review" | "approved";
 
 // EAI-CUSTOM: canonical ProjectRole taxonomy (ADR P5).
-export type MemberRole = "owner" | "phase_lead" | "writer" | "reviewer" | "approver";
+export type MemberRole =
+  | "owner"
+  | "phase_lead"
+  | "writer"
+  | "reviewer"
+  | "approver";
 
 export type AssignmentStrategy = "by_chapter" | "by_role"; // EAI-CUSTOM: ADR 2026-08-10
 
@@ -228,6 +233,10 @@ export interface PhaseReadinessResponse {
     members: Array<{ user_id: string; username: string }>;
   }>;
   missing_roles: Array<{ role_key: string; count: number; label: string }>;
-  suggested_members: Array<{ user_id: string; username: string; dept_name: string | null }>;
+  suggested_members: Array<{
+    user_id: string;
+    username: string;
+    dept_name: string | null;
+  }>;
   error?: string;
 }

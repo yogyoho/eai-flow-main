@@ -299,7 +299,8 @@ class TestTamperGate:
 
 class TestDepthGate:
     def test_thin_section_rejected(self, build_ws, tmp_path):
-        """三级节 <3 句 → rc=1 + 缺节清单（提示参照范文补写）。"""
+        """硬化 2026-11 分级：三级节 <3 句 → STYLE_WARN（风格软门，不阻断、不影响 rc）；
+        rc=1 由该章的结构硬错（toc 节号未落标题）承担——风格与正确性两类信号同屏。"""
         import shutil
 
         st = tmp_path / "state"
@@ -308,7 +309,8 @@ class TestDepthGate:
         ws = {"data": build_ws["data"], "state": st, "out": tmp_path / "o"}
         ws["out"].mkdir()
         r = run("build_output.py", "--stage", STAGE, "--data-dir", ws["data"], "--state-dir", st, "--output", ws["out"] / DELIV, expect=(1,))
-        assert "深度门" in r.stderr and "3.1" in r.stderr
+        assert "STYLE_WARN" in r.stderr and "3.1" in r.stderr, r.stderr  # 风格 warn：瘦块定位到 3.1
+        assert "目录覆盖门" in r.stderr, r.stderr  # 硬门：toc 节号未落标题（3.2+ 缺席）
 
     def test_thin_chapter_chars_rejected(self, build_ws, tmp_path):
         """每块 ≥3 句但全章 <1000 有效字符 → rc=1。"""
@@ -324,7 +326,8 @@ class TestDepthGate:
         assert "有效字符" in r.stderr
 
     def test_table_rows_not_counted_as_sentences(self, build_ws, tmp_path):
-        """表格行不算句（| 开头）；有表格的块仍需 3 句叙述。"""
+        """表格行不算句（| 开头）；有表格的块仍需 3 句叙述——硬化 2026-11 后为 STYLE_WARN
+        （瘦块定位到 3.1），rc 由绝对地板兜底。"""
         import shutil
 
         st = tmp_path / "state"

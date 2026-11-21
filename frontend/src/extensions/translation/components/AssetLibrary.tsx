@@ -272,7 +272,17 @@ export function AssetLibrary() {
     const observer = new ResizeObserver((entries) => {
       const width = entries[0]?.contentRect.width ?? 0;
       setOverflowLevel(
-        width >= 760 ? 0 : width >= 680 ? 1 : width >= 600 ? 2 : width >= 520 ? 3 : width >= 440 ? 4 : 5,
+        width >= 760
+          ? 0
+          : width >= 680
+            ? 1
+            : width >= 600
+              ? 2
+              : width >= 520
+                ? 3
+                : width >= 440
+                  ? 4
+                  : 5,
       );
       setLeftActionsInline(width >= 560);
     });
@@ -436,7 +446,9 @@ export function AssetLibrary() {
       // 请求级成功才记忆本次目标库（失败路径不写，保留上一次成功值）
       if (uploadKbId) window.localStorage.setItem("tlt_last_kb_id", uploadKbId);
       if (autoTranslate) {
-        const ids = res.filter((item) => !item.reused).map((item) => item.task_id);
+        const ids = res
+          .filter((item) => !item.reused)
+          .map((item) => item.task_id);
         if (ids.length > 0) await batchTranslateTasks(ids);
       }
       invalidate();
@@ -507,8 +519,7 @@ export function AssetLibrary() {
     try {
       const job = await createBackfillJob({
         kb_id: kbFilter === "all" ? undefined : kbFilter,
-        folder_id:
-          lFolder === "root" ? "root" : (lFolder ?? undefined),
+        folder_id: lFolder === "root" ? "root" : (lFolder ?? undefined),
         states: ["stored", "failed"],
         chunk_size: 100,
       });
@@ -525,7 +536,11 @@ export function AssetLibrary() {
   };
 
   const doDelete = async (t: TltTask) => {
-    if (!window.confirm(`删除「${t.file_name}」？将下线检索索引，交付物文件保留。`))
+    if (
+      !window.confirm(
+        `删除「${t.file_name}」？将下线检索索引，交付物文件保留。`,
+      )
+    )
       return;
     try {
       await deleteTask(t.id);
@@ -589,7 +604,9 @@ export function AssetLibrary() {
     setFocusId(t.id);
     const rowId = `${from === "L" ? "rtask" : "ltask"}-${t.id}`;
     window.setTimeout(() => {
-      document.getElementById(rowId)?.scrollIntoView({ behavior: "smooth", block: "center" });
+      document
+        .getElementById(rowId)
+        ?.scrollIntoView({ behavior: "smooth", block: "center" });
     }, 150);
   };
 
@@ -611,9 +628,7 @@ export function AssetLibrary() {
       if (folderDialog.mode === "create") {
         // 虚拟根 "root" 不是后端 UUID；建在根目录时 parent_id 必须为 null
         const parentId =
-          folderDialog.parent === "root"
-            ? null
-            : (folderDialog.parent ?? null);
+          folderDialog.parent === "root" ? null : (folderDialog.parent ?? null);
         await createFolder(folderDialog.value.trim(), parentId);
       } else if (folderDialog.id) {
         await patchFolder(folderDialog.id, { name: folderDialog.value.trim() });
@@ -807,7 +822,7 @@ export function AssetLibrary() {
     const chain = folderPath(folderId);
     return (
       /* 与 cpa 合同文件库一致：根目录图标 / 文件夹 / 子文件夹 */
-      <span className="text-muted-foreground flex flex-wrap items-center gap-1 text-xs pt-1">
+      <span className="text-muted-foreground flex flex-wrap items-center gap-1 pt-1 text-xs">
         <FolderRoot className="h-3.5 w-3.5 shrink-0" aria-hidden />
         <span className="px-0.5">/</span>
         {chain.map((seg, i) => (
@@ -868,7 +883,11 @@ export function AssetLibrary() {
   );
 
   /** 文件列表骨架：列形对齐当前表（勾选 / 文件名+状态 / 操作）。 */
-  const TableSkeleton = ({ withCheckbox = false }: { withCheckbox?: boolean }) => (
+  const TableSkeleton = ({
+    withCheckbox = false,
+  }: {
+    withCheckbox?: boolean;
+  }) => (
     <div role="status" aria-label="文件列表加载中">
       <table className="w-full text-sm" aria-hidden>
         <thead>
@@ -1355,7 +1374,10 @@ export function AssetLibrary() {
                         id={`ltask-${t.id}`}
                         draggable
                         onDragStart={(e) => {
-                          e.dataTransfer.setData("application/x-tlt-task", t.id);
+                          e.dataTransfer.setData(
+                            "application/x-tlt-task",
+                            t.id,
+                          );
                           e.dataTransfer.effectAllowed = "move";
                         }}
                         className={cn(
@@ -1382,7 +1404,10 @@ export function AssetLibrary() {
                               className="h-7 w-7 shrink-0"
                             />
                             <div className="min-w-0">
-                              <div className="truncate" style={{ fontFamily: FILENAME_FONT }}>
+                              <div
+                                className="truncate"
+                                style={{ fontFamily: FILENAME_FONT }}
+                              >
                                 {t.file_name}
                               </div>
                               <div className="text-muted-foreground flex items-center gap-1.5 truncate text-xs">
@@ -1561,7 +1586,10 @@ export function AssetLibrary() {
                                 />
                               )}
                               <div className="min-w-0">
-                                <div className="truncate" style={{ fontFamily: FILENAME_FONT }}>
+                                <div
+                                  className="truncate"
+                                  style={{ fontFamily: FILENAME_FONT }}
+                                >
                                   {inFlight
                                     ? `${t.file_name}.zh`
                                     : `${t.file_name}.zh.md`}

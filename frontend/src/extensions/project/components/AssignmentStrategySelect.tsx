@@ -26,11 +26,21 @@ interface AssignmentStrategySelectProps {
   disabled?: boolean;
 }
 
-export function AssignmentStrategySelect({ value, onChange, disabled }: AssignmentStrategySelectProps) {
+export function AssignmentStrategySelect({
+  value,
+  onChange,
+  disabled,
+}: AssignmentStrategySelectProps) {
   return (
     <div className="space-y-1.5">
-      <label className="text-xs text-muted-foreground font-medium">分工策略</label>
-      <Select value={value} onValueChange={(v) => onChange(v as AssignmentStrategy)} disabled={disabled}>
+      <label className="text-muted-foreground text-xs font-medium">
+        分工策略
+      </label>
+      <Select
+        value={value}
+        onValueChange={(v) => onChange(v as AssignmentStrategy)}
+        disabled={disabled}
+      >
         <SelectTrigger className="h-8 w-full text-sm">
           <SelectValue />
         </SelectTrigger>
@@ -42,7 +52,7 @@ export function AssignmentStrategySelect({ value, onChange, disabled }: Assignme
           ))}
         </SelectContent>
       </Select>
-      <p className="text-xs text-muted-foreground">
+      <p className="text-muted-foreground text-xs">
         在「人工修改确认」阶段按此策略分配修改确认工作。{STRATEGY_HINT[value]}
       </p>
     </div>

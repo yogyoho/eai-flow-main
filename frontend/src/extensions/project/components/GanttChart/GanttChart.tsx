@@ -14,10 +14,11 @@ export function GanttChart({ entries }: GanttChartProps) {
 
   // Compute date range
   const { start, end } = useMemo(() => {
-    const dates = entries.flatMap((e) =>
-      [e.planned_start, e.planned_end, e.actual_start, e.actual_end].filter(
-        Boolean
-      ) as string[]
+    const dates = entries.flatMap(
+      (e) =>
+        [e.planned_start, e.planned_end, e.actual_start, e.actual_end].filter(
+          Boolean,
+        ) as string[],
     );
     if (dates.length === 0) return { start: new Date(), end: new Date() };
     const parsed = dates.map((d) => new Date(d));
@@ -30,7 +31,7 @@ export function GanttChart({ entries }: GanttChartProps) {
   }, [entries]);
 
   const totalDays = Math.ceil(
-    (end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)
+    (end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24),
   );
 
   const getColumnWidth = () => {
@@ -48,19 +49,18 @@ export function GanttChart({ entries }: GanttChartProps) {
   const timelineWidth = totalDays * colWidth;
 
   const todayOffset =
-    Math.ceil(
-      (Date.now() - start.getTime()) / (1000 * 60 * 60 * 24)
-    ) * colWidth;
+    Math.ceil((Date.now() - start.getTime()) / (1000 * 60 * 60 * 24)) *
+    colWidth;
 
   return (
     <div className="space-y-2">
       {/* Zoom controls */}
-      <div className="flex gap-2 mb-3">
+      <div className="mb-3 flex gap-2">
         {(["month", "week", "day"] as ZoomLevel[]).map((z) => (
           <button
             key={z}
             onClick={() => setZoom(z)}
-            className={`px-3 py-1 text-xs rounded-md border ${
+            className={`rounded-md border px-3 py-1 text-xs ${
               zoom === z
                 ? "bg-primary text-primary-foreground"
                 : "hover:bg-accent"
@@ -69,23 +69,23 @@ export function GanttChart({ entries }: GanttChartProps) {
             {z === "month" ? "月" : z === "week" ? "周" : "日"}
           </button>
         ))}
-        <span className="text-xs text-muted-foreground ml-2">
+        <span className="text-muted-foreground ml-2 text-xs">
           {start.toLocaleDateString()} — {end.toLocaleDateString()}
         </span>
       </div>
 
       {/* Chart area */}
-      <div className="overflow-x-auto border rounded-lg">
+      <div className="overflow-x-auto rounded-lg border">
         <div className="flex min-w-full">
           {/* Phase labels */}
-          <div className="w-48 shrink-0 border-r bg-muted/30">
-            <div className="h-8 border-b px-3 flex items-center text-xs font-medium">
+          <div className="bg-muted/30 w-48 shrink-0 border-r">
+            <div className="flex h-8 items-center border-b px-3 text-xs font-medium">
               阶段
             </div>
             {entries.map((entry) => (
               <div
                 key={entry.id}
-                className="h-10 border-b px-3 flex items-center text-sm truncate"
+                className="flex h-10 items-center truncate border-b px-3 text-sm"
               >
                 {entry.phase_node}
               </div>
@@ -100,10 +100,10 @@ export function GanttChart({ entries }: GanttChartProps) {
             {/* Today line */}
             {todayOffset > 0 && todayOffset < timelineWidth && (
               <div
-                className="absolute top-0 bottom-0 w-px bg-destructive z-10"
+                className="bg-destructive absolute top-0 bottom-0 z-10 w-px"
                 style={{ left: todayOffset }}
               >
-                <span className="absolute top-0 -translate-x-1/2 text-[10px] text-destructive bg-background px-1">
+                <span className="text-destructive bg-background absolute top-0 -translate-x-1/2 px-1 text-[10px]">
                   今天
                 </span>
               </div>
@@ -123,13 +123,13 @@ export function GanttChart({ entries }: GanttChartProps) {
       </div>
 
       {/* Legend */}
-      <div className="flex gap-4 text-xs text-muted-foreground">
+      <div className="text-muted-foreground flex gap-4 text-xs">
         <span className="flex items-center gap-1">
-          <span className="inline-block w-3 h-3 rounded-sm border-2 border-primary" />{" "}
+          <span className="border-primary inline-block h-3 w-3 rounded-sm border-2" />{" "}
           计划
         </span>
         <span className="flex items-center gap-1">
-          <span className="inline-block w-3 h-3 rounded-sm bg-primary" /> 实际
+          <span className="bg-primary inline-block h-3 w-3 rounded-sm" /> 实际
         </span>
         <span className="flex items-center gap-1">
           <span className="text-warning">■</span> 延期

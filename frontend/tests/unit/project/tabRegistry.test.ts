@@ -1,6 +1,10 @@
 import { describe, it, expect } from "@rstest/core";
 
-import { getVisibleTabs, createProjectIdentity, TAB_REGISTRY } from "@/extensions/project/tabRegistry";
+import {
+  getVisibleTabs,
+  createProjectIdentity,
+  TAB_REGISTRY,
+} from "@/extensions/project/tabRegistry";
 import type { ProjectPermissions } from "@/extensions/project/types";
 
 // Helper to create identity from partial permissions
@@ -32,7 +36,9 @@ describe("tabRegistry", () => {
     });
 
     it("hasAnyPermission returns true when permission exists", () => {
-      const ctx = makeIdentity({ permissions: ["chapter:write_own", "approval:review"] });
+      const ctx = makeIdentity({
+        permissions: ["chapter:write_own", "approval:review"],
+      });
       expect(ctx.hasAnyPermission(["chapter:write_own"])).toBe(true);
       expect(ctx.hasAnyPermission(["settings:edit"])).toBe(false);
     });
@@ -40,7 +46,10 @@ describe("tabRegistry", () => {
     it("hasAnyDuty returns true when duty matches", () => {
       const ctx = makeIdentity({
         permissions: [],
-        phaseDuties: { "phase-a": { duty: "lead" }, "chapter-1": { duty: "writer" } },
+        phaseDuties: {
+          "phase-a": { duty: "lead" },
+          "chapter-1": { duty: "writer" },
+        },
       });
       expect(ctx.hasAnyDuty(["lead"])).toBe(true);
       expect(ctx.hasAnyDuty(["writer"])).toBe(true);
@@ -114,7 +123,12 @@ describe("tabRegistry", () => {
     it("phase lead sees overview and editor access", () => {
       const ctx = makeIdentity({
         role: "member",
-        permissions: ["chapter:write_own", "member:add", "outline:edit", "ai:start_writing"],
+        permissions: [
+          "chapter:write_own",
+          "member:add",
+          "outline:edit",
+          "ai:start_writing",
+        ],
         phaseDuties: { "phase-a": { duty: "lead" } },
       });
       const tabs = getVisibleTabs(ctx);
@@ -134,7 +148,11 @@ describe("tabRegistry", () => {
     });
 
     it("always has at least 1 tab (overview)", () => {
-      const ctx = makeIdentity({ role: "member", permissions: [], phaseDuties: null });
+      const ctx = makeIdentity({
+        role: "member",
+        permissions: [],
+        phaseDuties: null,
+      });
       const tabs = getVisibleTabs(ctx);
       expect(tabs.length).toBeGreaterThanOrEqual(1);
     });

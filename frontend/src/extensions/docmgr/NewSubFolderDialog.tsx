@@ -1,35 +1,51 @@
-"use client"
+"use client";
 
-import { useState } from "react"
+import { useState } from "react";
 
-import { Button } from "@/components/ui/button"
-import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 
 interface NewSubFolderDialogProps {
-  open: boolean
-  onOpenChange: (open: boolean) => void
-  parentId: string | null
-  projectId?: string
-  onSubmit: (name: string, parentId: string | null, projectId?: string) => Promise<void>
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  parentId: string | null;
+  projectId?: string;
+  onSubmit: (
+    name: string,
+    parentId: string | null,
+    projectId?: string,
+  ) => Promise<void>;
 }
 
-export function NewSubFolderDialog({ open, onOpenChange, parentId, projectId, onSubmit }: NewSubFolderDialogProps) {
-  const [name, setName] = useState("")
-  const [submitting, setSubmitting] = useState(false)
+export function NewSubFolderDialog({
+  open,
+  onOpenChange,
+  parentId,
+  projectId,
+  onSubmit,
+}: NewSubFolderDialogProps) {
+  const [name, setName] = useState("");
+  const [submitting, setSubmitting] = useState(false);
 
   const handleSubmit = async () => {
-    if (!name.trim()) return
-    setSubmitting(true)
+    if (!name.trim()) return;
+    setSubmitting(true);
     try {
-      await onSubmit(name.trim(), parentId, projectId)
-      setName("")
-      onOpenChange(false)
+      await onSubmit(name.trim(), parentId, projectId);
+      setName("");
+      onOpenChange(false);
     } catch (err) {
-      console.error("Failed to create folder:", err)
+      console.error("Failed to create folder:", err);
     } finally {
-      setSubmitting(false)
+      setSubmitting(false);
     }
-  }
+  };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -38,7 +54,7 @@ export function NewSubFolderDialog({ open, onOpenChange, parentId, projectId, on
           <DialogTitle>新建子文件夹</DialogTitle>
         </DialogHeader>
         <input
-          className="focus:ring-ring w-full rounded-md border border-border bg-transparent px-3 py-2 text-sm focus:outline-none focus:ring-2"
+          className="focus:ring-ring border-border w-full rounded-md border bg-transparent px-3 py-2 text-sm focus:ring-2 focus:outline-none"
           placeholder="输入文件夹名称"
           value={name}
           onChange={(e) => setName(e.target.value)}
@@ -55,5 +71,5 @@ export function NewSubFolderDialog({ open, onOpenChange, parentId, projectId, on
         </DialogFooter>
       </DialogContent>
     </Dialog>
-  )
+  );
 }

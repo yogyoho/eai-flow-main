@@ -6,9 +6,7 @@ import type { DocAITransformEvent } from "@/extensions/api";
 function ndjsonResponse(lines: unknown[], status = 200): Response {
   // 原始字符串条目按字面输出（"" 即真·空行）；其余 JSON.stringify。
   const body = lines
-    .map((l) =>
-      typeof l === "string" ? l + "\n" : JSON.stringify(l) + "\n",
-    )
+    .map((l) => (typeof l === "string" ? l + "\n" : JSON.stringify(l) + "\n"))
     .join("");
   return new Response(body, {
     status,
@@ -40,11 +38,7 @@ describe("aiTransformStream（NDJSON 逐行事件）", () => {
     } finally {
       globalThis.fetch = orig;
     }
-    expect(events.map((e) => e.type)).toEqual([
-      "section_start",
-      "ops",
-      "done",
-    ]);
+    expect(events.map((e) => e.type)).toEqual(["section_start", "ops", "done"]);
   });
 
   test("非 2xx 抛 ApiError（带状态码与响应体）", async () => {

@@ -5,22 +5,43 @@
 import type { PolicyCondition, PolicyGrant } from "@/extensions/types";
 
 const UI_TO_ENGINE_OP: Record<string, string> = {
-  "=": "eq", "!=": "neq", ">": "gt", "<": "lt", ">=": "gte", "<=": "lte",
-  "contains": "contains", "not_contains": "not_contains", "in": "in", "not_in": "not_in",
+  "=": "eq",
+  "!=": "neq",
+  ">": "gt",
+  "<": "lt",
+  ">=": "gte",
+  "<=": "lte",
+  contains: "contains",
+  not_contains: "not_contains",
+  in: "in",
+  not_in: "not_in",
 };
 const ENGINE_TO_UI_OP: Record<string, string> = {
-  eq: "=", neq: "!=", gt: ">", lt: "<", gte: ">=", lte: "<=",
-  contains: "contains", not_contains: "not_contains", in: "in", not_in: "not_in",
+  eq: "=",
+  neq: "!=",
+  gt: ">",
+  lt: "<",
+  gte: ">=",
+  lte: "<=",
+  contains: "contains",
+  not_contains: "not_contains",
+  in: "in",
+  not_in: "not_in",
 };
 
 /** UI 条件数组 → 引擎 dict（空数组 → 空 dict，引擎视为无条件=全量；in/not_in 值按逗号拆成列表） */
-export function toEngineConditions(conds: PolicyCondition[]): Record<string, unknown> {
+export function toEngineConditions(
+  conds: PolicyCondition[],
+): Record<string, unknown> {
   if (!conds.length) return {};
   // EAI-CUSTOM (P0): __or__ 只读标记 —— 还原原始 or 树，防保存丢条件
   const orMarker = conds.find((c) => c.attribute === "__or__");
   if (orMarker) {
-    try { return JSON.parse(orMarker.value || "{}") as Record<string, unknown>; }
-    catch { return {}; }
+    try {
+      return JSON.parse(orMarker.value || "{}") as Record<string, unknown>;
+    } catch {
+      return {};
+    }
   }
   return {
     and: conds.map((c) => {
@@ -30,7 +51,10 @@ export function toEngineConditions(conds: PolicyCondition[]): Record<string, unk
         op,
         value:
           op === "in" || op === "not_in"
-            ? String(c.value).split(",").map((s) => s.trim()).filter(Boolean)
+            ? String(c.value)
+                .split(",")
+                .map((s) => s.trim())
+                .filter(Boolean)
             : c.value,
       };
     }),
@@ -45,14 +69,18 @@ export function toUIConditions(conds: unknown): PolicyCondition[] {
   if (Array.isArray(obj.and)) {
     return (obj.and as Array<Record<string, unknown>>).map((c) => ({
       attribute: (c.attr as string) ?? "",
-      operator: (ENGINE_TO_UI_OP[c.op as string] ?? (c.op as string)) ?? "=",
-      value: Array.isArray(c.value) ? c.value.join(", ") : ((c.value as string) ?? ""),
+      operator: ENGINE_TO_UI_OP[c.op as string] ?? (c.op as string) ?? "=",
+      value: Array.isArray(c.value)
+        ? c.value.join(", ")
+        : ((c.value as string) ?? ""),
     }));
   }
   if (Array.isArray(obj.or)) {
     // EAI-CUSTOM (P0): or 树无法在 UI 行编辑器逐条编辑，改为 __or__ 只读标记承载原始条件，
     // 防误显"全局"（旧实现退空）与保存丢条件。value 存 JSON.stringify(原始 or dict)。
-    return [{ attribute: "__or__", operator: "or", value: JSON.stringify(conds) }];
+    return [
+      { attribute: "__or__", operator: "or", value: JSON.stringify(conds) },
+    ];
   }
   // EAI-CUSTOM: 单条件 {attr, op, value} —— 引擎 evaluate_policy_conditions 支持直接单条件（非 and/or 包裹），
   // API/脚本/旧数据可产生该 shape；UI 也要能显示/编辑，否则 PolicyRow 误显"全局"且编辑会丢条件。
@@ -60,8 +88,11 @@ export function toUIConditions(conds: unknown): PolicyCondition[] {
     return [
       {
         attribute: obj.attr,
-        operator: (ENGINE_TO_UI_OP[obj.op as string] ?? (obj.op as string)) ?? "=",
-        value: Array.isArray(obj.value) ? (obj.value as unknown[]).join(", ") : ((obj.value as string) ?? ""),
+        operator:
+          ENGINE_TO_UI_OP[obj.op as string] ?? (obj.op as string) ?? "=",
+        value: Array.isArray(obj.value)
+          ? (obj.value as unknown[]).join(", ")
+          : ((obj.value as string) ?? ""),
       },
     ];
   }
@@ -104,10 +135,18 @@ export function toEngineGrants(
  * 仅取 deny_permissions / deny_data_scopes；allow 部分用 toGrantArray。
  * 不修改 toGrantArray 的签名（保持现有调用点不变，least disruption）。
  */
-export function toDenyInfo(g: unknown): { denyPermissions: string[]; denyDataScopes: string[] } {
-  if (!g || typeof g !== "object") return { denyPermissions: [], denyDataScopes: [] };
+export function toDenyInfo(g: unknown): {
+  denyPermissions: string[];
+  denyDataScopes: string[];
+} {
+  if (!g || typeof g !== "object")
+    return { denyPermissions: [], denyDataScopes: [] };
   const obj = g as { deny_permissions?: unknown; deny_data_scopes?: unknown };
-  const dp = Array.isArray(obj.deny_permissions) ? obj.deny_permissions.map((p) => String(p)) : [];
-  const ds = Array.isArray(obj.deny_data_scopes) ? obj.deny_data_scopes.map((s) => String(s)) : [];
+  const dp = Array.isArray(obj.deny_permissions)
+    ? obj.deny_permissions.map((p) => String(p))
+    : [];
+  const ds = Array.isArray(obj.deny_data_scopes)
+    ? obj.deny_data_scopes.map((s) => String(s))
+    : [];
   return { denyPermissions: dp, denyDataScopes: ds };
 }

@@ -6,7 +6,10 @@ import { Button } from "@/components/ui/button";
 import { GoodsAnalysis } from "@/extensions/contract-price/components/GoodsAnalysis";
 import { PageHeader } from "@/extensions/contract-price/components/PageHeader";
 import { StatCard } from "@/extensions/contract-price/components/StatCard";
-import { useDashboard, useRunPipeline } from "@/extensions/contract-price/hooks";
+import {
+  useDashboard,
+  useRunPipeline,
+} from "@/extensions/contract-price/hooks";
 
 export function DashboardView() {
   const { data, isLoading, refetch, isFetching } = useDashboard();
@@ -22,11 +25,24 @@ export function DashboardView() {
         icon={<LayoutDashboard />}
         actions={
           <>
-            <Button variant="outline" size="sm" onClick={() => refetch()} disabled={isFetching}>
-              <RefreshCw className={`h-4 w-4 ${isFetching ? "animate-spin" : ""}`} />
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => refetch()}
+              disabled={isFetching}
+            >
+              <RefreshCw
+                className={`h-4 w-4 ${isFetching ? "animate-spin" : ""}`}
+              />
               刷新
             </Button>
-            <Button size="sm" onClick={() => runPipeline.mutate({ mode: "table", trigger: "manual" })} disabled={runPipeline.isPending}>
+            <Button
+              size="sm"
+              onClick={() =>
+                runPipeline.mutate({ mode: "table", trigger: "manual" })
+              }
+              disabled={runPipeline.isPending}
+            >
               <Play className="h-4 w-4" />
               {runPipeline.isPending ? "启动中…" : "立即分析"}
             </Button>
@@ -38,14 +54,27 @@ export function DashboardView() {
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         {isLoading ? (
           [0, 1, 2, 3].map((i) => (
-            <div key={i} className="h-[72px] animate-pulse rounded-md border border-border bg-card" />
+            <div
+              key={i}
+              className="border-border bg-card h-[72px] animate-pulse rounded-md border"
+            />
           ))
         ) : (
           <>
             <StatCard label="合同数" value={d?.contract_count ?? 0} hint="份" />
             <StatCard label="分项条目" value={d?.item_count ?? 0} />
-            <StatCard label="分组数" value={d?.cluster_count ?? 0} hint={`已确认 ${d?.confirmed_cluster_count ?? 0}`} tone="accent" />
-            <StatCard label="异常价格" value={d?.outlier_count ?? 0} hint="离群 >1.5×IQR" tone="warn" />
+            <StatCard
+              label="分组数"
+              value={d?.cluster_count ?? 0}
+              hint={`已确认 ${d?.confirmed_cluster_count ?? 0}`}
+              tone="accent"
+            />
+            <StatCard
+              label="异常价格"
+              value={d?.outlier_count ?? 0}
+              hint="离群 >1.5×IQR"
+              tone="warn"
+            />
           </>
         )}
       </div>
@@ -54,12 +83,15 @@ export function DashboardView() {
       <GoodsAnalysis />
 
       {runPipeline.isError ? (
-        <p className="text-sm text-destructive">流水线启动失败：{(runPipeline.error).message}</p>
+        <p className="text-destructive text-sm">
+          流水线启动失败：{runPipeline.error.message}
+        </p>
       ) : null}
       {runPipeline.isSuccess ? (
-        <p className="text-sm text-success">已启动分析任务 {runPipeline.data.run_id}，稍后在「任务历史」查看进度。</p>
+        <p className="text-success text-sm">
+          已启动分析任务 {runPipeline.data.run_id}，稍后在「任务历史」查看进度。
+        </p>
       ) : null}
-
     </div>
   );
 }

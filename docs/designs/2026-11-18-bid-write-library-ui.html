@@ -1,0 +1,698 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>资质素材库 · 功能梳理与设计原型</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@600;700;900&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet" />
+<style>
+:root {
+  --ink: #101322; --ink-2: #3d4254; --ink-3: #6b7186;
+  --paper: #f6f6fa; --card: #ffffff;
+  --line: #e3e5ee; --line-2: #eef0f5;
+  --brand: #4f46e5; --brand-deep: #3730a3;
+  --brand-300: #a5b4fc; --brand-100: #e0e7ff; --brand-50: #eef2ff;
+  --gold: #b45309; --gold-bg: #fffbeb;
+  --bad: #cf132f; --bad-bg: #fff1f0; --bad-line: #ffccc7;
+  --warn: #d48806; --warn-bg: #fffbe6; --warn-line: #ffe58f;
+  --ok: #389e0d; --ok-bg: #f6ffed; --ok-line: #b7eb8f;
+  --serif: "Noto Serif SC", "Songti SC", "SimSun", serif;
+  --sans: -apple-system, "PingFang SC", "Microsoft YaHei", "Segoe UI", sans-serif;
+  --mono: "JetBrains Mono", Consolas, "Courier New", monospace;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: var(--sans); background: var(--paper); color: var(--ink);
+  font-size: 14px; line-height: 1.7; -webkit-font-smoothing: antialiased; }
+svg.ic { width: 1em; height: 1em; stroke: currentColor; fill: none; stroke-width: 2;
+  stroke-linecap: round; stroke-linejoin: round; flex: none; }
+svg.ic.fill { fill: currentColor; stroke: none; }
+
+/* ── 文档骨架 ── */
+.doc-head { position: relative; padding: 52px 48px 40px; border-bottom: 1px solid var(--line);
+  background:
+    radial-gradient(900px 340px at 88% -20%, rgba(79,70,229,.09), transparent 60%),
+    linear-gradient(to right, rgba(16,19,34,.033) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(16,19,34,.033) 1px, transparent 1px),
+    var(--paper);
+  background-size: auto, 30px 30px, 30px 30px, auto; }
+.eyebrow { display: inline-flex; align-items: center; gap: 8px;
+  font: 600 12px/1 var(--mono); letter-spacing: .14em; color: var(--brand-deep);
+  border: 1px solid var(--brand-100); background: var(--brand-50);
+  border-radius: 999px; padding: 7px 14px; }
+.eyebrow::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: var(--brand); }
+.doc-head h1 { font-family: var(--serif); font-weight: 900;
+  font-size: clamp(26px, 3.6vw, 40px); line-height: 1.28; margin: 18px 0 10px; }
+.doc-head h1 em { font-style: normal; color: var(--brand); }
+.doc-head .lede { max-width: 680px; color: var(--ink-2); font-size: 14px; }
+.meta-row { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 20px; }
+.meta { font: 500 11.5px/1 var(--mono); color: var(--ink-3);
+  border: 1px solid var(--line); background: var(--card); border-radius: 6px; padding: 6px 10px; }
+.meta b { color: var(--ink-2); font-weight: 600; }
+
+main { max-width: 1220px; margin: 0 auto; padding: 0 48px 80px; }
+section { margin-top: 68px; scroll-margin-top: 24px; animation: rise .6s ease both; }
+section:nth-of-type(2) { animation-delay: .06s; }
+section:nth-of-type(3) { animation-delay: .12s; }
+section:nth-of-type(4) { animation-delay: .18s; }
+@keyframes rise { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) { section { animation: none; } }
+.sec-h { display: flex; align-items: baseline; gap: 14px; margin-bottom: 10px; }
+.sec-no { font: 600 13px/1 var(--mono); color: var(--brand);
+  border: 1px solid var(--brand-100); border-radius: 6px; padding: 6px 9px; background: var(--brand-50); }
+.sec-h h2 { font-family: var(--serif); font-size: 23px; font-weight: 700; }
+.sec-h .rule { flex: 1; height: 1px; background: var(--line); align-self: center; }
+.sec-p { color: var(--ink-2); font-size: 13.5px; max-width: 780px; margin-bottom: 24px; }
+
+/* ── 通用组件 ── */
+.mock { background: var(--card); border: 1px solid var(--line); border-radius: 14px;
+  box-shadow: 0 1px 2px rgba(16,19,34,.05), 0 16px 40px -18px rgba(16,19,34,.16); overflow: hidden; }
+.mock-bar { display: flex; align-items: center; gap: 6px; padding: 10px 14px;
+  border-bottom: 1px solid var(--line-2); background: #fbfbfd; }
+.mock-bar i { width: 9px; height: 9px; border-radius: 50%; background: var(--line); }
+.mock-bar span.t { margin-left: 8px; font: 600 11px/1 var(--mono); letter-spacing: .08em; color: var(--ink-3); }
+.mock-bar .live { margin-left: auto; font: 600 10px/1 var(--mono); color: var(--ok);
+  background: var(--ok-bg); border: 1px solid var(--ok-line); border-radius: 999px; padding: 4px 9px; }
+.pill { display: inline-flex; align-items: center; gap: 5px; font-size: 11.5px; font-weight: 600;
+  border-radius: 999px; padding: 3px 9px; border: 1px solid; white-space: nowrap; }
+.pill.ok { color: var(--ok); background: var(--ok-bg); border-color: var(--ok-line); }
+.pill.warn { color: var(--warn); background: var(--warn-bg); border-color: var(--warn-line); }
+.pill.gray { color: var(--ink-3); background: var(--line-2); border-color: var(--line); }
+.pill.brand { color: var(--brand-deep); background: var(--brand-50); border-color: var(--brand-300); }
+.chip { display: inline-flex; align-items: center; gap: 4px; font: 500 10.5px/1 var(--mono);
+  color: var(--ink-3); background: var(--paper); border: 1px solid var(--line); border-radius: 5px; padding: 3px 7px; }
+.spec-tbl { width: 100%; border-collapse: collapse; background: var(--card);
+  border: 1px solid var(--line); border-radius: 14px; overflow: hidden; font-size: 12.5px; }
+.spec-tbl th { background: #fafbfd; text-align: left; font: 600 11.5px/1 var(--sans);
+  color: var(--ink-3); letter-spacing: .03em; padding: 10px 14px; border-bottom: 1px solid var(--line); }
+.spec-tbl td { padding: 10px 14px; border-bottom: 1px solid var(--line-2); vertical-align: top; }
+.spec-tbl tr:last-child td { border-bottom: none; }
+code.k { font: 500 11px/1 var(--mono); background: var(--paper); border: 1px solid var(--line);
+  border-radius: 5px; padding: 3px 7px; color: var(--ink-2); white-space: nowrap; }
+.two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+.diag { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 14px 16px; }
+.diag b.t { display: flex; align-items: center; gap: 8px; font-size: 13.5px; margin-bottom: 5px; }
+.diag p { font-size: 12.5px; color: var(--ink-2); }
+.anno-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 13px; margin-top: 22px; }
+.anno { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 14px 16px; }
+.anno-h { display: flex; align-items: center; gap: 9px; margin-bottom: 6px; }
+.anno-n { width: 22px; height: 22px; border-radius: 50%; flex: none;
+  background: var(--ink); color: #fff; font: 600 11px/22px var(--mono); text-align: center; }
+.anno b.t { font-size: 13.5px; }
+.anno p { font-size: 12.5px; color: var(--ink-2); }
+.n { position: absolute; z-index: 6; width: 19px; height: 19px; border-radius: 50%;
+  background: var(--ink); color: #fff; font: 600 10.5px/19px var(--mono); text-align: center;
+  box-shadow: 0 0 0 3px rgba(16,19,34,.09); pointer-events: none; }
+
+/* ═══ 原型:产品 chrome 风格 ═══ */
+.ui { display: grid; grid-template-columns: 208px 1fr; font-size: 13px; min-height: 620px; }
+.ui-side { border-right: 1px solid var(--line); background: #fff; padding: 14px 10px; display: flex; flex-direction: column; }
+.ui-brand { display: flex; align-items: center; gap: 9px; padding: 2px 8px 14px; border-bottom: 1px solid var(--line-2); margin-bottom: 10px; }
+.ui-brand .b-ic { width: 30px; height: 30px; border-radius: 8px; background: var(--brand);
+  color: #fff; display: inline-flex; align-items: center; justify-content: center; font-size: 15px; }
+.ui-brand b { font-size: 13px; display: block; }
+.ui-brand span { font-size: 10.5px; color: var(--ink-3); }
+.ui-nav-item { display: flex; align-items: center; gap: 8px; padding: 7px 10px; border-radius: 7px;
+  color: var(--ink-2); font-size: 12.5px; margin-bottom: 2px; cursor: default; position: relative; }
+.ui-nav-item:hover { background: var(--paper); }
+.ui-nav-item.on { background: var(--brand-50); color: var(--brand-deep); font-weight: 600; }
+.ui-nav-item .cnt { margin-left: auto; font: 600 10.5px/1 var(--mono); color: var(--bad);
+  background: var(--bad-bg); border: 1px solid var(--bad-line); border-radius: 999px; padding: 2px 7px; }
+.ui-g { margin-top: 12px; padding: 0 8px 4px; font: 600 10.5px/1 var(--sans); letter-spacing: .06em; color: var(--ink-3); }
+.ui-main { padding: 16px 20px 20px; min-width: 0; }
+.ui-pagehead { display: flex; align-items: center; gap: 10px; margin-bottom: 14px; }
+.ui-pagehead .ph-ic { width: 34px; height: 34px; border-radius: 9px; background: var(--brand-50);
+  border: 1px solid var(--brand-100); color: var(--brand); display: inline-flex; align-items: center; justify-content: center; font-size: 16px; }
+.ui-pagehead h3 { font-size: 17px; font-weight: 700; }
+.ui-pagehead .sub { font-size: 12px; color: var(--ink-3); }
+.ui-pagehead .r { margin-left: auto; display: flex; gap: 8px; }
+.btn { display: inline-flex; align-items: center; gap: 6px; height: 30px; padding: 0 13px;
+  border-radius: 8px; border: 1px solid var(--line); background: #fff; color: var(--ink-2);
+  font-size: 12.5px; cursor: default; white-space: nowrap; }
+.btn:hover { border-color: var(--brand-300); color: var(--brand-deep); }
+.btn.pri { background: var(--brand); border-color: var(--brand); color: #fff; font-weight: 600; }
+.btn.pri:hover { background: var(--brand-deep); }
+.btn.sm { height: 27px; padding: 0 11px; font-size: 12px; }
+
+/* 概览条 */
+.ov { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 14px; }
+.ov-cell { background: var(--paper); border: 1px solid var(--line); border-radius: 10px; padding: 10px 13px; }
+.ov-cell .l { font-size: 11px; color: var(--ink-3); }
+.ov-cell .v { font: 700 19px/1.3 var(--mono); color: var(--ink); margin-top: 2px; }
+.ov-cell .v small { font-size: 11px; font-weight: 500; color: var(--ink-3); margin-left: 5px; }
+.ov-cell.ok .v { color: var(--ok); }
+.ov-cell.bad .v { color: var(--bad); }
+
+/* 类型导航 rail */
+.lib-body { display: grid; grid-template-columns: 196px 1fr; gap: 14px; align-items: start; }
+.rail { background: var(--paper); border: 1px solid var(--line); border-radius: 12px; padding: 8px; }
+.rail-t { font: 600 10.5px/1 var(--sans); letter-spacing: .08em; color: var(--ink-3); padding: 4px 8px 8px; }
+.rail-item { position: relative; display: flex; align-items: center; gap: 8px; width: 100%;
+  padding: 7px 9px; border-radius: 8px; font-size: 12.5px; color: var(--ink-2); cursor: default; }
+.rail-item:hover { background: #fff; }
+.rail-item.on { background: var(--brand-50); box-shadow: inset 2.5px 0 0 var(--brand); color: var(--brand-deep); font-weight: 600; }
+.rail-item .c { margin-left: auto; font: 500 11px/1 var(--mono); color: var(--ink-3); }
+.rail-item .dot-badge { position: absolute; right: 8px; bottom: 6px; width: 5px; height: 5px; border-radius: 50%; background: var(--bad); }
+.rail-mini { display: block; margin: 3px 0 0 31px; width: 56px; height: 3px; border-radius: 999px; background: var(--line-2); overflow: hidden; }
+.rail-mini i { display: block; height: 100%; background: var(--ok); }
+
+/* 工具栏 + 表格 */
+.lib-main { min-width: 0; }
+.toolbar { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 10px; }
+.search { display: flex; align-items: center; gap: 7px; height: 30px; padding: 0 10px;
+  border: 1px solid var(--line); border-radius: 8px; background: #fff; color: var(--ink-3);
+  font-size: 12px; width: 240px; }
+.search kbd { margin-left: auto; font: 600 10px/1 var(--mono); color: var(--ink-3);
+  border: 1px solid var(--line); background: var(--paper); border-radius: 4px; padding: 2px 5px; }
+.fchip { display: inline-flex; align-items: center; gap: 5px; height: 26px; padding: 0 11px;
+  border: 1px solid var(--line); border-radius: 999px; background: #fff; font-size: 12px; color: var(--ink-2); cursor: default; }
+.fchip .c { font: 600 10.5px/1 var(--mono); color: var(--ink-3); }
+.fchip.on { background: var(--brand-50); border-color: var(--brand-300); color: var(--brand-deep); }
+.fchip.warn-on { background: var(--warn-bg); border-color: var(--warn-line); color: var(--warn); }
+.toolbar .sp { margin-left: auto; }
+table.tbl { width: 100%; border-collapse: collapse; background: #fff; border: 1px solid var(--line);
+  border-radius: 12px; overflow: hidden; font-size: 12.5px; }
+.tbl th { background: #fafbfd; text-align: left; font: 600 11.5px/1 var(--sans); color: var(--ink-3);
+  padding: 9px 12px; border-bottom: 1px solid var(--line); white-space: nowrap; }
+.tbl td { padding: 10px 12px; border-bottom: 1px solid var(--line-2); vertical-align: top; }
+.tbl tbody tr { transition: background .12s; }
+.tbl tbody tr:hover { background: #fafbff; }
+.tbl tbody tr.sel { background: var(--brand-50); }
+.ent-name { position: relative; }
+.ent-name b { font-size: 12.5px; }
+.ent-fields { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 5px; }
+.ent-fields span { font: 500 10.5px/1.5 var(--mono); color: var(--ink-3);
+  background: var(--paper); border: 1px solid var(--line-2); border-radius: 5px; padding: 1px 6px; }
+.ent-fields span b { color: var(--ink-2); font-weight: 600; }
+.conf-cell { white-space: nowrap; }
+.row-act { display: flex; gap: 6px; white-space: nowrap; }
+.icon-btn { width: 27px; height: 27px; display: inline-flex; align-items: center; justify-content: center;
+  border: 1px solid var(--line); border-radius: 7px; background: #fff; color: var(--ink-2); font-size: 12.5px; cursor: default; }
+.icon-btn:hover { color: var(--bad); border-color: var(--bad-line); background: var(--bad-bg); }
+.icon-btn.edit:hover { color: var(--brand); border-color: var(--brand-300); background: var(--brand-50); }
+
+/* 抽屉 overlay */
+.drawer-stage { position: relative; padding: 6px; }
+.drawer-stage .dim { position: absolute; inset: 0; background: rgba(16,19,34,.38); border-radius: 10px; }
+.drawer {
+  position: relative; margin: 26px auto; max-width: 560px; background: #fff;
+  border-radius: 14px; box-shadow: 0 24px 64px -16px rgba(16,19,34,.35);
+}
+.drawer-h { display: flex; align-items: center; gap: 10px; padding: 15px 18px; border-bottom: 1px solid var(--line-2); }
+.drawer-h h4 { font-size: 14.5px; font-weight: 700; }
+.drawer-h .sub { font-size: 11.5px; color: var(--ink-3); }
+.drawer-h .x { margin-left: auto; color: var(--ink-3); font-size: 15px; }
+.drawer-b { padding: 16px 18px; display: flex; flex-direction: column; gap: 13px; }
+.f-label { font-size: 12px; font-weight: 600; color: var(--ink-2); margin-bottom: 6px; display: block; }
+.entity-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 7px; }
+.entity-opt { position: relative; display: flex; flex-direction: column; align-items: flex-start; gap: 4px;
+  border: 1px solid var(--line); border-radius: 9px; padding: 9px 10px; font-size: 12px; color: var(--ink-2); cursor: default; }
+.entity-opt svg { font-size: 14px; color: var(--ink-3); }
+.entity-opt small { font: 500 9.5px/1 var(--mono); color: var(--ink-3); }
+.entity-opt.on { border-color: var(--brand); background: var(--brand-50); color: var(--brand-deep); }
+.entity-opt.on svg { color: var(--brand); }
+.inp { height: 30px; border: 1px solid var(--line); border-radius: 8px; padding: 0 10px;
+  font-size: 12.5px; color: var(--ink); background: #fff; width: 100%; display: flex; align-items: center; color: var(--ink-3); }
+.field-row { display: grid; grid-template-columns: 130px 1fr 30px; gap: 8px; align-items: center; }
+.field-row .del { color: var(--ink-3); text-align: center; font-size: 13px; }
+.field-row .del:hover { color: var(--bad); }
+.evi-row { display: flex; align-items: center; gap: 8px; padding: 8px 10px; border: 1px solid var(--line-2);
+  border-radius: 8px; background: var(--paper); font-size: 12px; color: var(--ink-2); }
+.evi-row .pg { font: 500 10.5px/1 var(--mono); color: var(--ink-3); background: #fff;
+  border: 1px solid var(--line); border-radius: 4px; padding: 2px 6px; }
+.evi-add { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 600; color: var(--brand); cursor: default; }
+.drawer-f { display: flex; align-items: center; gap: 10px; padding: 13px 18px; border-top: 1px solid var(--line-2); background: #fbfbfd;
+  border-radius: 0 0 14px 14px; }
+.drawer-f .hint { font-size: 11.5px; color: var(--ink-3); }
+
+footer { border-top: 1px solid var(--line); background: var(--card);
+  padding: 24px 48px; font-size: 12px; color: var(--ink-3);
+  display: flex; gap: 16px; flex-wrap: wrap; align-items: center; }
+footer .mono { font-family: var(--mono); }
+
+@media (max-width: 1080px) {
+  main, .doc-head, footer { padding-left: 22px; padding-right: 22px; }
+  .two-col, .anno-grid { grid-template-columns: 1fr; }
+  .ui { grid-template-columns: 1fr; }
+  .ui-side { display: none; }
+  .ov { grid-template-columns: repeat(2, 1fr); }
+  .lib-body { grid-template-columns: 1fr; }
+}
+</style>
+</head>
+<body>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></symbol>
+  <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+  <symbol id="i-edit" viewBox="0 0 24 24"><path d="M17 3a2.8 2.8 0 0 1 4 4L7.5 20.5 2 22l1.5-5.5z"/></symbol>
+  <symbol id="i-trash" viewBox="0 0 24 24"><path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m3 0v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/></symbol>
+  <symbol id="i-check" viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5"/></symbol>
+  <symbol id="i-alert" viewBox="0 0 24 24"><path d="M10.3 3.9L1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/><path d="M12 9v4M12 17h.01"/></symbol>
+  <symbol id="i-boxes" viewBox="0 0 24 24"><path d="M2.97 12.35A2 2 0 0 1 2 10.7V5.3a2 2 0 0 1 1.55-1.95l5-1.11a2 2 0 0 1 2.45 1.95v5.51a2 2 0 0 1-.97 1.71"/><path d="M8.5 12.5l5.94 1.32A2 2 0 0 1 16 15.77V21.2a2 2 0 0 1-2.45 1.94l-5-1.11A2 2 0 0 1 7 20.13v-5.51a2 2 0 0 1 .97-1.71z"/><path d="M16.5 11.5l5.06-1.12A2 2 0 0 1 24 12.33"/></symbol>
+  <symbol id="i-award" viewBox="0 0 24 24"><circle cx="12" cy="8" r="6"/><path d="M15.5 13l1.5 8-5-3-5 3 1.5-8"/></symbol>
+  <symbol id="i-brief" viewBox="0 0 24 24"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></symbol>
+  <symbol id="i-user" viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></symbol>
+  <symbol id="i-gauge" viewBox="0 0 24 24"><path d="M12 21a9 9 0 1 1 9-9"/><path d="M12 12l4.5-4.5"/></symbol>
+  <symbol id="i-map" viewBox="0 0 24 24"><path d="M9 3l6 2 6-2v15l-6 2-6-2-6 2V5z"/><path d="M9 3v15M15 5v15"/></symbol>
+  <symbol id="i-file" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6M16 13H8M16 17H8M10 9H8"/></symbol>
+  <symbol id="i-folder" viewBox="0 0 24 24"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></symbol>
+  <symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/></symbol>
+  <symbol id="i-book" viewBox="0 0 24 24"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></symbol>
+  <symbol id="i-arrow" viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></symbol>
+</svg>
+
+<header class="doc-head">
+  <span class="eyebrow">投标方案写作 · 资质素材库 · 功能梳理与设计原型</span>
+  <h1>资质素材库<br/><em>页面功能梳理 × 重设计原型</em></h1>
+  <p class="lede">
+    资质素材库是 owner 级企业资产:资质、业绩、人员、产能、网点、历史标书六类实体,
+    跨写作任务共用,是「②素材核对」缺口补录的落地页。本稿先梳理现状功能与不变式边界,
+    再给出补齐字段编辑、佐证管理、搜索与统计概览的重设计原型。
+  </p>
+  <div class="meta-row">
+    <span class="meta"><b>版本</b> v1.0</span>
+    <span class="meta"><b>日期</b> 2026-11-18</span>
+    <span class="meta"><b>改名</b> 素材库 → 资质素材库(导航 / 页面 / 跨页文案)</span>
+    <span class="meta"><b>词汇修复</b> history_bid → past_bid(对齐后端契约)</span>
+    <span class="meta"><b>令牌</b> .bwx / .brx(主色 #4f46e5)</span>
+  </div>
+</header>
+
+<main>
+
+<!-- ═══ 01 功能梳理 ═══ -->
+<section id="inventory">
+  <div class="sec-h"><span class="sec-no">01</span><h2>功能梳理</h2><div class="rule"></div></div>
+  <p class="sec-p">页面职责一句话:<b>维护企业可复用的资质事实,让每条投标要求都能落到「有据可查的实体」上。</b>
+  佐证与绑定的裁决权在断言执行与导出门禁,本页只负责把实体和证据准备到位。</p>
+
+  <div class="two-col" style="margin-bottom:14px">
+    <div>
+      <table class="spec-tbl">
+        <thead><tr><th>现状能力</th><th>说明</th></tr></thead>
+        <tbody>
+          <tr><td><b>六类实体管理</b></td><td>资质 / 同类业绩 / 人员 / 产能 / 网点 / 历史标书,owner 级、跨任务共用;类型由后端契约锁定(422 校验)</td></tr>
+          <tr><td><b>类型过滤</b></td><td>六类 seg tab + 计数;支持 <code class="k">?type=</code> 带入(缺口跳转)</td></tr>
+          <tr><td><b>实体清单</b></td><td>类型 / 名称 / 字段数 / 可佐证徽章 / 创建时间 / 删除</td></tr>
+          <tr><td><b>快速补录</b></td><td>底部「类型下拉 + 名称」一步新建,fields 暂传空对象</td></tr>
+          <tr><td><b>缺口跳转映射</b></td><td><code class="k">gapLibraryType()</code> 关键词粗映射:资质/业绩/人员/产能/网点/历史 → 实体类型,仅作补录引导</td></tr>
+          <tr><td><b>可佐证派生</b></td><td><code class="k">verifiable = evidence_refs 非空</code>,后端派生、前端只读</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div>
+      <table class="spec-tbl">
+        <thead><tr><th style="width:120px">不变式(不动)</th><th>说明</th></tr></thead>
+        <tbody>
+          <tr><td><b>绑定裁决权</b></td><td>实体 ↔ 要求的绑定由断言执行与导出门禁裁决;本页<b>不人工标记「已绑定」</b></td></tr>
+          <tr><td><b>诚实缺位</b></td><td>素材库为空不是错误:缺口诚实落「无对应素材」,导出被 D0 门禁拦截,不伪造数据</td></tr>
+          <tr><td><b>佐证口径</b></td><td>有引用才可佐证(verifiable);无引用实体不阻塞矩阵确认,但导出时被拦</td></tr>
+          <tr><td><b>词汇契约</b></td><td>entity_type ∈ 六类,由后端 422 校验;前端词表必须与契约同键</td></tr>
+        </tbody>
+      </table>
+      <table class="spec-tbl" style="margin-top:14px">
+        <thead><tr><th style="width:120px">六类词汇</th><th>后端字段语义(contracts.py)</th></tr></thead>
+        <tbody>
+          <tr><td><code class="k">qualification</code> 资质</td><td>营业执照 / MA·KA / 防爆合格证 / 型式检验 / 审计 / 纳税社保</td></tr>
+          <tr><td><code class="k">performance</code> 同类业绩</td><td>机型 / 工作面 / 吨位 / 合同额 / 验收时间</td></tr>
+          <tr><td><code class="k">personnel</code> 人员</td><td>项目经理 / 授权代表</td></tr>
+          <tr><td><code class="k">capacity</code> 产能</td><td>产能与排产</td></tr>
+          <tr><td><code class="k">network</code> 网点</td><td>服务网点与响应时限支撑</td></tr>
+          <tr><td><code class="k">past_bid</code> 历史标书</td><td>脱敏段落沉淀</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="anno-grid" style="margin-top:0">
+    <div class="anno">
+      <div class="anno-h"><span class="anno-n">!</span><b class="t">本次已修复:词汇表不一致 bug</b></div>
+      <p>前端词表与 <code class="k">gapLibraryType()</code> 用的是 <code class="k">history_bid</code>,而后端契约只接受 <code class="k">past_bid</code>(契约测试锁定六类集合)——新建「历史标书」会 422、缺口映射跳转过滤永远为空。已统一为 <code class="k">past_bid</code>。</p>
+    </div>
+    <div class="anno">
+      <div class="anno-h"><span class="anno-n">△</span><b class="t">现状缺口 → 原型补齐项</b></div>
+      <p>① <b>fields 无编辑 UI</b>(字段数列只读,实体只有名字没有事实);② 无搜索;③ <b>evidence_refs 无管理入口</b>(佐证只能靠后端,页面上无法补);④ 删除无确认;⑤ 无佐证率概览;⑥ 快速添加与列表割裂。原型 §02–§03 逐项补齐。</p>
+    </div>
+  </div>
+</section>
+
+<!-- ═══ 02 重设计原型 ═══ -->
+<section id="prototype">
+  <div class="sec-h"><span class="sec-no">02</span><h2>页面设计原型</h2><div class="rule"></div></div>
+  <p class="sec-p">布局:概览条 → 左侧类型导航 rail(计数 + 佐证率)→ 右侧「搜索 + 佐证过滤 + 实体表」。表格每行展示名称 + 关键字段键值,让「实体 = 名字 + 事实」一眼成立。悬停行可看交互态。</p>
+
+  <div class="mock">
+    <div class="mock-bar"><i></i><i></i><i></i><span>资质素材库 · 设计稿(页内菜单收起为示意)</span><span class="live">INTERACTIVE</span></div>
+    <div class="ui">
+      <aside class="ui-side">
+        <div class="ui-brand">
+          <span class="b-ic"><svg class="ic"><use href="#i-file"/></svg></span>
+          <div><b>投标方案写作</b><span>Bid Proposal Writing</span></div>
+        </div>
+        <div class="ui-nav-item"><svg class="ic"><use href="#i-folder"/></svg>项目列表</div>
+        <div class="ui-nav-item"><svg class="ic"><use href="#i-file"/></svg>① 解析确认</div>
+        <div class="ui-nav-item"><svg class="ic"><use href="#i-boxes"/></svg>② 素材核对<span class="cnt">3</span></div>
+        <div class="ui-nav-item"><svg class="ic"><use href="#i-gauge"/></svg>③ 生成配置</div>
+        <div class="ui-nav-item"><svg class="ic"><use href="#i-edit"/></svg>④ 写作工作台</div>
+        <div class="ui-g">质量与交付</div>
+        <div class="ui-nav-item"><svg class="ic"><use href="#i-check"/></svg>⑤ 预审查</div>
+        <div class="ui-nav-item"><svg class="ic"><use href="#i-file"/></svg>⑥ 导出适配</div>
+        <div class="ui-g">治理</div>
+        <div class="ui-nav-item"><svg class="ic"><use href="#i-boxes"/></svg>资质素材库</div>
+        <div class="ui-nav-item"><svg class="ic"><use href="#i-book"/></svg>断言注册表</div>
+      </aside>
+      <div class="ui-main">
+        <div class="ui-pagehead">
+          <span class="ph-ic"><svg class="ic"><use href="#i-boxes"/></svg></span>
+          <div>
+            <h3>资质素材库</h3>
+            <div class="sub">资质 / 业绩 / 人员 / 产能 / 网点 / 历史标书 · owner 级资产,跨任务共用</div>
+          </div>
+          <div class="r">
+            <span class="btn sm"><svg class="ic"><use href="#i-arrow"/></svg>导出清单</span>
+            <span class="btn sm pri"><svg class="ic"><use href="#i-plus"/></svg>新建实体</span>
+          </div>
+        </div>
+
+        <div class="ov">
+          <div class="ov-cell"><div class="l">实体总数</div><div class="v">42</div></div>
+          <div class="ov-cell ok"><div class="l">有引用(可佐证)</div><div class="v">31<small>佐证率 74%</small></div></div>
+          <div class="ov-cell bad"><div class="l">无引用(导出将被拦)</div><div class="v">11</div></div>
+          <div class="ov-cell"><div class="l">字段完整度</div><div class="v">86%<small>按类型模板</small></div></div>
+        </div>
+
+        <div class="lib-body">
+          <aside class="rail">
+            <div class="rail-t">实体类型</div>
+            <div class="rail-item on">
+              <svg class="ic"><use href="#i-boxes"/></svg>全部类型<span class="c">42</span>
+            </div>
+            <div class="rail-item">
+              <svg class="ic"><use href="#i-award"/></svg>资质<span class="c">14</span><span class="dot-badge" title="3 条无引用"></span>
+            </div>
+            <span class="rail-mini"><i style="width:79%"></i></span>
+            <div class="rail-item">
+              <svg class="ic"><use href="#i-brief"/></svg>同类业绩<span class="c">11</span><span class="dot-badge" title="4 条无引用"></span>
+            </div>
+            <span class="rail-mini"><i style="width:64%"></i></span>
+            <div class="rail-item">
+              <svg class="ic"><use href="#i-user"/></svg>人员<span class="c">8</span>
+            </div>
+            <span class="rail-mini"><i style="width:88%"></i></span>
+            <div class="rail-item">
+              <svg class="ic"><use href="#i-gauge"/></svg>产能<span class="c">4</span><span class="dot-badge" title="3 条无引用"></span>
+            </div>
+            <span class="rail-mini"><i style="width:25%"></i></span>
+            <div class="rail-item">
+              <svg class="ic"><use href="#i-map"/></svg>网点<span class="c">3</span>
+            </div>
+            <span class="rail-mini"><i style="width:100%"></i></span>
+            <div class="rail-item">
+              <svg class="ic"><use href="#i-file"/></svg>历史标书<span class="c">2</span>
+            </div>
+            <span class="rail-mini"><i style="width:100%"></i></span>
+          </aside>
+
+          <div class="lib-main">
+            <div class="toolbar">
+              <span class="search"><svg class="ic"><use href="#i-search"/></svg>搜索名称、证书编号、字段值…<kbd>/</kbd></span>
+              <span class="fchip on">全部 <span class="c">42</span></span>
+              <span class="fchip ok"><svg class="ic"><use href="#i-check"/></svg> 有引用 <span class="c">31</span></span>
+              <span class="fchip warn-on"><svg class="ic"><use href="#i-alert"/></svg> 无引用 <span class="c">11</span></span>
+            </div>
+            <table class="tbl">
+              <thead>
+                <tr><th style="min-width:280px">实体 / 关键字段</th><th>类型</th><th>佐证</th><th>更新时间</th><th style="width:74px">操作</th></tr>
+              </thead>
+              <tbody>
+                <tr class="sel">
+                  <td class="ent-name">
+                    <b>ISO9001 质量管理体系认证</b>
+                    <div class="ent-fields"><span>证书编号 <b>CN2024-0881</b></span><span>有效期至 <b>2027-06</b></span><span>发证机关 <b>CQC</b></span></div>
+                  </td>
+                  <td><span class="pill brand">资质</span></td>
+                  <td class="conf-cell"><span class="pill ok"><svg class="ic"><use href="#i-check"/></svg>有引用 2</span></td>
+                  <td>2026-11-02</td>
+                  <td><div class="row-act">
+                    <span class="icon-btn edit" title="编辑实体与佐证"><svg class="ic"><use href="#i-edit"/></svg></span>
+                    <span class="icon-btn" title="删除实体"><svg class="ic"><use href="#i-trash"/></svg></span>
+                  </div></td>
+                </tr>
+                <tr>
+                  <td class="ent-name">
+                    <b>环境工程专业甲级资质</b>
+                    <div class="ent-fields"><span>证书编号 <b>HJ-MJ-2023-114</b></span><span>发证机关 <b>生态环境部</b></span><span>有效期至 <b>2028-01</b></span></div>
+                  </td>
+                  <td><span class="pill brand">资质</span></td>
+                  <td class="conf-cell"><span class="pill ok"><svg class="ic"><use href="#i-check"/></svg>有引用 1</span></td>
+                  <td>2026-10-28</td>
+                  <td><div class="row-act">
+                    <span class="icon-btn edit"><svg class="ic"><use href="#i-edit"/></svg></span>
+                    <span class="icon-btn"><svg class="ic"><use href="#i-trash"/></svg></span>
+                  </div></td>
+                </tr>
+                <tr>
+                  <td class="ent-name">
+                    <b>XX 市污水处理厂提标改造 EPC</b>
+                    <div class="ent-fields"><span>合同额 <b>8,600 万元</b></span><span>验收 <b>2025-03</b></span><span>工艺 <b>A/O + MBR</b></span></div>
+                  </td>
+                  <td><span class="pill">同类业绩</span></td>
+                  <td class="conf-cell"><span class="pill ok"><svg class="ic"><use href="#i-check"/></svg>有引用 3</span></td>
+                  <td>2026-11-10</td>
+                  <td><div class="row-act">
+                    <span class="icon-btn edit"><svg class="ic"><use href="#i-edit"/></svg></span>
+                    <span class="icon-btn"><svg class="ic"><use href="#i-trash"/></svg></span>
+                  </div></td>
+                </tr>
+                <tr>
+                  <td class="ent-name">
+                    <b>XX 工业园区废水处理项目</b>
+                    <div class="ent-fields"><span>合同额 <b>3,200 万元</b></span><span>状态 <b>在建</b></span></div>
+                  </td>
+                  <td><span class="pill">同类业绩</span></td>
+                  <td class="conf-cell"><span class="pill warn"><svg class="ic"><use href="#i-alert"/></svg>无引用</span></td>
+                  <td>2026-11-12</td>
+                  <td><div class="row-act">
+                    <span class="icon-btn edit"><svg class="ic"><use href="#i-edit"/></svg></span>
+                    <span class="icon-btn"><svg class="ic"><use href="#i-trash"/></svg></span>
+                  </div></td>
+                </tr>
+                <tr>
+                  <td class="ent-name">
+                    <b>注册环保工程师 · 张建国</b>
+                    <div class="ent-fields"><span>专业 <b>水污染防治</b></span><span>证书编号 <b>AE2021-5571</b></span></div>
+                  </td>
+                  <td><span class="pill">人员</span></td>
+                  <td class="conf-cell"><span class="pill ok"><svg class="ic"><use href="#i-check"/></svg>有引用 1</span></td>
+                  <td>2026-09-19</td>
+                  <td><div class="row-act">
+                    <span class="icon-btn edit"><svg class="ic"><use href="#i-edit"/></svg></span>
+                    <span class="icon-btn"><svg class="ic"><use href="#i-trash"/></svg></span>
+                  </div></td>
+                </tr>
+                <tr>
+                  <td class="ent-name">
+                    <b>一级建造师(市政) · 李宏</b>
+                    <div class="ent-fields"><span>角色 <b>项目经理</b></span><span>证书编号 <b>JM2019-2201</b></span></div>
+                  </td>
+                  <td><span class="pill">人员</span></td>
+                  <td class="conf-cell"><span class="pill warn"><svg class="ic"><use href="#i-alert"/></svg>无引用</span></td>
+                  <td>2026-11-14</td>
+                  <td><div class="row-act">
+                    <span class="icon-btn edit"><svg class="ic"><use href="#i-edit"/></svg></span>
+                    <span class="icon-btn"><svg class="ic"><use href="#i-trash"/></svg></span>
+                  </div></td>
+                </tr>
+                <tr>
+                  <td class="ent-name">
+                    <b>废水处理设计产能声明</b>
+                    <div class="ent-fields"><span>设计产能 <b>50 万吨/日</b></span><span>排产周期 <b>45 天</b></span></div>
+                  </td>
+                  <td><span class="pill">产能</span></td>
+                  <td class="conf-cell"><span class="pill warn"><svg class="ic"><use href="#i-alert"/></svg>无引用</span></td>
+                  <td>2026-11-15</td>
+                  <td><div class="row-act">
+                    <span class="icon-btn edit"><svg class="ic"><use href="#i-edit"/></svg></span>
+                    <span class="icon-btn"><svg class="ic"><use href="#i-trash"/></svg></span>
+                  </div></td>
+                </tr>
+                <tr>
+                  <td class="ent-name">
+                    <b>华东区域服务网点承诺</b>
+                    <div class="ent-fields"><span>响应时限 <b>24 小时</b></span><span>覆盖 <b>6 省</b></span></div>
+                  </td>
+                  <td><span class="pill">网点</span></td>
+                  <td class="conf-cell"><span class="pill ok"><svg class="ic"><use href="#i-check"/></svg>有引用 1</span></td>
+                  <td>2026-10-09</td>
+                  <td><div class="row-act">
+                    <span class="icon-btn edit"><svg class="ic"><use href="#i-edit"/></svg></span>
+                    <span class="icon-btn"><svg class="ic"><use href="#i-trash"/></svg></span>
+                  </div></td>
+                </tr>
+                <tr>
+                  <td class="ent-name">
+                    <b>2025 某集团废水治理投标文件(脱敏)</b>
+                    <div class="ent-fields"><span>来源 <b>脱敏沉淀</b></span><span>复用 <b>技术方案 §3</b></span></div>
+                  </td>
+                  <td><span class="pill">历史标书</span></td>
+                  <td class="conf-cell"><span class="pill ok"><svg class="ic"><use href="#i-check"/></svg>有引用 2</span></td>
+                  <td>2026-08-30</td>
+                  <td><div class="row-act">
+                    <span class="icon-btn edit"><svg class="ic"><use href="#i-edit"/></svg></span>
+                    <span class="icon-btn"><svg class="ic"><use href="#i-trash"/></svg></span>
+                  </div></td>
+                </tr>
+              </tbody>
+            </table>
+            <p style="margin-top:8px; font-size:11.5px; color:var(--ink-3)">
+              无引用实体导出时被 D0 门禁拦截——在佐证抽屉补 evidence_refs 后,以断言判定为准,本页不做人工「已绑定」标记。
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="anno-grid">
+    <div class="anno">
+      <div class="anno-h"><span class="anno-n">1</span><b class="t">概览条 — 佐证率进入第一屏</b></div>
+      <p>实体总数 / 有引用(佐证率)/ 无引用(导出将被拦)/ 字段完整度。佐证率是本页最关键的资产健康度:「有 42 个实体」不代表「能过门禁」,74% 的佐证率才是真相。</p>
+      <div class="anno-h" style="margin-top:10px"><span class="anno-n">2</span><b class="t">类型导航 rail — 计数 + 佐证率 + 无引用角标</b></div>
+      <p>替代原 seg tab:每类一行,图标 + 计数 + 佐证率迷你条,无引用实体 &gt;0 时显示红色角标。带 <code class="k">?type=</code> 缺口跳转时对应项自动选中,补录上下文不丢。</p>
+    </div>
+    <div class="anno">
+      <div class="anno-h"><span class="anno-n">3</span><b class="t">搜索 + 佐证过滤 chips</b></div>
+      <p>搜索覆盖名称与字段值(找「CN2024-0881」这类证书编号是高频操作);佐证三态过滤(全部 / 有引用 / 无引用)直接服务「导出前清欠」工作流:一次过滤出 11 条无引用逐个补证。</p>
+      <div class="anno-h" style="margin-top:10px"><span class="anno-n">4</span><b class="t">实体行 = 名字 + 关键字段键值</b></div>
+      <p>原表格只有「名称 + 字段数」,用户必须点开才知道实体里有什么。原型把字段键值直接铺在名称下方(mono 小 chip),资质的证书编号 / 有效期、业绩的合同额 / 验收时间一屏可比。</p>
+    </div>
+    <div class="anno">
+      <div class="anno-h"><span class="anno-n">5</span><b class="t">佐证列:有引用带数量,无引用琥珀警示</b></div>
+      <p>沿用外框徽标语言:绿 ✓ 有引用 N 条 / 琥珀 ⚠ 无引用。无引用不是错误而是待办——点击直达该实体的佐证编辑(§03 抽屉),与导出门禁口径一致。</p>
+      <div class="anno-h" style="margin-top:10px"><span class="anno-n">6</span><b class="t">删除带确认,编辑进抽屉</b></div>
+      <p>删除是破坏性操作且实体可能被任务引用,需确认弹层明示影响;编辑统一走 §03 抽屉(名称 / 字段 / 佐证一起管),不再有无字段的「半截实体」。</p>
+    </div>
+  </div>
+</section>
+
+<!-- ═══ 03 新建/编辑抽屉 ═══ -->
+<section id="drawer">
+  <div class="sec-h"><span class="sec-no">03</span><h2>新建 / 编辑抽屉 + 字段模板</h2><div class="rule"></div></div>
+  <p class="sec-p">补齐现状最大缺口:fields 编辑与佐证管理。抽屉按类型载入<b>字段模板</b>(模板来自后端 contracts.py 的字段语义),字段行可增删;佐证引用(evidence_refs)直接在抽屉内补。</p>
+
+  <div class="mock">
+    <div class="mock-bar"><i></i><i></i><i></i><span>编辑抽屉态 · 设计稿</span><span class="live">OVERLAY</span></div>
+    <div class="drawer-stage">
+      <div class="dim"></div>
+      <div class="drawer">
+        <div class="drawer-h">
+          <div>
+            <h4>编辑实体 · 资质</h4>
+            <div class="sub">ISO9001 质量管理体系认证 · 被断言引用 ent:3 处</div>
+          </div>
+          <span class="x">✕</span>
+        </div>
+        <div class="drawer-b">
+          <div>
+            <span class="f-label">实体类型(创建后锁定,如需变更请删除重建)</span>
+            <div class="entity-grid">
+              <span class="entity-opt on"><svg class="ic"><use href="#i-award"/></svg>资质<small>qualification</small></span>
+              <span class="entity-opt"><svg class="ic"><use href="#i-brief"/></svg>同类业绩<small>performance</small></span>
+              <span class="entity-opt"><svg class="ic"><use href="#i-user"/></svg>人员<small>personnel</small></span>
+              <span class="entity-opt"><svg class="ic"><use href="#i-gauge"/></svg>产能<small>capacity</small></span>
+              <span class="entity-opt"><svg class="ic"><use href="#i-map"/></svg>网点<small>network</small></span>
+              <span class="entity-opt"><svg class="ic"><use href="#i-file"/></svg>历史标书<small>past_bid</small></span>
+            </div>
+          </div>
+          <div>
+            <span class="f-label">实体名称</span>
+            <div class="inp">ISO9001 质量管理体系认证</div>
+          </div>
+          <div>
+            <span class="f-label">字段(资质模板)<span style="color:var(--ink-3); font-weight:400"> · 字段值参与断言一致性校验,请与佐证原文一致</span></span>
+            <div style="display:flex; flex-direction:column; gap:7px">
+              <div class="field-row"><div class="inp">证书编号</div><div class="inp">CN2024-0881</div><span class="del">✕</span></div>
+              <div class="field-row"><div class="inp">发证机关</div><div class="inp">中国质量认证中心(CQC)</div><span class="del">✕</span></div>
+              <div class="field-row"><div class="inp">有效期至</div><div class="inp">2027-06-30</div><span class="del">✕</span></div>
+              <div class="field-row"><div class="inp">覆盖范围</div><div class="inp">废水处理设施运营服务</div><span class="del">✕</span></div>
+              <span class="evi-add"><svg class="ic"><use href="#i-plus"/></svg>添加字段</span>
+            </div>
+          </div>
+          <div>
+            <span class="f-label">佐证引用(evidence_refs)<span style="color:var(--ink-3); font-weight:400"> · 非空即「有引用」,补齐后自动转可佐证</span></span>
+            <div style="display:flex; flex-direction:column; gap:7px">
+              <div class="evi-row"><svg class="ic"><use href="#i-file"/></svg>资质证书扫描件.pdf<span class="pg">第 1 页</span><span style="color:var(--ink-3)">「ISO9001:2015 质量管理体系认证证书…」</span></div>
+              <div class="evi-row"><svg class="ic"><use href="#i-file"/></svg>资格证明汇编.docx<span class="pg">第 12 页</span><span style="color:var(--ink-3)">「中国质量认证中心颁发…」</span></div>
+              <span class="evi-add"><svg class="ic"><use href="#i-plus"/></svg>添加佐证(文档 / 页码 / 引文)</span>
+            </div>
+          </div>
+        </div>
+        <div class="drawer-f">
+          <span class="hint">保存后 verifiable 由后端按 evidence_refs 重新派生</span>
+          <span style="margin-left:auto"></span>
+          <span class="btn sm">取消</span>
+          <span class="btn sm pri"><svg class="ic"><use href="#i-check"/></svg>保存实体</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="two-col" style="margin-top:22px">
+    <table class="spec-tbl">
+      <thead><tr><th>类型</th><th>建议字段模板(可增删)</th></tr></thead>
+      <tbody>
+        <tr><td><b>资质</b></td><td>证书编号 · 发证机关 · 有效期至 · 覆盖范围</td></tr>
+        <tr><td><b>同类业绩</b></td><td>机型 · 工作面 · 吨位 · 合同额 · 验收时间 · 业主</td></tr>
+        <tr><td><b>人员</b></td><td>角色 · 证书编号 · 专业 · 职称 · 有效期至</td></tr>
+        <tr><td><b>产能</b></td><td>设计产能 · 排产周期 · 证明方式</td></tr>
+        <tr><td><b>网点</b></td><td>区域覆盖 · 响应时限 · 网点数量</td></tr>
+        <tr><td><b>历史标书</b></td><td>来源项目 · 中标时间 · 复用章节 · 脱敏状态</td></tr>
+      </tbody>
+    </table>
+    <div>
+      <table class="spec-tbl">
+        <thead><tr><th>抽屉交互契约</th><th>说明</th></tr></thead>
+        <tbody>
+          <tr><td><b>类型锁定</b></td><td>entity_type 创建后不可改(后端 PATCH 也不收类型);改类型 = 删除重建,抽屉明示</td></tr>
+          <tr><td><b>字段 = 自由 KV</b></td><td>fields 保持 <code class="k">Record&lt;string, unknown&gt;</code> 契约不变;模板只提供预填行,不引入强 schema</td></tr>
+          <tr><td><b>佐证内联补</b></td><td>evidence_refs 行(文档 / 页码 / 引文)直接增删;保存后 verifiable 后端重派生</td></tr>
+          <tr><td><b>模板即引导</b></td><td>字段模板是前端引导层,与断言的字段一致性校验(entity_ref 存在性 + 字段一致)衔接</td></tr>
+        </tbody>
+      </table>
+      <div class="anno" style="margin-top:14px">
+        <div class="anno-h"><span class="anno-n">7</span><b class="t">与 ② 素材核对的闭环</b></div>
+        <p>缺口行「无对应素材 → 去资质素材库补录」仍带 <code class="k">?type=</code> 跳转(rail 自动选中);补录实体后回到素材核对,绑定以断言判定为准——本页始终不越权标记绑定。</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══ 04 落地说明 ═══ -->
+<section id="impl">
+  <div class="sec-h"><span class="sec-no">04</span><h2>落地说明</h2><div class="rule"></div></div>
+  <p class="sec-p">改动集中在 <code class="k">LibraryView.tsx</code> + bid-write.css;API 契约零变更——字段模板是前端引导层,新建仍可只传 name(向后兼容)。</p>
+  <div class="two-col">
+    <div class="diag">
+      <b class="t">分期建议</b>
+      <p><b>P1(高价值低成本)</b>:改名 + 词汇修复(已上线)、概览条、佐证过滤 chips、删除确认。<br/>
+      <b>P2(核心补齐)</b>:编辑抽屉 + 字段模板 + 佐证行管理(Read 后已有 PATCH /materials/{id} 契约,前端补 UI 即可)。<br/>
+      <b>P3(增强)</b>:字段完整度统计、搜索字段值、历史标书复用入口。</p>
+    </div>
+    <div class="diag">
+      <b class="t">测试影响</b>
+      <p>现有 LibraryView 断言(类型过滤 / 新建 / 空态)基于文本与角色,徽章与文案改动需同步更新;新增建议:佐证过滤切换、抽屉字段行增删、<code class="k">past_bid</code> 新建成功(回归本次词汇 bug)。后端零改动,<code class="k">make test</code> 契约测试不动。</p>
+    </div>
+  </div>
+</section>
+
+</main>
+
+<footer>
+  <span>投标方案写作 · 资质素材库 功能梳理与设计原型</span>
+  <span class="mono">docs/designs/2026-11-18-bid-write-library-ui.html</span>
+  <span style="margin-left:auto">改名与词汇修复已落地 · 原型待评审后分期实施</span>
+</footer>
+
+</body>
+</html>

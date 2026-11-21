@@ -58,17 +58,20 @@ const STATUS_CONFIG: Record<
   pending_approval: {
     label: "待审批",
     icon: Clock,
-    color: "bg-amber-50 text-amber-600 border-amber-200 dark:bg-amber-950/40 dark:text-amber-300 dark:border-amber-800",
+    color:
+      "bg-amber-50 text-amber-600 border-amber-200 dark:bg-amber-950/40 dark:text-amber-300 dark:border-amber-800",
   },
   published: {
     label: "已发布",
     icon: Globe,
-    color: "bg-green-50 text-green-600 border-green-200 dark:bg-green-950/40 dark:text-green-300 dark:border-green-800",
+    color:
+      "bg-green-50 text-green-600 border-green-200 dark:bg-green-950/40 dark:text-green-300 dark:border-green-800",
   },
   rejected: {
     label: "已拒绝",
     icon: XCircle,
-    color: "bg-red-50 text-red-600 border-red-200 dark:bg-red-950/40 dark:text-red-300 dark:border-red-800",
+    color:
+      "bg-red-50 text-red-600 border-red-200 dark:bg-red-950/40 dark:text-red-300 dark:border-red-800",
   },
 };
 
@@ -309,7 +312,7 @@ export default function AdminTemplatesPage() {
                           title="直接发布"
                           disabled={actioningId === t.id}
                           onClick={() => handlePublish(t)}
-                          className="text-muted-foreground rounded-md p-1.5 transition-colors hover:bg-success/10 hover:text-success disabled:opacity-50"
+                          className="text-muted-foreground hover:bg-success/10 hover:text-success rounded-md p-1.5 transition-colors disabled:opacity-50"
                         >
                           {actioningId === t.id ? (
                             <Loader2 className="h-3.5 w-3.5 animate-spin" />
@@ -324,7 +327,7 @@ export default function AdminTemplatesPage() {
                           title="提交审批"
                           disabled={actioningId === t.id}
                           onClick={() => handleSubmitApproval(t)}
-                          className="text-muted-foreground rounded-md p-1.5 transition-colors hover:bg-amber-500/10 hover:text-amber-600 dark:hover:text-amber-400 disabled:opacity-50"
+                          className="text-muted-foreground rounded-md p-1.5 transition-colors hover:bg-amber-500/10 hover:text-amber-600 disabled:opacity-50 dark:hover:text-amber-400"
                         >
                           {actioningId === t.id ? (
                             <Loader2 className="h-3.5 w-3.5 animate-spin" />
@@ -369,7 +372,7 @@ export default function AdminTemplatesPage() {
                           title="直接发布"
                           disabled={actioningId === t.id}
                           onClick={() => handlePublish(t)}
-                          className="text-muted-foreground rounded-md p-1.5 transition-colors hover:bg-success/10 hover:text-success disabled:opacity-50"
+                          className="text-muted-foreground hover:bg-success/10 hover:text-success rounded-md p-1.5 transition-colors disabled:opacity-50"
                         >
                           {actioningId === t.id ? (
                             <Loader2 className="h-3.5 w-3.5 animate-spin" />
@@ -384,7 +387,7 @@ export default function AdminTemplatesPage() {
                           title="重新提交审批"
                           disabled={actioningId === t.id}
                           onClick={() => handleSubmitApproval(t)}
-                          className="text-muted-foreground rounded-md p-1.5 transition-colors hover:bg-amber-500/10 hover:text-amber-600 dark:hover:text-amber-400 disabled:opacity-50"
+                          className="text-muted-foreground rounded-md p-1.5 transition-colors hover:bg-amber-500/10 hover:text-amber-600 disabled:opacity-50 dark:hover:text-amber-400"
                         >
                           {actioningId === t.id ? (
                             <Loader2 className="h-3.5 w-3.5 animate-spin" />

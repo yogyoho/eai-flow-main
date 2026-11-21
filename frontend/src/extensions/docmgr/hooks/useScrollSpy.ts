@@ -44,7 +44,9 @@ export function useScrollSpy({
   debounceMs = 50,
 }: UseScrollSpyOptions): string | null {
   const [activeId, setActiveId] = useState<string | null>(null);
-  const debounceTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  const debounceTimer = useRef<ReturnType<typeof setTimeout> | undefined>(
+    undefined,
+  );
 
   const handleScroll = useCallback(() => {
     if (debounceTimer.current) clearTimeout(debounceTimer.current);
@@ -58,8 +60,14 @@ export function useScrollSpy({
         const isVisible = el.offsetParent !== null;
         if (!isVisible) continue;
         try {
-          const { relativeTop, relativeBottom } = getRelativePosition(el, container);
-          if (relativeBottom > offsetTop && relativeTop < container.clientHeight) {
+          const { relativeTop, relativeBottom } = getRelativePosition(
+            el,
+            container,
+          );
+          if (
+            relativeBottom > offsetTop &&
+            relativeTop < container.clientHeight
+          ) {
             if (relativeTop > lastValidTop && relativeTop <= offsetTop) {
               lastValidTop = relativeTop;
               current = heading.id;

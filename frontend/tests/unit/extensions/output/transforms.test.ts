@@ -10,7 +10,13 @@ describe("transformTemplate", () => {
       name: "Test Template",
       report_type: "environmental_impact",
       reference_style: "gb7714",
-      body_styles: { fontFamily: "SimSun", fontSize: 12, lineHeight: 1.5, paragraphSpacing: 6, firstLineIndent: 24 },
+      body_styles: {
+        fontFamily: "SimSun",
+        fontSize: 12,
+        lineHeight: 1.5,
+        paragraphSpacing: 6,
+        firstLineIndent: 24,
+      },
       heading_styles: [],
       page_settings: {
         paper_size: "A4",
@@ -36,7 +42,13 @@ describe("transformTemplate", () => {
       id: "t2",
       name: "No Ref Style",
       report_type: "other",
-      body_styles: { fontFamily: "Arial", fontSize: 14, lineHeight: 1.6, paragraphSpacing: 8, firstLineIndent: 28 },
+      body_styles: {
+        fontFamily: "Arial",
+        fontSize: 14,
+        lineHeight: 1.6,
+        paragraphSpacing: 8,
+        firstLineIndent: 28,
+      },
       created_at: "2024-01-01",
       updated_at: "2024-01-01",
     });
@@ -48,7 +60,13 @@ describe("transformTemplate", () => {
       id: "t3",
       name: "No Heading Styles",
       report_type: "safety",
-      body_styles: { fontFamily: "SimHei", fontSize: 16, lineHeight: 1.8, paragraphSpacing: 10, firstLineIndent: 32 },
+      body_styles: {
+        fontFamily: "SimHei",
+        fontSize: 16,
+        lineHeight: 1.8,
+        paragraphSpacing: 10,
+        firstLineIndent: 32,
+      },
       created_at: "2024-01-01",
       updated_at: "2024-01-01",
     });
@@ -60,7 +78,13 @@ describe("transformTemplate", () => {
       id: "t4",
       name: "Minimal Template",
       report_type: "social_impact",
-      body_styles: { fontFamily: "FangSong", fontSize: 12, lineHeight: 1.5, paragraphSpacing: 6, firstLineIndent: 24 },
+      body_styles: {
+        fontFamily: "FangSong",
+        fontSize: 12,
+        lineHeight: 1.5,
+        paragraphSpacing: 6,
+        firstLineIndent: 24,
+      },
       created_at: "2024-01-01",
       updated_at: "2024-01-01",
     });
@@ -73,16 +97,42 @@ describe("transformTemplate", () => {
   });
 
   test("preserves all provided optional fields", () => {
-    const coverTemplate = { showLogo: true, logoPosition: "center" as const, showTitle: true, showClient: false, showDate: true, showProjectNumber: true };
-    const tocSettings = { maxDepth: 3, showPageNumbers: true, leaderDots: true };
+    const coverTemplate = {
+      showLogo: true,
+      logoPosition: "center" as const,
+      showTitle: true,
+      showClient: false,
+      showDate: true,
+      showProjectNumber: true,
+    };
+    const tocSettings = {
+      maxDepth: 3,
+      showPageNumbers: true,
+      leaderDots: true,
+    };
     const result = transformTemplate({
       id: "t5",
       name: "Full Template",
       report_type: "environmental_impact",
       cover_template: coverTemplate,
       toc_settings: tocSettings,
-      body_styles: { fontFamily: "SimSun", fontSize: 12, lineHeight: 1.5, paragraphSpacing: 6, firstLineIndent: 24 },
-      heading_styles: [{ level: 1, fontFamily: "SimHei", fontSize: 22, fontWeight: 700, color: "#000", numbering: "chinese" }],
+      body_styles: {
+        fontFamily: "SimSun",
+        fontSize: 12,
+        lineHeight: 1.5,
+        paragraphSpacing: 6,
+        firstLineIndent: 24,
+      },
+      heading_styles: [
+        {
+          level: 1,
+          fontFamily: "SimHei",
+          fontSize: 22,
+          fontWeight: 700,
+          color: "#000",
+          numbering: "chinese",
+        },
+      ],
       created_at: "2024-01-01",
       updated_at: "2024-01-01",
     });
@@ -96,8 +146,21 @@ describe("transformTemplate", () => {
       id: "t6",
       name: "Type Check",
       report_type: "test",
-      body_styles: { fontFamily: "A", fontSize: 12, lineHeight: 1.5, paragraphSpacing: 0, firstLineIndent: 0 },
-      page_settings: { paper_size: "A4", orientation: "portrait", margin_top: 25, margin_bottom: 25, margin_left: 30, margin_right: 20 },
+      body_styles: {
+        fontFamily: "A",
+        fontSize: 12,
+        lineHeight: 1.5,
+        paragraphSpacing: 0,
+        firstLineIndent: 0,
+      },
+      page_settings: {
+        paper_size: "A4",
+        orientation: "portrait",
+        margin_top: 25,
+        margin_bottom: 25,
+        margin_left: 30,
+        margin_right: 20,
+      },
       created_at: "2024-01-01",
       updated_at: "2024-01-01",
     });
@@ -118,8 +181,21 @@ describe("transformTemplate cover_master", () => {
       name: "T",
       report_type: "general",
       is_builtin: false,
-      page_settings: { paperSize: "A4", orientation: "portrait", marginTop: 2.54, marginBottom: 2.54, marginLeft: 3.17, marginRight: 3.17 },
-      body_styles: { fontFamily: "宋体", fontSize: 12, lineHeight: 1.5, paragraphSpacing: 6, firstLineIndent: 2 },
+      page_settings: {
+        paperSize: "A4",
+        orientation: "portrait",
+        marginTop: 2.54,
+        marginBottom: 2.54,
+        marginLeft: 3.17,
+        marginRight: 3.17,
+      },
+      body_styles: {
+        fontFamily: "宋体",
+        fontSize: 12,
+        lineHeight: 1.5,
+        paragraphSpacing: 6,
+        firstLineIndent: 2,
+      },
       heading_styles: [],
       reference_style: "gb7714",
       created_at: "2026-08-07T00:00:00Z",
@@ -128,7 +204,15 @@ describe("transformTemplate cover_master", () => {
         mode: "master",
         xml: "<w:p/>",
         images: [],
-        slots: [{ id: "client", label: "建设单位", kind: "variable", sampleValue: "甲公司", defaultFrom: "frontmatter:client" }],
+        slots: [
+          {
+            id: "client",
+            label: "建设单位",
+            kind: "variable",
+            sampleValue: "甲公司",
+            defaultFrom: "frontmatter:client",
+          },
+        ],
         sourceFile: "x.docx",
         boundary: "before_toc",
       },
@@ -140,7 +224,18 @@ describe("transformTemplate cover_master", () => {
   });
 
   test("defaults coverMaster to null when absent", () => {
-    const tpl = transformTemplate({ id: "1", name: "T", report_type: "g", is_builtin: false, page_settings: {}, body_styles: {}, heading_styles: [], reference_style: "gb7714", created_at: "", updated_at: "" });
+    const tpl = transformTemplate({
+      id: "1",
+      name: "T",
+      report_type: "g",
+      is_builtin: false,
+      page_settings: {},
+      body_styles: {},
+      heading_styles: [],
+      reference_style: "gb7714",
+      created_at: "",
+      updated_at: "",
+    });
     expect(tpl.coverMaster).toBeNull();
   });
 });

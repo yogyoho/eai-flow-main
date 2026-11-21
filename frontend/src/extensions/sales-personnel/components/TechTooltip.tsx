@@ -2,7 +2,11 @@
 
 import type { ReactNode } from "react";
 
-import { CARD, INK, INK_2 } from "@/extensions/sales-personnel/components/chartTheme";
+import {
+  CARD,
+  INK,
+  INK_2,
+} from "@/extensions/sales-personnel/components/chartTheme";
 
 // recharts 自定义 tooltip:DeepSeek 风白卡(克隆自 biz-pipeline/TechTooltip,无光晕无玻璃)。
 // recharts 3.x 的 TooltipProps 泛型不再直出 payload/label,这里用结构化内联接口
@@ -20,7 +24,12 @@ interface TechTooltipProps {
   unit?: string;
 }
 
-export function TechTooltip({ active, payload, label, unit }: TechTooltipProps): ReactNode {
+export function TechTooltip({
+  active,
+  payload,
+  label,
+  unit,
+}: TechTooltipProps): ReactNode {
   if (!active || !payload?.length) return null;
   const suffix = unit ? ` ${unit}` : "";
   return (
@@ -35,9 +44,15 @@ export function TechTooltip({ active, payload, label, unit }: TechTooltipProps):
       ) : null}
       {payload.map((p, i) => (
         <p key={i} className="flex items-center gap-2">
-          <span className="inline-block h-2 w-2 rounded-[3px]" style={{ background: p.color }} />
+          <span
+            className="inline-block h-2 w-2 rounded-[3px]"
+            style={{ background: p.color }}
+          />
           <span style={{ color: INK_2 }}>{p.name}:</span>
-          <span className="font-semibold [font-variant-numeric:tabular-nums]" style={{ color: INK }}>
+          <span
+            className="font-semibold [font-variant-numeric:tabular-nums]"
+            style={{ color: INK }}
+          >
             {p.value}
             {suffix}
           </span>

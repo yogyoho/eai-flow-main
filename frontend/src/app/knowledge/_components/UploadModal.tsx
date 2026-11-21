@@ -96,9 +96,7 @@ export function UploadModal({
       }
     }
     if (rejected.length > 0) {
-      toast.error(
-        `${rejected.join("、")} 格式不受支持。${acceptInfo.label}`,
-      );
+      toast.error(`${rejected.join("、")} 格式不受支持。${acceptInfo.label}`);
     }
     if (accepted.length > 0) {
       setFiles((prev) => [...prev, ...accepted]);

@@ -207,9 +207,7 @@ export async function translateTask(taskId: string): Promise<TltTask> {
 }
 
 /** P1-10: 批量入队（stored/failed → pending，单次 ≤500）。 */
-export async function batchTranslateTasks(
-  taskIds: string[],
-): Promise<{
+export async function batchTranslateTasks(taskIds: string[]): Promise<{
   queued: number;
   task_ids: string[];
   skipped: { task_id: string; reason: string }[];

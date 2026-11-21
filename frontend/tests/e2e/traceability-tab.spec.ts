@@ -143,13 +143,11 @@ test.describe("文档空间协同编辑 - 溯源 Tab", () => {
       console.log("✅ 溯源面板已打开");
 
       // Check source stats grid
-      const statsGrid = page
-        .locator('.grid, [class*="grid"]')
-        .filter({
-          has: page.locator(
-            "text=rag_retrieval, text=ai_generated, text=knowledge_base, text=regulation",
-          ),
-        });
+      const statsGrid = page.locator('.grid, [class*="grid"]').filter({
+        has: page.locator(
+          "text=rag_retrieval, text=ai_generated, text=knowledge_base, text=regulation",
+        ),
+      });
       if (await statsGrid.isVisible({ timeout: 2000 }).catch(() => false)) {
         console.log("✅ 溯源统计信息显示正常");
       }

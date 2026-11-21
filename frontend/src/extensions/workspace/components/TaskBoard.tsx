@@ -223,9 +223,9 @@ export function TaskBoard({ projectId }: TaskBoardProps) {
                     </h4>
                     <span className="shrink-0">
                       {t.assigneeType === "agent" ? (
-                        <Bot className="text-purple-600 dark:text-purple-400 h-3.5 w-3.5" />
+                        <Bot className="h-3.5 w-3.5 text-purple-600 dark:text-purple-400" />
                       ) : (
-                        <User className="text-cyan-600 dark:text-cyan-400 h-3.5 w-3.5" />
+                        <User className="h-3.5 w-3.5 text-cyan-600 dark:text-cyan-400" />
                       )}
                     </span>
                   </div>

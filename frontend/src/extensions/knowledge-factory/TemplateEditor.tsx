@@ -246,7 +246,9 @@ function SectionTree({
           </button>
           <span className="flex-1 truncate">{section.title}</span>
           {section.required && (
-            <span className="text-[10px] text-red-600 dark:text-red-400">必</span>
+            <span className="text-[10px] text-red-600 dark:text-red-400">
+              必
+            </span>
           )}
           {canDelete && (
             <div className="flex items-center gap-1 opacity-0 transition-opacity group-hover:opacity-100">
@@ -421,7 +423,7 @@ function RAGSourceSelector({
                 className={`inline-flex cursor-pointer items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium ${
                   isLegacy
                     ? "bg-muted/50 text-muted-foreground border-border border border-dashed"
-                    : "border border-amber-500/20 bg-amber-500/10 text-amber-600 dark:text-amber-400 dark:border-amber-500/30 dark:bg-amber-500/20"
+                    : "border border-amber-500/20 bg-amber-500/10 text-amber-600 dark:border-amber-500/30 dark:bg-amber-500/20 dark:text-amber-400"
                 }`}
                 onClick={() =>
                   !isReadOnly &&
@@ -531,7 +533,7 @@ function RAGSourceSelector({
           <div className="relative">
             <button
               onClick={() => setShowDropdown(!showDropdown)}
-              className="flex h-8 w-8 items-center justify-center rounded-full border border-dashed border-amber-500/40 text-amber-600 dark:text-amber-400 transition-colors hover:bg-amber-500/10"
+              className="flex h-8 w-8 items-center justify-center rounded-full border border-dashed border-amber-500/40 text-amber-600 transition-colors hover:bg-amber-500/10 dark:text-amber-400"
               title="关联知识库"
             >
               {loadingKbs ? (
@@ -986,7 +988,7 @@ function SectionEditor({
                 <button
                   onClick={() => onRemoveKeyElement(i)}
                   disabled={isReadOnly}
-                  className="text-muted-foreground transition-colors hover:text-red-600 dark:text-red-400 disabled:opacity-50"
+                  className="text-muted-foreground transition-colors hover:text-red-600 disabled:opacity-50 dark:text-red-400"
                 >
                   <X className="h-3.5 w-3.5" />
                 </button>
@@ -1106,7 +1108,7 @@ function SectionEditor({
                   <button
                     onClick={() => onRemoveForbiddenPhrase(i)}
                     disabled={isReadOnly}
-                    className="transition-colors hover:text-red-600 dark:text-red-400 disabled:opacity-50"
+                    className="transition-colors hover:text-red-600 disabled:opacity-50 dark:text-red-400"
                   >
                     <X className="h-3 w-3 cursor-pointer" />
                   </button>
@@ -1159,7 +1161,7 @@ function SectionEditor({
                   onUpdate({ complianceRules: newRules });
                 }}
                 disabled={isReadOnly}
-                className="text-muted-foreground transition-colors hover:text-red-600 dark:text-red-400 disabled:opacity-50"
+                className="text-muted-foreground transition-colors hover:text-red-600 disabled:opacity-50 dark:text-red-400"
               >
                 <Trash2 className="h-3.5 w-3.5" />
               </button>
@@ -1910,7 +1912,7 @@ export default function TemplateEditor() {
                     {template?.isDirty && (
                       <button
                         onClick={handleRevert}
-                        className="flex items-center gap-1 rounded px-2 py-1 text-xs text-amber-600 dark:text-amber-400 transition-colors hover:bg-amber-500/10"
+                        className="flex items-center gap-1 rounded px-2 py-1 text-xs text-amber-600 transition-colors hover:bg-amber-500/10 dark:text-amber-400"
                       >
                         <Undo2 className="h-3 w-3" />
                         撤销更改

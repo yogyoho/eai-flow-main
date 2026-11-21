@@ -1,4 +1,3 @@
-
 import { afterEach, expect, rs, test } from "@rstest/core";
 import { act } from "react";
 import ReactDOMClient from "react-dom/client";
@@ -54,13 +53,17 @@ test("slash menu supports keyboard navigation and enter to execute a command", a
         query="/"
         onClose={onClose}
         onCommand={onCommand}
-      />
+      />,
     );
   });
 
   await act(async () => {
-    document.dispatchEvent(new KeyboardEvent("keydown", { key: "ArrowDown", bubbles: true }));
-    document.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true }));
+    document.dispatchEvent(
+      new KeyboardEvent("keydown", { key: "ArrowDown", bubbles: true }),
+    );
+    document.dispatchEvent(
+      new KeyboardEvent("keydown", { key: "Enter", bubbles: true }),
+    );
   });
 
   expect(onCommand).toHaveBeenCalledTimes(1);

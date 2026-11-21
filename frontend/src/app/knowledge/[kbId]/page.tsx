@@ -48,19 +48,26 @@ export default function KnowledgeBaseDetailPage({
   // 否则 KnowledgeBaseDetail 调用 usePermission 会抛 "must be used within a PermissionProvider"
   let content: ReactNode;
   if (isLoading) {
-    content = <div className="p-8 text-sm text-muted-foreground">加载中…</div>;
+    content = <div className="text-muted-foreground p-8 text-sm">加载中…</div>;
   } else if (error || !kb) {
     content = (
-      <div className="p-8 text-sm text-muted-foreground">
+      <div className="text-muted-foreground p-8 text-sm">
         知识库不存在或无权访问。
-        <button className="ml-2 underline" onClick={() => router.push("/knowledge")}>
+        <button
+          className="ml-2 underline"
+          onClick={() => router.push("/knowledge")}
+        >
           返回列表
         </button>
       </div>
     );
   } else {
     content = (
-      <KnowledgeBaseDetail kb={kb} onBack={() => router.push("/knowledge")} onKbUpdated={setKb} />
+      <KnowledgeBaseDetail
+        kb={kb}
+        onBack={() => router.push("/knowledge")}
+        onKbUpdated={setKb}
+      />
     );
   }
 

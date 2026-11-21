@@ -90,12 +90,7 @@ export function PremiumCurveChart({ filters }: { filters: FilterState }) {
             width={42}
             unit="%"
           />
-          <Tooltip
-            content={
-              <TechTooltipWithN />
-            }
-            cursor={CURSOR}
-          />
+          <Tooltip content={<TechTooltipWithN />} cursor={CURSOR} />
           <ReferenceLine
             x={inflection}
             stroke={RED}
@@ -116,23 +111,24 @@ export function PremiumCurveChart({ filters }: { filters: FilterState }) {
             isAnimationActive={false}
           >
             {data.map((d, i) => (
-              <Cell
-                key={i}
-                fill={BLUE}
-                fillOpacity={OPACITY[i] ?? 1}
-              />
+              <Cell key={i} fill={BLUE} fillOpacity={OPACITY[i] ?? 1} />
             ))}
             <LabelList
               dataKey="win_rate"
               position="top"
-              formatter={(v) => (Number(v) > 0 ? `${Math.round(Number(v))}%` : "—")}
+              formatter={(v) =>
+                Number(v) > 0 ? `${Math.round(Number(v))}%` : "—"
+              }
               style={{ fill: INK, fontSize: 11, fontWeight: 600 }}
             />
           </Bar>
         </BarChart>
       </ResponsiveContainer>
       {/* 每桶样本数注脚(原型 n= 行) */}
-      <div className="mt-1 grid grid-cols-6 text-center text-[10px] [font-variant-numeric:tabular-nums]" style={{ color: INK_3 }}>
+      <div
+        className="mt-1 grid grid-cols-6 text-center text-[10px] [font-variant-numeric:tabular-nums]"
+        style={{ color: INK_3 }}
+      >
         {data.map((d, i) => (
           <span key={i}>n={d.n}</span>
         ))}
@@ -142,8 +138,12 @@ export function PremiumCurveChart({ filters }: { filters: FilterState }) {
         className="mt-3 rounded-xl px-4 py-3 text-[13px] leading-relaxed"
         style={{ background: ACCENT_SOFT }}
       >
-        读法:横向看<b className="font-semibold" style={{ color: BLUE }}>「加价几个点会死」</b>
-        ——溢价 ≤0% 时胜率最高,越过拐点后腰斩,超过 +10% 基本陪跑。柱下 n= 样本数。
+        读法:横向看
+        <b className="font-semibold" style={{ color: BLUE }}>
+          「加价几个点会死」
+        </b>
+        ——溢价 ≤0% 时胜率最高,越过拐点后腰斩,超过 +10% 基本陪跑。柱下 n=
+        样本数。
       </div>
     </ChartCard>
   );
@@ -168,7 +168,10 @@ function TechTooltipWithN(props: {
       <p className="[font-variant-numeric:tabular-nums]" style={{ color: INK }}>
         胜率 <b>{Math.round(d.win_rate)}%</b>
       </p>
-      <p className="[font-variant-numeric:tabular-nums]" style={{ color: INK_3 }}>
+      <p
+        className="[font-variant-numeric:tabular-nums]"
+        style={{ color: INK_3 }}
+      >
         样本 n={d.n}
       </p>
     </div>

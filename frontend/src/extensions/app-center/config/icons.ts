@@ -1,4 +1,5 @@
 import {
+  Atom,
   BookMarked,
   BookOpen,
   Bot,
@@ -22,6 +23,8 @@ import type { LucideIcon } from "lucide-react";
 
 /** Maps DB-stored icon_name strings to Lucide React components. */
 export const ICON_MAP: Record<string, LucideIcon> = {
+  // EAI-CUSTOM (2026-11-14 materials): 材料学计算（app_definitions seed icon="atom"）
+  atom: Atom,
   "layout-dashboard": LayoutDashboard,
   map: Map,
   bot: Bot,

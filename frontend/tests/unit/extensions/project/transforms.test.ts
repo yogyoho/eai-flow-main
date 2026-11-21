@@ -4,20 +4,23 @@ import { toCamelCase, toSnakeCase } from "@/extensions/project/transforms";
 
 describe("toCamelCase", () => {
   test("converts snake_case keys to camelCase", () => {
-    const result = toCamelCase({ report_type: "test", created_at: "2024-01-01" });
+    const result = toCamelCase({
+      report_type: "test",
+      created_at: "2024-01-01",
+    });
     expect(result).toEqual({ reportType: "test", createdAt: "2024-01-01" });
   });
 
   test("handles nested objects", () => {
     const result = toCamelCase({
-      outer_key: { inner_key: "value" }
+      outer_key: { inner_key: "value" },
     });
     expect(result).toEqual({ outerKey: { innerKey: "value" } });
   });
 
   test("handles arrays of objects", () => {
     const result = toCamelCase({
-      items: [{ item_name: "a" }, { item_name: "b" }]
+      items: [{ item_name: "a" }, { item_name: "b" }],
     });
     expect(result).toEqual({ items: [{ itemName: "a" }, { itemName: "b" }] });
   });
@@ -42,18 +45,18 @@ describe("toCamelCase", () => {
     }>({
       level_one: {
         level_two: {
-          level_three: { deep_value: 42 }
+          level_three: { deep_value: 42 },
         },
-        array_of_items: [{ nested_item: "test" }]
-      }
+        array_of_items: [{ nested_item: "test" }],
+      },
     });
     expect(result).toEqual({
       levelOne: {
         levelTwo: {
-          levelThree: { deepValue: 42 }
+          levelThree: { deepValue: 42 },
         },
-        arrayOfItems: [{ nestedItem: "test" }]
-      }
+        arrayOfItems: [{ nestedItem: "test" }],
+      },
     });
   });
 
@@ -64,16 +67,24 @@ describe("toCamelCase", () => {
 
   test("preserves Date objects", () => {
     const date = new Date("2024-01-01");
-    const result = toCamelCase<{ createdAt: Date; otherField: string }>({ created_at: date, other_field: "test" });
+    const result = toCamelCase<{ createdAt: Date; otherField: string }>({
+      created_at: date,
+      other_field: "test",
+    });
     expect(result.createdAt).toBe(date);
     expect(result.otherField).toBe("test");
   });
 
   test("handles arrays with mixed types", () => {
     const result = toCamelCase<{ mixedArray: unknown[] }>({
-      mixed_array: [{ item_key: "obj" }, "string", 123, null]
+      mixed_array: [{ item_key: "obj" }, "string", 123, null],
     });
-    expect(result.mixedArray).toEqual([{ itemKey: "obj" }, "string", 123, null]);
+    expect(result.mixedArray).toEqual([
+      { itemKey: "obj" },
+      "string",
+      123,
+      null,
+    ]);
   });
 });
 

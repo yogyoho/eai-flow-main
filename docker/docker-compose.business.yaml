@@ -30,6 +30,7 @@
 
 include:
   - docker-compose.workflow.yaml
+  - docker-compose.materials.yaml
 
 services:
   # ── Unified Business PostgreSQL ────────────────────────────────────────

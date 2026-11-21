@@ -36,7 +36,8 @@ const GATE_LABELS: Record<string, string> = {
 
 /** 源/译数字集合对比（仅作复核视觉提示，最终以后端数值轴为准）。 */
 function numericMismatch(source: string, translated: string): boolean {
-  const nums = (s: string) => (s.match(/\d+(?:[.,]\d+)*/g) ?? []).sort().join("|");
+  const nums = (s: string) =>
+    (s.match(/\d+(?:[.,]\d+)*/g) ?? []).sort().join("|");
   const a = nums(source);
   return a !== "" && a !== nums(translated);
 }
@@ -109,7 +110,11 @@ export function ReviewWorkbench() {
   )?.backtranslation;
 
   const startEditing = () => {
-    setEdits(Object.fromEntries(draftTranslated.map((block) => [block.id, block.text])));
+    setEdits(
+      Object.fromEntries(
+        draftTranslated.map((block) => [block.id, block.text]),
+      ),
+    );
     setEditing(true);
   };
 
@@ -386,7 +391,7 @@ export function ReviewWorkbench() {
                                         className={cn(
                                           "break-words whitespace-pre-wrap",
                                           mismatch &&
-                                            "text-[var(--error-700)] font-medium",
+                                            "font-medium text-[var(--error-700)]",
                                         )}
                                       >
                                         {block.text}
@@ -484,7 +489,7 @@ export function ReviewWorkbench() {
                                 相似度 {(item.ratio * 100).toFixed(0)}%
                               </span>
                               {item.drift && (
-                                <span className="text-[var(--error-700)] text-[11px] font-medium">
+                                <span className="text-[11px] font-medium text-[var(--error-700)]">
                                   疑似语义偏移
                                 </span>
                               )}

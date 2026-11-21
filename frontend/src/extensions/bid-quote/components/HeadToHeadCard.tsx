@@ -26,7 +26,9 @@ export function HeadToHeadCard({
   competitors: string[];
   onDrill: (d: { title: string; sql: string }) => void;
 }) {
-  const [selected, setSelected] = useState<string | null>(competitors[0] ?? null);
+  const [selected, setSelected] = useState<string | null>(
+    competitors[0] ?? null,
+  );
   // 竞争对手列表刷新后若当前选中项消失,自动回退到第一项
   useEffect(() => {
     if (competitors.length && !competitors.includes(selected ?? "")) {
@@ -48,7 +50,9 @@ export function HeadToHeadCard({
     <div
       className="flex cursor-pointer flex-col rounded-[14px] p-5"
       style={{ background: CARD, border: `1px solid ${CARD_BORDER}` }}
-      onClick={() => selected && onDrill({ title: `遭遇战 · ${selected}`, sql: drillSql })}
+      onClick={() =>
+        selected && onDrill({ title: `遭遇战 · ${selected}`, sql: drillSql })
+      }
     >
       <div className="mb-3 flex items-center justify-between gap-2">
         <div>
@@ -61,7 +65,11 @@ export function HeadToHeadCard({
         </div>
         <select
           className="rounded-lg px-2.5 py-1.5 text-xs outline-none"
-          style={{ border: `1px solid ${CARD_BORDER}`, color: INK_2, background: CARD }}
+          style={{
+            border: `1px solid ${CARD_BORDER}`,
+            color: INK_2,
+            background: CARD,
+          }}
           value={selected ?? ""}
           onChange={(e) => setSelected(e.target.value)}
           onClick={(e) => e.stopPropagation()} // 切换对手不触发卡片下钻
@@ -132,16 +140,25 @@ export function HeadToHeadCard({
                   <div className="flex h-[70px] items-end gap-2">
                     <div
                       className="w-[14px] rounded-t-[3px]"
-                      style={{ height: `${(100 * Number(r.ours_wins)) / max}%`, background: BLUE }}
+                      style={{
+                        height: `${(100 * Number(r.ours_wins)) / max}%`,
+                        background: BLUE,
+                      }}
                       title={`${r.yr} 我方 ${r.ours_wins} 胜`}
                     />
                     <div
                       className="w-[14px] rounded-t-[3px]"
-                      style={{ height: `${(100 * Number(r.comp_wins)) / max}%`, background: "#e3e5e4" }}
+                      style={{
+                        height: `${(100 * Number(r.comp_wins)) / max}%`,
+                        background: "#e3e5e4",
+                      }}
                       title={`${r.yr} ${selected} ${r.comp_wins} 胜`}
                     />
                   </div>
-                  <span className="text-xs [font-variant-numeric:tabular-nums]" style={{ color: INK_3 }}>
+                  <span
+                    className="text-xs [font-variant-numeric:tabular-nums]"
+                    style={{ color: INK_3 }}
+                  >
                     {r.yr}
                   </span>
                 </div>

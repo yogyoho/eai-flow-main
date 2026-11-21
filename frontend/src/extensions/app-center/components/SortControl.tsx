@@ -26,7 +26,7 @@ export function SortControl({ value, onChange }: SortControlProps) {
     <div
       role="radiogroup"
       aria-label="排序方式"
-      className="inline-flex items-center gap-0.5 rounded-lg border border-border bg-muted/50 p-0.5"
+      className="border-border bg-muted/50 inline-flex items-center gap-0.5 rounded-lg border p-0.5"
     >
       {OPTIONS.map((opt) => {
         const isActive = value === opt.value;

@@ -11,7 +11,9 @@
 
 from __future__ import annotations
 
+import hashlib
 import json
+import os
 import subprocess
 import sys
 from pathlib import Path
@@ -24,6 +26,8 @@ SCRIPTS = SKILL / "scripts"
 STAGE = SKILL / "references/stages/exploration.json"
 FIXTURE = REPO_ROOT / "backend/tests/fixtures/geological_report/e2e-full"
 TARGETS = SKILL / "references" / "depth_targets.json"
+GOLDEN_SHA_PATH = FIXTURE / "expected_report_sha256.txt"
+GOLDEN_CONSISTENCY_PATH = FIXTURE / "expected_consistency.json"
 
 sys.path.insert(0, str(SCRIPTS))
 
@@ -125,7 +129,7 @@ def e2e(tmp_path_factory):
     fat = _run("build_output.py", "--stage", STAGE, "--data-dir", data, "--state-dir", state, "--output", deliv)
     manifest = json.loads((out / "delivery_manifest.json").read_text(encoding="utf-8"))
 
-    return {"frozen": frozen, "gate1": gate1.stdout, "thin": thin, "fat": fat.stdout, "manifest": manifest, "deliv": deliv, "out": out}
+    return {"frozen": frozen, "gate1": gate1.stdout, "thin": thin, "fat": fat.stdout, "manifest": manifest, "deliv": deliv, "out": out, "state": state}
 
 
 class TestE2EFullGates:
@@ -151,7 +155,43 @@ class TestE2EFullGates:
         assert "BUILD_READY" in e2e["fat"] and "MANIFEST_READY" in e2e["fat"]
 
     def test_manifest_targets_provenance_canonical(self, e2e):
-        """基准溯源：不传 --targets → manifest 记技能基准（references/depth_targets.json）。"""
+        """基准溯源：不传 --targets → manifest 记技能自有基准（回退 depth_targets.json 或
+        Phase 2 T4 矿种基线 depth_targets/<stage>/<mineral>.json——两者均为技能资产，
+        溯源意图=非技能基准必须显式可见）。"""
         t = e2e["manifest"]["targets"]
-        assert t["path"].replace("\\", "/").endswith("references/depth_targets.json"), t
+        norm = t["path"].replace("\\", "/")
+        assert norm.endswith("references/depth_targets.json") or "/references/depth_targets/" in norm, t
         assert t["sha256"], t
+
+
+class TestE2EGolden:
+    """Phase-1 硬化（审查 2026-11）：交付物全文 + 25 合约校验分布 byte-exact golden。
+
+    产出无时间戳（formula_state/consistency_check 均字节级确定，execute docstring 明示
+    「无时间戳——字节级幂等」）→ 同输入必同字节。模板/门禁行为有意变更时设
+    GEO_E2E_UPDATE_GOLDEN=1 重生成 golden 并人工审查 diff。
+    """
+
+    def test_deliverable_golden_sha256(self, e2e):
+        digest = hashlib.sha256(e2e["deliv"].read_bytes()).hexdigest()
+        if os.environ.get("GEO_E2E_UPDATE_GOLDEN"):
+            GOLDEN_SHA_PATH.write_text(digest + "\n", encoding="utf-8")
+            pytest.skip("golden sha256 已更新")
+        assert GOLDEN_SHA_PATH.exists(), "golden 缺失——首跑请设 GEO_E2E_UPDATE_GOLDEN=1 生成"
+        assert digest == GOLDEN_SHA_PATH.read_text(encoding="utf-8").strip(), "交付物全文偏离 golden——若为有意模板/管线变更，设 GEO_E2E_UPDATE_GOLDEN=1 重生成并审查差异"
+
+    def test_consistency_golden_distribution(self, e2e):
+        """summary 计数 + 逐合约 severity 全量 golden（fail=0 由 BUILD_READY 隐含，分布钉防静默漂移）。"""
+        cc = e2e["state"] / "consistency_check.json"
+        assert cc.exists(), "build_output 内联 consistency 应落盘 consistency_check.json（bug-3036）"
+        doc = json.loads(cc.read_text(encoding="utf-8"))
+        actual = {
+            "summary": doc["summary"],
+            "contracts": {i["contract"]: i["severity"] for i in doc["items"]},
+        }
+        if os.environ.get("GEO_E2E_UPDATE_GOLDEN"):
+            GOLDEN_CONSISTENCY_PATH.write_text(json.dumps(actual, ensure_ascii=False, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+            pytest.skip("golden consistency 已更新")
+        assert GOLDEN_CONSISTENCY_PATH.exists(), "golden 缺失——首跑请设 GEO_E2E_UPDATE_GOLDEN=1 生成"
+        expected = json.loads(GOLDEN_CONSISTENCY_PATH.read_text(encoding="utf-8"))
+        assert actual == expected

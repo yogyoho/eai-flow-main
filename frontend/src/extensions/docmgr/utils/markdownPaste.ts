@@ -25,8 +25,8 @@ const STRUCTURED_HTML_TAG_PATTERN =
 export function isLikelyMarkdown(text: string): boolean {
   if (!text.trim()) return false;
 
-  return [...BLOCK_MARKDOWN_PATTERNS, ...INLINE_MARKDOWN_PATTERNS].some((pattern) =>
-    pattern.test(text)
+  return [...BLOCK_MARKDOWN_PATTERNS, ...INLINE_MARKDOWN_PATTERNS].some(
+    (pattern) => pattern.test(text),
   );
 }
 
@@ -50,6 +50,8 @@ export function shouldHandleMarkdownPaste(params: {
 }
 
 export function getMarkdownPasteParseMode(text: string): { inline: boolean } {
-  const hasBlockMarkdown = BLOCK_MARKDOWN_PATTERNS.some((pattern) => pattern.test(text));
+  const hasBlockMarkdown = BLOCK_MARKDOWN_PATTERNS.some((pattern) =>
+    pattern.test(text),
+  );
   return { inline: !hasBlockMarkdown };
 }

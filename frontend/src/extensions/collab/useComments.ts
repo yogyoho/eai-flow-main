@@ -5,7 +5,10 @@ import { useCallback, useEffect, useState } from "react";
 import { docmgrApi } from "../api";
 import type { CollabComment, CommentCreateRequest } from "../types";
 
-export function useComments(docId: string | null, broadcastEvent?: (event: { type: string; payload: unknown }) => void) {
+export function useComments(
+  docId: string | null,
+  broadcastEvent?: (event: { type: string; payload: unknown }) => void,
+) {
   const [comments, setComments] = useState<CollabComment[]>([]);
   const [loading, setLoading] = useState(false);
 
@@ -49,37 +52,58 @@ export function useComments(docId: string | null, broadcastEvent?: (event: { typ
       if (!docId) return;
       const comment = await docmgrApi.createComment(docId, data);
       setComments((prev) => [...prev, comment]);
-      broadcastEvent?.({ type: "comment_created", payload: { commentId: comment.id } });
+      broadcastEvent?.({
+        type: "comment_created",
+        payload: { commentId: comment.id },
+      });
       return comment;
     },
     [docId, broadcastEvent],
   );
 
-  const updateComment = useCallback(async (commentId: string, content: string) => {
-    const updated = await docmgrApi.updateComment(commentId, { content });
-    setComments((prev) => prev.map((c) => (c.id === commentId ? updated : c)));
-    return updated;
-  }, []);
+  const updateComment = useCallback(
+    async (commentId: string, content: string) => {
+      const updated = await docmgrApi.updateComment(commentId, { content });
+      setComments((prev) =>
+        prev.map((c) => (c.id === commentId ? updated : c)),
+      );
+      return updated;
+    },
+    [],
+  );
 
-  const deleteComment = useCallback(async (commentId: string) => {
-    await docmgrApi.deleteComment(commentId);
-    setComments((prev) => prev.filter((c) => c.id !== commentId));
-    broadcastEvent?.({ type: "comment_deleted", payload: { commentId } });
-  }, [broadcastEvent]);
+  const deleteComment = useCallback(
+    async (commentId: string) => {
+      await docmgrApi.deleteComment(commentId);
+      setComments((prev) => prev.filter((c) => c.id !== commentId));
+      broadcastEvent?.({ type: "comment_deleted", payload: { commentId } });
+    },
+    [broadcastEvent],
+  );
 
-  const resolveComment = useCallback(async (commentId: string) => {
-    const updated = await docmgrApi.resolveComment(commentId);
-    setComments((prev) => prev.map((c) => (c.id === commentId ? updated : c)));
-    broadcastEvent?.({ type: "comment_resolved", payload: { commentId } });
-    return updated;
-  }, [broadcastEvent]);
+  const resolveComment = useCallback(
+    async (commentId: string) => {
+      const updated = await docmgrApi.resolveComment(commentId);
+      setComments((prev) =>
+        prev.map((c) => (c.id === commentId ? updated : c)),
+      );
+      broadcastEvent?.({ type: "comment_resolved", payload: { commentId } });
+      return updated;
+    },
+    [broadcastEvent],
+  );
 
-  const reopenComment = useCallback(async (commentId: string) => {
-    const updated = await docmgrApi.reopenComment(commentId);
-    setComments((prev) => prev.map((c) => (c.id === commentId ? updated : c)));
-    broadcastEvent?.({ type: "comment_reopened", payload: { commentId } });
-    return updated;
-  }, [broadcastEvent]);
+  const reopenComment = useCallback(
+    async (commentId: string) => {
+      const updated = await docmgrApi.reopenComment(commentId);
+      setComments((prev) =>
+        prev.map((c) => (c.id === commentId ? updated : c)),
+      );
+      broadcastEvent?.({ type: "comment_reopened", payload: { commentId } });
+      return updated;
+    },
+    [broadcastEvent],
+  );
 
   const getCommentsByBlock = useCallback(
     (blockId: string) => comments.filter((c) => c.block_id === blockId),

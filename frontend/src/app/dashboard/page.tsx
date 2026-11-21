@@ -10,7 +10,7 @@ export default function DashboardRoute() {
     <ShellLayout>
       <Suspense
         fallback={
-          <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
+          <div className="text-muted-foreground flex h-full items-center justify-center text-sm">
             加载中...
           </div>
         }

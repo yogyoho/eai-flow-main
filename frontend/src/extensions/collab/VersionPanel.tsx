@@ -1,11 +1,26 @@
 "use client";
 
-import { Eye, GitCompare, History, Loader2, RotateCcw, Save, Sparkles } from "lucide-react";
+import {
+  Eye,
+  GitCompare,
+  History,
+  Loader2,
+  RotateCcw,
+  Save,
+  Sparkles,
+} from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 
 import type { CollabVersion, VersionDiffResponse } from "../types";
 
@@ -16,7 +31,11 @@ interface VersionPanelProps {
   loading: boolean;
   diffLoading: boolean;
   diffResult: VersionDiffResponse | null;
-  onCreateVersion: (summary?: string, generateAiSummary?: boolean, content?: string) => Promise<void>;
+  onCreateVersion: (
+    summary?: string,
+    generateAiSummary?: boolean,
+    content?: string,
+  ) => Promise<void>;
   onRestoreVersion: (version: number) => Promise<void>;
   onPreviewVersion: (version: number) => Promise<void>;
   onDiffVersions: (from: number, to: number) => Promise<void>;
@@ -37,7 +56,9 @@ export function VersionPanel({
   const [diffMode, setDiffMode] = useState(false);
   const [selectedVersions, setSelectedVersions] = useState<number[]>([]);
   const [aiSummaryEnabled, setAiSummaryEnabled] = useState(false);
-  const [restoreTarget, setRestoreTarget] = useState<CollabVersion | null>(null);
+  const [restoreTarget, setRestoreTarget] = useState<CollabVersion | null>(
+    null,
+  );
   const [restoring, setRestoring] = useState(false);
   const onDiffVersionsRef = useRef(onDiffVersions);
   onDiffVersionsRef.current = onDiffVersions;
@@ -49,25 +70,25 @@ export function VersionPanel({
     }
   }, [diffMode]);
 
-  const toggleVersionSelection = useCallback(
-    (version: number) => {
-      setSelectedVersions((prev) => {
-        if (prev.includes(version)) {
-          return prev.filter((v) => v !== version);
-        }
-        if (prev.length >= 2) {
-          return [prev[1]!, version];
-        }
-        return [...prev, version];
-      });
-    },
-    [],
-  );
+  const toggleVersionSelection = useCallback((version: number) => {
+    setSelectedVersions((prev) => {
+      if (prev.includes(version)) {
+        return prev.filter((v) => v !== version);
+      }
+      if (prev.length >= 2) {
+        return [prev[1]!, version];
+      }
+      return [...prev, version];
+    });
+  }, []);
 
   // Auto-trigger diff when 2 versions are selected
   useEffect(() => {
     if (diffMode && selectedVersions.length === 2) {
-      void onDiffVersionsRef.current(selectedVersions[0]!, selectedVersions[1]!);
+      void onDiffVersionsRef.current(
+        selectedVersions[0]!,
+        selectedVersions[1]!,
+      );
     }
   }, [diffMode, selectedVersions]);
 
@@ -85,21 +106,21 @@ export function VersionPanel({
   }, [restoreTarget, onRestoreVersion]);
 
   return (
-    <div className="w-80 border-l border-border flex flex-col h-full bg-background">
-      <div className="p-3 border-b border-border flex items-center justify-between">
+    <div className="border-border bg-background flex h-full w-80 flex-col border-l">
+      <div className="border-border flex items-center justify-between border-b p-3">
         <div className="flex items-center gap-2">
-          <History className="w-4 h-4" />
-          <span className="font-medium text-sm">版本历史</span>
+          <History className="h-4 w-4" />
+          <span className="text-sm font-medium">版本历史</span>
         </div>
         <div className="flex items-center gap-1">
           <Button
             size="sm"
             variant={diffMode ? "secondary" : "ghost"}
-            className="h-7 text-xs px-2"
+            className="h-7 px-2 text-xs"
             onClick={() => setDiffMode(!diffMode)}
             title="差异对比"
           >
-            <GitCompare className="w-3 h-3 mr-1" />
+            <GitCompare className="mr-1 h-3 w-3" />
             对比
           </Button>
           <Button size="sm" variant="outline" onClick={onClose}>
@@ -108,41 +129,45 @@ export function VersionPanel({
         </div>
       </div>
 
-      <div className="p-3 border-b border-border space-y-2">
+      <div className="border-border space-y-2 border-b p-3">
         <Button
           size="sm"
           className="w-full"
           variant="outline"
           onClick={() => onCreateVersion(undefined, aiSummaryEnabled)}
         >
-          <Save className="w-3 h-3 mr-1" />
+          <Save className="mr-1 h-3 w-3" />
           保存当前版本
         </Button>
-        <label className="flex items-center gap-2 cursor-pointer text-xs text-muted-foreground">
+        <label className="text-muted-foreground flex cursor-pointer items-center gap-2 text-xs">
           <input
             type="checkbox"
             checked={aiSummaryEnabled}
             onChange={(e) => setAiSummaryEnabled(e.target.checked)}
-            className="w-3.5 h-3.5 rounded border-border"
+            className="border-border h-3.5 w-3.5 rounded"
           />
-          <Sparkles className="w-3 h-3" />
+          <Sparkles className="h-3 w-3" />
           AI 生成变更摘要
         </label>
       </div>
 
       {diffMode && (
-        <div className="border-b border-border">
+        <div className="border-border border-b">
           <DiffViewer diff={diffResult} loading={diffLoading} />
         </div>
       )}
 
       <div className="flex-1 overflow-y-auto">
         {loading && versions.length === 0 ? (
-          <p className="text-sm text-muted-foreground text-center py-8">加载中...</p>
+          <p className="text-muted-foreground py-8 text-center text-sm">
+            加载中...
+          </p>
         ) : versions.length === 0 ? (
-          <p className="text-sm text-muted-foreground text-center py-8">暂无版本记录</p>
+          <p className="text-muted-foreground py-8 text-center text-sm">
+            暂无版本记录
+          </p>
         ) : (
-          <div className="divide-y divide-border">
+          <div className="divide-border divide-y">
             {versions.map((v, idx) => {
               const isSelected = selectedVersions.includes(v.version);
               const isCurrent = idx === 0;
@@ -150,7 +175,7 @@ export function VersionPanel({
               return (
                 <div
                   key={v.id}
-                  className={`p-3 transition-colors cursor-pointer ${
+                  className={`cursor-pointer p-3 transition-colors ${
                     isSelected ? "bg-primary/10" : "hover:bg-muted/50"
                   }`}
                   onClick={() => {
@@ -161,14 +186,14 @@ export function VersionPanel({
                     }
                   }}
                 >
-                  <div className="flex items-center justify-between mb-1">
+                  <div className="mb-1 flex items-center justify-between">
                     <div className="flex items-center gap-2">
                       {diffMode && (
                         <input
                           type="checkbox"
                           checked={isSelected}
                           onChange={() => toggleVersionSelection(v.version)}
-                          className="w-3.5 h-3.5 rounded border-border"
+                          className="border-border h-3.5 w-3.5 rounded"
                           onClick={(e) => e.stopPropagation()}
                         />
                       )}
@@ -176,13 +201,13 @@ export function VersionPanel({
                       {isCurrent && (
                         <Badge
                           variant="secondary"
-                          className="text-[10px] h-4 px-1.5 bg-emerald-100 text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-300 border-0"
+                          className="h-4 border-0 bg-emerald-100 px-1.5 text-[10px] text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-300"
                         >
                           当前
                         </Badge>
                       )}
                     </div>
-                    <span className="text-[10px] text-muted-foreground">
+                    <span className="text-muted-foreground text-[10px]">
                       {new Date(v.created_at).toLocaleString("zh-CN", {
                         month: "short",
                         day: "numeric",
@@ -191,9 +216,13 @@ export function VersionPanel({
                       })}
                     </span>
                   </div>
-                  {v.summary && <p className="text-xs text-muted-foreground mb-1">{v.summary}</p>}
+                  {v.summary && (
+                    <p className="text-muted-foreground mb-1 text-xs">
+                      {v.summary}
+                    </p>
+                  )}
                   <div className="flex items-center justify-between">
-                    <span className="text-[10px] text-muted-foreground">
+                    <span className="text-muted-foreground text-[10px]">
                       {v.full_name ?? v.username ?? "未知"}
                     </span>
                     {!diffMode && (
@@ -201,25 +230,25 @@ export function VersionPanel({
                         <Button
                           size="sm"
                           variant="ghost"
-                          className="h-6 text-[10px] px-2"
+                          className="h-6 px-2 text-[10px]"
                           onClick={(e) => {
                             e.stopPropagation();
                             void onPreviewVersion(v.version);
                           }}
                         >
-                          <Eye className="w-3 h-3 mr-1" />
+                          <Eye className="mr-1 h-3 w-3" />
                           预览
                         </Button>
                         <Button
                           size="sm"
                           variant="ghost"
-                          className="h-6 text-[10px] px-2"
+                          className="h-6 px-2 text-[10px]"
                           onClick={(e) => {
                             e.stopPropagation();
                             setRestoreTarget(v);
                           }}
                         >
-                          <RotateCcw className="w-3 h-3 mr-1" />
+                          <RotateCcw className="mr-1 h-3 w-3" />
                           恢复
                         </Button>
                       </div>
@@ -233,25 +262,33 @@ export function VersionPanel({
       </div>
 
       {/* Restore Confirmation Dialog */}
-      <Dialog open={!!restoreTarget} onOpenChange={(open) => !open && setRestoreTarget(null)}>
+      <Dialog
+        open={!!restoreTarget}
+        onOpenChange={(open) => !open && setRestoreTarget(null)}
+      >
         <DialogContent>
           <DialogHeader>
             <DialogTitle>确认恢复版本</DialogTitle>
             <DialogDescription>
-              将文档内容恢复到版本 v{restoreTarget?.version}，当前内容将被覆盖。恢复后会自动创建一个新版本记录。
+              将文档内容恢复到版本 v{restoreTarget?.version}
+              ，当前内容将被覆盖。恢复后会自动创建一个新版本记录。
             </DialogDescription>
           </DialogHeader>
           {restoreTarget?.summary && (
-            <div className="rounded-md bg-muted p-3 text-sm text-muted-foreground">
+            <div className="bg-muted text-muted-foreground rounded-md p-3 text-sm">
               {restoreTarget.summary}
             </div>
           )}
           <DialogFooter>
-            <Button variant="outline" onClick={() => setRestoreTarget(null)} disabled={restoring}>
+            <Button
+              variant="outline"
+              onClick={() => setRestoreTarget(null)}
+              disabled={restoring}
+            >
               取消
             </Button>
             <Button onClick={handleRestore} disabled={restoring}>
-              {restoring && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+              {restoring && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               确认恢复
             </Button>
           </DialogFooter>

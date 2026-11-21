@@ -20,7 +20,6 @@ import {
   type RuleTestPayload,
 } from "./rule-test-utils";
 
-
 export async function fetchRuleDictionaries(): Promise<RuleDictionaries> {
   const url = buildLawLibraryUrl("/kf/rule-dictionaries");
   const data = await authFetch<{
@@ -36,14 +35,17 @@ export async function fetchRuleDictionaries(): Promise<RuleDictionaries> {
     reportTypes: (data.report_types as RuleDictionaries["reportTypes"]) ?? [],
     regions: (data.regions as RuleDictionaries["regions"]) ?? [],
     ruleTypes: (data.rule_types as RuleDictionaries["ruleTypes"]) ?? [],
-    severityLevels: (data.severity_levels as RuleDictionaries["severityLevels"]) ?? [],
+    severityLevels:
+      (data.severity_levels as RuleDictionaries["severityLevels"]) ?? [],
   };
 }
 
 /**
  * 获取规则列表
  */
-export async function fetchRules(params: RuleFilterParams = {}): Promise<ComplianceRuleListResponse> {
+export async function fetchRules(
+  params: RuleFilterParams = {},
+): Promise<ComplianceRuleListResponse> {
   const searchParams = new URLSearchParams();
 
   if (params.industry) searchParams.set("industry", params.industry);
@@ -51,7 +53,8 @@ export async function fetchRules(params: RuleFilterParams = {}): Promise<Complia
   if (params.region) searchParams.set("region", params.region);
   if (params.type) searchParams.set("type", params.type);
   if (params.severity) searchParams.set("severity", params.severity);
-  if (params.enabled !== undefined) searchParams.set("enabled", String(params.enabled));
+  if (params.enabled !== undefined)
+    searchParams.set("enabled", String(params.enabled));
   if (params.page) searchParams.set("page", String(params.page));
   if (params.limit) searchParams.set("limit", String(params.limit));
 
@@ -84,7 +87,9 @@ export async function fetchRule(ruleId: string): Promise<ComplianceRule> {
 /**
  * 创建规则
  */
-export async function createRule(rule: ComplianceRuleCreate): Promise<ComplianceRule> {
+export async function createRule(
+  rule: ComplianceRuleCreate,
+): Promise<ComplianceRule> {
   const url = buildLawLibraryUrl("/kf/rules");
   const data = await authFetch<Record<string, unknown>>(
     url,
@@ -92,7 +97,7 @@ export async function createRule(rule: ComplianceRuleCreate): Promise<Compliance
       method: "POST",
       body: JSON.stringify(transformRuleToSnakeCase(rule)),
     },
-    ""
+    "",
   );
   return transformRule(data);
 }
@@ -102,7 +107,7 @@ export async function createRule(rule: ComplianceRuleCreate): Promise<Compliance
  */
 export async function updateRule(
   ruleId: string,
-  updates: ComplianceRuleUpdate
+  updates: ComplianceRuleUpdate,
 ): Promise<ComplianceRule> {
   const url = buildLawLibraryUrl(`/kf/rules/${ruleId}`);
   const data = await authFetch<Record<string, unknown>>(
@@ -111,7 +116,7 @@ export async function updateRule(
       method: "PUT",
       body: JSON.stringify(transformRuleToSnakeCase(updates)),
     },
-    ""
+    "",
   );
   return transformRule(data);
 }
@@ -127,9 +132,17 @@ export async function deleteRule(ruleId: string): Promise<void> {
 /**
  * 导入种子数据
  */
-export async function importSeedRules(forceUpdate = false): Promise<ComplianceRuleImportResponse> {
-  const url = buildLawLibraryUrl(`/kf/rules/import-seed?force_update=${forceUpdate}`);
-  const data = await authFetch<Record<string, unknown>>(url, { method: "POST" }, "");
+export async function importSeedRules(
+  forceUpdate = false,
+): Promise<ComplianceRuleImportResponse> {
+  const url = buildLawLibraryUrl(
+    `/kf/rules/import-seed?force_update=${forceUpdate}`,
+  );
+  const data = await authFetch<Record<string, unknown>>(
+    url,
+    { method: "POST" },
+    "",
+  );
   return mapRuleImportResponse(data);
 }
 
@@ -199,7 +212,10 @@ export async function fetchRuleStatistics(): Promise<ComplianceRuleStatistics> {
 /**
  * 切换规则启用状态
  */
-export async function toggleRuleEnabled(ruleId: string, enabled: boolean): Promise<ComplianceRule> {
+export async function toggleRuleEnabled(
+  ruleId: string,
+  enabled: boolean,
+): Promise<ComplianceRule> {
   return updateRule(ruleId, { enabled });
 }
 
@@ -212,19 +228,23 @@ function transformRule(data: Record<string, unknown>): ComplianceRule {
     ruleId: data.rule_id as string,
     name: data.name as string,
     type: data.type as string,
-    typeName: data.type_name as string || "",
+    typeName: (data.type_name as string) || "",
     severity: data.severity as string,
-    severityName: data.severity_name as string || "",
+    severityName: (data.severity_name as string) || "",
     enabled: data.enabled as boolean,
     description: (data.description as string) || "",
     industry: (data.industry as string) || "",
-    industryName: data.industry_name as string || "",
+    industryName: (data.industry_name as string) || "",
     reportTypes: (data.report_types as string[]) || [],
     applicableRegions: (data.applicable_regions as string[]) || [],
     nationalLevel: data.national_level as boolean,
     sourceSections: (data.source_sections as string[]) || [],
     targetSections: (data.target_sections as string[]) || [],
-    validationConfig: (data.validation_config as ComplianceRule["validationConfig"]) || { fields: [], comparisonType: "" },
+    validationConfig:
+      (data.validation_config as ComplianceRule["validationConfig"]) || {
+        fields: [],
+        comparisonType: "",
+      },
     errorMessage: (data.error_message as string) || "",
     autoFixSuggestion: (data.auto_fix_suggestion as string) || "",
     seedVersion: (data.seed_version as string) || "",
@@ -237,7 +257,7 @@ function transformRule(data: Record<string, unknown>): ComplianceRule {
  * 转换前端规则数据 (camelCase) 到后端格式 (snake_case)
  */
 function transformRuleToSnakeCase(
-  data: ComplianceRuleCreate | Partial<ComplianceRuleCreate>
+  data: ComplianceRuleCreate | Partial<ComplianceRuleCreate>,
 ): Record<string, unknown> {
   const result: Record<string, unknown> = {};
 
@@ -274,7 +294,9 @@ function transformRuleToSnakeCase(
  */
 export async function loadSeedDataFromFile(): Promise<ComplianceRule[]> {
   try {
-    const response = await fetch("/extensions/knowledge-factory/data/compliance_rules_seed.json");
+    const response = await fetch(
+      "/extensions/knowledge-factory/data/compliance_rules_seed.json",
+    );
     if (!response.ok) {
       throw new Error(`加载种子数据文件失败: ${response.statusText}`);
     }
@@ -285,7 +307,6 @@ export async function loadSeedDataFromFile(): Promise<ComplianceRule[]> {
     return [];
   }
 }
-
 
 // ============== 日志和统计 API ==============
 
@@ -328,13 +349,15 @@ export interface TriggerStatistics {
 export async function fetchRuleLogs(
   ruleId: string,
   limit = 50,
-  offset = 0
+  offset = 0,
 ): Promise<{
   ruleId: string;
   total: number;
   logs: RuleExecutionLog[];
 }> {
-  const url = buildLawLibraryUrl(`/kf/rules/${ruleId}/logs?limit=${limit}&offset=${offset}`);
+  const url = buildLawLibraryUrl(
+    `/kf/rules/${ruleId}/logs?limit=${limit}&offset=${offset}`,
+  );
   const data = await authFetch<{
     rule_id: string;
     total: number;
@@ -360,7 +383,7 @@ export async function fetchRuleLogs(
  * 获取规则执行统计
  */
 export async function fetchRuleExecutionStatistics(
-  ruleId: string
+  ruleId: string,
 ): Promise<RuleExecutionStatistics> {
   const url = buildLawLibraryUrl(`/kf/rules/${ruleId}/statistics`);
   const data = await authFetch<{
@@ -393,14 +416,16 @@ export async function fetchRuleExecutionStatistics(
  */
 export async function fetchTriggerStatistics(
   startDate?: string,
-  endDate?: string
+  endDate?: string,
 ): Promise<TriggerStatistics> {
   const params = new URLSearchParams();
   if (startDate) params.set("start_date", startDate);
   if (endDate) params.set("end_date", endDate);
 
   const query = params.toString();
-  const url = buildLawLibraryUrl(`/kf/rules/trigger-statistics${query ? `?${query}` : ""}`);
+  const url = buildLawLibraryUrl(
+    `/kf/rules/trigger-statistics${query ? `?${query}` : ""}`,
+  );
   const data = await authFetch<{
     total_triggers: number;
     blocked_triggers: number;
@@ -423,7 +448,7 @@ export async function fetchTriggerStatistics(
  */
 export async function testRule(
   ruleId: string,
-  testData: RuleTestPayload
+  testData: RuleTestPayload,
 ): Promise<{
   success: boolean;
   ruleId: string;

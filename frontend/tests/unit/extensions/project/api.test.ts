@@ -17,7 +17,15 @@ beforeEach(() => {
 describe("projectApi.list", () => {
   test("returns { items, total } with camelCase transform", async () => {
     const items = [
-      { id: "p1", name: "Test", report_type: "other", status: "active", chapter_count: 3, member_count: 2, template_name: "环评模板" },
+      {
+        id: "p1",
+        name: "Test",
+        report_type: "other",
+        status: "active",
+        chapter_count: 3,
+        member_count: 2,
+        template_name: "环评模板",
+      },
     ];
     mockFetch.mockResolvedValueOnce({ items, total: 1 });
 
@@ -26,13 +34,21 @@ describe("projectApi.list", () => {
     expect(result.items[0]!.reportType).toBe("other");
     expect(result.items[0]!.chapterCount).toBe(3);
     expect(result.items[0]!.templateName).toBe("环评模板");
-    expect(mockFetch).toHaveBeenCalledWith(expect.stringContaining("/projects?"));
+    expect(mockFetch).toHaveBeenCalledWith(
+      expect.stringContaining("/projects?"),
+    );
   });
 
   test("passes filter params as query string", async () => {
     mockFetch.mockResolvedValueOnce({ items: [], total: 0 });
 
-    await projectApi.list({ status: "active", reportType: "environmental_impact", search: "test", skip: 5, limit: 10 });
+    await projectApi.list({
+      status: "active",
+      reportType: "environmental_impact",
+      search: "test",
+      skip: 5,
+      limit: 10,
+    });
 
     const url = mockFetch.mock.calls[0]![0];
     expect(url).toContain("status=active");
@@ -89,7 +105,9 @@ describe("projectApi.delete", () => {
     mockFetch.mockResolvedValueOnce(undefined);
 
     await projectApi.delete("proj-1");
-    expect(mockFetch).toHaveBeenCalledWith("/project/projects/proj-1", { method: "DELETE" });
+    expect(mockFetch).toHaveBeenCalledWith("/project/projects/proj-1", {
+      method: "DELETE",
+    });
   });
 });
 
@@ -112,9 +130,7 @@ describe("projectApi.enter", () => {
 
 describe("projectApi.getFiles", () => {
   test("fetches project files", async () => {
-    const files = [
-      { name: "report.docx", thread_id: "t1", size: 1024 },
-    ];
+    const files = [{ name: "report.docx", thread_id: "t1", size: 1024 }];
     mockFetch.mockResolvedValueOnce(files);
 
     const result = await projectApi.getFiles("proj-1");

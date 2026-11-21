@@ -1,6 +1,9 @@
 import { expect, test } from "@rstest/core";
 
-import { filterCommands, normalizeSlashQuery } from "@/extensions/docmgr/utils/editorCommands";
+import {
+  filterCommands,
+  normalizeSlashQuery,
+} from "@/extensions/docmgr/utils/editorCommands";
 
 test("normalizeSlashQuery strips the trigger slash before filtering", () => {
   expect(normalizeSlashQuery("/")).toBe("");

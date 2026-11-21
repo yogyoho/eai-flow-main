@@ -4,7 +4,12 @@ import { useReactFlow } from "@xyflow/react";
 
 import type { DAGNodeData, DAGNodeType } from "../types";
 
-const NODE_TYPES: { type: DAGNodeType; label: string; color: string; icon: string }[] = [
+const NODE_TYPES: {
+  type: DAGNodeType;
+  label: string;
+  color: string;
+  icon: string;
+}[] = [
   { type: "subflow", label: "子流程", color: "violet", icon: "▤" },
   { type: "task", label: "任务", color: "teal", icon: "✎" },
   { type: "review", label: "审核", color: "red", icon: "✓" },
@@ -13,16 +18,80 @@ const NODE_TYPES: { type: DAGNodeType; label: string; color: string; icon: strin
   { type: "merge", label: "汇聚", color: "green", icon: "⊕" },
 ];
 
-const COLOR_CLASSES: Record<string, { bg: string; border: string; text: string; hover: string; iconBg: string }> = {
-  purple: { bg: "bg-purple-50", border: "border-purple-200", text: "text-purple-700", hover: "hover:bg-purple-100 dark:bg-purple-500/15 hover:border-purple-300 hover:shadow-sm", iconBg: "bg-purple-100 dark:bg-purple-500/15" },
-  red: { bg: "bg-red-50 dark:bg-red-950/40", border: "border-red-200 dark:border-red-800", text: "text-red-700 dark:text-red-300", hover: "hover:bg-red-100 dark:bg-red-500/15 hover:border-red-300 dark:border-red-700 hover:shadow-sm", iconBg: "bg-red-100 dark:bg-red-500/15" },
-  amber: { bg: "bg-amber-50 dark:bg-amber-950/40", border: "border-amber-200 dark:border-amber-800", text: "text-amber-700 dark:text-amber-300", hover: "hover:bg-amber-100 dark:bg-amber-500/15 hover:border-amber-300 dark:border-amber-700 hover:shadow-sm", iconBg: "bg-amber-100 dark:bg-amber-500/15" },
-  blue: { bg: "bg-blue-50 dark:bg-blue-950/40", border: "border-blue-200 dark:border-blue-800", text: "text-blue-700 dark:text-blue-300", hover: "hover:bg-blue-100 dark:bg-blue-500/15 hover:border-blue-300 dark:border-blue-700 hover:shadow-sm", iconBg: "bg-blue-100 dark:bg-blue-500/15" },
-  green: { bg: "bg-green-50 dark:bg-green-950/40", border: "border-green-200 dark:border-green-800", text: "text-green-700 dark:text-green-300", hover: "hover:bg-green-100 dark:bg-green-500/15 hover:border-green-300 dark:border-green-700 hover:shadow-sm", iconBg: "bg-green-100 dark:bg-green-500/15" },
-  indigo: { bg: "bg-indigo-50", border: "border-indigo-200", text: "text-indigo-700", hover: "hover:bg-indigo-100 hover:border-indigo-300 hover:shadow-sm", iconBg: "bg-indigo-100" },
-  teal: { bg: "bg-teal-50 dark:bg-teal-950/40", border: "border-teal-200 dark:border-teal-800", text: "text-teal-700 dark:text-teal-300", hover: "hover:bg-teal-100 dark:bg-teal-500/15 hover:border-teal-300 dark:border-teal-700 hover:shadow-sm", iconBg: "bg-teal-100 dark:bg-teal-500/15" },
-  violet: { bg: "bg-violet-50 dark:bg-violet-950/40", border: "border-violet-200 dark:border-violet-800", text: "text-violet-700 dark:text-violet-300", hover: "hover:bg-violet-100 dark:bg-violet-500/15 hover:border-violet-300 dark:border-violet-700 hover:shadow-sm", iconBg: "bg-violet-100 dark:bg-violet-500/15" },
-  slate: { bg: "bg-slate-50", border: "border-slate-200", text: "text-foreground", hover: "hover:bg-slate-100 hover:border-slate-300 hover:shadow-sm", iconBg: "bg-slate-100" },
+const COLOR_CLASSES: Record<
+  string,
+  { bg: string; border: string; text: string; hover: string; iconBg: string }
+> = {
+  purple: {
+    bg: "bg-purple-50",
+    border: "border-purple-200",
+    text: "text-purple-700",
+    hover:
+      "hover:bg-purple-100 dark:bg-purple-500/15 hover:border-purple-300 hover:shadow-sm",
+    iconBg: "bg-purple-100 dark:bg-purple-500/15",
+  },
+  red: {
+    bg: "bg-red-50 dark:bg-red-950/40",
+    border: "border-red-200 dark:border-red-800",
+    text: "text-red-700 dark:text-red-300",
+    hover:
+      "hover:bg-red-100 dark:bg-red-500/15 hover:border-red-300 dark:border-red-700 hover:shadow-sm",
+    iconBg: "bg-red-100 dark:bg-red-500/15",
+  },
+  amber: {
+    bg: "bg-amber-50 dark:bg-amber-950/40",
+    border: "border-amber-200 dark:border-amber-800",
+    text: "text-amber-700 dark:text-amber-300",
+    hover:
+      "hover:bg-amber-100 dark:bg-amber-500/15 hover:border-amber-300 dark:border-amber-700 hover:shadow-sm",
+    iconBg: "bg-amber-100 dark:bg-amber-500/15",
+  },
+  blue: {
+    bg: "bg-blue-50 dark:bg-blue-950/40",
+    border: "border-blue-200 dark:border-blue-800",
+    text: "text-blue-700 dark:text-blue-300",
+    hover:
+      "hover:bg-blue-100 dark:bg-blue-500/15 hover:border-blue-300 dark:border-blue-700 hover:shadow-sm",
+    iconBg: "bg-blue-100 dark:bg-blue-500/15",
+  },
+  green: {
+    bg: "bg-green-50 dark:bg-green-950/40",
+    border: "border-green-200 dark:border-green-800",
+    text: "text-green-700 dark:text-green-300",
+    hover:
+      "hover:bg-green-100 dark:bg-green-500/15 hover:border-green-300 dark:border-green-700 hover:shadow-sm",
+    iconBg: "bg-green-100 dark:bg-green-500/15",
+  },
+  indigo: {
+    bg: "bg-indigo-50",
+    border: "border-indigo-200",
+    text: "text-indigo-700",
+    hover: "hover:bg-indigo-100 hover:border-indigo-300 hover:shadow-sm",
+    iconBg: "bg-indigo-100",
+  },
+  teal: {
+    bg: "bg-teal-50 dark:bg-teal-950/40",
+    border: "border-teal-200 dark:border-teal-800",
+    text: "text-teal-700 dark:text-teal-300",
+    hover:
+      "hover:bg-teal-100 dark:bg-teal-500/15 hover:border-teal-300 dark:border-teal-700 hover:shadow-sm",
+    iconBg: "bg-teal-100 dark:bg-teal-500/15",
+  },
+  violet: {
+    bg: "bg-violet-50 dark:bg-violet-950/40",
+    border: "border-violet-200 dark:border-violet-800",
+    text: "text-violet-700 dark:text-violet-300",
+    hover:
+      "hover:bg-violet-100 dark:bg-violet-500/15 hover:border-violet-300 dark:border-violet-700 hover:shadow-sm",
+    iconBg: "bg-violet-100 dark:bg-violet-500/15",
+  },
+  slate: {
+    bg: "bg-slate-50",
+    border: "border-slate-200",
+    text: "text-foreground",
+    hover: "hover:bg-slate-100 hover:border-slate-300 hover:shadow-sm",
+    iconBg: "bg-slate-100",
+  },
 };
 
 export function NodePalette() {
@@ -64,9 +133,11 @@ export function NodePalette() {
           <button
             key={type}
             onClick={() => handleAddNode(type)}
-            className={`flex items-center gap-2 px-2.5 py-2 rounded-lg border text-xs font-medium transition-all cursor-pointer ${colors.bg} ${colors.border} ${colors.text} ${colors.hover}`}
+            className={`flex cursor-pointer items-center gap-2 rounded-lg border px-2.5 py-2 text-xs font-medium transition-all ${colors.bg} ${colors.border} ${colors.text} ${colors.hover}`}
           >
-            <span className={`w-5 h-5 rounded flex items-center justify-center text-[10px] ${colors.iconBg} font-bold`}>
+            <span
+              className={`flex h-5 w-5 items-center justify-center rounded text-[10px] ${colors.iconBg} font-bold`}
+            >
               {icon}
             </span>
             {label}

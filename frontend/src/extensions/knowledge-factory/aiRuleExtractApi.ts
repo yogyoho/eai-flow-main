@@ -46,7 +46,11 @@ function mapExtractedToCreate(rule: ExtractedRule): ComplianceRuleCreate {
     nationalLevel: true,
     sourceSections: rule.source_sections ?? [],
     targetSections: [],
-    validationConfig: (rule.validation_config as unknown as ComplianceRuleCreate["validationConfig"]) ?? { fields: [], comparisonType: "" },
+    validationConfig:
+      (rule.validation_config as unknown as ComplianceRuleCreate["validationConfig"]) ?? {
+        fields: [],
+        comparisonType: "",
+      },
     errorMessage: rule.error_message ?? "",
     autoFixSuggestion: rule.auto_fix_suggestion ?? "",
   };
@@ -60,7 +64,8 @@ export async function extractRulesFromDocument(
   const formData = new FormData();
   formData.append("file", file);
   if (industry) formData.append("industry", industry);
-  if (reportTypes?.length) formData.append("report_types", reportTypes.join(","));
+  if (reportTypes?.length)
+    formData.append("report_types", reportTypes.join(","));
 
   return authFormFetch<ExtractRulesResponse>(
     buildLawLibraryUrl("/kf/rules/extract"),
@@ -69,7 +74,9 @@ export async function extractRulesFromDocument(
   );
 }
 
-export async function batchCreateRules(rules: ComplianceRuleCreate[]): Promise<BatchCreateResponse> {
+export async function batchCreateRules(
+  rules: ComplianceRuleCreate[],
+): Promise<BatchCreateResponse> {
   const snakeRules = rules.map((r) => ({
     rule_id: r.ruleId,
     name: r.name,

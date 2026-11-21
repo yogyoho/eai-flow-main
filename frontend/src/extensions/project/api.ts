@@ -33,7 +33,10 @@ export const projectApi = {
     if (params?.search) query.set("search", params.search);
     if (params?.skip) query.set("skip", String(params.skip));
     if (params?.limit) query.set("limit", String(params.limit));
-    const data = await authFetch<{ items: Record<string, unknown>[]; total: number }>(`${API_BASE}/projects?${query}`);
+    const data = await authFetch<{
+      items: Record<string, unknown>[];
+      total: number;
+    }>(`${API_BASE}/projects?${query}`);
     return {
       items: data.items.map((item) => toCamelCase<ProjectListItem>(item)),
       total: data.total,
@@ -41,23 +44,38 @@ export const projectApi = {
   },
 
   get: async (id: string): Promise<ReportProject> => {
-    const data = await authFetch<Record<string, unknown>>(`${API_BASE}/projects/${id}`);
+    const data = await authFetch<Record<string, unknown>>(
+      `${API_BASE}/projects/${id}`,
+    );
     return toCamelCase<ReportProject>(data);
   },
 
   create: async (req: CreateProjectRequest): Promise<ReportProject> => {
-    const data = await authFetch<Record<string, unknown>>(`${API_BASE}/projects`, {
-      method: "POST",
-      body: JSON.stringify(toSnakeCase(req as unknown as Record<string, unknown>)),
-    });
+    const data = await authFetch<Record<string, unknown>>(
+      `${API_BASE}/projects`,
+      {
+        method: "POST",
+        body: JSON.stringify(
+          toSnakeCase(req as unknown as Record<string, unknown>),
+        ),
+      },
+    );
     return toCamelCase<ReportProject>(data);
   },
 
-  update: async (id: string, req: UpdateProjectRequest): Promise<ReportProject> => {
-    const data = await authFetch<Record<string, unknown>>(`${API_BASE}/projects/${id}`, {
-      method: "PATCH",
-      body: JSON.stringify(toSnakeCase(req as unknown as Record<string, unknown>)),
-    });
+  update: async (
+    id: string,
+    req: UpdateProjectRequest,
+  ): Promise<ReportProject> => {
+    const data = await authFetch<Record<string, unknown>>(
+      `${API_BASE}/projects/${id}`,
+      {
+        method: "PATCH",
+        body: JSON.stringify(
+          toSnakeCase(req as unknown as Record<string, unknown>),
+        ),
+      },
+    );
     return toCamelCase<ReportProject>(data);
   },
 
@@ -68,31 +86,50 @@ export const projectApi = {
   // EAI-CUSTOM: orthogonal archive bucket (ADR P5) — archive keeps real status,
   // only archivedAt marks the bucket; list hides archived via archivedAt.
   archive: async (id: string): Promise<ReportProject> => {
-    const data = await authFetch<Record<string, unknown>>(`${API_BASE}/projects/${id}/archive`, { method: "POST" });
+    const data = await authFetch<Record<string, unknown>>(
+      `${API_BASE}/projects/${id}/archive`,
+      { method: "POST" },
+    );
     return toCamelCase<ReportProject>(data);
   },
   unarchive: async (id: string): Promise<ReportProject> => {
-    const data = await authFetch<Record<string, unknown>>(`${API_BASE}/projects/${id}/unarchive`, { method: "POST" });
+    const data = await authFetch<Record<string, unknown>>(
+      `${API_BASE}/projects/${id}/unarchive`,
+      { method: "POST" },
+    );
     return toCamelCase<ReportProject>(data);
   },
 
-  enter: async (id: string): Promise<{ threadId: string; projectId: string }> => {
-    const data = await authFetch<Record<string, unknown>>(`${API_BASE}/projects/${id}/enter`, { method: "POST" });
+  enter: async (
+    id: string,
+  ): Promise<{ threadId: string; projectId: string }> => {
+    const data = await authFetch<Record<string, unknown>>(
+      `${API_BASE}/projects/${id}/enter`,
+      { method: "POST" },
+    );
     return toCamelCase<{ threadId: string; projectId: string }>(data);
   },
 
   getFiles: async (id: string): Promise<Record<string, unknown>[]> => {
-    const data = await authFetch<Record<string, unknown>[]>(`${API_BASE}/projects/${id}/files`);
+    const data = await authFetch<Record<string, unknown>[]>(
+      `${API_BASE}/projects/${id}/files`,
+    );
     return data;
   },
 
   /** Get project stats (file count, doc size). Falls back to getFiles count. */
-  getStats: async (id: string): Promise<{ documentCount: number; documentTotalSize: number }> => {
+  getStats: async (
+    id: string,
+  ): Promise<{ documentCount: number; documentTotalSize: number }> => {
     try {
-      const data = await authFetch<{ document_count: number; document_total_size: number }>(
-        `${API_BASE}/projects/${id}/stats`,
-      );
-      return { documentCount: data.document_count ?? 0, documentTotalSize: data.document_total_size ?? 0 };
+      const data = await authFetch<{
+        document_count: number;
+        document_total_size: number;
+      }>(`${API_BASE}/projects/${id}/stats`);
+      return {
+        documentCount: data.document_count ?? 0,
+        documentTotalSize: data.document_total_size ?? 0,
+      };
     } catch {
       // Fallback: count from getFiles
       const files = await projectApi.getFiles(id);
@@ -102,8 +139,16 @@ export const projectApi = {
 
   /** Signal the workflow to advance past the current phase.  Returns 409 if
    *  chapters are not all completed (backend chapter-completion gate). */
-  completePhase: async (id: string, comment?: string): Promise<{ status: string; phase_node: string; phase_label: string }> => {
-    const resp = await authFetch<{ status: string; project_id: string; phase_node: string; phase_label: string }>(
+  completePhase: async (
+    id: string,
+    comment?: string,
+  ): Promise<{ status: string; phase_node: string; phase_label: string }> => {
+    const resp = await authFetch<{
+      status: string;
+      project_id: string;
+      phase_node: string;
+      phase_label: string;
+    }>(
       `/api/extensions/project/projects/${id}/phase-complete`,
       { method: "POST", body: JSON.stringify({ comment }) },
       "Failed to advance phase",
@@ -142,7 +187,11 @@ export const projectApi = {
 
   // ── Members ──
 
-  addMember: async (projectId: string, userId: string, role: string): Promise<void> => {
+  addMember: async (
+    projectId: string,
+    userId: string,
+    role: string,
+  ): Promise<void> => {
     await authFetch(`${API_BASE}/projects/${projectId}/members`, {
       method: "POST",
       body: JSON.stringify({ user_id: userId, role }),
@@ -150,7 +199,9 @@ export const projectApi = {
   },
 
   removeMember: async (projectId: string, userId: string): Promise<void> => {
-    await authFetch(`${API_BASE}/projects/${projectId}/members/${userId}`, { method: "DELETE" });
+    await authFetch(`${API_BASE}/projects/${projectId}/members/${userId}`, {
+      method: "DELETE",
+    });
   },
 
   updateMember: async (
@@ -196,7 +247,9 @@ export const projectApi = {
     return data;
   },
 
-  getApprovalStatus: async (projectId: string): Promise<ApprovalStatusResponse> => {
+  getApprovalStatus: async (
+    projectId: string,
+  ): Promise<ApprovalStatusResponse> => {
     const data = await authFetch<Record<string, unknown>>(
       `${API_BASE}/projects/${projectId}/approval-status`,
     );
@@ -214,11 +267,18 @@ export const projectApi = {
 
   // ── Chapters ──
 
-  updateChapterStatus: async (projectId: string, chapterId: string, status: string): Promise<void> => {
-    await authFetch(`${API_BASE}/projects/${projectId}/chapters/${chapterId}/status`, {
-      method: "PATCH",
-      body: JSON.stringify({ status }),
-    });
+  updateChapterStatus: async (
+    projectId: string,
+    chapterId: string,
+    status: string,
+  ): Promise<void> => {
+    await authFetch(
+      `${API_BASE}/projects/${projectId}/chapters/${chapterId}/status`,
+      {
+        method: "PATCH",
+        body: JSON.stringify({ status }),
+      },
+    );
   },
 
   /** EAI-CUSTOM (bug B6 协同写作链审计): collab 编辑器防抖回写章节基线。
@@ -240,7 +300,10 @@ export const projectApi = {
 
   // ── Phase Board ──
 
-  getPhaseBoard: async (projectId: string, phaseNode: string): Promise<PhaseBoardResponse> => {
+  getPhaseBoard: async (
+    projectId: string,
+    phaseNode: string,
+  ): Promise<PhaseBoardResponse> => {
     const data = await authFetch<Record<string, unknown>>(
       `${API_BASE}/projects/${projectId}/phases/${phaseNode}/board`,
     );
@@ -252,15 +315,21 @@ export const projectApi = {
     phaseNode: string,
     assignments: BatchAssignRequest["assignments"],
   ): Promise<{ updated: number; total: number }> => {
-    return authFetch(`${API_BASE}/projects/${projectId}/phases/${phaseNode}/batch-assign`, {
-      method: "POST",
-      body: JSON.stringify({ assignments }),
-    });
+    return authFetch(
+      `${API_BASE}/projects/${projectId}/phases/${phaseNode}/batch-assign`,
+      {
+        method: "POST",
+        body: JSON.stringify({ assignments }),
+      },
+    );
   },
 
   // ── Phase Readiness ──
 
-  getPhaseReadiness: async (projectId: string, phaseNode: string): Promise<PhaseReadinessResponse> => {
+  getPhaseReadiness: async (
+    projectId: string,
+    phaseNode: string,
+  ): Promise<PhaseReadinessResponse> => {
     const data = await authFetch<Record<string, unknown>>(
       `${API_BASE}/projects/${projectId}/phases/${phaseNode}/readiness`,
     );

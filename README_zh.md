@@ -45,6 +45,14 @@ DeerFlow 新近集成了 BytePlus 自研的智能搜索与抓取工具集——[
   />
 </a>
 
+## EAI 材料学计算子系统
+
+EAI 分支提供独立的[材料学计算子系统](materials/README.md)，公共入口为
+`/materials`。业务覆盖材料与文献检索、结构构建、工作流编排、Slurm 执行、
+运行诊断、结果归档与操作审计。应用中心卡片以新标签页打开；nginx 将前端
+转发到 `materials-frontend:3030`，并将 `/materials/api/*` 转发到
+`materials-backend:8030/api/materials/*`。
+
 ## 目录
 
 - [🦌 DeerFlow - 2.0](#-deerflow---20)
@@ -52,6 +60,7 @@ DeerFlow 新近集成了 BytePlus 自研的智能搜索与抓取工具集——[
   - [姐妹项目](#姐妹项目)
   - [字节跳动火山引擎方舟 Coding Plan](#字节跳动火山引擎方舟-coding-plan)
   - [InfoQuest](#infoquest)
+  - [EAI 材料学计算子系统](#eai-材料学计算子系统)
   - [目录](#目录)
   - [一句话交给 Coding Agent 安装](#一句话交给-coding-agent-安装)
   - [快速开始](#快速开始)

@@ -20,8 +20,7 @@ export const editorCommands: CommandGroup[] = [
         title: "文本",
         description: "普通文本段落",
         icon: "T",
-        command: (editor) =>
-          editor.chain().focus().setParagraph().run(),
+        command: (editor) => editor.chain().focus().setParagraph().run(),
       },
       {
         title: "标题 1",
@@ -53,22 +52,19 @@ export const editorCommands: CommandGroup[] = [
         title: "无序列表",
         description: "项目符号列表",
         icon: "•",
-        command: (editor) =>
-          editor.chain().focus().toggleBulletList().run(),
+        command: (editor) => editor.chain().focus().toggleBulletList().run(),
       },
       {
         title: "有序列表",
         description: "数字编号列表",
         icon: "1.",
-        command: (editor) =>
-          editor.chain().focus().toggleOrderedList().run(),
+        command: (editor) => editor.chain().focus().toggleOrderedList().run(),
       },
       {
         title: "任务列表",
         description: "带复选框的任务",
         icon: "☑",
-        command: (editor) =>
-          editor.chain().focus().toggleTaskList().run(),
+        command: (editor) => editor.chain().focus().toggleTaskList().run(),
       },
     ],
   },
@@ -79,29 +75,30 @@ export const editorCommands: CommandGroup[] = [
         title: "引用块",
         description: "引用文本",
         icon: '"',
-        command: (editor) =>
-          editor.chain().focus().toggleBlockquote().run(),
+        command: (editor) => editor.chain().focus().toggleBlockquote().run(),
       },
       {
         title: "代码块",
         description: "格式化代码",
         icon: "</>",
-        command: (editor) =>
-          editor.chain().focus().toggleCodeBlock().run(),
+        command: (editor) => editor.chain().focus().toggleCodeBlock().run(),
       },
       {
         title: "分割线",
         description: "水平分隔线",
         icon: "—",
-        command: (editor) =>
-          editor.chain().focus().setHorizontalRule().run(),
+        command: (editor) => editor.chain().focus().setHorizontalRule().run(),
       },
       {
         title: "表格",
         description: "插入表格",
         icon: "⊞",
         command: (editor) =>
-          editor.chain().focus().insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run(),
+          editor
+            .chain()
+            .focus()
+            .insertTable({ rows: 3, cols: 3, withHeaderRow: true })
+            .run(),
       },
     ],
   },
@@ -141,7 +138,7 @@ export function filterCommands(query: string): CommandItem[] {
       items: group.items.filter(
         (item) =>
           item.title.toLowerCase().includes(lower) ||
-          item.description.toLowerCase().includes(lower)
+          item.description.toLowerCase().includes(lower),
       ),
     }))
     .filter((group) => group.items.length > 0)

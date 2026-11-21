@@ -59,12 +59,16 @@ export interface AppUpdate {
 // ── Public endpoints ──
 
 export async function fetchDomains(): Promise<DomainResponse[]> {
-  const data = await authFetch<{ items: Record<string, unknown>[] }>(`${BASE}/domains`);
+  const data = await authFetch<{ items: Record<string, unknown>[] }>(
+    `${BASE}/domains`,
+  );
   return data.items.map(mapDomain);
 }
 
 export async function fetchApps(): Promise<AppResponse[]> {
-  const data = await authFetch<{ items: Record<string, unknown>[] }>(`${BASE}/apps`);
+  const data = await authFetch<{ items: Record<string, unknown>[] }>(
+    `${BASE}/apps`,
+  );
   return data.items.map(mapApp);
 }
 
@@ -124,7 +128,9 @@ export async function deleteDomain(key: string): Promise<void> {
 // ── Admin endpoints ──
 
 export async function fetchAllApps(): Promise<AppResponse[]> {
-  const data = await authFetch<{ items: Record<string, unknown>[] }>(`${BASE}/apps/all`);
+  const data = await authFetch<{ items: Record<string, unknown>[] }>(
+    `${BASE}/apps/all`,
+  );
   return data.items.map(mapApp);
 }
 
@@ -133,19 +139,19 @@ export async function createApp(req: AppCreate): Promise<AppResponse> {
     await authFetch<Record<string, unknown>>(`${BASE}/apps`, {
       method: "POST",
       body: JSON.stringify(toSnakeCreate(req)),
-    })
+    }),
   );
 }
 
 export async function updateApp(
   appId: string,
-  req: AppUpdate
+  req: AppUpdate,
 ): Promise<AppResponse> {
   return mapApp(
     await authFetch<Record<string, unknown>>(`${BASE}/apps/${appId}`, {
       method: "PUT",
       body: JSON.stringify(toSnakeUpdate(req)),
-    })
+    }),
   );
 }
 
@@ -206,7 +212,8 @@ function toSnakeUpdate(req: AppUpdate): Record<string, unknown> {
   if (req.name !== undefined) snake.name = req.name;
   if (req.description !== undefined) snake.description = req.description;
   if (req.iconName !== undefined) snake.icon_name = req.iconName;
-  if (req.businessDomain !== undefined) snake.business_domain = req.businessDomain;
+  if (req.businessDomain !== undefined)
+    snake.business_domain = req.businessDomain;
   if (req.stageTag !== undefined) snake.stage_tag = req.stageTag;
   if (req.path !== undefined) snake.path = req.path;
   if (req.licenseModule !== undefined) snake.license_module = req.licenseModule;

@@ -11,7 +11,13 @@ export default async function ProjectDetailPage({
   const { id } = await params;
   return (
     <ShellLayout>
-      <Suspense fallback={<div className="flex items-center justify-center h-full">加载中...</div>}>
+      <Suspense
+        fallback={
+          <div className="flex h-full items-center justify-center">
+            加载中...
+          </div>
+        }
+      >
         <ProjectWorkspace projectId={id} />
       </Suspense>
     </ShellLayout>

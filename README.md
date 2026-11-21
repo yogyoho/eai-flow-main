@@ -43,6 +43,86 @@ DeerFlow has newly integrated the intelligent search and crawling toolset indepe
 
 ---
 
+## EAI Materials Calculation Subsystem
+
+The EAI fork ships a standalone first-principles materials calculation subsystem at
+[`/materials`](materials/README.md). It covers material and literature search,
+structure building, workflow orchestration, Slurm execution, run diagnostics,
+result archival, and audit trails. The app-center card opens it in a new tab;
+nginx serves the frontend from `materials-frontend:3030` and proxies
+`/materials/api/*` to `materials-backend:8030/api/materials/*`.
+
+## Table of Contents
+
+- [🦌 DeerFlow - 2.0](#-deerflow---20)
+  - [Official Website](#official-website)
+  - [Sister Projects](#sister-projects)
+  - [Coding Plan from ByteDance Volcengine](#coding-plan-from-bytedance-volcengine)
+  - [InfoQuest](#infoquest)
+  - [EAI Materials Calculation Subsystem](#eai-materials-calculation-subsystem)
+  - [Table of Contents](#table-of-contents)
+  - [One-Line Agent Setup](#one-line-agent-setup)
+  - [Quick Start](#quick-start)
+    - [Configuration](#configuration)
+    - [Running the Application](#running-the-application)
+      - [Deployment Sizing](#deployment-sizing)
+      - [Option 1: Docker (Recommended)](#option-1-docker-recommended)
+      - [Upgrading an existing checkout](#upgrading-an-existing-checkout)
+      - [Option 2: Local Development](#option-2-local-development)
+      - [Startup Modes](#startup-modes)
+      - [LangGraph Studio (Optional)](#langgraph-studio-optional)
+      - [Docker Production Deployment](#docker-production-deployment)
+    - [Advanced](#advanced)
+      - [Sandbox Mode](#sandbox-mode)
+      - [MCP Server](#mcp-server)
+      - [IM Channels](#im-channels)
+      - [Request Trace Correlation](#request-trace-correlation)
+      - [LangSmith Tracing](#langsmith-tracing)
+      - [Langfuse Tracing](#langfuse-tracing)
+      - [Monocle Tracing](#monocle-tracing)
+      - [Using Multiple Providers](#using-multiple-providers)
+      - [Existing-Run Stream Actions](#existing-run-stream-actions)
+      - [Personal Access Tokens](#personal-access-tokens)
+  - [From Deep Research to Super Agent Harness](#from-deep-research-to-super-agent-harness)
+  - [Core Features](#core-features)
+    - [Skills \& Tools](#skills--tools)
+      - [Exporting Custom Skills](#exporting-custom-skills)
+      - [Claude Code Integration](#claude-code-integration)
+    - [Private Knowledge Retrieval (RAGFlow)](#private-knowledge-retrieval-ragflow)
+    - [Chat Archive](#chat-archive)
+    - [Session Goals](#session-goals)
+    - [Manual Context Compaction](#manual-context-compaction)
+    - [Sub-Agents](#sub-agents)
+    - [Sandbox \& File System](#sandbox--file-system)
+    - [Agentic Browser Control](#agentic-browser-control)
+    - [Context Engineering](#context-engineering)
+    - [Reading a Referenced Conversation](#reading-a-referenced-conversation)
+    - [Current Task Notes](#current-task-notes)
+    - [Long-Term Memory](#long-term-memory)
+  - [Recommended Models](#recommended-models)
+  - [Embedded Python Client](#embedded-python-client)
+  - [Projects](#projects)
+    - [Project instructions](#project-instructions)
+    - [Document shelf](#document-shelf)
+    - [Archive read semantics](#archive-read-semantics)
+    - [Trash](#trash)
+  - [Scheduled Tasks](#scheduled-tasks)
+    - [Preview cron occurrences through the API](#preview-cron-occurrences-through-the-api)
+    - [Upgrade Notes](#upgrade-notes)
+  - [Terminal Workbench (TUI)](#terminal-workbench-tui)
+  - [Documentation](#documentation)
+  - [⚠️ Security Notice](#️-security-notice)
+    - [Improper Deployment May Introduce Security Risks](#improper-deployment-may-introduce-security-risks)
+    - [Gateway Admin Is Equivalent to Code Execution](#gateway-admin-is-equivalent-to-code-execution)
+    - [External Chat Message Roles](#external-chat-message-roles)
+    - [Deployment Defaults](#deployment-defaults)
+    - [Security Recommendations](#security-recommendations)
+  - [Contributing](#contributing)
+  - [License](#license)
+  - [Acknowledgments](#acknowledgments)
+    - [Key Contributors](#key-contributors)
+  - [Star History](#star-history)
+
 ## One-Line Agent Setup
 
 If you use Claude Code, Codex, Cursor, Windsurf, or another coding agent, you can hand it the setup instructions in one sentence:

@@ -323,7 +323,7 @@ export default function DraftBox({ onClose, onEdit }: DraftBoxProps) {
                           e.stopPropagation();
                           void handleDelete(draft.id);
                         }}
-                        className="rounded-lg p-2 text-red-600 dark:text-red-400 hover:bg-red-500/10"
+                        className="rounded-lg p-2 text-red-600 hover:bg-red-500/10 dark:text-red-400"
                         title="删除"
                       >
                         <Trash2 className="h-4 w-4" />

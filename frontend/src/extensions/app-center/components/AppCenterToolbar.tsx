@@ -37,7 +37,7 @@ export function AppCenterToolbar({
       <div className="relative">
         <Search
           className={cn(
-            "pointer-events-none absolute left-3.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground",
+            "text-muted-foreground pointer-events-none absolute top-1/2 left-3.5 size-4 -translate-y-1/2",
           )}
         />
         <Input
@@ -47,7 +47,7 @@ export function AppCenterToolbar({
           aria-label="搜索应用"
           placeholder="搜索应用名称或功能..."
           className={cn(
-            "h-11 rounded-xl border-border bg-muted/50 pl-10 pr-10 text-sm transition-colors",
+            "border-border bg-muted/50 h-11 rounded-xl pr-10 pl-10 text-sm transition-colors",
             "placeholder:text-muted-foreground/70 focus-visible:bg-background",
           )}
         />
@@ -56,7 +56,7 @@ export function AppCenterToolbar({
             type="button"
             onClick={() => onSearchChange("")}
             aria-label="清除搜索"
-            className="absolute right-3 top-1/2 flex size-5 -translate-y-1/2 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+            className="text-muted-foreground hover:bg-accent hover:text-foreground absolute top-1/2 right-3 flex size-5 -translate-y-1/2 items-center justify-center rounded-full transition-colors"
           >
             <X className="size-3.5" />
           </button>

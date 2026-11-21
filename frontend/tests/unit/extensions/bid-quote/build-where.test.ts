@@ -55,9 +55,7 @@ describe("buildWhere", () => {
   it("competitors + 别名外层(b.project_name)→ 列前缀跟随别名", () => {
     const g: FilterState = { ...EMPTY_FILTERS, competitors: ["友A"] };
     const w = buildWhere(g, "b.project_name");
-    expect(w).toContain(
-      "(b.bidder_name IN ('友A') OR b.bidder_role='ours')",
-    );
+    expect(w).toContain("(b.bidder_name IN ('友A') OR b.bidder_role='ours')");
     expect(w).not.toContain("mock_bid.");
   });
   it("日期范围", () => {
@@ -72,9 +70,9 @@ describe("buildWhere", () => {
   });
   it("chart.amountSegment", () => {
     const chart: ChartFilter = { amountSegment: "100to500w" };
-    expect(
-      buildWhere(EMPTY_FILTERS, "mock_bid.project_name", chart),
-    ).toContain("winning_price >= 1000000 AND winning_price < 5000000");
+    expect(buildWhere(EMPTY_FILTERS, "mock_bid.project_name", chart)).toContain(
+      "winning_price >= 1000000 AND winning_price < 5000000",
+    );
   });
   it("chart.goodsName", () => {
     const chart: ChartFilter = { goodsName: ["塔器"] };
@@ -129,9 +127,7 @@ describe("sqlFor 组装", () => {
   it("composition + competitors → 行级前缀 b.(我方聚合不被 IN 清空)", () => {
     const g: FilterState = { ...EMPTY_FILTERS, competitors: ["友A"] };
     const sql = sqlFor("composition", g);
-    expect(sql).toContain(
-      "(b.bidder_name IN ('友A') OR b.bidder_role='ours')",
-    );
+    expect(sql).toContain("(b.bidder_name IN ('友A') OR b.bidder_role='ours')");
     expect(sql).not.toContain("EXISTS (SELECT 1");
   });
   it("summary/showdown + competitors → 行级前缀 mock_bid.(未别名外层)", () => {

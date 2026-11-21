@@ -39,9 +39,18 @@ interface RuleCreatePanelProps {
   dictionaries?: RuleDictionaries;
 }
 
-function FieldLabel({ children, htmlFor }: { children: React.ReactNode; htmlFor?: string }) {
+function FieldLabel({
+  children,
+  htmlFor,
+}: {
+  children: React.ReactNode;
+  htmlFor?: string;
+}) {
   return (
-    <label htmlFor={htmlFor} className="text-xs font-medium text-muted-foreground">
+    <label
+      htmlFor={htmlFor}
+      className="text-muted-foreground text-xs font-medium"
+    >
       {children}
     </label>
   );
@@ -53,7 +62,9 @@ export function RuleCreatePanel({
   dictionaries = DEFAULT_RULE_DICTIONARIES,
 }: RuleCreatePanelProps) {
   const selectContentClassName = "z-[1010]";
-  const [draft, setDraft] = useState<ComplianceRuleCreate>(() => createEmptyRuleDraft(dictionaries));
+  const [draft, setDraft] = useState<ComplianceRuleCreate>(() =>
+    createEmptyRuleDraft(dictionaries),
+  );
   const [sourceSectionsInput, setSourceSectionsInput] = useState("");
   const [targetSectionsInput, setTargetSectionsInput] = useState("");
   const [saving, setSaving] = useState(false);
@@ -61,7 +72,12 @@ export function RuleCreatePanel({
 
   const validationPreview = useMemo(
     () =>
-      buildRuleCreatePayload(draft, sourceSectionsInput, targetSectionsInput, dictionaries),
+      buildRuleCreatePayload(
+        draft,
+        sourceSectionsInput,
+        targetSectionsInput,
+        dictionaries,
+      ),
     [dictionaries, draft, sourceSectionsInput, targetSectionsInput],
   );
 
@@ -128,7 +144,7 @@ export function RuleCreatePanel({
     >
       <div
         className={cn(
-          "flex max-h-[90vh] w-full max-w-[960px] flex-col overflow-hidden rounded-xl border bg-background shadow-lg",
+          "bg-background flex max-h-[90vh] w-full max-w-[960px] flex-col overflow-hidden rounded-xl border shadow-lg",
         )}
         onClick={(event) => event.stopPropagation()}
         role="dialog"
@@ -137,14 +153,23 @@ export function RuleCreatePanel({
       >
         <div className="flex shrink-0 items-start justify-between gap-4 border-b px-5 py-4">
           <div>
-            <h2 id="rule-create-title" className="text-base font-semibold leading-tight text-foreground">
+            <h2
+              id="rule-create-title"
+              className="text-foreground text-base leading-tight font-semibold"
+            >
               新建规则
             </h2>
-            <p className="mt-1 text-sm text-muted-foreground">
+            <p className="text-muted-foreground mt-1 text-sm">
               创建新的合规规则定义，创建后可继续编辑、测试和查看日志。
             </p>
           </div>
-          <Button type="button" variant="ghost" size="icon-sm" className="shrink-0" onClick={onClose}>
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon-sm"
+            className="shrink-0"
+            onClick={onClose}
+          >
             <X className="size-4" />
             <span className="sr-only">关闭</span>
           </Button>
@@ -156,7 +181,13 @@ export function RuleCreatePanel({
               <AlertCircle className="size-4" />
               <AlertDescription className="flex items-center justify-between gap-2">
                 <span>{error}</span>
-                <Button type="button" variant="ghost" size="sm" className="h-7 shrink-0 px-2" onClick={() => setError(null)}>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="h-7 shrink-0 px-2"
+                  onClick={() => setError(null)}
+                >
                   关闭
                 </Button>
               </AlertDescription>
@@ -164,7 +195,9 @@ export function RuleCreatePanel({
           )}
 
           <section className="mb-5">
-            <h3 className="mb-3 text-sm font-semibold text-foreground">基本信息</h3>
+            <h3 className="text-foreground mb-3 text-sm font-semibold">
+              基本信息
+            </h3>
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
               <div className="space-y-1.5">
                 <FieldLabel htmlFor="rule-id">规则ID</FieldLabel>
@@ -253,7 +286,9 @@ export function RuleCreatePanel({
           </section>
 
           <section className="mb-5">
-            <h3 className="mb-3 text-sm font-semibold text-foreground">行业与适用范围</h3>
+            <h3 className="text-foreground mb-3 text-sm font-semibold">
+              行业与适用范围
+            </h3>
 
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
               <div className="space-y-1.5">
@@ -261,7 +296,9 @@ export function RuleCreatePanel({
                 <Select
                   value={draft.industry}
                   onValueChange={(value) => {
-                    const item = dictionaries.industries.find((i) => i.value === value);
+                    const item = dictionaries.industries.find(
+                      (i) => i.value === value,
+                    );
                     setDraft((prev) => ({
                       ...prev,
                       industry: value,
@@ -284,13 +321,18 @@ export function RuleCreatePanel({
 
               <div className="space-y-1.5">
                 <FieldLabel>适用范围</FieldLabel>
-                <div className="flex h-9 items-center gap-2 rounded-lg border border-input bg-transparent px-3">
-                <Checkbox
-                  id="rule-national"
-                  checked={draft.nationalLevel}
-                  onChange={(e) => handleChange("nationalLevel", e.target.checked)}
-                />
-                  <label htmlFor="rule-national" className="cursor-pointer text-sm font-medium leading-none text-foreground">
+                <div className="border-input flex h-9 items-center gap-2 rounded-lg border bg-transparent px-3">
+                  <Checkbox
+                    id="rule-national"
+                    checked={draft.nationalLevel}
+                    onChange={(e) =>
+                      handleChange("nationalLevel", e.target.checked)
+                    }
+                  />
+                  <label
+                    htmlFor="rule-national"
+                    className="text-foreground cursor-pointer text-sm leading-none font-medium"
+                  >
                     全国规则
                   </label>
                 </div>
@@ -299,12 +341,15 @@ export function RuleCreatePanel({
 
             <div className="mt-4 space-y-1.5">
               <FieldLabel>适用报告类型</FieldLabel>
-              <div className="rounded-lg border border-border bg-muted/30 p-3">
+              <div className="border-border bg-muted/30 rounded-lg border p-3">
                 <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                   {dictionaries.reportTypes.map((item) => {
                     const id = `report-type-${item.value}`;
                     return (
-                      <div key={item.value} className="flex items-start gap-2.5">
+                      <div
+                        key={item.value}
+                        className="flex items-start gap-2.5"
+                      >
                         <Checkbox
                           id={id}
                           checked={draft.reportTypes.includes(item.value)}
@@ -315,7 +360,7 @@ export function RuleCreatePanel({
                         />
                         <label
                           htmlFor={id}
-                          className="cursor-pointer text-sm leading-snug text-foreground"
+                          className="text-foreground cursor-pointer text-sm leading-snug"
                         >
                           {item.label}
                         </label>
@@ -329,25 +374,33 @@ export function RuleCreatePanel({
             {!draft.nationalLevel && (
               <div className="mt-4 space-y-1.5">
                 <FieldLabel>地方适用地区</FieldLabel>
-                <div className="rounded-lg border border-border bg-muted/30 p-3">
+                <div className="border-border bg-muted/30 rounded-lg border p-3">
                   <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                     {dictionaries.regions
                       .filter((item) => item.value !== "nationwide")
                       .map((item) => {
                         const id = `region-${item.value}`;
                         return (
-                          <div key={item.value} className="flex items-start gap-2.5">
+                          <div
+                            key={item.value}
+                            className="flex items-start gap-2.5"
+                          >
                             <Checkbox
                               id={id}
-                              checked={draft.applicableRegions.includes(item.value)}
+                              checked={draft.applicableRegions.includes(
+                                item.value,
+                              )}
                               onChange={(checked) =>
-                                handleRegionToggle(item.value, checked.target.checked)
+                                handleRegionToggle(
+                                  item.value,
+                                  checked.target.checked,
+                                )
                               }
                               className="mt-0.5"
                             />
                             <label
                               htmlFor={id}
-                              className="cursor-pointer text-sm leading-snug text-foreground"
+                              className="text-foreground cursor-pointer text-sm leading-snug"
                             >
                               {item.label}
                             </label>
@@ -361,7 +414,9 @@ export function RuleCreatePanel({
           </section>
 
           <section className="mb-5">
-            <h3 className="mb-3 text-sm font-semibold text-foreground">章节与提示</h3>
+            <h3 className="text-foreground mb-3 text-sm font-semibold">
+              章节与提示
+            </h3>
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
               <div className="space-y-1.5">
                 <FieldLabel htmlFor="source-sections">来源章节</FieldLabel>
@@ -405,7 +460,9 @@ export function RuleCreatePanel({
                 <Textarea
                   id="fix-suggestion"
                   value={draft.autoFixSuggestion ?? ""}
-                  onChange={(e) => handleChange("autoFixSuggestion", e.target.value)}
+                  onChange={(e) =>
+                    handleChange("autoFixSuggestion", e.target.value)
+                  }
                   rows={3}
                   className="min-h-[5rem] resize-y"
                 />
@@ -413,30 +470,46 @@ export function RuleCreatePanel({
             </div>
           </section>
 
-          <section className="rounded-lg border border-border bg-muted/20 p-4">
-            <h3 className="mb-3 text-sm font-semibold text-foreground">创建预览</h3>
+          <section className="border-border bg-muted/20 rounded-lg border p-4">
+            <h3 className="text-foreground mb-3 text-sm font-semibold">
+              创建预览
+            </h3>
             <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
-              <div className="rounded-md border border-border bg-card px-3 py-2 text-sm">
-                <div className="text-xs text-muted-foreground">规则类型名称</div>
-                <div className="mt-0.5 font-medium text-foreground">{validationPreview.typeName}</div>
+              <div className="border-border bg-card rounded-md border px-3 py-2 text-sm">
+                <div className="text-muted-foreground text-xs">
+                  规则类型名称
+                </div>
+                <div className="text-foreground mt-0.5 font-medium">
+                  {validationPreview.typeName}
+                </div>
               </div>
-              <div className="rounded-md border border-border bg-card px-3 py-2 text-sm">
-                <div className="text-xs text-muted-foreground">严重级别名称</div>
-                <div className="mt-0.5 font-medium text-foreground">{validationPreview.severityName}</div>
+              <div className="border-border bg-card rounded-md border px-3 py-2 text-sm">
+                <div className="text-muted-foreground text-xs">
+                  严重级别名称
+                </div>
+                <div className="text-foreground mt-0.5 font-medium">
+                  {validationPreview.severityName}
+                </div>
               </div>
-              <div className="rounded-md border border-border bg-card px-3 py-2 text-sm">
-                <div className="text-xs text-muted-foreground">行业名称</div>
-                <div className="mt-0.5 font-medium text-foreground">{validationPreview.industryName}</div>
+              <div className="border-border bg-card rounded-md border px-3 py-2 text-sm">
+                <div className="text-muted-foreground text-xs">行业名称</div>
+                <div className="text-foreground mt-0.5 font-medium">
+                  {validationPreview.industryName}
+                </div>
               </div>
-              <div className="rounded-md border border-border bg-card px-3 py-2 text-sm">
-                <div className="text-xs text-muted-foreground">来源章节数量</div>
-                <div className="mt-0.5 font-medium text-foreground">
+              <div className="border-border bg-card rounded-md border px-3 py-2 text-sm">
+                <div className="text-muted-foreground text-xs">
+                  来源章节数量
+                </div>
+                <div className="text-foreground mt-0.5 font-medium">
                   {parseCommaSeparatedInput(sourceSectionsInput).length}
                 </div>
               </div>
-              <div className="rounded-md border border-border bg-card px-3 py-2 text-sm">
-                <div className="text-xs text-muted-foreground">目标章节数量</div>
-                <div className="mt-0.5 font-medium text-foreground">
+              <div className="border-border bg-card rounded-md border px-3 py-2 text-sm">
+                <div className="text-muted-foreground text-xs">
+                  目标章节数量
+                </div>
+                <div className="text-foreground mt-0.5 font-medium">
                   {parseCommaSeparatedInput(targetSectionsInput).length}
                 </div>
               </div>
@@ -444,8 +517,13 @@ export function RuleCreatePanel({
           </section>
         </div>
 
-        <div className="flex shrink-0 justify-end gap-2 border-t bg-muted/30 px-5 py-4">
-          <Button type="button" variant="outline" onClick={onClose} disabled={saving}>
+        <div className="bg-muted/30 flex shrink-0 justify-end gap-2 border-t px-5 py-4">
+          <Button
+            type="button"
+            variant="outline"
+            onClick={onClose}
+            disabled={saving}
+          >
             取消
           </Button>
           <Button

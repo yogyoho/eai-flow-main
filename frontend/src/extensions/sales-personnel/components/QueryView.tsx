@@ -12,8 +12,16 @@ import {
   TableHeader,
   TableRow,
 } from "@/extensions/sales-personnel/components/ui/table";
-import { useAttendanceSummary, useDeptTravel, useEmployeeList } from "@/extensions/sales-personnel/hooks";
-import type { AttendanceSummaryRow, DeptTravelRow, EmployeeRow } from "@/extensions/sales-personnel/types";
+import {
+  useAttendanceSummary,
+  useDeptTravel,
+  useEmployeeList,
+} from "@/extensions/sales-personnel/hooks";
+import type {
+  AttendanceSummaryRow,
+  DeptTravelRow,
+  EmployeeRow,
+} from "@/extensions/sales-personnel/types";
 
 type TabKey = "employees" | "attendance" | "travel";
 
@@ -37,7 +45,9 @@ const esc = (v: unknown) => {
 
 export function QueryView() {
   const [tab, setTab] = useState<TabKey>("employees");
-  const [drill, setDrill] = useState<{ title: string; sql: string } | null>(null);
+  const [drill, setDrill] = useState<{ title: string; sql: string } | null>(
+    null,
+  );
 
   const empQ = useEmployeeList();
   const attQ = useAttendanceSummary();
@@ -47,7 +57,10 @@ export function QueryView() {
   const attRows = attQ.data ?? [];
   const travelRows = travelQ.data ?? [];
 
-  const onRowDrill = (key: TabKey, row: EmployeeRow | AttendanceSummaryRow | DeptTravelRow) => {
+  const onRowDrill = (
+    key: TabKey,
+    row: EmployeeRow | AttendanceSummaryRow | DeptTravelRow,
+  ) => {
     // 白名单维度:employee_id / department;值经 esc 转义后拼入只读 SELECT。
     if (key === "employees") {
       const eid = esc((row as EmployeeRow).employee_id);
@@ -72,7 +85,12 @@ export function QueryView() {
   };
 
   const loading = useMemo(
-    () => (tab === "employees" ? empQ.isLoading : tab === "attendance" ? attQ.isLoading : travelQ.isLoading),
+    () =>
+      tab === "employees"
+        ? empQ.isLoading
+        : tab === "attendance"
+          ? attQ.isLoading
+          : travelQ.isLoading,
     [tab, empQ.isLoading, attQ.isLoading, travelQ.isLoading],
   );
 
@@ -84,8 +102,8 @@ export function QueryView() {
   return (
     <div className="space-y-4 p-6">
       <div className="flex items-center gap-3">
-        <Search className="h-5 w-5 text-primary" />
-        <h1 className="text-2xl font-bold text-foreground">数据查询</h1>
+        <Search className="text-primary h-5 w-5" />
+        <h1 className="text-foreground text-2xl font-bold">数据查询</h1>
       </div>
 
       {/* 视图 tab(pill) */}
@@ -107,9 +125,11 @@ export function QueryView() {
       </div>
 
       {/* 当前视图表(点行下钻) */}
-      <div className="rounded-xl border border-border bg-card p-4">
+      <div className="border-border bg-card rounded-xl border p-4">
         {loading ? (
-          <p className="py-8 text-center text-sm text-muted-foreground">加载中…</p>
+          <p className="text-muted-foreground py-8 text-center text-sm">
+            加载中…
+          </p>
         ) : tab === "employees" ? (
           <Table>
             <TableHeader>
@@ -125,14 +145,23 @@ export function QueryView() {
             </TableHeader>
             <TableBody>
               {empRows.map((r) => (
-                <TableRow key={r.employee_id} onClick={() => onRowDrill("employees", r)}>
+                <TableRow
+                  key={r.employee_id}
+                  onClick={() => onRowDrill("employees", r)}
+                >
                   <TableCell>{r.employee_id}</TableCell>
                   <TableCell>{r.name}</TableCell>
                   <TableCell>{r.employee_no}</TableCell>
                   <TableCell>{r.department}</TableCell>
                   <TableCell>{r.position}</TableCell>
                   <TableCell>{r.hire_date}</TableCell>
-                  <TableCell className={r.status === "resigned" ? "font-bold text-destructive" : ""}>
+                  <TableCell
+                    className={
+                      r.status === "resigned"
+                        ? "text-destructive font-bold"
+                        : ""
+                    }
+                  >
                     {r.status === "active" ? "在岗" : "离职"}
                   </TableCell>
                 </TableRow>
@@ -154,14 +183,23 @@ export function QueryView() {
             </TableHeader>
             <TableBody>
               {attRows.map((r) => (
-                <TableRow key={r.department} onClick={() => onRowDrill("attendance", r)}>
+                <TableRow
+                  key={r.department}
+                  onClick={() => onRowDrill("attendance", r)}
+                >
                   <TableCell>{r.department}</TableCell>
                   <TableCell>{r.emp_count}</TableCell>
                   <TableCell>{r.present_days}</TableCell>
                   <TableCell>{r.trip_days}</TableCell>
                   <TableCell>{r.leave_days}</TableCell>
                   <TableCell>{r.absent_days}</TableCell>
-                  <TableCell className={Number(r.attendance_rate) >= 85 ? "font-bold text-primary" : ""}>
+                  <TableCell
+                    className={
+                      Number(r.attendance_rate) >= 85
+                        ? "text-primary font-bold"
+                        : ""
+                    }
+                  >
                     {r.attendance_rate}%
                   </TableCell>
                 </TableRow>
@@ -181,7 +219,10 @@ export function QueryView() {
             </TableHeader>
             <TableBody>
               {travelRows.map((r) => (
-                <TableRow key={r.department} onClick={() => onRowDrill("travel", r)}>
+                <TableRow
+                  key={r.department}
+                  onClick={() => onRowDrill("travel", r)}
+                >
                   <TableCell>{r.department}</TableCell>
                   <TableCell>{r.trip_count}</TableCell>
                   <TableCell>{toWan(r.total_amount)}</TableCell>
@@ -194,7 +235,11 @@ export function QueryView() {
         )}
       </div>
 
-      <DrillDownModal title={drill?.title ?? ""} sql={drill?.sql ?? null} onClose={() => setDrill(null)} />
+      <DrillDownModal
+        title={drill?.title ?? ""}
+        sql={drill?.sql ?? null}
+        onClose={() => setDrill(null)}
+      />
     </div>
   );
 }

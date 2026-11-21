@@ -1,7 +1,7 @@
 import type { ComplianceRuleImportResponse } from "@/extensions/knowledge-factory/types";
 
 export function mapRuleImportResponse(
-  data: Record<string, unknown>
+  data: Record<string, unknown>,
 ): ComplianceRuleImportResponse {
   return {
     success: data.success as boolean,

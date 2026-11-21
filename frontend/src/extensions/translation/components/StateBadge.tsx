@@ -18,7 +18,10 @@ import {
 import { cn } from "@/lib/utils";
 
 /** 状态 → 用户语徽章（文案红线映射表；图标一律 lucide 线性件，禁 emoji）。 */
-const STATE_MAP: Record<string, { label: string; cls: string; icon: React.ReactNode }> = {
+const STATE_MAP: Record<
+  string,
+  { label: string; cls: string; icon: React.ReactNode }
+> = {
   stored: {
     label: "未翻译",
     cls: "border-dashed text-muted-foreground",
@@ -86,14 +89,20 @@ const STATE_MAP: Record<string, { label: string; cls: string; icon: React.ReactN
   },
 };
 
-export function StateBadge({ state, progress }: { state: string; progress?: number }) {
+export function StateBadge({
+  state,
+  progress,
+}: {
+  state: string;
+  progress?: number;
+}) {
   const it = STATE_MAP[state] ?? { label: state, cls: "", icon: null };
   const label =
     state === "running" && progress ? `翻译中 ${progress}%` : it.label;
   return (
     <span
       className={cn(
-        "inline-flex items-center gap-1 whitespace-nowrap rounded-full border px-2 py-0.5 text-xs",
+        "inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs whitespace-nowrap",
         it.cls,
       )}
     >

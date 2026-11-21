@@ -20,7 +20,11 @@ const COLUMNS = [
   { id: "approved", label: "已完成", color: "border-t-success" },
 ] as const;
 
-export function KanbanBoard({ cards, onCardMove, onCardEdit: _onCardEdit }: KanbanBoardProps) {
+export function KanbanBoard({
+  cards,
+  onCardMove,
+  onCardEdit: _onCardEdit,
+}: KanbanBoardProps) {
   const [draggedId, setDraggedId] = useState<string | null>(null);
   const [overColumnId, setOverColumnId] = useState<string | null>(null);
 

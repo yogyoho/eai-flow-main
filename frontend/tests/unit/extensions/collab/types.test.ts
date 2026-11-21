@@ -51,7 +51,12 @@ test("VersionDiffResponse interface has expected shape", () => {
     diff_blocks: [
       { type: "added", content: "new line" },
       { type: "removed", content: "old line" },
-      { type: "changed", content: "modified", from_content: "old", to_content: "modified" },
+      {
+        type: "changed",
+        content: "modified",
+        from_content: "old",
+        to_content: "modified",
+      },
     ],
     ai_summary: "AI detected 3 changes",
     legacy_notice: null,
@@ -95,9 +100,7 @@ test("VersionDiffResponse diff_block supports block_id field", () => {
     to_summary: null,
     from_created_at: null,
     to_created_at: null,
-    diff_blocks: [
-      { type: "added", content: "new", block_id: "block-1" },
-    ],
+    diff_blocks: [{ type: "added", content: "new", block_id: "block-1" }],
     ai_summary: null,
     legacy_notice: null,
   };

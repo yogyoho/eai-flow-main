@@ -8,8 +8,19 @@
 
 import { useQuery } from "@tanstack/react-query";
 
-import { queryDataset, querySql, resolveDatasetId, resolveSourceId } from "./api";
-import type { BidRow, FunnelRow, MonthlyRow, QueryResult, ReconRow } from "./types";
+import {
+  queryDataset,
+  querySql,
+  resolveDatasetId,
+  resolveSourceId,
+} from "./api";
+import type {
+  BidRow,
+  FunnelRow,
+  MonthlyRow,
+  QueryResult,
+  ReconRow,
+} from "./types";
 
 export const KEYS = {
   funnel: ["bpp", "funnel"] as const,
@@ -19,7 +30,11 @@ export const KEYS = {
   drilldown: (sql: string) => ["bpp", "drilldown", sql] as const,
 };
 
-function useDatasetQuery<T>(key: readonly string[], label: string, enabled = true) {
+function useDatasetQuery<T>(
+  key: readonly string[],
+  label: string,
+  enabled = true,
+) {
   return useQuery({
     queryKey: key,
     enabled,
@@ -32,9 +47,12 @@ function useDatasetQuery<T>(key: readonly string[], label: string, enabled = tru
   });
 }
 
-export const usePipelineFunnel = () => useDatasetQuery<FunnelRow>(KEYS.funnel, "管线漏斗总览");
-export const useMonthlyBids = () => useDatasetQuery<MonthlyRow>(KEYS.monthly, "月度投标节奏");
-export const useContractRecon = () => useDatasetQuery<ReconRow>(KEYS.recon, "合同开票对账");
+export const usePipelineFunnel = () =>
+  useDatasetQuery<FunnelRow>(KEYS.funnel, "管线漏斗总览");
+export const useMonthlyBids = () =>
+  useDatasetQuery<MonthlyRow>(KEYS.monthly, "月度投标节奏");
+export const useContractRecon = () =>
+  useDatasetQuery<ReconRow>(KEYS.recon, "合同开票对账");
 
 /** 明细:全量 mock_pipeline_bid,下钻来源。 */
 export function useBidList(enabled = true) {
@@ -43,7 +61,10 @@ export function useBidList(enabled = true) {
     enabled,
     queryFn: async (): Promise<BidRow[]> => {
       const sid = await resolveSourceId();
-      const res = await querySql(sid, "SELECT * FROM mock_pipeline_bid ORDER BY bid_date DESC");
+      const res = await querySql(
+        sid,
+        "SELECT * FROM mock_pipeline_bid ORDER BY bid_date DESC",
+      );
       return res.rows as BidRow[];
     },
   });

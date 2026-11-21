@@ -2,9 +2,13 @@
 
 import type { ReactNode } from "react";
 
-import { CARD, CARD_BORDER, INK, INK_3 } from "@/extensions/bid-quote/components/chartTheme";
+import {
+  CARD,
+  CARD_BORDER,
+  INK,
+  INK_3,
+} from "@/extensions/bid-quote/components/chartTheme";
 import { cn } from "@/lib/utils";
-
 
 interface ChartCardProps {
   title: string;

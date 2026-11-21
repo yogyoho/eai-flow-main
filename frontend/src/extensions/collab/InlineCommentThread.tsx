@@ -46,16 +46,20 @@ export function InlineCommentThread({
   };
 
   return (
-    <div className="absolute right-0 top-0 w-72 bg-background border border-border rounded-lg
-      shadow-lg z-50 flex flex-col max-h-96">
-      <div className="flex items-center justify-between p-2 border-b border-border">
-        <span className="text-xs font-medium text-muted-foreground">评论</span>
-        <Button size="icon" variant="ghost" className="h-5 w-5" onClick={onClose}>
-          <X className="w-3 h-3" />
+    <div className="bg-background border-border absolute top-0 right-0 z-50 flex max-h-96 w-72 flex-col rounded-lg border shadow-lg">
+      <div className="border-border flex items-center justify-between border-b p-2">
+        <span className="text-muted-foreground text-xs font-medium">评论</span>
+        <Button
+          size="icon"
+          variant="ghost"
+          className="h-5 w-5"
+          onClick={onClose}
+        >
+          <X className="h-3 w-3" />
         </Button>
       </div>
 
-      <div className="flex-1 overflow-y-auto p-2 space-y-2">
+      <div className="flex-1 space-y-2 overflow-y-auto p-2">
         <CommentThread
           comments={comments}
           onReply={onReply}
@@ -65,17 +69,20 @@ export function InlineCommentThread({
         />
       </div>
 
-      <div className="p-2 border-t border-border">
+      <div className="border-border border-t p-2">
         <Textarea
           value={newComment}
           onChange={(e) => setNewComment(e.target.value)}
           placeholder="添加回复..."
-          className="min-h-[40px] text-xs resize-none"
-          onKeyDown={(e) => { if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) void handleCreate(); }}
+          className="min-h-[40px] resize-none text-xs"
+          onKeyDown={(e) => {
+            if (e.key === "Enter" && (e.metaKey || e.ctrlKey))
+              void handleCreate();
+          }}
         />
         <Button
           size="sm"
-          className="mt-1 w-full h-7 text-xs"
+          className="mt-1 h-7 w-full text-xs"
           onClick={handleCreate}
           disabled={submitting || !newComment.trim()}
         >

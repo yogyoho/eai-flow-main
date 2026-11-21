@@ -164,9 +164,7 @@ export function WorkflowProgressCompact({
           {loading ? (
             <div className="flex items-center gap-2 py-2">
               <Loader2 className="text-muted-foreground h-4 w-4 animate-spin" />
-              <span className="text-muted-foreground text-sm">
-                加载中...
-              </span>
+              <span className="text-muted-foreground text-sm">加载中...</span>
             </div>
           ) : fetchError ? (
             <div className="flex items-center gap-2 py-2">

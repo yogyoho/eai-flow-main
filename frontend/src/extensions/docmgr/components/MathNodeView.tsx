@@ -8,7 +8,11 @@ import { normalizeLatexForKatex } from "@/core/streamdown/latexNormalize";
 
 // ponytail: atom node 的 NodeView —— 只读渲染公式,点击 prompt 改源码。
 // 不做公式内光标编辑(避免选区/撤销地狱)。prompt 是最省事的入口,体验不足再升 popover。
-const KATEX_OPTS = { output: "html", throwOnError: false, strict: false } as const;
+const KATEX_OPTS = {
+  output: "html",
+  throwOnError: false,
+  strict: false,
+} as const;
 
 export function MathNodeView({ node, updateAttributes }: NodeViewProps) {
   const ref = useRef<HTMLSpanElement>(null);
@@ -20,7 +24,10 @@ export function MathNodeView({ node, updateAttributes }: NodeViewProps) {
     if (!el) return;
     try {
       // normalize ²³¹℃° 等 KaTeX text-mode 缺字形的字符 → 正规上标
-      katex.render(normalizeLatexForKatex(latex), el, { ...KATEX_OPTS, displayMode: isBlock });
+      katex.render(normalizeLatexForKatex(latex), el, {
+        ...KATEX_OPTS,
+        displayMode: isBlock,
+      });
     } catch {
       el.textContent = latex; // throwOnError:false 下一般不会到这;防御
     }

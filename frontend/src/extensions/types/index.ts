@@ -449,7 +449,8 @@ export const DocumentStatus = {
   FAILED: "failed",
 } as const;
 
-export type DocumentStatusValue = (typeof DocumentStatus)[keyof typeof DocumentStatus];
+export type DocumentStatusValue =
+  (typeof DocumentStatus)[keyof typeof DocumentStatus];
 
 /**
  * 判断后端返回的任意 status 值是否为「解析完成，可供抽取等下游操作使用」。
@@ -459,11 +460,11 @@ export function isDocumentReady(status: string | undefined): boolean {
   if (!status) return false;
   const s = String(status).toLowerCase().trim();
   return (
-    s === DocumentStatus.SUCCESS
-    || s === DocumentStatus.DONE
-    || s === DocumentStatus.COMPLETED
-    || s === DocumentStatus.PARSED
-    || s === "1" // RAGFlow 部分版本返回数字 "1" 表示解析完成
+    s === DocumentStatus.SUCCESS ||
+    s === DocumentStatus.DONE ||
+    s === DocumentStatus.COMPLETED ||
+    s === DocumentStatus.PARSED ||
+    s === "1" // RAGFlow 部分版本返回数字 "1" 表示解析完成
   );
 }
 
@@ -471,7 +472,9 @@ export function isDocumentReady(status: string | undefined): boolean {
  * 将后端/RAGFlow 返回的任意 status 值归一化为 DocumentStatus 值。
  * 对应后端 schemas.to_doc_status()。
  */
-export function normalizeDocStatus(raw: string | undefined | null): DocumentStatusValue {
+export function normalizeDocStatus(
+  raw: string | undefined | null,
+): DocumentStatusValue {
   if (!raw) return DocumentStatus.PENDING;
   const s = String(raw).toLowerCase().trim();
   const mapping: Record<string, DocumentStatusValue> = {

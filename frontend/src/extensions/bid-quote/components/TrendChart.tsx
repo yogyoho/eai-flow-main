@@ -49,7 +49,10 @@ export function TrendChart({ filters }: { filters: FilterState }) {
       {/* 原型图例:小色块 + 次级文字 */}
       <div className="mb-2 flex gap-3.5 text-xs text-[#6b6c6e]">
         <span className="flex items-center gap-1.5">
-          <i className="inline-block h-2.5 w-2.5 rounded-[3px]" style={{ background: BLUE }} />
+          <i
+            className="inline-block h-2.5 w-2.5 rounded-[3px]"
+            style={{ background: BLUE }}
+          />
           我方
         </span>
         <span className="flex items-center gap-1.5">

@@ -25,6 +25,7 @@ from __future__ import annotations
 
 import argparse
 import csv
+import io
 import json
 import re
 import sys
@@ -124,13 +125,20 @@ class Data:
 
 
 def override_data(data: Data, field: str, value: str) -> Data:
-    """field 语法：'13.deposit_avg_grade'（JSON 字段）或 '13a:体重_t_m3'（CSV 整列）。"""
+    """field 语法：'13.deposit_avg_grade'（JSON 字段）或 '13a:体重_t_m3'（CSV 整列，限该前缀族）。
+
+    硬化 2026-11：CSV 分支原遍历所有 CSV 族覆写同名列（多族同列名时误伤他族），且与
+    cmd_update 的实际写面（仅前缀命中族，同 split("_",1) 匹配）口径不一致——dry-run
+    差分 ≠ apply 实改。统一按前缀定位单族。
+    """
     if ":" in field and "." not in field:
-        _, col = field.split(":", 1)
-        for rows in data.csvs.values():
-            for row in rows:
-                if col in row:
-                    row[col] = value
+        prefix, col = field.split(":", 1)
+        fam = data.fam_by_prefix(prefix)
+        if fam is None:
+            return data
+        for row in data.csvs.get(fam, []):
+            if col in row:
+                row[col] = value
         return data
     prefix, key = field.split(".", 1)
     fam = data.fam_by_prefix(prefix)
@@ -146,6 +154,10 @@ def compute(data: Data) -> tuple[dict, list[str]]:
     anomalies: list[str] = []
 
     def emit(key: str, val: Decimal, dp: str, unit: str, source: str, extra: dict | None = None) -> None:
+        # 槽位键空白清洗（硬化 2026-11）：CSV 来源标签（工程号/矿体号）可能含空白（"ZK 0701"）——
+        # _SLOT_KEY_RE 禁 [ ] 内空白，此前键形非法要到 write_state 终检才炸、指引是让用户清洗
+        # 源数据；发射点折叠后同键同形，管线不再因标签空格中断。
+        key = re.sub(r"\s+", "", key)
         # bug-3036 根因①配套：计算层自身也不得产垃圾槽位——非有限值（NaN/Inf 会经 json 混进
         # 冻结层）就地抛错（键形/空 display 由 write_state 终检统一把关）。
         d = q(val, dp)
@@ -615,11 +627,15 @@ def cmd_update(args) -> int:
         prefix, col = args.field.split(":", 1)
         fam = next(f for f, s in stage["forms"].items() if s["file"].split("_", 1)[0] == prefix)
         rows = _load(args).csvs[fam]
-        with open(Path(args.data_dir) / stage["forms"][fam]["file"], "w", encoding="utf-8", newline="") as f:
-            w = csv.writer(f)
-            w.writerow(stage["forms"][fam]["columns"])
-            for r in rows:
-                w.writerow([args.value if k == col else v for k, v in r.items()])
+        # 硬化 2026-11：原裸 open('w') 全表重写有崩溃窗口（写一半进程挂 → data/ 损坏）——
+        # 改走 ingest.atomic_write_text（tmp + os.replace），与 cmd_forms CSV 写入路径同款；
+        # register_file 指纹语义不变。
+        buf = io.StringIO()
+        w = csv.writer(buf, lineterminator="\n")
+        w.writerow(stage["forms"][fam]["columns"])
+        for r in rows:
+            w.writerow([args.value if k == col else v for k, v in r.items()])
+        ingest.atomic_write_text(Path(args.data_dir) / stage["forms"][fam]["file"], buf.getvalue().rstrip("\n"))
         ingest.register_file(Path(args.data_dir), stage["forms"][fam]["file"], fam, stage["forms"][fam].get("required", True), "csv")
     else:  # JSON 字段改参
         prefix, key = args.field.split(".", 1)

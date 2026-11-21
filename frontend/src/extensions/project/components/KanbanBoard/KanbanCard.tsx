@@ -34,25 +34,27 @@ export function KanbanCard({ card, onDragStart, onDragEnd }: KanbanCardProps) {
       draggable
       onDragStart={handleDragStart}
       onDragEnd={handleDragEnd}
-      className={`rounded-md border bg-background p-3 cursor-grab active:cursor-grabbing transition-all duration-150 ${
+      className={`bg-background cursor-grab rounded-md border p-3 transition-all duration-150 active:cursor-grabbing ${
         isDragging
-          ? "opacity-50 scale-95 shadow-lg rotate-1"
-          : "hover:shadow-md hover:-translate-y-0.5"
+          ? "scale-95 rotate-1 opacity-50 shadow-lg"
+          : "hover:-translate-y-0.5 hover:shadow-md"
       }`}
     >
       <div className="flex items-start gap-1.5">
-        <GripVertical className="h-3.5 w-3.5 text-muted-foreground/40 mt-0.5 shrink-0" />
-        <div className="flex-1 min-w-0">
-          <p className="text-sm font-medium truncate">{card.title}</p>
+        <GripVertical className="text-muted-foreground/40 mt-0.5 h-3.5 w-3.5 shrink-0" />
+        <div className="min-w-0 flex-1">
+          <p className="truncate text-sm font-medium">{card.title}</p>
           {card.assignee && (
-            <p className="text-xs text-muted-foreground mt-1 truncate">{card.assignee}</p>
+            <p className="text-muted-foreground mt-1 truncate text-xs">
+              {card.assignee}
+            </p>
           )}
         </div>
       </div>
       {card.targetWordCount && (
         <div className="mt-2 pl-5">
           <div className="flex items-center gap-2">
-            <div className="flex-1 h-1 rounded-full bg-secondary overflow-hidden">
+            <div className="bg-secondary h-1 flex-1 overflow-hidden rounded-full">
               <div
                 className={`h-full rounded-full transition-all ${
                   progress >= 100 ? "bg-success" : "bg-primary"
@@ -60,12 +62,14 @@ export function KanbanCard({ card, onDragStart, onDragEnd }: KanbanCardProps) {
                 style={{ width: `${Math.min(progress, 100)}%` }}
               />
             </div>
-            <span className="text-xs text-muted-foreground tabular-nums">{progress}%</span>
+            <span className="text-muted-foreground text-xs tabular-nums">
+              {progress}%
+            </span>
           </div>
         </div>
       )}
       {card.dueDate && (
-        <p className="text-xs text-muted-foreground mt-1 pl-5">
+        <p className="text-muted-foreground mt-1 pl-5 text-xs">
           截止: {new Date(card.dueDate).toLocaleDateString()}
         </p>
       )}

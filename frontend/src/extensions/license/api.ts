@@ -71,7 +71,7 @@ export async function importLicense(file: File): Promise<LicenseImportResult> {
 
 export async function getLicenseHistory(
   skip = 0,
-  limit = 20
+  limit = 20,
 ): Promise<{ items: LicenseHistoryItem[]; total: number }> {
   const res = await csrfFetch(`${BASE}/history?skip=${skip}&limit=${limit}`);
   if (!res.ok) throw new Error(`History fetch failed: ${res.status}`);

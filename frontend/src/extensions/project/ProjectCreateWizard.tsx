@@ -152,7 +152,7 @@ function CustomSelect({
         onBlur={() => setTimeout(() => setOpen(false), 150)}
         className={cn(
           "flex h-[34px] w-full items-center justify-between rounded-md px-3 text-sm",
-          "border bg-card transition-all duration-150",
+          "bg-card border transition-all duration-150",
           open
             ? "border-blue-500 ring-2 ring-blue-500/20"
             : "border-border hover:border-input",
@@ -168,13 +168,13 @@ function CustomSelect({
         </span>
         <ChevronDown
           className={cn(
-            "h-4 w-4 shrink-0 text-muted-foreground transition-transform duration-200",
+            "text-muted-foreground h-4 w-4 shrink-0 transition-transform duration-200",
             open && "rotate-180",
           )}
         />
       </button>
       {open && (
-        <div className="absolute top-full left-0 z-50 mt-1 w-full overflow-hidden rounded-lg border border-border bg-card shadow-lg">
+        <div className="border-border bg-card absolute top-full left-0 z-50 mt-1 w-full overflow-hidden rounded-lg border shadow-lg">
           {options.map((o) => (
             <button
               key={o.value}
@@ -186,7 +186,7 @@ function CustomSelect({
               className={cn(
                 "flex w-full items-center gap-2 px-3 py-2 text-left text-sm transition-colors",
                 o.value === value
-                  ? "bg-blue-50 dark:bg-blue-950/40 font-medium text-blue-600 dark:text-blue-400"
+                  ? "bg-blue-50 font-medium text-blue-600 dark:bg-blue-950/40 dark:text-blue-400"
                   : "text-foreground hover:bg-muted",
               )}
             >
@@ -206,7 +206,7 @@ function CustomSelect({
 
 function WizardSidebar({ currentStep }: { currentStep: WizardStep }) {
   return (
-    <div className="flex h-full w-[220px] shrink-0 flex-col border-r border-border bg-card">
+    <div className="border-border bg-card flex h-full w-[220px] shrink-0 flex-col border-r">
       {/* Logo */}
       <div className="flex h-[56px] items-center px-5">
         <span className="text-foreground text-lg font-bold">项目创建向导</span>
@@ -312,13 +312,15 @@ function StepBasicInfo({
             onChange={(e) => onNameChange(e.target.value)}
             placeholder="请输入项目名称"
             className={cn(
-              "h-[34px] rounded-md bg-background text-sm",
+              "bg-background h-[34px] rounded-md text-sm",
               errors.name
                 ? "border-destructive focus-visible:ring-destructive/30"
                 : "border-border",
             )}
           />
-          {errors.name && <p className="text-xs text-destructive">{errors.name}</p>}
+          {errors.name && (
+            <p className="text-destructive text-xs">{errors.name}</p>
+          )}
         </div>
 
         <div className="space-y-1.5">
@@ -340,14 +342,14 @@ function StepBasicInfo({
             onChange={(e) => onClientChange(e.target.value)}
             placeholder="请输入客户单位名称"
             className={cn(
-              "h-[34px] rounded-md bg-background text-sm",
+              "bg-background h-[34px] rounded-md text-sm",
               errors.client
                 ? "border-destructive focus-visible:ring-destructive/30"
                 : "border-border",
             )}
           />
           {errors.client && (
-            <p className="text-xs text-destructive">{errors.client}</p>
+            <p className="text-destructive text-xs">{errors.client}</p>
           )}
         </div>
 
@@ -358,7 +360,7 @@ function StepBasicInfo({
               <button
                 type="button"
                 className={cn(
-                  "flex h-[34px] w-full items-center justify-between rounded-md border bg-background px-3 text-sm transition-colors",
+                  "bg-background flex h-[34px] w-full items-center justify-between rounded-md border px-3 text-sm transition-colors",
                   deadline
                     ? "text-foreground border-border"
                     : "border-border text-muted-foreground",
@@ -372,7 +374,7 @@ function StepBasicInfo({
                       })()
                     : "选择截止日期"}
                 </span>
-                <CalendarIcon className="h-4 w-4 shrink-0 text-muted-foreground" />
+                <CalendarIcon className="text-muted-foreground h-4 w-4 shrink-0" />
               </button>
             </PopoverTrigger>
             <PopoverContent className="w-auto p-0" align="start">
@@ -407,7 +409,7 @@ function StepBasicInfo({
             value={description}
             onChange={(e) => onDescriptionChange(e.target.value)}
             placeholder="例如：按《建筑设计防火规范》GB 50016 编写，重点覆盖防火分区与疏散……"
-            className="min-h-[90px] resize-none rounded-md bg-background text-sm"
+            className="bg-background min-h-[90px] resize-none rounded-md text-sm"
           />
           <p className="text-muted-foreground text-xs">
             将作为「项目要求」一并注入给 AI 写作助手
@@ -466,7 +468,7 @@ function StepTemplate({
                 className={cn(
                   "flex h-10 w-10 shrink-0 items-center justify-center rounded-lg",
                   templateId === tpl.id
-                    ? "bg-blue-100 dark:bg-blue-500/15 text-blue-600 dark:text-blue-400"
+                    ? "bg-blue-100 text-blue-600 dark:bg-blue-500/15 dark:text-blue-400"
                     : "bg-muted text-muted-foreground",
                 )}
               >
@@ -476,12 +478,14 @@ function StepTemplate({
                 <p
                   className={cn(
                     "text-sm font-medium",
-                    templateId === tpl.id ? "text-blue-600 dark:text-blue-400" : "text-foreground",
+                    templateId === tpl.id
+                      ? "text-blue-600 dark:text-blue-400"
+                      : "text-foreground",
                   )}
                 >
                   {tpl.name}
                 </p>
-                <p className="mt-1 line-clamp-2 text-xs text-muted-foreground">
+                <p className="text-muted-foreground mt-1 line-clamp-2 text-xs">
                   {tpl.description}
                 </p>
               </div>
@@ -500,7 +504,7 @@ function StepTemplate({
         <button
           type="button"
           onClick={onSkip}
-          className="text-sm text-muted-foreground transition-colors hover:text-blue-600 dark:text-blue-400 dark:text-blue-400"
+          className="text-muted-foreground text-sm transition-colors hover:text-blue-600 dark:text-blue-400"
         >
           跳过此步骤
         </button>
@@ -554,7 +558,7 @@ function StepWorkflow({
                 className={cn(
                   "flex h-10 w-10 shrink-0 items-center justify-center rounded-lg",
                   workflowId === tpl.id
-                    ? "bg-violet-100 dark:bg-violet-500/15 text-violet-600 dark:text-violet-400"
+                    ? "bg-violet-100 text-violet-600 dark:bg-violet-500/15 dark:text-violet-400"
                     : "bg-muted text-muted-foreground",
                 )}
               >
@@ -571,7 +575,7 @@ function StepWorkflow({
                 >
                   {tpl.name}
                 </p>
-                <p className="mt-1 line-clamp-2 text-xs text-muted-foreground">
+                <p className="text-muted-foreground mt-1 line-clamp-2 text-xs">
                   {tpl.description}
                 </p>
               </div>
@@ -590,7 +594,7 @@ function StepWorkflow({
         <button
           type="button"
           onClick={onSkip}
-          className="text-sm text-muted-foreground transition-colors hover:text-blue-600 dark:text-blue-400 dark:text-blue-400"
+          className="text-muted-foreground text-sm transition-colors hover:text-blue-600 dark:text-blue-400"
         >
           跳过此步骤
         </button>
@@ -682,20 +686,22 @@ function StepTeam({
       {/* Search + Add */}
       <div className="relative flex gap-2">
         <div className="relative flex-1">
-          <Search className="absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          <Search className="text-muted-foreground absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2" />
           <Input
             value={searchValue}
             onChange={(e) => setSearchValue(e.target.value)}
             placeholder="搜索用户名/姓名添加组员"
-            className="h-[34px] rounded-md border-border bg-card pl-9 text-sm"
+            className="border-border bg-card h-[34px] rounded-md pl-9 text-sm"
           />
           {searchValue.trim() && (
-            <div className="absolute top-full left-0 z-50 mt-1 max-h-60 w-full overflow-auto rounded-lg border border-border bg-card shadow-lg">
+            <div className="border-border bg-card absolute top-full left-0 z-50 mt-1 max-h-60 w-full overflow-auto rounded-lg border shadow-lg">
               {searching && (
-                <div className="px-3 py-2 text-xs text-muted-foreground">搜索中…</div>
+                <div className="text-muted-foreground px-3 py-2 text-xs">
+                  搜索中…
+                </div>
               )}
               {!searching && results.length === 0 && (
-                <div className="px-3 py-2 text-xs text-muted-foreground">
+                <div className="text-muted-foreground px-3 py-2 text-xs">
                   无匹配用户
                 </div>
               )}
@@ -704,7 +710,7 @@ function StepTeam({
                   key={u.id}
                   type="button"
                   onClick={() => pick(u)}
-                  className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm transition-colors hover:bg-muted"
+                  className="hover:bg-muted flex w-full items-center gap-2 px-3 py-2 text-left text-sm transition-colors"
                 >
                   <div className="bg-muted flex h-6 w-6 items-center justify-center rounded-full text-[10px] font-medium">
                     {u.username.charAt(0).toUpperCase()}
@@ -723,25 +729,25 @@ function StepTeam({
       </div>
 
       {/* Leader */}
-      <div className="rounded-lg border border-border bg-card p-4">
+      <div className="border-border bg-card rounded-lg border p-4">
         <div className="mb-3 flex items-center justify-between">
           <div className="flex items-center gap-2">
             <span className="text-foreground text-sm font-medium">组长</span>
-            <span className="rounded bg-blue-50 dark:bg-blue-950/40 px-1.5 py-0.5 text-[10px] font-medium text-blue-600 dark:text-blue-400">
+            <span className="rounded bg-blue-50 px-1.5 py-0.5 text-[10px] font-medium text-blue-600 dark:bg-blue-950/40 dark:text-blue-400">
               必选
             </span>
           </div>
-          <span className="text-xs text-muted-foreground">
+          <span className="text-muted-foreground text-xs">
             负责创建任务、选择模板、提交审核
           </span>
         </div>
         {!leader ? (
-          <div className="flex items-center gap-2 rounded-lg border border-dashed border-border px-3 py-3 text-xs text-muted-foreground">
+          <div className="border-border text-muted-foreground flex items-center gap-2 rounded-lg border border-dashed px-3 py-3 text-xs">
             <UserCircle className="h-4 w-4" />
             请先添加组员，再在组员卡片上点击&quot;设为组长&quot;
           </div>
         ) : (
-          <span className="inline-flex items-center gap-1.5 rounded-full bg-blue-50 dark:bg-blue-950/40 px-3 py-1 text-sm font-medium text-blue-600 dark:text-blue-400">
+          <span className="inline-flex items-center gap-1.5 rounded-full bg-blue-50 px-3 py-1 text-sm font-medium text-blue-600 dark:bg-blue-950/40 dark:text-blue-400">
             <UserCircle className="h-3.5 w-3.5" />
             {leader.username}
             <button
@@ -756,15 +762,15 @@ function StepTeam({
       </div>
 
       {/* Members */}
-      <div className="rounded-lg border border-border bg-card p-4">
+      <div className="border-border bg-card rounded-lg border p-4">
         <div className="mb-3 flex items-center justify-between">
           <span className="text-foreground text-sm font-medium">组员</span>
-          <span className="text-xs text-muted-foreground">
+          <span className="text-muted-foreground text-xs">
             负责修改AI生成的初稿 · {members.length} 人
           </span>
         </div>
         {members.length === 0 ? (
-          <div className="flex items-center gap-2 rounded-lg border border-dashed border-border px-3 py-3 text-xs text-muted-foreground">
+          <div className="border-border text-muted-foreground flex items-center gap-2 rounded-lg border border-dashed px-3 py-3 text-xs">
             <UserCircle className="h-4 w-4" />
             暂未添加组员
           </div>
@@ -773,14 +779,14 @@ function StepTeam({
             {members.map((m) => (
               <span
                 key={m.id}
-                className="text-foreground inline-flex items-center gap-1.5 rounded-full bg-muted px-3 py-1 text-sm font-medium"
+                className="text-foreground bg-muted inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-sm font-medium"
               >
-                <UserCircle className="h-3.5 w-3.5 text-muted-foreground" />
+                <UserCircle className="text-muted-foreground h-3.5 w-3.5" />
                 {m.username}
                 <button
                   type="button"
                   onClick={() => onRemoveMember(m.id)}
-                  className="ml-0.5 rounded-full p-0.5 transition-colors hover:bg-muted"
+                  className="hover:bg-muted ml-0.5 rounded-full p-0.5 transition-colors"
                 >
                   <X className="h-3 w-3" />
                 </button>
@@ -790,7 +796,7 @@ function StepTeam({
                     onSetLeader(m);
                     onRemoveMember(m.id);
                   }}
-                  className="ml-0.5 rounded px-1.5 py-0.5 text-[10px] text-blue-600 dark:text-blue-400 transition-colors hover:bg-blue-50 dark:bg-blue-950/40"
+                  className="ml-0.5 rounded px-1.5 py-0.5 text-[10px] text-blue-600 transition-colors hover:bg-blue-50 dark:bg-blue-950/40 dark:text-blue-400"
                 >
                   设为组长
                 </button>
@@ -801,7 +807,7 @@ function StepTeam({
       </div>
 
       {/* EAI-CUSTOM: 分工策略(ADR 2026-08-10) */}
-      <div className="rounded-lg border border-border bg-card p-4">
+      <div className="border-border bg-card rounded-lg border p-4">
         <AssignmentStrategySelect
           value={assignmentStrategy}
           onChange={onStrategyChange}
@@ -812,7 +818,7 @@ function StepTeam({
         <button
           type="button"
           onClick={onSkip}
-          className="text-sm text-muted-foreground transition-colors hover:text-blue-600 dark:text-blue-400 dark:text-blue-400"
+          className="text-muted-foreground text-sm transition-colors hover:text-blue-600 dark:text-blue-400"
         >
           跳过此步骤
         </button>
@@ -868,7 +874,7 @@ function StepConfirm({
 
       <div className="space-y-4">
         {/* Basic info card */}
-        <div className="rounded-lg border border-border bg-card p-4">
+        <div className="border-border bg-card rounded-lg border p-4">
           <div className="mb-3 flex items-center gap-2">
             <div className="flex h-7 w-7 items-center justify-center rounded-md bg-blue-50 dark:bg-blue-950/40">
               <FileText className="h-4 w-4 text-blue-600 dark:text-blue-400" />
@@ -896,7 +902,7 @@ function StepConfirm({
         </div>
 
         {/* Content template card */}
-        <div className="rounded-lg border border-border bg-card p-4">
+        <div className="border-border bg-card rounded-lg border p-4">
           <div className="mb-3 flex items-center gap-2">
             <div className="flex h-7 w-7 items-center justify-center rounded-md bg-purple-50 dark:bg-purple-950/40">
               <FileText className="h-4 w-4 text-purple-600 dark:text-purple-400" />
@@ -914,7 +920,7 @@ function StepConfirm({
         </div>
 
         {/* Workflow template card */}
-        <div className="rounded-lg border border-border bg-card p-4">
+        <div className="border-border bg-card rounded-lg border p-4">
           <div className="mb-3 flex items-center gap-2">
             <div className="flex h-7 w-7 items-center justify-center rounded-md bg-violet-50 dark:bg-violet-950/40">
               <Sparkles className="h-4 w-4 text-violet-600 dark:text-violet-400" />
@@ -930,12 +936,12 @@ function StepConfirm({
             </p>
           </div>
           {hasWorkflow && (
-            <label className="mt-3 flex cursor-pointer items-center gap-2 rounded-md border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/40 px-3 py-2 text-sm select-none">
+            <label className="mt-3 flex cursor-pointer items-center gap-2 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm select-none dark:border-amber-800 dark:bg-amber-950/40">
               <input
                 type="checkbox"
                 checked={autoStartWorkflow}
                 onChange={(e) => onAutoStartChange(e.target.checked)}
-                className="h-4 w-4 rounded border-amber-300 dark:border-amber-700 text-amber-600 dark:text-amber-400 focus:ring-amber-500"
+                className="h-4 w-4 rounded border-amber-300 text-amber-600 focus:ring-amber-500 dark:border-amber-700 dark:text-amber-400"
               />
               <div>
                 <span className="font-medium text-amber-800 dark:text-amber-300">
@@ -950,24 +956,26 @@ function StepConfirm({
         </div>
 
         {/* Team card */}
-        <div className="rounded-lg border border-border bg-card p-4">
+        <div className="border-border bg-card rounded-lg border p-4">
           <div className="mb-3 flex items-center gap-2">
             <div className="flex h-7 w-7 items-center justify-center rounded-md bg-green-50 dark:bg-green-950/40">
-              <UserCircle className="h-4 w-4 text-success" />
+              <UserCircle className="text-success h-4 w-4" />
             </div>
             <span className="text-foreground text-sm font-medium">
               项目团队
             </span>
-            <span className="text-xs text-muted-foreground">{totalMembers} 人</span>
+            <span className="text-muted-foreground text-xs">
+              {totalMembers} 人
+            </span>
           </div>
           {totalMembers === 0 ? (
-            <p className="text-sm text-muted-foreground">暂未分配团队成员</p>
+            <p className="text-muted-foreground text-sm">暂未分配团队成员</p>
           ) : (
             <div className="space-y-2">
               {leader && (
                 <div className="flex items-center gap-2 text-sm">
                   <span className="text-muted-foreground">组长</span>
-                  <span className="inline-flex items-center gap-1 rounded-full bg-blue-50 dark:bg-blue-950/40 px-2 py-0.5 text-xs font-medium text-blue-600 dark:text-blue-400">
+                  <span className="inline-flex items-center gap-1 rounded-full bg-blue-50 px-2 py-0.5 text-xs font-medium text-blue-600 dark:bg-blue-950/40 dark:text-blue-400">
                     {leader.username}
                   </span>
                 </div>
@@ -979,7 +987,7 @@ function StepConfirm({
                     {teamMembers.map((m) => (
                       <span
                         key={m.id}
-                        className="text-foreground inline-flex items-center gap-1 rounded-full bg-muted px-2 py-0.5 text-xs"
+                        className="text-foreground bg-muted inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs"
                       >
                         {m.username}
                       </span>
@@ -1163,20 +1171,20 @@ export function ProjectCreateWizard() {
 
       {/* Main content */}
       <div className="flex flex-1 flex-col items-center overflow-y-auto">
-        <div className="my-8 w-full max-w-[640px] rounded-[8px] border border-border bg-card">
+        <div className="border-border bg-card my-8 w-full max-w-[640px] rounded-[8px] border">
           {/* Header */}
-          <div className="flex h-[56px] items-center gap-3 border-b border-border px-6">
+          <div className="border-border flex h-[56px] items-center gap-3 border-b px-6">
             <button
               type="button"
               onClick={goPrev}
-              className="hover:text-foreground flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted"
+              className="hover:text-foreground text-muted-foreground hover:bg-muted flex h-8 w-8 items-center justify-center rounded-md transition-colors"
             >
               <ArrowLeft className="h-5 w-5" />
             </button>
             <h2 className="text-foreground text-base font-semibold">
               新建项目
             </h2>
-            <span className="text-sm text-muted-foreground">步骤 {step}/5</span>
+            <span className="text-muted-foreground text-sm">步骤 {step}/5</span>
           </div>
 
           {/* Content */}
@@ -1251,7 +1259,7 @@ export function ProjectCreateWizard() {
           </div>
 
           {/* Footer */}
-          <div className="flex h-[60px] items-center justify-between border-t border-border px-6">
+          <div className="border-border flex h-[60px] items-center justify-between border-t px-6">
             <div>
               {step === 1 && (
                 <Button
@@ -1279,7 +1287,7 @@ export function ProjectCreateWizard() {
                 <Button
                   type="button"
                   onClick={goNext}
-                  className="gap-1 bg-primary hover:bg-primary/90"
+                  className="bg-primary hover:bg-primary/90 gap-1"
                 >
                   下一步
                   <ChevronRight className="h-4 w-4" />
@@ -1289,7 +1297,7 @@ export function ProjectCreateWizard() {
                   type="button"
                   onClick={handleCreate}
                   disabled={submitting}
-                  className="gap-1.5 bg-success hover:bg-success/90"
+                  className="bg-success hover:bg-success/90 gap-1.5"
                 >
                   {submitting ? (
                     <>

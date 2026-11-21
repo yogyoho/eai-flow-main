@@ -958,21 +958,22 @@ class TestGateHardening:
     def test_parent_section_with_children_exempt(self):
         """## 父节 2 句引言+子节充实 → 不再误拦（线程 03e18e4a ch5「## 5=2句」结构陷阱：句子写进子节却报父节）。
 
-        压到 eff<1000 只允许 eff 门报错——若父节瘦块误拦会先报「## 5=2句」，match 即失败。
+        硬化 2026-11 深度降级为风格软门：warns 含「有效字符」且不含「## 5=2句」——父节豁免仍成立。
         """
         import build_output
 
         md = "## 5 矿石加工技术性能\n\n矿石加工技术性能是矿床勘查与开发的重要环节。本次工作对矿石工业利用性能进行了系统评价。\n\n### 5.1 试验研究\n\n试样采自勘查区矿体。试样覆盖三种工业类型。试验结果可靠。\n"
-        with pytest.raises(ValueError, match="有效字符"):
-            build_output.validate_depth("ch5", md)  # 唯一允许的报错=eff 门；「## 5=2句」不得出现
+        warns = build_output.depth_style_warns("ch5", md)
+        assert any("有效字符" in w for w in warns), warns  # eff 门提示在场
+        assert not any("## 5=2句" in w for w in warns), warns  # 父节豁免：瘦块不报父节
 
     def test_leaf_section_still_enforced_with_location_hint(self):
-        """叶子节（无子节）<3 句仍拦，报错带位置指引（句子写在该节正文、下一级子标题之前）。"""
+        """叶子节（无子节）<3 句 → 风格 warn 带位置指引（句子写在该节正文、下一级子标题之前）。"""
         import build_output
 
         md = "## 5 矿石加工技术性能\n\n引言句一。引言句二。\n\n### 5.1 试验研究\n\n试样一。试样二。\n"
-        with pytest.raises(ValueError, match=r"下一级子标题之前.*5\.1 试验研究=2句"):
-            build_output.validate_depth("ch5", md)
+        warns = build_output.depth_style_warns("ch5", md)
+        assert any("下一级子标题之前" in w and "5.1 试验研究=2句" in w for w in warns), warns
 
     def test_aggregate_reports_all_chapters_one_run(self, ws, tmp_path):
         """两章重写压薄 → 同一次 build stderr 同时列出两章（不再逐章打回喂 60 次熔断）。"""
@@ -1024,10 +1025,11 @@ class TestGateHardening:
 
     @staticmethod
     def _thin_ch10(st):
-        """ch10 压到 (1000, 真实目标) 区间：L0/L1/toc 全过、只被 L2 拦（同 test_probe_finds_real_targets 合成法，从 stage toc 程序生成）。"""
+        """ch10 压到绝对地板之下（< 2498×0.4≈999）：L0/深度已降风格软门，硬 FAIL 唯一来源
+        = L2 地板（同 test_probe_finds_real_targets 合成法，从 stage toc 程序生成）。"""
         import re as _re
 
-        filler = "本章为防绕回归专用的合成薄章节正文，语句仅用于满足每节三句的深度门下限，不承载地质含义。全段不含缺数标记，覆盖缩放恒为一点零，目标固定为样例中位数乘以系数。有效字符总量压到该目标之下，用于验证直调也吃真基准。"
+        filler = "结论章合成薄正文，语句不承载地质含义。"
         stage = json.loads(STAGE.read_text(encoding="utf-8"))
         num_re = _re.compile(r"\d+\.\d+(?:\.\d+)?")
         # bug-3036 门 v2：编号同须标题相符 → 骨架标题取 toc 真题（复合条目首片在（处截断）
@@ -1063,11 +1065,10 @@ class TestDepthTargetsFile:
     def test_probe_finds_real_targets(self, ws, tmp_path):
         """不传 --targets → 探测命中 references/depth_targets.json → 合成薄章节被真实目标拦截（探测链路端到端锚）。"""
         st = TestBuildOutput._copy_chapters(ws, tmp_path)
-        # ws 固定样章本就厚到能过真实目标（BUILD_READY），须手工压薄一章：ch10 目标最低（2498×0.6≈1499），
-        # 合成 ch10：全 toc 节号落标题+每节 3 句过 L0，零缺数信号 scale=1，eff≈1232 ∈ (1000, 目标) → 只被 L2 拦。
-        filler = (
-            "本章为回归锚定专用的合成薄章节正文，语句仅用于满足每节三句的深度门下限，不承载地质含义。全段不含缺数标记，覆盖缩放恒为一点零，目标固定为样例中位数乘以系数。有效字符总量压到该目标之下，用于验证省略参数时探测命中真实目标文件。"
-        )
+        # ws 固定样章本就厚到能过真实目标（BUILD_READY），须手工压薄一章：硬化 2026-11 分级后
+        # L2 硬拦唯一来源=绝对地板（2498×0.4≈999）；合成 ch10 全 toc 节号落真题，每节一句合成
+        # 薄文，eff≪999 → 地板硬拦（拉伸不足只 STYLE_WARN 不再算 FAIL）。
+        filler = "本章合成薄正文。语句仅占位，不承载地质含义。探测链路端到端验证。"
         heads = [
             "## 10 结论",
             "### 10.1 矿床勘查和研究程度",

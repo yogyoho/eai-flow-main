@@ -1,4 +1,3 @@
-
 import { afterEach, expect, rs, test } from "@rstest/core";
 import { act } from "react";
 import ReactDOMClient from "react-dom/client";
@@ -20,7 +19,9 @@ rs.mock("@/extensions/api", () => ({
 // Mock lucide-react icons to avoid SVG rendering complexity
 rs.mock("lucide-react", () => ({
   Sparkles: () => <span data-testid="icon-sparkles" />,
-  Loader2: (props: { className?: string }) => <span data-testid="icon-loader" className={props.className} />,
+  Loader2: (props: { className?: string }) => (
+    <span data-testid="icon-loader" className={props.className} />
+  ),
   AlertTriangle: () => <span data-testid="icon-alert" />,
   Info: () => <span data-testid="icon-info" />,
   AlertCircle: () => <span data-testid="icon-alert-circle" />,
@@ -53,7 +54,13 @@ function render(element: React.ReactElement) {
 }
 
 test("renders all review type buttons", async () => {
-  await render(<AIDocumentReview docId="doc-1" documentContent="" onInsertComment={rs.fn()} />);
+  await render(
+    <AIDocumentReview
+      docId="doc-1"
+      documentContent=""
+      onInsertComment={rs.fn()}
+    />,
+  );
 
   const html = container!.innerHTML;
   expect(html).toContain("全面审查");
@@ -63,17 +70,31 @@ test("renders all review type buttons", async () => {
 });
 
 test("renders '开始审查' button", async () => {
-  await render(<AIDocumentReview docId="doc-1" documentContent="" onInsertComment={rs.fn()} />);
+  await render(
+    <AIDocumentReview
+      docId="doc-1"
+      documentContent=""
+      onInsertComment={rs.fn()}
+    />,
+  );
 
   expect(container!.textContent).toContain("开始审查");
 });
 
 test("clicking review type button changes selection", async () => {
-  await render(<AIDocumentReview docId="doc-1" documentContent="" onInsertComment={rs.fn()} />);
+  await render(
+    <AIDocumentReview
+      docId="doc-1"
+      documentContent=""
+      onInsertComment={rs.fn()}
+    />,
+  );
 
   // The "style" button should be present - find it and click it
   const buttons = container!.querySelectorAll("button");
-  const styleButton = Array.from(buttons).find((b) => b.textContent === "风格检查");
+  const styleButton = Array.from(buttons).find(
+    (b) => b.textContent === "风格检查",
+  );
   expect(styleButton).toBeTruthy();
 
   await act(async () => {
@@ -86,12 +107,24 @@ test("clicking review type button changes selection", async () => {
 });
 
 test("clicking '开始审查' triggers API call with correct params", async () => {
-  mockAiReview.mockResolvedValue({ overall_score: 85, summary: "Good", comments: [] });
+  mockAiReview.mockResolvedValue({
+    overall_score: 85,
+    summary: "Good",
+    comments: [],
+  });
 
-  await render(<AIDocumentReview docId="doc-123" documentContent="" onInsertComment={rs.fn()} />);
+  await render(
+    <AIDocumentReview
+      docId="doc-123"
+      documentContent=""
+      onInsertComment={rs.fn()}
+    />,
+  );
 
   const buttons = container!.querySelectorAll("button");
-  const reviewButton = Array.from(buttons).find((b) => b.textContent?.includes("开始审查"));
+  const reviewButton = Array.from(buttons).find((b) =>
+    b.textContent?.includes("开始审查"),
+  );
   expect(reviewButton).toBeTruthy();
 
   await act(async () => {
@@ -107,12 +140,24 @@ test("clicking '开始审查' triggers API call with correct params", async () =
 
 test("shows loading state during review", async () => {
   let resolveReview: (value: unknown) => void;
-  mockAiReview.mockReturnValue(new Promise((resolve) => { resolveReview = resolve; }));
+  mockAiReview.mockReturnValue(
+    new Promise((resolve) => {
+      resolveReview = resolve;
+    }),
+  );
 
-  await render(<AIDocumentReview docId="doc-1" documentContent="" onInsertComment={rs.fn()} />);
+  await render(
+    <AIDocumentReview
+      docId="doc-1"
+      documentContent=""
+      onInsertComment={rs.fn()}
+    />,
+  );
 
   const buttons = container!.querySelectorAll("button");
-  const reviewButton = Array.from(buttons).find((b) => b.textContent?.includes("开始审查"));
+  const reviewButton = Array.from(buttons).find((b) =>
+    b.textContent?.includes("开始审查"),
+  );
 
   await act(async () => {
     reviewButton!.click();
@@ -132,14 +177,26 @@ test("shows review results after successful API call", async () => {
     overall_score: 92,
     summary: "Excellent document quality",
     comments: [
-      { block_id: "b1", comment: "Consider revising paragraph", severity: "warning" },
+      {
+        block_id: "b1",
+        comment: "Consider revising paragraph",
+        severity: "warning",
+      },
     ],
   });
 
-  await render(<AIDocumentReview docId="doc-1" documentContent="" onInsertComment={rs.fn()} />);
+  await render(
+    <AIDocumentReview
+      docId="doc-1"
+      documentContent=""
+      onInsertComment={rs.fn()}
+    />,
+  );
 
   const buttons = container!.querySelectorAll("button");
-  const reviewButton = Array.from(buttons).find((b) => b.textContent?.includes("开始审查"));
+  const reviewButton = Array.from(buttons).find((b) =>
+    b.textContent?.includes("开始审查"),
+  );
 
   await act(async () => {
     reviewButton!.click();
@@ -153,10 +210,18 @@ test("shows review results after successful API call", async () => {
 test("shows error message on API failure", async () => {
   mockAiReview.mockRejectedValue(new Error("Network error"));
 
-  await render(<AIDocumentReview docId="doc-1" documentContent="" onInsertComment={rs.fn()} />);
+  await render(
+    <AIDocumentReview
+      docId="doc-1"
+      documentContent=""
+      onInsertComment={rs.fn()}
+    />,
+  );
 
   const buttons = container!.querySelectorAll("button");
-  const reviewButton = Array.from(buttons).find((b) => b.textContent?.includes("开始审查"));
+  const reviewButton = Array.from(buttons).find((b) =>
+    b.textContent?.includes("开始审查"),
+  );
 
   await act(async () => {
     reviewButton!.click();
@@ -175,10 +240,18 @@ test("clicking '插入为评论' calls onInsertComment", async () => {
     ],
   });
 
-  await render(<AIDocumentReview docId="doc-1" documentContent="" onInsertComment={onInsertComment} />);
+  await render(
+    <AIDocumentReview
+      docId="doc-1"
+      documentContent=""
+      onInsertComment={onInsertComment}
+    />,
+  );
 
   const buttons = container!.querySelectorAll("button");
-  const reviewButton = Array.from(buttons).find((b) => b.textContent?.includes("开始审查"));
+  const reviewButton = Array.from(buttons).find((b) =>
+    b.textContent?.includes("开始审查"),
+  );
 
   await act(async () => {
     reviewButton!.click();
@@ -186,7 +259,9 @@ test("clicking '插入为评论' calls onInsertComment", async () => {
 
   // Find the "插入为评论" button
   const insertButtons = container!.querySelectorAll("button");
-  const insertButton = Array.from(insertButtons).find((b) => b.textContent?.includes("插入为评论"));
+  const insertButton = Array.from(insertButtons).find((b) =>
+    b.textContent?.includes("插入为评论"),
+  );
   expect(insertButton).toBeTruthy();
 
   await act(async () => {
@@ -200,22 +275,30 @@ test("calls onInsertComment with null block_id when block_id is not provided", a
   const onInsertComment = rs.fn();
   mockAiReview.mockResolvedValue({
     overall_score: 80,
-    comments: [
-      { comment: "General comment", severity: "info" },
-    ],
+    comments: [{ comment: "General comment", severity: "info" }],
   });
 
-  await render(<AIDocumentReview docId="doc-1" documentContent="" onInsertComment={onInsertComment} />);
+  await render(
+    <AIDocumentReview
+      docId="doc-1"
+      documentContent=""
+      onInsertComment={onInsertComment}
+    />,
+  );
 
   const buttons = container!.querySelectorAll("button");
-  const reviewButton = Array.from(buttons).find((b) => b.textContent?.includes("开始审查"));
+  const reviewButton = Array.from(buttons).find((b) =>
+    b.textContent?.includes("开始审查"),
+  );
 
   await act(async () => {
     reviewButton!.click();
   });
 
   const insertButtons = container!.querySelectorAll("button");
-  const insertButton = Array.from(insertButtons).find((b) => b.textContent?.includes("插入为评论"));
+  const insertButton = Array.from(insertButtons).find((b) =>
+    b.textContent?.includes("插入为评论"),
+  );
 
   await act(async () => {
     insertButton!.click();

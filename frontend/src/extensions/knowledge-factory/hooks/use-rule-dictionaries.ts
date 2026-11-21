@@ -11,7 +11,9 @@ import { fetchRuleDictionaries } from "../complianceRulesApi";
 import { mergeRuleDictionaries } from "../rule-dictionary-utils";
 
 export function useRuleDictionaries() {
-  const [dictionaries, setDictionaries] = useState<RuleDictionaries>(DEFAULT_RULE_DICTIONARIES);
+  const [dictionaries, setDictionaries] = useState<RuleDictionaries>(
+    DEFAULT_RULE_DICTIONARIES,
+  );
 
   useEffect(() => {
     let cancelled = false;

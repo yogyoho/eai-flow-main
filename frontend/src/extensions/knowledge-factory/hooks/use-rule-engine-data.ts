@@ -41,7 +41,8 @@ export function useRuleEngineData({
   });
   const [overview, setOverview] = useState<ComplianceRuleOverview | null>(null);
   const [logs, setLogs] = useState<RuleExecutionLog[]>([]);
-  const [logStatistics, setLogStatistics] = useState<RuleExecutionStatistics | null>(null);
+  const [logStatistics, setLogStatistics] =
+    useState<RuleExecutionStatistics | null>(null);
   const [loadingLogs, setLoadingLogs] = useState(false);
 
   const loadRules = useCallback(async () => {
@@ -98,23 +99,28 @@ export function useRuleEngineData({
     setLogStatistics(null);
   }, []);
 
-  const handleToggleEnabled = useCallback(async (ruleKey: string, enabled: boolean) => {
-    await toggleRuleEnabled(ruleKey, enabled);
-    refresh();
-  }, [refresh]);
+  const handleToggleEnabled = useCallback(
+    async (ruleKey: string, enabled: boolean) => {
+      await toggleRuleEnabled(ruleKey, enabled);
+      refresh();
+    },
+    [refresh],
+  );
 
   const handleBatchToggleEnabled = useCallback(
     async (ruleKeys: string[], enabled: boolean) => {
       const results = await Promise.allSettled(
-        ruleKeys.map((ruleKey) => toggleRuleEnabled(ruleKey, enabled))
+        ruleKeys.map((ruleKey) => toggleRuleEnabled(ruleKey, enabled)),
       );
 
       await Promise.all([loadRules(), loadOverview()]);
 
       const errors = results.flatMap((result, index) =>
         result.status === "rejected"
-          ? [`${ruleKeys[index]}: ${result.reason instanceof Error ? result.reason.message : "更新失败"}`]
-          : []
+          ? [
+              `${ruleKeys[index]}: ${result.reason instanceof Error ? result.reason.message : "更新失败"}`,
+            ]
+          : [],
       );
 
       return {
@@ -123,27 +129,36 @@ export function useRuleEngineData({
         errors,
       };
     },
-    [loadOverview, loadRules]
+    [loadOverview, loadRules],
   );
 
-  const handleImportSeed = useCallback(async (forceUpdate: boolean) => {
-    const result = await importSeedRules(forceUpdate);
-    if (result.success) {
-      refresh();
-    }
-    return result;
-  }, [refresh]);
+  const handleImportSeed = useCallback(
+    async (forceUpdate: boolean) => {
+      const result = await importSeedRules(forceUpdate);
+      if (result.success) {
+        refresh();
+      }
+      return result;
+    },
+    [refresh],
+  );
 
-  const handleRuleDeleted = useCallback((ruleKey: string) => {
-    setRules((prev) => prev.filter((rule) => rule.ruleId !== ruleKey));
-    void loadOverview();
-  }, [loadOverview]);
+  const handleRuleDeleted = useCallback(
+    (ruleKey: string) => {
+      setRules((prev) => prev.filter((rule) => rule.ruleId !== ruleKey));
+      void loadOverview();
+    },
+    [loadOverview],
+  );
 
   const setFilter = useCallback(
-    (key: keyof RuleFilterParams, value: string | boolean | number | undefined) => {
+    (
+      key: keyof RuleFilterParams,
+      value: string | boolean | number | undefined,
+    ) => {
       setFilters((prev) => updateRuleFilters(prev, key, value));
     },
-    []
+    [],
   );
 
   const clearFilters = useCallback(() => {
@@ -160,7 +175,10 @@ export function useRuleEngineData({
 
   const statistics = useMemo(() => overview?.statistics ?? null, [overview]);
   const seedStatus = useMemo(() => overview?.seedStatus ?? null, [overview]);
-  const triggerStats = useMemo(() => overview?.triggerStatistics ?? null, [overview]);
+  const triggerStats = useMemo(
+    () => overview?.triggerStatistics ?? null,
+    [overview],
+  );
 
   return {
     rules,

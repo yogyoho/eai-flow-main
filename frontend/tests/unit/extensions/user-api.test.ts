@@ -1,4 +1,11 @@
-import { afterEach, beforeEach, describe, expect, rs, test } from "@rstest/core";
+import {
+  afterEach,
+  beforeEach,
+  describe,
+  expect,
+  rs,
+  test,
+} from "@rstest/core";
 
 import { userApi } from "@/extensions/api";
 
@@ -16,7 +23,7 @@ describe("userApi.resetPassword", () => {
       new Response(JSON.stringify({ message: "Password reset successfully" }), {
         status: 200,
         headers: { "Content-Type": "application/json" },
-      })
+      }),
     );
     rs.stubGlobal("fetch", fetchMock);
 
@@ -27,6 +34,8 @@ describe("userApi.resetPassword", () => {
     expect(String(url)).toBe("/api/extensions/users/user-123/reset-password");
     expect(String(url)).not.toContain("new_password=");
     expect(init.method).toBe("POST");
-    expect(JSON.parse(init.body as string)).toEqual({ new_password: "NewPass123" });
+    expect(JSON.parse(init.body as string)).toEqual({
+      new_password: "NewPass123",
+    });
   });
 });

@@ -19,7 +19,9 @@ test("isLikelyMarkdown detects common inline markdown", () => {
 
 test("hasStructuredHtml detects actual rich text blocks", () => {
   expect(hasStructuredHtml("<h3>Title</h3><ul><li>Item</li></ul>")).toBe(true);
-  expect(hasStructuredHtml('<meta charset="utf-8"><span>### Title</span>')).toBe(false);
+  expect(
+    hasStructuredHtml('<meta charset="utf-8"><span>### Title</span>'),
+  ).toBe(false);
 });
 
 test("shouldHandleMarkdownPaste intercepts markdown even when clipboard has non-structured html", () => {
@@ -28,7 +30,7 @@ test("shouldHandleMarkdownPaste intercepts markdown even when clipboard has non-
       text: "# Title",
       html: "",
       shiftKey: false,
-    })
+    }),
   ).toBe(true);
 
   expect(
@@ -36,7 +38,7 @@ test("shouldHandleMarkdownPaste intercepts markdown even when clipboard has non-
       text: "# Title",
       html: '<meta charset="utf-8"><span># Title</span>',
       shiftKey: false,
-    })
+    }),
   ).toBe(true);
 
   expect(
@@ -44,7 +46,7 @@ test("shouldHandleMarkdownPaste intercepts markdown even when clipboard has non-
       text: "# Title",
       html: "<h1>Title</h1>",
       shiftKey: false,
-    })
+    }),
   ).toBe(false);
 
   expect(
@@ -52,11 +54,15 @@ test("shouldHandleMarkdownPaste intercepts markdown even when clipboard has non-
       text: "# Title",
       html: "",
       shiftKey: true,
-    })
+    }),
   ).toBe(false);
 });
 
 test("getMarkdownPasteParseMode uses block mode for multiline structures", () => {
-  expect(getMarkdownPasteParseMode("# Title\n\n- item")).toEqual({ inline: false });
-  expect(getMarkdownPasteParseMode("This is **bold** text")).toEqual({ inline: true });
+  expect(getMarkdownPasteParseMode("# Title\n\n- item")).toEqual({
+    inline: false,
+  });
+  expect(getMarkdownPasteParseMode("This is **bold** text")).toEqual({
+    inline: true,
+  });
 });

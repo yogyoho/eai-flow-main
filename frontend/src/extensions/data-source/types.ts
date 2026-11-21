@@ -1,7 +1,11 @@
 export type DataSourceType = "database" | "api" | "file" | "gis";
 export type AuthType = "none" | "basic" | "oauth" | "api_key" | "certificate";
 export type SyncMode = "manual" | "scheduled" | "event";
-export type ConnectionStatus = "connected" | "error" | "disconnected" | "testing";
+export type ConnectionStatus =
+  | "connected"
+  | "error"
+  | "disconnected"
+  | "testing";
 
 export interface DataSource {
   id: string;

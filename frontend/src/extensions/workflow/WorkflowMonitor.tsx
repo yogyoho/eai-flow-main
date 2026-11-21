@@ -75,7 +75,7 @@ export function WorkflowMonitor({ projectId }: WorkflowMonitorProps) {
 
       {/* Current phase */}
       {status.currentPhaseNode && (
-        <div className="rounded border border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-950/40 p-2 text-xs">
+        <div className="rounded border border-blue-200 bg-blue-50 p-2 text-xs dark:border-blue-800 dark:bg-blue-950/40">
           当前节点:{" "}
           <span className="font-medium">{status.currentPhaseNode}</span>
         </div>

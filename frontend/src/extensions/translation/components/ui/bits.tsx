@@ -21,7 +21,8 @@ export type PillTone =
 const pillTones: Record<PillTone, string> = {
   primary: "border-primary/20 bg-primary/10 text-primary",
   // 成功 chip 用 700 阶：900 阶（#135200）视觉近黑，需保持绿色可读。
-  success: "border-[var(--success-100)] bg-[var(--success-50)] text-[var(--success-700)]",
+  success:
+    "border-[var(--success-100)] bg-[var(--success-50)] text-[var(--success-700)]",
   warn: "border-amber-500/25 bg-amber-500/10 text-[var(--warning-900)]",
   error: "border-destructive/25 bg-destructive/10 text-[var(--error-900)]",
   gray: "border-border bg-muted/50 text-muted-foreground",
@@ -57,7 +58,7 @@ export function Pill({
 /** 页底 info 说明条（原型 .note-bar）。 */
 export function NoteBar({ children }: { children: ReactNode }) {
   return (
-    <div className="bg-info/10 text-[var(--info-900)] flex items-start gap-2 rounded-md px-3 py-2 text-xs">
+    <div className="bg-info/10 flex items-start gap-2 rounded-md px-3 py-2 text-xs text-[var(--info-900)]">
       <svg
         aria-hidden
         className="mt-0.5 h-3.5 w-3.5 shrink-0"

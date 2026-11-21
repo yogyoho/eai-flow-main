@@ -15,7 +15,13 @@ function DocMgrContent() {
 export default function DocMgrPage() {
   return (
     <SimpleShellLayout>
-      <Suspense fallback={<div className="flex items-center justify-center h-full text-muted-foreground text-sm">加载中...</div>}>
+      <Suspense
+        fallback={
+          <div className="text-muted-foreground flex h-full items-center justify-center text-sm">
+            加载中...
+          </div>
+        }
+      >
         <DocMgrContent />
       </Suspense>
     </SimpleShellLayout>

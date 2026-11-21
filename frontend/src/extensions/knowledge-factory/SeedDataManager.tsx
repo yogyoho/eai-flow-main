@@ -21,7 +21,10 @@ import React, { useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
-import type { ComplianceRuleImportResponse, ComplianceRuleStatus } from "@/extensions/knowledge-factory/types";
+import type {
+  ComplianceRuleImportResponse,
+  ComplianceRuleStatus,
+} from "@/extensions/knowledge-factory/types";
 import { cn } from "@/lib/utils";
 
 interface SeedDataManagerProps {
@@ -44,21 +47,34 @@ function StatRow({
   children: React.ReactNode;
 }) {
   return (
-    <div className="flex items-center gap-3 rounded-lg border border-border bg-card p-4 shadow-sm">
-      <div className={cn("flex size-12 shrink-0 items-center justify-center rounded-xl", iconWrapClass)}>
+    <div className="border-border bg-card flex items-center gap-3 rounded-lg border p-4 shadow-sm">
+      <div
+        className={cn(
+          "flex size-12 shrink-0 items-center justify-center rounded-xl",
+          iconWrapClass,
+        )}
+      >
         <Icon className={cn("size-6", iconClass)} aria-hidden />
       </div>
       <div className="min-w-0 flex-1">
-        <div className="mb-1 whitespace-nowrap text-sm text-muted-foreground">{label}</div>
+        <div className="text-muted-foreground mb-1 text-sm whitespace-nowrap">
+          {label}
+        </div>
         {children}
       </div>
     </div>
   );
 }
 
-export function SeedDataManager({ status, onImport, onClose }: SeedDataManagerProps) {
+export function SeedDataManager({
+  status,
+  onImport,
+  onClose,
+}: SeedDataManagerProps) {
   const [importing, setImporting] = useState(false);
-  const [result, setResult] = useState<ComplianceRuleImportResponse | null>(null);
+  const [result, setResult] = useState<ComplianceRuleImportResponse | null>(
+    null,
+  );
   const [error, setError] = useState<string | null>(null);
   const [forceUpdate, setForceUpdate] = useState(false);
   const resultErrorMessages = result?.errorMessages ?? [];
@@ -85,19 +101,31 @@ export function SeedDataManager({ status, onImport, onClose }: SeedDataManagerPr
       role="presentation"
     >
       <div
-        className="flex max-h-[min(90vh,800px)] w-full max-w-5xl flex-col overflow-hidden rounded-xl border border-border bg-card shadow-xl"
+        className="border-border bg-card flex max-h-[min(90vh,800px)] w-full max-w-5xl flex-col overflow-hidden rounded-xl border shadow-xl"
         onClick={(e) => e.stopPropagation()}
         role="dialog"
         aria-modal="true"
         aria-labelledby="seed-manager-title"
       >
-        <div className="flex shrink-0 items-center justify-between gap-4 border-b border-border px-5 py-4">
-          <h2 id="seed-manager-title" className="text-lg font-semibold tracking-tight text-foreground">
+        <div className="border-border flex shrink-0 items-center justify-between gap-4 border-b px-5 py-4">
+          <h2
+            id="seed-manager-title"
+            className="text-foreground text-lg font-semibold tracking-tight"
+          >
             种子数据管理
           </h2>
-          <Button type="button" variant="ghost" size="icon-sm" className="shrink-0" onClick={onClose}>
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon-sm"
+            className="shrink-0"
+            onClick={onClose}
+          >
             <span className="sr-only">关闭</span>
-            <span className="text-xl leading-none text-muted-foreground" aria-hidden>
+            <span
+              className="text-muted-foreground text-xl leading-none"
+              aria-hidden
+            >
               ×
             </span>
           </Button>
@@ -105,33 +133,78 @@ export function SeedDataManager({ status, onImport, onClose }: SeedDataManagerPr
 
         <div className="min-h-0 flex-1 space-y-5 overflow-y-auto p-5">
           <section>
-            <h3 className="mb-3 text-sm font-semibold text-foreground">当前状态</h3>
+            <h3 className="text-foreground mb-3 text-sm font-semibold">
+              当前状态
+            </h3>
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
-              <StatRow label="种子数据版本" icon={Tag} iconWrapClass="bg-violet-100 dark:bg-violet-950/50" iconClass="text-violet-600 dark:text-violet-400">
-                <div className="truncate font-mono text-xl font-bold tabular-nums text-foreground">{status.seedVersion}</div>
+              <StatRow
+                label="种子数据版本"
+                icon={Tag}
+                iconWrapClass="bg-violet-100 dark:bg-violet-950/50"
+                iconClass="text-violet-600 dark:text-violet-400"
+              >
+                <div className="text-foreground truncate font-mono text-xl font-bold tabular-nums">
+                  {status.seedVersion}
+                </div>
               </StatRow>
-              <StatRow label="种子规则数" icon={Sprout} iconWrapClass="bg-amber-500/10" iconClass="text-amber-600 dark:text-amber-400">
-                <div className="text-2xl font-bold tabular-nums text-amber-600 dark:text-amber-400">{status.seedTotal}</div>
+              <StatRow
+                label="种子规则数"
+                icon={Sprout}
+                iconWrapClass="bg-amber-500/10"
+                iconClass="text-amber-600 dark:text-amber-400"
+              >
+                <div className="text-2xl font-bold text-amber-600 tabular-nums dark:text-amber-400">
+                  {status.seedTotal}
+                </div>
               </StatRow>
-              <StatRow label="数据库规则数" icon={Database} iconWrapClass="bg-muted" iconClass="text-muted-foreground">
-                <div className="text-2xl font-bold tabular-nums text-foreground">{status.dbTotal}</div>
+              <StatRow
+                label="数据库规则数"
+                icon={Database}
+                iconWrapClass="bg-muted"
+                iconClass="text-muted-foreground"
+              >
+                <div className="text-foreground text-2xl font-bold tabular-nums">
+                  {status.dbTotal}
+                </div>
               </StatRow>
-              <StatRow label="启用规则" icon={BadgeCheck} iconWrapClass="bg-emerald-500/10" iconClass="text-emerald-600 dark:text-emerald-400">
-                <div className="text-2xl font-bold tabular-nums text-emerald-600 dark:text-emerald-400">{status.dbEnabled}</div>
+              <StatRow
+                label="启用规则"
+                icon={BadgeCheck}
+                iconWrapClass="bg-emerald-500/10"
+                iconClass="text-emerald-600 dark:text-emerald-400"
+              >
+                <div className="text-2xl font-bold text-emerald-600 tabular-nums dark:text-emerald-400">
+                  {status.dbEnabled}
+                </div>
               </StatRow>
-              <StatRow label="禁用规则" icon={CircleSlash} iconWrapClass="bg-muted" iconClass="text-muted-foreground">
-                <div className="text-2xl font-bold tabular-nums text-muted-foreground">{status.dbDisabled}</div>
+              <StatRow
+                label="禁用规则"
+                icon={CircleSlash}
+                iconWrapClass="bg-muted"
+                iconClass="text-muted-foreground"
+              >
+                <div className="text-muted-foreground text-2xl font-bold tabular-nums">
+                  {status.dbDisabled}
+                </div>
               </StatRow>
               <StatRow
                 label="状态"
                 icon={status.upToDate ? CheckCircle2 : AlertCircle}
-                iconWrapClass={status.upToDate ? "bg-emerald-500/10" : "bg-amber-500/10"}
-                iconClass={status.upToDate ? "text-emerald-600 dark:text-emerald-400" : "text-amber-600 dark:text-amber-400"}
+                iconWrapClass={
+                  status.upToDate ? "bg-emerald-500/10" : "bg-amber-500/10"
+                }
+                iconClass={
+                  status.upToDate
+                    ? "text-emerald-600 dark:text-emerald-400"
+                    : "text-amber-600 dark:text-amber-400"
+                }
               >
                 <div
                   className={cn(
-                    "text-base font-semibold leading-snug",
-                    status.upToDate ? "text-emerald-600 dark:text-emerald-400" : "text-amber-600 dark:text-amber-400",
+                    "text-base leading-snug font-semibold",
+                    status.upToDate
+                      ? "text-emerald-600 dark:text-emerald-400"
+                      : "text-amber-600 dark:text-amber-400",
                   )}
                 >
                   {status.upToDate ? "已是最新" : "需要更新"}
@@ -142,7 +215,9 @@ export function SeedDataManager({ status, onImport, onClose }: SeedDataManagerPr
 
           {status.inSeedNotInDb.length > 0 && (
             <section className="rounded-xl border border-amber-500/20 bg-amber-500/10 p-4 dark:bg-amber-500/10">
-              <h3 className="mb-2 text-sm font-semibold text-foreground">待新增规则 ({status.inSeedNotInDb.length})</h3>
+              <h3 className="text-foreground mb-2 text-sm font-semibold">
+                待新增规则 ({status.inSeedNotInDb.length})
+              </h3>
               <div className="flex flex-wrap gap-2">
                 {status.inSeedNotInDb.map((ruleId) => (
                   <span
@@ -158,7 +233,9 @@ export function SeedDataManager({ status, onImport, onClose }: SeedDataManagerPr
 
           {status.inDbNotInSeed.length > 0 && (
             <section className="rounded-xl border border-red-500/20 bg-red-500/10 p-4 dark:bg-red-500/10">
-              <h3 className="mb-2 text-sm font-semibold text-foreground">数据库中多余的规则 ({status.inDbNotInSeed.length})</h3>
+              <h3 className="text-foreground mb-2 text-sm font-semibold">
+                数据库中多余的规则 ({status.inDbNotInSeed.length})
+              </h3>
               <div className="flex flex-wrap gap-2">
                 {status.inDbNotInSeed.map((ruleId) => (
                   <span
@@ -169,13 +246,17 @@ export function SeedDataManager({ status, onImport, onClose }: SeedDataManagerPr
                   </span>
                 ))}
               </div>
-              <p className="mt-3 text-xs text-muted-foreground">这些规则在种子数据文件中不存在，可能是手动创建的。</p>
+              <p className="text-muted-foreground mt-3 text-xs">
+                这些规则在种子数据文件中不存在，可能是手动创建的。
+              </p>
             </section>
           )}
 
           {!result && (
-            <section className="rounded-xl border border-primary/20 bg-primary/5 p-4">
-              <h3 className="mb-3 text-sm font-semibold text-foreground">导入选项</h3>
+            <section className="border-primary/20 bg-primary/5 rounded-xl border p-4">
+              <h3 className="text-foreground mb-3 text-sm font-semibold">
+                导入选项
+              </h3>
               <div className="flex items-start gap-2.5">
                 <Checkbox
                   id="seed-force-update"
@@ -184,10 +265,15 @@ export function SeedDataManager({ status, onImport, onClose }: SeedDataManagerPr
                   className="mt-0.5"
                 />
                 <div className="min-w-0 flex-1 space-y-2">
-                  <label htmlFor="seed-force-update" className="cursor-pointer text-sm leading-snug text-foreground">
+                  <label
+                    htmlFor="seed-force-update"
+                    className="text-foreground cursor-pointer text-sm leading-snug"
+                  >
                     强制更新已存在的规则
                   </label>
-                  <p className="text-xs text-muted-foreground">勾选后，会用种子数据覆盖数据库中已存在的同名规则。</p>
+                  <p className="text-muted-foreground text-xs">
+                    勾选后，会用种子数据覆盖数据库中已存在的同名规则。
+                  </p>
                 </div>
               </div>
             </section>
@@ -195,29 +281,68 @@ export function SeedDataManager({ status, onImport, onClose }: SeedDataManagerPr
 
           {result && (
             <section className="space-y-4">
-              <h3 className="text-sm font-semibold text-foreground">导入结果</h3>
+              <h3 className="text-foreground text-sm font-semibold">
+                导入结果
+              </h3>
               <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
-                <StatRow label="总数" icon={ListOrdered} iconWrapClass="bg-muted" iconClass="text-muted-foreground">
-                  <div className="text-2xl font-bold tabular-nums text-foreground">{result.total}</div>
+                <StatRow
+                  label="总数"
+                  icon={ListOrdered}
+                  iconWrapClass="bg-muted"
+                  iconClass="text-muted-foreground"
+                >
+                  <div className="text-foreground text-2xl font-bold tabular-nums">
+                    {result.total}
+                  </div>
                 </StatRow>
-                <StatRow label="新增" icon={FolderPlus} iconWrapClass="bg-emerald-500/10" iconClass="text-emerald-600 dark:text-emerald-400">
-                  <div className="text-2xl font-bold tabular-nums text-emerald-600 dark:text-emerald-400">{result.created}</div>
+                <StatRow
+                  label="新增"
+                  icon={FolderPlus}
+                  iconWrapClass="bg-emerald-500/10"
+                  iconClass="text-emerald-600 dark:text-emerald-400"
+                >
+                  <div className="text-2xl font-bold text-emerald-600 tabular-nums dark:text-emerald-400">
+                    {result.created}
+                  </div>
                 </StatRow>
-                <StatRow label="更新" icon={RefreshCw} iconWrapClass="bg-primary/10" iconClass="text-primary">
-                  <div className="text-2xl font-bold tabular-nums text-primary">{result.updated}</div>
+                <StatRow
+                  label="更新"
+                  icon={RefreshCw}
+                  iconWrapClass="bg-primary/10"
+                  iconClass="text-primary"
+                >
+                  <div className="text-primary text-2xl font-bold tabular-nums">
+                    {result.updated}
+                  </div>
                 </StatRow>
-                <StatRow label="跳过" icon={SkipForward} iconWrapClass="bg-muted" iconClass="text-muted-foreground">
-                  <div className="text-2xl font-bold tabular-nums text-muted-foreground">{result.skipped}</div>
+                <StatRow
+                  label="跳过"
+                  icon={SkipForward}
+                  iconWrapClass="bg-muted"
+                  iconClass="text-muted-foreground"
+                >
+                  <div className="text-muted-foreground text-2xl font-bold tabular-nums">
+                    {result.skipped}
+                  </div>
                 </StatRow>
-                <StatRow label="错误" icon={AlertCircle} iconWrapClass="bg-destructive/10" iconClass="text-destructive">
-                  <div className="text-2xl font-bold tabular-nums text-destructive">{result.errors}</div>
+                <StatRow
+                  label="错误"
+                  icon={AlertCircle}
+                  iconWrapClass="bg-destructive/10"
+                  iconClass="text-destructive"
+                >
+                  <div className="text-destructive text-2xl font-bold tabular-nums">
+                    {result.errors}
+                  </div>
                 </StatRow>
               </div>
 
               {resultErrorMessages.length > 0 && (
-                <div className="rounded-xl border border-destructive/30 bg-destructive/5 p-4">
-                  <h4 className="mb-2 text-sm font-semibold text-destructive">错误信息</h4>
-                  <ul className="list-inside list-disc space-y-1 text-xs text-destructive/90">
+                <div className="border-destructive/30 bg-destructive/5 rounded-xl border p-4">
+                  <h4 className="text-destructive mb-2 text-sm font-semibold">
+                    错误信息
+                  </h4>
+                  <ul className="text-destructive/90 list-inside list-disc space-y-1 text-xs">
                     {resultErrorMessages.map((msg, idx) => (
                       <li key={idx}>{msg}</li>
                     ))}
@@ -227,7 +352,10 @@ export function SeedDataManager({ status, onImport, onClose }: SeedDataManagerPr
 
               {result.success && (
                 <div className="flex items-center gap-2 rounded-xl border border-emerald-500/20 bg-emerald-500/10 px-4 py-3 text-sm font-medium text-emerald-600 dark:text-emerald-400">
-                  <CheckCircle2 className="size-5 shrink-0 text-emerald-600 dark:text-emerald-400" aria-hidden />
+                  <CheckCircle2
+                    className="size-5 shrink-0 text-emerald-600 dark:text-emerald-400"
+                    aria-hidden
+                  />
                   种子数据导入成功！
                 </div>
               )}
@@ -235,16 +363,20 @@ export function SeedDataManager({ status, onImport, onClose }: SeedDataManagerPr
           )}
 
           {error && (
-            <div className="flex items-start gap-2 rounded-xl border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm text-destructive">
+            <div className="border-destructive/30 bg-destructive/5 text-destructive flex items-start gap-2 rounded-xl border px-4 py-3 text-sm">
               <AlertCircle className="mt-0.5 size-4 shrink-0" aria-hidden />
               <span>{error}</span>
             </div>
           )}
         </div>
 
-        <div className="flex shrink-0 flex-wrap justify-end gap-2 border-t border-border bg-muted/30 px-5 py-4">
+        <div className="border-border bg-muted/30 flex shrink-0 flex-wrap justify-end gap-2 border-t px-5 py-4">
           {!result && (
-            <Button type="button" onClick={() => void handleImport()} disabled={importing}>
+            <Button
+              type="button"
+              onClick={() => void handleImport()}
+              disabled={importing}
+            >
               {importing ? "导入中..." : "导入种子数据"}
             </Button>
           )}

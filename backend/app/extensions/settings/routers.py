@@ -38,6 +38,10 @@ class SystemConfig(BaseModel):
     # EAI-CUSTOM (cpa v3 M3): 专业 OCR 服务注册表,JSON 字符串
     # [{"name","base_url","api_key","model"}];GET 回显 api_key 掩码,写走专用 admin 端点。
     ocr_services: str | None = None
+    # EAI-CUSTOM (2026-10-30): 全局默认 OCR 引擎选择(builtin=rapidocr 内建 | 注册表服务名),
+    # bid_review 等解析层消费(app.extensions.ocr_resolve.resolve_default_ocr_entry);
+    # 普通字段走通用 PUT /config(掩码只涉 api_key)。
+    default_ocr_engine: str = "builtin"
 
 
 class EmbedModelChoice(BaseModel):
@@ -123,6 +127,7 @@ def _dict_to_system_config(data: dict[str, str]) -> SystemConfig:
         content_guard_llm_model=data.get("content_guard_llm_model") or None,
         theme=data.get("theme", "system"),
         ocr_services=data.get("ocr_services") or None,
+        default_ocr_engine=data.get("default_ocr_engine") or "builtin",
     )
 
 

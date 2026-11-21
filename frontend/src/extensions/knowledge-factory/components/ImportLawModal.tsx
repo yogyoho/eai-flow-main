@@ -48,8 +48,13 @@ interface ParsedLawFileResponse {
   success: boolean;
 }
 
-export default function ImportLawModal({ onClose, onSuccess }: ImportLawModalProps) {
-  const [step, setStep] = useState<"form" | "uploading" | "completed" | "error">("form");
+export default function ImportLawModal({
+  onClose,
+  onSuccess,
+}: ImportLawModalProps) {
+  const [step, setStep] = useState<
+    "form" | "uploading" | "completed" | "error"
+  >("form");
   const [error, setError] = useState<string | null>(null);
   const [progress, setProgress] = useState(0);
   const [progressLabel, setProgressLabel] = useState("");
@@ -83,7 +88,10 @@ export default function ImportLawModal({ onClose, onSuccess }: ImportLawModalPro
   } = useLawIndustries();
 
   const handleAddKeyword = () => {
-    if (keywordInput.trim() && !formData.keywords.includes(keywordInput.trim())) {
+    if (
+      keywordInput.trim() &&
+      !formData.keywords.includes(keywordInput.trim())
+    ) {
       setFormData((prev) => ({
         ...prev,
         keywords: [...prev.keywords, keywordInput.trim()],
@@ -139,11 +147,11 @@ export default function ImportLawModal({ onClose, onSuccess }: ImportLawModalPro
       const result = await authFormFetch<ParsedLawFileResponse>(
         buildLawLibraryUrl("/kf/laws/parse-file"),
         formDataFd,
-        ""
+        "",
       );
       const preview = (result.content || "").slice(0, 500);
       setParsedPreview(
-        preview + (result.content?.length > 500 ? "\n\n...（预览已截断）" : "")
+        preview + (result.content?.length > 500 ? "\n\n...（预览已截断）" : ""),
       );
     } catch (e) {
       console.error("解析文件失败:", e);
@@ -159,7 +167,7 @@ export default function ImportLawModal({ onClose, onSuccess }: ImportLawModalPro
       const file = e.dataTransfer.files?.[0];
       if (file) void handleFileSelect(file);
     },
-    [handleFileSelect]
+    [handleFileSelect],
   );
 
   const handleRemoveFile = () => {
@@ -229,15 +237,15 @@ export default function ImportLawModal({ onClose, onSuccess }: ImportLawModalPro
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-      <div className="bg-card rounded-xl shadow-xl w-full max-w-2xl max-h-[90vh] overflow-hidden flex flex-col">
+      <div className="bg-card flex max-h-[90vh] w-full max-w-2xl flex-col overflow-hidden rounded-xl shadow-xl">
         {/* Header */}
-        <div className="flex items-center justify-between p-4 border-b border-border shrink-0">
-          <h3 className="text-lg font-semibold text-foreground">导入新法规</h3>
+        <div className="border-border flex shrink-0 items-center justify-between border-b p-4">
+          <h3 className="text-foreground text-lg font-semibold">导入新法规</h3>
           <button
             onClick={onClose}
-            className="p-1 hover:bg-accent rounded-lg transition-colors"
+            className="hover:bg-accent rounded-lg p-1 transition-colors"
           >
-            <X className="w-5 h-5" />
+            <X className="h-5 w-5" />
           </button>
         </div>
 
@@ -247,29 +255,33 @@ export default function ImportLawModal({ onClose, onSuccess }: ImportLawModalPro
             <div className="space-y-6">
               {/* Basic Info */}
               <div className="space-y-4">
-                <h4 className="text-sm font-medium text-foreground flex items-center gap-2">
-                  <FileText className="w-4 h-4" /> 法规基本信息
+                <h4 className="text-foreground flex items-center gap-2 text-sm font-medium">
+                  <FileText className="h-4 w-4" /> 法规基本信息
                 </h4>
 
                 <div className="grid gap-4">
                   <div>
-                    <label className="block text-sm text-muted-foreground mb-1">
-                      标题 <span className="text-red-600 dark:text-red-400">*</span>
+                    <label className="text-muted-foreground mb-1 block text-sm">
+                      标题{" "}
+                      <span className="text-red-600 dark:text-red-400">*</span>
                     </label>
                     <input
                       type="text"
                       value={formData.title}
                       onChange={(e) =>
-                        setFormData((prev) => ({ ...prev, title: e.target.value }))
+                        setFormData((prev) => ({
+                          ...prev,
+                          title: e.target.value,
+                        }))
                       }
                       placeholder="请输入法规标题"
-                      className="text-sm w-full px-3 py-2 border border-border rounded-lg bg-muted focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all"
+                      className="border-border bg-muted focus:ring-primary/20 focus:border-primary w-full rounded-lg border px-3 py-2 text-sm transition-all outline-none focus:ring-2"
                     />
                   </div>
 
                   <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <label className="block text-sm text-muted-foreground mb-1">
+                      <label className="text-muted-foreground mb-1 block text-sm">
                         标准号
                       </label>
                       <input
@@ -282,13 +294,16 @@ export default function ImportLawModal({ onClose, onSuccess }: ImportLawModalPro
                           }))
                         }
                         placeholder="如 GB 3095-2012"
-                        className="text-sm w-full px-3 py-2 border border-border rounded-lg bg-muted focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all"
+                        className="border-border bg-muted focus:ring-primary/20 focus:border-primary w-full rounded-lg border px-3 py-2 text-sm transition-all outline-none focus:ring-2"
                       />
                     </div>
 
                     <div>
-                      <label className="block text-sm text-muted-foreground mb-1">
-                        法规类型 <span className="text-red-600 dark:text-red-400">*</span>
+                      <label className="text-muted-foreground mb-1 block text-sm">
+                        法规类型{" "}
+                        <span className="text-red-600 dark:text-red-400">
+                          *
+                        </span>
                       </label>
                       <AdminSelect
                         value={formData.lawType}
@@ -306,7 +321,7 @@ export default function ImportLawModal({ onClose, onSuccess }: ImportLawModalPro
 
                   <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <label className="block text-sm text-muted-foreground mb-1">
+                      <label className="text-muted-foreground mb-1 block text-sm">
                         发布部门
                       </label>
                       <input
@@ -319,12 +334,12 @@ export default function ImportLawModal({ onClose, onSuccess }: ImportLawModalPro
                           }))
                         }
                         placeholder="如 生态环境部"
-                        className="text-sm w-full px-3 py-2 border border-border rounded-lg bg-muted focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all"
+                        className="border-border bg-muted focus:ring-primary/20 focus:border-primary w-full rounded-lg border px-3 py-2 text-sm transition-all outline-none focus:ring-2"
                       />
                     </div>
 
                     <div>
-                      <label className="block text-sm text-muted-foreground mb-1">
+                      <label className="text-muted-foreground mb-1 block text-sm">
                         生效日期
                       </label>
                       <input
@@ -336,13 +351,13 @@ export default function ImportLawModal({ onClose, onSuccess }: ImportLawModalPro
                             effectiveDate: e.target.value,
                           }))
                         }
-                        className="text-sm w-full px-3 py-2 border border-border rounded-lg bg-muted focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all"
+                        className="border-border bg-muted focus:ring-primary/20 focus:border-primary w-full rounded-lg border px-3 py-2 text-sm transition-all outline-none focus:ring-2"
                       />
                     </div>
                   </div>
 
                   <div>
-                    <label className="block text-sm text-muted-foreground mb-1">
+                    <label className="text-muted-foreground mb-1 block text-sm">
                       行业领域（可选，用作检索前缀）
                     </label>
                     <AdminSelect
@@ -355,16 +370,21 @@ export default function ImportLawModal({ onClose, onSuccess }: ImportLawModalPro
                       }
                       options={[
                         { value: INDUSTRY_NONE, label: "不标记行业" },
-                        ...(industries ?? []).map((it) => ({ value: it, label: it })),
+                        ...(industries ?? []).map((it) => ({
+                          value: it,
+                          label: it,
+                        })),
                       ]}
                       placeholder="请选择行业领域"
                       className="w-full"
                     />
                     {industriesLoading && (
-                      <p className="mt-1 text-xs text-muted-foreground">行业列表加载中…</p>
+                      <p className="text-muted-foreground mt-1 text-xs">
+                        行业列表加载中…
+                      </p>
                     )}
                     {industriesError && (
-                      <p className="mt-1 text-xs text-destructive">
+                      <p className="text-destructive mt-1 text-xs">
                         行业列表加载失败
                         <button
                           type="button"
@@ -381,10 +401,10 @@ export default function ImportLawModal({ onClose, onSuccess }: ImportLawModalPro
 
               {/* File Upload */}
               <div className="space-y-3">
-                <h4 className="text-sm font-medium text-foreground flex items-center gap-2">
-                  <Upload className="w-4 h-4" /> 上传法规文件（可选）
+                <h4 className="text-foreground flex items-center gap-2 text-sm font-medium">
+                  <Upload className="h-4 w-4" /> 上传法规文件（可选）
                 </h4>
-                <p className="text-xs text-muted-foreground -mt-2">
+                <p className="text-muted-foreground -mt-2 text-xs">
                   支持 PDF、Word（.docx/.doc）、TXT、Markdown，自动提取正文内容
                 </p>
 
@@ -406,48 +426,48 @@ export default function ImportLawModal({ onClose, onSuccess }: ImportLawModalPro
                     onDrop={handleDrop}
                     onDragOver={(e) => e.preventDefault()}
                     className={cn(
-                      "border-2 border-dashed border-border rounded-xl p-8 text-center cursor-pointer",
-                      "hover:border-primary/50 hover:bg-muted/50 transition-all group"
+                      "border-border cursor-pointer rounded-xl border-2 border-dashed p-8 text-center",
+                      "hover:border-primary/50 hover:bg-muted/50 group transition-all",
                     )}
                   >
                     <Upload
                       className={cn(
-                        "w-10 h-10 mx-auto mb-3 text-muted-foreground",
-                        "group-hover:text-primary transition-colors"
+                        "text-muted-foreground mx-auto mb-3 h-10 w-10",
+                        "group-hover:text-primary transition-colors",
                       )}
                     />
-                    <p className="text-sm font-medium text-foreground">
+                    <p className="text-foreground text-sm font-medium">
                       点击选择文件 或 拖拽文件到这里
                     </p>
-                    <p className="text-xs text-muted-foreground mt-1">
+                    <p className="text-muted-foreground mt-1 text-xs">
                       PDF、Word（.docx/.doc）、TXT、Markdown
                     </p>
                   </div>
                 ) : (
-                  <div className="border border-border rounded-xl p-4 space-y-3">
+                  <div className="border-border space-y-3 rounded-xl border p-4">
                     {/* File info */}
                     <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-3 min-w-0">
-                        <File className="w-8 h-8 text-primary shrink-0" />
+                      <div className="flex min-w-0 items-center gap-3">
+                        <File className="text-primary h-8 w-8 shrink-0" />
                         <div className="min-w-0">
-                          <p className="text-sm font-medium text-foreground truncate">
+                          <p className="text-foreground truncate text-sm font-medium">
                             {selectedFile.name}
                           </p>
-                          <p className="text-xs text-muted-foreground">
+                          <p className="text-muted-foreground text-xs">
                             {(selectedFile.size / 1024).toFixed(1)} KB
                           </p>
                         </div>
                       </div>
-                      <div className="flex items-center gap-2 shrink-0">
+                      <div className="flex shrink-0 items-center gap-2">
                         {isParsing ? (
-                          <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />
+                          <Loader2 className="text-muted-foreground h-4 w-4 animate-spin" />
                         ) : (
                           <button
                             onClick={handleRemoveFile}
-                            className="p-1 hover:bg-accent rounded-lg text-muted-foreground hover:text-red-600 dark:text-red-400 transition-colors"
+                            className="hover:bg-accent text-muted-foreground rounded-lg p-1 transition-colors hover:text-red-600 dark:text-red-400"
                             title="移除文件"
                           >
-                            <Trash2 className="w-4 h-4" />
+                            <Trash2 className="h-4 w-4" />
                           </button>
                         )}
                       </div>
@@ -455,15 +475,15 @@ export default function ImportLawModal({ onClose, onSuccess }: ImportLawModalPro
 
                     {/* Parse status */}
                     {isParsing && (
-                      <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                        <Loader2 className="w-4 h-4 animate-spin" />
+                      <div className="text-muted-foreground flex items-center gap-2 text-sm">
+                        <Loader2 className="h-4 w-4 animate-spin" />
                         正在解析文件内容...
                       </div>
                     )}
 
                     {parseError && (
                       <div className="flex items-center gap-2 text-sm text-red-600 dark:text-red-400">
-                        <AlertCircle className="w-4 h-4" />
+                        <AlertCircle className="h-4 w-4" />
                         {parseError}
                       </div>
                     )}
@@ -472,11 +492,11 @@ export default function ImportLawModal({ onClose, onSuccess }: ImportLawModalPro
                     {parsedPreview && (
                       <div className="space-y-1">
                         <div className="flex items-center gap-2 text-sm text-emerald-600 dark:text-emerald-400">
-                          <CheckCircle2 className="w-4 h-4" />
+                          <CheckCircle2 className="h-4 w-4" />
                           文件解析成功，已提取正文
                         </div>
-                        <div className="bg-muted rounded-lg p-3 max-h-40 overflow-y-auto">
-                          <pre className="text-xs text-muted-foreground whitespace-pre-wrap break-all">
+                        <div className="bg-muted max-h-40 overflow-y-auto rounded-lg p-3">
+                          <pre className="text-muted-foreground text-xs break-all whitespace-pre-wrap">
                             {parsedPreview}
                           </pre>
                         </div>
@@ -488,13 +508,15 @@ export default function ImportLawModal({ onClose, onSuccess }: ImportLawModalPro
 
               {/* Keywords */}
               <div className="space-y-3">
-                <h4 className="text-sm font-medium text-foreground flex items-center gap-2">
-                  <FileText className="w-4 h-4" /> 标签与分类
+                <h4 className="text-foreground flex items-center gap-2 text-sm font-medium">
+                  <FileText className="h-4 w-4" /> 标签与分类
                 </h4>
 
                 <div>
-                  <label className="block text-sm text-muted-foreground mb-1">关键词</label>
-                  <div className="flex items-center gap-2 mb-2">
+                  <label className="text-muted-foreground mb-1 block text-sm">
+                    关键词
+                  </label>
+                  <div className="mb-2 flex items-center gap-2">
                     <input
                       type="text"
                       value={keywordInput}
@@ -506,13 +528,13 @@ export default function ImportLawModal({ onClose, onSuccess }: ImportLawModalPro
                         }
                       }}
                       placeholder="输入关键词后按回车添加"
-                      className="flex-1 px-3 py-2 border border-border rounded-lg bg-muted focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all text-sm"
+                      className="border-border bg-muted focus:ring-primary/20 focus:border-primary flex-1 rounded-lg border px-3 py-2 text-sm transition-all outline-none focus:ring-2"
                     />
                     <button
                       onClick={handleAddKeyword}
-                      className="p-2 hover:bg-accent rounded-lg border border-border"
+                      className="hover:bg-accent border-border rounded-lg border p-2"
                     >
-                      <Plus className="w-4 h-4" />
+                      <Plus className="h-4 w-4" />
                     </button>
                   </div>
                   {formData.keywords.length > 0 && (
@@ -520,14 +542,14 @@ export default function ImportLawModal({ onClose, onSuccess }: ImportLawModalPro
                       {formData.keywords.map((kw) => (
                         <span
                           key={kw}
-                          className="inline-flex items-center gap-1 px-2 py-1 bg-muted text-sm rounded"
+                          className="bg-muted inline-flex items-center gap-1 rounded px-2 py-1 text-sm"
                         >
                           {kw}
                           <button
                             onClick={() => handleRemoveKeyword(kw)}
                             className="hover:text-red-600 dark:text-red-400"
                           >
-                            <X className="w-3 h-3" />
+                            <X className="h-3 w-3" />
                           </button>
                         </span>
                       ))}
@@ -536,10 +558,10 @@ export default function ImportLawModal({ onClose, onSuccess }: ImportLawModalPro
                 </div>
 
                 <div>
-                  <label className="block text-sm text-muted-foreground mb-1">
+                  <label className="text-muted-foreground mb-1 block text-sm">
                     被引用法规（标准号）
                   </label>
-                  <div className="flex items-center gap-2 mb-2">
+                  <div className="mb-2 flex items-center gap-2">
                     <input
                       type="text"
                       value={referredLawInput}
@@ -551,13 +573,13 @@ export default function ImportLawModal({ onClose, onSuccess }: ImportLawModalPro
                         }
                       }}
                       placeholder="输入标准号后按回车添加"
-                      className="flex-1 px-3 py-2 border border-border rounded-lg bg-muted focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all text-sm"
+                      className="border-border bg-muted focus:ring-primary/20 focus:border-primary flex-1 rounded-lg border px-3 py-2 text-sm transition-all outline-none focus:ring-2"
                     />
                     <button
                       onClick={handleAddReferredLaw}
-                      className="p-2 hover:bg-accent rounded-lg border border-border"
+                      className="hover:bg-accent border-border rounded-lg border p-2"
                     >
-                      <Plus className="w-4 h-4" />
+                      <Plus className="h-4 w-4" />
                     </button>
                   </div>
                   {formData.referredLaws.length > 0 && (
@@ -565,14 +587,14 @@ export default function ImportLawModal({ onClose, onSuccess }: ImportLawModalPro
                       {formData.referredLaws.map((law) => (
                         <span
                           key={law}
-                          className="inline-flex items-center gap-1 px-2 py-1 bg-muted text-sm rounded"
+                          className="bg-muted inline-flex items-center gap-1 rounded px-2 py-1 text-sm"
                         >
                           {law}
                           <button
                             onClick={() => handleRemoveReferredLaw(law)}
                             className="hover:text-red-600 dark:text-red-400"
                           >
-                            <X className="w-3 h-3" />
+                            <X className="h-3 w-3" />
                           </button>
                         </span>
                       ))}
@@ -583,8 +605,8 @@ export default function ImportLawModal({ onClose, onSuccess }: ImportLawModalPro
 
               {/* Error */}
               {error && (
-                <div className="flex items-center gap-2 text-red-600 dark:text-red-400 text-sm">
-                  <AlertCircle className="w-4 h-4" />
+                <div className="flex items-center gap-2 text-sm text-red-600 dark:text-red-400">
+                  <AlertCircle className="h-4 w-4" />
                   {error}
                 </div>
               )}
@@ -593,12 +615,14 @@ export default function ImportLawModal({ onClose, onSuccess }: ImportLawModalPro
 
           {step === "uploading" && (
             <div className="flex flex-col items-center py-12">
-              <Loader2 className="w-12 h-12 text-primary animate-spin mb-4" />
-              <p className="text-lg font-medium text-foreground">正在导入...</p>
-              <p className="text-sm text-muted-foreground mt-2">{progressLabel}</p>
-              <div className="w-64 h-2 bg-muted rounded-full mt-4 overflow-hidden">
+              <Loader2 className="text-primary mb-4 h-12 w-12 animate-spin" />
+              <p className="text-foreground text-lg font-medium">正在导入...</p>
+              <p className="text-muted-foreground mt-2 text-sm">
+                {progressLabel}
+              </p>
+              <div className="bg-muted mt-4 h-2 w-64 overflow-hidden rounded-full">
                 <div
-                  className="h-full bg-primary transition-all duration-300"
+                  className="bg-primary h-full transition-all duration-300"
                   style={{ width: `${progress}%` }}
                 />
               </div>
@@ -607,11 +631,11 @@ export default function ImportLawModal({ onClose, onSuccess }: ImportLawModalPro
 
           {step === "completed" && (
             <div className="flex flex-col items-center py-12">
-              <div className="w-12 h-12 bg-emerald-500/10 rounded-full flex items-center justify-center mb-4">
-                <FileText className="w-6 h-6 text-emerald-600 dark:text-emerald-400" />
+              <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-emerald-500/10">
+                <FileText className="h-6 w-6 text-emerald-600 dark:text-emerald-400" />
               </div>
-              <p className="text-lg font-medium text-foreground">导入成功</p>
-              <p className="text-sm text-muted-foreground mt-2">
+              <p className="text-foreground text-lg font-medium">导入成功</p>
+              <p className="text-muted-foreground mt-2 text-sm">
                 法规已成功添加到{" "}
                 {getCategoryByCode(formData.lawType)?.name ?? formData.lawType}
               </p>
@@ -620,14 +644,16 @@ export default function ImportLawModal({ onClose, onSuccess }: ImportLawModalPro
 
           {step === "error" && (
             <div className="flex flex-col items-center py-12">
-              <div className="w-12 h-12 bg-red-500/10 rounded-full flex items-center justify-center mb-4">
-                <AlertCircle className="w-6 h-6 text-red-600 dark:text-red-400" />
+              <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-red-500/10">
+                <AlertCircle className="h-6 w-6 text-red-600 dark:text-red-400" />
               </div>
-              <p className="text-lg font-medium text-foreground">导入失败</p>
-              <p className="text-sm text-red-600 dark:text-red-400 mt-2">{error}</p>
+              <p className="text-foreground text-lg font-medium">导入失败</p>
+              <p className="mt-2 text-sm text-red-600 dark:text-red-400">
+                {error}
+              </p>
               <button
                 onClick={() => setStep("form")}
-                className="mt-4 px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors"
+                className="bg-primary hover:bg-primary/90 mt-4 rounded-lg px-4 py-2 text-white transition-colors"
               >
                 重试
               </button>
@@ -637,20 +663,20 @@ export default function ImportLawModal({ onClose, onSuccess }: ImportLawModalPro
 
         {/* Footer */}
         {step === "form" && (
-          <div className="flex justify-end gap-3 p-4 border-t border-border shrink-0">
+          <div className="border-border flex shrink-0 justify-end gap-3 border-t p-4">
             <button
               onClick={onClose}
-              className="px-4 py-2 text-foreground hover:bg-accent rounded-lg transition-colors"
+              className="text-foreground hover:bg-accent rounded-lg px-4 py-2 transition-colors"
             >
               取消
             </button>
             <button
               onClick={handleSubmit}
               disabled={importMutation.isPending}
-              className="px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors disabled:opacity-50 flex items-center gap-2"
+              className="bg-primary hover:bg-primary/90 flex items-center gap-2 rounded-lg px-4 py-2 text-white transition-colors disabled:opacity-50"
             >
               {importMutation.isPending && (
-                <Loader2 className="w-4 h-4 animate-spin" />
+                <Loader2 className="h-4 w-4 animate-spin" />
               )}
               开始导入
             </button>
