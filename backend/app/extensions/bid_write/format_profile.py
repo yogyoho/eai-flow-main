@@ -165,6 +165,25 @@ def _numbering(paragraph) -> dict | None:
         return None
 
 
+_LABEL_CONNECTIVE_RE = re.compile(r"^[与及的按为和或等在从以之]$")
+_LABEL_UNIT_RE = re.compile(r"^[%％‰元天日年个份号]$")
+
+
+def _usable_label(candidate: str) -> str:
+    """片段可作字段名才返回,否则空串——连词("与")与单位("%"等)是残缺 label 的
+    两大来源(UX 评审遗留),宁可空(前端显示"未标注占位符")也不误导。"""
+    stripped = candidate.strip(" \t　")
+    if not stripped:
+        return ""
+    if len(stripped) == 1 and (
+        _LABEL_CONNECTIVE_RE.match(stripped) or _LABEL_UNIT_RE.match(stripped)
+    ):
+        return ""
+    if re.fullmatch(r"[%％‰]+", stripped):
+        return ""
+    return stripped
+
+
 def _placeholders(text: str) -> list[dict]:
     found: list[tuple[int, int, str]] = []
     for kind, pattern in _PLACEHOLDER_PATTERNS:
@@ -182,10 +201,20 @@ def _placeholders(text: str) -> list[dict]:
         before_raw = text[max(0, start - 24) : start]
         after_raw = text[end : min(len(text), end + 24)]
         before_parts = [part.strip() for part in re.split(r"[：:，,；;、（）()\[\]【】]", before_raw) if part.strip()]
-        before = before_parts[-1] if before_parts else ""
+        before = _usable_label(before_parts[-1] if before_parts else "")
         after_clean = after_raw.lstrip(" \t（(【[")
-        after = re.split(r"[：:，,；;、（）()\[\]【】]", after_clean)[0].strip(" \t）)】]")
+        after = _usable_label(
+            re.split(r"[：:，,；;、（）()\[\]【】]", after_clean)[0].strip(" \t）)】]")
+        )
         label = before or after or ""
+        if not label:
+            before_wide = text[max(0, start - 48) : start]
+            wide_parts = [
+                part.strip()
+                for part in re.split(r"[：:，,；;、（）()\[\]【】]", before_wide)
+                if part.strip()
+            ]
+            label = _usable_label(wide_parts[-1] if wide_parts else "") or ""
         if not label and kind == "bracket_slot":
             label = text[start:end].strip(" \t[]【】（）()")
         out.append(

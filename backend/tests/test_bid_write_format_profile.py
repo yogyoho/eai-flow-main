@@ -11,6 +11,7 @@ from app.extensions.bid_write.format_profile import (
     extract_format_profile,
     extract_format_profile_from_path,
     main,
+    _placeholders,
 )
 
 _FIXED_SENTENCE = "我方承诺本投标文件真实有效，并承担相应法律责任。"
@@ -149,3 +150,31 @@ def test_cli_writes_summary_json(tmp_path):
     assert payload["supported"] is True
     assert payload["format_section"]["chapter_count"] == 2
     assert extract_format_profile_from_path(source)["source"]["name"] == "tender.docx"
+
+
+def test_placeholder_label_skips_connective_and_unit_fragments():
+    """残缺占位 label 根治(UX 评审遗留):连词/单位碎片不得充当字段名。"""
+    # 连词"与"在占位符前,字段名应取占位符后的"签订合同"
+    items = _placeholders("与＿＿＿＿签订合同")
+    assert items, "至少抽取到一个占位符"
+    assert all(item["label"] != "与" for item in items)
+    assert any(item["label"] == "签订合同" for item in items)
+
+    # 单位"%"在占位符后,不得单独作为字段名;前文"利润率"才是
+    items = _placeholders("利润率：＿＿＿＿%")
+    assert items
+    assert all(item["label"] != "%" for item in items)
+    assert any(item["label"] == "利润率" for item in items)
+
+    # 合法字段名不受影响(防回归)
+    assert _placeholders("利润率：＿＿＿＿")[0]["label"] == "利润率"
+
+    # 两侧皆碎片时向前扩大窗口取完整字段名
+    items = _placeholders("投标保证金金额：＿＿＿＿%")
+    assert items
+    assert any(item["label"] == "投标保证金金额" for item in items)
+
+    # 纯单位串不作 label
+    items = _placeholders("＿＿＿＿%%")
+    assert items
+    assert all(not item["label"].startswith("%") for item in items)
