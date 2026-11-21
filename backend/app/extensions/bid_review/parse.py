@@ -284,12 +284,32 @@ def _parse_xlsx_sync(data: bytes) -> list[dict]:
     return blocks
 
 
+
+# 已知但暂不支持的二进制格式 → 明确引导文案(而非文本通路产 mojibake;
+# UX 评审遗留 2026-11-21:用户上传 .doc 全文乱码即此通路)。
+_UNSUPPORTED_BINARY_GUIDANCE = {
+    "doc": "旧版 Word(.doc) 暂不支持,请在 Word 中另存为 .docx 后重新上传",
+    "docm": "启用宏的 Word(.docm) 暂不支持,请另存为 .docx 后重新上传",
+    "xls": "旧版 Excel(.xls) 暂不支持,请另存为 .xlsx 后重新上传",
+    "xlsm": "启用宏的 Excel(.xlsm) 暂不支持,请另存为 .xlsx 后重新上传",
+    "ppt": "演示文稿(.ppt) 暂不支持,请导出为 PDF 后重新上传",
+    "pptx": "演示文稿(.pptx) 暂不支持,请导出为 PDF 后重新上传",
+}
+
+
+def _unsupported_guidance(filename: str) -> str | None:
+    ext = (filename or "").lower().rsplit(".", 1)[-1] if "." in (filename or "") else ""
+    return _UNSUPPORTED_BINARY_GUIDANCE.get(ext)
+
 def _blocks_for_bytes(filename: str, data: bytes) -> list[dict]:
     """单成员字节 → 块(按扩展名分派;zip 成员与独立上传共用,对齐审计⑥ 2026-11-05)。
     zip 内 PDF 扫描页走既有 OCR 通路(挂账兑付 2026-11-06):扫描块自带 blob 进
     parse_raw scan 分支,页号=成员内真页码、不做全局偏移;嵌套 zip 显式拒绝
     (否则二进制走文本通路产 mojibake)。"""
     kind = detect_kind(filename)
+    guidance = _unsupported_guidance(filename)
+    if guidance:
+        raise ValueError(guidance)
     if kind == "docx":
         return _parse_docx_sync(data)
     if kind == "pdf":
@@ -333,6 +353,11 @@ def _unzip_blocks(data: bytes) -> list[dict]:
 
 def _parse_text_sync(data: bytes) -> list[dict]:
     """UTF-8 文本(v1 既有行为)→ ~2500 字符段(换行边界断),page=None。"""
+    head = data[:4096]
+    if data[:4] == b"\\xd0\\xcf\\x11\\xe0" or (len(head) >= 16 and head.count(0) > len(head) * 0.1):
+        raise ValueError(
+            "检测到二进制文件内容,不支持按文本解析;请转换为受支持格式(PDF/DOCX/XLSX/图片)后重新上传"
+        )
     text = data.decode("utf-8", "replace")
     blocks: list[dict] = []
     buf: list[str] = []

@@ -408,3 +408,17 @@ async def test_openai_vision_empty_api_key_no_auth_header(monkeypatch):
     assert await parse._ocr_openai_vision(entry1, "a.png", b"x", "image/png") == "转写文本"
     assert captured[0] == {}  # 空 key:无 Authorization(死锁修复面)
     assert captured[1]["Authorization"] == "Bearer sk-x"
+
+def test_unsupported_binary_formats_raise_guidance():
+    """旧版二进制格式(.doc/.xls/.ppt)与未知二进制不走文本通路(防 mojibake)。"""
+    ole2 = b"\xd0\xcf\x11\xe0" + b"\x00" * 64
+    with pytest.raises(ValueError, match="另存为 .docx"):
+        parse._blocks_for_bytes("比选文件.doc", ole2)
+    with pytest.raises(ValueError, match="另存为 .xlsx"):
+        parse._blocks_for_bytes("报价.xls", ole2)
+    with pytest.raises(ValueError, match="导出为 PDF"):
+        parse._blocks_for_bytes("标书.pptx", ole2)
+    with pytest.raises(ValueError, match="二进制"):
+        parse._blocks_for_bytes("附件.dat", b"\x00\x01binary\x00payload")
+    blocks = parse._blocks_for_bytes("说明.txt", "正常中文内容".encode("utf-8"))
+    assert blocks and "正常中文内容" in blocks[0]["text"]
