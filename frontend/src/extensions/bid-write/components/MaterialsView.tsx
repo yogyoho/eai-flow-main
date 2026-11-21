@@ -29,6 +29,7 @@ import {
   Overlay,
   PageHead,
 } from "@/extensions/bid-write/components/primitives";
+import { MATERIALS_COPY } from "@/extensions/bid-write/copy";
 import {
   formatDate,
   gapLibraryType,
@@ -191,7 +192,7 @@ export function MaterialsView() {
       <PageHead
         icon={Boxes}
         title="② 素材核对与缺口"
-        subtitle="动笔前暴露缺件 · 三态缺口清单"
+        subtitle={MATERIALS_COPY.subtitle}
         actions={
           taskId ? (
             <Link href={writeTaskHref("generate", taskId)} className="btn pri btn-sm">
@@ -294,8 +295,14 @@ export function MaterialsView() {
                         <th>来源</th>
                         <th>要求</th>
                         <th>★</th>
-                        <th>矩阵状态</th>
-                        <th>素材状态</th>
+                        <th>
+                          矩阵状态
+                          <span title={MATERIALS_COPY.statusHint}>⍰</span>
+                        </th>
+                        <th>
+                          素材状态
+                          <span title={MATERIALS_COPY.statusHint}>⍰</span>
+                        </th>
                       </tr>
                     </thead>
                     <tbody>
@@ -349,7 +356,7 @@ export function MaterialsView() {
                 <div className="banner bad">
                   <ShieldAlert size={15} aria-hidden="true" />
                   <span>
-                    无对应素材不会阻塞矩阵确认，但会在断言执行与导出门禁中被拦截；素材库补录后以断言判定为准。
+                    无对应素材不会阻塞矩阵确认，但会在断言执行与导出门禁中被拦截；资质素材库补录后以断言判定为准。
                   </span>
                 </div>
               </div>
@@ -414,13 +421,13 @@ export function MaterialsView() {
                 <div className="banner info bw-mt">
                   <Info size={15} aria-hidden="true" />
                   <span>
-                    去素材库补录对应实体；绑定判定由断言执行与导出门禁裁决，本页不人工标记「已绑定」。
+                    去资质素材库补录对应实体；绑定判定由断言执行与导出门禁裁决，本页不人工标记「已绑定」。
                   </span>
                   <Link
                     className="btn btn-sm"
                     href={`${WRITE_PAGE_PATHS.materials_library}?type=${encodeURIComponent(gapLibraryType(selected.requirement ?? ""))}${taskId ? `&task_id=${encodeURIComponent(taskId)}` : ""}`}
                   >
-                    去素材库补录
+                    去资质素材库补录
                   </Link>
                 </div>
               </>

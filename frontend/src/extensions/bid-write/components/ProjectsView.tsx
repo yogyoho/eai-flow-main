@@ -24,11 +24,13 @@ import {
   StageDots,
   type Tone,
 } from "@/extensions/bid-write/components/primitives";
+import { PROJECTS_COPY } from "@/extensions/bid-write/copy";
 import {
   downloadCsv,
   formatDate,
   projectSubtitle,
   projectTitle,
+  safeProjectTitle,
   taskStatusView,
   TASK_STATUS_LABELS,
 } from "@/extensions/bid-write/helpers";
@@ -38,6 +40,15 @@ import {
 } from "@/extensions/bid-write/hooks";
 import { writeTaskHref } from "@/extensions/bid-write/nav";
 import type { WriteTaskOut } from "@/extensions/bid-write/types";
+
+const STAGE_TITLES = [
+  "①解析确认",
+  "②素材核对",
+  "③生成配置",
+  "④写作工作台",
+  "⑤预审查",
+  "⑥导出适配",
+];
 
 function submitability(task: WriteTaskOut): {
   tone: Tone;
@@ -119,7 +130,7 @@ export function ProjectsView() {
       ["任务号", "项目名称", "标段", "招标编号", "状态", "创建时间"],
       tasks.map((task) => [
         task.biz_no ?? task.id,
-        projectTitle(task),
+        safeProjectTitle(projectTitle(task)),
         task.lot_name ?? "",
         task.tender_no ?? "",
         TASK_STATUS_LABELS[task.status] ?? task.status,
@@ -242,7 +253,7 @@ export function ProjectsView() {
                   return (
                     <tr key={task.id}>
                       <td>
-                        <b>{projectTitle(task)}</b>
+                        <b>{safeProjectTitle(projectTitle(task))}</b>
                         <div className="bw-subline">
                           {projectSubtitle(task)}
                         </div>
@@ -251,12 +262,15 @@ export function ProjectsView() {
                       <td className="num">{formatDate(task.created_at)}</td>
                       <td>
                         <div className="bw-stage-cell">
-                          <StageDots status={task.status} />
+                          <StageDots
+                            status={task.status}
+                            stageTitles={STAGE_TITLES}
+                          />
                           <span className="bw-subline">{status.label}</span>
                         </div>
                       </td>
                       <td>
-                        <Badge tone={verdict.tone} dot>
+                        <Badge tone={verdict.tone} outline>
                           {verdict.label}
                         </Badge>
                       </td>
@@ -400,10 +414,7 @@ export function ProjectsView() {
         </div>
         <div className="banner info bw-mt-sm">
           <Info size={15} aria-hidden="true" />
-          <span>
-            创建后任务会依次执行「解析 → 商务要素抽取 →
-            响应矩阵装配」。抽取失败会保留失败原因，不伪造矩阵。
-          </span>
+          <span>{PROJECTS_COPY.intakeNote}</span>
         </div>
       </Overlay>
 
@@ -426,120 +437,104 @@ export function ProjectsView() {
       >
         <div className="bw-help">
           <p className="bw-help-intro">
-            商务写作全程七个阶段：治理面准备
-            →解析确认→素材缺口→生成执行→正文编辑→审批修订→导出交付。状态机为
-            created → parsing → extracting → matrix_ready / failed，失败落因不重投。
+            {PROJECTS_COPY.flowIntro}
           </p>
           <div className="bw-help-grid">
-            <section className="bw-help-section" aria-labelledby="bw-flow-governance">
-              <h3 id="bw-flow-governance">① 治理面准备（跨任务）</h3>
+            <section
+              className="bw-help-section"
+              aria-labelledby="bw-flow-governance"
+            >
+              <h3 id="bw-flow-governance">治理区（跨任务可用）</h3>
               <ul className="bw-help-list">
                 <li>
-                  <b>素材库维护：</b>
-                  企业素材实体与佐证引用；素材库空不是错误，但缺口清单会全部落「无对应素材」。
+                  <b>资质素材库维护：</b>
+                  企业资质、业绩、人员等素材与佐证集中维护；库为空不是错误，缺口会先标为暂无对应素材。
                 </li>
                 <li>
                   <b>企业档案：</b>
-                  bidder_profile 等主体信息，是投标函主体槽位的唯一合法来源（禁止模型补写企业名称类事实）。
+                  企业名称、地址等主体信息集中维护，投标函只引用这里的内容，不补写企业事实。
                 </li>
                 <li>
                   <b>写作策略：</b>
-                  落款默认、税率、调价机制开关、质保期等旋钮兜底。
+                  落款、税率、调价、质保期等默认值统一设置，任务里可按项目调整。
                 </li>
                 <li>
-                  <b>断言注册表：</b>
-                  43 条断言真源（BL 10 / PS 10 / RT 9 / AI 9 / CMN 5）只读查看。
+                  <b>质量规则中心：</b>
+                  全部质量检查规则一览，可随时查看，导出前按规则判定。
                 </li>
               </ul>
             </section>
-            <section className="bw-help-section" aria-labelledby="bw-flow-intake">
-              <h3 id="bw-flow-intake">② 解析确认（建任务 → 响应矩阵）</h3>
+            <section
+              className="bw-help-section"
+              aria-labelledby="bw-flow-intake"
+            >
+              <h3 id="bw-flow-intake">① 解析确认</h3>
               <ol className="bw-help-steps">
                 <li>
-                  上传招标文件建任务，后台自动执行：解析（含 OCR 兜底）→
-                  商务要素抽取（22 条 tender 路径，大文档按段边界分片）→ 响应矩阵装配。
-                </li>
-                <li>
-                  抽取值回查原文比对；未能逐字对上的行进入「待人工核对」，
-                  AI 未自报把握分时按未上报处理（不误伤）。
-                </li>
-                <li>
-                  矩阵三类行源：附件要求逐条（★标红）、承诺条款逐条、聚合要素（有值才造行）。
-                </li>
-                <li>
-                  人工卡点：★行负偏离直接拒绝；待人工核对的行未经确认不得标记为已确认。
+                  上传的招标文件在此解析成「商务响应矩阵」——每条要求一行，可确认、可纠正、可溯源到原文。
+                  带 ★ 的强制条款必须逐条给出响应策略。
                 </li>
               </ol>
             </section>
-            <section className="bw-help-section" aria-labelledby="bw-flow-materials">
-              <h3 id="bw-flow-materials">③ 素材匹配与缺口清单</h3>
+            <section
+              className="bw-help-section"
+              aria-labelledby="bw-flow-materials"
+            >
+              <h3 id="bw-flow-materials">② 素材核对</h3>
               <ul className="bw-help-list">
                 <li>
-                  缺口行携带两个独立维度：矩阵状态（blocked/draft/confirmed）与素材三态（实时匹配，互不推导）。
-                </li>
-                <li>
-                  素材三态：有且可佐证 / 有但缺佐证 /
-                  无对应素材；承诺条款不参与素材匹配，状态为空是设计行为。
-                </li>
-                <li>
-                  补录素材后状态实时翻转；无对应素材不阻塞矩阵确认，但会在断言执行与导出门禁中被拦截。
+                  对照矩阵自动盘点你的资质与业绩素材，提前暴露「暂时拿不出证明」的缺口，避免写完才发现缺件。
                 </li>
               </ul>
             </section>
-            <section className="bw-help-section" aria-labelledby="bw-flow-generate">
-              <h3 id="bw-flow-generate">④ 生成配置与执行</h3>
+            <section
+              className="bw-help-section"
+              aria-labelledby="bw-flow-generate"
+            >
+              <h3 id="bw-flow-generate">③ 生成配置</h3>
               <ul className="bw-help-list">
                 <li>
-                  <b>输入配置：</b>
-                  格式档案（解析后自动提取，可手动重提）＋单价表人工填价（不自动出价）＋策略兜底。
-                </li>
-                <li>
-                  <b>执行生成：</b>
-                  规则层预审查（确定性规则子集；L4 语义审查建议性不阻断）→ 43 条断言执行（D0
-                  先跑，失败短路同技能）→ 裁决与指标落库。
-                </li>
-                <li>
-                  <b>首版正文：</b>
-                  生成后自动落库（格式档案优先，否则按产品装配），工作台首开即真实生成物。
+                  录入质保期、报价、签署日期等关键商务参数；系统据此生成投标正文并自动做质量检查。
                 </li>
               </ul>
             </section>
-            <section className="bw-help-section" aria-labelledby="bw-flow-editor">
-              <h3 id="bw-flow-editor">⑤ 正文编辑（工作台）</h3>
+            <section
+              className="bw-help-section"
+              aria-labelledby="bw-flow-editor"
+            >
+              <h3 id="bw-flow-editor">④ 写作工作台</h3>
               <ul className="bw-help-list">
                 <li>
-                  结构化文档直编（可变缓冲），支持撤销/重做；★条款保护、枚举单元格、负偏离标注、粘贴净化。
-                </li>
-                <li>
-                  编辑中可随时用「真执行器」对当前文档即时跑 43 条断言（只读，不落库）。
+                  像文档一样编辑投标正文：点击占位符直接填写，表格可增删行，审批通过前可反复修改。
                 </li>
               </ul>
             </section>
-            <section className="bw-help-section" aria-labelledby="bw-flow-export">
-              <h3 id="bw-flow-export">⑥ 审批修订与导出交付</h3>
+            <section
+              className="bw-help-section"
+              aria-labelledby="bw-flow-review"
+            >
+              <h3 id="bw-flow-review">⑤ 预审查</h3>
               <ul className="bw-help-list">
                 <li>
-                  <b>提交审批：</b>
-                  冻结当前文档为不可变修订（哈希防篡改）并启动工作流审批；审批流程只读冻结稿，永不再读可变缓冲。
+                  自动检查正文是否满足全部强制要求；红色问题会阻止导出，处理完即可放行。
                 </li>
+              </ul>
+            </section>
+            <section
+              className="bw-help-section"
+              aria-labelledby="bw-flow-export"
+            >
+              <h3 id="bw-flow-export">⑥ 导出适配</h3>
+              <ul className="bw-help-list">
                 <li>
-                  <b>导出门禁：</b>
-                  仅批准的修订可导出；导出时重跑门禁，文件与判定同一事实面；存在 D0 失败即拒绝导出。
-                </li>
-                <li>
-                  <b>交付包：</b>
-                  ZIP 内每个顶层章节一个 DOCX ＋ manifest.json。
+                  最后一道交付检查：矩阵、素材、审批、检查项全部通过后，生成可下载的 DOCX 交付包。
                 </li>
               </ul>
             </section>
           </div>
           <div className="bw-help-callout">
             <Info size={15} aria-hidden="true" />
-            <span>
-              贯穿铁律：只抄不编（原文核验＋禁模型补写企业事实）；算术确定性（Decimal
-              代码计算，禁 LLM）；★条款双 D0（100% 覆盖＋零负偏离）；明细表唯一事实源；D0–D3
-              四级降级。主线：每条正文可追溯到招标条款与素材实体；每个缺件在动笔前暴露；每次导出都有门禁明确判定。
-            </span>
+            <span>资质素材库与质量规则中心随时可从左侧进入。</span>
           </div>
         </div>
       </Overlay>

@@ -7,6 +7,8 @@
 
 import {
   AlertCircle,
+  AlertTriangle,
+  Check,
   CheckCircle2,
   Loader2,
   X,
@@ -30,20 +32,50 @@ const TONE_CLASS: Record<Tone, string> = {
   d3: "b-d3",
 };
 
+/** 外框徽标(bw-badge-outline)的语气 → 图标映射:警示三角 / 对勾 / 旋转加载。 */
+const OUTLINE_ICON: Partial<Record<Tone, LucideIcon>> = {
+  warn: AlertTriangle,
+  bad: AlertTriangle,
+  ok: Check,
+  info: Loader2,
+};
+
 export function Badge({
   tone = "gray",
   children,
   dot = false,
+  outline = false,
+  icon,
   className,
 }: {
   tone?: Tone;
   children: ReactNode;
   dot?: boolean;
+  /** 外框徽标样式:描边胶囊,语气图标替代圆点(项目列表「矩阵状态」列)。 */
+  outline?: boolean;
+  /** outline 变体的图标覆盖(如草稿用铅笔,其余沿用语气映射)。 */
+  icon?: LucideIcon;
   className?: string;
 }) {
+  const Icon = outline ? (icon ?? OUTLINE_ICON[tone]) : undefined;
   return (
-    <span className={cn("badge", TONE_CLASS[tone], className)}>
-      {dot ? <i aria-hidden="true" /> : null}
+    <span
+      className={cn(
+        "badge",
+        TONE_CLASS[tone],
+        outline && "bw-badge-outline",
+        className,
+      )}
+    >
+      {Icon ? (
+        <Icon
+          size={11}
+          aria-hidden="true"
+          className={cn(tone === "info" && "bw-badge-spin")}
+        />
+      ) : dot ? (
+        <i aria-hidden="true" />
+      ) : null}
       {children}
     </span>
   );
@@ -197,7 +229,22 @@ export function ProgressBar({ value }: { value: number }) {
   );
 }
 
-export function StageDots({ status }: { status: string }) {
+const DEFAULT_STAGE_TITLES = [
+  "①解析确认",
+  "②素材核对",
+  "③生成配置",
+  "④写作工作台",
+  "⑤预审查",
+  "⑥导出适配",
+];
+
+export function StageDots({
+  status,
+  stageTitles = DEFAULT_STAGE_TITLES,
+}: {
+  status: string;
+  stageTitles?: string[];
+}) {
   const stage =
     status === "matrix_ready"
       ? 6
@@ -213,6 +260,7 @@ export function StageDots({ status }: { status: string }) {
       {Array.from({ length: 6 }, (_, index) => (
         <i
           key={index}
+          title={stageTitles[index]}
           className={
             index < stage - 1 ? "done" : index === stage - 1 ? "cur" : undefined
           }

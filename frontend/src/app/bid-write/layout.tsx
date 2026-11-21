@@ -6,6 +6,8 @@ import {
   LibraryBig,
   BookOpen,
   Boxes,
+  ChevronLeft,
+  ChevronRight,
   ClipboardList,
   FileArchive,
   FileText,
@@ -98,14 +100,14 @@ const navItems: Array<{
   },
   {
     href: WRITE_PAGE_PATHS.materials_library,
-    label: "素材库",
+    label: "资质素材库",
     icon: LibraryBig,
     group: 2,
     taskPage: "materials_library",
   },
   {
     href: WRITE_PAGE_PATHS.registry,
-    label: "断言注册表",
+    label: "质量规则中心",
     icon: BookMarked,
     group: 2,
   },
@@ -156,10 +158,13 @@ function WriteNavGroups({
   groups,
   badges,
   tasks,
+  collapsed = false,
 }: {
   groups: Array<Array<(typeof navItems)[number]>>;
   badges: ReturnType<typeof writeNavBadges>;
   tasks: WriteTaskOut[] | undefined;
+  /** 收起态:仅图标列,悬停以 title 提示菜单名。 */
+  collapsed?: boolean;
 }) {
   const pathname = usePathname();
   const effId = effectiveWriteTaskId(
@@ -185,6 +190,7 @@ function WriteNavGroups({
                     key={href}
                     href={linkHref}
                     className={cn("nav-item", isActive && "on")}
+                    title={collapsed ? label : undefined}
                   >
                     <Icon size={15} className="ic" aria-hidden="true" />
                     {label}
@@ -214,13 +220,37 @@ function BidWriteLayoutContent({ children }: { children: ReactNode }) {
   const groups = [0, 1, 2].map((group) =>
     navItems.filter((item) => item.group === group),
   );
+  // 左侧菜单收起态。null=未从 storage 读出,首屏按展开渲染,避免 SSR 水合不一致。
+  const [sideCollapsed, setSideCollapsed] = useState<boolean | null>(null);
+  useEffect(() => {
+    try {
+      setSideCollapsed(
+        window.localStorage.getItem("bw-side") === "collapsed",
+      );
+    } catch {
+      setSideCollapsed(false);
+    }
+  }, []);
+  const collapsed = sideCollapsed === true;
+  const toggleSide = () => {
+    setSideCollapsed((prev) => {
+      const next = !(prev ?? false);
+      try {
+        if (next) window.localStorage.setItem("bw-side", "collapsed");
+        else window.localStorage.removeItem("bw-side");
+      } catch {
+        // storage 不可用时仅本次会话生效
+      }
+      return next;
+    });
+  };
 
   return (
     <div
       className="brx bwx"
       data-theme={dark === true ? "dark" : dark === false ? "light" : undefined}
     >
-      <div className="chrome">
+      <div className={cn("chrome", collapsed && "bw-side-collapsed")}>
         <aside className="chrome-side">
           <div className="chrome-brand">
             <div className="brand-row">
@@ -232,7 +262,12 @@ function BidWriteLayoutContent({ children }: { children: ReactNode }) {
             </div>
           </div>
           <Suspense fallback={null}>
-            <WriteNavGroups groups={groups} badges={badges} tasks={tasks} />
+            <WriteNavGroups
+              groups={groups}
+              badges={badges}
+              tasks={tasks}
+              collapsed={collapsed}
+            />
           </Suspense>
           <div className="chrome-foot">
             <button
@@ -250,6 +285,21 @@ function BidWriteLayoutContent({ children }: { children: ReactNode }) {
             </button>
           </div>
         </aside>
+        {/* 收起/展开按钮挂在 .chrome 上:侧栏有 overflow,挂里面会被裁剪。 */}
+        <button
+          type="button"
+          className="bw-side-toggle"
+          onClick={toggleSide}
+          aria-label={collapsed ? "展开菜单" : "收起菜单"}
+          aria-expanded={!collapsed}
+          title={collapsed ? "展开菜单" : "收起菜单"}
+        >
+          {collapsed ? (
+            <ChevronRight size={14} aria-hidden="true" />
+          ) : (
+            <ChevronLeft size={14} aria-hidden="true" />
+          )}
+        </button>
         <main className="chrome-main">{children}</main>
       </div>
       <Toaster />

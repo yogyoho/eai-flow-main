@@ -22,6 +22,12 @@ import {
   Overlay,
   PageHead,
 } from "@/extensions/bid-write/components/primitives";
+import {
+  ASSERTION_PRE_LABELS,
+  ASSERTION_RENDER_LABELS,
+  ASSERTION_RETRY_LABELS,
+  REGISTRY_COPY,
+} from "@/extensions/bid-write/copy";
 import { downloadCsv } from "@/extensions/bid-write/helpers";
 import { useBidWriteRegistry } from "@/extensions/bid-write/hooks";
 import type { RegistryAssertion } from "@/extensions/bid-write/types";
@@ -113,8 +119,8 @@ export function RegistryView() {
     <>
       <PageHead
         icon={BookMarked}
-        title="断言注册表"
-        subtitle="P0 四技能 + CMN 共享层 · 只读真源（后端 assertions/p0.yaml）"
+        title={REGISTRY_COPY.title}
+        subtitle={REGISTRY_COPY.subtitle}
         actions={
           <button
             type="button"
@@ -156,7 +162,7 @@ export function RegistryView() {
               suffix="条"
               accent
             />
-            <MetricCell label="D0 阻断级" value={d0} tone="err" />
+            <MetricCell label="必须通过（阻断导出）" value={d0} tone="err" />
             <MetricCell label="技能域" value={skills.length} />
             <MetricCell
               label="schema"
@@ -191,11 +197,26 @@ export function RegistryView() {
                         <span>导出门禁</span>
                         <b>{entry.blk ? "阻断" : "不阻断"}</b>
                         <span>渲染</span>
-                        <b>{entry.render ?? "—"}</b>
+                        <b>
+                          {entry.render
+                            ? (ASSERTION_RENDER_LABELS[entry.render] ??
+                              entry.render)
+                            : "—"}
+                        </b>
                         <span>预审状态</span>
-                        <b>{entry.pre_review_state ?? "—"}</b>
+                        <b>
+                          {entry.pre_review_state
+                            ? (ASSERTION_PRE_LABELS[entry.pre_review_state] ??
+                              entry.pre_review_state)
+                            : "—"}
+                        </b>
                         <span>重试</span>
-                        <b>{entry.retry ?? "—"}</b>
+                        <b>
+                          {entry.retry
+                            ? (ASSERTION_RETRY_LABELS[entry.retry] ??
+                              entry.retry)
+                            : "—"}
+                        </b>
                       </div>
                     </div>
                   ),
