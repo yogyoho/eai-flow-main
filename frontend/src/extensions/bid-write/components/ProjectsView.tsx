@@ -29,6 +29,7 @@ import { PROJECTS_COPY } from "@/extensions/bid-write/copy";
 import {
   downloadCsv,
   formatDate,
+  isSupportedUploadFile,
   lifecycleLabel,
   projectSubtitle,
   projectTitle,
@@ -400,10 +401,24 @@ export function ProjectsView() {
                 type="file"
                 multiple
                 hidden
-                accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.md"
-                onChange={(event) =>
-                  setFiles(Array.from(event.target.files ?? []))
-                }
+                accept=".pdf,.docx,.xlsx,.zip,.png,.jpg,.jpeg,.bmp,.gif,.txt,.md"
+                onChange={(event) => {
+                  const picked = Array.from(event.target.files ?? []);
+                  const supported = picked.filter((file) =>
+                    isSupportedUploadFile(file.name),
+                  );
+                  const rejected = picked.filter(
+                    (file) => !isSupportedUploadFile(file.name),
+                  );
+                  if (rejected.length > 0) {
+                    toast.error(
+                      `暂不支持 ${rejected
+                        .map((file) => file.name)
+                        .join("、")} 的格式;请转换为 PDF / Word(.docx) / Excel(.xlsx) / 图片 / 压缩包后重新选择`,
+                    );
+                  }
+                  setFiles(supported);
+                }}
               />
             </div>
             {files.length > 0 ? (

@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it } from "@rstest/core";
 
 import { STEP_BACK } from "@/extensions/bid-write/copy";
 import {
+  isSupportedUploadFile,
   LIFECYCLE_LABELS,
   lifecycleLabel,
 } from "@/extensions/bid-write/helpers";
@@ -242,5 +243,18 @@ describe("bid-write lifecycle labels", () => {
 
   it("keeps an unknown lifecycle value visible as-is", () => {
     expect(lifecycleLabel("future-state")).toBe("future-state");
+  });
+});
+
+describe("上传支持面判定(对齐后端 parse 支持列表)", () => {
+  it("支持的扩展名放行", () => {
+    for (const name of ["比选文件.docx", "招标.pdf", "报价.xlsx", "材料包.zip", "盖章.png", "说明.txt"]) {
+      expect(isSupportedUploadFile(name)).toBe(true);
+    }
+  });
+  it("旧版二进制与未知扩展拒绝", () => {
+    for (const name of ["比选文件.doc", "标书.ppt", "报价.xls", "稿.pptx", "附件.dat", "无扩展名"]) {
+      expect(isSupportedUploadFile(name)).toBe(false);
+    }
   });
 });

@@ -32,6 +32,26 @@ export const TASK_STATUS_TONES: Record<
   failed: "bad",
 };
 
+export const SUPPORTED_UPLOAD_EXTENSIONS = [
+  "pdf",
+  "docx",
+  "xlsx",
+  "zip",
+  "png",
+  "jpg",
+  "jpeg",
+  "bmp",
+  "gif",
+  "txt",
+  "md",
+] as const;
+
+/** 与后端 detect_kind/parse 支持面对齐;旧版二进制(.doc/.xls/.ppt 等)明确拒绝,
+    避免上传后解析乱码(UX 评审遗留 2026-11-21)。 */
+export function isSupportedUploadFile(name: string): boolean {
+  const ext = name.toLowerCase().split(".").pop() ?? "";
+  return (SUPPORTED_UPLOAD_EXTENSIONS as readonly string[]).includes(ext);
+}
 export const LIFECYCLE_LABELS: Record<string, string> = {
   active: "进行中",
   reviewing: "审批中",
