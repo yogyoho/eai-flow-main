@@ -35,6 +35,8 @@ class WriteTask(Base):
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=_id)
     owner_id: Mapped[str] = mapped_column(String(64), index=True)
     status: Mapped[str] = mapped_column(String(20), default="created", index=True)
+    # Delivery lifecycle is orthogonal to the parsing/execution status machine.
+    lifecycle: Mapped[str] = mapped_column(String(12), default="active", server_default="active")
     progress: Mapped[dict] = mapped_column(JSON, default=dict)  # {stage, pct, msg}
     error: Mapped[str | None] = mapped_column(Text, nullable=True)
     engine_meta: Mapped[dict] = mapped_column(JSON, default=dict)  # {docs, schema_version, model…}

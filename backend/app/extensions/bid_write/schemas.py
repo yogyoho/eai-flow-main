@@ -15,6 +15,7 @@ class WriteTaskOut(BaseModel):
     id: str
     biz_no: str | None = None
     status: str
+    lifecycle: str = "active"
     progress: dict = Field(default_factory=dict)
     error: str | None = None
     project_name: str | None = None
@@ -63,6 +64,9 @@ class GenerateKnobs(BaseModel):
     total_pages: int | None = None
     # 批廿五 P1-δ:质保承诺(L4-001 输入 bid.warranty_period;原样透传不造数,单位随填)
     warranty_period: str | None = None
+    # 批卅六:重建正文开关(控制面,不入 meta.knobs——routers 合并时剔除);
+    # True=已有正文受控重建(无审批修订才放行,否则 409)。
+    regenerate_document: bool = False
 
 
 class MaterialIn(BaseModel):

@@ -22,6 +22,11 @@ from app.extensions.bid_write.models import WriteTask
 logger = logging.getLogger(__name__)
 
 
+class DocumentRegenerateConflict(RuntimeError):
+    """重建正文被拒:已存在审批修订(冻结快照),覆盖会破坏 hash 溯源链。
+    routers 映射 409;调用方拿到该异常时正文必须保持原样(先查后写)。"""
+
+
 def _default_extract_fn():
     """生产 LLM 抽取接线(子集版):复用 bid_review.worker 的模型解析/重试核
     (_resolve_model_name/_invoke_json)与 extract 分片 prompt 原语;归并=首见非
@@ -295,15 +300,23 @@ def _l4_model_fn():
     return _fn
 
 
-async def ensure_generated_document(db: AsyncSession, task: WriteTask, owner_id: str) -> bool:
+async def ensure_generated_document(db: AsyncSession, task: WriteTask, owner_id: str, *, overwrite: bool = False) -> bool:
     """首次生成后把 products 装配成正文 AST 落库(批三十四)。
 
-    只在任务尚无正文、且没有任何审批修订时落库,绝不覆盖人工编辑或冻结快照。
-    返回 True=本次创建;False=已有正文/修订或装配失败(非致命,生成门禁仍以
-    verdict 为准)。装配失败只记日志,不让生成主流程假成功或假失败。
+    缺省只在任务尚无正文、且没有任何审批修订时落库,绝不覆盖人工编辑或冻结
+    快照。批卅六可用性修复:overwrite=True(③「重建正文」旋钮)允许在**没有任何
+    审批修订**时受控重建——工作台帮助此前指引「③补齐后重新生成」,而本函数
+    绝不覆盖=指路死巷;现在语义一致:重建明示覆盖人工修改,修订面仍然刚性拒绝。
+    返回 True=本次创建/重建;False=跳过(已有正文且未要求重建,或装配失败,
+    非致命,生成门禁仍以 verdict 为准);revision 存在且 overwrite=True→
+    DocumentRegenerateConflict(正文不动)。装配失败只记日志。
     """
+    if overwrite:
+        latest = await crud.latest_revision(db, task.id, owner_id)
+        if latest is not None:
+            raise DocumentRegenerateConflict("已存在审批修订，正文不可重建；请先驳回/替代该修订后再重建")
     existing = await crud.get_document(db, task_id=task.id, owner_id=owner_id)
-    if existing is not None:
+    if existing is not None and not overwrite:
         return False
     latest = await crud.latest_revision(db, task.id, owner_id)
     if latest is not None:

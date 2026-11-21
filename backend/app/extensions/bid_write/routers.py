@@ -533,6 +533,7 @@ async def export_task_revision(task_id: str, revision_id: str, db: AsyncSession 
         bundle, record = await export.export_revision(db, task=task, revision=revision)
     except export.ExportConflict as exc:
         raise HTTPException(status_code=409, detail=str(exc)) from exc
+    await crud.set_lifecycle(db, task, "delivered")
 
     headers = {
         "Content-Disposition": f"attachment; filename=\"bid-write-delivery.zip\"; filename*=UTF-8''{quote(bundle.filename)}",
@@ -609,23 +610,32 @@ async def get_assertion_registry(_owner_id: str = Depends(current_owner)):
 @router.post("/tasks/{task_id}/generate")
 async def generate_task(task_id: str, body: schemas.GenerateKnobs | None = None, db: AsyncSession = Depends(get_db), owner_id: str = Depends(current_owner)):
     """批廿一 M2:装配生成+断言/规则预审查+导出门禁+skill_run 落库。body 旋钮
-    合并进 meta.knobs(None 键不覆盖);409=矩阵未就绪面。"""
+    合并进 meta.knobs(None 键不覆盖);409=矩阵未就绪/修订存在拒绝重建面。"""
     task = await crud.get_task(db, task_id=task_id, owner_id=owner_id)
     if task is None:
         raise HTTPException(status_code=404, detail="任务不存在")
     if task.status != "matrix_ready":
         raise HTTPException(status_code=409, detail=f"矩阵未就绪(status={task.status})")
     if body is not None:
+        regenerate = bool(body.regenerate_document)
         meta = dict(task.engine_meta or {})
         knobs = dict(meta.get("knobs") or {})
-        knobs.update({k: v for k, v in body.model_dump().items() if v is not None})
+        # regenerate_document=控制面,不落 knobs(批卅六)
+        knobs.update({k: v for k, v in body.model_dump().items() if v is not None and k != "regenerate_document"})
         meta["knobs"] = knobs
         task.engine_meta = meta
         await db.commit()
         await db.refresh(task)
+    else:
+        regenerate = False
     export = await worker.generate_and_record(db, task, owner_id)
     # 批三十四:首次生成即把四切片装配成可编辑正文;已有正文/修订时绝不覆盖。
-    await worker.ensure_generated_document(db, task, owner_id)
+    # 批卅六:③「重建正文」走 regenerate_document=True——无修订时受控重建,
+    # 有修订→409(正文保持原样),工作台帮助与实际语义一致。
+    try:
+        await worker.ensure_generated_document(db, task, owner_id, overwrite=regenerate)
+    except worker.DocumentRegenerateConflict as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
     return {"verdict": export, "blocked": export["blocked"], "biz_no": task.biz_no, "status": task.status}
 
 

@@ -82,6 +82,15 @@ async def set_status(session: AsyncSession, task: WriteTask, status: str, progre
     return task
 
 
+async def set_lifecycle(session: AsyncSession, task: WriteTask, lifecycle: str) -> WriteTask:
+    """Set the delivery lifecycle without touching the parsing status machine."""
+
+    task.lifecycle = lifecycle
+    await session.commit()
+    await session.refresh(task)
+    return task
+
+
 # --- MatrixRow ----------------------------------------------------------------
 
 
@@ -408,6 +417,10 @@ async def set_revision_status(session: AsyncSession, revision, status: str):
     revision.status = status
     if status in ("approved", "rejected"):
         revision.decided_at = datetime.now(UTC)
+        if status == "rejected":
+            task = await get_task_by_id(session, revision.task_id)
+            if task is not None:
+                task.lifecycle = "active"
     await session.commit()
     await session.refresh(revision)
     return revision

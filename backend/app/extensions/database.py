@@ -1399,6 +1399,7 @@ async def migrate_db() -> None:
         await conn.execute(text("ALTER TABLE bid_review_tasks ADD COLUMN IF NOT EXISTS tender_no VARCHAR(255)"))
         await conn.execute(text("ALTER TABLE bid_review_tasks ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ DEFAULT NOW()"))
         await conn.execute(text("ALTER TABLE bid_review_tasks ADD COLUMN IF NOT EXISTS done_at TIMESTAMPTZ"))
+        await conn.execute(text("ALTER TABLE bid_write_tasks ADD COLUMN IF NOT EXISTS lifecycle VARCHAR(12) NOT NULL DEFAULT 'active'"))
         # biz_no 存量回填:按创建日分区,日内按 created_at,id 决胜,序号 0001 起。
         await conn.execute(
             text("""

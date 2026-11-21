@@ -341,6 +341,7 @@ async def submit_revision(
         await db.rollback()
         raise
     revision.approval_instance_id = instance.id
+    task.lifecycle = "reviewing"
     await db.commit()
     await db.refresh(revision)
     return await get_approval_state(db, task.id, owner_id)
