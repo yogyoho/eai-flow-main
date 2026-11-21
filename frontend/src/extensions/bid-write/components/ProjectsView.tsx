@@ -12,6 +12,7 @@ import { useRouter } from "next/navigation";
 import { useRef, useState } from "react";
 import { toast } from "sonner";
 
+import { HelpDrawer } from "@/extensions/bid-write/components/HelpDrawer";
 import {
   Badge,
   EmptyState,
@@ -413,22 +414,10 @@ export function ProjectsView() {
         </div>
       </Overlay>
 
-      <Overlay
+      <HelpDrawer
         open={helpOpen}
         title="流程说明"
-        subtitle="投标方案（商务）写作 · 从招标文件到导出交付包"
         onClose={() => setHelpOpen(false)}
-        variant="modal"
-        size="wide"
-        footer={
-          <button
-            type="button"
-            className="btn pri"
-            onClick={() => setHelpOpen(false)}
-          >
-            知道了
-          </button>
-        }
       >
         <div className="bw-help">
           <p className="bw-help-intro">
@@ -532,7 +521,7 @@ export function ProjectsView() {
             <span>资质素材库与质量规则中心随时可从左侧进入。</span>
           </div>
         </div>
-      </Overlay>
+      </HelpDrawer>
     </>
   );
 }

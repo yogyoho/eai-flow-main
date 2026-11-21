@@ -30,6 +30,7 @@ import {
   writeDocAssetUrl,
   type LocateTarget,
 } from "@/extensions/bid-write/api";
+import { HelpDrawer } from "@/extensions/bid-write/components/HelpDrawer";
 import {
   Badge,
   EmptyState,
@@ -909,22 +910,10 @@ export function IntakeView() {
         </>
       )}
 
-      <Overlay
+      <HelpDrawer
         open={helpOpen}
         title="本页说明"
-        subtitle="要求来源导航与响应矩阵用途"
         onClose={() => setHelpOpen(false)}
-        variant="modal"
-        size="wide"
-        footer={
-          <button
-            type="button"
-            className="btn pri"
-            onClick={() => setHelpOpen(false)}
-          >
-            知道了
-          </button>
-        }
       >
         <div className="bw-help">
           <p className="bw-help-intro">
@@ -1004,7 +993,7 @@ export function IntakeView() {
             </span>
           </div>
         </div>
-      </Overlay>
+      </HelpDrawer>
 
       <Overlay
         open={dialog !== null}
