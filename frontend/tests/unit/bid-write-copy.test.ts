@@ -50,6 +50,22 @@ describe("bid-write copy 文案中心", () => {
     }
   });
 
+  it("生成参数写入口覆盖五个业务字段且值为业务句", () => {
+    expect(Object.keys(GENERATE_COPY.FIELD_TARGETS).sort()).toEqual(
+      [
+        "general_commitments",
+        "price_note",
+        "sign_date",
+        "unit_prices",
+        "warranty_period",
+      ].sort(),
+    );
+    for (const text of Object.values(GENERATE_COPY.FIELD_TARGETS)) {
+      expect(text).toContain("将写入");
+      expect(BANNED.test(text), `含术语: ${text}`).toBe(false);
+    }
+  });
+
   it("断言渲染/预审/重试词表覆盖已知常量且值为业务词", () => {
     expect(ASSERTION_RENDER_LABELS.TODO_BLOCK).toBe("标红并列入待补清单");
     expect(ASSERTION_RENDER_LABELS.MARK_YELLOW).toBe("标黄提醒");

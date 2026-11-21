@@ -10,6 +10,13 @@ export const GENERATE_COPY = {
   subtitleNoTask: "先录入关键商务参数，系统据此生成并校验正文",
   boqEmptyTitle: "本次招标未提取到工程量清单",
   boqEmptyHint: "无需逐项报价。可直接使用下方参数区填写质保期等商务承诺。",
+  FIELD_TARGETS: {
+    warranty_period: "将写入：投标函质保条款、技术方案质保承诺",
+    general_commitments: "将写入：承诺条款清单",
+    unit_prices: "将写入：报价一览表单价列",
+    sign_date: "将写入：投标函落款日期",
+    price_note: "将写入：报价说明栏",
+  },
   paramsTitle: "商务参数",
   paramsBadge: "未填写的参数保持默认",
   runHint: "点击「开始生成」后：套用上方参数生成正文，并自动执行质量检查",

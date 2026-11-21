@@ -140,24 +140,30 @@ export function GenerateView() {
         }
       />
 
-      <MetricStrip>
-        <MetricCell label="清单行" value={items.length} suffix="项" accent />
-        <MetricCell
-          label="已出价"
-          value={priced.length}
-          suffix={`/${items.length}`}
-          tone={items.length > 0 && priced.length < items.length ? "warn" : "ok"}
-        />
-        <MetricCell
-          label="报价预览合计"
-          value={priced.length ? `¥${money(total)}` : "—"}
-          tone="ok"
-        />
-        <MetricCell
-          label="必须通过项"
-          value={verdict?.assertion_counts?.D0 ?? "—"}
-        />
-      </MetricStrip>
+      {items.length === 0 ? (
+        <p className="bw-muted">
+          本次未提取到工程量清单，报价相关指标不适用。
+        </p>
+      ) : (
+        <MetricStrip>
+          <MetricCell label="清单行" value={items.length} suffix="项" accent />
+          <MetricCell
+            label="已出价"
+            value={priced.length}
+            suffix={`/${items.length}`}
+            tone={priced.length < items.length ? "warn" : "ok"}
+          />
+          <MetricCell
+            label="报价预览合计"
+            value={priced.length ? `¥${money(total)}` : "—"}
+            tone="ok"
+          />
+          <MetricCell
+            label="必须通过项"
+            value={verdict?.assertion_counts?.D0 ?? "—"}
+          />
+        </MetricStrip>
+      )}
 
       {!task ? (
         <div className="banner info bw-mt">
@@ -186,53 +192,56 @@ export function GenerateView() {
             />
           </div>
         ) : (
-          <div className="tbl-wrap">
-            <table className="tbl dense">
-              <thead>
-                <tr>
-                  <th>清单项 id</th>
-                  <th>名称</th>
-                  <th className="num">数量</th>
-                  <th>单位</th>
-                  <th className="num">单价（元）</th>
-                  <th className="num">合价预览（元）</th>
-                </tr>
-              </thead>
-              <tbody>
-                {items.map((item) => {
-                  const price = draft.unitPrices[item.id] ?? "";
-                  return (
-                    <tr key={item.id}>
-                      <td className="mono">{item.id}</td>
-                      <td>{item.name}</td>
-                      <td className="num mono">{String(item.qty ?? "")}</td>
-                      <td>{item.unit}</td>
-                      <td>
-                        <input
-                          className="inp num bw-cell-input"
-                          value={price}
-                          placeholder="0.00"
-                          aria-label={`${item.id} 单价`}
-                          onChange={(event) => setUnitPrice(item.id, event.target.value)}
-                        />
-                      </td>
-                      <td className="num mono">
-                        {price.trim() !== ""
-                          ? money(numberValue(String(item.qty ?? "")) * numberValue(price))
-                          : "—"}
-                      </td>
-                    </tr>
-                  );
-                })}
-                <tr>
-                  <td colSpan={4} className="num bw-total-label">
-                    合计预览（仅已出价行 · 后端按同一公式确定性重算）
-                  </td>
-                  <td className="num mono bw-total-value">¥{money(total)}</td>
-                  <td />
-                </tr>
-              </tbody>
-            </table>
+          <div className="card-b">
+            <p className="bw-muted">{GENERATE_COPY.FIELD_TARGETS.unit_prices}</p>
+            <div className="tbl-wrap">
+              <table className="tbl dense">
+                <thead>
+                  <tr>
+                    <th>清单项 id</th>
+                    <th>名称</th>
+                    <th className="num">数量</th>
+                    <th>单位</th>
+                    <th className="num">单价（元）</th>
+                    <th className="num">合价预览（元）</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {items.map((item) => {
+                    const price = draft.unitPrices[item.id] ?? "";
+                    return (
+                      <tr key={item.id}>
+                        <td className="mono">{item.id}</td>
+                        <td>{item.name}</td>
+                        <td className="num mono">{String(item.qty ?? "")}</td>
+                        <td>{item.unit}</td>
+                        <td>
+                          <input
+                            className="inp num bw-cell-input"
+                            value={price}
+                            placeholder="0.00"
+                            aria-label={`${item.id} 单价`}
+                            onChange={(event) => setUnitPrice(item.id, event.target.value)}
+                          />
+                        </td>
+                        <td className="num mono">
+                          {price.trim() !== ""
+                            ? money(numberValue(String(item.qty ?? "")) * numberValue(price))
+                            : "—"}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                  <tr>
+                    <td colSpan={4} className="num bw-total-label">
+                      合计预览（仅已出价行 · 后端按同一公式确定性重算）
+                    </td>
+                    <td className="num mono bw-total-value">¥{money(total)}</td>
+                    <td />
+                  </tr>
+                </tbody>
+              </table>
+            </div>
           </div>
         )}
       </div>
@@ -248,6 +257,9 @@ export function GenerateView() {
           <div className="bw-policy-grid">
             <label className="field">
               <span>质保承诺（月或原文表述）</span>
+              <span className="bw-muted">
+                {GENERATE_COPY.FIELD_TARGETS.warranty_period}
+              </span>
               <input
                 className="inp"
                 value={draft.warrantyMonths}
@@ -259,6 +271,9 @@ export function GenerateView() {
             </label>
             <label className="field">
               <span>备件供应年限</span>
+              <span className="bw-muted">
+                {GENERATE_COPY.FIELD_TARGETS.general_commitments}
+              </span>
               <input
                 className="inp"
                 value={draft.spareYears}
@@ -268,6 +283,9 @@ export function GenerateView() {
             </label>
             <label className="field">
               <span>故障响应时限（小时）</span>
+              <span className="bw-muted">
+                {GENERATE_COPY.FIELD_TARGETS.general_commitments}
+              </span>
               <input
                 className="inp"
                 value={draft.responseHours}
@@ -277,6 +295,9 @@ export function GenerateView() {
             </label>
             <label className="field">
               <span>违约金上限（%）</span>
+              <span className="bw-muted">
+                {GENERATE_COPY.FIELD_TARGETS.general_commitments}
+              </span>
               <input
                 className="inp"
                 value={draft.penaltyCap}
@@ -286,6 +307,9 @@ export function GenerateView() {
             </label>
             <label className="field">
               <span>签署日期</span>
+              <span className="bw-muted">
+                {GENERATE_COPY.FIELD_TARGETS.sign_date}
+              </span>
               <input
                 className="inp"
                 value={draft.signDate}
@@ -295,6 +319,9 @@ export function GenerateView() {
             </label>
             <label className="field">
               <span>报价说明</span>
+              <span className="bw-muted">
+                {GENERATE_COPY.FIELD_TARGETS.price_note}
+              </span>
               <input
                 className="inp"
                 value={draft.priceNote}
