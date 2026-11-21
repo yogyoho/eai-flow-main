@@ -1,6 +1,6 @@
-import { expect, it, rs } from "@rstest/core";
+import { afterEach, expect, it, rs } from "@rstest/core";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { render, screen } from "@testing-library/react";
+import { cleanup, render, screen } from "@testing-library/react";
 
 import { ReviewView } from "@/extensions/bid-write/components/ReviewView";
 import { REVIEW_COPY } from "@/extensions/bid-write/copy";
@@ -21,6 +21,10 @@ rs.mock("@/extensions/bid-write/hooks", () => ({
   }),
 }));
 
+afterEach(() => {
+  cleanup();
+});
+
 function renderView(): void {
   const client = new QueryClient({
     defaultOptions: { queries: { retry: false } },
@@ -37,4 +41,10 @@ it("底部说明使用业务文案，不含端点/级别术语", () => {
   expect(screen.getByText(REVIEW_COPY.bottomNote)).toBeTruthy();
   expect(screen.queryByText(/只读结果端点/)).toBeNull();
   expect(screen.queryByText(/blocks_export/)).toBeNull();
+});
+
+it("页头动作移除重跑入口并展示检查快照说明", () => {
+  renderView();
+  expect(screen.queryByRole("button", { name: /重跑断言/ })).toBeNull();
+  expect(screen.getByText(REVIEW_COPY.snapshotBadge)).toBeTruthy();
 });

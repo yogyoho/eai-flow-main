@@ -6,7 +6,6 @@ import {
   ClipboardList,
   Download,
   Info,
-  PlayCircle,
   ShieldCheck,
   XCircle,
 } from "lucide-react";
@@ -156,16 +155,7 @@ export function ReviewView() {
               <Download size={13} aria-hidden="true" />
               导出待补清单
             </button>
-            <button
-              type="button"
-              className="btn btn-sm soft"
-              onClick={() =>
-                toast.info(REVIEW_COPY.snapshotBadge)
-              }
-            >
-              <PlayCircle size={13} aria-hidden="true" />
-              重跑断言
-            </button>
+            <span className="bw-muted">{REVIEW_COPY.snapshotBadge}</span>
           </>
         }
       />
