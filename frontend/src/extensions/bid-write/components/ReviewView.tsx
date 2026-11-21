@@ -23,7 +23,14 @@ import {
   Overlay,
   PageHead,
 } from "@/extensions/bid-write/components/primitives";
-import { REVIEW_COPY, STEP_BACK } from "@/extensions/bid-write/copy";
+import {
+  ASSERTION_PRE_LABELS,
+  ASSERTION_RENDER_LABELS,
+  ASSERTION_RETRY_LABELS,
+  REGISTRY_COPY,
+  REVIEW_COPY,
+  STEP_BACK,
+} from "@/extensions/bid-write/copy";
 import {
   ASSERTION_STATUS_LABELS,
   assertionMessageLabel,
@@ -33,6 +40,7 @@ import {
   projectTitle,
 } from "@/extensions/bid-write/helpers";
 import {
+  useBidWriteRegistry,
   useBidWriteGaps,
   useDeliveryGates,
   useSelectedWriteTask,
@@ -41,6 +49,7 @@ import { writeTaskHref } from "@/extensions/bid-write/nav";
 import type {
   AssertionPendingItem,
   AssertionSkippedItem,
+  RegistryLevel,
 } from "@/extensions/bid-write/types";
 
 type Filter = "all" | "FAIL" | "ERROR" | "SKIPPED";
@@ -54,6 +63,43 @@ const DELIVERY_STATE_BADGES = {
   fail: { tone: "bad", label: "未通过" },
   unknown: { tone: "gray", label: "未知" },
 } as const;
+
+const QUALITY_LEVELS = ["D0", "D1", "D2", "D3"] as const;
+
+const QUALITY_LEVEL_TONE = {
+  D0: "bad",
+  D1: "d1",
+  D2: "d2",
+  D3: "d3",
+} as const;
+
+const QUALITY_LEVEL_GATE_LABELS = {
+  D0: "必须通过",
+  D1: "建议",
+  D2: "提示",
+  D3: "静默",
+} as const;
+
+function qualityLevelBehavior(
+  code: (typeof QUALITY_LEVELS)[number],
+  level: RegistryLevel | undefined,
+): string {
+  const behavior = [
+    level?.blk ? "阻止导出" : "不阻断导出",
+    level?.render
+      ? (ASSERTION_RENDER_LABELS[level.render] ?? level.render)
+      : null,
+    level?.pre_review_state && code !== "D0"
+      ? (ASSERTION_PRE_LABELS[level.pre_review_state] ??
+        level.pre_review_state)
+      : null,
+    level?.retry
+      ? (ASSERTION_RETRY_LABELS[level.retry] ?? level.retry)
+      : null,
+  ].filter(Boolean);
+
+  return `${code} ${QUALITY_LEVEL_GATE_LABELS[code]}：${behavior.join("，")}`;
+}
 
 type TableRow =
   | { kind: "pending"; item: AssertionPendingItem }
@@ -99,8 +145,10 @@ export function ReviewView() {
   const { taskId, task, isLoading } = useSelectedWriteTask();
   const gaps = useBidWriteGaps(taskId);
   const delivery = useDeliveryGates(taskId);
+  const registry = useBidWriteRegistry();
   const [filter, setFilter] = useState<Filter>("all");
   const [selected, setSelected] = useState<TableRow | null>(null);
+  const [isQualityRulesOpen, setIsQualityRulesOpen] = useState(false);
 
   const assertions = gaps.data?.assertions ?? null;
   const pending = useMemo(() => assertions?.pending ?? [], [assertions]);
@@ -238,6 +286,100 @@ export function ReviewView() {
                 })}
               </ul>
             </div>
+          </div>
+
+          <div className="card bw-mt">
+            <div className="card-h">
+              <h3>质量规则说明</h3>
+              <span className="hd-sub">{REGISTRY_COPY.subtitle}</span>
+              <span className="r">
+                <button
+                  type="button"
+                  className="btn btn-sm"
+                  aria-expanded={isQualityRulesOpen}
+                  aria-controls="bid-write-quality-rules"
+                  onClick={() => setIsQualityRulesOpen((open) => !open)}
+                >
+                  质量规则说明
+                </button>
+              </span>
+            </div>
+            {isQualityRulesOpen ? (
+              <div id="bid-write-quality-rules" className="card-b">
+                {registry.isLoading ? (
+                  <LoadingBlock label="正在加载质量规则…" />
+                ) : registry.error ? (
+                  <ErrorBlock
+                    error={registry.error}
+                    onRetry={() => void registry.refetch()}
+                  />
+                ) : (registry.data?.items.length ?? 0) === 0 ? (
+                  <EmptyState icon={ClipboardList} title="暂无规则数据" />
+                ) : (
+                  <>
+                    <h4>等级行为</h4>
+                    <div className="lv-grid">
+                      {QUALITY_LEVELS.map((code) => {
+                        const level = registry.data?.levels[code];
+                        return (
+                          <div className="lv" key={code}>
+                            <div className="lv-h">
+                              <Badge tone={QUALITY_LEVEL_TONE[code]}>
+                                {code}
+                              </Badge>
+                              <b>{level?.name ?? code}</b>
+                            </div>
+                            <p className="bw-muted">
+                              {qualityLevelBehavior(code, level)}
+                            </p>
+                          </div>
+                        );
+                      })}
+                    </div>
+                    <div className="tbl-wrap bw-mt">
+                      <table className="tbl bw-registry-table">
+                        <thead>
+                          <tr>
+                            <th>名称</th>
+                            <th>等级</th>
+                            <th>人工动作</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {registry.data?.items.map((item) => (
+                            <tr key={item.id}>
+                              <td>
+                                {item.name}
+                                <div className="mono bw-muted">{item.id}</div>
+                              </td>
+                              <td>
+                                <Badge
+                                  tone={
+                                    QUALITY_LEVEL_TONE[
+                                      item.level as keyof typeof QUALITY_LEVEL_TONE
+                                    ] ?? "gray"
+                                  }
+                                >
+                                  {item.level}
+                                </Badge>
+                              </td>
+                              <td>
+                                <span
+                                  className="excerpt ellipsis"
+                                  title={item.human_action ?? ""}
+                                >
+                                  {item.human_action ?? "自动闭环"}
+                                </span>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </>
+                )}
+              </div>
+            ) : null}
           </div>
 
           <MetricStrip>
